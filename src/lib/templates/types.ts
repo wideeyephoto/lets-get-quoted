@@ -1,4 +1,5 @@
 import type { Site } from '@/lib/sites';
+import type { PortfolioJob } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 
 export interface TemplateConfig {
@@ -11,7 +12,7 @@ export interface TemplateConfig {
 export interface TemplateProps {
   site: Site;
   galleryImages?: SiteImage[];
-  portfolioJobs?: any[];
+  portfolioJobs?: PortfolioJob[];
 }
 
 export type TemplateComponent = React.FC<TemplateProps>;

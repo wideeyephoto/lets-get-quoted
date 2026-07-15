@@ -223,13 +223,22 @@ export async function checkSubdomainAvailable(
   return !data;
 }
 
+export type PortfolioJob = {
+  id: string;
+  ref: string;
+  client_name: string;
+  address: string | null;
+  scope: string | null;
+  status: string;
+};
+
 // Get site with related jobs for portfolio
 export async function getSiteWithPortfolio(
   supabase: SupabaseClient,
   accountId: string,
   siteId: string,
   limit: number = 6
-): Promise<{ site: Site; portfolioJobs: any[] } | null> {
+): Promise<{ site: Site; portfolioJobs: PortfolioJob[] } | null> {
   const site = await getSite(supabase, accountId, siteId);
   if (!site) {
     return null;

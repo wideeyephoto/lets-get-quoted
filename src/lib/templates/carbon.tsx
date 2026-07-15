@@ -204,7 +204,7 @@ export default function CarbonTemplate({ site, portfolioJobs = [] }: TemplatePro
           &copy; {new Date().getFullYear()} {site.company_name}. All rights reserved.
         </p>
         <p style={{ margin: '0.5rem 0 0 0', opacity: 0.7, fontSize: '0.875rem' }}>
-          Powered by Let's Get Quoted
+          Powered by Let&apos;s Get Quoted
         </p>
       </footer>
     </div>
