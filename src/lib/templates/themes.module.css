@@ -1,0 +1,183 @@
+.site {
+  --theme-accent: #f0b429;
+  --theme-display: Impact, sans-serif;
+  min-height: 100vh;
+  overflow: hidden;
+  letter-spacing: 0;
+}
+
+.site *, .site *::before, .site *::after { box-sizing: border-box; }
+.site a { color: inherit; text-decoration: none; }
+.site img { display: block; max-width: 100%; }
+.site h1, .site h2, .site h3, .site p { max-width: none; margin-top: 0; letter-spacing: 0; }
+.site p { color: inherit; }
+.logo { width: auto; height: 42px; object-fit: contain; }
+.navLinks { display: flex; align-items: center; gap: clamp(1rem, 3vw, 2.5rem); font-size: .8rem; font-weight: 700; text-transform: uppercase; }
+.kicker { margin-bottom: 1rem; font-size: .73rem; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }
+.primaryCta { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; padding: .75rem 1.2rem; background: var(--theme-accent); color: #111; font-weight: 800; }
+[data-button='outline'] .primaryCta { border: 2px solid currentColor; background: transparent; color: inherit; }
+[data-button='ghost'] .primaryCta { padding-inline: 0; border-bottom: 2px solid currentColor; background: transparent; color: inherit; }
+.contactActions { display: flex; flex-wrap: wrap; align-items: center; gap: 1.25rem; }
+.sectionHeading { display: flex; align-items: flex-end; justify-content: space-between; gap: 2rem; }
+.sectionHeading > p { max-width: 34rem; }
+
+/* Forge */
+.forge { background: #10100f; color: #f3f0e7; font-family: Arial, sans-serif; }
+.forge[data-mode='light'] { background: #ebe7dc; color: #151514; }
+.forge[data-mode='light'] .forgeHeader, .forge[data-mode='light'] .forgeHero { color: #f3f0e7; }
+.forge[data-mode='light'] .forgeTrust, .forge[data-mode='light'] .forgeTrust > div, .forge[data-mode='light'] .forgeFooter { border-color: #c9c3b5; }
+.forge[data-mode='light'] .forgeTrust span, .forge[data-mode='light'] .forgeAbout > p:last-child, .forge[data-mode='light'] .forgeFooter { color: #68645b; }
+.forge[data-mode='light'] .forgeFooter strong { color: #151514; }
+.forgeHeader { position: absolute; z-index: 3; inset: 0 0 auto; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 84px; padding: 0 4vw; border-bottom: 1px solid rgba(255,255,255,.2); }
+.brand { display: inline-flex; align-items: center; gap: .75rem; font-size: .9rem; text-transform: uppercase; }
+.brandBlock { display: grid; width: 34px; aspect-ratio: 1; place-items: center; background: var(--theme-accent); color: #111; font-family: var(--theme-display); font-size: 1.35rem; }
+.headerPhone { justify-self: end; font-weight: 800; }
+.forgeHero { position: relative; min-height: min(850px, 92svh); display: flex; align-items: flex-end; padding: clamp(7rem, 14vw, 12rem) 6vw 8vh; }
+.heroImage { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.forgeScrim { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(12,12,11,.92) 0%, rgba(12,12,11,.55) 50%, rgba(12,12,11,.12) 100%), linear-gradient(0deg, rgba(12,12,11,.5), transparent 50%); }
+.forgeHeroCopy { position: relative; z-index: 1; width: min(830px, 82vw); }
+.forgeHeroCopy h1 { max-width: 11ch; margin-bottom: 1.25rem; font-family: var(--theme-display); font-size: 7rem; font-weight: 900; line-height: .86; text-transform: uppercase; }
+.heroText { max-width: 36rem; margin-bottom: 2rem; color: rgba(255,255,255,.82); font-size: 1.3rem; line-height: 1.55; }
+.forgeIndex { position: absolute; z-index: 1; right: 4vw; bottom: 5vh; font-weight: 800; }
+.forgeTrust { display: grid; grid-template-columns: repeat(3, 1fr); padding: 0 4vw; border-block: 1px solid #353531; }
+.forgeTrust > div { min-height: 128px; display: flex; flex-direction: column; justify-content: center; gap: .4rem; padding: 1.5rem 2vw; border-right: 1px solid #353531; }
+.forgeTrust > div:last-child { border: 0; }
+.forgeTrust span { color: #99978f; font-size: .72rem; text-transform: uppercase; }
+.forgeTrust strong { font-size: 1.35rem; }
+.forgeAbout { display: grid; grid-template-columns: .25fr 1.1fr .8fr; gap: 4vw; padding: clamp(5rem, 10vw, 10rem) 5vw; align-items: start; }
+.forgeAbout h2, .forgeWork h2, .forgeContact h2 { font-family: var(--theme-display); font-size: 5rem; line-height: .95; text-transform: uppercase; }
+.forgeAbout > p:last-child { color: #aaa89f; font-size: 1.05rem; line-height: 1.7; }
+.sectionNumber { color: var(--theme-accent); font-weight: 900; }
+.forgeWork { padding: clamp(4rem, 8vw, 8rem) 5vw; background: #ebe7dc; color: #151514; }
+.forgeGallery { display: grid; grid-template-columns: 1.4fr .8fr; gap: 1rem; margin-top: 3rem; }
+.forgeGallery figure { margin: 0; }
+.forgeGallery figure:not(.forgeGalleryLead) img { aspect-ratio: 16 / 10; }
+.forgeGalleryLead { grid-row: span 2; }
+.forgeGallery img { width: 100%; height: 100%; min-height: 240px; object-fit: cover; }
+.forgeGallery figcaption { display: flex; gap: .8rem; padding-top: .75rem; font-size: .82rem; font-weight: 700; text-transform: uppercase; }
+.forgeGallery figcaption span { color: #77746c; }
+.forgeContact { padding: clamp(5rem, 10vw, 10rem) 5vw; }
+.forgeContact h2 { max-width: 12ch; margin-bottom: 2.5rem; }
+.forgeFooter { display: grid; grid-template-columns: 1fr 1fr auto; gap: 2rem; padding: 2rem 5vw; border-top: 1px solid #353531; color: #aaa89f; }
+.forgeFooter strong { color: #fff; }
+
+/* Guild */
+.guild { background: #f4f0e6; color: #252923; font-family: 'Trebuchet MS', sans-serif; }
+.guild[data-mode='dark'] { background: #1e241f; color: #f4f0e6; }
+.guild[data-mode='dark'] .guildHeader, .guild[data-mode='dark'] .guildIntro, .guild[data-mode='dark'] .guildServices article, .guild[data-mode='dark'] .guildFooter { border-color: #4c554d; }
+.guild[data-mode='dark'] .guildBrand small, .guild[data-mode='dark'] .guildIntro > p, .guild[data-mode='dark'] .guildServices p { color: #bdc4b9; }
+.guildHeader { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 96px; padding: 0 5vw; border-bottom: 1px solid #cbc5b6; }
+.guildBrand { display: flex; align-items: center; gap: .9rem; }
+.guildBrand span { display: flex; flex-direction: column; }
+.guildBrand strong { font-family: var(--theme-display); font-size: 1.25rem; }
+.guildBrand small { color: #726e65; font-size: .7rem; text-transform: uppercase; }
+.guildQuote { justify-self: end; padding-bottom: .35rem; border-bottom: 2px solid var(--theme-accent); font-weight: 800; }
+.guildHero { min-height: 680px; display: grid; grid-template-columns: .9fr 1.1fr; }
+.guildHeroCopy { display: flex; flex-direction: column; justify-content: center; padding: 7vw 6vw; }
+.guildHeroCopy h1 { margin-bottom: 1.5rem; font-family: var(--theme-display); font-size: 5.5rem; font-weight: 500; line-height: .96; }
+.guildHeroMedia { position: relative; min-height: 560px; }
+.guildHeroMedia > img { width: 100%; height: 100%; object-fit: cover; }
+.guildBadge { position: absolute; left: 0; bottom: 0; display: flex; flex-direction: column; max-width: 270px; padding: 1.5rem 2rem; background: var(--theme-accent); color: #fff; }
+.guildBadge span { margin-top: .3rem; font-size: .8rem; }
+.textLink { font-weight: 800; border-bottom: 1px solid currentColor; }
+.guildIntro { display: grid; grid-template-columns: 1.2fr .8fr; gap: 8vw; padding: clamp(5rem, 9vw, 9rem) 6vw; border-bottom: 1px solid #cbc5b6; }
+.guildIntro h2, .guildWork h2, .guildContact h2 { font-family: var(--theme-display); font-size: 4.5rem; font-weight: 500; line-height: 1; }
+.guildIntro > p { align-self: end; color: #686960; font-size: 1.08rem; line-height: 1.7; }
+.guildServices { display: grid; grid-template-columns: repeat(3, 1fr); padding: 0 6vw; }
+.guildServices article { padding: 4rem 3vw 5rem 0; border-right: 1px solid #cbc5b6; }
+.guildServices article + article { padding-left: 3vw; }
+.guildServices article:last-child { border: 0; }
+.guildServices span { color: var(--theme-accent); font-weight: 800; }
+.guildServices h3 { margin: 2rem 0 1rem; font-family: var(--theme-display); font-size: 1.65rem; }
+.guildServices p { color: #686960; line-height: 1.6; }
+.guildWork { padding: clamp(5rem, 9vw, 9rem) 6vw; background: #293329; color: #f4f0e6; }
+.guildGallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-top: 3rem; }
+.guildGallery figure { margin: 0; }
+.guildGallery img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; }
+.guildGallery figcaption { padding-top: .75rem; color: #c6cabb; font-size: .8rem; }
+.guildContact { display: grid; grid-template-columns: 1.2fr .8fr; gap: 8vw; padding: clamp(5rem, 9vw, 9rem) 6vw; }
+.guildContact > div:last-child { align-self: end; }
+.guildFooter { display: grid; grid-template-columns: 1fr 1fr auto; padding: 2rem 6vw; border-top: 1px solid #cbc5b6; }
+
+/* Vista */
+.vista { background: #f7f7f3; color: #10110f; font-family: 'Helvetica Neue', sans-serif; }
+.vista[data-mode='dark'] { background: #151613; color: #f7f7f3; }
+.vista[data-mode='dark'] .vistaMenu { border-color: #f7f7f3; }
+.vista[data-mode='dark'] .vistaStatement > div { border-color: #666a61; }
+.vistaHeader { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 82px; padding: 0 3vw; }
+.vistaBrand { font-family: var(--theme-display); font-size: 1.05rem; text-transform: uppercase; }
+.vistaMenu { justify-self: end; display: grid; width: 42px; aspect-ratio: 1; place-items: center; border: 1px solid #111; border-radius: 50%; font-size: 1.2rem; }
+.vistaHero { position: relative; min-height: min(820px, calc(100svh - 82px)); margin: 0 1.5vw; overflow: hidden; background: #222; color: white; }
+.vistaHero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.62), transparent 65%); }
+.vistaHeroCopy { position: absolute; z-index: 1; left: 4vw; bottom: 8vh; max-width: 760px; }
+.vistaHeroCopy h1 { margin-bottom: 1.2rem; font-family: var(--theme-display); font-size: 8rem; line-height: .82; text-transform: uppercase; }
+.vistaHeroCopy > p:last-child { max-width: 32rem; font-size: 1.08rem; line-height: 1.55; }
+.vistaScroll { position: absolute; z-index: 1; right: 3vw; bottom: 4vh; font-size: .8rem; font-weight: 800; text-transform: uppercase; }
+.vistaStatement { padding: clamp(6rem, 12vw, 12rem) 6vw; }
+.vistaStatement > p { font-size: .78rem; font-weight: 800; text-transform: uppercase; }
+.vistaStatement h2 { max-width: 16ch; margin: 0 auto 4rem; font-size: 5.5rem; font-weight: 500; line-height: .98; }
+.vistaStatement > div { display: flex; justify-content: space-between; padding-top: 1.5rem; border-top: 1px solid #aaa; font-size: .8rem; text-transform: uppercase; }
+.vistaWork { padding: 2rem 3vw 8rem; }
+.vistaWorkHeading { display: flex; justify-content: space-between; margin-bottom: 1.5rem; }
+.vistaGallery { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+.vistaGallery figure { margin: 0; }
+.vistaWide { grid-column: 1 / -1; }
+.vistaGallery img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.vistaWide img { aspect-ratio: 16 / 8; }
+.vistaGallery figcaption { display: flex; justify-content: space-between; padding-top: .7rem; font-size: .8rem; text-transform: uppercase; }
+.vistaContact { margin: 0 1.5vw 1.5vw; padding: clamp(5rem, 10vw, 10rem) 5vw; background: #121310; color: #fff; }
+.vistaContact h2 { max-width: 10ch; font-family: var(--theme-display); font-size: 6.5rem; line-height: .9; text-transform: uppercase; }
+.vistaContact > a { display: flex; justify-content: space-between; margin-top: 4rem; padding-bottom: 1rem; border-bottom: 2px solid var(--theme-accent); font-size: 1.5rem; }
+.vistaFooter { display: grid; grid-template-columns: 1fr 1fr auto; padding: 2rem 3vw; font-size: .8rem; }
+
+@media (max-width: 820px) {
+  .navLinks { display: none; }
+  .forgeHeader, .guildHeader, .vistaHeader { grid-template-columns: 1fr auto; padding-inline: 1.25rem; }
+  .headerPhone, .guildQuote, .vistaMenu { grid-column: 2; }
+  .forgeHero { min-height: 78svh; padding: 7rem 1.25rem 3rem; }
+  .forgeHeroCopy { width: 100%; }
+  .forgeHeroCopy h1 { font-size: 3.35rem; line-height: .9; }
+  .heroText { font-size: 1rem; }
+  .forgeIndex { display: none; }
+  .forgeTrust { grid-template-columns: 1fr; padding: 0; }
+  .forgeTrust > div { min-height: 92px; padding-inline: 1.25rem; border-right: 0; border-bottom: 1px solid #353531; }
+  .forgeAbout, .guildIntro, .guildContact { grid-template-columns: 1fr; padding-inline: 1.25rem; }
+  .forgeAbout h2, .forgeWork h2, .forgeContact h2 { font-size: 2.75rem; }
+  .sectionNumber { display: none; }
+  .sectionHeading { align-items: flex-start; flex-direction: column; }
+  .forgeWork, .forgeContact { padding-inline: 1.25rem; }
+  .forgeGallery { grid-template-columns: 1fr; }
+  .forgeGalleryLead { grid-row: auto; }
+  .forgeGallery img, .forgeGalleryLead img { aspect-ratio: 4 / 3; }
+  .forgeFooter, .guildFooter, .vistaFooter { grid-template-columns: 1fr; gap: .6rem; }
+  .guildHero { grid-template-columns: 1fr; }
+  .guildHeroCopy { padding: 5rem 1.25rem; }
+  .guildHeroCopy h1 { font-size: 3rem; }
+  .guildHeroMedia { min-height: 52svh; }
+  .guildServices, .guildGallery { grid-template-columns: 1fr; }
+  .guildServices { padding-inline: 1.25rem; }
+  .guildServices article, .guildServices article + article { padding: 2.5rem 0; border-right: 0; border-bottom: 1px solid #cbc5b6; }
+  .guildWork { padding-inline: 1.25rem; }
+  .guildIntro h2, .guildWork h2, .guildContact h2 { font-size: 2.75rem; }
+  .guildGallery img { aspect-ratio: 4 / 3; }
+  .vistaHero { margin: 0; min-height: 75svh; }
+  .vistaHeroCopy { left: 1.25rem; right: 1.25rem; bottom: 4rem; }
+  .vistaHeroCopy h1 { font-size: 3.25rem; line-height: .9; overflow-wrap: normal; }
+  .vistaScroll { display: none; }
+  .vistaStatement { padding-inline: 1.25rem; }
+  .vistaStatement h2 { font-size: 2.8rem; }
+  .vistaStatement > div { flex-direction: column; gap: .6rem; }
+  .vistaWork { padding-inline: 1.25rem; }
+  .vistaGallery { grid-template-columns: 1fr; }
+  .vistaWide { grid-column: auto; }
+  .vistaGallery img, .vistaWide img { aspect-ratio: 4 / 3; }
+  .vistaContact { margin: 0; padding-inline: 1.25rem; }
+  .vistaContact h2 { font-size: 3.1rem; }
+  .vistaContact > a { font-size: 1.1rem; }
+}
+
+@media (max-width: 440px) {
+  .guildQuote { font-size: .75rem; }
+  .forgeHeroCopy h1 { overflow-wrap: anywhere; }
+  .primaryCta { width: 100%; }
+}

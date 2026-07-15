@@ -1,0 +1,18 @@
+.legalShell { width: min(920px, calc(100% - 2rem)); margin: 0 auto; padding: 3rem 0 5rem; }
+.legalHeader { padding-bottom: 1.75rem; border-bottom: 1px solid rgba(255,255,255,.12); }
+.legalHeader h1 { max-width: none; margin: .35rem 0 .65rem; font-size: clamp(2.35rem, 6vw, 4.75rem); }
+.legalHeader p { max-width: 700px; margin: 0; }
+.effectiveDate { display: inline-block; margin-top: 1rem; color: rgba(255,255,255,.55); font-size: .82rem; }
+.legalContent { display: grid; gap: 2rem; padding-top: 2rem; }
+.legalContent section { display: grid; gap: .75rem; }
+.legalContent h2 { margin: 0; font-size: 1.35rem; }
+.legalContent h3 { margin: .3rem 0 0; font-size: 1rem; }
+.legalContent p, .legalContent li { color: rgba(255,255,255,.72); line-height: 1.7; }
+.legalContent p { margin: 0; }
+.legalContent ul { display: grid; gap: .45rem; margin: 0; padding-left: 1.2rem; }
+.legalContent strong { color: #fff; }
+.legalContent a { color: #ffd166; text-decoration: underline; text-underline-offset: 3px; }
+.smsDisclosure { padding: 1rem; border: 1px solid rgba(255,209,102,.3); border-radius: 8px; background: rgba(255,209,102,.06); }
+.legalNav { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 2rem; padding-top: 1.25rem; border-top: 1px solid rgba(255,255,255,.12); }
+.legalNav a { color: #ffd166; font-weight: 700; }
+@media (max-width: 640px) { .legalShell { padding-top: 1.5rem; } .legalHeader h1 { font-size: 2.4rem; } }
