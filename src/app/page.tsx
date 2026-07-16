@@ -1,5 +1,7 @@
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 const appPoints = [
   'Magic-link access for owners and office staff',
   'Protected job, invoice, and payment workflows',
