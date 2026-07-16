@@ -26,14 +26,45 @@ function extractCity(address: string | null): string {
 export default async function DashboardPage() {
   const { supabase, accountId } = await requireOwnerContext();
 
-  const [{ data: account }, { data: identityData }, jobs] = await Promise.all([
+  const [{ data: account }, { data: identityData }, { data: site }, jobs] = await Promise.all([
     supabase.from('accounts').select('connect_onboarded').eq('id', accountId).single(),
     supabase.auth.getUserIdentities(),
+    supabase.from('sites').select('published').eq('account_id', accountId).maybeSingle(),
     listJobs(supabase, accountId),
   ]);
 
   const onboarded = account?.connect_onboarded ?? false;
   const linkedMethodCount = identityData?.identities?.length ?? 1;
+  const sitePublished = site?.published ?? false;
+
+  const onboardingSteps = [
+    {
+      key: 'login',
+      label: 'Add a backup sign-in method',
+      description: "So you're never locked out of your business.",
+      done: linkedMethodCount > 1,
+      href: '/dashboard/settings',
+      cta: 'Add a backup method',
+    },
+    {
+      key: 'website',
+      label: 'Build your website',
+      description: 'Design and publish your contractor site — the fun part!',
+      done: sitePublished,
+      href: '/dashboard/sites',
+      cta: 'Build your site',
+    },
+    {
+      key: 'stripe',
+      label: 'Connect Stripe payouts',
+      description: 'Get paid directly for deposits and stage payments.',
+      done: onboarded,
+      href: '/dashboard/settings',
+      cta: 'Connect Stripe',
+    },
+  ];
+  const completedStepCount = onboardingSteps.filter((step) => step.done).length;
+  const onboardingComplete = completedStepCount === onboardingSteps.length;
 
   const trailingVolume = onboarded ? await getTrailingVolume(accountId) : 0;
   const tierInfo = getTierInfo(trailingVolume);
@@ -62,11 +93,36 @@ export default async function DashboardPage() {
 
   return (
     <main className="wide-shell workspace-shell">
-      {linkedMethodCount <= 1 ? (
-        <div className="backup-signin-banner">
-          <p>You&apos;re only signed in one way. Add a backup sign-in method so you&apos;re never locked out of your business.</p>
-          <Link href="/dashboard/settings" className="btn secondary">Add a backup method</Link>
-        </div>
+      {!onboardingComplete ? (
+        <section className="panel workspace-section-card onboarding-panel">
+          <div className="section-heading workspace-section-heading">
+            <p className="eyebrow">Get set up</p>
+            <h2>Onboarding checklist</h2>
+          </div>
+          <p className="onboarding-progress-note">
+            {completedStepCount} of {onboardingSteps.length} steps complete.
+          </p>
+          <div className="onboarding-checklist">
+            {onboardingSteps.map((step, index) => (
+              <div className={`onboarding-step${step.done ? ' done' : ''}`} key={step.key}>
+                <div className="onboarding-step-info">
+                  <span className="onboarding-step-check">{step.done ? '✓' : index + 1}</span>
+                  <div>
+                    <span className="onboarding-step-name">{step.label}</span>
+                    <p className="onboarding-step-desc">{step.description}</p>
+                  </div>
+                </div>
+                {step.done ? (
+                  <span className="status-badge status-complete">Done</span>
+                ) : (
+                  <Link href={step.href} className="btn secondary">
+                    {step.cta}
+                  </Link>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
       ) : null}
 
       <section className="workspace-hero panel">

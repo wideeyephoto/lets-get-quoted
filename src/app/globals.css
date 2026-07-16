@@ -361,6 +361,39 @@ li + li { margin-top: 0.45rem; }
 .backup-signin-banner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: 1rem 1.2rem; border: 1px solid rgba(255,209,102,.35); border-radius: 10px; background: rgba(255,209,102,.08); margin-bottom: 1.5rem; }
 .backup-signin-banner p { margin: 0; color: rgba(255,255,255,.82); font-size: .88rem; }
 
+.onboarding-panel { margin-bottom: 1.5rem; }
+.onboarding-progress-note { margin: 0.4rem 0 0; color: rgba(255,255,255,.6); font-size: .88rem; }
+.onboarding-checklist { display: flex; flex-direction: column; gap: .6rem; margin-top: 1rem; }
+.onboarding-step {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .9rem 1.1rem;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 14px;
+  background: rgba(255,255,255,.03);
+  flex-wrap: wrap;
+}
+.onboarding-step.done { opacity: .6; }
+.onboarding-step-info { display: flex; align-items: center; gap: .85rem; }
+.onboarding-step-check {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255,255,255,.25);
+  flex-shrink: 0;
+  font-size: .82rem;
+  font-weight: 700;
+  color: rgba(255,255,255,.7);
+}
+.onboarding-step.done .onboarding-step-check { background: #bef264; border-color: #bef264; color: #0b1220; }
+.onboarding-step-name { font-weight: 700; }
+.onboarding-step-desc { margin: .15rem 0 0; color: rgba(255,255,255,.55); font-size: .85rem; }
+
 .calendar-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; }
 .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
 .calendar-weekday { padding: .3rem .2rem; color: rgba(255,255,255,.45); font-size: .7rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; text-align: center; }
