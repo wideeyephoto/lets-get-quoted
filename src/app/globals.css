@@ -327,12 +327,17 @@ li + li { margin-top: 0.45rem; }
 .auth-oauth-buttons .btn { width: 100%; text-align: center; }
 
 .sign-in-methods-list { display: flex; flex-direction: column; gap: .75rem; margin-top: 1rem; }
-.sign-in-method-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .9rem 1rem; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; background: rgba(255,255,255,.025); }
-.sign-in-method-row .method-name { font-weight: 700; }
+.sign-in-method-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .9rem 1rem; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; background: rgba(255,255,255,.025); transition: border-color .15s ease, background .15s ease; }
+.sign-in-method-row:hover { border-color: rgba(255,255,255,.22); background: rgba(255,255,255,.045); }
+.sign-in-method-row .method-info { display: flex; align-items: center; gap: .85rem; }
+.sign-in-method-row .method-icon { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; flex-shrink: 0; border-radius: 999px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); }
+.sign-in-method-row .method-name { font-weight: 700; display: block; }
 .sign-in-method-row .method-detail { display: block; color: rgba(255,255,255,.55); font-size: .78rem; margin-top: .15rem; }
 .sign-in-method-badge { font-size: .72rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: .25rem .6rem; border-radius: 999px; }
 .sign-in-method-badge.linked { background: rgba(120, 220, 150, .16); color: #78dc96; }
 .sign-in-method-badge.unlinked { background: rgba(255,255,255,.08); color: rgba(255,255,255,.55); }
+.settings-sections { display: flex; flex-direction: column; gap: 2rem; }
+.settings-section + .settings-section { padding-top: 2rem; border-top: 1px solid rgba(255,255,255,.1); }
 .backup-signin-banner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: 1rem 1.2rem; border: 1px solid rgba(255,209,102,.35); border-radius: 10px; background: rgba(255,209,102,.08); margin-bottom: 1.5rem; }
 .backup-signin-banner p { margin: 0; color: rgba(255,255,255,.82); font-size: .88rem; }
 
