@@ -238,6 +238,7 @@ p { line-height: 1.6; color: var(--muted); }
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.55rem;
   padding: 0.82rem 1.1rem;
   border-radius: 999px;
   font-weight: 700;
@@ -328,12 +329,18 @@ li + li { margin-top: 0.45rem; }
 .marketing-footer nav { display: flex; gap: 1rem; }
 .marketing-footer a { color: rgba(255,255,255,.76); }
 
+.auth-card { padding: 2rem; }
+.auth-badge { display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .75rem; border-radius: 999px; border: 1px solid rgba(255,209,102,.35); background: rgba(255,209,102,.08); color: var(--accent-2); font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; margin-bottom: .6rem; }
 .auth-form { display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1rem; max-width: 420px; }
 .auth-form label { font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: rgba(255,255,255,.62); }
-.auth-form input { border: 1px solid rgba(255,255,255,0.16); border-radius: 999px; padding: 0.85rem 1rem; background: rgba(255,255,255,0.06); color: white; }
+.auth-form input { border: 1px solid rgba(255,255,255,0.16); border-radius: 999px; padding: 0.85rem 1rem; background: rgba(255,255,255,0.06); color: white; width: 100%; }
 .auth-form input::placeholder { color: rgba(255,255,255,0.65); }
 .auth-form button { width: fit-content; }
 .auth-form .otp-input { max-width: 220px; border-radius: 10px; font-family: 'JetBrains Mono', monospace; font-size: 1.35rem; letter-spacing: .28em; text-align: center; }
+.input-icon-group { position: relative; display: flex; align-items: center; }
+.input-icon-group svg { position: absolute; left: 1.05rem; color: rgba(255,255,255,.4); pointer-events: none; }
+.input-icon-group input { padding-left: 2.7rem; }
+.input-icon-group .otp-input { padding-left: 2.7rem; padding-right: 2.7rem; }
 .auth-help { margin: -.2rem 0 0; color: rgba(255,255,255,.55); font-size: .78rem; }
 .auth-inline-actions { display: flex; gap: 1rem; }
 .auth-inline-actions button { padding: 0; border: 0; background: transparent; color: #ffd166; font: 700 .78rem/1.4 inherit; cursor: pointer; }
@@ -342,6 +349,7 @@ li + li { margin-top: 0.45rem; }
 .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.14); }
 .auth-oauth-buttons { display: flex; flex-direction: column; gap: .6rem; max-width: 420px; }
 .auth-oauth-buttons .btn { width: 100%; text-align: center; }
+.auth-trust { display: flex; align-items: center; gap: .4rem; max-width: 420px; margin: 1.2rem 0 0; color: rgba(255,255,255,.4); font-size: .74rem; }
 
 .sign-in-methods-list { display: flex; flex-direction: column; gap: .75rem; margin-top: 1rem; }
 .sign-in-method-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .9rem 1rem; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; background: rgba(255,255,255,.025); transition: border-color .15s ease, background .15s ease; }
