@@ -65,6 +65,10 @@ export default async function LeadsPage() {
               <textarea id="message" name="message" placeholder="Details from the call or conversation…" />
             </div>
             <div className="field full">
+              <label htmlFor="photos">Photos</label>
+              <input id="photos" name="photos" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple />
+            </div>
+            <div className="field full">
               <button type="submit" className="btn primary">
                 Add lead
               </button>

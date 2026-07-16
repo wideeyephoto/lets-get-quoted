@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
+import PhotoGallery from '@/components/photo-gallery';
 import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
 import { getLead } from '@/lib/leads';
 import { convertLeadAction, updateLeadStatusAction } from '../actions';
@@ -11,6 +12,7 @@ export default async function LeadDetailPage({ params }: { params: { leadId: str
   const lead = await getLead(supabase, accountId, params.leadId);
   if (!lead) notFound();
   const photoUrls = await createLeadPhotoUrls(accountId, lead.photo_paths || []);
+  const photos = (lead.photo_paths || []).map((path, index) => ({ path, url: photoUrls[index] })).filter((photo) => photo.url);
   const updateStatus = updateLeadStatusAction.bind(null, lead.id);
   const convertLead = convertLeadAction.bind(null, lead.id);
 
@@ -29,7 +31,16 @@ export default async function LeadDetailPage({ params }: { params: { leadId: str
           </div>
           <div className={styles.dataBlock}><span>Project address</span><p>{lead.address || 'Not provided'}</p></div>
           <div className={styles.dataBlock}><span>Project details</span><p>{lead.message || 'Not provided'}</p></div>
-          {photoUrls.length > 0 && <div><div className="section-heading workspace-section-heading"><p className="eyebrow">Attachments</p><h2>Project photos</h2></div><div className={styles.photoGrid}>{photoUrls.map((url, index) => <a href={url} target="_blank" rel="noreferrer" key={url}><img src={url} alt={`Project attachment ${index + 1}`} /></a>)}</div></div>}
+          <div>
+            <div className="section-heading workspace-section-heading"><p className="eyebrow">Attachments</p><h2>Project photos</h2></div>
+            <PhotoGallery
+              entityId={lead.id}
+              entityField="leadId"
+              uploadUrl="/api/lead-photos"
+              initialPhotos={photos}
+              emptyLabel="No photos yet. Add some from the field or from the client."
+            />
+          </div>
           <div className={styles.dataBlock}><span>Received</span><p>{new Date(lead.created_at).toLocaleString()}</p></div>
         </section>
 

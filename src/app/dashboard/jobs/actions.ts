@@ -13,6 +13,7 @@ import {
   type CostType,
   type JobStatus,
 } from '@/lib/jobs';
+import { uploadJobPhoto } from '@/lib/job-photo-storage';
 
 function parseAmount(value: FormDataEntryValue | null): number {
   const n = Number(value);
@@ -27,6 +28,12 @@ function optionalText(value: FormDataEntryValue | null): string | null {
 export async function createJobAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
 
+  const photoFiles = formData.getAll('photos').filter((item): item is File => item instanceof File && item.size > 0);
+  const photoPaths: string[] = [];
+  for (const file of photoFiles) {
+    photoPaths.push(await uploadJobPhoto(accountId, file));
+  }
+
   const job = await createJob(supabase, accountId, {
     clientName: (formData.get('clientName') ?? '').toString().trim(),
     clientPhone: optionalText(formData.get('clientPhone')),
@@ -35,6 +42,7 @@ export async function createJobAction(formData: FormData) {
     status: (formData.get('status') as JobStatus) || 'new_lead',
     scheduledFor: optionalText(formData.get('scheduledFor')),
     quotedAmount: parseAmount(formData.get('quotedAmount')),
+    photoPaths,
   });
 
   revalidatePath('/dashboard/jobs');

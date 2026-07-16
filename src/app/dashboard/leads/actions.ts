@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
 import { convertLeadToJob, createLead, updateLeadStatus, type LeadStatus } from '@/lib/leads';
+import { uploadLeadPhoto } from '@/lib/lead-photo-storage';
 
 const VALID_STATUSES = new Set<LeadStatus>(['new', 'contacted', 'quoted', 'won', 'lost']);
 
@@ -15,6 +16,12 @@ function optionalText(value: FormDataEntryValue | null): string | null {
 export async function createLeadAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
 
+  const photoFiles = formData.getAll('photos').filter((item): item is File => item instanceof File && item.size > 0);
+  const photoPaths: string[] = [];
+  for (const file of photoFiles) {
+    photoPaths.push(await uploadLeadPhoto(accountId, file));
+  }
+
   await createLead(supabase, accountId, {
     source: 'manual',
     name: (formData.get('name') ?? '').toString().trim(),
@@ -23,6 +30,7 @@ export async function createLeadAction(formData: FormData) {
     address: optionalText(formData.get('address')),
     projectType: optionalText(formData.get('projectType')),
     message: optionalText(formData.get('message')),
+    photoPaths,
   });
 
   revalidatePath('/dashboard/leads');

@@ -110,6 +110,10 @@ export default async function JobsPage({
               <input id="quotedAmount" name="quotedAmount" type="number" min="0" step="0.01" placeholder="12840" />
             </div>
             <div className="field full">
+              <label htmlFor="photos">Photos</label>
+              <input id="photos" name="photos" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple />
+            </div>
+            <div className="field full">
               <button type="submit" className="btn primary">
                 Create job
               </button>

@@ -177,12 +177,15 @@ create table if not exists jobs (
 
   certificate   jsonb,
 
+  photo_paths   jsonb not null default '[]'::jsonb,
+
   created_at    timestamptz not null default now(),
   unique (account_id, ref)
 );
 
 -- Safe to re-run: adds the column if this table already existed pre-migration.
 alter table jobs add column if not exists quoted_amount numeric(12,2) not null default 0;
+alter table jobs add column if not exists photo_paths jsonb not null default '[]'::jsonb;
 
 -- ----------------------------------------------------------------------------
 -- CREW_ASSIGNMENTS  — many-to-many jobs <-> crew.

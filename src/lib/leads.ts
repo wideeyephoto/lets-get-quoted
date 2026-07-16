@@ -94,6 +94,51 @@ export async function getLead(
   return data as Lead | null;
 }
 
+// Appends newly uploaded photo paths to the lead's existing attachments.
+export async function addLeadPhotos(
+  supabase: SupabaseClient,
+  accountId: string,
+  leadId: string,
+  paths: string[]
+): Promise<Lead> {
+  const lead = await getLead(supabase, accountId, leadId);
+  if (!lead) throw new Error('Lead not found.');
+
+  const { data, error } = await supabase
+    .from('leads')
+    .update({ photo_paths: [...lead.photo_paths, ...paths], updated_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('id', leadId)
+    .select('*')
+    .single();
+
+  if (error || !data) throw error ?? new Error('Unable to add lead photos.');
+  return data as Lead;
+}
+
+// Removes a single photo path from the lead's attachments (storage cleanup
+// is handled by the caller via deleteLeadPhotos).
+export async function removeLeadPhoto(
+  supabase: SupabaseClient,
+  accountId: string,
+  leadId: string,
+  path: string
+): Promise<Lead> {
+  const lead = await getLead(supabase, accountId, leadId);
+  if (!lead) throw new Error('Lead not found.');
+
+  const { data, error } = await supabase
+    .from('leads')
+    .update({ photo_paths: lead.photo_paths.filter((existing) => existing !== path), updated_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('id', leadId)
+    .select('*')
+    .single();
+
+  if (error || !data) throw error ?? new Error('Unable to remove lead photo.');
+  return data as Lead;
+}
+
 export async function updateLeadStatus(
   supabase: SupabaseClient,
   accountId: string,

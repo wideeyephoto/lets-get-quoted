@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
+import PhotoGallery from '@/components/photo-gallery';
 import { getJob, listCosts, computeMargin, formatMoney, formatPercent, type Cost } from '@/lib/jobs';
+import { createJobPhotoUrls } from '@/lib/job-photo-storage';
 import { listPayments, type PaymentStatus } from '@/lib/payments';
 import { listInvoices, type InvoiceStatus } from '@/lib/invoices';
 import { createCostAction, deleteCostAction, deleteJobAction, updateJobAction } from '../actions';
@@ -74,6 +76,8 @@ export default async function JobDetailPage({
   const margin = computeMargin(job, costs);
   const payments = await listPayments(supabase, accountId, job.id);
   const invoices = await listInvoices(supabase, accountId, job.id);
+  const jobPhotoUrls = await createJobPhotoUrls(accountId, job.photo_paths || []);
+  const jobPhotos = (job.photo_paths || []).map((path, index) => ({ path, url: jobPhotoUrls[index] })).filter((photo) => photo.url);
   const tab =
     searchParams.tab === 'costs'
       ? 'costs'
@@ -198,6 +202,20 @@ export default async function JobDetailPage({
                 </button>
               </div>
             </form>
+
+            <div className="workspace-section-divider">
+              <div className="section-heading workspace-section-heading">
+                <p className="eyebrow">Attachments</p>
+                <h2>Job photos</h2>
+              </div>
+              <PhotoGallery
+                entityId={job.id}
+                entityField="jobId"
+                uploadUrl="/api/job-photos"
+                initialPhotos={jobPhotos}
+                emptyLabel="No photos yet. Add progress shots or before/after photos."
+              />
+            </div>
 
             <div className="workspace-danger-zone">
               <p className="eyebrow danger-eyebrow">

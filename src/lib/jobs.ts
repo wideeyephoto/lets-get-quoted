@@ -14,6 +14,7 @@ export type Job = {
   status: JobStatus;
   scheduled_for: string | null;
   quoted_amount: number;
+  photo_paths: string[];
   created_at: string;
 };
 
@@ -41,6 +42,7 @@ export type JobInput = {
   status?: JobStatus;
   scheduledFor?: string | null;
   quotedAmount?: number;
+  photoPaths?: string[];
 };
 
 export type CostInput =
@@ -173,6 +175,7 @@ export async function createJob(supabase: SupabaseClient, accountId: string, inp
       status: input.status ?? 'new_lead',
       scheduled_for: input.scheduledFor ?? null,
       quoted_amount: input.quotedAmount ?? 0,
+      photo_paths: input.photoPaths ?? [],
     })
     .select('*')
     .single();
@@ -239,6 +242,57 @@ export async function updateJobSchedule(
 
   if (error || !data) {
     throw error ?? new Error('Unable to update job schedule.');
+  }
+
+  return data as Job;
+}
+
+// Appends newly uploaded photo paths to the job's existing gallery.
+export async function addJobPhotos(
+  supabase: SupabaseClient,
+  accountId: string,
+  jobId: string,
+  paths: string[]
+): Promise<Job> {
+  const job = await getJob(supabase, accountId, jobId);
+  if (!job) throw new Error('Job not found.');
+
+  const { data, error } = await supabase
+    .from('jobs')
+    .update({ photo_paths: [...job.photo_paths, ...paths] })
+    .eq('account_id', accountId)
+    .eq('id', jobId)
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error('Unable to add job photos.');
+  }
+
+  return data as Job;
+}
+
+// Removes a single photo path from the job's gallery (storage cleanup is
+// handled by the caller via deleteJobPhotos).
+export async function removeJobPhoto(
+  supabase: SupabaseClient,
+  accountId: string,
+  jobId: string,
+  path: string
+): Promise<Job> {
+  const job = await getJob(supabase, accountId, jobId);
+  if (!job) throw new Error('Job not found.');
+
+  const { data, error } = await supabase
+    .from('jobs')
+    .update({ photo_paths: job.photo_paths.filter((existing) => existing !== path) })
+    .eq('account_id', accountId)
+    .eq('id', jobId)
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error('Unable to remove job photo.');
   }
 
   return data as Job;
