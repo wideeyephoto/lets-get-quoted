@@ -16,10 +16,6 @@ const baseNavItems = [
 ];
 
 function getPrimaryAction(pathname: string) {
-  if (pathname.startsWith('/dashboard')) {
-    return { href: '/dashboard/jobs', label: 'Open jobs' };
-  }
-
   if (pathname.startsWith('/login')) {
     return { href: '/docs', label: 'Setup docs' };
   }
@@ -30,11 +26,13 @@ function getPrimaryAction(pathname: string) {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { isNavOpen, closeNav, toggleNav } = useAppShell();
+  const isDashboard = pathname.startsWith('/dashboard');
   const primaryAction = getPrimaryAction(pathname);
-  // Signed-in contractors live under /dashboard — the marketing "Home" link
-  // isn't relevant to them once they're in the app.
-  const navItems = pathname.startsWith('/dashboard')
-    ? baseNavItems.filter((item) => item.href !== '/')
+  // Signed-in contractors live under /dashboard — the marketing "Home" and
+  // "Docs" links aren't relevant to them once they're in the app, and the
+  // "Jobs" nav link already covers what the "Open jobs" CTA would do.
+  const navItems = isDashboard
+    ? baseNavItems.filter((item) => item.href !== '/' && item.href !== '/docs')
     : baseNavItems;
   const isStandaloneSite =
     pathname.startsWith('/site/') ||
@@ -90,9 +88,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               })}
             </nav>
 
-            <Link href={primaryAction.href} className="btn primary topbar-cta">
-              {primaryAction.label}
-            </Link>
+            {!isDashboard ? (
+              <Link href={primaryAction.href} className="btn primary topbar-cta">
+                {primaryAction.label}
+              </Link>
+            ) : null}
           </div>
         </div>
       </header>
