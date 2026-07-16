@@ -86,7 +86,7 @@ export default function LoginPage() {
     setMessage('');
   }
 
-  async function signInWithProvider(provider: 'google' | 'azure' | 'apple') {
+  async function signInWithProvider(provider: 'google' | 'azure') {
     setMessage('');
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
@@ -132,7 +132,6 @@ export default function LoginPage() {
         <div className="auth-oauth-buttons">
           <button type="button" className="btn secondary" onClick={() => signInWithProvider('google')}>Continue with Google</button>
           <button type="button" className="btn secondary" onClick={() => signInWithProvider('azure')}>Continue with Microsoft</button>
-          <button type="button" className="btn secondary" onClick={() => signInWithProvider('apple')}>Continue with Apple</button>
         </div>
 
         {message ? <p className="auth-message" role="status">{message}</p> : null}

@@ -221,6 +221,29 @@ export async function deleteJob(supabase: SupabaseClient, accountId: string, job
   }
 }
 
+// Targeted update used by the schedule/calendar view — only touches
+// scheduled_for so it can't accidentally clobber the rest of the job record.
+export async function updateJobSchedule(
+  supabase: SupabaseClient,
+  accountId: string,
+  jobId: string,
+  scheduledFor: string | null
+): Promise<Job> {
+  const { data, error } = await supabase
+    .from('jobs')
+    .update({ scheduled_for: scheduledFor })
+    .eq('account_id', accountId)
+    .eq('id', jobId)
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error('Unable to update job schedule.');
+  }
+
+  return data as Job;
+}
+
 // -- Costs CRUD -------------------------------------------------------------
 export async function listCosts(supabase: SupabaseClient, accountId: string, jobId: string): Promise<Cost[]> {
   const { data, error } = await supabase

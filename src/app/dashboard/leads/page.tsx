@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { listLeads, type LeadStatus } from '@/lib/leads';
+import { createLeadAction } from './actions';
 import styles from './leads.module.css';
 
 const COLUMNS: { status: LeadStatus; label: string }[] = [
@@ -30,6 +31,46 @@ export default async function LeadsPage() {
           <article className="workspace-metric-card"><span className="workspace-metric-label">Website inquiries</span><strong className="workspace-metric-value">{websiteLeads}</strong><p className="workspace-metric-note">Requests captured by contractor websites.</p></article>
           <article className="workspace-metric-card"><span className="workspace-metric-label">Won</span><strong className="workspace-metric-value">{leads.filter((lead) => lead.status === 'won').length}</strong><p className="workspace-metric-note">Leads moved into signed work.</p></article>
         </div>
+      </section>
+
+      <section className="panel workspace-section-card">
+        <details className="workspace-details" open={leads.length === 0}>
+          <summary className="workspace-details-summary">
+            <span className="btn primary">+ New lead</span>
+            <span className="workspace-details-copy">Log an inquiry that came in by phone, in person, or referral.</span>
+          </summary>
+          <form action={createLeadAction} className="form-grid">
+            <div className="field">
+              <label htmlFor="name">Name</label>
+              <input id="name" name="name" required placeholder="Sarah Whitfield" />
+            </div>
+            <div className="field">
+              <label htmlFor="phone">Phone</label>
+              <input id="phone" name="phone" placeholder="(248) 555-0117" />
+            </div>
+            <div className="field">
+              <label htmlFor="email">Email</label>
+              <input id="email" name="email" type="email" placeholder="sarah@example.com" />
+            </div>
+            <div className="field">
+              <label htmlFor="address">Address</label>
+              <input id="address" name="address" placeholder="1418 Maplewood Ave, Royal Oak, MI" />
+            </div>
+            <div className="field full">
+              <label htmlFor="projectType">Project type</label>
+              <input id="projectType" name="projectType" placeholder="Roof replacement" />
+            </div>
+            <div className="field full">
+              <label htmlFor="message">Notes</label>
+              <textarea id="message" name="message" placeholder="Details from the call or conversation…" />
+            </div>
+            <div className="field full">
+              <button type="submit" className="btn primary">
+                Add lead
+              </button>
+            </div>
+          </form>
+        </details>
       </section>
 
       <section className="panel workspace-section-card">

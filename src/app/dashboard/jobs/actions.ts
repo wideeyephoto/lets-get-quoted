@@ -9,6 +9,7 @@ import {
   deleteCost,
   deleteJob,
   updateJob,
+  updateJobSchedule,
   type CostType,
   type JobStatus,
 } from '@/lib/jobs';
@@ -55,6 +56,16 @@ export async function updateJobAction(jobId: string, formData: FormData) {
 
   revalidatePath('/dashboard/jobs');
   revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
+export async function scheduleJobAction(jobId: string, formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  await updateJobSchedule(supabase, accountId, jobId, optionalText(formData.get('scheduledFor')));
+
+  revalidatePath('/dashboard/jobs');
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+  revalidatePath('/dashboard/schedule');
 }
 
 export async function deleteJobAction(jobId: string) {

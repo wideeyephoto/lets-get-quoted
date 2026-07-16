@@ -3,9 +3,30 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
-import { convertLeadToJob, updateLeadStatus, type LeadStatus } from '@/lib/leads';
+import { convertLeadToJob, createLead, updateLeadStatus, type LeadStatus } from '@/lib/leads';
 
 const VALID_STATUSES = new Set<LeadStatus>(['new', 'contacted', 'quoted', 'won', 'lost']);
+
+function optionalText(value: FormDataEntryValue | null): string | null {
+  const text = (value ?? '').toString().trim();
+  return text.length > 0 ? text : null;
+}
+
+export async function createLeadAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  await createLead(supabase, accountId, {
+    source: 'manual',
+    name: (formData.get('name') ?? '').toString().trim(),
+    phone: optionalText(formData.get('phone')),
+    email: optionalText(formData.get('email')),
+    address: optionalText(formData.get('address')),
+    projectType: optionalText(formData.get('projectType')),
+    message: optionalText(formData.get('message')),
+  });
+
+  revalidatePath('/dashboard/leads');
+}
 
 export async function updateLeadStatusAction(leadId: string, formData: FormData) {
   const status = String(formData.get('status') ?? '') as LeadStatus;

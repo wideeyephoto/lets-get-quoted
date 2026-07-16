@@ -13,17 +13,17 @@ type Props = {
   connectStripeAction: () => Promise<void>;
 };
 
-type ProviderKey = 'phone' | 'email' | 'google' | 'azure' | 'apple';
+type ProviderKey = 'phone' | 'email' | 'google' | 'azure';
 
 const METHOD_LABEL: Record<ProviderKey, string> = {
   phone: 'Phone number',
   email: 'Email',
   google: 'Google',
   azure: 'Microsoft',
-  apple: 'Apple',
 };
 
 const METHOD_ICON: Record<ProviderKey | 'stripe', ReactNode> = {
+  // Apple sign-in disabled for now; icon left out until it's re-enabled.
   phone: (
     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
       <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.7 21 3 13.3 3 4c0-.6.4-1 1-1h3.2c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.5.1.4 0 .8-.2 1L6.6 10.8z" />
@@ -48,11 +48,6 @@ const METHOD_ICON: Record<ProviderKey | 'stripe', ReactNode> = {
       <rect x="13" y="2" width="9" height="9" fill="#81BC06" />
       <rect x="2" y="13" width="9" height="9" fill="#05A6F0" />
       <rect x="13" y="13" width="9" height="9" fill="#FFBA08" />
-    </svg>
-  ),
-  apple: (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
-      <path d="M16.4 1c.1 1.1-.3 2.2-1 3-.7.8-1.8 1.5-2.9 1.4-.1-1.1.4-2.2 1-3 .8-.8 1.9-1.4 2.9-1.4zm3.9 16.9c-.5 1.2-.8 1.7-1.5 2.8-1 1.5-2.3 3.4-4 3.4-1.5 0-1.9-1-3.9-1s-2.5 1-3.9 1c-1.7 0-3-1.7-4-3.2C1 17.7.2 13.6 1.9 10.8c1.2-2 3.3-3.2 5.2-3.2 1.5 0 2.9 1 3.9 1 1 0 2.6-1.2 4.4-1 .8 0 3 .3 4.4 2.4-.1.1-2.6 1.6-2.6 4.6 0 3.6 3.1 4.9 3.1 4.9-.1.2-.5 1.7-1 3.4z" />
     </svg>
   ),
   stripe: (
@@ -88,7 +83,7 @@ export default function SignInMethods({ email, phone, providers, stripeOnboarded
   // fetch resolves, so the page doesn't flash "Not linked" on first paint.
   const linkedProviders = loadingIdentities ? new Set(providers) : new Set(identities.map((i) => i.provider));
 
-  async function linkOAuth(provider: 'google' | 'azure' | 'apple') {
+  async function linkOAuth(provider: 'google' | 'azure') {
     setMessage(null);
     setBusyProvider(provider);
     const { error } = await supabase.auth.linkIdentity({
@@ -258,7 +253,6 @@ export default function SignInMethods({ email, phone, providers, stripeOnboarded
 
           {renderRow('google', linkedProviders.has('google') ? 'Connected' : null, () => linkOAuth('google'))}
           {renderRow('azure', linkedProviders.has('azure') ? 'Connected' : null, () => linkOAuth('azure'))}
-          {renderRow('apple', linkedProviders.has('apple') ? 'Connected' : null, () => linkOAuth('apple'))}
         </div>
       </div>
 

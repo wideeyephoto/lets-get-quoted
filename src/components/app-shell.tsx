@@ -10,6 +10,7 @@ const baseNavItems = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/dashboard/leads', label: 'Leads' },
   { href: '/dashboard/jobs', label: 'Jobs' },
+  { href: '/dashboard/schedule', label: 'Schedule' },
   { href: '/dashboard/sites', label: 'Website' },
   { href: '/dashboard/settings', label: 'Account' },
   { href: '/docs', label: 'Docs' },
