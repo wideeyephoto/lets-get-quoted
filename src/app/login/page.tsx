@@ -86,6 +86,15 @@ export default function LoginPage() {
     setMessage('');
   }
 
+  async function signInWithProvider(provider: 'google' | 'azure' | 'apple') {
+    setMessage('');
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=/dashboard` },
+    });
+    if (error) setMessage(error.message);
+  }
+
   return (
     <main className="page-shell">
       <section className="hero-card">
@@ -118,6 +127,14 @@ export default function LoginPage() {
             <div className="auth-inline-actions"><button type="button" onClick={() => requestPhoneCode()} disabled={loading}>Resend code</button><button type="button" onClick={() => setPhoneStep('request')} disabled={loading}>Change number</button></div>
           </form>
         )}
+
+        <div className="auth-divider" role="separator"><span>or continue with</span></div>
+        <div className="auth-oauth-buttons">
+          <button type="button" className="btn secondary" onClick={() => signInWithProvider('google')}>Continue with Google</button>
+          <button type="button" className="btn secondary" onClick={() => signInWithProvider('azure')}>Continue with Microsoft</button>
+          <button type="button" className="btn secondary" onClick={() => signInWithProvider('apple')}>Continue with Apple</button>
+        </div>
+
         {message ? <p className="auth-message" role="status">{message}</p> : null}
       </section>
     </main>

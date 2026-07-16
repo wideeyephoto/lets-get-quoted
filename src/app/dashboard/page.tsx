@@ -15,13 +15,13 @@ function formatRate(rate: number): string {
 export default async function DashboardPage() {
   const { supabase, accountId } = await requireOwnerContext();
 
-  const { data: account } = await supabase
-    .from('accounts')
-    .select('connect_onboarded')
-    .eq('id', accountId)
-    .single();
+  const [{ data: account }, { data: identityData }] = await Promise.all([
+    supabase.from('accounts').select('connect_onboarded').eq('id', accountId).single(),
+    supabase.auth.getUserIdentities(),
+  ]);
 
   const onboarded = account?.connect_onboarded ?? false;
+  const linkedMethodCount = identityData?.identities?.length ?? 1;
 
   const trailingVolume = onboarded ? await getTrailingVolume(accountId) : 0;
   const tierInfo = getTierInfo(trailingVolume);
@@ -29,6 +29,13 @@ export default async function DashboardPage() {
 
   return (
     <main className="wide-shell workspace-shell">
+      {linkedMethodCount <= 1 ? (
+        <div className="backup-signin-banner">
+          <p>You&apos;re only signed in one way. Add a backup sign-in method so you&apos;re never locked out of your business.</p>
+          <Link href="/dashboard/settings" className="btn secondary">Add a backup method</Link>
+        </div>
+      ) : null}
+
       <section className="workspace-hero panel">
         <div className="workspace-hero-copy">
           <p className="eyebrow">Owner dashboard</p>

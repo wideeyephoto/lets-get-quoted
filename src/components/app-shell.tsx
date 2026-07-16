@@ -11,6 +11,7 @@ const navItems = [
   { href: '/dashboard/leads', label: 'Leads' },
   { href: '/dashboard/jobs', label: 'Jobs' },
   { href: '/dashboard/sites', label: 'Website' },
+  { href: '/dashboard/settings', label: 'Account' },
   { href: '/docs', label: 'Docs' },
 ];
 
