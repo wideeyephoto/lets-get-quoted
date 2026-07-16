@@ -3,7 +3,7 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { normalizeSupabaseUrl } from '@/lib/supabase-url';
 
 export async function middleware(request: NextRequest) {
-  const hostname = (request.headers.get('host') || '').split(':')[0].toLowerCase();
+  const hostname = (request.headers.get('x-forwarded-host') || request.headers.get('host') || '').split(':')[0].toLowerCase();
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
   const reservedHosts = new Set([rootDomain, `www.${rootDomain}`, `app.${rootDomain}`]);
 
