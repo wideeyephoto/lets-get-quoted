@@ -25,7 +25,7 @@ function getPrimaryAction(pathname: string) {
   return { href: '/login', label: 'Sign in' };
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, forceStandaloneSite = false }: { children: ReactNode; forceStandaloneSite?: boolean }) {
   const pathname = usePathname();
   const { isNavOpen, closeNav, toggleNav } = useAppShell();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -37,7 +37,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navItems = isDashboard
     ? baseNavItems.filter((item) => item.href !== '/' && item.href !== '/docs')
     : baseNavItems;
+  // Middleware rewrites a wildcard subdomain/custom-domain request to
+  // /site/[subdomain] (or /site-domain/[host]) internally, but that rewrite
+  // is transparent to the browser — usePathname() still reports the
+  // ORIGINAL external path (e.g. "/"), not the rewritten one. So the
+  // pathname-based check below only catches direct navigation to these
+  // routes (e.g. dashboard preview links); `forceStandaloneSite` (set from
+  // a request header middleware attaches on rewrite) catches the subdomain
+  // case where the visible pathname doesn't reveal it's a site route.
   const isStandaloneSite =
+    forceStandaloneSite ||
     pathname.startsWith('/site/') ||
     pathname.startsWith('/site-domain/') ||
     pathname.startsWith('/themes/') ||

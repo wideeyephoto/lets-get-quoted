@@ -11,14 +11,18 @@ export async function middleware(request: NextRequest) {
     const subdomain = hostname.slice(0, -(rootDomain.length + 1));
     const publicSiteUrl = request.nextUrl.clone();
     publicSiteUrl.pathname = `/site/${subdomain}`;
-    return NextResponse.rewrite(publicSiteUrl);
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-lgq-standalone-site', '1');
+    return NextResponse.rewrite(publicSiteUrl, { request: { headers: requestHeaders } });
   }
 
   const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
   if (hostname && !isLocalHost && !reservedHosts.has(hostname)) {
     const customSiteUrl = request.nextUrl.clone();
     customSiteUrl.pathname = `/site-domain/${encodeURIComponent(hostname)}`;
-    return NextResponse.rewrite(customSiteUrl);
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-lgq-standalone-site', '1');
+    return NextResponse.rewrite(customSiteUrl, { request: { headers: requestHeaders } });
   }
 
   let response = NextResponse.next({ request });

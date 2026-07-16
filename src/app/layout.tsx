@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { IBM_Plex_Sans, Space_Grotesk } from 'next/font/google';
+import { headers } from 'next/headers';
 import type { ReactNode } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { AppShellProvider } from '@/components/app-shell-provider';
@@ -23,11 +24,13 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  const isStandaloneSite = headers().get('x-lgq-standalone-site') === '1';
+
   return (
     <html lang="en">
       <body className={`${bodyFont.variable} ${displayFont.variable}`}>
         <AppShellProvider>
-          <AppShell>{children}</AppShell>
+          <AppShell forceStandaloneSite={isStandaloneSite}>{children}</AppShell>
         </AppShellProvider>
       </body>
     </html>
