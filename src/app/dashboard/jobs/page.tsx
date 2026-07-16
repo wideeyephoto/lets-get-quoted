@@ -33,7 +33,22 @@ export default async function JobsPage({
 
   return (
     <main className="wide-shell workspace-shell">
-      <section className="workspace-hero panel">
+      <div className="stat-ticker panel">
+        <div className="stat-ticker-item">
+          <span className="stat-ticker-value">{jobs.length}</span>
+          <span className="stat-ticker-label">Visible jobs</span>
+        </div>
+        <div className="stat-ticker-item">
+          <span className="stat-ticker-value">{activeJobs}</span>
+          <span className="stat-ticker-label">In progress</span>
+        </div>
+        <div className="stat-ticker-item">
+          <span className="stat-ticker-value">{formatMoney(totalQuoted)}</span>
+          <span className="stat-ticker-label">Quoted value</span>
+        </div>
+      </div>
+
+      <section className="workspace-hero workspace-hero-solo panel">
         <div className="workspace-hero-copy">
           <p className="eyebrow">Jobs</p>
           <h1 className="workspace-title">Job pipeline</h1>
@@ -42,101 +57,9 @@ export default async function JobsPage({
             payments.
           </p>
           <div className="actions workspace-actions">
-            <a href="/api/export/quickbooks" className="btn qb">
-              ⬇ Export to QuickBooks (CSV)
-            </a>
             <Link href="/dashboard" className="btn secondary">
               Dashboard
             </Link>
-          </div>
-        </div>
-
-        <div className="workspace-metric-grid compact">
-          <article className="workspace-metric-card accent">
-            <span className="workspace-metric-label">Visible jobs</span>
-            <strong className="workspace-metric-value">{jobs.length}</strong>
-            <p className="workspace-metric-note">Filtered by the current status view.</p>
-          </article>
-          <article className="workspace-metric-card">
-            <span className="workspace-metric-label">In progress</span>
-            <strong className="workspace-metric-value">{activeJobs}</strong>
-            <p className="workspace-metric-note">Jobs currently moving through production.</p>
-          </article>
-          <article className="workspace-metric-card">
-            <span className="workspace-metric-label">Quoted value</span>
-            <strong className="workspace-metric-value">{formatMoney(totalQuoted)}</strong>
-            <p className="workspace-metric-note">Total quoted amount across this filtered list.</p>
-          </article>
-        </div>
-      </section>
-
-      <section className="workspace-grid two-up">
-        <details className="panel workspace-section-card workspace-details" open={jobs.length === 0}>
-          <summary className="workspace-details-summary">
-            <span className="btn primary">+ New job</span>
-            <span className="workspace-details-copy">Capture the next signed opportunity.</span>
-          </summary>
-          <form action={createJobAction} className="form-grid">
-            <div className="field">
-              <label htmlFor="clientName">Client name</label>
-              <input id="clientName" name="clientName" required placeholder="Sarah Whitfield" />
-            </div>
-            <div className="field">
-              <label htmlFor="clientPhone">Client phone</label>
-              <input id="clientPhone" name="clientPhone" placeholder="(248) 555-0117" />
-            </div>
-            <div className="field full">
-              <label htmlFor="address">Address</label>
-              <AddressAutocomplete id="address" name="address" placeholder="1418 Maplewood Ave, Royal Oak, MI" />
-            </div>
-            <div className="field full">
-              <label htmlFor="scope">Scope</label>
-              <textarea id="scope" name="scope" placeholder="Full roof tear-off & re-shingle…" />
-            </div>
-            <div className="field">
-              <label htmlFor="status">Status</label>
-              <select id="status" name="status" defaultValue="new_lead">
-                <option value="new_lead">New lead</option>
-                <option value="in_progress">In progress</option>
-                <option value="complete">Complete</option>
-                <option value="archived">Archived</option>
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="scheduledFor">Scheduled for</label>
-              <input id="scheduledFor" name="scheduledFor" type="date" />
-            </div>
-            <div className="field">
-              <label htmlFor="quotedAmount">Quoted amount ($)</label>
-              <input id="quotedAmount" name="quotedAmount" type="number" min="0" step="0.01" placeholder="12840" />
-            </div>
-            <div className="field full">
-              <label htmlFor="photos">Photos</label>
-              <input id="photos" name="photos" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple />
-            </div>
-            <div className="field full">
-              <button type="submit" className="btn primary">
-                Create job
-              </button>
-            </div>
-          </form>
-        </details>
-
-        <div className="panel workspace-section-card">
-          <div className="section-heading workspace-section-heading">
-            <p className="eyebrow">Filter</p>
-            <h2>Status view</h2>
-          </div>
-          <div className="status-tabs workspace-status-tabs">
-            {STATUS_FILTERS.map((filter) => {
-              const isActive = (filter.value === 'all' && !statusParam) || filter.value === statusParam;
-              const href = filter.value === 'all' ? '/dashboard/jobs' : `/dashboard/jobs?status=${filter.value}`;
-              return (
-                <Link key={filter.value} href={href} className={`status-tab${isActive ? ' active' : ''}`}>
-                  {filter.label}
-                </Link>
-              );
-            })}
           </div>
         </div>
       </section>
@@ -146,8 +69,19 @@ export default async function JobsPage({
           <p className="eyebrow">Pipeline</p>
           <h2>Current jobs</h2>
         </div>
+        <div className="status-tabs workspace-status-tabs">
+          {STATUS_FILTERS.map((filter) => {
+            const isActive = (filter.value === 'all' && !statusParam) || filter.value === statusParam;
+            const href = filter.value === 'all' ? '/dashboard/jobs' : `/dashboard/jobs?status=${filter.value}`;
+            return (
+              <Link key={filter.value} href={href} className={`status-tab${isActive ? ' active' : ''}`}>
+                {filter.label}
+              </Link>
+            );
+          })}
+        </div>
         {jobs.length === 0 ? (
-          <p className="empty-state">No jobs yet. Create your first job above.</p>
+          <p className="empty-state">No jobs yet. Create your first job below.</p>
         ) : (
           <div className="job-list">
             {jobs.map((job) => (
@@ -168,6 +102,57 @@ export default async function JobsPage({
           </div>
         )}
       </section>
+
+      <details className="panel workspace-section-card workspace-details" open={jobs.length === 0}>
+        <summary className="workspace-details-summary">
+          <span className="btn primary">+ New job</span>
+          <span className="workspace-details-copy">Capture the next signed opportunity.</span>
+        </summary>
+        <form action={createJobAction} className="form-grid">
+          <div className="field">
+            <label htmlFor="clientName">Client name</label>
+            <input id="clientName" name="clientName" required placeholder="Sarah Whitfield" />
+          </div>
+          <div className="field">
+            <label htmlFor="clientPhone">Client phone</label>
+            <input id="clientPhone" name="clientPhone" placeholder="(248) 555-0117" />
+          </div>
+          <div className="field full">
+            <label htmlFor="address">Address</label>
+            <AddressAutocomplete id="address" name="address" placeholder="1418 Maplewood Ave, Royal Oak, MI" />
+          </div>
+          <div className="field full">
+            <label htmlFor="scope">Scope</label>
+            <textarea id="scope" name="scope" placeholder="Full roof tear-off & re-shingle…" />
+          </div>
+          <div className="field">
+            <label htmlFor="status">Status</label>
+            <select id="status" name="status" defaultValue="new_lead">
+              <option value="new_lead">New lead</option>
+              <option value="in_progress">In progress</option>
+              <option value="complete">Complete</option>
+              <option value="archived">Archived</option>
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="scheduledFor">Scheduled for</label>
+            <input id="scheduledFor" name="scheduledFor" type="date" />
+          </div>
+          <div className="field">
+            <label htmlFor="quotedAmount">Quoted amount ($)</label>
+            <input id="quotedAmount" name="quotedAmount" type="number" min="0" step="0.01" placeholder="12840" />
+          </div>
+          <div className="field full">
+            <label htmlFor="photos">Photos</label>
+            <input id="photos" name="photos" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple />
+          </div>
+          <div className="field full">
+            <button type="submit" className="btn primary">
+              Create job
+            </button>
+          </div>
+        </form>
+      </details>
     </main>
   );
 }
