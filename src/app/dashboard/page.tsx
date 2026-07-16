@@ -3,6 +3,7 @@ import { requireOwnerContext } from '@/lib/auth';
 import { connectStripeAction } from './stripe-actions';
 import { getTrailingVolume } from '@/lib/payments';
 import { getTierInfo } from '@/lib/stripe';
+import { listJobs, type Job } from '@/lib/jobs';
 
 function formatMoney(n: number): string {
   return '$' + Math.round(n).toLocaleString();
@@ -12,12 +13,23 @@ function formatRate(rate: number): string {
   return (rate * 100).toFixed(2).replace(/\.?0+$/, '') + '%';
 }
 
+function toDateKey(year: number, monthIndex: number, day: number): string {
+  return `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function extractCity(address: string | null): string {
+  if (!address) return 'No address on file';
+  const parts = address.split(',').map((part) => part.trim()).filter(Boolean);
+  return parts[1] || parts[0] || 'No address on file';
+}
+
 export default async function DashboardPage() {
   const { supabase, accountId } = await requireOwnerContext();
 
-  const [{ data: account }, { data: identityData }] = await Promise.all([
+  const [{ data: account }, { data: identityData }, jobs] = await Promise.all([
     supabase.from('accounts').select('connect_onboarded').eq('id', accountId).single(),
     supabase.auth.getUserIdentities(),
+    listJobs(supabase, accountId),
   ]);
 
   const onboarded = account?.connect_onboarded ?? false;
@@ -26,6 +38,27 @@ export default async function DashboardPage() {
   const trailingVolume = onboarded ? await getTrailingVolume(accountId) : 0;
   const tierInfo = getTierInfo(trailingVolume);
   const progressPercent = Math.round((tierInfo.progressToNext ?? 0) * 100);
+
+  const scheduledJobs = jobs.filter((job) => job.status !== 'archived' && job.scheduled_for);
+  const jobsByDate = new Map<string, Job[]>();
+  for (const job of scheduledJobs) {
+    const key = job.scheduled_for as string;
+    const bucket = jobsByDate.get(key) ?? [];
+    bucket.push(job);
+    jobsByDate.set(key, bucket);
+  }
+
+  const now = new Date();
+  const todayKey = toDateKey(now.getFullYear(), now.getMonth(), now.getDate());
+  const next7Days = Array.from({ length: 7 }, (_, index) => {
+    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + index);
+    const dateKey = toDateKey(day.getFullYear(), day.getMonth(), day.getDate());
+    return {
+      dateKey,
+      label: day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+      jobs: jobsByDate.get(dateKey) ?? [],
+    };
+  });
 
   return (
     <main className="wide-shell workspace-shell">
@@ -80,6 +113,32 @@ export default async function DashboardPage() {
                 : 'You are already at the lowest platform fee tier.'}
             </p>
           </article>
+        </div>
+      </section>
+
+      <section className="panel workspace-section-card">
+        <div className="section-heading workspace-section-heading">
+          <p className="eyebrow">Week at a glance</p>
+          <h2>Next 7 days</h2>
+        </div>
+        <div className="week-glance-grid">
+          {next7Days.map((day) => (
+            <div className={`week-glance-day${day.dateKey === todayKey ? ' today' : ''}`} key={day.dateKey}>
+              <span className="week-glance-date">{day.label}</span>
+              <div className="week-glance-jobs">
+                {day.jobs.length === 0 ? (
+                  <p className="week-glance-empty">No jobs</p>
+                ) : (
+                  day.jobs.map((job) => (
+                    <Link key={job.id} href={`/dashboard/jobs/${job.id}`} className="week-glance-job">
+                      <strong>{job.client_name}</strong>
+                      <span>{extractCity(job.address)}</span>
+                    </Link>
+                  ))
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 

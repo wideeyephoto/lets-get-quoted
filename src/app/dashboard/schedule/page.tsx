@@ -29,12 +29,6 @@ function monthParam(year: number, monthIndex: number): string {
   return `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
 }
 
-function extractCity(address: string | null): string {
-  if (!address) return 'No address on file';
-  const parts = address.split(',').map((part) => part.trim()).filter(Boolean);
-  return parts[1] || parts[0] || 'No address on file';
-}
-
 export default async function SchedulePage({
   searchParams,
 }: {
@@ -80,16 +74,6 @@ export default async function SchedulePage({
     const dateKey = job.scheduled_for as string;
     return dateKey >= todayKey && dateKey <= next30Key;
   }).length;
-
-  const next7Days = Array.from({ length: 7 }, (_, index) => {
-    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + index);
-    const dateKey = toDateKey(day.getFullYear(), day.getMonth(), day.getDate());
-    return {
-      dateKey,
-      label: day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
-      jobs: jobsByDate.get(dateKey) ?? [],
-    };
-  });
 
   return (
     <main className="wide-shell workspace-shell">
@@ -142,32 +126,6 @@ export default async function SchedulePage({
           </div>
         </section>
       ) : null}
-
-      <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading">
-          <p className="eyebrow">Week at a glance</p>
-          <h2>Next 7 days</h2>
-        </div>
-        <div className="week-glance-grid">
-          {next7Days.map((day) => (
-            <div className={`week-glance-day${day.dateKey === todayKey ? ' today' : ''}`} key={day.dateKey}>
-              <span className="week-glance-date">{day.label}</span>
-              <div className="week-glance-jobs">
-                {day.jobs.length === 0 ? (
-                  <p className="week-glance-empty">No jobs</p>
-                ) : (
-                  day.jobs.map((job) => (
-                    <Link key={job.id} href={`/dashboard/jobs/${job.id}`} className="week-glance-job">
-                      <strong>{job.client_name}</strong>
-                      <span>{extractCity(job.address)}</span>
-                    </Link>
-                  ))
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
 
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading calendar-heading">
