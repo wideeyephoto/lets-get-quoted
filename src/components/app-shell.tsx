@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 import { useAppShell } from './app-shell-provider';
 
-const navItems = [
+const baseNavItems = [
   { href: '/', label: 'Home' },
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/dashboard/leads', label: 'Leads' },
@@ -31,6 +31,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { isNavOpen, closeNav, toggleNav } = useAppShell();
   const primaryAction = getPrimaryAction(pathname);
+  // Signed-in contractors live under /dashboard — the marketing "Home" link
+  // isn't relevant to them once they're in the app.
+  const navItems = pathname.startsWith('/dashboard')
+    ? baseNavItems.filter((item) => item.href !== '/')
+    : baseNavItems;
   const isStandaloneSite =
     pathname.startsWith('/site/') ||
     pathname.startsWith('/site-domain/') ||
