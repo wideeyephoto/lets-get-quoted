@@ -7,7 +7,7 @@ export async function middleware(request: NextRequest) {
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
   const reservedHosts = new Set([rootDomain, `www.${rootDomain}`, `app.${rootDomain}`]);
 
-  if (request.nextUrl.pathname === '/__debug-host') {
+  if (request.nextUrl.pathname === '/' && request.nextUrl.searchParams.has('__debug')) {
     return new NextResponse(
       JSON.stringify({
         rawHost: request.headers.get('host'),
