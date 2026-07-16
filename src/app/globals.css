@@ -333,9 +333,6 @@ li + li { margin-top: 0.45rem; }
 .auth-form input { border: 1px solid rgba(255,255,255,0.16); border-radius: 999px; padding: 0.85rem 1rem; background: rgba(255,255,255,0.06); color: white; }
 .auth-form input::placeholder { color: rgba(255,255,255,0.65); }
 .auth-form button { width: fit-content; }
-.auth-method-tabs { display: inline-grid; grid-template-columns: 1fr 1fr; gap: 3px; margin-top: 1rem; padding: 3px; border: 1px solid rgba(255,255,255,.13); border-radius: 8px; background: rgba(255,255,255,.035); }
-.auth-method-tabs button { min-height: 40px; padding: .55rem 1rem; border: 0; border-radius: 5px; background: transparent; color: rgba(255,255,255,.68); font: 700 .82rem/1 inherit; cursor: pointer; }
-.auth-method-tabs button.active { background: #f7f7f2; color: #0b1220; }
 .auth-form .otp-input { max-width: 220px; border-radius: 10px; font-family: 'JetBrains Mono', monospace; font-size: 1.35rem; letter-spacing: .28em; text-align: center; }
 .auth-help { margin: -.2rem 0 0; color: rgba(255,255,255,.55); font-size: .78rem; }
 .auth-inline-actions { display: flex; gap: 1rem; }

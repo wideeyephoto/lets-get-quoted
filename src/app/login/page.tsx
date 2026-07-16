@@ -8,25 +8,19 @@ import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [method, setMethod] = useState<'email' | 'phone'>('phone');
-  const [phoneStep, setPhoneStep] = useState<'request' | 'verify'>('request');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [step, setStep] = useState<'request' | 'verify'>('request');
+  const [identifier, setIdentifier] = useState('');
   const [normalizedPhone, setNormalizedPhone] = useState('');
   const [code, setCode] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
-  async function handleEmailSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setLoading(true);
-    setMessage('');
-
+  async function sendEmailLink(value: string) {
     try {
       const redirectUrl = `${window.location.origin}/auth/callback?next=/dashboard`;
-      await sendMagicLinkAction(email, redirectUrl);
+      await sendMagicLinkAction(value, redirectUrl);
       setMessage('Check your inbox for the magic-link sign-in email.');
-      setEmail('');
+      setIdentifier('');
     } catch (error) {
       console.error('Magic link error:', error);
       setMessage(error instanceof Error ? error.message : 'Unable to send the magic link.');
@@ -35,27 +29,50 @@ export default function LoginPage() {
     }
   }
 
-  async function requestPhoneCode(event?: React.FormEvent<HTMLFormElement>) {
-    event?.preventDefault();
-    const e164 = normalizeUsPhone(phone);
-    if (!e164) {
-      setMessage('Enter a valid phone number, including the country code if outside the US.');
-      return;
-    }
-
-    setLoading(true);
-    setMessage('');
+  async function sendPhoneCode(e164: string, displayValue: string) {
     try {
       const { error } = await supabase.auth.signInWithOtp({ phone: e164, options: { channel: 'sms' } });
       if (error) throw error;
       setNormalizedPhone(e164);
-      setPhoneStep('verify');
-      setMessage(`We sent a six-digit sign-in code to ${phone}.`);
+      setStep('verify');
+      setMessage(`We sent a six-digit sign-in code to ${displayValue}.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to send the sign-in code.');
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleIdentifierSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const value = identifier.trim();
+    if (!value) {
+      setMessage('Enter your mobile number or email address.');
+      return;
+    }
+
+    setLoading(true);
+    setMessage('');
+
+    if (value.includes('@')) {
+      await sendEmailLink(value);
+      return;
+    }
+
+    const e164 = normalizeUsPhone(value);
+    if (!e164) {
+      setLoading(false);
+      setMessage('Enter a valid mobile number or email address.');
+      return;
+    }
+
+    await sendPhoneCode(e164, value);
+  }
+
+  async function resendCode() {
+    setLoading(true);
+    setMessage('');
+    await sendPhoneCode(normalizedPhone, identifier.trim());
   }
 
   async function verifyPhoneCode(event: React.FormEvent<HTMLFormElement>) {
@@ -79,9 +96,8 @@ export default function LoginPage() {
     }
   }
 
-  function switchMethod(nextMethod: 'email' | 'phone') {
-    setMethod(nextMethod);
-    setPhoneStep('request');
+  function switchToRequest() {
+    setStep('request');
     setCode('');
     setMessage('');
   }
@@ -100,31 +116,21 @@ export default function LoginPage() {
       <section className="hero-card">
         <p className="eyebrow">Secure sign-in</p>
         <h1>Sign in to your workspace</h1>
-        <p>Use your mobile number or work email. No password required.</p>
-        <div className="auth-method-tabs" role="tablist" aria-label="Sign-in method">
-          <button type="button" role="tab" aria-selected={method === 'phone'} className={method === 'phone' ? 'active' : ''} onClick={() => switchMethod('phone')}>Text message</button>
-          <button type="button" role="tab" aria-selected={method === 'email'} className={method === 'email' ? 'active' : ''} onClick={() => switchMethod('email')}>Email</button>
-        </div>
+        <p>Enter your mobile number or email. No password required.</p>
 
-        {method === 'email' ? (
-          <form onSubmit={handleEmailSubmit} className="auth-form">
-            <label htmlFor="login-email">Work email</label>
-            <input id="login-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@company.com" autoComplete="email" required />
-            <button type="submit" className="btn primary" disabled={loading}>{loading ? 'Sending...' : 'Send magic link'}</button>
-          </form>
-        ) : phoneStep === 'request' ? (
-          <form onSubmit={requestPhoneCode} className="auth-form">
-            <label htmlFor="login-phone">Mobile number</label>
-            <input id="login-phone" type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="(248) 555-0117" autoComplete="tel" required />
-            <p className="auth-help">We&apos;ll text a one-time code. Message and data rates may apply.</p>
-            <button type="submit" className="btn primary" disabled={loading}>{loading ? 'Sending...' : 'Text me a code'}</button>
+        {step === 'request' ? (
+          <form onSubmit={handleIdentifierSubmit} className="auth-form">
+            <label htmlFor="login-identifier">Mobile number or email</label>
+            <input id="login-identifier" type="text" value={identifier} onChange={(event) => setIdentifier(event.target.value)} placeholder="(248) 555-0117 or you@company.com" autoComplete="username" required />
+            <p className="auth-help">We&apos;ll text a one-time code or email a magic link, whichever matches.</p>
+            <button type="submit" className="btn primary" disabled={loading}>{loading ? 'Sending...' : 'Continue'}</button>
           </form>
         ) : (
           <form onSubmit={verifyPhoneCode} className="auth-form">
             <label htmlFor="login-code">Six-digit code</label>
             <input id="login-code" className="otp-input" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" required />
             <button type="submit" className="btn primary" disabled={loading}>{loading ? 'Verifying...' : 'Verify and sign in'}</button>
-            <div className="auth-inline-actions"><button type="button" onClick={() => requestPhoneCode()} disabled={loading}>Resend code</button><button type="button" onClick={() => setPhoneStep('request')} disabled={loading}>Change number</button></div>
+            <div className="auth-inline-actions"><button type="button" onClick={resendCode} disabled={loading}>Resend code</button><button type="button" onClick={switchToRequest} disabled={loading}>Start over</button></div>
           </form>
         )}
 
