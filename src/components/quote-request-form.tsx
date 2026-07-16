@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { compressImage } from '@/lib/client-images';
+import AddressAutocomplete from '@/components/address-autocomplete';
 import styles from './quote-request-form.module.css';
 
 type QuoteRequestFormProps = {
@@ -69,7 +70,7 @@ export default function QuoteRequestForm({ siteId, enabled }: QuoteRequestFormPr
       <label className={styles.field}><span>Phone</span><input name="phone" type="tel" autoComplete="tel" maxLength={40} /></label>
       <label className={styles.field}><span>Email</span><input name="email" type="email" autoComplete="email" maxLength={160} /></label>
       <label className={styles.field}><span>Project type</span><select name="projectType" defaultValue=""><option value="" disabled>Select a project</option><option>Renovation</option><option>New construction</option><option>Repair</option><option>Kitchen or bathroom</option><option>Exterior work</option><option>Commercial project</option><option>Other</option></select></label>
-      <label className={`${styles.field} ${styles.wide}`}><span>Project address</span><input name="address" autoComplete="street-address" maxLength={240} /></label>
+      <label className={`${styles.field} ${styles.wide}`}><span>Project address</span><AddressAutocomplete name="address" placeholder="1418 Maplewood Ave, Royal Oak, MI" maxLength={240} /></label>
       <label className={`${styles.field} ${styles.wide}`}><span>Tell us about the project</span><textarea name="message" maxLength={3000} required /></label>
       <label className={`${styles.field} ${styles.wide}`}><span>Project photos</span><input className={styles.photoInput} name="photos" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple /><p className={styles.help}>Optional. Add up to three photos; they are compressed before upload.</p></label>
       <label className={styles.honeypot} aria-hidden="true">Company<input name="company" tabIndex={-1} autoComplete="off" /></label>

@@ -19,6 +19,7 @@
     "stripe": "^22.3.1"
   },
   "devDependencies": {
+    "@types/google.maps": "^3.65.2",
     "@types/node": "^22.10.1",
     "@types/react": "^18.3.4",
     "@types/react-dom": "^18.3.0",

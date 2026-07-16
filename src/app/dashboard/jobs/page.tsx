@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
+import AddressAutocomplete from '@/components/address-autocomplete';
 import { listJobs, formatMoney, type JobStatus } from '@/lib/jobs';
 import { createJobAction } from './actions';
 
@@ -86,7 +87,7 @@ export default async function JobsPage({
             </div>
             <div className="field full">
               <label htmlFor="address">Address</label>
-              <input id="address" name="address" placeholder="1418 Maplewood Ave, Royal Oak, MI" />
+              <AddressAutocomplete id="address" name="address" placeholder="1418 Maplewood Ave, Royal Oak, MI" />
             </div>
             <div className="field full">
               <label htmlFor="scope">Scope</label>

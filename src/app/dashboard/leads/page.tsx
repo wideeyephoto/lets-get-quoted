@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
+import AddressAutocomplete from '@/components/address-autocomplete';
 import { listLeads, type LeadStatus } from '@/lib/leads';
 import { createLeadAction } from './actions';
 import styles from './leads.module.css';
@@ -54,7 +55,7 @@ export default async function LeadsPage() {
             </div>
             <div className="field">
               <label htmlFor="address">Address</label>
-              <input id="address" name="address" placeholder="1418 Maplewood Ave, Royal Oak, MI" />
+              <AddressAutocomplete id="address" name="address" placeholder="1418 Maplewood Ave, Royal Oak, MI" />
             </div>
             <div className="field full">
               <label htmlFor="projectType">Project type</label>

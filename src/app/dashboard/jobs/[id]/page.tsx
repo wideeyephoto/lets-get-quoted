@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import PhotoGallery from '@/components/photo-gallery';
+import AddressAutocomplete from '@/components/address-autocomplete';
 import { getJob, listCosts, computeMargin, formatMoney, formatPercent, type Cost } from '@/lib/jobs';
 import { createJobPhotoUrls } from '@/lib/job-photo-storage';
 import { listPayments, type PaymentStatus } from '@/lib/payments';
@@ -166,7 +167,7 @@ export default async function JobDetailPage({
               </div>
               <div className="field full">
                 <label htmlFor="address">Address</label>
-                <input id="address" name="address" defaultValue={job.address ?? ''} />
+                <AddressAutocomplete id="address" name="address" defaultValue={job.address ?? ''} />
               </div>
               <div className="field full">
                 <label htmlFor="scope">Scope</label>
