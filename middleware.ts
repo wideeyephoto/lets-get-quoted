@@ -11,17 +11,25 @@ export async function middleware(request: NextRequest) {
     const subdomain = hostname.slice(0, -(rootDomain.length + 1));
     const publicSiteUrl = request.nextUrl.clone();
     publicSiteUrl.pathname = `/site/${subdomain}`;
-    return NextResponse.rewrite(publicSiteUrl);
+    const res = NextResponse.rewrite(publicSiteUrl);
+    res.headers.set('x-debug-hostname', hostname);
+    res.headers.set('x-debug-branch', 'subdomain');
+    return res;
   }
 
   const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
   if (hostname && !isLocalHost && !reservedHosts.has(hostname)) {
     const customSiteUrl = request.nextUrl.clone();
     customSiteUrl.pathname = `/site-domain/${encodeURIComponent(hostname)}`;
-    return NextResponse.rewrite(customSiteUrl);
+    const res = NextResponse.rewrite(customSiteUrl);
+    res.headers.set('x-debug-hostname', hostname);
+    res.headers.set('x-debug-branch', 'custom-domain');
+    return res;
   }
 
   let response = NextResponse.next({ request });
+  response.headers.set('x-debug-hostname', hostname);
+  response.headers.set('x-debug-branch', 'default');
 
   const supabase = createServerClient(
     normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL),
