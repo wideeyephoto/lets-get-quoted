@@ -28,8 +28,6 @@ export async function middleware(request: NextRequest) {
   }
 
   let response = NextResponse.next({ request });
-  response.headers.set('x-debug-hostname', hostname);
-  response.headers.set('x-debug-branch', 'default');
 
   const supabase = createServerClient(
     normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL),
@@ -62,6 +60,8 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  response.headers.set('x-debug-hostname', hostname);
+  response.headers.set('x-debug-branch', 'default');
   return response;
 }
 
