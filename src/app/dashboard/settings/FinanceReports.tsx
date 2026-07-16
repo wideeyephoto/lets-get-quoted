@@ -15,11 +15,13 @@ export default function FinanceReports({ year, availableYears, pl, scheduleC, su
 
   return (
     <div className="settings-sections">
-      <div className="settings-section">
-        <div className="section-heading workspace-section-heading compact-heading">
-          <p className="eyebrow">Finances</p>
-          <h2>Tax &amp; P&amp;L reports</h2>
-        </div>
+      <details className="settings-section report-details">
+        <summary className="report-summary">
+          <div className="section-heading workspace-section-heading compact-heading">
+            <p className="eyebrow">Finances</p>
+            <h2>Tax &amp; P&amp;L reports</h2>
+          </div>
+        </summary>
         <p className="workspace-details-copy" style={{ marginTop: '0.5rem' }}>
           A running profit &amp; loss for your business, plus worksheets to make tax time faster.
           These are prep tools, not official IRS forms — hand them to your accountant or use them
@@ -70,13 +72,15 @@ export default function FinanceReports({ year, availableYears, pl, scheduleC, su
             ⬇ QuickBooks (CSV)
           </a>
         </div>
-      </div>
+      </details>
 
-      <div className="settings-section">
-        <div className="section-heading workspace-section-heading compact-heading">
-          <p className="eyebrow">Monthly</p>
-          <h2>Profit &amp; loss — {year}</h2>
-        </div>
+      <details className="settings-section report-details">
+        <summary className="report-summary">
+          <div className="section-heading workspace-section-heading compact-heading">
+            <p className="eyebrow">Monthly</p>
+            <h2>Profit &amp; loss — {year}</h2>
+          </div>
+        </summary>
         <div className="report-list">
           {pl.monthly.map((m) => (
             <div className="report-row" key={m.month}>
@@ -89,13 +93,15 @@ export default function FinanceReports({ year, availableYears, pl, scheduleC, su
             </div>
           ))}
         </div>
-      </div>
+      </details>
 
-      <div className="settings-section">
-        <div className="section-heading workspace-section-heading compact-heading">
-          <p className="eyebrow">Worksheet</p>
-          <h2>Schedule C breakdown</h2>
-        </div>
+      <details className="settings-section report-details">
+        <summary className="report-summary">
+          <div className="section-heading workspace-section-heading compact-heading">
+            <p className="eyebrow">Worksheet</p>
+            <h2>Schedule C breakdown</h2>
+          </div>
+        </summary>
         <div className="report-list">
           {scheduleC.map((l) => (
             <div className="report-row" key={l.line}>
@@ -106,13 +112,15 @@ export default function FinanceReports({ year, availableYears, pl, scheduleC, su
             </div>
           ))}
         </div>
-      </div>
+      </details>
 
-      <div className="settings-section">
-        <div className="section-heading workspace-section-heading compact-heading">
-          <p className="eyebrow">1099-NEC prep</p>
-          <h2>Subcontractors paid — {year}</h2>
-        </div>
+      <details className="settings-section report-details">
+        <summary className="report-summary">
+          <div className="section-heading workspace-section-heading compact-heading">
+            <p className="eyebrow">1099-NEC prep</p>
+            <h2>Subcontractors paid — {year}</h2>
+          </div>
+        </summary>
         {subPrep.length === 0 ? (
           <p className="empty-state">No subcontractor costs logged for {year} yet.</p>
         ) : (
@@ -137,7 +145,7 @@ export default function FinanceReports({ year, availableYears, pl, scheduleC, su
             </div>
           </>
         )}
-      </div>
+      </details>
     </div>
   );
 }
