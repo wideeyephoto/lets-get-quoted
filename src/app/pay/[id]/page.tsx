@@ -32,9 +32,13 @@ export default async function PublicPaymentPage({
             <p className="eyebrow">Let&apos;s Get Quoted contractor</p>
             <h1 className="workspace-title">Sample payment link</h1>
             <p className="workspace-lead">This non-payable preview shows the secure page homeowners open from a transactional payment text.</p>
-            <div className="payment-amount-block"><span className="payment-amount-label">Example deposit</span><strong className="payment-amount">$2,500</strong></div>
+            <div className="payment-amount-block"><span className="payment-amount-label">Requested payment</span><strong className="payment-amount">$2,500</strong></div>
             <div className="payment-banner muted"><p>Campaign review example only. No payment can be submitted from this page.</p></div>
-            <div className="actions workspace-actions"><a className="btn secondary" href="/privacy">Privacy Policy</a><a className="btn secondary" href="/sms-terms">SMS Terms</a></div>
+            <div className="actions workspace-actions">
+              <button type="button" className="btn primary" disabled aria-disabled="true" title="Disabled for this review preview" style={{ opacity: 0.5, cursor: 'not-allowed' }}>Pay $2,500</button>
+              <a className="btn secondary" href="/privacy">Privacy Policy</a>
+              <a className="btn secondary" href="/sms-terms">SMS Terms</a>
+            </div>
           </div>
         </section>
       </main>

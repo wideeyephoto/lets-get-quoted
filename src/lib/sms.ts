@@ -20,14 +20,15 @@ function paymentLink(paymentId: string) {
 }
 
 function messageFor(payment: SmsPayment, eventType: PaymentSmsEvent) {
-  const business = payment.account?.business_name || 'Your contractor';
+  const contractor = payment.account?.business_name || 'Your contractor';
   const amount = formatMoney(Number(payment.amount));
   const label = payment.label || 'payment';
   const link = paymentLink(payment.id);
-  if (eventType === 'payment_requested') return `${business}: Your ${label} of ${amount} is ready. Pay securely: ${link} Reply STOP to opt out.`;
-  if (eventType === 'payment_paid') return `${business}: We received your ${amount} ${label}. Thank you.`;
-  if (eventType === 'payment_failed') return `${business}: Your ${amount} ${label} was not completed. Try again: ${link} Reply STOP to opt out.`;
-  return `${business}: Your ${amount} ${label} has been refunded. Contact us with any questions.`;
+  const optOut = 'Reply STOP to opt out or HELP for help.';
+  if (eventType === 'payment_requested') return `Let's Get Quoted: ${contractor} requested a ${label} of ${amount}. Pay securely: ${link}. ${optOut}`;
+  if (eventType === 'payment_paid') return `Let's Get Quoted: Your ${label} of ${amount} to ${contractor} was received successfully. Thank you. ${optOut}`;
+  if (eventType === 'payment_failed') return `Let's Get Quoted: Your ${label} of ${amount} to ${contractor} was not completed. Try again: ${link}. ${optOut}`;
+  return `Let's Get Quoted: A refund of ${amount} from ${contractor} has been processed. ${optOut}`;
 }
 
 function twilioConfiguration() {
