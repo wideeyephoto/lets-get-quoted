@@ -33,21 +33,6 @@ export default async function JobsPage({
 
   return (
     <main className="wide-shell workspace-shell">
-      <div className="stat-ticker panel">
-        <div className="stat-ticker-item">
-          <span className="stat-ticker-value">{jobs.length}</span>
-          <span className="stat-ticker-label">Visible jobs</span>
-        </div>
-        <div className="stat-ticker-item">
-          <span className="stat-ticker-value">{activeJobs}</span>
-          <span className="stat-ticker-label">In progress</span>
-        </div>
-        <div className="stat-ticker-item">
-          <span className="stat-ticker-value">{formatMoney(totalQuoted)}</span>
-          <span className="stat-ticker-label">Quoted value</span>
-        </div>
-      </div>
-
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading">
           <p className="eyebrow">Pipeline</p>
@@ -86,6 +71,21 @@ export default async function JobsPage({
           </div>
         )}
       </section>
+
+      <div className="stat-ticker panel">
+        <div className="stat-ticker-item">
+          <span className="stat-ticker-value">{jobs.length}</span>
+          <span className="stat-ticker-label">Visible jobs</span>
+        </div>
+        <div className="stat-ticker-item">
+          <span className="stat-ticker-value">{activeJobs}</span>
+          <span className="stat-ticker-label">In progress</span>
+        </div>
+        <div className="stat-ticker-item">
+          <span className="stat-ticker-value">{formatMoney(totalQuoted)}</span>
+          <span className="stat-ticker-label">Quoted value</span>
+        </div>
+      </div>
 
       <details className="panel workspace-section-card workspace-details" open={jobs.length === 0}>
         <summary className="workspace-details-summary">
