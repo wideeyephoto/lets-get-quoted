@@ -48,22 +48,6 @@ export default async function JobsPage({
         </div>
       </div>
 
-      <section className="workspace-hero workspace-hero-solo panel">
-        <div className="workspace-hero-copy">
-          <p className="eyebrow">Jobs</p>
-          <h1 className="workspace-title">Job pipeline</h1>
-          <p className="workspace-lead">
-            Create and track the signed work that feeds cost control, invoices, and homeowner
-            payments.
-          </p>
-          <div className="actions workspace-actions">
-            <Link href="/dashboard" className="btn secondary">
-              Dashboard
-            </Link>
-          </div>
-        </div>
-      </section>
-
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading">
           <p className="eyebrow">Pipeline</p>
