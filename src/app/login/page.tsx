@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [method, setMethod] = useState<'email' | 'phone'>('email');
+  const [method, setMethod] = useState<'email' | 'phone'>('phone');
   const [phoneStep, setPhoneStep] = useState<'request' | 'verify'>('request');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -100,10 +100,10 @@ export default function LoginPage() {
       <section className="hero-card">
         <p className="eyebrow">Secure sign-in</p>
         <h1>Sign in to your workspace</h1>
-        <p>Use your work email or mobile number. No password required.</p>
+        <p>Use your mobile number or work email. No password required.</p>
         <div className="auth-method-tabs" role="tablist" aria-label="Sign-in method">
-          <button type="button" role="tab" aria-selected={method === 'email'} className={method === 'email' ? 'active' : ''} onClick={() => switchMethod('email')}>Email</button>
           <button type="button" role="tab" aria-selected={method === 'phone'} className={method === 'phone' ? 'active' : ''} onClick={() => switchMethod('phone')}>Text message</button>
+          <button type="button" role="tab" aria-selected={method === 'email'} className={method === 'email' ? 'active' : ''} onClick={() => switchMethod('email')}>Email</button>
         </div>
 
         {method === 'email' ? (
