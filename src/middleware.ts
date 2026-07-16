@@ -7,20 +7,6 @@ export async function middleware(request: NextRequest) {
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
   const reservedHosts = new Set([rootDomain, `www.${rootDomain}`, `app.${rootDomain}`]);
 
-  if (request.nextUrl.pathname === '/' && request.nextUrl.searchParams.has('__debug')) {
-    return new NextResponse(
-      JSON.stringify({
-        rawHost: request.headers.get('host'),
-        xForwardedHost: request.headers.get('x-forwarded-host'),
-        computedHostname: hostname,
-        rootDomain,
-        reservedHosts: Array.from(reservedHosts),
-        matchesSubdomainBranch: hostname.endsWith(`.${rootDomain}`) && !reservedHosts.has(hostname),
-      }, null, 2),
-      { headers: { 'content-type': 'application/json' } }
-    );
-  }
-
   if (hostname.endsWith(`.${rootDomain}`) && !reservedHosts.has(hostname)) {
     const subdomain = hostname.slice(0, -(rootDomain.length + 1));
     const publicSiteUrl = request.nextUrl.clone();
