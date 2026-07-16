@@ -181,7 +181,7 @@ export default function SignInMethods({ email, phone, providers, stripeOnboarded
           </div>
         </div>
         <div className="actions">
-          <span className={`sign-in-method-badge ${linked ? 'linked' : 'unlinked'}`}>{linked ? 'Linked' : 'Not linked'}</span>
+          {linked ? <span className="sign-in-method-badge linked">Linked</span> : null}
           {linked ? (
             canUnlink ? (
               <button type="button" className="btn secondary" disabled={busyProvider === provider} onClick={() => unlink(provider)}>Unlink</button>
@@ -211,7 +211,7 @@ export default function SignInMethods({ email, phone, providers, stripeOnboarded
               </div>
             </div>
             <div className="actions">
-              <span className={`sign-in-method-badge ${stripeOnboarded ? 'linked' : 'unlinked'}`}>{stripeOnboarded ? 'Connected' : 'Not connected'}</span>
+              {stripeOnboarded ? <span className="sign-in-method-badge linked">Connected</span> : null}
               {stripeOnboarded ? (
                 <a href="https://dashboard.stripe.com" target="_blank" rel="noreferrer" className="btn secondary">Manage on Stripe</a>
               ) : (
