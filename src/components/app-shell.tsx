@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useAppShell } from './app-shell-provider';
+import { supabase } from '@/lib/supabase';
 
 const baseNavItems = [
   { href: '/', label: 'Home' },
@@ -27,6 +28,7 @@ function getPrimaryAction(pathname: string) {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { isNavOpen, closeNav, toggleNav } = useAppShell();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const isDashboard = pathname.startsWith('/dashboard');
   const primaryAction = getPrimaryAction(pathname);
   // Signed-in contractors live under /dashboard — the marketing "Home" and
@@ -46,15 +48,28 @@ export function AppShell({ children }: { children: ReactNode }) {
     closeNav();
   }, [pathname, closeNav]);
 
+  // Track sign-in state client-side so the logo can route logged-in
+  // contractors straight to their dashboard from anywhere in the app
+  // (marketing pages, docs, etc.), not just while already inside /dashboard.
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setIsLoggedIn(!!data.session));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
   if (isStandaloneSite) {
     return <>{children}</>;
   }
+
+  const brandHref = isLoggedIn ? '/dashboard' : '/';
 
   return (
     <div className="chrome-shell">
       <header className="topbar">
         <div className="topbar-inner">
-          <Link href="/" className="brand-mark" aria-label="Let&apos;s Get Quoted home">
+          <Link href={brandHref} className="brand-mark" aria-label="Let&apos;s Get Quoted home">
             <span className="brand-kicker">LGQ</span>
             <span className="brand-copy">
               <strong>Let&apos;s Get Quoted</strong>

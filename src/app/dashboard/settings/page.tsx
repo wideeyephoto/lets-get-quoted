@@ -78,6 +78,21 @@ export default async function SettingsPage({
           subPrep={subPrep}
         />
       </section>
+
+      <section className="panel workspace-section-card">
+        <div className="section-heading workspace-section-heading compact-heading">
+          <p className="eyebrow">Session</p>
+          <h2>Log out</h2>
+        </div>
+        <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+          Sign out of this device. You&apos;ll need to sign back in to access your dashboard.
+        </p>
+        <form action="/auth/signout" method="post">
+          <button type="submit" className="btn danger">
+            Log out
+          </button>
+        </form>
+      </section>
     </main>
   );
 }
