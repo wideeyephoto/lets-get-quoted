@@ -192,6 +192,26 @@ h3 {
   font-weight: 700;
 }
 
+.workspace-eyebrow-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.account-tag {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+  letter-spacing: 0.01em;
+}
+
+.account-created-note {
+  margin: 0.6rem 0 0;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.45);
+}
+
 h1 {
   font-size: clamp(2.6rem, 5vw, 5rem);
   line-height: 0.98;

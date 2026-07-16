@@ -63,6 +63,7 @@ end $$;
 -- ----------------------------------------------------------------------------
 create table if not exists accounts (
   id                    uuid primary key default gen_random_uuid(),
+  account_number        bigint generated always as identity (start with 100001),
   business_name         text not null,
   created_at            timestamptz not null default now(),
 
@@ -81,6 +82,8 @@ create table if not exists accounts (
   quickbooks_realm_id   text,
   quickbooks_connected  boolean not null default false
 );
+
+alter table accounts add column if not exists account_number bigint generated always as identity (start with 100001);
 
 -- ----------------------------------------------------------------------------
 -- MEMBERSHIPS  — links a person (auth.users) to an account with a role.
