@@ -7,24 +7,32 @@ export async function middleware(request: NextRequest) {
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
   const reservedHosts = new Set([rootDomain, `www.${rootDomain}`, `app.${rootDomain}`]);
 
+  if (request.nextUrl.pathname === '/__debug-host') {
+    return new NextResponse(
+      JSON.stringify({
+        rawHost: request.headers.get('host'),
+        xForwardedHost: request.headers.get('x-forwarded-host'),
+        computedHostname: hostname,
+        rootDomain,
+        reservedHosts: Array.from(reservedHosts),
+        matchesSubdomainBranch: hostname.endsWith(`.${rootDomain}`) && !reservedHosts.has(hostname),
+      }, null, 2),
+      { headers: { 'content-type': 'application/json' } }
+    );
+  }
+
   if (hostname.endsWith(`.${rootDomain}`) && !reservedHosts.has(hostname)) {
     const subdomain = hostname.slice(0, -(rootDomain.length + 1));
     const publicSiteUrl = request.nextUrl.clone();
     publicSiteUrl.pathname = `/site/${subdomain}`;
-    const res = NextResponse.rewrite(publicSiteUrl);
-    res.headers.set('x-debug-hostname', hostname);
-    res.headers.set('x-debug-branch', 'subdomain');
-    return res;
+    return NextResponse.rewrite(publicSiteUrl);
   }
 
   const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
   if (hostname && !isLocalHost && !reservedHosts.has(hostname)) {
     const customSiteUrl = request.nextUrl.clone();
     customSiteUrl.pathname = `/site-domain/${encodeURIComponent(hostname)}`;
-    const res = NextResponse.rewrite(customSiteUrl);
-    res.headers.set('x-debug-hostname', hostname);
-    res.headers.set('x-debug-branch', 'custom-domain');
-    return res;
+    return NextResponse.rewrite(customSiteUrl);
   }
 
   let response = NextResponse.next({ request });
@@ -60,8 +68,6 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  response.headers.set('x-debug-hostname', hostname);
-  response.headers.set('x-debug-branch', 'default');
   return response;
 }
 
