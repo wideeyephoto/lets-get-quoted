@@ -207,11 +207,8 @@ export default function HomePage() {
             <Link href="/login" className="btn primary">
               Create Free Account
             </Link>
-            <Link href="/themes/carbon" className="btn secondary">
-              See a live demo
-            </Link>
             <Link href="/demo" className="btn secondary">
-              Example pages
+              See It in Action
             </Link>
           </div>
           <ul className="hero-trust-row">
@@ -317,9 +314,6 @@ export default function HomePage() {
           <div className="actions">
             <Link href="/login" className="btn primary">
               Create Free Account
-            </Link>
-            <Link href="/themes/carbon" className="btn secondary">
-              See a live demo
             </Link>
           </div>
         </div>
