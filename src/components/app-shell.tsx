@@ -108,11 +108,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       <header className="topbar">
         <div className="topbar-inner">
           <Link href={brandHref} className="brand-mark" aria-label="Let&apos;s Get Quoted home">
+            <strong className="brand-title">Let&apos;s Get Quoted</strong>
             <Image src="/SITE-LOGO-1.png" alt="Let's Get Quoted" width={160} height={33} className="brand-logo-img" priority />
-            <span className="brand-copy">
-              <strong>Let&apos;s Get Quoted</strong>
-              <span>Quote to paid for contractors</span>
-            </span>
           </Link>
 
           {isDashboard && isLoggedIn ? (
