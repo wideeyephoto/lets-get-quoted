@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { IBM_Plex_Sans, Space_Grotesk } from 'next/font/google';
+import { IBM_Plex_Sans, JetBrains_Mono, Space_Grotesk } from 'next/font/google';
 import { headers } from 'next/headers';
 import type { ReactNode } from 'react';
 import { AppShell } from '@/components/app-shell';
@@ -18,6 +18,12 @@ const displayFont = Space_Grotesk({
   weight: ['500', '700'],
 });
 
+const monoFont = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
+  weight: ['400', '500', '700'],
+});
+
 export const metadata: Metadata = {
   title: 'Let\'s Get Quoted',
   description: 'A contractor-first quote-to-paid experience with Supabase-backed workflows.',
@@ -28,7 +34,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
   return (
     <html lang="en">
-      <body className={`${bodyFont.variable} ${displayFont.variable}`}>
+      <body className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable}`}>
         <AppShellProvider>
           <AppShell forceStandaloneSite={isStandaloneSite}>{children}</AppShell>
         </AppShellProvider>
