@@ -108,8 +108,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       <header className="topbar">
         <div className="topbar-inner">
           <Link href={brandHref} className="brand-mark" aria-label="Let&apos;s Get Quoted home">
-            <strong className="brand-title">Let&apos;s Get Quoted</strong>
             <Image src="/SITE-LOGO-1.png" alt="Let's Get Quoted" width={160} height={33} className="brand-logo-img" priority />
+            <strong className="brand-title">LET&apos;S GET QUOTED</strong>
           </Link>
 
           {isDashboard && isLoggedIn ? (

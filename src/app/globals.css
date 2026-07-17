@@ -52,10 +52,10 @@ button, input, select, textarea { font: inherit; }
 
 .brand-mark {
   display: inline-flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 0.55rem;
+  gap: 0.7rem;
   min-width: 0;
   text-align: center;
   padding: 0.5rem 1.1rem;
@@ -69,6 +69,7 @@ button, input, select, textarea { font: inherit; }
   font-size: 1rem;
   letter-spacing: 0.05em;
   white-space: nowrap;
+  text-transform: uppercase;
 }
 
 .brand-logo-img {
