@@ -15,14 +15,9 @@ const baseNavItems = [
   { href: '/dashboard/schedule', label: 'Schedule' },
   { href: '/dashboard/sites', label: 'Website' },
   { href: '/dashboard/settings', label: 'Account' },
-  { href: '/docs', label: 'Docs' },
 ];
 
-function getPrimaryAction(pathname: string) {
-  if (pathname.startsWith('/login')) {
-    return { href: '/docs', label: 'Setup docs' };
-  }
-
+function getPrimaryAction() {
   return { href: '/login', label: 'Sign in' };
 }
 
@@ -33,7 +28,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [stripeOnboarded, setStripeOnboarded] = useState<boolean | null>(null);
   const [sitePublished, setSitePublished] = useState(false);
   const isDashboard = pathname.startsWith('/dashboard');
-  const primaryAction = getPrimaryAction(pathname);
+  const primaryAction = getPrimaryAction();
   // Middleware rewrites a wildcard subdomain/custom-domain request to
   // /site/[subdomain] (or /site-domain/[host]) internally, but that rewrite
   // is transparent to the browser — usePathname() still reports the
@@ -49,15 +44,15 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     pathname.startsWith('/themes/') ||
     pathname === '/site-preview-frame' ||
     pathname === '/dashboard/sites/preview';
-  // Signed-in contractors get the full app nav (minus "Home"/"Docs", which
-  // aren't relevant once inside the app, and "Website", which is promoted to
+  // Signed-in contractors get the full app nav (minus "Home", which isn't
+  // relevant once inside the app, and "Website", which is promoted to
   // its own always-visible badge below instead of a plain link). Logged-out
   // visitors — homeowners paying an invoice, or a prospect on the marketing
   // site — have no use for internal app links like Dashboard/Leads/Jobs that
   // just dead-end at a login wall, so they see just a "Create account" CTA
   // (the same magic-link flow handles both sign-in and account creation).
   const navItems = isLoggedIn
-    ? baseNavItems.filter((item) => item.href !== '/' && item.href !== '/docs' && item.href !== '/dashboard/sites')
+    ? baseNavItems.filter((item) => item.href !== '/' && item.href !== '/dashboard/sites')
     : isStandaloneSite || pathname.startsWith('/demo')
       ? []
       : [{ href: '/login', label: 'Create account' }];
@@ -68,7 +63,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
 
   // Track sign-in state client-side so the logo can route logged-in
   // contractors straight to their dashboard from anywhere in the app
-  // (marketing pages, docs, etc.), not just while already inside /dashboard.
+  // (marketing pages, etc.), not just while already inside /dashboard.
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setIsLoggedIn(!!data.session));
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -167,7 +162,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               })}
             </nav>
 
-            {!isDashboard ? (
+            {!isDashboard && !pathname.startsWith('/login') ? (
               <Link href={primaryAction.href} className="btn primary topbar-cta">
                 {primaryAction.label}
               </Link>
