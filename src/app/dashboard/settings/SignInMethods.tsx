@@ -1,9 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useFormStatus } from 'react-dom';
 import type { FormEvent, ReactNode } from 'react';
 import type { UserIdentity } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+
+function ConnectStripeSubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" className="btn secondary" disabled={pending} aria-busy={pending}>
+      {pending ? 'Connecting…' : 'Connect Stripe'}
+    </button>
+  );
+}
 
 type Props = {
   email: string | null;
@@ -211,7 +221,7 @@ export default function SignInMethods({ email, phone, providers, stripeOnboarded
                 <a href="https://dashboard.stripe.com" target="_blank" rel="noreferrer" className="btn secondary">Manage on Stripe</a>
               ) : (
                 <form action={connectStripeAction}>
-                  <button type="submit" className="btn secondary">Connect Stripe</button>
+                  <ConnectStripeSubmitButton />
                 </form>
               )}
             </div>
