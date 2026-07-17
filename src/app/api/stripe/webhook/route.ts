@@ -20,6 +20,15 @@ async function markPaymentPaid(admin: ReturnType<typeof createAdminClient>, paym
     return;
   }
 
+  // Stripe delivers webhooks at-least-once, so the same event can arrive more
+  // than once. Skip re-processing once already paid — otherwise a duplicate
+  // delivery would overwrite `paid_at` with a later timestamp and, worse,
+  // stomp a real e-signature `signed_at` (see signInvoice) with the payment
+  // time below.
+  if (payment?.status === 'paid') {
+    return;
+  }
+
   // Update payment status to paid
   const { error: paymentError } = await admin
     .from('payments')
@@ -35,13 +44,25 @@ async function markPaymentPaid(admin: ReturnType<typeof createAdminClient>, paym
     return;
   }
 
-  // If payment is linked to an invoice, mark invoice as paid
+  // If payment is linked to an invoice, mark invoice as paid. Preserve a real
+  // e-signature's `signed_at`/`signer_name` (signInvoice) — only backfill
+  // `signed_at` here if the invoice was never actually signed by the client.
   if (payment?.invoice_id) {
+    const { data: invoice, error: invoiceFetchError } = await admin
+      .from('invoices')
+      .select('signed_at')
+      .eq('id', payment.invoice_id)
+      .maybeSingle();
+
+    if (invoiceFetchError) {
+      console.error('Failed to fetch invoice before marking paid:', invoiceFetchError);
+    }
+
     const { error: invoiceError } = await admin
       .from('invoices')
       .update({
         status: 'paid',
-        signed_at: new Date().toISOString(),
+        ...(invoice?.signed_at ? {} : { signed_at: new Date().toISOString() }),
       })
       .eq('id', payment.invoice_id);
 
@@ -50,7 +71,7 @@ async function markPaymentPaid(admin: ReturnType<typeof createAdminClient>, paym
     }
   }
 
-  if (payment?.status !== 'paid') await sendPaymentSmsEvent(paymentId, 'payment_paid');
+  await sendPaymentSmsEvent(paymentId, 'payment_paid');
 }
 
 export async function POST(request: Request) {
@@ -166,11 +187,30 @@ export async function POST(request: Request) {
     // Legacy account.updated events contain a v1 Account shape. Retrieve the
     // authoritative Recipient capability through Accounts v2 before updating.
     const transferStatus = await getRecipientTransferStatus(accountId);
-    await admin
-      .from('accounts')
-      .update({ connect_onboarded: transferStatus === 'active' })
-      .eq('stripe_connect_id', accountId);
-    console.log(`Connect account ${accountId} stripe_transfers status: ${transferStatus ?? 'unavailable'}`);
+    if (transferStatus === null) {
+      // Status couldn't be read (missing/unavailable in the API response) —
+      // don't let an ambiguous read force a working contractor's account
+      // offline. Only flip `connect_onboarded` on a concrete status value;
+      // Stripe will redeliver this event, so a transient read failure isn't lost.
+      console.warn(`Connect account ${accountId}: stripe_transfers status unavailable, skipping connect_onboarded update.`);
+    } else {
+      await admin
+        .from('accounts')
+        .update({ connect_onboarded: transferStatus === 'active' })
+        .eq('stripe_connect_id', accountId);
+      console.log(`Connect account ${accountId} stripe_transfers status: ${transferStatus}`);
+    }
+  }
+
+  // Dispute/chargeback — no dedicated payment status for this yet (would need
+  // a schema migration to add one), but log prominently so a chargeback is at
+  // least visible server-side instead of silently invisible.
+  if (event.type === 'charge.dispute.created') {
+    const dispute = event.data.object;
+    const paymentId = dispute.metadata?.payment_id ?? dispute.payment_intent;
+    console.error(
+      `[DISPUTE] Chargeback opened for payment ${paymentId}: amount=${dispute.amount} reason=${dispute.reason} status=${dispute.status}`
+    );
   }
 
   return NextResponse.json({ received: true });

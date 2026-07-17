@@ -10,6 +10,40 @@
 
 ---
 
+## Automated verification (2026-07-16)
+
+`scripts/test-payment-webhook-flow.mjs` fabricates signed Stripe webhook events
+and POSTs them at the local dev server to exercise `/api/stripe/webhook`
+end-to-end without needing a real browser/Checkout session (auth for the
+dashboard isn't scriptable, but the webhook route and the public `/pay`,
+`/invoice` routes need no login). Run any time with the dev server up:
+
+```
+node scripts/test-payment-webhook-flow.mjs
+```
+
+Covers: `checkout.session.completed` (+ duplicate-delivery idempotency),
+`checkout.session.expired`, `charge.failed`, `charge.refunded`,
+`charge.dispute.created`, and invoice auto-paid linking. This pass found and
+fixed two real bugs:
+- A duplicate webhook delivery (Stripe explicitly guarantees at-least-once,
+  not exactly-once, delivery) used to overwrite `paid_at` with a later
+  timestamp on every redelivery.
+- Marking a payment paid used to unconditionally overwrite the linked
+  invoice's `signed_at` — including stomping a REAL client e-signature
+  timestamp/`signer_name` (from the `/invoice/[id]` e-sign flow) with the
+  payment-completion time. Fixed: `signed_at` is now only backfilled when the
+  invoice was never actually signed.
+
+Not covered by this script (would need a real completed test-mode Checkout
+session / browser, since these call OUT to Stripe rather than receive a
+webhook): actually creating a Checkout Session, actually calling
+`stripe.refunds.create` from the dashboard Refund button, and the
+invoice-voided-on-refund side effect (`refundPayment()` in `src/lib/payments.ts`)
+which is separate from the webhook's own `charge.refunded` handling.
+
+---
+
 ## Test 1: Payment Flow + Platform Fee Display ✅
 
 **File**: `/pay/[id]`
@@ -159,24 +193,44 @@ stripe trigger charge.refunded
 
 ## Quick Test Summary Checklist
 
-- [ ] **Payment display**: Amount + fee visible on /pay page
-- [ ] **Refund**: Button refunds payment, invoice marked void
-- [ ] **Retry**: Failed payment can retry checkout
-- [ ] **Invoice linking**: Payment linked to invoice, auto-marks paid
-- [ ] **Email sending**: Invoice sent → email arrives from hello@letsgetquoted.com
-- [ ] **Webhook success**: Real payment completes → status updates to paid
-- [ ] **Webhook failures**: Simulate failed charges → status updates to failed
-- [ ] **Connect status**: Account capability changes logged
+- [x] **Payment display**: Amount + fee visible on /pay page (verified by code review of `getQuotedFee`/page.tsx; not re-verified via live fetch this pass)
+- [ ] **Refund**: Button refunds payment, invoice marked void (NOT covered by the automated script — needs a real completed test-mode payment; only the webhook's own `charge.refunded` handling is automated)
+- [ ] **Retry**: Failed payment can retry checkout (not automated — needs a real Checkout Session)
+- [x] **Invoice linking**: Payment linked to invoice, auto-marks paid — automated via `scripts/test-payment-webhook-flow.mjs`
+- [ ] **Email sending**: Invoice sent → email arrives from hello@letsgetquoted.com (not automated — no inbox access; PDF attachment code path confirmed present via code review)
+- [x] **Webhook success**: Real payment completes → status updates to paid — automated, including duplicate-delivery idempotency
+- [x] **Webhook failures**: Simulate failed charges → status updates to failed — automated (`charge.failed`, `checkout.session.expired`)
+- [x] **Connect status**: Account capability changes logged — automated guard added (skips update on ambiguous read instead of blindly disabling)
 
 ---
 
 ## Known Limitations (Not Yet Implemented)
 
-- ❌ Destination charge error recovery (transfer failures not caught)
-- ❌ Connect capability auto-disable (monitoring only)
-- ❌ Invoice signature flow (only marks signed_at on payment)
-- ❌ PDF invoice attachment (sends HTML email only)
-- ❌ Contractor fee transparency before checkout (only shown after)
+- ✅ RESOLVED (2026-07-16): Invoice signature flow — real client e-signature
+  capture now exists (`/invoice/[id]` public sign-off page + `signInvoice()`),
+  not just `signed_at` set as a side effect of payment.
+- ✅ RESOLVED (2026-07-16): PDF invoice attachment — `emails/InvoicePdf.ts`
+  generates a PDF attached to the invoice email (falls back to HTML-only if
+  generation fails).
+- ✅ RESOLVED (earlier session): Contractor fee transparency before checkout —
+  `/pay/[id]` shows an estimated fee via `getQuotedFee()` before checkout ever
+  starts, not just after.
+- ⚠️ IMPROVED (2026-07-16), not fully closed: Connect capability auto-disable —
+  `account.updated` now only flips `connect_onboarded` off on a concrete
+  (non-null) capability read, so a transient/ambiguous Stripe API response can
+  no longer force a working contractor's account offline. Still no
+  contractor-facing alert if a capability is later genuinely revoked.
+- ⚠️ IMPROVED (2026-07-16), not fully closed: Destination-charge/transfer
+  failure recovery — `charge.dispute.created` is now logged server-side
+  (`[DISPUTE]` log lines) so a chargeback is no longer completely invisible.
+  Still no dedicated `disputed` payment status (would need a schema
+  migration), no automatic homeowner/contractor notification, and no
+  automatic retry/reversal handling for a failed destination transfer
+  specifically.
+- ❌ QuickBooks OAuth two-way sync (CSV export is the only path today)
+- ❌ Twilio missed-call text-back + AI (Claude) text intake
+- ❌ Wisetack financing integration (schema has a dormant `finance_plans`
+  table ready for it; blocked on Wisetack partner/API signup)
 
 ---
 
