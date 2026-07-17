@@ -44,11 +44,8 @@ export default function HomePage() {
             <Link href="/login" className="btn primary">
               Start with magic link
             </Link>
-            <Link href="/dashboard" className="btn secondary">
-              Open dashboard
-            </Link>
-            <Link href="/docs" className="btn secondary">
-              Review setup
+            <Link href="/themes/carbon" className="btn secondary">
+              See a live demo
             </Link>
           </div>
           <ul className="proof-list">

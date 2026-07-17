@@ -6,7 +6,8 @@ import { getJob, listCosts, computeMargin, formatMoney, formatPercent, type Cost
 import { createJobPhotoUrls } from '@/lib/job-photo-storage';
 import { listPayments, type PaymentStatus } from '@/lib/payments';
 import { listInvoices, type InvoiceStatus } from '@/lib/invoices';
-import { createCostAction, deleteCostAction, deleteJobAction, updateJobAction } from '../actions';
+import { listCrew, listCrewIdsForJob } from '@/lib/crew';
+import { createCostAction, deleteCostAction, deleteJobAction, updateJobAction, updateJobCrewAction } from '../actions';
 import { createDepositRequestAction, refundPaymentAction, markPaymentFailedAction, retryPaymentAction, retryPaymentTextAction } from '../payments-actions';
 import { createInvoiceAction } from '../invoices-actions';
 import DeleteJobButton from './DeleteJobButton';
@@ -77,8 +78,16 @@ export default async function JobDetailPage({
   const margin = computeMargin(job, costs);
   const payments = await listPayments(supabase, accountId, job.id);
   const invoices = await listInvoices(supabase, accountId, job.id);
+  const crew = await listCrew(supabase, accountId, { activeOnly: true });
+  const assignedCrewIds = await listCrewIdsForJob(supabase, accountId, job.id);
   const jobPhotoUrls = await createJobPhotoUrls(accountId, job.photo_paths || []);
   const jobPhotos = (job.photo_paths || []).map((path, index) => ({ path, url: jobPhotoUrls[index] })).filter((photo) => photo.url);
+  const { data: accountRow } = await supabase
+    .from('accounts')
+    .select('connect_onboarded')
+    .eq('id', accountId)
+    .maybeSingle();
+  const stripeOnboarded = accountRow?.connect_onboarded ?? false;
   const tab =
     searchParams.tab === 'costs'
       ? 'costs'
@@ -89,6 +98,7 @@ export default async function JobDetailPage({
           : 'overview';
 
   const boundUpdateJob = updateJobAction.bind(null, job.id);
+  const boundUpdateJobCrew = updateJobCrewAction.bind(null, job.id);
   const boundDeleteJob = deleteJobAction.bind(null, job.id);
   const boundCreateCost = createCostAction.bind(null, job.id);
   const boundCreateDepositRequest = createDepositRequestAction.bind(null, job.id);
@@ -206,6 +216,41 @@ export default async function JobDetailPage({
 
             <div className="workspace-section-divider">
               <div className="section-heading workspace-section-heading">
+                <p className="eyebrow">Crew</p>
+                <h2>Assigned crew members</h2>
+              </div>
+              {crew.length === 0 ? (
+                <p className="empty-state">
+                  No crew members yet. <Link href="/dashboard/crew">Add your crew →</Link>
+                </p>
+              ) : (
+                <form action={boundUpdateJobCrew} className="form-grid">
+                  <div className="field full">
+                    {crew.map((member) => (
+                      <label key={member.id} className="sms-consent-check" style={{ marginBottom: '0.5rem' }}>
+                        <input
+                          type="checkbox"
+                          name="crewIds"
+                          value={member.id}
+                          defaultChecked={assignedCrewIds.includes(member.id)}
+                        />
+                        <span>
+                          <strong>{member.name}</strong> — {member.role_label} · {member.phone}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="field full">
+                    <button type="submit" className="btn primary">
+                      Save crew assignment
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+
+            <div className="workspace-section-divider">
+              <div className="section-heading workspace-section-heading">
                 <p className="eyebrow">Attachments</p>
                 <h2>Job photos</h2>
               </div>
@@ -282,6 +327,17 @@ export default async function JobDetailPage({
                   <div className="field">
                     <label htmlFor="rate">Rate $/hr (labor only)</label>
                     <input id="rate" name="rate" type="number" min="0" step="0.01" placeholder="45" />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="crewId">Crew member (labor only)</label>
+                    <select id="crewId" name="crewId" defaultValue="">
+                      <option value="">— Unassigned —</option>
+                      {crew.map((member) => (
+                        <option key={member.id} value={member.id}>
+                          {member.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
                 <div style={{ marginTop: '0.8rem' }}>
@@ -366,6 +422,17 @@ export default async function JobDetailPage({
             <p className="eyebrow">Payments</p>
             <h2>Request a payment</h2>
           </div>
+            {!stripeOnboarded ? (
+              <div className="payment-banner warning">
+                <p>
+                  <strong>Stripe isn&apos;t connected yet.</strong> Homeowners won&apos;t be able to pay
+                  until you finish onboarding.
+                </p>
+                <p>
+                  <Link href="/dashboard/settings">Connect Stripe in Account settings →</Link>
+                </p>
+              </div>
+            ) : null}
             <form action={boundCreateDepositRequest} className="cost-form workspace-form-block">
               <div className="cost-form-row">
                 <div className="field">
@@ -466,6 +533,18 @@ export default async function JobDetailPage({
                 </button>
               </form>
             </div>
+
+            {!stripeOnboarded ? (
+              <div className="payment-banner warning">
+                <p>
+                  <strong>Stripe isn&apos;t connected yet.</strong> Clients won&apos;t be able to pay
+                  invoices you send until you finish onboarding.
+                </p>
+                <p>
+                  <Link href="/dashboard/settings">Connect Stripe in Account settings →</Link>
+                </p>
+              </div>
+            ) : null}
 
             {invoices.length === 0 ? (
               <p className="empty-state">No invoices yet.</p>

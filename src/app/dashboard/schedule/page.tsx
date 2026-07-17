@@ -99,34 +99,6 @@ export default async function SchedulePage({
         </div>
       </section>
 
-      {unscheduledJobs.length > 0 ? (
-        <section className="panel workspace-section-card">
-          <div className="section-heading workspace-section-heading">
-            <p className="eyebrow">Needs a date</p>
-            <h2>Unscheduled jobs</h2>
-          </div>
-          <div className="sign-in-methods-list">
-            {unscheduledJobs.map((job) => {
-              const boundSchedule = scheduleJobAction.bind(null, job.id);
-              return (
-                <div className="sign-in-method-row" key={job.id}>
-                  <div className="method-info">
-                    <div>
-                      <span className="method-name">{job.client_name}</span>
-                      <span className="method-detail">{STATUS_LABEL[job.status]} · {job.address || 'No address on file'}</span>
-                    </div>
-                  </div>
-                  <form action={boundSchedule} className="actions">
-                    <input type="date" name="scheduledFor" required aria-label={`Schedule date for ${job.client_name}`} />
-                    <button type="submit" className="btn secondary">Set date</button>
-                  </form>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      ) : null}
-
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading calendar-heading">
           <div>
@@ -171,6 +143,34 @@ export default async function SchedulePage({
           )}
         </div>
       </section>
+
+      {unscheduledJobs.length > 0 ? (
+        <section className="panel workspace-section-card">
+          <div className="section-heading workspace-section-heading">
+            <p className="eyebrow">Needs a date</p>
+            <h2>Unscheduled jobs</h2>
+          </div>
+          <div className="sign-in-methods-list">
+            {unscheduledJobs.map((job) => {
+              const boundSchedule = scheduleJobAction.bind(null, job.id);
+              return (
+                <div className="sign-in-method-row" key={job.id}>
+                  <div className="method-info">
+                    <div>
+                      <span className="method-name">{job.client_name}</span>
+                      <span className="method-detail">{STATUS_LABEL[job.status]} · {job.address || 'No address on file'}</span>
+                    </div>
+                  </div>
+                  <form action={boundSchedule} className="actions">
+                    <input type="date" name="scheduledFor" required aria-label={`Schedule date for ${job.client_name}`} />
+                    <button type="submit" className="btn secondary">Set date</button>
+                  </form>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
     </main>
   );
 }

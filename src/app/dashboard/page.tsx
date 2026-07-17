@@ -29,13 +29,21 @@ export default async function DashboardPage() {
   const [{ data: account }, { data: identityData }, { data: site }, jobs] = await Promise.all([
     supabase.from('accounts').select('connect_onboarded').eq('id', accountId).single(),
     supabase.auth.getUserIdentities(),
-    supabase.from('sites').select('published').eq('account_id', accountId).maybeSingle(),
+    supabase.from('sites').select('published, subdomain, custom_domain, custom_domain_verified_at').eq('account_id', accountId).maybeSingle(),
     listJobs(supabase, accountId),
   ]);
 
   const onboarded = account?.connect_onboarded ?? false;
   const linkedMethodCount = identityData?.identities?.length ?? 1;
   const sitePublished = site?.published ?? false;
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
+  const siteUrl = sitePublished && site
+    ? site.custom_domain && site.custom_domain_verified_at
+      ? `https://${site.custom_domain}`
+      : site.subdomain
+        ? `https://${site.subdomain}.${rootDomain}`
+        : null
+    : null;
 
   const onboardingSteps = [
     {
@@ -125,25 +133,16 @@ export default async function DashboardPage() {
         </section>
       ) : null}
 
-      <section className="workspace-hero panel">
-        <div className="workspace-hero-copy">
-          <p className="eyebrow">Owner dashboard</p>
-          <h1 className="workspace-title">Contractor operations workspace</h1>
-          <p className="workspace-lead">
-            Membership ownership is enforced server-side. From here you can manage jobs,
-            request homeowner payments, and monitor payout readiness.
-          </p>
-          <div className="actions workspace-actions">
-            <Link href="/dashboard/jobs" className="btn primary">
-              View jobs
-            </Link>
-            <Link href="/" className="btn secondary">
-              Back home
-            </Link>
+      <section className="workspace-hero workspace-hero-solo panel">
+        {siteUrl ? (
+          <div className="actions" style={{ marginBottom: '1.1rem' }}>
+            <a href={siteUrl} target="_blank" rel="noopener noreferrer" className="btn fun">
+              🚀 Visit your site
+            </a>
           </div>
-        </div>
+        ) : null}
 
-        <div className="workspace-metric-grid compact">
+        <div className="workspace-metric-grid">
           <article className="workspace-metric-card accent">
             <span className="workspace-metric-label">Payments setup</span>
             <strong className="workspace-metric-value">{onboarded ? 'Connected' : 'Needs action'}</strong>

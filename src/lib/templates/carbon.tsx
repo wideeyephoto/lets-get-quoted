@@ -71,7 +71,7 @@ export default function CarbonTemplate({ site, portfolioJobs = [] }: TemplatePro
               cursor: 'pointer',
             }}
           >
-            Request a Quote
+            Quick Quote
           </a>
         </div>
       </section>
@@ -185,7 +185,7 @@ export default function CarbonTemplate({ site, portfolioJobs = [] }: TemplatePro
               cursor: 'pointer',
             }}
           >
-            Request a Quote
+            Quick Quote
           </a>
         </div>
       </section>

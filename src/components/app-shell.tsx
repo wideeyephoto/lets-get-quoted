@@ -11,6 +11,7 @@ const baseNavItems = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/dashboard/leads', label: 'Leads' },
   { href: '/dashboard/jobs', label: 'Jobs' },
+  { href: '/dashboard/crew', label: 'Crew' },
   { href: '/dashboard/schedule', label: 'Schedule' },
   { href: '/dashboard/sites', label: 'Website' },
   { href: '/dashboard/settings', label: 'Account' },
@@ -29,14 +30,20 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const pathname = usePathname();
   const { isNavOpen, closeNav, toggleNav } = useAppShell();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [stripeOnboarded, setStripeOnboarded] = useState<boolean | null>(null);
+  const [sitePublished, setSitePublished] = useState(false);
   const isDashboard = pathname.startsWith('/dashboard');
   const primaryAction = getPrimaryAction(pathname);
-  // Signed-in contractors live under /dashboard — the marketing "Home" and
-  // "Docs" links aren't relevant to them once they're in the app, and the
-  // "Jobs" nav link already covers what the "Open jobs" CTA would do.
-  const navItems = isDashboard
-    ? baseNavItems.filter((item) => item.href !== '/' && item.href !== '/docs')
-    : baseNavItems;
+  // Signed-in contractors get the full app nav (minus "Home"/"Docs", which
+  // aren't relevant once inside the app, and "Website", which is promoted to
+  // its own always-visible badge below instead of a plain link). Logged-out
+  // visitors — homeowners paying an invoice, or a prospect on the marketing
+  // site — have no use for internal app links like Dashboard/Leads/Jobs that
+  // just dead-end at a login wall, so they see no nav links at all: just the
+  // logo and the "Sign in" CTA.
+  const navItems = isLoggedIn
+    ? baseNavItems.filter((item) => item.href !== '/' && item.href !== '/docs' && item.href !== '/dashboard/sites')
+    : [];
   // Middleware rewrites a wildcard subdomain/custom-domain request to
   // /site/[subdomain] (or /site-domain/[host]) internally, but that rewrite
   // is transparent to the browser — usePathname() still reports the
@@ -68,6 +75,30 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  // Stripe payouts are core to the business — keep a persistent, always-
+  // visible status pill in the topbar across every dashboard page (not just
+  // the dashboard home), so the owner can never lose track of onboarding
+  // status. Re-checked on every dashboard navigation (e.g. right after
+  // returning from Stripe's hosted onboarding flow).
+  useEffect(() => {
+    if (!isDashboard || !isLoggedIn) {
+      return;
+    }
+    let cancelled = false;
+    fetch('/api/account/status', { cache: 'no-store' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data) {
+          setStripeOnboarded(Boolean(data.onboarded));
+          setSitePublished(Boolean(data.sitePublished));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isDashboard, isLoggedIn, pathname]);
+
   if (isStandaloneSite) {
     return <>{children}</>;
   }
@@ -85,6 +116,27 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               <span>Quote to paid for contractors</span>
             </span>
           </Link>
+
+          {isDashboard && isLoggedIn ? (
+            <Link
+              href="/dashboard/sites"
+              className="website-nav-badge"
+              title={sitePublished ? 'Your website is live — manage it' : 'Build your free contractor website'}
+            >
+              ✨ {sitePublished ? 'Website: Live' : 'Build your Website'}
+            </Link>
+          ) : null}
+
+          {isDashboard && isLoggedIn ? (
+            <Link
+              href="/dashboard/settings"
+              className={`stripe-status-pill${stripeOnboarded === null ? '' : stripeOnboarded ? ' connected' : ' warning'}`}
+              title={stripeOnboarded ? 'Stripe payouts connected' : 'Stripe payouts not connected — click to finish setup'}
+            >
+              <span className="stripe-status-dot" aria-hidden="true" />
+              {stripeOnboarded === null ? 'Stripe: checking…' : stripeOnboarded ? 'Stripe connected' : 'Connect Stripe'}
+            </Link>
+          ) : null}
 
           <button
             type="button"

@@ -20,7 +20,7 @@ export default function QuoteRequestForm({ siteId, enabled }: QuoteRequestFormPr
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!enabled || window.self !== window.top) {
-      setMessage({ type: 'error', text: 'Quote requests become active when this website is published.' });
+      setMessage({ type: 'error', text: 'Quick Quote requests become active when this website is published.' });
       return;
     }
 
@@ -75,7 +75,7 @@ export default function QuoteRequestForm({ siteId, enabled }: QuoteRequestFormPr
       <label className={`${styles.field} ${styles.wide}`}><span>Project photos</span><input className={styles.photoInput} name="photos" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple /><p className={styles.help}>Optional. Add up to three photos; they are compressed before upload.</p></label>
       <label className={styles.honeypot} aria-hidden="true">Company<input name="company" tabIndex={-1} autoComplete="off" /></label>
       {isSubmitting && <div className={styles.progress}><progress value={progress} max="100" /><span>{progress}%</span></div>}
-      <button className={styles.submit} type="submit" disabled={isSubmitting}>{isSubmitting ? 'Sending request...' : 'Request a quote'}</button>
+      <button className={styles.submit} type="submit" disabled={isSubmitting}>{isSubmitting ? 'Sending request...' : 'Quick Quote'}</button>
       {message && <p className={`${styles.message} ${message.type === 'success' ? styles.success : styles.error}`} role="status">{message.text}</p>}
     </form>
   );

@@ -20,7 +20,7 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
           <span><strong>{site.company_name}</strong><small>{site.license || 'Licensed contractor'}</small></span>
         </a>
         <nav className={styles.navLinks} aria-label="Main navigation"><a href="#services">Services</a><a href="#work">Projects</a><a href="#contact">Contact</a></nav>
-        <a className={styles.guildQuote} href="#contact">Request an estimate</a>
+        <a className={styles.guildQuote} href="#contact">Quick Quote</a>
       </header>
 
       <section className={styles.guildHero} id="top">

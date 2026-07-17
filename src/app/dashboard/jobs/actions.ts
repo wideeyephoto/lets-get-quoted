@@ -8,12 +8,15 @@ import {
   createJob,
   deleteCost,
   deleteJob,
+  getJob,
   updateJob,
   updateJobSchedule,
   type CostType,
   type JobStatus,
 } from '@/lib/jobs';
 import { uploadJobPhoto } from '@/lib/job-photo-storage';
+import { listCrew, setJobCrewAssignments } from '@/lib/crew';
+import { sendCrewAssignmentSms } from '@/lib/sms';
 
 function parseAmount(value: FormDataEntryValue | null): number {
   const n = Number(value);
@@ -83,6 +86,44 @@ export async function deleteJobAction(jobId: string) {
 
   revalidatePath('/dashboard/jobs');
   redirect('/dashboard/jobs');
+}
+
+export async function updateJobCrewAction(jobId: string, formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const crewIds = formData.getAll('crewIds').map(String);
+  const { added } = await setJobCrewAssignments(supabase, accountId, jobId, crewIds);
+
+  if (added.length > 0) {
+    const [job, { data: account }, crewMembers] = await Promise.all([
+      getJob(supabase, accountId, jobId),
+      supabase.from('accounts').select('business_name').eq('id', accountId).single(),
+      listCrew(supabase, accountId),
+    ]);
+
+    if (job) {
+      const businessName = account?.business_name || "Let's Get Quoted contractor";
+      const newlyAssigned = crewMembers.filter((member) => added.includes(member.id));
+
+      for (const member of newlyAssigned) {
+        try {
+          await sendCrewAssignmentSms({
+            phone: member.phone,
+            crewName: member.name,
+            businessName,
+            jobRef: job.ref,
+            clientName: job.client_name,
+            address: job.address,
+            scheduledFor: job.scheduled_for,
+          });
+        } catch (error) {
+          console.error(`Crew assignment SMS failed for crew ${member.id} on job ${jobId}:`, error);
+        }
+      }
+    }
+  }
+
+  revalidatePath(`/dashboard/jobs/${jobId}`);
 }
 
 export async function createCostAction(jobId: string, formData: FormData) {

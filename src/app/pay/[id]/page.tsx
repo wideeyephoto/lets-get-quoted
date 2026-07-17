@@ -1,4 +1,4 @@
-import { getPublicPayment, type PaymentStatus } from '@/lib/payments';
+import { getPublicPayment, getQuotedFee, type PaymentStatus } from '@/lib/payments';
 import { startCheckoutAction } from './actions';
 
 // Always render fresh from the database — this page's content changes based
@@ -74,6 +74,16 @@ export default async function PublicPaymentPage({
   const canPay =
     (payment.status === 'requested' || payment.status === 'failed' || payment.status === 'processing') &&
     !alreadyPaid;
+
+  // Once checkout has started, fee_rate/platform_fee are locked in on the row
+  // (the actual rate used for that Stripe session) — use those. Otherwise,
+  // quote the CURRENT rate live so the fee is visible before checkout ever
+  // starts, closing the "fee only shown after checkout" trust gap.
+  const feeIsLocked = payment.fee_rate != null;
+  const quotedFee = canPay && !feeIsLocked ? await getQuotedFee(payment.account_id, payment.amount) : null;
+  const displayFeeRate = payment.fee_rate ?? quotedFee?.feeRate ?? null;
+  const displayFeeAmount = payment.platform_fee ?? quotedFee?.platformFee ?? null;
+
   const statusTone =
     payment.status === 'paid'
       ? 'payment-banner success'
@@ -100,12 +110,12 @@ export default async function PublicPaymentPage({
             <strong className="payment-amount">{formatMoney(payment.amount)}</strong>
           </div>
 
-          {payment.status === 'processing' || (payment.status === 'requested' && payment.fee_rate) ? (
+          {canPay && displayFeeRate != null ? (
             <div className="payment-fee-info">
               <p className="payment-fee-label">
-                Processing fee:{' '}
+                {feeIsLocked ? 'Processing fee:' : 'Estimated processing fee:'}{' '}
                 <strong>
-                  {payment.platform_fee ? formatMoney(payment.platform_fee) : `${(payment.fee_rate ?? 0) * 100}%`}
+                  {displayFeeAmount != null ? formatMoney(displayFeeAmount) : `${displayFeeRate * 100}%`}
                 </strong>
               </p>
               <p className="payment-fee-note" style={{ fontSize: '0.875rem', color: '#666', marginTop: '0.25rem' }}>

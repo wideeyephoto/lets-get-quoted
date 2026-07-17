@@ -48,6 +48,20 @@ export async function getTrailingVolume(accountId: string): Promise<number> {
   return (data ?? []).reduce((sum, row) => sum + Number(row.amount), 0);
 }
 
+// Quote the fee rate/amount that would apply if this payment were completed
+// right now — lets the public pay page show fee transparency BEFORE checkout
+// starts (previously the fee only appeared once a Checkout Session existed and
+// persisted fee_rate/platform_fee onto the row). Once checkout actually starts,
+// the persisted values are the source of truth (the locked-in rate for that
+// specific Stripe session), so callers should prefer those when present and
+// only fall back to this quote.
+export async function getQuotedFee(accountId: string, amount: number): Promise<{ feeRate: number; platformFee: number }> {
+  const trailingVolume = await getTrailingVolume(accountId);
+  const feeRate = computeFeeRate(trailingVolume);
+  const platformFee = fromCents(Math.round(toCents(amount) * feeRate));
+  return { feeRate, platformFee };
+}
+
 export async function listPayments(supabase: SupabaseClient, accountId: string, jobId: string): Promise<Payment[]> {
   const { data, error } = await supabase
     .from('payments')

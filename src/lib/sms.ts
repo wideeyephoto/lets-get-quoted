@@ -162,3 +162,24 @@ export async function retryFailedPaymentSmsEvent(paymentId: string, eventType: P
   if (error) throw error;
   return sendPaymentSmsEvent(paymentId, eventType);
 }
+
+// Fire-and-forget notification for crew job assignments. Unlike payment SMS,
+// this isn't tracked in the sms_events ledger (that table's schema is
+// payment-specific) — the caller is expected to catch/log failures without
+// blocking the assignment itself.
+export async function sendCrewAssignmentSms(params: {
+  phone: string;
+  crewName: string;
+  businessName: string;
+  jobRef: string;
+  clientName: string;
+  address: string | null;
+  scheduledFor: string | null;
+}) {
+  const addressNote = params.address ? ` at ${params.address}` : '';
+  const scheduledNote = params.scheduledFor
+    ? ` Scheduled ${new Date(`${params.scheduledFor}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}.`
+    : '';
+  const body = `Let's Get Quoted: Hi ${params.crewName}, ${params.businessName} assigned you to job ${params.jobRef} — ${params.clientName}${addressNote}.${scheduledNote} Reply STOP to opt out.`;
+  return sendTwilioMessage(params.phone, body);
+}
