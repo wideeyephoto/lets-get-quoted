@@ -34,16 +34,6 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [sitePublished, setSitePublished] = useState(false);
   const isDashboard = pathname.startsWith('/dashboard');
   const primaryAction = getPrimaryAction(pathname);
-  // Signed-in contractors get the full app nav (minus "Home"/"Docs", which
-  // aren't relevant once inside the app, and "Website", which is promoted to
-  // its own always-visible badge below instead of a plain link). Logged-out
-  // visitors — homeowners paying an invoice, or a prospect on the marketing
-  // site — have no use for internal app links like Dashboard/Leads/Jobs that
-  // just dead-end at a login wall, so they see no nav links at all: just the
-  // logo and the "Sign in" CTA.
-  const navItems = isLoggedIn
-    ? baseNavItems.filter((item) => item.href !== '/' && item.href !== '/docs' && item.href !== '/dashboard/sites')
-    : [];
   // Middleware rewrites a wildcard subdomain/custom-domain request to
   // /site/[subdomain] (or /site-domain/[host]) internally, but that rewrite
   // is transparent to the browser — usePathname() still reports the
@@ -59,6 +49,18 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     pathname.startsWith('/themes/') ||
     pathname === '/site-preview-frame' ||
     pathname === '/dashboard/sites/preview';
+  // Signed-in contractors get the full app nav (minus "Home"/"Docs", which
+  // aren't relevant once inside the app, and "Website", which is promoted to
+  // its own always-visible badge below instead of a plain link). Logged-out
+  // visitors — homeowners paying an invoice, or a prospect on the marketing
+  // site — have no use for internal app links like Dashboard/Leads/Jobs that
+  // just dead-end at a login wall, so they see just "Example pages" (a link
+  // to the read-only /demo dashboard replica) plus the "Sign in" CTA.
+  const navItems = isLoggedIn
+    ? baseNavItems.filter((item) => item.href !== '/' && item.href !== '/docs' && item.href !== '/dashboard/sites')
+    : isStandaloneSite || pathname.startsWith('/demo')
+      ? []
+      : [{ href: '/demo', label: 'Example pages' }];
 
   useEffect(() => {
     closeNav();

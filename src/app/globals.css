@@ -835,6 +835,44 @@ li + li { margin-top: 0.45rem; }
   .stripe-alert-banner { padding: 1rem; }
 }
 
+/* ---------------------------------------------------------------- */
+/* Demo mode ("/demo") banner + sub-nav                              */
+/* ---------------------------------------------------------------- */
+.demo-banner-wrap { margin-bottom: 0; }
+
+.demo-banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1.1rem 1.3rem;
+  border: 1px solid rgba(255, 122, 33, 0.4);
+  border-radius: 16px;
+  background: rgba(255, 122, 33, 0.1);
+}
+
+.demo-banner-icon { font-size: 1.4rem; line-height: 1; flex-shrink: 0; }
+
+.demo-banner-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1 1 320px;
+}
+
+.demo-banner-copy strong { color: var(--text); font-size: 0.95rem; }
+.demo-banner-copy span { color: rgba(255, 255, 255, 0.72); font-size: 0.85rem; }
+
+.demo-banner-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+
+.demo-nav-wrap { margin: 1.1rem auto 0; }
+.demo-nav { margin-bottom: 0; }
+.demo-locked-card { border-style: dashed; }
+
+@media (max-width: 640px) {
+  .demo-banner { padding: 1rem; }
+}
+
 .onboarding-panel { margin-bottom: 1.5rem; }
 .onboarding-progress-note { margin: 0.4rem 0 0; color: rgba(255,255,255,.6); font-size: .88rem; }
 .onboarding-checklist { display: flex; flex-direction: column; gap: .6rem; margin-top: 1rem; }

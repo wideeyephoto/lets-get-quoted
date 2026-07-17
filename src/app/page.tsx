@@ -210,6 +210,9 @@ export default function HomePage() {
             <Link href="/themes/carbon" className="btn secondary">
               See a live demo
             </Link>
+            <Link href="/demo" className="btn secondary">
+              Example pages
+            </Link>
           </div>
           <ul className="hero-trust-row">
             <li><ShieldIcon /><span>Bank-grade payouts via Stripe Connect</span></li>
