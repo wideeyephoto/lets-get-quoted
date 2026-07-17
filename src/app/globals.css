@@ -64,6 +64,20 @@ button, input, select, textarea { font: inherit; }
   background: rgba(255, 255, 255, 0.03);
 }
 
+.brand-mark-compact {
+  gap: 0.45rem;
+  padding: 0.3rem 0.65rem;
+}
+
+.brand-mark-compact .brand-logo-img {
+  height: 22px;
+}
+
+.brand-mark-compact .brand-title {
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+}
+
 .brand-title {
   font-family: var(--font-display);
   font-size: 1rem;
