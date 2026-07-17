@@ -242,10 +242,10 @@ export default function HomePage() {
       <section className="section-block">
         <div className="section-heading">
           <p className="eyebrow">Your storefront</p>
-          <h2>A premium website, live in minutes &mdash; not months.</h2>
+          <h2>Premium websites, free with every account.</h2>
           <p>
-            Every account includes a professionally designed contractor website. Pick a look, drop in your
-            photos, and publish to your own domain.
+            Fully customizable and designed to convert, so every visitor sees a site that impresses clients
+            from the first click. Pick a look, drop in your photos, and publish to your own domain.
           </p>
         </div>
         <TemplateSlider templates={featuredTemplates} />
