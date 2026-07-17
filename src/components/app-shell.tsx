@@ -55,7 +55,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     ? baseNavItems.filter((item) => item.href !== '/' && item.href !== '/dashboard/sites')
     : isStandaloneSite || pathname.startsWith('/demo')
       ? []
-      : [{ href: '/login', label: 'Create account' }];
+      : [{ href: '/login', label: 'Create Free Account' }];
 
   useEffect(() => {
     closeNav();
