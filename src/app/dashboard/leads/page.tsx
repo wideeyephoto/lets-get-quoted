@@ -3,6 +3,7 @@ import { requireOwnerContext } from '@/lib/auth';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import { listLeads, type LeadStatus } from '@/lib/leads';
 import { createLeadAction } from './actions';
+import SaveButton from '@/components/save-button';
 import styles from './leads.module.css';
 
 const COLUMNS: { status: LeadStatus; label: string }[] = [
@@ -92,9 +93,7 @@ export default async function LeadsPage() {
               <input id="photos" name="photos" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple />
             </div>
             <div className="field full">
-              <button type="submit" className="btn primary">
-                Add lead
-              </button>
+              <SaveButton>Add lead</SaveButton>
             </div>
           </form>
         </details>

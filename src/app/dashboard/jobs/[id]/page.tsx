@@ -12,6 +12,7 @@ import { createDepositRequestAction, refundPaymentAction, markPaymentFailedActio
 import { createInvoiceAction } from '../invoices-actions';
 import DeleteJobButton from './DeleteJobButton';
 import PaymentActionButtons from './PaymentActionButtons';
+import SaveButton from '@/components/save-button';
 
 const STATUS_LABEL: Record<string, string> = {
   new_lead: 'New lead',
@@ -208,9 +209,7 @@ export default async function JobDetailPage({
                 />
               </div>
               <div className="field full">
-                <button type="submit" className="btn primary">
-                  Save changes
-                </button>
+                <SaveButton>Save changes</SaveButton>
               </div>
             </form>
 
@@ -241,9 +240,7 @@ export default async function JobDetailPage({
                     ))}
                   </div>
                   <div className="field full">
-                    <button type="submit" className="btn primary">
-                      Save crew assignment
-                    </button>
+                    <SaveButton>Save crew assignment</SaveButton>
                   </div>
                 </form>
               )}

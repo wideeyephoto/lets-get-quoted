@@ -5,6 +5,7 @@ import PhotoGallery from '@/components/photo-gallery';
 import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
 import { getLead } from '@/lib/leads';
 import { convertLeadAction, updateLeadStatusAction } from '../actions';
+import SaveButton from '@/components/save-button';
 import styles from '../leads.module.css';
 
 export default async function LeadDetailPage({ params }: { params: { leadId: string } }) {
@@ -45,8 +46,8 @@ export default async function LeadDetailPage({ params }: { params: { leadId: str
         </section>
 
         <aside className={styles.actionPanel}>
-          <section className="panel workspace-section-card"><div className="section-heading workspace-section-heading"><p className="eyebrow">Stage</p><h2>Update status</h2></div><form action={updateStatus} className={styles.actionForm}><select name="status" defaultValue={lead.status}><option value="new">New</option><option value="contacted">Contacted</option><option value="quoted">Quoted</option><option value="won">Won</option><option value="lost">Lost</option></select><button className="btn secondary" type="submit">Update status</button></form></section>
-          {!lead.converted_job && <section className="panel workspace-section-card"><div className="section-heading workspace-section-heading"><p className="eyebrow">Next step</p><h2>Convert to job / estimate</h2></div><p>Creates a job with this client and project information. Add a quoted amount now or estimate it later.</p><form action={convertLead} className={styles.actionForm}><label htmlFor="quotedAmount">Quoted amount ($)</label><input id="quotedAmount" name="quotedAmount" type="number" min="0" step="0.01" placeholder="0.00" /><button className="btn primary" type="submit">Create job</button></form></section>}
+          <section className="panel workspace-section-card"><div className="section-heading workspace-section-heading"><p className="eyebrow">Stage</p><h2>Update status</h2></div><form action={updateStatus} className={styles.actionForm}><select name="status" defaultValue={lead.status}><option value="new">New</option><option value="contacted">Contacted</option><option value="quoted">Quoted</option><option value="won">Won</option><option value="lost">Lost</option></select><SaveButton className="btn secondary">Update status</SaveButton></form></section>
+          {!lead.converted_job && <section className="panel workspace-section-card"><div className="section-heading workspace-section-heading"><p className="eyebrow">Next step</p><h2>Convert to job / estimate</h2></div><p>Creates a job with this client and project information. Add a quoted amount now or estimate it later.</p><form action={convertLead} className={styles.actionForm}><label htmlFor="quotedAmount">Quoted amount ($)</label><input id="quotedAmount" name="quotedAmount" type="number" min="0" step="0.01" placeholder="0.00" /><SaveButton>Create job</SaveButton></form></section>}
         </aside>
       </div>
     </main>
