@@ -1,7 +1,14 @@
 import Link from 'next/link';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
+import TemplateSlider from '@/components/template-slider';
 
 export const dynamic = 'force-dynamic';
+
+// Homepage showcases a curated set of 3 flagship templates in a slider —
+// the full catalog (17 and growing) lives behind "See a live demo" / the
+// in-app theme picker, not stacked on the landing page.
+const FEATURED_TEMPLATE_IDS = ['carbon', 'modern', 'professional'];
+const featuredTemplates = FEATURED_TEMPLATE_IDS.map((id) => AVAILABLE_TEMPLATES.find((template) => template.id === id)).filter((template): template is NonNullable<typeof template> => Boolean(template));
 
 function QuoteIcon() {
   return (
@@ -100,14 +107,6 @@ function LockIcon() {
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
       <rect x="4" y="10.5" width="16" height="10" rx="2" />
       <path d="M7.5 10.5V7a4.5 4.5 0 0 1 9 0v3.5" />
-    </svg>
-  );
-}
-
-function ArrowRightIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      <path d="M5 12h14M13 6l6 6-6 6" />
     </svg>
   );
 }
@@ -249,24 +248,7 @@ export default function HomePage() {
             photos, and publish to your own domain.
           </p>
         </div>
-        <div className="template-grid">
-          {AVAILABLE_TEMPLATES.map((template) => (
-            <Link href={`/themes/${template.id}`} className="template-card" key={template.id}>
-              <div className="template-card-image">
-                {template.previewImage ? (
-                  <img src={template.previewImage} alt={`${template.name} website template preview`} loading="lazy" />
-                ) : null}
-              </div>
-              <div className="template-card-body">
-                <strong>{template.name}</strong>
-                <span className="template-card-desc">{template.description}</span>
-                <span className="template-card-cta">
-                  View live demo <ArrowRightIcon />
-                </span>
-              </div>
-            </Link>
-          ))}
-        </div>
+        <TemplateSlider templates={featuredTemplates} />
       </section>
 
       <section className="section-block">
