@@ -200,7 +200,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     site.custom_domain && domainStatus === 'verified'
       ? `https://${site.custom_domain}`
       : site.subdomain
-        ? `/site/${site.subdomain}`
+        ? `https://${site.subdomain}.${rootDomain}`
         : null;
 
   return (
@@ -301,7 +301,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <div><span className={`${styles.statusDot} ${site.published ? styles.liveDot : ''}`} /><div><strong>{site.published ? 'Website is live' : 'Website is private'}</strong><p>{site.published ? 'Homeowners can visit your website.' : 'Only you can see the saved preview.'}</p></div></div>
                   <button type="button" onClick={handlePublish} disabled={isPending}>{site.published ? 'Unpublish' : 'Save & publish'}</button>
                 </div>
-                {site.published && (site.custom_domain && domainStatus === 'verified' ? <a className={styles.publicLink} href={`https://${site.custom_domain}`} target="_blank" rel="noopener noreferrer">Open live website ↗</a> : site.subdomain && <a className={styles.publicLink} href={`/site/${site.subdomain}`} target="_blank" rel="noopener noreferrer">Open live website ↗</a>)}
+                {site.published && liveUrl && <a className={styles.publicLink} href={liveUrl} target="_blank" rel="noopener noreferrer">Open live website ↗</a>}
               </div>
             )}
           </div>
