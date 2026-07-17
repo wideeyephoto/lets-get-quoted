@@ -54,13 +54,13 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   // its own always-visible badge below instead of a plain link). Logged-out
   // visitors — homeowners paying an invoice, or a prospect on the marketing
   // site — have no use for internal app links like Dashboard/Leads/Jobs that
-  // just dead-end at a login wall, so they see just "Example pages" (a link
-  // to the read-only /demo dashboard replica) plus the "Sign in" CTA.
+  // just dead-end at a login wall, so they see just a "Create account" CTA
+  // (the same magic-link flow handles both sign-in and account creation).
   const navItems = isLoggedIn
     ? baseNavItems.filter((item) => item.href !== '/' && item.href !== '/docs' && item.href !== '/dashboard/sites')
     : isStandaloneSite || pathname.startsWith('/demo')
       ? []
-      : [{ href: '/demo', label: 'Example pages' }];
+      : [{ href: '/login', label: 'Create account' }];
 
   useEffect(() => {
     closeNav();
