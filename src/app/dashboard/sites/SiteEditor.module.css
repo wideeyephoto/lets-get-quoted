@@ -1,7 +1,9 @@
 .themeGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
 .themeOption { overflow: hidden; padding: 0; border: 1px solid rgba(255,255,255,.14); border-radius: 8px; background: rgba(255,255,255,.035); color: inherit; text-align: left; cursor: pointer; }
-.themeOption img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; }
-.themeOption span { display: block; padding: .9rem; }
+.themeIcon { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 16 / 10; overflow: hidden; background: radial-gradient(circle at 28% 22%, color-mix(in srgb, var(--tile-accent) 40%, transparent), transparent 62%), #10141d; }
+.themeIcon::after { content: ''; position: absolute; inset: auto 0 0 0; height: 3px; background: var(--tile-accent); opacity: .85; }
+.themeIconLetter { position: relative; font-size: 1.9rem; font-weight: 700; letter-spacing: .01em; color: var(--tile-accent); text-shadow: 0 1px 14px color-mix(in srgb, var(--tile-accent) 55%, transparent); }
+.themeOptionInfo { display: block; padding: .9rem; }
 .themeOption strong { display: block; margin-bottom: .35rem; }
 .themeOption small { display: block; color: #c8d0dc; line-height: 1.4; }
 .selectedTheme { border-color: #ffd166; box-shadow: 0 0 0 2px rgba(255,209,102,.2); }
@@ -55,7 +57,7 @@
 .formColumns { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
 .formSection .themeGrid { grid-template-columns: 1fr; }
 .formSection .themeOption { display: grid; grid-template-columns: 132px 1fr; }
-.formSection .themeOption img { height: 100%; aspect-ratio: 4 / 3; }
+.formSection .themeIcon { height: 100%; aspect-ratio: 4 / 3; }
 .colorControl { display: grid; grid-template-columns: 48px 1fr; gap: .5rem; }
 .colorControl input[type='color'] { min-height: 43px; padding: 4px; cursor: pointer; }
 .logoPreview { display: grid; min-height: 88px; place-items: center; padding: 1rem; border: 1px solid rgba(255,255,255,.1); border-radius: 6px; background: #fff; }
@@ -91,7 +93,7 @@
 @media (max-width: 760px) {
   .themeGrid, .imageGrid { grid-template-columns: 1fr; }
   .themeOption { display: grid; grid-template-columns: minmax(110px, .7fr) 1fr; }
-  .themeOption img { height: 100%; aspect-ratio: 4 / 3; }
+  .themeIcon { height: 100%; aspect-ratio: 4 / 3; }
 }
 
 @media (max-width: 480px) {

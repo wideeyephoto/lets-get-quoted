@@ -15,7 +15,7 @@ import {
   type JobStatus,
 } from '@/lib/jobs';
 import { uploadJobPhoto } from '@/lib/job-photo-storage';
-import { listCrew, setJobCrewAssignments } from '@/lib/crew';
+import { listCrew, setJobCrewAssignments, toggleJobCrewAssignment } from '@/lib/crew';
 import { sendCrewAssignmentSms } from '@/lib/sms';
 
 function parseAmount(value: FormDataEntryValue | null): number {
@@ -124,6 +124,47 @@ export async function updateJobCrewAction(jobId: string, formData: FormData) {
   }
 
   revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
+// Quick single add/remove toggle used by the schedule calendar's click-to-
+// assign popover — unlike updateJobCrewAction, this doesn't replace the
+// whole assignment set, it just flips one crew member on one job.
+export async function toggleJobCrewAction(jobId: string, crewId: string): Promise<{ assigned: boolean }> {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const { assigned } = await toggleJobCrewAssignment(supabase, accountId, jobId, crewId);
+
+  if (assigned) {
+    const [job, { data: account }, crewMembers] = await Promise.all([
+      getJob(supabase, accountId, jobId),
+      supabase.from('accounts').select('business_name').eq('id', accountId).single(),
+      listCrew(supabase, accountId),
+    ]);
+    const member = crewMembers.find((candidate) => candidate.id === crewId);
+
+    if (job && member) {
+      const businessName = account?.business_name || "Let's Get Quoted contractor";
+      try {
+        await sendCrewAssignmentSms({
+          phone: member.phone,
+          crewName: member.name,
+          businessName,
+          jobRef: job.ref,
+          clientName: job.client_name,
+          address: job.address,
+          scheduledFor: job.scheduled_for,
+        });
+      } catch (error) {
+        console.error(`Crew assignment SMS failed for crew ${crewId} on job ${jobId}:`, error);
+      }
+    }
+  }
+
+  revalidatePath('/dashboard/schedule');
+  revalidatePath('/dashboard/jobs');
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+
+  return { assigned };
 }
 
 export async function createCostAction(jobId: string, formData: FormData) {

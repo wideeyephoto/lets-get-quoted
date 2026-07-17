@@ -118,3 +118,65 @@ export async function setJobCrewAssignments(
 
   return { added, removed };
 }
+
+// Bulk-fetches crew assignments for many jobs at once (e.g. a month of
+// scheduled jobs on the calendar) to avoid an N+1 query per job.
+export async function listCrewAssignmentsForJobs(
+  supabase: SupabaseClient,
+  accountId: string,
+  jobIds: string[]
+): Promise<Record<string, string[]>> {
+  if (jobIds.length === 0) return {};
+
+  const { data, error } = await supabase
+    .from('crew_assignments')
+    .select('job_id, crew_id')
+    .eq('account_id', accountId)
+    .in('job_id', jobIds);
+
+  if (error) throw error;
+
+  const map: Record<string, string[]> = {};
+  for (const row of data ?? []) {
+    const jobId = row.job_id as string;
+    const bucket = map[jobId] ?? (map[jobId] = []);
+    bucket.push(row.crew_id as string);
+  }
+  return map;
+}
+
+// Assigns a single crew member to a job if not already assigned, otherwise
+// unassigns them. Used by the schedule calendar's quick click-to-assign UI.
+export async function toggleJobCrewAssignment(
+  supabase: SupabaseClient,
+  accountId: string,
+  jobId: string,
+  crewId: string
+): Promise<{ assigned: boolean }> {
+  const { data: existing, error: selectError } = await supabase
+    .from('crew_assignments')
+    .select('crew_id')
+    .eq('account_id', accountId)
+    .eq('job_id', jobId)
+    .eq('crew_id', crewId)
+    .maybeSingle();
+
+  if (selectError) throw selectError;
+
+  if (existing) {
+    const { error } = await supabase
+      .from('crew_assignments')
+      .delete()
+      .eq('account_id', accountId)
+      .eq('job_id', jobId)
+      .eq('crew_id', crewId);
+    if (error) throw error;
+    return { assigned: false };
+  }
+
+  const { error } = await supabase
+    .from('crew_assignments')
+    .insert({ account_id: accountId, job_id: jobId, crew_id: crewId });
+  if (error) throw error;
+  return { assigned: true };
+}

@@ -8,6 +8,7 @@ import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import { checkSubdomainAvailableAction, publishSiteAction, updateSiteAction, verifyCustomDomainAction } from './actions';
 import ImageLibrary from './ImageLibrary';
 import LivePreview from './LivePreview';
+import ThemeIcon from './ThemeIcon';
 import styles from './SiteEditor.module.css';
 
 type BuilderTab = 'business' | 'images' | 'design' | 'publish';
@@ -253,8 +254,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 <div className={styles.themeGrid}>
                   {AVAILABLE_TEMPLATES.map((template) => (
                     <button type="button" key={template.id} className={`${styles.themeOption}${site.template === template.id ? ` ${styles.selectedTheme}` : ''}`} onClick={() => handleChange('template', template.id as TemplateType)} aria-pressed={site.template === template.id}>
-                      <img src={template.previewImage} alt="" />
-                      <span><strong>{template.name}</strong><small>{template.description}</small></span>
+                      <ThemeIcon name={template.name} accent={template.accent} fontVar={template.fontVar} />
+                      <span className={styles.themeOptionInfo}><strong>{template.name}</strong><small>{template.description}</small></span>
                     </button>
                   ))}
                 </div>

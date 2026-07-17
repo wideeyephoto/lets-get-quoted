@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { listJobs, type Job } from '@/lib/jobs';
+import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { scheduleJobAction } from '../jobs/actions';
+import ScheduleCalendar from './schedule-calendar';
 
 const STATUS_LABEL: Record<Job['status'], string> = {
   new_lead: 'New lead',
@@ -9,8 +11,6 @@ const STATUS_LABEL: Record<Job['status'], string> = {
   complete: 'Complete',
   archived: 'Archived',
 };
-
-const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function parseMonthParam(month?: string): { year: number; monthIndex: number } {
   if (month && /^\d{4}-\d{2}$/.test(month)) {
@@ -41,13 +41,12 @@ export default async function SchedulePage({
   const scheduledJobs = activeJobs.filter((job) => job.scheduled_for);
   const unscheduledJobs = activeJobs.filter((job) => !job.scheduled_for);
 
-  const jobsByDate = new Map<string, Job[]>();
-  for (const job of scheduledJobs) {
-    const key = job.scheduled_for as string;
-    const bucket = jobsByDate.get(key) ?? [];
-    bucket.push(job);
-    jobsByDate.set(key, bucket);
-  }
+  const crew = await listCrew(supabase, accountId, { activeOnly: true });
+  const assignmentsByJob = await listCrewAssignmentsForJobs(
+    supabase,
+    accountId,
+    scheduledJobs.map((job) => job.id)
+  );
 
   const { year, monthIndex } = parseMonthParam(searchParams.month);
   const firstWeekday = new Date(year, monthIndex, 1).getDay();
@@ -74,6 +73,19 @@ export default async function SchedulePage({
     const dateKey = job.scheduled_for as string;
     return dateKey >= todayKey && dateKey <= next30Key;
   }).length;
+
+  const calendarJobs = scheduledJobs.map((job) => ({
+    id: job.id,
+    client_name: job.client_name,
+    status: job.status,
+    scheduled_for: job.scheduled_for as string,
+  }));
+
+  const crewOptions = crew.map((member) => ({
+    id: member.id,
+    name: member.name,
+    role_label: member.role_label,
+  }));
 
   return (
     <main className="wide-shell workspace-shell">
@@ -112,36 +124,13 @@ export default async function SchedulePage({
           </div>
         </div>
 
-        <div className="calendar-grid">
-          {WEEKDAY_LABELS.map((label) => (
-            <div className="calendar-weekday" key={label}>{label}</div>
-          ))}
-          {weeks.map((week, weekIndex) =>
-            week.map((cell, cellIndex) => {
-              if (!cell) {
-                return <div className="calendar-cell empty" key={`${weekIndex}-${cellIndex}`} />;
-              }
-              const dayJobs = jobsByDate.get(cell.dateKey) ?? [];
-              return (
-                <div className={`calendar-cell${cell.dateKey === todayKey ? ' today' : ''}`} key={cell.dateKey}>
-                  <span className="calendar-day-number">{cell.day}</span>
-                  <div className="calendar-day-jobs">
-                    {dayJobs.map((job) => (
-                      <Link
-                        key={job.id}
-                        href={`/dashboard/jobs/${job.id}`}
-                        className={`calendar-job-chip status-${job.status}`}
-                        title={job.client_name}
-                      >
-                        {job.client_name}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
+        <ScheduleCalendar
+          weeks={weeks}
+          todayKey={todayKey}
+          jobs={calendarJobs}
+          crew={crewOptions}
+          assignmentsByJob={assignmentsByJob}
+        />
       </section>
 
       {unscheduledJobs.length > 0 ? (
