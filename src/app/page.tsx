@@ -205,7 +205,7 @@ export default function HomePage() {
           </p>
           <div className="actions">
             <Link href="/login" className="btn primary">
-              Start with magic link
+              Create Free Account
             </Link>
             <Link href="/themes/carbon" className="btn secondary">
               See a live demo
@@ -316,7 +316,7 @@ export default function HomePage() {
           <p>No subscription. No setup fee. You only pay our platform fee when a homeowner actually pays you.</p>
           <div className="actions">
             <Link href="/login" className="btn primary">
-              Start with magic link
+              Create Free Account
             </Link>
             <Link href="/themes/carbon" className="btn secondary">
               See a live demo
