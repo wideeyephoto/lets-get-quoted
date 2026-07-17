@@ -189,6 +189,20 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     });
   }, [site]);
 
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
+  const liveDomain =
+    site.custom_domain && domainStatus === 'verified'
+      ? site.custom_domain
+      : site.subdomain
+        ? `${site.subdomain}.${rootDomain}`
+        : null;
+  const liveUrl =
+    site.custom_domain && domainStatus === 'verified'
+      ? `https://${site.custom_domain}`
+      : site.subdomain
+        ? `/site/${site.subdomain}`
+        : null;
+
   return (
     <main className={styles.builderShell}>
       <header className={styles.builderHeader}>
@@ -196,6 +210,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
           <p className={styles.builderEyebrow}>Website builder</p>
           <h1>{site.company_name || 'Your contractor website'}</h1>
           <span className={styles.saveStatus}>{isDirty ? 'Unsaved changes' : 'All changes saved'}</span>
+          {site.published && liveUrl && liveDomain ? (
+            <a href={liveUrl} target="_blank" rel="noopener noreferrer" className={styles.liveStatusLink}>
+              <span className={styles.liveStatusDot} aria-hidden="true" />
+              Website LIVE @ {liveDomain}
+            </a>
+          ) : null}
         </div>
         <div className={styles.builderActions}>
           <a href="/dashboard/sites/preview" target="_blank" rel="noopener noreferrer" className="btn secondary">Open full preview</a>
