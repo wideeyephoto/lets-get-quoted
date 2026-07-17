@@ -1,6 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export type TemplateType = 'carbon' | 'professional' | 'modern' | 'minimal';
+export type TemplateType =
+  | 'carbon' | 'professional' | 'modern' | 'minimal'
+  | 'atlas' | 'summit' | 'meridian' | 'beacon' | 'foundry' | 'lumen'
+  | 'anchor' | 'timber' | 'circuit' | 'cascade' | 'ironclad' | 'bloom'
+  | 'blueprint' | 'nova' | 'heritage' | 'drift';
 export type PortalMode = 'light' | 'dark';
 
 export type Site = {

@@ -1,0 +1,63 @@
+.heritage { background: #f7f4ee; color: #211c17; font-family: var(--font-guild-body), Georgia, serif; --theme-radius: 3px; }
+.heritage[data-mode='dark'] { background: #1c1712; color: #f3efe6; }
+.heritage[data-mode='dark'] .header, .heritage[data-mode='dark'] .intro, .heritage[data-mode='dark'] .services article, .heritage[data-mode='dark'] .footer { border-color: #423a30; }
+.heritage[data-mode='dark'] .brand small, .heritage[data-mode='dark'] .intro > p, .heritage[data-mode='dark'] .services p { color: #cdc3b3; }
+
+.header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 96px; padding: 0 5vw; border-bottom: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+.brand { display: flex; align-items: center; gap: 0.9rem; }
+.brand span { display: flex; flex-direction: column; }
+.brand strong { font-family: var(--theme-display); font-size: 1.3rem; }
+.brand small { color: color-mix(in srgb, currentColor 60%, transparent); font-size: 0.68rem; letter-spacing: 0.04em; text-transform: uppercase; }
+.navCta { justify-self: end; padding-bottom: 0.35rem; border-bottom: 2px solid var(--theme-accent); font-weight: 700; }
+
+.hero { min-height: 660px; display: grid; grid-template-columns: 0.9fr 1.1fr; }
+.heroCopy { display: flex; flex-direction: column; justify-content: center; padding: 6vw 5vw; }
+.heroCopy h1 { margin-bottom: 1.5rem; font-family: var(--theme-display); font-size: 4.35rem; font-weight: 600; line-height: 1.05; }
+.heroText { max-width: 34rem; font-size: 1.08rem; line-height: 1.7; opacity: 0.78; }
+.textLink { font-weight: 700; border-bottom: 1px solid currentColor; }
+
+.heroMedia { position: relative; min-height: 540px; }
+.heroMedia > img { width: 100%; height: 100%; object-fit: cover; }
+.badge { position: absolute; left: 0; bottom: 0; display: flex; flex-direction: column; max-width: 260px; padding: 1.5rem 2rem; background: var(--theme-accent); color: #fff; }
+.badge span { margin-top: 0.3rem; font-size: 0.8rem; }
+
+.intro { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 6vw; padding: clamp(4rem, 8vw, 7rem) 5vw; border-bottom: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+.intro h2, .work h2, .contact h2 { font-family: var(--theme-display); font-size: 3rem; font-weight: 600; line-height: 1.08; }
+.intro > p { align-self: end; font-size: 1.05rem; line-height: 1.75; opacity: 0.75; }
+
+.services { display: grid; grid-template-columns: repeat(3, 1fr); padding: 0 5vw; }
+.services article { padding: 3.5rem 3vw 4rem 0; border-right: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+.services article + article { padding-left: 3vw; }
+.services article:last-child { border: 0; }
+.services span { color: var(--theme-accent); font-weight: 800; }
+.services h3 { margin: 1.5rem 0 0.85rem; font-family: var(--theme-display); font-size: 1.45rem; font-weight: 600; }
+.services p { opacity: 0.72; line-height: 1.6; }
+
+.work { padding: clamp(4rem, 8vw, 7rem) 5vw; background: color-mix(in srgb, currentColor 5%, transparent); }
+.gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; margin-top: 2.5rem; }
+.gallery figure { margin: 0; overflow: hidden; border-radius: var(--theme-radius); }
+.gallery img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; transition: transform 0.5s ease; }
+.gallery figure:hover img { transform: scale(1.05); }
+.gallery figcaption { padding-top: 0.75rem; font-size: 0.85rem; opacity: 0.68; }
+
+.contact { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 6vw; padding: clamp(4rem, 8vw, 7rem) 5vw; }
+.contact > div:last-child { align-self: end; display: grid; gap: 0.5rem; }
+
+.footer { display: grid; grid-template-columns: 1fr 1fr auto; padding: 2rem 5vw; border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); font-size: 0.85rem; opacity: 0.78; }
+.footer strong { opacity: 1; }
+
+@media (max-width: 820px) {
+  .header { grid-template-columns: 1fr auto; padding-inline: 1.25rem; }
+  .navCta { grid-column: 2; }
+  .hero { grid-template-columns: 1fr; }
+  .heroCopy { padding: 4rem 1.25rem; }
+  .heroCopy h1 { font-size: 2.65rem; }
+  .heroMedia { min-height: 50svh; }
+  .intro, .contact { grid-template-columns: 1fr; padding-inline: 1.25rem; }
+  .services { grid-template-columns: 1fr; padding-inline: 1.25rem; }
+  .services article, .services article + article { padding: 2.5rem 0; border-right: 0; border-bottom: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+  .work { padding-inline: 1.25rem; }
+  .gallery { grid-template-columns: 1fr; }
+  .intro h2, .work h2, .contact h2 { font-size: 2.25rem; }
+  .footer { grid-template-columns: 1fr; gap: 0.6rem; }
+}

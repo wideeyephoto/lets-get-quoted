@@ -9,7 +9,7 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[0].url;
   const themeStyle = {
     '--theme-accent': site.accent_override || '#d8ff45',
-    '--theme-display': site.header_font || 'Arial Black, Helvetica, sans-serif',
+    '--theme-display': site.header_font || 'var(--font-display), Arial Black, Helvetica, sans-serif',
   } as CSSProperties;
 
   return (

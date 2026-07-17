@@ -9,7 +9,7 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
   const themeStyle = {
     '--theme-accent': site.accent_override || '#f0b429',
-    '--theme-display': site.header_font || 'Impact, Haettenschweiler, sans-serif',
+    '--theme-display': site.header_font || 'var(--font-forge-display), Impact, Haettenschweiler, sans-serif',
   } as CSSProperties;
 
   return (
