@@ -242,7 +242,7 @@ export default function HomePage() {
       <section className="section-block">
         <div className="section-heading">
           <p className="eyebrow">Your storefront</p>
-          <h2>Premium websites, free with every account.</h2>
+          <h2>Powerful website templates made for contractors.</h2>
           <p>
             Fully customizable and designed to convert, so every visitor sees a site that impresses clients
             from the first click. Pick a look, drop in your photos, and publish to your own domain.
