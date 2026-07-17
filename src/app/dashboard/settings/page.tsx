@@ -1,5 +1,5 @@
 import { requireOwnerContext } from '@/lib/auth';
-import { connectStripeAction } from '../stripe-actions';
+import { connectStripeAction, disconnectStripeAction } from '../stripe-actions';
 import SignInMethods from './SignInMethods';
 import FinanceReports from './FinanceReports';
 import { getAvailableTaxYears, buildProfitAndLoss, buildScheduleCWorksheet, build1099PrepList } from '@/lib/tax-reports';
@@ -15,13 +15,18 @@ export default async function SettingsPage({
 }) {
   const { supabase, accountId } = await requireOwnerContext();
 
-  const [{ data: userData }, { data: identityData }, { data: account }, { data: site }, availableYears] =
+  const [{ data: userData }, { data: identityData }, { data: account }, { data: site }, availableYears, { count: pendingPaymentsCount }] =
     await Promise.all([
       supabase.auth.getUser(),
       supabase.auth.getUserIdentities(),
       supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded').eq('id', accountId).single(),
       supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
       getAvailableTaxYears(supabase, accountId),
+      supabase
+        .from('payments')
+        .select('id', { count: 'exact', head: true })
+        .eq('account_id', accountId)
+        .in('status', ['requested', 'processing']),
     ]);
 
   const providers = (identityData?.identities ?? []).map((identity) => identity.provider);
@@ -66,6 +71,8 @@ export default async function SettingsPage({
           providers={providers}
           stripeOnboarded={account?.connect_onboarded ?? false}
           connectStripeAction={connectStripeAction}
+          disconnectStripeAction={disconnectStripeAction}
+          pendingPaymentsCount={pendingPaymentsCount ?? 0}
         />
       </section>
 
