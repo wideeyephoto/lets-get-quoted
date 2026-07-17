@@ -6,6 +6,8 @@ const DEMO_NAV_ITEMS = [
   { href: '/demo/jobs', label: 'Jobs' },
   { href: '/demo/crew', label: 'Crew' },
   { href: '/demo/schedule', label: 'Schedule' },
+  { href: '/demo/sites', label: 'Website' },
+  { href: '/demo/settings', label: 'Account' },
 ] as const;
 
 export default function DemoNav({ active }: { active: (typeof DEMO_NAV_ITEMS)[number]['href'] }) {
