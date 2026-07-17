@@ -502,7 +502,9 @@ export default async function JobDetailPage({
                       />
                       {payment.sms_events?.some((event) => event.event_type === 'payment_requested' && event.status === 'failed') && (
                         <form action={boundRetryPaymentText.bind(null, payment.id)}>
-                          <button className="btn secondary" type="submit">Retry SMS</button>
+                          <SaveButton className="btn secondary" pendingLabel="Sending…" savedLabel="Sent ✓">
+                            Retry SMS
+                          </SaveButton>
                         </form>
                       )}
                     </div>
