@@ -18,6 +18,24 @@ export type Job = {
   created_at: string;
 };
 
+// Pipeline order for job lists: new leads need attention first, in-progress
+// work is actively being tracked, and completed/archived jobs are done —
+// they sink to the bottom regardless of how recently they were touched.
+export const JOB_STATUS_ORDER: Record<JobStatus, number> = {
+  new_lead: 0,
+  in_progress: 1,
+  complete: 2,
+  archived: 3,
+};
+
+export function sortJobsByStatus<T extends { status: JobStatus; created_at: string }>(jobs: T[]): T[] {
+  return [...jobs].sort((a, b) => {
+    const statusDiff = JOB_STATUS_ORDER[a.status] - JOB_STATUS_ORDER[b.status];
+    if (statusDiff !== 0) return statusDiff;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+}
+
 export type Cost = {
   id: string;
   account_id: string;
@@ -142,7 +160,7 @@ export async function listJobs(
     throw error;
   }
 
-  return (data ?? []) as Job[];
+  return sortJobsByStatus((data ?? []) as Job[]);
 }
 
 export async function getJob(supabase: SupabaseClient, accountId: string, jobId: string): Promise<Job | null> {

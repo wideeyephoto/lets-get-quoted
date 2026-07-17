@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import DemoNav from '@/components/demo-nav';
-import { formatMoney, type JobStatus } from '@/lib/jobs';
+import { formatMoney, sortJobsByStatus, type JobStatus } from '@/lib/jobs';
 import { DEMO_JOBS } from '@/lib/demo-data';
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +22,7 @@ const STATUS_LABEL: Record<JobStatus, string> = {
 
 export default function DemoJobsPage({ searchParams }: { searchParams: { status?: string } }) {
   const statusParam = searchParams.status as JobStatus | undefined;
-  const jobs = statusParam ? DEMO_JOBS.filter((job) => job.status === statusParam) : DEMO_JOBS;
+  const jobs = sortJobsByStatus(statusParam ? DEMO_JOBS.filter((job) => job.status === statusParam) : DEMO_JOBS);
   const totalQuoted = jobs.reduce((sum, job) => sum + job.quoted_amount, 0);
   const activeJobs = jobs.filter((job) => job.status === 'in_progress').length;
 
