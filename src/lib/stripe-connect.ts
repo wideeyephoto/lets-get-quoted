@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import Stripe from 'stripe';
 import { getStripeClient } from './stripe';
 
 // -- Connect onboarding (v2 Accounts API, Recipient configuration) -----------
@@ -22,11 +23,26 @@ export async function createOrGetRecipientAccount(
     throw error;
   }
 
-  if (account?.stripe_connect_id) {
-    return account.stripe_connect_id;
-  }
-
   const stripe = getStripeClient();
+
+  if (account?.stripe_connect_id) {
+    // A stored id can belong to a different Stripe mode than the CURRENT API
+    // key (e.g. a test-mode id left over from before switching to a live
+    // key) — test and live objects are mutually invisible, so Stripe rejects
+    // cross-mode access as a permission error rather than a clean "not
+    // found". Verify the id is actually reachable with the current key
+    // before reusing it; otherwise fall through and create a fresh one
+    // instead of surfacing a confusing permission error to the caller.
+    try {
+      await stripe.v2.core.accounts.retrieve(account.stripe_connect_id);
+      return account.stripe_connect_id;
+    } catch (err) {
+      if (!(err instanceof Stripe.errors.StripePermissionError || err instanceof Stripe.errors.StripeInvalidRequestError)) {
+        throw err;
+      }
+      // Stale/inaccessible under the current key — recreate below.
+    }
+  }
 
   const created = await stripe.v2.core.accounts.create({
     display_name: businessName,
@@ -50,7 +66,12 @@ export async function createOrGetRecipientAccount(
 
   const { error: updateError } = await supabase
     .from('accounts')
-    .update({ stripe_connect_id: created.id })
+    // Always reset connect_onboarded here — this always writes a BRAND NEW
+    // Stripe account id (either a first-time signup, or a replacement for a
+    // stale/wrong-mode one above), which has never completed onboarding yet.
+    // Leaving a stale `true` from an old account would let payment creation
+    // proceed against a recipient that can't actually receive transfers.
+    .update({ stripe_connect_id: created.id, connect_onboarded: false })
     .eq('id', accountId);
 
   if (updateError) {
