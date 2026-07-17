@@ -133,7 +133,12 @@ export default async function DashboardPage() {
         </section>
       ) : null}
 
-      <section className="workspace-hero workspace-hero-solo panel">
+      <section className="panel workspace-section-card">
+        <div className="section-heading workspace-section-heading">
+          <p className="eyebrow">Snapshot</p>
+          <h2>Account overview</h2>
+        </div>
+
         {siteUrl ? (
           <div className="actions" style={{ marginBottom: '1.1rem' }}>
             <a href={siteUrl} target="_blank" rel="noopener noreferrer" className="btn fun">

@@ -40,6 +40,8 @@ export default async function InvoiceDetailPage({
   }
 
   const { invoice, items } = result;
+  const isLocked = invoice.status === 'signed' || invoice.status === 'paid' || invoice.status === 'void';
+  const shareLink = `/invoice/${invoice.id}`;
 
   const boundAddItem = addInvoiceItemAction.bind(null, params.id, invoice.id);
   const boundDeleteInvoice = deleteInvoiceAction.bind(null, params.id, invoice.id);
@@ -52,7 +54,7 @@ export default async function InvoiceDetailPage({
           <p className="job-ref">{invoice.ref}</p>
           <h1 className="workspace-title">{formatMoney(invoice.total)}</h1>
           <div className="workspace-inline-row">
-            <span className={`status-badge status-${invoice.status === 'paid' ? 'complete' : invoice.status === 'void' ? 'archived' : 'in_progress'}`}>
+            <span className={`status-badge status-${invoice.status === 'paid' || invoice.status === 'signed' ? 'complete' : invoice.status === 'void' ? 'archived' : 'in_progress'}`}>
               {INVOICE_STATUS_LABEL[invoice.status]}
             </span>
             <span className="workspace-inline-note">{items.length} line item{items.length === 1 ? '' : 's'}</span>
@@ -83,6 +85,28 @@ export default async function InvoiceDetailPage({
         </div>
       </section>
 
+      <section className="panel workspace-section-card">
+        <div className="section-heading workspace-section-heading">
+          <p className="eyebrow">Share</p>
+          <h2>Client sign-off link</h2>
+        </div>
+        <p className="workspace-card-copy">
+          Send this link to your client so they can review line items and sign the invoice — no login required.
+        </p>
+        <p className="job-meta">
+          <a href={shareLink} target="_blank" rel="noreferrer">
+            {shareLink}
+          </a>
+        </p>
+        {invoice.signed_at ? (
+          <div className="payment-banner success" style={{ marginTop: '0.9rem' }}>
+            <p>
+              Signed by <strong>{invoice.signer_name}</strong> on {new Date(invoice.signed_at).toLocaleString()}.
+            </p>
+          </div>
+        ) : null}
+      </section>
+
       <section className="detail-grid workspace-grid-gap">
           <div>
             <div className="panel workspace-section-card">
@@ -91,23 +115,27 @@ export default async function InvoiceDetailPage({
                 <h2>Invoice breakdown</h2>
               </div>
 
-            <form action={boundAddItem} className="cost-form">
-              <div className="cost-form-row">
-                <div className="field" style={{ flex: 2 }}>
-                  <label htmlFor="description">Description</label>
-                  <input id="description" name="description" required placeholder="Tear-off & disposal (28 sq)" />
+            {!isLocked ? (
+              <form action={boundAddItem} className="cost-form">
+                <div className="cost-form-row">
+                  <div className="field" style={{ flex: 2 }}>
+                    <label htmlFor="description">Description</label>
+                    <input id="description" name="description" required placeholder="Tear-off & disposal (28 sq)" />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="amount">Amount ($)</label>
+                    <input id="amount" name="amount" type="number" min="0.01" step="0.01" required placeholder="3200" />
+                  </div>
                 </div>
-                <div className="field">
-                  <label htmlFor="amount">Amount ($)</label>
-                  <input id="amount" name="amount" type="number" min="0.01" step="0.01" required placeholder="3200" />
+                <div style={{ marginTop: '0.8rem' }}>
+                  <button type="submit" className="btn primary">
+                    + Add line
+                  </button>
                 </div>
-              </div>
-              <div style={{ marginTop: '0.8rem' }}>
-                <button type="submit" className="btn primary">
-                  + Add line
-                </button>
-              </div>
-            </form>
+              </form>
+            ) : (
+              <p className="job-meta">Line items are locked once a client signs, pays, or the invoice is voided.</p>
+            )}
 
             {items.length === 0 ? (
               <p className="empty-state">No line items yet.</p>
@@ -120,11 +148,13 @@ export default async function InvoiceDetailPage({
                     </div>
                     <div className="cost-item-actions">
                       <span className="cost-item-amount">{formatMoney(item.amount)}</span>
-                      <form action={deleteInvoiceItemAction.bind(null, params.id, invoice.id, item.id)}>
-                        <button type="submit" className="icon-btn">
-                          ✕
-                        </button>
-                      </form>
+                      {!isLocked ? (
+                        <form action={deleteInvoiceItemAction.bind(null, params.id, invoice.id, item.id)}>
+                          <button type="submit" className="icon-btn">
+                            ✕
+                          </button>
+                        </form>
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -139,23 +169,47 @@ export default async function InvoiceDetailPage({
                 <p className="eyebrow">Status</p>
                 <h2>Invoice controls</h2>
               </div>
-            <form action={boundUpdateStatus} className="cost-form">
-              <div className="field">
-                <label htmlFor="status">Invoice status</label>
-                <select id="status" name="status" defaultValue={invoice.status}>
-                  <option value="draft">Draft</option>
-                  <option value="sent">Sent</option>
-                  <option value="signed">Signed</option>
-                  <option value="paid">Paid</option>
-                  <option value="void">Void</option>
-                </select>
-              </div>
-              <div style={{ marginTop: '0.8rem' }}>
-                <button type="submit" className="btn primary">
-                  Update status
+            {invoice.status === 'draft' || invoice.status === 'sent' ? (
+              <form action={boundUpdateStatus} className="cost-form">
+                <div className="field">
+                  <label htmlFor="status">Invoice status</label>
+                  <select id="status" name="status" defaultValue={invoice.status}>
+                    <option value="draft">Draft</option>
+                    <option value="sent">Sent</option>
+                  </select>
+                </div>
+                <div style={{ marginTop: '0.8rem' }}>
+                  <button type="submit" className="btn primary">
+                    Update status
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <p className="job-meta">
+                {invoice.status === 'signed'
+                  ? 'Signed by the client — awaiting payment.'
+                  : invoice.status === 'paid'
+                    ? 'Paid in full.'
+                    : 'This invoice has been voided.'}
+              </p>
+            )}
+
+            {invoice.status !== 'paid' && invoice.status !== 'void' ? (
+              <form action={boundUpdateStatus} style={{ marginTop: '0.6rem' }}>
+                <input type="hidden" name="status" value="paid" />
+                <button type="submit" className="btn secondary">
+                  Mark as paid
                 </button>
-              </div>
-            </form>
+              </form>
+            ) : null}
+            {invoice.status !== 'paid' && invoice.status !== 'void' ? (
+              <form action={boundUpdateStatus} style={{ marginTop: '0.6rem' }}>
+                <input type="hidden" name="status" value="void" />
+                <button type="submit" className="btn secondary">
+                  Void invoice
+                </button>
+              </form>
+            ) : null}
 
             <div className="workspace-danger-zone">
               <p className="eyebrow danger-eyebrow">

@@ -23,7 +23,9 @@ export async function sendInvoiceEmail(input: SendInvoiceEmailInput): Promise<vo
   }
 
   try {
-    const invoiceLink = `${input.origin}/dashboard/jobs/${input.invoice.job_id}/invoices/${input.invoice.id}`;
+    // Public, no-login link — the recipient signing/reviewing this invoice
+    // is the client, not a dashboard user (mirrors the /pay/[id] pattern).
+    const invoiceLink = `${input.origin}/invoice/${input.invoice.id}`;
 
     const emailHtml = generateInvoiceHtml({
       businessName: input.businessName,

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/auth';
 import { getJob } from '@/lib/jobs';
 
 export type InvoiceStatus = 'draft' | 'sent' | 'signed' | 'paid' | 'void';
@@ -209,6 +210,76 @@ export async function updateInvoiceStatus(
 
 export async function deleteInvoice(supabase: SupabaseClient, accountId: string, invoiceId: string): Promise<void> {
   const { error } = await supabase.from('invoices').delete().eq('account_id', accountId).eq('id', invoiceId);
+
+  if (error) {
+    throw error;
+  }
+}
+
+export type PublicInvoiceRecord = Invoice & {
+  job: { client_name: string; ref: string } | null;
+  account: { business_name: string } | null;
+};
+
+// Public read — the client signing an invoice has no user session, so this
+// always uses the admin client and returns only what the public invoice page
+// needs to render (mirrors getPublicPayment's pattern).
+export async function getPublicInvoice(
+  invoiceId: string
+): Promise<{ invoice: PublicInvoiceRecord; items: InvoiceItem[] } | null> {
+  const admin = createAdminClient();
+
+  const { data: invoice, error } = await admin
+    .from('invoices')
+    .select('*, job:jobs(client_name, ref), account:accounts(business_name)')
+    .eq('id', invoiceId)
+    .maybeSingle();
+
+  if (error || !invoice) {
+    return null;
+  }
+
+  const { data: items, error: itemsError } = await admin
+    .from('invoice_items')
+    .select('*')
+    .eq('invoice_id', invoiceId)
+    .order('sort_order', { ascending: true });
+
+  if (itemsError) {
+    throw itemsError;
+  }
+
+  return { invoice: invoice as unknown as PublicInvoiceRecord, items: (items ?? []) as InvoiceItem[] };
+}
+
+// Records the client's e-signature. Idempotent by design: once signed, the
+// first signer_name/signed_at stick — a client re-opening the link (or
+// resubmitting the form) can't overwrite who actually signed it.
+export async function signInvoice(invoiceId: string, signerName: string): Promise<void> {
+  const admin = createAdminClient();
+
+  const { data: invoice, error: fetchError } = await admin
+    .from('invoices')
+    .select('status, signed_at')
+    .eq('id', invoiceId)
+    .maybeSingle();
+
+  if (fetchError || !invoice) {
+    throw new Error('Invoice not found.');
+  }
+
+  if (invoice.status === 'void') {
+    throw new Error('This invoice has been voided and can no longer be signed.');
+  }
+
+  if (invoice.signed_at) {
+    return;
+  }
+
+  const { error } = await admin
+    .from('invoices')
+    .update({ status: 'signed', signed_at: new Date().toISOString(), signer_name: signerName })
+    .eq('id', invoiceId);
 
   if (error) {
     throw error;
