@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -107,7 +108,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       <header className="topbar">
         <div className="topbar-inner">
           <Link href={brandHref} className="brand-mark" aria-label="Let&apos;s Get Quoted home">
-            <span className="brand-kicker">LGQ</span>
+            <Image src="/SITE-LOGO-1.png" alt="Let's Get Quoted" width={160} height={33} className="brand-logo-img" priority />
             <span className="brand-copy">
               <strong>Let&apos;s Get Quoted</strong>
               <span>Quote to paid for contractors</span>
