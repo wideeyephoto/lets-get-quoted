@@ -124,10 +124,13 @@ h3 {
 .topnav-link {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.4rem;
   padding: 0.65rem 0.9rem;
   border-radius: 999px;
   color: rgba(247, 245, 239, 0.74);
+  line-height: 1.12;
+  text-align: center;
   transition: background 0.18s ease, color 0.18s ease;
 }
 
