@@ -3,14 +3,14 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Fragment, useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useAppShell } from './app-shell-provider';
 import { supabase } from '@/lib/supabase';
 
 const baseNavItems = [
   { href: '/', label: 'Home' },
   { href: '/dashboard', label: 'Dashboard' },
-  { href: '/dashboard/leads', label: 'Leads', flowAfter: true },
+  { href: '/dashboard/leads', label: 'Leads' },
   { href: '/dashboard/jobs', label: 'Jobs' },
   { href: '/dashboard/crew', label: 'Crew' },
   { href: '/dashboard/schedule', label: 'Schedule' },
@@ -30,17 +30,6 @@ const QUOTE_REQUEST_ALERT_DISMISSED_KEY = 'lgq-dismissed-quote-request-alert';
 
 function getPrimaryAction() {
   return { href: '/login', label: 'Sign in' };
-}
-
-function QuoteToJobFlowIcon() {
-  return (
-    <span className="topnav-flow-arrow" aria-hidden="true">
-      <svg viewBox="0 0 38 18" focusable="false">
-        <path d="M3 9h28" />
-        <path d="m24 3 7 6-7 6" />
-      </svg>
-    </span>
-  );
 }
 
 export function AppShell({ children, forceStandaloneSite = false }: { children: ReactNode; forceStandaloneSite?: boolean }) {
@@ -204,16 +193,14 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                     : '';
 
                 return (
-                  <Fragment key={item.href}>
-                    <Link
-                      href={item.href}
-                      className={`topnav-link${active ? ' active' : ''}${flowClass}`}
-                    >
-                      {item.label}
-                      {item.href === '/dashboard/leads' && newQuoteRequestCount > 0 ? <span className="topnav-count">{newQuoteRequestCount}</span> : null}
-                    </Link>
-                    {item.flowAfter ? <QuoteToJobFlowIcon /> : null}
-                  </Fragment>
+                  <Link
+                    href={item.href}
+                    className={`topnav-link${active ? ' active' : ''}${flowClass}`}
+                    key={item.href}
+                  >
+                    {item.label}
+                    {item.href === '/dashboard/leads' && newQuoteRequestCount > 0 ? <span className="topnav-count">{newQuoteRequestCount}</span> : null}
+                  </Link>
                 );
               })}
             </nav>
