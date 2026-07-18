@@ -3,7 +3,10 @@ import { requireOwnerContext } from '@/lib/auth';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
-import { listJobs, formatMoney, type JobStatus } from '@/lib/jobs';
+import PastClientsPicker, { type PastClientOption } from '@/components/past-clients-picker';
+import { listJobs, formatMoney, type Job } from '@/lib/jobs';
+import { listLeads, type Lead } from '@/lib/leads';
+import type { JobStatus } from '@/lib/jobs';
 import { createJobAction } from './actions';
 
 const STATUS_FILTERS: { value: JobStatus | 'all'; label: string }[] = [
@@ -21,6 +24,80 @@ const STATUS_LABEL: Record<JobStatus, string> = {
   archived: 'Archived',
 };
 
+function normalizeKey(value: string | null | undefined): string | null {
+  const normalized = value?.trim().toLowerCase();
+  return normalized ? normalized : null;
+}
+
+function normalizePhone(value: string | null | undefined): string | null {
+  const digits = value?.replace(/\D/g, '');
+  return digits ? digits.slice(-10) : null;
+}
+
+function buildPastClients(jobs: Job[], leads: Lead[]): PastClientOption[] {
+  const clients: PastClientOption[] = [];
+
+  function findExisting(input: { name: string | null; phone: string | null; email: string | null }) {
+    const email = normalizeKey(input.email);
+    if (email) {
+      const match = clients.find((client) => normalizeKey(client.email) === email);
+      if (match) return match;
+    }
+
+    const phone = normalizePhone(input.phone);
+    if (phone) {
+      const match = clients.find((client) => normalizePhone(client.phone) === phone);
+      if (match) return match;
+    }
+
+    const name = normalizeKey(input.name);
+    return name ? clients.find((client) => normalizeKey(client.name) === name) : undefined;
+  }
+
+  function addClient(client: PastClientOption) {
+    const existing = findExisting(client);
+    if (!existing) {
+      clients.push(client);
+      return;
+    }
+
+    existing.phone = existing.phone ?? client.phone;
+    existing.email = existing.email ?? client.email;
+    existing.address = existing.address ?? client.address;
+    if (existing.source !== client.source) {
+      existing.source = 'both';
+      existing.sourceLabel = existing.sourceLabel.includes('Quote request') ? existing.sourceLabel : `${existing.sourceLabel} + quote request`;
+    }
+  }
+
+  for (const job of jobs) {
+    addClient({
+      id: `job-${job.id}`,
+      name: job.client_name,
+      phone: job.client_phone,
+      email: job.client_email,
+      address: job.address,
+      source: 'job',
+      sourceLabel: `Job ${job.ref}`,
+    });
+  }
+
+  for (const lead of leads) {
+    if (!lead.name) continue;
+    addClient({
+      id: `lead-${lead.id}`,
+      name: lead.name,
+      phone: lead.phone,
+      email: lead.email,
+      address: lead.address,
+      source: 'lead',
+      sourceLabel: 'Quote request',
+    });
+  }
+
+  return clients;
+}
+
 export default async function JobsPage({
   searchParams,
 }: {
@@ -29,7 +106,12 @@ export default async function JobsPage({
   const { supabase, accountId } = await requireOwnerContext();
 
   const statusParam = searchParams.status as JobStatus | undefined;
-  const jobs = await listJobs(supabase, accountId, statusParam);
+  const [jobs, allJobs, leads] = await Promise.all([
+    listJobs(supabase, accountId, statusParam),
+    listJobs(supabase, accountId),
+    listLeads(supabase, accountId),
+  ]);
+  const pastClients = buildPastClients(allJobs, leads);
   const totalQuoted = jobs.reduce((sum, job) => sum + job.quoted_amount, 0);
   const activeJobs = jobs.filter((job) => job.status === 'in_progress').length;
 
@@ -98,6 +180,7 @@ export default async function JobsPage({
           <span className="workspace-details-copy">Capture the next signed opportunity.</span>
         </summary>
         <form action={createJobAction} className="form-grid">
+          <PastClientsPicker clients={pastClients} />
           <div className="field">
             <label htmlFor="clientName">Client name</label>
             <input id="clientName" name="clientName" required placeholder="Sarah Whitfield" />

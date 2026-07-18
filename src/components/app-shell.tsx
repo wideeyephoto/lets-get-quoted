@@ -3,14 +3,14 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { useAppShell } from './app-shell-provider';
 import { supabase } from '@/lib/supabase';
 
 const baseNavItems = [
   { href: '/', label: 'Home' },
   { href: '/dashboard', label: 'Dashboard' },
-  { href: '/dashboard/leads', label: 'Quote Requests' },
+  { href: '/dashboard/leads', label: 'Quote Requests', flowAfter: true },
   { href: '/dashboard/jobs', label: 'Jobs' },
   { href: '/dashboard/crew', label: 'Crew' },
   { href: '/dashboard/schedule', label: 'Schedule' },
@@ -188,14 +188,16 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                 const active = item.href === '/' ? pathname === item.href : pathname.startsWith(item.href);
 
                 return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`topnav-link${active ? ' active' : ''}`}
-                  >
-                    {item.label}
-                    {item.href === '/dashboard/leads' && newQuoteRequestCount > 0 ? <span className="topnav-count">{newQuoteRequestCount}</span> : null}
-                  </Link>
+                  <Fragment key={item.href}>
+                    <Link
+                      href={item.href}
+                      className={`topnav-link${active ? ' active' : ''}`}
+                    >
+                      {item.label}
+                      {item.href === '/dashboard/leads' && newQuoteRequestCount > 0 ? <span className="topnav-count">{newQuoteRequestCount}</span> : null}
+                    </Link>
+                    {item.flowAfter ? <span className="topnav-flow-arrow" aria-hidden="true">-&gt;</span> : null}
+                  </Fragment>
                 );
               })}
             </nav>

@@ -121,6 +121,14 @@ h3 {
   gap: 0.45rem;
 }
 
+.topnav-flow-arrow {
+  color: rgba(255, 209, 102, 0.78);
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  transform: translateY(-1px);
+}
+
 .topnav-link {
   display: inline-flex;
   align-items: center;
@@ -1246,6 +1254,7 @@ li + li { margin-top: 0.45rem; }
 
   .nav-panel.open { display: flex; }
   .topnav { flex-direction: column; align-items: stretch; }
+  .topnav-flow-arrow { display: none; }
   .topnav-link { background: rgba(255, 255, 255, 0.04); }
   .topbar-cta { width: 100%; }
 }
@@ -1900,6 +1909,31 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .field textarea { resize: vertical; min-height: 4.5rem; }
 .field input::placeholder { color: rgba(255,255,255,0.4); }
 .field select option { background: #101c2b; color: #f7f5ef; }
+
+.past-clients-picker { padding: 0.85rem; border: 1px solid rgba(255,209,102,0.16); border-radius: 12px; background: rgba(255,209,102,0.035); }
+.past-client-results { display: grid; gap: 0.45rem; }
+.past-client-results button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.045);
+  color: #f7f5ef;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.past-client-results button:hover,
+.past-client-results button:focus-visible { border-color: rgba(255,209,102,0.44); background: rgba(255,209,102,0.08); }
+.past-client-results span { display: grid; gap: 0.14rem; min-width: 0; }
+.past-client-results strong,
+.past-client-results small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.past-client-results small { color: rgba(247,245,239,0.58); font-size: 0.78rem; }
+.past-client-results em { flex: 0 0 auto; color: #ffd166; font-size: 0.72rem; font-style: normal; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
 
 .money-field label { color: rgba(255,209,102,0.86); }
 .currency-input {
