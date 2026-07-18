@@ -27,13 +27,6 @@ import QuickFillButtons from '@/components/quick-fill-buttons';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
 
-const STATUS_LABEL: Record<string, string> = {
-  new_lead: 'New request',
-  in_progress: 'In progress',
-  complete: 'Complete',
-  archived: 'Archived',
-};
-
 const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
   requested: 'Awaiting payment',
   processing: 'Processing',
@@ -131,6 +124,31 @@ type PipelineChecklistItem = {
   complete: boolean;
   href: string;
 };
+
+type JobHeroStatus = {
+  label: string;
+  tone: 'new_lead' | 'in_progress' | 'complete' | 'archived';
+};
+
+function buildJobHeroStatus(job: Job, payments: Payment[], invoices: Invoice[], activeClientLinkCount: number): JobHeroStatus {
+  const openPayment = payments.find((payment) => payment.status === 'requested' || payment.status === 'processing');
+  const failedPayment = payments.find((payment) => payment.status === 'failed');
+  const sentInvoice = invoices.find((invoice) => invoice.status === 'sent');
+  const signedInvoice = invoices.find((invoice) => invoice.status === 'signed');
+  const paidPayment = payments.find((payment) => payment.status === 'paid');
+
+  if (job.status === 'archived') return { label: 'Archived', tone: 'archived' };
+  if (job.status === 'complete') return { label: 'Complete', tone: 'complete' };
+  if (failedPayment) return { label: 'Payment issue', tone: 'new_lead' };
+  if (openPayment) return { label: 'Awaiting payment', tone: 'in_progress' };
+  if (sentInvoice) return { label: 'Awaiting quote signature', tone: 'in_progress' };
+  if (signedInvoice && !paidPayment) return { label: 'Ready for payment', tone: 'in_progress' };
+  if (!job.scheduled_for && (job.status === 'in_progress' || paidPayment || signedInvoice)) return { label: 'Schedule work', tone: 'in_progress' };
+  if (job.scheduled_for || job.status === 'in_progress') return { label: 'Ready for invoice', tone: 'in_progress' };
+  if (job.quoted_amount > 0 && activeClientLinkCount === 0) return { label: 'Share quote', tone: 'new_lead' };
+  if (job.quoted_amount > 0) return { label: 'Awaiting quote approval', tone: 'new_lead' };
+  return { label: 'Add quote', tone: 'new_lead' };
+}
 
 function buildPipelineChecklist(job: Job, payments: Payment[], invoices: Invoice[], activeClientLinkCount: number): PipelineChecklistItem[] {
   const hasPaymentRequest = payments.some((payment) => payment.status === 'requested' || payment.status === 'processing' || payment.status === 'paid');
@@ -237,6 +255,7 @@ export default async function JobDetailPage({
   const hasActiveClientView = activeClientLinkCount > 0 || Boolean(searchParams.clientToken);
   const clientViewHref = searchParams.clientToken ? `/client/jobs/${searchParams.clientToken}` : null;
   const pipelineChecklist = buildPipelineChecklist(job, payments, invoices, activeClientLinkCount);
+  const heroStatus = buildJobHeroStatus(job, payments, invoices, activeClientLinkCount);
   const nextPipelineIndex = pipelineChecklist.findIndex((item) => !item.complete);
   const currentPipelineIndex = nextPipelineIndex === -1 ? pipelineChecklist.length - 1 : nextPipelineIndex;
   const displayedFeed: JobFeedEvent[] = sortJobFeed([
@@ -277,7 +296,7 @@ export default async function JobDetailPage({
             </Link>
           </div>
           <div className="workspace-inline-row">
-            <span className={`status-badge status-${job.status}`}>{STATUS_LABEL[job.status]}</span>
+            <span className={`status-badge status-${heroStatus.tone}`}>{heroStatus.label}</span>
             <span className="workspace-inline-note">{job.address || 'No address on file yet'}</span>
           </div>
           <div className="job-command-facts" aria-label="Job facts">
