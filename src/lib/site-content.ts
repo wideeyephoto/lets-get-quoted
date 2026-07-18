@@ -99,7 +99,7 @@ function parseFaqItems(value: unknown): SiteFaqItem[] {
     id: toString(item.id, `faq-${index + 1}`),
     question: toString(item.question),
     answer: toString(item.answer),
-  })).filter((item) => item.question.trim() || item.answer.trim());
+  }));
 }
 
 function parseTestimonials(value: unknown): SiteTestimonialItem[] {
@@ -111,7 +111,7 @@ function parseTestimonials(value: unknown): SiteTestimonialItem[] {
     text: toString(item.text),
     rating: toRating(item.rating),
     label: toString(item.label),
-  })).filter((item) => item.author.trim() || item.text.trim());
+  }));
 }
 
 export function getSiteContent(content: Record<string, unknown> | null | undefined): NormalizedSiteContent {
@@ -163,6 +163,6 @@ export function getPublishedFaqs(content: Record<string, unknown> | null | undef
 
 export function getPublishedTestimonials(content: Record<string, unknown> | null | undefined): SiteTestimonialsContent | null {
   const testimonials = getSiteContent(content).testimonials;
-  const items = testimonials.items.filter((item) => item.author.trim() && item.text.trim());
+  const items = testimonials.items.filter((item) => item.text.trim());
   return testimonials.enabled && items.length > 0 ? { ...testimonials, items } : null;
 }

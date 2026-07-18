@@ -44,7 +44,7 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
               <article key={item.id} className={styles.testimonialCard}>
                 <div aria-label={`${item.rating} out of 5 stars`}>{'★'.repeat(item.rating)}{'☆'.repeat(5 - item.rating)}</div>
                 <p>“{item.text}”</p>
-                <footer><strong>{item.author}</strong>{item.label && <span>{item.label}</span>}</footer>
+                <footer><strong>{item.author || 'Homeowner'}</strong>{item.label && <span>{item.label}</span>}</footer>
               </article>
             ))}
           </div>
