@@ -23,7 +23,7 @@
 .cardMetaGrid span { color: #ffd166; font-weight: 700; }
 .contactHint { overflow: hidden; color: rgba(255,255,255,.42); font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
 .empty { margin: .5rem 0; color: rgba(255,255,255,.36); font-size: .78rem; }
-.detailGrid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, .75fr); gap: 1rem; }
+.detailGrid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(420px, .9fr); gap: 1.1rem; align-items: start; }
 .detailSection { display: grid; gap: 1rem; }
 .detailBadges { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .7rem; }
 .receivedBadge { display: inline-flex; width: fit-content; padding: .3rem .55rem; border-radius: 4px; background: rgba(255,122,33,.12); color: #ffb26b; font-size: .72rem; font-weight: 700; }
@@ -35,7 +35,8 @@
 .dataBlock a { color: #ffd166; }
 .photoGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
 .photoGrid img { width: 100%; aspect-ratio: 4 / 3; border-radius: 6px; object-fit: cover; }
-.actionPanel { display: grid; gap: 1rem; align-content: start; }
+.actionPanel { display: grid; gap: 1rem; align-content: start; min-width: 0; }
+.actionPanel h2, .actionPanel p { overflow-wrap: anywhere; }
 .actionForm { display: grid; gap: .65rem; padding-top: .5rem; }
 .actionForm label { color: rgba(255,255,255,.58); font-size: .75rem; font-weight: 700; text-transform: uppercase; }
 .actionForm input, .actionForm select { width: 100%; min-height: 42px; padding: .65rem .7rem; border: 1px solid rgba(255,255,255,.15); border-radius: 6px; background: rgba(255,255,255,.06); color: #fff; }
@@ -45,5 +46,5 @@
 .statusQuickActions button { width: 100%; }
 .currentStatusButton { border-color: rgba(255,209,102,.48) !important; background: rgba(255,209,102,.12) !important; color: #ffd166 !important; }
 .source { display: inline-flex; width: fit-content; padding: .3rem .55rem; border-radius: 4px; background: rgba(255,209,102,.12); color: #ffd166; font-size: .72rem; font-weight: 700; text-transform: capitalize; }
-@media (max-width: 900px) { .detailGrid { grid-template-columns: 1fr; } }
+@media (max-width: 1020px) { .detailGrid { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .board { grid-template-columns: 1fr; overflow: visible; } .column { min-height: 0; } .contactGrid, .photoGrid { grid-template-columns: 1fr; } }

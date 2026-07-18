@@ -22,7 +22,7 @@ export default async function LeadDetailPage({ params }: { params: { leadId: str
 
   return (
     <main className="wide-shell workspace-shell">
-      <section className="workspace-hero panel">
+      <section className="workspace-hero workspace-hero-solo panel">
         <div className="workspace-hero-copy"><p className="eyebrow">Lead details</p><h1 className="workspace-title">{lead.name || 'Unnamed lead'}</h1><div className={styles.detailBadges}><span className={styles.source}>{formatLeadSource(lead.source)}</span><span className={styles.receivedBadge}>Received {formatElapsedTime(lead.created_at)} ago</span></div><div className="actions workspace-actions"><Link className="btn secondary" href="/dashboard/leads">Back to leads</Link>{lead.converted_job && <Link className="btn primary" href={`/dashboard/jobs/${lead.converted_job}`}>{convertedJobLabel}</Link>}</div></div>
       </section>
 
