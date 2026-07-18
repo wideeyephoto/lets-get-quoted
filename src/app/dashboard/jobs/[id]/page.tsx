@@ -110,6 +110,19 @@ function formatFeedTime(value: string): string {
   return new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
+function getFeedDisplayTitle(event: JobFeedEvent, jobRef: string): string {
+  if (event.kind === 'job_created') return `${jobRef} created`;
+  if (event.kind === 'client_link_created') return 'Client view link created';
+  if (event.kind === 'client_link_revoked') return 'Client view links revoked';
+  return event.title || event.kind;
+}
+
+function getFeedDisplayBody(event: JobFeedEvent): string | null {
+  if (event.kind === 'client_link_created') return 'A client view link was created for this job.';
+  if (event.kind === 'client_link_revoked') return 'Active client view links for this job were revoked.';
+  return event.body;
+}
+
 type PipelineChecklistItem = {
   label: string;
   detail: string;
@@ -304,6 +317,25 @@ export default async function JobDetailPage({
               <p className="eyebrow">Job feed</p>
               <h2>Job Feed</h2>
             </div>
+            <div className="job-feed-share-strip">
+              <div>
+                <strong>Client view</strong>
+                <p>Visible updates, payment links, invoices, and job status live in one shareable feed.</p>
+                {searchParams.clientToken ? (
+                  <a href={`/client/jobs/${searchParams.clientToken}`} target="_blank" rel="noreferrer">/client/jobs/{searchParams.clientToken}</a>
+                ) : (
+                  <span>Active links: {activeClientLinkCount}</span>
+                )}
+              </div>
+              <div className="job-feed-share-actions">
+                <form action={boundCreateClientJobLink}>
+                  <SaveButton pendingLabel="Creating…" savedLabel="Created ✓">Create client view link</SaveButton>
+                </form>
+                <form action={boundRevokeClientJobLink}>
+                  <SaveButton className="btn secondary" pendingLabel="Revoking…" savedLabel="Revoked ✓">Revoke links</SaveButton>
+                </form>
+              </div>
+            </div>
             {displayedFeed.length === 0 ? (
               <p className="empty-state">No job feed updates yet.</p>
             ) : (
@@ -313,7 +345,7 @@ export default async function JobDetailPage({
                     <div className="job-feed-dot">{FEED_KIND_ICON[event.kind] ?? '•'}</div>
                     <div className="job-feed-content">
                       <div className="job-row-header">
-                        <span className="cost-item-desc">{event.kind === 'job_created' ? `${job.ref} created` : event.title || event.kind}</span>
+                        <span className="cost-item-desc">{getFeedDisplayTitle(event, job.ref)}</span>
                         <div className="feed-badge-row">
                           <span className="status-badge status-new_lead">{FEED_KIND_LABEL[event.kind] ?? 'Update'}</span>
                           <span className={`status-badge ${event.visibility === 'internal' ? 'status-archived' : 'status-complete'}`}>
@@ -321,7 +353,7 @@ export default async function JobDetailPage({
                           </span>
                         </div>
                       </div>
-                      {event.body ? <p className="workspace-card-copy">{event.body}</p> : null}
+                      {getFeedDisplayBody(event) ? <p className="workspace-card-copy">{getFeedDisplayBody(event)}</p> : null}
                       <p className="job-meta">
                         {formatFeedTime(event.created_at)}
                         {event.amount ? ` · ${formatMoney(Number(event.amount))}` : ''}
@@ -349,7 +381,7 @@ export default async function JobDetailPage({
               </div>
               <label className="sms-consent-check">
                 <input name="visibility" type="checkbox" value="client" />
-                <span>Show this update on the client dashboard</span>
+                <span>Show this update on the client view</span>
               </label>
               <label className="sms-consent-check">
                 <input name="notifyClientSms" type="checkbox" />
@@ -770,31 +802,6 @@ export default async function JobDetailPage({
             )}
         </details>
 
-      <section className="panel workspace-section-card">
-            <div className="section-heading workspace-section-heading">
-              <p className="eyebrow">Client dashboard</p>
-              <h2>Shareable job view</h2>
-            </div>
-            <p className="workspace-card-copy">
-              Give the client one link for visible updates, payment requests, invoices, and job status.
-            </p>
-            {searchParams.clientToken ? (
-              <div className="payment-banner success">
-                <p><strong>New client link ready.</strong></p>
-                <p><a href={`/client/jobs/${searchParams.clientToken}`} target="_blank" rel="noreferrer">/client/jobs/{searchParams.clientToken}</a></p>
-              </div>
-            ) : (
-              <p className="job-meta">Active dashboard links: {activeClientLinkCount}</p>
-            )}
-            <div className="actions" style={{ marginTop: '1rem' }}>
-              <form action={boundCreateClientJobLink}>
-                <SaveButton pendingLabel="Creating…" savedLabel="Created ✓">Create client dashboard link</SaveButton>
-              </form>
-              <form action={boundRevokeClientJobLink}>
-                <SaveButton className="btn secondary" pendingLabel="Revoking…" savedLabel="Revoked ✓">Revoke active links</SaveButton>
-              </form>
-            </div>
-        </section>
     </main>
   );
 }

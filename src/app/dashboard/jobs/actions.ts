@@ -318,8 +318,8 @@ export async function createClientJobLinkAction(jobId: string) {
   const token = await createClientJobAccessToken(supabase, accountId, jobId, { clientPhone: job.client_phone });
   await createJobFeedEvent(supabase, accountId, jobId, {
     kind: 'client_link_created',
-    title: 'Client dashboard link created',
-    body: 'A client dashboard link was created for this job.',
+    title: 'Client view link created',
+    body: 'A client view link was created for this job.',
     visibility: 'internal',
   });
 
@@ -332,8 +332,8 @@ export async function revokeClientJobLinkAction(jobId: string) {
   await revokeClientJobAccess(supabase, accountId, jobId);
   await createJobFeedEvent(supabase, accountId, jobId, {
     kind: 'client_link_revoked',
-    title: 'Client dashboard links revoked',
-    body: 'Active client dashboard links for this job were revoked.',
+    title: 'Client view links revoked',
+    body: 'Active client view links for this job were revoked.',
     visibility: 'internal',
   });
 

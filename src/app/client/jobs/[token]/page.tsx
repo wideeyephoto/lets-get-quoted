@@ -36,9 +36,9 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
     return (
       <main className="wide-shell workspace-shell">
         <section className="panel workspace-section-card">
-          <p className="eyebrow">Client dashboard</p>
+          <p className="eyebrow">Client view</p>
           <h1 className="workspace-title">This job link is no longer available</h1>
-          <p className="workspace-lead">Ask your contractor for a fresh dashboard link.</p>
+          <p className="workspace-lead">Ask your contractor for a fresh client view link.</p>
         </section>
       </main>
     );
