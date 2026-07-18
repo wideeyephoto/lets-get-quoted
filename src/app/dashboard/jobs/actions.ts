@@ -233,6 +233,7 @@ export async function createCostAction(jobId: string, formData: FormData) {
       type: 'labor',
       description,
       crewId: optionalText(formData.get('crewId')),
+      supplier: optionalText(formData.get('supplier')),
       hours,
       rate,
     });

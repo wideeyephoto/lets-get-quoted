@@ -524,7 +524,7 @@ export default async function JobDetailPage({
             <div className="panel workspace-section-card">
               <div className="section-heading workspace-section-heading">
                 <p className="eyebrow">Expenses</p>
-                <h2>Expense line items</h2>
+                <h2>Job Expenses</h2>
               </div>
 
               <form action={boundCreateCost} className="cost-form">
@@ -550,6 +550,7 @@ export default async function JobDetailPage({
                     values={[
                       'Additional material charge',
                       'Permit fee',
+                      'Crew Labor',
                       'Subcontractor labor',
                       'Change order',
                       'Dump fee',
@@ -566,6 +567,17 @@ export default async function JobDetailPage({
                       <option value="receipt">🧾 Receipt</option>
                       <option value="other">📦 Other</option>
                     </select>
+                    <QuickFillButtons
+                      label="Quick add:"
+                      targetId="type"
+                      values={[
+                        { label: 'Material', value: 'material' },
+                        { label: 'Crew Labor', value: 'labor' },
+                        { label: 'Subcontractor', value: 'sub' },
+                        { label: 'Receipt', value: 'receipt' },
+                        { label: 'Other', value: 'other' },
+                      ]}
+                    />
                   </div>
                   <div className="field">
                     <label htmlFor="amount">Amount ($)</label>
@@ -577,10 +589,6 @@ export default async function JobDetailPage({
                       step="0.01"
                       placeholder="Material / sub / receipt / other"
                     />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="supplier">Supplier</label>
-                    <input id="supplier" name="supplier" placeholder="Optional" />
                   </div>
                 </div>
                 <div className="cost-form-row">
@@ -604,6 +612,10 @@ export default async function JobDetailPage({
                     </select>
                   </div>
                 </div>
+                <div className="field full">
+                  <label htmlFor="supplier">Notes</label>
+                  <textarea id="supplier" name="supplier" placeholder="Optional notes for this expense" />
+                </div>
                 <div style={{ marginTop: '0.8rem' }}>
                   <SaveButton pendingLabel="Adding…" savedLabel="Added ✓">+ Add expense</SaveButton>
                 </div>
@@ -621,7 +633,7 @@ export default async function JobDetailPage({
                         </span>
                         <span className="cost-item-sub">
                           {cost.type === 'labor'
-                            ? `${cost.hours} hrs × ${formatMoney(Number(cost.rate))}/hr${cost.crew_name ? ` · ${cost.crew_name}` : ''}`
+                            ? `${cost.hours} hrs × ${formatMoney(Number(cost.rate))}/hr${cost.crew_name ? ` · ${cost.crew_name}` : ''}${cost.supplier ? ` · ${cost.supplier}` : ''}`
                             : cost.supplier || cost.category}
                         </span>
                       </div>

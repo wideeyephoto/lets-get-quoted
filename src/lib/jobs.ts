@@ -76,6 +76,7 @@ export type CostInput =
       type: 'labor';
       description: string;
       crewId?: string | null;
+      supplier?: string | null;
       hours: number;
       rate: number;
     }
@@ -460,6 +461,7 @@ export async function createCost(
           crew_id: input.crewId ?? null,
           crew_name: crewSnapshot?.data?.name ?? null,
           crew_role_label: crewSnapshot?.data?.role_label ?? null,
+          supplier: input.supplier ?? null,
           hours: input.hours,
           rate: input.rate,
           // Labor amount is always server-computed as hours × rate — never
