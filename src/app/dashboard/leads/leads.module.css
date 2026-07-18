@@ -40,6 +40,10 @@
 .actionForm label { color: rgba(255,255,255,.58); font-size: .75rem; font-weight: 700; text-transform: uppercase; }
 .actionForm input, .actionForm select { width: 100%; min-height: 42px; padding: .65rem .7rem; border: 1px solid rgba(255,255,255,.15); border-radius: 6px; background: rgba(255,255,255,.06); color: #fff; }
 .actionForm option { background: #101c2b; }
+.statusQuickActions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; padding-top: .5rem; }
+.statusQuickActions form { min-width: 0; }
+.statusQuickActions button { width: 100%; }
+.currentStatusButton { border-color: rgba(255,209,102,.48) !important; background: rgba(255,209,102,.12) !important; color: #ffd166 !important; }
 .source { display: inline-flex; width: fit-content; padding: .3rem .55rem; border-radius: 4px; background: rgba(255,209,102,.12); color: #ffd166; font-size: .72rem; font-weight: 700; text-transform: capitalize; }
 @media (max-width: 900px) { .detailGrid { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .board { grid-template-columns: 1fr; overflow: visible; } .column { min-height: 0; } .contactGrid, .photoGrid { grid-template-columns: 1fr; } }
