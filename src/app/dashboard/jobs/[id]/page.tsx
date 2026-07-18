@@ -25,6 +25,8 @@ import DeleteJobButton from './DeleteJobButton';
 import PaymentActionButtons from './PaymentActionButtons';
 import SaveButton from '@/components/save-button';
 import QuickFillButtons from '@/components/quick-fill-buttons';
+import ScheduledDatePicker from '@/components/scheduled-date-picker';
+import TimeSlotSelect from '@/components/time-slot-select';
 
 const STATUS_LABEL: Record<string, string> = {
   new_lead: 'New request',
@@ -429,18 +431,39 @@ export default async function JobDetailPage({
                   <option value="complete">Complete</option>
                   <option value="archived">Archived</option>
                 </select>
+                <QuickFillButtons
+                  label="Quick add:"
+                  targetId="status"
+                  values={[
+                    { label: 'New request', value: 'new_lead' },
+                    { label: 'In progress', value: 'in_progress' },
+                    { label: 'Complete', value: 'complete' },
+                    { label: 'Archived', value: 'archived' },
+                  ]}
+                />
               </div>
               <div className="field">
                 <label htmlFor="scheduledFor">Scheduled for</label>
-                <input id="scheduledFor" name="scheduledFor" type="date" defaultValue={job.scheduled_for ?? ''} />
+                <ScheduledDatePicker id="scheduledFor" name="scheduledFor" defaultValue={job.scheduled_for ?? ''} />
               </div>
               <div className="field">
                 <label htmlFor="scheduledTime">Time of day</label>
-                <input id="scheduledTime" name="scheduledTime" type="time" defaultValue={job.scheduled_time?.slice(0, 5) ?? ''} />
+                <TimeSlotSelect id="scheduledTime" name="scheduledTime" defaultValue={job.scheduled_time?.slice(0, 5) ?? ''} />
               </div>
               <div className="field">
                 <label htmlFor="estimatedHours">Estimated hours</label>
                 <input id="estimatedHours" name="estimatedHours" type="number" min="0" step="0.25" defaultValue={job.estimated_hours ?? ''} />
+                <QuickFillButtons
+                  label="Quick add:"
+                  targetId="estimatedHours"
+                  values={[
+                    { label: '4 hrs', value: '4' },
+                    { label: '8 hrs', value: '8' },
+                    { label: '16 hrs', value: '16' },
+                    { label: '24 hrs', value: '24' },
+                    { label: '40 hrs', value: '40' },
+                  ]}
+                />
               </div>
               <div className="field">
                 <label htmlFor="quotedAmount">Quoted amount ($)</label>

@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import AddressAutocomplete from '@/components/address-autocomplete';
+import ScheduledDatePicker from '@/components/scheduled-date-picker';
+import TimeSlotSelect from '@/components/time-slot-select';
 import { listJobs, formatMoney, type JobStatus } from '@/lib/jobs';
 import { createJobAction } from './actions';
 
@@ -123,11 +125,11 @@ export default async function JobsPage({
           </div>
           <div className="field">
             <label htmlFor="scheduledFor">Scheduled for</label>
-            <input id="scheduledFor" name="scheduledFor" type="date" />
+            <ScheduledDatePicker id="scheduledFor" name="scheduledFor" />
           </div>
           <div className="field">
             <label htmlFor="scheduledTime">Time of day</label>
-            <input id="scheduledTime" name="scheduledTime" type="time" />
+            <TimeSlotSelect id="scheduledTime" name="scheduledTime" />
           </div>
           <div className="field">
             <label htmlFor="estimatedHours">Estimated hours</label>
