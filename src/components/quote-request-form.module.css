@@ -16,7 +16,7 @@
 .submit:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.06); box-shadow: 0 20px 40px -16px color-mix(in srgb, var(--theme-accent, #f0b429) 85%, transparent); }
 .submit:active:not(:disabled) { transform: translateY(0); }
 .submit:disabled { opacity: .55; cursor: default; box-shadow: none; }
-.message { grid-column: 1 / -1; margin: 0; padding: 13px 16px; border-radius: var(--theme-radius, 4px); font-size: 14px; font-weight: 600; text-transform: none; letter-spacing: normal; }
-.success { color: #14532d; background: #dcfce7; border: 1px solid #86efac; }
-.error { color: #7f1d1d; background: #fee2e2; border: 1px solid #fca5a5; }
+.message { grid-column: 1 / -1; margin: 0; padding: 13px 16px; border-radius: var(--theme-radius, 4px); font-size: 14px; font-weight: 700; text-transform: none; letter-spacing: normal; }
+.success { color: #052e16 !important; -webkit-text-fill-color: #052e16; background: #dcfce7; border: 1px solid #86efac; }
+.error { color: #7f1d1d !important; -webkit-text-fill-color: #7f1d1d; background: #fee2e2; border: 1px solid #fca5a5; }
 @media (max-width: 600px) { .form { grid-template-columns: 1fr; padding: 1.5rem; } .wide, .progress, .submit, .message { grid-column: 1; } }
