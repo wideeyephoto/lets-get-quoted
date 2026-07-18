@@ -123,6 +123,7 @@ function buildPipelineChecklist(job: Job, payments: Payment[], invoices: Invoice
   const hasSignedInvoice = invoices.some((invoice) => invoice.status === 'signed' || invoice.status === 'paid');
   const hasPaidInvoice = invoices.some((invoice) => invoice.status === 'paid');
   const isComplete = job.status === 'complete' || job.status === 'archived';
+  const quoteAccepted = job.status === 'in_progress' || isComplete || Boolean(job.scheduled_for) || hasPaymentRequest || invoices.length > 0;
   const quoteDetail = job.quoted_amount > 0 ? `${formatMoney(job.quoted_amount)} quoted` : 'Add quote amount';
   const feedDetail = activeClientLinkCount > 0 ? 'Job Feed shared' : 'Share Job Feed link';
 
@@ -131,6 +132,11 @@ function buildPipelineChecklist(job: Job, payments: Payment[], invoices: Invoice
       label: 'Quote shared',
       detail: `${quoteDetail} · ${feedDetail}`,
       complete: job.quoted_amount > 0 && activeClientLinkCount > 0,
+    },
+    {
+      label: 'Quote accepted',
+      detail: quoteAccepted ? 'Approved for work' : 'Awaiting client approval',
+      complete: quoteAccepted,
     },
     {
       label: 'Scheduled / underway',
