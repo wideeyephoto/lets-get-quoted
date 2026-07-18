@@ -9,6 +9,7 @@ import {
   deleteCost,
   deleteJob,
   getJob,
+  formatJobQuoteSummary,
   listCosts,
   updateJob,
   updateJobSchedule,
@@ -69,7 +70,7 @@ export async function createJobAction(formData: FormData) {
   await createJobFeedEvent(supabase, accountId, job.id, {
     kind: 'job_created',
     title: `${job.ref} created`,
-    body: `Job was added for ${job.client_name}.`,
+    body: formatJobQuoteSummary(job),
     visibility: 'client',
     sourceTable: 'jobs',
     sourceId: job.id,

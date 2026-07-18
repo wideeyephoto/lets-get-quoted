@@ -126,6 +126,18 @@ export function formatMoney(n: number): string {
   return '$' + Math.round(n).toLocaleString();
 }
 
+export function formatJobQuoteSummary(job: Pick<Job, 'client_name' | 'address' | 'scope' | 'estimated_hours' | 'quoted_amount'>): string {
+  const details = [
+    `Job was added for ${job.client_name}.`,
+    `Quoted amount: ${formatMoney(Number(job.quoted_amount) || 0)}.`,
+    job.estimated_hours ? `Estimated hours: ${job.estimated_hours}.` : 'Estimated hours: not set.',
+    job.address ? `Address: ${job.address}.` : null,
+    job.scope ? `Quote details: ${job.scope}` : null,
+  ].filter(Boolean);
+
+  return details.join(' ');
+}
+
 export function formatPercent(n: number): string {
   return (n * 100).toFixed(0) + '%';
 }

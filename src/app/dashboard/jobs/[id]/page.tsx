@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import PhotoGallery from '@/components/photo-gallery';
 import AddressAutocomplete from '@/components/address-autocomplete';
-import { getJob, listCosts, computeMargin, formatJobSchedule, formatMoney, formatPercent, type Cost } from '@/lib/jobs';
+import { getJob, listCosts, computeMargin, formatJobQuoteSummary, formatJobSchedule, formatMoney, formatPercent, type Cost } from '@/lib/jobs';
 import { createJobPhotoUrls } from '@/lib/job-photo-storage';
 import { listPayments, type PaymentStatus } from '@/lib/payments';
 import { listInvoices, type InvoiceStatus } from '@/lib/invoices';
@@ -169,7 +169,7 @@ export default async function JobDetailPage({
           job_id: job.id,
           kind: 'job_created',
           title: `${job.ref} created`,
-          body: `Job was added for ${job.client_name}.`,
+          body: formatJobQuoteSummary(job),
           image_url: null,
           author: null,
           meta: null,
