@@ -30,18 +30,42 @@ type AddressSuggestion = {
   prediction: google.maps.places.PlacePrediction;
 };
 
+function hasGoogleMapsImportLibrary() {
+  return Boolean(window.google?.maps && 'importLibrary' in window.google.maps);
+}
+
+function waitForGoogleMapsImportLibrary(): Promise<void> {
+  if (hasGoogleMapsImportLibrary()) return Promise.resolve();
+
+  return new Promise((resolve, reject) => {
+    const startedAt = Date.now();
+    const checkReady = () => {
+      if (hasGoogleMapsImportLibrary()) {
+        resolve();
+        return;
+      }
+      if (Date.now() - startedAt > 5000) {
+        reject(new Error('Google Maps script did not initialize'));
+        return;
+      }
+      window.setTimeout(checkReady, 50);
+    };
+    checkReady();
+  });
+}
+
 function loadGoogleMapsScript(apiKey: string): Promise<void> {
   if (mapsScriptPromise) return mapsScriptPromise;
 
   mapsScriptPromise = new Promise((resolve, reject) => {
-    if (window.google?.maps?.places) {
+    if (hasGoogleMapsImportLibrary()) {
       resolve();
       return;
     }
 
     const existing = document.getElementById('google-maps-places-script') as HTMLScriptElement | null;
     if (existing) {
-      existing.addEventListener('load', () => resolve());
+      void waitForGoogleMapsImportLibrary().then(resolve, reject);
       existing.addEventListener('error', () => reject(new Error('Failed to load Google Maps script')));
       return;
     }
@@ -50,7 +74,9 @@ function loadGoogleMapsScript(apiKey: string): Promise<void> {
     script.id = 'google-maps-places-script';
     script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places&loading=async&auth_referrer_policy=origin`;
     script.async = true;
-    script.onload = () => resolve();
+    script.onload = () => {
+      void waitForGoogleMapsImportLibrary().then(resolve, reject);
+    };
     script.onerror = () => reject(new Error('Failed to load Google Maps script'));
     document.head.appendChild(script);
   });
@@ -85,37 +111,17 @@ export default function AddressAutocomplete({
   const sessionTokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
   const requestRef = useRef(0);
   const blurTimerRef = useRef<number | null>(null);
+  const fetchTimerRef = useRef<number | null>(null);
   const listboxId = useId();
   const [isReady, setIsReady] = useState(false);
-  const [query, setQuery] = useState(defaultValue ?? '');
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
 
-  useEffect(() => {
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-    if (!apiKey) return;
-
-    let cancelled = false;
-
-    loadGooglePlacesLibrary(apiKey)
-      .then((places) => {
-        if (cancelled) return;
-        placesRef.current = places;
-        setIsReady(true);
-      })
-      .catch(() => {
-        // Silently fall back to a plain text input if Maps fails to load.
-      });
-
-    return () => {
-      cancelled = true;
-      if (blurTimerRef.current) window.clearTimeout(blurTimerRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
+  function queueSuggestions(value: string) {
     const places = placesRef.current;
-    const search = query.trim();
+    const search = value.trim();
+    if (fetchTimerRef.current) window.clearTimeout(fetchTimerRef.current);
+
     if (!isReady || !places || search.length < 4) {
       setSuggestions([]);
       setHighlightedIndex(-1);
@@ -125,7 +131,7 @@ export default function AddressAutocomplete({
     const requestId = requestRef.current + 1;
     requestRef.current = requestId;
 
-    const timer = window.setTimeout(async () => {
+    fetchTimerRef.current = window.setTimeout(async () => {
       try {
         const sessionToken = sessionTokenRef.current ?? new places.AutocompleteSessionToken();
         sessionTokenRef.current = sessionToken;
@@ -161,23 +167,56 @@ export default function AddressAutocomplete({
         }
       }
     }, 220);
+  }
 
-    return () => window.clearTimeout(timer);
-  }, [isReady, query]);
+  useEffect(() => {
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    if (!apiKey) return;
+
+    let cancelled = false;
+
+    loadGooglePlacesLibrary(apiKey)
+      .then((places) => {
+        if (cancelled) return;
+        placesRef.current = places;
+        setIsReady(true);
+      })
+      .catch(() => {
+        // Silently fall back to a plain text input if Maps fails to load.
+      });
+
+    return () => {
+      cancelled = true;
+      if (blurTimerRef.current) window.clearTimeout(blurTimerRef.current);
+      if (fetchTimerRef.current) window.clearTimeout(fetchTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    const input = inputRef.current;
+    if (!input) return;
+
+    const syncSuggestions = () => queueSuggestions(input.value);
+    input.addEventListener('input', syncSuggestions);
+    input.addEventListener('focus', syncSuggestions);
+
+    return () => {
+      input.removeEventListener('input', syncSuggestions);
+      input.removeEventListener('focus', syncSuggestions);
+    };
+  }, [isReady]);
 
   async function selectSuggestion(suggestion: AddressSuggestion) {
     const selectedAddress = suggestion.label;
     setSuggestions([]);
     setHighlightedIndex(-1);
     if (inputRef.current) inputRef.current.value = selectedAddress;
-    setQuery(selectedAddress);
 
     try {
       const place = suggestion.prediction.toPlace();
       await place.fetchFields({ fields: ['formattedAddress'] });
       if (place.formattedAddress && inputRef.current) {
         inputRef.current.value = place.formattedAddress;
-        setQuery(place.formattedAddress);
       }
     } catch {
       // Keep the selected prediction text if full place details are unavailable.
@@ -224,8 +263,9 @@ export default function AddressAutocomplete({
         onBlur={() => {
           blurTimerRef.current = window.setTimeout(() => setSuggestions([]), 140);
         }}
-        onChange={(event) => setQuery(event.currentTarget.value)}
-        onFocus={(event) => setQuery(event.currentTarget.value)}
+        onChange={(event) => queueSuggestions(event.currentTarget.value)}
+        onInput={(event) => queueSuggestions(event.currentTarget.value)}
+        onFocus={(event) => queueSuggestions(event.currentTarget.value)}
         onKeyDown={handleKeyDown}
       />
       {suggestions.length > 0 ? (

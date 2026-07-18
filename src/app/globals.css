@@ -1643,22 +1643,25 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .field input::placeholder { color: rgba(255,255,255,0.4); }
 .field select option { background: #101c2b; color: #f7f5ef; }
 
-.address-autocomplete { position: relative; width: 100%; }
+.address-autocomplete { position: relative; z-index: 20; width: 100%; }
 .address-autocomplete input { width: 100%; }
 .address-autocomplete-suggestions {
   position: absolute;
-  z-index: 10000;
+  z-index: 2147483647;
   top: calc(100% + 0.35rem);
   left: 0;
   right: 0;
   overflow: hidden;
   border: 1px solid rgba(255,255,255,0.16);
   border-radius: 12px;
-  background: #101c2b;
+  background: rgba(16,28,43,0.9);
   box-shadow: 0 18px 44px rgba(0,0,0,0.35);
   color: #f7f5ef;
+  pointer-events: auto;
 }
 .address-autocomplete-suggestions button {
+  position: relative;
+  z-index: 1;
   display: grid;
   width: 100%;
   gap: 0.15rem;
@@ -1682,7 +1685,7 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   margin-top: 0.35rem;
   border: 1px solid rgba(255,255,255,0.16);
   border-radius: 12px;
-  background: #101c2b;
+  background: rgba(16,28,43,0.9);
   box-shadow: 0 18px 44px rgba(0,0,0,0.35);
   color: #f7f5ef;
   font-family: var(--font-body);
