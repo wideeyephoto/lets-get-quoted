@@ -1890,6 +1890,8 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   flex-wrap: wrap;
   gap: 0.35rem;
 }
+.feed-undo-btn { min-height: 0; padding: .25rem .5rem; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; background: rgba(255,255,255,.04); color: rgba(247,245,239,.82); font-size: .68rem; font-weight: 800; cursor: pointer; }
+.feed-undo-btn:hover { border-color: rgba(255,209,102,.35); color: #ffd166; }
 .job-feed-content .workspace-card-copy {
   margin: 0.35rem 0 0;
 }

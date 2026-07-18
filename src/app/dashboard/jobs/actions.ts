@@ -42,6 +42,10 @@ function optionalText(value: FormDataEntryValue | null): string | null {
   return text.length > 0 ? text : null;
 }
 
+function parseJobStatus(value: unknown): JobStatus | null {
+  return value === 'new_lead' || value === 'in_progress' || value === 'complete' || value === 'archived' ? value : null;
+}
+
 export async function createJobAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
 
@@ -126,9 +130,47 @@ export async function markJobCompleteAction(jobId: string) {
       title: 'Job marked complete',
       body: `${job.ref} was marked complete.`,
       visibility: 'client',
-      meta: { status: 'complete' },
+      meta: { status: 'complete', previousStatus: job.status },
     });
   }
+
+  revalidatePath('/dashboard/jobs');
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
+export async function undoJobCompleteAction(jobId: string, eventId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const job = await getJob(supabase, accountId, jobId);
+  if (!job) throw new Error('Job not found for this account.');
+
+  const { data: event, error: eventError } = await supabase
+    .from('job_feed')
+    .select('id, kind, meta')
+    .eq('account_id', accountId)
+    .eq('job_id', jobId)
+    .eq('id', eventId)
+    .eq('kind', 'job_completed')
+    .maybeSingle();
+
+  if (eventError) throw eventError;
+  if (!event) throw new Error('Completion event not found for this job.');
+
+  const previousStatus = parseJobStatus((event.meta as { previousStatus?: unknown } | null)?.previousStatus) ?? 'in_progress';
+  const { error: updateError } = await supabase
+    .from('jobs')
+    .update({ status: previousStatus })
+    .eq('account_id', accountId)
+    .eq('id', jobId);
+  if (updateError) throw updateError;
+
+  const { error: deleteError } = await supabase
+    .from('job_feed')
+    .delete()
+    .eq('account_id', accountId)
+    .eq('job_id', jobId)
+    .eq('id', eventId)
+    .eq('kind', 'job_completed');
+  if (deleteError) throw deleteError;
 
   revalidatePath('/dashboard/jobs');
   revalidatePath(`/dashboard/jobs/${jobId}`);

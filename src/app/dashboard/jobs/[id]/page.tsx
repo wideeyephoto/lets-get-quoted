@@ -15,6 +15,7 @@ import {
   deleteJobAction,
   markJobCompleteAction,
   revokeClientJobLinkAction,
+  undoJobCompleteAction,
   updateJobAction,
   updateJobCrewAction,
 } from '../actions';
@@ -362,6 +363,11 @@ export default async function JobDetailPage({
                       <div className="job-row-header">
                         <span className="cost-item-desc">{getFeedDisplayTitle(event)}</span>
                         <div className="feed-badge-row">
+                          {event.kind === 'job_completed' && job.status === 'complete' ? (
+                            <form action={undoJobCompleteAction.bind(null, job.id, event.id)}>
+                              <SaveButton className="feed-undo-btn" pendingLabel="Undoing…" savedLabel="Undone ✓">Undo</SaveButton>
+                            </form>
+                          ) : null}
                           <span className="status-badge status-new_lead">{FEED_KIND_LABEL[event.kind] ?? 'Update'}</span>
                           <span className={`status-badge ${event.visibility === 'internal' ? 'status-archived' : 'status-complete'}`}>
                             {FEED_VISIBILITY_LABEL[event.visibility]}
