@@ -123,22 +123,14 @@ function buildPipelineChecklist(job: Job, payments: Payment[], invoices: Invoice
   const hasSignedInvoice = invoices.some((invoice) => invoice.status === 'signed' || invoice.status === 'paid');
   const hasPaidInvoice = invoices.some((invoice) => invoice.status === 'paid');
   const isComplete = job.status === 'complete' || job.status === 'archived';
+  const quoteDetail = job.quoted_amount > 0 ? `${formatMoney(job.quoted_amount)} quoted` : 'Add quote amount';
+  const feedDetail = activeClientLinkCount > 0 ? 'Job Feed shared' : 'Share Job Feed link';
 
   return [
     {
-      label: 'Request received',
-      detail: STATUS_LABEL[job.status] ?? 'Job created',
-      complete: true,
-    },
-    {
-      label: 'Quote set',
-      detail: job.quoted_amount > 0 ? `${formatMoney(job.quoted_amount)} quoted` : 'Add quote amount',
-      complete: job.quoted_amount > 0,
-    },
-    {
-      label: 'Client dashboard shared',
-      detail: activeClientLinkCount > 0 ? `${activeClientLinkCount} active link${activeClientLinkCount === 1 ? '' : 's'}` : 'Create client link',
-      complete: activeClientLinkCount > 0,
+      label: 'Quote shared',
+      detail: `${quoteDetail} · ${feedDetail}`,
+      complete: job.quoted_amount > 0 && activeClientLinkCount > 0,
     },
     {
       label: 'Scheduled / underway',
@@ -279,16 +271,12 @@ export default async function JobDetailPage({
         </div>
 
         <aside className="pipeline-checklist" aria-label="Client pipeline checklist">
-          <div className="pipeline-checklist-heading">
-            <span className="eyebrow">Client pipeline</span>
-            <strong>{nextPipelineIndex === -1 ? 'All set' : `Next: ${pipelineChecklist[currentPipelineIndex].label}`}</strong>
-          </div>
           <ol>
             {pipelineChecklist.map((item, index) => {
               const state = item.complete ? 'complete' : index === currentPipelineIndex ? 'current' : 'upcoming';
               return (
                 <li className={`pipeline-step pipeline-step-${state}`} key={item.label}>
-                  <span className="pipeline-step-marker">{item.complete ? '✓' : index + 1}</span>
+                  <span className="pipeline-step-marker">{item.complete ? '✓' : ''}</span>
                   <span>
                     <strong>{item.label}</strong>
                     <small>{item.detail}</small>
