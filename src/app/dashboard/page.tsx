@@ -3,7 +3,7 @@ import { requireOwnerContext } from '@/lib/auth';
 import { connectStripeAction } from './stripe-actions';
 import { getTrailingVolume } from '@/lib/payments';
 import { getTierInfo } from '@/lib/stripe';
-import { expandScheduledJobs, formatJobTime, listJobs, type Job } from '@/lib/jobs';
+import { expandScheduledJobs, formatJobTime, listJobs } from '@/lib/jobs';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 
 function formatMoney(n: number): string {
