@@ -162,7 +162,7 @@ export default async function JobDetailPage({
 
   return (
     <main className="wide-shell workspace-shell">
-      <section className="workspace-hero panel">
+      <section className="workspace-hero panel job-command-hero">
         <div className="workspace-hero-copy">
           <p className="job-ref">{job.ref}</p>
           <h1 className="workspace-title">{job.client_name}</h1>
@@ -170,32 +170,31 @@ export default async function JobDetailPage({
             <span className={`status-badge status-${job.status}`}>{STATUS_LABEL[job.status]}</span>
             <span className="workspace-inline-note">{job.address || 'No address on file yet'}</span>
           </div>
+          <div className="job-command-facts" aria-label="Job facts">
+            <span><strong>{formatMoney(job.quoted_amount)}</strong> quoted</span>
+            <span><strong>{job.estimated_hours ? `${job.estimated_hours} hrs` : 'Not set'}</strong> estimated hours</span>
+          </div>
           <div className="actions workspace-actions">
+            <a href="#request-payment" className="btn primary">Request payment</a>
+            <a href="#job-feed" className="btn secondary">Post update</a>
+            <a href="#job-costs" className="btn secondary">Add cost</a>
+            <a href="#job-details" className="btn secondary">Edit job</a>
             <Link href="/dashboard/jobs" className="btn secondary">
               Back to jobs
             </Link>
           </div>
         </div>
 
-        <div className="workspace-metric-grid compact condensed">
-          <article className="workspace-metric-card accent">
-            <span className="workspace-metric-label">Quoted amount</span>
-            <strong className="workspace-metric-value">{formatMoney(job.quoted_amount)}</strong>
-            <p className="workspace-metric-note">Current revenue basis used for live margin tracking.</p>
-          </article>
-          <article className="workspace-metric-card">
-            <span className="workspace-metric-label">Estimated hours</span>
-            <strong className="workspace-metric-value">{job.estimated_hours ? `${job.estimated_hours} hrs` : 'Not set'}</strong>
-            <p className="workspace-metric-note">Used to spread this job across the schedule.</p>
-          </article>
-        </div>
       </section>
 
-      <section className="panel workspace-section-card">
-          <div className="section-heading workspace-section-heading">
+      <details id="request-payment" className="panel workspace-section-card workspace-details job-action-details">
+          <summary className="workspace-details-summary job-action-summary">
+            <div className="section-heading workspace-section-heading compact-heading">
             <p className="eyebrow">Payments</p>
             <h2>Request a payment</h2>
-          </div>
+            </div>
+            <span className="workspace-details-copy">Create or review payment links.</span>
+          </summary>
             {!stripeOnboarded ? (
               <div className="payment-banner warning">
                 <p>
@@ -304,9 +303,9 @@ export default async function JobDetailPage({
                 ))}
               </div>
             )}
-        </section>
+        </details>
 
-      <section className="panel workspace-section-card">
+      <section id="job-feed" className="panel workspace-section-card job-feed-command-panel">
             <div className="section-heading workspace-section-heading">
               <p className="eyebrow">Job feed</p>
               <h2>Command center</h2>
@@ -364,11 +363,14 @@ export default async function JobDetailPage({
             )}
       </section>
 
-      <section className="panel workspace-section-card">
-          <div className="section-heading workspace-section-heading">
+      <details id="job-details" className="panel workspace-section-card workspace-details job-action-details">
+          <summary className="workspace-details-summary job-action-summary">
+            <div className="section-heading workspace-section-heading compact-heading">
             <p className="eyebrow">Overview</p>
             <h2>Job details</h2>
-          </div>
+            </div>
+            <span className="workspace-details-copy">Edit client info, schedule, crew, photos, and job settings.</span>
+          </summary>
             <form action={boundUpdateJob} className="form-grid">
               <div className="field">
                 <label htmlFor="clientName">Client name</label>
@@ -482,9 +484,9 @@ export default async function JobDetailPage({
               </p>
               <DeleteJobButton action={boundDeleteJob} />
             </div>
-        </section>
+        </details>
 
-      <section className="detail-grid workspace-grid-gap">
+      <section id="job-costs" className="detail-grid workspace-grid-gap">
           <div>
             <div className="panel workspace-section-card">
               <div className="section-heading workspace-section-heading">
@@ -644,7 +646,16 @@ export default async function JobDetailPage({
           </div>
         </section>
 
-      <section className="panel workspace-section-card">
+      <details className="panel workspace-section-card workspace-details job-action-details">
+            <summary className="workspace-details-summary job-action-summary">
+              <div className="section-heading workspace-section-heading compact-heading">
+                <p className="eyebrow" style={{ margin: 0 }}>
+                  Invoices
+                </p>
+                <h2>Invoice records</h2>
+              </div>
+              <span className="workspace-details-copy">{invoices.length} invoice{invoices.length === 1 ? '' : 's'} tied to this job.</span>
+            </summary>
             <div className="toolbar" style={{ marginBottom: '1rem' }}>
               <div className="section-heading workspace-section-heading compact-heading">
                 <p className="eyebrow" style={{ margin: 0 }}>
@@ -697,7 +708,7 @@ export default async function JobDetailPage({
                 ))}
               </div>
             )}
-        </section>
+        </details>
 
       <section className="panel workspace-section-card">
             <div className="section-heading workspace-section-heading">

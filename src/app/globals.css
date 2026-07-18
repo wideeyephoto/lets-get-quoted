@@ -1297,6 +1297,15 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   grid-template-columns: 1fr;
 }
 
+.job-command-hero {
+  grid-template-columns: 1fr;
+  align-items: center;
+}
+
+.job-command-hero .workspace-title {
+  font-size: clamp(1.9rem, 3.5vw, 2.9rem);
+}
+
 .workspace-hero-copy {
   display: flex;
   flex-direction: column;
@@ -1349,6 +1358,92 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 
 .workspace-actions {
   margin-bottom: 0;
+}
+
+.job-command-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 0.9rem;
+}
+
+.job-command-facts span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.42rem 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(247, 245, 239, 0.68);
+  font-size: 0.82rem;
+}
+
+.job-command-facts strong {
+  color: #f7f5ef;
+}
+
+.job-action-details {
+  padding: 0;
+  overflow: hidden;
+  scroll-margin-top: 1rem;
+}
+
+.job-action-summary {
+  justify-content: space-between;
+  padding: 0.8rem 1rem;
+}
+
+.job-action-summary .eyebrow,
+.job-action-summary h2 {
+  margin: 0;
+}
+
+.job-action-summary h2 {
+  font-size: clamp(1.15rem, 2vw, 1.45rem);
+}
+
+.job-action-summary .workspace-details-copy {
+  margin-left: auto;
+  font-size: 0.82rem;
+}
+
+.job-action-summary::after {
+  content: '+';
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 1.65rem;
+  height: 1.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(247, 245, 239, 0.72);
+  font-weight: 800;
+}
+
+.job-action-details[open] .job-action-summary {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.job-action-details[open] .job-action-summary::after {
+  content: '-';
+}
+
+.job-action-details > *:not(.job-action-summary) {
+  margin-left: 1.25rem;
+  margin-right: 1.25rem;
+}
+
+.job-action-details > .job-action-summary + * {
+  margin-top: 1rem;
+}
+
+.job-action-details > *:last-child {
+  margin-bottom: 1.25rem;
+}
+
+.job-feed-command-panel {
+  scroll-margin-top: 1rem;
 }
 
 .workspace-metric-grid {
