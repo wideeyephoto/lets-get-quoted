@@ -6,7 +6,7 @@ import { getJob, listCosts, computeMargin, formatJobQuoteSummary, formatJobSched
 import { createJobPhotoUrls } from '@/lib/job-photo-storage';
 import { listPayments, type PaymentStatus } from '@/lib/payments';
 import { listInvoices, type InvoiceStatus } from '@/lib/invoices';
-import { getActiveClientAccessCount, listJobFeed, type JobFeedEvent } from '@/lib/job-feed';
+import { createLinkedFeedItems, getActiveClientAccessCount, listJobFeed, sortJobFeed, type JobFeedEvent } from '@/lib/job-feed';
 import { listCrew, listCrewIdsForJob } from '@/lib/crew';
 import {
   createClientJobLinkAction,
@@ -75,6 +75,7 @@ const FEED_KIND_LABEL: Record<string, string> = {
   payment_failed: 'Payment issue',
   payment_refunded: 'Refund',
   invoice_created: 'Invoice',
+  invoice_signoff_link: 'Client sign-off',
   invoice_sent: 'Invoice sent',
   invoice_signed: 'Invoice signed',
   invoice_paid: 'Invoice paid',
@@ -92,6 +93,7 @@ const FEED_KIND_ICON: Record<string, string> = {
   payment_failed: '!',
   payment_refunded: '↩',
   invoice_created: 'I',
+  invoice_signoff_link: '✓',
   invoice_sent: 'I',
   invoice_signed: '✓',
   invoice_paid: '✓',
@@ -162,10 +164,13 @@ export default async function JobDetailPage({
   const boundRefundPayment = refundPaymentAction.bind(null, job.id);
   const boundMarkPaymentFailed = markPaymentFailedAction.bind(null, job.id);
   const boundRetryPaymentText = retryPaymentTextAction.bind(null, job.id);
-  const displayedFeed: JobFeedEvent[] = feed.some((event) => event.kind === 'job_created')
-    ? feed
-    : [
-        ...feed,
+  const linkedFeedItems = createLinkedFeedItems(feed, payments, invoices, accountId, job.id);
+  const displayedFeed: JobFeedEvent[] = sortJobFeed([
+    ...feed,
+    ...linkedFeedItems,
+    ...(feed.some((event) => event.kind === 'job_created')
+      ? []
+      : [
         {
           id: `job-created-${job.id}`,
           account_id: accountId,
@@ -183,8 +188,9 @@ export default async function JobDetailPage({
           action_url: null,
           published_at: job.created_at,
           created_at: job.created_at,
-        },
-      ];
+        } satisfies JobFeedEvent,
+      ]),
+  ]);
 
   return (
     <main className="wide-shell workspace-shell">

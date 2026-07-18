@@ -43,6 +43,61 @@ export type ClientJobDashboard = {
   invoices: Invoice[];
 };
 
+function hasFeedAction(feed: JobFeedEvent[], sourceTable: string, sourceId: string, actionUrl: string): boolean {
+  return feed.some((event) => event.source_table === sourceTable && event.source_id === sourceId && event.action_url === actionUrl);
+}
+
+export function createLinkedFeedItems(feed: JobFeedEvent[], payments: Payment[], invoices: Invoice[], accountId: string, jobId: string): JobFeedEvent[] {
+  const paymentItems = payments
+    .filter((payment) => !hasFeedAction(feed, 'payments', payment.id, `/pay/${payment.id}`))
+    .map((payment): JobFeedEvent => ({
+      id: `payment-link-${payment.id}`,
+      account_id: accountId,
+      job_id: jobId,
+      kind: 'payment_requested',
+      title: 'Payment request link available',
+      body: payment.label ?? 'Payment request',
+      image_url: null,
+      author: 'Owner',
+      meta: null,
+      visibility: 'client_financial',
+      amount: Number(payment.amount),
+      source_table: 'payments',
+      source_id: payment.id,
+      action_url: `/pay/${payment.id}`,
+      published_at: payment.requested_at,
+      created_at: payment.requested_at,
+    }));
+
+  const invoiceItems = invoices
+    .filter((invoice) => invoice.status !== 'void')
+    .filter((invoice) => !hasFeedAction(feed, 'invoices', invoice.id, `/invoice/${invoice.id}`))
+    .map((invoice): JobFeedEvent => ({
+      id: `invoice-signoff-link-${invoice.id}`,
+      account_id: accountId,
+      job_id: jobId,
+      kind: 'invoice_signoff_link',
+      title: 'Client sign-off link available',
+      body: invoice.ref,
+      image_url: null,
+      author: 'Owner',
+      meta: null,
+      visibility: invoice.status === 'draft' ? 'internal' : 'client_financial',
+      amount: Number(invoice.total),
+      source_table: 'invoices',
+      source_id: invoice.id,
+      action_url: `/invoice/${invoice.id}`,
+      published_at: invoice.status === 'draft' ? null : invoice.created_at,
+      created_at: invoice.created_at,
+    }));
+
+  return [...paymentItems, ...invoiceItems];
+}
+
+export function sortJobFeed(feed: JobFeedEvent[]): JobFeedEvent[] {
+  return [...feed].sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime());
+}
+
 function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
@@ -223,13 +278,18 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
 
   if (!job) return null;
 
+  const feed = sortJobFeed([
+    ...feedResult,
+    ...createLinkedFeedItems(feedResult, (payments ?? []) as Payment[], (invoices ?? []) as Invoice[], access.account_id, access.job_id),
+  ]).filter((event) => event.visibility === 'client' || event.visibility === 'client_financial');
+
   return {
     businessName: account?.business_name ?? "Let's Get Quoted contractor",
     job: {
       ...job,
       schedule_label: formatJobSchedule(job.scheduled_for, job.scheduled_time),
     },
-    feed: feedResult,
+    feed,
     payments: (payments ?? []) as Payment[],
     invoices: (invoices ?? []) as Invoice[],
   };
