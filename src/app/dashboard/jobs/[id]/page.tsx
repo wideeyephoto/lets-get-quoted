@@ -352,32 +352,6 @@ export default async function JobDetailPage({
               <p className="eyebrow">Job feed</p>
               <h2>Job Feed</h2>
             </div>
-            <div className="job-feed-share-strip">
-              <div>
-                <strong>{hasActiveClientView ? 'Client view shared' : 'Client view not shared'}</strong>
-                <p>{hasActiveClientView ? 'The quote, payment links, invoices, and job updates live in one client feed.' : 'Create a client view link before sending job updates or payment links.'}</p>
-                {clientViewHref ? (
-                  <a className="job-feed-share-url" href={clientViewHref} target="_blank" rel="noreferrer">{clientViewHref}</a>
-                ) : hasActiveClientView ? (
-                  <span>Shared when the quote was sent</span>
-                ) : (
-                  <span>No active client view link</span>
-                )}
-              </div>
-              <div className="job-feed-share-actions">
-                {clientViewHref ? (
-                  <a className="btn secondary" href={clientViewHref} target="_blank" rel="noreferrer">Client View</a>
-                ) : hasActiveClientView ? (
-                  <form action={boundCreateClientJobLink}>
-                    <SaveButton className="btn secondary" pendingLabel="Creating…" savedLabel="Created ✓">Client View</SaveButton>
-                  </form>
-                ) : (
-                  <form action={boundCreateClientJobLink}>
-                    <SaveButton pendingLabel="Creating…" savedLabel="Created ✓">Create client view link</SaveButton>
-                  </form>
-                )}
-              </div>
-            </div>
             {displayedFeed.length === 0 ? (
               <p className="empty-state">No job feed updates yet.</p>
             ) : (
@@ -416,6 +390,30 @@ export default async function JobDetailPage({
                 ))}
               </div>
             )}
+            <div className="job-feed-share-strip">
+              <div>
+                <strong>{hasActiveClientView ? 'Client view shared' : 'Client view not shared'}</strong>
+                <p>{hasActiveClientView ? 'The quote, payment links, invoices, and job updates live in one client feed.' : 'Create a client view link before sending job updates or payment links.'}</p>
+                {hasActiveClientView ? (
+                  <span>Shared client access is active</span>
+                ) : (
+                  <span>No active client view link</span>
+                )}
+              </div>
+              <div className="job-feed-share-actions">
+                {clientViewHref ? (
+                  <a className="btn secondary" href={clientViewHref} target="_blank" rel="noreferrer">Client View</a>
+                ) : hasActiveClientView ? (
+                  <form action={boundCreateClientJobLink}>
+                    <SaveButton className="btn secondary" pendingLabel="Creating…" savedLabel="Created ✓">Client View</SaveButton>
+                  </form>
+                ) : (
+                  <form action={boundCreateClientJobLink}>
+                    <SaveButton pendingLabel="Creating…" savedLabel="Created ✓">Create client view link</SaveButton>
+                  </form>
+                )}
+              </div>
+            </div>
 
       </section>
 
