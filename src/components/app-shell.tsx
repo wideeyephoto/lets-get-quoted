@@ -10,7 +10,7 @@ import { supabase } from '@/lib/supabase';
 const baseNavItems = [
   { href: '/', label: 'Home' },
   { href: '/dashboard', label: 'Dashboard' },
-  { href: '/dashboard/leads', label: 'Quote Requests', flowAfter: true },
+  { href: '/dashboard/leads', label: 'Leads', flowAfter: true },
   { href: '/dashboard/jobs', label: 'Jobs' },
   { href: '/dashboard/crew', label: 'Crew' },
   { href: '/dashboard/schedule', label: 'Schedule' },
@@ -74,7 +74,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   // relevant once inside the app, and "Website", which is promoted to
   // its own always-visible badge below instead of a plain link). Logged-out
   // visitors — homeowners paying an invoice, or a prospect on the marketing
-  // site — have no use for internal app links like Dashboard/Quote Requests/Jobs that
+  // site — have no use for internal app links like Dashboard/Leads/Jobs that
   // just dead-end at a login wall, so they see just a "Create account" CTA
   // (the same magic-link flow handles both sign-in and account creation).
   const navItems = isLoggedIn
@@ -224,11 +224,11 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
 
       {showQuoteRequestAlert ? (
         <aside className="quote-request-alert" role="status" aria-live="polite">
-          <button type="button" className="quote-request-alert-close" onClick={dismissQuoteRequestAlert} aria-label="Dismiss quote request alert">x</button>
-          <p>New quote request needs a response</p>
-          <strong>{newQuoteRequestCount === 1 ? '1 website request is waiting' : `${newQuoteRequestCount} website requests are waiting`}</strong>
-          {newestQuoteRequestAge ? <span>Newest request received {newestQuoteRequestAge}h ago.</span> : null}
-          <Link href={`/dashboard/leads/${newestQuoteRequestId}`} className="btn primary">View request</Link>
+          <button type="button" className="quote-request-alert-close" onClick={dismissQuoteRequestAlert} aria-label="Dismiss lead alert">x</button>
+          <p>New lead needs a response</p>
+          <strong>{newQuoteRequestCount === 1 ? '1 website lead is waiting' : `${newQuoteRequestCount} website leads are waiting`}</strong>
+          {newestQuoteRequestAge ? <span>Newest lead received {newestQuoteRequestAge}h ago.</span> : null}
+          <Link href={`/dashboard/leads/${newestQuoteRequestId}`} className="btn primary">View lead</Link>
         </aside>
       ) : null}
 

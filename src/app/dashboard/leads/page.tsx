@@ -34,8 +34,8 @@ export default async function LeadsPage() {
   return (
     <main className="wide-shell workspace-shell">
       <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading"><p className="eyebrow">Pipeline</p><h2>Current quote requests</h2></div>
-        {leads.length === 0 ? <p className="empty-state">No quote requests yet. Published website requests will appear here.</p> : (
+        <div className="section-heading workspace-section-heading"><p className="eyebrow">Pipeline</p><h2>Current leads</h2></div>
+        {leads.length === 0 ? <p className="empty-state">No leads yet. Published website requests will appear here.</p> : (
           <div className={styles.board}>
             {COLUMNS.map((column) => {
               const columnLeads = leads.filter((lead) => lead.status === column.status);
@@ -53,7 +53,7 @@ export default async function LeadsPage() {
                     {(lead.phone || lead.email) && <div className={styles.contactHint}>{lead.phone || lead.email}</div>}
                   </Link>
                 );
-              })}{columnLeads.length === 0 && <p className={styles.empty}>No quote requests here.</p>}</div></section>;
+              })}{columnLeads.length === 0 && <p className={styles.empty}>No leads here.</p>}</div></section>;
             })}
           </div>
         )}
@@ -85,8 +85,8 @@ export default async function LeadsPage() {
       <section className="panel workspace-section-card">
         <details className="workspace-details" open={leads.length === 0}>
           <summary className="workspace-details-summary">
-            <span className="btn primary">+ Add manual request</span>
-            <span className="workspace-details-copy">Log a quote request that came in by phone, in person, or referral.</span>
+            <span className="btn primary">+ Add manual lead</span>
+            <span className="workspace-details-copy">Log a lead that came in by phone, in person, or referral.</span>
           </summary>
           <form action={createLeadAction} className="form-grid">
             <div className="field">
@@ -122,7 +122,7 @@ export default async function LeadsPage() {
               <input id="photos" name="photos" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple />
             </div>
             <div className="field full">
-              <SaveButton>Add quote request</SaveButton>
+              <SaveButton>Add lead</SaveButton>
             </div>
           </form>
         </details>

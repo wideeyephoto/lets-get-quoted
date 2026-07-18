@@ -37,7 +37,7 @@ export default function DemoLeadsPage() {
         <section className="panel workspace-section-card">
           <div className="section-heading workspace-section-heading">
             <p className="eyebrow">Pipeline</p>
-            <h2>Current quote requests</h2>
+            <h2>Current leads</h2>
           </div>
           <div className={styles.board}>
             {COLUMNS.map((column) => {
@@ -63,7 +63,7 @@ export default function DemoLeadsPage() {
                         </Link>
                       );
                     })}
-                    {columnLeads.length === 0 && <p className={styles.empty}>No quote requests here.</p>}
+                    {columnLeads.length === 0 && <p className={styles.empty}>No leads here.</p>}
                   </div>
                 </section>
               );
@@ -100,7 +100,7 @@ export default function DemoLeadsPage() {
             <h2>+ Add manual request</h2>
           </div>
           <p className="workspace-card-copy">
-            Every website quote request lands here automatically, and you can log phone or referral requests by
+            Every website lead lands here automatically, and you can log phone or referral leads by
             hand too. This demo account is read-only.
           </p>
           <Link href="/login" className="btn primary">

@@ -66,7 +66,7 @@ function buildPastClients(jobs: Job[], leads: Lead[]): PastClientOption[] {
     existing.address = existing.address ?? client.address;
     if (existing.source !== client.source) {
       existing.source = 'both';
-      existing.sourceLabel = existing.sourceLabel.includes('Quote request') ? existing.sourceLabel : `${existing.sourceLabel} + quote request`;
+      existing.sourceLabel = existing.sourceLabel.includes('Lead') ? existing.sourceLabel : `${existing.sourceLabel} + lead`;
     }
   }
 
@@ -91,7 +91,7 @@ function buildPastClients(jobs: Job[], leads: Lead[]): PastClientOption[] {
       email: lead.email,
       address: lead.address,
       source: 'lead',
-      sourceLabel: 'Quote request',
+      sourceLabel: 'Lead',
     });
   }
 
