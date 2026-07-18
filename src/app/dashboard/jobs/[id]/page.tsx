@@ -159,12 +159,34 @@ export default async function JobDetailPage({
   const boundRefundPayment = refundPaymentAction.bind(null, job.id);
   const boundMarkPaymentFailed = markPaymentFailedAction.bind(null, job.id);
   const boundRetryPaymentText = retryPaymentTextAction.bind(null, job.id);
+  const displayedFeed: JobFeedEvent[] = feed.some((event) => event.kind === 'job_created')
+    ? feed
+    : [
+        ...feed,
+        {
+          id: `job-created-${job.id}`,
+          account_id: accountId,
+          job_id: job.id,
+          kind: 'job_created',
+          title: `${job.ref} created`,
+          body: `Job was added for ${job.client_name}.`,
+          image_url: null,
+          author: null,
+          meta: null,
+          visibility: 'client',
+          amount: null,
+          source_table: 'jobs',
+          source_id: job.id,
+          action_url: null,
+          published_at: job.created_at,
+          created_at: job.created_at,
+        },
+      ];
 
   return (
     <main className="wide-shell workspace-shell">
       <section className="workspace-hero panel job-command-hero">
         <div className="workspace-hero-copy">
-          <p className="job-ref">{job.ref}</p>
           <h1 className="workspace-title">{job.client_name}</h1>
           <div className="workspace-inline-row">
             <span className={`status-badge status-${job.status}`}>{STATUS_LABEL[job.status]}</span>
@@ -194,16 +216,16 @@ export default async function JobDetailPage({
               <p className="eyebrow">Job feed</p>
               <h2>Job Feed</h2>
             </div>
-            {feed.length === 0 ? (
+            {displayedFeed.length === 0 ? (
               <p className="empty-state">No job feed updates yet.</p>
             ) : (
               <div className="job-feed-list workspace-list-block">
-                {feed.map((event) => (
+                {displayedFeed.map((event) => (
                   <article className={`job-feed-item feed-kind-${event.kind}`} key={event.id}>
                     <div className="job-feed-dot">{FEED_KIND_ICON[event.kind] ?? '•'}</div>
                     <div className="job-feed-content">
                       <div className="job-row-header">
-                        <span className="cost-item-desc">{event.title || event.kind}</span>
+                        <span className="cost-item-desc">{event.kind === 'job_created' ? `${job.ref} created` : event.title || event.kind}</span>
                         <div className="feed-badge-row">
                           <span className="status-badge status-new_lead">{FEED_KIND_LABEL[event.kind] ?? 'Update'}</span>
                           <span className={`status-badge ${event.visibility === 'internal' ? 'status-archived' : 'status-complete'}`}>

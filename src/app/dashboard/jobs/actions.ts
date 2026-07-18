@@ -68,8 +68,8 @@ export async function createJobAction(formData: FormData) {
 
   await createJobFeedEvent(supabase, accountId, job.id, {
     kind: 'job_created',
-    title: 'Job created',
-    body: `${job.ref} was added for ${job.client_name}.`,
+    title: `${job.ref} created`,
+    body: `Job was added for ${job.client_name}.`,
     visibility: 'client',
     sourceTable: 'jobs',
     sourceId: job.id,
