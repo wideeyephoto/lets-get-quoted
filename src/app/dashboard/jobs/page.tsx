@@ -226,31 +226,6 @@ export default async function JobsPage({
             <label htmlFor="quotedAmount">Quoted amount ($)</label>
             <input id="quotedAmount" name="quotedAmount" type="number" min="0" step="0.01" placeholder="12840" />
           </div>
-          <div className="field full workspace-section-divider">
-            <div className="section-heading workspace-section-heading">
-              <p className="eyebrow">Quick booking</p>
-              <h2>Suggest 3 service options with the quote</h2>
-            </div>
-            <p className="workspace-card-copy">Add three dates that work for your crew and the client will get a text link to choose one or ask for different times.</p>
-          </div>
-          {[1, 2, 3].map((optionNumber) => (
-            <div className="schedule-option-grid field full" key={optionNumber}>
-              <div>
-                <label htmlFor={`quoteScheduleDate${optionNumber}`}>Option {optionNumber} date</label>
-                <ScheduledDatePicker id={`quoteScheduleDate${optionNumber}`} name={`quoteScheduleDate${optionNumber}`} />
-              </div>
-              <div>
-                <label htmlFor={`quoteScheduleTime${optionNumber}`}>Option {optionNumber} time</label>
-                <TimeSlotSelect id={`quoteScheduleTime${optionNumber}`} name={`quoteScheduleTime${optionNumber}`} />
-              </div>
-            </div>
-          ))}
-          <div className="field full">
-            <label className="sms-consent-check">
-              <input name="quoteScheduleSmsConsent" type="checkbox" />
-              <span>The client agreed to receive transactional scheduling texts. Required only when sending quick booking options. Reply STOP to opt out.</span>
-            </label>
-          </div>
           <div className="field full">
             <label htmlFor="photos">Photos</label>
             <input id="photos" name="photos" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple />

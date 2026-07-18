@@ -44,13 +44,12 @@ function optionalText(value: FormDataEntryValue | null): string | null {
   return text.length > 0 ? text : null;
 }
 
-function scheduleOptionsFromForm(formData: FormData, prefix: string): { hasInput: boolean; options: ScheduleOption[] } {
+function scheduleOptionsFromForm(formData: FormData, prefix: string): ScheduleOption[] {
   const options: ScheduleOption[] = [1, 2, 3].map((index) => ({
     date: (formData.get(`${prefix}Date${index}`) ?? '').toString(),
     time: optionalText(formData.get(`${prefix}Time${index}`)),
   }));
-  const hasInput = options.some((option) => option.date.trim() || option.time);
-  return { hasInput, options };
+  return options;
 }
 
 function parseJobStatus(value: unknown): JobStatus | null {
@@ -90,24 +89,6 @@ export async function createJobAction(formData: FormData) {
   });
 
   const token = await createClientJobAccessToken(supabase, accountId, job.id, { clientPhone: job.client_phone, clientEmail: job.client_email });
-
-  const quickBooking = scheduleOptionsFromForm(formData, 'quoteSchedule');
-  if (quickBooking.hasInput) {
-    const clientPhone = normalizeUsPhone(job.client_phone ?? '');
-    if (!clientPhone) throw new Error('Enter a valid client mobile number before sending quick booking options.');
-    if (formData.get('quoteScheduleSmsConsent') !== 'on') throw new Error('Confirm the client agreed to receive scheduling texts.');
-
-    const request = await createAndSendScheduleRequest(supabase, accountId, job.id, { clientPhone, options: quickBooking.options });
-    const optionSummary = request.options.map((option, index) => `${index + 1}. ${formatScheduleOption(option)}`).join(' ');
-
-    await createJobFeedEvent(supabase, accountId, job.id, {
-      kind: 'job_scheduled',
-      title: 'Quick booking options sent',
-      body: `Three service options were texted with the quote: ${optionSummary}`,
-      visibility: 'client',
-      meta: { schedule_request_id: request.id, options: request.options },
-    });
-  }
 
   revalidatePath('/dashboard/jobs');
   redirect(`/dashboard/jobs/${job.id}?tab=feed&clientToken=${token}`);
@@ -253,7 +234,7 @@ export async function sendClientScheduleOptionsAction(jobId: string, formData: F
   if (!clientPhone) throw new Error('Enter a valid client mobile number before sending schedule options.');
   if (formData.get('scheduleSmsConsent') !== 'on') throw new Error('Confirm the client agreed to receive scheduling texts.');
 
-  const { options } = scheduleOptionsFromForm(formData, 'schedule');
+  const options = scheduleOptionsFromForm(formData, 'schedule');
 
   const request = await createAndSendScheduleRequest(supabase, accountId, jobId, { clientPhone, options });
   const optionSummary = request.options.map((option, index) => `${index + 1}. ${formatScheduleOption(option)}`).join(' ');

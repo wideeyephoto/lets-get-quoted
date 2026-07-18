@@ -7,6 +7,8 @@ import { createClientJobAccessToken, createJobFeedEvent } from '@/lib/job-feed';
 import { formatJobQuoteSummary } from '@/lib/jobs';
 import { convertLeadToJob, createLead, updateLeadStatus, type LeadStatus } from '@/lib/leads';
 import { uploadLeadPhoto } from '@/lib/lead-photo-storage';
+import { normalizeUsPhone } from '@/lib/phone';
+import { createAndSendScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
 
 const VALID_STATUSES = new Set<LeadStatus>(['new', 'contacted', 'quoted', 'won', 'lost']);
 
@@ -20,6 +22,15 @@ function optionalAmount(value: FormDataEntryValue | null): number | null {
   if (!text) return null;
   const n = Number(text);
   return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function scheduleOptionsFromForm(formData: FormData): { hasInput: boolean; options: ScheduleOption[] } {
+  const options: ScheduleOption[] = [1, 2, 3].map((index) => ({
+    date: (formData.get(`quoteScheduleDate${index}`) ?? '').toString(),
+    time: optionalText(formData.get(`quoteScheduleTime${index}`)),
+  }));
+  const hasInput = options.some((option) => option.date.trim() || option.time);
+  return { hasInput, options };
 }
 
 export async function createLeadAction(formData: FormData) {
@@ -70,6 +81,23 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
     sourceId: job.id,
   });
   const token = await createClientJobAccessToken(supabase, accountId, job.id, { clientPhone: job.client_phone, clientEmail: job.client_email });
+  const quickBooking = scheduleOptionsFromForm(formData);
+  if (quickBooking.hasInput) {
+    const clientPhone = normalizeUsPhone(job.client_phone ?? '');
+    if (!clientPhone) throw new Error('Enter a valid client mobile number before sending quick booking options.');
+    if (formData.get('quoteScheduleSmsConsent') !== 'on') throw new Error('Confirm the client agreed to receive scheduling texts.');
+
+    const request = await createAndSendScheduleRequest(supabase, accountId, job.id, { clientPhone, options: quickBooking.options });
+    const optionSummary = request.options.map((option, index) => `${index + 1}. ${formatScheduleOption(option)}`).join(' ');
+
+    await createJobFeedEvent(supabase, accountId, job.id, {
+      kind: 'job_scheduled',
+      title: 'Quick booking options sent',
+      body: `Three service options were texted with the initial quote: ${optionSummary}`,
+      visibility: 'client',
+      meta: { schedule_request_id: request.id, options: request.options },
+    });
+  }
   revalidatePath('/dashboard/leads');
   revalidatePath('/dashboard/jobs');
   redirect(`/dashboard/jobs/${job.id}?tab=feed&clientToken=${token}`);
