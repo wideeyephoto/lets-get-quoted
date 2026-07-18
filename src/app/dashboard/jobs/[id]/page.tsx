@@ -773,11 +773,14 @@ export default async function JobDetailPage({
 
       <section id="job-costs" className="detail-grid workspace-grid-gap">
           <div>
-            <div className="panel workspace-section-card">
-              <div className="section-heading workspace-section-heading">
-                <p className="eyebrow">Expenses</p>
-                <h2>Job Expenses</h2>
-              </div>
+            <details className="panel workspace-section-card workspace-details job-action-details">
+              <summary className="workspace-details-summary job-action-summary">
+                <div className="section-heading workspace-section-heading compact-heading">
+                  <p className="eyebrow">Expenses</p>
+                  <h2>Job expenses</h2>
+                </div>
+                <span className="workspace-details-copy">Log materials, labor, subcontractors, receipts, and other costs.</span>
+              </summary>
 
               <form action={boundCreateCost} className="cost-form">
                 <JobExpenseFields crew={crew} />
@@ -814,15 +817,18 @@ export default async function JobDetailPage({
                   ))}
                 </div>
               )}
-            </div>
+            </details>
           </div>
 
           <div>
-            <div className="panel workspace-section-card sticky-card">
-              <div className="section-heading workspace-section-heading">
-                <p className="eyebrow">Margin</p>
-                <h2>Job margin</h2>
-              </div>
+            <details className="panel workspace-section-card workspace-details job-action-details sticky-card">
+              <summary className="workspace-details-summary job-action-summary">
+                <div className="section-heading workspace-section-heading compact-heading">
+                  <p className="eyebrow">Profitability</p>
+                  <h2>ROI</h2>
+                </div>
+                <span className="workspace-details-copy">Track profit against the quoted job amount as costs come in.</span>
+              </summary>
               <div className="margin-card">
                 <div className="margin-row">
                   <span>Revenue</span>
@@ -845,14 +851,14 @@ export default async function JobDetailPage({
                   <span>{formatMoney(margin.profit)}</span>
                 </div>
                 <div className={`margin-badge ${marginTier(margin.margin)}`}>
-                  <div className="label">Margin</div>
+                  <div className="label">ROI</div>
                   <div className="value">{formatPercent(margin.margin)}</div>
                 </div>
               </div>
               <p className="margin-note">
-                Revenue is the job&apos;s quoted amount. Margin updates live as you log costs.
+                Revenue is the job&apos;s quoted amount. ROI updates live as you log costs.
               </p>
-            </div>
+            </details>
           </div>
         </section>
 
