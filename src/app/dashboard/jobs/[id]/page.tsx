@@ -291,7 +291,7 @@ export default async function JobDetailPage({
           <summary className="workspace-details-summary job-action-summary">
             <div className="section-heading workspace-section-heading compact-heading">
             <p className="eyebrow">Payments</p>
-            <h2>Request a payment</h2>
+            <h2>Request a payment from {job.client_name}</h2>
             </div>
             <span className="workspace-details-copy">Create or review payment links.</span>
           </summary>
@@ -314,11 +314,18 @@ export default async function JobDetailPage({
                     <option value="deposit">Deposit</option>
                     <option value="stage">Stage payment</option>
                     <option value="final">Final payment</option>
+                    <option value="plan_installment">Additional payment</option>
                   </select>
-                </div>
-                <div className="field">
-                  <label htmlFor="pay-label">Label</label>
-                  <input id="pay-label" name="label" placeholder="Deposit — 50% down" />
+                  <QuickFillButtons
+                    label="Quick add:"
+                    targetId="pay-kind"
+                    values={[
+                      { label: 'Deposit', value: 'deposit' },
+                      { label: 'Stage', value: 'stage' },
+                      { label: 'Final', value: 'final' },
+                      { label: 'Additional payment', value: 'plan_installment' },
+                    ]}
+                  />
                 </div>
                 <div className="field">
                   <label htmlFor="pay-amount">Amount ($)</label>
@@ -334,6 +341,10 @@ export default async function JobDetailPage({
                       </option>
                     ))}
                   </select>
+                </div>
+                <div className="field">
+                  <label htmlFor="pay-label">Notes (optional)</label>
+                  <input id="pay-label" name="label" placeholder="Optional payment note" />
                 </div>
               </div>
               <div className="payment-sms-options">
