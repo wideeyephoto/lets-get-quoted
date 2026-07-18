@@ -12,7 +12,7 @@ import LivePreview from './LivePreview';
 import ThemeIcon from './ThemeIcon';
 import styles from './SiteEditor.module.css';
 
-type BuilderTab = 'business' | 'images' | 'sections' | 'reviews' | 'design' | 'publish';
+type BuilderTab = 'business' | 'design' | 'images' | 'sections' | 'publish';
 
 type WebsiteBuilderProps = {
   site: Site;
@@ -21,10 +21,9 @@ type WebsiteBuilderProps = {
 
 const TABS: { id: BuilderTab; label: string }[] = [
   { id: 'business', label: 'Business' },
+  { id: 'design', label: 'Design' },
   { id: 'images', label: 'Images' },
   { id: 'sections', label: 'Sections' },
-  { id: 'reviews', label: 'Reviews' },
-  { id: 'design', label: 'Design' },
   { id: 'publish', label: 'Publish' },
 ];
 
@@ -389,12 +388,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   </div>
                   <button type="button" className={styles.secondaryAction} onClick={() => updateFaqs({ ...siteContent.faqs, enabled: true, items: [...siteContent.faqs.items, { id: createContentId('faq'), question: '', answer: '' }] })}>Add FAQ</button>
                 </div>
-              </div>
-            )}
 
-            {activeTab === 'reviews' && (
-              <div className={styles.formSection}>
-                <div className={styles.sectionIntro}><h2>Reviews & testimonials</h2><p>Add customer proof now, with Google import ready for the next integration step.</p></div>
                 <div className={styles.contentCard}>
                   <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.testimonials.enabled} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, enabled: event.target.checked })} /><span><strong>Testimonials</strong><small>Show quotes from real customers on your public site.</small></span></label>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.testimonials.title} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, title: event.target.value })} /></label>
