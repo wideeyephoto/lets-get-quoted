@@ -48,39 +48,16 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
 
   return (
     <main className="wide-shell workspace-shell client-job-dashboard">
-      <section className="workspace-hero panel">
-        <div className="workspace-hero-copy">
-          <p className="eyebrow">{dashboard.businessName}</p>
-          <h1 className="workspace-title">{dashboard.job.client_name}</h1>
-          <div className="workspace-inline-row">
-            <span className={`status-badge status-${dashboard.job.status}`}>{STATUS_LABEL[dashboard.job.status] ?? dashboard.job.status}</span>
-            <span className="workspace-inline-note">{dashboard.job.ref} · {dashboard.job.address || 'Address not listed'}</span>
-          </div>
-          <p className="workspace-lead">Schedule: {dashboard.job.schedule_label}</p>
-        </div>
-        <div className="workspace-metric-grid compact">
-          <article className="workspace-metric-card accent">
-            <span className="workspace-metric-label">Open payments</span>
-            <strong className="workspace-metric-value">{openPayments.length}</strong>
-            <p className="workspace-metric-note">Secure payment requests from your contractor.</p>
-          </article>
-          <article className="workspace-metric-card">
-            <span className="workspace-metric-label">Invoices</span>
-            <strong className="workspace-metric-value">{dashboard.invoices.length}</strong>
-            <p className="workspace-metric-note">Documents tied to this job.</p>
-          </article>
-        </div>
-      </section>
-
       {openPayments.length > 0 ? (
-        <section className="panel workspace-section-card">
+        <section className="panel workspace-section-card client-attention-card">
           <div className="section-heading workspace-section-heading">
-            <p className="eyebrow">Payments</p>
-            <h2>Requests needing attention</h2>
+            <p className="eyebrow">Needs attention</p>
+            <h2>Payment requests</h2>
           </div>
+          <p className="workspace-card-copy">Please review these requests to keep the job moving.</p>
           <div className="cost-list">
             {openPayments.map((payment) => (
-              <Link href={`/pay/${payment.id}`} className="cost-item" key={payment.id}>
+              <Link href={`/pay/${payment.id}`} className="cost-item client-attention-link" key={payment.id}>
                 <div className="cost-item-main">
                   <span className="cost-item-desc">{payment.label || 'Payment request'}</span>
                   <span className="cost-item-sub">{PAYMENT_STATUS_LABEL[payment.status]}</span>
@@ -92,12 +69,24 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
         </section>
       ) : null}
 
+      <section className="workspace-hero panel">
+        <div className="workspace-hero-copy">
+          <p className="eyebrow">{dashboard.businessName}</p>
+          <h1 className="workspace-title">{dashboard.job.client_name}</h1>
+          <div className="workspace-inline-row">
+            <span className={`status-badge status-${dashboard.job.status}`}>{STATUS_LABEL[dashboard.job.status] ?? dashboard.job.status}</span>
+            <span className="workspace-inline-note">{dashboard.job.ref} · {dashboard.job.address || 'Address not listed'}</span>
+          </div>
+          <p className="workspace-lead">Schedule: {dashboard.job.schedule_label}</p>
+        </div>
+      </section>
+
       <section className="detail-grid workspace-grid-gap">
         <div>
           <div className="panel workspace-section-card">
             <div className="section-heading workspace-section-heading">
               <p className="eyebrow">Job feed</p>
-              <h2>What happened</h2>
+              <h2>Status Updates</h2>
             </div>
             {dashboard.feed.length === 0 ? (
               <p className="empty-state">No client-visible updates yet.</p>

@@ -251,8 +251,9 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
 
   await admin.from('client_job_access').update({ last_viewed_at: now }).eq('id', access.id);
 
-  const [{ data: account }, { data: job }, feedResult, { data: payments }, { data: invoices }] = await Promise.all([
+  const [{ data: account }, { data: site }, { data: job }, feedResult, { data: payments }, { data: invoices }] = await Promise.all([
     admin.from('accounts').select('business_name').eq('id', access.account_id).maybeSingle(),
+    admin.from('sites').select('company_name').eq('account_id', access.account_id).maybeSingle(),
     admin
       .from('jobs')
       .select('id, ref, client_name, address, status, scheduled_for, scheduled_time')
@@ -284,7 +285,7 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
   ]).filter((event) => event.visibility === 'client' || event.visibility === 'client_financial');
 
   return {
-    businessName: account?.business_name ?? "Let's Get Quoted contractor",
+    businessName: site?.company_name || account?.business_name || "Let's Get Quoted contractor",
     job: {
       ...job,
       schedule_label: formatJobSchedule(job.scheduled_for, job.scheduled_time),

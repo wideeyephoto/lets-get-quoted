@@ -1917,6 +1917,27 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   border-color: rgba(255,138,61,.22);
 }
 
+.client-attention-card {
+  border-color: rgba(255, 138, 61, 0.42);
+  background: linear-gradient(135deg, rgba(255, 138, 61, 0.16), rgba(8, 18, 31, 0.9) 46%);
+  box-shadow: inset 4px 0 0 #ff8a3d, 0 18px 45px rgba(255, 122, 33, 0.12);
+}
+
+.client-attention-card .workspace-card-copy {
+  margin: -0.35rem 0 1rem;
+  color: rgba(247, 245, 239, 0.68);
+}
+
+.client-attention-link {
+  border-color: rgba(255, 209, 102, 0.24);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.client-attention-link:hover {
+  border-color: rgba(255, 209, 102, 0.46);
+  background: rgba(255, 209, 102, 0.08);
+}
+
 .payment-metric-name {
   font-size: clamp(1.2rem, 2.4vw, 1.7rem);
 }
