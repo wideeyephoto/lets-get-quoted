@@ -14,7 +14,6 @@ import {
   deleteCostAction,
   deleteJobAction,
   markJobCompleteAction,
-  revokeClientJobLinkAction,
   undoJobCompleteAction,
   updateJobAction,
   updateJobCrewAction,
@@ -225,7 +224,6 @@ export default async function JobDetailPage({
   const boundCreateDepositRequest = createDepositRequestAction.bind(null, job.id);
   const boundMarkJobComplete = markJobCompleteAction.bind(null, job.id);
   const boundCreateClientJobLink = createClientJobLinkAction.bind(null, job.id);
-  const boundRevokeClientJobLink = revokeClientJobLinkAction.bind(null, job.id);
   const boundRefundPayment = refundPaymentAction.bind(null, job.id);
   const boundMarkPaymentFailed = markPaymentFailedAction.bind(null, job.id);
   const boundRetryPaymentText = retryPaymentTextAction.bind(null, job.id);
@@ -260,7 +258,7 @@ export default async function JobDetailPage({
           created_at: job.created_at,
         } satisfies JobFeedEvent,
       ]),
-  ]);
+  ]).filter((event) => event.visibility !== 'internal');
 
   return (
     <main className="wide-shell workspace-shell">
@@ -343,11 +341,6 @@ export default async function JobDetailPage({
                 {!hasActiveClientView ? (
                   <form action={boundCreateClientJobLink}>
                     <SaveButton pendingLabel="Creating…" savedLabel="Created ✓">Create client view link</SaveButton>
-                  </form>
-                ) : null}
-                {hasActiveClientView ? (
-                  <form action={boundRevokeClientJobLink}>
-                    <SaveButton className="btn secondary" pendingLabel="Revoking…" savedLabel="Revoked ✓">Revoke links</SaveButton>
                   </form>
                 ) : null}
               </div>
@@ -627,6 +620,12 @@ export default async function JobDetailPage({
                   step="0.01"
                   defaultValue={job.quoted_amount}
                 />
+              </div>
+              <div className="field full">
+                <label className="sms-consent-check">
+                  <input name="clientFeedAccess" type="checkbox" defaultChecked={hasActiveClientView} />
+                  <span>Client has access to the Job Feed</span>
+                </label>
               </div>
               <div className="field full">
                 <p className="workspace-card-copy">Current schedule: {formatJobSchedule(job.scheduled_for, job.scheduled_time)}</p>

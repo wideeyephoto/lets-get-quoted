@@ -18,6 +18,7 @@ import {
 import {
   createClientJobAccessToken,
   createJobFeedEvent,
+  getActiveClientAccessCount,
   revokeClientJobAccess,
 } from '@/lib/job-feed';
 import { uploadJobPhoto } from '@/lib/job-photo-storage';
@@ -86,6 +87,7 @@ export async function createJobAction(formData: FormData) {
 
 export async function updateJobAction(jobId: string, formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
+  const clientFeedAccessEnabled = formData.get('clientFeedAccess') === 'on';
 
   const updatedJob = await updateJob(supabase, accountId, jobId, {
     clientName: (formData.get('clientName') ?? '').toString().trim(),
@@ -99,6 +101,25 @@ export async function updateJobAction(jobId: string, formData: FormData) {
     estimatedHours: optionalAmount(formData.get('estimatedHours')),
     quotedAmount: parseAmount(formData.get('quotedAmount')),
   });
+
+  const activeClientAccessCount = await getActiveClientAccessCount(supabase, accountId, jobId);
+  if (!clientFeedAccessEnabled && activeClientAccessCount > 0) {
+    await revokeClientJobAccess(supabase, accountId, jobId);
+    await createJobFeedEvent(supabase, accountId, jobId, {
+      kind: 'client_link_revoked',
+      title: 'Client view links revoked',
+      body: 'Active client view links for this job were revoked.',
+      visibility: 'internal',
+    });
+  } else if (clientFeedAccessEnabled && activeClientAccessCount === 0) {
+    await createClientJobAccessToken(supabase, accountId, jobId, { clientPhone: updatedJob.client_phone, clientEmail: updatedJob.client_email });
+    await createJobFeedEvent(supabase, accountId, jobId, {
+      kind: 'client_link_created',
+      title: 'Client view link created',
+      body: 'A client view link was created for this job.',
+      visibility: 'internal',
+    });
+  }
 
   await createJobFeedEvent(supabase, accountId, jobId, {
     kind: 'job_update',
