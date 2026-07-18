@@ -54,6 +54,7 @@ export async function createJobAction(formData: FormData) {
   const job = await createJob(supabase, accountId, {
     clientName: (formData.get('clientName') ?? '').toString().trim(),
     clientPhone: optionalText(formData.get('clientPhone')),
+    clientEmail: optionalText(formData.get('clientEmail')),
     address: optionalText(formData.get('address')),
     scope: optionalText(formData.get('scope')),
     status: (formData.get('status') as JobStatus) || 'new_lead',
@@ -83,6 +84,7 @@ export async function updateJobAction(jobId: string, formData: FormData) {
   const updatedJob = await updateJob(supabase, accountId, jobId, {
     clientName: (formData.get('clientName') ?? '').toString().trim(),
     clientPhone: optionalText(formData.get('clientPhone')),
+    clientEmail: optionalText(formData.get('clientEmail')),
     address: optionalText(formData.get('address')),
     scope: optionalText(formData.get('scope')),
     status: (formData.get('status') as JobStatus) || 'new_lead',

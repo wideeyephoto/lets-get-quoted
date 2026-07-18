@@ -78,6 +78,7 @@ export const DEMO_JOBS: Job[] = JOB_SEEDS.map((seed) => ({
   ref: seed.ref,
   client_name: seed.client_name,
   client_phone: seed.client_phone,
+  client_email: null,
   address: seed.address,
   scope: seed.scope,
   status: seed.status,

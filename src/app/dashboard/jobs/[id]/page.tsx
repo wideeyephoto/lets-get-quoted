@@ -432,6 +432,10 @@ export default async function JobDetailPage({
                 <label htmlFor="clientPhone">Client phone</label>
                 <input id="clientPhone" name="clientPhone" defaultValue={job.client_phone ?? ''} />
               </div>
+              <div className="field">
+                <label htmlFor="clientEmail">Client email</label>
+                <input id="clientEmail" name="clientEmail" type="email" defaultValue={job.client_email ?? ''} placeholder="client@example.com" />
+              </div>
               <div className="field full">
                 <label htmlFor="address">Address</label>
                 <AddressAutocomplete id="address" name="address" defaultValue={job.address ?? ''} />

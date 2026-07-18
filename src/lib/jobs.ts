@@ -9,6 +9,7 @@ export type Job = {
   ref: string;
   client_name: string;
   client_phone: string | null;
+  client_email: string | null;
   address: string | null;
   scope: string | null;
   status: JobStatus;
@@ -61,6 +62,7 @@ export type Cost = {
 export type JobInput = {
   clientName: string;
   clientPhone?: string | null;
+  clientEmail?: string | null;
   address?: string | null;
   scope?: string | null;
   status?: JobStatus;
@@ -273,6 +275,7 @@ export async function createJob(supabase: SupabaseClient, accountId: string, inp
       ref,
       client_name: input.clientName,
       client_phone: input.clientPhone ?? null,
+      client_email: input.clientEmail ?? null,
       address: input.address ?? null,
       scope: input.scope ?? null,
       status: input.status ?? 'new_lead',
@@ -303,6 +306,7 @@ export async function updateJob(
     .update({
       client_name: input.clientName,
       client_phone: input.clientPhone ?? null,
+      client_email: input.clientEmail ?? null,
       address: input.address ?? null,
       scope: input.scope ?? null,
       status: input.status ?? 'new_lead',

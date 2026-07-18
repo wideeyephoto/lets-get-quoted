@@ -106,6 +106,10 @@ export default async function JobsPage({
             <label htmlFor="clientPhone">Client phone</label>
             <input id="clientPhone" name="clientPhone" placeholder="(248) 555-0117" />
           </div>
+          <div className="field">
+            <label htmlFor="clientEmail">Client email</label>
+            <input id="clientEmail" name="clientEmail" type="email" placeholder="sarah@example.com" />
+          </div>
           <div className="field full">
             <label htmlFor="address">Address</label>
             <AddressAutocomplete id="address" name="address" placeholder="1418 Maplewood Ave, Royal Oak, MI" />

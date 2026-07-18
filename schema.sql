@@ -171,6 +171,7 @@ create table if not exists jobs (
 
   client_name   text not null,
   client_phone  text,
+  client_email  text,
   address       text,
   scope         text,
   status        job_status not null default 'in_progress',
@@ -197,6 +198,7 @@ alter table jobs add column if not exists quoted_amount numeric(12,2) not null d
 alter table jobs add column if not exists photo_paths jsonb not null default '[]'::jsonb;
 alter table jobs add column if not exists scheduled_time time;
 alter table jobs add column if not exists estimated_hours numeric(8,2);
+alter table jobs add column if not exists client_email text;
 
 -- ----------------------------------------------------------------------------
 -- CREW_ASSIGNMENTS  — many-to-many jobs <-> crew.
