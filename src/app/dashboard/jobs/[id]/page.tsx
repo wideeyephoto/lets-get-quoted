@@ -14,6 +14,7 @@ import {
   createManualJobFeedAction,
   deleteCostAction,
   deleteJobAction,
+  markJobCompleteAction,
   revokeClientJobLinkAction,
   updateJobAction,
   updateJobCrewAction,
@@ -68,6 +69,7 @@ const FEED_KIND_LABEL: Record<string, string> = {
   job_created: 'Job',
   job_update: 'Update',
   job_scheduled: 'Schedule',
+  job_completed: 'Completed',
   cost_added: 'Cost',
   payment_requested: 'Payment request',
   payment_paid: 'Payment received',
@@ -86,6 +88,7 @@ const FEED_KIND_ICON: Record<string, string> = {
   job_created: '+',
   job_update: 'i',
   job_scheduled: 'S',
+  job_completed: '✓',
   cost_added: '$',
   payment_requested: '$',
   payment_paid: '✓',
@@ -221,6 +224,7 @@ export default async function JobDetailPage({
   const boundCreateCost = createCostAction.bind(null, job.id);
   const boundCreateDepositRequest = createDepositRequestAction.bind(null, job.id);
   const boundCreateManualFeed = createManualJobFeedAction.bind(null, job.id);
+  const boundMarkJobComplete = markJobCompleteAction.bind(null, job.id);
   const boundCreateClientJobLink = createClientJobLinkAction.bind(null, job.id);
   const boundRevokeClientJobLink = revokeClientJobLinkAction.bind(null, job.id);
   const boundRefundPayment = refundPaymentAction.bind(null, job.id);
@@ -292,6 +296,11 @@ export default async function JobDetailPage({
           <div className="actions workspace-actions">
             <Link href={`/dashboard/jobs/${job.id}?open=payment#request-payment`} className="btn primary">Request payment</Link>
             <a href="#job-costs" className="btn secondary">Add expense</a>
+            {job.status !== 'complete' && job.status !== 'archived' ? (
+              <form action={boundMarkJobComplete}>
+                <SaveButton className="btn secondary" pendingLabel="Completing…" savedLabel="Completed ✓">Mark complete</SaveButton>
+              </form>
+            ) : null}
           </div>
         </div>
 

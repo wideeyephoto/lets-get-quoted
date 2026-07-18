@@ -108,6 +108,32 @@ export async function updateJobAction(jobId: string, formData: FormData) {
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }
 
+export async function markJobCompleteAction(jobId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const job = await getJob(supabase, accountId, jobId);
+  if (!job) throw new Error('Job not found for this account.');
+
+  if (job.status !== 'complete') {
+    const { error } = await supabase
+      .from('jobs')
+      .update({ status: 'complete' })
+      .eq('account_id', accountId)
+      .eq('id', jobId);
+    if (error) throw error;
+
+    await createJobFeedEvent(supabase, accountId, jobId, {
+      kind: 'job_completed',
+      title: 'Job marked complete',
+      body: `${job.ref} was marked complete.`,
+      visibility: 'client',
+      meta: { status: 'complete' },
+    });
+  }
+
+  revalidatePath('/dashboard/jobs');
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
 export async function scheduleJobAction(jobId: string, formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
 
