@@ -3,6 +3,7 @@ import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
+import SiteNavLinks from './SiteNavLinks';
 import shared from './themes.module.css';
 import styles from './meridian.module.css';
 
@@ -20,7 +21,7 @@ export default function MeridianTemplate({ site, galleryImages = [] }: TemplateP
           {site.logo_url && <img className={shared.logo} src={site.logo_url} alt="" />}
           <span>{site.company_name}</span>
         </a>
-        <nav className={shared.navLinks} aria-label="Main navigation"><a href="#studio">Studio</a><a href="#work">Work</a><a href="#contact">Contact</a></nav>
+        <SiteNavLinks site={site} className={shared.navLinks} links={[{ href: '#studio', label: 'Studio' }, { href: '#work', label: 'Work' }, { href: '#contact', label: 'Contact' }]} />
         {site.phone && <a className={styles.headerPhone} href={`tel:${site.phone}`}>{site.phone}</a>}
       </header>
 

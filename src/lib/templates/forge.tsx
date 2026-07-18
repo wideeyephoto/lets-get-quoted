@@ -3,6 +3,7 @@ import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
+import SiteNavLinks from './SiteNavLinks';
 import styles from './themes.module.css';
 
 export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProps) {
@@ -20,7 +21,7 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
           {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" /> : <span className={styles.brandBlock}>F</span>}
           <strong>{site.company_name}</strong>
         </a>
-        <nav className={styles.navLinks} aria-label="Main navigation"><a href="#work">Work</a><a href="#about">About</a><a href="#contact">Contact</a></nav>
+        <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#work', label: 'Work' }, { href: '#about', label: 'About' }, { href: '#contact', label: 'Contact' }]} />
         {site.phone && <a className={styles.headerPhone} href={`tel:${site.phone}`}>{site.phone}</a>}
       </header>
 

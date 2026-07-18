@@ -13,7 +13,7 @@
 .site h1, .site h2, .site h3, .site p { max-width: none; margin-top: 0; letter-spacing: 0; }
 .site p { color: inherit; }
 .logo { width: auto; height: 42px; object-fit: contain; }
-.navLinks { display: flex; align-items: center; gap: clamp(1rem, 3vw, 2.5rem); font-size: .8rem; font-weight: 700; text-transform: uppercase; }
+.navLinks { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .65rem clamp(1rem, 3vw, 2.5rem); font-size: .8rem; font-weight: 700; text-transform: uppercase; }
 .kicker { margin-bottom: 1rem; font-size: .73rem; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }
 .primaryCta { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; padding: .75rem 1.2rem; border-radius: var(--theme-radius, 4px); background: var(--theme-accent); color: #111; font-weight: 800; transition: transform .25s ease, box-shadow .25s ease, filter .25s ease; }
 .primaryCta:hover { transform: translateY(-2px); filter: brightness(1.06); box-shadow: 0 16px 32px -16px color-mix(in srgb, var(--theme-accent) 65%, transparent); }

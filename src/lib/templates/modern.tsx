@@ -3,6 +3,7 @@ import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
+import SiteNavLinks from './SiteNavLinks';
 import styles from './themes.module.css';
 
 export default function VistaTemplate({ site, galleryImages = [] }: TemplateProps) {
@@ -17,7 +18,7 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
     <main className={`${styles.site} ${styles.vista}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode}>
       <header className={styles.vistaHeader}>
         <a className={styles.vistaBrand} href="#top">{site.logo_url ? <img className={styles.logo} src={site.logo_url} alt={site.company_name} /> : site.company_name}</a>
-        <nav className={styles.navLinks} aria-label="Main navigation"><a href="#studio">Studio</a><a href="#work">Work</a><a href="#contact">Connect</a></nav>
+        <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#studio', label: 'Studio' }, { href: '#work', label: 'Work' }, { href: '#contact', label: 'Connect' }]} />
         <a className={styles.vistaMenu} href="#contact" aria-label="Contact us">↗</a>
       </header>
 

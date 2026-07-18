@@ -3,6 +3,7 @@ import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
+import SiteNavLinks from './SiteNavLinks';
 import styles from './themes.module.css';
 
 export default function GuildTemplate({ site, galleryImages = [] }: TemplateProps) {
@@ -20,7 +21,7 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
           {site.logo_url && <img className={styles.logo} src={site.logo_url} alt="" />}
           <span><strong>{site.company_name}</strong><small>{site.license || 'Licensed contractor'}</small></span>
         </a>
-        <nav className={styles.navLinks} aria-label="Main navigation"><a href="#services">Services</a><a href="#work">Projects</a><a href="#contact">Contact</a></nav>
+        <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#services', label: 'Services' }, { href: '#work', label: 'Projects' }, { href: '#contact', label: 'Contact' }]} />
         <a className={styles.guildQuote} href="#contact">Quick Quote</a>
       </header>
 

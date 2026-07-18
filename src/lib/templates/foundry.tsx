@@ -3,6 +3,7 @@ import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
+import SiteNavLinks from './SiteNavLinks';
 import shared from './themes.module.css';
 import styles from './foundry.module.css';
 
@@ -21,7 +22,7 @@ export default function FoundryTemplate({ site, galleryImages = [] }: TemplatePr
           {site.logo_url ? <img className={shared.logo} src={site.logo_url} alt="" /> : <span className={styles.brandBlock}>F</span>}
           <strong>{site.company_name}</strong>
         </a>
-        <nav className={shared.navLinks} aria-label="Main navigation"><a href="#work">Work</a><a href="#about">About</a><a href="#contact">Contact</a></nav>
+        <SiteNavLinks site={site} className={shared.navLinks} links={[{ href: '#work', label: 'Work' }, { href: '#about', label: 'About' }, { href: '#contact', label: 'Contact' }]} />
         {site.phone && <a className={styles.headerPhone} href={`tel:${site.phone}`}>{site.phone}</a>}
       </header>
 
