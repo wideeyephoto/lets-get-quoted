@@ -62,7 +62,7 @@ async function sendTwilioMessage(to: string, body: string) {
   return result.sid;
 }
 
-export async function recordSmsConsent(accountId: string, phone: string) {
+export async function recordSmsConsent(accountId: string, phone: string, source = 'payment_request') {
   const admin = createAdminClient();
   const { data: existing, error: lookupError } = await admin
     .from('sms_consent')
@@ -72,7 +72,7 @@ export async function recordSmsConsent(accountId: string, phone: string) {
     .maybeSingle();
   if (lookupError) throw lookupError;
   if (existing?.status === 'opted_out') {
-    throw new Error('This homeowner opted out of texts. They must text START before receiving another payment message.');
+    throw new Error('This homeowner opted out of texts. They must text START before receiving another message.');
   }
 
   const now = new Date().toISOString();
@@ -80,7 +80,7 @@ export async function recordSmsConsent(accountId: string, phone: string) {
     account_id: accountId,
     phone_number: phone,
     status: 'opted_in',
-    source: 'payment_request',
+    source,
     consented_at: now,
     opted_out_at: null,
     updated_at: now,
@@ -183,4 +183,16 @@ export async function sendCrewAssignmentSms(params: {
     : '';
   const body = `Let's Get Quoted: Hi ${params.crewName}, ${params.businessName} assigned you to job ${params.jobRef} — ${params.clientName}${addressNote}.${scheduledNote} Reply STOP to opt out.`;
   return sendTwilioMessage(params.phone, body);
+}
+
+export async function sendJobUpdateSms(params: {
+  phone: string;
+  businessName: string;
+  jobRef: string;
+  title: string;
+  body: string | null;
+}) {
+  const updateBody = params.body ? ` ${params.body}` : '';
+  const message = `Let's Get Quoted: ${params.businessName} posted an update for job ${params.jobRef}: ${params.title}.${updateBody} Reply STOP to opt out.`;
+  return sendTwilioMessage(params.phone, message);
 }

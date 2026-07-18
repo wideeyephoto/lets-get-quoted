@@ -25,7 +25,7 @@ import {
 import { uploadJobPhoto } from '@/lib/job-photo-storage';
 import { listCrew, setJobCrewAssignments, toggleJobCrewAssignment } from '@/lib/crew';
 import { normalizeUsPhone } from '@/lib/phone';
-import { recordSmsConsent, sendCrewAssignmentSms, sendPaymentSmsEvent } from '@/lib/sms';
+import { recordSmsConsent, sendCrewAssignmentSms, sendJobUpdateSms, sendPaymentSmsEvent } from '@/lib/sms';
 
 function parseAmount(value: FormDataEntryValue | null): number {
   const n = Number(value);
@@ -276,7 +276,8 @@ export async function createManualJobFeedAction(jobId: string, formData: FormDat
 
   const title = (formData.get('title') ?? '').toString().trim() || 'Job update';
   const body = optionalText(formData.get('body'));
-  const visibility = formData.get('visibility') === 'client' ? 'client' : 'internal';
+  const notifyClientSms = formData.get('notifyClientSms') === 'on';
+  const visibility = formData.get('visibility') === 'client' || notifyClientSms ? 'client' : 'internal';
 
   await createJobFeedEvent(supabase, accountId, jobId, {
     kind: 'job_update',
@@ -284,6 +285,26 @@ export async function createManualJobFeedAction(jobId: string, formData: FormDat
     body,
     visibility,
   });
+
+  if (notifyClientSms) {
+    const [job, { data: account }] = await Promise.all([
+      getJob(supabase, accountId, jobId),
+      supabase.from('accounts').select('business_name').eq('id', accountId).single(),
+    ]);
+    if (!job) throw new Error('Job not found for this account.');
+
+    const clientPhone = job.client_phone ? normalizeUsPhone(job.client_phone) : null;
+    if (!clientPhone) throw new Error('Add a valid client phone number before sending job update texts.');
+
+    await recordSmsConsent(accountId, clientPhone, 'job_update');
+    await sendJobUpdateSms({
+      phone: clientPhone,
+      businessName: account?.business_name || "Let's Get Quoted contractor",
+      jobRef: job.ref,
+      title,
+      body,
+    });
+  }
 
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }

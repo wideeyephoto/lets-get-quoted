@@ -263,6 +263,10 @@ export default async function JobDetailPage({
                 <input name="visibility" type="checkbox" value="client" />
                 <span>Show this update on the client dashboard</span>
               </label>
+              <label className="sms-consent-check">
+                <input name="notifyClientSms" type="checkbox" />
+                <span>Notify client by SMS about this job update</span>
+              </label>
               <div style={{ marginTop: '0.8rem' }}>
                 <SaveButton pendingLabel="Posting…" savedLabel="Posted ✓">Post update</SaveButton>
               </div>
