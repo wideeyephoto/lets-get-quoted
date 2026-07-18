@@ -33,11 +33,11 @@ export function dateKeyFromNow(offsetDays: number): string {
 }
 
 export const DEMO_CREW: CrewMember[] = [
-  { id: 'crew-1', account_id: DEMO_ACCOUNT_ID, name: 'Mike Torres', phone: '(248) 555-0142', role_label: 'Lead Carpenter', hourly_rate: 34, user_id: null, active: true, created_at: daysAgo(700) },
-  { id: 'crew-2', account_id: DEMO_ACCOUNT_ID, name: 'Jamal Reed', phone: '(248) 555-0198', role_label: 'Carpenter', hourly_rate: 28, user_id: null, active: true, created_at: daysAgo(620) },
-  { id: 'crew-3', account_id: DEMO_ACCOUNT_ID, name: 'Sam Whitaker', phone: '(248) 555-0163', role_label: 'Laborer', hourly_rate: 22, user_id: null, active: true, created_at: daysAgo(500) },
-  { id: 'crew-4', account_id: DEMO_ACCOUNT_ID, name: 'Elena Ruiz', phone: '(248) 555-0177', role_label: 'Project Manager', hourly_rate: 30, user_id: null, active: true, created_at: daysAgo(400) },
-  { id: 'crew-5', account_id: DEMO_ACCOUNT_ID, name: 'Danny Cole', phone: '(248) 555-0119', role_label: 'Electrician (Sub)', hourly_rate: 45, user_id: null, active: false, created_at: daysAgo(300) },
+  { id: 'crew-1', account_id: DEMO_ACCOUNT_ID, name: 'Mike Torres', phone: '(248) 555-0142', role_label: 'Lead Carpenter', hourly_rate: 34, user_id: null, active: true, deleted_at: null, created_at: daysAgo(700) },
+  { id: 'crew-2', account_id: DEMO_ACCOUNT_ID, name: 'Jamal Reed', phone: '(248) 555-0198', role_label: 'Carpenter', hourly_rate: 28, user_id: null, active: true, deleted_at: null, created_at: daysAgo(620) },
+  { id: 'crew-3', account_id: DEMO_ACCOUNT_ID, name: 'Sam Whitaker', phone: '(248) 555-0163', role_label: 'Laborer', hourly_rate: 22, user_id: null, active: true, deleted_at: null, created_at: daysAgo(500) },
+  { id: 'crew-4', account_id: DEMO_ACCOUNT_ID, name: 'Elena Ruiz', phone: '(248) 555-0177', role_label: 'Project Manager', hourly_rate: 30, user_id: null, active: true, deleted_at: null, created_at: daysAgo(400) },
+  { id: 'crew-5', account_id: DEMO_ACCOUNT_ID, name: 'Danny Cole', phone: '(248) 555-0119', role_label: 'Electrician (Sub)', hourly_rate: 45, user_id: null, active: false, deleted_at: null, created_at: daysAgo(300) },
 ];
 
 type JobSeed = {
@@ -100,17 +100,17 @@ function buildCosts(job: Job): Cost[] {
     {
       id: `${job.id}-cost-materials`, account_id: DEMO_ACCOUNT_ID, job_id: job.id, type: 'material',
       category: 'Materials', description: 'Lumber, fixtures & supplies', amount: materials,
-      supplier: 'Riverton Supply Co.', receipt_url: null, crew_id: null, hours: null, rate: null, created_at: job.created_at,
+      supplier: 'Riverton Supply Co.', receipt_url: null, crew_id: null, crew_name: null, crew_role_label: null, hours: null, rate: null, created_at: job.created_at,
     },
     {
       id: `${job.id}-cost-labor`, account_id: DEMO_ACCOUNT_ID, job_id: job.id, type: 'labor',
       category: 'Labor', description: 'Crew labor', amount: laborAmount,
-      supplier: null, receipt_url: null, crew_id: DEMO_CREW[0].id, hours: laborHours, rate: 32, created_at: job.created_at,
+      supplier: null, receipt_url: null, crew_id: DEMO_CREW[0].id, crew_name: DEMO_CREW[0].name, crew_role_label: DEMO_CREW[0].role_label, hours: laborHours, rate: 32, created_at: job.created_at,
     },
     {
       id: `${job.id}-cost-sub`, account_id: DEMO_ACCOUNT_ID, job_id: job.id, type: 'sub',
       category: 'Subcontractor', description: 'Electrical subcontractor', amount: subAmount,
-      supplier: 'Cole Electric', receipt_url: null, crew_id: null, hours: null, rate: null, created_at: job.created_at,
+      supplier: 'Cole Electric', receipt_url: null, crew_id: null, crew_name: null, crew_role_label: null, hours: null, rate: null, created_at: job.created_at,
     },
   ];
 }

@@ -367,7 +367,7 @@ export default async function JobDetailPage({
                         </span>
                         <span className="cost-item-sub">
                           {cost.type === 'labor'
-                            ? `${cost.hours} hrs × ${formatMoney(Number(cost.rate))}/hr`
+                            ? `${cost.hours} hrs × ${formatMoney(Number(cost.rate))}/hr${cost.crew_name ? ` · ${cost.crew_name}` : ''}`
                             : cost.supplier || cost.category}
                         </span>
                       </div>

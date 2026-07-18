@@ -2,7 +2,15 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireOwnerContext } from '@/lib/auth';
-import { createCrewMember, listCrew, listCrewIdsForJob, setCrewActive, setJobCrewAssignments } from '@/lib/crew';
+import {
+  createCrewMember,
+  deleteArchivedCrewMember,
+  listCrew,
+  listCrewIdsForJob,
+  setCrewActive,
+  setJobCrewAssignments,
+  updateCrewMember,
+} from '@/lib/crew';
 import { getJob } from '@/lib/jobs';
 import { sendCrewAssignmentSms } from '@/lib/sms';
 
@@ -33,6 +41,30 @@ export async function createCrewAction(formData: FormData) {
   revalidatePath('/dashboard/crew');
 }
 
+export async function updateCrewAction(crewId: string, formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const name = (formData.get('name') ?? '').toString().trim();
+  const phone = (formData.get('phone') ?? '').toString().trim();
+
+  if (!name || !phone) {
+    throw new Error('Name and phone are required to update a crew member.');
+  }
+
+  const hourlyRateRaw = Number(formData.get('hourlyRate'));
+
+  await updateCrewMember(supabase, accountId, crewId, {
+    name,
+    phone,
+    roleLabel: optionalText(formData.get('roleLabel')),
+    hourlyRate: Number.isFinite(hourlyRateRaw) && hourlyRateRaw > 0 ? hourlyRateRaw : 0,
+  });
+
+  revalidatePath('/dashboard/crew');
+  revalidatePath('/dashboard/jobs');
+  revalidatePath('/dashboard/schedule');
+}
+
 export async function setCrewActiveAction(crewId: string, active: boolean) {
   const { supabase, accountId } = await requireOwnerContext();
 
@@ -40,6 +72,16 @@ export async function setCrewActiveAction(crewId: string, active: boolean) {
 
   revalidatePath('/dashboard/crew');
   revalidatePath('/dashboard/jobs');
+}
+
+export async function deleteArchivedCrewAction(crewId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  await deleteArchivedCrewMember(supabase, accountId, crewId);
+
+  revalidatePath('/dashboard/crew');
+  revalidatePath('/dashboard/jobs');
+  revalidatePath('/dashboard/schedule');
 }
 
 export async function assignCrewToJobAction(crewId: string, formData: FormData) {

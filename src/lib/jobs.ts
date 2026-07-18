@@ -49,6 +49,8 @@ export type Cost = {
   supplier: string | null;
   receipt_url: string | null;
   crew_id: string | null;
+  crew_name: string | null;
+  crew_role_label: string | null;
   hours: number | null;
   rate: number | null;
   created_at: string;
@@ -421,6 +423,17 @@ export async function createCost(
   }
 
   const category = COST_TYPE_CATEGORY[input.type];
+  const crewSnapshot =
+    input.type === 'labor' && input.crewId
+      ? await supabase
+          .from('crew')
+          .select('name, role_label')
+          .eq('account_id', accountId)
+          .eq('id', input.crewId)
+          .maybeSingle()
+      : null;
+
+  if (crewSnapshot?.error) throw crewSnapshot.error;
 
   const row: Record<string, unknown> =
     input.type === 'labor'
@@ -431,6 +444,8 @@ export async function createCost(
           category,
           description: input.description,
           crew_id: input.crewId ?? null,
+          crew_name: crewSnapshot?.data?.name ?? null,
+          crew_role_label: crewSnapshot?.data?.role_label ?? null,
           hours: input.hours,
           rate: input.rate,
           // Labor amount is always server-computed as hours × rate — never

@@ -9,6 +9,7 @@ export type CrewMember = {
   hourly_rate: number;
   user_id: string | null;
   active: boolean;
+  deleted_at: string | null;
   created_at: string;
 };
 
@@ -17,6 +18,20 @@ export type CrewInput = {
   phone: string;
   roleLabel?: string;
   hourlyRate?: number;
+};
+
+export type CrewWorkHistoryItem = {
+  cost_id: string;
+  job_id: string;
+  job_ref: string;
+  client_name: string;
+  scheduled_for: string | null;
+  scheduled_time: string | null;
+  description: string;
+  amount: number;
+  hours: number | null;
+  rate: number | null;
+  created_at: string;
 };
 
 export async function listCrew(
@@ -28,6 +43,7 @@ export async function listCrew(
     .from('crew')
     .select('*')
     .eq('account_id', accountId)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false });
 
   if (options?.activeOnly) {
@@ -60,6 +76,30 @@ export async function createCrewMember(
   return data as CrewMember;
 }
 
+export async function updateCrewMember(
+  supabase: SupabaseClient,
+  accountId: string,
+  crewId: string,
+  input: CrewInput
+): Promise<CrewMember> {
+  const { data, error } = await supabase
+    .from('crew')
+    .update({
+      name: input.name,
+      phone: input.phone,
+      role_label: input.roleLabel?.trim() || 'Laborer',
+      hourly_rate: input.hourlyRate ?? 0,
+    })
+    .eq('account_id', accountId)
+    .eq('id', crewId)
+    .is('deleted_at', null)
+    .select('*')
+    .single();
+
+  if (error || !data) throw error ?? new Error('Unable to update crew member');
+  return data as CrewMember;
+}
+
 export async function setCrewActive(
   supabase: SupabaseClient,
   accountId: string,
@@ -68,6 +108,76 @@ export async function setCrewActive(
 ): Promise<void> {
   const { error } = await supabase.from('crew').update({ active }).eq('account_id', accountId).eq('id', crewId);
   if (error) throw error;
+}
+
+export async function deleteArchivedCrewMember(
+  supabase: SupabaseClient,
+  accountId: string,
+  crewId: string
+): Promise<void> {
+  const { data: member, error: selectError } = await supabase
+    .from('crew')
+    .select('id, active')
+    .eq('account_id', accountId)
+    .eq('id', crewId)
+    .is('deleted_at', null)
+    .single();
+
+  if (selectError || !member) throw selectError ?? new Error('Crew member not found.');
+  if (member.active) throw new Error('Archive this crew member before deleting them.');
+
+  const { error } = await supabase
+    .from('crew')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('id', crewId)
+    .eq('active', false);
+
+  if (error) throw error;
+}
+
+export async function listCrewWorkHistory(
+  supabase: SupabaseClient,
+  accountId: string,
+  crewId: string
+): Promise<CrewWorkHistoryItem[]> {
+  const { data: costs, error } = await supabase
+    .from('costs')
+    .select('id, job_id, description, amount, hours, rate, created_at')
+    .eq('account_id', accountId)
+    .eq('crew_id', crewId)
+    .eq('type', 'labor')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  if (!costs || costs.length === 0) return [];
+
+  const jobIds = [...new Set(costs.map((cost) => cost.job_id as string))];
+  const { data: jobs, error: jobsError } = await supabase
+    .from('jobs')
+    .select('id, ref, client_name, scheduled_for, scheduled_time')
+    .eq('account_id', accountId)
+    .in('id', jobIds);
+
+  if (jobsError) throw jobsError;
+
+  const jobsById = new Map((jobs ?? []).map((job) => [job.id as string, job]));
+  return costs.map((cost) => {
+    const job = jobsById.get(cost.job_id as string);
+    return {
+      cost_id: cost.id as string,
+      job_id: cost.job_id as string,
+      job_ref: (job?.ref as string | undefined) ?? 'Job',
+      client_name: (job?.client_name as string | undefined) ?? 'Unknown client',
+      scheduled_for: (job?.scheduled_for as string | null | undefined) ?? null,
+      scheduled_time: (job?.scheduled_time as string | null | undefined) ?? null,
+      description: cost.description as string,
+      amount: Number(cost.amount) || 0,
+      hours: cost.hours === null ? null : Number(cost.hours),
+      rate: cost.rate === null ? null : Number(cost.rate),
+      created_at: cost.created_at as string,
+    };
+  });
 }
 
 // -- Job <-> crew assignment ------------------------------------------------

@@ -116,8 +116,11 @@ create table if not exists crew (
   hourly_rate   numeric(10,2) not null default 0,
   user_id       uuid references auth.users(id) on delete set null,
   active        boolean not null default true,
+  deleted_at    timestamptz,
   created_at    timestamptz not null default now()
 );
+
+alter table crew add column if not exists deleted_at timestamptz;
 
 -- ----------------------------------------------------------------------------
 -- SITES  — the published website config for an account.
@@ -223,11 +226,25 @@ create table if not exists costs (
   receipt_url   text,
 
   crew_id       uuid references crew(id) on delete set null,
+  crew_name     text,
+  crew_role_label text,
   hours         numeric(8,2),
   rate          numeric(10,2),
 
   created_at    timestamptz not null default now()
 );
+
+alter table costs add column if not exists crew_name text;
+alter table costs add column if not exists crew_role_label text;
+
+update costs
+set crew_name = coalesce(costs.crew_name, crew.name),
+    crew_role_label = coalesce(costs.crew_role_label, crew.role_label)
+from crew
+where costs.crew_id = crew.id
+  and costs.account_id = crew.account_id
+  and costs.type = 'labor'
+  and (costs.crew_name is null or costs.crew_role_label is null);
 
 -- ----------------------------------------------------------------------------
 -- JOB_FEED  — the activity/timeline per job.
