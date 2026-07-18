@@ -1685,7 +1685,7 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   margin-top: 0.35rem;
 }
 
-.payment-shortcuts {
+.quick-add-buttons {
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
@@ -1693,13 +1693,25 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   color: rgba(255,255,255,.58);
   font-size: 0.78rem;
 }
-.payment-shortcuts span {
+.quick-add-buttons span,
+.quick-add-buttons button {
   padding: 0.28rem 0.55rem;
   border: 1px solid rgba(255,255,255,.1);
   border-radius: 999px;
   background: rgba(255,255,255,.04);
+  color: inherit;
+  font: inherit;
 }
-.payment-shortcuts span:first-child {
+.quick-add-buttons button {
+  cursor: pointer;
+}
+.quick-add-buttons button:hover,
+.quick-add-buttons button:focus-visible {
+  border-color: rgba(255, 122, 33, 0.38);
+  background: rgba(255, 122, 33, 0.12);
+  color: #fff;
+}
+.quick-add-buttons span:first-child {
   border-color: transparent;
   background: transparent;
   padding-left: 0;

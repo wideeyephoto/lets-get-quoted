@@ -24,6 +24,7 @@ import { createInvoiceAction } from '../invoices-actions';
 import DeleteJobButton from './DeleteJobButton';
 import PaymentActionButtons from './PaymentActionButtons';
 import SaveButton from '@/components/save-button';
+import QuickFillButtons from '@/components/quick-fill-buttons';
 
 const STATUS_LABEL: Record<string, string> = {
   new_lead: 'New request',
@@ -332,12 +333,6 @@ export default async function JobDetailPage({
                   </select>
                 </div>
               </div>
-              <div className="payment-shortcuts" aria-label="Payment amount ideas">
-                <span>Quick ideas:</span>
-                <span>{formatMoney(Math.max(job.quoted_amount * 0.5, 0))} deposit</span>
-                <span>{formatMoney(Math.max(job.quoted_amount - payments.filter((payment) => payment.status === 'paid').reduce((sum, payment) => sum + Number(payment.amount), 0), 0))} remaining</span>
-                {invoices[0] ? <span>{formatMoney(invoices[0].total)} latest invoice</span> : null}
-              </div>
               <div className="payment-sms-options">
                 <label className="field" htmlFor="homeowner-phone">
                   <span>Homeowner mobile</span>
@@ -549,6 +544,17 @@ export default async function JobDetailPage({
                     <option value="Change order" />
                     <option value="Dump fee" />
                   </datalist>
+                  <QuickFillButtons
+                    label="Quick add:"
+                    targetId="description"
+                    values={[
+                      'Additional material charge',
+                      'Permit fee',
+                      'Subcontractor labor',
+                      'Change order',
+                      'Dump fee',
+                    ]}
+                  />
                 </div>
                 <div className="cost-form-row">
                   <div className="field">
