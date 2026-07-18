@@ -172,19 +172,79 @@ export default async function JobDetailPage({
           </div>
           <div className="job-command-facts" aria-label="Job facts">
             <span><strong>{formatMoney(job.quoted_amount)}</strong> quoted</span>
-            <span><strong>{job.estimated_hours ? `${job.estimated_hours} hrs` : 'Not set'}</strong> estimated hours</span>
+            <span>
+              <strong>
+                {job.estimated_hours ? `${job.estimated_hours} hrs` : <a href="#job-details">Not set</a>}
+              </strong>{' '}
+              estimated hours
+            </span>
           </div>
           <div className="actions workspace-actions">
             <a href="#request-payment" className="btn primary">Request payment</a>
             <a href="#job-feed" className="btn secondary">Post update</a>
-            <a href="#job-costs" className="btn secondary">Add cost</a>
+            <a href="#job-costs" className="btn secondary">Add expense</a>
             <a href="#job-details" className="btn secondary">Edit job</a>
-            <Link href="/dashboard/jobs" className="btn secondary">
-              Back to jobs
-            </Link>
           </div>
         </div>
 
+      </section>
+
+      <section id="job-feed" className="panel workspace-section-card job-feed-command-panel">
+            <div className="section-heading workspace-section-heading">
+              <p className="eyebrow">Job feed</p>
+              <h2>Job Feed</h2>
+            </div>
+            {feed.length === 0 ? (
+              <p className="empty-state">No job feed updates yet.</p>
+            ) : (
+              <div className="job-feed-list workspace-list-block">
+                {feed.map((event) => (
+                  <article className={`job-feed-item feed-kind-${event.kind}`} key={event.id}>
+                    <div className="job-feed-dot">{FEED_KIND_ICON[event.kind] ?? '•'}</div>
+                    <div className="job-feed-content">
+                      <div className="job-row-header">
+                        <span className="cost-item-desc">{event.title || event.kind}</span>
+                        <div className="feed-badge-row">
+                          <span className="status-badge status-new_lead">{FEED_KIND_LABEL[event.kind] ?? 'Update'}</span>
+                          <span className={`status-badge ${event.visibility === 'internal' ? 'status-archived' : 'status-complete'}`}>
+                            {FEED_VISIBILITY_LABEL[event.visibility]}
+                          </span>
+                        </div>
+                      </div>
+                      {event.body ? <p className="workspace-card-copy">{event.body}</p> : null}
+                      <p className="job-meta">
+                        {formatFeedTime(event.created_at)}
+                        {event.amount ? ` · ${formatMoney(Number(event.amount))}` : ''}
+                        {event.action_url ? (
+                          <>
+                            {' · '}
+                            <Link href={event.action_url} target="_blank">Open link</Link>
+                          </>
+                        ) : null}
+                      </p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+
+            <form action={boundCreateManualFeed} className="cost-form workspace-form-block">
+              <div className="field">
+                <label htmlFor="feed-title">Update title</label>
+                <input id="feed-title" name="title" placeholder="Materials delivered" required />
+              </div>
+              <div className="field full">
+                <label htmlFor="feed-body">Update</label>
+                <textarea id="feed-body" name="body" placeholder="Tell the client what changed or what happened today." />
+              </div>
+              <label className="sms-consent-check">
+                <input name="visibility" type="checkbox" value="client" />
+                <span>Show this update on the client dashboard</span>
+              </label>
+              <div style={{ marginTop: '0.8rem' }}>
+                <SaveButton pendingLabel="Posting…" savedLabel="Posted ✓">Post update</SaveButton>
+              </div>
+            </form>
       </section>
 
       <details id="request-payment" className="panel workspace-section-card workspace-details job-action-details">
@@ -304,64 +364,6 @@ export default async function JobDetailPage({
               </div>
             )}
         </details>
-
-      <section id="job-feed" className="panel workspace-section-card job-feed-command-panel">
-            <div className="section-heading workspace-section-heading">
-              <p className="eyebrow">Job feed</p>
-              <h2>Command center</h2>
-            </div>
-            <form action={boundCreateManualFeed} className="cost-form workspace-form-block">
-              <div className="field">
-                <label htmlFor="feed-title">Update title</label>
-                <input id="feed-title" name="title" placeholder="Materials delivered" required />
-              </div>
-              <div className="field full">
-                <label htmlFor="feed-body">Update</label>
-                <textarea id="feed-body" name="body" placeholder="Tell the client what changed or what happened today." />
-              </div>
-              <label className="sms-consent-check">
-                <input name="visibility" type="checkbox" value="client" />
-                <span>Show this update on the client dashboard</span>
-              </label>
-              <div style={{ marginTop: '0.8rem' }}>
-                <SaveButton pendingLabel="Posting…" savedLabel="Posted ✓">Post update</SaveButton>
-              </div>
-            </form>
-
-            {feed.length === 0 ? (
-              <p className="empty-state">No job feed updates yet.</p>
-            ) : (
-              <div className="job-feed-list workspace-list-block">
-                {feed.map((event) => (
-                  <article className={`job-feed-item feed-kind-${event.kind}`} key={event.id}>
-                    <div className="job-feed-dot">{FEED_KIND_ICON[event.kind] ?? '•'}</div>
-                    <div className="job-feed-content">
-                      <div className="job-row-header">
-                        <span className="cost-item-desc">{event.title || event.kind}</span>
-                        <div className="feed-badge-row">
-                          <span className="status-badge status-new_lead">{FEED_KIND_LABEL[event.kind] ?? 'Update'}</span>
-                          <span className={`status-badge ${event.visibility === 'internal' ? 'status-archived' : 'status-complete'}`}>
-                            {FEED_VISIBILITY_LABEL[event.visibility]}
-                          </span>
-                        </div>
-                      </div>
-                      {event.body ? <p className="workspace-card-copy">{event.body}</p> : null}
-                      <p className="job-meta">
-                        {formatFeedTime(event.created_at)}
-                        {event.amount ? ` · ${formatMoney(Number(event.amount))}` : ''}
-                        {event.action_url ? (
-                          <>
-                            {' · '}
-                            <Link href={event.action_url} target="_blank">Open link</Link>
-                          </>
-                        ) : null}
-                      </p>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-      </section>
 
       <details id="job-details" className="panel workspace-section-card workspace-details job-action-details">
           <summary className="workspace-details-summary job-action-summary">
@@ -490,8 +492,8 @@ export default async function JobDetailPage({
           <div>
             <div className="panel workspace-section-card">
               <div className="section-heading workspace-section-heading">
-                <p className="eyebrow">Costs</p>
-                <h2>Cost line items</h2>
+                <p className="eyebrow">Expenses</p>
+                <h2>Expense line items</h2>
               </div>
 
               <form action={boundCreateCost} className="cost-form">
@@ -561,12 +563,12 @@ export default async function JobDetailPage({
                   </div>
                 </div>
                 <div style={{ marginTop: '0.8rem' }}>
-                  <SaveButton pendingLabel="Adding…" savedLabel="Added ✓">+ Add cost line item</SaveButton>
+                  <SaveButton pendingLabel="Adding…" savedLabel="Added ✓">+ Add expense</SaveButton>
                 </div>
               </form>
 
               {costs.length === 0 ? (
-                <p className="empty-state">No costs logged yet.</p>
+                <p className="empty-state">No expenses logged yet.</p>
               ) : (
                 <div className="cost-list">
                   {costs.map((cost) => (
