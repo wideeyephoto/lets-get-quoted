@@ -114,7 +114,7 @@ export default async function JobDetailPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { tab?: string; clientToken?: string; edit?: string };
+  searchParams: { tab?: string; clientToken?: string; edit?: string; open?: string };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
 
@@ -217,7 +217,7 @@ export default async function JobDetailPage({
             </span>
           </div>
           <div className="actions workspace-actions">
-            <a href="#request-payment" className="btn primary">Request payment</a>
+            <Link href={`/dashboard/jobs/${job.id}?open=payment#request-payment`} className="btn primary">Request payment</Link>
             <a href="#job-costs" className="btn secondary">Add expense</a>
           </div>
         </div>
@@ -286,7 +286,7 @@ export default async function JobDetailPage({
             </form>
       </section>
 
-      <details id="request-payment" className="panel workspace-section-card workspace-details job-action-details">
+      <details id="request-payment" className="panel workspace-section-card workspace-details job-action-details" open={searchParams.open === 'payment'}>
           <summary className="workspace-details-summary job-action-summary">
             <div className="section-heading workspace-section-heading compact-heading">
             <p className="eyebrow">Payments</p>
