@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/auth';
-import { formatMoney } from '@/lib/jobs';
+import { formatJobSchedule, formatMoney } from '@/lib/jobs';
 import { createHmac, timingSafeEqual } from 'crypto';
 
 export type PaymentSmsEvent = 'payment_requested' | 'payment_paid' | 'payment_failed' | 'payment_refunded';
@@ -175,10 +175,11 @@ export async function sendCrewAssignmentSms(params: {
   clientName: string;
   address: string | null;
   scheduledFor: string | null;
+  scheduledTime?: string | null;
 }) {
   const addressNote = params.address ? ` at ${params.address}` : '';
   const scheduledNote = params.scheduledFor
-    ? ` Scheduled ${new Date(`${params.scheduledFor}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}.`
+    ? ` Scheduled ${formatJobSchedule(params.scheduledFor, params.scheduledTime)}.`
     : '';
   const body = `Let's Get Quoted: Hi ${params.crewName}, ${params.businessName} assigned you to job ${params.jobRef} — ${params.clientName}${addressNote}.${scheduledNote} Reply STOP to opt out.`;
   return sendTwilioMessage(params.phone, body);

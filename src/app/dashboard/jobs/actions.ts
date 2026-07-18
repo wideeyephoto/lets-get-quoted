@@ -44,6 +44,7 @@ export async function createJobAction(formData: FormData) {
     scope: optionalText(formData.get('scope')),
     status: (formData.get('status') as JobStatus) || 'new_lead',
     scheduledFor: optionalText(formData.get('scheduledFor')),
+    scheduledTime: optionalText(formData.get('scheduledTime')),
     quotedAmount: parseAmount(formData.get('quotedAmount')),
     photoPaths,
   });
@@ -62,6 +63,7 @@ export async function updateJobAction(jobId: string, formData: FormData) {
     scope: optionalText(formData.get('scope')),
     status: (formData.get('status') as JobStatus) || 'new_lead',
     scheduledFor: optionalText(formData.get('scheduledFor')),
+    scheduledTime: optionalText(formData.get('scheduledTime')),
     quotedAmount: parseAmount(formData.get('quotedAmount')),
   });
 
@@ -72,7 +74,7 @@ export async function updateJobAction(jobId: string, formData: FormData) {
 export async function scheduleJobAction(jobId: string, formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
 
-  await updateJobSchedule(supabase, accountId, jobId, optionalText(formData.get('scheduledFor')));
+  await updateJobSchedule(supabase, accountId, jobId, optionalText(formData.get('scheduledFor')), optionalText(formData.get('scheduledTime')));
 
   revalidatePath('/dashboard/jobs');
   revalidatePath(`/dashboard/jobs/${jobId}`);
@@ -115,6 +117,7 @@ export async function updateJobCrewAction(jobId: string, formData: FormData) {
             clientName: job.client_name,
             address: job.address,
             scheduledFor: job.scheduled_for,
+            scheduledTime: job.scheduled_time,
           });
         } catch (error) {
           console.error(`Crew assignment SMS failed for crew ${member.id} on job ${jobId}:`, error);
@@ -153,6 +156,7 @@ export async function toggleJobCrewAction(jobId: string, crewId: string): Promis
           clientName: job.client_name,
           address: job.address,
           scheduledFor: job.scheduled_for,
+          scheduledTime: job.scheduled_time,
         });
       } catch (error) {
         console.error(`Crew assignment SMS failed for crew ${crewId} on job ${jobId}:`, error);

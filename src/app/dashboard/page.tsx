@@ -3,7 +3,7 @@ import { requireOwnerContext } from '@/lib/auth';
 import { connectStripeAction } from './stripe-actions';
 import { getTrailingVolume } from '@/lib/payments';
 import { getTierInfo } from '@/lib/stripe';
-import { listJobs, type Job } from '@/lib/jobs';
+import { formatJobTime, listJobs, type Job } from '@/lib/jobs';
 
 function formatMoney(n: number): string {
   return '$' + Math.round(n).toLocaleString();
@@ -192,7 +192,7 @@ export default async function DashboardPage() {
                   day.jobs.map((job) => (
                     <Link key={job.id} href={`/dashboard/jobs/${job.id}`} className="week-glance-job">
                       <strong>{job.client_name}</strong>
-                      <span>{extractCity(job.address)}</span>
+                      <span>{[formatJobTime(job.scheduled_time), extractCity(job.address)].filter(Boolean).join(' - ')}</span>
                     </Link>
                   ))
                 )}

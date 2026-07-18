@@ -123,6 +123,10 @@ export default async function JobsPage({
             <input id="scheduledFor" name="scheduledFor" type="date" />
           </div>
           <div className="field">
+            <label htmlFor="scheduledTime">Time of day</label>
+            <input id="scheduledTime" name="scheduledTime" type="time" />
+          </div>
+          <div className="field">
             <label htmlFor="quotedAmount">Quoted amount ($)</label>
             <input id="quotedAmount" name="quotedAmount" type="number" min="0" step="0.01" placeholder="12840" />
           </div>

@@ -72,6 +72,7 @@ export default function DemoSchedulePage({ searchParams }: { searchParams: { mon
     client_name: job.client_name,
     status: job.status,
     scheduled_for: job.scheduled_for as string,
+    scheduled_time: job.scheduled_time,
   }));
 
   return (

@@ -79,6 +79,7 @@ export default async function SchedulePage({
     client_name: job.client_name,
     status: job.status,
     scheduled_for: job.scheduled_for as string,
+    scheduled_time: job.scheduled_time,
   }));
 
   const crewOptions = crew.map((member) => ({
@@ -152,7 +153,8 @@ export default async function SchedulePage({
                   </div>
                   <form action={boundSchedule} className="actions">
                     <input type="date" name="scheduledFor" required aria-label={`Schedule date for ${job.client_name}`} />
-                    <button type="submit" className="btn secondary">Set date</button>
+                    <input type="time" name="scheduledTime" aria-label={`Schedule time for ${job.client_name}`} />
+                    <button type="submit" className="btn secondary">Set schedule</button>
                   </form>
                 </div>
               );

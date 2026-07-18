@@ -13,6 +13,7 @@ export type Job = {
   scope: string | null;
   status: JobStatus;
   scheduled_for: string | null;
+  scheduled_time: string | null;
   quoted_amount: number;
   photo_paths: string[];
   created_at: string;
@@ -59,6 +60,7 @@ export type JobInput = {
   scope?: string | null;
   status?: JobStatus;
   scheduledFor?: string | null;
+  scheduledTime?: string | null;
   quotedAmount?: number;
   photoPaths?: string[];
 };
@@ -120,6 +122,27 @@ export function formatMoney(n: number): string {
 
 export function formatPercent(n: number): string {
   return (n * 100).toFixed(0) + '%';
+}
+
+export function formatJobTime(time: string | null): string | null {
+  if (!time) return null;
+  const [hourValue, minuteValue] = time.split(':');
+  const hour = Number(hourValue);
+  const minute = Number(minuteValue);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+  const suffix = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}:${String(minute).padStart(2, '0')} ${suffix}`;
+}
+
+export function formatJobSchedule(scheduledFor: string | null, scheduledTime?: string | null): string {
+  if (!scheduledFor) return 'Not yet scheduled';
+  const date = new Date(`${scheduledFor}T00:00:00`);
+  const dateLabel = Number.isNaN(date.getTime())
+    ? scheduledFor
+    : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const timeLabel = formatJobTime(scheduledTime ?? null);
+  return timeLabel ? `${dateLabel} at ${timeLabel}` : dateLabel;
 }
 
 // -- Job ref generation ---------------------------------------------------
@@ -192,6 +215,7 @@ export async function createJob(supabase: SupabaseClient, accountId: string, inp
       scope: input.scope ?? null,
       status: input.status ?? 'new_lead',
       scheduled_for: input.scheduledFor ?? null,
+      scheduled_time: input.scheduledTime ?? null,
       quoted_amount: input.quotedAmount ?? 0,
       photo_paths: input.photoPaths ?? [],
     })
@@ -220,6 +244,7 @@ export async function updateJob(
       scope: input.scope ?? null,
       status: input.status ?? 'new_lead',
       scheduled_for: input.scheduledFor ?? null,
+      scheduled_time: input.scheduledTime ?? null,
       quoted_amount: input.quotedAmount ?? 0,
     })
     .eq('account_id', accountId)
@@ -248,11 +273,12 @@ export async function updateJobSchedule(
   supabase: SupabaseClient,
   accountId: string,
   jobId: string,
-  scheduledFor: string | null
+  scheduledFor: string | null,
+  scheduledTime: string | null
 ): Promise<Job> {
   const { data, error } = await supabase
     .from('jobs')
-    .update({ scheduled_for: scheduledFor })
+    .update({ scheduled_for: scheduledFor, scheduled_time: scheduledTime })
     .eq('account_id', accountId)
     .eq('id', jobId)
     .select('*')

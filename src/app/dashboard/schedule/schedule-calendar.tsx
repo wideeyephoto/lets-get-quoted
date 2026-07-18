@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { toggleJobCrewAction } from '../jobs/actions';
+import { formatJobSchedule, formatJobTime } from '@/lib/jobs';
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -20,6 +21,7 @@ export type CalendarJob = {
   client_name: string;
   status: string;
   scheduled_for: string;
+  scheduled_time: string | null;
 };
 
 export type CrewOption = {
@@ -135,7 +137,7 @@ export default function ScheduleCalendar({
                           className={`calendar-job-chip status-${job.status}`}
                           title={job.client_name}
                         >
-                          {job.client_name}
+                          {formatJobTime(job.scheduled_time) ? `${formatJobTime(job.scheduled_time)} ` : ''}{job.client_name}
                         </Link>
                         <button
                           type="button"
@@ -168,7 +170,7 @@ export default function ScheduleCalendar({
               <div>
                 <p className="crew-assign-title">{openJob.client_name}</p>
                 <p className="crew-assign-sub">
-                  {STATUS_LABEL[openJob.status] ?? openJob.status} · {openJob.scheduled_for}
+                  {STATUS_LABEL[openJob.status] ?? openJob.status} · {formatJobSchedule(openJob.scheduled_for, openJob.scheduled_time)}
                 </p>
               </div>
               <button type="button" className="crew-assign-close" onClick={() => setOpenJobId(null)} aria-label="Close">

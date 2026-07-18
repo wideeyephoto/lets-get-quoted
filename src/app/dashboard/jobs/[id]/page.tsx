@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import PhotoGallery from '@/components/photo-gallery';
 import AddressAutocomplete from '@/components/address-autocomplete';
-import { getJob, listCosts, computeMargin, formatMoney, formatPercent, type Cost } from '@/lib/jobs';
+import { getJob, listCosts, computeMargin, formatJobSchedule, formatMoney, formatPercent, type Cost } from '@/lib/jobs';
 import { createJobPhotoUrls } from '@/lib/job-photo-storage';
 import { listPayments, type PaymentStatus } from '@/lib/payments';
 import { listInvoices, type InvoiceStatus } from '@/lib/invoices';
@@ -198,6 +198,10 @@ export default async function JobDetailPage({
                 <input id="scheduledFor" name="scheduledFor" type="date" defaultValue={job.scheduled_for ?? ''} />
               </div>
               <div className="field">
+                <label htmlFor="scheduledTime">Time of day</label>
+                <input id="scheduledTime" name="scheduledTime" type="time" defaultValue={job.scheduled_time?.slice(0, 5) ?? ''} />
+              </div>
+              <div className="field">
                 <label htmlFor="quotedAmount">Quoted amount ($)</label>
                 <input
                   id="quotedAmount"
@@ -207,6 +211,9 @@ export default async function JobDetailPage({
                   step="0.01"
                   defaultValue={job.quoted_amount}
                 />
+              </div>
+              <div className="field full">
+                <p className="workspace-card-copy">Current schedule: {formatJobSchedule(job.scheduled_for, job.scheduled_time)}</p>
               </div>
               <div className="field full">
                 <SaveButton>Save changes</SaveButton>

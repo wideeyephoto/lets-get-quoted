@@ -170,6 +170,7 @@ create table if not exists jobs (
 
   lead_source   lead_source,
   scheduled_for date,
+  scheduled_time time,
 
   -- Manual revenue basis for the Costs & Margin panel until invoicing (step 5)
   -- provides a real signed/paid amount. Mirrors the prototype's "signed quote".
@@ -186,6 +187,7 @@ create table if not exists jobs (
 -- Safe to re-run: adds the column if this table already existed pre-migration.
 alter table jobs add column if not exists quoted_amount numeric(12,2) not null default 0;
 alter table jobs add column if not exists photo_paths jsonb not null default '[]'::jsonb;
+alter table jobs add column if not exists scheduled_time time;
 
 -- ----------------------------------------------------------------------------
 -- CREW_ASSIGNMENTS  — many-to-many jobs <-> crew.

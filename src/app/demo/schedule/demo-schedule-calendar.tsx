@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { formatJobSchedule, formatJobTime } from '@/lib/jobs';
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -12,6 +13,7 @@ export type CalendarJob = {
   client_name: string;
   status: string;
   scheduled_for: string;
+  scheduled_time: string | null;
 };
 
 export type CrewOption = {
@@ -100,7 +102,7 @@ export default function DemoScheduleCalendar({
                           className={`calendar-job-chip status-${job.status}`}
                           title={job.client_name}
                         >
-                          {job.client_name}
+                          {formatJobTime(job.scheduled_time) ? `${formatJobTime(job.scheduled_time)} ` : ''}{job.client_name}
                         </Link>
                         <button
                           type="button"
@@ -132,7 +134,7 @@ export default function DemoScheduleCalendar({
             <div className="crew-assign-header">
               <div>
                 <p className="crew-assign-title">{openJob.client_name}</p>
-                <p className="crew-assign-sub">{openJob.scheduled_for}</p>
+                <p className="crew-assign-sub">{formatJobSchedule(openJob.scheduled_for, openJob.scheduled_time)}</p>
               </div>
               <button type="button" className="crew-assign-close" onClick={() => setOpenJobId(null)} aria-label="Close">
                 ×

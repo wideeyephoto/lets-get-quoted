@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import DemoNav from '@/components/demo-nav';
-import { formatMoney, formatPercent, type JobStatus } from '@/lib/jobs';
+import { formatJobSchedule, formatMoney, formatPercent, type JobStatus } from '@/lib/jobs';
 import { DEMO_JOBS, getDemoCosts, getDemoMargin, getDemoPayments } from '@/lib/demo-data';
 
 export const dynamic = 'force-dynamic';
@@ -49,7 +49,7 @@ export default function DemoJobDetailPage({ params }: { params: { id: string } }
             </article>
             <article className="workspace-metric-card">
               <span className="workspace-metric-label">Scheduled</span>
-              <strong className="workspace-metric-value">{job.scheduled_for || 'Not yet scheduled'}</strong>
+              <strong className="workspace-metric-value">{formatJobSchedule(job.scheduled_for, job.scheduled_time)}</strong>
             </article>
           </div>
           <p className="workspace-card-copy" style={{ marginTop: '1.1rem' }}>

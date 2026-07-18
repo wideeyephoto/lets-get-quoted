@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import DemoNav from '@/components/demo-nav';
 import { getTierInfo } from '@/lib/stripe';
-import { formatMoney, JOB_STATUS_ORDER } from '@/lib/jobs';
+import { formatJobTime, formatMoney, JOB_STATUS_ORDER } from '@/lib/jobs';
 import { DEMO_COMPANY_NAME, DEMO_JOBS, DEMO_TRAILING_VOLUME } from '@/lib/demo-data';
 
 export const dynamic = 'force-dynamic';
@@ -111,7 +111,7 @@ export default function DemoDashboardPage() {
                     day.jobs.map((job) => (
                       <Link key={job.id} href={`/demo/jobs/${job.id}`} className="week-glance-job">
                         <strong>{job.client_name}</strong>
-                        <span>{extractCity(job.address)}</span>
+                        <span>{[formatJobTime(job.scheduled_time), extractCity(job.address)].filter(Boolean).join(' - ')}</span>
                       </Link>
                     ))
                   )}
