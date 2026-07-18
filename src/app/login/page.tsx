@@ -133,9 +133,9 @@ export default function LoginPage() {
     await sendPhoneCode(normalizedPhone, identifier.trim());
   }
 
-  async function verifyPhoneCode(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!/^\d{6}$/.test(code)) {
+  async function verifyPhoneCodeValue(nextCode: string) {
+    if (loading) return;
+    if (!/^\d{6}$/.test(nextCode)) {
       setMessage('Enter the six-digit code from the text message.');
       return;
     }
@@ -143,7 +143,7 @@ export default function LoginPage() {
     setLoading(true);
     setMessage('');
     try {
-      const { error } = await supabase.auth.verifyOtp({ phone: normalizedPhone, token: code, type: 'sms' });
+      const { error } = await supabase.auth.verifyOtp({ phone: normalizedPhone, token: nextCode, type: 'sms' });
       if (error) throw error;
       router.replace('/dashboard');
       router.refresh();
@@ -152,6 +152,17 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function verifyPhoneCode(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await verifyPhoneCodeValue(code);
+  }
+
+  function updateCode(value: string) {
+    const nextCode = value.replace(/\D/g, '').slice(0, 6);
+    setCode(nextCode);
+    if (nextCode.length === 6) void verifyPhoneCodeValue(nextCode);
   }
 
   function switchToRequest() {
@@ -190,7 +201,7 @@ export default function LoginPage() {
             <label htmlFor="login-code">6-digit code</label>
             <div className="input-icon-group">
               <MessageIcon />
-              <input id="login-code" className="otp-input" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" required />
+              <input id="login-code" className="otp-input" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} value={code} onChange={(event) => updateCode(event.target.value)} placeholder="000000" required />
             </div>
             <button type="submit" className="btn primary" disabled={loading}>{loading ? 'Verifying…' : <>Verify <ArrowRightIcon /></>}</button>
             <div className="auth-inline-actions"><button type="button" onClick={resendCode} disabled={loading}>Resend code</button><button type="button" onClick={switchToRequest} disabled={loading}>Start over</button></div>

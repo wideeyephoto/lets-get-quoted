@@ -403,6 +403,27 @@ create table if not exists sms_consent (
 );
 
 -- ----------------------------------------------------------------------------
+-- JOB SCHEDULE REQUESTS - contractor-proposed dates clients can choose from.
+-- ----------------------------------------------------------------------------
+create table if not exists job_schedule_requests (
+  id                uuid primary key default gen_random_uuid(),
+  account_id        uuid not null references accounts(id) on delete cascade,
+  job_id            uuid not null references jobs(id) on delete cascade,
+  token_hash        text not null unique,
+  client_phone      text,
+  options           jsonb not null default '[]'::jsonb,
+  status            text not null default 'open' check (status in ('open','selected','needs_more_options','revoked')),
+  selected_index    int,
+  selected_date     date,
+  selected_time     time,
+  client_notes      text,
+  sent_at           timestamptz,
+  responded_at      timestamptz,
+  expires_at        timestamptz,
+  created_at        timestamptz not null default now()
+);
+
+-- ----------------------------------------------------------------------------
 -- FINANCE PLANS
 -- ----------------------------------------------------------------------------
 create table if not exists finance_plans (
@@ -495,7 +516,7 @@ declare t text;
 begin
   foreach t in array array[
     'accounts','memberships','crew','sites','jobs','crew_assignments',
-    'costs','job_feed','client_job_access','invoices','payments','finance_plans','leads','sms_events','sms_consent'
+    'costs','job_feed','client_job_access','invoices','payments','finance_plans','leads','sms_events','sms_consent','job_schedule_requests'
   ] loop
     execute format('alter table %I enable row level security;', t);
   end loop;
@@ -518,6 +539,7 @@ drop policy if exists plan_all on finance_plans;
 drop policy if exists lead_all on leads;
 drop policy if exists sms_event_all on sms_events;
 drop policy if exists sms_consent_all on sms_consent;
+drop policy if exists job_schedule_request_all on job_schedule_requests;
 drop policy if exists invitem_all on invoice_items;
 
 create policy acc_read   on accounts for select using ( is_member(id) );
@@ -539,6 +561,7 @@ create policy plan_all   on finance_plans    for all using ( is_member(account_i
 create policy lead_all   on leads            for all using ( is_member(account_id) );
 create policy sms_event_all on sms_events     for all using ( is_member(account_id) );
 create policy sms_consent_all on sms_consent  for all using ( is_member(account_id) );
+create policy job_schedule_request_all on job_schedule_requests for all using ( is_member(account_id) );
 
 alter table invoice_items enable row level security;
 create policy invitem_all on invoice_items for all using (
@@ -561,3 +584,4 @@ create index if not exists memberships_user_id_idx on memberships (user_id);
 create index if not exists leads_account_id_status_created_at_idx on leads (account_id, status, created_at desc);
 create index if not exists sms_events_account_payment_idx on sms_events (account_id, payment_id, created_at desc);
 create index if not exists sms_consent_phone_idx on sms_consent (phone_number, status);
+create index if not exists job_schedule_requests_job_id_idx on job_schedule_requests (job_id, status, created_at desc);

@@ -19,6 +19,11 @@ function paymentLink(paymentId: string) {
   return `${origin}/pay/${paymentId}`;
 }
 
+function scheduleLink(token: string) {
+  const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
+  return `${origin}/schedule/${token}`;
+}
+
 function messageFor(payment: SmsPayment, eventType: PaymentSmsEvent) {
   const contractor = payment.account?.business_name || 'Your contractor';
   const amount = formatMoney(Number(payment.amount));
@@ -194,5 +199,17 @@ export async function sendJobUpdateSms(params: {
 }) {
   const updateBody = params.body ? ` ${params.body}` : '';
   const message = `Let's Get Quoted: ${params.businessName} posted an update for job ${params.jobRef}: ${params.title}.${updateBody} Reply STOP to opt out.`;
+  return sendTwilioMessage(params.phone, message);
+}
+
+export async function sendSchedulingOptionsSms(params: {
+  phone: string;
+  businessName: string;
+  jobRef: string;
+  clientName: string;
+  token: string;
+}) {
+  const link = scheduleLink(params.token);
+  const message = `Let's Get Quoted: ${params.businessName} has 3 service times available for ${params.jobRef}. ${params.clientName}, choose one or request different times: ${link}. Reply STOP to opt out.`;
   return sendTwilioMessage(params.phone, message);
 }

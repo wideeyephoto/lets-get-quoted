@@ -24,6 +24,7 @@ import {
 import { uploadJobPhoto } from '@/lib/job-photo-storage';
 import { listCrew, setJobCrewAssignments, toggleJobCrewAssignment } from '@/lib/crew';
 import { normalizeUsPhone } from '@/lib/phone';
+import { createAndSendScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
 import { recordSmsConsent, sendCrewAssignmentSms, sendJobUpdateSms } from '@/lib/sms';
 
 function parseAmount(value: FormDataEntryValue | null): number {
@@ -213,6 +214,36 @@ export async function scheduleJobAction(jobId: string, formData: FormData) {
   revalidatePath('/dashboard/jobs');
   revalidatePath(`/dashboard/jobs/${jobId}`);
   revalidatePath('/dashboard/schedule');
+}
+
+export async function sendClientScheduleOptionsAction(jobId: string, formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const job = await getJob(supabase, accountId, jobId);
+  if (!job) throw new Error('Job not found for this account.');
+
+  const phoneInput = (formData.get('scheduleClientPhone') ?? '').toString();
+  const clientPhone = normalizeUsPhone(phoneInput);
+  if (!clientPhone) throw new Error('Enter a valid client mobile number before sending schedule options.');
+  if (formData.get('scheduleSmsConsent') !== 'on') throw new Error('Confirm the client agreed to receive scheduling texts.');
+
+  const options: ScheduleOption[] = [1, 2, 3].map((index) => ({
+    date: (formData.get(`scheduleDate${index}`) ?? '').toString(),
+    time: optionalText(formData.get(`scheduleTime${index}`)),
+  }));
+
+  const request = await createAndSendScheduleRequest(supabase, accountId, jobId, { clientPhone, options });
+  const optionSummary = request.options.map((option, index) => `${index + 1}. ${formatScheduleOption(option)}`).join(' ');
+
+  await createJobFeedEvent(supabase, accountId, jobId, {
+    kind: 'job_scheduled',
+    title: 'Schedule options sent',
+    body: `Schedule options were texted to ${job.client_name}: ${optionSummary}`,
+    visibility: 'client',
+    meta: { schedule_request_id: request.id, options: request.options },
+  });
+
+  revalidatePath('/dashboard/jobs');
+  revalidatePath(`/dashboard/jobs/${jobId}`);
 }
 
 export async function deleteJobAction(jobId: string) {

@@ -14,6 +14,7 @@ import {
   deleteCostAction,
   deleteJobAction,
   markJobCompleteAction,
+  sendClientScheduleOptionsAction,
   undoJobCompleteAction,
   updateJobAction,
   updateJobCrewAction,
@@ -247,6 +248,7 @@ export default async function JobDetailPage({
   const boundCreateCost = createCostAction.bind(null, job.id);
   const boundCreateDepositRequest = createDepositRequestAction.bind(null, job.id);
   const boundMarkJobComplete = markJobCompleteAction.bind(null, job.id);
+  const boundSendScheduleOptions = sendClientScheduleOptionsAction.bind(null, job.id);
   const boundCreateClientJobLink = createClientJobLinkAction.bind(null, job.id);
   const boundRefundPayment = refundPaymentAction.bind(null, job.id);
   const boundMarkPaymentFailed = markPaymentFailedAction.bind(null, job.id);
@@ -675,6 +677,41 @@ export default async function JobDetailPage({
                 <SaveButton>Save changes</SaveButton>
               </div>
             </form>
+
+            <div className="workspace-section-divider">
+              <div className="section-heading workspace-section-heading">
+                <p className="eyebrow">Client scheduling</p>
+                <h2>Send 3 service options</h2>
+              </div>
+              <p className="workspace-card-copy">Text the client three dates that work for your crew. They can choose one or request different times with a note.</p>
+              <form action={boundSendScheduleOptions} className="form-grid">
+                <div className="field full">
+                  <label htmlFor="scheduleClientPhone">Client mobile</label>
+                  <input id="scheduleClientPhone" name="scheduleClientPhone" type="tel" defaultValue={job.client_phone ?? ''} placeholder="(248) 555-0117" />
+                </div>
+                {[1, 2, 3].map((optionNumber) => (
+                  <div className="schedule-option-grid field full" key={optionNumber}>
+                    <div>
+                      <label htmlFor={`scheduleDate${optionNumber}`}>Option {optionNumber} date</label>
+                      <ScheduledDatePicker id={`scheduleDate${optionNumber}`} name={`scheduleDate${optionNumber}`} />
+                    </div>
+                    <div>
+                      <label htmlFor={`scheduleTime${optionNumber}`}>Option {optionNumber} time</label>
+                      <TimeSlotSelect id={`scheduleTime${optionNumber}`} name={`scheduleTime${optionNumber}`} />
+                    </div>
+                  </div>
+                ))}
+                <div className="field full">
+                  <label className="sms-consent-check">
+                    <input name="scheduleSmsConsent" type="checkbox" required />
+                    <span>The client agreed to receive transactional scheduling texts. Message and data rates may apply. Reply STOP to opt out.</span>
+                  </label>
+                </div>
+                <div className="field full">
+                  <SaveButton pendingLabel="Sending..." savedLabel="Sent">Text schedule options</SaveButton>
+                </div>
+              </form>
+            </div>
 
             <div className="workspace-section-divider">
               <div className="section-heading workspace-section-heading">

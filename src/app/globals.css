@@ -1829,6 +1829,59 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   margin-top: 0.35rem;
 }
 
+.schedule-choice-shell {
+  max-width: 980px;
+}
+
+.schedule-choice-hero {
+  border-color: rgba(255, 138, 61, 0.24);
+}
+
+.schedule-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.schedule-choice-card {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.schedule-choice-card strong {
+  color: #f7f5ef;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  line-height: 1.12;
+}
+
+.schedule-choice-label {
+  color: #ffd166;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.schedule-choice-card textarea,
+.schedule-different-card textarea {
+  width: 100%;
+  min-height: 68px;
+  resize: vertical;
+}
+
+.schedule-different-card {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.schedule-choice-footer {
+  text-align: center;
+}
+
 .quick-add-buttons {
   display: flex;
   flex-wrap: wrap;
@@ -2220,6 +2273,8 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .payment-sms-options { display: grid; grid-template-columns: minmax(220px, .65fr) minmax(300px, 1.35fr); gap: .8rem; align-items: end; margin-top: .8rem; }
 .sms-consent-check { display: flex; align-items: flex-start; gap: .65rem; padding: .75rem; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(255,255,255,.025); color: rgba(255,255,255,.68); font-size: .76rem; line-height: 1.45; cursor: pointer; }
 .sms-consent-check input { flex: 0 0 auto; width: 17px; height: 17px; margin-top: .1rem; accent-color: #ff8a3d; }
+.schedule-option-grid { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr); gap: .8rem; padding: .85rem; border: 1px solid rgba(255,255,255,.1); border-radius: 10px; background: rgba(255,255,255,.025); }
+.schedule-option-grid > div { min-width: 0; }
 .invoice-context-pill { display: inline-flex; align-items: center; gap: .55rem; width: fit-content; max-width: 100%; padding: .5rem .7rem; border: 1px solid rgba(255,209,102,.22); border-radius: 999px; background: rgba(255,209,102,.06); color: rgba(247,245,239,.66); font-size: .82rem; }
 .invoice-context-pill span { text-transform: uppercase; letter-spacing: .08em; font-size: .66rem; font-weight: 900; color: rgba(255,209,102,.82); }
 .invoice-context-pill strong { color: #f7f5ef; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -2289,6 +2344,8 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
     grid-template-columns: 1fr;
   }
   .payment-sms-options { grid-template-columns: 1fr; }
+  .schedule-choice-grid,
+  .schedule-option-grid { grid-template-columns: 1fr; }
   .job-feed-share-strip { align-items: stretch; flex-direction: column; }
   .job-feed-share-actions { justify-content: flex-start; }
 
