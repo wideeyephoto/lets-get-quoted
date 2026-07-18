@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { createAdminClient, getCurrentMembership } from '@/lib/auth';
+import { expireStaleLeads } from '@/lib/leads';
 
 // Lightweight status check used by the app shell to show persistent dashboard
 // badges and alerts. Intentionally returns only minimal state needed for the
@@ -22,6 +23,7 @@ export async function GET() {
   }
 
   const admin = createAdminClient();
+  await expireStaleLeads(admin, membership.accountId);
   const [{ data: account }, { data: site }, { data: newQuoteRequests, count: newQuoteRequestCount }] = await Promise.all([
     admin.from('accounts').select('connect_onboarded').eq('id', membership.accountId).maybeSingle(),
     admin

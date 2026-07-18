@@ -203,6 +203,18 @@ export async function updateLeadStatus(
   return data as Lead;
 }
 
+export async function expireStaleLeads(supabase: SupabaseClient, accountId: string, days = 30): Promise<void> {
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  const { error } = await supabase
+    .from('leads')
+    .update({ status: 'lost', updated_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .in('status', ['new', 'contacted', 'quoted'])
+    .lt('created_at', cutoff);
+
+  if (error) throw error;
+}
+
 export async function convertLeadToJob(
   supabase: SupabaseClient,
   accountId: string,
@@ -228,7 +240,7 @@ export async function convertLeadToJob(
 
   const { error } = await supabase
     .from('leads')
-    .update({ converted_job: job.id, status: 'won', updated_at: new Date().toISOString() })
+    .update({ converted_job: job.id, status: 'quoted', updated_at: new Date().toISOString() })
     .eq('account_id', accountId)
     .eq('id', leadId);
 

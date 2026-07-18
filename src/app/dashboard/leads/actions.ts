@@ -5,12 +5,10 @@ import { redirect } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
 import { createClientJobAccessToken, createJobFeedEvent } from '@/lib/job-feed';
 import { formatJobQuoteSummary } from '@/lib/jobs';
-import { convertLeadToJob, createLead, updateLeadStatus, type LeadStatus } from '@/lib/leads';
+import { convertLeadToJob, createLead } from '@/lib/leads';
 import { uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
-
-const VALID_STATUSES = new Set<LeadStatus>(['new', 'contacted', 'quoted', 'won', 'lost']);
 
 function optionalText(value: FormDataEntryValue | null): string | null {
   const text = (value ?? '').toString().trim();
@@ -55,16 +53,6 @@ export async function createLeadAction(formData: FormData) {
   });
 
   revalidatePath('/dashboard/leads');
-}
-
-export async function updateLeadStatusAction(leadId: string, formData: FormData) {
-  const status = String(formData.get('status') ?? '') as LeadStatus;
-  if (!VALID_STATUSES.has(status)) throw new Error('Choose a valid lead status.');
-  const { supabase, accountId } = await requireOwnerContext();
-  await updateLeadStatus(supabase, accountId, leadId, status);
-  revalidatePath('/dashboard/leads');
-  revalidatePath(`/dashboard/leads/${leadId}`);
-  redirect(`/dashboard/leads/${leadId}`);
 }
 
 export async function convertLeadAction(leadId: string, formData: FormData) {

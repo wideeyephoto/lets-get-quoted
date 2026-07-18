@@ -270,7 +270,7 @@ export async function signInvoice(invoiceId: string, signerName: string): Promis
 
   const { data: invoice, error: fetchError } = await admin
     .from('invoices')
-    .select('status, signed_at')
+    .select('account_id, job_id, status, signed_at')
     .eq('id', invoiceId)
     .maybeSingle();
 
@@ -294,4 +294,11 @@ export async function signInvoice(invoiceId: string, signerName: string): Promis
   if (error) {
     throw error;
   }
+
+  await admin
+    .from('leads')
+    .update({ status: 'won', updated_at: new Date().toISOString() })
+    .eq('account_id', invoice.account_id)
+    .eq('converted_job', invoice.job_id)
+    .eq('status', 'quoted');
 }

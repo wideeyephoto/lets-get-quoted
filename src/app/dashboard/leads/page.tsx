@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import AddressAutocomplete from '@/components/address-autocomplete';
-import { formatDuration, formatElapsedTime, formatLeadSource, getAverageRequestResponseMs, listLeads, type Lead, type LeadStatus } from '@/lib/leads';
+import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadSource, getAverageRequestResponseMs, listLeads, type Lead, type LeadStatus } from '@/lib/leads';
 import { createLeadAction } from './actions';
 import SaveButton from '@/components/save-button';
 import styles from './leads.module.css';
@@ -25,6 +25,7 @@ function responseLabel(lead: Lead) {
 
 export default async function LeadsPage() {
   const { supabase, accountId } = await requireOwnerContext();
+  await expireStaleLeads(supabase, accountId);
   const leads = await listLeads(supabase, accountId);
   const websiteRequests = leads.filter((lead) => lead.source === 'website_form').length;
   const openRequests = leads.filter((lead) => !['won', 'lost'].includes(lead.status)).length;
