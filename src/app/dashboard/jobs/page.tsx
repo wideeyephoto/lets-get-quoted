@@ -109,8 +109,8 @@ export default async function JobsPage({
             <AddressAutocomplete id="address" name="address" placeholder="1418 Maplewood Ave, Royal Oak, MI" />
           </div>
           <div className="field full">
-            <label htmlFor="scope">Scope</label>
-            <textarea id="scope" name="scope" placeholder="Full roof tear-off & re-shingle…" />
+            <label htmlFor="scope">Job Description</label>
+            <textarea id="scope" name="scope" placeholder="Full roof tear-off & re-shingle..." />
           </div>
           <div className="field">
             <label htmlFor="status">Status</label>

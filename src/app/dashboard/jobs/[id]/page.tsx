@@ -198,10 +198,17 @@ export default async function JobDetailPage({
             <span className="workspace-inline-note">{job.address || 'No address on file yet'}</span>
           </div>
           <div className="job-command-facts" aria-label="Job facts">
-            <span><strong>{formatMoney(job.quoted_amount)}</strong> quoted</span>
             <span>
               <strong>
-                {job.estimated_hours ? `${job.estimated_hours} hrs` : <a href="#job-details">Not set</a>}
+                <Link href={`/dashboard/jobs/${job.id}?edit=client#job-details`}>{formatMoney(job.quoted_amount)}</Link>
+              </strong>{' '}
+              quoted
+            </span>
+            <span>
+              <strong>
+                <Link href={`/dashboard/jobs/${job.id}?edit=client#job-details`}>
+                  {job.estimated_hours ? `${job.estimated_hours} hrs` : 'Not set'}
+                </Link>
               </strong>{' '}
               estimated hours
             </span>
@@ -416,7 +423,7 @@ export default async function JobDetailPage({
                 <AddressAutocomplete id="address" name="address" defaultValue={job.address ?? ''} />
               </div>
               <div className="field full">
-                <label htmlFor="scope">Scope</label>
+                <label htmlFor="scope">Job Description</label>
                 <textarea id="scope" name="scope" defaultValue={job.scope ?? ''} />
               </div>
               <div className="field">

@@ -132,7 +132,7 @@ export function formatJobQuoteSummary(job: Pick<Job, 'client_name' | 'address' |
     `Quoted amount: ${formatMoney(Number(job.quoted_amount) || 0)}.`,
     job.estimated_hours ? `Estimated hours: ${job.estimated_hours}.` : 'Estimated hours: not set.',
     job.address ? `Address: ${job.address}.` : null,
-    job.scope ? `Quote details: ${job.scope}` : null,
+    job.scope ? `Job description: ${job.scope}` : null,
   ].filter(Boolean);
 
   return details.join(' ');
