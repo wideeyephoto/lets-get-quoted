@@ -6,6 +6,8 @@ import { formatJobSchedule, formatJobTime } from '@/lib/jobs';
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+type CalendarView = 'month' | 'week';
+
 export type CalendarCell = { day: number; dateKey: string } | null;
 
 export type CalendarJob = {
@@ -32,6 +34,24 @@ function initials(name: string): string {
     .join('');
 }
 
+function addDaysToDateKey(dateKey: string, days: number): string {
+  const date = new Date(`${dateKey}T00:00:00`);
+  date.setDate(date.getDate() + days);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function hasJobOnDate(jobsByDate: Map<string, CalendarJob[]>, jobId: string, dateKey: string): boolean {
+  return (jobsByDate.get(dateKey) ?? []).some((job) => job.id === jobId);
+}
+
+function getBandColorClass(jobId: string): string {
+  let hash = 0;
+  for (const character of jobId) {
+    hash = (hash + character.charCodeAt(0)) % 6;
+  }
+  return `calendar-band-color-${hash}`;
+}
+
 // Read-only-ish demo version of the real ScheduleCalendar — crew assignment
 // toggles only ever update local component state (no server action, no
 // persistence), since this whole page is a fictional, logged-out sample.
@@ -50,6 +70,7 @@ export default function DemoScheduleCalendar({
 }) {
   const [assignments, setAssignments] = useState(assignmentsByJob);
   const [openOccurrenceKey, setOpenOccurrenceKey] = useState<string | null>(null);
+  const [calendarView, setCalendarView] = useState<CalendarView>('month');
 
   const jobsByDate = useMemo(() => {
     const map = new Map<string, CalendarJob[]>();
@@ -62,6 +83,15 @@ export default function DemoScheduleCalendar({
   }, [jobs]);
 
   const openJob = openOccurrenceKey ? jobs.find((job) => job.occurrence_key === openOccurrenceKey) ?? null : null;
+
+  const weekAtAGlance = useMemo(() => {
+    return weeks.find((week) => week.some((cell) => cell?.dateKey === todayKey))
+      ?? weeks.find((week) => week.some((cell) => cell && (jobsByDate.get(cell.dateKey)?.length ?? 0) > 0))
+      ?? weeks.find((week) => week.some(Boolean))
+      ?? [];
+  }, [jobsByDate, todayKey, weeks]);
+
+  const visibleWeeks = calendarView === 'week' ? [weekAtAGlance] : weeks;
 
   function handleToggle(jobId: string, crewId: string) {
     setAssignments((prev) => {
@@ -76,28 +106,46 @@ export default function DemoScheduleCalendar({
 
   return (
     <>
-      <p className="calendar-hint">Click the crew badge on any job to assign or remove your team.</p>
+      <div className="calendar-toolbar">
+        <p className="calendar-hint">Click the crew badge on any job to assign or remove your team.</p>
+        <div className="calendar-view-toggle" aria-label="Calendar view">
+          <button type="button" className={calendarView === 'month' ? 'active' : ''} onClick={() => setCalendarView('month')}>Month</button>
+          <button type="button" className={calendarView === 'week' ? 'active' : ''} onClick={() => setCalendarView('week')}>Week</button>
+        </div>
+      </div>
       <div className="calendar-grid">
         {WEEKDAY_LABELS.map((label) => (
           <div className="calendar-weekday" key={label}>{label}</div>
         ))}
-        {weeks.map((week, weekIndex) =>
+        {visibleWeeks.map((week, weekIndex) =>
           week.map((cell, cellIndex) => {
             if (!cell) {
               return <div className="calendar-cell empty" key={`${weekIndex}-${cellIndex}`} />;
             }
             const dayJobs = jobsByDate.get(cell.dateKey) ?? [];
+            const previousDateKey = cellIndex > 0 ? addDaysToDateKey(cell.dateKey, -1) : null;
+            const nextDateKey = cellIndex < week.length - 1 ? addDaysToDateKey(cell.dateKey, 1) : null;
             return (
               <div className={`calendar-cell${cell.dateKey === todayKey ? ' today' : ''}`} key={cell.dateKey}>
                 <span className="calendar-day-number">{cell.day}</span>
                 <div className="calendar-day-jobs">
                   {dayJobs.map((job) => {
+                    const continuesFromPrevious = previousDateKey ? hasJobOnDate(jobsByDate, job.id, previousDateKey) : false;
+                    const continuesToNext = nextDateKey ? hasJobOnDate(jobsByDate, job.id, nextDateKey) : false;
+                    const bandClass = continuesFromPrevious
+                      ? continuesToNext
+                        ? 'calendar-band-middle'
+                        : 'calendar-band-end'
+                      : continuesToNext
+                        ? 'calendar-band-start'
+                        : 'calendar-band-single';
+                    const bandColorClass = getBandColorClass(job.id);
                     const assignedIds = assignments[job.id] ?? [];
                     const assignedMembers = assignedIds
                       .map((id) => crew.find((member) => member.id === id))
                       .filter((member): member is CrewOption => Boolean(member));
                     return (
-                      <div className="calendar-job-item" key={job.occurrence_key}>
+                      <div className={`calendar-job-item calendar-band ${bandClass} ${bandColorClass} status-${job.status}`} key={job.occurrence_key}>
                         <Link
                           href={`/demo/jobs/${job.id}`}
                           className={`calendar-job-chip status-${job.status}`}

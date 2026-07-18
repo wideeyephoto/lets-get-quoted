@@ -1012,10 +1012,43 @@ li + li { margin-top: 0.45rem; }
   .calendar-job-chip { font-size: .62rem; }
 }
 
-.calendar-hint { margin: 0 0 .75rem; color: rgba(255,255,255,.5); font-size: .82rem; }
+.calendar-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; margin: 0 0 .75rem; }
+.calendar-hint { margin: 0; color: rgba(255,255,255,.5); font-size: .82rem; }
+.calendar-view-toggle { display: inline-flex; padding: .2rem; border: 1px solid rgba(255,255,255,.12); border-radius: 999px; background: rgba(255,255,255,.04); }
+.calendar-view-toggle button { border: 0; border-radius: 999px; padding: .35rem .65rem; background: transparent; color: rgba(255,255,255,.58); font: inherit; font-size: .75rem; font-weight: 800; cursor: pointer; }
+.calendar-view-toggle button.active { background: #fff; color: #121212; }
+.calendar-view-toggle button:not(.active):hover { color: #fff; }
 
 .calendar-job-item { display: flex; align-items: center; gap: .3rem; }
 .calendar-job-item .calendar-job-chip { flex: 1 1 auto; min-width: 0; }
+.calendar-band {
+  position: relative;
+  z-index: 1;
+  min-height: 26px;
+  padding: .16rem .22rem;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.08);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
+}
+.calendar-band .calendar-job-chip { padding-left: .22rem; background: transparent; color: inherit; }
+.calendar-band .calendar-job-chip:hover { background: transparent; }
+.calendar-band.status-new_lead { border-color: rgba(255,209,102,.28); background: rgba(255,209,102,.2); color: #ffd166; }
+.calendar-band.status-in_progress { border-color: rgba(255,138,61,.34); background: rgba(255,138,61,.23); color: #ffb071; }
+.calendar-band.status-complete { border-color: rgba(120,220,150,.3); background: rgba(120,220,150,.18); color: #78dc96; }
+.calendar-band-color-0 { border-color: rgba(255,138,61,.34); background: rgba(255,138,61,.24); color: #ffb071; }
+.calendar-band-color-1 { border-color: rgba(61,184,255,.34); background: rgba(61,184,255,.2); color: #8bd8ff; }
+.calendar-band-color-2 { border-color: rgba(120,220,150,.34); background: rgba(120,220,150,.2); color: #94efae; }
+.calendar-band-color-3 { border-color: rgba(255,209,102,.34); background: rgba(255,209,102,.2); color: #ffdf82; }
+.calendar-band-color-4 { border-color: rgba(255,112,163,.34); background: rgba(255,112,163,.2); color: #ff9ac0; }
+.calendar-band-color-5 { border-color: rgba(176,141,255,.34); background: rgba(176,141,255,.2); color: #c9b5ff; }
+.calendar-band-single { border-radius: 7px; }
+.calendar-band-start { margin-right: calc(-.4rem - 7px); border-right-color: transparent; border-radius: 7px 0 0 7px; }
+.calendar-band-middle { margin-right: calc(-.4rem - 7px); margin-left: calc(-.4rem - 7px); border-right-color: transparent; border-left-color: transparent; border-radius: 0; }
+.calendar-band-end { margin-left: calc(-.4rem - 7px); border-left-color: transparent; border-radius: 0 7px 7px 0; }
+.calendar-band-middle .calendar-job-chip,
+.calendar-band-end .calendar-job-chip { color: transparent; }
+.calendar-band-middle .calendar-job-chip::selection,
+.calendar-band-end .calendar-job-chip::selection { color: transparent; }
 .calendar-crew-toggle {
   flex: none;
   display: inline-flex;

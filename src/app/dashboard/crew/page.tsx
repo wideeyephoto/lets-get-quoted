@@ -1,6 +1,7 @@
 import { requireOwnerContext } from '@/lib/auth';
 import { listCrew, listCrewWorkHistory } from '@/lib/crew';
 import { formatJobSchedule, formatMoney, listJobs } from '@/lib/jobs';
+import SaveButton from '@/components/save-button';
 import { assignCrewToJobAction, createCrewAction, deleteArchivedCrewAction, setCrewActiveAction, updateCrewAction } from './actions';
 
 export default async function CrewPage() {
@@ -87,7 +88,7 @@ export default async function CrewPage() {
                         <input id={`hourlyRate-${member.id}`} name="hourlyRate" type="number" min="0" step="0.01" defaultValue={member.hourly_rate} />
                       </div>
                       <div className="field full">
-                        <button type="submit" className="btn primary">Save crew member</button>
+                        <SaveButton>Save crew member</SaveButton>
                       </div>
                     </form>
                   </details>
@@ -156,9 +157,7 @@ export default async function CrewPage() {
             <input id="hourlyRate" name="hourlyRate" type="number" min="0" step="0.01" placeholder="28" />
           </div>
           <div className="field full">
-            <button type="submit" className="btn primary">
-              Add crew member
-            </button>
+            <SaveButton pendingLabel="Adding…" savedLabel="Added ✓">Add crew member</SaveButton>
           </div>
         </form>
       </details>
