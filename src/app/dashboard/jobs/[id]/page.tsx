@@ -62,6 +62,40 @@ const FEED_VISIBILITY_LABEL: Record<JobFeedEvent['visibility'], string> = {
   client_financial: 'Client financial',
 };
 
+const FEED_KIND_LABEL: Record<string, string> = {
+  job_created: 'Job',
+  job_update: 'Update',
+  job_scheduled: 'Schedule',
+  cost_added: 'Cost',
+  payment_requested: 'Payment request',
+  payment_paid: 'Payment received',
+  payment_failed: 'Payment issue',
+  payment_refunded: 'Refund',
+  invoice_created: 'Invoice',
+  invoice_sent: 'Invoice sent',
+  invoice_signed: 'Invoice signed',
+  invoice_paid: 'Invoice paid',
+  client_link_created: 'Client link',
+  client_link_revoked: 'Client link',
+};
+
+const FEED_KIND_ICON: Record<string, string> = {
+  job_created: '+',
+  job_update: 'i',
+  job_scheduled: 'S',
+  cost_added: '$',
+  payment_requested: '$',
+  payment_paid: '✓',
+  payment_failed: '!',
+  payment_refunded: '↩',
+  invoice_created: 'I',
+  invoice_sent: 'I',
+  invoice_signed: '✓',
+  invoice_paid: '✓',
+  client_link_created: '↗',
+  client_link_revoked: '×',
+};
+
 function marginTier(margin: number): 'margin-good' | 'margin-ok' | 'margin-bad' {
   if (margin >= 0.35) return 'margin-good';
   if (margin >= 0.2) return 'margin-ok';
@@ -112,16 +146,6 @@ export default async function JobDetailPage({
     .eq('id', accountId)
     .maybeSingle();
   const stripeOnboarded = accountRow?.connect_onboarded ?? false;
-  const tab =
-    searchParams.tab === 'costs'
-      ? 'costs'
-      : searchParams.tab === 'payments'
-        ? 'payments'
-        : searchParams.tab === 'invoices'
-          ? 'invoices'
-          : searchParams.tab === 'feed'
-            ? 'feed'
-          : 'overview';
 
   const boundUpdateJob = updateJobAction.bind(null, job.id);
   const boundUpdateJobCrew = updateJobCrewAction.bind(null, job.id);
@@ -177,28 +201,97 @@ export default async function JobDetailPage({
         </div>
       </section>
 
-      <section className="panel workspace-section-card">
-        <div className="tabs">
-          <Link href={`/dashboard/jobs/${job.id}?tab=overview`} className={`tab${tab === 'overview' ? ' active' : ''}`}>
-            Overview
-          </Link>
-          <Link href={`/dashboard/jobs/${job.id}?tab=costs`} className={`tab${tab === 'costs' ? ' active' : ''}`}>
-            📊 Costs &amp; Margin
-          </Link>
-          <Link href={`/dashboard/jobs/${job.id}?tab=payments`} className={`tab${tab === 'payments' ? ' active' : ''}`}>
-            💳 Payments
-          </Link>
-          <Link href={`/dashboard/jobs/${job.id}?tab=invoices`} className={`tab${tab === 'invoices' ? ' active' : ''}`}>
-            🧾 Invoices
-          </Link>
-          <Link href={`/dashboard/jobs/${job.id}?tab=feed`} className={`tab${tab === 'feed' ? ' active' : ''}`}>
-            Feed
-          </Link>
+      <section className="detail-grid workspace-grid-gap">
+        <div>
+          <div className="panel workspace-section-card">
+            <div className="section-heading workspace-section-heading">
+              <p className="eyebrow">Job feed</p>
+              <h2>Command center</h2>
+            </div>
+            <form action={boundCreateManualFeed} className="cost-form workspace-form-block">
+              <div className="field">
+                <label htmlFor="feed-title">Update title</label>
+                <input id="feed-title" name="title" placeholder="Materials delivered" required />
+              </div>
+              <div className="field full">
+                <label htmlFor="feed-body">Update</label>
+                <textarea id="feed-body" name="body" placeholder="Tell the client what changed or what happened today." />
+              </div>
+              <label className="sms-consent-check">
+                <input name="visibility" type="checkbox" value="client" />
+                <span>Show this update on the client dashboard</span>
+              </label>
+              <div style={{ marginTop: '0.8rem' }}>
+                <SaveButton pendingLabel="Posting…" savedLabel="Posted ✓">Post update</SaveButton>
+              </div>
+            </form>
+
+            {feed.length === 0 ? (
+              <p className="empty-state">No job feed updates yet.</p>
+            ) : (
+              <div className="job-feed-list workspace-list-block">
+                {feed.map((event) => (
+                  <article className={`job-feed-item feed-kind-${event.kind}`} key={event.id}>
+                    <div className="job-feed-dot">{FEED_KIND_ICON[event.kind] ?? '•'}</div>
+                    <div className="job-feed-content">
+                      <div className="job-row-header">
+                        <span className="cost-item-desc">{event.title || event.kind}</span>
+                        <div className="feed-badge-row">
+                          <span className="status-badge status-new_lead">{FEED_KIND_LABEL[event.kind] ?? 'Update'}</span>
+                          <span className={`status-badge ${event.visibility === 'internal' ? 'status-archived' : 'status-complete'}`}>
+                            {FEED_VISIBILITY_LABEL[event.visibility]}
+                          </span>
+                        </div>
+                      </div>
+                      {event.body ? <p className="workspace-card-copy">{event.body}</p> : null}
+                      <p className="job-meta">
+                        {formatFeedTime(event.created_at)}
+                        {event.amount ? ` · ${formatMoney(Number(event.amount))}` : ''}
+                        {event.action_url ? (
+                          <>
+                            {' · '}
+                            <Link href={event.action_url} target="_blank">Open link</Link>
+                          </>
+                        ) : null}
+                      </p>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <div className="panel workspace-section-card sticky-card">
+            <div className="section-heading workspace-section-heading">
+              <p className="eyebrow">Client dashboard</p>
+              <h2>Shareable job view</h2>
+            </div>
+            <p className="workspace-card-copy">
+              Give the client one link for visible updates, payment requests, invoices, and job status.
+            </p>
+            {searchParams.clientToken ? (
+              <div className="payment-banner success">
+                <p><strong>New client link ready.</strong></p>
+                <p><a href={`/client/jobs/${searchParams.clientToken}`} target="_blank" rel="noreferrer">/client/jobs/{searchParams.clientToken}</a></p>
+              </div>
+            ) : (
+              <p className="job-meta">Active dashboard links: {activeClientLinkCount}</p>
+            )}
+            <div className="actions" style={{ marginTop: '1rem' }}>
+              <form action={boundCreateClientJobLink}>
+                <SaveButton pendingLabel="Creating…" savedLabel="Created ✓">Create client dashboard link</SaveButton>
+              </form>
+              <form action={boundRevokeClientJobLink}>
+                <SaveButton className="btn secondary" pendingLabel="Revoking…" savedLabel="Revoked ✓">Revoke active links</SaveButton>
+              </form>
+            </div>
+          </div>
         </div>
       </section>
 
-      {tab === 'overview' ? (
-        <section className="panel workspace-section-card">
+      <section className="panel workspace-section-card">
           <div className="section-heading workspace-section-heading">
             <p className="eyebrow">Overview</p>
             <h2>Job details</h2>
@@ -317,8 +410,8 @@ export default async function JobDetailPage({
               <DeleteJobButton action={boundDeleteJob} />
             </div>
         </section>
-      ) : tab === 'costs' ? (
-        <section className="detail-grid workspace-grid-gap">
+
+      <section className="detail-grid workspace-grid-gap">
           <div>
             <div className="panel workspace-section-card">
               <div className="section-heading workspace-section-heading">
@@ -477,8 +570,8 @@ export default async function JobDetailPage({
             </div>
           </div>
         </section>
-      ) : tab === 'payments' ? (
-        <section className="panel workspace-section-card">
+
+      <section className="panel workspace-section-card">
           <div className="section-heading workspace-section-heading">
             <p className="eyebrow">Payments</p>
             <h2>Request a payment</h2>
@@ -592,95 +685,8 @@ export default async function JobDetailPage({
               </div>
             )}
         </section>
-      ) : tab === 'feed' ? (
-        <section className="detail-grid workspace-grid-gap">
-          <div>
-            <div className="panel workspace-section-card">
-              <div className="section-heading workspace-section-heading">
-                <p className="eyebrow">Job feed</p>
-                <h2>Updates clients can follow</h2>
-              </div>
-              <form action={boundCreateManualFeed} className="cost-form workspace-form-block">
-                <div className="field">
-                  <label htmlFor="feed-title">Update title</label>
-                  <input id="feed-title" name="title" placeholder="Materials delivered" required />
-                </div>
-                <div className="field full">
-                  <label htmlFor="feed-body">Update</label>
-                  <textarea id="feed-body" name="body" placeholder="Tell the client what changed or what happened today." />
-                </div>
-                <label className="sms-consent-check">
-                  <input name="visibility" type="checkbox" value="client" />
-                  <span>Show this update on the client dashboard</span>
-                </label>
-                <div style={{ marginTop: '0.8rem' }}>
-                  <SaveButton pendingLabel="Posting…" savedLabel="Posted ✓">Post update</SaveButton>
-                </div>
-              </form>
 
-              {feed.length === 0 ? (
-                <p className="empty-state">No job feed updates yet.</p>
-              ) : (
-                <div className="job-feed-list workspace-list-block">
-                  {feed.map((event) => (
-                    <article className="job-feed-item" key={event.id}>
-                      <div className="job-feed-dot" />
-                      <div className="job-feed-content">
-                        <div className="job-row-header">
-                          <span className="cost-item-desc">{event.title || event.kind}</span>
-                          <span className={`status-badge ${event.visibility === 'internal' ? 'status-archived' : 'status-complete'}`}>
-                            {FEED_VISIBILITY_LABEL[event.visibility]}
-                          </span>
-                        </div>
-                        {event.body ? <p className="workspace-card-copy">{event.body}</p> : null}
-                        <p className="job-meta">
-                          {formatFeedTime(event.created_at)}
-                          {event.amount ? ` · ${formatMoney(Number(event.amount))}` : ''}
-                          {event.action_url ? (
-                            <>
-                              {' · '}
-                              <Link href={event.action_url} target="_blank">Open link</Link>
-                            </>
-                          ) : null}
-                        </p>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <div className="panel workspace-section-card sticky-card">
-              <div className="section-heading workspace-section-heading">
-                <p className="eyebrow">Client dashboard</p>
-                <h2>Shareable job view</h2>
-              </div>
-              <p className="workspace-card-copy">
-                Give the client one link for visible updates, payment requests, invoices, and job status.
-              </p>
-              {searchParams.clientToken ? (
-                <div className="payment-banner success">
-                  <p><strong>New client link ready.</strong></p>
-                  <p><a href={`/client/jobs/${searchParams.clientToken}`} target="_blank" rel="noreferrer">/client/jobs/{searchParams.clientToken}</a></p>
-                </div>
-              ) : (
-                <p className="job-meta">Active dashboard links: {activeClientLinkCount}</p>
-              )}
-              <div className="actions" style={{ marginTop: '1rem' }}>
-                <form action={boundCreateClientJobLink}>
-                  <SaveButton pendingLabel="Creating…" savedLabel="Created ✓">Create client dashboard link</SaveButton>
-                </form>
-                <form action={boundRevokeClientJobLink}>
-                  <SaveButton className="btn secondary" pendingLabel="Revoking…" savedLabel="Revoked ✓">Revoke active links</SaveButton>
-                </form>
-              </div>
-            </div>
-          </div>
-        </section>
-      ) : (
-        <section className="panel workspace-section-card">
+      <section className="panel workspace-section-card">
             <div className="toolbar" style={{ marginBottom: '1rem' }}>
               <div className="section-heading workspace-section-heading compact-heading">
                 <p className="eyebrow" style={{ margin: 0 }}>
@@ -734,7 +740,6 @@ export default async function JobDetailPage({
               </div>
             )}
         </section>
-      )}
     </main>
   );
 }

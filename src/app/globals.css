@@ -1579,7 +1579,7 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .job-feed-item {
   position: relative;
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr);
+  grid-template-columns: 24px minmax(0, 1fr);
   gap: 0.75rem;
   padding: 0.85rem;
   border: 1px solid rgba(255,255,255,.1);
@@ -1587,15 +1587,28 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   background: rgba(255,255,255,.025);
 }
 .job-feed-dot {
-  width: 10px;
-  height: 10px;
-  margin-top: 0.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 0.15rem;
   border-radius: 999px;
   background: #ff8a3d;
   box-shadow: 0 0 0 4px rgba(255,138,61,.14);
+  color: #101010;
+  font-size: 0.68rem;
+  font-weight: 900;
 }
 .job-feed-content {
   min-width: 0;
+}
+.feed-badge-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.35rem;
 }
 .job-feed-content .workspace-card-copy {
   margin: 0.35rem 0 0;
