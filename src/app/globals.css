@@ -1548,6 +1548,19 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .job-client { font-weight: 700; font-size: 1.05rem; margin-top: 0.35rem; }
 .job-meta { color: rgba(255,255,255,0.6); font-size: 0.9rem; margin-top: 0.15rem; }
 .job-quoted { font-weight: 700; color: #ff8a3d; white-space: nowrap; }
+.job-row .actions { margin: 0; align-items: center; justify-content: flex-end; }
+.inline-action-form { display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.inline-action-form select {
+  min-height: 42px;
+  max-width: min(360px, 50vw);
+  padding: 0.55rem 0.75rem;
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  color: #f7f5ef;
+}
+.inline-action-form select option { background: #101c2b; color: #f7f5ef; }
+.inline-action-form select:disabled { opacity: 0.55; }
 
 .status-badge {
   padding: 0.25rem 0.7rem;

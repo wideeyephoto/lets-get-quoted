@@ -1,12 +1,13 @@
 import { requireOwnerContext } from '@/lib/auth';
 import { listCrew } from '@/lib/crew';
-import { formatMoney } from '@/lib/jobs';
-import { createCrewAction, setCrewActiveAction } from './actions';
+import { formatJobSchedule, formatMoney, listJobs } from '@/lib/jobs';
+import { assignCrewToJobAction, createCrewAction, setCrewActiveAction } from './actions';
 
 export default async function CrewPage() {
   const { supabase, accountId } = await requireOwnerContext();
-  const crew = await listCrew(supabase, accountId);
+  const [crew, jobs] = await Promise.all([listCrew(supabase, accountId), listJobs(supabase, accountId)]);
   const activeCrew = crew.filter((member) => member.active);
+  const assignableJobs = jobs.filter((job) => job.status !== 'complete' && job.status !== 'archived');
 
   return (
     <main className="wide-shell workspace-shell">
@@ -33,11 +34,24 @@ export default async function CrewPage() {
                     {member.phone}
                     {member.hourly_rate > 0 ? ` · ${formatMoney(member.hourly_rate)}/hr` : ''}
                   </span>
-                  <form action={setCrewActiveAction.bind(null, member.id, !member.active)}>
-                    <button type="submit" className="btn secondary">
-                      {member.active ? 'Archive' : 'Reactivate'}
-                    </button>
-                  </form>
+                  <div className="actions">
+                    {member.active ? (
+                      <form action={assignCrewToJobAction.bind(null, member.id)} className="inline-action-form">
+                        <select name="jobId" aria-label={`Assign ${member.name} to job`} disabled={assignableJobs.length === 0} required>
+                          <option value="">Choose job</option>
+                          {assignableJobs.map((job) => (
+                            <option key={job.id} value={job.id}>{job.ref} - {job.client_name} ({formatJobSchedule(job.scheduled_for, job.scheduled_time)})</option>
+                          ))}
+                        </select>
+                        <button type="submit" className="btn secondary" disabled={assignableJobs.length === 0}>Assign to job</button>
+                      </form>
+                    ) : null}
+                    <form action={setCrewActiveAction.bind(null, member.id, !member.active)}>
+                      <button type="submit" className="btn secondary">
+                        {member.active ? 'Archive' : 'Reactivate'}
+                      </button>
+                    </form>
+                  </div>
                 </div>
               </div>
             ))}
