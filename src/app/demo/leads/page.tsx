@@ -34,37 +34,6 @@ export default function DemoLeadsPage() {
     <>
       <DemoNav active="/demo/leads" />
       <main className="wide-shell workspace-shell">
-        <section className="workspace-hero workspace-hero-solo panel">
-          <div className="workspace-hero-copy">
-            <p className="eyebrow">Quote Requests</p>
-            <h1 className="workspace-title">Requests that need a response</h1>
-            <p className="workspace-lead">See every incoming website request, how long it has waited, and what needs to happen next.</p>
-          </div>
-        </section>
-
-        <div className={`stat-ticker panel ${styles.requestStats}`}>
-          <div className={styles.urgentStat}>
-            <span className="stat-ticker-value">{needsResponse}</span>
-            <span className="stat-ticker-label">Needs response</span>
-          </div>
-          <div className="stat-ticker-item">
-            <span className="stat-ticker-value">{websiteRequests}</span>
-            <span className="stat-ticker-label">Website requests</span>
-          </div>
-          <div className="stat-ticker-item">
-            <span className="stat-ticker-value">{openRequests}</span>
-            <span className="stat-ticker-label">Open requests</span>
-          </div>
-          <div className="stat-ticker-item">
-            <span className="stat-ticker-value">{averageResponse}</span>
-            <span className="stat-ticker-label">Avg response time</span>
-          </div>
-          <div className="stat-ticker-item">
-            <span className="stat-ticker-value">{leads.filter((lead) => lead.status === 'won').length}</span>
-            <span className="stat-ticker-label">Won</span>
-          </div>
-        </div>
-
         <section className="panel workspace-section-card">
           <div className="section-heading workspace-section-heading">
             <p className="eyebrow">Pipeline</p>
@@ -101,6 +70,29 @@ export default function DemoLeadsPage() {
             })}
           </div>
         </section>
+
+        <div className={`stat-ticker panel ${styles.requestStats}`}>
+          <div className={styles.urgentStat}>
+            <span className="stat-ticker-value">{needsResponse}</span>
+            <span className="stat-ticker-label">Needs response</span>
+          </div>
+          <div className="stat-ticker-item">
+            <span className="stat-ticker-value">{websiteRequests}</span>
+            <span className="stat-ticker-label">Website requests</span>
+          </div>
+          <div className="stat-ticker-item">
+            <span className="stat-ticker-value">{openRequests}</span>
+            <span className="stat-ticker-label">Open requests</span>
+          </div>
+          <div className="stat-ticker-item">
+            <span className="stat-ticker-value">{averageResponse}</span>
+            <span className="stat-ticker-label">Avg response time</span>
+          </div>
+          <div className="stat-ticker-item">
+            <span className="stat-ticker-value">{leads.filter((lead) => lead.status === 'won').length}</span>
+            <span className="stat-ticker-label">Won</span>
+          </div>
+        </div>
 
         <section className="panel workspace-section-card demo-locked-card">
           <div className="section-heading workspace-section-heading">
