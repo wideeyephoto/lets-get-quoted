@@ -191,9 +191,122 @@ export default async function JobDetailPage({
         </div>
       </section>
 
-      <section className="detail-grid workspace-grid-gap">
-        <div>
-          <div className="panel workspace-section-card">
+      <section className="panel workspace-section-card">
+          <div className="section-heading workspace-section-heading">
+            <p className="eyebrow">Payments</p>
+            <h2>Request a payment</h2>
+          </div>
+            {!stripeOnboarded ? (
+              <div className="payment-banner warning">
+                <p>
+                  <strong>Stripe isn&apos;t connected yet.</strong> Homeowners won&apos;t be able to pay
+                  until you finish onboarding.
+                </p>
+                <p>
+                  <Link href="/dashboard/settings">Connect Stripe in Account settings →</Link>
+                </p>
+              </div>
+            ) : null}
+            <form action={boundCreateDepositRequest} className="cost-form workspace-form-block">
+              <div className="cost-form-row">
+                <div className="field">
+                  <label htmlFor="pay-kind">Type</label>
+                  <select id="pay-kind" name="kind" defaultValue="deposit">
+                    <option value="deposit">Deposit</option>
+                    <option value="stage">Stage payment</option>
+                    <option value="final">Final payment</option>
+                  </select>
+                </div>
+                <div className="field">
+                  <label htmlFor="pay-label">Label</label>
+                  <input id="pay-label" name="label" placeholder="Deposit — 50% down" />
+                </div>
+                <div className="field">
+                  <label htmlFor="pay-amount">Amount ($)</label>
+                  <input id="pay-amount" name="amount" type="number" min="0.01" step="0.01" required placeholder="2500" />
+                </div>
+                <div className="field">
+                  <label htmlFor="invoiceId">Link invoice</label>
+                  <select id="invoiceId" name="invoiceId" defaultValue="">
+                    <option value="">No invoice</option>
+                    {invoices.map((invoice) => (
+                      <option key={invoice.id} value={invoice.id}>
+                        {invoice.ref} — {formatMoney(invoice.total)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="payment-shortcuts" aria-label="Payment amount ideas">
+                <span>Quick ideas:</span>
+                <span>{formatMoney(Math.max(job.quoted_amount * 0.5, 0))} deposit</span>
+                <span>{formatMoney(Math.max(job.quoted_amount - payments.filter((payment) => payment.status === 'paid').reduce((sum, payment) => sum + Number(payment.amount), 0), 0))} remaining</span>
+                {invoices[0] ? <span>{formatMoney(invoices[0].total)} latest invoice</span> : null}
+              </div>
+              <div className="payment-sms-options">
+                <label className="field" htmlFor="homeowner-phone">
+                  <span>Homeowner mobile</span>
+                  <input id="homeowner-phone" name="homeownerPhone" type="tel" defaultValue={job.client_phone ?? ''} placeholder="(248) 555-0117" />
+                </label>
+                <label className="sms-consent-check">
+                  <input name="sendSms" type="checkbox" />
+                  <span>Text the secure payment link and automatic payment updates. The homeowner agreed to transactional texts; message and data rates may apply. Reply STOP to opt out.</span>
+                </label>
+              </div>
+              <div style={{ marginTop: '0.8rem' }}>
+                <SaveButton pendingLabel="Creating…" savedLabel="Created ✓">Create payment request &amp; notify</SaveButton>
+              </div>
+            </form>
+
+            {payments.length === 0 ? (
+              <p className="empty-state">No payment requests yet.</p>
+            ) : (
+              <div className="cost-list workspace-list-block">
+                {payments.map((payment) => (
+                  <div key={payment.id} className="cost-item">
+                    <div className="cost-item-main">
+                      <span className="cost-item-desc">{payment.label || payment.kind}</span>
+                      <span className="cost-item-sub">
+                        {PAYMENT_STATUS_LABEL[payment.status]}
+                        {payment.status === 'paid' && payment.platform_fee != null
+                          ? ` · platform fee ${formatMoney(payment.platform_fee)} (${((payment.fee_rate ?? 0) * 100).toFixed(2)}%)`
+                          : null}
+                        {payment.sms_events?.find((event) => event.event_type === 'payment_requested') ? ` · SMS ${payment.sms_events.find((event) => event.event_type === 'payment_requested')?.status}` : null}
+                        {payment.status === 'requested' || payment.status === 'processing' ? (
+                          <>
+                            {' · '}
+                            <a href={`/pay/${payment.id}`} target="_blank" rel="noreferrer">
+                              /pay/{payment.id}
+                            </a>
+                          </>
+                        ) : null}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <span className="cost-item-amount">{formatMoney(payment.amount)}</span>
+                      <PaymentActionButtons
+                        jobId={job.id}
+                        paymentId={payment.id}
+                        status={payment.status}
+                        onRefund={boundRefundPayment}
+                        onMarkFailed={boundMarkPaymentFailed}
+                        onRetry={retryPaymentAction}
+                      />
+                      {payment.sms_events?.some((event) => event.event_type === 'payment_requested' && event.status === 'failed') && (
+                        <form action={boundRetryPaymentText.bind(null, payment.id)}>
+                          <SaveButton className="btn secondary" pendingLabel="Sending…" savedLabel="Sent ✓">
+                            Retry SMS
+                          </SaveButton>
+                        </form>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+        </section>
+
+      <section className="panel workspace-section-card">
             <div className="section-heading workspace-section-heading">
               <p className="eyebrow">Job feed</p>
               <h2>Command center</h2>
@@ -249,36 +362,6 @@ export default async function JobDetailPage({
                 ))}
               </div>
             )}
-          </div>
-        </div>
-
-        <div>
-          <div className="panel workspace-section-card sticky-card">
-            <div className="section-heading workspace-section-heading">
-              <p className="eyebrow">Client dashboard</p>
-              <h2>Shareable job view</h2>
-            </div>
-            <p className="workspace-card-copy">
-              Give the client one link for visible updates, payment requests, invoices, and job status.
-            </p>
-            {searchParams.clientToken ? (
-              <div className="payment-banner success">
-                <p><strong>New client link ready.</strong></p>
-                <p><a href={`/client/jobs/${searchParams.clientToken}`} target="_blank" rel="noreferrer">/client/jobs/{searchParams.clientToken}</a></p>
-              </div>
-            ) : (
-              <p className="job-meta">Active dashboard links: {activeClientLinkCount}</p>
-            )}
-            <div className="actions" style={{ marginTop: '1rem' }}>
-              <form action={boundCreateClientJobLink}>
-                <SaveButton pendingLabel="Creating…" savedLabel="Created ✓">Create client dashboard link</SaveButton>
-              </form>
-              <form action={boundRevokeClientJobLink}>
-                <SaveButton className="btn secondary" pendingLabel="Revoking…" savedLabel="Revoked ✓">Revoke active links</SaveButton>
-              </form>
-            </div>
-          </div>
-        </div>
       </section>
 
       <section className="panel workspace-section-card">
@@ -562,121 +645,6 @@ export default async function JobDetailPage({
         </section>
 
       <section className="panel workspace-section-card">
-          <div className="section-heading workspace-section-heading">
-            <p className="eyebrow">Payments</p>
-            <h2>Request a payment</h2>
-          </div>
-            {!stripeOnboarded ? (
-              <div className="payment-banner warning">
-                <p>
-                  <strong>Stripe isn&apos;t connected yet.</strong> Homeowners won&apos;t be able to pay
-                  until you finish onboarding.
-                </p>
-                <p>
-                  <Link href="/dashboard/settings">Connect Stripe in Account settings →</Link>
-                </p>
-              </div>
-            ) : null}
-            <form action={boundCreateDepositRequest} className="cost-form workspace-form-block">
-              <div className="cost-form-row">
-                <div className="field">
-                  <label htmlFor="pay-kind">Type</label>
-                  <select id="pay-kind" name="kind" defaultValue="deposit">
-                    <option value="deposit">Deposit</option>
-                    <option value="stage">Stage payment</option>
-                    <option value="final">Final payment</option>
-                  </select>
-                </div>
-                <div className="field">
-                  <label htmlFor="pay-label">Label</label>
-                  <input id="pay-label" name="label" placeholder="Deposit — 50% down" />
-                </div>
-                <div className="field">
-                  <label htmlFor="pay-amount">Amount ($)</label>
-                  <input id="pay-amount" name="amount" type="number" min="0.01" step="0.01" required placeholder="2500" />
-                </div>
-                <div className="field">
-                  <label htmlFor="invoiceId">Link invoice</label>
-                  <select id="invoiceId" name="invoiceId" defaultValue="">
-                    <option value="">No invoice</option>
-                    {invoices.map((invoice) => (
-                      <option key={invoice.id} value={invoice.id}>
-                        {invoice.ref} — {formatMoney(invoice.total)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="payment-shortcuts" aria-label="Payment amount ideas">
-                <span>Quick ideas:</span>
-                <span>{formatMoney(Math.max(job.quoted_amount * 0.5, 0))} deposit</span>
-                <span>{formatMoney(Math.max(job.quoted_amount - payments.filter((payment) => payment.status === 'paid').reduce((sum, payment) => sum + Number(payment.amount), 0), 0))} remaining</span>
-                {invoices[0] ? <span>{formatMoney(invoices[0].total)} latest invoice</span> : null}
-              </div>
-              <div className="payment-sms-options">
-                <label className="field" htmlFor="homeowner-phone">
-                  <span>Homeowner mobile</span>
-                  <input id="homeowner-phone" name="homeownerPhone" type="tel" defaultValue={job.client_phone ?? ''} placeholder="(248) 555-0117" />
-                </label>
-                <label className="sms-consent-check">
-                  <input name="sendSms" type="checkbox" />
-                  <span>Text the secure payment link and automatic payment updates. The homeowner agreed to transactional texts; message and data rates may apply. Reply STOP to opt out.</span>
-                </label>
-              </div>
-              <div style={{ marginTop: '0.8rem' }}>
-                <SaveButton pendingLabel="Creating…" savedLabel="Created ✓">Create payment request &amp; notify</SaveButton>
-              </div>
-            </form>
-
-            {payments.length === 0 ? (
-              <p className="empty-state">No payment requests yet.</p>
-            ) : (
-              <div className="cost-list workspace-list-block">
-                {payments.map((payment) => (
-                  <div key={payment.id} className="cost-item">
-                    <div className="cost-item-main">
-                      <span className="cost-item-desc">{payment.label || payment.kind}</span>
-                      <span className="cost-item-sub">
-                        {PAYMENT_STATUS_LABEL[payment.status]}
-                        {payment.status === 'paid' && payment.platform_fee != null
-                          ? ` · platform fee ${formatMoney(payment.platform_fee)} (${((payment.fee_rate ?? 0) * 100).toFixed(2)}%)`
-                          : null}
-                        {payment.sms_events?.find((event) => event.event_type === 'payment_requested') ? ` · SMS ${payment.sms_events.find((event) => event.event_type === 'payment_requested')?.status}` : null}
-                        {payment.status === 'requested' || payment.status === 'processing' ? (
-                          <>
-                            {' · '}
-                            <a href={`/pay/${payment.id}`} target="_blank" rel="noreferrer">
-                              /pay/{payment.id}
-                            </a>
-                          </>
-                        ) : null}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <span className="cost-item-amount">{formatMoney(payment.amount)}</span>
-                      <PaymentActionButtons
-                        jobId={job.id}
-                        paymentId={payment.id}
-                        status={payment.status}
-                        onRefund={boundRefundPayment}
-                        onMarkFailed={boundMarkPaymentFailed}
-                        onRetry={retryPaymentAction}
-                      />
-                      {payment.sms_events?.some((event) => event.event_type === 'payment_requested' && event.status === 'failed') && (
-                        <form action={boundRetryPaymentText.bind(null, payment.id)}>
-                          <SaveButton className="btn secondary" pendingLabel="Sending…" savedLabel="Sent ✓">
-                            Retry SMS
-                          </SaveButton>
-                        </form>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-        </section>
-
-      <section className="panel workspace-section-card">
             <div className="toolbar" style={{ marginBottom: '1rem' }}>
               <div className="section-heading workspace-section-heading compact-heading">
                 <p className="eyebrow" style={{ margin: 0 }}>
@@ -729,6 +697,32 @@ export default async function JobDetailPage({
                 ))}
               </div>
             )}
+        </section>
+
+      <section className="panel workspace-section-card">
+            <div className="section-heading workspace-section-heading">
+              <p className="eyebrow">Client dashboard</p>
+              <h2>Shareable job view</h2>
+            </div>
+            <p className="workspace-card-copy">
+              Give the client one link for visible updates, payment requests, invoices, and job status.
+            </p>
+            {searchParams.clientToken ? (
+              <div className="payment-banner success">
+                <p><strong>New client link ready.</strong></p>
+                <p><a href={`/client/jobs/${searchParams.clientToken}`} target="_blank" rel="noreferrer">/client/jobs/{searchParams.clientToken}</a></p>
+              </div>
+            ) : (
+              <p className="job-meta">Active dashboard links: {activeClientLinkCount}</p>
+            )}
+            <div className="actions" style={{ marginTop: '1rem' }}>
+              <form action={boundCreateClientJobLink}>
+                <SaveButton pendingLabel="Creating…" savedLabel="Created ✓">Create client dashboard link</SaveButton>
+              </form>
+              <form action={boundRevokeClientJobLink}>
+                <SaveButton className="btn secondary" pendingLabel="Revoking…" savedLabel="Revoked ✓">Revoke active links</SaveButton>
+              </form>
+            </div>
         </section>
     </main>
   );
