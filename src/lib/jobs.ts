@@ -73,6 +73,10 @@ export type JobInput = {
   photoPaths?: string[];
 };
 
+export type ListJobsOptions = {
+  includeLeadQuotes?: boolean;
+};
+
 export type CostInput =
   | {
       type: 'labor';
@@ -229,7 +233,8 @@ async function generateJobRef(supabase: SupabaseClient, accountId: string): Prom
 export async function listJobs(
   supabase: SupabaseClient,
   accountId: string,
-  statusFilter?: JobStatus
+  statusFilter?: JobStatus,
+  options: ListJobsOptions = {}
 ): Promise<Job[]> {
   let query = supabase
     .from('jobs')
@@ -247,7 +252,25 @@ export async function listJobs(
     throw error;
   }
 
-  return sortJobsByStatus((data ?? []) as Job[]);
+  let jobs = (data ?? []) as Job[];
+
+  if (!options.includeLeadQuotes && jobs.length > 0) {
+    const { data: quoteLeads, error: quoteLeadError } = await supabase
+      .from('leads')
+      .select('converted_job')
+      .eq('account_id', accountId)
+      .in('status', ['quoted', 'lost'])
+      .in('converted_job', jobs.map((job) => job.id));
+
+    if (quoteLeadError) {
+      throw quoteLeadError;
+    }
+
+    const quoteOnlyJobIds = new Set((quoteLeads ?? []).map((lead) => lead.converted_job).filter(Boolean));
+    jobs = jobs.filter((job) => !quoteOnlyJobIds.has(job.id));
+  }
+
+  return sortJobsByStatus(jobs);
 }
 
 export async function getJob(supabase: SupabaseClient, accountId: string, jobId: string): Promise<Job | null> {

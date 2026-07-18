@@ -301,4 +301,11 @@ export async function signInvoice(invoiceId: string, signerName: string): Promis
     .eq('account_id', invoice.account_id)
     .eq('converted_job', invoice.job_id)
     .eq('status', 'quoted');
+
+  await admin
+    .from('jobs')
+    .update({ status: 'in_progress' })
+    .eq('account_id', invoice.account_id)
+    .eq('id', invoice.job_id)
+    .eq('status', 'new_lead');
 }
