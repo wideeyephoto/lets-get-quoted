@@ -32,6 +32,17 @@ function getPrimaryAction() {
   return { href: '/login', label: 'Sign in' };
 }
 
+function QuoteToJobFlowIcon() {
+  return (
+    <span className="topnav-flow-arrow" aria-hidden="true">
+      <svg viewBox="0 0 38 18" focusable="false">
+        <path d="M3 9h28" />
+        <path d="m24 3 7 6-7 6" />
+      </svg>
+    </span>
+  );
+}
+
 export function AppShell({ children, forceStandaloneSite = false }: { children: ReactNode; forceStandaloneSite?: boolean }) {
   const pathname = usePathname();
   const { isNavOpen, closeNav, toggleNav } = useAppShell();
@@ -196,7 +207,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                       {item.label}
                       {item.href === '/dashboard/leads' && newQuoteRequestCount > 0 ? <span className="topnav-count">{newQuoteRequestCount}</span> : null}
                     </Link>
-                    {item.flowAfter ? <span className="topnav-flow-arrow" aria-hidden="true">-&gt;</span> : null}
+                    {item.flowAfter ? <QuoteToJobFlowIcon /> : null}
                   </Fragment>
                 );
               })}

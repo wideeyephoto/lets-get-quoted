@@ -122,11 +122,28 @@ h3 {
 }
 
 .topnav-flow-arrow {
-  color: rgba(255, 209, 102, 0.78);
-  font-size: 0.82rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.24rem 0.38rem;
+  border: 1px solid rgba(255, 209, 102, 0.2);
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 209, 102, 0.05), rgba(255, 122, 33, 0.12));
+  color: #ffd166;
   transform: translateY(-1px);
+}
+
+.topnav-flow-arrow svg {
+  width: 2.35rem;
+  height: 1.05rem;
+  overflow: visible;
+}
+
+.topnav-flow-arrow path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .topnav-link {
