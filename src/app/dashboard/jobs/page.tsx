@@ -61,7 +61,10 @@ export default async function JobsPage({
                 </div>
                 <div className="job-client">{job.client_name}</div>
                 <div className="job-row-header" style={{ marginTop: '0.4rem' }}>
-                  <span className="job-meta">{job.address || 'No address on file'}</span>
+                  <span className="job-meta">
+                    {job.address || 'No address on file'}
+                    {' · '}Estimated hours: {job.estimated_hours ? `${job.estimated_hours} hrs` : 'Not set'}
+                  </span>
                   {job.quoted_amount > 0 ? (
                     <span className="job-quoted">{formatMoney(job.quoted_amount)}</span>
                   ) : null}

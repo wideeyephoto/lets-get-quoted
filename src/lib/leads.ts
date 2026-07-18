@@ -14,6 +14,7 @@ export type Lead = {
   email: string | null;
   address: string | null;
   project_type: string | null;
+  estimated_hours: number | null;
   message: string | null;
   photo_paths: string[];
   source_page: string | null;
@@ -29,6 +30,7 @@ export type LeadInput = {
   email?: string | null;
   address?: string | null;
   projectType?: string | null;
+  estimatedHours?: number | null;
   message?: string | null;
   photoPaths?: string[];
   sourcePage?: string | null;
@@ -93,6 +95,7 @@ export async function createLead(
       email: input.email?.trim().toLowerCase() || null,
       address: input.address?.trim() || null,
       project_type: input.projectType?.trim() || null,
+      estimated_hours: input.estimatedHours ?? null,
       message: input.message?.trim() || null,
       photo_paths: input.photoPaths ?? [],
       source_page: input.sourcePage?.trim() || null,
@@ -204,7 +207,8 @@ export async function convertLeadToJob(
   supabase: SupabaseClient,
   accountId: string,
   leadId: string,
-  quotedAmount = 0
+  quotedAmount = 0,
+  estimatedHours?: number | null
 ): Promise<Job> {
   const lead = await getLead(supabase, accountId, leadId);
   if (!lead) throw new Error('Lead not found.');
@@ -218,6 +222,7 @@ export async function convertLeadToJob(
     scope: scope || null,
     status: 'new_lead',
     quotedAmount,
+    estimatedHours: estimatedHours ?? lead.estimated_hours,
   });
 
   const { error } = await supabase

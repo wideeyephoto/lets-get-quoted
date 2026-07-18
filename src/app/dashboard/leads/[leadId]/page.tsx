@@ -31,6 +31,7 @@ export default async function LeadDetailPage({ params }: { params: { leadId: str
             <div className={styles.dataBlock}><span>Email</span>{lead.email ? <a href={`mailto:${lead.email}`}>{lead.email}</a> : <p>Not provided</p>}</div>
           </div>
           <div className={styles.dataBlock}><span>Project address</span><p>{lead.address || 'Not provided'}</p></div>
+          <div className={styles.dataBlock}><span>Estimated hours</span><p>{lead.estimated_hours ? `${lead.estimated_hours} hrs` : 'Not estimated yet'}</p></div>
           <div className={styles.dataBlock}><span>Project details</span><p>{lead.message || 'Not provided'}</p></div>
           <div>
             <div className="section-heading workspace-section-heading"><p className="eyebrow">Attachments</p><h2>Project photos</h2></div>
@@ -47,7 +48,7 @@ export default async function LeadDetailPage({ params }: { params: { leadId: str
 
         <aside className={styles.actionPanel}>
           <section className="panel workspace-section-card"><div className="section-heading workspace-section-heading"><p className="eyebrow">Stage</p><h2>Update status</h2></div><form action={updateStatus} className={styles.actionForm}><select name="status" defaultValue={lead.status}><option value="new">New</option><option value="contacted">Contacted</option><option value="quoted">Quoted</option><option value="won">Won</option><option value="lost">Lost</option></select><SaveButton className="btn secondary">Update status</SaveButton></form></section>
-          {!lead.converted_job && <section className="panel workspace-section-card"><div className="section-heading workspace-section-heading"><p className="eyebrow">Next step</p><h2>Convert to job / estimate</h2></div><p>Creates a job with this client and project information. Add a quoted amount now or estimate it later.</p><form action={convertLead} className={styles.actionForm}><label htmlFor="quotedAmount">Quoted amount ($)</label><input id="quotedAmount" name="quotedAmount" type="number" min="0" step="0.01" placeholder="0.00" /><SaveButton>Create job</SaveButton></form></section>}
+          {!lead.converted_job && <section className="panel workspace-section-card"><div className="section-heading workspace-section-heading"><p className="eyebrow">Next step</p><h2>Convert to job / estimate</h2></div><p>Creates a job with this client and project information. Add a quoted amount and estimated labor hours now or update them later.</p><form action={convertLead} className={styles.actionForm}><label htmlFor="quotedAmount">Quoted amount ($)</label><input id="quotedAmount" name="quotedAmount" type="number" min="0" step="0.01" placeholder="0.00" /><label htmlFor="estimatedHours">Estimated hours</label><input id="estimatedHours" name="estimatedHours" type="number" min="0" step="0.25" defaultValue={lead.estimated_hours ?? ''} placeholder="16" /><SaveButton>Create job</SaveButton></form></section>}
         </aside>
       </div>
     </main>

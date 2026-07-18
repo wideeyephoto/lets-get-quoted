@@ -13,6 +13,13 @@ function optionalText(value: FormDataEntryValue | null): string | null {
   return text.length > 0 ? text : null;
 }
 
+function optionalAmount(value: FormDataEntryValue | null): number | null {
+  const text = (value ?? '').toString().trim();
+  if (!text) return null;
+  const n = Number(text);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 export async function createLeadAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
 
@@ -29,6 +36,7 @@ export async function createLeadAction(formData: FormData) {
     email: optionalText(formData.get('email')),
     address: optionalText(formData.get('address')),
     projectType: optionalText(formData.get('projectType')),
+    estimatedHours: optionalAmount(formData.get('estimatedHours')),
     message: optionalText(formData.get('message')),
     photoPaths,
   });
@@ -48,8 +56,9 @@ export async function updateLeadStatusAction(leadId: string, formData: FormData)
 export async function convertLeadAction(leadId: string, formData: FormData) {
   const amount = Number(formData.get('quotedAmount'));
   const quotedAmount = Number.isFinite(amount) && amount >= 0 ? amount : 0;
+  const estimatedHours = optionalAmount(formData.get('estimatedHours'));
   const { supabase, accountId } = await requireOwnerContext();
-  const job = await convertLeadToJob(supabase, accountId, leadId, quotedAmount);
+  const job = await convertLeadToJob(supabase, accountId, leadId, quotedAmount, estimatedHours);
   revalidatePath('/dashboard/leads');
   revalidatePath('/dashboard/jobs');
   redirect(`/dashboard/jobs/${job.id}`);

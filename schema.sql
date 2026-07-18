@@ -383,6 +383,7 @@ create table if not exists leads (
   email         text,
   address       text,
   project_type  text,
+  estimated_hours numeric(8,2),
   message       text,
   photo_paths   jsonb not null default '[]'::jsonb,
   source_page   text,
@@ -394,6 +395,7 @@ create table if not exists leads (
 alter table leads add column if not exists status lead_status not null default 'new';
 alter table leads add column if not exists email text;
 alter table leads add column if not exists project_type text;
+alter table leads add column if not exists estimated_hours numeric(8,2);
 alter table leads add column if not exists photo_paths jsonb not null default '[]'::jsonb;
 alter table leads add column if not exists source_page text;
 alter table leads add column if not exists updated_at timestamptz not null default now();

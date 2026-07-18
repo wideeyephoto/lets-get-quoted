@@ -47,6 +47,7 @@ export default async function LeadsPage() {
                     <p>{lead.project_type || lead.message || 'Project details not provided'}</p>
                     <div className={styles.cardMetaGrid}>
                       <span>{formatLeadSource(lead.source)}</span>
+                      <span>Estimated hours: {lead.estimated_hours ? `${lead.estimated_hours} hrs` : 'Not set'}</span>
                       <time dateTime={lead.created_at}>Received {formatElapsedTime(lead.created_at)} ago</time>
                     </div>
                     {(lead.phone || lead.email) && <div className={styles.contactHint}>{lead.phone || lead.email}</div>}
@@ -107,6 +108,10 @@ export default async function LeadsPage() {
             <div className="field full">
               <label htmlFor="projectType">Project type</label>
               <input id="projectType" name="projectType" placeholder="Roof replacement" />
+            </div>
+            <div className="field">
+              <label htmlFor="estimatedHours">Estimated hours</label>
+              <input id="estimatedHours" name="estimatedHours" type="number" min="0" step="0.25" placeholder="16" />
             </div>
             <div className="field full">
               <label htmlFor="message">Notes</label>
