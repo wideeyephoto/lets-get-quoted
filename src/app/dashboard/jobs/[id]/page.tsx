@@ -23,6 +23,7 @@ import { createDepositRequestAction, refundPaymentAction, markPaymentFailedActio
 import { createInvoiceAction } from '../invoices-actions';
 import DeleteJobButton from './DeleteJobButton';
 import PaymentActionButtons from './PaymentActionButtons';
+import JobExpenseFields from '@/components/job-expense-fields';
 import SaveButton from '@/components/save-button';
 import QuickFillButtons from '@/components/quick-fill-buttons';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
@@ -551,94 +552,7 @@ export default async function JobDetailPage({
               </div>
 
               <form action={boundCreateCost} className="cost-form">
-                <div className="field">
-                  <label htmlFor="description">Description</label>
-                  <input
-                    id="description"
-                    name="description"
-                    required
-                    placeholder="Architectural shingles — Owens Corning Duration"
-                    list="cost-description-presets"
-                  />
-                  <datalist id="cost-description-presets">
-                    <option value="Additional material charge" />
-                    <option value="Permit fee" />
-                    <option value="Subcontractor labor" />
-                    <option value="Change order" />
-                    <option value="Dump fee" />
-                  </datalist>
-                  <QuickFillButtons
-                    label="Quick add:"
-                    targetId="description"
-                    values={[
-                      'Additional material charge',
-                      'Permit fee',
-                      'Crew Labor',
-                      'Subcontractor labor',
-                      'Change order',
-                      'Dump fee',
-                    ]}
-                  />
-                </div>
-                <div className="cost-form-row">
-                  <div className="field">
-                    <label htmlFor="type">Type</label>
-                    <select id="type" name="type" defaultValue="material">
-                      <option value="material">🧱 Material</option>
-                      <option value="labor">👷 Labor</option>
-                      <option value="sub">🤝 Subcontractor</option>
-                      <option value="receipt">🧾 Receipt</option>
-                      <option value="other">📦 Other</option>
-                    </select>
-                    <QuickFillButtons
-                      label="Quick add:"
-                      targetId="type"
-                      values={[
-                        { label: 'Material', value: 'material' },
-                        { label: 'Crew Labor', value: 'labor' },
-                        { label: 'Subcontractor', value: 'sub' },
-                        { label: 'Receipt', value: 'receipt' },
-                        { label: 'Other', value: 'other' },
-                      ]}
-                    />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="amount">Amount ($)</label>
-                    <input
-                      id="amount"
-                      name="amount"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="Material / sub / receipt / other"
-                    />
-                  </div>
-                </div>
-                <div className="cost-form-row">
-                  <div className="field">
-                    <label htmlFor="hours">Hours (labor only)</label>
-                    <input id="hours" name="hours" type="number" min="0" step="0.25" placeholder="32" />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="rate">Rate $/hr (labor only)</label>
-                    <input id="rate" name="rate" type="number" min="0" step="0.01" placeholder="45" />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="crewId">Crew member (labor only)</label>
-                    <select id="crewId" name="crewId" defaultValue="">
-                      <option value="">— Unassigned —</option>
-                      {crew.map((member) => (
-                        <option key={member.id} value={member.id}>
-                          {member.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="field full">
-                  <label htmlFor="supplier">Notes</label>
-                  <textarea id="supplier" name="supplier" placeholder="Optional notes for this expense" />
-                </div>
+                <JobExpenseFields crew={crew} />
                 <div style={{ marginTop: '0.8rem' }}>
                   <SaveButton pendingLabel="Adding…" savedLabel="Added ✓">+ Add expense</SaveButton>
                 </div>
