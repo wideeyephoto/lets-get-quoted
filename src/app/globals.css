@@ -1307,7 +1307,7 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 }
 
 .job-command-hero {
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
   align-items: center;
 }
 
@@ -1412,6 +1412,97 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 
 .job-command-facts strong {
   color: #f7f5ef;
+}
+
+.pipeline-checklist {
+  align-self: stretch;
+  padding: 0.95rem;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.pipeline-checklist-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: baseline;
+  margin-bottom: 0.65rem;
+}
+
+.pipeline-checklist-heading strong {
+  color: #ffd166;
+  font-size: 0.84rem;
+}
+
+.pipeline-checklist ol {
+  display: grid;
+  gap: 0.48rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pipeline-step {
+  display: grid;
+  grid-template-columns: 1.7rem minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.48rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.pipeline-step-marker {
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(247, 245, 239, 0.72);
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.pipeline-step span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 0.08rem;
+}
+
+.pipeline-step strong,
+.pipeline-step small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pipeline-step strong {
+  color: #f7f5ef;
+  font-size: 0.82rem;
+}
+
+.pipeline-step small {
+  color: rgba(247, 245, 239, 0.56);
+  font-size: 0.74rem;
+}
+
+.pipeline-step-complete .pipeline-step-marker {
+  background: rgba(34, 197, 94, 0.16);
+  color: #86efac;
+}
+
+.pipeline-step-current {
+  border-color: rgba(255, 209, 102, 0.38);
+  background: rgba(255, 209, 102, 0.08);
+}
+
+.pipeline-step-current .pipeline-step-marker {
+  background: #ffd166;
+  color: #15202c;
 }
 
 .job-action-details {
@@ -2114,6 +2205,7 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 
 @media (max-width: 900px) {
   .workspace-hero,
+  .job-command-hero,
   .workspace-grid.two-up,
   .detail-grid,
   .payment-hero,

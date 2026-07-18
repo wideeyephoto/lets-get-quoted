@@ -2,10 +2,10 @@ import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import PhotoGallery from '@/components/photo-gallery';
 import AddressAutocomplete from '@/components/address-autocomplete';
-import { getJob, listCosts, computeMargin, formatJobQuoteSummary, formatJobSchedule, formatMoney, formatPercent, type Cost } from '@/lib/jobs';
+import { getJob, listCosts, computeMargin, formatJobQuoteSummary, formatJobSchedule, formatMoney, formatPercent, type Cost, type Job } from '@/lib/jobs';
 import { createJobPhotoUrls } from '@/lib/job-photo-storage';
-import { listPayments, type PaymentStatus } from '@/lib/payments';
-import { listInvoices, type InvoiceStatus } from '@/lib/invoices';
+import { listPayments, type Payment, type PaymentStatus } from '@/lib/payments';
+import { listInvoices, type Invoice, type InvoiceStatus } from '@/lib/invoices';
 import { createLinkedFeedItems, getActiveClientAccessCount, listJobFeed, sortJobFeed, type JobFeedEvent } from '@/lib/job-feed';
 import { listCrew, listCrewIdsForJob } from '@/lib/crew';
 import {
@@ -111,6 +111,53 @@ function formatFeedTime(value: string): string {
   return new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
+type PipelineChecklistItem = {
+  label: string;
+  detail: string;
+  complete: boolean;
+};
+
+function buildPipelineChecklist(job: Job, payments: Payment[], invoices: Invoice[], activeClientLinkCount: number): PipelineChecklistItem[] {
+  const hasPaymentRequest = payments.some((payment) => payment.status === 'requested' || payment.status === 'processing' || payment.status === 'paid');
+  const paidTotal = payments.filter((payment) => payment.status === 'paid').reduce((sum, payment) => sum + Number(payment.amount), 0);
+  const hasSignedInvoice = invoices.some((invoice) => invoice.status === 'signed' || invoice.status === 'paid');
+  const hasPaidInvoice = invoices.some((invoice) => invoice.status === 'paid');
+  const isComplete = job.status === 'complete' || job.status === 'archived';
+
+  return [
+    {
+      label: 'Request received',
+      detail: STATUS_LABEL[job.status] ?? 'Job created',
+      complete: true,
+    },
+    {
+      label: 'Quote set',
+      detail: job.quoted_amount > 0 ? `${formatMoney(job.quoted_amount)} quoted` : 'Add quote amount',
+      complete: job.quoted_amount > 0,
+    },
+    {
+      label: 'Client dashboard shared',
+      detail: activeClientLinkCount > 0 ? `${activeClientLinkCount} active link${activeClientLinkCount === 1 ? '' : 's'}` : 'Create client link',
+      complete: activeClientLinkCount > 0,
+    },
+    {
+      label: 'Scheduled / underway',
+      detail: job.scheduled_for ? formatJobSchedule(job.scheduled_for, job.scheduled_time) : 'Schedule the work',
+      complete: Boolean(job.scheduled_for) || job.status === 'in_progress' || isComplete,
+    },
+    {
+      label: 'Payment requested',
+      detail: hasPaymentRequest ? `${payments.length} request${payments.length === 1 ? '' : 's'} created` : 'Send deposit or invoice link',
+      complete: hasPaymentRequest,
+    },
+    {
+      label: 'Paid / signed off',
+      detail: paidTotal > 0 ? `${formatMoney(paidTotal)} paid` : hasSignedInvoice ? 'Client signed invoice' : 'Awaiting payment or sign-off',
+      complete: paidTotal > 0 || hasPaidInvoice || hasSignedInvoice || isComplete,
+    },
+  ];
+}
+
 export default async function JobDetailPage({
   params,
   searchParams,
@@ -165,6 +212,9 @@ export default async function JobDetailPage({
   const boundMarkPaymentFailed = markPaymentFailedAction.bind(null, job.id);
   const boundRetryPaymentText = retryPaymentTextAction.bind(null, job.id);
   const linkedFeedItems = createLinkedFeedItems(feed, payments, invoices, accountId, job.id);
+  const pipelineChecklist = buildPipelineChecklist(job, payments, invoices, activeClientLinkCount);
+  const nextPipelineIndex = pipelineChecklist.findIndex((item) => !item.complete);
+  const currentPipelineIndex = nextPipelineIndex === -1 ? pipelineChecklist.length - 1 : nextPipelineIndex;
   const displayedFeed: JobFeedEvent[] = sortJobFeed([
     ...feed,
     ...linkedFeedItems,
@@ -227,6 +277,27 @@ export default async function JobDetailPage({
             <a href="#job-costs" className="btn secondary">Add expense</a>
           </div>
         </div>
+
+        <aside className="pipeline-checklist" aria-label="Client pipeline checklist">
+          <div className="pipeline-checklist-heading">
+            <span className="eyebrow">Client pipeline</span>
+            <strong>{nextPipelineIndex === -1 ? 'All set' : `Next: ${pipelineChecklist[currentPipelineIndex].label}`}</strong>
+          </div>
+          <ol>
+            {pipelineChecklist.map((item, index) => {
+              const state = item.complete ? 'complete' : index === currentPipelineIndex ? 'current' : 'upcoming';
+              return (
+                <li className={`pipeline-step pipeline-step-${state}`} key={item.label}>
+                  <span className="pipeline-step-marker">{item.complete ? '✓' : index + 1}</span>
+                  <span>
+                    <strong>{item.label}</strong>
+                    <small>{item.detail}</small>
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        </aside>
 
       </section>
 
