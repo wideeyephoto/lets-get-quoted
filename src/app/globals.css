@@ -1982,13 +1982,40 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 }
 
 .client-attention-link {
+  position: relative;
   border-color: rgba(255, 209, 102, 0.24);
-  background: rgba(255, 255, 255, 0.05);
+  background: linear-gradient(135deg, rgba(255, 138, 61, 0.18), rgba(255, 209, 102, 0.08));
+  box-shadow: 0 10px 26px rgba(255, 122, 33, 0.14);
 }
 
 .client-attention-link:hover {
-  border-color: rgba(255, 209, 102, 0.46);
-  background: rgba(255, 209, 102, 0.08);
+  border-color: rgba(255, 209, 102, 0.7);
+  background: linear-gradient(135deg, rgba(255, 138, 61, 0.26), rgba(255, 209, 102, 0.13));
+  transform: translateY(-1px);
+}
+
+.client-attention-pay-block {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  text-align: right;
+}
+
+.client-attention-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+  background: #ff8a3d;
+  color: #120d0a;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .payment-metric-name {
@@ -2451,6 +2478,11 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   }
 
   .cost-item-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .client-attention-pay-block {
     width: 100%;
     justify-content: space-between;
   }

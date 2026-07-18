@@ -62,7 +62,10 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
                   <span className="cost-item-desc">{payment.label || 'Payment request'}</span>
                   <span className="cost-item-sub">{PAYMENT_STATUS_LABEL[payment.status]}</span>
                 </div>
-                <span className="cost-item-amount">{formatMoney(Number(payment.amount))}</span>
+                <span className="client-attention-pay-block">
+                  <span className="cost-item-amount">{formatMoney(Number(payment.amount))}</span>
+                  <span className="client-attention-action">{payment.status === 'requested' ? 'Pay now' : 'View payment'}</span>
+                </span>
               </Link>
             ))}
           </div>
