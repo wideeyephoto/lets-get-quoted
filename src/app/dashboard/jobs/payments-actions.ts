@@ -3,10 +3,23 @@
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
+import { getJob } from '@/lib/jobs';
 import { createDepositRequest, getPaymentDetails, refundPayment, markPaymentFailed, retryPayment, type PaymentKind } from '@/lib/payments';
+import { addInvoiceItem, createInvoice, listInvoices, selectPrimaryInvoice } from '@/lib/invoices';
 import { createPaymentFeedEvent } from '@/lib/job-feed';
 import { normalizeUsPhone } from '@/lib/phone';
 import { recordSmsConsent, retryFailedPaymentSmsEvent, sendPaymentSmsEvent } from '@/lib/sms';
+
+async function ensureJobInvoice(supabase: Awaited<ReturnType<typeof requireOwnerContext>>['supabase'], accountId: string, jobId: string) {
+  const invoices = await listInvoices(supabase, accountId, jobId);
+  const invoice = selectPrimaryInvoice(invoices) ?? await createInvoice(supabase, accountId, jobId, 'draft');
+  const job = await getJob(supabase, accountId, jobId);
+  if (job && Number(invoice.total) <= 0 && Number(job.quoted_amount) > 0) {
+    await addInvoiceItem(supabase, accountId, invoice.id, { description: 'Quoted job total', amount: Number(job.quoted_amount) });
+    return { ...invoice, total: Number(job.quoted_amount) };
+  }
+  return invoice;
+}
 
 export async function createDepositRequestAction(jobId: string, formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
@@ -14,7 +27,7 @@ export async function createDepositRequestAction(jobId: string, formData: FormDa
   const amount = Number(formData.get('amount'));
   const label = (formData.get('label') ?? '').toString().trim() || 'Deposit';
   const kind = (formData.get('kind') as PaymentKind) || 'deposit';
-  const invoiceId = (formData.get('invoiceId') ?? '').toString().trim() || undefined;
+  const invoice = await ensureJobInvoice(supabase, accountId, jobId);
   const sendSms = formData.get('sendSms') === 'on';
   const phoneInput = (formData.get('homeownerPhone') ?? '').toString();
   const homeownerPhone = phoneInput ? normalizeUsPhone(phoneInput) : null;
@@ -27,7 +40,7 @@ export async function createDepositRequestAction(jobId: string, formData: FormDa
     label,
     amount,
     kind,
-    invoiceId,
+    invoiceId: invoice.id,
     homeownerPhone,
     smsConsent: sendSms,
   });

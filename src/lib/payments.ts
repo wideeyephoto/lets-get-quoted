@@ -11,6 +11,7 @@ export type Payment = {
   id: string;
   account_id: string;
   job_id: string;
+  invoice_id: string | null;
   kind: PaymentKind;
   label: string | null;
   amount: number;

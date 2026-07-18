@@ -58,6 +58,16 @@ export async function listInvoices(supabase: SupabaseClient, accountId: string, 
   return (data ?? []) as Invoice[];
 }
 
+export function selectPrimaryInvoice(invoices: Invoice[]): Invoice | null {
+  return [...invoices]
+    .filter((invoice) => invoice.status !== 'void')
+    .sort((a, b) => {
+      const totalDifference = Number(b.total) - Number(a.total);
+      if (totalDifference !== 0) return totalDifference;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    })[0] ?? null;
+}
+
 export async function getInvoiceWithItems(
   supabase: SupabaseClient,
   accountId: string,

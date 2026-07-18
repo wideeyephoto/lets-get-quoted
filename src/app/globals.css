@@ -2179,6 +2179,9 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .payment-sms-options { display: grid; grid-template-columns: minmax(220px, .65fr) minmax(300px, 1.35fr); gap: .8rem; align-items: end; margin-top: .8rem; }
 .sms-consent-check { display: flex; align-items: flex-start; gap: .65rem; padding: .75rem; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(255,255,255,.025); color: rgba(255,255,255,.68); font-size: .76rem; line-height: 1.45; cursor: pointer; }
 .sms-consent-check input { flex: 0 0 auto; width: 17px; height: 17px; margin-top: .1rem; accent-color: #ff8a3d; }
+.invoice-context-pill { display: inline-flex; align-items: center; gap: .55rem; width: fit-content; max-width: 100%; padding: .5rem .7rem; border: 1px solid rgba(255,209,102,.22); border-radius: 999px; background: rgba(255,209,102,.06); color: rgba(247,245,239,.66); font-size: .82rem; }
+.invoice-context-pill span { text-transform: uppercase; letter-spacing: .08em; font-size: .66rem; font-weight: 900; color: rgba(255,209,102,.82); }
+.invoice-context-pill strong { color: #f7f5ef; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .cost-list { display: flex; flex-direction: column; gap: 0.5rem; }
 .cost-item {

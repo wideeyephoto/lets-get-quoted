@@ -5,7 +5,7 @@ import AddressAutocomplete from '@/components/address-autocomplete';
 import { getJob, listCosts, computeMargin, formatJobQuoteSummary, formatJobSchedule, formatMoney, formatPercent, type Cost, type Job } from '@/lib/jobs';
 import { createJobPhotoUrls } from '@/lib/job-photo-storage';
 import { listPayments, type Payment, type PaymentStatus } from '@/lib/payments';
-import { listInvoices, type Invoice, type InvoiceStatus } from '@/lib/invoices';
+import { listInvoices, selectPrimaryInvoice, type Invoice, type InvoiceStatus } from '@/lib/invoices';
 import { createLinkedFeedItems, getActiveClientAccessCount, listJobFeed, sortJobFeed, type JobFeedEvent } from '@/lib/job-feed';
 import { listCrew, listCrewIdsForJob } from '@/lib/crew';
 import {
@@ -19,7 +19,6 @@ import {
   updateJobCrewAction,
 } from '../actions';
 import { createDepositRequestAction, refundPaymentAction, markPaymentFailedAction, retryPaymentAction, retryPaymentTextAction } from '../payments-actions';
-import { createInvoiceAction } from '../invoices-actions';
 import DeleteJobButton from './DeleteJobButton';
 import PaymentActionButtons from './PaymentActionButtons';
 import JobExpenseFields from '@/components/job-expense-fields';
@@ -188,6 +187,12 @@ export default async function JobDetailPage({
   const activeClientLinkCount = await getActiveClientAccessCount(supabase, accountId, job.id);
   const crew = await listCrew(supabase, accountId, { activeOnly: true });
   const assignedCrewIds = await listCrewIdsForJob(supabase, accountId, job.id);
+  const jobInvoice = selectPrimaryInvoice(invoices);
+  const invoicePaidTotal = jobInvoice
+    ? payments.filter((payment) => payment.invoice_id === jobInvoice.id && payment.status === 'paid').reduce((sum, payment) => sum + Number(payment.amount), 0)
+    : 0;
+  const invoiceDisplayTotal = jobInvoice ? Math.max(Number(jobInvoice.total), Number(job.quoted_amount)) : Number(job.quoted_amount);
+  const invoiceBalance = jobInvoice ? Math.max(0, invoiceDisplayTotal - invoicePaidTotal) : null;
   const jobPhotoUrls = await createJobPhotoUrls(accountId, job.photo_paths || []);
   const jobPhotos = (job.photo_paths || []).map((path, index) => ({ path, url: jobPhotoUrls[index] })).filter((photo) => photo.url);
   const { data: accountRow } = await supabase
@@ -205,7 +210,6 @@ export default async function JobDetailPage({
   const boundCreateManualFeed = createManualJobFeedAction.bind(null, job.id);
   const boundCreateClientJobLink = createClientJobLinkAction.bind(null, job.id);
   const boundRevokeClientJobLink = revokeClientJobLinkAction.bind(null, job.id);
-  const boundCreateInvoice = createInvoiceAction.bind(null, job.id);
   const boundRefundPayment = refundPaymentAction.bind(null, job.id);
   const boundMarkPaymentFailed = markPaymentFailedAction.bind(null, job.id);
   const boundRetryPaymentText = retryPaymentTextAction.bind(null, job.id);
@@ -360,10 +364,10 @@ export default async function JobDetailPage({
       <details id="request-payment" className="panel workspace-section-card workspace-details job-action-details" open={searchParams.open === 'payment'}>
           <summary className="workspace-details-summary job-action-summary">
             <div className="section-heading workspace-section-heading compact-heading">
-            <p className="eyebrow">Payments</p>
-            <h2>Request a payment from {job.client_name}</h2>
+            <p className="eyebrow">Invoice &amp; payment</p>
+            <h2>Send an invoice or payment link to {job.client_name}</h2>
             </div>
-            <span className="workspace-details-copy">Create or review payment links.</span>
+            <span className="workspace-details-copy">Payment links are tied to this job&apos;s invoice.</span>
           </summary>
             {!stripeOnboarded ? (
               <div className="payment-banner warning">
@@ -377,40 +381,33 @@ export default async function JobDetailPage({
               </div>
             ) : null}
             <form action={boundCreateDepositRequest} className="cost-form workspace-form-block">
+              <div className="invoice-context-pill">
+                <span>Job invoice</span>
+                <strong>{jobInvoice ? `${jobInvoice.ref} · Balance ${formatMoney(invoiceBalance ?? 0)}` : 'Draft invoice will be created automatically'}</strong>
+              </div>
               <div className="cost-form-row">
                 <div className="field">
-                  <label htmlFor="pay-kind">Type</label>
+                  <label htmlFor="pay-kind">Payment type</label>
                   <select id="pay-kind" name="kind" defaultValue="deposit">
-                    <option value="deposit">Deposit</option>
-                    <option value="stage">Stage payment</option>
-                    <option value="final">Final payment</option>
-                    <option value="plan_installment">Additional payment</option>
+                    <option value="deposit">Deposit request</option>
+                    <option value="stage">Progress payment</option>
+                    <option value="final">Final balance</option>
+                    <option value="plan_installment">Custom payment</option>
                   </select>
                   <QuickFillButtons
                     label="Quick add:"
                     targetId="pay-kind"
                     values={[
                       { label: 'Deposit', value: 'deposit' },
-                      { label: 'Stage', value: 'stage' },
-                      { label: 'Final', value: 'final' },
-                      { label: 'Additional payment', value: 'plan_installment' },
+                      { label: 'Progress', value: 'stage' },
+                      { label: 'Final balance', value: 'final' },
+                      { label: 'Custom', value: 'plan_installment' },
                     ]}
                   />
                 </div>
                 <div className="field">
                   <label htmlFor="pay-amount">Amount ($)</label>
                   <input id="pay-amount" name="amount" type="number" min="0.01" step="0.01" required placeholder="2500" />
-                </div>
-                <div className="field">
-                  <label htmlFor="invoiceId">Link invoice</label>
-                  <select id="invoiceId" name="invoiceId" defaultValue="">
-                    <option value="">No invoice</option>
-                    {invoices.map((invoice) => (
-                      <option key={invoice.id} value={invoice.id}>
-                        {invoice.ref} — {formatMoney(invoice.total)}
-                      </option>
-                    ))}
-                  </select>
                 </div>
                 <div className="field">
                   <label htmlFor="pay-label">Notes (optional)</label>
@@ -428,7 +425,7 @@ export default async function JobDetailPage({
                 </label>
               </div>
               <div style={{ marginTop: '0.8rem' }}>
-                <SaveButton pendingLabel="Creating…" savedLabel="Created ✓">Create payment request &amp; notify</SaveButton>
+                <SaveButton pendingLabel="Creating…" savedLabel="Created ✓">Send invoice/payment link</SaveButton>
               </div>
             </form>
 
@@ -728,17 +725,13 @@ export default async function JobDetailPage({
                 <p className="eyebrow" style={{ margin: 0 }}>
                   Invoices
                 </p>
-                <h2>Invoice records</h2>
+                <h2>Job invoice</h2>
               </div>
-              <form action={boundCreateInvoice}>
-                <select name="status" defaultValue="draft" className="btn secondary" style={{ marginRight: '0.5rem' }}>
-                  <option value="draft">Draft</option>
-                  <option value="sent">Sent</option>
-                </select>
-                <button type="submit" className="btn primary">
-                  + New invoice
-                </button>
-              </form>
+              {jobInvoice ? (
+                <Link href={`/dashboard/jobs/${job.id}/invoices/${jobInvoice.id}`} className="btn secondary">Open invoice</Link>
+              ) : (
+                <span className="workspace-details-copy">Created automatically when you send a payment link.</span>
+              )}
             </div>
 
             {!stripeOnboarded ? (
@@ -754,7 +747,7 @@ export default async function JobDetailPage({
             ) : null}
 
             {invoices.length === 0 ? (
-              <p className="empty-state">No invoices yet.</p>
+              <p className="empty-state">No invoice yet. Sending a payment link will create the job invoice automatically.</p>
             ) : (
               <div className="cost-list workspace-list-block">
                 {invoices.map((invoice) => (
