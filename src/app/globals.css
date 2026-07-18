@@ -1460,6 +1460,24 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.035);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+}
+
+.pipeline-checklist li {
+  min-width: 0;
+}
+
+.pipeline-step:hover {
+  border-color: rgba(255, 209, 102, 0.28);
+  background: rgba(255, 209, 102, 0.065);
+  transform: translateX(2px);
+}
+
+.pipeline-step:focus-visible {
+  outline: 2px solid rgba(255, 209, 102, 0.72);
+  outline-offset: 2px;
 }
 
 .pipeline-step-marker {

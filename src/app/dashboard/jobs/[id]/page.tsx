@@ -129,6 +129,7 @@ type PipelineChecklistItem = {
   label: string;
   detail: string;
   complete: boolean;
+  href: string;
 };
 
 function buildPipelineChecklist(job: Job, payments: Payment[], invoices: Invoice[], activeClientLinkCount: number): PipelineChecklistItem[] {
@@ -146,26 +147,31 @@ function buildPipelineChecklist(job: Job, payments: Payment[], invoices: Invoice
       label: 'Quote shared',
       detail: `${quoteDetail} · ${feedDetail}`,
       complete: job.quoted_amount > 0 && activeClientLinkCount > 0,
+      href: `/dashboard/jobs/${job.id}#job-feed`,
     },
     {
       label: 'Quote accepted',
       detail: quoteAccepted ? 'Approved for work' : 'Awaiting client approval',
       complete: quoteAccepted,
+      href: `/dashboard/jobs/${job.id}?edit=client#job-details`,
     },
     {
       label: 'Scheduled / underway',
       detail: job.scheduled_for ? formatJobSchedule(job.scheduled_for, job.scheduled_time) : 'Schedule the work',
       complete: Boolean(job.scheduled_for) || job.status === 'in_progress' || isComplete,
+      href: `/dashboard/jobs/${job.id}?edit=client#job-details`,
     },
     {
       label: 'Invoice / payment requested',
       detail: hasPaymentRequest ? `${payments.length} payment link${payments.length === 1 ? '' : 's'} created` : 'Send invoice or payment link',
       complete: hasPaymentRequest,
+      href: `/dashboard/jobs/${job.id}?open=payment#request-payment`,
     },
     {
       label: 'Paid / signed off',
       detail: paidTotal > 0 ? `${formatMoney(paidTotal)} paid` : hasSignedInvoice ? 'Client signed invoice' : 'Awaiting payment or sign-off',
       complete: paidTotal > 0 || hasPaidInvoice || hasSignedInvoice || isComplete,
+      href: `/dashboard/jobs/${job.id}?open=payment#request-payment`,
     },
   ];
 }
@@ -306,12 +312,14 @@ export default async function JobDetailPage({
             {pipelineChecklist.map((item, index) => {
               const state = item.complete ? 'complete' : index === currentPipelineIndex ? 'current' : 'upcoming';
               return (
-                <li className={`pipeline-step pipeline-step-${state}`} key={item.label}>
-                  <span className="pipeline-step-marker">{item.complete ? '✓' : ''}</span>
-                  <span>
-                    <strong>{item.label}</strong>
-                    <small>{item.detail}</small>
-                  </span>
+                <li key={item.label}>
+                  <Link className={`pipeline-step pipeline-step-${state}`} href={item.href}>
+                    <span className="pipeline-step-marker">{item.complete ? '✓' : ''}</span>
+                    <span>
+                      <strong>{item.label}</strong>
+                      <small>{item.detail}</small>
+                    </span>
+                  </Link>
                 </li>
               );
             })}
