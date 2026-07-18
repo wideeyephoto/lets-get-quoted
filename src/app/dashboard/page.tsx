@@ -1,18 +1,9 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { connectStripeAction } from './stripe-actions';
-import { getTrailingVolume } from '@/lib/payments';
-import { getTierInfo } from '@/lib/stripe';
 import { expandScheduledJobs, formatJobTime, listJobs } from '@/lib/jobs';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
-
-function formatMoney(n: number): string {
-  return '$' + Math.round(n).toLocaleString();
-}
-
-function formatRate(rate: number): string {
-  return (rate * 100).toFixed(2).replace(/\.?0+$/, '') + '%';
-}
+import { expireStaleLeads, listLeads } from '@/lib/leads';
 
 function toDateKey(year: number, monthIndex: number, day: number): string {
   return `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -42,12 +33,14 @@ function initials(name: string): string {
 
 export default async function DashboardPage() {
   const { supabase, accountId } = await requireOwnerContext();
+  await expireStaleLeads(supabase, accountId);
 
-  const [{ data: account }, { data: identityData }, { data: site }, jobs] = await Promise.all([
+  const [{ data: account }, { data: identityData }, { data: site }, jobs, leads] = await Promise.all([
     supabase.from('accounts').select('connect_onboarded, schedule_day_hours').eq('id', accountId).single(),
     supabase.auth.getUserIdentities(),
     supabase.from('sites').select('published, subdomain, custom_domain, custom_domain_verified_at').eq('account_id', accountId).maybeSingle(),
     listJobs(supabase, accountId),
+    listLeads(supabase, accountId),
   ]);
 
   const onboarded = account?.connect_onboarded ?? false;
@@ -92,12 +85,12 @@ export default async function DashboardPage() {
   const completedStepCount = onboardingSteps.filter((step) => step.done).length;
   const onboardingComplete = completedStepCount === onboardingSteps.length;
 
-  const trailingVolume = onboarded ? await getTrailingVolume(accountId) : 0;
-  const tierInfo = getTierInfo(trailingVolume);
-  const progressPercent = Math.round((tierInfo.progressToNext ?? 0) * 100);
-
   const scheduledJobs = jobs.filter((job) => job.status !== 'archived' && job.scheduled_for);
   const scheduledJobOccurrences = expandScheduledJobs(scheduledJobs, scheduleDayHours);
+  const activeJobs = jobs.filter((job) => job.status === 'in_progress').length;
+  const openLeadCount = leads.filter((lead) => lead.status === 'new' || lead.status === 'contacted').length;
+  const quotedLeadCount = leads.filter((lead) => lead.status === 'quoted').length;
+  const wonLeadCount = leads.filter((lead) => lead.status === 'won').length;
   const [crew, assignmentsByJob] = await Promise.all([
     listCrew(supabase, accountId, { activeOnly: true }),
     listCrewAssignmentsForJobs(supabase, accountId, scheduledJobs.map((job) => job.id)),
@@ -121,6 +114,7 @@ export default async function DashboardPage() {
       jobs: jobsByDate.get(dateKey) ?? [],
     };
   });
+  const jobsNext7Days = next7Days.reduce((sum, day) => sum + day.jobs.length, 0);
 
   return (
     <main className="wide-shell workspace-shell">
@@ -181,19 +175,17 @@ export default async function DashboardPage() {
             </p>
           </article>
           <article className="workspace-metric-card">
-            <span className="workspace-metric-label">Fee tier</span>
-            <strong className="workspace-metric-value">Tier {tierInfo.tier}</strong>
+            <span className="workspace-metric-label">Leads waiting</span>
+            <strong className="workspace-metric-value">{openLeadCount}</strong>
             <p className="workspace-metric-note">
-              Current platform rate {formatRate(tierInfo.rate)} based on trailing volume.
+              New and contacted leads that still need a quote or follow-up.
             </p>
           </article>
           <article className="workspace-metric-card">
-            <span className="workspace-metric-label">Trailing volume</span>
-            <strong className="workspace-metric-value">{formatMoney(tierInfo.trailingVolume)}</strong>
+            <span className="workspace-metric-label">Jobs this week</span>
+            <strong className="workspace-metric-value">{jobsNext7Days}</strong>
             <p className="workspace-metric-note">
-              {tierInfo.nextTier
-                ? `${progressPercent}% of the way to the next rate break.`
-                : 'You are already at the lowest platform fee tier.'}
+              Scheduled job days across the next 7-day dashboard calendar.
             </p>
           </article>
         </div>
@@ -265,31 +257,23 @@ export default async function DashboardPage() {
 
         <div className="panel workspace-section-card">
           <div className="section-heading workspace-section-heading">
-            <p className="eyebrow">Volume &amp; fee tier</p>
-            <h2>Current pricing band</h2>
+            <p className="eyebrow">Pipeline focus</p>
+            <h2>Lead momentum</h2>
           </div>
           <div className="tier-card">
             <div className="tier-row">
-              <span>Trailing 12-month volume</span>
-              <span>{formatMoney(tierInfo.trailingVolume)}</span>
+              <span>Quoted leads awaiting homeowner approval</span>
+              <span>{quotedLeadCount}</span>
             </div>
             <div className="tier-row bold">
-              <span>Current rate — Tier {tierInfo.tier}</span>
-              <span>{formatRate(tierInfo.rate)}</span>
+              <span>Active jobs</span>
+              <span>{activeJobs}</span>
             </div>
-            {tierInfo.nextTier ? (
-              <>
-                <div className="tier-progress-track">
-                  <div className="tier-progress-fill" style={{ width: `${progressPercent}%` }} />
-                </div>
-                <p className="tier-note">
-                  {formatMoney(tierInfo.amountToNextTier ?? 0)} more in volume unlocks Tier{' '}
-                  {tierInfo.nextTier.tier} at {formatRate(tierInfo.nextTier.rate)}.
-                </p>
-              </>
-            ) : (
-              <p className="tier-note">You&apos;ve reached the lowest platform fee rate.</p>
-            )}
+            <div className="tier-row">
+              <span>Won leads</span>
+              <span>{wonLeadCount}</span>
+            </div>
+            <p className="tier-note">Keep quotes moving from approval into scheduled work.</p>
           </div>
         </div>
       </section>
