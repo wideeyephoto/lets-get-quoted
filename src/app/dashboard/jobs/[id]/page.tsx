@@ -111,7 +111,7 @@ export default async function JobDetailPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { tab?: string; clientToken?: string };
+  searchParams: { tab?: string; clientToken?: string; edit?: string };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
 
@@ -187,7 +187,12 @@ export default async function JobDetailPage({
     <main className="wide-shell workspace-shell">
       <section className="workspace-hero panel job-command-hero">
         <div className="workspace-hero-copy">
-          <h1 className="workspace-title">{job.client_name}</h1>
+          <div className="job-title-row">
+            <h1 className="workspace-title">{job.client_name}</h1>
+            <Link href={`/dashboard/jobs/${job.id}?edit=client#job-details`} className="job-title-edit-link">
+              (edit)
+            </Link>
+          </div>
           <div className="workspace-inline-row">
             <span className={`status-badge status-${job.status}`}>{STATUS_LABEL[job.status]}</span>
             <span className="workspace-inline-note">{job.address || 'No address on file yet'}</span>
@@ -391,7 +396,7 @@ export default async function JobDetailPage({
             )}
         </details>
 
-      <details id="job-details" className="panel workspace-section-card workspace-details job-action-details">
+      <details id="job-details" className="panel workspace-section-card workspace-details job-action-details" open={searchParams.edit === 'client'}>
           <summary className="workspace-details-summary job-action-summary">
             <div className="section-heading workspace-section-heading compact-heading">
             <p className="eyebrow">Overview</p>

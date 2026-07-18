@@ -1306,6 +1306,28 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   font-size: clamp(1.9rem, 3.5vw, 2.9rem);
 }
 
+.job-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.job-title-row .workspace-title {
+  margin: 0;
+}
+
+.job-title-edit-link {
+  color: rgba(247, 245, 239, 0.58);
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.job-title-edit-link:hover {
+  color: #f7f5ef;
+}
+
 .workspace-hero-copy {
   display: flex;
   flex-direction: column;
