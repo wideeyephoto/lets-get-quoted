@@ -10,13 +10,23 @@ import { supabase } from '@/lib/supabase';
 const baseNavItems = [
   { href: '/', label: 'Home' },
   { href: '/dashboard', label: 'Dashboard' },
-  { href: '/dashboard/leads', label: 'Leads' },
+  { href: '/dashboard/leads', label: 'Quote Requests' },
   { href: '/dashboard/jobs', label: 'Jobs' },
   { href: '/dashboard/crew', label: 'Crew' },
   { href: '/dashboard/schedule', label: 'Schedule' },
   { href: '/dashboard/sites', label: 'Website' },
   { href: '/dashboard/settings', label: 'Account' },
 ];
+
+type AccountStatus = {
+  onboarded: boolean;
+  sitePublished: boolean;
+  newQuoteRequestCount: number;
+  newestQuoteRequestId: string | null;
+  newestQuoteRequestCreatedAt: string | null;
+};
+
+const QUOTE_REQUEST_ALERT_DISMISSED_KEY = 'lgq-dismissed-quote-request-alert';
 
 function getPrimaryAction() {
   return { href: '/login', label: 'Sign in' };
@@ -28,6 +38,10 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [stripeOnboarded, setStripeOnboarded] = useState<boolean | null>(null);
   const [sitePublished, setSitePublished] = useState(false);
+  const [newQuoteRequestCount, setNewQuoteRequestCount] = useState(0);
+  const [newestQuoteRequestId, setNewestQuoteRequestId] = useState<string | null>(null);
+  const [newestQuoteRequestCreatedAt, setNewestQuoteRequestCreatedAt] = useState<string | null>(null);
+  const [dismissedQuoteRequestId, setDismissedQuoteRequestId] = useState<string | null>(null);
   const isDashboard = pathname.startsWith('/dashboard');
   const primaryAction = getPrimaryAction();
   // Middleware rewrites a wildcard subdomain/custom-domain request to
@@ -49,7 +63,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   // relevant once inside the app, and "Website", which is promoted to
   // its own always-visible badge below instead of a plain link). Logged-out
   // visitors — homeowners paying an invoice, or a prospect on the marketing
-  // site — have no use for internal app links like Dashboard/Leads/Jobs that
+  // site — have no use for internal app links like Dashboard/Quote Requests/Jobs that
   // just dead-end at a login wall, so they see just a "Create account" CTA
   // (the same magic-link flow handles both sign-in and account creation).
   const navItems = isLoggedIn
@@ -80,15 +94,21 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   // returning from Stripe's hosted onboarding flow).
   useEffect(() => {
     if (!isDashboard || !isLoggedIn) {
+      setNewQuoteRequestCount(0);
+      setNewestQuoteRequestId(null);
+      setNewestQuoteRequestCreatedAt(null);
       return;
     }
     let cancelled = false;
     fetch('/api/account/status', { cache: 'no-store' })
-      .then((res) => (res.ok ? res.json() : null))
+      .then((res) => (res.ok ? res.json() as Promise<AccountStatus> : null))
       .then((data) => {
         if (!cancelled && data) {
           setStripeOnboarded(Boolean(data.onboarded));
           setSitePublished(Boolean(data.sitePublished));
+          setNewQuoteRequestCount(Number(data.newQuoteRequestCount ?? 0));
+          setNewestQuoteRequestId(data.newestQuoteRequestId ?? null);
+          setNewestQuoteRequestCreatedAt(data.newestQuoteRequestCreatedAt ?? null);
         }
       })
       .catch(() => {});
@@ -97,11 +117,26 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     };
   }, [isDashboard, isLoggedIn, pathname]);
 
+  useEffect(() => {
+    if (!isDashboard || !isLoggedIn) return;
+    setDismissedQuoteRequestId(window.localStorage.getItem(QUOTE_REQUEST_ALERT_DISMISSED_KEY));
+  }, [isDashboard, isLoggedIn, newestQuoteRequestId]);
+
   if (isStandaloneSite) {
     return <>{children}</>;
   }
 
   const brandHref = isLoggedIn ? '/dashboard' : '/';
+  const showQuoteRequestAlert = isDashboard && isLoggedIn && newQuoteRequestCount > 0 && newestQuoteRequestId && dismissedQuoteRequestId !== newestQuoteRequestId;
+  const newestQuoteRequestAge = newestQuoteRequestCreatedAt
+    ? Math.max(1, Math.round((Date.now() - new Date(newestQuoteRequestCreatedAt).getTime()) / 3600000))
+    : null;
+
+  function dismissQuoteRequestAlert() {
+    if (!newestQuoteRequestId) return;
+    window.localStorage.setItem(QUOTE_REQUEST_ALERT_DISMISSED_KEY, newestQuoteRequestId);
+    setDismissedQuoteRequestId(newestQuoteRequestId);
+  }
 
   return (
     <div className="chrome-shell">
@@ -159,6 +194,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                     className={`topnav-link${active ? ' active' : ''}`}
                   >
                     {item.label}
+                    {item.href === '/dashboard/leads' && newQuoteRequestCount > 0 ? <span className="topnav-count">{newQuoteRequestCount}</span> : null}
                   </Link>
                 );
               })}
@@ -172,6 +208,16 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           </div>
         </div>
       </header>
+
+      {showQuoteRequestAlert ? (
+        <aside className="quote-request-alert" role="status" aria-live="polite">
+          <button type="button" className="quote-request-alert-close" onClick={dismissQuoteRequestAlert} aria-label="Dismiss quote request alert">x</button>
+          <p>New quote request needs a response</p>
+          <strong>{newQuoteRequestCount === 1 ? '1 website request is waiting' : `${newQuoteRequestCount} website requests are waiting`}</strong>
+          {newestQuoteRequestAge ? <span>Newest request received {newestQuoteRequestAge}h ago.</span> : null}
+          <Link href={`/dashboard/leads/${newestQuoteRequestId}`} className="btn primary">View request</Link>
+        </aside>
+      ) : null}
 
       <div className="app-main">{children}</div>
     </div>

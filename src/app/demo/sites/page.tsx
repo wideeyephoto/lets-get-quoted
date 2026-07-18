@@ -14,8 +14,8 @@ export default function DemoSitesPage() {
             <p className="eyebrow">Website</p>
             <h1 className="workspace-title">A free website, built for {DEMO_COMPANY_NAME}</h1>
             <p className="workspace-lead">
-              Pick a template, drop in your photos and service area, and publish a lead-generating
-              website in minutes — no code required.
+              Pick a template, drop in your photos and service area, and publish a quote-request website
+              in minutes - no code required.
             </p>
           </div>
         </section>
@@ -27,7 +27,7 @@ export default function DemoSitesPage() {
           </div>
           <p className="workspace-card-copy">
             Every plan includes a hosted website with a quote-request form that feeds straight into
-            your leads pipeline. This demo account is read-only.
+            your request pipeline. This demo account is read-only.
           </p>
           <Link href="/login" className="btn primary">
             Create free account

@@ -11,7 +11,7 @@ export default function DemoBanner() {
         <div className="demo-banner-copy">
           <strong>You&apos;re viewing a live demo.</strong>
           <span>
-            Every job, lead, and client here is fictional — this is what a real, established contractor
+            Every job, quote request, and client here is fictional - this is what a real, established contractor
             account looks like inside Let&apos;s Get Quoted.
           </span>
         </div>

@@ -34,6 +34,49 @@ export type LeadInput = {
   sourcePage?: string | null;
 };
 
+export function formatLeadSource(source: LeadSource): string {
+  if (source === 'website_form') return 'Website form';
+  if (source === 'missed_call') return 'Missed call';
+  if (source === 'referral') return 'Referral';
+  return 'Manual';
+}
+
+export function formatElapsedTime(from: string, to = new Date()): string {
+  const start = new Date(from).getTime();
+  const end = to.getTime();
+  if (!Number.isFinite(start)) return 'Unknown';
+  const minutes = Math.max(0, Math.round((end - start) / 60000));
+  if (minutes < 60) return `${Math.max(1, minutes)}m`;
+  const hours = Math.round(minutes / 60);
+  return `${hours}h`;
+}
+
+export function getRequestResponseMs(lead: Lead): number | null {
+  if (lead.status === 'new') return null;
+  const createdAt = new Date(lead.created_at).getTime();
+  const updatedAt = new Date(lead.updated_at).getTime();
+  if (!Number.isFinite(createdAt) || !Number.isFinite(updatedAt) || updatedAt <= createdAt) return null;
+  return updatedAt - createdAt;
+}
+
+export function formatDuration(ms: number | null): string {
+  if (ms === null) return 'No responses yet';
+  const minutes = Math.max(1, Math.round(ms / 60000));
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `${hours}h`;
+  const days = Math.round(hours / 24);
+  return `${days}d`;
+}
+
+export function getAverageRequestResponseMs(leads: Lead[]): number | null {
+  const responseTimes = leads
+    .map(getRequestResponseMs)
+    .filter((time): time is number => time !== null);
+  if (responseTimes.length === 0) return null;
+  return Math.round(responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length);
+}
+
 export async function createLead(
   supabase: SupabaseClient,
   accountId: string,

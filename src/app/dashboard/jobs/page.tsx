@@ -6,14 +6,14 @@ import { createJobAction } from './actions';
 
 const STATUS_FILTERS: { value: JobStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
-  { value: 'new_lead', label: 'New lead' },
+  { value: 'new_lead', label: 'New request' },
   { value: 'in_progress', label: 'In progress' },
   { value: 'complete', label: 'Complete' },
   { value: 'archived', label: 'Archived' },
 ];
 
 const STATUS_LABEL: Record<JobStatus, string> = {
-  new_lead: 'New lead',
+  new_lead: 'New request',
   in_progress: 'In progress',
   complete: 'Complete',
   archived: 'Archived',
@@ -112,7 +112,7 @@ export default async function JobsPage({
           <div className="field">
             <label htmlFor="status">Status</label>
             <select id="status" name="status" defaultValue="new_lead">
-              <option value="new_lead">New lead</option>
+              <option value="new_lead">New request</option>
               <option value="in_progress">In progress</option>
               <option value="complete">Complete</option>
               <option value="archived">Archived</option>

@@ -18,7 +18,7 @@ export type Job = {
   created_at: string;
 };
 
-// Pipeline order for job lists: new leads need attention first, in-progress
+// Pipeline order for job lists: new requests need attention first, in-progress
 // work is actively being tracked, and completed/archived jobs are done —
 // they sink to the bottom regardless of how recently they were touched.
 export const JOB_STATUS_ORDER: Record<JobStatus, number> = {

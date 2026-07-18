@@ -15,7 +15,7 @@ import PaymentActionButtons from './PaymentActionButtons';
 import SaveButton from '@/components/save-button';
 
 const STATUS_LABEL: Record<string, string> = {
-  new_lead: 'New lead',
+  new_lead: 'New request',
   in_progress: 'In progress',
   complete: 'Complete',
   archived: 'Archived',
@@ -187,7 +187,7 @@ export default async function JobDetailPage({
               <div className="field">
                 <label htmlFor="status">Status</label>
                 <select id="status" name="status" defaultValue={job.status}>
-                  <option value="new_lead">New lead</option>
+                  <option value="new_lead">New request</option>
                   <option value="in_progress">In progress</option>
                   <option value="complete">Complete</option>
                   <option value="archived">Archived</option>

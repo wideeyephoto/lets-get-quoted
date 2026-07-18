@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
 import PhotoGallery from '@/components/photo-gallery';
 import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
-import { getLead } from '@/lib/leads';
+import { formatElapsedTime, formatLeadSource, getLead } from '@/lib/leads';
 import { convertLeadAction, updateLeadStatusAction } from '../actions';
 import SaveButton from '@/components/save-button';
 import styles from '../leads.module.css';
@@ -20,12 +20,12 @@ export default async function LeadDetailPage({ params }: { params: { leadId: str
   return (
     <main className="wide-shell workspace-shell">
       <section className="workspace-hero panel">
-        <div className="workspace-hero-copy"><p className="eyebrow">Lead details</p><h1 className="workspace-title">{lead.name || 'Unnamed lead'}</h1><span className={styles.source}>{lead.source.replace('_', ' ')}</span><div className="actions workspace-actions"><Link className="btn secondary" href="/dashboard/leads">Back to leads</Link>{lead.converted_job && <Link className="btn primary" href={`/dashboard/jobs/${lead.converted_job}`}>Open converted job</Link>}</div></div>
+        <div className="workspace-hero-copy"><p className="eyebrow">Quote request details</p><h1 className="workspace-title">{lead.name || 'Unnamed request'}</h1><div className={styles.detailBadges}><span className={styles.source}>{formatLeadSource(lead.source)}</span><span className={styles.receivedBadge}>Received {formatElapsedTime(lead.created_at)} ago</span></div><div className="actions workspace-actions"><Link className="btn secondary" href="/dashboard/leads">Back to quote requests</Link>{lead.converted_job && <Link className="btn primary" href={`/dashboard/jobs/${lead.converted_job}`}>Open converted job</Link>}</div></div>
       </section>
 
       <div className={styles.detailGrid}>
         <section className={`panel workspace-section-card ${styles.detailSection}`}>
-          <div className="section-heading workspace-section-heading"><p className="eyebrow">Inquiry</p><h2>{lead.project_type || 'Project request'}</h2></div>
+          <div className="section-heading workspace-section-heading"><p className="eyebrow">Request</p><h2>{lead.project_type || 'Project request'}</h2></div>
           <div className={styles.contactGrid}>
             <div className={styles.dataBlock}><span>Phone</span>{lead.phone ? <a href={`tel:${lead.phone}`}>{lead.phone}</a> : <p>Not provided</p>}</div>
             <div className={styles.dataBlock}><span>Email</span>{lead.email ? <a href={`mailto:${lead.email}`}>{lead.email}</a> : <p>Not provided</p>}</div>
@@ -42,7 +42,7 @@ export default async function LeadDetailPage({ params }: { params: { leadId: str
               emptyLabel="No photos yet. Add some from the field or from the client."
             />
           </div>
-          <div className={styles.dataBlock}><span>Received</span><p>{new Date(lead.created_at).toLocaleString()}</p></div>
+          <div className={styles.dataBlock}><span>Received</span><p>{formatElapsedTime(lead.created_at)} ago</p><small>{new Date(lead.created_at).toLocaleString()}</small></div>
         </section>
 
         <aside className={styles.actionPanel}>

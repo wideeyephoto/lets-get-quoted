@@ -7,14 +7,14 @@ export const dynamic = 'force-dynamic';
 
 const STATUS_FILTERS: { value: JobStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
-  { value: 'new_lead', label: 'New lead' },
+  { value: 'new_lead', label: 'New request' },
   { value: 'in_progress', label: 'In progress' },
   { value: 'complete', label: 'Complete' },
   { value: 'archived', label: 'Archived' },
 ];
 
 const STATUS_LABEL: Record<JobStatus, string> = {
-  new_lead: 'New lead',
+  new_lead: 'New request',
   in_progress: 'In progress',
   complete: 'Complete',
   archived: 'Archived',

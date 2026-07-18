@@ -7,7 +7,7 @@ import { DEMO_JOBS, getDemoCosts, getDemoMargin, getDemoPayments } from '@/lib/d
 export const dynamic = 'force-dynamic';
 
 const STATUS_LABEL: Record<JobStatus, string> = {
-  new_lead: 'New lead',
+  new_lead: 'New request',
   in_progress: 'In progress',
   complete: 'Complete',
   archived: 'Archived',

@@ -1,21 +1,37 @@
+.requestStats { align-items: stretch; }
+.requestStats > div { min-width: 0; }
+.urgentStat { display: grid; gap: .25rem; padding: 1rem; border: 1px solid rgba(255, 122, 33, .36); border-radius: 18px; background: linear-gradient(135deg, rgba(255, 122, 33, .22), rgba(255, 209, 102, .08)); }
+.urgentStat span:first-child { color: #ffd166; }
 .board { display: grid; grid-template-columns: repeat(5, minmax(220px, 1fr)); gap: .8rem; overflow-x: auto; padding: .2rem 0 .8rem; }
 .column { min-height: 300px; padding: .8rem; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: rgba(255,255,255,.025); }
+.newColumn { border-color: rgba(255, 122, 33, .3); background: rgba(255, 122, 33, .045); }
 .columnHeader { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: 0 .2rem .75rem; }
 .columnHeader h2 { margin: 0; font-size: .86rem; letter-spacing: .04em; text-transform: uppercase; }
 .columnHeader span { display: grid; min-width: 24px; height: 24px; place-items: center; border-radius: 50%; background: rgba(255,255,255,.08); color: rgba(255,255,255,.7); font-size: .72rem; }
 .cards { display: grid; gap: .65rem; }
 .leadCard { display: grid; gap: .55rem; padding: .85rem; border: 1px solid rgba(255,255,255,.11); border-radius: 7px; background: #111c2a; color: #fff; transition: border-color .15s ease, transform .15s ease; }
 .leadCard:hover { border-color: rgba(255,138,61,.55); transform: translateY(-1px); }
+.urgentCard { border-color: rgba(255, 122, 33, .52); background: linear-gradient(145deg, rgba(255, 122, 33, .16), #111c2a 56%); box-shadow: inset 3px 0 0 #ff7a21, 0 12px 34px rgba(255, 122, 33, .1); }
 .leadCard strong { font-size: .92rem; }
 .leadCard p { display: -webkit-box; overflow: hidden; margin: 0; color: rgba(255,255,255,.62); font-size: .78rem; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .meta { display: flex; justify-content: space-between; gap: .5rem; color: rgba(255,255,255,.48); font-size: .68rem; }
+.cardTopline { display: flex; align-items: flex-start; justify-content: space-between; gap: .6rem; }
+.statusBadge, .needsBadge { flex-shrink: 0; width: fit-content; padding: .24rem .45rem; border-radius: 999px; font-size: .62rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.statusBadge { background: rgba(255,255,255,.08); color: rgba(255,255,255,.62); }
+.needsBadge { background: rgba(255, 209, 102, .18); color: #ffd166; }
+.cardMetaGrid { display: grid; grid-template-columns: 1fr; gap: .18rem; color: rgba(255,255,255,.55); font-size: .7rem; }
+.cardMetaGrid span { color: #ffd166; font-weight: 700; }
+.contactHint { overflow: hidden; color: rgba(255,255,255,.42); font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
 .empty { margin: .5rem 0; color: rgba(255,255,255,.36); font-size: .78rem; }
 .detailGrid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, .75fr); gap: 1rem; }
 .detailSection { display: grid; gap: 1rem; }
+.detailBadges { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .7rem; }
+.receivedBadge { display: inline-flex; width: fit-content; padding: .3rem .55rem; border-radius: 4px; background: rgba(255,122,33,.12); color: #ffb26b; font-size: .72rem; font-weight: 700; }
 .contactGrid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
 .dataBlock { padding: .85rem; border: 1px solid rgba(255,255,255,.09); border-radius: 7px; background: rgba(255,255,255,.025); }
 .dataBlock span { display: block; margin-bottom: .28rem; color: rgba(255,255,255,.48); font-size: .68rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
 .dataBlock p { margin: 0; white-space: pre-wrap; }
+.dataBlock small { display: block; margin-top: .25rem; color: rgba(255,255,255,.42); }
 .dataBlock a { color: #ffd166; }
 .photoGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
 .photoGrid img { width: 100%; aspect-ratio: 4 / 3; border-radius: 6px; object-fit: cover; }

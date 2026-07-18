@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 const DEMO_NAV_ITEMS = [
   { href: '/demo', label: 'Overview' },
-  { href: '/demo/leads', label: 'Leads' },
+  { href: '/demo/leads', label: 'Quote Requests' },
   { href: '/demo/jobs', label: 'Jobs' },
   { href: '/demo/crew', label: 'Crew' },
   { href: '/demo/schedule', label: 'Schedule' },

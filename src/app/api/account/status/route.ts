@@ -2,10 +2,9 @@ import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { createAdminClient, getCurrentMembership } from '@/lib/auth';
 
-// Lightweight status check used by the app shell to show a persistent Stripe
-// onboarding badge, plus the Website Builder promo badge, on every dashboard
-// page. Intentionally returns only booleans/a public URL — never account
-// details — since this is fetched client-side.
+// Lightweight status check used by the app shell to show persistent dashboard
+// badges and alerts. Intentionally returns only minimal state needed for the
+// shell since this is fetched client-side.
 export async function GET() {
   const supabase = createSupabaseServerClient();
   const {
@@ -13,23 +12,31 @@ export async function GET() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ loggedIn: false, onboarded: false, sitePublished: false, siteUrl: null });
+    return NextResponse.json({ loggedIn: false, onboarded: false, sitePublished: false, siteUrl: null, newQuoteRequestCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null });
   }
 
   const membership = await getCurrentMembership(user.id);
 
   if (!membership.accountId) {
-    return NextResponse.json({ loggedIn: true, onboarded: false, sitePublished: false, siteUrl: null });
+    return NextResponse.json({ loggedIn: true, onboarded: false, sitePublished: false, siteUrl: null, newQuoteRequestCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null });
   }
 
   const admin = createAdminClient();
-  const [{ data: account }, { data: site }] = await Promise.all([
+  const [{ data: account }, { data: site }, { data: newQuoteRequests, count: newQuoteRequestCount }] = await Promise.all([
     admin.from('accounts').select('connect_onboarded').eq('id', membership.accountId).maybeSingle(),
     admin
       .from('sites')
       .select('published, subdomain, custom_domain, custom_domain_verified_at')
       .eq('account_id', membership.accountId)
       .maybeSingle(),
+    admin
+      .from('leads')
+      .select('id, created_at', { count: 'exact' })
+      .eq('account_id', membership.accountId)
+      .eq('source', 'website_form')
+      .eq('status', 'new')
+      .order('created_at', { ascending: false })
+      .limit(1),
   ]);
 
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
@@ -47,5 +54,8 @@ export async function GET() {
     onboarded: account?.connect_onboarded ?? false,
     sitePublished,
     siteUrl,
+    newQuoteRequestCount: newQuoteRequestCount ?? 0,
+    newestQuoteRequestId: newQuoteRequests?.[0]?.id ?? null,
+    newestQuoteRequestCreatedAt: newQuoteRequests?.[0]?.created_at ?? null,
   });
 }

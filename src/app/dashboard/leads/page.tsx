@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import AddressAutocomplete from '@/components/address-autocomplete';
-import { listLeads, type LeadStatus } from '@/lib/leads';
+import { formatDuration, formatElapsedTime, formatLeadSource, getAverageRequestResponseMs, listLeads, type Lead, type LeadStatus } from '@/lib/leads';
 import { createLeadAction } from './actions';
 import SaveButton from '@/components/save-button';
 import styles from './leads.module.css';
@@ -14,42 +14,49 @@ const COLUMNS: { status: LeadStatus; label: string }[] = [
   { status: 'lost', label: 'Lost' },
 ];
 
+function responseLabel(lead: Lead) {
+  if (lead.status === 'new' && lead.source === 'website_form') return 'Needs response';
+  if (lead.status === 'new') return 'New request';
+  if (lead.status === 'contacted') return 'Contacted';
+  if (lead.status === 'quoted') return 'Quote sent';
+  if (lead.status === 'won') return 'Won';
+  return 'Lost';
+}
+
 export default async function LeadsPage() {
   const { supabase, accountId } = await requireOwnerContext();
   const leads = await listLeads(supabase, accountId);
-  const websiteLeads = leads.filter((lead) => lead.source === 'website_form').length;
-  const openLeads = leads.filter((lead) => !['won', 'lost'].includes(lead.status)).length;
+  const websiteRequests = leads.filter((lead) => lead.source === 'website_form').length;
+  const openRequests = leads.filter((lead) => !['won', 'lost'].includes(lead.status)).length;
+  const needsResponse = leads.filter((lead) => lead.status === 'new' && lead.source === 'website_form').length;
+  const averageResponse = formatDuration(getAverageRequestResponseMs(leads));
 
   return (
     <main className="wide-shell workspace-shell">
       <section className="workspace-hero workspace-hero-solo panel">
         <div className="workspace-hero-copy">
-          <p className="eyebrow">Leads</p>
-          <h1 className="workspace-title">Opportunity pipeline</h1>
-          <p className="workspace-lead">Follow every inquiry from first contact through quote and signed work.</p>
+          <p className="eyebrow">Quote Requests</p>
+          <h1 className="workspace-title">Requests that need a response</h1>
+          <p className="workspace-lead">See every incoming website request, how long it has waited, and what needs to happen next.</p>
         </div>
       </section>
 
-      <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading"><p className="eyebrow">Pipeline</p><h2>Current opportunities</h2></div>
-        {leads.length === 0 ? <p className="empty-state">No leads yet. Published website requests will appear here.</p> : (
-          <div className={styles.board}>
-            {COLUMNS.map((column) => {
-              const columnLeads = leads.filter((lead) => lead.status === column.status);
-              return <section className={styles.column} key={column.status}><header className={styles.columnHeader}><h2>{column.label}</h2><span>{columnLeads.length}</span></header><div className={styles.cards}>{columnLeads.map((lead) => <Link className={styles.leadCard} href={`/dashboard/leads/${lead.id}`} key={lead.id}><strong>{lead.name || 'Unnamed lead'}</strong><p>{lead.project_type || lead.message || 'Project details not provided'}</p><div className={styles.meta}><span>{lead.source.replace('_', ' ')}</span><time>{new Date(lead.created_at).toLocaleDateString()}</time></div></Link>)}{columnLeads.length === 0 && <p className={styles.empty}>No leads here.</p>}</div></section>;
-            })}
-          </div>
-        )}
-      </section>
-
-      <div className="stat-ticker panel">
-        <div className="stat-ticker-item">
-          <span className="stat-ticker-value">{openLeads}</span>
-          <span className="stat-ticker-label">Open leads</span>
+      <div className={`stat-ticker panel ${styles.requestStats}`}>
+        <div className={styles.urgentStat}>
+          <span className="stat-ticker-value">{needsResponse}</span>
+          <span className="stat-ticker-label">Needs response</span>
         </div>
         <div className="stat-ticker-item">
-          <span className="stat-ticker-value">{websiteLeads}</span>
-          <span className="stat-ticker-label">Website inquiries</span>
+          <span className="stat-ticker-value">{websiteRequests}</span>
+          <span className="stat-ticker-label">Website requests</span>
+        </div>
+        <div className="stat-ticker-item">
+          <span className="stat-ticker-value">{openRequests}</span>
+          <span className="stat-ticker-label">Open requests</span>
+        </div>
+        <div className="stat-ticker-item">
+          <span className="stat-ticker-value">{averageResponse}</span>
+          <span className="stat-ticker-label">Avg response time</span>
         </div>
         <div className="stat-ticker-item">
           <span className="stat-ticker-value">{leads.filter((lead) => lead.status === 'won').length}</span>
@@ -58,10 +65,35 @@ export default async function LeadsPage() {
       </div>
 
       <section className="panel workspace-section-card">
+        <div className="section-heading workspace-section-heading"><p className="eyebrow">Pipeline</p><h2>Current quote requests</h2></div>
+        {leads.length === 0 ? <p className="empty-state">No quote requests yet. Published website requests will appear here.</p> : (
+          <div className={styles.board}>
+            {COLUMNS.map((column) => {
+              const columnLeads = leads.filter((lead) => lead.status === column.status);
+              return <section className={`${styles.column}${column.status === 'new' ? ` ${styles.newColumn}` : ''}`} key={column.status}><header className={styles.columnHeader}><h2>{column.status === 'new' ? 'Needs response' : column.label}</h2><span>{columnLeads.length}</span></header><div className={styles.cards}>{columnLeads.map((lead) => {
+                const isUrgent = lead.status === 'new' && lead.source === 'website_form';
+                return (
+                  <Link className={`${styles.leadCard}${isUrgent ? ` ${styles.urgentCard}` : ''}`} href={`/dashboard/leads/${lead.id}`} key={lead.id}>
+                    <div className={styles.cardTopline}><strong>{lead.name || 'Unnamed request'}</strong><span className={isUrgent ? styles.needsBadge : styles.statusBadge}>{responseLabel(lead)}</span></div>
+                    <p>{lead.project_type || lead.message || 'Project details not provided'}</p>
+                    <div className={styles.cardMetaGrid}>
+                      <span>{formatLeadSource(lead.source)}</span>
+                      <time dateTime={lead.created_at}>Received {formatElapsedTime(lead.created_at)} ago</time>
+                    </div>
+                    {(lead.phone || lead.email) && <div className={styles.contactHint}>{lead.phone || lead.email}</div>}
+                  </Link>
+                );
+              })}{columnLeads.length === 0 && <p className={styles.empty}>No quote requests here.</p>}</div></section>;
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="panel workspace-section-card">
         <details className="workspace-details" open={leads.length === 0}>
           <summary className="workspace-details-summary">
-            <span className="btn primary">+ New lead</span>
-            <span className="workspace-details-copy">Log an inquiry that came in by phone, in person, or referral.</span>
+            <span className="btn primary">+ Add manual request</span>
+            <span className="workspace-details-copy">Log a quote request that came in by phone, in person, or referral.</span>
           </summary>
           <form action={createLeadAction} className="form-grid">
             <div className="field">
@@ -86,14 +118,14 @@ export default async function LeadsPage() {
             </div>
             <div className="field full">
               <label htmlFor="message">Notes</label>
-              <textarea id="message" name="message" placeholder="Details from the call or conversation…" />
+              <textarea id="message" name="message" placeholder="Details from the call or conversation..." />
             </div>
             <div className="field full">
               <label htmlFor="photos">Photos</label>
               <input id="photos" name="photos" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple />
             </div>
             <div className="field full">
-              <SaveButton>Add lead</SaveButton>
+              <SaveButton>Add quote request</SaveButton>
             </div>
           </form>
         </details>

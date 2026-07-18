@@ -95,7 +95,7 @@ export async function sendLeadNotificationEmail(input: {
   dashboardUrl: string;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
-    console.warn('RESEND_API_KEY not configured; lead notification skipped');
+    console.warn('RESEND_API_KEY not configured; quote request notification skipped');
     return;
   }
 
@@ -103,8 +103,8 @@ export async function sendLeadNotificationEmail(input: {
   const result = await resend.emails.send({
     from: 'Let\'s Get Quoted <hello@letsgetquoted.com>',
     to: input.recipientEmail,
-    subject: `New website lead: ${input.lead.name || 'Project request'}`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#b45309;font-weight:700">NEW WEBSITE LEAD</p><h1 style="font-size:26px">${escapeHtml(input.lead.name)} requested a quote</h1><p>${contact}</p><p><strong>Project:</strong> ${escapeHtml(input.lead.project_type) || 'Not specified'}</p><p><strong>Address:</strong> ${escapeHtml(input.lead.address) || 'Not specified'}</p><div style="padding:18px;background:#f4f5f7;border-left:4px solid #f59e0b">${escapeHtml(input.lead.message)}</div><p style="margin-top:24px"><a href="${escapeHtml(input.dashboardUrl)}" style="display:inline-block;padding:12px 18px;background:#172033;color:white;text-decoration:none;font-weight:700">Open lead in ${escapeHtml(input.businessName)}</a></p></div>`,
+    subject: `New website quote request: ${input.lead.name || 'Project request'}`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#b45309;font-weight:700">NEW WEBSITE QUOTE REQUEST</p><h1 style="font-size:26px">${escapeHtml(input.lead.name)} requested a quote</h1><p>${contact}</p><p><strong>Project:</strong> ${escapeHtml(input.lead.project_type) || 'Not specified'}</p><p><strong>Address:</strong> ${escapeHtml(input.lead.address) || 'Not specified'}</p><div style="padding:18px;background:#f4f5f7;border-left:4px solid #f59e0b">${escapeHtml(input.lead.message)}</div><p style="margin-top:24px"><a href="${escapeHtml(input.dashboardUrl)}" style="display:inline-block;padding:12px 18px;background:#172033;color:white;text-decoration:none;font-weight:700">Open quote request in ${escapeHtml(input.businessName)}</a></p></div>`,
     reply_to: input.lead.email || 'hello@letsgetquoted.com',
   });
   if (result.error) throw new Error(result.error.message);

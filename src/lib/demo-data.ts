@@ -20,6 +20,12 @@ function daysAgo(n: number): string {
   return d.toISOString();
 }
 
+function hoursAgo(n: number): string {
+  const d = new Date();
+  d.setHours(d.getHours() - n);
+  return d.toISOString();
+}
+
 export function dateKeyFromNow(offsetDays: number): string {
   const d = new Date();
   d.setDate(d.getDate() + offsetDays);
@@ -146,20 +152,33 @@ type LeadSeed = {
   message: string;
   status: LeadStatus;
   source: LeadSource;
-  createdDaysAgo: number;
+  createdDaysAgo?: number;
+  createdHoursAgo?: number;
+  respondedHoursAfter?: number;
   convertedJob?: string;
 };
 
 const LEAD_SEEDS: LeadSeed[] = [
-  { id: 'lead-1', name: 'Taylor Brooks', phone: '(248) 555-0212', email: 'taylor.brooks@example.com', address: '14 Pinehurst Dr, Royal Oak, MI', project_type: 'Kitchen remodel', message: 'Looking to remodel our kitchen this spring, ballpark budget $40-50k.', status: 'new', source: 'website_form', createdDaysAgo: 2 },
-  { id: 'lead-2', name: 'Priya Shah', phone: '(248) 555-0223', email: 'priya.shah@example.com', address: '6 Willowbrook Ln, Ferndale, MI', project_type: 'Deck build', message: 'Want a composite deck, roughly 300 sq ft.', status: 'new', source: 'website_form', createdDaysAgo: 1 },
-  { id: 'lead-3', name: 'Andre Coleman', phone: '(248) 555-0234', email: null, address: '81 Fairview Ave, Clawson, MI', project_type: 'Roof repair', message: 'Missed call — leak near chimney flashing.', status: 'contacted', source: 'missed_call', createdDaysAgo: 5 },
-  { id: 'lead-4', name: 'Megan Ostrowski', phone: '(248) 555-0245', email: 'megan.o@example.com', address: '33 Hartford Rd, Berkley, MI', project_type: 'Bathroom addition', message: 'Referred by a past client, wants a similar bath addition.', status: 'contacted', source: 'referral', createdDaysAgo: 6 },
-  { id: 'lead-5', name: 'Chris Bellamy', phone: '(248) 555-0256', email: 'chris.bellamy@example.com', address: '58 Northgate Dr, Troy, MI', project_type: 'Home addition', message: 'Sent a quote for a 400 sq ft rear addition.', status: 'quoted', source: 'website_form', createdDaysAgo: 12 },
-  { id: 'lead-6', name: 'Karen Whitfield', phone: '(248) 555-0110', email: 'karen.whitfield@example.com', address: '1418 Maplewood Ave, Royal Oak, MI', project_type: 'Roof replacement', message: 'Signed and scheduled — converted to job J-1001.', status: 'won', source: 'website_form', createdDaysAgo: 112, convertedJob: 'job-1' },
-  { id: 'lead-7', name: 'Grace Foster', phone: '(248) 555-0176', email: 'grace.foster@example.com', address: '65 Windemere Ave, Ferndale, MI', project_type: 'Basement finish', message: 'Signed and scheduled — converted to job J-1007.', status: 'won', source: 'referral', createdDaysAgo: 35, convertedJob: 'job-7' },
-  { id: 'lead-8', name: 'Ronald Speer', phone: '(248) 555-0267', email: null, address: '4 Cresswell Ct, Clawson, MI', project_type: 'Fence quote', message: 'Went with a lower-cost provider.', status: 'lost', source: 'manual', createdDaysAgo: 20 },
+  { id: 'lead-1', name: 'Taylor Brooks', phone: '(248) 555-0212', email: 'taylor.brooks@example.com', address: '14 Pinehurst Dr, Royal Oak, MI', project_type: 'Kitchen remodel', message: 'Looking to remodel our kitchen this spring, ballpark budget $40-50k.', status: 'new', source: 'website_form', createdHoursAgo: 2 },
+  { id: 'lead-2', name: 'Priya Shah', phone: '(248) 555-0223', email: 'priya.shah@example.com', address: '6 Willowbrook Ln, Ferndale, MI', project_type: 'Deck build', message: 'Want a composite deck, roughly 300 sq ft.', status: 'new', source: 'website_form', createdHoursAgo: 7 },
+  { id: 'lead-3', name: 'Andre Coleman', phone: '(248) 555-0234', email: null, address: '81 Fairview Ave, Clawson, MI', project_type: 'Roof repair', message: 'Missed call - leak near chimney flashing.', status: 'contacted', source: 'missed_call', createdDaysAgo: 5, respondedHoursAfter: 3 },
+  { id: 'lead-4', name: 'Megan Ostrowski', phone: '(248) 555-0245', email: 'megan.o@example.com', address: '33 Hartford Rd, Berkley, MI', project_type: 'Bathroom addition', message: 'Referred by a past client, wants a similar bath addition.', status: 'contacted', source: 'referral', createdDaysAgo: 6, respondedHoursAfter: 5 },
+  { id: 'lead-5', name: 'Chris Bellamy', phone: '(248) 555-0256', email: 'chris.bellamy@example.com', address: '58 Northgate Dr, Troy, MI', project_type: 'Home addition', message: 'Sent a quote for a 400 sq ft rear addition.', status: 'quoted', source: 'website_form', createdDaysAgo: 12, respondedHoursAfter: 8 },
+  { id: 'lead-6', name: 'Karen Whitfield', phone: '(248) 555-0110', email: 'karen.whitfield@example.com', address: '1418 Maplewood Ave, Royal Oak, MI', project_type: 'Roof replacement', message: 'Signed and scheduled - converted to job J-1001.', status: 'won', source: 'website_form', createdDaysAgo: 112, respondedHoursAfter: 6, convertedJob: 'job-1' },
+  { id: 'lead-7', name: 'Grace Foster', phone: '(248) 555-0176', email: 'grace.foster@example.com', address: '65 Windemere Ave, Ferndale, MI', project_type: 'Basement finish', message: 'Signed and scheduled - converted to job J-1007.', status: 'won', source: 'referral', createdDaysAgo: 35, respondedHoursAfter: 4, convertedJob: 'job-7' },
+  { id: 'lead-8', name: 'Ronald Speer', phone: '(248) 555-0267', email: null, address: '4 Cresswell Ct, Clawson, MI', project_type: 'Fence quote', message: 'Went with a lower-cost provider.', status: 'lost', source: 'manual', createdDaysAgo: 20, respondedHoursAfter: 12 },
 ];
+
+function leadCreatedAt(seed: LeadSeed): string {
+  return seed.createdHoursAgo === undefined ? daysAgo(seed.createdDaysAgo ?? 0) : hoursAgo(seed.createdHoursAgo);
+}
+
+function leadUpdatedAt(seed: LeadSeed): string {
+  const createdAt = new Date(leadCreatedAt(seed));
+  if (seed.respondedHoursAfter === undefined) return createdAt.toISOString();
+  createdAt.setHours(createdAt.getHours() + seed.respondedHoursAfter);
+  return createdAt.toISOString();
+}
 
 export const DEMO_LEADS: Lead[] = LEAD_SEEDS.map((seed) => ({
   id: seed.id,
@@ -175,6 +194,6 @@ export const DEMO_LEADS: Lead[] = LEAD_SEEDS.map((seed) => ({
   photo_paths: [],
   source_page: seed.source === 'website_form' ? '/' : null,
   converted_job: seed.convertedJob ?? null,
-  updated_at: daysAgo(seed.createdDaysAgo),
-  created_at: daysAgo(seed.createdDaysAgo),
+  updated_at: leadUpdatedAt(seed),
+  created_at: leadCreatedAt(seed),
 }));

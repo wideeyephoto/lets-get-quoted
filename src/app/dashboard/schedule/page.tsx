@@ -6,7 +6,7 @@ import { scheduleJobAction } from '../jobs/actions';
 import ScheduleCalendar from './schedule-calendar';
 
 const STATUS_LABEL: Record<Job['status'], string> = {
-  new_lead: 'New lead',
+  new_lead: 'New request',
   in_progress: 'In progress',
   complete: 'Complete',
   archived: 'Archived',

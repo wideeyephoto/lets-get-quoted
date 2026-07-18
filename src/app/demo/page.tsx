@@ -21,7 +21,7 @@ function extractCity(address: string | null): string {
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  new_lead: 'New lead',
+  new_lead: 'New request',
   in_progress: 'In progress',
   complete: 'Complete',
   archived: 'Archived',
