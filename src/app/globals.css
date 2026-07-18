@@ -1361,11 +1361,21 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   grid-template-columns: 1fr;
 }
 
+.workspace-metric-grid.condensed {
+  gap: 0.65rem;
+  align-self: center;
+}
+
 .workspace-metric-card {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 22px;
   padding: 1rem 1.05rem;
   background: rgba(255, 255, 255, 0.03);
+}
+
+.workspace-metric-grid.condensed .workspace-metric-card {
+  border-radius: 16px;
+  padding: 0.75rem 0.85rem;
 }
 
 .workspace-metric-card.accent {
@@ -1389,9 +1399,19 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   font-size: clamp(1.5rem, 3vw, 2.2rem);
 }
 
+.workspace-metric-grid.condensed .workspace-metric-value {
+  margin-top: 0.25rem;
+  font-size: clamp(1.25rem, 2.3vw, 1.75rem);
+}
+
 .workspace-metric-note {
   margin: 0.45rem 0 0;
   font-size: 0.9rem;
+}
+
+.workspace-metric-grid.condensed .workspace-metric-note {
+  margin-top: 0.25rem;
+  font-size: 0.78rem;
 }
 
 .workspace-grid {

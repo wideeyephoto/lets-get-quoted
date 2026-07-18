@@ -177,26 +177,16 @@ export default async function JobDetailPage({
           </div>
         </div>
 
-        <div className="workspace-metric-grid compact">
+        <div className="workspace-metric-grid compact condensed">
           <article className="workspace-metric-card accent">
             <span className="workspace-metric-label">Quoted amount</span>
             <strong className="workspace-metric-value">{formatMoney(job.quoted_amount)}</strong>
             <p className="workspace-metric-note">Current revenue basis used for live margin tracking.</p>
           </article>
           <article className="workspace-metric-card">
-            <span className="workspace-metric-label">Margin</span>
-            <strong className="workspace-metric-value">{formatPercent(margin.margin)}</strong>
-            <p className="workspace-metric-note">Profit currently at {formatMoney(margin.profit)}.</p>
-          </article>
-          <article className="workspace-metric-card">
             <span className="workspace-metric-label">Estimated hours</span>
             <strong className="workspace-metric-value">{job.estimated_hours ? `${job.estimated_hours} hrs` : 'Not set'}</strong>
             <p className="workspace-metric-note">Used to spread this job across the schedule.</p>
-          </article>
-          <article className="workspace-metric-card">
-            <span className="workspace-metric-label">Payments / invoices</span>
-            <strong className="workspace-metric-value">{payments.length} / {invoices.length}</strong>
-            <p className="workspace-metric-note">Requests and invoices tied to this job.</p>
           </article>
         </div>
       </section>
