@@ -314,6 +314,16 @@ export default async function JobDetailPage({
               </strong>{' '}
               estimated hours
             </span>
+            {job.scheduled_for ? (
+              <span>
+                <strong>
+                  <Link href={`/dashboard/jobs/${job.id}?edit=client#job-details`}>
+                    {formatJobSchedule(job.scheduled_for, job.scheduled_time)}
+                  </Link>
+                </strong>{' '}
+                Date(s) of Service
+              </span>
+            ) : null}
           </div>
           <div className="actions workspace-actions">
             <Link href={`/dashboard/jobs/${job.id}?open=payment#request-payment`} className="btn primary">Request payment</Link>
