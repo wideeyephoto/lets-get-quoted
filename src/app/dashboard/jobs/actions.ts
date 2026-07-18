@@ -74,8 +74,10 @@ export async function createJobAction(formData: FormData) {
     sourceId: job.id,
   });
 
+  const token = await createClientJobAccessToken(supabase, accountId, job.id, { clientPhone: job.client_phone, clientEmail: job.client_email });
+
   revalidatePath('/dashboard/jobs');
-  redirect(`/dashboard/jobs/${job.id}`);
+  redirect(`/dashboard/jobs/${job.id}?tab=feed&clientToken=${token}`);
 }
 
 export async function updateJobAction(jobId: string, formData: FormData) {

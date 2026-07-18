@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
+import { createClientJobAccessToken, createJobFeedEvent } from '@/lib/job-feed';
+import { formatJobQuoteSummary } from '@/lib/jobs';
 import { convertLeadToJob, createLead, updateLeadStatus, type LeadStatus } from '@/lib/leads';
 import { uploadLeadPhoto } from '@/lib/lead-photo-storage';
 
@@ -59,7 +61,16 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
   const estimatedHours = optionalAmount(formData.get('estimatedHours'));
   const { supabase, accountId } = await requireOwnerContext();
   const job = await convertLeadToJob(supabase, accountId, leadId, quotedAmount, estimatedHours);
+  await createJobFeedEvent(supabase, accountId, job.id, {
+    kind: 'job_created',
+    title: `${job.ref} created`,
+    body: formatJobQuoteSummary(job),
+    visibility: 'client',
+    sourceTable: 'jobs',
+    sourceId: job.id,
+  });
+  const token = await createClientJobAccessToken(supabase, accountId, job.id, { clientPhone: job.client_phone, clientEmail: job.client_email });
   revalidatePath('/dashboard/leads');
   revalidatePath('/dashboard/jobs');
-  redirect(`/dashboard/jobs/${job.id}`);
+  redirect(`/dashboard/jobs/${job.id}?tab=feed&clientToken=${token}`);
 }

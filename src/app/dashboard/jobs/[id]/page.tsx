@@ -110,8 +110,8 @@ function formatFeedTime(value: string): string {
   return new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-function getFeedDisplayTitle(event: JobFeedEvent, jobRef: string): string {
-  if (event.kind === 'job_created') return `${jobRef} created`;
+function getFeedDisplayTitle(event: JobFeedEvent): string {
+  if (event.kind === 'job_created') return 'Quote shared';
   if (event.kind === 'client_link_created') return 'Client view link created';
   if (event.kind === 'client_link_revoked') return 'Client view links revoked';
   return event.title || event.kind;
@@ -227,6 +227,8 @@ export default async function JobDetailPage({
   const boundMarkPaymentFailed = markPaymentFailedAction.bind(null, job.id);
   const boundRetryPaymentText = retryPaymentTextAction.bind(null, job.id);
   const linkedFeedItems = createLinkedFeedItems(feed, payments, invoices, accountId, job.id);
+  const hasActiveClientView = activeClientLinkCount > 0 || Boolean(searchParams.clientToken);
+  const clientViewHref = searchParams.clientToken ? `/client/jobs/${searchParams.clientToken}` : null;
   const pipelineChecklist = buildPipelineChecklist(job, payments, invoices, activeClientLinkCount);
   const nextPipelineIndex = pipelineChecklist.findIndex((item) => !item.complete);
   const currentPipelineIndex = nextPipelineIndex === -1 ? pipelineChecklist.length - 1 : nextPipelineIndex;
@@ -319,21 +321,27 @@ export default async function JobDetailPage({
             </div>
             <div className="job-feed-share-strip">
               <div>
-                <strong>Client view</strong>
-                <p>Visible updates, payment links, invoices, and job status live in one shareable feed.</p>
-                {searchParams.clientToken ? (
-                  <a href={`/client/jobs/${searchParams.clientToken}`} target="_blank" rel="noreferrer">/client/jobs/{searchParams.clientToken}</a>
+                <strong>{hasActiveClientView ? 'Client view shared' : 'Client view not shared'}</strong>
+                <p>{hasActiveClientView ? 'The quote, payment links, invoices, and job updates live in one client feed.' : 'Create a client view link before sending job updates or payment links.'}</p>
+                {clientViewHref ? (
+                  <a href={clientViewHref} target="_blank" rel="noreferrer">{clientViewHref}</a>
+                ) : hasActiveClientView ? (
+                  <span>Shared when the quote was sent</span>
                 ) : (
-                  <span>Active links: {activeClientLinkCount}</span>
+                  <span>No active client view link</span>
                 )}
               </div>
               <div className="job-feed-share-actions">
-                <form action={boundCreateClientJobLink}>
-                  <SaveButton pendingLabel="Creating…" savedLabel="Created ✓">Create client view link</SaveButton>
-                </form>
-                <form action={boundRevokeClientJobLink}>
-                  <SaveButton className="btn secondary" pendingLabel="Revoking…" savedLabel="Revoked ✓">Revoke links</SaveButton>
-                </form>
+                {!hasActiveClientView ? (
+                  <form action={boundCreateClientJobLink}>
+                    <SaveButton pendingLabel="Creating…" savedLabel="Created ✓">Create client view link</SaveButton>
+                  </form>
+                ) : null}
+                {hasActiveClientView ? (
+                  <form action={boundRevokeClientJobLink}>
+                    <SaveButton className="btn secondary" pendingLabel="Revoking…" savedLabel="Revoked ✓">Revoke links</SaveButton>
+                  </form>
+                ) : null}
               </div>
             </div>
             {displayedFeed.length === 0 ? (
@@ -345,7 +353,7 @@ export default async function JobDetailPage({
                     <div className="job-feed-dot">{FEED_KIND_ICON[event.kind] ?? '•'}</div>
                     <div className="job-feed-content">
                       <div className="job-row-header">
-                        <span className="cost-item-desc">{getFeedDisplayTitle(event, job.ref)}</span>
+                        <span className="cost-item-desc">{getFeedDisplayTitle(event)}</span>
                         <div className="feed-badge-row">
                           <span className="status-badge status-new_lead">{FEED_KIND_LABEL[event.kind] ?? 'Update'}</span>
                           <span className={`status-badge ${event.visibility === 'internal' ? 'status-archived' : 'status-complete'}`}>

@@ -218,6 +218,7 @@ export async function convertLeadToJob(
   const job = await createJob(supabase, accountId, {
     clientName: lead.name || 'Website lead',
     clientPhone: lead.phone,
+    clientEmail: lead.email,
     address: lead.address,
     scope: scope || null,
     status: 'new_lead',
