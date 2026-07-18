@@ -197,12 +197,17 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             <nav className="topnav" aria-label="Primary">
               {navItems.map((item) => {
                 const active = item.href === '/' ? pathname === item.href : pathname.startsWith(item.href);
+                const flowClass = item.href === '/dashboard/leads'
+                  ? ' flow-link flow-start'
+                  : item.href === '/dashboard/jobs'
+                    ? ' flow-link flow-end'
+                    : '';
 
                 return (
                   <Fragment key={item.href}>
                     <Link
                       href={item.href}
-                      className={`topnav-link${active ? ' active' : ''}`}
+                      className={`topnav-link${active ? ' active' : ''}${flowClass}`}
                     >
                       {item.label}
                       {item.href === '/dashboard/leads' && newQuoteRequestCount > 0 ? <span className="topnav-count">{newQuoteRequestCount}</span> : null}
