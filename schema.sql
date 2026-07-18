@@ -80,10 +80,14 @@ create table if not exists accounts (
 
   -- integrations
   quickbooks_realm_id   text,
-  quickbooks_connected  boolean not null default false
+  quickbooks_connected  boolean not null default false,
+
+  -- Scheduling preference: how many estimated job hours fill one calendar day.
+  schedule_day_hours    numeric(5,2) not null default 8
 );
 
 alter table accounts add column if not exists account_number bigint generated always as identity (start with 100001);
+alter table accounts add column if not exists schedule_day_hours numeric(5,2) not null default 8;
 
 -- ----------------------------------------------------------------------------
 -- MEMBERSHIPS  — links a person (auth.users) to an account with a role.
@@ -171,6 +175,7 @@ create table if not exists jobs (
   lead_source   lead_source,
   scheduled_for date,
   scheduled_time time,
+  estimated_hours numeric(8,2),
 
   -- Manual revenue basis for the Costs & Margin panel until invoicing (step 5)
   -- provides a real signed/paid amount. Mirrors the prototype's "signed quote".
@@ -188,6 +193,7 @@ create table if not exists jobs (
 alter table jobs add column if not exists quoted_amount numeric(12,2) not null default 0;
 alter table jobs add column if not exists photo_paths jsonb not null default '[]'::jsonb;
 alter table jobs add column if not exists scheduled_time time;
+alter table jobs add column if not exists estimated_hours numeric(8,2);
 
 -- ----------------------------------------------------------------------------
 -- CREW_ASSIGNMENTS  — many-to-many jobs <-> crew.

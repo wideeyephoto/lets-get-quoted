@@ -14,6 +14,7 @@ export type Job = {
   status: JobStatus;
   scheduled_for: string | null;
   scheduled_time: string | null;
+  estimated_hours: number | null;
   quoted_amount: number;
   photo_paths: string[];
   created_at: string;
@@ -61,6 +62,7 @@ export type JobInput = {
   status?: JobStatus;
   scheduledFor?: string | null;
   scheduledTime?: string | null;
+  estimatedHours?: number | null;
   quotedAmount?: number;
   photoPaths?: string[];
 };
@@ -145,6 +147,49 @@ export function formatJobSchedule(scheduledFor: string | null, scheduledTime?: s
   return timeLabel ? `${dateLabel} at ${timeLabel}` : dateLabel;
 }
 
+export function getJobScheduleSpanDays(
+  job: Pick<Job, 'status' | 'estimated_hours'>,
+  workDayHours: number
+): number {
+  if (job.status === 'complete' || job.status === 'archived') return 1;
+  const dayHours = Number.isFinite(workDayHours) && workDayHours > 0 ? workDayHours : 8;
+  const estimatedHours = Number(job.estimated_hours) || 0;
+  return Math.max(1, Math.ceil(estimatedHours / dayHours));
+}
+
+export function addDaysToDateKey(dateKey: string, days: number): string {
+  const date = new Date(`${dateKey}T00:00:00`);
+  date.setDate(date.getDate() + days);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+export type ScheduledJobOccurrence<T extends Pick<Job, 'scheduled_for' | 'status' | 'estimated_hours'>> = Omit<
+  T,
+  'scheduled_for'
+> & {
+  scheduled_for: string;
+};
+
+export function expandScheduledJobs<T extends Pick<Job, 'scheduled_for' | 'status' | 'estimated_hours'>>(
+  jobs: T[],
+  workDayHours: number
+): ScheduledJobOccurrence<T>[] {
+  const occurrences: ScheduledJobOccurrence<T>[] = [];
+
+  for (const job of jobs) {
+    if (!job.scheduled_for) continue;
+    const spanDays = getJobScheduleSpanDays(job, workDayHours);
+    for (let dayOffset = 0; dayOffset < spanDays; dayOffset++) {
+      occurrences.push({
+        ...job,
+        scheduled_for: addDaysToDateKey(job.scheduled_for, dayOffset),
+      } as ScheduledJobOccurrence<T>);
+    }
+  }
+
+  return occurrences;
+}
+
 // -- Job ref generation ---------------------------------------------------
 async function generateJobRef(supabase: SupabaseClient, accountId: string): Promise<string> {
   const { data } = await supabase
@@ -216,6 +261,7 @@ export async function createJob(supabase: SupabaseClient, accountId: string, inp
       status: input.status ?? 'new_lead',
       scheduled_for: input.scheduledFor ?? null,
       scheduled_time: input.scheduledTime ?? null,
+      estimated_hours: input.estimatedHours ?? null,
       quoted_amount: input.quotedAmount ?? 0,
       photo_paths: input.photoPaths ?? [],
     })
@@ -245,6 +291,7 @@ export async function updateJob(
       status: input.status ?? 'new_lead',
       scheduled_for: input.scheduledFor ?? null,
       scheduled_time: input.scheduledTime ?? null,
+      estimated_hours: input.estimatedHours ?? null,
       quoted_amount: input.quotedAmount ?? 0,
     })
     .eq('account_id', accountId)

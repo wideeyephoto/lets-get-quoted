@@ -23,6 +23,13 @@ function parseAmount(value: FormDataEntryValue | null): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function optionalAmount(value: FormDataEntryValue | null): number | null {
+  const text = (value ?? '').toString().trim();
+  if (!text) return null;
+  const n = Number(text);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 function optionalText(value: FormDataEntryValue | null): string | null {
   const text = (value ?? '').toString().trim();
   return text.length > 0 ? text : null;
@@ -45,6 +52,7 @@ export async function createJobAction(formData: FormData) {
     status: (formData.get('status') as JobStatus) || 'new_lead',
     scheduledFor: optionalText(formData.get('scheduledFor')),
     scheduledTime: optionalText(formData.get('scheduledTime')),
+    estimatedHours: optionalAmount(formData.get('estimatedHours')),
     quotedAmount: parseAmount(formData.get('quotedAmount')),
     photoPaths,
   });
@@ -64,6 +72,7 @@ export async function updateJobAction(jobId: string, formData: FormData) {
     status: (formData.get('status') as JobStatus) || 'new_lead',
     scheduledFor: optionalText(formData.get('scheduledFor')),
     scheduledTime: optionalText(formData.get('scheduledTime')),
+    estimatedHours: optionalAmount(formData.get('estimatedHours')),
     quotedAmount: parseAmount(formData.get('quotedAmount')),
   });
 

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import DemoNav from '@/components/demo-nav';
-import type { Job } from '@/lib/jobs';
+import { expandScheduledJobs, type Job } from '@/lib/jobs';
 import { DEMO_CREW, DEMO_JOBS } from '@/lib/demo-data';
 import DemoScheduleCalendar from './demo-schedule-calendar';
 
@@ -27,6 +27,7 @@ export default function DemoSchedulePage({ searchParams }: { searchParams: { mon
   const jobs = DEMO_JOBS;
   const activeJobs = jobs.filter((job) => job.status !== 'archived');
   const scheduledJobs = activeJobs.filter((job) => job.scheduled_for);
+  const scheduledJobOccurrences = expandScheduledJobs(scheduledJobs, 8);
   const unscheduledJobs = activeJobs.filter((job) => !job.scheduled_for);
 
   const crewOptions = DEMO_CREW.filter((member) => member.active).map((member) => ({
@@ -67,11 +68,12 @@ export default function DemoSchedulePage({ searchParams }: { searchParams: { mon
     return dateKey >= todayKey && dateKey <= next30Key;
   }).length;
 
-  const calendarJobs = scheduledJobs.map((job: Job) => ({
+  const calendarJobs = scheduledJobOccurrences.map((job: Job & { scheduled_for: string }) => ({
     id: job.id,
+    occurrence_key: `${job.id}:${job.scheduled_for}`,
     client_name: job.client_name,
     status: job.status,
-    scheduled_for: job.scheduled_for as string,
+    scheduled_for: job.scheduled_for,
     scheduled_time: job.scheduled_time,
   }));
 

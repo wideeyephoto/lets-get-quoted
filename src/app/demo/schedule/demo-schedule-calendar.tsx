@@ -10,6 +10,7 @@ export type CalendarCell = { day: number; dateKey: string } | null;
 
 export type CalendarJob = {
   id: string;
+  occurrence_key: string;
   client_name: string;
   status: string;
   scheduled_for: string;
@@ -48,7 +49,7 @@ export default function DemoScheduleCalendar({
   assignmentsByJob: Record<string, string[]>;
 }) {
   const [assignments, setAssignments] = useState(assignmentsByJob);
-  const [openJobId, setOpenJobId] = useState<string | null>(null);
+  const [openOccurrenceKey, setOpenOccurrenceKey] = useState<string | null>(null);
 
   const jobsByDate = useMemo(() => {
     const map = new Map<string, CalendarJob[]>();
@@ -60,7 +61,7 @@ export default function DemoScheduleCalendar({
     return map;
   }, [jobs]);
 
-  const openJob = openJobId ? jobs.find((job) => job.id === openJobId) ?? null : null;
+  const openJob = openOccurrenceKey ? jobs.find((job) => job.occurrence_key === openOccurrenceKey) ?? null : null;
 
   function handleToggle(jobId: string, crewId: string) {
     setAssignments((prev) => {
@@ -96,7 +97,7 @@ export default function DemoScheduleCalendar({
                       .map((id) => crew.find((member) => member.id === id))
                       .filter((member): member is CrewOption => Boolean(member));
                     return (
-                      <div className="calendar-job-item" key={job.id}>
+                      <div className="calendar-job-item" key={job.occurrence_key}>
                         <Link
                           href={`/demo/jobs/${job.id}`}
                           className={`calendar-job-chip status-${job.status}`}
@@ -107,7 +108,7 @@ export default function DemoScheduleCalendar({
                         <button
                           type="button"
                           className={`calendar-crew-toggle${assignedMembers.length > 0 ? ' has-crew' : ''}`}
-                          onClick={() => setOpenJobId(job.id)}
+                          onClick={() => setOpenOccurrenceKey(job.occurrence_key)}
                           title={
                             assignedMembers.length > 0
                               ? `Assigned: ${assignedMembers.map((member) => member.name).join(', ')}`
@@ -129,14 +130,14 @@ export default function DemoScheduleCalendar({
       </div>
 
       {openJob ? (
-        <div className="crew-assign-backdrop" onClick={() => setOpenJobId(null)}>
+        <div className="crew-assign-backdrop" onClick={() => setOpenOccurrenceKey(null)}>
           <div className="crew-assign-panel" onClick={(event) => event.stopPropagation()}>
             <div className="crew-assign-header">
               <div>
                 <p className="crew-assign-title">{openJob.client_name}</p>
                 <p className="crew-assign-sub">{formatJobSchedule(openJob.scheduled_for, openJob.scheduled_time)}</p>
               </div>
-              <button type="button" className="crew-assign-close" onClick={() => setOpenJobId(null)} aria-label="Close">
+              <button type="button" className="crew-assign-close" onClick={() => setOpenOccurrenceKey(null)} aria-label="Close">
                 ×
               </button>
             </div>

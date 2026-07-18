@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import DemoNav from '@/components/demo-nav';
 import { getTierInfo } from '@/lib/stripe';
-import { formatJobTime, formatMoney, JOB_STATUS_ORDER } from '@/lib/jobs';
+import { expandScheduledJobs, formatJobTime, formatMoney, JOB_STATUS_ORDER } from '@/lib/jobs';
 import { DEMO_COMPANY_NAME, DEMO_CREW, DEMO_JOBS, DEMO_TRAILING_VOLUME } from '@/lib/demo-data';
 
 export const dynamic = 'force-dynamic';
@@ -48,13 +48,14 @@ export default function DemoDashboardPage() {
   const progressPercent = Math.round((tierInfo.progressToNext ?? 0) * 100);
 
   const scheduledJobs = DEMO_JOBS.filter((job) => job.status !== 'archived' && job.scheduled_for);
+  const scheduledJobOccurrences = expandScheduledJobs(scheduledJobs, 8);
   const demoCrew = DEMO_CREW.filter((member) => member.active);
   const assignmentsByJob: Record<string, string[]> = Object.fromEntries(
     scheduledJobs.map((job) => [job.id, [DEMO_CREW[0].id, DEMO_CREW[3].id]])
   );
-  const jobsByDate = new Map<string, typeof DEMO_JOBS>();
-  for (const job of scheduledJobs) {
-    const key = job.scheduled_for as string;
+  const jobsByDate = new Map<string, typeof scheduledJobOccurrences>();
+  for (const job of scheduledJobOccurrences) {
+    const key = job.scheduled_for;
     const bucket = jobsByDate.get(key) ?? [];
     bucket.push(job);
     jobsByDate.set(key, bucket);
@@ -133,7 +134,7 @@ export default function DemoDashboardPage() {
                         .map((id) => demoCrew.find((member) => member.id === id))
                         .filter((member): member is NonNullable<typeof member> => Boolean(member));
                       return (
-                        <Link key={job.id} href={`/demo/jobs/${job.id}`} className="week-glance-job">
+                        <Link key={`${job.id}:${job.scheduled_for}`} href={`/demo/jobs/${job.id}`} className="week-glance-job">
                           <span className="week-glance-job-top">
                             <strong>{job.client_name}</strong>
                             {assignedMembers.length > 0 ? (

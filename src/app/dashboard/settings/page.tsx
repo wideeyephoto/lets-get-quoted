@@ -3,6 +3,8 @@ import { connectStripeAction, disconnectStripeAction } from '../stripe-actions';
 import SignInMethods from './SignInMethods';
 import FinanceReports from './FinanceReports';
 import { getAvailableTaxYears, buildProfitAndLoss, buildScheduleCWorksheet, build1099PrepList } from '@/lib/tax-reports';
+import SaveButton from '@/components/save-button';
+import { updateScheduleDayHoursAction } from './actions';
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -19,7 +21,7 @@ export default async function SettingsPage({
     await Promise.all([
       supabase.auth.getUser(),
       supabase.auth.getUserIdentities(),
-      supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded').eq('id', accountId).single(),
+      supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded, schedule_day_hours').eq('id', accountId).single(),
       supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
       getAvailableTaxYears(supabase, accountId),
       supabase
@@ -74,6 +76,34 @@ export default async function SettingsPage({
           disconnectStripeAction={disconnectStripeAction}
           pendingPaymentsCount={pendingPaymentsCount ?? 0}
         />
+      </section>
+
+      <section className="panel workspace-section-card">
+        <div className="section-heading workspace-section-heading compact-heading">
+          <p className="eyebrow">Scheduling</p>
+          <h2>Workday length</h2>
+        </div>
+        <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+          Estimated job hours are spread across the calendar using this daily capacity. A 10-hour job stays on one day when this is set to 10.
+        </p>
+        <form action={updateScheduleDayHoursAction} className="form-grid compact-form">
+          <div className="field">
+            <label htmlFor="scheduleDayHours">Hours in a workday</label>
+            <input
+              id="scheduleDayHours"
+              name="scheduleDayHours"
+              type="number"
+              min="1"
+              max="24"
+              step="0.25"
+              defaultValue={account?.schedule_day_hours ?? 8}
+              required
+            />
+          </div>
+          <div className="form-actions">
+            <SaveButton>Save schedule settings</SaveButton>
+          </div>
+        </form>
       </section>
 
       <section className="panel workspace-section-card" id="finances">

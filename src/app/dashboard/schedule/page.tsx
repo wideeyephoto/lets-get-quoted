@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
-import { listJobs, type Job } from '@/lib/jobs';
+import { expandScheduledJobs, listJobs, type Job } from '@/lib/jobs';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { scheduleJobAction } from '../jobs/actions';
 import ScheduleCalendar from './schedule-calendar';
@@ -35,10 +35,15 @@ export default async function SchedulePage({
   searchParams: { month?: string };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
-  const jobs = await listJobs(supabase, accountId);
+  const [{ data: account }, jobs] = await Promise.all([
+    supabase.from('accounts').select('schedule_day_hours').eq('id', accountId).single(),
+    listJobs(supabase, accountId),
+  ]);
+  const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
 
   const activeJobs = jobs.filter((job) => job.status !== 'archived');
   const scheduledJobs = activeJobs.filter((job) => job.scheduled_for);
+  const scheduledJobOccurrences = expandScheduledJobs(scheduledJobs, scheduleDayHours);
   const unscheduledJobs = activeJobs.filter((job) => !job.scheduled_for);
 
   const crew = await listCrew(supabase, accountId, { activeOnly: true });
@@ -74,11 +79,12 @@ export default async function SchedulePage({
     return dateKey >= todayKey && dateKey <= next30Key;
   }).length;
 
-  const calendarJobs = scheduledJobs.map((job) => ({
+  const calendarJobs = scheduledJobOccurrences.map((job) => ({
     id: job.id,
+    occurrence_key: `${job.id}:${job.scheduled_for}`,
     client_name: job.client_name,
     status: job.status,
-    scheduled_for: job.scheduled_for as string,
+    scheduled_for: job.scheduled_for,
     scheduled_time: job.scheduled_time,
   }));
 

@@ -49,6 +49,7 @@ type JobSeed = {
   scope: string;
   status: JobStatus;
   quoted_amount: number;
+  estimated_hours: number | null;
   scheduledOffset: number | null; // days from today; null = unscheduled
   scheduledTime?: string | null;
   createdDaysAgo: number;
@@ -56,19 +57,19 @@ type JobSeed = {
 };
 
 const JOB_SEEDS: JobSeed[] = [
-  { id: 'job-1', ref: 'J-1001', client_name: 'Karen Whitfield', client_phone: '(248) 555-0110', address: '1418 Maplewood Ave, Royal Oak, MI', scope: 'Full roof tear-off & re-shingle, gutter replacement.', status: 'complete', quoted_amount: 38500, scheduledOffset: -95, scheduledTime: '08:30', createdDaysAgo: 112, hasCosts: true },
-  { id: 'job-2', ref: 'J-1002', client_name: 'Marcus Delgado', client_phone: '(248) 555-0121', address: '922 Birchcrest Dr, Ferndale, MI', scope: 'Full kitchen remodel — cabinets, counters, island, flooring.', status: 'complete', quoted_amount: 52000, scheduledOffset: -80, scheduledTime: '09:00', createdDaysAgo: 96, hasCosts: true },
-  { id: 'job-3', ref: 'J-1003', client_name: 'Isabel Reyes', client_phone: '(248) 555-0132', address: '77 Lakeview Ct, Berkley, MI', scope: 'New primary bath addition with walk-in shower.', status: 'complete', quoted_amount: 29800, scheduledOffset: -65, scheduledTime: '10:30', createdDaysAgo: 82, hasCosts: true },
-  { id: 'job-4', ref: 'J-1004', client_name: 'Tom Carmichael', client_phone: '(248) 555-0143', address: '350 Elmwood St, Clawson, MI', scope: 'Tear-off and architectural shingle replacement.', status: 'complete', quoted_amount: 24200, scheduledOffset: -50, scheduledTime: '08:00', createdDaysAgo: 66, hasCosts: true },
-  { id: 'job-5', ref: 'J-1005', client_name: 'Yuki Nakamura', client_phone: '(248) 555-0154', address: '48 Hollow Rd, Troy, MI', scope: 'Two-story rear addition — family room and bedroom above.', status: 'complete', quoted_amount: 61500, scheduledOffset: -40, scheduledTime: '13:00', createdDaysAgo: 58, hasCosts: true },
-  { id: 'job-6', ref: 'J-1006', client_name: "Brian O'Malley", client_phone: '(248) 555-0165', address: '210 Sunridge Ln, Royal Oak, MI', scope: 'Composite deck build with paver patio and pergola.', status: 'complete', quoted_amount: 18900, scheduledOffset: -30, scheduledTime: '11:00', createdDaysAgo: 44, hasCosts: true },
-  { id: 'job-7', ref: 'J-1007', client_name: 'Grace Foster', client_phone: '(248) 555-0176', address: '65 Windemere Ave, Ferndale, MI', scope: 'Full basement finish with wet bar and home theater.', status: 'complete', quoted_amount: 44300, scheduledOffset: -20, scheduledTime: '09:30', createdDaysAgo: 33, hasCosts: true },
-  { id: 'job-8', ref: 'J-1008', client_name: 'Paul Grant', client_phone: '(248) 555-0187', address: '19 Featherstone Rd, Troy, MI', scope: 'Full exterior siding replacement with new trim.', status: 'complete', quoted_amount: 33700, scheduledOffset: -10, scheduledTime: '14:00', createdDaysAgo: 24, hasCosts: true },
-  { id: 'job-9', ref: 'J-1009', client_name: 'Renee Patterson', client_phone: '(248) 555-0198', address: '5 Rosewood Ct, Berkley, MI', scope: 'Kitchen refresh plus guest bath remodel.', status: 'in_progress', quoted_amount: 46800, scheduledOffset: 0, scheduledTime: '08:00', createdDaysAgo: 14, hasCosts: true },
-  { id: 'job-10', ref: 'J-1010', client_name: 'Diego Alvarez', client_phone: '(248) 555-0109', address: '88 Cloverdale Dr, Clawson, MI', scope: 'Ground-up two-car garage with bonus room above.', status: 'in_progress', quoted_amount: 58200, scheduledOffset: 3, scheduledTime: '10:00', createdDaysAgo: 10, hasCosts: true },
-  { id: 'job-11', ref: 'J-1011', client_name: 'Holly Sutton', client_phone: '(248) 555-0120', address: '140 Brookfield Ave, Royal Oak, MI', scope: 'Roof replacement and seamless gutter install.', status: 'in_progress', quoted_amount: 22400, scheduledOffset: 6, scheduledTime: '07:30', createdDaysAgo: 7, hasCosts: true },
-  { id: 'job-12', ref: 'J-1012', client_name: 'Owen Bishop', client_phone: '(248) 555-0131', address: '27 Ashgrove Ln, Ferndale, MI', scope: 'Three-season sunroom addition off the back of the house.', status: 'new_lead', quoted_amount: 19500, scheduledOffset: null, createdDaysAgo: 3, hasCosts: false },
-  { id: 'job-13', ref: 'J-1013', client_name: 'Nina Harmon', client_phone: '(248) 555-0142', address: '9 Timberline Dr, Troy, MI', scope: 'Cedar privacy fence and front walkway hardscape.', status: 'new_lead', quoted_amount: 12800, scheduledOffset: null, createdDaysAgo: 1, hasCosts: false },
+  { id: 'job-1', ref: 'J-1001', client_name: 'Karen Whitfield', client_phone: '(248) 555-0110', address: '1418 Maplewood Ave, Royal Oak, MI', scope: 'Full roof tear-off & re-shingle, gutter replacement.', status: 'complete', quoted_amount: 38500, estimated_hours: 40, scheduledOffset: -95, scheduledTime: '08:30', createdDaysAgo: 112, hasCosts: true },
+  { id: 'job-2', ref: 'J-1002', client_name: 'Marcus Delgado', client_phone: '(248) 555-0121', address: '922 Birchcrest Dr, Ferndale, MI', scope: 'Full kitchen remodel — cabinets, counters, island, flooring.', status: 'complete', quoted_amount: 52000, estimated_hours: 96, scheduledOffset: -80, scheduledTime: '09:00', createdDaysAgo: 96, hasCosts: true },
+  { id: 'job-3', ref: 'J-1003', client_name: 'Isabel Reyes', client_phone: '(248) 555-0132', address: '77 Lakeview Ct, Berkley, MI', scope: 'New primary bath addition with walk-in shower.', status: 'complete', quoted_amount: 29800, estimated_hours: 48, scheduledOffset: -65, scheduledTime: '10:30', createdDaysAgo: 82, hasCosts: true },
+  { id: 'job-4', ref: 'J-1004', client_name: 'Tom Carmichael', client_phone: '(248) 555-0143', address: '350 Elmwood St, Clawson, MI', scope: 'Tear-off and architectural shingle replacement.', status: 'complete', quoted_amount: 24200, estimated_hours: 32, scheduledOffset: -50, scheduledTime: '08:00', createdDaysAgo: 66, hasCosts: true },
+  { id: 'job-5', ref: 'J-1005', client_name: 'Yuki Nakamura', client_phone: '(248) 555-0154', address: '48 Hollow Rd, Troy, MI', scope: 'Two-story rear addition — family room and bedroom above.', status: 'complete', quoted_amount: 61500, estimated_hours: 120, scheduledOffset: -40, scheduledTime: '13:00', createdDaysAgo: 58, hasCosts: true },
+  { id: 'job-6', ref: 'J-1006', client_name: "Brian O'Malley", client_phone: '(248) 555-0165', address: '210 Sunridge Ln, Royal Oak, MI', scope: 'Composite deck build with paver patio and pergola.', status: 'complete', quoted_amount: 18900, estimated_hours: 24, scheduledOffset: -30, scheduledTime: '11:00', createdDaysAgo: 44, hasCosts: true },
+  { id: 'job-7', ref: 'J-1007', client_name: 'Grace Foster', client_phone: '(248) 555-0176', address: '65 Windemere Ave, Ferndale, MI', scope: 'Full basement finish with wet bar and home theater.', status: 'complete', quoted_amount: 44300, estimated_hours: 88, scheduledOffset: -20, scheduledTime: '09:30', createdDaysAgo: 33, hasCosts: true },
+  { id: 'job-8', ref: 'J-1008', client_name: 'Paul Grant', client_phone: '(248) 555-0187', address: '19 Featherstone Rd, Troy, MI', scope: 'Full exterior siding replacement with new trim.', status: 'complete', quoted_amount: 33700, estimated_hours: 56, scheduledOffset: -10, scheduledTime: '14:00', createdDaysAgo: 24, hasCosts: true },
+  { id: 'job-9', ref: 'J-1009', client_name: 'Renee Patterson', client_phone: '(248) 555-0198', address: '5 Rosewood Ct, Berkley, MI', scope: 'Kitchen refresh plus guest bath remodel.', status: 'in_progress', quoted_amount: 46800, estimated_hours: 64, scheduledOffset: 0, scheduledTime: '08:00', createdDaysAgo: 14, hasCosts: true },
+  { id: 'job-10', ref: 'J-1010', client_name: 'Diego Alvarez', client_phone: '(248) 555-0109', address: '88 Cloverdale Dr, Clawson, MI', scope: 'Ground-up two-car garage with bonus room above.', status: 'in_progress', quoted_amount: 58200, estimated_hours: 80, scheduledOffset: 3, scheduledTime: '10:00', createdDaysAgo: 10, hasCosts: true },
+  { id: 'job-11', ref: 'J-1011', client_name: 'Holly Sutton', client_phone: '(248) 555-0120', address: '140 Brookfield Ave, Royal Oak, MI', scope: 'Roof replacement and seamless gutter install.', status: 'in_progress', quoted_amount: 22400, estimated_hours: 16, scheduledOffset: 6, scheduledTime: '07:30', createdDaysAgo: 7, hasCosts: true },
+  { id: 'job-12', ref: 'J-1012', client_name: 'Owen Bishop', client_phone: '(248) 555-0131', address: '27 Ashgrove Ln, Ferndale, MI', scope: 'Three-season sunroom addition off the back of the house.', status: 'new_lead', quoted_amount: 19500, estimated_hours: 40, scheduledOffset: null, createdDaysAgo: 3, hasCosts: false },
+  { id: 'job-13', ref: 'J-1013', client_name: 'Nina Harmon', client_phone: '(248) 555-0142', address: '9 Timberline Dr, Troy, MI', scope: 'Cedar privacy fence and front walkway hardscape.', status: 'new_lead', quoted_amount: 12800, estimated_hours: 24, scheduledOffset: null, createdDaysAgo: 1, hasCosts: false },
 ];
 
 export const DEMO_JOBS: Job[] = JOB_SEEDS.map((seed) => ({
@@ -82,6 +83,7 @@ export const DEMO_JOBS: Job[] = JOB_SEEDS.map((seed) => ({
   status: seed.status,
   scheduled_for: seed.scheduledOffset === null ? null : dateKeyFromNow(seed.scheduledOffset),
   scheduled_time: seed.scheduledOffset === null ? null : seed.scheduledTime ?? null,
+  estimated_hours: seed.estimated_hours,
   quoted_amount: seed.quoted_amount,
   photo_paths: [],
   created_at: daysAgo(seed.createdDaysAgo),

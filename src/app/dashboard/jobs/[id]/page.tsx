@@ -202,6 +202,10 @@ export default async function JobDetailPage({
                 <input id="scheduledTime" name="scheduledTime" type="time" defaultValue={job.scheduled_time?.slice(0, 5) ?? ''} />
               </div>
               <div className="field">
+                <label htmlFor="estimatedHours">Estimated hours</label>
+                <input id="estimatedHours" name="estimatedHours" type="number" min="0" step="0.25" defaultValue={job.estimated_hours ?? ''} />
+              </div>
+              <div className="field">
                 <label htmlFor="quotedAmount">Quoted amount ($)</label>
                 <input
                   id="quotedAmount"

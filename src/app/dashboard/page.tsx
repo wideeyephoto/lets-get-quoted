@@ -3,7 +3,7 @@ import { requireOwnerContext } from '@/lib/auth';
 import { connectStripeAction } from './stripe-actions';
 import { getTrailingVolume } from '@/lib/payments';
 import { getTierInfo } from '@/lib/stripe';
-import { formatJobTime, listJobs, type Job } from '@/lib/jobs';
+import { expandScheduledJobs, formatJobTime, listJobs, type Job } from '@/lib/jobs';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 
 function formatMoney(n: number): string {
@@ -44,13 +44,14 @@ export default async function DashboardPage() {
   const { supabase, accountId } = await requireOwnerContext();
 
   const [{ data: account }, { data: identityData }, { data: site }, jobs] = await Promise.all([
-    supabase.from('accounts').select('connect_onboarded').eq('id', accountId).single(),
+    supabase.from('accounts').select('connect_onboarded, schedule_day_hours').eq('id', accountId).single(),
     supabase.auth.getUserIdentities(),
     supabase.from('sites').select('published, subdomain, custom_domain, custom_domain_verified_at').eq('account_id', accountId).maybeSingle(),
     listJobs(supabase, accountId),
   ]);
 
   const onboarded = account?.connect_onboarded ?? false;
+  const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
   const linkedMethodCount = identityData?.identities?.length ?? 1;
   const sitePublished = site?.published ?? false;
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
@@ -96,13 +97,14 @@ export default async function DashboardPage() {
   const progressPercent = Math.round((tierInfo.progressToNext ?? 0) * 100);
 
   const scheduledJobs = jobs.filter((job) => job.status !== 'archived' && job.scheduled_for);
+  const scheduledJobOccurrences = expandScheduledJobs(scheduledJobs, scheduleDayHours);
   const [crew, assignmentsByJob] = await Promise.all([
     listCrew(supabase, accountId, { activeOnly: true }),
     listCrewAssignmentsForJobs(supabase, accountId, scheduledJobs.map((job) => job.id)),
   ]);
-  const jobsByDate = new Map<string, Job[]>();
-  for (const job of scheduledJobs) {
-    const key = job.scheduled_for as string;
+  const jobsByDate = new Map<string, typeof scheduledJobOccurrences>();
+  for (const job of scheduledJobOccurrences) {
+    const key = job.scheduled_for;
     const bucket = jobsByDate.get(key) ?? [];
     bucket.push(job);
     jobsByDate.set(key, bucket);
@@ -215,7 +217,7 @@ export default async function DashboardPage() {
                       .map((id) => crew.find((member) => member.id === id))
                       .filter((member): member is NonNullable<typeof member> => Boolean(member));
                     return (
-                      <Link key={job.id} href={`/dashboard/jobs/${job.id}`} className="week-glance-job">
+                      <Link key={`${job.id}:${job.scheduled_for}`} href={`/dashboard/jobs/${job.id}`} className="week-glance-job">
                         <span className="week-glance-job-top">
                           <strong>{job.client_name}</strong>
                           {assignedMembers.length > 0 ? (
