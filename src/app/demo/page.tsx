@@ -2,7 +2,7 @@ import Link from 'next/link';
 import DemoNav from '@/components/demo-nav';
 import { getTierInfo } from '@/lib/stripe';
 import { formatJobTime, formatMoney, JOB_STATUS_ORDER } from '@/lib/jobs';
-import { DEMO_COMPANY_NAME, DEMO_JOBS, DEMO_TRAILING_VOLUME } from '@/lib/demo-data';
+import { DEMO_COMPANY_NAME, DEMO_CREW, DEMO_JOBS, DEMO_TRAILING_VOLUME } from '@/lib/demo-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +17,23 @@ function toDateKey(year: number, monthIndex: number, day: number): string {
 function extractCity(address: string | null): string {
   if (!address) return 'No address on file';
   const parts = address.split(',').map((part) => part.trim()).filter(Boolean);
-  return parts[1] || parts[0] || 'No address on file';
+  const statePattern = /^[A-Z]{2}(?:\s+\d{5}(?:-\d{4})?)?$/i;
+  const cityPart = parts.find((part, index) => index > 0 && !statePattern.test(part));
+  if (cityPart) return cityPart;
+
+  const stateIndex = parts.findIndex((part) => statePattern.test(part));
+  const fallback = stateIndex > 0 ? parts[stateIndex - 1] : parts[0];
+  const inferredCity = fallback.match(/(?:\b(?:Ave|Avenue|St|Street|Rd|Road|Dr|Drive|Ln|Lane|Ct|Court|Blvd|Boulevard|Way|Trail|Trl|Circle|Cir)\b\.?\s+)(.+)$/i)?.[1];
+  return inferredCity || fallback || 'No address on file';
+}
+
+function initials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -32,6 +48,10 @@ export default function DemoDashboardPage() {
   const progressPercent = Math.round((tierInfo.progressToNext ?? 0) * 100);
 
   const scheduledJobs = DEMO_JOBS.filter((job) => job.status !== 'archived' && job.scheduled_for);
+  const demoCrew = DEMO_CREW.filter((member) => member.active);
+  const assignmentsByJob: Record<string, string[]> = Object.fromEntries(
+    scheduledJobs.map((job) => [job.id, [DEMO_CREW[0].id, DEMO_CREW[3].id]])
+  );
   const jobsByDate = new Map<string, typeof DEMO_JOBS>();
   for (const job of scheduledJobs) {
     const key = job.scheduled_for as string;
@@ -108,12 +128,24 @@ export default function DemoDashboardPage() {
                   {day.jobs.length === 0 ? (
                     <p className="week-glance-empty">No jobs</p>
                   ) : (
-                    day.jobs.map((job) => (
-                      <Link key={job.id} href={`/demo/jobs/${job.id}`} className="week-glance-job">
-                        <strong>{job.client_name}</strong>
-                        <span>{[formatJobTime(job.scheduled_time), extractCity(job.address)].filter(Boolean).join(' - ')}</span>
-                      </Link>
-                    ))
+                    day.jobs.map((job) => {
+                      const assignedMembers = (assignmentsByJob[job.id] ?? [])
+                        .map((id) => demoCrew.find((member) => member.id === id))
+                        .filter((member): member is NonNullable<typeof member> => Boolean(member));
+                      return (
+                        <Link key={job.id} href={`/demo/jobs/${job.id}`} className="week-glance-job">
+                          <span className="week-glance-job-top">
+                            <strong>{job.client_name}</strong>
+                            {assignedMembers.length > 0 ? (
+                              <span className="week-glance-crew" title={`Assigned: ${assignedMembers.map((member) => member.name).join(', ')}`}>
+                                {assignedMembers.slice(0, 2).map((member) => initials(member.name)).join(' ')}
+                              </span>
+                            ) : null}
+                          </span>
+                          <span>{[formatJobTime(job.scheduled_time), extractCity(job.address)].filter(Boolean).join(' - ')}</span>
+                        </Link>
+                      );
+                    })
                   )}
                 </div>
               </div>

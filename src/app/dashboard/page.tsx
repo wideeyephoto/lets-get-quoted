@@ -4,6 +4,7 @@ import { connectStripeAction } from './stripe-actions';
 import { getTrailingVolume } from '@/lib/payments';
 import { getTierInfo } from '@/lib/stripe';
 import { formatJobTime, listJobs, type Job } from '@/lib/jobs';
+import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 
 function formatMoney(n: number): string {
   return '$' + Math.round(n).toLocaleString();
@@ -20,7 +21,23 @@ function toDateKey(year: number, monthIndex: number, day: number): string {
 function extractCity(address: string | null): string {
   if (!address) return 'No address on file';
   const parts = address.split(',').map((part) => part.trim()).filter(Boolean);
-  return parts[1] || parts[0] || 'No address on file';
+  const statePattern = /^[A-Z]{2}(?:\s+\d{5}(?:-\d{4})?)?$/i;
+  const cityPart = parts.find((part, index) => index > 0 && !statePattern.test(part));
+  if (cityPart) return cityPart;
+
+  const stateIndex = parts.findIndex((part) => statePattern.test(part));
+  const fallback = stateIndex > 0 ? parts[stateIndex - 1] : parts[0];
+  const inferredCity = fallback.match(/(?:\b(?:Ave|Avenue|St|Street|Rd|Road|Dr|Drive|Ln|Lane|Ct|Court|Blvd|Boulevard|Way|Trail|Trl|Circle|Cir)\b\.?\s+)(.+)$/i)?.[1];
+  return inferredCity || fallback || 'No address on file';
+}
+
+function initials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
 }
 
 export default async function DashboardPage() {
@@ -79,6 +96,10 @@ export default async function DashboardPage() {
   const progressPercent = Math.round((tierInfo.progressToNext ?? 0) * 100);
 
   const scheduledJobs = jobs.filter((job) => job.status !== 'archived' && job.scheduled_for);
+  const [crew, assignmentsByJob] = await Promise.all([
+    listCrew(supabase, accountId, { activeOnly: true }),
+    listCrewAssignmentsForJobs(supabase, accountId, scheduledJobs.map((job) => job.id)),
+  ]);
   const jobsByDate = new Map<string, Job[]>();
   for (const job of scheduledJobs) {
     const key = job.scheduled_for as string;
@@ -189,12 +210,24 @@ export default async function DashboardPage() {
                 {day.jobs.length === 0 ? (
                   <p className="week-glance-empty">No jobs</p>
                 ) : (
-                  day.jobs.map((job) => (
-                    <Link key={job.id} href={`/dashboard/jobs/${job.id}`} className="week-glance-job">
-                      <strong>{job.client_name}</strong>
-                      <span>{[formatJobTime(job.scheduled_time), extractCity(job.address)].filter(Boolean).join(' - ')}</span>
-                    </Link>
-                  ))
+                  day.jobs.map((job) => {
+                    const assignedMembers = (assignmentsByJob[job.id] ?? [])
+                      .map((id) => crew.find((member) => member.id === id))
+                      .filter((member): member is NonNullable<typeof member> => Boolean(member));
+                    return (
+                      <Link key={job.id} href={`/dashboard/jobs/${job.id}`} className="week-glance-job">
+                        <span className="week-glance-job-top">
+                          <strong>{job.client_name}</strong>
+                          {assignedMembers.length > 0 ? (
+                            <span className="week-glance-crew" title={`Assigned: ${assignedMembers.map((member) => member.name).join(', ')}`}>
+                              {assignedMembers.slice(0, 2).map((member) => initials(member.name)).join(' ')}
+                            </span>
+                          ) : null}
+                        </span>
+                        <span>{[formatJobTime(job.scheduled_time), extractCity(job.address)].filter(Boolean).join(' - ')}</span>
+                      </Link>
+                    );
+                  })
                 )}
               </div>
             </div>

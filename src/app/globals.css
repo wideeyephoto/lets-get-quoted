@@ -1122,8 +1122,10 @@ li + li { margin-top: 0.45rem; }
 .week-glance-jobs { display: flex; flex-direction: column; gap: .4rem; }
 .week-glance-job { display: flex; flex-direction: column; gap: .1rem; padding: .35rem .45rem; border-radius: 7px; background: rgba(255,255,255,.06); color: #fff; text-decoration: none; }
 .week-glance-job:hover { background: rgba(255,255,255,.13); }
+.week-glance-job-top { display: flex; align-items: center; justify-content: space-between; gap: .35rem; }
 .week-glance-job strong { font-size: .78rem; line-height: 1.25; }
 .week-glance-job span { font-size: .68rem; color: rgba(255,255,255,.55); }
+.week-glance-job .week-glance-crew { flex-shrink: 0; min-width: 1.35rem; padding: .12rem .28rem; border: 1px solid rgba(120,220,150,.45); border-radius: 999px; background: rgba(120,220,150,.14); color: #78dc96; font-size: .58rem; font-weight: 800; line-height: 1.2; text-align: center; letter-spacing: .02em; }
 .week-glance-empty { margin: 0; font-size: .72rem; color: rgba(255,255,255,.35); }
 @media (max-width: 900px) {
   .week-glance-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
