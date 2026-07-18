@@ -1643,6 +1643,39 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .field input::placeholder { color: rgba(255,255,255,0.4); }
 .field select option { background: #101c2b; color: #f7f5ef; }
 
+.address-autocomplete { position: relative; width: 100%; }
+.address-autocomplete input { width: 100%; }
+.address-autocomplete-suggestions {
+  position: absolute;
+  z-index: 10000;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 12px;
+  background: #101c2b;
+  box-shadow: 0 18px 44px rgba(0,0,0,0.35);
+  color: #f7f5ef;
+}
+.address-autocomplete-suggestions button {
+  display: grid;
+  width: 100%;
+  gap: 0.15rem;
+  padding: 0.68rem 0.8rem;
+  border: 0;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.address-autocomplete-suggestions button:first-child { border-top: 0; }
+.address-autocomplete-suggestions button:hover,
+.address-autocomplete-suggestions button.active { background: rgba(255,122,33,0.14); }
+.address-autocomplete-suggestions span { font-size: 0.9rem; font-weight: 800; line-height: 1.25; }
+.address-autocomplete-suggestions small { color: rgba(247,245,239,0.66); font-size: 0.78rem; line-height: 1.3; }
+
 .pac-container {
   z-index: 10000;
   overflow: hidden;

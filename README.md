@@ -15,6 +15,10 @@ Next.js App Router workspace for the contractor quote-to-paid product.
 3. `/dashboard` protected contractor workspace.
 4. `/pay/[id]` homeowner payment flow.
 
+## Google Places setup
+
+Address autocomplete on quote request and job forms uses the Google Maps JavaScript API with Places API (New). In Google Cloud, the browser key must allow both APIs and include every app origin in its HTTP referrer restrictions, such as `http://localhost:3010/*`, any alternate local preview port, and the deployed domains.
+
 ## SMS setup
 
 SMS login and homeowner payment updates use separate integration paths:
