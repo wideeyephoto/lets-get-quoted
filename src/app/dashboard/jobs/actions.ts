@@ -10,23 +10,20 @@ import {
   deleteJob,
   getJob,
   formatJobQuoteSummary,
-  listCosts,
   updateJob,
   updateJobSchedule,
   type CostType,
   type JobStatus,
 } from '@/lib/jobs';
-import { createDepositRequest } from '@/lib/payments';
 import {
   createClientJobAccessToken,
   createJobFeedEvent,
-  createPaymentFeedEvent,
   revokeClientJobAccess,
 } from '@/lib/job-feed';
 import { uploadJobPhoto } from '@/lib/job-photo-storage';
 import { listCrew, setJobCrewAssignments, toggleJobCrewAssignment } from '@/lib/crew';
 import { normalizeUsPhone } from '@/lib/phone';
-import { recordSmsConsent, sendCrewAssignmentSms, sendJobUpdateSms, sendPaymentSmsEvent } from '@/lib/sms';
+import { recordSmsConsent, sendCrewAssignmentSms, sendJobUpdateSms } from '@/lib/sms';
 
 function parseAmount(value: FormDataEntryValue | null): number {
   const n = Number(value);
@@ -337,40 +334,6 @@ export async function revokeClientJobLinkAction(jobId: string) {
     body: 'Active client dashboard links for this job were revoked.',
     visibility: 'internal',
   });
-
-  revalidatePath(`/dashboard/jobs/${jobId}`);
-}
-
-export async function createPaymentRequestFromCostAction(jobId: string, costId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
-  const [job, costs] = await Promise.all([getJob(supabase, accountId, jobId), listCosts(supabase, accountId, jobId)]);
-  const cost = costs.find((candidate) => candidate.id === costId);
-
-  if (!job || !cost) throw new Error('Cost not found for this job.');
-  if (cost.client_charge_payment_id) throw new Error('A payment request already exists for this cost.');
-
-  const homeownerPhone = job.client_phone ? normalizeUsPhone(job.client_phone) : null;
-  const payment = await createDepositRequest(supabase, accountId, jobId, {
-    label: `Additional charge — ${cost.description}`,
-    amount: Number(cost.amount),
-    kind: 'stage',
-    homeownerPhone,
-    smsConsent: Boolean(homeownerPhone),
-  });
-
-  await supabase
-    .from('costs')
-    .update({ client_charge_payment_id: payment.id, client_charge_requested_at: new Date().toISOString() })
-    .eq('account_id', accountId)
-    .eq('job_id', jobId)
-    .eq('id', costId);
-
-  if (homeownerPhone) {
-    await recordSmsConsent(accountId, homeownerPhone);
-    await sendPaymentSmsEvent(payment.id, 'payment_requested');
-  }
-
-  await createPaymentFeedEvent(supabase, payment.id, 'payment_requested');
 
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }

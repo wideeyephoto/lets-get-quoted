@@ -12,7 +12,6 @@ import {
   createClientJobLinkAction,
   createCostAction,
   createManualJobFeedAction,
-  createPaymentRequestFromCostAction,
   deleteCostAction,
   deleteJobAction,
   revokeClientJobLinkAction,
@@ -587,17 +586,6 @@ export default async function JobDetailPage({
                       </div>
                       <div className="cost-item-actions">
                         <span className="cost-item-amount">−{formatMoney(Number(cost.amount))}</span>
-                        {cost.client_charge_payment_id ? (
-                          <Link href={`/pay/${cost.client_charge_payment_id}`} target="_blank" className="btn secondary">
-                            Payment request created
-                          </Link>
-                        ) : (
-                          <form action={createPaymentRequestFromCostAction.bind(null, job.id, cost.id)}>
-                            <SaveButton className="btn secondary" pendingLabel="Creating…" savedLabel="Created ✓">
-                              Create New Payment Request and Auto Notify
-                            </SaveButton>
-                          </form>
-                        )}
                         <form action={deleteCostAction.bind(null, job.id, cost.id)}>
                           <button type="submit" className="icon-btn">
                             ✕
