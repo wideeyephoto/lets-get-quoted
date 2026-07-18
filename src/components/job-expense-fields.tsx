@@ -53,17 +53,21 @@ export default function JobExpenseFields({ crew }: JobExpenseFieldsProps) {
       </div>
 
       {!isLabor ? (
-        <div className="field">
+        <div className="field money-field">
           <label htmlFor="amount">Amount ($)</label>
-          <input
-            id="amount"
-            name="amount"
-            type="number"
-            min="0"
-            step="0.01"
-            required
-            placeholder="Material / sub / receipt / other"
-          />
+          <div className="currency-input">
+            <span aria-hidden="true">$</span>
+            <input
+              id="amount"
+              name="amount"
+              type="number"
+              min="0"
+              step="0.01"
+              inputMode="decimal"
+              required
+              placeholder="450.00"
+            />
+          </div>
         </div>
       ) : (
         <div className="cost-form-row">
