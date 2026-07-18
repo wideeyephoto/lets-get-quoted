@@ -83,6 +83,7 @@ export default async function PublicPaymentPage({
   const quotedFee = canPay && !feeIsLocked ? await getQuotedFee(payment.account_id, payment.amount) : null;
   const displayFeeRate = payment.fee_rate ?? quotedFee?.feeRate ?? null;
   const displayFeeAmount = payment.platform_fee ?? quotedFee?.platformFee ?? null;
+  const businessName = payment.display_business_name;
 
   const statusTone =
     payment.status === 'paid'
@@ -97,7 +98,7 @@ export default async function PublicPaymentPage({
     <main className="wide-shell workspace-shell payment-shell">
       <section className="workspace-hero panel payment-hero">
         <div className="workspace-hero-copy">
-          <p className="eyebrow">{payment.account?.business_name || 'Payment request'}</p>
+          <p className="eyebrow">{businessName}</p>
           <h1 className="workspace-title">{KIND_LABEL[payment.kind] || 'Payment'}</h1>
           <p className="workspace-lead">
             {payment.job
@@ -160,7 +161,7 @@ export default async function PublicPaymentPage({
           <article className="workspace-metric-card">
             <span className="workspace-metric-label">Requested by</span>
             <strong className="workspace-metric-value payment-metric-name">
-              {payment.account?.business_name || 'Let\'s Get Quoted contractor'}
+              {businessName}
             </strong>
             <p className="workspace-metric-note">Payments route through Stripe checkout for secure processing.</p>
           </article>

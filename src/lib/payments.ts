@@ -122,6 +122,7 @@ export async function createDepositRequest(
 type PublicPaymentRecord = Payment & {
   job: { client_name: string; ref: string } | null;
   account: { business_name: string; stripe_connect_id: string | null; connect_onboarded: boolean } | null;
+  display_business_name: string;
 };
 
 // Public read — no user session exists (the homeowner is not a system user),
@@ -140,7 +141,17 @@ export async function getPublicPayment(paymentId: string): Promise<PublicPayment
     return null;
   }
 
-  return data as unknown as PublicPaymentRecord;
+  const payment = data as unknown as Omit<PublicPaymentRecord, 'display_business_name'>;
+  const { data: site } = await admin
+    .from('sites')
+    .select('company_name')
+    .eq('account_id', payment.account_id)
+    .maybeSingle();
+
+  return {
+    ...payment,
+    display_business_name: site?.company_name || payment.account?.business_name || 'My Business',
+  };
 }
 
 export async function createCheckoutSessionForPayment(paymentId: string, origin: string): Promise<string> {
