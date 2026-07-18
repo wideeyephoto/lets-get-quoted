@@ -208,9 +208,7 @@ export default async function JobDetailPage({
           </div>
           <div className="actions workspace-actions">
             <a href="#request-payment" className="btn primary">Request payment</a>
-            <a href="#job-feed" className="btn secondary">Post update</a>
             <a href="#job-costs" className="btn secondary">Add expense</a>
-            <a href="#job-details" className="btn secondary">Edit job</a>
           </div>
         </div>
 
