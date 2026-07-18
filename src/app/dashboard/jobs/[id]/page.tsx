@@ -11,7 +11,6 @@ import { listCrew, listCrewIdsForJob } from '@/lib/crew';
 import {
   createClientJobLinkAction,
   createCostAction,
-  createManualJobFeedAction,
   deleteCostAction,
   deleteJobAction,
   markJobCompleteAction,
@@ -223,7 +222,6 @@ export default async function JobDetailPage({
   const boundDeleteJob = deleteJobAction.bind(null, job.id);
   const boundCreateCost = createCostAction.bind(null, job.id);
   const boundCreateDepositRequest = createDepositRequestAction.bind(null, job.id);
-  const boundCreateManualFeed = createManualJobFeedAction.bind(null, job.id);
   const boundMarkJobComplete = markJobCompleteAction.bind(null, job.id);
   const boundCreateClientJobLink = createClientJobLinkAction.bind(null, job.id);
   const boundRevokeClientJobLink = revokeClientJobLinkAction.bind(null, job.id);
@@ -387,27 +385,6 @@ export default async function JobDetailPage({
               </div>
             )}
 
-            <form action={boundCreateManualFeed} className="cost-form workspace-form-block">
-              <div className="field">
-                <label htmlFor="feed-title">Update title</label>
-                <input id="feed-title" name="title" placeholder="Materials delivered" required />
-              </div>
-              <div className="field full">
-                <label htmlFor="feed-body">Update</label>
-                <textarea id="feed-body" name="body" placeholder="Tell the client what changed or what happened today." />
-              </div>
-              <label className="sms-consent-check">
-                <input name="visibility" type="checkbox" value="client" />
-                <span>Show this update on the client view</span>
-              </label>
-              <label className="sms-consent-check">
-                <input name="notifyClientSms" type="checkbox" />
-                <span>Notify client by SMS about this job update</span>
-              </label>
-              <div style={{ marginTop: '0.8rem' }}>
-                <SaveButton pendingLabel="Posting…" savedLabel="Posted ✓">Post update</SaveButton>
-              </div>
-            </form>
       </section>
 
       <details id="request-payment" className="panel workspace-section-card workspace-details job-action-details" open={searchParams.open === 'payment'}>
