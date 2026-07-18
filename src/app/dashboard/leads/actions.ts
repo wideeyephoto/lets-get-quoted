@@ -64,6 +64,7 @@ export async function updateLeadStatusAction(leadId: string, formData: FormData)
   await updateLeadStatus(supabase, accountId, leadId, status);
   revalidatePath('/dashboard/leads');
   revalidatePath(`/dashboard/leads/${leadId}`);
+  redirect(`/dashboard/leads/${leadId}`);
 }
 
 export async function convertLeadAction(leadId: string, formData: FormData) {
