@@ -32,6 +32,8 @@ export type SiteTestimonialItem = {
   text: string;
   rating: number;
   label: string;
+  imageUrl: string;
+  imageAlt: string;
 };
 
 export type SiteTestimonialsContent = {
@@ -111,6 +113,8 @@ function parseTestimonials(value: unknown): SiteTestimonialItem[] {
     text: toString(item.text),
     rating: toRating(item.rating),
     label: toString(item.label),
+    imageUrl: toString(item.imageUrl),
+    imageAlt: toString(item.imageAlt),
   }));
 }
 

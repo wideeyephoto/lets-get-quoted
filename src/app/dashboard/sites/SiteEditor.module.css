@@ -86,6 +86,8 @@
 .itemHeader button, .secondaryAction { min-height: 38px; padding: .55rem .75rem; border: 1px solid rgba(255,255,255,.16); border-radius: 6px; background: rgba(255,255,255,.06); color: #f7f5ef; font-weight: 800; cursor: pointer; }
 .itemHeader button { min-height: 32px; color: #ffb4a7; font-size: .72rem; }
 .secondaryAction { justify-self: start; }
+.reviewImagePreview { overflow: hidden; width: min(180px, 100%); border: 1px solid rgba(255,255,255,.12); border-radius: 7px; background: rgba(255,255,255,.04); }
+.reviewImagePreview img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
 .integrationCard { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem; border: 1px dashed rgba(255,209,102,.32); border-radius: 8px; background: rgba(255,209,102,.055); }
 .integrationCard strong { display: block; margin-bottom: .25rem; color: #ffd166; }
 .integrationCard p { margin: 0; color: #c8d0dc; font-size: .82rem; line-height: 1.45; }

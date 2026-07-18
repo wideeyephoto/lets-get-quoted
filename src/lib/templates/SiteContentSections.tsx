@@ -42,6 +42,7 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
           <div className={styles.testimonialGrid}>
             {testimonials.items.map((item) => (
               <article key={item.id} className={styles.testimonialCard}>
+                {item.imageUrl && <img className={styles.testimonialImage} src={item.imageUrl} alt={item.imageAlt || item.author || 'Customer review image'} />}
                 <div aria-label={`${item.rating} out of 5 stars`}>{'★'.repeat(item.rating)}{'☆'.repeat(5 - item.rating)}</div>
                 <p>“{item.text}”</p>
                 <footer><strong>{item.author || 'Homeowner'}</strong>{item.label && <span>{item.label}</span>}</footer>

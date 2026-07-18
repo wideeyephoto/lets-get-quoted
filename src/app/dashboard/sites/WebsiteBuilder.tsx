@@ -408,11 +408,19 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                           <label className={styles.formField}><span>Rating</span><select value={item.rating} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.map((testimonial) => testimonial.id === item.id ? { ...testimonial, rating: Number(event.target.value) } : testimonial) })}>{[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating} stars</option>)}</select></label>
                         </div>
                         <label className={styles.formField}><span>Project label</span><input value={item.label} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.map((testimonial) => testimonial.id === item.id ? { ...testimonial, label: event.target.value } : testimonial) })} placeholder="Kitchen remodel, deck build, emergency repair..." /></label>
+                        <div className={styles.formColumns}>
+                          <label className={styles.formField}><span>Review image URL</span><input type="url" value={item.imageUrl} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.map((testimonial) => testimonial.id === item.id ? { ...testimonial, imageUrl: event.target.value, imageAlt: testimonial.imageAlt || testimonial.author || 'Customer review image' } : testimonial) })} placeholder="https://..." /></label>
+                          <label className={styles.formField}><span>Choose image</span><select value={item.imageUrl} onChange={(event) => {
+                            const image = selectableImages.find((candidate) => candidate.url === event.target.value);
+                            updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.map((testimonial) => testimonial.id === item.id ? { ...testimonial, imageUrl: event.target.value, imageAlt: image?.alt || testimonial.imageAlt || testimonial.author || 'Customer review image' } : testimonial) });
+                          }}><option value="">No image</option>{selectableImages.map((image) => <option key={`${item.id}-${image.id}`} value={image.url}>{image.alt}</option>)}</select></label>
+                        </div>
+                        {item.imageUrl && <div className={styles.reviewImagePreview}><img src={item.imageUrl} alt={item.imageAlt || item.author || 'Review image preview'} /></div>}
                         <label className={styles.formField}><span>Review text</span><textarea rows={4} value={item.text} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.map((testimonial) => testimonial.id === item.id ? { ...testimonial, text: event.target.value } : testimonial) })} /></label>
                       </div>
                     ))}
                   </div>
-                  <button type="button" className={styles.secondaryAction} onClick={() => updateTestimonials({ ...siteContent.testimonials, enabled: true, items: [...siteContent.testimonials.items, { id: createContentId('testimonial'), author: '', text: '', rating: 5, label: '' }] })}>Add testimonial</button>
+                  <button type="button" className={styles.secondaryAction} onClick={() => updateTestimonials({ ...siteContent.testimonials, enabled: true, items: [...siteContent.testimonials.items, { id: createContentId('testimonial'), author: '', text: '', rating: 5, label: '', imageUrl: '', imageAlt: '' }] })}>Add testimonial</button>
                 </div>
 
                 <div className={styles.integrationCard}>
