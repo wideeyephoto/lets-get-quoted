@@ -37,6 +37,7 @@
 .photoGrid img { width: 100%; aspect-ratio: 4 / 3; border-radius: 6px; object-fit: cover; }
 .actionPanel { display: grid; gap: 1rem; align-content: start; min-width: 0; }
 .actionPanel h2, .actionPanel p { overflow-wrap: anywhere; }
+.actionPanel :global(.schedule-option-grid) { grid-template-columns: 1fr; }
 .actionForm { display: grid; gap: .65rem; padding-top: .5rem; }
 .actionForm label { color: rgba(255,255,255,.58); font-size: .75rem; font-weight: 700; text-transform: uppercase; }
 .actionForm input, .actionForm select { width: 100%; min-height: 42px; padding: .65rem .7rem; border: 1px solid rgba(255,255,255,.15); border-radius: 6px; background: rgba(255,255,255,.06); color: #fff; }
@@ -46,5 +47,5 @@
 .statusQuickActions button { width: 100%; }
 .currentStatusButton { border-color: rgba(255,209,102,.48) !important; background: rgba(255,209,102,.12) !important; color: #ffd166 !important; }
 .source { display: inline-flex; width: fit-content; padding: .3rem .55rem; border-radius: 4px; background: rgba(255,209,102,.12); color: #ffd166; font-size: .72rem; font-weight: 700; text-transform: capitalize; }
-@media (max-width: 1020px) { .detailGrid { grid-template-columns: 1fr; } }
+@media (max-width: 1120px) { .detailGrid { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .board { grid-template-columns: 1fr; overflow: visible; } .column { min-height: 0; } .contactGrid, .photoGrid { grid-template-columns: 1fr; } }
