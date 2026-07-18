@@ -412,6 +412,43 @@ export default async function JobDetailPage({
                 </p>
               </div>
             ) : null}
+            <div className="toolbar" style={{ marginBottom: '1rem' }}>
+              <div className="section-heading workspace-section-heading compact-heading">
+                <p className="eyebrow" style={{ margin: 0 }}>
+                  Invoice
+                </p>
+                <h2>Job invoice</h2>
+              </div>
+              {jobInvoice ? (
+                <Link href={`/dashboard/jobs/${job.id}/invoices/${jobInvoice.id}`} className="btn secondary">Open invoice</Link>
+              ) : (
+                <span className="workspace-details-copy">Created automatically when you send a payment link.</span>
+              )}
+            </div>
+
+            {invoices.length === 0 ? (
+              <p className="empty-state">No invoice yet. Sending a payment link will create the job invoice automatically.</p>
+            ) : (
+              <div className="cost-list workspace-list-block">
+                {invoices.map((invoice) => (
+                  <Link
+                    key={invoice.id}
+                    href={`/dashboard/jobs/${job.id}/invoices/${invoice.id}`}
+                    className="cost-item"
+                    style={{ display: 'flex' }}
+                  >
+                    <div className="cost-item-main">
+                      <span className="cost-item-desc">{invoice.ref}</span>
+                      <span className="cost-item-sub">
+                        {INVOICE_STATUS_LABEL[invoice.status]} · {new Date(invoice.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <span className="cost-item-amount">{formatMoney(invoice.total)}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+
             <form action={boundCreateDepositRequest} className="cost-form workspace-form-block">
               <div className="invoice-context-pill">
                 <span>Job invoice</span>
@@ -741,66 +778,6 @@ export default async function JobDetailPage({
             </div>
           </div>
         </section>
-
-      <details className="panel workspace-section-card workspace-details job-action-details">
-            <summary className="workspace-details-summary job-action-summary">
-              <div className="section-heading workspace-section-heading compact-heading">
-                <p className="eyebrow" style={{ margin: 0 }}>
-                  Invoices
-                </p>
-                <h2>Invoice records</h2>
-              </div>
-              <span className="workspace-details-copy">{invoices.length} invoice{invoices.length === 1 ? '' : 's'} tied to this job.</span>
-            </summary>
-            <div className="toolbar" style={{ marginBottom: '1rem' }}>
-              <div className="section-heading workspace-section-heading compact-heading">
-                <p className="eyebrow" style={{ margin: 0 }}>
-                  Invoices
-                </p>
-                <h2>Job invoice</h2>
-              </div>
-              {jobInvoice ? (
-                <Link href={`/dashboard/jobs/${job.id}/invoices/${jobInvoice.id}`} className="btn secondary">Open invoice</Link>
-              ) : (
-                <span className="workspace-details-copy">Created automatically when you send a payment link.</span>
-              )}
-            </div>
-
-            {!stripeOnboarded ? (
-              <div className="payment-banner warning">
-                <p>
-                  <strong>Stripe isn&apos;t connected yet.</strong> Clients won&apos;t be able to pay
-                  invoices you send until you finish onboarding.
-                </p>
-                <p>
-                  <Link href="/dashboard/settings">Connect Stripe in Account settings →</Link>
-                </p>
-              </div>
-            ) : null}
-
-            {invoices.length === 0 ? (
-              <p className="empty-state">No invoice yet. Sending a payment link will create the job invoice automatically.</p>
-            ) : (
-              <div className="cost-list workspace-list-block">
-                {invoices.map((invoice) => (
-                  <Link
-                    key={invoice.id}
-                    href={`/dashboard/jobs/${job.id}/invoices/${invoice.id}`}
-                    className="cost-item"
-                    style={{ display: 'flex' }}
-                  >
-                    <div className="cost-item-main">
-                      <span className="cost-item-desc">{invoice.ref}</span>
-                      <span className="cost-item-sub">
-                        {INVOICE_STATUS_LABEL[invoice.status]} · {new Date(invoice.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <span className="cost-item-amount">{formatMoney(invoice.total)}</span>
-                  </Link>
-                ))}
-              </div>
-            )}
-        </details>
 
     </main>
   );
