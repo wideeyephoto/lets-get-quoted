@@ -138,8 +138,8 @@ function buildPipelineChecklist(job: Job, payments: Payment[], invoices: Invoice
       complete: Boolean(job.scheduled_for) || job.status === 'in_progress' || isComplete,
     },
     {
-      label: 'Payment requested',
-      detail: hasPaymentRequest ? `${payments.length} request${payments.length === 1 ? '' : 's'} created` : 'Send deposit or invoice link',
+      label: 'Invoice / payment requested',
+      detail: hasPaymentRequest ? `${payments.length} payment link${payments.length === 1 ? '' : 's'} created` : 'Send invoice or payment link',
       complete: hasPaymentRequest,
     },
     {
