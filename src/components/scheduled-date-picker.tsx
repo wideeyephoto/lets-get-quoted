@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 type ScheduledDatePickerProps = {
   id: string;
@@ -28,6 +28,7 @@ function nextWeekday(date: Date, weekday: number): Date {
 }
 
 function formatDateLabel(value: string): string {
+  if (!value) return 'Pick a date';
   const [year, month, day] = value.split('-').map(Number);
   const date = new Date(year, month - 1, day);
 
@@ -35,20 +36,8 @@ function formatDateLabel(value: string): string {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
+    year: 'numeric',
   }).format(date);
-}
-
-function buildDateOptions() {
-  const today = new Date();
-  const options: Array<{ label: string; value: string }> = [];
-
-  for (let dayOffset = 0; dayOffset <= 45; dayOffset += 1) {
-    const value = dateToKey(addDays(today, dayOffset));
-    const prefix = dayOffset === 0 ? 'Today' : dayOffset === 1 ? 'Tomorrow' : formatDateLabel(value);
-    options.push({ label: prefix, value });
-  }
-
-  return options;
 }
 
 function buildQuickDateOptions() {
@@ -64,15 +53,8 @@ function buildQuickDateOptions() {
 }
 
 export default function ScheduledDatePicker({ id, name, defaultValue = '' }: ScheduledDatePickerProps) {
-  const [dateOptions, setDateOptions] = useState<Array<{ label: string; value: string }>>([]);
-  const [quickDateOptions, setQuickDateOptions] = useState<Array<{ label: string; value: string }>>([]);
   const [selectedDate, setSelectedDate] = useState(defaultValue);
-  const selectedDateIsListed = !selectedDate || dateOptions.some((option) => option.value === selectedDate);
-
-  useEffect(() => {
-    setDateOptions(buildDateOptions());
-    setQuickDateOptions(buildQuickDateOptions());
-  }, []);
+  const quickDateOptions = buildQuickDateOptions();
 
   function updateSelectedDate(value: string) {
     setSelectedDate(value);
@@ -80,29 +62,32 @@ export default function ScheduledDatePicker({ id, name, defaultValue = '' }: Sch
 
   return (
     <div className="scheduled-date-picker">
-      <select id={id} name={name} value={selectedDate} onChange={(event) => updateSelectedDate(event.currentTarget.value)}>
-        <option value="">Not scheduled</option>
-        {!selectedDateIsListed ? <option value={selectedDate}>Custom: {formatDateLabel(selectedDate)}</option> : null}
-        {dateOptions.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      <div className="quick-add-buttons" aria-label="Quick add:">
-        <span>Quick add:</span>
+      <div className="modern-date-control">
+        <div className="modern-date-display" aria-hidden="true">
+          <span>Date</span>
+          <strong>{formatDateLabel(selectedDate)}</strong>
+        </div>
+        <input
+          id={id}
+          name={name}
+          aria-label="Scheduled date"
+          type="date"
+          value={selectedDate}
+          onChange={(event) => updateSelectedDate(event.currentTarget.value)}
+        />
+      </div>
+      <div className="quick-add-buttons modern-date-chips" aria-label="Quick date choices">
         {quickDateOptions.map((option) => (
-          <button key={`${option.label}-${option.value}`} type="button" onClick={() => updateSelectedDate(option.value)}>
+          <button
+            key={`${option.label}-${option.value}`}
+            type="button"
+            className={selectedDate === option.value ? 'active' : undefined}
+            onClick={() => updateSelectedDate(option.value)}
+          >
             {option.label}
           </button>
         ))}
       </div>
-      <input
-        aria-label="Custom scheduled date"
-        type="date"
-        value={selectedDate}
-        onChange={(event) => updateSelectedDate(event.currentTarget.value)}
-      />
     </div>
   );
 }

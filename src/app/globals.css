@@ -1921,6 +1921,59 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   display: grid;
   gap: 0.65rem;
 }
+.modern-date-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 58px;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255,255,255,.07), rgba(255,255,255,.025));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+}
+.modern-date-display {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.modern-date-display span {
+  color: rgba(247,245,239,.46);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.modern-date-display strong {
+  color: #f7f5ef;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.modern-date-control input[type="date"] {
+  width: 136px;
+  min-height: 38px;
+  border-color: rgba(255,138,61,.28);
+  border-radius: 999px;
+  background: rgba(255,138,61,.1);
+  color: #f7f5ef;
+  color-scheme: dark;
+  cursor: pointer;
+}
+.modern-date-control input[type="date"]:focus {
+  border-color: rgba(255,138,61,.72);
+  box-shadow: 0 0 0 3px rgba(255,138,61,.15);
+  outline: none;
+}
+.modern-date-chips {
+  gap: 0.4rem;
+}
+.modern-date-chips button.active {
+  border-color: rgba(255,209,102,.62);
+  background: rgba(255,209,102,.16);
+  color: #ffd166;
+}
 
 .job-feed-list {
   display: flex;
@@ -2464,6 +2517,7 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   .workspace-inline-row,
   .workspace-details-summary,
   .cost-item,
+  .modern-date-control,
   .job-row-header,
   .tier-row,
   .margin-row {
@@ -2480,6 +2534,10 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   .cost-item-actions {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .modern-date-control input[type="date"] {
+    width: 100%;
   }
 
   .client-attention-pay-block {
