@@ -22,6 +22,7 @@ type AccountStatus = {
   onboarded: boolean;
   sitePublished: boolean;
   newQuoteRequestCount: number;
+  activeJobCount: number;
   newestQuoteRequestId: string | null;
   newestQuoteRequestCreatedAt: string | null;
 };
@@ -39,6 +40,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [stripeOnboarded, setStripeOnboarded] = useState<boolean | null>(null);
   const [sitePublished, setSitePublished] = useState(false);
   const [newQuoteRequestCount, setNewQuoteRequestCount] = useState(0);
+  const [activeJobCount, setActiveJobCount] = useState(0);
   const [newestQuoteRequestId, setNewestQuoteRequestId] = useState<string | null>(null);
   const [newestQuoteRequestCreatedAt, setNewestQuoteRequestCreatedAt] = useState<string | null>(null);
   const [dismissedQuoteRequestId, setDismissedQuoteRequestId] = useState<string | null>(null);
@@ -95,6 +97,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   useEffect(() => {
     if (!isDashboard || !isLoggedIn) {
       setNewQuoteRequestCount(0);
+      setActiveJobCount(0);
       setNewestQuoteRequestId(null);
       setNewestQuoteRequestCreatedAt(null);
       return;
@@ -107,6 +110,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           setStripeOnboarded(Boolean(data.onboarded));
           setSitePublished(Boolean(data.sitePublished));
           setNewQuoteRequestCount(Number(data.newQuoteRequestCount ?? 0));
+          setActiveJobCount(Number(data.activeJobCount ?? 0));
           setNewestQuoteRequestId(data.newestQuoteRequestId ?? null);
           setNewestQuoteRequestCreatedAt(data.newestQuoteRequestCreatedAt ?? null);
         }
@@ -200,6 +204,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                   >
                     {item.label}
                     {item.href === '/dashboard/leads' && newQuoteRequestCount > 0 ? <span className="topnav-count">{newQuoteRequestCount}</span> : null}
+                    {item.href === '/dashboard/jobs' && activeJobCount > 0 ? <span className="topnav-count">{activeJobCount}</span> : null}
                   </Link>
                 );
               })}
