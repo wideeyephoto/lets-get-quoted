@@ -102,6 +102,47 @@ export async function uploadSiteImage(accountId: string, file: File): Promise<Si
   };
 }
 
+export async function importJobPhotoAsSiteImage(accountId: string, jobPhotoPath: string, alt: string): Promise<SiteImage> {
+  if (!jobPhotoPath.startsWith(`${accountId}/`)) {
+    throw new Error('Photo does not belong to this account.');
+  }
+
+  await ensureSiteImagesBucket();
+
+  const admin = createAdminClient();
+  const { data: fileData, error: downloadError } = await admin.storage.from('job-photos').download(jobPhotoPath);
+  if (downloadError || !fileData) {
+    throw downloadError ?? new Error('Unable to import this job photo.');
+  }
+
+  const extension = jobPhotoPath.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+  const safeName = alt
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 60) || 'job-photo';
+  const storagePath = `${accountId}/${randomUUID()}-${safeName}.${extension}`;
+  const { error: uploadError } = await admin.storage.from(SITE_IMAGES_BUCKET).upload(
+    storagePath,
+    Buffer.from(await fileData.arrayBuffer()),
+    { contentType: fileData.type || `image/${extension === 'jpg' ? 'jpeg' : extension}`, cacheControl: '31536000', upsert: false }
+  );
+
+  if (uploadError) {
+    throw uploadError;
+  }
+
+  const { data } = admin.storage.from(SITE_IMAGES_BUCKET).getPublicUrl(storagePath);
+  return {
+    id: `upload-${storagePath}`,
+    url: data.publicUrl,
+    alt,
+    category: 'craft',
+    source: 'upload',
+    storagePath,
+  };
+}
+
 export async function deleteSiteImage(accountId: string, storagePath: string) {
   if (!storagePath.startsWith(`${accountId}/`)) {
     throw new Error('Image does not belong to this account.');

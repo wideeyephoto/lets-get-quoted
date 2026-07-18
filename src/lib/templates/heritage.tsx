@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
+import SiteContentSections from './SiteContentSections';
 import shared from './themes.module.css';
 import styles from './heritage.module.css';
 
@@ -59,6 +60,8 @@ export default function HeritageTemplate({ site, galleryImages = [] }: TemplateP
           {gallery.slice(0, 3).map((image) => <figure key={image.id}><img src={image.url} alt={image.alt} /><figcaption>{image.alt}</figcaption></figure>)}
         </div>
       </section>
+
+      <SiteContentSections site={site} />
 
       <section className={styles.contact} id="contact">
         <div><p className={shared.kicker}>Ready when you are</p><h2>Tell us about your project.</h2></div>

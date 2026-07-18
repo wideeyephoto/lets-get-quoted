@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
+import SiteContentSections from './SiteContentSections';
 import styles from './themes.module.css';
 
 export default function VistaTemplate({ site, galleryImages = [] }: TemplateProps) {
@@ -47,6 +48,8 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
           ))}
         </div>
       </section>
+
+      <SiteContentSections site={site} />
 
       <section className={styles.vistaContact} id="contact">
         <p className={styles.kicker}>Next project</p><h2>Have a space in mind?</h2>

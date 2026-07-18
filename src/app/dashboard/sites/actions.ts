@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
-import { deleteSiteImage, uploadSiteImage } from '@/lib/site-image-storage';
+import { deleteSiteImage, importJobPhotoAsSiteImage, uploadSiteImage } from '@/lib/site-image-storage';
+import { createJobPhotoUrls } from '@/lib/job-photo-storage';
 import type { Site } from '@/lib/sites';
 import { normalizeDomain, verifyDomain } from '@/lib/domains';
 import {
@@ -131,6 +132,41 @@ export async function uploadSiteImageAction(formData: FormData) {
   }
 
   return uploadSiteImage(accountId, file);
+}
+
+export type JobPhotoImportOption = {
+  path: string;
+  url: string;
+  label: string;
+};
+
+export async function listCompletedJobPhotoOptionsAction(): Promise<JobPhotoImportOption[]> {
+  const { supabase, accountId } = await requireOwnerContext();
+  const { data, error } = await supabase
+    .from('jobs')
+    .select('ref, client_name, scope, photo_paths')
+    .eq('account_id', accountId)
+    .eq('status', 'complete')
+    .order('created_at', { ascending: false })
+    .limit(12);
+
+  if (error) throw error;
+
+  const photos = (data ?? []).flatMap((job) => {
+    const paths = Array.isArray(job.photo_paths) ? job.photo_paths.filter((path): path is string => typeof path === 'string') : [];
+    return paths.map((path, index) => ({
+      path,
+      label: `${job.ref || 'Completed job'}${job.scope ? ` - ${job.scope}` : job.client_name ? ` - ${job.client_name}` : ''} photo ${index + 1}`,
+    }));
+  }).filter((photo) => photo.path.startsWith(`${accountId}/`)).slice(0, 24);
+
+  const urls = await createJobPhotoUrls(accountId, photos.map((photo) => photo.path));
+  return photos.map((photo, index) => ({ ...photo, url: urls[index] })).filter((photo): photo is JobPhotoImportOption => Boolean(photo.url));
+}
+
+export async function importJobPhotoToSiteImageAction(path: string, label: string) {
+  const { accountId } = await requireOwnerContext();
+  return importJobPhotoAsSiteImage(accountId, path, label || 'Completed job photo');
 }
 
 export async function deleteSiteImageAction(storagePath: string) {

@@ -23,6 +23,30 @@
 .contactActions { display: flex; flex-wrap: wrap; align-items: center; gap: 1.25rem; }
 .sectionHeading { display: flex; align-items: flex-end; justify-content: space-between; gap: 2rem; }
 .sectionHeading > p { max-width: 34rem; }
+.extraSections { background: color-mix(in srgb, currentColor 4%, transparent); }
+.extraSection { padding: clamp(4rem, 8vw, 7rem) 5vw; border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); }
+.extraSectionHeader { display: grid; gap: .4rem; max-width: 760px; margin-bottom: 2rem; }
+.extraSectionHeader h2 { margin: 0; font-family: var(--theme-display); font-size: clamp(2.2rem, 5vw, 4.5rem); line-height: .98; }
+.extraSectionHeader > p:last-child { margin: 0; color: color-mix(in srgb, currentColor 72%, transparent); line-height: 1.65; }
+.showcaseGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.showcaseGrid figure { min-width: 0; margin: 0; overflow: hidden; }
+.showcaseGrid img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; transition: transform .45s ease; }
+.showcaseGrid figure:hover img { transform: scale(1.04); }
+.showcaseGrid figcaption { padding-top: .7rem; color: color-mix(in srgb, currentColor 78%, transparent); font-size: .82rem; font-weight: 700; text-transform: uppercase; }
+.showcase-featured figure:first-child { grid-column: span 2; grid-row: span 2; }
+.showcase-featured figure:first-child img { height: 100%; aspect-ratio: auto; }
+.showcase-masonry figure:nth-child(3n + 1) img { aspect-ratio: 4 / 5; }
+.showcase-masonry figure:nth-child(3n + 2) img { aspect-ratio: 16 / 10; }
+.testimonialGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.testimonialCard { display: grid; gap: 1rem; margin: 0; padding: 1.25rem; border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: var(--theme-radius, 6px); background: color-mix(in srgb, currentColor 6%, transparent); }
+.testimonialCard > div { color: var(--theme-accent); letter-spacing: .06em; }
+.testimonialCard p { margin: 0; line-height: 1.65; }
+.testimonialCard footer { display: grid; gap: .25rem; color: color-mix(in srgb, currentColor 75%, transparent); font-size: .85rem; }
+.testimonialCard footer strong { color: currentColor; }
+.faqList { display: grid; gap: .75rem; max-width: 920px; }
+.faqItem { border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: var(--theme-radius, 6px); background: color-mix(in srgb, currentColor 5%, transparent); }
+.faqItem summary { padding: 1rem 1.1rem; font-weight: 800; cursor: pointer; }
+.faqItem p { margin: 0; padding: 0 1.1rem 1.1rem; color: color-mix(in srgb, currentColor 76%, transparent); line-height: 1.65; }
 
 /* Forge */
 .forge { background: #10100f; color: #f3f0e7; font-family: var(--font-forge-body), Arial, sans-serif; --theme-radius: 2px; }

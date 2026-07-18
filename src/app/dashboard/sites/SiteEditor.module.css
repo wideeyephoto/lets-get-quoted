@@ -42,7 +42,7 @@
 .errorNotice { border-color: rgba(248,113,113,.4); background: rgba(127,29,29,.24); color: #fecaca; }
 .builderGrid { display: grid; grid-template-columns: minmax(410px, 520px) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
 .editorPanel { min-width: 0; overflow: hidden; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(8,18,31,.9); }
-.builderTabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: .4rem; border-bottom: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.025); }
+.builderTabs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); padding: .4rem; border-bottom: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.025); }
 .builderTabs button { min-height: 48px; padding: .55rem .4rem; border: 0; border-bottom: 2px solid transparent; background: transparent; color: #9ca8b8; font-size: .78rem; font-weight: 700; cursor: pointer; }
 .builderTabs .activeBuilderTab { border-bottom-color: #ff7a21; color: #fff; }
 .tabContent { max-height: calc(100vh - 15.5rem); min-height: 620px; overflow-y: auto; }
@@ -60,6 +60,36 @@
 .formSection .themeGrid { grid-template-columns: 1fr; }
 .formSection .themeOption { display: grid; grid-template-columns: 132px 1fr; }
 .formSection .themeIcon { height: 100%; aspect-ratio: 4 / 3; }
+.contentCard { display: grid; gap: .9rem; padding: 1rem; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(255,255,255,.035); }
+.toggleRow { display: flex; align-items: flex-start; gap: .75rem; color: #f7f5ef; cursor: pointer; }
+.toggleRow input { width: 18px; height: 18px; margin-top: .15rem; accent-color: #ff7a21; }
+.toggleRow span { display: grid; gap: .2rem; }
+.toggleRow strong { font-size: .95rem; }
+.toggleRow small { color: #9ca8b8; font-size: .78rem; font-weight: 400; line-height: 1.45; }
+.contentSubhead, .itemHeader { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.contentSubhead small { color: #9ca8b8; font-size: .78rem; }
+.compactImageGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .65rem; }
+.compactImageTile { overflow: hidden; padding: 0; border: 1px solid rgba(255,255,255,.12); border-radius: 7px; background: rgba(255,255,255,.04); color: #f7f5ef; cursor: pointer; }
+.compactImageTile img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.compactImageTile span { display: block; padding: .5rem; color: #c8d0dc; font-size: .72rem; font-weight: 800; text-transform: uppercase; }
+.selectedImageTile { border-color: #ffd166; box-shadow: 0 0 0 2px rgba(255,209,102,.18); }
+.selectedImageTile span { color: #ffd166; }
+.jobPhotoImport { display: flex; align-items: center; justify-content: space-between; gap: .85rem; padding: .85rem; border: 1px dashed rgba(255,255,255,.18); border-radius: 7px; background: rgba(0,0,0,.16); }
+.jobPhotoImport div { display: grid; gap: .25rem; }
+.jobPhotoImport small { color: #9ca8b8; font-size: .78rem; line-height: 1.4; }
+.jobPhotoImport button { min-height: 38px; padding: .55rem .75rem; border: 1px solid rgba(255,255,255,.16); border-radius: 6px; background: rgba(255,255,255,.06); color: #f7f5ef; font-weight: 800; cursor: pointer; }
+.jobPhotoImport button:disabled { opacity: .55; cursor: default; }
+.emptyHelper { margin: 0; color: #9ca8b8; font-size: .82rem; }
+.stackList { display: grid; gap: .8rem; }
+.stackItem { display: grid; gap: .75rem; padding: .85rem; border: 1px solid rgba(255,255,255,.1); border-radius: 7px; background: rgba(0,0,0,.18); }
+.itemHeader strong { font-size: .84rem; }
+.itemHeader button, .secondaryAction { min-height: 38px; padding: .55rem .75rem; border: 1px solid rgba(255,255,255,.16); border-radius: 6px; background: rgba(255,255,255,.06); color: #f7f5ef; font-weight: 800; cursor: pointer; }
+.itemHeader button { min-height: 32px; color: #ffb4a7; font-size: .72rem; }
+.secondaryAction { justify-self: start; }
+.integrationCard { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem; border: 1px dashed rgba(255,209,102,.32); border-radius: 8px; background: rgba(255,209,102,.055); }
+.integrationCard strong { display: block; margin-bottom: .25rem; color: #ffd166; }
+.integrationCard p { margin: 0; color: #c8d0dc; font-size: .82rem; line-height: 1.45; }
+.integrationCard button { min-height: 38px; padding: .55rem .8rem; border: 1px solid rgba(255,255,255,.16); border-radius: 6px; background: rgba(255,255,255,.05); color: #9ca8b8; font-weight: 800; }
 .colorControl { display: grid; grid-template-columns: 48px 1fr; gap: .5rem; }
 .colorControl input[type='color'] { min-height: 43px; padding: 4px; cursor: pointer; }
 .logoPreview { display: grid; min-height: 88px; place-items: center; padding: 1rem; border: 1px solid rgba(255,255,255,.1); border-radius: 6px; background: #fff; }
@@ -115,8 +145,12 @@
   .builderShell { padding: 1rem; }
   .builderHeader { align-items: stretch; flex-direction: column; }
   .builderActions { display: grid; grid-template-columns: 1fr 1fr; }
+  .builderTabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .builderTabs button { min-width: 0; padding-inline: .2rem; font-size: .68rem; }
   .formColumns { grid-template-columns: 1fr; }
+  .compactImageGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .jobPhotoImport { align-items: stretch; flex-direction: column; }
+  .integrationCard { align-items: stretch; flex-direction: column; }
   .formSection .imageGrid { grid-template-columns: 1fr; }
   .previewStage { min-height: 560px; height: 70vh; padding: .4rem; }
 }

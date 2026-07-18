@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
+import SiteContentSections from './SiteContentSections';
 import shared from './themes.module.css';
 import styles from './blueprint.module.css';
 
@@ -48,6 +49,8 @@ export default function BlueprintTemplate({ site, galleryImages = [] }: Template
           ))}
         </div>
       </section>
+
+      <SiteContentSections site={site} />
 
       <section className={styles.contact} id="contact">
         <p className={styles.docLabel}>DWG-002 / SCOPE REQUEST</p>

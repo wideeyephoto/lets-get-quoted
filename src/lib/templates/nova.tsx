@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
+import SiteContentSections from './SiteContentSections';
 import shared from './themes.module.css';
 import styles from './nova.module.css';
 
@@ -51,6 +52,8 @@ export default function NovaTemplate({ site, galleryImages = [] }: TemplateProps
           ))}
         </div>
       </section>
+
+      <SiteContentSections site={site} />
 
       <section className={styles.contact} id="contact">
         <p className={shared.kicker}>Next project</p><h2>Have a space in mind?</h2>

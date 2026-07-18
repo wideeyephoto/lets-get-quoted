@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
+import SiteContentSections from './SiteContentSections';
 import styles from './themes.module.css';
 
 export default function GuildTemplate({ site, galleryImages = [] }: TemplateProps) {
@@ -56,6 +57,8 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
           {gallery.slice(0, 3).map((image) => <figure key={image.id}><img src={image.url} alt={image.alt} /><figcaption>{image.alt}</figcaption></figure>)}
         </div>
       </section>
+
+      <SiteContentSections site={site} />
 
       <section className={styles.guildContact} id="contact">
         <div><p className={styles.kicker}>Ready when you are</p><h2>Tell us what you&apos;re planning.</h2></div>

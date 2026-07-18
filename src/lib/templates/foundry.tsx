@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
+import SiteContentSections from './SiteContentSections';
 import shared from './themes.module.css';
 import styles from './foundry.module.css';
 
@@ -62,6 +63,8 @@ export default function FoundryTemplate({ site, galleryImages = [] }: TemplatePr
           ))}
         </div>
       </section>
+
+      <SiteContentSections site={site} />
 
       <section className={styles.contact} id="contact">
         <p className={shared.kicker}>Have a pour coming up?</p>

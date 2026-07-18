@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
+import SiteContentSections from './SiteContentSections';
 import shared from './themes.module.css';
 import styles from './summit.module.css';
 
@@ -62,6 +63,8 @@ export default function SummitTemplate({ site, galleryImages = [] }: TemplatePro
           ))}
         </div>
       </section>
+
+      <SiteContentSections site={site} />
 
       <section className={styles.contact} id="contact">
         <p className={shared.kicker}>Ready to build your space?</p>

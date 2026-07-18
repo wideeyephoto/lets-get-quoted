@@ -4,14 +4,15 @@ import { useCallback, useEffect, useState, useTransition } from 'react';
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
+import { getSiteContent, mergeSiteContent, type NormalizedSiteContent, type SiteFaqContent, type SiteShowcaseContent, type SiteTestimonialsContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
-import { checkSubdomainAvailableAction, publishSiteAction, updateSiteAction, verifyCustomDomainAction } from './actions';
+import { checkSubdomainAvailableAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
 import ImageLibrary from './ImageLibrary';
 import LivePreview from './LivePreview';
 import ThemeIcon from './ThemeIcon';
 import styles from './SiteEditor.module.css';
 
-type BuilderTab = 'business' | 'images' | 'design' | 'publish';
+type BuilderTab = 'business' | 'images' | 'sections' | 'reviews' | 'design' | 'publish';
 
 type WebsiteBuilderProps = {
   site: Site;
@@ -19,11 +20,17 @@ type WebsiteBuilderProps = {
 };
 
 const TABS: { id: BuilderTab; label: string }[] = [
-  { id: 'business', label: 'Business info' },
+  { id: 'business', label: 'Business' },
   { id: 'images', label: 'Images' },
-  { id: 'design', label: 'Colors & style' },
+  { id: 'sections', label: 'Sections' },
+  { id: 'reviews', label: 'Reviews' },
+  { id: 'design', label: 'Design' },
   { id: 'publish', label: 'Publish' },
 ];
+
+function createContentId(prefix: string): string {
+  return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
+}
 
 function siteUpdates(site: Site) {
   return {
@@ -51,6 +58,9 @@ function siteUpdates(site: Site) {
 
 export default function WebsiteBuilder({ site: initialSite, uploadedImages }: WebsiteBuilderProps) {
   const [site, setSite] = useState(initialSite);
+  const [siteImages, setSiteImages] = useState(uploadedImages);
+  const [jobPhotoOptions, setJobPhotoOptions] = useState<JobPhotoImportOption[]>([]);
+  const [jobPhotosLoaded, setJobPhotosLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<BuilderTab>('business');
   const [isDirty, setIsDirty] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -58,6 +68,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   const [domainStatus, setDomainStatus] = useState<'idle' | 'checking' | 'verified' | 'unverified'>(site.custom_domain_verified_at ? 'verified' : 'idle');
   const [isPending, startTransition] = useTransition();
   const galleryImages = getSiteGallery(site.content);
+  const siteContent = getSiteContent(site.content);
+  const selectableImages = [...siteImages, ...STOCK_SITE_IMAGES];
 
   const handleChange = useCallback((field: keyof Site, value: Site[keyof Site]) => {
     setSite((current) => ({ ...current, [field]: value }));
@@ -122,6 +134,62 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       : [...gallery, image];
     handleChange('content', { ...site.content, gallery: nextGallery });
   }, [handleChange, site.content]);
+
+  const updateSiteContent = useCallback((updates: Partial<NormalizedSiteContent>) => {
+    handleChange('content', mergeSiteContent(site.content, updates));
+  }, [handleChange, site.content]);
+
+  const updateShowcase = useCallback((showcase: SiteShowcaseContent) => {
+    updateSiteContent({ showcase });
+  }, [updateSiteContent]);
+
+  const loadJobPhotoOptions = useCallback(() => {
+    startTransition(async () => {
+      try {
+        const photos = await listCompletedJobPhotoOptionsAction();
+        setJobPhotoOptions(photos);
+        setJobPhotosLoaded(true);
+        if (photos.length === 0) setMessage({ type: 'success', text: 'No completed jobs with photos yet.' });
+      } catch (error) {
+        setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to load completed job photos.' });
+      }
+    });
+  }, []);
+
+  const importJobPhoto = useCallback((photo: JobPhotoImportOption) => {
+    startTransition(async () => {
+      try {
+        const image = await importJobPhotoToSiteImageAction(photo.path, photo.label);
+        setSiteImages((current) => [image, ...current]);
+        updateShowcase({ ...siteContent.showcase, enabled: true, items: [...siteContent.showcase.items, { ...image, caption: image.alt }] });
+        setMessage({ type: 'success', text: 'Job photo imported into your showcase.' });
+      } catch (error) {
+        setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to import this job photo.' });
+      }
+    });
+  }, [siteContent.showcase, updateShowcase]);
+
+  const updateFaqs = useCallback((faqs: SiteFaqContent) => {
+    updateSiteContent({ faqs });
+  }, [updateSiteContent]);
+
+  const updateTestimonials = useCallback((testimonials: SiteTestimonialsContent) => {
+    updateSiteContent({ testimonials });
+  }, [updateSiteContent]);
+
+  const toggleShowcaseImage = useCallback((image: SiteImage) => {
+    const selected = siteContent.showcase.items.some((item) => item.id === image.id);
+    const items = selected
+      ? siteContent.showcase.items.filter((item) => item.id !== image.id)
+      : [...siteContent.showcase.items, { ...image, caption: image.alt }];
+
+    if (!selected && items.length > 9) {
+      setMessage({ type: 'error', text: 'Choose up to nine showcase images.' });
+      return;
+    }
+
+    updateShowcase({ ...siteContent.showcase, items });
+  }, [siteContent.showcase, updateShowcase]);
 
   const checkSubdomain = useCallback(() => {
     const subdomain = site.subdomain?.trim().toLowerCase();
@@ -265,6 +333,92 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 {site.logo_url && <div className={styles.logoPreview}><img src={site.logo_url} alt="Current logo" /></div>}
                 <label className={styles.formField}><span>Hero image URL</span><input type="url" value={site.hero_url || ''} onChange={(event) => handleChange('hero_url', event.target.value || null)} placeholder="Choose below or paste a URL" /></label>
                 <ImageLibrary stockImages={STOCK_SITE_IMAGES} initialUploads={uploadedImages} galleryImages={galleryImages} heroUrl={site.hero_url} onSelectHero={selectHeroImage} onToggleGallery={toggleGalleryImage} />
+              </div>
+            )}
+
+            {activeTab === 'sections' && (
+              <div className={styles.formSection}>
+                <div className={styles.sectionIntro}><h2>Pages & sections</h2><p>Add rich sections that make the public website feel complete.</p></div>
+
+                <div className={styles.contentCard}>
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.showcase.enabled} onChange={(event) => updateShowcase({ ...siteContent.showcase, enabled: event.target.checked })} /><span><strong>Showcase gallery</strong><small>Highlight finished work, project details, and job photos.</small></span></label>
+                  <label className={styles.formField}><span>Section title</span><input value={siteContent.showcase.title} onChange={(event) => updateShowcase({ ...siteContent.showcase, title: event.target.value })} /></label>
+                  <label className={styles.formField}><span>Intro copy</span><textarea rows={2} value={siteContent.showcase.intro} onChange={(event) => updateShowcase({ ...siteContent.showcase, intro: event.target.value })} /></label>
+                  <label className={styles.formField}><span>Layout</span><select value={siteContent.showcase.layout} onChange={(event) => updateShowcase({ ...siteContent.showcase, layout: event.target.value as SiteShowcaseContent['layout'] })}><option value="grid">Clean grid</option><option value="featured">Feature first image</option><option value="masonry">Masonry-style mix</option></select></label>
+                  <div className={styles.contentSubhead}><strong>Showcase images</strong><small>{siteContent.showcase.items.length}/9 selected</small></div>
+                  <div className={styles.compactImageGrid}>
+                    {selectableImages.map((image) => {
+                      const selected = siteContent.showcase.items.some((item) => item.id === image.id);
+                      return (
+                        <button type="button" key={image.id} className={`${styles.compactImageTile}${selected ? ` ${styles.selectedImageTile}` : ''}`} onClick={() => toggleShowcaseImage(image)} aria-pressed={selected}>
+                          <img src={image.url} alt={image.alt} />
+                          <span>{selected ? 'Selected' : 'Add'}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className={styles.jobPhotoImport}>
+                    <div><strong>Completed job photos</strong><small>Import private job photos into public site images for the showcase.</small></div>
+                    <button type="button" onClick={loadJobPhotoOptions} disabled={isPending}>{jobPhotosLoaded ? 'Refresh job photos' : 'Load job photos'}</button>
+                  </div>
+                  {jobPhotosLoaded && (
+                    jobPhotoOptions.length > 0 ? (
+                      <div className={styles.compactImageGrid}>
+                        {jobPhotoOptions.map((photo) => (
+                          <button type="button" key={photo.path} className={styles.compactImageTile} onClick={() => importJobPhoto(photo)} disabled={isPending}>
+                            <img src={photo.url} alt={photo.label} />
+                            <span>Import</span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : <p className={styles.emptyHelper}>Completed jobs with photos will appear here.</p>
+                  )}
+                </div>
+
+                <div className={styles.contentCard}>
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.faqs.enabled} onChange={(event) => updateFaqs({ ...siteContent.faqs, enabled: event.target.checked })} /><span><strong>FAQs</strong><small>Answer common homeowner questions before they request a quote.</small></span></label>
+                  <label className={styles.formField}><span>Section title</span><input value={siteContent.faqs.title} onChange={(event) => updateFaqs({ ...siteContent.faqs, title: event.target.value })} /></label>
+                  <div className={styles.stackList}>
+                    {siteContent.faqs.items.map((item, index) => (
+                      <div className={styles.stackItem} key={item.id}>
+                        <div className={styles.itemHeader}><strong>Question {index + 1}</strong><button type="button" onClick={() => updateFaqs({ ...siteContent.faqs, items: siteContent.faqs.items.filter((faq) => faq.id !== item.id) })}>Remove</button></div>
+                        <label className={styles.formField}><span>Question</span><input value={item.question} onChange={(event) => updateFaqs({ ...siteContent.faqs, items: siteContent.faqs.items.map((faq) => faq.id === item.id ? { ...faq, question: event.target.value } : faq) })} /></label>
+                        <label className={styles.formField}><span>Answer</span><textarea rows={3} value={item.answer} onChange={(event) => updateFaqs({ ...siteContent.faqs, items: siteContent.faqs.items.map((faq) => faq.id === item.id ? { ...faq, answer: event.target.value } : faq) })} /></label>
+                      </div>
+                    ))}
+                  </div>
+                  <button type="button" className={styles.secondaryAction} onClick={() => updateFaqs({ ...siteContent.faqs, enabled: true, items: [...siteContent.faqs.items, { id: createContentId('faq'), question: '', answer: '' }] })}>Add FAQ</button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'reviews' && (
+              <div className={styles.formSection}>
+                <div className={styles.sectionIntro}><h2>Reviews & testimonials</h2><p>Add customer proof now, with Google import ready for the next integration step.</p></div>
+                <div className={styles.contentCard}>
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.testimonials.enabled} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, enabled: event.target.checked })} /><span><strong>Testimonials</strong><small>Show quotes from real customers on your public site.</small></span></label>
+                  <label className={styles.formField}><span>Section title</span><input value={siteContent.testimonials.title} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, title: event.target.value })} /></label>
+                  <label className={styles.formField}><span>Source mode</span><select value={siteContent.testimonials.sourceMode} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, sourceMode: event.target.value as SiteTestimonialsContent['sourceMode'] })}><option value="manual">Manual testimonials</option><option value="mixed">Manual + imported</option><option value="google">Google import</option></select></label>
+                  <div className={styles.stackList}>
+                    {siteContent.testimonials.items.map((item, index) => (
+                      <div className={styles.stackItem} key={item.id}>
+                        <div className={styles.itemHeader}><strong>Testimonial {index + 1}</strong><button type="button" onClick={() => updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.filter((testimonial) => testimonial.id !== item.id) })}>Remove</button></div>
+                        <div className={styles.formColumns}>
+                          <label className={styles.formField}><span>Customer</span><input value={item.author} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.map((testimonial) => testimonial.id === item.id ? { ...testimonial, author: event.target.value } : testimonial) })} /></label>
+                          <label className={styles.formField}><span>Rating</span><select value={item.rating} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.map((testimonial) => testimonial.id === item.id ? { ...testimonial, rating: Number(event.target.value) } : testimonial) })}>{[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating} stars</option>)}</select></label>
+                        </div>
+                        <label className={styles.formField}><span>Project label</span><input value={item.label} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.map((testimonial) => testimonial.id === item.id ? { ...testimonial, label: event.target.value } : testimonial) })} placeholder="Kitchen remodel, deck build, emergency repair..." /></label>
+                        <label className={styles.formField}><span>Review text</span><textarea rows={4} value={item.text} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.map((testimonial) => testimonial.id === item.id ? { ...testimonial, text: event.target.value } : testimonial) })} /></label>
+                      </div>
+                    ))}
+                  </div>
+                  <button type="button" className={styles.secondaryAction} onClick={() => updateTestimonials({ ...siteContent.testimonials, enabled: true, items: [...siteContent.testimonials.items, { id: createContentId('testimonial'), author: '', text: '', rating: 5, label: '' }] })}>Add testimonial</button>
+                </div>
+
+                <div className={styles.integrationCard}>
+                  <div><strong>Google reviews import</strong><p>Importing live Google reviews requires a Places or Google Business Profile integration so we can fetch reviews with proper attribution.</p></div>
+                  <button type="button" disabled>Coming next</button>
+                </div>
               </div>
             )}
 
