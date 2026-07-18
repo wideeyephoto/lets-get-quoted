@@ -9,14 +9,23 @@ import {
   deleteCost,
   deleteJob,
   getJob,
+  listCosts,
   updateJob,
   updateJobSchedule,
   type CostType,
   type JobStatus,
 } from '@/lib/jobs';
+import { createDepositRequest } from '@/lib/payments';
+import {
+  createClientJobAccessToken,
+  createJobFeedEvent,
+  createPaymentFeedEvent,
+  revokeClientJobAccess,
+} from '@/lib/job-feed';
 import { uploadJobPhoto } from '@/lib/job-photo-storage';
 import { listCrew, setJobCrewAssignments, toggleJobCrewAssignment } from '@/lib/crew';
-import { sendCrewAssignmentSms } from '@/lib/sms';
+import { normalizeUsPhone } from '@/lib/phone';
+import { recordSmsConsent, sendCrewAssignmentSms, sendPaymentSmsEvent } from '@/lib/sms';
 
 function parseAmount(value: FormDataEntryValue | null): number {
   const n = Number(value);
@@ -57,6 +66,15 @@ export async function createJobAction(formData: FormData) {
     photoPaths,
   });
 
+  await createJobFeedEvent(supabase, accountId, job.id, {
+    kind: 'job_created',
+    title: 'Job created',
+    body: `${job.ref} was added for ${job.client_name}.`,
+    visibility: 'client',
+    sourceTable: 'jobs',
+    sourceId: job.id,
+  });
+
   revalidatePath('/dashboard/jobs');
   redirect(`/dashboard/jobs/${job.id}`);
 }
@@ -64,7 +82,7 @@ export async function createJobAction(formData: FormData) {
 export async function updateJobAction(jobId: string, formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
 
-  await updateJob(supabase, accountId, jobId, {
+  const updatedJob = await updateJob(supabase, accountId, jobId, {
     clientName: (formData.get('clientName') ?? '').toString().trim(),
     clientPhone: optionalText(formData.get('clientPhone')),
     address: optionalText(formData.get('address')),
@@ -76,6 +94,14 @@ export async function updateJobAction(jobId: string, formData: FormData) {
     quotedAmount: parseAmount(formData.get('quotedAmount')),
   });
 
+  await createJobFeedEvent(supabase, accountId, jobId, {
+    kind: 'job_update',
+    title: 'Job details updated',
+    body: `The job record for ${updatedJob.client_name} was updated.`,
+    visibility: 'internal',
+    meta: { status: updatedJob.status },
+  });
+
   revalidatePath('/dashboard/jobs');
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }
@@ -83,7 +109,15 @@ export async function updateJobAction(jobId: string, formData: FormData) {
 export async function scheduleJobAction(jobId: string, formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
 
-  await updateJobSchedule(supabase, accountId, jobId, optionalText(formData.get('scheduledFor')), optionalText(formData.get('scheduledTime')));
+  const scheduledJob = await updateJobSchedule(supabase, accountId, jobId, optionalText(formData.get('scheduledFor')), optionalText(formData.get('scheduledTime')));
+
+  await createJobFeedEvent(supabase, accountId, jobId, {
+    kind: 'job_scheduled',
+    title: 'Job schedule updated',
+    body: `Scheduled for ${scheduledJob.scheduled_for || 'a date to be determined'}.`,
+    visibility: 'client',
+    meta: { scheduled_for: scheduledJob.scheduled_for, scheduled_time: scheduledJob.scheduled_time },
+  });
 
   revalidatePath('/dashboard/jobs');
   revalidatePath(`/dashboard/jobs/${jobId}`);
@@ -194,12 +228,21 @@ export async function createCostAction(jobId: string, formData: FormData) {
       throw new Error('Labor costs require both hours and an hourly rate greater than 0.');
     }
 
-    await createCost(supabase, accountId, jobId, {
+    const cost = await createCost(supabase, accountId, jobId, {
       type: 'labor',
       description,
       crewId: optionalText(formData.get('crewId')),
       hours,
       rate,
+    });
+    await createJobFeedEvent(supabase, accountId, jobId, {
+      kind: 'cost_added',
+      title: 'Cost added',
+      body: description,
+      visibility: 'internal',
+      amount: Number(cost.amount),
+      sourceTable: 'costs',
+      sourceId: cost.id,
     });
   } else {
     const amount = parseAmount(formData.get('amount'));
@@ -208,13 +251,103 @@ export async function createCostAction(jobId: string, formData: FormData) {
       throw new Error('Cost amount must be greater than 0.');
     }
 
-    await createCost(supabase, accountId, jobId, {
+    const cost = await createCost(supabase, accountId, jobId, {
       type,
       description,
       amount,
       supplier: optionalText(formData.get('supplier')),
     });
+    await createJobFeedEvent(supabase, accountId, jobId, {
+      kind: 'cost_added',
+      title: 'Cost added',
+      body: description,
+      visibility: 'internal',
+      amount: Number(cost.amount),
+      sourceTable: 'costs',
+      sourceId: cost.id,
+    });
   }
+
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
+export async function createManualJobFeedAction(jobId: string, formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const title = (formData.get('title') ?? '').toString().trim() || 'Job update';
+  const body = optionalText(formData.get('body'));
+  const visibility = formData.get('visibility') === 'client' ? 'client' : 'internal';
+
+  await createJobFeedEvent(supabase, accountId, jobId, {
+    kind: 'job_update',
+    title,
+    body,
+    visibility,
+  });
+
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
+export async function createClientJobLinkAction(jobId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const job = await getJob(supabase, accountId, jobId);
+  if (!job) throw new Error('Job not found for this account.');
+
+  const token = await createClientJobAccessToken(supabase, accountId, jobId, { clientPhone: job.client_phone });
+  await createJobFeedEvent(supabase, accountId, jobId, {
+    kind: 'client_link_created',
+    title: 'Client dashboard link created',
+    body: 'A client dashboard link was created for this job.',
+    visibility: 'internal',
+  });
+
+  redirect(`/dashboard/jobs/${jobId}?tab=feed&clientToken=${token}`);
+}
+
+export async function revokeClientJobLinkAction(jobId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  await revokeClientJobAccess(supabase, accountId, jobId);
+  await createJobFeedEvent(supabase, accountId, jobId, {
+    kind: 'client_link_revoked',
+    title: 'Client dashboard links revoked',
+    body: 'Active client dashboard links for this job were revoked.',
+    visibility: 'internal',
+  });
+
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
+export async function createPaymentRequestFromCostAction(jobId: string, costId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const [job, costs] = await Promise.all([getJob(supabase, accountId, jobId), listCosts(supabase, accountId, jobId)]);
+  const cost = costs.find((candidate) => candidate.id === costId);
+
+  if (!job || !cost) throw new Error('Cost not found for this job.');
+  if (cost.client_charge_payment_id) throw new Error('A payment request already exists for this cost.');
+
+  const homeownerPhone = job.client_phone ? normalizeUsPhone(job.client_phone) : null;
+  const payment = await createDepositRequest(supabase, accountId, jobId, {
+    label: `Additional charge — ${cost.description}`,
+    amount: Number(cost.amount),
+    kind: 'stage',
+    homeownerPhone,
+    smsConsent: Boolean(homeownerPhone),
+  });
+
+  await supabase
+    .from('costs')
+    .update({ client_charge_payment_id: payment.id, client_charge_requested_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('job_id', jobId)
+    .eq('id', costId);
+
+  if (homeownerPhone) {
+    await recordSmsConsent(accountId, homeownerPhone);
+    await sendPaymentSmsEvent(payment.id, 'payment_requested');
+  }
+
+  await createPaymentFeedEvent(supabase, payment.id, 'payment_requested');
 
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }

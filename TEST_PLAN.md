@@ -191,6 +191,29 @@ stripe trigger charge.refunded
 
 ---
 
+## Test 9: Job Feed + Client Dashboard
+
+**Files**: `/dashboard/jobs/[id]?tab=feed`, `/client/jobs/[token]`
+
+**Steps**:
+1. Open a job → Feed tab.
+2. Create a client dashboard link.
+3. Open the generated `/client/jobs/{token}` link in a logged-out or incognito browser.
+4. Post one internal update and one client-visible update from the Feed tab.
+5. Create a payment request from the Payments tab, optionally linked to an invoice.
+6. Add a cost line item, then use **Create New Payment Request and Auto Notify** on that cost.
+
+**Verify**:
+- ✅ Internal updates show only on the owner Feed tab.
+- ✅ Client-visible updates show on the client dashboard.
+- ✅ Draft invoices do not appear on the client dashboard.
+- ✅ Sent/signed/paid invoices appear as documents.
+- ✅ Requested/processing/paid payments appear for the client.
+- ✅ Payment webhook transitions add client-visible feed events.
+- ✅ Revoking active links makes old client dashboard URLs unavailable.
+
+---
+
 ## Quick Test Summary Checklist
 
 - [x] **Payment display**: Amount + fee visible on /pay page (verified by code review of `getQuotedFee`/page.tsx; not re-verified via live fetch this pass)

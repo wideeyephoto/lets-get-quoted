@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
+import { createJobFeedEvent } from '@/lib/job-feed';
 import {
   addInvoiceItem,
   createInvoice,
@@ -21,6 +22,17 @@ export async function createInvoiceAction(jobId: string, formData: FormData) {
 
   const status = (formData.get('status') as InvoiceStatus) || 'draft';
   const invoice = await createInvoice(supabase, accountId, jobId, status);
+
+  await createJobFeedEvent(supabase, accountId, jobId, {
+    kind: status === 'sent' ? 'invoice_sent' : 'invoice_created',
+    title: status === 'sent' ? 'Invoice sent' : 'Invoice created',
+    body: invoice.ref,
+    visibility: status === 'sent' ? 'client_financial' : 'internal',
+    amount: Number(invoice.total),
+    sourceTable: 'invoices',
+    sourceId: invoice.id,
+    actionUrl: `/invoice/${invoice.id}`,
+  });
 
   revalidatePath(`/dashboard/jobs/${jobId}`);
   redirect(`/dashboard/jobs/${jobId}/invoices/${invoice.id}`);
@@ -106,6 +118,20 @@ export async function updateInvoiceStatusAction(jobId: string, invoiceId: string
   }
 
   await updateInvoiceStatus(supabase, accountId, invoiceId, status);
+
+  if (status === 'sent' || status === 'paid' || status === 'signed') {
+    const invoiceData = await getInvoiceWithItems(supabase, accountId, invoiceId);
+    await createJobFeedEvent(supabase, accountId, jobId, {
+      kind: status === 'paid' ? 'invoice_paid' : status === 'signed' ? 'invoice_signed' : 'invoice_sent',
+      title: status === 'paid' ? 'Invoice paid' : status === 'signed' ? 'Invoice signed' : 'Invoice sent',
+      body: invoiceData?.invoice.ref ?? 'Invoice update',
+      visibility: 'client_financial',
+      amount: Number(invoiceData?.invoice.total ?? 0),
+      sourceTable: 'invoices',
+      sourceId: invoiceId,
+      actionUrl: `/invoice/${invoiceId}`,
+    });
+  }
 
   revalidatePath(`/dashboard/jobs/${jobId}/invoices/${invoiceId}`);
 }

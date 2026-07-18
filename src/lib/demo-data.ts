@@ -100,17 +100,17 @@ function buildCosts(job: Job): Cost[] {
     {
       id: `${job.id}-cost-materials`, account_id: DEMO_ACCOUNT_ID, job_id: job.id, type: 'material',
       category: 'Materials', description: 'Lumber, fixtures & supplies', amount: materials,
-      supplier: 'Riverton Supply Co.', receipt_url: null, crew_id: null, crew_name: null, crew_role_label: null, hours: null, rate: null, created_at: job.created_at,
+      supplier: 'Riverton Supply Co.', receipt_url: null, client_charge_payment_id: null, client_charge_requested_at: null, crew_id: null, crew_name: null, crew_role_label: null, hours: null, rate: null, created_at: job.created_at,
     },
     {
       id: `${job.id}-cost-labor`, account_id: DEMO_ACCOUNT_ID, job_id: job.id, type: 'labor',
       category: 'Labor', description: 'Crew labor', amount: laborAmount,
-      supplier: null, receipt_url: null, crew_id: DEMO_CREW[0].id, crew_name: DEMO_CREW[0].name, crew_role_label: DEMO_CREW[0].role_label, hours: laborHours, rate: 32, created_at: job.created_at,
+      supplier: null, receipt_url: null, client_charge_payment_id: null, client_charge_requested_at: null, crew_id: DEMO_CREW[0].id, crew_name: DEMO_CREW[0].name, crew_role_label: DEMO_CREW[0].role_label, hours: laborHours, rate: 32, created_at: job.created_at,
     },
     {
       id: `${job.id}-cost-sub`, account_id: DEMO_ACCOUNT_ID, job_id: job.id, type: 'sub',
       category: 'Subcontractor', description: 'Electrical subcontractor', amount: subAmount,
-      supplier: 'Cole Electric', receipt_url: null, crew_id: null, crew_name: null, crew_role_label: null, hours: null, rate: null, created_at: job.created_at,
+      supplier: 'Cole Electric', receipt_url: null, client_charge_payment_id: null, client_charge_requested_at: null, crew_id: null, crew_name: null, crew_role_label: null, hours: null, rate: null, created_at: job.created_at,
     },
   ];
 }

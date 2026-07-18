@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import { createDepositRequest, getPaymentDetails, refundPayment, markPaymentFailed, retryPayment, type PaymentKind } from '@/lib/payments';
+import { createPaymentFeedEvent } from '@/lib/job-feed';
 import { normalizeUsPhone } from '@/lib/phone';
 import { recordSmsConsent, retryFailedPaymentSmsEvent, sendPaymentSmsEvent } from '@/lib/sms';
 
@@ -30,6 +31,7 @@ export async function createDepositRequestAction(jobId: string, formData: FormDa
     homeownerPhone,
     smsConsent: sendSms,
   });
+  await createPaymentFeedEvent(supabase, payment.id, 'payment_requested');
   if (sendSms) await sendPaymentSmsEvent(payment.id, 'payment_requested');
 
   revalidatePath(`/dashboard/jobs/${jobId}`);

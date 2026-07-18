@@ -3,6 +3,7 @@ import { getStripeClient } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/auth';
 import { getRecipientTransferStatus } from '@/lib/stripe-connect';
 import { sendPaymentSmsEvent } from '@/lib/sms';
+import { createPaymentFeedEvent } from '@/lib/job-feed';
 
 // Stripe webhooks require the raw request body for signature verification,
 // so this route must not be statically optimized or have its body parsed.
@@ -72,6 +73,7 @@ async function markPaymentPaid(admin: ReturnType<typeof createAdminClient>, paym
   }
 
   await sendPaymentSmsEvent(paymentId, 'payment_paid');
+  await createPaymentFeedEvent(admin, paymentId, 'payment_paid');
 }
 
 export async function POST(request: Request) {
@@ -122,6 +124,7 @@ export async function POST(request: Request) {
         .select('id')
         .maybeSingle();
       if (transitioned) await sendPaymentSmsEvent(paymentId, 'payment_failed');
+      if (transitioned) await createPaymentFeedEvent(admin, paymentId, 'payment_failed');
     }
   }
 
@@ -140,6 +143,7 @@ export async function POST(request: Request) {
         .select('id')
         .maybeSingle();
       if (transitioned) await sendPaymentSmsEvent(paymentId, 'payment_failed');
+      if (transitioned) await createPaymentFeedEvent(admin, paymentId, 'payment_failed');
     }
   }
 
@@ -158,6 +162,7 @@ export async function POST(request: Request) {
         .select('id')
         .maybeSingle();
       if (transitioned) await sendPaymentSmsEvent(paymentId, 'payment_refunded');
+      if (transitioned) await createPaymentFeedEvent(admin, paymentId, 'payment_refunded');
     }
   }
 
@@ -176,6 +181,7 @@ export async function POST(request: Request) {
         .select('id')
         .maybeSingle();
       if (transitioned) await sendPaymentSmsEvent(paymentId, 'payment_failed');
+      if (transitioned) await createPaymentFeedEvent(admin, paymentId, 'payment_failed');
     }
   }
 

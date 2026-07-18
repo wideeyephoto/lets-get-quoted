@@ -6,8 +6,19 @@ import { getJob, listCosts, computeMargin, formatJobSchedule, formatMoney, forma
 import { createJobPhotoUrls } from '@/lib/job-photo-storage';
 import { listPayments, type PaymentStatus } from '@/lib/payments';
 import { listInvoices, type InvoiceStatus } from '@/lib/invoices';
+import { getActiveClientAccessCount, listJobFeed, type JobFeedEvent } from '@/lib/job-feed';
 import { listCrew, listCrewIdsForJob } from '@/lib/crew';
-import { createCostAction, deleteCostAction, deleteJobAction, updateJobAction, updateJobCrewAction } from '../actions';
+import {
+  createClientJobLinkAction,
+  createCostAction,
+  createManualJobFeedAction,
+  createPaymentRequestFromCostAction,
+  deleteCostAction,
+  deleteJobAction,
+  revokeClientJobLinkAction,
+  updateJobAction,
+  updateJobCrewAction,
+} from '../actions';
 import { createDepositRequestAction, refundPaymentAction, markPaymentFailedAction, retryPaymentAction, retryPaymentTextAction } from '../payments-actions';
 import { createInvoiceAction } from '../invoices-actions';
 import DeleteJobButton from './DeleteJobButton';
@@ -45,10 +56,20 @@ const COST_TYPE_ICON: Record<Cost['type'], string> = {
   other: '📦',
 };
 
+const FEED_VISIBILITY_LABEL: Record<JobFeedEvent['visibility'], string> = {
+  internal: 'Internal',
+  client: 'Client visible',
+  client_financial: 'Client financial',
+};
+
 function marginTier(margin: number): 'margin-good' | 'margin-ok' | 'margin-bad' {
   if (margin >= 0.35) return 'margin-good';
   if (margin >= 0.2) return 'margin-ok';
   return 'margin-bad';
+}
+
+function formatFeedTime(value: string): string {
+  return new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
 export default async function JobDetailPage({
@@ -56,7 +77,7 @@ export default async function JobDetailPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { tab?: string };
+  searchParams: { tab?: string; clientToken?: string };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
 
@@ -79,6 +100,8 @@ export default async function JobDetailPage({
   const margin = computeMargin(job, costs);
   const payments = await listPayments(supabase, accountId, job.id);
   const invoices = await listInvoices(supabase, accountId, job.id);
+  const feed = await listJobFeed(supabase, accountId, job.id);
+  const activeClientLinkCount = await getActiveClientAccessCount(supabase, accountId, job.id);
   const crew = await listCrew(supabase, accountId, { activeOnly: true });
   const assignedCrewIds = await listCrewIdsForJob(supabase, accountId, job.id);
   const jobPhotoUrls = await createJobPhotoUrls(accountId, job.photo_paths || []);
@@ -96,6 +119,8 @@ export default async function JobDetailPage({
         ? 'payments'
         : searchParams.tab === 'invoices'
           ? 'invoices'
+          : searchParams.tab === 'feed'
+            ? 'feed'
           : 'overview';
 
   const boundUpdateJob = updateJobAction.bind(null, job.id);
@@ -103,6 +128,9 @@ export default async function JobDetailPage({
   const boundDeleteJob = deleteJobAction.bind(null, job.id);
   const boundCreateCost = createCostAction.bind(null, job.id);
   const boundCreateDepositRequest = createDepositRequestAction.bind(null, job.id);
+  const boundCreateManualFeed = createManualJobFeedAction.bind(null, job.id);
+  const boundCreateClientJobLink = createClientJobLinkAction.bind(null, job.id);
+  const boundRevokeClientJobLink = revokeClientJobLinkAction.bind(null, job.id);
   const boundCreateInvoice = createInvoiceAction.bind(null, job.id);
   const boundRefundPayment = refundPaymentAction.bind(null, job.id);
   const boundMarkPaymentFailed = markPaymentFailedAction.bind(null, job.id);
@@ -162,6 +190,9 @@ export default async function JobDetailPage({
           </Link>
           <Link href={`/dashboard/jobs/${job.id}?tab=invoices`} className={`tab${tab === 'invoices' ? ' active' : ''}`}>
             🧾 Invoices
+          </Link>
+          <Link href={`/dashboard/jobs/${job.id}?tab=feed`} className={`tab${tab === 'feed' ? ' active' : ''}`}>
+            Feed
           </Link>
         </div>
       </section>
@@ -303,7 +334,15 @@ export default async function JobDetailPage({
                     name="description"
                     required
                     placeholder="Architectural shingles — Owens Corning Duration"
+                    list="cost-description-presets"
                   />
+                  <datalist id="cost-description-presets">
+                    <option value="Additional material charge" />
+                    <option value="Permit fee" />
+                    <option value="Subcontractor labor" />
+                    <option value="Change order" />
+                    <option value="Dump fee" />
+                  </datalist>
                 </div>
                 <div className="cost-form-row">
                   <div className="field">
@@ -354,9 +393,7 @@ export default async function JobDetailPage({
                   </div>
                 </div>
                 <div style={{ marginTop: '0.8rem' }}>
-                  <button type="submit" className="btn primary">
-                    + Add cost
-                  </button>
+                  <SaveButton pendingLabel="Adding…" savedLabel="Added ✓">+ Add cost line item</SaveButton>
                 </div>
               </form>
 
@@ -378,6 +415,17 @@ export default async function JobDetailPage({
                       </div>
                       <div className="cost-item-actions">
                         <span className="cost-item-amount">−{formatMoney(Number(cost.amount))}</span>
+                        {cost.client_charge_payment_id ? (
+                          <Link href={`/pay/${cost.client_charge_payment_id}`} target="_blank" className="btn secondary">
+                            Payment request created
+                          </Link>
+                        ) : (
+                          <form action={createPaymentRequestFromCostAction.bind(null, job.id, cost.id)}>
+                            <SaveButton className="btn secondary" pendingLabel="Creating…" savedLabel="Created ✓">
+                              Create New Payment Request and Auto Notify
+                            </SaveButton>
+                          </form>
+                        )}
                         <form action={deleteCostAction.bind(null, job.id, cost.id)}>
                           <button type="submit" className="icon-btn">
                             ✕
@@ -464,6 +512,23 @@ export default async function JobDetailPage({
                   <label htmlFor="pay-amount">Amount ($)</label>
                   <input id="pay-amount" name="amount" type="number" min="0.01" step="0.01" required placeholder="2500" />
                 </div>
+                <div className="field">
+                  <label htmlFor="invoiceId">Link invoice</label>
+                  <select id="invoiceId" name="invoiceId" defaultValue="">
+                    <option value="">No invoice</option>
+                    {invoices.map((invoice) => (
+                      <option key={invoice.id} value={invoice.id}>
+                        {invoice.ref} — {formatMoney(invoice.total)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="payment-shortcuts" aria-label="Payment amount ideas">
+                <span>Quick ideas:</span>
+                <span>{formatMoney(Math.max(job.quoted_amount * 0.5, 0))} deposit</span>
+                <span>{formatMoney(Math.max(job.quoted_amount - payments.filter((payment) => payment.status === 'paid').reduce((sum, payment) => sum + Number(payment.amount), 0), 0))} remaining</span>
+                {invoices[0] ? <span>{formatMoney(invoices[0].total)} latest invoice</span> : null}
               </div>
               <div className="payment-sms-options">
                 <label className="field" htmlFor="homeowner-phone">
@@ -476,9 +541,7 @@ export default async function JobDetailPage({
                 </label>
               </div>
               <div style={{ marginTop: '0.8rem' }}>
-                <button type="submit" className="btn primary">
-                  Create payment request
-                </button>
+                <SaveButton pendingLabel="Creating…" savedLabel="Created ✓">Create payment request &amp; notify</SaveButton>
               </div>
             </form>
 
@@ -528,6 +591,93 @@ export default async function JobDetailPage({
                 ))}
               </div>
             )}
+        </section>
+      ) : tab === 'feed' ? (
+        <section className="detail-grid workspace-grid-gap">
+          <div>
+            <div className="panel workspace-section-card">
+              <div className="section-heading workspace-section-heading">
+                <p className="eyebrow">Job feed</p>
+                <h2>Updates clients can follow</h2>
+              </div>
+              <form action={boundCreateManualFeed} className="cost-form workspace-form-block">
+                <div className="field">
+                  <label htmlFor="feed-title">Update title</label>
+                  <input id="feed-title" name="title" placeholder="Materials delivered" required />
+                </div>
+                <div className="field full">
+                  <label htmlFor="feed-body">Update</label>
+                  <textarea id="feed-body" name="body" placeholder="Tell the client what changed or what happened today." />
+                </div>
+                <label className="sms-consent-check">
+                  <input name="visibility" type="checkbox" value="client" />
+                  <span>Show this update on the client dashboard</span>
+                </label>
+                <div style={{ marginTop: '0.8rem' }}>
+                  <SaveButton pendingLabel="Posting…" savedLabel="Posted ✓">Post update</SaveButton>
+                </div>
+              </form>
+
+              {feed.length === 0 ? (
+                <p className="empty-state">No job feed updates yet.</p>
+              ) : (
+                <div className="job-feed-list workspace-list-block">
+                  {feed.map((event) => (
+                    <article className="job-feed-item" key={event.id}>
+                      <div className="job-feed-dot" />
+                      <div className="job-feed-content">
+                        <div className="job-row-header">
+                          <span className="cost-item-desc">{event.title || event.kind}</span>
+                          <span className={`status-badge ${event.visibility === 'internal' ? 'status-archived' : 'status-complete'}`}>
+                            {FEED_VISIBILITY_LABEL[event.visibility]}
+                          </span>
+                        </div>
+                        {event.body ? <p className="workspace-card-copy">{event.body}</p> : null}
+                        <p className="job-meta">
+                          {formatFeedTime(event.created_at)}
+                          {event.amount ? ` · ${formatMoney(Number(event.amount))}` : ''}
+                          {event.action_url ? (
+                            <>
+                              {' · '}
+                              <Link href={event.action_url} target="_blank">Open link</Link>
+                            </>
+                          ) : null}
+                        </p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <div className="panel workspace-section-card sticky-card">
+              <div className="section-heading workspace-section-heading">
+                <p className="eyebrow">Client dashboard</p>
+                <h2>Shareable job view</h2>
+              </div>
+              <p className="workspace-card-copy">
+                Give the client one link for visible updates, payment requests, invoices, and job status.
+              </p>
+              {searchParams.clientToken ? (
+                <div className="payment-banner success">
+                  <p><strong>New client link ready.</strong></p>
+                  <p><a href={`/client/jobs/${searchParams.clientToken}`} target="_blank" rel="noreferrer">/client/jobs/{searchParams.clientToken}</a></p>
+                </div>
+              ) : (
+                <p className="job-meta">Active dashboard links: {activeClientLinkCount}</p>
+              )}
+              <div className="actions" style={{ marginTop: '1rem' }}>
+                <form action={boundCreateClientJobLink}>
+                  <SaveButton pendingLabel="Creating…" savedLabel="Created ✓">Create client dashboard link</SaveButton>
+                </form>
+                <form action={boundRevokeClientJobLink}>
+                  <SaveButton className="btn secondary" pendingLabel="Revoking…" savedLabel="Revoked ✓">Revoke active links</SaveButton>
+                </form>
+              </div>
+            </div>
+          </div>
         </section>
       ) : (
         <section className="panel workspace-section-card">

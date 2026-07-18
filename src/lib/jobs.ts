@@ -48,6 +48,8 @@ export type Cost = {
   amount: number;
   supplier: string | null;
   receipt_url: string | null;
+  client_charge_payment_id: string | null;
+  client_charge_requested_at: string | null;
   crew_id: string | null;
   crew_name: string | null;
   crew_role_label: string | null;

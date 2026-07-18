@@ -1548,6 +1548,62 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   margin-top: 0.35rem;
 }
 
+.payment-shortcuts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.75rem;
+  color: rgba(255,255,255,.58);
+  font-size: 0.78rem;
+}
+.payment-shortcuts span {
+  padding: 0.28rem 0.55rem;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 999px;
+  background: rgba(255,255,255,.04);
+}
+.payment-shortcuts span:first-child {
+  border-color: transparent;
+  background: transparent;
+  padding-left: 0;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.job-feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.job-feed-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+  background: rgba(255,255,255,.025);
+}
+.job-feed-dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 0.35rem;
+  border-radius: 999px;
+  background: #ff8a3d;
+  box-shadow: 0 0 0 4px rgba(255,138,61,.14);
+}
+.job-feed-content {
+  min-width: 0;
+}
+.job-feed-content .workspace-card-copy {
+  margin: 0.35rem 0 0;
+}
+.client-job-dashboard .workspace-hero {
+  border-color: rgba(255,138,61,.22);
+}
+
 .payment-metric-name {
   font-size: clamp(1.2rem, 2.4vw, 1.7rem);
 }

@@ -225,6 +225,9 @@ create table if not exists costs (
   supplier      text,
   receipt_url   text,
 
+  client_charge_payment_id uuid,
+  client_charge_requested_at timestamptz,
+
   crew_id       uuid references crew(id) on delete set null,
   crew_name     text,
   crew_role_label text,
@@ -236,6 +239,8 @@ create table if not exists costs (
 
 alter table costs add column if not exists crew_name text;
 alter table costs add column if not exists crew_role_label text;
+alter table costs add column if not exists client_charge_payment_id uuid;
+alter table costs add column if not exists client_charge_requested_at timestamptz;
 
 update costs
 set crew_name = coalesce(costs.crew_name, crew.name),
@@ -259,6 +264,47 @@ create table if not exists job_feed (
   image_url     text,
   author        text,
   meta          jsonb,
+  title         text,
+  visibility    text not null default 'internal' check (visibility in ('internal','client','client_financial')),
+  amount        numeric(12,2),
+  source_table  text,
+  source_id     uuid,
+  action_url    text,
+  published_at  timestamptz,
+  created_at    timestamptz not null default now()
+);
+
+alter table job_feed add column if not exists title text;
+alter table job_feed add column if not exists visibility text not null default 'internal';
+alter table job_feed add column if not exists amount numeric(12,2);
+alter table job_feed add column if not exists source_table text;
+alter table job_feed add column if not exists source_id uuid;
+alter table job_feed add column if not exists action_url text;
+alter table job_feed add column if not exists published_at timestamptz;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'job_feed_visibility_check'
+  ) then
+    alter table job_feed add constraint job_feed_visibility_check
+      check (visibility in ('internal','client','client_financial'));
+  end if;
+end $$;
+
+-- ----------------------------------------------------------------------------
+-- CLIENT_JOB_ACCESS  — revocable public job dashboard links.
+-- ----------------------------------------------------------------------------
+create table if not exists client_job_access (
+  id            uuid primary key default gen_random_uuid(),
+  account_id    uuid not null references accounts(id) on delete cascade,
+  job_id        uuid not null references jobs(id) on delete cascade,
+  token_hash    text not null unique,
+  client_email  text,
+  client_phone  text,
+  expires_at    timestamptz,
+  revoked_at    timestamptz,
+  last_viewed_at timestamptz,
   created_at    timestamptz not null default now()
 );
 
@@ -447,7 +493,7 @@ declare t text;
 begin
   foreach t in array array[
     'accounts','memberships','crew','sites','jobs','crew_assignments',
-    'costs','job_feed','invoices','payments','finance_plans','leads','sms_events','sms_consent'
+    'costs','job_feed','client_job_access','invoices','payments','finance_plans','leads','sms_events','sms_consent'
   ] loop
     execute format('alter table %I enable row level security;', t);
   end loop;
@@ -463,6 +509,7 @@ drop policy if exists job_all on jobs;
 drop policy if exists asg_all on crew_assignments;
 drop policy if exists cost_all on costs;
 drop policy if exists feed_all on job_feed;
+drop policy if exists client_access_all on client_job_access;
 drop policy if exists inv_all on invoices;
 drop policy if exists pay_all on payments;
 drop policy if exists plan_all on finance_plans;
@@ -483,6 +530,7 @@ create policy job_all    on jobs             for all using ( is_member(account_i
 create policy asg_all    on crew_assignments for all using ( is_member(account_id) );
 create policy cost_all   on costs            for all using ( is_member(account_id) );
 create policy feed_all   on job_feed         for all using ( is_member(account_id) );
+create policy client_access_all on client_job_access for all using ( is_owner(account_id) );
 create policy inv_all    on invoices         for all using ( is_member(account_id) );
 create policy pay_all    on payments         for all using ( is_member(account_id) );
 create policy plan_all   on finance_plans    for all using ( is_member(account_id) );
@@ -501,6 +549,9 @@ create policy invitem_all on invoice_items for all using (
 create index if not exists jobs_account_id_status_idx on jobs (account_id, status);
 create index if not exists costs_job_id_idx on costs (job_id);
 create index if not exists job_feed_job_id_created_at_idx on job_feed (job_id, created_at);
+create index if not exists job_feed_account_job_created_at_idx on job_feed (account_id, job_id, created_at desc);
+create unique index if not exists job_feed_source_once_idx on job_feed (source_table, source_id, kind) where source_table is not null and source_id is not null;
+create index if not exists client_job_access_job_id_idx on client_job_access (job_id, revoked_at, created_at desc);
 create index if not exists invoices_job_id_idx on invoices (job_id);
 create index if not exists payments_job_id_status_idx on payments (job_id, status);
 create index if not exists crew_assignments_crew_id_idx on crew_assignments (crew_id);
