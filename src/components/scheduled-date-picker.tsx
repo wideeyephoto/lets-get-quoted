@@ -163,21 +163,21 @@ export default function ScheduledDatePicker({ id, name, defaultValue = '', requi
             </div>
           ) : null}
         </div>
-      </div>
-      <div className="quick-add-buttons modern-date-chips" aria-label="Quick date choices">
-        {quickDateOptions.map((option) => (
-          <button
-            key={`${option.label}-${option.value}`}
-            type="button"
-            className={selectedDate === option.value ? 'active' : undefined}
-            onClick={() => {
-              updateSelectedDate(option.value);
-              setIsCalendarOpen(false);
-            }}
-          >
-            {option.label}
-          </button>
-        ))}
+        <div className="quick-add-buttons modern-date-chips" aria-label="Quick date choices">
+          {quickDateOptions.map((option) => (
+            <button
+              key={`${option.label}-${option.value}`}
+              type="button"
+              className={selectedDate === option.value ? 'active' : undefined}
+              onClick={() => {
+                updateSelectedDate(option.value);
+                setIsCalendarOpen(false);
+              }}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

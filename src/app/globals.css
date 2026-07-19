@@ -1908,6 +1908,9 @@ li + li { margin-top: 0.45rem; }
     grid-template-columns: 1fr;
   }
 
+  .job-intake-schedule-grid { grid-template-columns: 1fr; }
+  .hours-metric { grid-column: auto; }
+
   .pricing-tiers {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3108,6 +3111,9 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 }
 .job-intake-metric label { color: rgba(255,209,102,0.9); }
 .job-intake-metric input { border-color: rgba(255,209,102,0.24); background: rgba(5,12,22,0.46); font-size: 1.05rem; font-weight: 800; }
+.job-intake-schedule-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, .8fr); gap: 0.8rem; align-items: stretch; }
+.job-intake-schedule-stack { display: grid; gap: 0.8rem; min-width: 0; }
+.job-intake-schedule-grid .hours-metric { min-width: 0; }
 .quote-metric { border-color: rgba(255,209,102,0.34); box-shadow: 0 16px 38px rgba(255,122,33,0.12); }
 .quote-metric label { font-size: 0.86rem; color: #ffd166; }
 .quote-metric input { min-height: 4.25rem; color: #ffd166; font-size: 1.65rem; letter-spacing: 0; }
@@ -3115,6 +3121,19 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .job-intake-metric .quick-add-buttons { margin-top: 0.65rem; }
 .job-intake-metric .quick-add-buttons span { color: rgba(247,245,239,0.62); }
 .job-intake-metric .quick-add-buttons button { border-color: rgba(255,209,102,0.18); background: rgba(255,209,102,0.08); color: #f7f5ef; font-weight: 800; }
+.sms-consent-check.job-intake-client-text {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.85rem;
+  border-color: rgba(25,214,174,0.28);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(25,214,174,0.12), rgba(255,255,255,0.04));
+  color: rgba(247,245,239,0.78);
+}
+.sms-consent-check.job-intake-client-text input { width: 20px; height: 20px; margin-top: 0; accent-color: #19d6ae; }
+.sms-consent-check.job-intake-client-text span { display: grid; gap: 0.12rem; }
+.sms-consent-check.job-intake-client-text strong { color: #f7f5ef; font-size: 0.92rem; }
+.sms-consent-check.job-intake-client-text small { color: rgba(247,245,239,0.58); font-size: 0.78rem; line-height: 1.35; }
 
 .past-clients-picker { padding: 0.85rem; border: 1px solid rgba(255,209,102,0.16); border-radius: 12px; background: rgba(255,209,102,0.035); }
 .past-client-mode-toggle { display: inline-flex; width: fit-content; margin-bottom: 0.7rem; padding: 0.2rem; border: 1px solid rgba(255,255,255,0.12); border-radius: 999px; background: rgba(255,255,255,0.04); }

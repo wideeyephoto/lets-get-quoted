@@ -248,35 +248,42 @@ export default async function JobsPage({
             <label htmlFor="photos">Photos</label>
             <input id="photos" name="photos" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple />
           </div>
-          <div className="field">
-            <label htmlFor="scheduledFor">Scheduled for</label>
-            <ScheduledDatePicker id="scheduledFor" name="scheduledFor" />
-          </div>
-          <div className="field">
-            <label htmlFor="scheduledTime">Time of day</label>
-            <TimeSlotSelect id="scheduledTime" name="scheduledTime" />
-          </div>
-          <div className="field job-intake-metric hours-metric">
-            <label htmlFor="estimatedHours">Estimated hours</label>
-            <input id="estimatedHours" name="estimatedHours" type="number" min="0" step="0.25" placeholder="16" />
-            <QuickFillButtons
-              label="Quick add:"
-              targetId="estimatedHours"
-              values={[
-                { label: '2 hrs', value: '2' },
-                { label: '4 hrs', value: '4' },
-                { label: '8 hrs', value: '8' },
-                { label: '16 hrs', value: '16' },
-              ]}
-            />
+          <div className="full job-intake-schedule-grid">
+            <div className="job-intake-schedule-stack">
+              <div className="field">
+                <label htmlFor="scheduledFor">Scheduled for</label>
+                <ScheduledDatePicker id="scheduledFor" name="scheduledFor" />
+              </div>
+              <div className="field">
+                <label htmlFor="scheduledTime">Time of day</label>
+                <TimeSlotSelect id="scheduledTime" name="scheduledTime" />
+              </div>
+            </div>
+            <div className="field job-intake-metric hours-metric">
+              <label htmlFor="estimatedHours">Estimated hours</label>
+              <input id="estimatedHours" name="estimatedHours" type="number" min="0" step="0.25" placeholder="16" />
+              <QuickFillButtons
+                label="Quick add:"
+                targetId="estimatedHours"
+                values={[
+                  { label: '2 hrs', value: '2' },
+                  { label: '4 hrs', value: '4' },
+                  { label: '8 hrs', value: '8' },
+                  { label: '16 hrs', value: '16' },
+                ]}
+              />
+            </div>
           </div>
           <div className="field full job-intake-metric quote-metric">
             <label htmlFor="quotedAmount">Quoted amount ($)</label>
             <FormattedCurrencyInput id="quotedAmount" name="quotedAmount" placeholder="$12,840" />
           </div>
           <label className="field full sms-consent-check job-intake-client-text">
-            <input name="sendClientText" type="checkbox" />
-            <span>Send Client Text with their client dashboard link.</span>
+            <input name="sendClientText" type="checkbox" defaultChecked />
+            <span>
+              <strong>Send Client Text</strong>
+              <small>Text the client their dashboard link after this job is created.</small>
+            </span>
           </label>
           <div className="field full">
             <button type="submit" className="btn primary">
