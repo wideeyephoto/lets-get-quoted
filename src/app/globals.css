@@ -905,7 +905,16 @@ li + li { margin-top: 0.45rem; }
 .sign-in-method-row .method-name { font-weight: 700; display: block; }
 .sign-in-method-row .method-detail { display: block; color: rgba(255,255,255,.55); font-size: .78rem; margin-top: .15rem; }
 .schedule-method-row .method-info { flex: 1 1 220px; min-width: 220px; }
-.schedule-popover { position: relative; flex: 0 0 auto; }
+.schedule-action-buttons {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  flex: 0 0 auto;
+}
+.schedule-action-buttons .btn { min-width: 94px; }
+.schedule-popover { position: static; flex: 0 0 auto; }
 .schedule-popover summary {
   list-style: none;
   cursor: pointer;
@@ -962,32 +971,6 @@ li + li { margin-top: 0.45rem; }
   background: rgba(255,209,102,.15);
   outline: none;
 }
-.schedule-popover-choice + .schedule-popover-choice { margin-top: 0.65rem; }
-.schedule-popover-choice-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 48px;
-  padding: 0.75rem 1rem;
-  border: 1px solid rgba(255,209,102,.24);
-  border-radius: 14px;
-  background: rgba(255,209,102,.07);
-  color: #ffd166;
-  font-weight: 900;
-  text-align: center;
-  cursor: pointer;
-  list-style: none;
-}
-.schedule-popover-choice-button::-webkit-details-marker { display: none; }
-.schedule-popover-choice-button:hover,
-.schedule-popover-choice-button:focus-visible {
-  border-color: rgba(255,209,102,.55);
-  background: rgba(255,209,102,.13);
-  outline: none;
-}
-.schedule-popover-choice-panel {
-  margin-top: 0.75rem;
-}
 .schedule-inline-form {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) minmax(150px, 0.7fr) auto;
@@ -1041,13 +1024,6 @@ li + li { margin-top: 0.45rem; }
   width: 100%;
   margin-top: 0.7rem;
 }
-.schedule-client-options-details {
-  margin-top: 0;
-}
-.schedule-client-options-heading {
-  color: #ffd166;
-}
-.schedule-client-options-heading span,
 .schedule-client-options-form label:not(.sms-consent-check) {
   color: rgba(247,245,239,.58);
   font-size: 0.68rem;
@@ -3023,6 +2999,9 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 
   .schedule-popover { width: 100%; }
   .schedule-popover summary { width: 100%; justify-content: center; }
+  .schedule-action-buttons { width: 100%; }
+  .schedule-action-buttons .schedule-popover { flex: 1 1 0; min-width: 0; }
+  .schedule-action-buttons .btn { min-width: 0; width: 100%; }
   .schedule-popover-panel {
     position: static;
     width: 100%;
