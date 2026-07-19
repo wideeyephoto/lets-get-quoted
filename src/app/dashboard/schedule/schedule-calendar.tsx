@@ -65,6 +65,10 @@ function getBandColorClass(jobId: string): string {
   return `calendar-band-color-${hash}`;
 }
 
+function compareCalendarJobs(first: CalendarJob, second: CalendarJob): number {
+  return `${first.scheduled_time ?? ''}${first.client_name}${first.id}`.localeCompare(`${second.scheduled_time ?? ''}${second.client_name}${second.id}`);
+}
+
 function addMonths(date: Date, months: number): Date {
   return new Date(date.getFullYear(), date.getMonth() + months, 1);
 }
@@ -131,7 +135,37 @@ export default function ScheduleCalendar({
       ?? [];
   }, [jobsByDate, todayKey, weeks]);
 
-  const visibleWeeks = calendarView === 'week' ? [weekAtAGlance] : weeks;
+  const visibleWeeks = useMemo(() => calendarView === 'week' ? [weekAtAGlance] : weeks, [calendarView, weekAtAGlance, weeks]);
+
+  const visibleWeekLayouts = useMemo(() => {
+    return visibleWeeks.map((week) => {
+      const laneByJobId = new Map<string, number>();
+      const lanesByDate = new Map<string, Array<CalendarJob | null>>();
+
+      for (const cell of week) {
+        if (!cell) continue;
+        const lanes: Array<CalendarJob | null> = [];
+        const usedLanes = new Set<number>();
+        const dayJobs = [...(jobsByDate.get(cell.dateKey) ?? [])].sort(compareCalendarJobs);
+
+        for (const job of dayJobs) {
+          let lane = laneByJobId.get(job.id);
+          if (lane === undefined || usedLanes.has(lane)) {
+            lane = 0;
+            while (usedLanes.has(lane)) lane++;
+            laneByJobId.set(job.id, lane);
+          }
+          lanes[lane] = job;
+          usedLanes.add(lane);
+        }
+
+        lanesByDate.set(cell.dateKey, lanes);
+      }
+
+      const laneCount = Math.max(0, ...Array.from(lanesByDate.values()).map((lanes) => lanes.length));
+      return { lanesByDate, laneCount };
+    });
+  }, [jobsByDate, visibleWeeks]);
 
   function openJobActions(occurrenceKey: string) {
     setIsConfirmingRemove(false);
@@ -249,14 +283,19 @@ export default function ScheduleCalendar({
               if (!cell) {
                 return <div className="calendar-cell empty" key={`${weekIndex}-${cellIndex}`} />;
               }
-              const dayJobs = jobsByDate.get(cell.dateKey) ?? [];
+              const weekLayout = visibleWeekLayouts[weekIndex];
+              const dayLanes = weekLayout?.lanesByDate.get(cell.dateKey) ?? [];
+              const laneJobs = Array.from({ length: weekLayout?.laneCount ?? 0 }, (_, laneIndex) => dayLanes[laneIndex] ?? null);
               const previousDateKey = cellIndex > 0 ? addDaysToDateKey(cell.dateKey, -1) : null;
               const nextDateKey = cellIndex < week.length - 1 ? addDaysToDateKey(cell.dateKey, 1) : null;
               return (
                 <div className={`calendar-cell${cell.dateKey === todayKey ? ' today' : ''}`} key={cell.dateKey}>
                   <span className="calendar-day-number">{cell.day}</span>
                   <div className="calendar-day-jobs">
-                    {dayJobs.map((job) => {
+                    {laneJobs.map((job, laneIndex) => {
+                      if (!job) {
+                        return <div className="calendar-job-slot empty" key={`${cell.dateKey}-lane-${laneIndex}`} aria-hidden="true" />;
+                      }
                       const continuesFromPrevious = previousDateKey ? hasJobOnDate(jobsByDate, job.id, previousDateKey) : false;
                       const continuesToNext = nextDateKey ? hasJobOnDate(jobsByDate, job.id, nextDateKey) : false;
                       const bandClass = continuesFromPrevious

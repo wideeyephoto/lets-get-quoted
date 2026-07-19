@@ -1545,6 +1545,7 @@ li + li { margin-top: 0.45rem; }
 .calendar-cell.today { border-color: rgba(255,138,61,.55); background: rgba(255,138,61,.07); }
 .calendar-day-number { font-size: .78rem; font-weight: 700; color: rgba(255,255,255,.6); }
 .calendar-day-jobs { display: flex; flex-direction: column; gap: .25rem; }
+.calendar-job-slot.empty { min-height: 24px; }
 .calendar-job-chip { display: block; width: 100%; padding: .2rem .4rem; border: 0; border-radius: 5px; background: rgba(255,255,255,.08); color: #fff; font: inherit; font-size: .7rem; line-height: 1.3; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
 .calendar-job-chip:hover { background: rgba(255,255,255,.16); }
 .calendar-job-chip.status-new_lead { background: rgba(255,209,102,.16); color: #ffd166; }
