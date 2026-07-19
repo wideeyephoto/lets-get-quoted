@@ -363,6 +363,8 @@ export default function ScheduleCalendar({
             <div className="schedule-job-actions">
               <div className="schedule-job-quick-actions">
                 <Link href={`/dashboard/jobs/${openJob.id}`} className="btn secondary schedule-job-open-link">Open job</Link>
+                <Link href={`/dashboard/jobs/${openJob.id}?open=costs#job-costs`} className="btn secondary schedule-job-open-link">Add expense</Link>
+                <Link href={`/dashboard/jobs/${openJob.id}?open=payment#request-payment`} className="btn primary schedule-job-open-link">Request payment</Link>
                 <div className="schedule-crew-action-wrap">
                   <div className="schedule-crew-action-group">
                     <details className="schedule-crew-quick">

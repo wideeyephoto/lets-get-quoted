@@ -752,7 +752,7 @@ export default async function JobDetailPage({
 
       <section id="job-costs" className="detail-grid workspace-grid-gap">
           <div>
-            <details className="panel workspace-section-card workspace-details job-action-details">
+            <details className="panel workspace-section-card workspace-details job-action-details" open={searchParams.open === 'costs'}>
               <summary className="workspace-details-summary job-action-summary">
                 <div className="section-heading workspace-section-heading compact-heading">
                   <p className="eyebrow">Expenses</p>
