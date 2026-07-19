@@ -4,7 +4,7 @@ import { expandScheduledJobs, formatMoney, listJobs, type Job } from '@/lib/jobs
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
-import { scheduleJobAction } from '../jobs/actions';
+import { scheduleJobAction, sendClientScheduleOptionsAction } from '../jobs/actions';
 import ScheduleCalendar from './schedule-calendar';
 
 const STATUS_LABEL: Record<Job['status'], string> = {
@@ -199,6 +199,7 @@ export default async function SchedulePage({
           <div className="sign-in-methods-list">
             {unscheduledJobs.map((job) => {
               const boundSchedule = scheduleJobAction.bind(null, job.id);
+              const boundSendScheduleOptions = sendClientScheduleOptionsAction.bind(null, job.id);
               return (
                 <div className="sign-in-method-row schedule-method-row" key={job.id}>
                   <div className="method-info">
@@ -229,6 +230,29 @@ export default async function SchedulePage({
                           <TimeSlotSelect id={`scheduledTime-${job.id}`} name="scheduledTime" />
                         </div>
                         <button type="submit" className="btn secondary">Set custom time</button>
+                      </form>
+                      <form action={boundSendScheduleOptions} className="schedule-inline-form schedule-client-options-form">
+                        <div className="schedule-inline-field schedule-inline-date">
+                          <label htmlFor={`scheduleClientPhone-${job.id}`}>Client mobile</label>
+                          <input id={`scheduleClientPhone-${job.id}`} name="scheduleClientPhone" type="tel" defaultValue={job.client_phone ?? ''} placeholder="(248) 555-0117" />
+                        </div>
+                        {[1, 2, 3].map((optionNumber) => (
+                          <div className="schedule-option-grid" key={`${job.id}-option-${optionNumber}`}>
+                            <div>
+                              <label htmlFor={`scheduleDate${optionNumber}-${job.id}`}>Option {optionNumber} date</label>
+                              <ScheduledDatePicker id={`scheduleDate${optionNumber}-${job.id}`} name={`scheduleDate${optionNumber}`} />
+                            </div>
+                            <div>
+                              <label htmlFor={`scheduleTime${optionNumber}-${job.id}`}>Option {optionNumber} time</label>
+                              <TimeSlotSelect id={`scheduleTime${optionNumber}-${job.id}`} name={`scheduleTime${optionNumber}`} />
+                            </div>
+                          </div>
+                        ))}
+                        <label className="sms-consent-check">
+                          <input name="scheduleSmsConsent" type="checkbox" required />
+                          <span>The client agreed to receive transactional scheduling texts. Reply STOP to opt out.</span>
+                        </label>
+                        <button type="submit" className="btn secondary">Text 3 options</button>
                       </form>
                     </div>
                   </details>

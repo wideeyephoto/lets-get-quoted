@@ -210,7 +210,7 @@ export async function scheduleJobAction(jobId: string, formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
   const scheduledFor = optionalText(formData.get('scheduledFor'));
 
-  if (!scheduledFor) throw new Error('Choose a schedule date before saving.');
+  if (!scheduledFor) redirect('/dashboard/schedule#unscheduled-jobs');
 
   const scheduledJob = await updateJobSchedule(supabase, accountId, jobId, scheduledFor, optionalText(formData.get('scheduledTime')));
 
@@ -252,6 +252,7 @@ export async function sendClientScheduleOptionsAction(jobId: string, formData: F
 
   revalidatePath('/dashboard/jobs');
   revalidatePath(`/dashboard/jobs/${jobId}`);
+  revalidatePath('/dashboard/schedule');
 }
 
 export async function deleteJobAction(jobId: string) {
