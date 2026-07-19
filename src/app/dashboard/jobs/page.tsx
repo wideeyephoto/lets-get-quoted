@@ -227,10 +227,6 @@ export default async function JobsPage({
         <form action={createJobAction} className="form-grid">
           <PastClientsPicker clients={pastClients} />
           <div className="field">
-            <label htmlFor="clientName">Client name</label>
-            <input id="clientName" name="clientName" required placeholder="Sarah Whitfield" />
-          </div>
-          <div className="field">
             <label htmlFor="clientPhone">Client phone</label>
             <input id="clientPhone" name="clientPhone" placeholder="(248) 555-0117" />
           </div>

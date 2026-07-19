@@ -3080,6 +3080,11 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .field select option { background: #101c2b; color: #f7f5ef; }
 
 .past-clients-picker { padding: 0.85rem; border: 1px solid rgba(255,209,102,0.16); border-radius: 12px; background: rgba(255,209,102,0.035); }
+.past-client-mode-toggle { display: inline-flex; width: fit-content; margin-bottom: 0.7rem; padding: 0.2rem; border: 1px solid rgba(255,255,255,0.12); border-radius: 999px; background: rgba(255,255,255,0.04); }
+.past-client-mode-toggle button { border: 0; border-radius: 999px; padding: 0.35rem 0.7rem; background: transparent; color: rgba(247,245,239,0.62); font: inherit; font-size: 0.78rem; font-weight: 800; cursor: pointer; }
+.past-client-mode-toggle button.active { background: #ffd166; color: #1d1606; }
+.past-client-mode-toggle button:not(.active):hover,
+.past-client-mode-toggle button:not(.active):focus-visible { color: #fff; }
 .past-client-results { display: grid; gap: 0.45rem; }
 .past-client-results button {
   display: flex;
