@@ -357,7 +357,7 @@ export default async function SchedulePage({
                               </div>
                               <div>
                                 <label htmlFor={`scheduleTime${optionNumber}-${job.id}`}>Option {optionNumber} time</label>
-                                <TimeSlotSelect id={`scheduleTime${optionNumber}-${job.id}`} name={`scheduleTime${optionNumber}`} />
+                                <TimeSlotSelect id={`scheduleTime${optionNumber}-${job.id}`} name={`scheduleTime${optionNumber}`} scrollIntoViewOnOpen={optionNumber === 3} />
                               </div>
                             </div>
                           ))}

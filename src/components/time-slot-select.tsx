@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 type TimeSlotSelectProps = {
   id: string;
   name: string;
   defaultValue?: string;
+  scrollIntoViewOnOpen?: boolean;
 };
 
 const QUICK_TIME_SLOTS = [
@@ -39,9 +40,10 @@ function buildTimeSlots() {
   return slots;
 }
 
-export default function TimeSlotSelect({ id, name, defaultValue = '' }: TimeSlotSelectProps) {
+export default function TimeSlotSelect({ id, name, defaultValue = '', scrollIntoViewOnOpen = false }: TimeSlotSelectProps) {
   const [selectedTime, setSelectedTime] = useState(defaultValue);
   const [isOpen, setIsOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
   const timeSlots = buildTimeSlots();
   const selectedLabel = selectedTime ? formatTimeLabel(selectedTime) : 'No set time';
 
@@ -50,15 +52,27 @@ export default function TimeSlotSelect({ id, name, defaultValue = '' }: TimeSlot
     setIsOpen(false);
   }
 
+  function toggleTimePanel() {
+    setIsOpen((current) => {
+      const nextIsOpen = !current;
+      if (nextIsOpen && scrollIntoViewOnOpen) {
+        requestAnimationFrame(() => {
+          pickerRef.current?.scrollIntoView({ block: 'start', inline: 'nearest' });
+        });
+      }
+      return nextIsOpen;
+    });
+  }
+
   return (
-    <div className="modern-time-picker">
+    <div className="modern-time-picker" ref={pickerRef}>
       <input id={id} name={name} type="hidden" value={selectedTime} readOnly />
       <button
         type="button"
         className="modern-time-button"
         aria-label="Choose scheduled time"
         aria-expanded={isOpen}
-        onClick={() => setIsOpen((current) => !current)}
+        onClick={toggleTimePanel}
       >
         {selectedLabel}
       </button>
