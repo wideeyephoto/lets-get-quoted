@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
+import SaveButton from '@/components/save-button';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
 import { removeJobScheduleAction, scheduleJobAction, textCrewJobDateAction, toggleJobCrewAction } from '../jobs/actions';
@@ -384,7 +385,7 @@ export default function ScheduleCalendar({
                   <ScheduledDatePicker id={`calendarScheduledFor-${openJob.occurrence_key}`} name="scheduledFor" defaultValue={openJob.scheduled_for} required />
                   <TimeSlotSelect id={`calendarScheduledTime-${openJob.occurrence_key}`} name="scheduledTime" defaultValue={openJob.scheduled_time ?? ''} />
                 </div>
-                <button type="submit" className="btn primary schedule-job-submit">Save new start date</button>
+                <SaveButton className="btn primary schedule-job-submit" pendingLabel="Saving..." savedLabel="Saved">Save new start date</SaveButton>
               </form>
 
               <div className="schedule-remove-box">
