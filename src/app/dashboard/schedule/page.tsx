@@ -316,7 +316,16 @@ export default async function SchedulePage({
                   <div className="schedule-action-buttons">
                     <details className="schedule-popover" name={`schedule-popover-${job.id}`}>
                       <summary className="btn secondary">Add Start Date</summary>
-                      <div className="schedule-popover-panel">
+                      <div className="schedule-popover-panel schedule-start-panel">
+                        <form action={boundSchedule} className="schedule-inline-form schedule-start-form">
+                          <div className="schedule-inline-field schedule-inline-date">
+                            <ScheduledDatePicker id={`scheduledFor-${job.id}`} name="scheduledFor" required />
+                          </div>
+                          <div className="schedule-inline-field schedule-inline-time">
+                            <TimeSlotSelect id={`scheduledTime-${job.id}`} name="scheduledTime" />
+                          </div>
+                          <button type="submit" className="btn primary schedule-save-button">Save Start Date</button>
+                        </form>
                         <div className="schedule-preset-grid" aria-label={`Quick schedule presets for ${job.client_name}`}>
                           {quickSchedulePresets.map((preset) => (
                             <form action={boundSchedule} key={`${job.id}-${preset.label}`}>
@@ -326,15 +335,6 @@ export default async function SchedulePage({
                             </form>
                           ))}
                         </div>
-                        <form action={boundSchedule} className="schedule-inline-form">
-                          <div className="schedule-inline-field schedule-inline-date">
-                            <ScheduledDatePicker id={`scheduledFor-${job.id}`} name="scheduledFor" required />
-                          </div>
-                          <div className="schedule-inline-field schedule-inline-time">
-                            <TimeSlotSelect id={`scheduledTime-${job.id}`} name="scheduledTime" />
-                          </div>
-                          <button type="submit" className="btn primary schedule-save-button">Save Start Date</button>
-                        </form>
                       </div>
                     </details>
                     <details className="schedule-popover" name={`schedule-popover-${job.id}`}>
