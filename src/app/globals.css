@@ -1513,7 +1513,8 @@ li + li { margin-top: 0.45rem; }
 .schedule-calendar-copy { justify-content: flex-start; }
 .schedule-calendar-copy .workspace-title { margin-bottom: 0.35rem; }
 .schedule-calendar-copy .workspace-lead { max-width: 42rem; }
-.calendar-heading { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: .8rem; max-width: none; margin-bottom: .9rem; }
+.calendar-heading { display: flex; align-items: flex-end; justify-content: flex-start; flex-wrap: wrap; gap: 1rem 1.35rem; max-width: none; margin-bottom: .9rem; }
+.calendar-heading .actions { align-items: center; margin: 0; }
 .workspace-metric-grid.calendar-heading-metrics { grid-template-columns: minmax(0, 1fr) 96px; gap: .65rem; width: min(100%, 616px); min-width: 0; justify-self: end; }
 .calendar-heading-metrics .workspace-metric-card { border-radius: 14px; padding: .7rem .8rem; }
 .calendar-heading-metrics .workspace-metric-label { font-size: .64rem; }
