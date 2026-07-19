@@ -2,6 +2,9 @@ import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { expandScheduledJobs, formatMoney, listJobs, type Job } from '@/lib/jobs';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
+import { deriveJobListBadge } from '@/lib/job-badges';
+import type { Invoice } from '@/lib/invoices';
+import type { Payment } from '@/lib/payments';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
 import { scheduleJobAction, sendClientScheduleOptionsAction, updateJobCrewAction } from '../jobs/actions';
@@ -49,6 +52,13 @@ function crewInitials(name: string): string {
 
 function monthParam(year: number, monthIndex: number): string {
   return `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+}
+
+function groupByJobId<T extends { job_id: string }>(rows: T[]): Record<string, T[]> {
+  return rows.reduce<Record<string, T[]>>((groups, row) => {
+    groups[row.job_id] = [...(groups[row.job_id] ?? []), row];
+    return groups;
+  }, {});
 }
 
 export default async function SchedulePage({
@@ -137,15 +147,60 @@ export default async function SchedulePage({
     if (!crewNotifiedAtByJob.has(jobId)) crewNotifiedAtByJob.set(jobId, event.created_at as string);
   }
 
-  const calendarJobs = scheduledJobOccurrences.map((job) => ({
-    id: job.id,
-    occurrence_key: `${job.id}:${job.scheduled_for}`,
-    client_name: job.client_name,
-    status: job.status,
-    scheduled_for: job.scheduled_for,
-    scheduled_time: job.scheduled_time,
-    crew_notified_at: crewNotifiedAtByJob.get(job.id) ?? null,
-  }));
+  const [{ data: invoiceRows, error: invoiceError }, { data: paymentRows, error: paymentError }, { data: clientAccessRows, error: clientAccessError }] =
+    scheduledJobIds.length > 0
+      ? await Promise.all([
+          supabase
+            .from('invoices')
+            .select('*')
+            .eq('account_id', accountId)
+            .in('job_id', scheduledJobIds)
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('payments')
+            .select('*')
+            .eq('account_id', accountId)
+            .in('job_id', scheduledJobIds)
+            .order('requested_at', { ascending: false }),
+          supabase
+            .from('client_job_access')
+            .select('job_id')
+            .eq('account_id', accountId)
+            .in('job_id', scheduledJobIds)
+            .is('revoked_at', null),
+        ])
+      : [
+          { data: [] as Invoice[] | null, error: null },
+          { data: [] as Payment[] | null, error: null },
+          { data: [] as Array<{ job_id: string }> | null, error: null },
+        ];
+
+  if (invoiceError) throw invoiceError;
+  if (paymentError) throw paymentError;
+  if (clientAccessError) throw clientAccessError;
+
+  const invoicesByJob = groupByJobId((invoiceRows ?? []) as Invoice[]);
+  const paymentsByJob = groupByJobId((paymentRows ?? []) as Payment[]);
+  const clientAccessCountByJob = (clientAccessRows ?? []).reduce<Record<string, number>>((counts, row) => {
+    counts[row.job_id] = (counts[row.job_id] ?? 0) + 1;
+    return counts;
+  }, {});
+
+  const calendarJobs = scheduledJobOccurrences.map((job) => {
+    const badge = deriveJobListBadge(job, paymentsByJob[job.id] ?? [], invoicesByJob[job.id] ?? [], clientAccessCountByJob[job.id] ?? 0);
+    return {
+      id: job.id,
+      occurrence_key: `${job.id}:${job.scheduled_for}`,
+      client_name: job.client_name,
+      status: job.status,
+      scheduled_for: job.scheduled_for,
+      scheduled_time: job.scheduled_time,
+      crew_notified_at: crewNotifiedAtByJob.get(job.id) ?? null,
+      badge_label: badge.label,
+      badge_tone: badge.tone,
+      badge_title: badge.title ?? null,
+    };
+  });
 
   const crewOptions = crew.map((member) => ({
     id: member.id,

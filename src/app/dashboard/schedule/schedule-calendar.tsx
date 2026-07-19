@@ -30,6 +30,9 @@ export type CalendarJob = {
   scheduled_for: string;
   scheduled_time: string | null;
   crew_notified_at: string | null;
+  badge_label: string;
+  badge_tone: string;
+  badge_title: string | null;
 };
 
 export type CrewOption = {
@@ -315,10 +318,13 @@ export default function ScheduleCalendar({
                           <button
                             type="button"
                             className={`calendar-job-chip status-${job.status}`}
-                            title={job.client_name}
+                            title={`${job.client_name} · ${job.badge_label}`}
                             onClick={() => openJobActions(job.occurrence_key)}
                           >
-                            {formatJobTime(job.scheduled_time) ? `${formatJobTime(job.scheduled_time)} ` : ''}{job.client_name}
+                            <span className="calendar-job-chip-main">
+                              {formatJobTime(job.scheduled_time) ? `${formatJobTime(job.scheduled_time)} ` : ''}{job.client_name}
+                            </span>
+                            <span className={`calendar-job-band-badge status-${job.badge_tone}`} title={job.badge_title ?? undefined}>{job.badge_label}</span>
                           </button>
                           <button
                             type="button"
@@ -352,7 +358,8 @@ export default function ScheduleCalendar({
               <div>
                 <p className="crew-assign-title">{openJob.client_name}</p>
                 <p className="crew-assign-sub">
-                  {STATUS_LABEL[openJob.status] ?? openJob.status} · {formatJobSchedule(openJob.scheduled_for, openJob.scheduled_time)}
+                  <span className={`status-badge status-${openJob.badge_tone}`} title={openJob.badge_title ?? undefined}>{openJob.badge_label}</span>
+                  <span>{formatJobSchedule(openJob.scheduled_for, openJob.scheduled_time)}</span>
                 </p>
               </div>
               <button type="button" className="crew-assign-close" onClick={closeJobActions} aria-label="Close">
