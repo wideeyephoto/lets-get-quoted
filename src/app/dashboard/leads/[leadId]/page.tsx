@@ -17,8 +17,9 @@ function smsHref(phone: string | null, name: string | null) {
   return `sms:${phone}?&body=${encodeURIComponent(`Hi ${firstName}, this is your contractor from Let's Get Quoted. I received your project request and wanted to follow up.`)}`;
 }
 
-function mapHref(address: string | null) {
-  return address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` : null;
+function mapEmbedSrc(address: string | null) {
+  if (!address) return null;
+  return `https://maps.google.com/maps?q=${encodeURIComponent(address)}&z=9&output=embed`;
 }
 
 function formatVisit(visit: LeadQuoteVisit | null) {
@@ -78,11 +79,12 @@ export default async function LeadDetailPage({ params }: { params: { leadId: str
   const convertLead = convertLeadAction.bind(null, lead.id);
   const scheduleVisit = scheduleLeadQuoteVisitAction.bind(null, lead.id);
   const markContacted = updateLeadStatusAction.bind(null, lead.id, 'contacted');
+  const unmarkContacted = updateLeadStatusAction.bind(null, lead.id, 'new');
   const markLost = updateLeadStatusAction.bind(null, lead.id, 'lost');
   const convertedJobLabel = lead.status === 'won' ? 'Open job' : 'Open quote';
   const visitLabel = formatVisit(lead.quote_visit);
   const textLink = smsHref(lead.phone, lead.name);
-  const directionsLink = mapHref(lead.address);
+  const mapSrc = mapEmbedSrc(lead.address);
   const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
   const availability = buildAvailability(jobs, leads, scheduleDayHours);
 
@@ -93,7 +95,6 @@ export default async function LeadDetailPage({ params }: { params: { leadId: str
           <p className="eyebrow">Lead details</p>
           <div className={styles.leadTitleRow}>
             <h1 className="workspace-title">{lead.name || 'Unnamed lead'}</h1>
-            <form action={markContacted}><button className="btn ghost" type="submit" disabled={lead.status !== 'new'}>{lead.status === 'new' ? 'Mark contacted' : 'Contacted'}</button></form>
           </div>
           <div className={styles.detailBadges}>
             <span className={styles.source}>{formatLeadSource(lead.source)}</span>
@@ -102,11 +103,15 @@ export default async function LeadDetailPage({ params }: { params: { leadId: str
             {visitLabel ? <span className={styles.visitPill}>Free quote {visitLabel}</span> : null}
           </div>
           <div className={styles.leadQuickActions}>
+            <form action={lead.status === 'contacted' ? unmarkContacted : markContacted}>
+              <button className={`btn ${lead.status === 'contacted' ? 'primary' : 'secondary'}`} type="submit" aria-pressed={lead.status === 'contacted'} disabled={lead.converted_job !== null || ['quoted', 'won', 'lost'].includes(lead.status)} title={lead.status === 'contacted' ? 'Click to unmark contacted' : 'Mark this lead as contacted'}>
+                Client has been contacted
+              </button>
+            </form>
             <Link className="btn secondary" href="/dashboard/leads">Back to leads</Link>
             {lead.phone ? <a className="btn secondary" href={`tel:${lead.phone}`}>Call</a> : null}
             {textLink ? <a className="btn secondary" href={textLink}>Text client</a> : null}
             {lead.email ? <a className="btn secondary" href={`mailto:${lead.email}`}>Email</a> : null}
-            {directionsLink ? <a className="btn secondary" href={directionsLink} target="_blank" rel="noopener noreferrer">Map</a> : null}
             {lead.converted_job ? <Link className="btn primary" href={`/dashboard/jobs/${lead.converted_job}`}>{convertedJobLabel}</Link> : null}
           </div>
         </div>
@@ -130,6 +135,12 @@ export default async function LeadDetailPage({ params }: { params: { leadId: str
               <div className={styles.dataBlock}><span>Email</span>{lead.email ? <a href={`mailto:${lead.email}`}>{lead.email}</a> : <p>Not provided</p>}</div>
             </div>
             <div className={styles.dataBlock}><span>Project address</span><p>{lead.address || 'Not provided'}</p></div>
+            {mapSrc ? (
+              <div className={styles.leadMapCard}>
+                <div><span>Location radius</span><strong>25-mile area around the job</strong></div>
+                <iframe title={`Map showing a 25-mile area around ${lead.address}`} src={mapSrc} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+              </div>
+            ) : null}
             <div className={styles.dataBlock}><span>Estimated hours</span><p>{lead.estimated_hours ? `${lead.estimated_hours} hrs` : 'Not estimated yet'}</p></div>
             <div className={styles.dataBlock}><span>Project details</span><p>{lead.message || 'Not provided'}</p></div>
           </section>
@@ -142,6 +153,7 @@ export default async function LeadDetailPage({ params }: { params: { leadId: str
               uploadUrl="/api/lead-photos"
               initialPhotos={photos}
               emptyLabel="No photos yet. Add some from the field or from the client."
+              deleteConfirmMessage="Remove this photo from the lead? This cannot be undone."
             />
           </section>
 

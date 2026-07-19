@@ -14,9 +14,10 @@ type PhotoGalleryProps = {
   uploadUrl: string;
   initialPhotos: GalleryPhoto[];
   emptyLabel?: string;
+  deleteConfirmMessage?: string;
 };
 
-export default function PhotoGallery({ entityId, entityField, uploadUrl, initialPhotos, emptyLabel }: PhotoGalleryProps) {
+export default function PhotoGallery({ entityId, entityField, uploadUrl, initialPhotos, emptyLabel, deleteConfirmMessage }: PhotoGalleryProps) {
   const [photos, setPhotos] = useState<GalleryPhoto[]>(initialPhotos);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -82,6 +83,7 @@ export default function PhotoGallery({ entityId, entityField, uploadUrl, initial
   }
 
   async function handleDelete(path: string) {
+    if (deleteConfirmMessage && !window.confirm(deleteConfirmMessage)) return;
     setMessage(null);
     try {
       const response = await fetch(uploadUrl, {
