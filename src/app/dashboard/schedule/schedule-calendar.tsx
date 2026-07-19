@@ -13,13 +13,6 @@ const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 type CalendarView = 'month' | 'week' | 'year';
 
-const STATUS_LABEL: Record<string, string> = {
-  new_lead: 'New request',
-  in_progress: 'In progress',
-  complete: 'Complete',
-  archived: 'Archived',
-};
-
 export type CalendarCell = { day: number; dateKey: string } | null;
 
 export type CalendarJob = {
