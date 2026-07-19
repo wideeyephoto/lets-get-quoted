@@ -115,6 +115,80 @@ export default async function DashboardPage() {
     };
   });
   const jobsNext7Days = next7Days.reduce((sum, day) => sum + day.jobs.length, 0);
+  const jobsNeedingCrewCount = next7Days.reduce(
+    (sum, day) => sum + day.jobs.filter((job) => (assignmentsByJob[job.id] ?? []).length === 0).length,
+    0
+  );
+  const jobsMissingTimeCount = next7Days.reduce(
+    (sum, day) => sum + day.jobs.filter((job) => !job.scheduled_time).length,
+    0
+  );
+  const unscheduledJobCount = jobs.filter((job) => job.status !== 'complete' && job.status !== 'archived' && !job.scheduled_for).length;
+  const priorityItems = [
+    !onboarded
+      ? {
+          key: 'stripe',
+          label: 'Connect Stripe payouts',
+          detail: 'Activate homeowner deposits and stage payments.',
+          href: '/dashboard/settings',
+          cta: 'Open account',
+        }
+      : null,
+    !sitePublished
+      ? {
+          key: 'website',
+          label: 'Publish your website',
+          detail: 'Turn website visitors into new quote requests.',
+          href: '/dashboard/sites',
+          cta: 'Open website',
+        }
+      : null,
+    openLeadCount > 0
+      ? {
+          key: 'leads',
+          label: `${openLeadCount} lead${openLeadCount === 1 ? '' : 's'} waiting`,
+          detail: 'Send a quote or follow up before the lead goes cold.',
+          href: '/dashboard/leads',
+          cta: 'Review leads',
+        }
+      : null,
+    quotedLeadCount > 0
+      ? {
+          key: 'quoted',
+          label: `${quotedLeadCount} quote${quotedLeadCount === 1 ? '' : 's'} awaiting approval`,
+          detail: 'Follow up with homeowners who have not signed off yet.',
+          href: '/dashboard/leads',
+          cta: 'View quotes',
+        }
+      : null,
+    jobsNeedingCrewCount > 0
+      ? {
+          key: 'crew',
+          label: `${jobsNeedingCrewCount} scheduled job${jobsNeedingCrewCount === 1 ? '' : 's'} need crew`,
+          detail: 'Assign crew before the work day starts.',
+          href: '/dashboard/schedule',
+          cta: 'Open schedule',
+        }
+      : null,
+    jobsMissingTimeCount > 0
+      ? {
+          key: 'time',
+          label: jobsMissingTimeCount === 1 ? '1 job needs a start time' : `${jobsMissingTimeCount} jobs need start times`,
+          detail: 'Add start times so the week is easier to run.',
+          href: '/dashboard/schedule',
+          cta: 'Set times',
+        }
+      : null,
+    unscheduledJobCount > 0
+      ? {
+          key: 'unscheduled',
+          label: `${unscheduledJobCount} open job${unscheduledJobCount === 1 ? '' : 's'} not scheduled`,
+          detail: 'Put approved work on the calendar.',
+          href: '/dashboard/jobs',
+          cta: 'View jobs',
+        }
+      : null,
+  ].filter((item): item is { key: string; label: string; detail: string; href: string; cta: string } => Boolean(item)).slice(0, 5);
 
   return (
     <main className="wide-shell workspace-shell">
@@ -149,6 +223,32 @@ export default async function DashboardPage() {
           </div>
         </section>
       ) : null}
+
+      <section className="panel workspace-section-card priority-panel">
+        <div className="section-heading workspace-section-heading">
+          <p className="eyebrow">Today&apos;s priorities</p>
+          <h2>What needs attention</h2>
+        </div>
+        {priorityItems.length > 0 ? (
+          <div className="priority-list">
+            {priorityItems.map((item, index) => (
+              <Link href={item.href} className="priority-item" key={item.key}>
+                <span className="priority-index">{index + 1}</span>
+                <span className="priority-copy">
+                  <strong>{item.label}</strong>
+                  <span>{item.detail}</span>
+                </span>
+                <span className="priority-cta">{item.cta}</span>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="priority-empty">
+            <strong>Nothing urgent right now.</strong>
+            <span>Your leads, jobs, schedule, website, and payout setup are in good shape.</span>
+          </div>
+        )}
+      </section>
 
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading">

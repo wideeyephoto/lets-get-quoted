@@ -1019,6 +1019,55 @@ li + li { margin-top: 0.45rem; }
 .onboarding-step-name { font-weight: 700; }
 .onboarding-step-desc { margin: .15rem 0 0; color: rgba(255,255,255,.55); font-size: .85rem; }
 
+.priority-panel {
+  border-color: rgba(255, 209, 102, 0.16);
+  background:
+    linear-gradient(145deg, rgba(255, 209, 102, 0.085), transparent 36%),
+    rgba(8, 18, 31, 0.82);
+}
+.priority-list { display: grid; gap: .65rem; }
+.priority-item {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .85rem;
+  padding: .85rem .95rem;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 14px;
+  background: rgba(255,255,255,.035);
+  color: #f7f5ef;
+  text-decoration: none;
+}
+.priority-item:hover { border-color: rgba(255,209,102,.36); background: rgba(255,209,102,.07); }
+.priority-index {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255,122,33,.18);
+  color: #ffd166;
+  font-weight: 900;
+}
+.priority-copy { display: grid; gap: .12rem; min-width: 0; }
+.priority-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.priority-copy span { color: rgba(247,245,239,.58); font-size: .86rem; line-height: 1.4; }
+.priority-cta {
+  color: #ffd166;
+  font-size: .78rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.priority-empty {
+  display: grid;
+  gap: .2rem;
+  padding: .95rem;
+  border: 1px solid rgba(120,220,150,.22);
+  border-radius: 14px;
+  background: rgba(120,220,150,.07);
+}
+.priority-empty span { color: rgba(247,245,239,.58); font-size: .9rem; }
+
 .calendar-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; }
 .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
 .calendar-weekday { padding: .3rem .2rem; color: rgba(255,255,255,.45); font-size: .7rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; text-align: center; }
