@@ -353,7 +353,7 @@ export default async function SchedulePage({
                             <div className={`schedule-option-grid schedule-option-${optionNumber}`} key={`${job.id}-option-${optionNumber}`}>
                               <div>
                                 <label htmlFor={`scheduleDate${optionNumber}-${job.id}`}>Option {optionNumber} date</label>
-                                <ScheduledDatePicker id={`scheduleDate${optionNumber}-${job.id}`} name={`scheduleDate${optionNumber}`} />
+                                <ScheduledDatePicker id={`scheduleDate${optionNumber}-${job.id}`} name={`scheduleDate${optionNumber}`} scrollIntoViewOnOpen={optionNumber === 3} />
                               </div>
                               <div>
                                 <label htmlFor={`scheduleTime${optionNumber}-${job.id}`}>Option {optionNumber} time</label>

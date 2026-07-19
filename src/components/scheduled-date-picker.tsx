@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 type ScheduledDatePickerProps = {
   id: string;
   name: string;
   defaultValue?: string;
   required?: boolean;
+  scrollIntoViewOnOpen?: boolean;
 };
 
 function dateToKey(date: Date): string {
@@ -79,10 +80,11 @@ function addMonths(date: Date, months: number): Date {
   return new Date(date.getFullYear(), date.getMonth() + months, 1);
 }
 
-export default function ScheduledDatePicker({ id, name, defaultValue = '', required = false }: ScheduledDatePickerProps) {
+export default function ScheduledDatePicker({ id, name, defaultValue = '', required = false, scrollIntoViewOnOpen = false }: ScheduledDatePickerProps) {
   const [selectedDate, setSelectedDate] = useState(defaultValue);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState(() => dateFromKey(defaultValue) ?? new Date());
+  const pickerRef = useRef<HTMLDivElement>(null);
   const quickDateOptions = buildQuickDateOptions(required);
   const calendarCells = buildCalendarCells(visibleMonth);
   const todayKey = dateToKey(new Date());
@@ -94,8 +96,20 @@ export default function ScheduledDatePicker({ id, name, defaultValue = '', requi
     if (nextDate) setVisibleMonth(nextDate);
   }
 
+  function toggleCalendar() {
+    setIsCalendarOpen((current) => {
+      const nextIsOpen = !current;
+      if (nextIsOpen && scrollIntoViewOnOpen) {
+        requestAnimationFrame(() => {
+          pickerRef.current?.scrollIntoView({ block: 'start', inline: 'nearest' });
+        });
+      }
+      return nextIsOpen;
+    });
+  }
+
   return (
-    <div className="scheduled-date-picker">
+    <div className="scheduled-date-picker" ref={pickerRef}>
       <div className="modern-date-control">
         <div className="modern-date-display" aria-hidden="true">
           <span>Date</span>
@@ -108,7 +122,7 @@ export default function ScheduledDatePicker({ id, name, defaultValue = '', requi
             className="modern-date-button"
             aria-label="Choose scheduled date"
             aria-expanded={isCalendarOpen}
-            onClick={() => setIsCalendarOpen((current) => !current)}
+            onClick={toggleCalendar}
           >
             {selectedDate ? formatDateLabel(selectedDate) : 'Choose date'}
           </button>
