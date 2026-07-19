@@ -4,7 +4,7 @@ import { expandScheduledJobs, formatMoney, listJobs, type Job } from '@/lib/jobs
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
-import { scheduleJobAction, sendClientScheduleOptionsAction } from '../jobs/actions';
+import { scheduleJobAction, sendClientScheduleOptionsAction, updateJobCrewAction } from '../jobs/actions';
 import { updateCrewAction } from '../crew/actions';
 import ScheduleCalendar from './schedule-calendar';
 
@@ -209,10 +209,13 @@ export default async function SchedulePage({
             {unscheduledJobs.map((job) => {
               const boundSchedule = scheduleJobAction.bind(null, job.id);
               const boundSendScheduleOptions = sendClientScheduleOptionsAction.bind(null, job.id);
+              const boundUpdateCrew = updateJobCrewAction.bind(null, job.id);
+              const assignedCrewIds = assignmentsByJob[job.id] ?? [];
+              const assignedCrewIdSet = new Set(assignedCrewIds);
               const assignedCrewInitials = (assignmentsByJob[job.id] ?? [])
                 .map((crewId) => crewInitialsById.get(crewId))
                 .filter((initials): initials is string => Boolean(initials));
-              const assignedCrewMembers = (assignmentsByJob[job.id] ?? [])
+              const assignedCrewMembers = assignedCrewIds
                 .map((crewId) => crewById.get(crewId))
                 .filter((member): member is typeof crew[number] => Boolean(member));
               return (
@@ -224,7 +227,32 @@ export default async function SchedulePage({
                         {STATUS_LABEL[job.status]} · {job.address || 'No address on file'} · Est. hours: {job.estimated_hours ? `${job.estimated_hours} hrs` : 'Not set'}
                       </span>
                       <div className="schedule-crew-initials" aria-label={assignedCrewInitials.length > 0 ? `Assigned crew: ${assignedCrewInitials.join(', ')}` : 'No crew assigned'}>
-                        <span>Crew</span>
+                        <details className="schedule-crew-picker" name={`schedule-crew-picker-${job.id}`}>
+                          <summary>Crew</summary>
+                          <form action={boundUpdateCrew} className="schedule-crew-picker-panel">
+                            <div className="schedule-crew-picker-heading">
+                              <strong>Active crew</strong>
+                              <span>Add or remove crew for this job.</span>
+                            </div>
+                            {crew.length === 0 ? (
+                              <p className="crew-assign-empty">No active crew yet. <Link href="/dashboard/crew">Add your team →</Link></p>
+                            ) : (
+                              <div className="schedule-crew-picker-list">
+                                {crew.map((member) => (
+                                  <label className="schedule-crew-picker-option" key={member.id}>
+                                    <input name="crewIds" type="checkbox" value={member.id} defaultChecked={assignedCrewIdSet.has(member.id)} />
+                                    <span className="schedule-crew-picker-check" aria-hidden="true">✓</span>
+                                    <span className="schedule-crew-picker-copy">
+                                      <strong>{member.name}</strong>
+                                      <small>{member.role_label}</small>
+                                    </span>
+                                  </label>
+                                ))}
+                              </div>
+                            )}
+                            <button type="submit" className="btn primary schedule-crew-picker-save">Save crew</button>
+                          </form>
+                        </details>
                         {assignedCrewMembers.length > 0 ? assignedCrewMembers.map((member) => (
                           <details className="schedule-crew-card" key={member.id} name={`schedule-crew-${job.id}`}>
                             <summary className="schedule-crew-badge" title={member.name}>
