@@ -5,6 +5,7 @@ import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
 import { scheduleJobAction, sendClientScheduleOptionsAction } from '../jobs/actions';
+import { updateCrewAction } from '../crew/actions';
 import ScheduleCalendar from './schedule-calendar';
 
 const STATUS_LABEL: Record<Job['status'], string> = {
@@ -74,6 +75,7 @@ export default async function SchedulePage({
     activeJobs.map((job) => job.id)
   );
   const crewInitialsById = new Map(crew.map((member) => [member.id, crewInitials(member.name)]));
+  const crewById = new Map(crew.map((member) => [member.id, member]));
 
   const { year, monthIndex } = parseMonthParam(searchParams.month);
   const firstWeekday = new Date(year, monthIndex, 1).getDay();
@@ -210,6 +212,9 @@ export default async function SchedulePage({
               const assignedCrewInitials = (assignmentsByJob[job.id] ?? [])
                 .map((crewId) => crewInitialsById.get(crewId))
                 .filter((initials): initials is string => Boolean(initials));
+              const assignedCrewMembers = (assignmentsByJob[job.id] ?? [])
+                .map((crewId) => crewById.get(crewId))
+                .filter((member): member is typeof crew[number] => Boolean(member));
               return (
                 <div className="sign-in-method-row schedule-method-row" key={job.id}>
                   <div className="method-info">
@@ -220,8 +225,45 @@ export default async function SchedulePage({
                       </span>
                       <div className="schedule-crew-initials" aria-label={assignedCrewInitials.length > 0 ? `Assigned crew: ${assignedCrewInitials.join(', ')}` : 'No crew assigned'}>
                         <span>Crew</span>
-                        {assignedCrewInitials.length > 0 ? assignedCrewInitials.map((initials) => (
-                          <strong key={initials}>{initials}</strong>
+                        {assignedCrewMembers.length > 0 ? assignedCrewMembers.map((member) => (
+                          <details className="schedule-crew-card" key={member.id} name={`schedule-crew-${job.id}`}>
+                            <summary className="schedule-crew-badge" title={member.name}>
+                              <strong>{crewInitials(member.name)}</strong>
+                            </summary>
+                            <div className="schedule-crew-card-panel">
+                              <div className="schedule-crew-card-header">
+                                <div>
+                                  <strong>{member.name}</strong>
+                                  <span>{member.role_label}</span>
+                                </div>
+                                <Link href="/dashboard/crew" className="btn secondary">Crew page</Link>
+                              </div>
+                              <dl className="schedule-crew-card-details">
+                                <div>
+                                  <dt>Phone</dt>
+                                  <dd>{member.phone}</dd>
+                                </div>
+                                <div>
+                                  <dt>Rate</dt>
+                                  <dd>{member.hourly_rate > 0 ? `${formatMoney(member.hourly_rate)}/hr` : 'Not set'}</dd>
+                                </div>
+                              </dl>
+                              <details className="schedule-crew-edit">
+                                <summary className="btn secondary">Edit Crew Member</summary>
+                                <form action={updateCrewAction.bind(null, member.id)} className="schedule-crew-edit-form">
+                                  <label htmlFor={`scheduleCrewName-${job.id}-${member.id}`}>Name</label>
+                                  <input id={`scheduleCrewName-${job.id}-${member.id}`} name="name" required defaultValue={member.name} />
+                                  <label htmlFor={`scheduleCrewPhone-${job.id}-${member.id}`}>Phone</label>
+                                  <input id={`scheduleCrewPhone-${job.id}-${member.id}`} name="phone" type="tel" required defaultValue={member.phone} />
+                                  <label htmlFor={`scheduleCrewRole-${job.id}-${member.id}`}>Role</label>
+                                  <input id={`scheduleCrewRole-${job.id}-${member.id}`} name="roleLabel" defaultValue={member.role_label} />
+                                  <label htmlFor={`scheduleCrewRate-${job.id}-${member.id}`}>Hourly rate ($)</label>
+                                  <input id={`scheduleCrewRate-${job.id}-${member.id}`} name="hourlyRate" type="number" min="0" step="0.01" defaultValue={member.hourly_rate} />
+                                  <button type="submit" className="btn primary">Save crew member</button>
+                                </form>
+                              </details>
+                            </div>
+                          </details>
                         )) : <em>None</em>}
                       </div>
                     </div>
