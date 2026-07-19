@@ -139,7 +139,7 @@ export default async function SchedulePage({
             </p>
           </div>
           <div className="workspace-metric-grid calendar-heading-metrics">
-            <article className="workspace-metric-card accent schedule-summary-card">
+            <Link className="workspace-metric-card accent schedule-summary-card metric-card-link" href="/dashboard/jobs" aria-label="Open jobs page">
               <div className="schedule-summary-title">
                 <span className="workspace-metric-label">Next 30 days</span>
               </div>
@@ -157,7 +157,7 @@ export default async function SchedulePage({
                   <small>Profit</small>
                 </span>
               </div>
-            </article>
+            </Link>
             <a
               className="workspace-metric-card metric-card-link"
               href="#unscheduled-jobs"
