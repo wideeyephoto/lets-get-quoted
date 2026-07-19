@@ -1,4 +1,6 @@
-import QuickFillButtons from './quick-fill-buttons';
+'use client';
+
+import { useState } from 'react';
 
 type TimeSlotSelectProps = {
   id: string;
@@ -38,19 +40,59 @@ function buildTimeSlots() {
 }
 
 export default function TimeSlotSelect({ id, name, defaultValue = '' }: TimeSlotSelectProps) {
+  const [selectedTime, setSelectedTime] = useState(defaultValue);
+  const [isOpen, setIsOpen] = useState(false);
   const timeSlots = buildTimeSlots();
+  const selectedLabel = selectedTime ? formatTimeLabel(selectedTime) : 'No set time';
+
+  function selectTime(value: string) {
+    setSelectedTime(value);
+    setIsOpen(false);
+  }
 
   return (
-    <>
-      <select id={id} name={name} defaultValue={defaultValue}>
-        <option value="">No set time</option>
-        {timeSlots.map((slot) => (
-          <option key={slot.value} value={slot.value}>
-            {slot.label}
-          </option>
-        ))}
-      </select>
-      <QuickFillButtons label="Quick add:" targetId={id} values={QUICK_TIME_SLOTS} />
-    </>
+    <div className="modern-time-picker">
+      <input id={id} name={name} type="hidden" value={selectedTime} readOnly />
+      <button
+        type="button"
+        className="modern-time-button"
+        aria-label="Choose scheduled time"
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((current) => !current)}
+      >
+        {selectedLabel}
+      </button>
+      {isOpen ? (
+        <div className="modern-time-panel">
+          <div className="modern-time-quick" aria-label="Quick time choices">
+            {QUICK_TIME_SLOTS.map((slot) => (
+              <button
+                key={slot.value}
+                type="button"
+                className={selectedTime === slot.value ? 'active' : undefined}
+                onClick={() => selectTime(slot.value)}
+              >
+                {slot.label}
+              </button>
+            ))}
+          </div>
+          <div className="modern-time-list" aria-label="All time choices">
+            <button type="button" className={!selectedTime ? 'active' : undefined} onClick={() => selectTime('')}>
+              No set time
+            </button>
+            {timeSlots.map((slot) => (
+              <button
+                key={slot.value}
+                type="button"
+                className={selectedTime === slot.value ? 'active' : undefined}
+                onClick={() => selectTime(slot.value)}
+              >
+                {slot.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }

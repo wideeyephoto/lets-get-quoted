@@ -975,7 +975,7 @@ li + li { margin-top: 0.45rem; }
 .schedule-inline-form .modern-date-display span { font-size: 0.62rem; }
 .schedule-inline-form .modern-date-display strong { font-size: 0.9rem; }
 .schedule-inline-form .modern-date-button,
-.schedule-inline-form select {
+.schedule-inline-form .modern-time-button {
   min-height: 40px;
   width: 100%;
   border: 1px solid rgba(255,138,61,.28);
@@ -984,13 +984,10 @@ li + li { margin-top: 0.45rem; }
   color: #f7f5ef;
   cursor: pointer;
 }
-.schedule-inline-form select {
-  padding: 0.55rem 0.7rem;
-  font: inherit;
-}
-.schedule-inline-form select:focus,
 .schedule-inline-form .modern-date-button:focus,
-.schedule-inline-form .modern-date-button[aria-expanded="true"] {
+.schedule-inline-form .modern-date-button[aria-expanded="true"],
+.schedule-inline-form .modern-time-button:focus,
+.schedule-inline-form .modern-time-button[aria-expanded="true"] {
   border-color: rgba(255,138,61,.72);
   box-shadow: 0 0 0 3px rgba(255,138,61,.15);
   outline: none;
@@ -2222,6 +2219,90 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .modern-calendar-clear {
   width: 100%;
   margin-top: 0.7rem;
+}
+.modern-time-picker { position: relative; }
+.modern-time-button {
+  width: 100%;
+  min-height: 38px;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid rgba(255,138,61,.28);
+  border-radius: 10px;
+  background: rgba(8,15,26,.62);
+  color: #f7f5ef;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.modern-time-button::after {
+  content: 'Time';
+  float: right;
+  color: rgba(255,209,102,.78);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.modern-time-button:focus,
+.modern-time-button[aria-expanded="true"] {
+  border-color: rgba(255,138,61,.72);
+  box-shadow: 0 0 0 3px rgba(255,138,61,.15);
+  outline: none;
+}
+.modern-time-panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  z-index: 35;
+  width: min(280px, calc(100vw - 2rem));
+  padding: 0.75rem;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 16px;
+  background: rgba(6,10,18,.99);
+  box-shadow: 0 22px 60px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.modern-time-quick {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+  margin-bottom: 0.65rem;
+}
+.modern-time-list {
+  display: grid;
+  gap: 0.25rem;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+.modern-time-quick button,
+.modern-time-list button {
+  min-height: 34px;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  background: rgba(255,255,255,.04);
+  color: rgba(247,245,239,.8);
+  font: 800 0.78rem/1 inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.modern-time-quick button {
+  border-color: rgba(255,209,102,.24);
+  color: #ffd166;
+}
+.modern-time-quick button:hover,
+.modern-time-quick button:focus-visible,
+.modern-time-list button:hover,
+.modern-time-list button:focus-visible {
+  border-color: rgba(255,138,61,.5);
+  background: rgba(255,138,61,.12);
+  color: #fff;
+  outline: none;
+}
+.modern-time-quick button.active,
+.modern-time-list button.active {
+  border-color: rgba(255,209,102,.74);
+  background: rgba(255,209,102,.18);
+  color: #ffd166;
 }
 .modern-date-chips {
   gap: 0.4rem;
