@@ -190,6 +190,22 @@ export async function sendCrewAssignmentSms(params: {
   return sendTwilioMessage(params.phone, body);
 }
 
+export async function sendCrewScheduleSelectedSms(params: {
+  phone: string;
+  crewName: string;
+  businessName: string;
+  jobRef: string;
+  clientName: string;
+  address: string | null;
+  scheduledFor: string;
+  scheduledTime?: string | null;
+}) {
+  const addressNote = params.address ? ` at ${params.address}` : '';
+  const scheduledNote = formatJobSchedule(params.scheduledFor, params.scheduledTime);
+  const body = `Let's Get Quoted: Hi ${params.crewName}, ${params.clientName} selected ${scheduledNote} for job ${params.jobRef}${addressNote} with ${params.businessName}. Reply STOP to opt out.`;
+  return sendTwilioMessage(params.phone, body);
+}
+
 export async function sendJobUpdateSms(params: {
   phone: string;
   businessName: string;

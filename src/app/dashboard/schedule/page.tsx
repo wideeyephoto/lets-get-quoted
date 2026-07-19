@@ -251,12 +251,12 @@ export default async function SchedulePage({
                       </div>
                     </details>
                     <details className="schedule-popover" name={`schedule-popover-${job.id}`}>
-                      <summary className="btn secondary">Send Dates to Client</summary>
+                      <summary className="btn secondary">Let the client choose</summary>
                       <div className="schedule-popover-panel">
                         <form action={boundSendScheduleOptions} className="schedule-inline-form schedule-client-options-form">
                           <div className="schedule-client-options-intro">
-                            <strong>Let the client choose.</strong>
-                            <span>Send up to 3 dates that you&apos;re available to your client. You will receive a text and notifications in your dashboard.</span>
+                            <strong>Send up to 3 dates that you&apos;re available to your client.</strong>
+                            <span>You will receive a text and notifications in your dashboard when they have responded.</span>
                           </div>
                           <div className="schedule-inline-field schedule-inline-date">
                             <label htmlFor={`scheduleClientPhone-${job.id}`}>Client mobile</label>

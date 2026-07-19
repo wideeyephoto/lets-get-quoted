@@ -1,8 +1,9 @@
 import { createHash, randomBytes } from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
+import { listCrew, listCrewIdsForJob } from '@/lib/crew';
 import { formatJobSchedule } from '@/lib/jobs';
-import { recordSmsConsent, sendSchedulingOptionsSms } from '@/lib/sms';
+import { recordSmsConsent, sendCrewScheduleSelectedSms, sendSchedulingOptionsSms } from '@/lib/sms';
 import { createJobFeedEvent } from '@/lib/job-feed';
 
 export type ScheduleOption = {
@@ -204,6 +205,34 @@ export async function selectScheduleOption(token: string, optionIndex: number, n
     visibility: 'client',
     meta: { selected_date: option.date, selected_time: option.time, client_notes: notes },
   });
+
+  try {
+    const [assignedCrewIds, crewMembers] = await Promise.all([
+      listCrewIdsForJob(admin, request.account_id, request.job_id),
+      listCrew(admin, request.account_id, { activeOnly: true }),
+    ]);
+    const assignedCrewIdSet = new Set(assignedCrewIds);
+    const assignedCrew = crewMembers.filter((member) => assignedCrewIdSet.has(member.id));
+
+    for (const member of assignedCrew) {
+      try {
+        await sendCrewScheduleSelectedSms({
+          phone: member.phone,
+          crewName: member.name,
+          businessName: request.businessName,
+          jobRef: request.job.ref,
+          clientName: request.job.client_name,
+          address: request.job.address,
+          scheduledFor: option.date,
+          scheduledTime: option.time,
+        });
+      } catch (error) {
+        console.error(`Crew schedule SMS failed for crew ${member.id} on job ${request.job_id}:`, error);
+      }
+    }
+  } catch (error) {
+    console.error(`Unable to notify crew for schedule request ${request.id}:`, error);
+  }
 
   return { ...request, status: 'selected', selected_index: optionIndex, selected_date: option.date, selected_time: option.time, client_notes: notes, responded_at: respondedAt };
 }
