@@ -1170,13 +1170,29 @@ li + li { margin-top: 0.45rem; }
 }
 .priority-empty span { color: rgba(247,245,239,.58); font-size: .9rem; }
 
-.calendar-heading { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1rem; max-width: none; }
-.calendar-heading-side { display: flex; align-items: flex-end; justify-content: flex-end; gap: .8rem; flex-wrap: wrap; }
+.workspace-section-card.schedule-calendar-panel {
+  background:
+    linear-gradient(145deg, rgba(255, 122, 33, 0.12), transparent 28%),
+    rgba(8, 18, 31, 0.88);
+}
+.schedule-calendar-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(330px, 0.55fr);
+  gap: 1rem;
+  align-items: flex-end;
+  margin-bottom: 1.2rem;
+}
+.schedule-calendar-copy { justify-content: flex-start; }
+.schedule-calendar-copy .workspace-title { margin-bottom: 0.35rem; }
+.schedule-calendar-copy .workspace-lead { max-width: 42rem; }
+.calendar-heading { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: .8rem; max-width: none; margin-bottom: .9rem; }
 .calendar-heading-metrics { grid-template-columns: repeat(2, minmax(150px, 1fr)); gap: .55rem; min-width: min(100%, 330px); }
 .calendar-heading-metrics .workspace-metric-card { border-radius: 14px; padding: .7rem .8rem; }
 .calendar-heading-metrics .workspace-metric-label { font-size: .64rem; }
 .calendar-heading-metrics .workspace-metric-value { margin-top: .25rem; font-size: clamp(1.25rem, 2.1vw, 1.7rem); }
-.calendar-heading-metrics .workspace-metric-note { margin-top: .25rem; font-size: .72rem; }
+.metric-card-link { display: block; color: inherit; text-decoration: none; transition: border-color .15s ease, background .15s ease, transform .15s ease; }
+.metric-card-link:hover,
+.metric-card-link:focus-visible { border-color: rgba(255,138,61,.52); background: rgba(255,138,61,.08); outline: none; transform: translateY(-1px); }
 .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
 .calendar-weekday { padding: .3rem .2rem; color: rgba(255,255,255,.45); font-size: .7rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; text-align: center; }
 .calendar-cell { min-height: 92px; padding: .4rem; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: rgba(255,255,255,.02); display: flex; flex-direction: column; gap: .3rem; }

@@ -117,40 +117,40 @@ export default async function SchedulePage({
 
   return (
     <main className="wide-shell workspace-shell">
-      <section className="workspace-hero workspace-hero-solo panel">
-        <div className="workspace-hero-copy">
-          <p className="eyebrow">Schedule</p>
-          <h1 className="workspace-title">Job calendar</h1>
-          <p className="workspace-lead">
-            See what&apos;s on the books this month and get unscheduled jobs onto a date.
-          </p>
+      <section className="panel workspace-section-card schedule-calendar-panel">
+        <div className="schedule-calendar-header">
+          <div className="workspace-hero-copy schedule-calendar-copy">
+            <p className="eyebrow">Schedule</p>
+            <h1 className="workspace-title">Job calendar</h1>
+            <p className="workspace-lead">
+              See what&apos;s on the books this month and get unscheduled jobs onto a date.
+            </p>
+          </div>
+          <div className="workspace-metric-grid calendar-heading-metrics">
+            <article className="workspace-metric-card accent">
+              <span className="workspace-metric-label">Next 30 days</span>
+              <strong className="workspace-metric-value">{scheduledNext30Days}</strong>
+            </article>
+            <a
+              className="workspace-metric-card metric-card-link"
+              href="#unscheduled-jobs"
+              aria-label={`${unscheduledJobs.length} active ${unscheduledJobs.length === 1 ? 'job needs' : 'jobs need'} a scheduled date`}
+            >
+              <span className="workspace-metric-label">Needs a date</span>
+              <strong className="workspace-metric-value">{unscheduledJobs.length}</strong>
+            </a>
+          </div>
         </div>
-      </section>
 
-      <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading calendar-heading">
+        <div className="calendar-heading">
           <div>
             <p className="eyebrow">Calendar</p>
             <h2>{monthLabel}</h2>
           </div>
-          <div className="calendar-heading-side">
-            <div className="workspace-metric-grid calendar-heading-metrics">
-              <article className="workspace-metric-card accent">
-                <span className="workspace-metric-label">Next 30 days</span>
-                <strong className="workspace-metric-value">{scheduledNext30Days}</strong>
-                <p className="workspace-metric-note">Jobs scheduled within the next 30 days.</p>
-              </article>
-              <article className="workspace-metric-card">
-                <span className="workspace-metric-label">Needs a date</span>
-                <strong className="workspace-metric-value">{unscheduledJobs.length}</strong>
-                <p className="workspace-metric-note">Active jobs without a scheduled date.</p>
-              </article>
-            </div>
-            <div className="actions">
-              <Link href={`/dashboard/schedule?month=${prevMonth}`} className="btn secondary">← Prev</Link>
-              <Link href={`/dashboard/schedule?month=${currentMonth}`} className="btn secondary">Today</Link>
-              <Link href={`/dashboard/schedule?month=${nextMonth}`} className="btn secondary">Next →</Link>
-            </div>
+          <div className="actions">
+            <Link href={`/dashboard/schedule?month=${prevMonth}`} className="btn secondary">← Prev</Link>
+            <Link href={`/dashboard/schedule?month=${currentMonth}`} className="btn secondary">Today</Link>
+            <Link href={`/dashboard/schedule?month=${nextMonth}`} className="btn secondary">Next →</Link>
           </div>
         </div>
 
@@ -164,7 +164,7 @@ export default async function SchedulePage({
       </section>
 
       {unscheduledJobs.length > 0 ? (
-        <section className="panel workspace-section-card">
+        <section className="panel workspace-section-card" id="unscheduled-jobs">
           <div className="section-heading workspace-section-heading">
             <p className="eyebrow">Needs a date</p>
             <h2>Unscheduled jobs</h2>
