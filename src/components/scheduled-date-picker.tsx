@@ -6,6 +6,7 @@ type ScheduledDatePickerProps = {
   id: string;
   name: string;
   defaultValue?: string;
+  required?: boolean;
 };
 
 function dateToKey(date: Date): string {
@@ -40,21 +41,22 @@ function formatDateLabel(value: string): string {
   }).format(date);
 }
 
-function buildQuickDateOptions() {
+function buildQuickDateOptions(required: boolean) {
   const today = new Date();
 
-  return [
-    { label: 'No day', value: '' },
+  const options = [
     { label: 'Today', value: dateToKey(today) },
     { label: 'Tomorrow', value: dateToKey(addDays(today, 1)) },
     { label: 'Next Mon', value: dateToKey(nextWeekday(today, 1)) },
     { label: 'Next Fri', value: dateToKey(nextWeekday(today, 5)) },
   ];
+
+  return required ? options : [{ label: 'No day', value: '' }, ...options];
 }
 
-export default function ScheduledDatePicker({ id, name, defaultValue = '' }: ScheduledDatePickerProps) {
+export default function ScheduledDatePicker({ id, name, defaultValue = '', required = false }: ScheduledDatePickerProps) {
   const [selectedDate, setSelectedDate] = useState(defaultValue);
-  const quickDateOptions = buildQuickDateOptions();
+  const quickDateOptions = buildQuickDateOptions(required);
 
   function updateSelectedDate(value: string) {
     setSelectedDate(value);
@@ -72,6 +74,7 @@ export default function ScheduledDatePicker({ id, name, defaultValue = '' }: Sch
           name={name}
           aria-label="Scheduled date"
           type="date"
+          required={required}
           value={selectedDate}
           onChange={(event) => updateSelectedDate(event.currentTarget.value)}
         />

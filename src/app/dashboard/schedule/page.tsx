@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { expandScheduledJobs, listJobs, type Job } from '@/lib/jobs';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
+import ScheduledDatePicker from '@/components/scheduled-date-picker';
+import TimeSlotSelect from '@/components/time-slot-select';
 import { scheduleJobAction } from '../jobs/actions';
 import ScheduleCalendar from './schedule-calendar';
 
@@ -150,16 +152,20 @@ export default async function SchedulePage({
             {unscheduledJobs.map((job) => {
               const boundSchedule = scheduleJobAction.bind(null, job.id);
               return (
-                <div className="sign-in-method-row" key={job.id}>
+                <div className="sign-in-method-row schedule-method-row" key={job.id}>
                   <div className="method-info">
                     <div>
                       <span className="method-name">{job.client_name}</span>
                       <span className="method-detail">{STATUS_LABEL[job.status]} · {job.address || 'No address on file'}</span>
                     </div>
                   </div>
-                  <form action={boundSchedule} className="actions">
-                    <input type="date" name="scheduledFor" required aria-label={`Schedule date for ${job.client_name}`} />
-                    <input type="time" name="scheduledTime" aria-label={`Schedule time for ${job.client_name}`} />
+                  <form action={boundSchedule} className="actions schedule-inline-form">
+                    <div className="schedule-inline-field schedule-inline-date">
+                      <ScheduledDatePicker id={`scheduledFor-${job.id}`} name="scheduledFor" required />
+                    </div>
+                    <div className="schedule-inline-field schedule-inline-time">
+                      <TimeSlotSelect id={`scheduledTime-${job.id}`} name="scheduledTime" />
+                    </div>
                     <button type="submit" className="btn secondary">Set schedule</button>
                   </form>
                 </div>
