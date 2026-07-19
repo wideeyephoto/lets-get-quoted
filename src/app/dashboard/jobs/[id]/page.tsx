@@ -740,7 +740,7 @@ export default async function JobDetailPage({
         <summary className="workspace-details-summary job-action-summary">
           <div className="section-heading workspace-section-heading compact-heading">
             <p className="eyebrow">Client scheduling</p>
-            <h2>Send 3 service options</h2>
+            <h2>Send 3 Start Dates</h2>
           </div>
           <span className="workspace-details-copy">Text the client three dates that work for your crew.</span>
         </summary>
@@ -769,7 +769,7 @@ export default async function JobDetailPage({
             </label>
           </div>
           <div className="field full">
-            <SaveButton pendingLabel="Sending..." savedLabel="Sent">Text schedule options</SaveButton>
+            <SaveButton pendingLabel="Sending..." savedLabel="Sent">Text 3 start dates</SaveButton>
           </div>
         </form>
       </details>

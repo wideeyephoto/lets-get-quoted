@@ -213,47 +213,57 @@ export default async function SchedulePage({
                   <details className="schedule-popover">
                     <summary className="btn secondary">Schedule</summary>
                     <div className="schedule-popover-panel">
-                      <div className="schedule-preset-grid" aria-label={`Quick schedule presets for ${job.client_name}`}>
-                        {quickSchedulePresets.map((preset) => (
-                          <form action={boundSchedule} key={`${job.id}-${preset.label}`}>
-                            <input type="hidden" name="scheduledFor" value={preset.date} />
-                            <input type="hidden" name="scheduledTime" value={preset.time} />
-                            <button type="submit" className="schedule-preset-button">{preset.label}</button>
-                          </form>
-                        ))}
-                      </div>
-                      <form action={boundSchedule} className="schedule-inline-form">
-                        <div className="schedule-inline-field schedule-inline-date">
-                          <ScheduledDatePicker id={`scheduledFor-${job.id}`} name="scheduledFor" required />
-                        </div>
-                        <div className="schedule-inline-field schedule-inline-time">
-                          <TimeSlotSelect id={`scheduledTime-${job.id}`} name="scheduledTime" />
-                        </div>
-                        <button type="submit" className="btn secondary">Set custom time</button>
-                      </form>
-                      <form action={boundSendScheduleOptions} className="schedule-inline-form schedule-client-options-form">
-                        <div className="schedule-inline-field schedule-inline-date">
-                          <label htmlFor={`scheduleClientPhone-${job.id}`}>Client mobile</label>
-                          <input id={`scheduleClientPhone-${job.id}`} name="scheduleClientPhone" type="tel" defaultValue={job.client_phone ?? ''} placeholder="(248) 555-0117" />
-                        </div>
-                        {[1, 2, 3].map((optionNumber) => (
-                          <div className="schedule-option-grid" key={`${job.id}-option-${optionNumber}`}>
-                            <div>
-                              <label htmlFor={`scheduleDate${optionNumber}-${job.id}`}>Option {optionNumber} date</label>
-                              <ScheduledDatePicker id={`scheduleDate${optionNumber}-${job.id}`} name={`scheduleDate${optionNumber}`} />
-                            </div>
-                            <div>
-                              <label htmlFor={`scheduleTime${optionNumber}-${job.id}`}>Option {optionNumber} time</label>
-                              <TimeSlotSelect id={`scheduleTime${optionNumber}-${job.id}`} name={`scheduleTime${optionNumber}`} />
-                            </div>
+                      <details className="schedule-popover-choice" name={`schedule-choice-${job.id}`}>
+                        <summary className="schedule-popover-choice-button">Schedule manually</summary>
+                        <div className="schedule-popover-choice-panel">
+                          <div className="schedule-preset-grid" aria-label={`Quick schedule presets for ${job.client_name}`}>
+                            {quickSchedulePresets.map((preset) => (
+                              <form action={boundSchedule} key={`${job.id}-${preset.label}`}>
+                                <input type="hidden" name="scheduledFor" value={preset.date} />
+                                <input type="hidden" name="scheduledTime" value={preset.time} />
+                                <button type="submit" className="schedule-preset-button">{preset.label}</button>
+                              </form>
+                            ))}
                           </div>
-                        ))}
-                        <label className="sms-consent-check">
-                          <input name="scheduleSmsConsent" type="checkbox" required />
-                          <span>The client agreed to receive transactional scheduling texts. Reply STOP to opt out.</span>
-                        </label>
-                        <button type="submit" className="btn secondary">Text 3 options</button>
-                      </form>
+                          <form action={boundSchedule} className="schedule-inline-form">
+                            <div className="schedule-inline-field schedule-inline-date">
+                              <ScheduledDatePicker id={`scheduledFor-${job.id}`} name="scheduledFor" required />
+                            </div>
+                            <div className="schedule-inline-field schedule-inline-time">
+                              <TimeSlotSelect id={`scheduledTime-${job.id}`} name="scheduledTime" />
+                            </div>
+                            <button type="submit" className="btn secondary">Set custom time</button>
+                          </form>
+                        </div>
+                      </details>
+                      <details className="schedule-popover-choice schedule-client-options-details" name={`schedule-choice-${job.id}`}>
+                        <summary className="schedule-popover-choice-button schedule-client-options-heading">
+                          <strong>Send 3 possible start times to client (Auto)</strong>
+                        </summary>
+                        <form action={boundSendScheduleOptions} className="schedule-inline-form schedule-client-options-form">
+                          <div className="schedule-inline-field schedule-inline-date">
+                            <label htmlFor={`scheduleClientPhone-${job.id}`}>Client mobile</label>
+                            <input id={`scheduleClientPhone-${job.id}`} name="scheduleClientPhone" type="tel" defaultValue={job.client_phone ?? ''} placeholder="(248) 555-0117" />
+                          </div>
+                          {[1, 2, 3].map((optionNumber) => (
+                            <div className="schedule-option-grid" key={`${job.id}-option-${optionNumber}`}>
+                              <div>
+                                <label htmlFor={`scheduleDate${optionNumber}-${job.id}`}>Option {optionNumber} date</label>
+                                <ScheduledDatePicker id={`scheduleDate${optionNumber}-${job.id}`} name={`scheduleDate${optionNumber}`} />
+                              </div>
+                              <div>
+                                <label htmlFor={`scheduleTime${optionNumber}-${job.id}`}>Option {optionNumber} time</label>
+                                <TimeSlotSelect id={`scheduleTime${optionNumber}-${job.id}`} name={`scheduleTime${optionNumber}`} />
+                              </div>
+                            </div>
+                          ))}
+                          <label className="sms-consent-check">
+                            <input name="scheduleSmsConsent" type="checkbox" required />
+                            <span>The client agreed to receive transactional scheduling texts. Reply STOP to opt out.</span>
+                          </label>
+                          <button type="submit" className="btn secondary">Text 3 possible start times</button>
+                        </form>
+                      </details>
                     </div>
                   </details>
                 </div>
