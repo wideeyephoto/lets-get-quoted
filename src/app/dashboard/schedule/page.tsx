@@ -204,7 +204,9 @@ export default async function SchedulePage({
                   <div className="method-info">
                     <div>
                       <Link className="method-name" href={`/dashboard/jobs/${job.id}`}>{job.client_name}</Link>
-                      <span className="method-detail">{STATUS_LABEL[job.status]} · {job.address || 'No address on file'}</span>
+                      <span className="method-detail">
+                        {STATUS_LABEL[job.status]} · {job.address || 'No address on file'} · Est. hours: {job.estimated_hours ? `${job.estimated_hours} hrs` : 'Not set'}
+                      </span>
                     </div>
                   </div>
                   <details className="schedule-popover">
