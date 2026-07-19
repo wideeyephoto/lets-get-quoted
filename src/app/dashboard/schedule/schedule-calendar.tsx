@@ -7,7 +7,7 @@ import { formatJobSchedule, formatJobTime } from '@/lib/jobs';
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-type CalendarView = 'month' | 'week';
+type CalendarView = 'month' | 'week' | 'year';
 
 const STATUS_LABEL: Record<string, string> = {
   new_lead: 'New request',
@@ -60,6 +60,14 @@ function getBandColorClass(jobId: string): string {
   return `calendar-band-color-${hash}`;
 }
 
+function addMonths(date: Date, months: number): Date {
+  return new Date(date.getFullYear(), date.getMonth() + months, 1);
+}
+
+function toMonthKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
 export default function ScheduleCalendar({
   weeks,
   todayKey,
@@ -106,6 +114,28 @@ export default function ScheduleCalendar({
 
   const visibleWeeks = calendarView === 'week' ? [weekAtAGlance] : weeks;
 
+  const twelveMonthSummary = useMemo(() => {
+    const firstVisibleCell = weeks.flat().find(Boolean);
+    const baseDate = firstVisibleCell ? new Date(`${firstVisibleCell.dateKey}T00:00:00`) : new Date(`${todayKey}T00:00:00`);
+
+    return Array.from({ length: 12 }, (_, index) => {
+      const monthDate = addMonths(baseDate, index);
+      const monthKey = toMonthKey(monthDate);
+      const monthOccurrences = jobs
+        .filter((job) => job.scheduled_for.startsWith(monthKey))
+        .sort((a, b) => `${a.scheduled_for}${a.scheduled_time ?? ''}`.localeCompare(`${b.scheduled_for}${b.scheduled_time ?? ''}`));
+      const uniqueJobs = Array.from(new Map(monthOccurrences.map((job) => [job.id, job])).values());
+
+      return {
+        monthKey,
+        label: monthDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        uniqueJobCount: uniqueJobs.length,
+        jobs: uniqueJobs.slice(0, 3),
+        extraJobCount: Math.max(0, uniqueJobs.length - 3),
+      };
+    });
+  }, [jobs, todayKey, weeks]);
+
   function handleToggle(jobId: string, crewId: string) {
     const key = `${jobId}:${crewId}`;
     const wasAssigned = (assignments[jobId] ?? []).includes(crewId);
@@ -146,71 +176,98 @@ export default function ScheduleCalendar({
         <div className="calendar-view-toggle" aria-label="Calendar view">
           <button type="button" className={calendarView === 'month' ? 'active' : ''} onClick={() => setCalendarView('month')}>Month</button>
           <button type="button" className={calendarView === 'week' ? 'active' : ''} onClick={() => setCalendarView('week')}>Week</button>
+          <button type="button" className={calendarView === 'year' ? 'active' : ''} onClick={() => setCalendarView('year')}>12 months</button>
         </div>
       </div>
-      <div className="calendar-grid">
-        {WEEKDAY_LABELS.map((label) => (
-          <div className="calendar-weekday" key={label}>{label}</div>
-        ))}
-        {visibleWeeks.map((week, weekIndex) =>
-          week.map((cell, cellIndex) => {
-            if (!cell) {
-              return <div className="calendar-cell empty" key={`${weekIndex}-${cellIndex}`} />;
-            }
-            const dayJobs = jobsByDate.get(cell.dateKey) ?? [];
-            const previousDateKey = cellIndex > 0 ? addDaysToDateKey(cell.dateKey, -1) : null;
-            const nextDateKey = cellIndex < week.length - 1 ? addDaysToDateKey(cell.dateKey, 1) : null;
-            return (
-              <div className={`calendar-cell${cell.dateKey === todayKey ? ' today' : ''}`} key={cell.dateKey}>
-                <span className="calendar-day-number">{cell.day}</span>
-                <div className="calendar-day-jobs">
-                  {dayJobs.map((job) => {
-                    const continuesFromPrevious = previousDateKey ? hasJobOnDate(jobsByDate, job.id, previousDateKey) : false;
-                    const continuesToNext = nextDateKey ? hasJobOnDate(jobsByDate, job.id, nextDateKey) : false;
-                    const bandClass = continuesFromPrevious
-                      ? continuesToNext
-                        ? 'calendar-band-middle'
-                        : 'calendar-band-end'
-                      : continuesToNext
-                        ? 'calendar-band-start'
-                        : 'calendar-band-single';
-                    const bandColorClass = getBandColorClass(job.id);
-                    const assignedIds = assignments[job.id] ?? [];
-                    const assignedMembers = assignedIds
-                      .map((id) => crew.find((member) => member.id === id))
-                      .filter((member): member is CrewOption => Boolean(member));
-                    return (
-                      <div className={`calendar-job-item calendar-band ${bandClass} ${bandColorClass} status-${job.status}`} key={job.occurrence_key}>
-                        <Link
-                          href={`/dashboard/jobs/${job.id}`}
-                          className={`calendar-job-chip status-${job.status}`}
-                          title={job.client_name}
-                        >
-                          {formatJobTime(job.scheduled_time) ? `${formatJobTime(job.scheduled_time)} ` : ''}{job.client_name}
-                        </Link>
-                        <button
-                          type="button"
-                          className={`calendar-crew-toggle${assignedMembers.length > 0 ? ' has-crew' : ''}`}
-                          onClick={() => setOpenOccurrenceKey(job.occurrence_key)}
-                          title={
-                            assignedMembers.length > 0
-                              ? `Assigned: ${assignedMembers.map((member) => member.name).join(', ')}`
-                              : 'Assign crew'
-                          }
-                        >
-                          {assignedMembers.length > 0
-                            ? assignedMembers.slice(0, 2).map((member) => initials(member.name)).join(' ')
-                            : '+'}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
+      {calendarView === 'year' ? (
+        <div className="calendar-year-grid">
+          {twelveMonthSummary.map((month) => (
+            <article className="calendar-year-card" key={month.monthKey}>
+              <div className="calendar-year-card-header">
+                <strong>{month.label}</strong>
+                <span>{month.uniqueJobCount}</span>
               </div>
-            );
-          })
-        )}
-      </div>
+              {month.jobs.length > 0 ? (
+                <div className="calendar-year-jobs">
+                  {month.jobs.map((job) => (
+                    <Link href={`/dashboard/jobs/${job.id}`} className={`calendar-year-job status-${job.status}`} key={job.occurrence_key}>
+                      <span>{new Date(`${job.scheduled_for}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                      <strong>{job.client_name}</strong>
+                    </Link>
+                  ))}
+                  {month.extraJobCount > 0 ? <p className="calendar-year-more">+{month.extraJobCount} more</p> : null}
+                </div>
+              ) : (
+                <p className="calendar-year-empty">No scheduled jobs</p>
+              )}
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="calendar-grid">
+          {WEEKDAY_LABELS.map((label) => (
+            <div className="calendar-weekday" key={label}>{label}</div>
+          ))}
+          {visibleWeeks.map((week, weekIndex) =>
+            week.map((cell, cellIndex) => {
+              if (!cell) {
+                return <div className="calendar-cell empty" key={`${weekIndex}-${cellIndex}`} />;
+              }
+              const dayJobs = jobsByDate.get(cell.dateKey) ?? [];
+              const previousDateKey = cellIndex > 0 ? addDaysToDateKey(cell.dateKey, -1) : null;
+              const nextDateKey = cellIndex < week.length - 1 ? addDaysToDateKey(cell.dateKey, 1) : null;
+              return (
+                <div className={`calendar-cell${cell.dateKey === todayKey ? ' today' : ''}`} key={cell.dateKey}>
+                  <span className="calendar-day-number">{cell.day}</span>
+                  <div className="calendar-day-jobs">
+                    {dayJobs.map((job) => {
+                      const continuesFromPrevious = previousDateKey ? hasJobOnDate(jobsByDate, job.id, previousDateKey) : false;
+                      const continuesToNext = nextDateKey ? hasJobOnDate(jobsByDate, job.id, nextDateKey) : false;
+                      const bandClass = continuesFromPrevious
+                        ? continuesToNext
+                          ? 'calendar-band-middle'
+                          : 'calendar-band-end'
+                        : continuesToNext
+                          ? 'calendar-band-start'
+                          : 'calendar-band-single';
+                      const bandColorClass = getBandColorClass(job.id);
+                      const assignedIds = assignments[job.id] ?? [];
+                      const assignedMembers = assignedIds
+                        .map((id) => crew.find((member) => member.id === id))
+                        .filter((member): member is CrewOption => Boolean(member));
+                      return (
+                        <div className={`calendar-job-item calendar-band ${bandClass} ${bandColorClass} status-${job.status}`} key={job.occurrence_key}>
+                          <Link
+                            href={`/dashboard/jobs/${job.id}`}
+                            className={`calendar-job-chip status-${job.status}`}
+                            title={job.client_name}
+                          >
+                            {formatJobTime(job.scheduled_time) ? `${formatJobTime(job.scheduled_time)} ` : ''}{job.client_name}
+                          </Link>
+                          <button
+                            type="button"
+                            className={`calendar-crew-toggle${assignedMembers.length > 0 ? ' has-crew' : ''}`}
+                            onClick={() => setOpenOccurrenceKey(job.occurrence_key)}
+                            title={
+                              assignedMembers.length > 0
+                                ? `Assigned: ${assignedMembers.map((member) => member.name).join(', ')}`
+                                : 'Assign crew'
+                            }
+                          >
+                            {assignedMembers.length > 0
+                              ? assignedMembers.slice(0, 2).map((member) => initials(member.name)).join(' ')
+                              : '+'}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
 
       {openJob ? (
         <div className="crew-assign-backdrop" onClick={() => setOpenOccurrenceKey(null)}>

@@ -1211,10 +1211,26 @@ li + li { margin-top: 0.45rem; }
 .calendar-job-chip.status-new_lead { background: rgba(255,209,102,.16); color: #ffd166; }
 .calendar-job-chip.status-in_progress { background: rgba(255,138,61,.18); color: #ff8a3d; }
 .calendar-job-chip.status-complete { background: rgba(120,220,150,.16); color: #78dc96; }
+.calendar-year-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; }
+.calendar-year-card { min-width: 0; min-height: 150px; padding: .85rem; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; background: rgba(255,255,255,.025); }
+.calendar-year-card-header { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; margin-bottom: .7rem; }
+.calendar-year-card-header strong { color: #f7f5ef; font-size: .95rem; }
+.calendar-year-card-header span { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 24px; padding: 0 .45rem; border: 1px solid rgba(255,209,102,.24); border-radius: 999px; background: rgba(255,209,102,.08); color: #ffd166; font-size: .78rem; font-weight: 900; }
+.calendar-year-jobs { display: grid; gap: .35rem; }
+.calendar-year-job { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: .45rem; align-items: center; padding: .38rem .45rem; border: 1px solid rgba(255,255,255,.08); border-radius: 8px; background: rgba(255,255,255,.045); color: #f7f5ef; text-decoration: none; }
+.calendar-year-job:hover { border-color: rgba(255,138,61,.38); background: rgba(255,138,61,.11); }
+.calendar-year-job span { color: rgba(247,245,239,.55); font-size: .66rem; font-weight: 900; text-transform: uppercase; }
+.calendar-year-job strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .78rem; }
+.calendar-year-job.status-new_lead { color: #ffd166; }
+.calendar-year-job.status-in_progress { color: #ffb071; }
+.calendar-year-job.status-complete { color: #94efae; }
+.calendar-year-more,
+.calendar-year-empty { margin: .45rem 0 0; color: rgba(247,245,239,.48); font-size: .76rem; }
 @media (max-width: 640px) {
   .calendar-grid { grid-template-columns: repeat(7, minmax(32px, 1fr)); }
   .calendar-cell { min-height: 64px; }
   .calendar-job-chip { font-size: .62rem; }
+  .calendar-year-grid { grid-template-columns: 1fr; }
 }
 
 .calendar-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; margin: 0 0 .75rem; }
