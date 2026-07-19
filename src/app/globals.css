@@ -1192,7 +1192,7 @@ li + li { margin-top: 0.45rem; }
 .calendar-heading-metrics .workspace-metric-value { margin-top: .25rem; font-size: clamp(1.1rem, 1.75vw, 1.55rem); }
 .schedule-summary-card { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 1rem; padding: .82rem .95rem; }
 .schedule-summary-title { min-width: 92px; }
-.schedule-summary-stats { display: grid; grid-template-columns: repeat(3, minmax(92px, 1fr)); gap: .5rem; }
+.schedule-summary-stats { display: grid; grid-template-columns: minmax(54px, .5fr) repeat(2, minmax(108px, 1fr)); gap: .5rem; }
 .schedule-summary-stats span { min-width: 0; padding-left: .7rem; border-left: 1px solid rgba(247,245,239,.13); }
 .schedule-summary-stats strong { display: block; color: #f7f5ef; font-family: var(--font-display); font-size: clamp(1.1rem, 1.7vw, 1.45rem); line-height: 1.05; white-space: nowrap; }
 .schedule-summary-stats small { display: block; margin-top: .18rem; color: rgba(247,245,239,.56); font-size: .58rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
