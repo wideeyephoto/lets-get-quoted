@@ -1,7 +1,8 @@
 import { requireOwnerContext } from '@/lib/auth';
-import { listCrew, listCrewWorkHistory } from '@/lib/crew';
+import { listCrew } from '@/lib/crew';
 import { createCrewPhotoUrls } from '@/lib/crew-photo-storage';
 import { formatJobSchedule, formatMoney, listJobs } from '@/lib/jobs';
+import CrewWorkHistory from '@/components/crew-work-history';
 import SaveButton from '@/components/save-button';
 import { assignCrewToJobAction, createCrewAction, deleteArchivedCrewAction, setCrewActiveAction, updateCrewAction, updateCrewPhotoAction } from './actions';
 
@@ -20,8 +21,6 @@ export default async function CrewPage() {
   const photoUrls = await createCrewPhotoUrls(accountId, crew.map((member) => member.photo_path).filter((path): path is string => Boolean(path)));
   const activeCrew = crew.filter((member) => member.active);
   const assignableJobs = jobs.filter((job) => job.status !== 'complete' && job.status !== 'archived');
-  const historyEntries = await Promise.all(crew.map((member) => listCrewWorkHistory(supabase, accountId, member.id)));
-  const historyByCrew = new Map(crew.map((member, index) => [member.id, historyEntries[index]]));
 
   return (
     <main className="wide-shell workspace-shell">
@@ -35,8 +34,6 @@ export default async function CrewPage() {
         ) : (
           <div className="job-list">
             {crew.map((member) => {
-              const history = historyByCrew.get(member.id) ?? [];
-              const totalPaid = history.reduce((sum, item) => sum + item.amount, 0);
               const photoUrl = member.photo_path ? photoUrls[member.photo_path] : null;
               return (
                 <div key={member.id} className="job-row">
@@ -122,29 +119,7 @@ export default async function CrewPage() {
                     </form>
                   </details>
 
-                  <details className="workspace-details" style={{ marginTop: '0.75rem' }}>
-                    <summary className="workspace-details-summary">
-                      <span className="btn secondary">Work history</span>
-                      <span className="workspace-details-copy">{history.length} labor entr{history.length === 1 ? 'y' : 'ies'} · {formatMoney(totalPaid)} paid</span>
-                    </summary>
-                    {history.length === 0 ? (
-                      <p className="empty-state" style={{ marginTop: '1rem' }}>No paid labor history logged yet.</p>
-                    ) : (
-                      <div className="cost-list" style={{ marginTop: '1rem' }}>
-                        {history.map((item) => (
-                          <div key={item.cost_id} className="cost-item">
-                            <div className="cost-item-main">
-                              <span className="cost-item-desc">{item.job_ref} · {item.client_name}</span>
-                              <span className="cost-item-sub">
-                                {formatJobSchedule(item.scheduled_for, item.scheduled_time)} · {item.hours ?? 0} hrs × {formatMoney(item.rate ?? 0)}/hr
-                              </span>
-                            </div>
-                            <span className="cost-item-amount">{formatMoney(item.amount)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </details>
+                  <CrewWorkHistory crewId={member.id} />
                 </div>
               );
             })}

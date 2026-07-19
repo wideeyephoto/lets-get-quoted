@@ -905,6 +905,61 @@ li + li { margin-top: 0.45rem; }
 .sign-in-method-row .method-name { font-weight: 700; display: block; }
 .sign-in-method-row .method-detail { display: block; color: rgba(255,255,255,.55); font-size: .78rem; margin-top: .15rem; }
 .schedule-method-row .method-info { flex: 1 1 220px; min-width: 220px; }
+.schedule-popover { position: relative; flex: 0 0 auto; }
+.schedule-popover summary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+.schedule-popover summary::-webkit-details-marker { display: none; }
+.schedule-popover[open] summary { border-color: rgba(255,138,61,.55); color: #ffb37c; }
+.schedule-popover-panel {
+  position: absolute;
+  top: calc(100% + 0.7rem);
+  right: 0;
+  z-index: 20;
+  width: min(720px, calc(100vw - 4rem));
+  padding: 1rem;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 16px;
+  background: rgba(9,16,27,.98);
+  box-shadow: 0 24px 70px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.schedule-popover-panel::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  right: 32px;
+  width: 12px;
+  height: 12px;
+  transform: rotate(45deg);
+  border-left: 1px solid rgba(255,255,255,.16);
+  border-top: 1px solid rgba(255,255,255,.16);
+  background: rgba(9,16,27,.98);
+}
+.schedule-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+.schedule-preset-button {
+  width: 100%;
+  min-height: 42px;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(255,209,102,.25);
+  border-radius: 12px;
+  background: rgba(255,209,102,.08);
+  color: #ffd166;
+  font: 800 0.8rem/1.15 inherit;
+  cursor: pointer;
+}
+.schedule-preset-button:hover,
+.schedule-preset-button:focus-visible {
+  border-color: rgba(255,209,102,.62);
+  background: rgba(255,209,102,.15);
+  outline: none;
+}
 .schedule-inline-form {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) minmax(150px, 0.7fr) auto;
@@ -2653,6 +2708,16 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
     width: 100%;
     min-width: 0;
   }
+
+  .schedule-popover { width: 100%; }
+  .schedule-popover summary { width: 100%; justify-content: center; }
+  .schedule-popover-panel {
+    position: static;
+    width: 100%;
+    margin-top: 0.7rem;
+  }
+  .schedule-popover-panel::before { display: none; }
+  .schedule-preset-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
   .schedule-inline-time .quick-add-buttons { display: none; }
   .schedule-inline-form > .btn { width: 100%; }

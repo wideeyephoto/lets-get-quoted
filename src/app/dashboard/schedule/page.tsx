@@ -27,6 +27,19 @@ function toDateKey(year: number, monthIndex: number, day: number): string {
   return `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
+function addDaysToKey(date: Date, days: number): string {
+  const nextDate = new Date(date);
+  nextDate.setDate(nextDate.getDate() + days);
+  return toDateKey(nextDate.getFullYear(), nextDate.getMonth(), nextDate.getDate());
+}
+
+function nextWeekdayKey(date: Date, weekday: number): string {
+  const nextDate = new Date(date);
+  const distance = (weekday + 7 - nextDate.getDay()) % 7 || 7;
+  nextDate.setDate(nextDate.getDate() + distance);
+  return toDateKey(nextDate.getFullYear(), nextDate.getMonth(), nextDate.getDate());
+}
+
 function monthParam(year: number, monthIndex: number): string {
   return `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
 }
@@ -73,6 +86,12 @@ export default async function SchedulePage({
   const prevMonth = monthParam(year, monthIndex - 1);
   const nextMonth = monthParam(year, monthIndex + 1);
   const currentMonth = monthParam(now.getFullYear(), now.getMonth());
+  const quickSchedulePresets = [
+    { label: 'Today 8 AM', date: todayKey, time: '08:00' },
+    { label: 'Tomorrow 8 AM', date: addDaysToKey(now, 1), time: '08:00' },
+    { label: 'Next Mon 8 AM', date: nextWeekdayKey(now, 1), time: '08:00' },
+    { label: 'Next Fri 9 AM', date: nextWeekdayKey(now, 5), time: '09:00' },
+  ];
 
   const in30Days = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30);
   const next30Key = toDateKey(in30Days.getFullYear(), in30Days.getMonth(), in30Days.getDate());
@@ -159,15 +178,29 @@ export default async function SchedulePage({
                       <span className="method-detail">{STATUS_LABEL[job.status]} · {job.address || 'No address on file'}</span>
                     </div>
                   </div>
-                  <form action={boundSchedule} className="actions schedule-inline-form">
-                    <div className="schedule-inline-field schedule-inline-date">
-                      <ScheduledDatePicker id={`scheduledFor-${job.id}`} name="scheduledFor" required />
+                  <details className="schedule-popover">
+                    <summary className="btn secondary">Schedule</summary>
+                    <div className="schedule-popover-panel">
+                      <div className="schedule-preset-grid" aria-label={`Quick schedule presets for ${job.client_name}`}>
+                        {quickSchedulePresets.map((preset) => (
+                          <form action={boundSchedule} key={`${job.id}-${preset.label}`}>
+                            <input type="hidden" name="scheduledFor" value={preset.date} />
+                            <input type="hidden" name="scheduledTime" value={preset.time} />
+                            <button type="submit" className="schedule-preset-button">{preset.label}</button>
+                          </form>
+                        ))}
+                      </div>
+                      <form action={boundSchedule} className="schedule-inline-form">
+                        <div className="schedule-inline-field schedule-inline-date">
+                          <ScheduledDatePicker id={`scheduledFor-${job.id}`} name="scheduledFor" required />
+                        </div>
+                        <div className="schedule-inline-field schedule-inline-time">
+                          <TimeSlotSelect id={`scheduledTime-${job.id}`} name="scheduledTime" />
+                        </div>
+                        <button type="submit" className="btn secondary">Set custom time</button>
+                      </form>
                     </div>
-                    <div className="schedule-inline-field schedule-inline-time">
-                      <TimeSlotSelect id={`scheduledTime-${job.id}`} name="scheduledTime" />
-                    </div>
-                    <button type="submit" className="btn secondary">Set schedule</button>
-                  </form>
+                  </details>
                 </div>
               );
             })}
