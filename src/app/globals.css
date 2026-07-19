@@ -1170,7 +1170,13 @@ li + li { margin-top: 0.45rem; }
 }
 .priority-empty span { color: rgba(247,245,239,.58); font-size: .9rem; }
 
-.calendar-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; }
+.calendar-heading { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1rem; max-width: none; }
+.calendar-heading-side { display: flex; align-items: flex-end; justify-content: flex-end; gap: .8rem; flex-wrap: wrap; }
+.calendar-heading-metrics { grid-template-columns: repeat(2, minmax(150px, 1fr)); gap: .55rem; min-width: min(100%, 330px); }
+.calendar-heading-metrics .workspace-metric-card { border-radius: 14px; padding: .7rem .8rem; }
+.calendar-heading-metrics .workspace-metric-label { font-size: .64rem; }
+.calendar-heading-metrics .workspace-metric-value { margin-top: .25rem; font-size: clamp(1.25rem, 2.1vw, 1.7rem); }
+.calendar-heading-metrics .workspace-metric-note { margin-top: .25rem; font-size: .72rem; }
 .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
 .calendar-weekday { padding: .3rem .2rem; color: rgba(255,255,255,.45); font-size: .7rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; text-align: center; }
 .calendar-cell { min-height: 92px; padding: .4rem; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: rgba(255,255,255,.02); display: flex; flex-direction: column; gap: .3rem; }

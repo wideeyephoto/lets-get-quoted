@@ -117,25 +117,13 @@ export default async function SchedulePage({
 
   return (
     <main className="wide-shell workspace-shell">
-      <section className="workspace-hero panel">
+      <section className="workspace-hero workspace-hero-solo panel">
         <div className="workspace-hero-copy">
           <p className="eyebrow">Schedule</p>
           <h1 className="workspace-title">Job calendar</h1>
           <p className="workspace-lead">
             See what&apos;s on the books this month and get unscheduled jobs onto a date.
           </p>
-        </div>
-        <div className="workspace-metric-grid compact">
-          <article className="workspace-metric-card accent">
-            <span className="workspace-metric-label">Next 30 days</span>
-            <strong className="workspace-metric-value">{scheduledNext30Days}</strong>
-            <p className="workspace-metric-note">Jobs scheduled within the next 30 days.</p>
-          </article>
-          <article className="workspace-metric-card">
-            <span className="workspace-metric-label">Needs a date</span>
-            <strong className="workspace-metric-value">{unscheduledJobs.length}</strong>
-            <p className="workspace-metric-note">Active jobs without a scheduled date.</p>
-          </article>
         </div>
       </section>
 
@@ -145,10 +133,24 @@ export default async function SchedulePage({
             <p className="eyebrow">Calendar</p>
             <h2>{monthLabel}</h2>
           </div>
-          <div className="actions">
-            <Link href={`/dashboard/schedule?month=${prevMonth}`} className="btn secondary">← Prev</Link>
-            <Link href={`/dashboard/schedule?month=${currentMonth}`} className="btn secondary">Today</Link>
-            <Link href={`/dashboard/schedule?month=${nextMonth}`} className="btn secondary">Next →</Link>
+          <div className="calendar-heading-side">
+            <div className="workspace-metric-grid calendar-heading-metrics">
+              <article className="workspace-metric-card accent">
+                <span className="workspace-metric-label">Next 30 days</span>
+                <strong className="workspace-metric-value">{scheduledNext30Days}</strong>
+                <p className="workspace-metric-note">Jobs scheduled within the next 30 days.</p>
+              </article>
+              <article className="workspace-metric-card">
+                <span className="workspace-metric-label">Needs a date</span>
+                <strong className="workspace-metric-value">{unscheduledJobs.length}</strong>
+                <p className="workspace-metric-note">Active jobs without a scheduled date.</p>
+              </article>
+            </div>
+            <div className="actions">
+              <Link href={`/dashboard/schedule?month=${prevMonth}`} className="btn secondary">← Prev</Link>
+              <Link href={`/dashboard/schedule?month=${currentMonth}`} className="btn secondary">Today</Link>
+              <Link href={`/dashboard/schedule?month=${nextMonth}`} className="btn secondary">Next →</Link>
+            </div>
           </div>
         </div>
 
