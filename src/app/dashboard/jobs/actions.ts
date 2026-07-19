@@ -227,6 +227,26 @@ export async function scheduleJobAction(jobId: string, formData: FormData) {
   revalidatePath('/dashboard/schedule');
 }
 
+export async function removeJobScheduleAction(jobId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const job = await getJob(supabase, accountId, jobId);
+  if (!job) throw new Error('Job not found for this account.');
+
+  await updateJobSchedule(supabase, accountId, jobId, null, null);
+
+  await createJobFeedEvent(supabase, accountId, jobId, {
+    kind: 'job_scheduled',
+    title: 'Job removed from schedule',
+    body: `${job.ref} was removed from the schedule.`,
+    visibility: 'client',
+    meta: { scheduled_for: null, scheduled_time: null, previous_scheduled_for: job.scheduled_for, previous_scheduled_time: job.scheduled_time },
+  });
+
+  revalidatePath('/dashboard/jobs');
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+  revalidatePath('/dashboard/schedule');
+}
+
 export async function sendClientScheduleOptionsAction(jobId: string, formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
   const job = await getJob(supabase, accountId, jobId);

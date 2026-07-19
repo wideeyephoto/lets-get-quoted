@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
-import { toggleJobCrewAction } from '../jobs/actions';
+import ScheduledDatePicker from '@/components/scheduled-date-picker';
+import TimeSlotSelect from '@/components/time-slot-select';
+import { removeJobScheduleAction, scheduleJobAction, toggleJobCrewAction } from '../jobs/actions';
 import { formatJobSchedule, formatJobTime } from '@/lib/jobs';
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -83,6 +85,7 @@ export default function ScheduleCalendar({
 }) {
   const [assignments, setAssignments] = useState(assignmentsByJob);
   const [openOccurrenceKey, setOpenOccurrenceKey] = useState<string | null>(null);
+  const [isConfirmingRemove, setIsConfirmingRemove] = useState(false);
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [calendarView, setCalendarView] = useState<CalendarView>('month');
   const [, startTransition] = useTransition();
@@ -113,6 +116,16 @@ export default function ScheduleCalendar({
   }, [jobsByDate, todayKey, weeks]);
 
   const visibleWeeks = calendarView === 'week' ? [weekAtAGlance] : weeks;
+
+  function openJobActions(occurrenceKey: string) {
+    setIsConfirmingRemove(false);
+    setOpenOccurrenceKey(occurrenceKey);
+  }
+
+  function closeJobActions() {
+    setIsConfirmingRemove(false);
+    setOpenOccurrenceKey(null);
+  }
 
   const twelveMonthSummary = useMemo(() => {
     const firstVisibleCell = weeks.flat().find(Boolean);
@@ -172,7 +185,7 @@ export default function ScheduleCalendar({
   return (
     <>
       <div className="calendar-toolbar">
-        <p className="calendar-hint">Click the crew badge on any job to assign or remove your team.</p>
+        <p className="calendar-hint">Click a job to reschedule it, remove it from the schedule, or manage crew.</p>
         <div className="calendar-view-toggle" aria-label="Calendar view">
           <button type="button" className={calendarView === 'month' ? 'active' : ''} onClick={() => setCalendarView('month')}>Month</button>
           <button type="button" className={calendarView === 'week' ? 'active' : ''} onClick={() => setCalendarView('week')}>Week</button>
@@ -190,10 +203,10 @@ export default function ScheduleCalendar({
               {month.jobs.length > 0 ? (
                 <div className="calendar-year-jobs">
                   {month.jobs.map((job) => (
-                    <Link href={`/dashboard/jobs/${job.id}`} className={`calendar-year-job status-${job.status}`} key={job.occurrence_key}>
+                    <button type="button" className={`calendar-year-job status-${job.status}`} key={job.occurrence_key} onClick={() => openJobActions(job.occurrence_key)}>
                       <span>{new Date(`${job.scheduled_for}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                       <strong>{job.client_name}</strong>
-                    </Link>
+                    </button>
                   ))}
                   {month.extraJobCount > 0 ? <p className="calendar-year-more">+{month.extraJobCount} more</p> : null}
                 </div>
@@ -237,17 +250,18 @@ export default function ScheduleCalendar({
                         .filter((member): member is CrewOption => Boolean(member));
                       return (
                         <div className={`calendar-job-item calendar-band ${bandClass} ${bandColorClass} status-${job.status}`} key={job.occurrence_key}>
-                          <Link
-                            href={`/dashboard/jobs/${job.id}`}
+                          <button
+                            type="button"
                             className={`calendar-job-chip status-${job.status}`}
                             title={job.client_name}
+                            onClick={() => openJobActions(job.occurrence_key)}
                           >
                             {formatJobTime(job.scheduled_time) ? `${formatJobTime(job.scheduled_time)} ` : ''}{job.client_name}
-                          </Link>
+                          </button>
                           <button
                             type="button"
                             className={`calendar-crew-toggle${assignedMembers.length > 0 ? ' has-crew' : ''}`}
-                            onClick={() => setOpenOccurrenceKey(job.occurrence_key)}
+                            onClick={() => openJobActions(job.occurrence_key)}
                             title={
                               assignedMembers.length > 0
                                 ? `Assigned: ${assignedMembers.map((member) => member.name).join(', ')}`
@@ -270,8 +284,8 @@ export default function ScheduleCalendar({
       )}
 
       {openJob ? (
-        <div className="crew-assign-backdrop" onClick={() => setOpenOccurrenceKey(null)}>
-          <div className="crew-assign-panel" onClick={(event) => event.stopPropagation()}>
+        <div className="crew-assign-backdrop" onClick={closeJobActions}>
+          <div className="crew-assign-panel schedule-job-actions-panel" onClick={(event) => event.stopPropagation()}>
             <div className="crew-assign-header">
               <div>
                 <p className="crew-assign-title">{openJob.client_name}</p>
@@ -279,9 +293,44 @@ export default function ScheduleCalendar({
                   {STATUS_LABEL[openJob.status] ?? openJob.status} · {formatJobSchedule(openJob.scheduled_for, openJob.scheduled_time)}
                 </p>
               </div>
-              <button type="button" className="crew-assign-close" onClick={() => setOpenOccurrenceKey(null)} aria-label="Close">
+              <button type="button" className="crew-assign-close" onClick={closeJobActions} aria-label="Close">
                 ×
               </button>
+            </div>
+
+            <div className="schedule-job-actions">
+              <Link href={`/dashboard/jobs/${openJob.id}`} className="btn secondary schedule-job-open-link">Open job</Link>
+              <form action={scheduleJobAction.bind(null, openJob.id)} className="schedule-job-reschedule-form" key={`reschedule-${openJob.occurrence_key}`}>
+                <div className="schedule-job-section-heading">
+                  <strong>Reschedule</strong>
+                  <span>Choose a new start date or time for this job.</span>
+                </div>
+                <div className="schedule-job-reschedule-grid">
+                  <ScheduledDatePicker id={`calendarScheduledFor-${openJob.occurrence_key}`} name="scheduledFor" defaultValue={openJob.scheduled_for} required />
+                  <TimeSlotSelect id={`calendarScheduledTime-${openJob.occurrence_key}`} name="scheduledTime" defaultValue={openJob.scheduled_time ?? ''} />
+                </div>
+                <button type="submit" className="btn primary schedule-job-submit">Save new start date</button>
+              </form>
+
+              <div className="schedule-remove-box">
+                {isConfirmingRemove ? (
+                  <form action={removeJobScheduleAction.bind(null, openJob.id)} className="schedule-remove-confirm">
+                    <strong>Remove this job from the schedule?</strong>
+                    <span>It will move back to unscheduled jobs. Crew assignments and job details stay intact.</span>
+                    <div className="schedule-remove-actions">
+                      <button type="button" className="btn secondary" onClick={() => setIsConfirmingRemove(false)}>Keep scheduled</button>
+                      <button type="submit" className="btn danger">Yes, remove it</button>
+                    </div>
+                  </form>
+                ) : (
+                  <button type="button" className="btn secondary schedule-remove-trigger" onClick={() => setIsConfirmingRemove(true)}>Remove from schedule</button>
+                )}
+              </div>
+            </div>
+
+            <div className="schedule-job-section-heading crew-section-heading">
+              <strong>Crew</strong>
+              <span>Assign or remove team members for this job.</span>
             </div>
 
             {crew.length === 0 ? (
