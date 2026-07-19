@@ -228,7 +228,7 @@ export default async function SchedulePage({
                   </div>
                   <div className="schedule-action-buttons">
                     <details className="schedule-popover" name={`schedule-popover-${job.id}`}>
-                      <summary className="btn secondary">Manual</summary>
+                      <summary className="btn secondary">Add Start Date</summary>
                       <div className="schedule-popover-panel">
                         <div className="schedule-preset-grid" aria-label={`Quick schedule presets for ${job.client_name}`}>
                           {quickSchedulePresets.map((preset) => (
@@ -251,7 +251,7 @@ export default async function SchedulePage({
                       </div>
                     </details>
                     <details className="schedule-popover" name={`schedule-popover-${job.id}`}>
-                      <summary className="btn secondary">Text 3</summary>
+                      <summary className="btn secondary">Send Client 3 Dates</summary>
                       <div className="schedule-popover-panel">
                         <form action={boundSendScheduleOptions} className="schedule-inline-form schedule-client-options-form">
                           <div className="schedule-inline-field schedule-inline-date">

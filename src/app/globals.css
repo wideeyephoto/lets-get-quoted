@@ -948,7 +948,7 @@ li + li { margin-top: 0.45rem; }
   gap: 0.55rem;
   flex: 0 0 auto;
 }
-.schedule-action-buttons .btn { min-width: 94px; }
+.schedule-action-buttons .btn { min-width: 138px; }
 .schedule-popover { position: static; flex: 0 0 auto; }
 .schedule-popover summary {
   list-style: none;
