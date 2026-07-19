@@ -33,11 +33,11 @@ export function dateKeyFromNow(offsetDays: number): string {
 }
 
 export const DEMO_CREW: CrewMember[] = [
-  { id: 'crew-1', account_id: DEMO_ACCOUNT_ID, name: 'Mike Torres', phone: '(248) 555-0142', role_label: 'Lead Carpenter', hourly_rate: 34, user_id: null, active: true, deleted_at: null, created_at: daysAgo(700) },
-  { id: 'crew-2', account_id: DEMO_ACCOUNT_ID, name: 'Jamal Reed', phone: '(248) 555-0198', role_label: 'Carpenter', hourly_rate: 28, user_id: null, active: true, deleted_at: null, created_at: daysAgo(620) },
-  { id: 'crew-3', account_id: DEMO_ACCOUNT_ID, name: 'Sam Whitaker', phone: '(248) 555-0163', role_label: 'Laborer', hourly_rate: 22, user_id: null, active: true, deleted_at: null, created_at: daysAgo(500) },
-  { id: 'crew-4', account_id: DEMO_ACCOUNT_ID, name: 'Elena Ruiz', phone: '(248) 555-0177', role_label: 'Project Manager', hourly_rate: 30, user_id: null, active: true, deleted_at: null, created_at: daysAgo(400) },
-  { id: 'crew-5', account_id: DEMO_ACCOUNT_ID, name: 'Danny Cole', phone: '(248) 555-0119', role_label: 'Electrician (Sub)', hourly_rate: 45, user_id: null, active: false, deleted_at: null, created_at: daysAgo(300) },
+  { id: 'crew-1', account_id: DEMO_ACCOUNT_ID, name: 'Mike Torres', phone: '(248) 555-0142', role_label: 'Lead Carpenter', hourly_rate: 34, photo_path: null, user_id: null, active: true, deleted_at: null, created_at: daysAgo(700) },
+  { id: 'crew-2', account_id: DEMO_ACCOUNT_ID, name: 'Jamal Reed', phone: '(248) 555-0198', role_label: 'Carpenter', hourly_rate: 28, photo_path: null, user_id: null, active: true, deleted_at: null, created_at: daysAgo(620) },
+  { id: 'crew-3', account_id: DEMO_ACCOUNT_ID, name: 'Sam Whitaker', phone: '(248) 555-0163', role_label: 'Laborer', hourly_rate: 22, photo_path: null, user_id: null, active: true, deleted_at: null, created_at: daysAgo(500) },
+  { id: 'crew-4', account_id: DEMO_ACCOUNT_ID, name: 'Elena Ruiz', phone: '(248) 555-0177', role_label: 'Project Manager', hourly_rate: 30, photo_path: null, user_id: null, active: true, deleted_at: null, created_at: daysAgo(400) },
+  { id: 'crew-5', account_id: DEMO_ACCOUNT_ID, name: 'Danny Cole', phone: '(248) 555-0119', role_label: 'Electrician (Sub)', hourly_rate: 45, photo_path: null, user_id: null, active: false, deleted_at: null, created_at: daysAgo(300) },
 ];
 
 type JobSeed = {

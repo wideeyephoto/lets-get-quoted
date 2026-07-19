@@ -9,8 +9,10 @@ import {
   listCrewIdsForJob,
   setCrewActive,
   setJobCrewAssignments,
+  updateCrewPhoto,
   updateCrewMember,
 } from '@/lib/crew';
+import { deleteCrewPhotos, isCrewPhotoFile, uploadCrewPhoto, validateCrewPhotoFile } from '@/lib/crew-photo-storage';
 import { getJob } from '@/lib/jobs';
 import { sendCrewAssignmentSms } from '@/lib/sms';
 
@@ -30,13 +32,20 @@ export async function createCrewAction(formData: FormData) {
   }
 
   const hourlyRateRaw = Number(formData.get('hourlyRate'));
+  const photo = formData.get('photo');
+  if (isCrewPhotoFile(photo)) validateCrewPhotoFile(photo);
 
-  await createCrewMember(supabase, accountId, {
+  const member = await createCrewMember(supabase, accountId, {
     name,
     phone,
     roleLabel: optionalText(formData.get('roleLabel')),
     hourlyRate: Number.isFinite(hourlyRateRaw) && hourlyRateRaw > 0 ? hourlyRateRaw : 0,
   });
+
+  if (isCrewPhotoFile(photo)) {
+    const photoPath = await uploadCrewPhoto(accountId, member.id, photo);
+    await updateCrewPhoto(supabase, accountId, member.id, photoPath);
+  }
 
   revalidatePath('/dashboard/crew');
 }
@@ -65,6 +74,23 @@ export async function updateCrewAction(crewId: string, formData: FormData) {
   revalidatePath('/dashboard/schedule');
 }
 
+export async function updateCrewPhotoAction(crewId: string, formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const photo = formData.get('photo');
+
+  if (!isCrewPhotoFile(photo)) {
+    throw new Error('Choose a crew photo to upload.');
+  }
+
+  const photoPath = await uploadCrewPhoto(accountId, crewId, photo);
+  const { previousPhotoPath } = await updateCrewPhoto(supabase, accountId, crewId, photoPath);
+  if (previousPhotoPath) await deleteCrewPhotos(accountId, [previousPhotoPath]);
+
+  revalidatePath('/dashboard/crew');
+  revalidatePath('/dashboard/jobs');
+  revalidatePath('/dashboard/schedule');
+}
+
 export async function setCrewActiveAction(crewId: string, active: boolean) {
   const { supabase, accountId } = await requireOwnerContext();
 
@@ -77,7 +103,8 @@ export async function setCrewActiveAction(crewId: string, active: boolean) {
 export async function deleteArchivedCrewAction(crewId: string) {
   const { supabase, accountId } = await requireOwnerContext();
 
-  await deleteArchivedCrewMember(supabase, accountId, crewId);
+  const photoPath = await deleteArchivedCrewMember(supabase, accountId, crewId);
+  if (photoPath) await deleteCrewPhotos(accountId, [photoPath]);
 
   revalidatePath('/dashboard/crew');
   revalidatePath('/dashboard/jobs');

@@ -1,12 +1,23 @@
 import { requireOwnerContext } from '@/lib/auth';
 import { listCrew, listCrewWorkHistory } from '@/lib/crew';
+import { createCrewPhotoUrls } from '@/lib/crew-photo-storage';
 import { formatJobSchedule, formatMoney, listJobs } from '@/lib/jobs';
 import SaveButton from '@/components/save-button';
-import { assignCrewToJobAction, createCrewAction, deleteArchivedCrewAction, setCrewActiveAction, updateCrewAction } from './actions';
+import { assignCrewToJobAction, createCrewAction, deleteArchivedCrewAction, setCrewActiveAction, updateCrewAction, updateCrewPhotoAction } from './actions';
+
+function initialsFor(name: string) {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'C';
+}
 
 export default async function CrewPage() {
   const { supabase, accountId } = await requireOwnerContext();
   const [crew, jobs] = await Promise.all([listCrew(supabase, accountId), listJobs(supabase, accountId)]);
+  const photoUrls = await createCrewPhotoUrls(accountId, crew.map((member) => member.photo_path).filter((path): path is string => Boolean(path)));
   const activeCrew = crew.filter((member) => member.active);
   const assignableJobs = jobs.filter((job) => job.status !== 'complete' && job.status !== 'archived');
   const historyEntries = await Promise.all(crew.map((member) => listCrewWorkHistory(supabase, accountId, member.id)));
@@ -26,20 +37,38 @@ export default async function CrewPage() {
             {crew.map((member) => {
               const history = historyByCrew.get(member.id) ?? [];
               const totalPaid = history.reduce((sum, item) => sum + item.amount, 0);
+              const photoUrl = member.photo_path ? photoUrls[member.photo_path] : null;
               return (
                 <div key={member.id} className="job-row">
-                  <div className="job-row-header">
-                    <span className="job-ref">{member.name}</span>
-                    <span className={`status-badge ${member.active ? 'status-complete' : 'status-archived'}`}>
-                      {member.active ? 'Active' : 'Archived'}
-                    </span>
+                  <div className="crew-row-intro">
+                    <div className="crew-avatar" aria-hidden="true">
+                      {photoUrl ? <img src={photoUrl} alt="" /> : <span>{initialsFor(member.name)}</span>}
+                    </div>
+                    <div className="crew-row-main">
+                      <div className="job-row-header">
+                        <span className="job-ref">{member.name}</span>
+                        <span className={`status-badge ${member.active ? 'status-complete' : 'status-archived'}`}>
+                          {member.active ? 'Active' : 'Archived'}
+                        </span>
+                      </div>
+                      <div className="job-client">{member.role_label}</div>
+                      <div className="job-row-header" style={{ marginTop: '0.4rem' }}>
+                        <span className="job-meta">
+                          {member.phone}
+                          {member.hourly_rate > 0 ? ` · ${formatMoney(member.hourly_rate)}/hr` : ''}
+                        </span>
+                        <form action={updateCrewPhotoAction.bind(null, member.id)} className="crew-photo-form">
+                          <label className="btn secondary crew-photo-button">
+                            {photoUrl ? 'Replace photo' : 'Add photo'}
+                            <input name="photo" type="file" accept="image/jpeg,image/png,image/webp,image/avif" required />
+                          </label>
+                          <SaveButton pendingLabel="Uploading…" savedLabel="Uploaded ✓">Save photo</SaveButton>
+                        </form>
+                      </div>
+                    </div>
                   </div>
-                  <div className="job-client">{member.role_label}</div>
                   <div className="job-row-header" style={{ marginTop: '0.4rem' }}>
-                    <span className="job-meta">
-                      {member.phone}
-                      {member.hourly_rate > 0 ? ` · ${formatMoney(member.hourly_rate)}/hr` : ''}
-                    </span>
+                    <span className="job-meta">Crew profile and job assignment controls</span>
                     <div className="actions">
                       {member.active ? (
                         <form action={assignCrewToJobAction.bind(null, member.id)} className="inline-action-form">
@@ -155,6 +184,10 @@ export default async function CrewPage() {
           <div className="field">
             <label htmlFor="hourlyRate">Hourly rate ($)</label>
             <input id="hourlyRate" name="hourlyRate" type="number" min="0" step="0.01" placeholder="28" />
+          </div>
+          <div className="field full">
+            <label htmlFor="photo">Crew photo</label>
+            <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp,image/avif" />
           </div>
           <div className="field full">
             <SaveButton pendingLabel="Adding…" savedLabel="Added ✓">Add crew member</SaveButton>

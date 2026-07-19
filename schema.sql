@@ -114,12 +114,14 @@ create table if not exists crew (
   phone         text not null,
   role_label    text not null default 'Laborer',
   hourly_rate   numeric(10,2) not null default 0,
+  photo_path    text,
   user_id       uuid references auth.users(id) on delete set null,
   active        boolean not null default true,
   deleted_at    timestamptz,
   created_at    timestamptz not null default now()
 );
 
+alter table crew add column if not exists photo_path text;
 alter table crew add column if not exists deleted_at timestamptz;
 
 -- ----------------------------------------------------------------------------

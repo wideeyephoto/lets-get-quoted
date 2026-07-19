@@ -2167,6 +2167,25 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 }
 .job-row:hover { border-color: rgba(255,138,61,0.5); background: rgba(255,255,255,0.05); }
 .job-row-header { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; }
+.crew-row-intro { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 0.9rem; align-items: start; }
+.crew-row-main { min-width: 0; }
+.crew-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: linear-gradient(135deg, rgba(255,138,61,0.28), rgba(120,220,150,0.16));
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.18);
+}
+.crew-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.crew-photo-form { display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
+.crew-photo-button input { display: none; }
 .job-ref { font-family: var(--font-mono), 'JetBrains Mono', monospace; font-size: 0.78rem; color: rgba(255,255,255,0.55); }
 .job-client { font-weight: 700; font-size: 1.05rem; margin-top: 0.35rem; }
 .job-meta { color: rgba(255,255,255,0.6); font-size: 0.9rem; margin-top: 0.15rem; }
@@ -2592,10 +2611,15 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 
   .cost-item,
   .job-row-header,
+  .crew-photo-form,
   .tier-row,
   .margin-row {
     flex-direction: column;
   }
+
+  .crew-row-intro { grid-template-columns: 52px minmax(0, 1fr); }
+  .crew-avatar { width: 52px; height: 52px; font-size: 0.82rem; }
+  .crew-photo-form { width: 100%; align-items: stretch; }
 
   .cost-item-actions {
     width: 100%;

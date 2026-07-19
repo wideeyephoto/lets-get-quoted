@@ -7,6 +7,7 @@ export type CrewMember = {
   phone: string;
   role_label: string;
   hourly_rate: number;
+  photo_path: string | null;
   user_id: string | null;
   active: boolean;
   deleted_at: string | null;
@@ -18,6 +19,7 @@ export type CrewInput = {
   phone: string;
   roleLabel?: string;
   hourlyRate?: number;
+  photoPath?: string | null;
 };
 
 export type CrewWorkHistoryItem = {
@@ -68,6 +70,7 @@ export async function createCrewMember(
       phone: input.phone,
       role_label: input.roleLabel?.trim() || 'Laborer',
       hourly_rate: input.hourlyRate ?? 0,
+      photo_path: input.photoPath ?? null,
     })
     .select('*')
     .single();
@@ -100,6 +103,35 @@ export async function updateCrewMember(
   return data as CrewMember;
 }
 
+export async function updateCrewPhoto(
+  supabase: SupabaseClient,
+  accountId: string,
+  crewId: string,
+  photoPath: string | null
+): Promise<{ member: CrewMember; previousPhotoPath: string | null }> {
+  const { data: existing, error: selectError } = await supabase
+    .from('crew')
+    .select('photo_path')
+    .eq('account_id', accountId)
+    .eq('id', crewId)
+    .is('deleted_at', null)
+    .single();
+
+  if (selectError || !existing) throw selectError ?? new Error('Crew member not found.');
+
+  const { data, error } = await supabase
+    .from('crew')
+    .update({ photo_path: photoPath })
+    .eq('account_id', accountId)
+    .eq('id', crewId)
+    .is('deleted_at', null)
+    .select('*')
+    .single();
+
+  if (error || !data) throw error ?? new Error('Unable to update crew photo.');
+  return { member: data as CrewMember, previousPhotoPath: (existing.photo_path as string | null | undefined) ?? null };
+}
+
 export async function setCrewActive(
   supabase: SupabaseClient,
   accountId: string,
@@ -114,10 +146,10 @@ export async function deleteArchivedCrewMember(
   supabase: SupabaseClient,
   accountId: string,
   crewId: string
-): Promise<void> {
+): Promise<string | null> {
   const { data: member, error: selectError } = await supabase
     .from('crew')
-    .select('id, active')
+    .select('id, active, photo_path')
     .eq('account_id', accountId)
     .eq('id', crewId)
     .is('deleted_at', null)
@@ -134,6 +166,7 @@ export async function deleteArchivedCrewMember(
     .eq('active', false);
 
   if (error) throw error;
+  return (member.photo_path as string | null | undefined) ?? null;
 }
 
 export async function listCrewWorkHistory(
