@@ -9,7 +9,21 @@
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--theme-accent, #f0b429); background: #fff; box-shadow: 0 0 0 4px color-mix(in srgb, var(--theme-accent, #f0b429) 25%, transparent); }
 .wide { grid-column: 1 / -1; }
 .honeypot { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
-.photoInput { padding: 10px 14px !important; font-size: 13px !important; cursor: pointer; }
+.photoHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.photoHeader em { font-style: normal; opacity: .62; font-size: 12px; font-weight: 800; text-transform: none; letter-spacing: normal; }
+.photoDropzone { display: grid; gap: 12px; min-height: 112px; padding: 16px; border: 1px dashed color-mix(in srgb, var(--theme-accent, #f0b429) 55%, currentColor 18%); border-radius: var(--theme-radius, 4px); background: color-mix(in srgb, var(--theme-accent, #f0b429) 10%, rgba(255,255,255,.92)); }
+.photoDropzone:hover { border-style: solid; background: color-mix(in srgb, var(--theme-accent, #f0b429) 14%, rgba(255,255,255,.94)); }
+.photoInput { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.photoActions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.photoChooseButton { min-height: 42px; padding: 10px 16px; border: none; border-radius: 999px; background: var(--theme-accent, #f0b429); color: #111; font: 800 14px/1 inherit; cursor: pointer; box-shadow: 0 12px 24px -18px rgba(0,0,0,.55); }
+.photoChooseButton:disabled { opacity: .55; cursor: default; }
+.photoList { display: grid; gap: 8px; }
+.photoItem { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid rgba(0,0,0,.08); border-radius: calc(var(--theme-radius, 4px) + 4px); background: rgba(255,255,255,.72); color: #14161a; text-transform: none; letter-spacing: normal; }
+.photoItem span { display: grid; gap: 2px; min-width: 0; }
+.photoItem strong, .photoItem small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.photoItem strong { font-size: 13px; }
+.photoItem small { font-size: 12px; opacity: .64; }
+.photoItem button { flex: 0 0 auto; border: 1px solid rgba(0,0,0,.12); border-radius: 999px; padding: 7px 10px; background: #fff; color: #14161a; font: 800 12px/1 inherit; cursor: pointer; }
 .help { margin: 0; opacity: .68; font-size: 12px; line-height: 1.5; font-weight: 500; text-transform: none; letter-spacing: normal; }
 .progress { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; font-size: 12px; font-weight: 700; text-transform: none; letter-spacing: normal; }
 .progress progress { width: 100%; height: 6px; border-radius: 999px; overflow: hidden; accent-color: var(--theme-accent, #f0b429); }
@@ -20,4 +34,4 @@
 .message { grid-column: 1 / -1; margin: 0; padding: 13px 16px; border-radius: var(--theme-radius, 4px); font-size: 14px; font-weight: 700; text-transform: none; letter-spacing: normal; }
 .success { color: #052e16 !important; -webkit-text-fill-color: #052e16; background: #dcfce7; border: 1px solid #86efac; }
 .error { color: #7f1d1d !important; -webkit-text-fill-color: #7f1d1d; background: #fee2e2; border: 1px solid #fca5a5; }
-@media (max-width: 600px) { .form { grid-template-columns: 1fr; padding: 1.5rem; } .wide, .progress, .submit, .message { grid-column: 1; } }
+@media (max-width: 600px) { .form { grid-template-columns: 1fr; padding: 1.5rem; } .wide, .progress, .submit, .message { grid-column: 1; } .photoActions { align-items: stretch; } .photoChooseButton { width: 100%; } }

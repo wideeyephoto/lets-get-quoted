@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
   if (!site) return NextResponse.json({ error: 'This website is not accepting requests.' }, { status: 404 });
 
-  const photos = data.getAll('photos').filter((item): item is File => item instanceof File && item.size > 0).slice(0, 3);
+  const photos = data.getAll('photos').filter((item): item is File => item instanceof File && item.size > 0).slice(0, 6);
   const photoPaths: string[] = [];
   try {
     for (const photo of photos) photoPaths.push(await uploadLeadPhoto(site.account_id, photo));
