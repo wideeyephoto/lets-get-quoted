@@ -25,7 +25,7 @@ import { uploadJobPhoto } from '@/lib/job-photo-storage';
 import { listCrew, listCrewIdsForJob, setJobCrewAssignments, toggleJobCrewAssignment } from '@/lib/crew';
 import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
-import { recordSmsConsent, sendCrewAssignmentSms, sendCrewScheduleSelectedSms, sendJobUpdateSms } from '@/lib/sms';
+import { recordSmsConsent, sendClientJobDashboardSms, sendCrewAssignmentSms, sendCrewScheduleSelectedSms, sendJobUpdateSms } from '@/lib/sms';
 
 function parseAmount(value: FormDataEntryValue | null): number {
   const n = Number(value);
@@ -58,6 +58,13 @@ function parseJobStatus(value: unknown): JobStatus | null {
 
 export async function createJobAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
+  const clientPhone = optionalText(formData.get('clientPhone'));
+  const sendClientText = formData.get('sendClientText') === 'on';
+  const normalizedClientPhone = clientPhone ? normalizeUsPhone(clientPhone) : null;
+
+  if (sendClientText && !normalizedClientPhone) {
+    throw new Error('Add a valid client phone number before sending the client dashboard text.');
+  }
 
   const photoFiles = formData.getAll('photos').filter((item): item is File => item instanceof File && item.size > 0);
   const photoPaths: string[] = [];
@@ -67,7 +74,7 @@ export async function createJobAction(formData: FormData) {
 
   const job = await createJob(supabase, accountId, {
     clientName: (formData.get('clientName') ?? '').toString().trim(),
-    clientPhone: optionalText(formData.get('clientPhone')),
+    clientPhone,
     clientEmail: optionalText(formData.get('clientEmail')),
     address: optionalText(formData.get('address')),
     scope: optionalText(formData.get('scope')),
@@ -89,6 +96,17 @@ export async function createJobAction(formData: FormData) {
   });
 
   const token = await createClientJobAccessToken(supabase, accountId, job.id, { clientPhone: job.client_phone, clientEmail: job.client_email });
+
+  if (sendClientText && normalizedClientPhone) {
+    const { data: account } = await supabase.from('accounts').select('business_name').eq('id', accountId).single();
+    await recordSmsConsent(accountId, normalizedClientPhone, 'client_job_dashboard');
+    await sendClientJobDashboardSms({
+      phone: normalizedClientPhone,
+      businessName: account?.business_name || "Let's Get Quoted contractor",
+      jobRef: job.ref,
+      token,
+    });
+  }
 
   revalidatePath('/dashboard/jobs');
   redirect(`/dashboard/jobs/${job.id}?tab=feed&clientToken=${token}`);

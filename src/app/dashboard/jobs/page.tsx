@@ -274,6 +274,10 @@ export default async function JobsPage({
             <label htmlFor="quotedAmount">Quoted amount ($)</label>
             <FormattedCurrencyInput id="quotedAmount" name="quotedAmount" placeholder="$12,840" />
           </div>
+          <label className="field full sms-consent-check job-intake-client-text">
+            <input name="sendClientText" type="checkbox" />
+            <span>Send Client Text with their client dashboard link.</span>
+          </label>
           <div className="field full">
             <button type="submit" className="btn primary">
               Create job

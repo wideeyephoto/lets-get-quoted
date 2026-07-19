@@ -24,6 +24,11 @@ function scheduleLink(token: string) {
   return `${origin}/schedule/${token}`;
 }
 
+function clientJobLink(token: string) {
+  const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
+  return `${origin}/client/jobs/${token}`;
+}
+
 function messageFor(payment: SmsPayment, eventType: PaymentSmsEvent) {
   const contractor = payment.account?.business_name || 'Your contractor';
   const amount = formatMoney(Number(payment.amount));
@@ -215,6 +220,17 @@ export async function sendJobUpdateSms(params: {
 }) {
   const updateBody = params.body ? ` ${params.body}` : '';
   const message = `Let's Get Quoted: ${params.businessName} posted an update for job ${params.jobRef}: ${params.title}.${updateBody} Reply STOP to opt out.`;
+  return sendTwilioMessage(params.phone, message);
+}
+
+export async function sendClientJobDashboardSms(params: {
+  phone: string;
+  businessName: string;
+  jobRef: string;
+  token: string;
+}) {
+  const link = clientJobLink(params.token);
+  const message = `Let's Get Quoted: ${params.businessName} created your client dashboard for job ${params.jobRef}. View updates, invoices, and payments here: ${link}. Reply STOP to opt out.`;
   return sendTwilioMessage(params.phone, message);
 }
 
