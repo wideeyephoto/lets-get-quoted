@@ -203,7 +203,7 @@ export default async function SchedulePage({
                 <div className="sign-in-method-row schedule-method-row" key={job.id}>
                   <div className="method-info">
                     <div>
-                      <span className="method-name">{job.client_name}</span>
+                      <Link className="method-name" href={`/dashboard/jobs/${job.id}`}>{job.client_name}</Link>
                       <span className="method-detail">{STATUS_LABEL[job.status]} · {job.address || 'No address on file'}</span>
                     </div>
                   </div>
