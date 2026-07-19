@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
-import { expandScheduledJobs, listJobs, type Job } from '@/lib/jobs';
+import { expandScheduledJobs, formatMoney, listJobs, type Job } from '@/lib/jobs';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
@@ -95,10 +95,22 @@ export default async function SchedulePage({
 
   const in30Days = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30);
   const next30Key = toDateKey(in30Days.getFullYear(), in30Days.getMonth(), in30Days.getDate());
-  const scheduledNext30Days = scheduledJobs.filter((job) => {
+  const scheduledNext30DayJobs = scheduledJobs.filter((job) => {
     const dateKey = job.scheduled_for as string;
     return dateKey >= todayKey && dateKey <= next30Key;
-  }).length;
+  });
+  const scheduledNext30Days = scheduledNext30DayJobs.length;
+  const estimatedRevenue = scheduledNext30DayJobs.reduce((sum, job) => sum + Number(job.quoted_amount || 0), 0);
+  const next30JobIds = scheduledNext30DayJobs.map((job) => job.id);
+  const { data: next30Costs } = next30JobIds.length > 0
+    ? await supabase
+        .from('costs')
+        .select('amount')
+        .eq('account_id', accountId)
+        .in('job_id', next30JobIds)
+    : { data: [] as Array<{ amount: number | string | null }> };
+  const estimatedCost = (next30Costs ?? []).reduce((sum, cost) => sum + Number(cost.amount || 0), 0);
+  const estimatedProfit = estimatedRevenue - estimatedCost;
 
   const calendarJobs = scheduledJobOccurrences.map((job) => ({
     id: job.id,
@@ -127,16 +139,29 @@ export default async function SchedulePage({
             </p>
           </div>
           <div className="workspace-metric-grid calendar-heading-metrics">
-            <article className="workspace-metric-card accent">
+            <article className="workspace-metric-card accent schedule-summary-card">
               <span className="workspace-metric-label">Next 30 days</span>
-              <strong className="workspace-metric-value">{scheduledNext30Days}</strong>
+              <div className="schedule-summary-stats">
+                <span>
+                  <strong>{scheduledNext30Days}</strong>
+                  <small>Jobs</small>
+                </span>
+                <span>
+                  <strong>{formatMoney(estimatedRevenue)}</strong>
+                  <small>Revenue</small>
+                </span>
+                <span>
+                  <strong>{formatMoney(estimatedProfit)}</strong>
+                  <small>Profit</small>
+                </span>
+              </div>
             </article>
             <a
               className="workspace-metric-card metric-card-link"
               href="#unscheduled-jobs"
               aria-label={`${unscheduledJobs.length} active ${unscheduledJobs.length === 1 ? 'job needs' : 'jobs need'} a scheduled date`}
             >
-              <span className="workspace-metric-label">Needs a date</span>
+              <span className="workspace-metric-label">Needs date</span>
               <strong className="workspace-metric-value">{unscheduledJobs.length}</strong>
             </a>
           </div>
