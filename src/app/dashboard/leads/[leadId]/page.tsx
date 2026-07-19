@@ -151,14 +151,37 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
             <div className={styles.dataBlock}><span>Estimated hours</span><p>{lead.estimated_hours ? `${lead.estimated_hours} hrs` : 'Not estimated yet'}</p></div>
             <div className={styles.dataBlock}><span>Project details</span><p>{lead.message || 'Not provided'}</p></div>
             <form action={updateLeadDetails} className={`form-grid ${styles.leadEditForm}`}>
-              <label htmlFor="leadName">Client name<input id="leadName" name="name" defaultValue={lead.name ?? ''} required /></label>
-              <label htmlFor="leadPhone">Phone<input id="leadPhone" name="phone" type="tel" defaultValue={lead.phone ?? ''} /></label>
-              <label htmlFor="leadEmail">Email<input id="leadEmail" name="email" type="email" defaultValue={lead.email ?? ''} /></label>
-              <label htmlFor="leadAddress">Project address<input id="leadAddress" name="address" defaultValue={lead.address ?? ''} /></label>
-              <label htmlFor="leadProjectType">Project type<input id="leadProjectType" name="projectType" defaultValue={lead.project_type ?? ''} /></label>
-              <label htmlFor="leadEstimatedHours">Estimated hours<input id="leadEstimatedHours" name="estimatedHours" type="number" min="0" step="0.25" defaultValue={lead.estimated_hours ?? ''} /></label>
-              <label className="full-span" htmlFor="leadMessage">Project details<textarea id="leadMessage" name="message" rows={4} defaultValue={lead.message ?? ''} /></label>
-              <SaveButton>Save lead details</SaveButton>
+              <div className="field">
+                <label htmlFor="leadName">Client name</label>
+                <input id="leadName" name="name" defaultValue={lead.name ?? ''} required />
+              </div>
+              <div className="field">
+                <label htmlFor="leadPhone">Phone</label>
+                <input id="leadPhone" name="phone" type="tel" defaultValue={lead.phone ?? ''} />
+              </div>
+              <div className="field">
+                <label htmlFor="leadEmail">Email</label>
+                <input id="leadEmail" name="email" type="email" defaultValue={lead.email ?? ''} />
+              </div>
+              <div className="field">
+                <label htmlFor="leadAddress">Project address</label>
+                <input id="leadAddress" name="address" defaultValue={lead.address ?? ''} />
+              </div>
+              <div className="field">
+                <label htmlFor="leadProjectType">Project type</label>
+                <input id="leadProjectType" name="projectType" defaultValue={lead.project_type ?? ''} />
+              </div>
+              <div className="field">
+                <label htmlFor="leadEstimatedHours">Estimated hours</label>
+                <input id="leadEstimatedHours" name="estimatedHours" type="number" min="0" step="0.25" defaultValue={lead.estimated_hours ?? ''} />
+              </div>
+              <div className="field full">
+                <label htmlFor="leadMessage">Project details</label>
+                <textarea id="leadMessage" name="message" rows={4} defaultValue={lead.message ?? ''} />
+              </div>
+              <div className="field full">
+                <SaveButton>Save lead details</SaveButton>
+              </div>
             </form>
           </details>
 
