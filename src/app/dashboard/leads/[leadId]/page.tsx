@@ -6,7 +6,7 @@ import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
 import { expireStaleLeads, formatElapsedTime, formatLeadSource, getLead, listLeads, type Lead, type LeadQuoteVisit } from '@/lib/leads';
 import { expandScheduledJobs, formatJobSchedule, formatJobTime, listJobs, type Job, type ScheduledJobOccurrence } from '@/lib/jobs';
-import { convertLeadAction, scheduleLeadQuoteVisitAction, updateLeadStatusAction } from '../actions';
+import { convertLeadAction, scheduleLeadQuoteVisitAction, updateLeadDetailsAction, updateLeadStatusAction } from '../actions';
 import SaveButton from '@/components/save-button';
 import TimeSlotSelect from '@/components/time-slot-select';
 import styles from '../leads.module.css';
@@ -63,7 +63,7 @@ function nextScheduledJobLabel(jobs: ScheduledJobOccurrence<Job>[]) {
   return `${nextJob.client_name}${time ? ` at ${time}` : ''}`;
 }
 
-export default async function LeadDetailPage({ params }: { params: { leadId: string } }) {
+export default async function LeadDetailPage({ params, searchParams }: { params: { leadId: string }; searchParams: { edit?: string } }) {
   const { supabase, accountId } = await requireOwnerContext();
   await expireStaleLeads(supabase, accountId);
   const [lead, jobs, leads, { data: account }] = await Promise.all([
@@ -76,6 +76,7 @@ export default async function LeadDetailPage({ params }: { params: { leadId: str
 
   const photoUrls = await createLeadPhotoUrls(accountId, lead.photo_paths || []);
   const photos = (lead.photo_paths || []).map((path, index) => ({ path, url: photoUrls[index] })).filter((photo) => photo.url);
+  const updateLeadDetails = updateLeadDetailsAction.bind(null, lead.id);
   const convertLead = convertLeadAction.bind(null, lead.id);
   const scheduleVisit = scheduleLeadQuoteVisitAction.bind(null, lead.id);
   const markContacted = updateLeadStatusAction.bind(null, lead.id, 'contacted');
@@ -95,6 +96,9 @@ export default async function LeadDetailPage({ params }: { params: { leadId: str
           <p className="eyebrow">Lead details</p>
           <div className={styles.leadTitleRow}>
             <h1 className="workspace-title">{lead.name || 'Unnamed lead'}</h1>
+            <Link href={`/dashboard/leads/${lead.id}?edit=client#lead-details`} className="job-title-edit-link">
+              (edit)
+            </Link>
           </div>
           <div className={styles.detailBadges}>
             <span className={styles.source}>{formatLeadSource(lead.source)}</span>
@@ -128,8 +132,11 @@ export default async function LeadDetailPage({ params }: { params: { leadId: str
 
       <div className={styles.detailGrid}>
         <section className={styles.leadContextStack}>
-          <section className={`panel workspace-section-card ${styles.detailSection}`}>
-            <div className="section-heading workspace-section-heading"><p className="eyebrow">Request</p><h2>{lead.project_type || 'Project request'}</h2></div>
+          <details id="lead-details" className={`panel workspace-section-card workspace-details ${styles.detailSection}`} open={searchParams.edit === 'client'}>
+            <summary className="workspace-details-summary job-action-summary">
+              <div className="section-heading workspace-section-heading"><p className="eyebrow">Request</p><h2>{lead.project_type || 'Project request'}</h2></div>
+              <span className="workspace-details-copy">Edit client info, project details, and estimate notes.</span>
+            </summary>
             <div className={styles.contactGrid}>
               <div className={styles.dataBlock}><span>Phone</span>{lead.phone ? <a href={`tel:${lead.phone}`}>{lead.phone}</a> : <p>Not provided</p>}</div>
               <div className={styles.dataBlock}><span>Email</span>{lead.email ? <a href={`mailto:${lead.email}`}>{lead.email}</a> : <p>Not provided</p>}</div>
@@ -143,7 +150,17 @@ export default async function LeadDetailPage({ params }: { params: { leadId: str
             ) : null}
             <div className={styles.dataBlock}><span>Estimated hours</span><p>{lead.estimated_hours ? `${lead.estimated_hours} hrs` : 'Not estimated yet'}</p></div>
             <div className={styles.dataBlock}><span>Project details</span><p>{lead.message || 'Not provided'}</p></div>
-          </section>
+            <form action={updateLeadDetails} className={`form-grid ${styles.leadEditForm}`}>
+              <label htmlFor="leadName">Client name<input id="leadName" name="name" defaultValue={lead.name ?? ''} required /></label>
+              <label htmlFor="leadPhone">Phone<input id="leadPhone" name="phone" type="tel" defaultValue={lead.phone ?? ''} /></label>
+              <label htmlFor="leadEmail">Email<input id="leadEmail" name="email" type="email" defaultValue={lead.email ?? ''} /></label>
+              <label htmlFor="leadAddress">Project address<input id="leadAddress" name="address" defaultValue={lead.address ?? ''} /></label>
+              <label htmlFor="leadProjectType">Project type<input id="leadProjectType" name="projectType" defaultValue={lead.project_type ?? ''} /></label>
+              <label htmlFor="leadEstimatedHours">Estimated hours<input id="leadEstimatedHours" name="estimatedHours" type="number" min="0" step="0.25" defaultValue={lead.estimated_hours ?? ''} /></label>
+              <label className="full-span" htmlFor="leadMessage">Project details<textarea id="leadMessage" name="message" rows={4} defaultValue={lead.message ?? ''} /></label>
+              <SaveButton>Save lead details</SaveButton>
+            </form>
+          </details>
 
           <section className={`panel workspace-section-card ${styles.detailSection}`}>
             <div className="section-heading workspace-section-heading"><p className="eyebrow">Attachments</p><h2>Project photos</h2></div>

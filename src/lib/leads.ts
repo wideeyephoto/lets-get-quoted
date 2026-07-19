@@ -213,6 +213,33 @@ export async function updateLeadStatus(
   return data as Lead;
 }
 
+export async function updateLeadDetails(
+  supabase: SupabaseClient,
+  accountId: string,
+  leadId: string,
+  input: Omit<LeadInput, 'source' | 'photoPaths' | 'sourcePage'>
+): Promise<Lead> {
+  const { data, error } = await supabase
+    .from('leads')
+    .update({
+      name: input.name.trim() || null,
+      phone: input.phone?.trim() || null,
+      email: input.email?.trim().toLowerCase() || null,
+      address: input.address?.trim() || null,
+      project_type: input.projectType?.trim() || null,
+      estimated_hours: input.estimatedHours ?? null,
+      message: input.message?.trim() || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('account_id', accountId)
+    .eq('id', leadId)
+    .select('*')
+    .single();
+
+  if (error || !data) throw error ?? new Error('Unable to update lead details.');
+  return data as Lead;
+}
+
 export async function expireStaleLeads(supabase: SupabaseClient, accountId: string, days = 30): Promise<void> {
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
   const { error } = await supabase

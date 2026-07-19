@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
 import { createClientJobAccessToken, createJobFeedEvent } from '@/lib/job-feed';
 import { formatJobQuoteSummary } from '@/lib/jobs';
-import { convertLeadToJob, createLead, getLead, scheduleLeadQuoteVisit, updateLeadStatus, type LeadStatus } from '@/lib/leads';
+import { convertLeadToJob, createLead, getLead, scheduleLeadQuoteVisit, updateLeadDetails, updateLeadStatus, type LeadStatus } from '@/lib/leads';
 import { uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
@@ -65,6 +65,21 @@ export async function createLeadAction(formData: FormData) {
 export async function updateLeadStatusAction(leadId: string, status: LeadStatus) {
   const { supabase, accountId } = await requireOwnerContext();
   await updateLeadStatus(supabase, accountId, leadId, status);
+  revalidatePath(`/dashboard/leads/${leadId}`);
+  revalidatePath('/dashboard/leads');
+}
+
+export async function updateLeadDetailsAction(leadId: string, formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  await updateLeadDetails(supabase, accountId, leadId, {
+    name: requiredText(formData.get('name'), 'Client name'),
+    phone: optionalText(formData.get('phone')),
+    email: optionalText(formData.get('email')),
+    address: optionalText(formData.get('address')),
+    projectType: optionalText(formData.get('projectType')),
+    estimatedHours: optionalAmount(formData.get('estimatedHours')),
+    message: optionalText(formData.get('message')),
+  });
   revalidatePath(`/dashboard/leads/${leadId}`);
   revalidatePath('/dashboard/leads');
 }
