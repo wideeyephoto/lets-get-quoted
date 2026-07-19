@@ -963,7 +963,7 @@ li + li { margin-top: 0.45rem; }
   right: 0;
   z-index: 20;
   width: min(720px, calc(100vw - 4rem));
-  max-height: min(72vh, 640px);
+  max-height: min(84vh, 760px);
   overflow-y: auto;
   padding: 1rem;
   border: 1px solid rgba(255,255,255,.16);
@@ -1052,6 +1052,10 @@ li + li { margin-top: 0.45rem; }
   color: #ffd166;
 }
 .schedule-inline-form > .btn { align-self: center; min-height: 48px; }
+.schedule-inline-form > .schedule-save-button {
+  border-color: rgba(255,138,61,.72);
+  box-shadow: 0 10px 24px rgba(255,122,33,.2);
+}
 .schedule-client-options-form {
   grid-template-columns: 1fr;
   gap: 0.65rem;
@@ -3040,6 +3044,8 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   .schedule-popover-panel {
     position: static;
     width: 100%;
+    max-height: none;
+    overflow: visible;
     margin-top: 0.7rem;
   }
   .schedule-popover-panel::before { display: none; }

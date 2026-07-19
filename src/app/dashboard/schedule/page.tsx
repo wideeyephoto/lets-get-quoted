@@ -246,7 +246,7 @@ export default async function SchedulePage({
                           <div className="schedule-inline-field schedule-inline-time">
                             <TimeSlotSelect id={`scheduledTime-${job.id}`} name="scheduledTime" />
                           </div>
-                          <button type="submit" className="btn secondary">Set custom time</button>
+                          <button type="submit" className="btn primary schedule-save-button">Save Start Date</button>
                         </form>
                       </div>
                     </details>
