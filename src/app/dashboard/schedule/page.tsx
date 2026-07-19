@@ -140,7 +140,9 @@ export default async function SchedulePage({
           </div>
           <div className="workspace-metric-grid calendar-heading-metrics">
             <article className="workspace-metric-card accent schedule-summary-card">
-              <span className="workspace-metric-label">Next 30 days</span>
+              <div className="schedule-summary-title">
+                <span className="workspace-metric-label">Next 30 days</span>
+              </div>
               <div className="schedule-summary-stats">
                 <span>
                   <strong>{scheduledNext30Days}</strong>
