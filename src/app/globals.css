@@ -1545,6 +1545,8 @@ li + li { margin-top: 0.45rem; }
 .calendar-year-card { min-width: 0; min-height: 150px; padding: .85rem; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; background: rgba(255,255,255,.025); }
 .calendar-year-card-header { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; margin-bottom: .7rem; }
 .calendar-year-card-header strong { color: #f7f5ef; font-size: .95rem; }
+.calendar-year-month-link { border: 0; padding: 0; background: transparent; color: #f7f5ef; font: inherit; font-size: .95rem; font-weight: 900; text-align: left; cursor: pointer; }
+.calendar-year-month-link:hover { color: #ffd166; text-decoration: underline; text-underline-offset: 4px; }
 .calendar-year-card-header span { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 24px; padding: 0 .45rem; border: 1px solid rgba(255,209,102,.24); border-radius: 999px; background: rgba(255,209,102,.08); color: #ffd166; font-size: .78rem; font-weight: 900; }
 .calendar-year-jobs { display: grid; gap: .35rem; }
 .calendar-year-job { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: .45rem; align-items: center; width: 100%; padding: .38rem .45rem; border: 1px solid rgba(255,255,255,.08); border-radius: 8px; background: rgba(255,255,255,.045); color: #f7f5ef; font: inherit; text-align: left; text-decoration: none; cursor: pointer; }

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import SaveButton from '@/components/save-button';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
@@ -92,6 +93,7 @@ export default function ScheduleCalendar({
   crew: CrewOption[];
   assignmentsByJob: Record<string, string[]>;
 }) {
+  const router = useRouter();
   const [assignments, setAssignments] = useState(assignmentsByJob);
   const [openOccurrenceKey, setOpenOccurrenceKey] = useState<string | null>(null);
   const [isConfirmingRemove, setIsConfirmingRemove] = useState(false);
@@ -139,6 +141,11 @@ export default function ScheduleCalendar({
   function closeJobActions() {
     setIsConfirmingRemove(false);
     setOpenOccurrenceKey(null);
+  }
+
+  function navigateToMonth(monthKey: string) {
+    setCalendarView('month');
+    router.push(`/dashboard/schedule?month=${monthKey}`);
   }
 
   const twelveMonthSummary = useMemo(() => {
@@ -211,7 +218,9 @@ export default function ScheduleCalendar({
           {twelveMonthSummary.map((month) => (
             <article className="calendar-year-card" key={month.monthKey}>
               <div className="calendar-year-card-header">
-                <strong>{month.label}</strong>
+                <button type="button" className="calendar-year-month-link" onClick={() => navigateToMonth(month.monthKey)}>
+                  {month.label}
+                </button>
                 <span>{month.uniqueJobCount}</span>
               </div>
               {month.jobs.length > 0 ? (
