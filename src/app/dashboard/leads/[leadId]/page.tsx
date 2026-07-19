@@ -137,8 +137,8 @@ export default async function LeadDetailPage({ params }: { params: { leadId: str
             <div className={styles.dataBlock}><span>Project address</span><p>{lead.address || 'Not provided'}</p></div>
             {mapSrc ? (
               <div className={styles.leadMapCard}>
-                <div><span>Location radius</span><strong>25-mile area around the job</strong></div>
-                <iframe title={`Map showing a 25-mile area around ${lead.address}`} src={mapSrc} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+                <div><span>Job Location</span><strong>{lead.address}</strong></div>
+                <iframe title={`Map showing ${lead.address}`} src={mapSrc} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
               </div>
             ) : null}
             <div className={styles.dataBlock}><span>Estimated hours</span><p>{lead.estimated_hours ? `${lead.estimated_hours} hrs` : 'Not estimated yet'}</p></div>
