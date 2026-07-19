@@ -72,13 +72,18 @@
 .scheduledVisitSummary span { color: #fff; font-weight: 900; }
 .scheduledVisitSummary small { color: rgba(255,255,255,.6); }
 .calendarCard { overflow: hidden; }
+.calendarHint { margin: -.35rem 0 .15rem; color: rgba(255,255,255,.58); font-size: .82rem; line-height: 1.45; }
 .availabilityGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; }
-.availabilityDay { display: grid; gap: .22rem; min-height: 84px; padding: .65rem; border: 1px solid rgba(74,222,128,.18); border-radius: 8px; background: rgba(74,222,128,.07); }
+.availabilityForm { min-width: 0; margin: 0; }
+.availabilityDay { display: grid; gap: .22rem; width: 100%; min-height: 104px; padding: .65rem; border: 1px solid rgba(74,222,128,.18); border-radius: 8px; background: rgba(74,222,128,.07); color: inherit; font: inherit; text-align: left; cursor: pointer; transition: border-color .16s ease, transform .16s ease, background .16s ease; }
+.availabilityDay:hover, .availabilityDay:focus-visible { border-color: rgba(74,222,128,.48); background: rgba(74,222,128,.11); transform: translateY(-1px); outline: none; }
 .availabilityDay strong { color: #fff; font-size: .8rem; }
 .availabilityDay span { color: #bbf7d0; font-size: .74rem; font-weight: 800; }
 .availabilityDay small { overflow: hidden; color: rgba(255,255,255,.52); font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
+.availabilityDay em { align-self: end; width: fit-content; margin-top: .2rem; padding: .22rem .45rem; border-radius: 999px; background: rgba(255,255,255,.08); color: rgba(255,255,255,.76); font-size: .68rem; font-style: normal; font-weight: 900; }
 .busyDay { border-color: rgba(255,209,102,.26); background: rgba(255,209,102,.07); }
 .busyDay span { color: #ffd166; }
+.busyDay:hover, .busyDay:focus-visible { border-color: rgba(255,209,102,.55); background: rgba(255,209,102,.11); }
 .timelineList { display: grid; gap: .8rem; }
 .timelineList > div { display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: .65rem; align-items: start; }
 .timelineList > div > span { width: 10px; height: 10px; margin-top: .25rem; border-radius: 50%; background: #ffd166; box-shadow: 0 0 0 5px rgba(255,209,102,.1); }

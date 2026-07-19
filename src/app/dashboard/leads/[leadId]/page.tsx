@@ -196,10 +196,24 @@ export default async function LeadDetailPage({ params }: { params: { leadId: str
 
           <section className={`panel workspace-section-card ${styles.calendarCard}`}>
             <div className="section-heading workspace-section-heading"><p className="eyebrow">Calendar</p><h2>Availability snapshot</h2></div>
+            <p className={styles.calendarHint}>Click a day to immediately book a 9:00 AM in-person quote visit.</p>
             <div className={styles.availabilityGrid}>
               {availability.map((day) => {
                 const busy = day.jobs.length + day.visits.length > 0;
-                return <div className={`${styles.availabilityDay}${busy ? ` ${styles.busyDay}` : ''}`} key={day.key}><strong>{day.label}</strong><span>{busy ? `${day.jobs.length} job${day.jobs.length === 1 ? '' : 's'} / ${day.visits.length} quote visit${day.visits.length === 1 ? '' : 's'}` : 'Open'}</span><small>{day.hours ? `${day.hours} est hrs` : nextScheduledJobLabel(day.jobs)}</small></div>;
+                return (
+                  <form action={scheduleVisit} className={styles.availabilityForm} key={day.key}>
+                    <input type="hidden" name="quoteVisitDate" value={day.key} />
+                    <input type="hidden" name="quoteVisitTime" value="09:00" />
+                    <input type="hidden" name="quoteVisitDuration" value="60" />
+                    <input type="hidden" name="quoteVisitNotes" value="Booked from the lead availability snapshot." />
+                    <button className={`${styles.availabilityDay}${busy ? ` ${styles.busyDay}` : ''}`} type="submit">
+                      <strong>{day.label}</strong>
+                      <span>{busy ? `${day.jobs.length} job${day.jobs.length === 1 ? '' : 's'} / ${day.visits.length} quote visit${day.visits.length === 1 ? '' : 's'}` : 'Open'}</span>
+                      <small>{day.hours ? `${day.hours} est hrs` : nextScheduledJobLabel(day.jobs)}</small>
+                      <em>{busy ? 'Book anyway at 9:00 AM' : 'Book 9:00 AM'}</em>
+                    </button>
+                  </form>
+                );
               })}
             </div>
           </section>
