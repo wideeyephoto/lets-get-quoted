@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
-import { removeJobScheduleAction, scheduleJobAction, toggleJobCrewAction } from '../jobs/actions';
+import { removeJobScheduleAction, scheduleJobAction, textCrewJobDateAction, toggleJobCrewAction } from '../jobs/actions';
 import { formatJobSchedule, formatJobTime } from '@/lib/jobs';
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -347,6 +347,16 @@ export default function ScheduleCalendar({
                     )}
                   </div>
                 </details>
+                <form action={textCrewJobDateAction.bind(null, openJob.id)}>
+                  <button
+                    type="submit"
+                    className="btn secondary schedule-text-crew-date"
+                    disabled={openJobAssignedMembers.length === 0}
+                    title={openJobAssignedMembers.length === 0 ? 'Assign crew before texting the date' : 'Text assigned crew the scheduled date'}
+                  >
+                    Text Crew Date
+                  </button>
+                </form>
               </div>
               <form action={scheduleJobAction.bind(null, openJob.id)} className="schedule-job-reschedule-form" key={`reschedule-${openJob.occurrence_key}`}>
                 <div className="schedule-job-section-heading">

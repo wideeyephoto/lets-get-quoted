@@ -22,10 +22,10 @@ import {
   revokeClientJobAccess,
 } from '@/lib/job-feed';
 import { uploadJobPhoto } from '@/lib/job-photo-storage';
-import { listCrew, setJobCrewAssignments, toggleJobCrewAssignment } from '@/lib/crew';
+import { listCrew, listCrewIdsForJob, setJobCrewAssignments, toggleJobCrewAssignment } from '@/lib/crew';
 import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
-import { recordSmsConsent, sendCrewAssignmentSms, sendJobUpdateSms } from '@/lib/sms';
+import { recordSmsConsent, sendCrewAssignmentSms, sendCrewScheduleSelectedSms, sendJobUpdateSms } from '@/lib/sms';
 
 function parseAmount(value: FormDataEntryValue | null): number {
   const n = Number(value);
@@ -363,6 +363,54 @@ export async function toggleJobCrewAction(jobId: string, crewId: string): Promis
   revalidatePath(`/dashboard/jobs/${jobId}`);
 
   return { assigned };
+}
+
+export async function textCrewJobDateAction(jobId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const [job, { data: account }, crewMembers, assignedCrewIds] = await Promise.all([
+    getJob(supabase, accountId, jobId),
+    supabase.from('accounts').select('business_name').eq('id', accountId).single(),
+    listCrew(supabase, accountId, { activeOnly: true }),
+    listCrewIdsForJob(supabase, accountId, jobId),
+  ]);
+
+  if (!job) throw new Error('Job not found for this account.');
+  if (!job.scheduled_for) throw new Error('Schedule this job before texting the crew date.');
+
+  const assignedCrewIdSet = new Set(assignedCrewIds);
+  const assignedCrew = crewMembers.filter((member) => assignedCrewIdSet.has(member.id));
+  if (assignedCrew.length === 0) throw new Error('Assign crew before texting the crew date.');
+
+  const businessName = account?.business_name || "Let's Get Quoted contractor";
+
+  for (const member of assignedCrew) {
+    try {
+      await sendCrewScheduleSelectedSms({
+        phone: member.phone,
+        crewName: member.name,
+        businessName,
+        jobRef: job.ref,
+        clientName: job.client_name,
+        address: job.address,
+        scheduledFor: job.scheduled_for,
+        scheduledTime: job.scheduled_time,
+      });
+    } catch (error) {
+      console.error(`Crew date SMS failed for crew ${member.id} on job ${jobId}:`, error);
+    }
+  }
+
+  await createJobFeedEvent(supabase, accountId, jobId, {
+    kind: 'job_update',
+    title: 'Crew date text sent',
+    body: `Texted ${assignedCrew.length} crew ${assignedCrew.length === 1 ? 'member' : 'members'} the scheduled date for ${job.ref}.`,
+    visibility: 'internal',
+    meta: { crew_count: assignedCrew.length, scheduled_for: job.scheduled_for, scheduled_time: job.scheduled_time },
+  });
+
+  revalidatePath('/dashboard/schedule');
+  revalidatePath('/dashboard/jobs');
+  revalidatePath(`/dashboard/jobs/${jobId}`);
 }
 
 export async function createCostAction(jobId: string, formData: FormData) {

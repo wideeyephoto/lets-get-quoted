@@ -200,9 +200,9 @@ export async function sendCrewScheduleSelectedSms(params: {
   scheduledFor: string;
   scheduledTime?: string | null;
 }) {
-  const addressNote = params.address ? ` at ${params.address}` : '';
+  const addressNote = params.address ? params.address : 'Address not set';
   const scheduledNote = formatJobSchedule(params.scheduledFor, params.scheduledTime);
-  const body = `Let's Get Quoted: Hi ${params.crewName}, ${params.clientName} selected ${scheduledNote} for job ${params.jobRef}${addressNote} with ${params.businessName}. Reply STOP to opt out.`;
+  const body = `Let's Get Quoted: Hi ${params.crewName}, job ${params.jobRef} for ${params.clientName} is scheduled for ${scheduledNote}. Address: ${addressNote}. ${params.businessName}. Reply STOP to opt out.`;
   return sendTwilioMessage(params.phone, body);
 }
 

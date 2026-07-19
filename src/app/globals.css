@@ -1702,6 +1702,7 @@ li + li { margin-top: 0.45rem; }
 .schedule-job-actions { display: grid; gap: .85rem; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,.08); }
 .schedule-job-quick-actions { position: relative; display: flex; align-items: center; gap: .55rem; flex-wrap: wrap; }
 .schedule-job-open-link { justify-self: flex-start; }
+.schedule-text-crew-date:disabled { opacity: .48; cursor: not-allowed; }
 .schedule-job-section-heading { display: grid; gap: .15rem; }
 .schedule-job-section-heading strong { font-size: .88rem; color: #f7f5ef; }
 .schedule-job-section-heading span { color: rgba(255,255,255,.52); font-size: .76rem; line-height: 1.35; }
@@ -1784,6 +1785,8 @@ li + li { margin-top: 0.45rem; }
   .schedule-remove-trigger { width: 100%; justify-self: stretch; }
   .schedule-job-quick-actions { display: grid; }
   .schedule-crew-quick > summary { width: 100%; justify-content: center; }
+  .schedule-job-quick-actions form { width: 100%; }
+  .schedule-text-crew-date { width: 100%; }
   .schedule-crew-quick-panel { position: static; width: 100%; max-height: min(360px, calc(100dvh - 9rem)); margin-top: .55rem; }
   .schedule-remove-actions { display: grid; }
 }
