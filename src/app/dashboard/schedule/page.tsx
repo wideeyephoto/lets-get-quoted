@@ -121,6 +121,22 @@ export default async function SchedulePage({
   const estimatedCost = (next30Costs ?? []).reduce((sum, cost) => sum + Number(cost.amount || 0), 0);
   const estimatedProfit = estimatedRevenue - estimatedCost;
 
+  const scheduledJobIds = scheduledJobs.map((job) => job.id);
+  const { data: crewDateTextEvents } = scheduledJobIds.length > 0
+    ? await supabase
+        .from('job_feed')
+        .select('job_id, created_at')
+        .eq('account_id', accountId)
+        .eq('title', 'Crew date text sent')
+        .in('job_id', scheduledJobIds)
+        .order('created_at', { ascending: false })
+    : { data: [] as Array<{ job_id: string; created_at: string }> };
+  const crewNotifiedAtByJob = new Map<string, string>();
+  for (const event of crewDateTextEvents ?? []) {
+    const jobId = event.job_id as string;
+    if (!crewNotifiedAtByJob.has(jobId)) crewNotifiedAtByJob.set(jobId, event.created_at as string);
+  }
+
   const calendarJobs = scheduledJobOccurrences.map((job) => ({
     id: job.id,
     occurrence_key: `${job.id}:${job.scheduled_for}`,
@@ -128,6 +144,7 @@ export default async function SchedulePage({
     status: job.status,
     scheduled_for: job.scheduled_for,
     scheduled_time: job.scheduled_time,
+    crew_notified_at: crewNotifiedAtByJob.get(job.id) ?? null,
   }));
 
   const crewOptions = crew.map((member) => ({

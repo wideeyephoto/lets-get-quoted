@@ -27,6 +27,7 @@ export type CalendarJob = {
   status: string;
   scheduled_for: string;
   scheduled_time: string | null;
+  crew_notified_at: string | null;
 };
 
 export type CrewOption = {
@@ -68,6 +69,13 @@ function addMonths(date: Date, months: number): Date {
 
 function toMonthKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function formatCrewNotifiedAt(value: string): string {
+  const date = new Date(value);
+  const dateText = date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+  const timeText = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+  return `${timeText} on ${dateText}`;
 }
 
 export default function ScheduleCalendar({
@@ -306,57 +314,66 @@ export default function ScheduleCalendar({
             <div className="schedule-job-actions">
               <div className="schedule-job-quick-actions">
                 <Link href={`/dashboard/jobs/${openJob.id}`} className="btn secondary schedule-job-open-link">Open job</Link>
-                <details className="schedule-crew-quick">
-                  <summary className="btn secondary">
-                    Crew
-                    {openJobAssignedMembers.length > 0 ? <span>{openJobAssignedMembers.map((member) => initials(member.name)).join(' ')}</span> : null}
-                  </summary>
-                  <div className="schedule-crew-quick-panel">
-                    <div className="schedule-job-section-heading">
-                      <strong>Active crew</strong>
-                      <span>Check crew on or off for this job.</span>
-                    </div>
-                    {crew.length === 0 ? (
-                      <p className="crew-assign-empty">
-                        No active crew yet. <Link href="/dashboard/crew">Add your team →</Link>
-                      </p>
-                    ) : (
-                      <div className="crew-assign-list schedule-crew-check-list">
-                        {crew.map((member) => {
-                          const assignedIds = assignments[openJob.id] ?? [];
-                          const isAssigned = assignedIds.includes(member.id);
-                          const isRowPending = pendingKey === `${openJob.id}:${member.id}`;
-                          return (
-                            <button
-                              type="button"
-                              key={member.id}
-                              className={`crew-assign-option schedule-crew-check-option${isAssigned ? ' assigned' : ''}${isRowPending ? ' pending' : ''}`}
-                              onClick={() => handleToggle(openJob.id, member.id)}
-                              disabled={isRowPending}
-                              aria-pressed={isAssigned}
-                            >
-                              <span className="schedule-crew-checkbox" aria-hidden="true">{isAssigned ? '✓' : ''}</span>
-                              <span className="crew-assign-option-info">
-                                <span className="crew-assign-option-name">{member.name}</span>
-                                <span className="crew-assign-option-role">{member.role_label}</span>
-                              </span>
-                            </button>
-                          );
-                        })}
+                <div className="schedule-crew-action-wrap">
+                  <div className="schedule-crew-action-group">
+                    <details className="schedule-crew-quick">
+                      <summary className="btn secondary">
+                        Crew
+                        {openJobAssignedMembers.length > 0 ? <span>{openJobAssignedMembers.map((member) => initials(member.name)).join(' ')}</span> : null}
+                      </summary>
+                      <div className="schedule-crew-quick-panel">
+                        <div className="schedule-job-section-heading">
+                          <strong>Active crew</strong>
+                          <span>Check crew on or off for this job.</span>
+                        </div>
+                        {crew.length === 0 ? (
+                          <p className="crew-assign-empty">
+                            No active crew yet. <Link href="/dashboard/crew">Add your team →</Link>
+                          </p>
+                        ) : (
+                          <div className="crew-assign-list schedule-crew-check-list">
+                            {crew.map((member) => {
+                              const assignedIds = assignments[openJob.id] ?? [];
+                              const isAssigned = assignedIds.includes(member.id);
+                              const isRowPending = pendingKey === `${openJob.id}:${member.id}`;
+                              return (
+                                <button
+                                  type="button"
+                                  key={member.id}
+                                  className={`crew-assign-option schedule-crew-check-option${isAssigned ? ' assigned' : ''}${isRowPending ? ' pending' : ''}`}
+                                  onClick={() => handleToggle(openJob.id, member.id)}
+                                  disabled={isRowPending}
+                                  aria-pressed={isAssigned}
+                                >
+                                  <span className="schedule-crew-checkbox" aria-hidden="true">{isAssigned ? '✓' : ''}</span>
+                                  <span className="crew-assign-option-info">
+                                    <span className="crew-assign-option-name">{member.name}</span>
+                                    <span className="crew-assign-option-role">{member.role_label}</span>
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                    )}
+                    </details>
+                    <form action={textCrewJobDateAction.bind(null, openJob.id)}>
+                      <button
+                        type="submit"
+                        className="schedule-crew-notify-button"
+                        disabled={openJobAssignedMembers.length === 0}
+                        title={openJobAssignedMembers.length === 0 ? 'Assign crew before texting the date' : 'Text assigned crew the scheduled date'}
+                      >
+                        Notify
+                      </button>
+                    </form>
                   </div>
-                </details>
-                <form action={textCrewJobDateAction.bind(null, openJob.id)}>
-                  <button
-                    type="submit"
-                    className="btn secondary schedule-text-crew-date"
-                    disabled={openJobAssignedMembers.length === 0}
-                    title={openJobAssignedMembers.length === 0 ? 'Assign crew before texting the date' : 'Text assigned crew the scheduled date'}
-                  >
-                    Text Crew Date
-                  </button>
-                </form>
+                  <p className={`schedule-crew-notify-status${openJob.crew_notified_at ? ' notified' : ''}`}>
+                    {openJob.crew_notified_at
+                      ? `Crew Notified ${formatCrewNotifiedAt(openJob.crew_notified_at)}`
+                      : 'Crew not notified'}
+                  </p>
+                </div>
               </div>
               <form action={scheduleJobAction.bind(null, openJob.id)} className="schedule-job-reschedule-form" key={`reschedule-${openJob.occurrence_key}`}>
                 <div className="schedule-job-section-heading">
