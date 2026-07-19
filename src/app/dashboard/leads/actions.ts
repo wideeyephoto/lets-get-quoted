@@ -5,10 +5,11 @@ import { redirect } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
 import { createClientJobAccessToken, createJobFeedEvent } from '@/lib/job-feed';
 import { formatJobQuoteSummary } from '@/lib/jobs';
-import { convertLeadToJob, createLead } from '@/lib/leads';
+import { convertLeadToJob, createLead, getLead, scheduleLeadQuoteVisit, updateLeadStatus, type LeadStatus } from '@/lib/leads';
 import { uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
+import { recordSmsConsent, sendLeadQuoteVisitSms } from '@/lib/sms';
 
 function optionalText(value: FormDataEntryValue | null): string | null {
   const text = (value ?? '').toString().trim();
@@ -20,6 +21,12 @@ function optionalAmount(value: FormDataEntryValue | null): number | null {
   if (!text) return null;
   const n = Number(text);
   return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function requiredText(value: FormDataEntryValue | null, label: string): string {
+  const text = (value ?? '').toString().trim();
+  if (!text) throw new Error(`${label} is required.`);
+  return text;
 }
 
 function scheduleOptionsFromForm(formData: FormData): { hasInput: boolean; options: ScheduleOption[] } {
@@ -52,6 +59,54 @@ export async function createLeadAction(formData: FormData) {
     photoPaths,
   });
 
+  revalidatePath('/dashboard/leads');
+}
+
+export async function updateLeadStatusAction(leadId: string, status: LeadStatus) {
+  const { supabase, accountId } = await requireOwnerContext();
+  await updateLeadStatus(supabase, accountId, leadId, status);
+  revalidatePath(`/dashboard/leads/${leadId}`);
+  revalidatePath('/dashboard/leads');
+}
+
+export async function scheduleLeadQuoteVisitAction(leadId: string, formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const lead = await getLead(supabase, accountId, leadId);
+  if (!lead) throw new Error('Lead not found.');
+
+  const scheduledFor = requiredText(formData.get('quoteVisitDate'), 'Visit date');
+  const scheduledTime = requiredText(formData.get('quoteVisitTime'), 'Visit time');
+  const durationMinutes = Number(formData.get('quoteVisitDuration')) || 60;
+  const normalizedPhone = normalizeUsPhone(lead.phone ?? '');
+  let confirmationTextSentAt: string | null = null;
+
+  if (formData.get('quoteVisitSmsConsent') === 'on') {
+    if (!normalizedPhone) throw new Error('Add a valid client mobile number before sending a confirmation text.');
+    const [{ data: account }, { data: site }] = await Promise.all([
+      supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
+      supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
+    ]);
+    await recordSmsConsent(accountId, normalizedPhone, 'lead_quote_visit');
+    await sendLeadQuoteVisitSms({
+      phone: normalizedPhone,
+      businessName: site?.company_name || account?.business_name || "Let's Get Quoted contractor",
+      leadName: lead.name || 'there',
+      address: lead.address,
+      scheduledFor,
+      scheduledTime,
+    });
+    confirmationTextSentAt = new Date().toISOString();
+  }
+
+  await scheduleLeadQuoteVisit(supabase, accountId, leadId, {
+    scheduledFor,
+    scheduledTime,
+    durationMinutes: Math.min(240, Math.max(15, durationMinutes)),
+    notes: optionalText(formData.get('quoteVisitNotes')),
+    confirmationTextSentAt,
+  });
+
+  revalidatePath(`/dashboard/leads/${leadId}`);
   revalidatePath('/dashboard/leads');
 }
 

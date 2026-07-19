@@ -197,6 +197,7 @@ export const DEMO_LEADS: Lead[] = LEAD_SEEDS.map((seed) => ({
   address: seed.address,
   project_type: seed.project_type,
   estimated_hours: seed.estimated_hours,
+  quote_visit: null,
   message: seed.message,
   photo_paths: [],
   source_page: seed.source === 'website_form' ? '/' : null,

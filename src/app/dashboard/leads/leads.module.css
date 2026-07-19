@@ -23,10 +23,26 @@
 .cardMetaGrid span { color: #ffd166; font-weight: 700; }
 .contactHint { overflow: hidden; color: rgba(255,255,255,.42); font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
 .empty { margin: .5rem 0; color: rgba(255,255,255,.36); font-size: .78rem; }
-.detailGrid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(420px, .9fr); gap: 1.1rem; align-items: start; }
+.leadCommandShell { max-width: 1480px; }
+.leadHero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); gap: 1.25rem; align-items: stretch; }
+.leadHeroMain { min-width: 0; }
+.leadTitleRow { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.leadTitleRow h1 { margin-right: auto; }
+.leadTitleRow form { flex: 0 0 auto; }
+.leadQuickActions { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: 1.15rem; }
+.leadStageCard { display: grid; gap: .55rem; align-self: center; padding: .85rem; border: 1px solid rgba(255,255,255,.14); border-radius: 12px; background: rgba(255,255,255,.045); }
+.leadStageCard strong { color: #ffd166; font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; }
+.leadStageCard span { position: relative; display: flex; align-items: center; gap: .55rem; min-height: 34px; padding: .55rem .65rem; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: rgba(255,255,255,.045); color: rgba(255,255,255,.66); font-size: .78rem; font-weight: 800; }
+.leadStageCard span::before { content: ''; flex: 0 0 auto; width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,.32); box-shadow: 0 0 0 5px rgba(255,255,255,.05); }
+.leadStageCard .stageComplete { color: #fff; border-color: rgba(74,222,128,.22); background: rgba(74,222,128,.08); }
+.leadStageCard .stageComplete::before { background: #4ade80; box-shadow: 0 0 0 5px rgba(74,222,128,.13); }
+.detailGrid { display: grid; grid-template-columns: minmax(0, 1.04fr) minmax(430px, .96fr); gap: 1.1rem; align-items: start; }
+.leadContextStack { display: grid; gap: 1rem; min-width: 0; }
 .detailSection { display: grid; gap: 1rem; }
 .detailBadges { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .7rem; }
 .receivedBadge { display: inline-flex; width: fit-content; padding: .3rem .55rem; border-radius: 4px; background: rgba(255,122,33,.12); color: #ffb26b; font-size: .72rem; font-weight: 700; }
+.statusPill { display: inline-flex; width: fit-content; padding: .3rem .55rem; border-radius: 4px; background: rgba(255,255,255,.08); color: rgba(255,255,255,.72); font-size: .72rem; font-weight: 800; text-transform: capitalize; }
+.visitPill { display: inline-flex; width: fit-content; padding: .3rem .55rem; border-radius: 4px; background: rgba(74,222,128,.13); color: #bbf7d0; font-size: .72rem; font-weight: 800; }
 .contactGrid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
 .dataBlock { padding: .85rem; border: 1px solid rgba(255,255,255,.09); border-radius: 7px; background: rgba(255,255,255,.025); }
 .dataBlock span { display: block; margin-bottom: .28rem; color: rgba(255,255,255,.48); font-size: .68rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
@@ -35,19 +51,40 @@
 .dataBlock a { color: #ffd166; }
 .photoGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
 .photoGrid img { width: 100%; aspect-ratio: 4 / 3; border-radius: 6px; object-fit: cover; }
-.actionPanel { display: grid; gap: 1rem; align-content: start; min-width: 0; }
+.actionPanel { position: sticky; top: 6.75rem; display: grid; gap: 1rem; align-content: start; min-width: 0; }
 .actionPanel h2, .actionPanel p { overflow-wrap: anywhere; }
 .actionPanel :global(.schedule-option-grid) { grid-template-columns: 1fr; }
 .actionForm { display: grid; gap: .65rem; padding-top: .5rem; }
 .actionForm label { color: rgba(255,255,255,.58); font-size: .75rem; font-weight: 700; text-transform: uppercase; }
-.actionForm input, .actionForm select { width: 100%; min-height: 42px; padding: .65rem .7rem; border: 1px solid rgba(255,255,255,.15); border-radius: 6px; background: rgba(255,255,255,.06); color: #fff; }
+.actionForm input, .actionForm select, .actionForm textarea { width: 100%; min-height: 42px; padding: .65rem .7rem; border: 1px solid rgba(255,255,255,.15); border-radius: 6px; background: rgba(255,255,255,.06); color: #fff; }
+.actionForm textarea { resize: vertical; }
 .actionForm :global(.sms-consent-check) { display: grid; grid-template-columns: 17px minmax(0, 1fr); align-items: start; }
 .actionForm :global(.sms-consent-check input) { width: 17px; min-height: 17px; height: 17px; padding: 0; }
 .actionForm option { background: #101c2b; }
+.primaryActionCard { border-color: rgba(255,122,33,.28) !important; background: linear-gradient(145deg, rgba(255,122,33,.12), rgba(255,255,255,.035) 45%) !important; }
+.scheduledVisitSummary { display: grid; gap: .2rem; padding: .75rem; border: 1px solid rgba(74,222,128,.26); border-radius: 8px; background: rgba(74,222,128,.08); }
+.scheduledVisitSummary strong { color: #bbf7d0; font-size: .72rem; letter-spacing: .09em; text-transform: uppercase; }
+.scheduledVisitSummary span { color: #fff; font-weight: 900; }
+.scheduledVisitSummary small { color: rgba(255,255,255,.6); }
+.calendarCard { overflow: hidden; }
+.availabilityGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; }
+.availabilityDay { display: grid; gap: .22rem; min-height: 84px; padding: .65rem; border: 1px solid rgba(74,222,128,.18); border-radius: 8px; background: rgba(74,222,128,.07); }
+.availabilityDay strong { color: #fff; font-size: .8rem; }
+.availabilityDay span { color: #bbf7d0; font-size: .74rem; font-weight: 800; }
+.availabilityDay small { overflow: hidden; color: rgba(255,255,255,.52); font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
+.busyDay { border-color: rgba(255,209,102,.26); background: rgba(255,209,102,.07); }
+.busyDay span { color: #ffd166; }
+.timelineList { display: grid; gap: .8rem; }
+.timelineList > div { display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: .65rem; align-items: start; }
+.timelineList > div > span { width: 10px; height: 10px; margin-top: .25rem; border-radius: 50%; background: #ffd166; box-shadow: 0 0 0 5px rgba(255,209,102,.1); }
+.timelineList p { display: grid; gap: .15rem; margin: 0; }
+.timelineList strong { color: #fff; font-size: .9rem; }
+.timelineList small { color: rgba(255,255,255,.55); }
+.quickLeadActions .statusQuickActions { padding-top: 0; }
 .statusQuickActions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; padding-top: .5rem; }
 .statusQuickActions form { min-width: 0; }
-.statusQuickActions button { width: 100%; }
+.statusQuickActions button, .statusQuickActions a { width: 100%; justify-content: center; }
 .currentStatusButton { border-color: rgba(255,209,102,.48) !important; background: rgba(255,209,102,.12) !important; color: #ffd166 !important; }
 .source { display: inline-flex; width: fit-content; padding: .3rem .55rem; border-radius: 4px; background: rgba(255,209,102,.12); color: #ffd166; font-size: .72rem; font-weight: 700; text-transform: capitalize; }
-@media (max-width: 1120px) { .detailGrid { grid-template-columns: 1fr; } }
-@media (max-width: 640px) { .board { grid-template-columns: 1fr; overflow: visible; } .column { min-height: 0; } .contactGrid, .photoGrid { grid-template-columns: 1fr; } }
+@media (max-width: 1120px) { .leadHero, .detailGrid { grid-template-columns: 1fr; } .leadStageCard { grid-template-columns: repeat(4, minmax(0, 1fr)); } .leadStageCard strong { grid-column: 1 / -1; } .leadStageCard span { min-height: 44px; } .actionPanel { position: static; } }
+@media (max-width: 640px) { .board { grid-template-columns: 1fr; overflow: visible; } .column { min-height: 0; } .contactGrid, .photoGrid, .availabilityGrid, .statusQuickActions, .leadStageCard { grid-template-columns: 1fr; } .leadTitleRow { display: grid; } }

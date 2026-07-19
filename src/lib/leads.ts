@@ -4,6 +4,15 @@ import { createJob, deleteJob, type Job } from '@/lib/jobs';
 export type LeadSource = 'website_form' | 'missed_call' | 'manual' | 'referral';
 export type LeadStatus = 'new' | 'contacted' | 'quoted' | 'won' | 'lost';
 
+export type LeadQuoteVisit = {
+  scheduledFor: string;
+  scheduledTime: string;
+  durationMinutes: number;
+  notes: string | null;
+  confirmationTextSentAt: string | null;
+  scheduledAt: string;
+};
+
 export type Lead = {
   id: string;
   account_id: string;
@@ -15,6 +24,7 @@ export type Lead = {
   address: string | null;
   project_type: string | null;
   estimated_hours: number | null;
+  quote_visit: LeadQuoteVisit | null;
   message: string | null;
   photo_paths: string[];
   source_page: string | null;
@@ -249,4 +259,30 @@ export async function convertLeadToJob(
     throw error;
   }
   return job;
+}
+
+export async function scheduleLeadQuoteVisit(
+  supabase: SupabaseClient,
+  accountId: string,
+  leadId: string,
+  visit: Omit<LeadQuoteVisit, 'scheduledAt'>
+): Promise<Lead> {
+  const lead = await getLead(supabase, accountId, leadId);
+  if (!lead) throw new Error('Lead not found.');
+
+  const nextStatus: LeadStatus = lead.status === 'new' ? 'contacted' : lead.status;
+  const { data, error } = await supabase
+    .from('leads')
+    .update({
+      quote_visit: { ...visit, scheduledAt: new Date().toISOString() },
+      status: nextStatus,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('account_id', accountId)
+    .eq('id', leadId)
+    .select('*')
+    .single();
+
+  if (error || !data) throw error ?? new Error('Unable to schedule quote visit.');
+  return data as Lead;
 }

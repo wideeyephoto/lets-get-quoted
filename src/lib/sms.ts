@@ -234,6 +234,19 @@ export async function sendClientJobDashboardSms(params: {
   return sendTwilioMessage(params.phone, message);
 }
 
+export async function sendLeadQuoteVisitSms(params: {
+  phone: string;
+  businessName: string;
+  leadName: string;
+  address: string | null;
+  scheduledFor: string;
+  scheduledTime: string;
+}) {
+  const addressNote = params.address ? ` at ${params.address}` : '';
+  const message = `Let's Get Quoted: ${params.businessName} scheduled your free in-person quote${addressNote} for ${formatJobSchedule(params.scheduledFor, params.scheduledTime)}. ${params.leadName}, reply STOP to opt out.`;
+  return sendTwilioMessage(params.phone, message);
+}
+
 export async function sendSchedulingOptionsSms(params: {
   phone: string;
   businessName: string;
