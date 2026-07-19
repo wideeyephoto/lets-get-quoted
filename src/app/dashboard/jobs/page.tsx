@@ -4,6 +4,8 @@ import AddressAutocomplete from '@/components/address-autocomplete';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
 import PastClientsPicker, { type PastClientOption } from '@/components/past-clients-picker';
+import QuickFillButtons from '@/components/quick-fill-buttons';
+import FormattedCurrencyInput from '@/components/formatted-currency-input';
 import { deriveJobListBadge } from '@/lib/job-badges';
 import type { Invoice } from '@/lib/invoices';
 import { listJobs, formatMoney, type Job } from '@/lib/jobs';
@@ -238,18 +240,13 @@ export default async function JobsPage({
             <label htmlFor="address">Address</label>
             <AddressAutocomplete id="address" name="address" placeholder="1418 Maplewood Ave, Royal Oak, MI" />
           </div>
-          <div className="field full">
+          <div className="field job-intake-description">
             <label htmlFor="scope">Job Description</label>
             <textarea id="scope" name="scope" placeholder="Full roof tear-off & re-shingle..." />
           </div>
-          <div className="field">
-            <label htmlFor="status">Status</label>
-            <select id="status" name="status" defaultValue="new_lead">
-              <option value="new_lead">New request</option>
-              <option value="in_progress">In progress</option>
-              <option value="complete">Complete</option>
-              <option value="archived">Archived</option>
-            </select>
+          <div className="field job-intake-photos">
+            <label htmlFor="photos">Photos</label>
+            <input id="photos" name="photos" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple />
           </div>
           <div className="field">
             <label htmlFor="scheduledFor">Scheduled for</label>
@@ -259,17 +256,23 @@ export default async function JobsPage({
             <label htmlFor="scheduledTime">Time of day</label>
             <TimeSlotSelect id="scheduledTime" name="scheduledTime" />
           </div>
-          <div className="field">
+          <div className="field job-intake-metric hours-metric">
             <label htmlFor="estimatedHours">Estimated hours</label>
             <input id="estimatedHours" name="estimatedHours" type="number" min="0" step="0.25" placeholder="16" />
+            <QuickFillButtons
+              label="Quick add:"
+              targetId="estimatedHours"
+              values={[
+                { label: '2 hrs', value: '2' },
+                { label: '4 hrs', value: '4' },
+                { label: '8 hrs', value: '8' },
+                { label: '16 hrs', value: '16' },
+              ]}
+            />
           </div>
-          <div className="field">
+          <div className="field full job-intake-metric quote-metric">
             <label htmlFor="quotedAmount">Quoted amount ($)</label>
-            <input id="quotedAmount" name="quotedAmount" type="number" min="0" step="0.01" placeholder="12840" />
-          </div>
-          <div className="field full">
-            <label htmlFor="photos">Photos</label>
-            <input id="photos" name="photos" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple />
+            <FormattedCurrencyInput id="quotedAmount" name="quotedAmount" placeholder="$12,840" />
           </div>
           <div className="field full">
             <button type="submit" className="btn primary">

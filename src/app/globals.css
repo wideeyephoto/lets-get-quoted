@@ -3079,6 +3079,43 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .field input::placeholder { color: rgba(255,255,255,0.4); }
 .field select option { background: #101c2b; color: #f7f5ef; }
 
+.job-intake-description textarea,
+.job-intake-photos input[type="file"] { min-height: 6.6rem; }
+.job-intake-description textarea { line-height: 1.45; }
+.job-intake-photos input[type="file"] {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  border-color: rgba(255,209,102,0.24);
+  background: linear-gradient(135deg, rgba(255,209,102,0.12), rgba(255,122,33,0.08));
+}
+.job-intake-photos input[type="file"]::file-selector-button {
+  margin-right: 0.8rem;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.5rem 0.85rem;
+  background: #ffd166;
+  color: #1d1606;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+.job-intake-metric {
+  padding: 0.75rem;
+  border: 1px solid rgba(255,209,102,0.16);
+  border-radius: 14px;
+  background: radial-gradient(circle at top right, rgba(255,209,102,0.16), transparent 42%), rgba(255,255,255,0.035);
+}
+.job-intake-metric label { color: rgba(255,209,102,0.9); }
+.job-intake-metric input { border-color: rgba(255,209,102,0.24); background: rgba(5,12,22,0.46); font-size: 1.05rem; font-weight: 800; }
+.quote-metric { border-color: rgba(255,209,102,0.34); box-shadow: 0 16px 38px rgba(255,122,33,0.12); }
+.quote-metric label { font-size: 0.86rem; color: #ffd166; }
+.quote-metric input { min-height: 4.25rem; color: #ffd166; font-size: 1.65rem; letter-spacing: 0; }
+.hours-metric input { color: #9ad7ff; }
+.job-intake-metric .quick-add-buttons { margin-top: 0.65rem; }
+.job-intake-metric .quick-add-buttons span { color: rgba(247,245,239,0.62); }
+.job-intake-metric .quick-add-buttons button { border-color: rgba(255,209,102,0.18); background: rgba(255,209,102,0.08); color: #f7f5ef; font-weight: 800; }
+
 .past-clients-picker { padding: 0.85rem; border: 1px solid rgba(255,209,102,0.16); border-radius: 12px; background: rgba(255,209,102,0.035); }
 .past-client-mode-toggle { display: inline-flex; width: fit-content; margin-bottom: 0.7rem; padding: 0.2rem; border: 1px solid rgba(255,255,255,0.12); border-radius: 999px; background: rgba(255,255,255,0.04); }
 .past-client-mode-toggle button { border: 0; border-radius: 999px; padding: 0.35rem 0.7rem; background: transparent; color: rgba(247,245,239,0.62); font: inherit; font-size: 0.78rem; font-weight: 800; cursor: pointer; }

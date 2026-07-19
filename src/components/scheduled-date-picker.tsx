@@ -59,7 +59,7 @@ function buildQuickDateOptions(required: boolean) {
     { label: 'Next Fri', value: dateToKey(nextWeekday(today, 5)) },
   ];
 
-  return required ? options : [{ label: 'No day', value: '' }, ...options];
+  return required ? options : [{ label: 'Schedule later', value: '' }, ...options];
 }
 
 function buildCalendarCells(monthDate: Date) {
