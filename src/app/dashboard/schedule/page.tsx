@@ -256,7 +256,7 @@ export default async function SchedulePage({
                         <form action={boundSendScheduleOptions} className="schedule-inline-form schedule-client-options-form">
                           <div className="schedule-client-options-intro">
                             <strong>Let the client choose.</strong>
-                            <span>Send up to 3 dates that you&apos;re available to your client.</span>
+                            <span>Send up to 3 dates that you&apos;re available to your client. You will receive a text and notifications in your dashboard.</span>
                           </div>
                           <div className="schedule-inline-field schedule-inline-date">
                             <label htmlFor={`scheduleClientPhone-${job.id}`}>Client mobile</label>
