@@ -59,16 +59,16 @@ export default async function CrewPage() {
                         </span>
                         <form action={updateCrewPhotoAction.bind(null, member.id)} className="crew-photo-form">
                           <label className="btn secondary crew-photo-button">
-                            {photoUrl ? 'Replace photo' : 'Add photo'}
-                            <input name="photo" type="file" accept="image/jpeg,image/png,image/webp,image/avif" required />
+                            {photoUrl ? 'Retake photo' : 'Take photo'}
+                            <input name="photo" type="file" accept="image/jpeg,image/png,image/webp,image/avif" capture="environment" />
                           </label>
-                          <SaveButton pendingLabel="Uploading…" savedLabel="Uploaded ✓">Save photo</SaveButton>
+                          <SaveButton pendingLabel="Uploading…" savedLabel="Uploaded ✓">Save owner photo</SaveButton>
                         </form>
                       </div>
                     </div>
                   </div>
                   <div className="job-row-header" style={{ marginTop: '0.4rem' }}>
-                    <span className="job-meta">Crew profile and job assignment controls</span>
+                    <span className="job-meta">Owner-managed crew profile and job assignment controls</span>
                     <div className="actions">
                       {member.active ? (
                         <form action={assignCrewToJobAction.bind(null, member.id)} className="inline-action-form">
@@ -186,8 +186,8 @@ export default async function CrewPage() {
             <input id="hourlyRate" name="hourlyRate" type="number" min="0" step="0.01" placeholder="28" />
           </div>
           <div className="field full">
-            <label htmlFor="photo">Crew photo</label>
-            <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp,image/avif" />
+            <label htmlFor="photo">Owner-taken crew photo</label>
+            <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp,image/avif" capture="environment" />
           </div>
           <div className="field full">
             <SaveButton pendingLabel="Adding…" savedLabel="Added ✓">Add crew member</SaveButton>
