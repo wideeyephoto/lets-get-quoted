@@ -1109,6 +1109,18 @@ li + li { margin-top: 0.45rem; }
   padding: 0.65rem;
   border-radius: 14px;
 }
+.schedule-client-options-form .schedule-option-1 {
+  border-color: rgba(255,209,102,.18);
+  background: rgba(255,209,102,.045);
+}
+.schedule-client-options-form .schedule-option-2 {
+  border-color: rgba(61,184,255,.18);
+  background: rgba(61,184,255,.045);
+}
+.schedule-client-options-form .schedule-option-3 {
+  border-color: rgba(120,220,150,.18);
+  background: rgba(120,220,150,.045);
+}
 .schedule-client-options-form .sms-consent-check { margin: 0; }
 .schedule-client-options-form > .btn { width: 100%; }
 .sign-in-method-badge { display: inline-flex; align-items: center; line-height: 1; font-size: .72rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; padding: .4rem .7rem; border-radius: 999px; }

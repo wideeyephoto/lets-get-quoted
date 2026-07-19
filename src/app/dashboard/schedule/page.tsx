@@ -263,7 +263,7 @@ export default async function SchedulePage({
                             <input id={`scheduleClientPhone-${job.id}`} name="scheduleClientPhone" type="tel" defaultValue={job.client_phone ?? ''} placeholder="(248) 555-0117" />
                           </div>
                           {[1, 2, 3].map((optionNumber) => (
-                            <div className="schedule-option-grid" key={`${job.id}-option-${optionNumber}`}>
+                            <div className={`schedule-option-grid schedule-option-${optionNumber}`} key={`${job.id}-option-${optionNumber}`}>
                               <div>
                                 <label htmlFor={`scheduleDate${optionNumber}-${job.id}`}>Option {optionNumber} date</label>
                                 <ScheduledDatePicker id={`scheduleDate${optionNumber}-${job.id}`} name={`scheduleDate${optionNumber}`} />
