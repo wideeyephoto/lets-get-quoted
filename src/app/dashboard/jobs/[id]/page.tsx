@@ -178,7 +178,7 @@ function buildPipelineChecklist(job: Job, payments: Payment[], invoices: Invoice
       label: 'Scheduled / underway',
       detail: job.scheduled_for ? formatJobSchedule(job.scheduled_for, job.scheduled_time) : 'Schedule the work',
       complete: Boolean(job.scheduled_for) || job.status === 'in_progress' || isComplete,
-      href: `/dashboard/jobs/${job.id}?edit=client#job-details`,
+      href: `/dashboard/jobs/${job.id}?open=scheduling#job-scheduling`,
     },
     {
       label: 'Invoice / payment requested',
@@ -680,41 +680,6 @@ export default async function JobDetailPage({
 
             <div className="workspace-section-divider">
               <div className="section-heading workspace-section-heading">
-                <p className="eyebrow">Client scheduling</p>
-                <h2>Send 3 service options</h2>
-              </div>
-              <p className="workspace-card-copy">Text the client three dates that work for your crew. They can choose one or request different times with a note.</p>
-              <form action={boundSendScheduleOptions} className="form-grid">
-                <div className="field full">
-                  <label htmlFor="scheduleClientPhone">Client mobile</label>
-                  <input id="scheduleClientPhone" name="scheduleClientPhone" type="tel" defaultValue={job.client_phone ?? ''} placeholder="(248) 555-0117" />
-                </div>
-                {[1, 2, 3].map((optionNumber) => (
-                  <div className="schedule-option-grid field full" key={optionNumber}>
-                    <div>
-                      <label htmlFor={`scheduleDate${optionNumber}`}>Option {optionNumber} date</label>
-                      <ScheduledDatePicker id={`scheduleDate${optionNumber}`} name={`scheduleDate${optionNumber}`} />
-                    </div>
-                    <div>
-                      <label htmlFor={`scheduleTime${optionNumber}`}>Option {optionNumber} time</label>
-                      <TimeSlotSelect id={`scheduleTime${optionNumber}`} name={`scheduleTime${optionNumber}`} />
-                    </div>
-                  </div>
-                ))}
-                <div className="field full">
-                  <label className="sms-consent-check">
-                    <input name="scheduleSmsConsent" type="checkbox" required />
-                    <span>The client agreed to receive transactional scheduling texts. Message and data rates may apply. Reply STOP to opt out.</span>
-                  </label>
-                </div>
-                <div className="field full">
-                  <SaveButton pendingLabel="Sending..." savedLabel="Sent">Text schedule options</SaveButton>
-                </div>
-              </form>
-            </div>
-
-            <div className="workspace-section-divider">
-              <div className="section-heading workspace-section-heading">
                 <p className="eyebrow">Crew</p>
                 <h2>Assigned crew members</h2>
               </div>
@@ -770,6 +735,44 @@ export default async function JobDetailPage({
               <DeleteJobButton action={boundDeleteJob} />
             </div>
         </details>
+
+      <details id="job-scheduling" className="panel workspace-section-card workspace-details job-action-details" open={searchParams.open === 'scheduling'}>
+        <summary className="workspace-details-summary job-action-summary">
+          <div className="section-heading workspace-section-heading compact-heading">
+            <p className="eyebrow">Client scheduling</p>
+            <h2>Send 3 service options</h2>
+          </div>
+          <span className="workspace-details-copy">Text the client three dates that work for your crew.</span>
+        </summary>
+        <p className="workspace-card-copy">They can choose one or request different times with a note.</p>
+        <form action={boundSendScheduleOptions} className="form-grid">
+          <div className="field full">
+            <label htmlFor="scheduleClientPhone">Client mobile</label>
+            <input id="scheduleClientPhone" name="scheduleClientPhone" type="tel" defaultValue={job.client_phone ?? ''} placeholder="(248) 555-0117" />
+          </div>
+          {[1, 2, 3].map((optionNumber) => (
+            <div className="schedule-option-grid field full" key={optionNumber}>
+              <div>
+                <label htmlFor={`scheduleDate${optionNumber}`}>Option {optionNumber} date</label>
+                <ScheduledDatePicker id={`scheduleDate${optionNumber}`} name={`scheduleDate${optionNumber}`} />
+              </div>
+              <div>
+                <label htmlFor={`scheduleTime${optionNumber}`}>Option {optionNumber} time</label>
+                <TimeSlotSelect id={`scheduleTime${optionNumber}`} name={`scheduleTime${optionNumber}`} />
+              </div>
+            </div>
+          ))}
+          <div className="field full">
+            <label className="sms-consent-check">
+              <input name="scheduleSmsConsent" type="checkbox" required />
+              <span>The client agreed to receive transactional scheduling texts. Message and data rates may apply. Reply STOP to opt out.</span>
+            </label>
+          </div>
+          <div className="field full">
+            <SaveButton pendingLabel="Sending..." savedLabel="Sent">Text schedule options</SaveButton>
+          </div>
+        </form>
+      </details>
 
       <section id="job-costs" className="detail-grid workspace-grid-gap">
           <div>
