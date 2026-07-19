@@ -905,6 +905,41 @@ li + li { margin-top: 0.45rem; }
 .sign-in-method-row .method-name { font-weight: 700; display: block; }
 .sign-in-method-row .method-detail { display: block; color: rgba(255,255,255,.55); font-size: .78rem; margin-top: .15rem; }
 .schedule-method-row .method-info { flex: 1 1 220px; min-width: 220px; }
+.schedule-crew-initials {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
+}
+.schedule-crew-initials span {
+  color: rgba(247,245,239,.48);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.schedule-crew-initials strong,
+.schedule-crew-initials em {
+  display: inline-grid;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255,209,102,.24);
+  background: rgba(255,209,102,.08);
+  color: #ffd166;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 900;
+}
+.schedule-crew-initials em {
+  min-width: auto;
+  padding: 0 0.55rem;
+  color: rgba(247,245,239,.58);
+  border-color: rgba(255,255,255,.14);
+  background: rgba(255,255,255,.04);
+}
 .schedule-action-buttons {
   position: relative;
   display: flex;

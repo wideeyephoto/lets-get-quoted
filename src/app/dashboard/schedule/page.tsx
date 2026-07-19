@@ -40,6 +40,12 @@ function nextWeekdayKey(date: Date, weekday: number): string {
   return toDateKey(nextDate.getFullYear(), nextDate.getMonth(), nextDate.getDate());
 }
 
+function crewInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  return parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join('');
+}
+
 function monthParam(year: number, monthIndex: number): string {
   return `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
 }
@@ -65,8 +71,9 @@ export default async function SchedulePage({
   const assignmentsByJob = await listCrewAssignmentsForJobs(
     supabase,
     accountId,
-    scheduledJobs.map((job) => job.id)
+    activeJobs.map((job) => job.id)
   );
+  const crewInitialsById = new Map(crew.map((member) => [member.id, crewInitials(member.name)]));
 
   const { year, monthIndex } = parseMonthParam(searchParams.month);
   const firstWeekday = new Date(year, monthIndex, 1).getDay();
@@ -200,6 +207,9 @@ export default async function SchedulePage({
             {unscheduledJobs.map((job) => {
               const boundSchedule = scheduleJobAction.bind(null, job.id);
               const boundSendScheduleOptions = sendClientScheduleOptionsAction.bind(null, job.id);
+              const assignedCrewInitials = (assignmentsByJob[job.id] ?? [])
+                .map((crewId) => crewInitialsById.get(crewId))
+                .filter((initials): initials is string => Boolean(initials));
               return (
                 <div className="sign-in-method-row schedule-method-row" key={job.id}>
                   <div className="method-info">
@@ -208,6 +218,12 @@ export default async function SchedulePage({
                       <span className="method-detail">
                         {STATUS_LABEL[job.status]} · {job.address || 'No address on file'} · Est. hours: {job.estimated_hours ? `${job.estimated_hours} hrs` : 'Not set'}
                       </span>
+                      <div className="schedule-crew-initials" aria-label={assignedCrewInitials.length > 0 ? `Assigned crew: ${assignedCrewInitials.join(', ')}` : 'No crew assigned'}>
+                        <span>Crew</span>
+                        {assignedCrewInitials.length > 0 ? assignedCrewInitials.map((initials) => (
+                          <strong key={initials}>{initials}</strong>
+                        )) : <em>None</em>}
+                      </div>
                     </div>
                   </div>
                   <div className="schedule-action-buttons">
