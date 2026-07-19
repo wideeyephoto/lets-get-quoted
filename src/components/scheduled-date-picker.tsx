@@ -28,10 +28,17 @@ function nextWeekday(date: Date, weekday: number): Date {
   return addDays(date, distance);
 }
 
+function dateFromKey(value: string): Date | null {
+  if (!value) return null;
+  const [year, month, day] = value.split('-').map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day);
+}
+
 function formatDateLabel(value: string): string {
   if (!value) return 'Pick a date';
-  const [year, month, day] = value.split('-').map(Number);
-  const date = new Date(year, month - 1, day);
+  const date = dateFromKey(value);
+  if (!date) return 'Pick a date';
 
   return new Intl.DateTimeFormat('en-US', {
     weekday: 'short',
@@ -54,12 +61,37 @@ function buildQuickDateOptions(required: boolean) {
   return required ? options : [{ label: 'No day', value: '' }, ...options];
 }
 
+function buildCalendarCells(monthDate: Date) {
+  const year = monthDate.getFullYear();
+  const month = monthDate.getMonth();
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells: Array<{ day: number; dateKey: string } | null> = [];
+
+  for (let index = 0; index < firstWeekday; index++) cells.push(null);
+  for (let day = 1; day <= daysInMonth; day++) cells.push({ day, dateKey: dateToKey(new Date(year, month, day)) });
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  return cells;
+}
+
+function addMonths(date: Date, months: number): Date {
+  return new Date(date.getFullYear(), date.getMonth() + months, 1);
+}
+
 export default function ScheduledDatePicker({ id, name, defaultValue = '', required = false }: ScheduledDatePickerProps) {
   const [selectedDate, setSelectedDate] = useState(defaultValue);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [visibleMonth, setVisibleMonth] = useState(() => dateFromKey(defaultValue) ?? new Date());
   const quickDateOptions = buildQuickDateOptions(required);
+  const calendarCells = buildCalendarCells(visibleMonth);
+  const todayKey = dateToKey(new Date());
+  const monthLabel = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(visibleMonth);
 
   function updateSelectedDate(value: string) {
     setSelectedDate(value);
+    const nextDate = dateFromKey(value);
+    if (nextDate) setVisibleMonth(nextDate);
   }
 
   return (
@@ -69,15 +101,54 @@ export default function ScheduledDatePicker({ id, name, defaultValue = '', requi
           <span>Date</span>
           <strong>{formatDateLabel(selectedDate)}</strong>
         </div>
-        <input
-          id={id}
-          name={name}
-          aria-label="Scheduled date"
-          type="date"
-          required={required}
-          value={selectedDate}
-          onChange={(event) => updateSelectedDate(event.currentTarget.value)}
-        />
+        <input id={id} name={name} type="hidden" value={selectedDate} />
+        <div className="modern-date-picker-shell">
+          <button
+            type="button"
+            className="modern-date-button"
+            aria-label="Choose scheduled date"
+            aria-expanded={isCalendarOpen}
+            onClick={() => setIsCalendarOpen((current) => !current)}
+          >
+            {selectedDate ? formatDateLabel(selectedDate) : 'Choose date'}
+          </button>
+          {isCalendarOpen ? (
+            <div className="modern-calendar-panel">
+              <div className="modern-calendar-header">
+                <button type="button" aria-label="Previous month" onClick={() => setVisibleMonth((current) => addMonths(current, -1))}>
+                  Prev
+                </button>
+                <strong>{monthLabel}</strong>
+                <button type="button" aria-label="Next month" onClick={() => setVisibleMonth((current) => addMonths(current, 1))}>
+                  Next
+                </button>
+              </div>
+              <div className="modern-calendar-weekdays" aria-hidden="true">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => <span key={day}>{day}</span>)}
+              </div>
+              <div className="modern-calendar-grid">
+                {calendarCells.map((cell, index) => cell ? (
+                  <button
+                    key={cell.dateKey}
+                    type="button"
+                    className={[cell.dateKey === selectedDate ? 'selected' : '', cell.dateKey === todayKey ? 'today' : ''].filter(Boolean).join(' ') || undefined}
+                    onClick={() => {
+                      updateSelectedDate(cell.dateKey);
+                      setIsCalendarOpen(false);
+                    }}
+                  >
+                    {cell.day}
+                  </button>
+                ) : <span key={`empty-${index}`} />)}
+              </div>
+              {!required ? (
+                <button type="button" className="modern-calendar-clear" onClick={() => { updateSelectedDate(''); setIsCalendarOpen(false); }}>
+                  Clear date
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       </div>
       <div className="quick-add-buttons modern-date-chips" aria-label="Quick date choices">
         {quickDateOptions.map((option) => (
@@ -85,7 +156,10 @@ export default function ScheduledDatePicker({ id, name, defaultValue = '', requi
             key={`${option.label}-${option.value}`}
             type="button"
             className={selectedDate === option.value ? 'active' : undefined}
-            onClick={() => updateSelectedDate(option.value)}
+            onClick={() => {
+              updateSelectedDate(option.value);
+              setIsCalendarOpen(false);
+            }}
           >
             {option.label}
           </button>

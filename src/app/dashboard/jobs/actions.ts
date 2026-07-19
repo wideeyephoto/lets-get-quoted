@@ -208,8 +208,11 @@ export async function undoJobCompleteAction(jobId: string, eventId: string) {
 
 export async function scheduleJobAction(jobId: string, formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
+  const scheduledFor = optionalText(formData.get('scheduledFor'));
 
-  const scheduledJob = await updateJobSchedule(supabase, accountId, jobId, optionalText(formData.get('scheduledFor')), optionalText(formData.get('scheduledTime')));
+  if (!scheduledFor) throw new Error('Choose a schedule date before saving.');
+
+  const scheduledJob = await updateJobSchedule(supabase, accountId, jobId, scheduledFor, optionalText(formData.get('scheduledTime')));
 
   await createJobFeedEvent(supabase, accountId, jobId, {
     kind: 'job_scheduled',

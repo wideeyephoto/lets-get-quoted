@@ -974,7 +974,7 @@ li + li { margin-top: 0.45rem; }
 .schedule-inline-form .modern-date-control { padding: 0.55rem; border-radius: 14px; }
 .schedule-inline-form .modern-date-display span { font-size: 0.62rem; }
 .schedule-inline-form .modern-date-display strong { font-size: 0.9rem; }
-.schedule-inline-form .modern-date-control input[type="date"],
+.schedule-inline-form .modern-date-button,
 .schedule-inline-form select {
   min-height: 40px;
   width: 100%;
@@ -982,7 +982,6 @@ li + li { margin-top: 0.45rem; }
   border-radius: 10px;
   background: rgba(8,15,26,.68);
   color: #f7f5ef;
-  color-scheme: dark;
   cursor: pointer;
 }
 .schedule-inline-form select {
@@ -990,7 +989,8 @@ li + li { margin-top: 0.45rem; }
   font: inherit;
 }
 .schedule-inline-form select:focus,
-.schedule-inline-form .modern-date-control input[type="date"]:focus {
+.schedule-inline-form .modern-date-button:focus,
+.schedule-inline-form .modern-date-button[aria-expanded="true"] {
   border-color: rgba(255,138,61,.72);
   box-shadow: 0 0 0 3px rgba(255,138,61,.15);
   outline: none;
@@ -2105,21 +2105,123 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.modern-date-control input[type="date"] {
+.modern-date-picker-shell { position: relative; }
+.modern-date-button {
   width: 100%;
   min-height: 38px;
-  padding-inline: 0.8rem;
-  border-color: rgba(255,138,61,.28);
+  padding: 0.55rem 0.8rem;
+  border: 1px solid rgba(255,138,61,.28);
   border-radius: 10px;
   background: rgba(8,15,26,.62);
   color: #f7f5ef;
-  color-scheme: dark;
+  font: inherit;
+  text-align: left;
   cursor: pointer;
 }
-.modern-date-control input[type="date"]:focus {
+.modern-date-button::after {
+  content: 'Calendar';
+  float: right;
+  color: rgba(255,209,102,.78);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.modern-date-button:focus,
+.modern-date-button[aria-expanded="true"] {
   border-color: rgba(255,138,61,.72);
   box-shadow: 0 0 0 3px rgba(255,138,61,.15);
   outline: none;
+}
+.modern-calendar-panel {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  z-index: 35;
+  width: min(312px, calc(100vw - 2rem));
+  padding: 0.8rem;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 16px;
+  background: rgba(6,10,18,.99);
+  box-shadow: 0 22px 60px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.modern-calendar-header {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+.modern-calendar-header strong {
+  color: #f7f5ef;
+  text-align: center;
+  font-size: 0.92rem;
+}
+.modern-calendar-header button,
+.modern-calendar-clear {
+  min-height: 32px;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 999px;
+  background: rgba(255,255,255,.05);
+  color: rgba(247,245,239,.74);
+  font: 800 0.72rem/1 inherit;
+  cursor: pointer;
+}
+.modern-calendar-header button:hover,
+.modern-calendar-header button:focus-visible,
+.modern-calendar-clear:hover,
+.modern-calendar-clear:focus-visible {
+  border-color: rgba(255,138,61,.5);
+  color: #fff;
+  outline: none;
+}
+.modern-calendar-weekdays,
+.modern-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+.modern-calendar-weekdays {
+  margin-bottom: 0.35rem;
+  color: rgba(247,245,239,.44);
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-align: center;
+  text-transform: uppercase;
+}
+.modern-calendar-grid button,
+.modern-calendar-grid span {
+  min-width: 0;
+  height: 34px;
+}
+.modern-calendar-grid button {
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: #f7f5ef;
+  font: 800 0.78rem/1 inherit;
+  cursor: pointer;
+}
+.modern-calendar-grid button:hover,
+.modern-calendar-grid button:focus-visible {
+  border-color: rgba(255,138,61,.42);
+  background: rgba(255,138,61,.12);
+  outline: none;
+}
+.modern-calendar-grid button.today {
+  border-color: rgba(255,209,102,.35);
+  color: #ffd166;
+}
+.modern-calendar-grid button.selected {
+  border-color: rgba(255,209,102,.74);
+  background: #ffd166;
+  color: #080f1a;
+}
+.modern-calendar-clear {
+  width: 100%;
+  margin-top: 0.7rem;
 }
 .modern-date-chips {
   gap: 0.4rem;
@@ -2760,7 +2862,8 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
     justify-content: space-between;
   }
 
-  .modern-date-control input[type="date"] {
+  .modern-date-button,
+  .modern-calendar-panel {
     width: 100%;
   }
 
