@@ -43,10 +43,15 @@ export type SiteTestimonialsContent = {
   items: SiteTestimonialItem[];
 };
 
+export type SiteQuoteFormContent = {
+  emailRequired: boolean;
+};
+
 export type NormalizedSiteContent = {
   showcase: SiteShowcaseContent;
   faqs: SiteFaqContent;
   testimonials: SiteTestimonialsContent;
+  quoteForm: SiteQuoteFormContent;
 };
 
 export const DEFAULT_SHOWCASE_TITLE = 'Project showcase';
@@ -123,6 +128,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const showcase = isRecord(root.showcase) ? root.showcase : {};
   const faqs = isRecord(root.faqs) ? root.faqs : {};
   const testimonials = isRecord(root.testimonials) ? root.testimonials : {};
+  const quoteForm = isRecord(root.quoteForm) ? root.quoteForm : {};
 
   return {
     showcase: {
@@ -142,6 +148,9 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       title: toString(testimonials.title, DEFAULT_TESTIMONIALS_TITLE),
       sourceMode: testimonials.sourceMode === 'google' || testimonials.sourceMode === 'mixed' ? testimonials.sourceMode : 'manual',
       items: parseTestimonials(testimonials.items),
+    },
+    quoteForm: {
+      emailRequired: toBoolean(quoteForm.emailRequired),
     },
   };
 }

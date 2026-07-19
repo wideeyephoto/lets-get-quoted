@@ -59,7 +59,7 @@ export default function BloomTemplate({ site, galleryImages = [] }: TemplateProp
       <section className={styles.contact} id="contact">
         <p className={shared.kicker}>Next project</p><h2>Have a space in mind?</h2>
         {site.phone && <a href={`tel:${site.phone}`}>{site.phone} <span>↗</span></a>}
-        <QuoteRequestForm siteId={site.id} enabled={site.published} />
+        <QuoteRequestForm site={site} />
       </section>
 
       <footer className={styles.footer}>

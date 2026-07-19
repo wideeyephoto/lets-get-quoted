@@ -63,7 +63,7 @@ export default function MeridianTemplate({ site, galleryImages = [] }: TemplateP
           <h2>Tell us about the project.</h2>
           <p className={styles.contactMeta}>{site.service_area || 'Local & regional'} · {site.hours || 'By appointment'}</p>
         </div>
-        <QuoteRequestForm siteId={site.id} enabled={site.published} />
+        <QuoteRequestForm site={site} />
       </section>
 
       <footer className={styles.footer}>

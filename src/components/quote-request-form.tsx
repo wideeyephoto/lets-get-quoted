@@ -2,19 +2,21 @@
 
 import { useRef, useState } from 'react';
 import { compressImage } from '@/lib/client-images';
+import { getSiteContent } from '@/lib/site-content';
+import type { Site } from '@/lib/sites';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import styles from './quote-request-form.module.css';
 
 const MAX_PHOTOS = 6;
 
 type QuoteRequestFormProps = {
-  siteId: string;
-  enabled: boolean;
+  site: Pick<Site, 'id' | 'published' | 'content'>;
 };
 
-export default function QuoteRequestForm({ siteId, enabled }: QuoteRequestFormProps) {
+export default function QuoteRequestForm({ site }: QuoteRequestFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const emailRequired = getSiteContent(site.content).quoteForm.emailRequired;
   const [progress, setProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
@@ -38,7 +40,7 @@ export default function QuoteRequestForm({ siteId, enabled }: QuoteRequestFormPr
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!enabled || window.self !== window.top) {
+    if (!site.published || window.self !== window.top) {
       setMessage({ type: 'error', text: 'Quick Quote requests become active when this website is published.' });
       return;
     }
@@ -50,7 +52,7 @@ export default function QuoteRequestForm({ siteId, enabled }: QuoteRequestFormPr
     try {
       const form = event.currentTarget;
       const data = new FormData(form);
-      data.set('siteId', siteId);
+      data.set('siteId', site.id);
       data.set('startedAt', String(startedAt.current));
       data.delete('photos');
       const photos = selectedPhotos.slice(0, MAX_PHOTOS);
@@ -88,7 +90,7 @@ export default function QuoteRequestForm({ siteId, enabled }: QuoteRequestFormPr
     <form ref={formRef} className={styles.form} onSubmit={handleSubmit}>
       <label className={styles.field}><span>Name</span><input name="name" autoComplete="name" maxLength={100} required /></label>
       <label className={styles.field}><span>Phone</span><input name="phone" type="tel" autoComplete="tel" maxLength={40} /></label>
-      <label className={`${styles.field} ${styles.wide}`}><span>Email</span><input name="email" type="email" autoComplete="email" maxLength={160} /></label>
+      <label className={`${styles.field} ${styles.wide}`}><span>Email {emailRequired ? '(required)' : '(optional)'}</span><input name="email" type="email" autoComplete="email" maxLength={160} required={emailRequired} /></label>
       <div className={`${styles.field} ${styles.wide}`}><label htmlFor="quote-address">Project address</label><AddressAutocomplete id="quote-address" name="address" placeholder="1418 Maplewood Ave, Royal Oak, MI" maxLength={240} /></div>
       <label className={`${styles.field} ${styles.wide}`}><span>Tell us about the project</span><textarea name="message" maxLength={3000} required /></label>
       <div className={`${styles.field} ${styles.wide}`}>

@@ -56,7 +56,7 @@ export default function BlueprintTemplate({ site, galleryImages = [] }: Template
       <section className={styles.contact} id="contact">
         <p className={styles.docLabel}>DWG-002 / SCOPE REQUEST</p>
         <h2>Send us the project brief.</h2>
-        <QuoteRequestForm siteId={site.id} enabled={site.published} />
+        <QuoteRequestForm site={site} />
       </section>
 
       <footer className={styles.footer}>

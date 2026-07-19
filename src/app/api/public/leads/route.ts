@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/auth';
 import { sendLeadNotificationEmail } from '@/lib/email';
 import { createLead } from '@/lib/leads';
 import { deleteLeadPhotos, uploadLeadPhoto } from '@/lib/lead-photo-storage';
+import { getSiteContent } from '@/lib/site-content';
 
 export const runtime = 'nodejs';
 
@@ -23,18 +24,26 @@ export async function POST(request: NextRequest) {
   const phone = text(data, 'phone', 40);
   const email = text(data, 'email', 160).toLowerCase();
   const message = text(data, 'message', 3000);
-  if (!siteId || !name || !message || (!phone && !email)) {
-    return NextResponse.json({ error: 'Add your name, project details, and a phone number or email.' }, { status: 400 });
+  if (!siteId || !name || !message) {
+    return NextResponse.json({ error: 'Add your name and project details.' }, { status: 400 });
   }
 
   const admin = createAdminClient();
   const { data: site } = await admin
     .from('sites')
-    .select('id, account_id, company_name, subdomain, custom_domain, published')
+    .select('id, account_id, company_name, subdomain, custom_domain, published, content')
     .eq('id', siteId)
     .eq('published', true)
     .maybeSingle();
   if (!site) return NextResponse.json({ error: 'This website is not accepting requests.' }, { status: 404 });
+
+  const quoteForm = getSiteContent(site.content).quoteForm;
+  if (quoteForm.emailRequired && !email) {
+    return NextResponse.json({ error: 'Add your email address so the contractor can follow up.' }, { status: 400 });
+  }
+  if (!phone && !email) {
+    return NextResponse.json({ error: 'Add a phone number or email so the contractor can follow up.' }, { status: 400 });
+  }
 
   const photos = data.getAll('photos').filter((item): item is File => item instanceof File && item.size > 0).slice(0, 6);
   const photoPaths: string[] = [];

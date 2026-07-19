@@ -65,7 +65,7 @@ export default function LumenTemplate({ site, galleryImages = [] }: TemplateProp
       <section className={styles.contact} id="contact">
         <p className={shared.kicker}>Let&apos;s get started</p>
         <h2>Tell us about your space.</h2>
-        <QuoteRequestForm siteId={site.id} enabled={site.published} />
+        <QuoteRequestForm site={site} />
       </section>
 
       <footer className={styles.footer}>

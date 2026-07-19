@@ -71,7 +71,7 @@ export default function TimberTemplate({ site, galleryImages = [] }: TemplatePro
           <p>{site.service_area || 'Local and regional projects'}</p>
           {site.phone && <a className={shared.primaryCta} href={`tel:${site.phone}`}>Call {site.phone}</a>}
         </div>
-        <QuoteRequestForm siteId={site.id} enabled={site.published} />
+        <QuoteRequestForm site={site} />
       </section>
 
       <footer className={styles.footer}>

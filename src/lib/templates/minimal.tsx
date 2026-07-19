@@ -58,7 +58,7 @@ export default function HavenTemplate({ site, galleryImages = [] }: TemplateProp
       <section className={styles.contact} id="contact">
         <p className={shared.kicker}>Ready when you are</p>
         <h2>Let&apos;s talk about your project.</h2>
-        <QuoteRequestForm siteId={site.id} enabled={site.published} />
+        <QuoteRequestForm site={site} />
       </section>
 
       <footer className={styles.footer}>

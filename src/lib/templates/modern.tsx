@@ -55,7 +55,7 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
       <section className={styles.vistaContact} id="contact">
         <p className={styles.kicker}>Next project</p><h2>Have a space in mind?</h2>
         {site.phone && <a href={`tel:${site.phone}`}>{site.phone} <span>↗</span></a>}
-        <QuoteRequestForm siteId={site.id} enabled={site.published} />
+        <QuoteRequestForm site={site} />
       </section>
 
       <footer className={styles.vistaFooter}><strong>{site.company_name}</strong><span>{site.hours || 'By appointment'}</span><small>Powered by Let&apos;s Get Quoted</small></footer>

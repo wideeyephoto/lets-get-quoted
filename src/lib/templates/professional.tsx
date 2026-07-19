@@ -64,7 +64,7 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
       <section className={styles.guildContact} id="contact">
         <div><p className={styles.kicker}>Ready when you are</p><h2>Tell us what you&apos;re planning.</h2></div>
         <div><p>{site.hours || 'Monday-Friday, 7am-5pm'}</p><p>{site.service_area || 'Local and regional projects'}</p>{site.phone && <a className={styles.primaryCta} href={`tel:${site.phone}`}>Call {site.phone}</a>}</div>
-        <QuoteRequestForm siteId={site.id} enabled={site.published} />
+        <QuoteRequestForm site={site} />
       </section>
 
       <footer className={styles.guildFooter}><strong>{site.company_name}</strong><span>{site.license || 'Licensed & insured'}</span><small>Powered by Let&apos;s Get Quoted</small></footer>

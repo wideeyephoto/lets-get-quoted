@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useTransition } from 'react';
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, type NormalizedSiteContent, type SiteFaqContent, type SiteShowcaseContent, type SiteTestimonialsContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, type NormalizedSiteContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteShowcaseContent, type SiteTestimonialsContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import { checkSubdomainAvailableAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
 import ImageLibrary from './ImageLibrary';
@@ -140,6 +140,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
   const updateShowcase = useCallback((showcase: SiteShowcaseContent) => {
     updateSiteContent({ showcase });
+  }, [updateSiteContent]);
+
+  const updateQuoteForm = useCallback((quoteForm: SiteQuoteFormContent) => {
+    updateSiteContent({ quoteForm });
   }, [updateSiteContent]);
 
   const loadJobPhotoOptions = useCallback(() => {
@@ -338,6 +342,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
             {activeTab === 'sections' && (
               <div className={styles.formSection}>
                 <div className={styles.sectionIntro}><h2>Pages & sections</h2><p>Add rich sections that make the public website feel complete.</p></div>
+
+                <div className={styles.contentCard}>
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.quoteForm.emailRequired} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, emailRequired: event.target.checked })} /><span><strong>Require email on quote form</strong><small>Ask homeowners for an email address on every request so future email campaigns have clean contact data.</small></span></label>
+                </div>
 
                 <div className={styles.contentCard}>
                   <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.showcase.enabled} onChange={(event) => updateShowcase({ ...siteContent.showcase, enabled: event.target.checked })} /><span><strong>Showcase gallery</strong><small>Highlight finished work, project details, and job photos.</small></span></label>

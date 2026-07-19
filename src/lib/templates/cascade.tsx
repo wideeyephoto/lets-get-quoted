@@ -89,7 +89,7 @@ export default function CascadeTemplate({ site, galleryImages = [] }: TemplatePr
             <li>{site.license || 'Licensed & insured'}</li>
           </ul>
         </div>
-        <QuoteRequestForm siteId={site.id} enabled={site.published} />
+        <QuoteRequestForm site={site} />
       </section>
 
       <footer className={styles.footer}>

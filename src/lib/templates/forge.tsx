@@ -70,7 +70,7 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
         <p className={styles.kicker}>Have a project in mind?</p>
         <h2>Let&apos;s build something that holds up.</h2>
         {site.phone && <p>Prefer to talk? Call <a href={`tel:${site.phone}`}>{site.phone}</a>.</p>}
-        <QuoteRequestForm siteId={site.id} enabled={site.published} />
+        <QuoteRequestForm site={site} />
       </section>
 
       <footer className={styles.forgeFooter}><strong>{site.company_name}</strong><span>{site.service_area || 'Proudly serving our local community'}</span><small>Powered by Let&apos;s Get Quoted</small></footer>

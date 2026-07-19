@@ -71,7 +71,7 @@ export default function FoundryTemplate({ site, galleryImages = [] }: TemplatePr
         <p className={shared.kicker}>Have a pour coming up?</p>
         <h2>Let&apos;s get it scheduled.</h2>
         {site.phone && <p>Prefer to talk? Call <a href={`tel:${site.phone}`}>{site.phone}</a>.</p>}
-        <QuoteRequestForm siteId={site.id} enabled={site.published} />
+        <QuoteRequestForm site={site} />
       </section>
 
       <footer className={styles.footer}>

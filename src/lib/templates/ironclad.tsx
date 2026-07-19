@@ -71,7 +71,7 @@ export default function IroncladTemplate({ site, galleryImages = [] }: TemplateP
         <p className={shared.kicker}>Storm damage or a new roof?</p>
         <h2>Get a free inspection.</h2>
         {site.phone && <p>Prefer to talk? Call <a href={`tel:${site.phone}`}>{site.phone}</a>.</p>}
-        <QuoteRequestForm siteId={site.id} enabled={site.published} />
+        <QuoteRequestForm site={site} />
       </section>
 
       <footer className={styles.footer}>
