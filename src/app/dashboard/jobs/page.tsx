@@ -4,8 +4,11 @@ import AddressAutocomplete from '@/components/address-autocomplete';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
 import PastClientsPicker, { type PastClientOption } from '@/components/past-clients-picker';
+import { deriveJobListBadge } from '@/lib/job-badges';
+import type { Invoice } from '@/lib/invoices';
 import { listJobs, formatMoney, type Job } from '@/lib/jobs';
 import { listLeads, type Lead } from '@/lib/leads';
+import type { Payment } from '@/lib/payments';
 import type { JobStatus } from '@/lib/jobs';
 import { createJobAction } from './actions';
 
@@ -16,13 +19,6 @@ const STATUS_FILTERS: { value: JobStatus | 'all'; label: string }[] = [
   { value: 'complete', label: 'Complete' },
   { value: 'archived', label: 'Archived' },
 ];
-
-const STATUS_LABEL: Record<JobStatus, string> = {
-  new_lead: 'New request',
-  in_progress: 'In progress',
-  complete: 'Complete',
-  archived: 'Archived',
-};
 
 function normalizeKey(value: string | null | undefined): string | null {
   const normalized = value?.trim().toLowerCase();
@@ -98,6 +94,13 @@ function buildPastClients(jobs: Job[], leads: Lead[]): PastClientOption[] {
   return clients;
 }
 
+function groupByJobId<T extends { job_id: string }>(rows: T[]): Record<string, T[]> {
+  return rows.reduce<Record<string, T[]>>((groups, row) => {
+    groups[row.job_id] = [...(groups[row.job_id] ?? []), row];
+    return groups;
+  }, {});
+}
+
 export default async function JobsPage({
   searchParams,
 }: {
@@ -112,6 +115,45 @@ export default async function JobsPage({
     listLeads(supabase, accountId),
   ]);
   const pastClients = buildPastClients(allJobs, leads);
+  const visibleJobIds = jobs.map((job) => job.id);
+  const [{ data: invoiceRows, error: invoiceError }, { data: paymentRows, error: paymentError }, { data: clientAccessRows, error: clientAccessError }] =
+    visibleJobIds.length > 0
+      ? await Promise.all([
+          supabase
+            .from('invoices')
+            .select('*')
+            .eq('account_id', accountId)
+            .in('job_id', visibleJobIds)
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('payments')
+            .select('*')
+            .eq('account_id', accountId)
+            .in('job_id', visibleJobIds)
+            .order('requested_at', { ascending: false }),
+          supabase
+            .from('client_job_access')
+            .select('job_id')
+            .eq('account_id', accountId)
+            .in('job_id', visibleJobIds)
+            .is('revoked_at', null),
+        ])
+      : [
+          { data: [] as Invoice[] | null, error: null },
+          { data: [] as Payment[] | null, error: null },
+          { data: [] as Array<{ job_id: string }> | null, error: null },
+        ];
+
+  if (invoiceError) throw invoiceError;
+  if (paymentError) throw paymentError;
+  if (clientAccessError) throw clientAccessError;
+
+  const invoicesByJob = groupByJobId((invoiceRows ?? []) as Invoice[]);
+  const paymentsByJob = groupByJobId((paymentRows ?? []) as Payment[]);
+  const clientAccessCountByJob = (clientAccessRows ?? []).reduce<Record<string, number>>((counts, row) => {
+    counts[row.job_id] = (counts[row.job_id] ?? 0) + 1;
+    return counts;
+  }, {});
   const totalQuoted = jobs.reduce((sum, job) => sum + job.quoted_amount, 0);
   const activeJobs = jobs.filter((job) => job.status === 'in_progress').length;
 
@@ -137,24 +179,27 @@ export default async function JobsPage({
           <p className="empty-state">No jobs yet. Create your first job below.</p>
         ) : (
           <div className="job-list">
-            {jobs.map((job) => (
-              <Link key={job.id} href={`/dashboard/jobs/${job.id}`} className="job-row">
-                <div className="job-row-header">
-                  <span className="job-ref">{job.ref}</span>
-                  <span className={`status-badge status-${job.status}`}>{STATUS_LABEL[job.status]}</span>
-                </div>
-                <div className="job-client">{job.client_name}</div>
-                <div className="job-row-header" style={{ marginTop: '0.4rem' }}>
-                  <span className="job-meta">
-                    {job.address || 'No address on file'}
-                    {' · '}Estimated hours: {job.estimated_hours ? `${job.estimated_hours} hrs` : 'Not set'}
-                  </span>
-                  {job.quoted_amount > 0 ? (
-                    <span className="job-quoted">{formatMoney(job.quoted_amount)}</span>
-                  ) : null}
-                </div>
-              </Link>
-            ))}
+            {jobs.map((job) => {
+              const badge = deriveJobListBadge(job, paymentsByJob[job.id] ?? [], invoicesByJob[job.id] ?? [], clientAccessCountByJob[job.id] ?? 0);
+              return (
+                <Link key={job.id} href={`/dashboard/jobs/${job.id}`} className="job-row">
+                  <div className="job-row-header">
+                    <span className="job-ref">{job.ref}</span>
+                    <span className={`status-badge status-${badge.tone}`} title={badge.title}>{badge.label}</span>
+                  </div>
+                  <div className="job-client">{job.client_name}</div>
+                  <div className="job-row-header" style={{ marginTop: '0.4rem' }}>
+                    <span className="job-meta">
+                      {job.address || 'No address on file'}
+                      {' · '}Estimated hours: {job.estimated_hours ? `${job.estimated_hours} hrs` : 'Not set'}
+                    </span>
+                    {job.quoted_amount > 0 ? (
+                      <span className="job-quoted">{formatMoney(job.quoted_amount)}</span>
+                    ) : null}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </section>
