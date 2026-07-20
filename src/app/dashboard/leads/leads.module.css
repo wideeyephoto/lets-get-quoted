@@ -29,6 +29,11 @@
 .leadTitleRow { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
 .leadTitleRow h1 { margin-right: 0; }
 .leadTitleRow form { flex: 0 0 auto; }
+.heroContactSummary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; margin-top: .9rem; }
+.heroContactItem { display: grid; gap: .18rem; min-width: 0; padding: .7rem .8rem; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; background: rgba(255,255,255,.03); }
+.heroContactItem span { color: rgba(255,255,255,.48); font-size: .66rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.heroContactItem strong, .heroContactItem a { overflow: hidden; color: #f7f5ef; font-size: .94rem; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.heroContactItem a { color: #ffd166; text-decoration: none; }
 .leadQuickActions { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: 1.15rem; }
 .leadStageCard { display: grid; gap: .55rem; align-self: center; padding: .85rem; border: 1px solid rgba(255,255,255,.14); border-radius: 12px; background: rgba(255,255,255,.045); }
 .leadStageCard strong { color: #ffd166; font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; }
@@ -223,6 +228,6 @@
 @media (max-width: 820px) { .availabilityGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 900px) { .quoteStartCalendarGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); } .quoteStartSelectionFooter { grid-template-columns: 1fr; } .quoteStartFooterActions { justify-items: stretch; } }
 @media (max-width: 720px) { .quoteStartCalendarGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 640px) { .board { grid-template-columns: 1fr; overflow: visible; } .column { min-height: 0; } .contactGrid, .photoGrid, .leadStageCard, .calendarUtilityRow { grid-template-columns: 1fr; } .availabilityHeader, .calendarSurfaceHeader, .calendarSelectionHeader, .quoteStartCalendarHeader { align-items: stretch; flex-direction: column; } .availabilityControls, .quoteStartCalendarControls { justify-content: stretch; } .availabilityControls a, .quoteStartCalendarControls a { flex: 1 1 0; justify-content: center; } .leadTitleRow { display: grid; } .calendarSurfaceHeader :global(.workspace-details-copy) { max-width: none; text-align: left; } .calendarActionButtons { flex-direction: column; } .calendarActionButtons :global(.btn) { width: 100%; } .quoteStartCalendarHeaderMeta { justify-items: stretch; } }
+@media (max-width: 640px) { .board { grid-template-columns: 1fr; overflow: visible; } .column { min-height: 0; } .contactGrid, .photoGrid, .leadStageCard, .calendarUtilityRow, .heroContactSummary { grid-template-columns: 1fr; } .availabilityHeader, .calendarSurfaceHeader, .calendarSelectionHeader, .quoteStartCalendarHeader { align-items: stretch; flex-direction: column; } .availabilityControls, .quoteStartCalendarControls { justify-content: stretch; } .availabilityControls a, .quoteStartCalendarControls a { flex: 1 1 0; justify-content: center; } .leadTitleRow { display: grid; } .calendarSurfaceHeader :global(.workspace-details-copy) { max-width: none; text-align: left; } .calendarActionButtons { flex-direction: column; } .calendarActionButtons :global(.btn) { width: 100%; } .quoteStartCalendarHeaderMeta { justify-items: stretch; } }
 @media (max-width: 560px) { .quoteStartCalendarGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 520px) { .availabilityGrid, .quoteStartCalendarGrid { grid-template-columns: 1fr; } }

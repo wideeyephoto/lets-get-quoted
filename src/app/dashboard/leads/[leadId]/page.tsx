@@ -190,6 +190,16 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
             <span className={styles.statusPill}>{lead.status}</span>
             {visitLabel ? <span className={styles.visitPill}>Quote visit {visitLabel}</span> : null}
           </div>
+          <div className={styles.heroContactSummary}>
+            <div className={styles.heroContactItem}>
+              <span>Phone</span>
+              {lead.phone ? <a href={`tel:${lead.phone}`}>{lead.phone}</a> : <strong>Not provided</strong>}
+            </div>
+            <div className={styles.heroContactItem}>
+              <span>Project address</span>
+              <strong>{lead.address || 'Not provided'}</strong>
+            </div>
+          </div>
           <div className={styles.leadQuickActions}>
             {!lead.converted_job && !hasScheduledEstimate ? <Link className="btn primary" href="#availability-snapshot">Schedule estimate</Link> : null}
             {!lead.converted_job ? <Link className="btn secondary" href="#lead-estimate">Send Quote &amp; Request Sign-Off</Link> : null}
@@ -213,10 +223,8 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
               <h2>{lead.project_type || 'Project request'}</h2>
             </div>
             <div className={styles.contactGrid}>
-              <div className={styles.dataBlock}><span>Phone</span>{lead.phone ? <a href={`tel:${lead.phone}`}>{lead.phone}</a> : <p>Not provided</p>}</div>
               <div className={styles.dataBlock}><span>Email</span>{lead.email ? <a href={`mailto:${lead.email}`}>{lead.email}</a> : <p>Not provided</p>}</div>
             </div>
-            <div className={styles.dataBlock}><span>Project address</span><p>{lead.address || 'Not provided'}</p></div>
             <div className={styles.dataBlock}><span>Project details</span><p>{lead.message || 'Not provided'}</p></div>
             <details className={styles.clientRequestDetails} open={searchParams.edit === 'client'}>
               <summary className={styles.clientRequestSummary}>
