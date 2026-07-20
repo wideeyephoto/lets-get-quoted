@@ -128,62 +128,9 @@ export default function LeadAvailabilityScheduler({
         </div>
       ) : null}
 
-      <form
-        action={sendQuoteVisitOptionsAction}
-        className={`schedule-client-options-form ${styles.calendarSelectionTray}`}
-        onSubmit={(event) => {
-          if (selectedOptions.length !== 3) event.preventDefault();
-        }}
-      >
-        <div className="schedule-client-options-intro">
-          <strong>Let the client choose from this calendar.</strong>
-          <span>Select up to 3 day and time options below, then text them to the client from here.</span>
-        </div>
-        <div className={styles.calendarSelectionHeader}>
-          <strong>Client choices</strong>
-          <span>{selectedOptions.length}/3 selected</span>
-        </div>
-        <div className={styles.selectedOptionList}>
-          {[0, 1, 2].map((index) => {
-            const option = selectedOptions[index];
-            return (
-              <div className={`${styles.selectedOptionCard}${option ? ` ${styles.selectedOptionFilled}` : ''}`} key={`client-choice-${index + 1}`}>
-                <span>Option {index + 1}</span>
-                {option ? (
-                  <>
-                    <strong>{option.label}</strong>
-                    <small>{option.time}</small>
-                    <button type="button" className={styles.removeOptionButton} onClick={() => removeClientOption(option.date)}>Remove</button>
-                    <input type="hidden" name={`quoteVisitOptionDate${index + 1}`} value={option.date} />
-                    <input type="hidden" name={`quoteVisitOptionTime${index + 1}`} value={option.time} />
-                  </>
-                ) : (
-                  <small>Pick a day below</small>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        <div className={styles.calendarClientFormRow}>
-          <div className="schedule-inline-field schedule-inline-date">
-            <label htmlFor="quoteVisitClientPhoneCalendar">Client mobile</label>
-            <input id="quoteVisitClientPhoneCalendar" name="quoteVisitClientPhone" type="tel" defaultValue={leadPhone} placeholder="(248) 555-0117" />
-          </div>
-        </div>
-        <label className="sms-consent-check">
-          <input name="quoteVisitOptionsSmsConsent" type="checkbox" required />
-          <span>The client agreed to receive transactional scheduling texts. Reply STOP to opt out.</span>
-        </label>
-        <div className={styles.calendarSelectionActions}>
-          <button type="button" className="btn ghost" onClick={clearClientOptions} disabled={selectedOptions.length === 0}>Clear selections</button>
-          <CalendarSendButton disabled={selectedOptions.length !== 3} />
-        </div>
-        {selectedOptions.length !== 3 ? <p className={styles.calendarSelectionHint}>Choose exactly 3 options from the calendar before sending.</p> : null}
-      </form>
-
       <div className={styles.availabilityHeader}>
         <div>
-          <p className={styles.calendarHint}>Pick a day and adjust the visit time before booking or adding it for the client.</p>
+          <p className={styles.calendarHint}>Pick a day and adjust the visit time before booking. Use Add for client to build 3 options below.</p>
           <strong>{availability[0]?.label} - {availability[availability.length - 1]?.label}</strong>
         </div>
         <div className={styles.availabilityControls}>
@@ -231,6 +178,62 @@ export default function LeadAvailabilityScheduler({
           );
         })}
       </div>
+
+      <form
+        action={sendQuoteVisitOptionsAction}
+        className={`schedule-client-options-form ${styles.calendarSelectionTray}`}
+        onSubmit={(event) => {
+          if (selectedOptions.length !== 3) event.preventDefault();
+        }}
+      >
+        <div className={styles.calendarSelectionHeader}>
+          <div className={styles.calendarSelectionTitle}>
+            <strong>Client choices</strong>
+            <span>Select up to 3 day/time options from the week above.</span>
+          </div>
+          <span>{selectedOptions.length}/3 selected</span>
+        </div>
+        <div className={styles.selectedOptionList}>
+          {[0, 1, 2].map((index) => {
+            const option = selectedOptions[index];
+            return (
+              <div className={`${styles.selectedOptionCard}${option ? ` ${styles.selectedOptionFilled}` : ''}`} key={`client-choice-${index + 1}`}>
+                <span>Option {index + 1}</span>
+                {option ? (
+                  <>
+                    <strong>{option.label}</strong>
+                    <small>{option.time}</small>
+                    <button type="button" className={styles.removeOptionButton} onClick={() => removeClientOption(option.date)}>Remove</button>
+                    <input type="hidden" name={`quoteVisitOptionDate${index + 1}`} value={option.date} />
+                    <input type="hidden" name={`quoteVisitOptionTime${index + 1}`} value={option.time} />
+                  </>
+                ) : (
+                  <small>Pick from week above</small>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className={styles.calendarSelectionFooter}>
+          <div className={styles.calendarClientFormRow}>
+            <div className="schedule-inline-field schedule-inline-date">
+              <label htmlFor="quoteVisitClientPhoneCalendar">Client mobile</label>
+              <input id="quoteVisitClientPhoneCalendar" name="quoteVisitClientPhone" type="tel" defaultValue={leadPhone} placeholder="(248) 555-0117" />
+            </div>
+            <label className={`sms-consent-check ${styles.calendarConsentCheck}`}>
+              <input name="quoteVisitOptionsSmsConsent" type="checkbox" required />
+              <span>The client agreed to receive transactional scheduling texts. Reply STOP to opt out.</span>
+            </label>
+          </div>
+          <div className={styles.calendarSelectionActions}>
+            {selectedOptions.length !== 3 ? <p className={styles.calendarSelectionHint}>Choose exactly 3 options before sending.</p> : <p className={styles.calendarSelectionHint}>Ready to text these 3 options.</p>}
+            <div className={styles.calendarActionButtons}>
+              <button type="button" className="btn ghost" onClick={clearClientOptions} disabled={selectedOptions.length === 0}>Clear</button>
+              <CalendarSendButton disabled={selectedOptions.length !== 3} />
+            </div>
+          </div>
+        </div>
+      </form>
     </section>
   );
 }
