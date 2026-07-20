@@ -21,9 +21,11 @@ import {
   updateJobAction,
   updateJobCrewAction,
 } from '../actions';
-import { createDepositRequestAction, refundPaymentAction, markPaymentFailedAction, retryPaymentAction, retryPaymentTextAction } from '../payments-actions';
+import { createDepositRequestAction, refundPaymentAction, markPaymentFailedAction, retryPaymentAction, retryPaymentTextAction, cancelPaymentRequestAction } from '../payments-actions';
+import { cancelInvoiceAction } from '../invoices-actions';
 import DeleteJobButton from './DeleteJobButton';
 import PaymentActionButtons from './PaymentActionButtons';
+import ConfirmActionButton from './ConfirmActionButton';
 import JobExpenseFields from '@/components/job-expense-fields';
 import SaveButton from '@/components/save-button';
 import QuickFillButtons from '@/components/quick-fill-buttons';
@@ -75,6 +77,8 @@ const FEED_KIND_LABEL: Record<string, string> = {
   invoice_sent: 'Invoice sent',
   invoice_signed: 'Invoice signed',
   invoice_paid: 'Invoice paid',
+  payment_cancelled: 'Payment cancelled',
+  invoice_voided: 'Invoice cancelled',
   client_link_created: 'Client link',
   client_link_revoked: 'Client link',
 };
@@ -94,6 +98,8 @@ const FEED_KIND_ICON: Record<string, string> = {
   invoice_sent: 'I',
   invoice_signed: '✓',
   invoice_paid: '✓',
+  payment_cancelled: '×',
+  invoice_voided: '×',
   client_link_created: '↗',
   client_link_revoked: '×',
 };
@@ -346,38 +352,72 @@ export default async function JobDetailPage({
               <p className="empty-state">No job feed updates yet.</p>
             ) : (
               <div className="job-feed-list workspace-list-block">
-                {displayedFeed.map((event) => (
-                  <article className={`job-feed-item feed-kind-${event.kind}`} key={event.id}>
-                    <div className="job-feed-dot">{FEED_KIND_ICON[event.kind] ?? '•'}</div>
-                    <div className="job-feed-content">
-                      <div className="job-row-header">
-                        <span className="cost-item-desc">{getFeedDisplayTitle(event)}</span>
-                        <div className="feed-badge-row">
-                          {event.kind === 'job_completed' && job.status === 'complete' ? (
-                            <form action={undoJobCompleteAction.bind(null, job.id, event.id)}>
-                              <SaveButton className="feed-undo-btn" pendingLabel="Undoing…" savedLabel="Undone ✓">Undo</SaveButton>
-                            </form>
-                          ) : null}
-                          <span className="status-badge status-new_lead">{FEED_KIND_LABEL[event.kind] ?? 'Update'}</span>
-                          <span className={`status-badge ${event.visibility === 'internal' ? 'status-archived' : 'status-complete'}`}>
-                            {FEED_VISIBILITY_LABEL[event.visibility]}
-                          </span>
+                {displayedFeed.map((event) => {
+                  const linkedPayment = event.source_table === 'payments' ? payments.find((payment) => payment.id === event.source_id) : undefined;
+                  const linkedInvoice = event.source_table === 'invoices' ? invoices.find((invoice) => invoice.id === event.source_id) : undefined;
+                  const canCancelPayment = event.kind === 'payment_requested' && linkedPayment?.status === 'requested';
+                  const canCancelInvoice =
+                    (event.kind === 'invoice_created' || event.kind === 'invoice_sent' || event.kind === 'invoice_signoff_link') &&
+                    (linkedInvoice?.status === 'draft' || linkedInvoice?.status === 'sent');
+
+                  return (
+                    <article className={`job-feed-item feed-kind-${event.kind}`} key={event.id}>
+                      <div className="job-feed-dot">{FEED_KIND_ICON[event.kind] ?? '•'}</div>
+                      <div className="job-feed-content">
+                        <div className="job-row-header">
+                          <span className="cost-item-desc">{getFeedDisplayTitle(event)}</span>
+                          <div className="feed-badge-row">
+                            {event.kind === 'job_created' && originatingLead ? (
+                              <Link className="feed-undo-btn" href={`/dashboard/leads/${originatingLead.id}`}>
+                                Undo
+                              </Link>
+                            ) : null}
+                            {event.kind === 'job_completed' && job.status === 'complete' ? (
+                              <form action={undoJobCompleteAction.bind(null, job.id, event.id)}>
+                                <SaveButton className="feed-undo-btn" pendingLabel="Undoing…" savedLabel="Undone ✓">Undo</SaveButton>
+                              </form>
+                            ) : null}
+                            {canCancelPayment && linkedPayment ? (
+                              <ConfirmActionButton
+                                action={cancelPaymentRequestAction.bind(null, job.id, linkedPayment.id)}
+                                confirmMessage="Cancel this payment request? The payment link will stop working."
+                                pendingLabel="Cancelling…"
+                                savedLabel="Cancelled ✓"
+                              >
+                                Cancel
+                              </ConfirmActionButton>
+                            ) : null}
+                            {canCancelInvoice && linkedInvoice ? (
+                              <ConfirmActionButton
+                                action={cancelInvoiceAction.bind(null, job.id, linkedInvoice.id)}
+                                confirmMessage={`Cancel invoice ${linkedInvoice.ref}? This voids it so it can no longer be paid or signed.`}
+                                pendingLabel="Cancelling…"
+                                savedLabel="Cancelled ✓"
+                              >
+                                Cancel
+                              </ConfirmActionButton>
+                            ) : null}
+                            <span className="status-badge status-new_lead">{FEED_KIND_LABEL[event.kind] ?? 'Update'}</span>
+                            <span className={`status-badge ${event.visibility === 'internal' ? 'status-archived' : 'status-complete'}`}>
+                              {FEED_VISIBILITY_LABEL[event.visibility]}
+                            </span>
+                          </div>
                         </div>
+                        {getFeedDisplayBody(event) ? <p className="workspace-card-copy">{getFeedDisplayBody(event)}</p> : null}
+                        <p className="job-meta">
+                          {formatFeedTime(event.created_at)}
+                          {event.amount ? ` · ${formatMoney(Number(event.amount))}` : ''}
+                          {event.action_url ? (
+                            <>
+                              {' · '}
+                              <Link href={event.action_url} target="_blank">Open link</Link>
+                            </>
+                          ) : null}
+                        </p>
                       </div>
-                      {getFeedDisplayBody(event) ? <p className="workspace-card-copy">{getFeedDisplayBody(event)}</p> : null}
-                      <p className="job-meta">
-                        {formatFeedTime(event.created_at)}
-                        {event.amount ? ` · ${formatMoney(Number(event.amount))}` : ''}
-                        {event.action_url ? (
-                          <>
-                            {' · '}
-                            <Link href={event.action_url} target="_blank">Open link</Link>
-                          </>
-                        ) : null}
-                      </p>
-                    </div>
-                  </article>
-                ))}
+                    </article>
+                  );
+                })}
               </div>
             )}
             <div className="job-feed-share-strip">
@@ -445,20 +485,28 @@ export default async function JobDetailPage({
             ) : (
               <div className="cost-list workspace-list-block">
                 {invoices.map((invoice) => (
-                  <Link
-                    key={invoice.id}
-                    href={`/dashboard/jobs/${job.id}/invoices/${invoice.id}`}
-                    className="cost-item"
-                    style={{ display: 'flex' }}
-                  >
-                    <div className="cost-item-main">
+                  <div key={invoice.id} className="cost-item">
+                    <Link href={`/dashboard/jobs/${job.id}/invoices/${invoice.id}`} className="cost-item-main">
                       <span className="cost-item-desc">{invoice.ref}</span>
                       <span className="cost-item-sub">
                         {INVOICE_STATUS_LABEL[invoice.status]} · {new Date(invoice.created_at).toLocaleDateString()}
                       </span>
+                    </Link>
+                    <div className="cost-item-actions">
+                      <span className="cost-item-amount">{formatMoney(invoice.total)}</span>
+                      {invoice.status === 'draft' || invoice.status === 'sent' ? (
+                        <ConfirmActionButton
+                          action={cancelInvoiceAction.bind(null, job.id, invoice.id)}
+                          confirmMessage={`Cancel invoice ${invoice.ref}? This voids it so it can no longer be paid or signed.`}
+                          className="btn secondary compact"
+                          pendingLabel="Cancelling…"
+                          savedLabel="Cancelled ✓"
+                        >
+                          Cancel
+                        </ConfirmActionButton>
+                      ) : null}
                     </div>
-                    <span className="cost-item-amount">{formatMoney(invoice.total)}</span>
-                  </Link>
+                  </div>
                 ))}
               </div>
             )}
@@ -545,6 +593,7 @@ export default async function JobDetailPage({
                         onRefund={boundRefundPayment}
                         onMarkFailed={boundMarkPaymentFailed}
                         onRetry={retryPaymentAction}
+                        onCancel={cancelPaymentRequestAction}
                       />
                       {payment.sms_events?.some((event) => event.event_type === 'payment_requested' && event.status === 'failed') && (
                         <form action={boundRetryPaymentText.bind(null, payment.id)}>

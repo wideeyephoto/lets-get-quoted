@@ -339,6 +339,25 @@ export async function markPaymentFailed(supabase: SupabaseClient, accountId: str
   if (data) await sendPaymentSmsEvent(paymentId, 'payment_failed');
 }
 
+// Cancel a payment request that hasn't been acted on yet (no Stripe checkout
+// session ever started). Deletes the row outright since no money changed
+// hands — this is for "I asked for the wrong amount/link by mistake" cases,
+// distinct from markPaymentFailed (which is for requests that DID reach
+// Stripe checkout but didn't complete).
+export async function cancelPaymentRequest(supabase: SupabaseClient, accountId: string, paymentId: string): Promise<void> {
+  const { data, error } = await supabase
+    .from('payments')
+    .delete()
+    .eq('account_id', accountId)
+    .eq('id', paymentId)
+    .eq('status', 'requested')
+    .select('id')
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) throw new Error('Only payment requests that have not started processing can be cancelled.');
+}
+
 // Retry a failed/processing payment by creating a fresh checkout session
 export async function retryPayment(paymentId: string, origin: string): Promise<string> {
   const payment = await getPublicPayment(paymentId);

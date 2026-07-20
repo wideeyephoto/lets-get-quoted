@@ -4,9 +4,9 @@ import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import { getJob } from '@/lib/jobs';
-import { createDepositRequest, getPaymentDetails, refundPayment, markPaymentFailed, retryPayment, type PaymentKind } from '@/lib/payments';
+import { cancelPaymentRequest, createDepositRequest, getPaymentDetails, refundPayment, markPaymentFailed, retryPayment, type PaymentKind } from '@/lib/payments';
 import { addInvoiceItem, createInvoice, listInvoices, selectPrimaryInvoice } from '@/lib/invoices';
-import { createPaymentFeedEvent } from '@/lib/job-feed';
+import { createPaymentFeedEvent, createJobFeedEvent } from '@/lib/job-feed';
 import { normalizeUsPhone } from '@/lib/phone';
 import { recordSmsConsent, retryFailedPaymentSmsEvent, sendPaymentSmsEvent } from '@/lib/sms';
 
@@ -83,5 +83,31 @@ export async function retryPaymentTextAction(jobId: string, paymentId: string) {
   if (!payment || payment.job_id !== jobId) throw new Error('Payment not found for this job.');
   const result = await retryFailedPaymentSmsEvent(paymentId, 'payment_requested');
   if (result.status === 'failed') throw new Error(result.error);
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
+export async function cancelPaymentRequestAction(jobId: string, paymentId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const payment = await getPaymentDetails(supabase, accountId, paymentId);
+  if (!payment || payment.job_id !== jobId) throw new Error('Payment not found for this job.');
+
+  await cancelPaymentRequest(supabase, accountId, paymentId);
+
+  await supabase
+    .from('job_feed')
+    .delete()
+    .eq('account_id', accountId)
+    .eq('job_id', jobId)
+    .eq('source_table', 'payments')
+    .eq('source_id', paymentId);
+
+  await createJobFeedEvent(supabase, accountId, jobId, {
+    kind: 'payment_cancelled',
+    title: 'Payment request cancelled',
+    body: payment.label ?? null,
+    visibility: 'client_financial',
+    amount: Number(payment.amount),
+  });
+
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }

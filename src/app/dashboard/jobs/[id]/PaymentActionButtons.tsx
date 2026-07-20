@@ -11,6 +11,7 @@ interface PaymentActionButtonsProps {
   onRefund: (jobId: string, paymentId: string) => Promise<void>;
   onMarkFailed: (jobId: string, paymentId: string) => Promise<void>;
   onRetry: (paymentId: string) => Promise<string>;
+  onCancel: (jobId: string, paymentId: string) => Promise<void>;
 }
 
 export default function PaymentActionButtons({
@@ -20,6 +21,7 @@ export default function PaymentActionButtons({
   onRefund,
   onMarkFailed,
   onRetry,
+  onCancel,
 }: PaymentActionButtonsProps) {
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
@@ -68,12 +70,38 @@ export default function PaymentActionButtons({
     }
   };
 
-  const showActions = status === 'paid' || status === 'processing' || status === 'failed';
+  const handleCancel = async () => {
+    if (!window.confirm('Cancel this payment request? The payment link will stop working.')) return;
+
+    setLoading('cancel');
+    setError(null);
+    try {
+      await onCancel(jobId, paymentId);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to cancel payment request');
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const showActions = status === 'paid' || status === 'processing' || status === 'failed' || status === 'requested';
 
   if (!showActions) return null;
 
   return (
     <div style={{ display: 'flex', gap: '0.25rem' }}>
+      {status === 'requested' && (
+        <button
+          onClick={handleCancel}
+          disabled={loading !== null}
+          className="btn secondary compact"
+          title="Cancel this payment request"
+          style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+        >
+          {loading === 'cancel' ? '⏳' : '×'} Cancel
+        </button>
+      )}
       {status === 'paid' && (
         <button
           onClick={handleRefund}

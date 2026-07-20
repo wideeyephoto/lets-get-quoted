@@ -144,3 +144,29 @@ export async function deleteInvoiceAction(jobId: string, invoiceId: string) {
   revalidatePath(`/dashboard/jobs/${jobId}`);
   redirect(`/dashboard/jobs/${jobId}?tab=invoices`);
 }
+
+export async function cancelInvoiceAction(jobId: string, invoiceId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const invoiceData = await getInvoiceWithItems(supabase, accountId, invoiceId);
+  if (!invoiceData) throw new Error('Invoice not found for this account.');
+  const { invoice } = invoiceData;
+
+  if (invoice.status === 'paid') throw new Error('Paid invoices cannot be cancelled.');
+  if (invoice.status === 'void') {
+    revalidatePath(`/dashboard/jobs/${jobId}`);
+    return;
+  }
+
+  await updateInvoiceStatus(supabase, accountId, invoiceId, 'void');
+
+  await createJobFeedEvent(supabase, accountId, jobId, {
+    kind: 'invoice_voided',
+    title: 'Invoice cancelled',
+    body: invoice.ref,
+    visibility: 'client_financial',
+    amount: Number(invoice.total),
+  });
+
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+  revalidatePath(`/dashboard/jobs/${jobId}/invoices/${invoiceId}`);
+}
