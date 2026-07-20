@@ -30,13 +30,6 @@ function addDays(date: Date, days: number): Date {
   return next;
 }
 
-function nextWeekday(date: Date, weekday: number): Date {
-  const next = new Date(date);
-  const distance = (weekday + 7 - next.getDay()) % 7 || 7;
-  next.setDate(next.getDate() + distance);
-  return next;
-}
-
 function dayLabel(date: Date) {
   return new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(date);
 }
@@ -87,14 +80,6 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const mapSrc = mapEmbedSrc(lead.address);
   const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
   const availability = buildAvailability(jobs, leads, scheduleDayHours);
-  const today = new Date();
-  const quickQuoteVisitPresets = [
-    { label: 'Today 9 AM', date: dateKey(today), time: '09:00' },
-    { label: 'Tomorrow 9 AM', date: dateKey(addDays(today, 1)), time: '09:00' },
-    { label: 'Next Mon 9 AM', date: dateKey(nextWeekday(today, 1)), time: '09:00' },
-    { label: 'Next Fri 9 AM', date: dateKey(nextWeekday(today, 5)), time: '09:00' },
-  ];
-
   return (
     <main className={`wide-shell workspace-shell ${styles.leadCommandShell}`}>
       <section className={`workspace-hero panel ${styles.leadHero}`}>
@@ -235,17 +220,6 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                       <input type="hidden" name="quoteVisitNotes" value={lead.quote_visit?.notes ?? ''} />
                       <button type="submit" className="btn primary schedule-save-button">Save Quote Date</button>
                     </form>
-                    <div className="schedule-preset-grid" aria-label={`Quick quote visit presets for ${lead.name || 'this lead'}`}>
-                      {quickQuoteVisitPresets.map((preset) => (
-                        <form action={scheduleVisit} key={`${lead.id}-${preset.label}`}>
-                          <input type="hidden" name="quoteVisitDate" value={preset.date} />
-                          <input type="hidden" name="quoteVisitTime" value={preset.time} />
-                          <input type="hidden" name="quoteVisitDuration" value="60" />
-                          <input type="hidden" name="quoteVisitNotes" value="Booked from quick quote visit presets." />
-                          <button type="submit" className="schedule-preset-button">{preset.label}</button>
-                        </form>
-                      ))}
-                    </div>
                   </div>
                 </details>
                 <details className="schedule-popover" name={`lead-quote-visit-${lead.id}`}>
