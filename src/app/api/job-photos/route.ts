@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, getCurrentMembership } from '@/lib/auth';
-import { addJobPhotos, getJob, removeJobPhoto } from '@/lib/jobs';
+import { addJobPhotos, getJob, removeJobPhoto, reorderJobPhotos } from '@/lib/jobs';
 import { createJobPhotoUrls, deleteJobPhotos, uploadJobPhoto } from '@/lib/job-photo-storage';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 
@@ -65,5 +65,25 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to remove photo.' }, { status: 400 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  const auth = await requireOwnerMembership();
+  if (auth.error) return auth.error;
+
+  const body = await request.json().catch(() => null);
+  const jobId = body?.jobId;
+  const paths = body?.paths;
+  if (typeof jobId !== 'string' || !jobId || !Array.isArray(paths) || !paths.every((path) => typeof path === 'string')) {
+    return NextResponse.json({ error: 'Missing job or photo order.' }, { status: 400 });
+  }
+
+  const admin = createAdminClient();
+  try {
+    await reorderJobPhotos(admin, auth.accountId, jobId, paths);
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to reorder photos.' }, { status: 400 });
   }
 }

@@ -433,6 +433,35 @@ export async function removeJobPhoto(
   return data as Job;
 }
 
+export async function reorderJobPhotos(
+  supabase: SupabaseClient,
+  accountId: string,
+  jobId: string,
+  paths: string[]
+): Promise<Job> {
+  const job = await getJob(supabase, accountId, jobId);
+  if (!job) throw new Error('Job not found.');
+
+  const existing = job.photo_paths;
+  const sameLength = paths.length === existing.length;
+  const samePhotos = sameLength && paths.every((path) => existing.includes(path)) && new Set(paths).size === paths.length;
+  if (!samePhotos) throw new Error('Photo order does not match this job.');
+
+  const { data, error } = await supabase
+    .from('jobs')
+    .update({ photo_paths: paths })
+    .eq('account_id', accountId)
+    .eq('id', jobId)
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw error ?? new Error('Unable to reorder job photos.');
+  }
+
+  return data as Job;
+}
+
 // -- Costs CRUD -------------------------------------------------------------
 export async function listCosts(supabase: SupabaseClient, accountId: string, jobId: string): Promise<Cost[]> {
   const { data, error } = await supabase

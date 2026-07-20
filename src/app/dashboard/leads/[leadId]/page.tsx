@@ -92,7 +92,7 @@ function nextScheduledJobLabel(jobs: ScheduledJobOccurrence<Job>[]) {
   return `${nextJob.client_name}${time ? ` at ${time}` : ''}`;
 }
 
-export default async function LeadDetailPage({ params, searchParams }: { params: { leadId: string }; searchParams: { edit?: string; availabilityStart?: string; quoteStartStart?: string } }) {
+export default async function LeadDetailPage({ params, searchParams }: { params: { leadId: string }; searchParams: { edit?: string; details?: string; availabilityStart?: string; quoteStartStart?: string } }) {
   const { supabase, accountId } = await requireOwnerContext();
   await expireStaleLeads(supabase, accountId);
   const [lead, jobs, leads, { data: account }] = await Promise.all([
@@ -105,6 +105,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
 
   const photoUrls = await createLeadPhotoUrls(accountId, lead.photo_paths || []);
   const photos = (lead.photo_paths || []).map((path, index) => ({ path, url: photoUrls[index] })).filter((photo) => photo.url);
+  const defaultPhoto = photos[0];
   const updateLeadDetails = updateLeadDetailsAction.bind(null, lead.id);
   const convertLead = convertLeadAction.bind(null, lead.id);
   const rescheduleLater = clearLeadQuoteVisitAction.bind(null, lead.id);
@@ -113,6 +114,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const convertedJobLabel = lead.status === 'won' ? 'Open job' : 'Open quote';
   const visitLabel = formatVisit(lead.quote_visit);
   const hasScheduledEstimate = Boolean(lead.quote_visit);
+  const workflowState = lead.converted_job ? 'converted' : hasScheduledEstimate ? 'estimateScheduled' : 'newLead';
   const mapSrc = mapEmbedSrc(lead.address);
   const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
   const today = new Date();
@@ -173,6 +175,49 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
     query.set('quoteStartStart', startKey);
     return `/dashboard/leads/${lead.id}?${query.toString()}#lead-estimate`;
   };
+  const editLeadHref = `/dashboard/leads/${lead.id}?edit=client#lead-edit-modal`;
+  const closeEditHref = `/dashboard/leads/${lead.id}#availability-snapshot`;
+  const fullRequestHref = `/dashboard/leads/${lead.id}?details=project#lead-details`;
+  const leadPathSteps = workflowState === 'converted' ? [
+    {
+      label: convertedJobLabel,
+      href: `/dashboard/jobs/${lead.converted_job}`,
+      current: true,
+      complete: true,
+    },
+  ] : workflowState === 'estimateScheduled' ? [
+    {
+      label: 'Schedule estimate',
+      href: '#availability-snapshot',
+      current: false,
+      complete: true,
+    },
+    {
+      label: 'Send Quote & Request Sign-Off',
+      href: '#lead-estimate',
+      current: true,
+      complete: false,
+    },
+    {
+      label: 'Schedule start date',
+      href: '#lead-estimate',
+      current: false,
+      complete: false,
+    },
+  ] : [
+    {
+      label: 'Schedule estimate',
+      href: '#availability-snapshot',
+      current: true,
+      complete: false,
+    },
+    {
+      label: 'Send Quote & Request Sign-Off',
+      href: '#lead-estimate',
+      current: false,
+      complete: false,
+    },
+  ];
   return (
     <main className={`wide-shell workspace-shell ${styles.leadCommandShell}`}>
       <section className={`workspace-hero panel ${styles.leadHero}`}>
@@ -180,7 +225,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           <p className="eyebrow">Lead details</p>
           <div className={styles.leadTitleRow}>
             <h1 className="workspace-title">{lead.name || 'Unnamed lead'}</h1>
-            <Link href={`/dashboard/leads/${lead.id}?edit=client#lead-details`} className="job-title-edit-link">
+            <Link href={editLeadHref} className="job-title-edit-link">
               (edit)
             </Link>
           </div>
@@ -196,88 +241,144 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
               {lead.phone ? <a href={`tel:${lead.phone}`}>{lead.phone}</a> : <strong>Not provided</strong>}
             </div>
             <div className={styles.heroContactItem}>
+              <span>Email</span>
+              {lead.email ? <a href={`mailto:${lead.email}`}>{lead.email}</a> : <strong>Not provided</strong>}
+            </div>
+            <div className={styles.heroContactItem}>
               <span>Project address</span>
               <strong>{lead.address || 'Not provided'}</strong>
             </div>
           </div>
+          <div className={styles.heroRequestSummary}>
+            <Link className={styles.heroDefaultPhoto} href={fullRequestHref} aria-label="Open estimate photo gallery">
+              {defaultPhoto ? (
+                <>
+                  <img src={defaultPhoto.url} alt="Default project photo" />
+                  <span>Default image</span>
+                </>
+              ) : (
+                <>
+                  <strong>+</strong>
+                  <span>Add estimate photos</span>
+                </>
+              )}
+            </Link>
+            <div>
+              <span>Project details</span>
+              <strong>{lead.project_type || 'Project request'}</strong>
+              <p>{lead.message || 'No project details provided yet.'}</p>
+            </div>
+            <div className={styles.heroRequestActions}>
+              <Link className="btn secondary" href={fullRequestHref}>Read full request</Link>
+              <Link className="btn ghost" href={editLeadHref}>Edit details</Link>
+            </div>
+          </div>
           <div className={styles.leadQuickActions}>
-            {!lead.converted_job && !hasScheduledEstimate ? <Link className="btn primary" href="#availability-snapshot">Schedule estimate</Link> : null}
-            {!lead.converted_job ? <Link className="btn secondary" href="#lead-estimate">Send Quote &amp; Request Sign-Off</Link> : null}
-            {!lead.converted_job ? <Link className="btn secondary" href="#lead-estimate">Convert to job &amp; Schedule Start Date</Link> : null}
-            {lead.converted_job ? <Link className="btn primary" href={`/dashboard/jobs/${lead.converted_job}`}>{convertedJobLabel}</Link> : null}
+            {workflowState === 'newLead' ? <Link className="btn primary" href="#availability-snapshot">Schedule estimate</Link> : null}
+            {workflowState === 'estimateScheduled' ? <Link className="btn primary" href="#lead-estimate">Send Quote &amp; Request Sign-Off</Link> : null}
+            {workflowState === 'estimateScheduled' ? <Link className="btn secondary" href="#availability-snapshot">Review scheduled estimate</Link> : null}
+            {workflowState === 'converted' ? <Link className="btn primary" href={`/dashboard/jobs/${lead.converted_job}`}>{convertedJobLabel}</Link> : null}
           </div>
         </div>
         <div className={styles.leadStageCard}>
           <strong>Lead path</strong>
-          {hasScheduledEstimate ? <span className={styles.stageComplete}>Schedule estimate</span> : <Link href="#availability-snapshot">Schedule estimate</Link>}
-          <Link className={['quoted', 'won'].includes(lead.status) ? styles.stageComplete : undefined} href="#lead-estimate">Send Quote &amp; Request Sign-Off</Link>
-          {lead.converted_job ? <Link className={styles.stageComplete} href={`/dashboard/jobs/${lead.converted_job}`}>Schedule start date</Link> : <Link href="#lead-estimate">Schedule start date</Link>}
+          {leadPathSteps.map((step) => (
+            <Link
+              key={step.label}
+              href={step.href}
+              className={[
+                step.complete ? styles.stageComplete : '',
+                step.current ? styles.currentStatusButton : '',
+              ].filter(Boolean).join(' ')}
+              aria-current={step.current ? 'step' : undefined}
+            >
+              {step.label}
+            </Link>
+          ))}
         </div>
       </section>
+
+      {searchParams.edit === 'client' ? (
+        <div id="lead-edit-modal" className={styles.modalBackdrop} role="dialog" aria-modal="true" aria-labelledby="leadEditTitle">
+          <section className={styles.editModalCard}>
+            <div className={styles.editModalHeader}>
+              <div>
+                <p className="eyebrow">Edit lead</p>
+                <h2 id="leadEditTitle">Client &amp; request details</h2>
+              </div>
+              <Link href={closeEditHref} className={styles.modalCloseButton} aria-label="Close edit details">x</Link>
+            </div>
+            <form action={updateLeadDetails} className={`form-grid ${styles.leadEditForm}`}>
+              <input type="hidden" name="projectType" value={lead.project_type ?? ''} />
+              <input type="hidden" name="estimatedHours" value={lead.estimated_hours ?? ''} />
+              <div className="field">
+                <label htmlFor="leadName">Client name</label>
+                <input id="leadName" name="name" defaultValue={lead.name ?? ''} required />
+              </div>
+              <div className="field">
+                <label htmlFor="leadPhone">Phone</label>
+                <input id="leadPhone" name="phone" type="tel" defaultValue={lead.phone ?? ''} />
+              </div>
+              <div className="field">
+                <label htmlFor="leadEmail">Email</label>
+                <input id="leadEmail" name="email" type="email" defaultValue={lead.email ?? ''} />
+              </div>
+              <div className="field">
+                <label htmlFor="leadAddress">Project address</label>
+                <input id="leadAddress" name="address" defaultValue={lead.address ?? ''} />
+              </div>
+              <div className="field full">
+                <label htmlFor="leadMessage">Project details</label>
+                <textarea id="leadMessage" name="message" rows={6} defaultValue={lead.message ?? ''} />
+              </div>
+              <div className={`field full ${styles.editModalActions}`}>
+                <Link href={closeEditHref} className="btn secondary">Cancel</Link>
+                <SaveButton>Save lead details</SaveButton>
+              </div>
+            </form>
+          </section>
+        </div>
+      ) : null}
 
       <div className={styles.detailGrid}>
         <section className={styles.leadContextStack}>
           <section id="lead-details" className={`panel workspace-section-card ${styles.detailSection}`}>
-            <div className="section-heading workspace-section-heading">
-              <p className="eyebrow">Client & request</p>
-              <h2>{lead.project_type || 'Project request'}</h2>
-            </div>
-            <div className={styles.contactGrid}>
-              <div className={styles.dataBlock}><span>Email</span>{lead.email ? <a href={`mailto:${lead.email}`}>{lead.email}</a> : <p>Not provided</p>}</div>
-            </div>
-            <div className={styles.dataBlock}><span>Project details</span><p>{lead.message || 'Not provided'}</p></div>
-            <details className={styles.clientRequestDetails} open={searchParams.edit === 'client'}>
+            <details className={styles.clientRequestDetails} open={searchParams.details === 'project'}>
               <summary className={styles.clientRequestSummary}>
-                <span>{mapSrc ? 'Map and edit details' : 'Edit details'}</span>
+                <span>Read full request &amp; photos</span>
               </summary>
               <div className={styles.clientRequestBody}>
+                <div className="section-heading workspace-section-heading">
+                  <p className="eyebrow">Client &amp; request</p>
+                  <h2>{lead.project_type || 'Project request'}</h2>
+                </div>
+                <div className={styles.dataBlock}><span>Project details</span><p>{lead.message || 'Not provided'}</p></div>
                 {mapSrc ? (
                   <div className={styles.leadMapCard}>
                     <div><span>Job Location</span><strong>{lead.address}</strong></div>
                     <iframe title={`Map showing ${lead.address}`} src={mapSrc} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
                   </div>
                 ) : null}
-                <form action={updateLeadDetails} className={`form-grid ${styles.leadEditForm}`}>
-                  <input type="hidden" name="projectType" value={lead.project_type ?? ''} />
-                  <input type="hidden" name="estimatedHours" value={lead.estimated_hours ?? ''} />
-                  <div className="field">
-                    <label htmlFor="leadName">Client name</label>
-                    <input id="leadName" name="name" defaultValue={lead.name ?? ''} required />
+                <div className={styles.inlinePhotoSection}>
+                  <div className="section-heading workspace-section-heading">
+                    <p className="eyebrow">Estimate photos</p>
+                    <h2>Photo gallery</h2>
                   </div>
-                  <div className="field">
-                    <label htmlFor="leadPhone">Phone</label>
-                    <input id="leadPhone" name="phone" type="tel" defaultValue={lead.phone ?? ''} />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="leadEmail">Email</label>
-                    <input id="leadEmail" name="email" type="email" defaultValue={lead.email ?? ''} />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="leadAddress">Project address</label>
-                    <input id="leadAddress" name="address" defaultValue={lead.address ?? ''} />
-                  </div>
-                  <div className="field full">
-                    <label htmlFor="leadMessage">Project details</label>
-                    <textarea id="leadMessage" name="message" rows={4} defaultValue={lead.message ?? ''} />
-                  </div>
-                  <div className="field full">
-                    <SaveButton>Save lead details</SaveButton>
-                  </div>
-                </form>
+                  <PhotoGallery
+                    entityId={lead.id}
+                    entityField="leadId"
+                    uploadUrl="/api/lead-photos"
+                    initialPhotos={photos}
+                    emptyLabel="No estimate photos yet. Add photos while you are at the visit."
+                    deleteConfirmMessage="Remove this photo from the lead? This cannot be undone."
+                    uploadLabel="+ Add estimate photos"
+                    helperText="Use this gallery during the estimate visit. Drag a photo into the first position to make it the default image shown in the lead header."
+                    coverMode
+                    reorderEnabled
+                  />
+                </div>
               </div>
             </details>
-          </section>
-
-          <section className={`panel workspace-section-card ${styles.detailSection}`}>
-            <div className="section-heading workspace-section-heading"><p className="eyebrow">Attachments</p><h2>Project photos</h2></div>
-            <PhotoGallery
-              entityId={lead.id}
-              entityField="leadId"
-              uploadUrl="/api/lead-photos"
-              initialPhotos={photos}
-              emptyLabel="No photos yet. Add some from the field or from the client."
-              deleteConfirmMessage="Remove this photo from the lead? This cannot be undone."
-            />
           </section>
 
           <section className={`panel workspace-section-card ${styles.detailSection}`}>
@@ -302,6 +403,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
         <aside className={styles.actionPanel}>
           {!lead.converted_job && !hasScheduledEstimate ? (
             <LeadAvailabilityScheduler
+              className={styles.primaryActionCard}
               availability={availabilityCards}
               leadPhone={lead.phone ?? ''}
               previousHref={availabilityHref(previousAvailabilityStart)}
@@ -318,7 +420,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           ) : null}
 
           {!lead.converted_job ? (
-            <section id="lead-estimate" className="panel workspace-section-card">
+            <section id="lead-estimate" className={`panel workspace-section-card ${hasScheduledEstimate ? styles.primaryActionCard : ''}`}>
               <div className="section-heading workspace-section-heading"><p className="eyebrow">Step 2</p><h2>Send Quote &amp; Request Sign-Off</h2></div>
               <p>Enter the amount and send the initial quote. Job start options can stay tucked away until you need them.</p>
               <form action={convertLead} className={styles.actionForm}>

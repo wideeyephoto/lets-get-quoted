@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient, getCurrentMembership } from '@/lib/auth';
-import { addLeadPhotos, getLead, removeLeadPhoto } from '@/lib/leads';
+import { addLeadPhotos, getLead, removeLeadPhoto, reorderLeadPhotos } from '@/lib/leads';
 import { createLeadPhotoUrls, deleteLeadPhotos, uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 
@@ -65,5 +65,25 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to remove photo.' }, { status: 400 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  const auth = await requireOwnerMembership();
+  if (auth.error) return auth.error;
+
+  const body = await request.json().catch(() => null);
+  const leadId = body?.leadId;
+  const paths = body?.paths;
+  if (typeof leadId !== 'string' || !leadId || !Array.isArray(paths) || !paths.every((path) => typeof path === 'string')) {
+    return NextResponse.json({ error: 'Missing lead or photo order.' }, { status: 400 });
+  }
+
+  const admin = createAdminClient();
+  try {
+    await reorderLeadPhotos(admin, auth.accountId, leadId, paths);
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to reorder photos.' }, { status: 400 });
   }
 }

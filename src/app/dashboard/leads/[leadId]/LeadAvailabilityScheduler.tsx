@@ -48,6 +48,7 @@ type Props = {
   sendQuoteVisitOptionsAction: FormAction;
   clearVisitAction: VoidAction;
   visitSummary: VisitSummary | null;
+  className?: string;
 };
 
 function CalendarSendButton({ disabled }: { disabled: boolean }) {
@@ -71,6 +72,7 @@ export default function LeadAvailabilityScheduler({
   sendQuoteVisitOptionsAction,
   clearVisitAction,
   visitSummary,
+  className,
 }: Props) {
   const [selectedOptions, setSelectedOptions] = useState<SelectedOption[]>([]);
 
@@ -106,7 +108,7 @@ export default function LeadAvailabilityScheduler({
   }
 
   return (
-    <section id="availability-snapshot" className={`panel workspace-section-card ${styles.calendarCard}`}>
+    <section id="availability-snapshot" className={`panel workspace-section-card ${styles.calendarCard}${className ? ` ${className}` : ''}`}>
       <div className={styles.calendarSurfaceHeader}>
         <div className="section-heading workspace-section-heading">
           <p className="eyebrow">Calendar</p>

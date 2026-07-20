@@ -698,6 +698,10 @@ export default async function JobDetailPage({
                 uploadUrl="/api/job-photos"
                 initialPhotos={jobPhotos}
                 emptyLabel="No photos yet. Add progress shots or before/after photos."
+                uploadLabel="+ Add job photos"
+                helperText="The first photo is the default image. Drag photos to reorder them."
+                coverMode
+                reorderEnabled
               />
             </div>
 

@@ -15,15 +15,31 @@ type PhotoGalleryProps = {
   initialPhotos: GalleryPhoto[];
   emptyLabel?: string;
   deleteConfirmMessage?: string;
+  uploadLabel?: string;
+  helperText?: string;
+  coverMode?: boolean;
+  reorderEnabled?: boolean;
 };
 
-export default function PhotoGallery({ entityId, entityField, uploadUrl, initialPhotos, emptyLabel, deleteConfirmMessage }: PhotoGalleryProps) {
+export default function PhotoGallery({
+  entityId,
+  entityField,
+  uploadUrl,
+  initialPhotos,
+  emptyLabel,
+  deleteConfirmMessage,
+  uploadLabel = '+ Add photos',
+  helperText,
+  coverMode = false,
+  reorderEnabled = false,
+}: PhotoGalleryProps) {
   const [photos, setPhotos] = useState<GalleryPhoto[]>(initialPhotos);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [message, setMessage] = useState<string | null>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [zoomed, setZoomed] = useState(false);
+  const [draggedPath, setDraggedPath] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -38,6 +54,10 @@ export default function PhotoGallery({ entityId, entityField, uploadUrl, initial
     window.addEventListener('keydown', handleKeydown);
     return () => window.removeEventListener('keydown', handleKeydown);
   }, [lightboxIndex, photos.length]);
+
+  useEffect(() => {
+    setPhotos(initialPhotos);
+  }, [initialPhotos]);
 
   async function uploadOne(file: File) {
     const compressed = await compressImage(file, 2000, 0.84);
@@ -100,13 +120,59 @@ export default function PhotoGallery({ entityId, entityField, uploadUrl, initial
     }
   }
 
+  async function persistPhotoOrder(nextPhotos: GalleryPhoto[], previousPhotos: GalleryPhoto[]) {
+    if (!reorderEnabled) return;
+    setMessage('Saving photo order...');
+    try {
+      const response = await fetch(uploadUrl, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [entityField]: entityId, paths: nextPhotos.map((photo) => photo.path) }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || 'Unable to save photo order.');
+      setMessage(nextPhotos[0] ? 'Default image updated.' : null);
+    } catch (error) {
+      setPhotos(previousPhotos);
+      setMessage(error instanceof Error ? error.message : 'Unable to save photo order.');
+    }
+  }
+
+  function reorderPhotos(sourcePath: string, targetPath: string) {
+    if (sourcePath === targetPath) return;
+
+    const previousPhotos = photos;
+    const sourceIndex = previousPhotos.findIndex((photo) => photo.path === sourcePath);
+    const targetIndex = previousPhotos.findIndex((photo) => photo.path === targetPath);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+
+    const nextPhotos = [...previousPhotos];
+    const [movedPhoto] = nextPhotos.splice(sourceIndex, 1);
+    nextPhotos.splice(targetIndex, 0, movedPhoto);
+    setPhotos(nextPhotos);
+    void persistPhotoOrder(nextPhotos, previousPhotos);
+  }
+
+  function makeDefault(path: string) {
+    const firstPhoto = photos[0];
+    if (!firstPhoto || firstPhoto.path === path) return;
+
+    const previousPhotos = photos;
+    const selectedPhoto = previousPhotos.find((photo) => photo.path === path);
+    if (!selectedPhoto) return;
+
+    const nextPhotos = [selectedPhoto, ...previousPhotos.filter((photo) => photo.path !== path)];
+    setPhotos(nextPhotos);
+    void persistPhotoOrder(nextPhotos, previousPhotos);
+  }
+
   const activePhoto = lightboxIndex !== null ? photos[lightboxIndex] : null;
 
   return (
-    <div className="photo-gallery">
+    <div className={`photo-gallery${coverMode ? ' photo-gallery-cover-mode' : ''}`}>
       <div className="photo-gallery-toolbar">
         <label className="btn secondary photo-upload-btn">
-          {isUploading ? `Uploading ${uploadProgress}%` : '+ Add photos'}
+          {isUploading ? `Uploading ${uploadProgress}%` : uploadLabel}
           <input
             ref={inputRef}
             type="file"
@@ -116,6 +182,7 @@ export default function PhotoGallery({ entityId, entityField, uploadUrl, initial
             onChange={(event) => handleFiles(event.target.files)}
           />
         </label>
+        {helperText ? <span className="photo-gallery-helper">{helperText}</span> : null}
         {message ? <span className="photo-gallery-message">{message}</span> : null}
       </div>
 
@@ -124,10 +191,40 @@ export default function PhotoGallery({ entityId, entityField, uploadUrl, initial
       ) : (
         <div className="photo-gallery-grid">
           {photos.map((photo, index) => (
-            <div className="photo-thumb" key={photo.path}>
+            <div
+              className={`photo-thumb${coverMode && index === 0 ? ' default-photo-thumb' : ''}${draggedPath === photo.path ? ' dragging-photo-thumb' : ''}`}
+              draggable={reorderEnabled}
+              key={photo.path}
+              onDragStart={(event) => {
+                if (!reorderEnabled) return;
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', photo.path);
+                setDraggedPath(photo.path);
+              }}
+              onDragEnd={() => setDraggedPath(null)}
+              onDragOver={(event) => {
+                if (!reorderEnabled) return;
+                event.preventDefault();
+                event.dataTransfer.dropEffect = 'move';
+              }}
+              onDrop={(event) => {
+                if (!reorderEnabled) return;
+                event.preventDefault();
+                const sourcePath = event.dataTransfer.getData('text/plain') || draggedPath;
+                setDraggedPath(null);
+                if (sourcePath) reorderPhotos(sourcePath, photo.path);
+              }}
+            >
+              {coverMode && index === 0 ? <span className="photo-default-badge">Default image</span> : null}
+              {reorderEnabled ? <span className="photo-drag-handle" aria-hidden="true">Drag</span> : null}
               <button type="button" className="photo-thumb-open" onClick={() => { setLightboxIndex(index); setZoomed(false); }}>
                 <img src={photo.url} alt={`Photo ${index + 1}`} />
               </button>
+              {coverMode && index > 0 ? (
+                <button type="button" className="photo-make-default" onClick={() => makeDefault(photo.path)}>
+                  Make default
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="photo-thumb-remove"

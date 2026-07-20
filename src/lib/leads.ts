@@ -195,6 +195,32 @@ export async function removeLeadPhoto(
   return data as Lead;
 }
 
+export async function reorderLeadPhotos(
+  supabase: SupabaseClient,
+  accountId: string,
+  leadId: string,
+  paths: string[]
+): Promise<Lead> {
+  const lead = await getLead(supabase, accountId, leadId);
+  if (!lead) throw new Error('Lead not found.');
+
+  const existing = lead.photo_paths;
+  const sameLength = paths.length === existing.length;
+  const samePhotos = sameLength && paths.every((path) => existing.includes(path)) && new Set(paths).size === paths.length;
+  if (!samePhotos) throw new Error('Photo order does not match this lead.');
+
+  const { data, error } = await supabase
+    .from('leads')
+    .update({ photo_paths: paths, updated_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('id', leadId)
+    .select('*')
+    .single();
+
+  if (error || !data) throw error ?? new Error('Unable to reorder lead photos.');
+  return data as Lead;
+}
+
 export async function updateLeadStatus(
   supabase: SupabaseClient,
   accountId: string,
