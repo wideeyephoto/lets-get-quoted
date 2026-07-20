@@ -9,7 +9,7 @@ import { clearLeadQuoteVisit, convertLeadToJob, createLead, getLead, scheduleLea
 import { uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
-import { recordSmsConsent, sendLeadQuoteVisitOptionsSms, sendLeadQuoteVisitSms } from '@/lib/sms';
+import { recordSmsConsent, sendClientJobDashboardSms, sendLeadQuoteVisitOptionsSms, sendLeadQuoteVisitSms } from '@/lib/sms';
 
 function optionalText(value: FormDataEntryValue | null): string | null {
   const text = (value ?? '').toString().trim();
@@ -177,7 +177,12 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
   const amount = Number(formData.get('quotedAmount'));
   const quotedAmount = Number.isFinite(amount) && amount >= 0 ? amount : 0;
   const estimatedHours = optionalAmount(formData.get('estimatedHours'));
+  const sendClientText = formData.get('sendClientText') === 'on';
   const { supabase, accountId } = await requireOwnerContext();
+  const lead = sendClientText ? await getLead(supabase, accountId, leadId) : null;
+  const clientPhone = sendClientText ? normalizeUsPhone(lead?.phone ?? '') : null;
+  if (sendClientText && !clientPhone) throw new Error('Add a valid client phone number before texting the quote sign-off link.');
+
   const job = await convertLeadToJob(supabase, accountId, leadId, quotedAmount, estimatedHours);
   await createJobFeedEvent(supabase, accountId, job.id, {
     kind: 'job_created',
@@ -188,6 +193,18 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
     sourceId: job.id,
   });
   const token = await createClientJobAccessToken(supabase, accountId, job.id, { clientPhone: job.client_phone, clientEmail: job.client_email });
+
+  if (sendClientText && clientPhone) {
+    const { data: account } = await supabase.from('accounts').select('business_name').eq('id', accountId).single();
+    await recordSmsConsent(accountId, clientPhone, 'client_job_dashboard');
+    await sendClientJobDashboardSms({
+      phone: clientPhone,
+      businessName: account?.business_name || "Let's Get Quoted contractor",
+      jobRef: job.ref,
+      token,
+    });
+  }
+
   const quickBooking = scheduleOptionsFromForm(formData);
   if (quickBooking.hasInput) {
     const clientPhone = normalizeUsPhone(job.client_phone ?? '');

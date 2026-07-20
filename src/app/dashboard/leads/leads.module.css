@@ -71,6 +71,14 @@
 .actionForm :global(.sms-consent-check) { display: grid; grid-template-columns: 17px minmax(0, 1fr); align-items: start; }
 .actionForm :global(.sms-consent-check input) { width: 17px; min-height: 17px; height: 17px; padding: 0; }
 .actionForm option { background: #101c2b; }
+.quoteAmountField { display: grid; gap: .5rem; padding: .8rem; border: 1px solid rgba(255,209,102,.3); border-radius: 14px; background: radial-gradient(circle at top right, rgba(255,209,102,.18), transparent 44%), rgba(255,255,255,.04); box-shadow: 0 16px 38px rgba(255,122,33,.12); }
+.quoteAmountField label { color: #ffd166; font-size: .86rem; }
+.quoteAmountInput { border-color: rgba(255,209,102,.52); border-radius: 12px; }
+.quoteAmountInput span { min-width: 3rem; font-size: 1.3rem; }
+.actionForm .quoteAmountInput input { min-height: 4.25rem; border: 0; border-radius: 0; background: transparent; color: #ffd166; box-shadow: none; font-size: 1.75rem; font-weight: 900; letter-spacing: 0; }
+.quoteTextCheck { border-color: rgba(25,214,174,.24); background: rgba(25,214,174,.07); }
+.quoteTextCheck strong { display: block; color: #f7f5ef; font-size: .88rem; }
+.quoteTextCheck small { display: block; margin-top: .15rem; color: rgba(255,255,255,.56); font-size: .76rem; line-height: 1.35; }
 .optionalScheduleDetails { display: grid; gap: .65rem; margin-top: .25rem; padding: .75rem; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: rgba(255,255,255,.035); }
 .optionalScheduleDetails summary { color: #ffd166; font-size: .78rem; font-weight: 900; cursor: pointer; }
 .optionalScheduleDetails p { margin: 0; color: rgba(255,255,255,.58); font-size: .8rem; line-height: 1.45; }

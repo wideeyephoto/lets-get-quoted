@@ -321,10 +321,22 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
               <div className="section-heading workspace-section-heading"><p className="eyebrow">Step 2</p><h2>Send quote / estimate</h2></div>
               <p>Enter the amount and send the initial quote. Job start options can stay tucked away until you need them.</p>
               <form action={convertLead} className={styles.actionForm}>
-                <label htmlFor="quotedAmount">Quoted amount ($)</label>
-                <input id="quotedAmount" name="quotedAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+                <div className={styles.quoteAmountField}>
+                  <label htmlFor="quotedAmount">Quoted amount</label>
+                  <div className={`currency-input ${styles.quoteAmountInput}`}>
+                    <span aria-hidden="true">$</span>
+                    <input id="quotedAmount" name="quotedAmount" type="number" min="0" step="0.01" inputMode="decimal" placeholder="0.00" />
+                  </div>
+                </div>
                 <label htmlFor="estimatedHours">Estimated hours</label>
                 <input id="estimatedHours" name="estimatedHours" type="number" min="0" step="0.25" defaultValue={lead.estimated_hours ?? ''} placeholder="16" />
+                <label className={`sms-consent-check ${styles.quoteTextCheck}`}>
+                  <input name="sendClientText" type="checkbox" defaultChecked />
+                  <span>
+                    <strong>Text quote and sign-off link</strong>
+                    <small>Send the client their quote dashboard link. Reply STOP to opt out.</small>
+                  </span>
+                </label>
                 <details className={styles.optionalScheduleDetails}>
                   <summary>Suggest 3 job start times</summary>
                   <p>Optional. Text three service options with the quote so the client can book quickly.</p>
@@ -345,7 +357,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                     <span>The client agreed to receive transactional scheduling texts. Required only when sending quick booking options. Reply STOP to opt out.</span>
                   </label>
                 </details>
-                <SaveButton>Send quote</SaveButton>
+                <SaveButton>Send Quote and Request Sign Off</SaveButton>
               </form>
             </section>
           ) : null}
