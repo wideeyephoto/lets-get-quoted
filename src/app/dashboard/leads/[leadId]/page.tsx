@@ -6,16 +6,10 @@ import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
 import { expireStaleLeads, formatElapsedTime, formatLeadSource, getLead, listLeads, type Lead, type LeadQuoteVisit } from '@/lib/leads';
 import { expandScheduledJobs, formatJobSchedule, formatJobTime, listJobs, type Job, type ScheduledJobOccurrence } from '@/lib/jobs';
-import { clearLeadQuoteVisitAction, convertLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, updateLeadDetailsAction, updateLeadStatusAction } from '../actions';
+import { clearLeadQuoteVisitAction, convertLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, updateLeadDetailsAction } from '../actions';
 import SaveButton from '@/components/save-button';
 import TimeSlotSelect from '@/components/time-slot-select';
 import styles from '../leads.module.css';
-
-function smsHref(phone: string | null, name: string | null) {
-  if (!phone) return null;
-  const firstName = name?.split(' ')[0] || 'there';
-  return `sms:${phone}?&body=${encodeURIComponent(`Hi ${firstName}, this is your contractor from Let's Get Quoted. I received your project request and wanted to follow up.`)}`;
-}
 
 function mapEmbedSrc(address: string | null) {
   if (!address) return null;
@@ -88,10 +82,8 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const rescheduleLater = clearLeadQuoteVisitAction.bind(null, lead.id);
   const scheduleVisit = scheduleLeadQuoteVisitAction.bind(null, lead.id);
   const sendQuoteVisitOptions = sendLeadQuoteVisitOptionsAction.bind(null, lead.id);
-  const markLost = updateLeadStatusAction.bind(null, lead.id, 'lost');
   const convertedJobLabel = lead.status === 'won' ? 'Open job' : 'Open quote';
   const visitLabel = formatVisit(lead.quote_visit);
-  const textLink = smsHref(lead.phone, lead.name);
   const mapSrc = mapEmbedSrc(lead.address);
   const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
   const availability = buildAvailability(jobs, leads, scheduleDayHours);
@@ -123,6 +115,13 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           <div className={styles.leadQuickActions}>
             {!lead.converted_job ? <Link className="btn primary" href="#lead-quote-scheduling">Schedule quote</Link> : null}
             {!lead.converted_job ? <Link className="btn secondary" href="#lead-estimate">Provide estimate</Link> : null}
+            {!lead.converted_job ? (
+              <form action={convertLead}>
+                <input type="hidden" name="quotedAmount" value="0" />
+                <input type="hidden" name="estimatedHours" value={lead.estimated_hours ?? ''} />
+                <button className="btn secondary" type="submit">Convert to job</button>
+              </form>
+            ) : null}
             {lead.converted_job ? <Link className="btn primary" href={`/dashboard/jobs/${lead.converted_job}`}>{convertedJobLabel}</Link> : null}
           </div>
         </div>
@@ -350,8 +349,6 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
               </form>
             </section>
           ) : null}
-
-          {!lead.converted_job ? <section className={`panel workspace-section-card ${styles.quickLeadActions}`}><div className="section-heading workspace-section-heading"><p className="eyebrow">Lead actions</p><h2>Follow up</h2></div><div className={styles.statusQuickActions}>{textLink ? <a className="btn secondary" href={textLink}>Text client</a> : null}{lead.email ? <a className="btn secondary" href={`mailto:${lead.email}`}>Email client</a> : null}<form action={convertLead}><input type="hidden" name="quotedAmount" value="0" /><input type="hidden" name="estimatedHours" value={lead.estimated_hours ?? ''} /><button className="btn secondary" type="submit">Convert to job</button></form><form action={markLost}><button className="btn ghost" type="submit">Mark lost</button></form></div></section> : null}
         </aside>
       </div>
     </main>

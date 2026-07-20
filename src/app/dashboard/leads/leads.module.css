@@ -30,6 +30,7 @@
 .leadTitleRow h1 { margin-right: 0; }
 .leadTitleRow form { flex: 0 0 auto; }
 .leadQuickActions { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: 1.15rem; }
+.leadQuickActions form { margin: 0; }
 .leadStageCard { display: grid; gap: .55rem; align-self: center; padding: .85rem; border: 1px solid rgba(255,255,255,.14); border-radius: 12px; background: rgba(255,255,255,.045); }
 .leadStageCard strong { color: #ffd166; font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; }
 .leadStageCard a { position: relative; display: flex; align-items: center; gap: .55rem; width: 100%; min-height: 34px; padding: .55rem .65rem; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: rgba(255,255,255,.045); color: rgba(255,255,255,.66); font-size: .78rem; font-weight: 800; text-align: left; text-decoration: none; }
@@ -107,12 +108,8 @@
 .timelineList p { display: grid; gap: .15rem; margin: 0; }
 .timelineList strong { color: #fff; font-size: .9rem; }
 .timelineList small { color: rgba(255,255,255,.55); }
-.quickLeadActions .statusQuickActions { padding-top: 0; }
-.statusQuickActions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; padding-top: .5rem; }
-.statusQuickActions form { min-width: 0; }
-.statusQuickActions button, .statusQuickActions a { width: 100%; justify-content: center; }
 .currentStatusButton { border-color: rgba(255,209,102,.48) !important; background: rgba(255,209,102,.12) !important; color: #ffd166 !important; }
 .source { display: inline-flex; width: fit-content; padding: .3rem .55rem; border-radius: 4px; background: rgba(255,209,102,.12); color: #ffd166; font-size: .72rem; font-weight: 700; text-transform: capitalize; }
 @media (max-width: 1240px) { .leadHero, .detailGrid { grid-template-columns: 1fr; } .leadStageCard { grid-template-columns: repeat(4, minmax(0, 1fr)); } .leadStageCard strong { grid-column: 1 / -1; } .leadStageCard span { min-height: 44px; } .actionPanel { position: static; } }
 @media (max-width: 720px) { .quoteVisitActions { grid-template-columns: 1fr; } .quoteVisitActions :global(.schedule-inline-form) { grid-template-columns: 1fr; } .quoteVisitActions :global(.schedule-preset-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 640px) { .board { grid-template-columns: 1fr; overflow: visible; } .column { min-height: 0; } .contactGrid, .photoGrid, .availabilityGrid, .statusQuickActions, .leadStageCard { grid-template-columns: 1fr; } .leadTitleRow { display: grid; } }
+@media (max-width: 640px) { .board { grid-template-columns: 1fr; overflow: visible; } .column { min-height: 0; } .contactGrid, .photoGrid, .availabilityGrid, .leadStageCard { grid-template-columns: 1fr; } .leadTitleRow { display: grid; } }
