@@ -115,7 +115,7 @@ export default function QuoteStartDateCalendar({
               <div className={styles.quoteStartDayActions}>
                 <TimeSlotSelect id={`quoteSchedulePickerTime-${day.key}`} name={`quoteSchedulePickerTime-${day.key}`} defaultValue="09:00" />
                 <button type="button" className={`btn secondary ${styles.quoteStartAddButton}`} disabled={!hasSelectionRoom} onClick={(event) => addOption(event, day)}>
-                  {isSelected ? 'Update option' : 'Add option'}
+                  {isSelected ? 'Selected' : '+ Add'}
                 </button>
               </div>
             </div>

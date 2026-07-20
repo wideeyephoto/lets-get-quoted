@@ -83,7 +83,7 @@ export default function ClientScheduleOptionsCalendar({ availability }: { availa
               <div className="client-schedule-day-actions">
                 <TimeSlotSelect id={`schedulePickerTime-${day.key}`} name={`schedulePickerTime-${day.key}`} defaultValue="09:00" />
                 <button type="button" className="btn secondary client-schedule-add-button" disabled={!hasSelectionRoom} onClick={(event) => addOption(event, day)}>
-                  {isSelected ? 'Update option' : 'Add option'}
+                  {isSelected ? 'Selected' : '+ Add'}
                 </button>
               </div>
             </div>

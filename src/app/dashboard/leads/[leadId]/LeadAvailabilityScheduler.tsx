@@ -169,7 +169,7 @@ export default function LeadAvailabilityScheduler({
                   <div className={styles.availabilityActionButtons}>
                     <button className="btn primary" type="submit">{day.bookingLabel}</button>
                     <button type="button" className={`btn secondary ${styles.clientOptionButton}`} disabled={!hasSelectionRoom} onClick={(event) => addClientOption(event, day)}>
-                      {isSelected ? 'Update +' : '+ Add'}
+                      {isSelected ? 'Selected' : '+ Add'}
                     </button>
                   </div>
                 </div>
