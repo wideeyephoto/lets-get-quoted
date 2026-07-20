@@ -41,6 +41,8 @@ export default function PhotoGallery({
   const [zoomed, setZoomed] = useState(false);
   const [draggedPath, setDraggedPath] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dragOriginalPhotosRef = useRef<GalleryPhoto[] | null>(null);
+  const didDropRef = useRef(false);
 
   useEffect(() => {
     if (lightboxIndex === null) return;
@@ -138,19 +140,17 @@ export default function PhotoGallery({
     }
   }
 
-  function reorderPhotos(sourcePath: string, targetPath: string) {
-    if (sourcePath === targetPath) return;
+  function moveDraggedPhotoOver(targetPath: string) {
+    setPhotos((current) => {
+      const sourceIndex = current.findIndex((photo) => photo.path === draggedPath);
+      const targetIndex = current.findIndex((photo) => photo.path === targetPath);
+      if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return current;
 
-    const previousPhotos = photos;
-    const sourceIndex = previousPhotos.findIndex((photo) => photo.path === sourcePath);
-    const targetIndex = previousPhotos.findIndex((photo) => photo.path === targetPath);
-    if (sourceIndex < 0 || targetIndex < 0) return;
-
-    const nextPhotos = [...previousPhotos];
-    const [movedPhoto] = nextPhotos.splice(sourceIndex, 1);
-    nextPhotos.splice(targetIndex, 0, movedPhoto);
-    setPhotos(nextPhotos);
-    void persistPhotoOrder(nextPhotos, previousPhotos);
+      const next = [...current];
+      const [movedPhoto] = next.splice(sourceIndex, 1);
+      next.splice(targetIndex, 0, movedPhoto);
+      return next;
+    });
   }
 
   function makeDefault(path: string) {
@@ -199,20 +199,31 @@ export default function PhotoGallery({
                 if (!reorderEnabled) return;
                 event.dataTransfer.effectAllowed = 'move';
                 event.dataTransfer.setData('text/plain', photo.path);
+                dragOriginalPhotosRef.current = photos;
+                didDropRef.current = false;
                 setDraggedPath(photo.path);
               }}
-              onDragEnd={() => setDraggedPath(null)}
+              onDragEnd={() => {
+                if (!didDropRef.current && dragOriginalPhotosRef.current) {
+                  setPhotos(dragOriginalPhotosRef.current);
+                }
+                dragOriginalPhotosRef.current = null;
+                setDraggedPath(null);
+              }}
               onDragOver={(event) => {
-                if (!reorderEnabled) return;
+                if (!reorderEnabled || !draggedPath) return;
                 event.preventDefault();
                 event.dataTransfer.dropEffect = 'move';
+                if (draggedPath !== photo.path) moveDraggedPhotoOver(photo.path);
               }}
               onDrop={(event) => {
                 if (!reorderEnabled) return;
                 event.preventDefault();
-                const sourcePath = event.dataTransfer.getData('text/plain') || draggedPath;
+                didDropRef.current = true;
+                const previousPhotos = dragOriginalPhotosRef.current;
+                dragOriginalPhotosRef.current = null;
                 setDraggedPath(null);
-                if (sourcePath) reorderPhotos(sourcePath, photo.path);
+                if (previousPhotos) void persistPhotoOrder(photos, previousPhotos);
               }}
             >
               {coverMode && index === 0 ? <span className="photo-default-badge">Default image</span> : null}

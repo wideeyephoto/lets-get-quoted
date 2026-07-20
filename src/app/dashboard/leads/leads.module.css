@@ -35,11 +35,17 @@
 .heroContactItem strong, .heroContactItem a { overflow: hidden; color: #f7f5ef; font-size: .94rem; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
 .heroContactItem a { color: #ffd166; text-decoration: none; }
 .heroRequestSummary { display: grid; grid-template-columns: 112px minmax(0, 1fr) max-content; gap: .85rem; align-items: center; margin-top: .75rem; padding: .85rem; border: 1px solid rgba(255,209,102,.16); border-radius: 12px; background: rgba(255,209,102,.055); }
+.heroPhotoStack { display: grid; gap: .4rem; width: 112px; }
 .heroDefaultPhoto { position: relative; display: grid; place-items: center; overflow: hidden; width: 112px; aspect-ratio: 4 / 3; border: 1px solid rgba(255,209,102,.28); border-radius: 10px; background: radial-gradient(circle at 30% 20%, rgba(255,209,102,.18), transparent 48%), rgba(255,255,255,.045); color: #ffd166; text-decoration: none; }
 .heroDefaultPhoto img { width: 100%; height: 100%; object-fit: cover; }
 .heroDefaultPhoto > strong { color: rgba(255,255,255,.72); font-size: 1.55rem; line-height: 1; }
-.heroDefaultPhoto > span { position: absolute; left: .42rem; right: .42rem; bottom: .42rem; min-height: 22px; padding: .22rem .38rem; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; background: rgba(5,10,18,.76); color: #ffd166; font-size: .58rem; font-weight: 900; letter-spacing: .06em; text-align: center; text-transform: uppercase; backdrop-filter: blur(8px); }
 .heroDefaultPhoto:hover, .heroDefaultPhoto:focus-visible { border-color: rgba(255,209,102,.52); outline: none; }
+.heroPhotoMinis { display: grid; grid-template-columns: repeat(3, 1fr); gap: .3rem; }
+.heroMiniPhoto { display: block; overflow: hidden; aspect-ratio: 1 / 1; border: 1px solid rgba(255,209,102,.24); border-radius: 6px; }
+.heroMiniPhoto img { width: 100%; height: 100%; object-fit: cover; }
+.heroMiniPhoto:hover, .heroMiniPhoto:focus-visible { border-color: rgba(255,209,102,.5); outline: none; }
+.heroAddMiniPhoto { display: grid; place-items: center; aspect-ratio: 1 / 1; border: 1px dashed rgba(255,209,102,.4); border-radius: 6px; background: rgba(255,209,102,.06); color: #ffd166; font-size: .56rem; font-weight: 800; line-height: 1.1; text-align: center; text-decoration: none; }
+.heroAddMiniPhoto:hover, .heroAddMiniPhoto:focus-visible { border-color: rgba(255,209,102,.68); outline: none; }
 .heroRequestSummary span { display: block; margin-bottom: .25rem; color: rgba(255,255,255,.48); font-size: .66rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .heroRequestSummary strong { color: #ffd166; font-size: .9rem; }
 .heroRequestSummary p { display: -webkit-box; overflow: hidden; margin: .3rem 0 0; color: rgba(255,255,255,.72); line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
@@ -60,25 +66,9 @@
 .statusPill { display: inline-flex; width: fit-content; padding: .3rem .55rem; border-radius: 4px; background: rgba(255,255,255,.08); color: rgba(255,255,255,.72); font-size: .72rem; font-weight: 800; text-transform: capitalize; }
 .visitPill { display: inline-flex; width: fit-content; padding: .3rem .55rem; border-radius: 4px; background: rgba(74,222,128,.13); color: #bbf7d0; font-size: .72rem; font-weight: 800; }
 .contactGrid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
-.dataBlock { padding: .85rem; border: 1px solid rgba(255,255,255,.09); border-radius: 7px; background: rgba(255,255,255,.025); }
-.dataBlock span { display: block; margin-bottom: .28rem; color: rgba(255,255,255,.48); font-size: .68rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
-.dataBlock p { margin: 0; white-space: pre-wrap; }
-.dataBlock small { display: block; margin-top: .25rem; color: rgba(255,255,255,.42); }
-.dataBlock a { color: #ffd166; }
 .inlineEditDetails { padding-top: .2rem; }
 .inlineEditDetails summary { width: fit-content; list-style: none; cursor: pointer; }
 .inlineEditDetails summary::-webkit-details-marker { display: none; }
-.clientRequestDetails { display: grid; gap: .75rem; }
-.clientRequestSummary { display: inline-flex; align-items: center; justify-content: center; width: fit-content; min-height: 38px; padding: .5rem .85rem; border: 1px solid rgba(255,209,102,.24); border-radius: 999px; background: rgba(255,209,102,.07); color: #ffd166; font-size: .76rem; font-weight: 900; list-style: none; cursor: pointer; }
-.clientRequestSummary::-webkit-details-marker { display: none; }
-.clientRequestDetails[open] .clientRequestSummary { border-color: rgba(255,209,102,.28); background: rgba(255,209,102,.08); }
-.clientRequestBody { display: grid; gap: .85rem; padding-top: .25rem; }
-.leadMapCard { overflow: hidden; border: 1px solid rgba(255,209,102,.2); border-radius: 10px; background: rgba(255,209,102,.055); }
-.leadMapCard > div { display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .75rem .85rem; border-bottom: 1px solid rgba(255,255,255,.08); }
-.leadMapCard span { color: rgba(255,255,255,.5); font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-.leadMapCard strong { color: #ffd166; font-size: .86rem; }
-.leadMapCard iframe { display: block; width: 100%; height: 240px; border: 0; filter: saturate(.92) contrast(.94); }
-.inlinePhotoSection { display: grid; gap: .85rem; }
 .photoGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
 .photoGrid img { width: 100%; aspect-ratio: 4 / 3; border-radius: 6px; object-fit: cover; }
 .modalBackdrop { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 1.25rem; background: rgba(3,8,15,.74); backdrop-filter: blur(10px); }

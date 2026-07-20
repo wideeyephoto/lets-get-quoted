@@ -11,11 +11,6 @@ import QuoteStartDateCalendar from './QuoteStartDateCalendar';
 import SaveButton from '@/components/save-button';
 import styles from '../leads.module.css';
 
-function mapEmbedSrc(address: string | null) {
-  if (!address) return null;
-  return `https://maps.google.com/maps?q=${encodeURIComponent(address)}&z=9&output=embed`;
-}
-
 function extractCity(address: string | null): string {
   if (!address) return 'No address on file';
   const normalized = address.replace(/\s+/g, ' ').trim();
@@ -115,7 +110,6 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const visitLabel = formatVisit(lead.quote_visit);
   const hasScheduledEstimate = Boolean(lead.quote_visit);
   const workflowState = lead.converted_job ? 'converted' : hasScheduledEstimate ? 'estimateScheduled' : 'newLead';
-  const mapSrc = mapEmbedSrc(lead.address);
   const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
   const today = new Date();
   const availabilityStart = parseDateKey(searchParams.availabilityStart) ?? today;
@@ -177,7 +171,8 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   };
   const editLeadHref = `/dashboard/leads/${lead.id}?edit=client#lead-edit-modal`;
   const closeEditHref = `/dashboard/leads/${lead.id}#availability-snapshot`;
-  const fullRequestHref = `/dashboard/leads/${lead.id}?details=project#lead-details`;
+  const photoGalleryHref = `/dashboard/leads/${lead.id}?details=photos#lead-photos-modal`;
+  const closePhotoGalleryHref = `/dashboard/leads/${lead.id}#availability-snapshot`;
   const leadPathSteps = workflowState === 'converted' ? [
     {
       label: convertedJobLabel,
@@ -250,26 +245,36 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
             </div>
           </div>
           <div className={styles.heroRequestSummary}>
-            <Link className={styles.heroDefaultPhoto} href={fullRequestHref} aria-label="Open estimate photo gallery">
+            <div className={styles.heroPhotoStack}>
+              <Link className={styles.heroDefaultPhoto} href={photoGalleryHref} aria-label="Open estimate photo gallery">
+                {defaultPhoto ? (
+                  <img src={defaultPhoto.url} alt="Project photo" />
+                ) : (
+                  <>
+                    <strong>+</strong>
+                    <span>Add estimate photos</span>
+                  </>
+                )}
+              </Link>
               {defaultPhoto ? (
-                <>
-                  <img src={defaultPhoto.url} alt="Default project photo" />
-                  <span>Default image</span>
-                </>
-              ) : (
-                <>
-                  <strong>+</strong>
-                  <span>Add estimate photos</span>
-                </>
-              )}
-            </Link>
+                <div className={styles.heroPhotoMinis}>
+                  {photos.slice(1, 3).map((photo) => (
+                    <Link key={photo.path} href={photoGalleryHref} className={styles.heroMiniPhoto} aria-label="Open estimate photo gallery">
+                      <img src={photo.url} alt="Project photo" />
+                    </Link>
+                  ))}
+                  <Link href={photoGalleryHref} className={styles.heroAddMiniPhoto} aria-label="Add estimate photos">
+                    + Add Image
+                  </Link>
+                </div>
+              ) : null}
+            </div>
             <div>
               <span>Project details</span>
               <strong>{lead.project_type || 'Project request'}</strong>
               <p>{lead.message || 'No project details provided yet.'}</p>
             </div>
             <div className={styles.heroRequestActions}>
-              <Link className="btn secondary" href={fullRequestHref}>Read full request</Link>
               <Link className="btn ghost" href={editLeadHref}>Edit details</Link>
             </div>
           </div>
@@ -297,6 +302,32 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           ))}
         </div>
       </section>
+
+      {searchParams.details === 'photos' ? (
+        <div id="lead-photos-modal" className={styles.modalBackdrop} role="dialog" aria-modal="true" aria-labelledby="leadPhotosTitle">
+          <section className={styles.editModalCard}>
+            <div className={styles.editModalHeader}>
+              <div>
+                <p className="eyebrow">Estimate photos</p>
+                <h2 id="leadPhotosTitle">Photo gallery</h2>
+              </div>
+              <Link href={closePhotoGalleryHref} className={styles.modalCloseButton} aria-label="Close photo gallery">x</Link>
+            </div>
+            <PhotoGallery
+              entityId={lead.id}
+              entityField="leadId"
+              uploadUrl="/api/lead-photos"
+              initialPhotos={photos}
+              emptyLabel="No estimate photos yet. Add photos while you are at the visit."
+              deleteConfirmMessage="Remove this photo from the lead? This cannot be undone."
+              uploadLabel="+ Add estimate photos"
+              helperText="Use this gallery during the estimate visit. Drag a photo into the first position to make it the default image shown in the lead header."
+              coverMode
+              reorderEnabled
+            />
+          </section>
+        </div>
+      ) : null}
 
       {searchParams.edit === 'client' ? (
         <div id="lead-edit-modal" className={styles.modalBackdrop} role="dialog" aria-modal="true" aria-labelledby="leadEditTitle">
@@ -342,45 +373,6 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
 
       <div className={styles.detailGrid}>
         <section className={styles.leadContextStack}>
-          <section id="lead-details" className={`panel workspace-section-card ${styles.detailSection}`}>
-            <details className={styles.clientRequestDetails} open={searchParams.details === 'project'}>
-              <summary className={styles.clientRequestSummary}>
-                <span>Read full request &amp; photos</span>
-              </summary>
-              <div className={styles.clientRequestBody}>
-                <div className="section-heading workspace-section-heading">
-                  <p className="eyebrow">Client &amp; request</p>
-                  <h2>{lead.project_type || 'Project request'}</h2>
-                </div>
-                <div className={styles.dataBlock}><span>Project details</span><p>{lead.message || 'Not provided'}</p></div>
-                {mapSrc ? (
-                  <div className={styles.leadMapCard}>
-                    <div><span>Job Location</span><strong>{lead.address}</strong></div>
-                    <iframe title={`Map showing ${lead.address}`} src={mapSrc} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-                  </div>
-                ) : null}
-                <div className={styles.inlinePhotoSection}>
-                  <div className="section-heading workspace-section-heading">
-                    <p className="eyebrow">Estimate photos</p>
-                    <h2>Photo gallery</h2>
-                  </div>
-                  <PhotoGallery
-                    entityId={lead.id}
-                    entityField="leadId"
-                    uploadUrl="/api/lead-photos"
-                    initialPhotos={photos}
-                    emptyLabel="No estimate photos yet. Add photos while you are at the visit."
-                    deleteConfirmMessage="Remove this photo from the lead? This cannot be undone."
-                    uploadLabel="+ Add estimate photos"
-                    helperText="Use this gallery during the estimate visit. Drag a photo into the first position to make it the default image shown in the lead header."
-                    coverMode
-                    reorderEnabled
-                  />
-                </div>
-              </div>
-            </details>
-          </section>
-
           <section className={`panel workspace-section-card ${styles.detailSection}`}>
             <details className={styles.timelineDetails}>
               <summary className={styles.timelineSummary}>
