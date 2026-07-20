@@ -126,6 +126,7 @@
 .availabilityJobList > span { display: grid; gap: .05rem; padding: .35rem .45rem; border-radius: 7px; background: rgba(255,255,255,.06); color: inherit !important; }
 .availabilityJobList b { overflow: hidden; color: #fff; font-size: .72rem; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
 .availabilityJobList small { display: block; }
+.availabilityCity { color: #bbf7d0 !important; font-weight: 800; }
 .todayAvailabilityDay { border-color: rgba(255,138,61,.58); background: rgba(255,138,61,.07); }
 .busyDay { border-color: rgba(255,209,102,.26); background: rgba(255,209,102,.07); }
 .busyDay span { color: #ffd166; }

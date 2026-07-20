@@ -18,15 +18,32 @@ function mapEmbedSrc(address: string | null) {
 
 function extractCity(address: string | null): string {
   if (!address) return 'No address on file';
-  const parts = address.split(',').map((part) => part.trim()).filter(Boolean);
+  const normalized = address.replace(/\s+/g, ' ').trim();
+  const parts = normalized.split(',').map((part) => part.trim()).filter(Boolean);
   const statePattern = /^[A-Z]{2}(?:\s+\d{5}(?:-\d{4})?)?$/i;
+  const deriveTrailingCity = (value: string) => {
+    const tokens = value.split(/\s+/).filter(Boolean);
+    if (/^\d/.test(tokens[0] || '')) {
+      if (tokens.length >= 4) return tokens.slice(-2).join(' ');
+      if (tokens.length >= 2) return tokens.slice(1).join(' ');
+    }
+    if (tokens.length >= 2) return tokens.slice(-2).join(' ');
+    return value;
+  };
   const cityPart = parts.find((part, index) => index > 0 && !statePattern.test(part));
   if (cityPart) return cityPart;
 
   const stateIndex = parts.findIndex((part) => statePattern.test(part));
   const fallback = stateIndex > 0 ? parts[stateIndex - 1] : parts[0];
   const inferredCity = fallback.match(/(?:\b(?:Ave|Avenue|St|Street|Rd|Road|Dr|Drive|Ln|Lane|Ct|Court|Blvd|Boulevard|Way|Trail|Trl|Circle|Cir)\b\.?\s+)(.+)$/i)?.[1];
-  return inferredCity || fallback || 'No address on file';
+  if (inferredCity) return inferredCity;
+  if (stateIndex > 0) return deriveTrailingCity(fallback);
+
+  if (!normalized.includes(',')) {
+    return deriveTrailingCity(normalized);
+  }
+
+  return fallback || normalized || 'No address on file';
 }
 
 function formatVisit(visit: LeadQuoteVisit | null) {
@@ -311,7 +328,8 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                           {day.jobs.slice(0, 3).map((job) => (
                             <span key={`${job.id}-${job.scheduled_for}-${job.scheduled_time ?? 'anytime'}`}>
                               <b>{job.client_name}</b>
-                              <small>{[formatJobTime(job.scheduled_time), extractCity(job.address)].filter(Boolean).join(' - ')}</small>
+                              <small>{formatJobTime(job.scheduled_time) || 'Time TBD'}</small>
+                              <small className={styles.availabilityCity}>{extractCity(job.address)}</small>
                             </span>
                           ))}
                         </span>
