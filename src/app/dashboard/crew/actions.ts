@@ -114,7 +114,11 @@ export async function deleteArchivedCrewAction(crewId: string) {
   revalidatePath('/dashboard/schedule');
 }
 
-export async function assignCrewToJobAction(crewId: string, formData: FormData) {
+// `notify` is bound per submit button (Assign & text vs Assign without text),
+// so the owner chooses whether the crew member gets an assignment SMS. The
+// form's default action and the primary button both bind true, so the Enter-key
+// / default submit preserves the previous always-text behavior.
+export async function assignCrewToJobAction(crewId: string, notify: boolean, formData: FormData) {
   const jobId = optionalText(formData.get('jobId'));
   if (!jobId) throw new Error('Choose a job before assigning crew.');
 
@@ -131,7 +135,7 @@ export async function assignCrewToJobAction(crewId: string, formData: FormData) 
 
   const { added } = await setJobCrewAssignments(supabase, accountId, jobId, [...new Set([...existingCrewIds, crewId])]);
 
-  if (added.includes(crewId)) {
+  if (notify && added.includes(crewId)) {
     try {
       const { data: account } = await supabase.from('accounts').select('business_name').eq('id', accountId).single();
       await sendCrewAssignmentSms({

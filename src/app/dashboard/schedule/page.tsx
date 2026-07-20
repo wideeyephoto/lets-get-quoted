@@ -338,7 +338,7 @@ export default async function SchedulePage({
             {unscheduledJobs.map((job) => {
               const boundSchedule = scheduleJobAction.bind(null, job.id);
               const boundSendScheduleOptions = sendClientScheduleOptionsAction.bind(null, job.id);
-              const boundUpdateCrew = updateJobCrewAction.bind(null, job.id);
+              const boundUpdateCrew = updateJobCrewAction.bind(null, job.id, true);
               const assignedCrewIds = assignmentsByJob[job.id] ?? [];
               const assignedCrewIdSet = new Set(assignedCrewIds);
               const assignedCrewInitials = (assignmentsByJob[job.id] ?? [])
@@ -379,7 +379,10 @@ export default async function SchedulePage({
                                 ))}
                               </div>
                             )}
-                            <button type="submit" className="btn primary schedule-crew-picker-save">Save crew</button>
+                            <div className="schedule-crew-picker-actions">
+                              <button type="submit" formAction={updateJobCrewAction.bind(null, job.id, true)} className="btn primary schedule-crew-picker-save" aria-label={`Save crew for ${job.client_name} and text newly added crew`}>Save &amp; text</button>
+                              <button type="submit" formAction={updateJobCrewAction.bind(null, job.id, false)} className="btn secondary schedule-crew-picker-save" aria-label={`Save crew for ${job.client_name} without texting`}>Save, no text</button>
+                            </div>
                           </form>
                         </details>
                         {assignedCrewMembers.length > 0 ? assignedCrewMembers.map((member) => (

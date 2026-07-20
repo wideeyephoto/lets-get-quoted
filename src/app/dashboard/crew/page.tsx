@@ -1,7 +1,9 @@
+import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
-import { listCrew } from '@/lib/crew';
+import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { createCrewPhotoUrls } from '@/lib/crew-photo-storage';
 import { formatJobSchedule, formatMoney, listJobs } from '@/lib/jobs';
+import { formatPhoneDashes } from '@/lib/phone';
 import CrewWorkHistory from '@/components/crew-work-history';
 import SaveButton from '@/components/save-button';
 import CrewPhotoUpload from './CrewPhotoUpload';
@@ -16,12 +18,31 @@ function initialsFor(name: string) {
     .join('') || 'C';
 }
 
-export default async function CrewPage() {
+export default async function CrewPage({ searchParams }: { searchParams: { status?: string } }) {
   const { supabase, accountId } = await requireOwnerContext();
   const [crew, jobs] = await Promise.all([listCrew(supabase, accountId), listJobs(supabase, accountId)]);
   const photoUrls = await createCrewPhotoUrls(accountId, crew.map((member) => member.photo_path).filter((path): path is string => Boolean(path)));
   const activeCrew = crew.filter((member) => member.active);
   const assignableJobs = jobs.filter((job) => job.status !== 'complete' && job.status !== 'archived');
+
+  // Invert jobId -> crewIds into crewId -> open jobs, so each card can show what
+  // the member is currently working on (and flag idle active members as free).
+  const assignmentsByJob = await listCrewAssignmentsForJobs(supabase, accountId, assignableJobs.map((job) => job.id));
+  const jobsById = new Map(assignableJobs.map((job) => [job.id, job]));
+  const jobsByCrew: Record<string, typeof assignableJobs> = {};
+  for (const [jobId, crewIds] of Object.entries(assignmentsByJob)) {
+    const job = jobsById.get(jobId);
+    if (!job) continue;
+    for (const crewId of crewIds) {
+      const bucket = jobsByCrew[crewId] ?? (jobsByCrew[crewId] = []);
+      bucket.push(job);
+    }
+  }
+  const onJobCount = activeCrew.filter((member) => (jobsByCrew[member.id]?.length ?? 0) > 0).length;
+  const availableCount = activeCrew.length - onJobCount;
+
+  const filter = searchParams.status === 'archived' ? 'archived' : 'active';
+  const visibleCrew = crew.filter((member) => (filter === 'archived' ? !member.active : member.active));
 
   return (
     <main className="wide-shell workspace-shell">
@@ -33,11 +54,25 @@ export default async function CrewPage() {
         {crew.length === 0 ? (
           <p className="empty-state">No crew members yet. Add your first one below.</p>
         ) : (
-          <div className="job-list">
-            {crew.map((member) => {
+          <>
+            <div className="status-tabs workspace-status-tabs">
+              <Link href="/dashboard/crew" className={`status-tab${filter === 'active' ? ' active' : ''}`}>
+                Active ({activeCrew.length})
+              </Link>
+              <Link href="/dashboard/crew?status=archived" className={`status-tab${filter === 'archived' ? ' active' : ''}`}>
+                Archived ({crew.length - activeCrew.length})
+              </Link>
+            </div>
+            {visibleCrew.length === 0 ? (
+              <p className="empty-state">
+                {filter === 'archived' ? 'No archived crew members.' : 'No active crew members. Add one below, or check the Archived tab.'}
+              </p>
+            ) : (
+              <div className="job-list">
+                {visibleCrew.map((member) => {
               const photoUrl = member.photo_path ? photoUrls[member.photo_path] : null;
               return (
-                <div key={member.id} className="job-row">
+                <div key={member.id} className="job-row crew-card">
                   <div className="crew-row-intro">
                     <CrewPhotoUpload
                       action={updateCrewPhotoAction.bind(null, member.id)}
@@ -47,45 +82,62 @@ export default async function CrewPage() {
                     />
                     <div className="crew-row-main">
                       <div className="job-row-header">
-                        <span className="job-ref">{member.name}</span>
+                        <span className="crew-card-name">{member.name}</span>
                         <span className={`status-badge ${member.active ? 'status-complete' : 'status-archived'}`}>
                           {member.active ? 'Active' : 'Archived'}
                         </span>
                       </div>
-                      <div className="job-client">{member.role_label}</div>
-                      <div className="job-row-header" style={{ marginTop: '0.4rem' }}>
-                        <span className="job-meta">
-                          {member.phone}
-                          {member.hourly_rate > 0 ? ` · ${formatMoney(member.hourly_rate)}/hr` : ''}
-                        </span>
+                      <div className="crew-card-meta">
+                        <span className="crew-card-role">{member.role_label}</span>
+                        {member.hourly_rate > 0 ? (
+                          <span className="crew-card-contact">{formatMoney(member.hourly_rate)}/hr</span>
+                        ) : null}
                       </div>
+                      {member.phone ? (
+                        <div className="job-hero-contact" style={{ marginTop: '0.5rem' }}>
+                          <a href={`tel:${member.phone}`} className="hero-phone-link" aria-label={`Call ${member.name}`}>
+                            <span aria-hidden="true">📞</span> {formatPhoneDashes(member.phone)}
+                          </a>
+                        </div>
+                      ) : null}
+                      {member.active ? (
+                        <div className="crew-card-jobs">
+                          {(jobsByCrew[member.id] ?? []).length > 0 ? (
+                            (jobsByCrew[member.id] ?? []).map((job) => (
+                              <Link key={job.id} href={`/dashboard/jobs/${job.id}`} className="crew-job-chip">
+                                {job.ref} · {job.client_name}
+                              </Link>
+                            ))
+                          ) : (
+                            <span className="crew-available-pill">Available</span>
+                          )}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
-                  <div className="job-row-header" style={{ marginTop: '0.4rem' }}>
-                    <span className="job-meta">Owner-managed crew profile and job assignment controls</span>
-                    <div className="actions">
-                      {member.active ? (
-                        <form action={assignCrewToJobAction.bind(null, member.id)} className="inline-action-form">
-                          <select name="jobId" aria-label={`Assign ${member.name} to job`} disabled={assignableJobs.length === 0} required>
-                            <option value="">Choose job</option>
-                            {assignableJobs.map((job) => (
-                              <option key={job.id} value={job.id}>{job.ref} - {job.client_name} ({formatJobSchedule(job.scheduled_for, job.scheduled_time)})</option>
-                            ))}
-                          </select>
-                          <button type="submit" className="btn secondary" disabled={assignableJobs.length === 0}>Assign to job</button>
-                        </form>
-                      ) : null}
-                      <form action={setCrewActiveAction.bind(null, member.id, !member.active)}>
-                        <button type="submit" className="btn secondary">
-                          {member.active ? 'Archive' : 'Reactivate'}
-                        </button>
+                  <div className="crew-card-actions">
+                    {member.active ? (
+                      <form action={assignCrewToJobAction.bind(null, member.id, true)} className="inline-action-form">
+                        <select name="jobId" aria-label={`Assign ${member.name} to job`} disabled={assignableJobs.length === 0} required>
+                          <option value="">Choose job</option>
+                          {assignableJobs.map((job) => (
+                            <option key={job.id} value={job.id}>{job.ref} - {job.client_name} ({formatJobSchedule(job.scheduled_for, job.scheduled_time)})</option>
+                          ))}
+                        </select>
+                        <button type="submit" formAction={assignCrewToJobAction.bind(null, member.id, true)} className="btn secondary" disabled={assignableJobs.length === 0} aria-label={`Assign ${member.name} to the selected job and text them`}>Assign &amp; text</button>
+                        <button type="submit" formAction={assignCrewToJobAction.bind(null, member.id, false)} className="btn secondary" disabled={assignableJobs.length === 0} aria-label={`Assign ${member.name} to the selected job without texting`}>Assign, no text</button>
                       </form>
-                      {!member.active ? (
-                        <form action={deleteArchivedCrewAction.bind(null, member.id)}>
-                          <button type="submit" className="btn danger">Delete</button>
-                        </form>
-                      ) : null}
-                    </div>
+                    ) : null}
+                    <form action={setCrewActiveAction.bind(null, member.id, !member.active)}>
+                      <button type="submit" className="btn secondary">
+                        {member.active ? 'Archive' : 'Reactivate'}
+                      </button>
+                    </form>
+                    {!member.active ? (
+                      <form action={deleteArchivedCrewAction.bind(null, member.id)}>
+                        <button type="submit" className="btn danger">Delete</button>
+                      </form>
+                    ) : null}
                   </div>
 
                   <details className="workspace-details" style={{ marginTop: '1rem' }}>
@@ -119,8 +171,10 @@ export default async function CrewPage() {
                   <CrewWorkHistory crewId={member.id} />
                 </div>
               );
-            })}
-          </div>
+                })}
+              </div>
+            )}
+          </>
         )}
       </section>
 
@@ -132,6 +186,14 @@ export default async function CrewPage() {
         <div className="stat-ticker-item">
           <span className="stat-ticker-value">{activeCrew.length}</span>
           <span className="stat-ticker-label">Active</span>
+        </div>
+        <div className="stat-ticker-item">
+          <span className="stat-ticker-value">{onJobCount}</span>
+          <span className="stat-ticker-label">On a job</span>
+        </div>
+        <div className="stat-ticker-item">
+          <span className="stat-ticker-value">{availableCount}</span>
+          <span className="stat-ticker-label">Available</span>
         </div>
       </div>
 

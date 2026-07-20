@@ -99,6 +99,9 @@ export default function ScheduleCalendar({
   const [isConfirmingRemove, setIsConfirmingRemove] = useState(false);
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [calendarView, setCalendarView] = useState<CalendarView>('month');
+  // When true, adding a crew member to a job texts them the assignment. Toggled
+  // per session from the crew popover; only affects assigns (never unassigns).
+  const [notifyCrew, setNotifyCrew] = useState(true);
   const [, startTransition] = useTransition();
 
   // Keep local optimistic state in sync once the server revalidates this
@@ -215,7 +218,8 @@ export default function ScheduleCalendar({
 
     startTransition(async () => {
       try {
-        await toggleJobCrewAction(jobId, crewId);
+        // Only assigns text; toggling a crew member OFF never texts regardless.
+        await toggleJobCrewAction(jobId, crewId, notifyCrew);
       } catch (error) {
         console.error('Failed to update crew assignment', error);
         // Revert the optimistic update if the server call failed.
@@ -377,6 +381,10 @@ export default function ScheduleCalendar({
                           <strong>Active crew</strong>
                           <span>Check crew on or off for this job.</span>
                         </div>
+                        <label className="schedule-crew-notify-toggle">
+                          <input type="checkbox" checked={notifyCrew} onChange={(event) => setNotifyCrew(event.currentTarget.checked)} />
+                          <span>Text crew when I add them</span>
+                        </label>
                         {crew.length === 0 ? (
                           <p className="crew-assign-empty">
                             No active crew yet. <Link href="/dashboard/crew">Add your team →</Link>

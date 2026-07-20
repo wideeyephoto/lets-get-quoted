@@ -236,7 +236,7 @@ export default async function JobDetailPage({
   const originatingLead = await getLeadByConvertedJob(supabase, accountId, job.id);
 
   const boundUpdateJob = updateJobAction.bind(null, job.id);
-  const boundUpdateJobCrew = updateJobCrewAction.bind(null, job.id);
+  const boundUpdateJobCrew = updateJobCrewAction.bind(null, job.id, true);
   const boundDeleteJob = deleteJobAction.bind(null, job.id);
   const boundCreateCost = createCostAction.bind(null, job.id);
   const boundCreateDepositRequest = createDepositRequestAction.bind(null, job.id);
@@ -762,8 +762,9 @@ export default async function JobDetailPage({
                       </label>
                     ))}
                   </div>
-                  <div className="field full">
-                    <SaveButton>Save crew assignment</SaveButton>
+                  <div className="field full inline-action-form">
+                    <SaveButton formAction={updateJobCrewAction.bind(null, job.id, true)} aria-label="Save crew assignment and text newly added crew">Save &amp; text new crew</SaveButton>
+                    <SaveButton className="btn secondary" formAction={updateJobCrewAction.bind(null, job.id, false)} aria-label="Save crew assignment without texting">Save, no text</SaveButton>
                   </div>
                 </form>
               )}

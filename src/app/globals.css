@@ -3053,6 +3053,42 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .crew-photo-form { display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
 .crew-photo-button input { display: none; }
 
+/* Crew cards — stronger per-member differentiation and a compact action
+   footer (removes the dead space the old descriptive row left behind). */
+.crew-card { background: rgba(255,255,255,0.055); border-color: rgba(255,255,255,0.15); }
+.crew-card:hover { border-color: rgba(255,138,61,0.55); background: rgba(255,255,255,0.08); }
+.crew-card-name { font-size: 1.18rem; font-weight: 800; color: #f7f5ef; letter-spacing: -0.01em; }
+.crew-card-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.6rem; margin-top: 0.3rem; }
+.crew-card-role { font-size: 0.9rem; font-weight: 800; color: var(--accent-2); letter-spacing: 0.01em; }
+.crew-card-contact { font-size: 0.86rem; color: rgba(255,255,255,0.62); }
+.crew-card-actions {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end;
+  gap: 0.5rem; margin-top: 0.85rem; padding-top: 0.85rem;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+/* Current-assignment chips: what each crew member is working on right now. */
+.crew-card-jobs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-top: 0.55rem; }
+.crew-job-chip {
+  display: inline-flex; align-items: center; max-width: 100%;
+  padding: 0.22rem 0.6rem; border-radius: 999px;
+  border: 1px solid rgba(255,138,61,0.35); background: rgba(255,138,61,0.1);
+  color: #ffb27a; font-size: 0.78rem; font-weight: 700; text-decoration: none;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.crew-job-chip:hover, .crew-job-chip:focus-visible { background: rgba(255,138,61,0.2); border-color: rgba(255,138,61,0.6); }
+.crew-available-pill {
+  display: inline-flex; align-items: center;
+  padding: 0.22rem 0.6rem; border-radius: 999px;
+  border: 1px solid rgba(120,220,150,0.3); background: rgba(120,220,150,0.1);
+  color: #78dc96; font-size: 0.78rem; font-weight: 800;
+}
+/* "Text crew when I add them" toggle in the schedule calendar crew popover, and
+   the two-button save row in the schedule unscheduled-jobs crew picker. */
+.schedule-crew-notify-toggle { display: flex; align-items: center; gap: 0.45rem; margin: 0.1rem 0 0.6rem; font-size: 0.82rem; color: rgba(255,255,255,0.72); cursor: pointer; }
+.schedule-crew-notify-toggle input { accent-color: #19d6ae; }
+.schedule-crew-picker-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.6rem; }
+
 /* Avatar-as-uploader: click the "+" badge to add/replace a crew photo. The
    badge sits OUTSIDE the circle (which is overflow:hidden), so it lives as a
    sibling on the positioned label wrapper. */

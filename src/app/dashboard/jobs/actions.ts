@@ -302,13 +302,15 @@ export async function deleteJobAction(jobId: string) {
   redirect('/dashboard/jobs');
 }
 
-export async function updateJobCrewAction(jobId: string, formData: FormData) {
+// `notify` (bound per submit button) controls whether newly-assigned crew get
+// an assignment text. The assignment itself always saves; only the SMS is gated.
+export async function updateJobCrewAction(jobId: string, notify: boolean, formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
 
   const crewIds = formData.getAll('crewIds').map(String);
   const { added } = await setJobCrewAssignments(supabase, accountId, jobId, crewIds);
 
-  if (added.length > 0) {
+  if (notify && added.length > 0) {
     const [job, { data: account }, crewMembers] = await Promise.all([
       getJob(supabase, accountId, jobId),
       supabase.from('accounts').select('business_name').eq('id', accountId).single(),
@@ -344,12 +346,12 @@ export async function updateJobCrewAction(jobId: string, formData: FormData) {
 // Quick single add/remove toggle used by the schedule calendar's click-to-
 // assign popover — unlike updateJobCrewAction, this doesn't replace the
 // whole assignment set, it just flips one crew member on one job.
-export async function toggleJobCrewAction(jobId: string, crewId: string): Promise<{ assigned: boolean }> {
+export async function toggleJobCrewAction(jobId: string, crewId: string, notify = true): Promise<{ assigned: boolean }> {
   const { supabase, accountId } = await requireOwnerContext();
 
   const { assigned } = await toggleJobCrewAssignment(supabase, accountId, jobId, crewId);
 
-  if (assigned) {
+  if (assigned && notify) {
     const [job, { data: account }, crewMembers] = await Promise.all([
       getJob(supabase, accountId, jobId),
       supabase.from('accounts').select('business_name').eq('id', accountId).single(),

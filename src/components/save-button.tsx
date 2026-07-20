@@ -8,6 +8,10 @@ type Props = {
   pendingLabel?: string;
   savedLabel?: string;
   className?: string;
+  // Lets one form host multiple submit buttons that call different (bound)
+  // server actions — e.g. "Save & text" vs "Save, no text".
+  formAction?: (formData: FormData) => void | Promise<void>;
+  'aria-label'?: string;
 };
 
 // Submit button for a Server Action form. Shows a pending state while the
@@ -17,6 +21,8 @@ export default function SaveButton({
   pendingLabel = 'Saving…',
   savedLabel = 'Saved ✓',
   className = 'btn primary',
+  formAction,
+  'aria-label': ariaLabel,
 }: Props) {
   const { pending } = useFormStatus();
   const [showSaved, setShowSaved] = useState(false);
@@ -32,7 +38,7 @@ export default function SaveButton({
   }, [pending]);
 
   return (
-    <button type="submit" className={className} disabled={pending} aria-busy={pending}>
+    <button type="submit" className={className} disabled={pending} aria-busy={pending} formAction={formAction} aria-label={ariaLabel}>
       {pending ? pendingLabel : showSaved ? savedLabel : children}
     </button>
   );
