@@ -96,9 +96,11 @@
 .quoteStartStatus { display: inline-flex; align-items: center; width: fit-content; min-height: 20px; padding: .1rem .42rem; border: 1px solid rgba(255,255,255,.08); border-radius: 999px; background: rgba(255,255,255,.05); color: rgba(255,255,255,.62); font-size: .61rem; font-weight: 800; letter-spacing: .04em; }
 .busyQuoteStartStatus { border-color: rgba(255,209,102,.22); background: rgba(255,209,102,.08); color: #ffd166; }
 .quoteStartDetail { overflow: hidden; color: rgba(255,255,255,.46); font-size: .63rem; text-overflow: ellipsis; white-space: nowrap; }
-.quoteStartHintRow { display: flex; align-items: center; justify-content: space-between; gap: .35rem; min-height: 20px; }
-.quoteStartHintRow small { overflow: hidden; color: rgba(255,255,255,.44); font-size: .62rem; text-overflow: ellipsis; white-space: nowrap; }
-.quoteStartCityChip { display: inline-flex; align-items: center; width: fit-content; max-width: 100%; padding: .12rem .38rem; border-radius: 999px; background: rgba(255,255,255,.07); color: #bbf7d0; font-size: .62rem; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.quoteStartHintRow { display: flex; align-items: flex-start; flex-wrap: wrap; gap: .25rem; min-height: 20px; }
+.quoteStartCityChip { display: inline-flex; align-items: center; width: fit-content; max-width: 100%; padding: .12rem .36rem; border-radius: 999px; border: 1px solid rgba(187,247,208,.2); background: rgba(34,197,94,.12); color: #bbf7d0; font-size: .6rem; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.quoteStartCityChip:nth-child(4n + 2) { border-color: rgba(125,211,252,.22); background: rgba(14,165,233,.13); color: #bae6fd; }
+.quoteStartCityChip:nth-child(4n + 3) { border-color: rgba(253,186,116,.24); background: rgba(249,115,22,.13); color: #fed7aa; }
+.quoteStartCityChip:nth-child(4n + 4) { border-color: rgba(216,180,254,.22); background: rgba(168,85,247,.13); color: #e9d5ff; }
 .quoteStartDayActions { display: grid; grid-template-columns: 1fr; gap: .3rem; align-items: center; margin-top: auto; }
 .quoteStartDayActions :global(.modern-time-picker) { min-width: 0; }
 .quoteStartDayActions :global(.modern-time-button) { min-height: 30px; padding: .35rem .45rem; border-radius: 8px; font-size: .68rem; }

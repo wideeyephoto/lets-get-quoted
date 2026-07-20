@@ -91,8 +91,6 @@ export default function QuoteStartDateCalendar({
         {availability.map((day) => {
           const isSelected = selectedOptions.some((option) => option.date === day.key);
           const hasSelectionRoom = selectedOptions.length < 3 || isSelected;
-          const primaryHint = day.busy ? day.jobHints[0] : null;
-          const extraJobs = Math.max(0, day.jobHints.length - 1);
 
           return (
             <div
@@ -105,10 +103,13 @@ export default function QuoteStartDateCalendar({
                 {day.busy ? <span className={`${styles.quoteStartStatus} ${styles.busyQuoteStartStatus}`}>{day.summary}</span> : null}
               </div>
               {day.busy ? <small className={styles.quoteStartDetail}>{day.detail}</small> : null}
-              {primaryHint ? (
+              {day.jobHints.length > 0 ? (
                 <div className={styles.quoteStartHintRow}>
-                  <span className={styles.quoteStartCityChip}>{primaryHint.city}</span>
-                  {extraJobs > 0 ? <small>+{extraJobs} more</small> : null}
+                  {day.jobHints.map((hint) => (
+                    <span className={styles.quoteStartCityChip} key={hint.id} title={`${hint.clientName} at ${hint.time}`}>
+                      {hint.city}
+                    </span>
+                  ))}
                 </div>
               ) : null}
               <div className={styles.quoteStartDayActions}>
