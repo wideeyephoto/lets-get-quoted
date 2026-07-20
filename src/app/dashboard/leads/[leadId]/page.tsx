@@ -118,6 +118,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const availabilityStart = parseDateKey(searchParams.availabilityStart) ?? today;
   const previousAvailabilityStart = dateKey(addDays(availabilityStart, -7));
   const nextAvailabilityStart = dateKey(addDays(availabilityStart, 7));
+  const canViewPreviousAvailability = dateKey(availabilityStart) > dateKey(today);
   const availability = buildAvailability(jobs, leads, scheduleDayHours, availabilityStart);
   const availabilityHref = (startKey: string) => {
     const query = new URLSearchParams();
@@ -306,7 +307,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                 <strong>{availability[0]?.label} - {availability[availability.length - 1]?.label}</strong>
               </div>
               <div className={styles.availabilityControls}>
-                <Link className="btn secondary" href={availabilityHref(previousAvailabilityStart)}>&larr; Previous week</Link>
+                {canViewPreviousAvailability ? <Link className="btn secondary" href={availabilityHref(previousAvailabilityStart)}>&larr; Previous week</Link> : null}
                 <Link className="btn secondary" href={availabilityHref(nextAvailabilityStart)}>Next week &rarr;</Link>
               </div>
             </div>
