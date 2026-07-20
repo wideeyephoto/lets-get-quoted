@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
-import { expandScheduledJobs, formatMoney, listJobs, type Job } from '@/lib/jobs';
+import { expandScheduledJobs, formatJobTime, formatMoney, listJobs, type Job } from '@/lib/jobs';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { deriveJobListBadge } from '@/lib/job-badges';
 import type { Invoice } from '@/lib/invoices';
@@ -10,6 +10,7 @@ import TimeSlotSelect from '@/components/time-slot-select';
 import { scheduleJobAction, sendClientScheduleOptionsAction, updateJobCrewAction } from '../jobs/actions';
 import { updateCrewAction } from '../crew/actions';
 import ScheduleCalendar from './schedule-calendar';
+import ClientScheduleOptionsCalendar from './client-schedule-options-calendar';
 
 const STATUS_LABEL: Record<Job['status'], string> = {
   new_lead: 'New request',
@@ -48,6 +49,40 @@ function crewInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return '?';
   return parts.slice(0, 2).map((part) => part[0]?.toUpperCase()).join('');
+}
+
+function extractCity(address: string | null): string {
+  if (!address) return 'No address on file';
+  const normalized = address.replace(/\s+/g, ' ').trim();
+  const parts = normalized.split(',').map((part) => part.trim()).filter(Boolean);
+  const statePattern = /^[A-Z]{2}(?:\s+\d{5}(?:-\d{4})?)?$/i;
+  const deriveTrailingCity = (value: string) => {
+    const tokens = value.split(/\s+/).filter(Boolean);
+    if (/^\d/.test(tokens[0] || '')) {
+      if (tokens.length >= 4) return tokens.slice(-2).join(' ');
+      if (tokens.length >= 2) return tokens.slice(1).join(' ');
+    }
+    if (tokens.length >= 2) return tokens.slice(-2).join(' ');
+    return value;
+  };
+  const cityPart = parts.find((part, index) => index > 0 && !statePattern.test(part));
+  if (cityPart) return cityPart;
+
+  const stateIndex = parts.findIndex((part) => statePattern.test(part));
+  const fallback = stateIndex > 0 ? parts[stateIndex - 1] : parts[0];
+  const inferredCity = fallback.match(/(?:\b(?:Ave|Avenue|St|Street|Rd|Road|Dr|Drive|Ln|Lane|Ct|Court|Blvd|Boulevard|Way|Trail|Trl|Circle|Cir)\b\.?\s+)(.+)$/i)?.[1];
+  if (inferredCity) return inferredCity;
+  if (stateIndex > 0) return deriveTrailingCity(fallback);
+
+  if (!normalized.includes(',')) {
+    return deriveTrailingCity(normalized);
+  }
+
+  return fallback || normalized || 'No address on file';
+}
+
+function dayLabel(date: Date) {
+  return new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(date);
 }
 
 function monthParam(year: number, monthIndex: number): string {
@@ -111,6 +146,28 @@ export default async function SchedulePage({
     { label: 'Next Mon 8 AM', date: nextWeekdayKey(now, 1), time: '08:00' },
     { label: 'Next Fri 9 AM', date: nextWeekdayKey(now, 5), time: '09:00' },
   ];
+
+  const clientScheduleAvailability = Array.from({ length: 30 }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() + index);
+    const key = toDateKey(date.getFullYear(), date.getMonth(), date.getDate());
+    const dayJobs = scheduledJobOccurrences.filter((job) => job.scheduled_for === key);
+    const hours = dayJobs.reduce((sum, job) => sum + (Number(job.estimated_hours) || 0), 0);
+
+    return {
+      key,
+      label: dayLabel(date),
+      summary: `${dayJobs.length} job${dayJobs.length === 1 ? '' : 's'}`,
+      detail: hours ? `${hours} est hrs` : 'Scheduled work',
+      busy: dayJobs.length > 0,
+      isToday: key === todayKey,
+      jobHints: dayJobs.map((job) => ({
+        id: `${job.id}-${job.scheduled_for}-${job.scheduled_time ?? 'anytime'}`,
+        clientName: job.client_name,
+        time: formatJobTime(job.scheduled_time) || 'Time TBD',
+        city: extractCity(job.address),
+      })),
+    };
+  });
 
   const in30Days = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30);
   const next30Key = toDateKey(in30Days.getFullYear(), in30Days.getMonth(), in30Days.getDate());
@@ -404,18 +461,7 @@ export default async function SchedulePage({
                             <label htmlFor={`scheduleClientPhone-${job.id}`}>Client mobile</label>
                             <input id={`scheduleClientPhone-${job.id}`} name="scheduleClientPhone" type="tel" defaultValue={job.client_phone ?? ''} placeholder="(248) 555-0117" />
                           </div>
-                          {[1, 2, 3].map((optionNumber) => (
-                            <div className={`schedule-option-grid schedule-option-${optionNumber}`} key={`${job.id}-option-${optionNumber}`}>
-                              <div>
-                                <label htmlFor={`scheduleDate${optionNumber}-${job.id}`}>Option {optionNumber} date</label>
-                                <ScheduledDatePicker id={`scheduleDate${optionNumber}-${job.id}`} name={`scheduleDate${optionNumber}`} scrollIntoViewOnOpen={optionNumber === 3} />
-                              </div>
-                              <div>
-                                <label htmlFor={`scheduleTime${optionNumber}-${job.id}`}>Option {optionNumber} time</label>
-                                <TimeSlotSelect id={`scheduleTime${optionNumber}-${job.id}`} name={`scheduleTime${optionNumber}`} scrollIntoViewOnOpen={optionNumber === 3} />
-                              </div>
-                            </div>
-                          ))}
+                          <ClientScheduleOptionsCalendar availability={clientScheduleAvailability} />
                           <label className="sms-consent-check">
                             <input name="scheduleSmsConsent" type="checkbox" required />
                             <span>The client agreed to receive transactional scheduling texts. Reply STOP to opt out.</span>
