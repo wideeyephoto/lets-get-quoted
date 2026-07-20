@@ -240,6 +240,23 @@ export async function updateLeadDetails(
   return data as Lead;
 }
 
+export async function clearLeadQuoteVisit(
+  supabase: SupabaseClient,
+  accountId: string,
+  leadId: string
+): Promise<Lead> {
+  const { data, error } = await supabase
+    .from('leads')
+    .update({ quote_visit: null, updated_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('id', leadId)
+    .select('*')
+    .single();
+
+  if (error || !data) throw error ?? new Error('Unable to clear quote visit.');
+  return data as Lead;
+}
+
 export async function expireStaleLeads(supabase: SupabaseClient, accountId: string, days = 30): Promise<void> {
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
   const { error } = await supabase

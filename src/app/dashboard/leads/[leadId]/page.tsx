@@ -6,7 +6,7 @@ import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
 import { expireStaleLeads, formatElapsedTime, formatLeadSource, getLead, listLeads, type Lead, type LeadQuoteVisit } from '@/lib/leads';
 import { expandScheduledJobs, formatJobSchedule, formatJobTime, listJobs, type Job, type ScheduledJobOccurrence } from '@/lib/jobs';
-import { convertLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, updateLeadDetailsAction, updateLeadStatusAction } from '../actions';
+import { clearLeadQuoteVisitAction, convertLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, updateLeadDetailsAction, updateLeadStatusAction } from '../actions';
 import SaveButton from '@/components/save-button';
 import TimeSlotSelect from '@/components/time-slot-select';
 import styles from '../leads.module.css';
@@ -85,6 +85,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const photos = (lead.photo_paths || []).map((path, index) => ({ path, url: photoUrls[index] })).filter((photo) => photo.url);
   const updateLeadDetails = updateLeadDetailsAction.bind(null, lead.id);
   const convertLead = convertLeadAction.bind(null, lead.id);
+  const rescheduleLater = clearLeadQuoteVisitAction.bind(null, lead.id);
   const scheduleVisit = scheduleLeadQuoteVisitAction.bind(null, lead.id);
   const sendQuoteVisitOptions = sendLeadQuoteVisitOptionsAction.bind(null, lead.id);
   const markContacted = updateLeadStatusAction.bind(null, lead.id, 'contacted');
@@ -147,11 +148,11 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
 
       <div className={styles.detailGrid}>
         <section className={styles.leadContextStack}>
-          <details id="lead-details" className={`panel workspace-section-card workspace-details ${styles.detailSection}`} open={searchParams.edit === 'client'}>
-            <summary className="workspace-details-summary job-action-summary">
-              <div className="section-heading workspace-section-heading"><p className="eyebrow">Request</p><h2>{lead.project_type || 'Project request'}</h2></div>
-              <span className="workspace-details-copy">Edit client info, project details, and estimate notes.</span>
-            </summary>
+          <section id="lead-details" className={`panel workspace-section-card ${styles.detailSection}`}>
+            <div className="section-heading workspace-section-heading">
+              <p className="eyebrow">Client & request</p>
+              <h2>{lead.project_type || 'Project request'}</h2>
+            </div>
             <div className={styles.contactGrid}>
               <div className={styles.dataBlock}><span>Phone</span>{lead.phone ? <a href={`tel:${lead.phone}`}>{lead.phone}</a> : <p>Not provided</p>}</div>
               <div className={styles.dataBlock}><span>Email</span>{lead.email ? <a href={`mailto:${lead.email}`}>{lead.email}</a> : <p>Not provided</p>}</div>
@@ -165,40 +166,43 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
             ) : null}
             <div className={styles.dataBlock}><span>Estimated hours</span><p>{lead.estimated_hours ? `${lead.estimated_hours} hrs` : 'Not estimated yet'}</p></div>
             <div className={styles.dataBlock}><span>Project details</span><p>{lead.message || 'Not provided'}</p></div>
-            <form action={updateLeadDetails} className={`form-grid ${styles.leadEditForm}`}>
-              <div className="field">
-                <label htmlFor="leadName">Client name</label>
-                <input id="leadName" name="name" defaultValue={lead.name ?? ''} required />
-              </div>
-              <div className="field">
-                <label htmlFor="leadPhone">Phone</label>
-                <input id="leadPhone" name="phone" type="tel" defaultValue={lead.phone ?? ''} />
-              </div>
-              <div className="field">
-                <label htmlFor="leadEmail">Email</label>
-                <input id="leadEmail" name="email" type="email" defaultValue={lead.email ?? ''} />
-              </div>
-              <div className="field">
-                <label htmlFor="leadAddress">Project address</label>
-                <input id="leadAddress" name="address" defaultValue={lead.address ?? ''} />
-              </div>
-              <div className="field">
-                <label htmlFor="leadProjectType">Project type</label>
-                <input id="leadProjectType" name="projectType" defaultValue={lead.project_type ?? ''} />
-              </div>
-              <div className="field">
-                <label htmlFor="leadEstimatedHours">Estimated hours</label>
-                <input id="leadEstimatedHours" name="estimatedHours" type="number" min="0" step="0.25" defaultValue={lead.estimated_hours ?? ''} />
-              </div>
-              <div className="field full">
-                <label htmlFor="leadMessage">Project details</label>
-                <textarea id="leadMessage" name="message" rows={4} defaultValue={lead.message ?? ''} />
-              </div>
-              <div className="field full">
-                <SaveButton>Save lead details</SaveButton>
-              </div>
-            </form>
-          </details>
+            <details className={styles.inlineEditDetails} open={searchParams.edit === 'client'}>
+              <summary className="btn secondary">Edit client/request details</summary>
+              <form action={updateLeadDetails} className={`form-grid ${styles.leadEditForm}`}>
+                <div className="field">
+                  <label htmlFor="leadName">Client name</label>
+                  <input id="leadName" name="name" defaultValue={lead.name ?? ''} required />
+                </div>
+                <div className="field">
+                  <label htmlFor="leadPhone">Phone</label>
+                  <input id="leadPhone" name="phone" type="tel" defaultValue={lead.phone ?? ''} />
+                </div>
+                <div className="field">
+                  <label htmlFor="leadEmail">Email</label>
+                  <input id="leadEmail" name="email" type="email" defaultValue={lead.email ?? ''} />
+                </div>
+                <div className="field">
+                  <label htmlFor="leadAddress">Project address</label>
+                  <input id="leadAddress" name="address" defaultValue={lead.address ?? ''} />
+                </div>
+                <div className="field">
+                  <label htmlFor="leadProjectType">Project type</label>
+                  <input id="leadProjectType" name="projectType" defaultValue={lead.project_type ?? ''} />
+                </div>
+                <div className="field">
+                  <label htmlFor="leadEstimatedHours">Estimated hours</label>
+                  <input id="leadEstimatedHours" name="estimatedHours" type="number" min="0" step="0.25" defaultValue={lead.estimated_hours ?? ''} />
+                </div>
+                <div className="field full">
+                  <label htmlFor="leadMessage">Project details</label>
+                  <textarea id="leadMessage" name="message" rows={4} defaultValue={lead.message ?? ''} />
+                </div>
+                <div className="field full">
+                  <SaveButton>Save lead details</SaveButton>
+                </div>
+              </form>
+            </details>
+          </section>
 
           <section className={`panel workspace-section-card ${styles.detailSection}`}>
             <div className="section-heading workspace-section-heading"><p className="eyebrow">Attachments</p><h2>Project photos</h2></div>
@@ -230,8 +234,8 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
               <p>Set the quote visit now or text three openings so the client can choose.</p>
               {visitLabel ? <div className={styles.scheduledVisitSummary}><strong>Scheduled</strong><span>{visitLabel}</span><small>{lead.quote_visit?.durationMinutes} min visit{lead.quote_visit?.confirmationTextSentAt ? ' - text sent' : ''}</small></div> : null}
               <div className={`schedule-action-buttons ${styles.quoteVisitActions}`}>
-                <details className="schedule-popover" name={`lead-quote-visit-${lead.id}`} open>
-                  <summary className="btn secondary">{visitLabel ? 'Update Quote Date' : 'Add Quote Date'}</summary>
+                <details className="schedule-popover" open>
+                  <summary className="btn secondary">{visitLabel ? 'Reschedule' : 'Add Quote Date'}</summary>
                   <div className="schedule-popover-panel schedule-start-panel">
                     <form action={scheduleVisit} className="schedule-inline-form schedule-start-form">
                       <div className="schedule-inline-field schedule-inline-date">
@@ -289,12 +293,20 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                     </form>
                   </div>
                 </details>
+                {visitLabel ? (
+                  <form action={rescheduleLater} className={styles.rescheduleLaterForm}>
+                    <button type="submit" className="btn ghost">Reschedule later</button>
+                  </form>
+                ) : null}
               </div>
             </section>
           ) : null}
 
-          <section className={`panel workspace-section-card ${styles.calendarCard}`}>
-            <div className="section-heading workspace-section-heading"><p className="eyebrow">Calendar</p><h2>Availability snapshot</h2></div>
+          <details className={`panel workspace-section-card workspace-details ${styles.calendarCard}`}>
+            <summary className="workspace-details-summary job-action-summary">
+              <div className="section-heading workspace-section-heading"><p className="eyebrow">Calendar</p><h2>Availability snapshot</h2></div>
+              <span className="workspace-details-copy">Check nearby openings and quick-book a 9:00 AM quote visit.</span>
+            </summary>
             <p className={styles.calendarHint}>Click a day to immediately book a 9:00 AM in-person quote visit.</p>
             <div className={styles.availabilityGrid}>
               {availability.map((day) => {
@@ -315,9 +327,41 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                 );
               })}
             </div>
-          </section>
+          </details>
 
-          {!lead.converted_job ? <section className="panel workspace-section-card"><div className="section-heading workspace-section-heading"><p className="eyebrow">Step 2</p><h2>Send quote / estimate</h2></div><p>Send the initial quote from this lead. It stays in Leads as Quoted, then becomes an active job when the homeowner signs off.</p><form action={convertLead} className={styles.actionForm}><label htmlFor="quotedAmount">Quoted amount ($)</label><input id="quotedAmount" name="quotedAmount" type="number" min="0" step="0.01" placeholder="0.00" /><label htmlFor="estimatedHours">Estimated hours</label><input id="estimatedHours" name="estimatedHours" type="number" min="0" step="0.25" defaultValue={lead.estimated_hours ?? ''} placeholder="16" /><div className="workspace-section-divider"><div className="section-heading workspace-section-heading"><p className="eyebrow">Client scheduling</p><h2>Suggest 3 Job Start Times</h2></div><span className="recommended-note">Optional, recommended</span><p className="workspace-card-copy">Text three service options with the initial quote so the client can book quickly. Leave these blank to send only the quote.</p></div>{[1, 2, 3].map((optionNumber) => (<div className="schedule-option-grid" key={optionNumber}><div><label htmlFor={`quoteScheduleDate${optionNumber}`}>Option {optionNumber} date</label><ScheduledDatePicker id={`quoteScheduleDate${optionNumber}`} name={`quoteScheduleDate${optionNumber}`} /></div><div><label htmlFor={`quoteScheduleTime${optionNumber}`}>Option {optionNumber} time</label><TimeSlotSelect id={`quoteScheduleTime${optionNumber}`} name={`quoteScheduleTime${optionNumber}`} /></div></div>))}<label className="sms-consent-check"><input name="quoteScheduleSmsConsent" type="checkbox" /><span>The client agreed to receive transactional scheduling texts. Required only when sending quick booking options. Reply STOP to opt out.</span></label><SaveButton>Send quote</SaveButton></form></section> : null}
+          {!lead.converted_job ? (
+            <section className="panel workspace-section-card">
+              <div className="section-heading workspace-section-heading"><p className="eyebrow">Step 2</p><h2>Send quote / estimate</h2></div>
+              <p>Enter the amount and send the initial quote. Job start options can stay tucked away until you need them.</p>
+              <form action={convertLead} className={styles.actionForm}>
+                <label htmlFor="quotedAmount">Quoted amount ($)</label>
+                <input id="quotedAmount" name="quotedAmount" type="number" min="0" step="0.01" placeholder="0.00" />
+                <label htmlFor="estimatedHours">Estimated hours</label>
+                <input id="estimatedHours" name="estimatedHours" type="number" min="0" step="0.25" defaultValue={lead.estimated_hours ?? ''} placeholder="16" />
+                <details className={styles.optionalScheduleDetails}>
+                  <summary>Suggest 3 job start times</summary>
+                  <p>Optional. Text three service options with the quote so the client can book quickly.</p>
+                  {[1, 2, 3].map((optionNumber) => (
+                    <div className="schedule-option-grid" key={optionNumber}>
+                      <div>
+                        <label htmlFor={`quoteScheduleDate${optionNumber}`}>Option {optionNumber} date</label>
+                        <ScheduledDatePicker id={`quoteScheduleDate${optionNumber}`} name={`quoteScheduleDate${optionNumber}`} />
+                      </div>
+                      <div>
+                        <label htmlFor={`quoteScheduleTime${optionNumber}`}>Option {optionNumber} time</label>
+                        <TimeSlotSelect id={`quoteScheduleTime${optionNumber}`} name={`quoteScheduleTime${optionNumber}`} />
+                      </div>
+                    </div>
+                  ))}
+                  <label className="sms-consent-check">
+                    <input name="quoteScheduleSmsConsent" type="checkbox" />
+                    <span>The client agreed to receive transactional scheduling texts. Required only when sending quick booking options. Reply STOP to opt out.</span>
+                  </label>
+                </details>
+                <SaveButton>Send quote</SaveButton>
+              </form>
+            </section>
+          ) : null}
 
           {!lead.converted_job ? <section className={`panel workspace-section-card ${styles.quickLeadActions}`}><div className="section-heading workspace-section-heading"><p className="eyebrow">Lead actions</p><h2>Follow up</h2></div><div className={styles.statusQuickActions}>{textLink ? <a className="btn secondary" href={textLink}>Text client</a> : null}{lead.email ? <a className="btn secondary" href={`mailto:${lead.email}`}>Email client</a> : null}<form action={markContacted}><button className="btn secondary" type="submit">Mark contacted</button></form><form action={convertLead}><input type="hidden" name="quotedAmount" value="0" /><input type="hidden" name="estimatedHours" value={lead.estimated_hours ?? ''} /><button className="btn secondary" type="submit">Convert to job</button></form><form action={markLost}><button className="btn ghost" type="submit">Mark lost</button></form></div></section> : null}
         </aside>

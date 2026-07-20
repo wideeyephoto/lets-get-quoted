@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
 import { createClientJobAccessToken, createJobFeedEvent } from '@/lib/job-feed';
 import { formatJobQuoteSummary } from '@/lib/jobs';
-import { convertLeadToJob, createLead, getLead, scheduleLeadQuoteVisit, updateLeadDetails, updateLeadStatus, type LeadStatus } from '@/lib/leads';
+import { clearLeadQuoteVisit, convertLeadToJob, createLead, getLead, scheduleLeadQuoteVisit, updateLeadDetails, updateLeadStatus, type LeadStatus } from '@/lib/leads';
 import { uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
@@ -131,6 +131,13 @@ export async function scheduleLeadQuoteVisitAction(leadId: string, formData: For
     confirmationTextSentAt,
   });
 
+  revalidatePath(`/dashboard/leads/${leadId}`);
+  revalidatePath('/dashboard/leads');
+}
+
+export async function clearLeadQuoteVisitAction(leadId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  await clearLeadQuoteVisit(supabase, accountId, leadId);
   revalidatePath(`/dashboard/leads/${leadId}`);
   revalidatePath('/dashboard/leads');
 }
