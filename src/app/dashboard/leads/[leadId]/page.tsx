@@ -7,6 +7,7 @@ import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
 import { expireStaleLeads, formatElapsedTime, formatLeadSource, getLead, listLeads, type Lead, type LeadQuoteVisit } from '@/lib/leads';
 import { expandScheduledJobs, formatJobSchedule, formatJobTime, listJobs, type Job, type ScheduledJobOccurrence } from '@/lib/jobs';
 import { clearLeadQuoteVisitAction, convertLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, updateLeadDetailsAction } from '../actions';
+import LeadAvailabilityScheduler from './LeadAvailabilityScheduler';
 import SaveButton from '@/components/save-button';
 import TimeSlotSelect from '@/components/time-slot-select';
 import styles from '../leads.module.css';
@@ -120,6 +121,23 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const nextAvailabilityStart = dateKey(addDays(availabilityStart, 7));
   const canViewPreviousAvailability = dateKey(availabilityStart) > dateKey(today);
   const availability = buildAvailability(jobs, leads, scheduleDayHours, availabilityStart);
+  const availabilityCards = availability.map((day) => ({
+    key: day.key,
+    label: day.label,
+    summary: day.jobs.length + day.visits.length > 0
+      ? `${day.jobs.length} job${day.jobs.length === 1 ? '' : 's'} / ${day.visits.length} quote visit${day.visits.length === 1 ? '' : 's'}`
+      : 'Open',
+    detail: day.hours ? `${day.hours} est hrs` : nextScheduledJobLabel(day.jobs),
+    bookingLabel: day.jobs.length + day.visits.length > 0 ? 'Book anyway' : 'Book visit',
+    busy: day.jobs.length + day.visits.length > 0,
+    isToday: day.key === dateKey(today),
+    jobHints: day.jobs.slice(0, 3).map((job) => ({
+      id: `${job.id}-${job.scheduled_for}-${job.scheduled_time ?? 'anytime'}`,
+      clientName: job.client_name,
+      time: formatJobTime(job.scheduled_time) || 'Time TBD',
+      city: extractCity(job.address),
+    })),
+  }));
   const availabilityHref = (startKey: string) => {
     const query = new URLSearchParams();
     if (searchParams.edit) query.set('edit', searchParams.edit);
@@ -144,7 +162,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
             {visitLabel ? <span className={styles.visitPill}>Quote visit {visitLabel}</span> : null}
           </div>
           <div className={styles.leadQuickActions}>
-            {!lead.converted_job ? <Link className="btn primary" href="#lead-quote-scheduling">Schedule quote</Link> : null}
+            {!lead.converted_job ? <Link className="btn primary" href="#availability-snapshot">Schedule quote</Link> : null}
             {!lead.converted_job ? <Link className="btn secondary" href="#lead-estimate">Provide estimate</Link> : null}
             {!lead.converted_job ? <Link className="btn secondary" href="#lead-estimate">Convert to job &amp; Schedule Start Date</Link> : null}
             {lead.converted_job ? <Link className="btn primary" href={`/dashboard/jobs/${lead.converted_job}`}>{convertedJobLabel}</Link> : null}
@@ -152,7 +170,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
         </div>
         <div className={styles.leadStageCard}>
           <strong>Lead path</strong>
-          <Link className={lead.quote_visit ? styles.stageComplete : undefined} href="#lead-quote-scheduling">Schedule quote</Link>
+          <Link className={lead.quote_visit ? styles.stageComplete : undefined} href="#availability-snapshot">Schedule quote</Link>
           <Link className={['quoted', 'won'].includes(lead.status) ? styles.stageComplete : undefined} href="#lead-estimate">Provide estimate</Link>
           {lead.converted_job ? <Link className={styles.stageComplete} href={`/dashboard/jobs/${lead.converted_job}`}>Schedule start date</Link> : <Link href="#lead-estimate">Schedule start date</Link>}
         </div>
@@ -234,117 +252,21 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
 
         <aside className={styles.actionPanel}>
           {!lead.converted_job ? (
-            <section id="lead-quote-scheduling" className={`panel workspace-section-card ${styles.primaryActionCard}`}>
-              <div className="section-heading workspace-section-heading"><p className="eyebrow">Step 1</p><h2>Schedule quote</h2></div>
-              <p>Set the quote visit now or text three openings so the client can choose.</p>
-              {visitLabel ? <div className={styles.scheduledVisitSummary}><strong>Scheduled</strong><span>{visitLabel}</span><small>{lead.quote_visit?.durationMinutes} min visit{lead.quote_visit?.confirmationTextSentAt ? ' - text sent' : ''}</small></div> : null}
-              <div className={`schedule-action-buttons ${styles.quoteVisitActions}`}>
-                <details className="schedule-popover" open>
-                  <summary className="btn secondary">{visitLabel ? 'Reschedule' : 'Add Quote Date'}</summary>
-                  <div className="schedule-popover-panel schedule-start-panel">
-                    <form action={scheduleVisit} className="schedule-inline-form schedule-start-form">
-                      <div className="schedule-inline-field schedule-inline-date">
-                        <ScheduledDatePicker id="quoteVisitDate" name="quoteVisitDate" defaultValue={lead.quote_visit?.scheduledFor ?? ''} required />
-                      </div>
-                      <div className="schedule-inline-field schedule-inline-time">
-                        <TimeSlotSelect id="quoteVisitTime" name="quoteVisitTime" defaultValue={lead.quote_visit?.scheduledTime ?? ''} />
-                      </div>
-                      <input type="hidden" name="quoteVisitDuration" value={lead.quote_visit?.durationMinutes ?? 60} />
-                      <input type="hidden" name="quoteVisitNotes" value={lead.quote_visit?.notes ?? ''} />
-                      <button type="submit" className="btn primary schedule-save-button">Save Quote Date</button>
-                    </form>
-                  </div>
-                </details>
-                <details className="schedule-popover" name={`lead-quote-visit-${lead.id}`}>
-                  <summary className="btn secondary">Let the client choose</summary>
-                  <div className="schedule-popover-panel">
-                    <form action={sendQuoteVisitOptions} className="schedule-inline-form schedule-client-options-form">
-                      <div className="schedule-client-options-intro">
-                        <strong>Send 3 quote visit times to the client.</strong>
-                        <span>They can reply with 1, 2, or 3, then you can book the selected visit.</span>
-                      </div>
-                      <div className="schedule-inline-field schedule-inline-date">
-                        <label htmlFor={`quoteVisitClientPhone-${lead.id}`}>Client mobile</label>
-                        <input id={`quoteVisitClientPhone-${lead.id}`} name="quoteVisitClientPhone" type="tel" defaultValue={lead.phone ?? ''} placeholder="(248) 555-0117" />
-                      </div>
-                      {[1, 2, 3].map((optionNumber) => (
-                        <div className={`schedule-option-grid schedule-option-${optionNumber}`} key={`${lead.id}-quote-option-${optionNumber}`}>
-                          <div>
-                            <label htmlFor={`quoteVisitOptionDate${optionNumber}-${lead.id}`}>Option {optionNumber} date</label>
-                            <ScheduledDatePicker id={`quoteVisitOptionDate${optionNumber}-${lead.id}`} name={`quoteVisitOptionDate${optionNumber}`} scrollIntoViewOnOpen={optionNumber === 3} />
-                          </div>
-                          <div>
-                            <label htmlFor={`quoteVisitOptionTime${optionNumber}-${lead.id}`}>Option {optionNumber} time</label>
-                            <TimeSlotSelect id={`quoteVisitOptionTime${optionNumber}-${lead.id}`} name={`quoteVisitOptionTime${optionNumber}`} scrollIntoViewOnOpen={optionNumber === 3} />
-                          </div>
-                        </div>
-                      ))}
-                      <label className="sms-consent-check">
-                        <input name="quoteVisitOptionsSmsConsent" type="checkbox" required />
-                        <span>The client agreed to receive transactional scheduling texts. Reply STOP to opt out.</span>
-                      </label>
-                      <button type="submit" className="btn primary schedule-save-button">Send Dates to Client</button>
-                    </form>
-                  </div>
-                </details>
-                {visitLabel ? (
-                  <form action={rescheduleLater} className={styles.rescheduleLaterForm}>
-                    <button type="submit" className="btn ghost">Reschedule later</button>
-                  </form>
-                ) : null}
-              </div>
-            </section>
+            <LeadAvailabilityScheduler
+              availability={availabilityCards}
+              leadPhone={lead.phone ?? ''}
+              previousHref={availabilityHref(previousAvailabilityStart)}
+              nextHref={availabilityHref(nextAvailabilityStart)}
+              canViewPrevious={canViewPreviousAvailability}
+              scheduleVisitAction={scheduleVisit}
+              sendQuoteVisitOptionsAction={sendQuoteVisitOptions}
+              clearVisitAction={rescheduleLater}
+              visitSummary={visitLabel ? {
+                label: visitLabel,
+                detail: `${lead.quote_visit?.durationMinutes ?? 60} min visit${lead.quote_visit?.confirmationTextSentAt ? ' - text sent' : ''}`,
+              } : null}
+            />
           ) : null}
-
-          <details id="availability-snapshot" className={`panel workspace-section-card workspace-details ${styles.calendarCard}`}>
-            <summary className="workspace-details-summary job-action-summary">
-              <div className="section-heading workspace-section-heading"><p className="eyebrow">Calendar</p><h2>Availability snapshot</h2></div>
-              <span className="workspace-details-copy">Check nearby openings and book a quote visit with the right time.</span>
-            </summary>
-            <div className={styles.availabilityHeader}>
-              <div>
-                <p className={styles.calendarHint}>Pick a day and adjust the visit time before booking.</p>
-                <strong>{availability[0]?.label} - {availability[availability.length - 1]?.label}</strong>
-              </div>
-              <div className={styles.availabilityControls}>
-                {canViewPreviousAvailability ? <Link className="btn secondary" href={availabilityHref(previousAvailabilityStart)}>&larr; Previous week</Link> : null}
-                <Link className="btn secondary" href={availabilityHref(nextAvailabilityStart)}>Next week &rarr;</Link>
-              </div>
-            </div>
-            <div className={styles.availabilityGrid}>
-              {availability.map((day) => {
-                const busy = day.jobs.length + day.visits.length > 0;
-                const isToday = day.key === dateKey(today);
-                return (
-                  <form action={scheduleVisit} className={styles.availabilityForm} key={day.key}>
-                    <input type="hidden" name="quoteVisitDate" value={day.key} />
-                    <input type="hidden" name="quoteVisitDuration" value="60" />
-                    <input type="hidden" name="quoteVisitNotes" value="Booked from the lead availability snapshot." />
-                    <div className={`${styles.availabilityDay}${busy ? ` ${styles.busyDay}` : ''}${isToday ? ` ${styles.todayAvailabilityDay}` : ''}`}>
-                      <strong>{day.label}</strong>
-                      <span>{busy ? `${day.jobs.length} job${day.jobs.length === 1 ? '' : 's'} / ${day.visits.length} quote visit${day.visits.length === 1 ? '' : 's'}` : 'Open'}</span>
-                      <small>{day.hours ? `${day.hours} est hrs` : nextScheduledJobLabel(day.jobs)}</small>
-                      {day.jobs.length > 0 ? (
-                        <span className={styles.availabilityJobList}>
-                          {day.jobs.slice(0, 3).map((job) => (
-                            <span key={`${job.id}-${job.scheduled_for}-${job.scheduled_time ?? 'anytime'}`}>
-                              <b>{job.client_name}</b>
-                              <small>{formatJobTime(job.scheduled_time) || 'Time TBD'}</small>
-                              <small className={styles.availabilityCity}>{extractCity(job.address)}</small>
-                            </span>
-                          ))}
-                        </span>
-                      ) : null}
-                      <div className={styles.availabilityBookingControls}>
-                        <TimeSlotSelect id={`quoteVisitTime-${day.key}`} name="quoteVisitTime" defaultValue="09:00" />
-                        <button className="btn primary" type="submit">{busy ? 'Book anyway' : 'Book visit'}</button>
-                      </div>
-                    </div>
-                  </form>
-                );
-              })}
-            </div>
-          </details>
 
           {!lead.converted_job ? (
             <section id="lead-estimate" className="panel workspace-section-card">
