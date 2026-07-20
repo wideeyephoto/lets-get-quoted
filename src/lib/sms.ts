@@ -228,9 +228,11 @@ export async function sendClientJobDashboardSms(params: {
   businessName: string;
   jobRef: string;
   token: string;
+  includesScheduleOptions?: boolean;
 }) {
   const link = clientJobLink(params.token);
-  const message = `Let's Get Quoted: ${params.businessName} created your client dashboard for job ${params.jobRef}. View updates, invoices, and payments here: ${link}. Reply STOP to opt out.`;
+  const scheduleCopy = params.includesScheduleOptions ? ' Review your quote and choose a start date here:' : ' View updates, invoices, and payments here:';
+  const message = `Let's Get Quoted: ${params.businessName} created your client dashboard for job ${params.jobRef}.${scheduleCopy} ${link}. Reply STOP to opt out.`;
   return sendTwilioMessage(params.phone, message);
 }
 

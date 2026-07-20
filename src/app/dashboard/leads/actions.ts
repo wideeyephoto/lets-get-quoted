@@ -8,7 +8,7 @@ import { formatJobQuoteSummary } from '@/lib/jobs';
 import { clearLeadQuoteVisit, convertLeadToJob, createLead, getLead, scheduleLeadQuoteVisit, updateLeadDetails, updateLeadStatus, type LeadStatus } from '@/lib/leads';
 import { uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
-import { createAndSendScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
+import { createAndSendScheduleRequest, createScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
 import { recordSmsConsent, sendClientJobDashboardSms, sendLeadQuoteVisitOptionsSms, sendLeadQuoteVisitSms } from '@/lib/sms';
 
 function optionalText(value: FormDataEntryValue | null): string | null {
@@ -193,6 +193,20 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
     sourceId: job.id,
   });
   const token = await createClientJobAccessToken(supabase, accountId, job.id, { clientPhone: job.client_phone, clientEmail: job.client_email });
+  const quickBooking = scheduleOptionsFromForm(formData);
+
+  if (quickBooking.hasInput && sendClientText && clientPhone) {
+    const { request } = await createScheduleRequest(supabase, accountId, job.id, { clientPhone, options: quickBooking.options });
+    const optionSummary = request.options.map((option, index) => `${index + 1}. ${formatScheduleOption(option)}`).join(' ');
+
+    await createJobFeedEvent(supabase, accountId, job.id, {
+      kind: 'job_scheduled',
+      title: 'Start date options added to quote',
+      body: `The client can choose a start date on their quote page: ${optionSummary}`,
+      visibility: 'client',
+      meta: { schedule_request_id: request.id, options: request.options },
+    });
+  }
 
   if (sendClientText && clientPhone) {
     const { data: account } = await supabase.from('accounts').select('business_name').eq('id', accountId).single();
@@ -202,11 +216,11 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
       businessName: account?.business_name || "Let's Get Quoted contractor",
       jobRef: job.ref,
       token,
+      includesScheduleOptions: quickBooking.hasInput,
     });
   }
 
-  const quickBooking = scheduleOptionsFromForm(formData);
-  if (quickBooking.hasInput) {
+  if (quickBooking.hasInput && !sendClientText) {
     const clientPhone = normalizeUsPhone(job.client_phone ?? '');
     if (!clientPhone) throw new Error('Enter a valid client mobile number before sending quick booking options.');
     if (formData.get('quoteScheduleSmsConsent') !== 'on') throw new Error('Confirm the client agreed to receive scheduling texts.');

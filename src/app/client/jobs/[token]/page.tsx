@@ -1,6 +1,9 @@
 import Link from 'next/link';
+import SaveButton from '@/components/save-button';
 import { getClientJobDashboard } from '@/lib/job-feed';
 import { formatMoney } from '@/lib/jobs';
+import { formatScheduleOption } from '@/lib/scheduling';
+import { requestDifferentClientJobScheduleOptionsAction, selectClientJobScheduleOptionAction } from './actions';
 
 const STATUS_LABEL: Record<string, string> = {
   new_lead: 'New request',
@@ -45,6 +48,7 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
   }
 
   const openPayments = dashboard.payments.filter((payment) => payment.status === 'requested' || payment.status === 'processing');
+  const selectedScheduleOption = dashboard.scheduleRequest?.selected_index == null ? null : dashboard.scheduleRequest.options[dashboard.scheduleRequest.selected_index];
 
   return (
     <main className="wide-shell workspace-shell client-job-dashboard">
@@ -69,6 +73,57 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
               </Link>
             ))}
           </div>
+        </section>
+      ) : null}
+
+      {dashboard.scheduleRequest?.status === 'open' ? (
+        <section className="panel workspace-section-card client-attention-card">
+          <div className="section-heading workspace-section-heading">
+            <p className="eyebrow">Choose your start date</p>
+            <h2>Approve the quote and schedule the job</h2>
+          </div>
+          <p className="workspace-card-copy">Pick the start time that works best. Your contractor will see your choice immediately.</p>
+          <div className="schedule-choice-grid client-schedule-choice-grid">
+            {dashboard.scheduleRequest.options.map((option, index) => (
+              <form action={selectClientJobScheduleOptionAction.bind(null, params.token)} className="schedule-choice-card" key={`${option.date}-${option.time ?? 'anytime'}`}>
+                <input type="hidden" name="optionIndex" value={index} />
+                <span className="schedule-choice-label">Option {index + 1}</span>
+                <strong>{formatScheduleOption(option)}</strong>
+                <textarea name="notes" rows={2} placeholder="Optional note" />
+                <SaveButton pendingLabel="Scheduling..." savedLabel="Scheduled">Approve quote and schedule</SaveButton>
+              </form>
+            ))}
+          </div>
+          <form action={requestDifferentClientJobScheduleOptionsAction.bind(null, params.token)} className="form-grid client-different-schedule-form">
+            <div className="field full">
+              <label htmlFor="different-notes">Need a different time?</label>
+              <textarea id="different-notes" name="notes" rows={3} placeholder="Share days or times that usually work better for you." />
+            </div>
+            <div className="field full">
+              <SaveButton className="btn secondary" pendingLabel="Sending..." savedLabel="Sent">Request different dates</SaveButton>
+            </div>
+          </form>
+        </section>
+      ) : null}
+
+      {dashboard.scheduleRequest?.status === 'selected' && selectedScheduleOption ? (
+        <section className="panel workspace-section-card client-attention-card success">
+          <div className="section-heading workspace-section-heading">
+            <p className="eyebrow">Start date selected</p>
+            <h2>{formatScheduleOption(selectedScheduleOption)}</h2>
+          </div>
+          <p className="workspace-card-copy">Your contractor has your selected start time.</p>
+          {dashboard.scheduleRequest.client_notes ? <p className="workspace-card-copy">Notes: {dashboard.scheduleRequest.client_notes}</p> : null}
+        </section>
+      ) : null}
+
+      {dashboard.scheduleRequest?.status === 'needs_more_options' ? (
+        <section className="panel workspace-section-card client-attention-card">
+          <div className="section-heading workspace-section-heading">
+            <p className="eyebrow">Start date request sent</p>
+            <h2>We&apos;ll send different options</h2>
+          </div>
+          {dashboard.scheduleRequest.client_notes ? <p className="workspace-card-copy">{dashboard.scheduleRequest.client_notes}</p> : null}
         </section>
       ) : null}
 

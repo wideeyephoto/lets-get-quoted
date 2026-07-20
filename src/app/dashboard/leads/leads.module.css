@@ -30,7 +30,6 @@
 .leadTitleRow h1 { margin-right: 0; }
 .leadTitleRow form { flex: 0 0 auto; }
 .leadQuickActions { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: 1.15rem; }
-.leadQuickActions form { margin: 0; }
 .leadStageCard { display: grid; gap: .55rem; align-self: center; padding: .85rem; border: 1px solid rgba(255,255,255,.14); border-radius: 12px; background: rgba(255,255,255,.045); }
 .leadStageCard strong { color: #ffd166; font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; }
 .leadStageCard a { position: relative; display: flex; align-items: center; gap: .55rem; width: 100%; min-height: 34px; padding: .55rem .65rem; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: rgba(255,255,255,.045); color: rgba(255,255,255,.66); font-size: .78rem; font-weight: 800; text-align: left; text-decoration: none; }

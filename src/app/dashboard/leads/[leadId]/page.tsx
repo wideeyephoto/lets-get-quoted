@@ -100,13 +100,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           <div className={styles.leadQuickActions}>
             {!lead.converted_job ? <Link className="btn primary" href="#lead-quote-scheduling">Schedule quote</Link> : null}
             {!lead.converted_job ? <Link className="btn secondary" href="#lead-estimate">Provide estimate</Link> : null}
-            {!lead.converted_job ? (
-              <form action={convertLead}>
-                <input type="hidden" name="quotedAmount" value="0" />
-                <input type="hidden" name="estimatedHours" value={lead.estimated_hours ?? ''} />
-                <button className="btn secondary" type="submit">Convert to job</button>
-              </form>
-            ) : null}
+            {!lead.converted_job ? <Link className="btn secondary" href="#lead-estimate">Convert to job &amp; Schedule Start Date</Link> : null}
             {lead.converted_job ? <Link className="btn primary" href={`/dashboard/jobs/${lead.converted_job}`}>{convertedJobLabel}</Link> : null}
           </div>
         </div>
@@ -114,7 +108,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           <strong>Lead path</strong>
           <Link className={lead.quote_visit ? styles.stageComplete : undefined} href="#lead-quote-scheduling">Schedule quote</Link>
           <Link className={['quoted', 'won'].includes(lead.status) ? styles.stageComplete : undefined} href="#lead-estimate">Provide estimate</Link>
-          {lead.converted_job ? <Link className={styles.stageComplete} href={`/dashboard/jobs/${lead.converted_job}`}>Convert to job</Link> : <Link href="#lead-estimate">Convert to job</Link>}
+          {lead.converted_job ? <Link className={styles.stageComplete} href={`/dashboard/jobs/${lead.converted_job}`}>Schedule start date</Link> : <Link href="#lead-estimate">Schedule start date</Link>}
         </div>
       </section>
 

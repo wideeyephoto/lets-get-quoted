@@ -39,6 +39,27 @@ export type PublicScheduleRequest = JobScheduleRequest & {
   };
 };
 
+async function hydratePublicScheduleRequest(admin: SupabaseClient, scheduleRequest: JobScheduleRequest): Promise<PublicScheduleRequest | null> {
+  const [{ data: account }, { data: site }, { data: job }] = await Promise.all([
+    admin.from('accounts').select('business_name').eq('id', scheduleRequest.account_id).maybeSingle(),
+    admin.from('sites').select('company_name').eq('account_id', scheduleRequest.account_id).maybeSingle(),
+    admin
+      .from('jobs')
+      .select('id, ref, client_name, address')
+      .eq('account_id', scheduleRequest.account_id)
+      .eq('id', scheduleRequest.job_id)
+      .maybeSingle(),
+  ]);
+
+  if (!job) return null;
+
+  return {
+    ...scheduleRequest,
+    businessName: site?.company_name || account?.business_name || "Let's Get Quoted contractor",
+    job,
+  } as PublicScheduleRequest;
+}
+
 function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
@@ -147,29 +168,10 @@ export async function getPublicScheduleRequest(token: string): Promise<PublicSch
   const scheduleRequest = request as JobScheduleRequest;
   if (scheduleRequest.status === 'revoked' || (scheduleRequest.expires_at && scheduleRequest.expires_at < now)) return null;
 
-  const [{ data: account }, { data: site }, { data: job }] = await Promise.all([
-    admin.from('accounts').select('business_name').eq('id', scheduleRequest.account_id).maybeSingle(),
-    admin.from('sites').select('company_name').eq('account_id', scheduleRequest.account_id).maybeSingle(),
-    admin
-      .from('jobs')
-      .select('id, ref, client_name, address')
-      .eq('account_id', scheduleRequest.account_id)
-      .eq('id', scheduleRequest.job_id)
-      .maybeSingle(),
-  ]);
-
-  if (!job) return null;
-
-  return {
-    ...scheduleRequest,
-    businessName: site?.company_name || account?.business_name || "Let's Get Quoted contractor",
-    job,
-  } as PublicScheduleRequest;
+  return hydratePublicScheduleRequest(admin, scheduleRequest);
 }
 
-export async function selectScheduleOption(token: string, optionIndex: number, notes: string | null): Promise<PublicScheduleRequest> {
-  const request = await getPublicScheduleRequest(token);
-  if (!request) throw new Error('This scheduling link is no longer available.');
+async function applyScheduleSelection(request: PublicScheduleRequest, optionIndex: number, notes: string | null): Promise<PublicScheduleRequest> {
   if (request.status !== 'open') return request;
 
   const option = request.options[optionIndex];
@@ -237,9 +239,59 @@ export async function selectScheduleOption(token: string, optionIndex: number, n
   return { ...request, status: 'selected', selected_index: optionIndex, selected_date: option.date, selected_time: option.time, client_notes: notes, responded_at: respondedAt };
 }
 
+export async function getClientJobScheduleRequest(clientToken: string): Promise<PublicScheduleRequest | null> {
+  const admin = createAdminClient();
+  const tokenHash = hashToken(clientToken);
+  const now = new Date().toISOString();
+
+  const { data: access, error: accessError } = await admin
+    .from('client_job_access')
+    .select('account_id, job_id, expires_at, revoked_at')
+    .eq('token_hash', tokenHash)
+    .maybeSingle();
+
+  if (accessError || !access || access.revoked_at || (access.expires_at && access.expires_at < now)) return null;
+
+  const { data: request, error: requestError } = await admin
+    .from('job_schedule_requests')
+    .select('*')
+    .eq('account_id', access.account_id)
+    .eq('job_id', access.job_id)
+    .in('status', ['open', 'selected', 'needs_more_options'])
+    .or(`expires_at.is.null,expires_at.gte.${now}`)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (requestError || !request) return null;
+  return hydratePublicScheduleRequest(admin, request as JobScheduleRequest);
+}
+
+export async function selectScheduleOption(token: string, optionIndex: number, notes: string | null): Promise<PublicScheduleRequest> {
+  const request = await getPublicScheduleRequest(token);
+  if (!request) throw new Error('This scheduling link is no longer available.');
+  return applyScheduleSelection(request, optionIndex, notes);
+}
+
+export async function selectClientJobScheduleOption(clientToken: string, optionIndex: number, notes: string | null): Promise<PublicScheduleRequest> {
+  const request = await getClientJobScheduleRequest(clientToken);
+  if (!request) throw new Error('This scheduling link is no longer available.');
+  return applyScheduleSelection(request, optionIndex, notes);
+}
+
 export async function requestDifferentScheduleOptions(token: string, notes: string | null): Promise<PublicScheduleRequest> {
   const request = await getPublicScheduleRequest(token);
   if (!request) throw new Error('This scheduling link is no longer available.');
+  return applyDifferentScheduleRequest(request, notes);
+}
+
+export async function requestDifferentClientJobScheduleOptions(clientToken: string, notes: string | null): Promise<PublicScheduleRequest> {
+  const request = await getClientJobScheduleRequest(clientToken);
+  if (!request) throw new Error('This scheduling link is no longer available.');
+  return applyDifferentScheduleRequest(request, notes);
+}
+
+async function applyDifferentScheduleRequest(request: PublicScheduleRequest, notes: string | null): Promise<PublicScheduleRequest> {
   if (request.status !== 'open') return request;
 
   const admin = createAdminClient();

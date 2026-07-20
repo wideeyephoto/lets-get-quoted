@@ -41,6 +41,13 @@ export type ClientJobDashboard = {
   feed: JobFeedEvent[];
   payments: Payment[];
   invoices: Invoice[];
+  scheduleRequest: {
+    id: string;
+    options: Array<{ date: string; time: string | null }>;
+    status: 'open' | 'selected' | 'needs_more_options' | 'revoked';
+    selected_index: number | null;
+    client_notes: string | null;
+  } | null;
 };
 
 function hasFeedAction(feed: JobFeedEvent[], sourceTable: string, sourceId: string, actionUrl: string): boolean {
@@ -251,7 +258,7 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
 
   await admin.from('client_job_access').update({ last_viewed_at: now }).eq('id', access.id);
 
-  const [{ data: account }, { data: site }, { data: job }, feedResult, { data: payments }, { data: invoices }] = await Promise.all([
+  const [{ data: account }, { data: site }, { data: job }, feedResult, { data: payments }, { data: invoices }, { data: scheduleRequest }] = await Promise.all([
     admin.from('accounts').select('business_name').eq('id', access.account_id).maybeSingle(),
     admin.from('sites').select('company_name').eq('account_id', access.account_id).maybeSingle(),
     admin
@@ -275,6 +282,16 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
       .eq('job_id', access.job_id)
       .in('status', ['sent', 'signed', 'paid'])
       .order('created_at', { ascending: false }),
+    admin
+      .from('job_schedule_requests')
+      .select('id, options, status, selected_index, client_notes')
+      .eq('account_id', access.account_id)
+      .eq('job_id', access.job_id)
+      .in('status', ['open', 'selected', 'needs_more_options'])
+      .or(`expires_at.is.null,expires_at.gte.${now}`)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   if (!job) return null;
@@ -293,6 +310,7 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
     feed,
     payments: (payments ?? []) as Payment[],
     invoices: (invoices ?? []) as Invoice[],
+    scheduleRequest: scheduleRequest as ClientJobDashboard['scheduleRequest'],
   };
 }
 
