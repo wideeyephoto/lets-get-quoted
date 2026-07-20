@@ -16,6 +16,19 @@ function mapEmbedSrc(address: string | null) {
   return `https://maps.google.com/maps?q=${encodeURIComponent(address)}&z=9&output=embed`;
 }
 
+function extractCity(address: string | null): string {
+  if (!address) return 'No address on file';
+  const parts = address.split(',').map((part) => part.trim()).filter(Boolean);
+  const statePattern = /^[A-Z]{2}(?:\s+\d{5}(?:-\d{4})?)?$/i;
+  const cityPart = parts.find((part, index) => index > 0 && !statePattern.test(part));
+  if (cityPart) return cityPart;
+
+  const stateIndex = parts.findIndex((part) => statePattern.test(part));
+  const fallback = stateIndex > 0 ? parts[stateIndex - 1] : parts[0];
+  const inferredCity = fallback.match(/(?:\b(?:Ave|Avenue|St|Street|Rd|Road|Dr|Drive|Ln|Lane|Ct|Court|Blvd|Boulevard|Way|Trail|Trl|Circle|Cir)\b\.?\s+)(.+)$/i)?.[1];
+  return inferredCity || fallback || 'No address on file';
+}
+
 function formatVisit(visit: LeadQuoteVisit | null) {
   return visit ? formatJobSchedule(visit.scheduledFor, visit.scheduledTime) : null;
 }
@@ -30,18 +43,23 @@ function addDays(date: Date, days: number): Date {
   return next;
 }
 
+function parseDateKey(value: string | undefined): Date | null {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 function dayLabel(date: Date) {
   return new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(date);
 }
 
-function buildAvailability(jobs: Job[], leads: Lead[], scheduleDayHours: number) {
+function buildAvailability(jobs: Job[], leads: Lead[], scheduleDayHours: number, startDate: Date) {
   const scheduledJobs = jobs.filter((job) => job.status !== 'archived' && job.scheduled_for);
   const occurrences = expandScheduledJobs(scheduledJobs, scheduleDayHours);
   const quoteVisits = leads.filter((lead) => lead.quote_visit?.scheduledFor);
-  const today = new Date();
 
   return Array.from({ length: 10 }, (_, index) => {
-    const date = addDays(today, index);
+    const date = addDays(startDate, index);
     const key = dateKey(date);
     const dayJobs = occurrences.filter((job) => job.scheduled_for === key);
     const dayVisits = quoteVisits.filter((lead) => lead.quote_visit?.scheduledFor === key);
@@ -57,7 +75,7 @@ function nextScheduledJobLabel(jobs: ScheduledJobOccurrence<Job>[]) {
   return `${nextJob.client_name}${time ? ` at ${time}` : ''}`;
 }
 
-export default async function LeadDetailPage({ params, searchParams }: { params: { leadId: string }; searchParams: { edit?: string } }) {
+export default async function LeadDetailPage({ params, searchParams }: { params: { leadId: string }; searchParams: { edit?: string; availabilityStart?: string } }) {
   const { supabase, accountId } = await requireOwnerContext();
   await expireStaleLeads(supabase, accountId);
   const [lead, jobs, leads, { data: account }] = await Promise.all([
@@ -79,7 +97,17 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const visitLabel = formatVisit(lead.quote_visit);
   const mapSrc = mapEmbedSrc(lead.address);
   const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
-  const availability = buildAvailability(jobs, leads, scheduleDayHours);
+  const today = new Date();
+  const availabilityStart = parseDateKey(searchParams.availabilityStart) ?? today;
+  const previousAvailabilityStart = dateKey(addDays(availabilityStart, -10));
+  const nextAvailabilityStart = dateKey(addDays(availabilityStart, 10));
+  const availability = buildAvailability(jobs, leads, scheduleDayHours, availabilityStart);
+  const availabilityHref = (startKey: string) => {
+    const query = new URLSearchParams();
+    if (searchParams.edit) query.set('edit', searchParams.edit);
+    query.set('availabilityStart', startKey);
+    return `/dashboard/leads/${lead.id}?${query.toString()}#availability-snapshot`;
+  };
   return (
     <main className={`wide-shell workspace-shell ${styles.leadCommandShell}`}>
       <section className={`workspace-hero panel ${styles.leadHero}`}>
@@ -250,25 +278,45 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
             </section>
           ) : null}
 
-          <details className={`panel workspace-section-card workspace-details ${styles.calendarCard}`}>
+          <details id="availability-snapshot" className={`panel workspace-section-card workspace-details ${styles.calendarCard}`}>
             <summary className="workspace-details-summary job-action-summary">
               <div className="section-heading workspace-section-heading"><p className="eyebrow">Calendar</p><h2>Availability snapshot</h2></div>
               <span className="workspace-details-copy">Check nearby openings and quick-book a 9:00 AM quote visit.</span>
             </summary>
-            <p className={styles.calendarHint}>Click a day to immediately book a 9:00 AM in-person quote visit.</p>
+            <div className={styles.availabilityHeader}>
+              <div>
+                <p className={styles.calendarHint}>Click a day to immediately book a 9:00 AM in-person quote visit.</p>
+                <strong>{availability[0]?.label} - {availability[availability.length - 1]?.label}</strong>
+              </div>
+              <div className={styles.availabilityControls}>
+                <Link className="btn secondary" href={availabilityHref(previousAvailabilityStart)}>&larr; Previous 10</Link>
+                <Link className="btn secondary" href={availabilityHref(nextAvailabilityStart)}>Next 10 &rarr;</Link>
+              </div>
+            </div>
             <div className={styles.availabilityGrid}>
               {availability.map((day) => {
                 const busy = day.jobs.length + day.visits.length > 0;
+                const isToday = day.key === dateKey(today);
                 return (
                   <form action={scheduleVisit} className={styles.availabilityForm} key={day.key}>
                     <input type="hidden" name="quoteVisitDate" value={day.key} />
                     <input type="hidden" name="quoteVisitTime" value="09:00" />
                     <input type="hidden" name="quoteVisitDuration" value="60" />
                     <input type="hidden" name="quoteVisitNotes" value="Booked from the lead availability snapshot." />
-                    <button className={`${styles.availabilityDay}${busy ? ` ${styles.busyDay}` : ''}`} type="submit">
+                    <button className={`${styles.availabilityDay}${busy ? ` ${styles.busyDay}` : ''}${isToday ? ` ${styles.todayAvailabilityDay}` : ''}`} type="submit">
                       <strong>{day.label}</strong>
                       <span>{busy ? `${day.jobs.length} job${day.jobs.length === 1 ? '' : 's'} / ${day.visits.length} quote visit${day.visits.length === 1 ? '' : 's'}` : 'Open'}</span>
                       <small>{day.hours ? `${day.hours} est hrs` : nextScheduledJobLabel(day.jobs)}</small>
+                      {day.jobs.length > 0 ? (
+                        <span className={styles.availabilityJobList}>
+                          {day.jobs.slice(0, 3).map((job) => (
+                            <span key={`${job.id}-${job.scheduled_for}-${job.scheduled_time ?? 'anytime'}`}>
+                              <b>{job.client_name}</b>
+                              <small>{[formatJobTime(job.scheduled_time), extractCity(job.address)].filter(Boolean).join(' - ')}</small>
+                            </span>
+                          ))}
+                        </span>
+                      ) : null}
                       <em>{busy ? 'Book anyway at 9:00 AM' : 'Book 9:00 AM'}</em>
                     </button>
                   </form>

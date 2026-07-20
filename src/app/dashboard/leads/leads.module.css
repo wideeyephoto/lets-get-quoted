@@ -106,15 +106,23 @@
 .rescheduleLaterForm { min-width: 0; margin: 0; }
 .rescheduleLaterForm button { width: 100%; justify-content: center; }
 .calendarCard { overflow: hidden; }
-.calendarHint { margin: -.35rem 0 .15rem; color: rgba(255,255,255,.58); font-size: .82rem; line-height: 1.45; }
-.availabilityGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; }
+.calendarHint { margin: 0 0 .2rem; color: rgba(255,255,255,.58); font-size: .82rem; line-height: 1.45; }
+.availabilityHeader { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: .75rem; }
+.availabilityHeader strong { color: #fff; font-size: .9rem; }
+.availabilityControls { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
+.availabilityGrid { display: grid; grid-template-columns: repeat(10, minmax(138px, 1fr)); gap: .6rem; overflow-x: auto; padding: .15rem 0 .45rem; }
 .availabilityForm { min-width: 0; margin: 0; }
-.availabilityDay { display: grid; gap: .22rem; width: 100%; min-height: 104px; padding: .65rem; border: 1px solid rgba(74,222,128,.18); border-radius: 8px; background: rgba(74,222,128,.07); color: inherit; font: inherit; text-align: left; cursor: pointer; transition: border-color .16s ease, transform .16s ease, background .16s ease; }
+.availabilityDay { display: flex; flex-direction: column; gap: .32rem; width: 100%; min-height: 172px; padding: .65rem .55rem; border: 1px solid rgba(255,255,255,.1); border-radius: 10px; background: rgba(255,255,255,.025); color: inherit; font: inherit; text-align: left; cursor: pointer; transition: border-color .16s ease, transform .16s ease, background .16s ease; }
 .availabilityDay:hover, .availabilityDay:focus-visible { border-color: rgba(74,222,128,.48); background: rgba(74,222,128,.11); transform: translateY(-1px); outline: none; }
-.availabilityDay strong { color: #fff; font-size: .8rem; }
+.availabilityDay strong { color: #fff; font-size: .78rem; line-height: 1.2; }
 .availabilityDay span { color: #bbf7d0; font-size: .74rem; font-weight: 800; }
-.availabilityDay small { overflow: hidden; color: rgba(255,255,255,.52); font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
+.availabilityDay small { overflow: hidden; color: rgba(255,255,255,.52); font-size: .68rem; text-overflow: ellipsis; white-space: nowrap; }
 .availabilityDay em { align-self: end; width: fit-content; margin-top: .2rem; padding: .22rem .45rem; border-radius: 999px; background: rgba(255,255,255,.08); color: rgba(255,255,255,.76); font-size: .68rem; font-style: normal; font-weight: 900; }
+.availabilityJobList { display: grid; gap: .28rem; margin-top: .1rem; color: inherit !important; font-weight: 400 !important; }
+.availabilityJobList > span { display: grid; gap: .05rem; padding: .35rem .45rem; border-radius: 7px; background: rgba(255,255,255,.06); color: inherit !important; }
+.availabilityJobList b { overflow: hidden; color: #fff; font-size: .72rem; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.availabilityJobList small { display: block; }
+.todayAvailabilityDay { border-color: rgba(255,138,61,.58); background: rgba(255,138,61,.07); }
 .busyDay { border-color: rgba(255,209,102,.26); background: rgba(255,209,102,.07); }
 .busyDay span { color: #ffd166; }
 .busyDay:hover, .busyDay:focus-visible { border-color: rgba(255,209,102,.55); background: rgba(255,209,102,.11); }
@@ -128,4 +136,4 @@
 .source { display: inline-flex; width: fit-content; padding: .3rem .55rem; border-radius: 4px; background: rgba(255,209,102,.12); color: #ffd166; font-size: .72rem; font-weight: 700; text-transform: capitalize; }
 @media (max-width: 1240px) { .leadHero, .detailGrid { grid-template-columns: 1fr; } .leadStageCard { grid-template-columns: repeat(4, minmax(0, 1fr)); } .leadStageCard strong { grid-column: 1 / -1; } .leadStageCard span { min-height: 44px; } .actionPanel { position: static; } }
 @media (max-width: 720px) { .quoteVisitActions { grid-template-columns: 1fr; } .quoteVisitActions :global(.schedule-popover summary) { width: 100%; } .quoteVisitActions :global(.schedule-inline-form) { grid-template-columns: 1fr; } .quoteVisitActions :global(.schedule-preset-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 640px) { .board { grid-template-columns: 1fr; overflow: visible; } .column { min-height: 0; } .contactGrid, .photoGrid, .availabilityGrid, .leadStageCard { grid-template-columns: 1fr; } .leadTitleRow { display: grid; } }
+@media (max-width: 640px) { .board { grid-template-columns: 1fr; overflow: visible; } .column { min-height: 0; } .contactGrid, .photoGrid, .leadStageCard { grid-template-columns: 1fr; } .availabilityHeader { align-items: stretch; flex-direction: column; } .availabilityControls { justify-content: stretch; } .availabilityControls a { flex: 1 1 0; justify-content: center; } .leadTitleRow { display: grid; } }
