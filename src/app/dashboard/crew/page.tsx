@@ -4,6 +4,7 @@ import { createCrewPhotoUrls } from '@/lib/crew-photo-storage';
 import { formatJobSchedule, formatMoney, listJobs } from '@/lib/jobs';
 import CrewWorkHistory from '@/components/crew-work-history';
 import SaveButton from '@/components/save-button';
+import CrewPhotoUpload from './CrewPhotoUpload';
 import { assignCrewToJobAction, createCrewAction, deleteArchivedCrewAction, setCrewActiveAction, updateCrewAction, updateCrewPhotoAction } from './actions';
 
 function initialsFor(name: string) {
@@ -38,9 +39,12 @@ export default async function CrewPage() {
               return (
                 <div key={member.id} className="job-row">
                   <div className="crew-row-intro">
-                    <div className="crew-avatar" aria-hidden="true">
-                      {photoUrl ? <img src={photoUrl} alt="" /> : <span>{initialsFor(member.name)}</span>}
-                    </div>
+                    <CrewPhotoUpload
+                      action={updateCrewPhotoAction.bind(null, member.id)}
+                      photoUrl={photoUrl}
+                      initials={initialsFor(member.name)}
+                      name={member.name}
+                    />
                     <div className="crew-row-main">
                       <div className="job-row-header">
                         <span className="job-ref">{member.name}</span>
@@ -54,13 +58,6 @@ export default async function CrewPage() {
                           {member.phone}
                           {member.hourly_rate > 0 ? ` · ${formatMoney(member.hourly_rate)}/hr` : ''}
                         </span>
-                        <form action={updateCrewPhotoAction.bind(null, member.id)} className="crew-photo-form">
-                          <label className="btn secondary crew-photo-button">
-                            {photoUrl ? 'Retake photo' : 'Take photo'}
-                            <input name="photo" type="file" accept="image/jpeg,image/png,image/webp,image/avif" capture="environment" />
-                          </label>
-                          <SaveButton pendingLabel="Uploading…" savedLabel="Uploaded ✓">Save owner photo</SaveButton>
-                        </form>
                       </div>
                     </div>
                   </div>

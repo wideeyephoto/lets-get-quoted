@@ -3052,6 +3052,28 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .crew-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .crew-photo-form { display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
 .crew-photo-button input { display: none; }
+
+/* Avatar-as-uploader: click the "+" badge to add/replace a crew photo. The
+   badge sits OUTSIDE the circle (which is overflow:hidden), so it lives as a
+   sibling on the positioned label wrapper. */
+.crew-photo-upload-form { display: inline-flex; }
+.crew-avatar-upload { position: relative; display: inline-block; cursor: pointer; }
+.crew-avatar-input {
+  position: absolute; width: 1px; height: 1px;
+  opacity: 0; pointer-events: none; overflow: hidden;
+}
+.crew-avatar-add {
+  position: absolute; right: -3px; bottom: -3px;
+  width: 24px; height: 24px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: #ff7a21; color: #fff;
+  font-size: 1.05rem; font-weight: 800; line-height: 1;
+  border: 2px solid #0d1826;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  transition: filter 0.12s ease, transform 0.12s ease;
+}
+.crew-avatar-add.pending { font-size: 0.8rem; }
+.crew-avatar-upload:hover .crew-avatar-add { filter: brightness(1.1); transform: scale(1.05); }
 .job-ref { font-family: var(--font-mono), 'JetBrains Mono', monospace; font-size: 0.78rem; color: rgba(255,255,255,0.55); }
 .job-client { font-weight: 700; font-size: 1.05rem; margin-top: 0.35rem; }
 .job-meta { color: rgba(255,255,255,0.6); font-size: 0.9rem; margin-top: 0.15rem; }

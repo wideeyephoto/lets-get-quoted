@@ -78,8 +78,11 @@ export async function updateCrewPhotoAction(crewId: string, formData: FormData) 
   const { supabase, accountId } = await requireOwnerContext();
   const photo = formData.get('photo');
 
+  // No file attached (e.g. the picker was dismissed) — do nothing instead of
+  // throwing. The avatar upload only submits once a file is chosen, so this is
+  // just a guard against an empty submit rather than a user-facing error.
   if (!isCrewPhotoFile(photo)) {
-    throw new Error('Choose a crew photo to upload.');
+    return;
   }
 
   const photoPath = await uploadCrewPhoto(accountId, crewId, photo);
