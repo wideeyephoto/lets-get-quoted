@@ -88,8 +88,6 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const rescheduleLater = clearLeadQuoteVisitAction.bind(null, lead.id);
   const scheduleVisit = scheduleLeadQuoteVisitAction.bind(null, lead.id);
   const sendQuoteVisitOptions = sendLeadQuoteVisitOptionsAction.bind(null, lead.id);
-  const markContacted = updateLeadStatusAction.bind(null, lead.id, 'contacted');
-  const unmarkContacted = updateLeadStatusAction.bind(null, lead.id, 'new');
   const markLost = updateLeadStatusAction.bind(null, lead.id, 'lost');
   const convertedJobLabel = lead.status === 'won' ? 'Open job' : 'Open quote';
   const visitLabel = formatVisit(lead.quote_visit);
@@ -120,25 +118,19 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
             <span className={styles.source}>{formatLeadSource(lead.source)}</span>
             <span className={styles.receivedBadge}>Received {formatElapsedTime(lead.created_at)} ago</span>
             <span className={styles.statusPill}>{lead.status}</span>
-            {visitLabel ? <span className={styles.visitPill}>Free quote {visitLabel}</span> : null}
+            {visitLabel ? <span className={styles.visitPill}>Quote visit {visitLabel}</span> : null}
           </div>
           <div className={styles.leadQuickActions}>
-            <form action={lead.status === 'contacted' ? unmarkContacted : markContacted}>
-              <button className={`btn ${lead.status === 'contacted' ? 'primary' : 'secondary'}`} type="submit" aria-pressed={lead.status === 'contacted'} disabled={lead.converted_job !== null || ['quoted', 'won', 'lost'].includes(lead.status)} title={lead.status === 'contacted' ? 'Click to unmark contacted' : 'Mark this lead as contacted'}>
-                Client has been contacted
-              </button>
-            </form>
+            {!lead.converted_job ? <Link className="btn primary" href="#lead-quote-scheduling">Schedule quote</Link> : null}
+            {!lead.converted_job ? <Link className="btn secondary" href="#lead-estimate">Provide estimate</Link> : null}
             {lead.converted_job ? <Link className="btn primary" href={`/dashboard/jobs/${lead.converted_job}`}>{convertedJobLabel}</Link> : null}
           </div>
         </div>
         <div className={styles.leadStageCard}>
           <strong>Lead path</strong>
-          {[
-            { label: 'Contact lead', active: lead.status !== 'new' },
-            { label: 'Schedule free quote', active: Boolean(lead.quote_visit) },
-            { label: 'Send estimate', active: ['quoted', 'won'].includes(lead.status) },
-            { label: 'Convert to job', active: Boolean(lead.converted_job) || lead.status === 'won' },
-          ].map((step) => <span className={step.active ? styles.stageComplete : undefined} key={step.label}>{step.label}</span>)}
+          <Link className={lead.quote_visit ? styles.stageComplete : undefined} href="#lead-quote-scheduling">Schedule quote</Link>
+          <Link className={['quoted', 'won'].includes(lead.status) ? styles.stageComplete : undefined} href="#lead-estimate">Provide estimate</Link>
+          {lead.converted_job ? <Link className={styles.stageComplete} href={`/dashboard/jobs/${lead.converted_job}`}>Convert to job</Link> : <Link href="#lead-estimate">Convert to job</Link>}
         </div>
       </section>
 
@@ -217,7 +209,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
             <div className={styles.timelineList}>
               <div><span /> <p><strong>Website request received</strong><small>{new Date(lead.created_at).toLocaleString()}</small></p></div>
               {photos.length > 0 ? <div><span /> <p><strong>{photos.length} project photo{photos.length === 1 ? '' : 's'} attached</strong><small>Use these to qualify the visit or quote faster.</small></p></div> : null}
-              {lead.quote_visit ? <div><span /> <p><strong>Free quote visit scheduled</strong><small>{visitLabel}{lead.quote_visit.confirmationTextSentAt ? ' - confirmation text sent' : ''}</small></p></div> : null}
+              {lead.quote_visit ? <div><span /> <p><strong>Quote visit scheduled</strong><small>{visitLabel}{lead.quote_visit.confirmationTextSentAt ? ' - confirmation text sent' : ''}</small></p></div> : null}
               {lead.converted_job ? <div><span /> <p><strong>Converted to job</strong><small>Opened as an active quote/job.</small></p></div> : null}
             </div>
           </section>
@@ -225,8 +217,8 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
 
         <aside className={styles.actionPanel}>
           {!lead.converted_job ? (
-            <section className={`panel workspace-section-card ${styles.primaryActionCard}`}>
-              <div className="section-heading workspace-section-heading"><p className="eyebrow">Step 1</p><h2>Schedule free in-person quote</h2></div>
+            <section id="lead-quote-scheduling" className={`panel workspace-section-card ${styles.primaryActionCard}`}>
+              <div className="section-heading workspace-section-heading"><p className="eyebrow">Step 1</p><h2>Schedule quote</h2></div>
               <p>Set the quote visit now or text three openings so the client can choose.</p>
               {visitLabel ? <div className={styles.scheduledVisitSummary}><strong>Scheduled</strong><span>{visitLabel}</span><small>{lead.quote_visit?.durationMinutes} min visit{lead.quote_visit?.confirmationTextSentAt ? ' - text sent' : ''}</small></div> : null}
               <div className={`schedule-action-buttons ${styles.quoteVisitActions}`}>
@@ -262,7 +254,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                   <div className="schedule-popover-panel">
                     <form action={sendQuoteVisitOptions} className="schedule-inline-form schedule-client-options-form">
                       <div className="schedule-client-options-intro">
-                        <strong>Send 3 free quote visit times to the client.</strong>
+                        <strong>Send 3 quote visit times to the client.</strong>
                         <span>They can reply with 1, 2, or 3, then you can book the selected visit.</span>
                       </div>
                       <div className="schedule-inline-field schedule-inline-date">
@@ -326,7 +318,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           </details>
 
           {!lead.converted_job ? (
-            <section className="panel workspace-section-card">
+            <section id="lead-estimate" className="panel workspace-section-card">
               <div className="section-heading workspace-section-heading"><p className="eyebrow">Step 2</p><h2>Send quote / estimate</h2></div>
               <p>Enter the amount and send the initial quote. Job start options can stay tucked away until you need them.</p>
               <form action={convertLead} className={styles.actionForm}>
@@ -359,7 +351,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
             </section>
           ) : null}
 
-          {!lead.converted_job ? <section className={`panel workspace-section-card ${styles.quickLeadActions}`}><div className="section-heading workspace-section-heading"><p className="eyebrow">Lead actions</p><h2>Follow up</h2></div><div className={styles.statusQuickActions}>{textLink ? <a className="btn secondary" href={textLink}>Text client</a> : null}{lead.email ? <a className="btn secondary" href={`mailto:${lead.email}`}>Email client</a> : null}<form action={markContacted}><button className="btn secondary" type="submit">Mark contacted</button></form><form action={convertLead}><input type="hidden" name="quotedAmount" value="0" /><input type="hidden" name="estimatedHours" value={lead.estimated_hours ?? ''} /><button className="btn secondary" type="submit">Convert to job</button></form><form action={markLost}><button className="btn ghost" type="submit">Mark lost</button></form></div></section> : null}
+          {!lead.converted_job ? <section className={`panel workspace-section-card ${styles.quickLeadActions}`}><div className="section-heading workspace-section-heading"><p className="eyebrow">Lead actions</p><h2>Follow up</h2></div><div className={styles.statusQuickActions}>{textLink ? <a className="btn secondary" href={textLink}>Text client</a> : null}{lead.email ? <a className="btn secondary" href={`mailto:${lead.email}`}>Email client</a> : null}<form action={convertLead}><input type="hidden" name="quotedAmount" value="0" /><input type="hidden" name="estimatedHours" value={lead.estimated_hours ?? ''} /><button className="btn secondary" type="submit">Convert to job</button></form><form action={markLost}><button className="btn ghost" type="submit">Mark lost</button></form></div></section> : null}
         </aside>
       </div>
     </main>

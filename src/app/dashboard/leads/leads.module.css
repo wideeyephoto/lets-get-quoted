@@ -32,8 +32,9 @@
 .leadQuickActions { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: 1.15rem; }
 .leadStageCard { display: grid; gap: .55rem; align-self: center; padding: .85rem; border: 1px solid rgba(255,255,255,.14); border-radius: 12px; background: rgba(255,255,255,.045); }
 .leadStageCard strong { color: #ffd166; font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; }
-.leadStageCard span { position: relative; display: flex; align-items: center; gap: .55rem; min-height: 34px; padding: .55rem .65rem; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: rgba(255,255,255,.045); color: rgba(255,255,255,.66); font-size: .78rem; font-weight: 800; }
-.leadStageCard span::before { content: ''; flex: 0 0 auto; width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,.32); box-shadow: 0 0 0 5px rgba(255,255,255,.05); }
+.leadStageCard a { position: relative; display: flex; align-items: center; gap: .55rem; width: 100%; min-height: 34px; padding: .55rem .65rem; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: rgba(255,255,255,.045); color: rgba(255,255,255,.66); font-size: .78rem; font-weight: 800; text-align: left; text-decoration: none; }
+.leadStageCard a::before { content: ''; flex: 0 0 auto; width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,.32); box-shadow: 0 0 0 5px rgba(255,255,255,.05); }
+.leadStageCard a:hover { border-color: rgba(255,209,102,.32); color: #fff; }
 .leadStageCard .stageComplete { color: #fff; border-color: rgba(74,222,128,.22); background: rgba(74,222,128,.08); }
 .leadStageCard .stageComplete::before { background: #4ade80; box-shadow: 0 0 0 5px rgba(74,222,128,.13); }
 .detailGrid { display: grid; grid-template-columns: minmax(0, 1.04fr) minmax(430px, .96fr); gap: 1.1rem; align-items: start; }
