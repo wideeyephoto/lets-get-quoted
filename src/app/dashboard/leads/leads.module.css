@@ -98,6 +98,12 @@
 .quoteVisitActions :global(.schedule-inline-form) { width: 100%; min-width: 0; }
 .quoteVisitActions :global(.schedule-start-form) { grid-template-columns: minmax(240px, .9fr) minmax(180px, .55fr) max-content; align-items: start; gap: .7rem; }
 .quoteVisitActions :global(.schedule-start-form > .schedule-save-button) { align-self: start; min-width: 156px; }
+.quoteVisitActions :global(.schedule-client-options-form) { gap: .8rem; }
+.quoteVisitActions :global(.schedule-client-options-form .schedule-option-grid) { position: relative; overflow: hidden; padding: .8rem .8rem .8rem 1rem; border-width: 1px 1px 1px 4px; box-shadow: inset 0 1px 0 rgba(255,255,255,.06); }
+.quoteVisitActions :global(.schedule-client-options-form .schedule-option-grid label) { color: rgba(255,255,255,.78); }
+.quoteVisitActions :global(.schedule-client-options-form .schedule-option-1) { border-color: rgba(255,209,102,.42); background: linear-gradient(135deg, rgba(255,209,102,.14), rgba(255,255,255,.035) 62%); }
+.quoteVisitActions :global(.schedule-client-options-form .schedule-option-2) { border-color: rgba(61,184,255,.42); background: linear-gradient(135deg, rgba(61,184,255,.14), rgba(255,255,255,.035) 62%); }
+.quoteVisitActions :global(.schedule-client-options-form .schedule-option-3) { border-color: rgba(120,220,150,.42); background: linear-gradient(135deg, rgba(120,220,150,.14), rgba(255,255,255,.035) 62%); }
 .rescheduleLaterForm { min-width: 0; margin: 0; }
 .rescheduleLaterForm button { width: 100%; justify-content: center; }
 .calendarCard { overflow: hidden; }

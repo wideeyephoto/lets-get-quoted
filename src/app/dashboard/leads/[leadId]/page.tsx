@@ -136,11 +136,12 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                 <iframe title={`Map showing ${lead.address}`} src={mapSrc} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
               </div>
             ) : null}
-            <div className={styles.dataBlock}><span>Estimated hours</span><p>{lead.estimated_hours ? `${lead.estimated_hours} hrs` : 'Not estimated yet'}</p></div>
             <div className={styles.dataBlock}><span>Project details</span><p>{lead.message || 'Not provided'}</p></div>
             <details className={styles.inlineEditDetails} open={searchParams.edit === 'client'}>
               <summary className="btn secondary">Edit client/request details</summary>
               <form action={updateLeadDetails} className={`form-grid ${styles.leadEditForm}`}>
+                <input type="hidden" name="projectType" value={lead.project_type ?? ''} />
+                <input type="hidden" name="estimatedHours" value={lead.estimated_hours ?? ''} />
                 <div className="field">
                   <label htmlFor="leadName">Client name</label>
                   <input id="leadName" name="name" defaultValue={lead.name ?? ''} required />
@@ -156,14 +157,6 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                 <div className="field">
                   <label htmlFor="leadAddress">Project address</label>
                   <input id="leadAddress" name="address" defaultValue={lead.address ?? ''} />
-                </div>
-                <div className="field">
-                  <label htmlFor="leadProjectType">Project type</label>
-                  <input id="leadProjectType" name="projectType" defaultValue={lead.project_type ?? ''} />
-                </div>
-                <div className="field">
-                  <label htmlFor="leadEstimatedHours">Estimated hours</label>
-                  <input id="leadEstimatedHours" name="estimatedHours" type="number" min="0" step="0.25" defaultValue={lead.estimated_hours ?? ''} />
                 </div>
                 <div className="field full">
                   <label htmlFor="leadMessage">Project details</label>
