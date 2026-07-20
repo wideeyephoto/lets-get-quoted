@@ -102,7 +102,7 @@ export default function QuoteStartDateCalendar({
             >
               <div className={styles.quoteStartDayHeader}>
                 <strong>{day.label}</strong>
-                <span className={`${styles.quoteStartStatus}${day.busy ? ` ${styles.busyQuoteStartStatus}` : ''}`}>{day.busy ? day.summary : 'Open'}</span>
+                {day.busy ? <span className={`${styles.quoteStartStatus} ${styles.busyQuoteStartStatus}`}>{day.summary}</span> : null}
               </div>
               {day.busy ? <small className={styles.quoteStartDetail}>{day.detail}</small> : null}
               {primaryHint ? (
