@@ -129,7 +129,7 @@
 .calendarSelectionHeader span { color: #ffd166; font-size: .76rem; font-weight: 800; }
 .calendarSelectionTitle { display: grid; gap: .12rem; }
 .calendarSelectionTitle span { color: rgba(255,255,255,.58); font-size: .76rem; font-weight: 500; }
-.selectedOptionList { display: grid; grid-auto-columns: minmax(210px, 1fr); grid-auto-flow: column; gap: .45rem; overflow-x: auto; padding-bottom: .1rem; }
+.selectedOptionList { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; min-width: 0; }
 .selectedOptionCard { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .45rem; min-width: 0; min-height: 0; padding: .5rem .6rem; border: 1px dashed rgba(255,255,255,.16); border-radius: 999px; background: rgba(8,15,26,.46); }
 .selectedOptionCard strong { color: #fff; font-size: .8rem; line-height: 1.15; }
 .selectedOptionCard small { color: rgba(255,255,255,.62); font-size: .72rem; }
@@ -140,12 +140,12 @@
 .selectedOptionFilled { border-style: solid; border-color: rgba(255,209,102,.28); background: rgba(255,255,255,.04); }
 .removeOptionButton { display: inline-grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 1px solid rgba(255,209,102,.22); border-radius: 999px; background: rgba(255,209,102,.06); color: #ffd166; font: inherit; font-size: .78rem; font-weight: 900; line-height: 1; cursor: pointer; }
 .removeOptionButton:hover, .removeOptionButton:focus-visible { border-color: rgba(255,209,102,.48); background: rgba(255,209,102,.12); outline: none; }
-.calendarSelectionFooter { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(260px, .9fr); gap: .75rem; align-items: flex-end; }
+.calendarSelectionFooter { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(220px, .9fr); gap: .75rem; align-items: flex-end; }
 .calendarClientFormRow { display: grid; grid-template-columns: minmax(0, 1fr); gap: .5rem; }
 .calendarConsentCheck { margin: 0; padding: .55rem .7rem; border: 1px solid rgba(255,255,255,.08); border-radius: 10px; background: rgba(255,255,255,.03); }
 .calendarSelectionActions { display: grid; gap: .55rem; align-content: end; }
-.calendarActionButtons { display: flex; justify-content: flex-end; gap: .55rem; }
-.calendarActionButtons :global(.btn) { min-width: 146px; }
+.calendarActionButtons { display: flex; justify-content: flex-end; gap: .55rem; flex-wrap: wrap; }
+.calendarActionButtons :global(.btn) { min-width: 128px; }
 .calendarSelectionHint { margin: 0; color: rgba(255,255,255,.56); font-size: .76rem; }
 .quoteVisitActions { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; justify-content: stretch; gap: .55rem; padding-top: .35rem; }
 .quoteVisitActions :global(.schedule-popover) { min-width: 0; }
@@ -170,19 +170,20 @@
 .availabilityHeader { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: .75rem; }
 .availabilityHeader strong { color: #fff; font-size: .9rem; }
 .availabilityControls { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
-.availabilityGrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .55rem; padding: .15rem 0 .25rem; }
+.availabilityGrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .55rem; padding: .15rem 0 .25rem; min-width: 0; }
 .availabilityForm { min-width: 0; margin: 0; }
-.availabilityDay { display: flex; flex-direction: column; gap: .32rem; width: 100%; min-height: 196px; padding: .6rem .5rem; border: 1px solid rgba(255,255,255,.1); border-radius: 10px; background: rgba(255,255,255,.025); color: inherit; text-align: left; transition: border-color .16s ease, transform .16s ease, background .16s ease; }
+.availabilityDay { display: flex; flex-direction: column; gap: .32rem; width: 100%; min-width: 0; min-height: 196px; overflow: hidden; padding: .6rem .5rem; border: 1px solid rgba(255,255,255,.1); border-radius: 10px; background: rgba(255,255,255,.025); color: inherit; text-align: left; transition: border-color .16s ease, transform .16s ease, background .16s ease; }
 .availabilityDay:hover { border-color: rgba(74,222,128,.48); background: rgba(74,222,128,.08); transform: translateY(-1px); }
 .availabilityDay strong { color: #fff; font-size: .78rem; line-height: 1.2; }
 .availabilityDay span { color: #bbf7d0; font-size: .74rem; font-weight: 800; }
 .availabilityDay small { overflow: hidden; color: rgba(255,255,255,.52); font-size: .68rem; text-overflow: ellipsis; white-space: nowrap; }
-.availabilityBookingControls { display: grid; gap: .4rem; margin-top: auto; }
-.availabilityBookingControls :global(.modern-time-button) { min-height: 34px; padding: .45rem .5rem; border-radius: 8px; font-size: .72rem; }
+.availabilityBookingControls { display: grid; gap: .4rem; min-width: 0; margin-top: auto; }
+.availabilityBookingControls :global(.modern-time-picker) { width: 100%; min-width: 0; max-width: 100%; }
+.availabilityBookingControls :global(.modern-time-button) { box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%; min-height: 34px; padding: .45rem .5rem; border-radius: 8px; font-size: .72rem; }
 .availabilityBookingControls :global(.modern-time-button)::after { content: ''; display: none; }
 .availabilityBookingControls :global(.modern-time-panel) { left: auto; right: 0; width: min(260px, calc(100vw - 2rem)); }
-.availabilityActionButtons { display: grid; gap: .35rem; }
-.availabilityActionButtons :global(.btn) { min-height: 34px; width: 100%; justify-content: center; padding: .45rem .55rem; font-size: .72rem; }
+.availabilityActionButtons { display: grid; gap: .35rem; min-width: 0; }
+.availabilityActionButtons :global(.btn) { box-sizing: border-box; min-height: 34px; width: 100%; min-width: 0; max-width: 100%; justify-content: center; padding: .45rem .55rem; font-size: .72rem; }
 .clientOptionButton[disabled] { opacity: .55; cursor: not-allowed; }
 .availabilityJobList { display: grid; gap: .28rem; margin-top: .1rem; color: inherit !important; font-weight: 400 !important; }
 .availabilityJobList > span { display: grid; gap: .05rem; padding: .35rem .45rem; border-radius: 7px; background: rgba(255,255,255,.06); color: inherit !important; }
@@ -202,7 +203,7 @@
 .timelineList small { color: rgba(255,255,255,.55); }
 .currentStatusButton { border-color: rgba(255,209,102,.48) !important; background: rgba(255,209,102,.12) !important; color: #ffd166 !important; }
 .source { display: inline-flex; width: fit-content; padding: .3rem .55rem; border-radius: 4px; background: rgba(255,209,102,.12); color: #ffd166; font-size: .72rem; font-weight: 700; text-transform: capitalize; }
-@media (max-width: 1240px) { .leadHero, .detailGrid { grid-template-columns: 1fr; } .leadStageCard { grid-template-columns: repeat(4, minmax(0, 1fr)); } .leadStageCard strong { grid-column: 1 / -1; } .leadStageCard span { min-height: 44px; } .actionPanel { position: static; } .calendarSelectionFooter { grid-template-columns: 1fr; } }
+@media (max-width: 1240px) { .leadHero, .detailGrid { grid-template-columns: 1fr; } .leadStageCard { grid-template-columns: repeat(4, minmax(0, 1fr)); } .leadStageCard strong { grid-column: 1 / -1; } .leadStageCard span { min-height: 44px; } .actionPanel { position: static; } .calendarSelectionFooter { grid-template-columns: 1fr; } .selectedOptionList { grid-template-columns: 1fr; } }
 @media (max-width: 980px) { .selectedOptionCard { border-radius: 14px; } }
 @media (max-width: 720px) { .quoteVisitActions { grid-template-columns: 1fr; } .quoteVisitActions :global(.schedule-popover summary) { width: 100%; } .quoteVisitActions :global(.schedule-inline-form) { grid-template-columns: 1fr; } .quoteVisitActions :global(.schedule-preset-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 1120px) { .availabilityGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
