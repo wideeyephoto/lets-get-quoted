@@ -90,19 +90,21 @@
 .quoteStartCalendarHeaderMeta { display: grid; justify-items: end; gap: .45rem; }
 .quoteStartCalendarControls { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .45rem; }
 .quoteStartCalendarGrid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .5rem; }
-.quoteStartDay { display: flex; flex-direction: column; gap: .28rem; min-height: 124px; padding: .5rem; border: 1px solid rgba(255,255,255,.1); border-radius: 10px; background: rgba(255,255,255,.02); }
-.quoteStartDayHeader { display: grid; gap: .12rem; }
+.quoteStartDay { display: flex; flex-direction: column; gap: .32rem; min-height: 118px; padding: .5rem; border: 1px solid rgba(255,255,255,.1); border-radius: 10px; background: rgba(255,255,255,.02); }
+.quoteStartDayHeader { display: grid; gap: .18rem; }
 .quoteStartDay strong { color: #fff; font-size: .74rem; line-height: 1.15; }
-.quoteStartStatus { color: #bbf7d0; font-size: .67rem; font-weight: 800; }
+.quoteStartStatus { display: inline-flex; align-items: center; width: fit-content; min-height: 20px; padding: .1rem .42rem; border: 1px solid rgba(255,255,255,.08); border-radius: 999px; background: rgba(255,255,255,.05); color: rgba(255,255,255,.62); font-size: .61rem; font-weight: 800; letter-spacing: .04em; }
+.busyQuoteStartStatus { border-color: rgba(255,209,102,.22); background: rgba(255,209,102,.08); color: #ffd166; }
 .quoteStartDetail { overflow: hidden; color: rgba(255,255,255,.46); font-size: .63rem; text-overflow: ellipsis; white-space: nowrap; }
 .quoteStartHintRow { display: flex; align-items: center; justify-content: space-between; gap: .35rem; min-height: 20px; }
 .quoteStartHintRow small { overflow: hidden; color: rgba(255,255,255,.44); font-size: .62rem; text-overflow: ellipsis; white-space: nowrap; }
 .quoteStartCityChip { display: inline-flex; align-items: center; width: fit-content; max-width: 100%; padding: .12rem .38rem; border-radius: 999px; background: rgba(255,255,255,.07); color: #bbf7d0; font-size: .62rem; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.quoteStartDayActions { display: grid; gap: .35rem; margin-top: auto; }
+.quoteStartDayActions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .35rem; align-items: center; margin-top: auto; }
+.quoteStartDayActions :global(.modern-time-picker) { min-width: 0; }
 .quoteStartDayActions :global(.modern-time-button) { min-height: 30px; padding: .35rem .45rem; border-radius: 8px; font-size: .68rem; }
 .quoteStartDayActions :global(.modern-time-button)::after { content: ''; display: none; }
 .quoteStartDayActions :global(.modern-time-panel) { left: auto; right: 0; width: min(240px, calc(100vw - 2rem)); }
-.quoteStartAddButton { min-height: 30px; justify-content: center; font-size: .7rem; }
+.quoteStartAddButton { min-width: 88px; min-height: 30px; justify-content: center; padding: .35rem .55rem; font-size: .68rem; }
 .quoteStartAddButton[disabled] { opacity: .55; cursor: not-allowed; }
 .quoteStartSelectionTray { display: grid; gap: .7rem; padding: .75rem; border: 1px solid rgba(255,209,102,.16); border-radius: 14px; background: rgba(255,209,102,.04); }
 .quoteStartSelectionFooter { display: grid; grid-template-columns: minmax(0, 1fr) max-content; gap: .7rem; align-items: flex-end; }
@@ -204,5 +206,6 @@
 @media (max-width: 1120px) { .quoteStartCalendarGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 820px) { .availabilityGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 900px) { .quoteStartCalendarGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .quoteStartSelectionFooter { grid-template-columns: 1fr; } .quoteStartFooterActions { justify-items: stretch; } }
+@media (max-width: 720px) { .quoteStartDayActions { grid-template-columns: 1fr; } .quoteStartAddButton { width: 100%; } }
 @media (max-width: 640px) { .board { grid-template-columns: 1fr; overflow: visible; } .column { min-height: 0; } .contactGrid, .photoGrid, .leadStageCard, .calendarUtilityRow { grid-template-columns: 1fr; } .availabilityHeader, .calendarSurfaceHeader, .calendarSelectionHeader, .quoteStartCalendarHeader { align-items: stretch; flex-direction: column; } .availabilityControls, .quoteStartCalendarControls { justify-content: stretch; } .availabilityControls a, .quoteStartCalendarControls a { flex: 1 1 0; justify-content: center; } .leadTitleRow { display: grid; } .calendarSurfaceHeader :global(.workspace-details-copy) { max-width: none; text-align: left; } .calendarActionButtons { flex-direction: column; } .calendarActionButtons :global(.btn) { width: 100%; } .quoteStartCalendarHeaderMeta { justify-items: stretch; } }
 @media (max-width: 520px) { .availabilityGrid, .quoteStartCalendarGrid { grid-template-columns: 1fr; } }
