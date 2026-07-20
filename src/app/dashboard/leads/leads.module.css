@@ -195,6 +195,13 @@
 .busyDay { border-color: rgba(255,209,102,.26); background: rgba(255,209,102,.07); }
 .busyDay span { color: #ffd166; }
 .busyDay:hover { border-color: rgba(255,209,102,.55); background: rgba(255,209,102,.11); }
+.timelineDetails { display: grid; gap: .85rem; }
+.timelineSummary { display: flex; align-items: center; justify-content: space-between; gap: .85rem; list-style: none; cursor: pointer; }
+.timelineSummary::-webkit-details-marker { display: none; }
+.timelineSummary h2 { margin: 0; }
+.timelineSummary span { display: inline-flex; align-items: center; min-height: 30px; padding: .35rem .65rem; border: 1px solid rgba(255,255,255,.1); border-radius: 999px; background: rgba(255,255,255,.04); color: rgba(255,255,255,.66); font-size: .72rem; font-weight: 800; }
+.timelineDetails[open] .timelineSummary { margin-bottom: .1rem; }
+.timelineDetails[open] .timelineSummary span { border-color: rgba(255,209,102,.28); color: #ffd166; }
 .timelineList { display: grid; gap: .8rem; }
 .timelineList > div { display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: .65rem; align-items: start; }
 .timelineList > div > span { width: 10px; height: 10px; margin-top: .25rem; border-radius: 50%; background: #ffd166; box-shadow: 0 0 0 5px rgba(255,209,102,.1); }

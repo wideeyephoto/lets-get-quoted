@@ -268,13 +268,21 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           </section>
 
           <section className={`panel workspace-section-card ${styles.detailSection}`}>
-            <div className="section-heading workspace-section-heading"><p className="eyebrow">Activity</p><h2>Lead timeline</h2></div>
-            <div className={styles.timelineList}>
-              <div><span /> <p><strong>Website request received</strong><small>{new Date(lead.created_at).toLocaleString()}</small></p></div>
-              {photos.length > 0 ? <div><span /> <p><strong>{photos.length} project photo{photos.length === 1 ? '' : 's'} attached</strong><small>Use these to qualify the visit or quote faster.</small></p></div> : null}
-              {lead.quote_visit ? <div><span /> <p><strong>Quote visit scheduled</strong><small>{visitLabel}{lead.quote_visit.confirmationTextSentAt ? ' - confirmation text sent' : ''}</small></p></div> : null}
-              {lead.converted_job ? <div><span /> <p><strong>Converted to job</strong><small>Opened as an active quote/job.</small></p></div> : null}
-            </div>
+            <details className={styles.timelineDetails}>
+              <summary className={styles.timelineSummary}>
+                <div className="section-heading workspace-section-heading">
+                  <p className="eyebrow">Activity</p>
+                  <h2>Lead timeline</h2>
+                </div>
+                <span>{lead.quote_visit || lead.converted_job || photos.length > 0 ? 'Show activity' : 'View details'}</span>
+              </summary>
+              <div className={styles.timelineList}>
+                <div><span /> <p><strong>Website request received</strong><small>{new Date(lead.created_at).toLocaleString()}</small></p></div>
+                {photos.length > 0 ? <div><span /> <p><strong>{photos.length} project photo{photos.length === 1 ? '' : 's'} attached</strong><small>Use these to qualify the visit or quote faster.</small></p></div> : null}
+                {lead.quote_visit ? <div><span /> <p><strong>Quote visit scheduled</strong><small>{visitLabel}{lead.quote_visit.confirmationTextSentAt ? ' - confirmation text sent' : ''}</small></p></div> : null}
+                {lead.converted_job ? <div><span /> <p><strong>Converted to job</strong><small>Opened as an active quote/job.</small></p></div> : null}
+              </div>
+            </details>
           </section>
         </section>
 
