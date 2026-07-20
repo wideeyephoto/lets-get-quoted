@@ -71,6 +71,9 @@
 .scheduledVisitSummary strong { color: #bbf7d0; font-size: .72rem; letter-spacing: .09em; text-transform: uppercase; }
 .scheduledVisitSummary span { color: #fff; font-weight: 900; }
 .scheduledVisitSummary small { color: rgba(255,255,255,.6); }
+.quoteVisitActions { justify-content: flex-start; padding-top: .35rem; }
+.quoteVisitActions :global(.schedule-popover-panel) { top: calc(100% + .7rem); bottom: auto; right: auto; left: 0; width: min(720px, calc(100vw - 2rem)); }
+.quoteVisitActions :global(.schedule-popover-panel::before) { top: -7px; bottom: auto; border: 0; border-left: 1px solid rgba(255,255,255,.16); border-top: 1px solid rgba(255,255,255,.16); }
 .calendarCard { overflow: hidden; }
 .calendarHint { margin: -.35rem 0 .15rem; color: rgba(255,255,255,.58); font-size: .82rem; line-height: 1.45; }
 .availabilityGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; }

@@ -247,6 +247,19 @@ export async function sendLeadQuoteVisitSms(params: {
   return sendTwilioMessage(params.phone, message);
 }
 
+export async function sendLeadQuoteVisitOptionsSms(params: {
+  phone: string;
+  businessName: string;
+  leadName: string;
+  address: string | null;
+  options: Array<{ date: string; time: string | null }>;
+}) {
+  const addressNote = params.address ? ` for ${params.address}` : '';
+  const optionText = params.options.map((option, index) => `${index + 1}) ${formatJobSchedule(option.date, option.time)}`).join(' ');
+  const message = `Let's Get Quoted: ${params.businessName} has quote visit times available${addressNote}. ${params.leadName}, reply with 1, 2, or 3: ${optionText}. Reply STOP to opt out.`;
+  return sendTwilioMessage(params.phone, message);
+}
+
 export async function sendSchedulingOptionsSms(params: {
   phone: string;
   businessName: string;

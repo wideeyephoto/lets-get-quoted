@@ -9,7 +9,7 @@ import { convertLeadToJob, createLead, getLead, scheduleLeadQuoteVisit, updateLe
 import { uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
-import { recordSmsConsent, sendLeadQuoteVisitSms } from '@/lib/sms';
+import { recordSmsConsent, sendLeadQuoteVisitOptionsSms, sendLeadQuoteVisitSms } from '@/lib/sms';
 
 function optionalText(value: FormDataEntryValue | null): string | null {
   const text = (value ?? '').toString().trim();
@@ -36,6 +36,16 @@ function scheduleOptionsFromForm(formData: FormData): { hasInput: boolean; optio
   }));
   const hasInput = options.some((option) => option.date.trim() || option.time);
   return { hasInput, options };
+}
+
+function quoteVisitOptionsFromForm(formData: FormData): ScheduleOption[] {
+  return [1, 2, 3]
+    .map((index) => ({
+      date: (formData.get(`quoteVisitOptionDate${index}`) ?? '').toString().trim(),
+      time: optionalText(formData.get(`quoteVisitOptionTime${index}`)),
+    }))
+    .filter((option) => option.date)
+    .slice(0, 3);
 }
 
 export async function createLeadAction(formData: FormData) {
@@ -121,6 +131,37 @@ export async function scheduleLeadQuoteVisitAction(leadId: string, formData: For
     confirmationTextSentAt,
   });
 
+  revalidatePath(`/dashboard/leads/${leadId}`);
+  revalidatePath('/dashboard/leads');
+}
+
+export async function sendLeadQuoteVisitOptionsAction(leadId: string, formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const lead = await getLead(supabase, accountId, leadId);
+  if (!lead) throw new Error('Lead not found.');
+
+  const clientPhone = normalizeUsPhone(requiredText(formData.get('quoteVisitClientPhone'), 'Client mobile'));
+  if (!clientPhone) throw new Error('Enter a valid client mobile number before sending quote visit options.');
+  if (formData.get('quoteVisitOptionsSmsConsent') !== 'on') throw new Error('Confirm the client agreed to receive scheduling texts.');
+
+  const options = quoteVisitOptionsFromForm(formData);
+  if (options.length !== 3) throw new Error('Add exactly 3 quote visit options before texting the client.');
+
+  const [{ data: account }, { data: site }] = await Promise.all([
+    supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
+    supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
+  ]);
+
+  await recordSmsConsent(accountId, clientPhone, 'lead_quote_visit_options');
+  await sendLeadQuoteVisitOptionsSms({
+    phone: clientPhone,
+    businessName: site?.company_name || account?.business_name || "Let's Get Quoted contractor",
+    leadName: lead.name || 'there',
+    address: lead.address,
+    options,
+  });
+
+  if (lead.status === 'new') await updateLeadStatus(supabase, accountId, leadId, 'contacted');
   revalidatePath(`/dashboard/leads/${leadId}`);
   revalidatePath('/dashboard/leads');
 }

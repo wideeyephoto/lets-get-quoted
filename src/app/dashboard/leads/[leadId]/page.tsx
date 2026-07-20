@@ -6,7 +6,7 @@ import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
 import { expireStaleLeads, formatElapsedTime, formatLeadSource, getLead, listLeads, type Lead, type LeadQuoteVisit } from '@/lib/leads';
 import { expandScheduledJobs, formatJobSchedule, formatJobTime, listJobs, type Job, type ScheduledJobOccurrence } from '@/lib/jobs';
-import { convertLeadAction, scheduleLeadQuoteVisitAction, updateLeadDetailsAction, updateLeadStatusAction } from '../actions';
+import { convertLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, updateLeadDetailsAction, updateLeadStatusAction } from '../actions';
 import SaveButton from '@/components/save-button';
 import TimeSlotSelect from '@/components/time-slot-select';
 import styles from '../leads.module.css';
@@ -33,6 +33,13 @@ function dateKey(date: Date): string {
 function addDays(date: Date, days: number): Date {
   const next = new Date(date);
   next.setDate(next.getDate() + days);
+  return next;
+}
+
+function nextWeekday(date: Date, weekday: number): Date {
+  const next = new Date(date);
+  const distance = (weekday + 7 - next.getDay()) % 7 || 7;
+  next.setDate(next.getDate() + distance);
   return next;
 }
 
@@ -79,6 +86,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const updateLeadDetails = updateLeadDetailsAction.bind(null, lead.id);
   const convertLead = convertLeadAction.bind(null, lead.id);
   const scheduleVisit = scheduleLeadQuoteVisitAction.bind(null, lead.id);
+  const sendQuoteVisitOptions = sendLeadQuoteVisitOptionsAction.bind(null, lead.id);
   const markContacted = updateLeadStatusAction.bind(null, lead.id, 'contacted');
   const unmarkContacted = updateLeadStatusAction.bind(null, lead.id, 'new');
   const markLost = updateLeadStatusAction.bind(null, lead.id, 'lost');
@@ -88,6 +96,13 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const mapSrc = mapEmbedSrc(lead.address);
   const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
   const availability = buildAvailability(jobs, leads, scheduleDayHours);
+  const today = new Date();
+  const quickQuoteVisitPresets = [
+    { label: 'Today 9 AM', date: dateKey(today), time: '09:00' },
+    { label: 'Tomorrow 9 AM', date: dateKey(addDays(today, 1)), time: '09:00' },
+    { label: 'Next Mon 9 AM', date: dateKey(nextWeekday(today, 1)), time: '09:00' },
+    { label: 'Next Fri 9 AM', date: dateKey(nextWeekday(today, 5)), time: '09:00' },
+  ];
 
   return (
     <main className={`wide-shell workspace-shell ${styles.leadCommandShell}`}>
@@ -212,25 +227,69 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           {!lead.converted_job ? (
             <section className={`panel workspace-section-card ${styles.primaryActionCard}`}>
               <div className="section-heading workspace-section-heading"><p className="eyebrow">Step 1</p><h2>Schedule free in-person quote</h2></div>
-              <p>Pick an available opening from your calendar, then optionally text the client a confirmation.</p>
+              <p>Set the quote visit now or text three openings so the client can choose.</p>
               {visitLabel ? <div className={styles.scheduledVisitSummary}><strong>Scheduled</strong><span>{visitLabel}</span><small>{lead.quote_visit?.durationMinutes} min visit{lead.quote_visit?.confirmationTextSentAt ? ' - text sent' : ''}</small></div> : null}
-              <form action={scheduleVisit} className={styles.actionForm}>
-                <label htmlFor="quoteVisitDate">Visit date</label>
-                <ScheduledDatePicker id="quoteVisitDate" name="quoteVisitDate" defaultValue={lead.quote_visit?.scheduledFor ?? ''} required scrollIntoViewOnOpen />
-                <label htmlFor="quoteVisitTime">Visit time</label>
-                <TimeSlotSelect id="quoteVisitTime" name="quoteVisitTime" defaultValue={lead.quote_visit?.scheduledTime ?? ''} scrollIntoViewOnOpen />
-                <label htmlFor="quoteVisitDuration">Visit length</label>
-                <select id="quoteVisitDuration" name="quoteVisitDuration" defaultValue={lead.quote_visit?.durationMinutes ?? 60}>
-                  <option value="30">30 minutes</option>
-                  <option value="60">1 hour</option>
-                  <option value="90">1.5 hours</option>
-                  <option value="120">2 hours</option>
-                </select>
-                <label htmlFor="quoteVisitNotes">Visit notes</label>
-                <textarea id="quoteVisitNotes" name="quoteVisitNotes" rows={3} defaultValue={lead.quote_visit?.notes ?? ''} placeholder="Gate code, parking, who will be home..." />
-                {lead.phone ? <label className="sms-consent-check"><input name="quoteVisitSmsConsent" type="checkbox" defaultChecked /><span>Send confirmation text to the client. Reply STOP to opt out.</span></label> : <p className={styles.empty}>Add a mobile number to send confirmation texts.</p>}
-                <SaveButton>{visitLabel ? 'Update visit' : 'Schedule quote visit'}</SaveButton>
-              </form>
+              <div className={`schedule-action-buttons ${styles.quoteVisitActions}`}>
+                <details className="schedule-popover" name={`lead-quote-visit-${lead.id}`}>
+                  <summary className="btn secondary">{visitLabel ? 'Update Quote Date' : 'Add Quote Date'}</summary>
+                  <div className="schedule-popover-panel schedule-start-panel">
+                    <form action={scheduleVisit} className="schedule-inline-form schedule-start-form">
+                      <div className="schedule-inline-field schedule-inline-date">
+                        <ScheduledDatePicker id="quoteVisitDate" name="quoteVisitDate" defaultValue={lead.quote_visit?.scheduledFor ?? ''} required />
+                      </div>
+                      <div className="schedule-inline-field schedule-inline-time">
+                        <TimeSlotSelect id="quoteVisitTime" name="quoteVisitTime" defaultValue={lead.quote_visit?.scheduledTime ?? ''} />
+                      </div>
+                      <input type="hidden" name="quoteVisitDuration" value={lead.quote_visit?.durationMinutes ?? 60} />
+                      <input type="hidden" name="quoteVisitNotes" value={lead.quote_visit?.notes ?? ''} />
+                      <button type="submit" className="btn primary schedule-save-button">Save Quote Date</button>
+                    </form>
+                    <div className="schedule-preset-grid" aria-label={`Quick quote visit presets for ${lead.name || 'this lead'}`}>
+                      {quickQuoteVisitPresets.map((preset) => (
+                        <form action={scheduleVisit} key={`${lead.id}-${preset.label}`}>
+                          <input type="hidden" name="quoteVisitDate" value={preset.date} />
+                          <input type="hidden" name="quoteVisitTime" value={preset.time} />
+                          <input type="hidden" name="quoteVisitDuration" value="60" />
+                          <input type="hidden" name="quoteVisitNotes" value="Booked from quick quote visit presets." />
+                          <button type="submit" className="schedule-preset-button">{preset.label}</button>
+                        </form>
+                      ))}
+                    </div>
+                  </div>
+                </details>
+                <details className="schedule-popover" name={`lead-quote-visit-${lead.id}`}>
+                  <summary className="btn secondary">Let the client choose</summary>
+                  <div className="schedule-popover-panel">
+                    <form action={sendQuoteVisitOptions} className="schedule-inline-form schedule-client-options-form">
+                      <div className="schedule-client-options-intro">
+                        <strong>Send 3 free quote visit times to the client.</strong>
+                        <span>They can reply with 1, 2, or 3, then you can book the selected visit.</span>
+                      </div>
+                      <div className="schedule-inline-field schedule-inline-date">
+                        <label htmlFor={`quoteVisitClientPhone-${lead.id}`}>Client mobile</label>
+                        <input id={`quoteVisitClientPhone-${lead.id}`} name="quoteVisitClientPhone" type="tel" defaultValue={lead.phone ?? ''} placeholder="(248) 555-0117" />
+                      </div>
+                      {[1, 2, 3].map((optionNumber) => (
+                        <div className={`schedule-option-grid schedule-option-${optionNumber}`} key={`${lead.id}-quote-option-${optionNumber}`}>
+                          <div>
+                            <label htmlFor={`quoteVisitOptionDate${optionNumber}-${lead.id}`}>Option {optionNumber} date</label>
+                            <ScheduledDatePicker id={`quoteVisitOptionDate${optionNumber}-${lead.id}`} name={`quoteVisitOptionDate${optionNumber}`} scrollIntoViewOnOpen={optionNumber === 3} />
+                          </div>
+                          <div>
+                            <label htmlFor={`quoteVisitOptionTime${optionNumber}-${lead.id}`}>Option {optionNumber} time</label>
+                            <TimeSlotSelect id={`quoteVisitOptionTime${optionNumber}-${lead.id}`} name={`quoteVisitOptionTime${optionNumber}`} scrollIntoViewOnOpen={optionNumber === 3} />
+                          </div>
+                        </div>
+                      ))}
+                      <label className="sms-consent-check">
+                        <input name="quoteVisitOptionsSmsConsent" type="checkbox" required />
+                        <span>The client agreed to receive transactional scheduling texts. Reply STOP to opt out.</span>
+                      </label>
+                      <button type="submit" className="btn primary schedule-save-button">Send Dates to Client</button>
+                    </form>
+                  </div>
+                </details>
+              </div>
             </section>
           ) : null}
 
