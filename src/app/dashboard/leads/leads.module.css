@@ -88,13 +88,16 @@
 .scheduledVisitSummary strong { color: #bbf7d0; font-size: .72rem; letter-spacing: .09em; text-transform: uppercase; }
 .scheduledVisitSummary span { color: #fff; font-weight: 900; }
 .scheduledVisitSummary small { color: rgba(255,255,255,.6); }
-.quoteVisitActions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; justify-content: stretch; gap: .55rem; padding-top: .35rem; }
+.quoteVisitActions { display: grid; grid-template-columns: minmax(0, 1fr); align-items: start; justify-content: stretch; gap: .55rem; padding-top: .35rem; }
 .quoteVisitActions :global(.schedule-popover) { min-width: 0; }
 .quoteVisitActions :global(.schedule-popover[open]) { grid-column: 1 / -1; }
-.quoteVisitActions :global(.schedule-popover summary) { width: 100%; justify-content: center; }
-.quoteVisitActions :global(.schedule-popover-panel) { position: static; width: 100%; max-height: none; margin-top: .75rem; overflow: visible; }
+.quoteVisitActions :global(.schedule-popover:not([open])) { justify-self: start; width: min(100%, 360px); }
+.quoteVisitActions :global(.schedule-popover summary) { width: min(100%, 360px); justify-content: center; }
+.quoteVisitActions :global(.schedule-popover-panel) { position: static; width: 100%; max-height: none; margin-top: .55rem; padding: .85rem; overflow: visible; }
 .quoteVisitActions :global(.schedule-popover-panel::before) { display: none; }
 .quoteVisitActions :global(.schedule-inline-form) { width: 100%; min-width: 0; }
+.quoteVisitActions :global(.schedule-start-form) { grid-template-columns: minmax(240px, .9fr) minmax(180px, .55fr) max-content; align-items: start; gap: .7rem; }
+.quoteVisitActions :global(.schedule-start-form > .schedule-save-button) { align-self: start; min-width: 156px; }
 .rescheduleLaterForm { min-width: 0; margin: 0; }
 .rescheduleLaterForm button { width: 100%; justify-content: center; }
 .calendarCard { overflow: hidden; }
@@ -119,5 +122,5 @@
 .currentStatusButton { border-color: rgba(255,209,102,.48) !important; background: rgba(255,209,102,.12) !important; color: #ffd166 !important; }
 .source { display: inline-flex; width: fit-content; padding: .3rem .55rem; border-radius: 4px; background: rgba(255,209,102,.12); color: #ffd166; font-size: .72rem; font-weight: 700; text-transform: capitalize; }
 @media (max-width: 1240px) { .leadHero, .detailGrid { grid-template-columns: 1fr; } .leadStageCard { grid-template-columns: repeat(4, minmax(0, 1fr)); } .leadStageCard strong { grid-column: 1 / -1; } .leadStageCard span { min-height: 44px; } .actionPanel { position: static; } }
-@media (max-width: 720px) { .quoteVisitActions { grid-template-columns: 1fr; } .quoteVisitActions :global(.schedule-inline-form) { grid-template-columns: 1fr; } .quoteVisitActions :global(.schedule-preset-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .quoteVisitActions { grid-template-columns: 1fr; } .quoteVisitActions :global(.schedule-popover summary) { width: 100%; } .quoteVisitActions :global(.schedule-inline-form) { grid-template-columns: 1fr; } .quoteVisitActions :global(.schedule-preset-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .board { grid-template-columns: 1fr; overflow: visible; } .column { min-height: 0; } .contactGrid, .photoGrid, .availabilityGrid, .leadStageCard { grid-template-columns: 1fr; } .leadTitleRow { display: grid; } }
