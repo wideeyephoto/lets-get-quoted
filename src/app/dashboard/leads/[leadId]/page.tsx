@@ -230,7 +230,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
               <p>Set the quote visit now or text three openings so the client can choose.</p>
               {visitLabel ? <div className={styles.scheduledVisitSummary}><strong>Scheduled</strong><span>{visitLabel}</span><small>{lead.quote_visit?.durationMinutes} min visit{lead.quote_visit?.confirmationTextSentAt ? ' - text sent' : ''}</small></div> : null}
               <div className={`schedule-action-buttons ${styles.quoteVisitActions}`}>
-                <details className="schedule-popover" name={`lead-quote-visit-${lead.id}`}>
+                <details className="schedule-popover" name={`lead-quote-visit-${lead.id}`} open>
                   <summary className="btn secondary">{visitLabel ? 'Update Quote Date' : 'Add Quote Date'}</summary>
                   <div className="schedule-popover-panel schedule-start-panel">
                     <form action={scheduleVisit} className="schedule-inline-form schedule-start-form">
