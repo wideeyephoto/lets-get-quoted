@@ -29,11 +29,27 @@
 .leadTitleRow { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
 .leadTitleRow h1 { margin-right: 0; }
 .leadTitleRow form { flex: 0 0 auto; }
-.heroContactSummary { display: grid; grid-template-columns: minmax(130px, .65fr) minmax(170px, .8fr) minmax(260px, 1.35fr); gap: .6rem; margin-top: .9rem; }
+.heroContactSummary { display: grid; grid-template-columns: minmax(200px, .9fr) minmax(260px, 1.35fr); gap: .6rem; margin-top: .9rem; }
 .heroContactItem { display: grid; gap: .18rem; min-width: 0; padding: .7rem .8rem; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; background: rgba(255,255,255,.03); }
 .heroContactItem span { color: rgba(255,255,255,.48); font-size: .66rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .heroContactItem strong, .heroContactItem a { overflow: hidden; color: #f7f5ef; font-size: .94rem; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
 .heroContactItem a { color: #ffd166; text-decoration: none; }
+.heroPhoneLink {
+  display: inline-flex; align-items: center; gap: .35rem; width: fit-content; max-width: 100%;
+  margin: .1rem 0 .3rem; padding: .3rem .65rem; border-radius: 999px;
+  border: 1px solid rgba(57,224,122,.4); background: rgba(57,224,122,.14);
+  color: #39e07a !important; font-size: 1rem; font-weight: 900; letter-spacing: .01em;
+  transition: background .15s ease, border-color .15s ease;
+}
+.heroPhoneLink:hover, .heroPhoneLink:focus-visible { background: rgba(57,224,122,.24); border-color: rgba(57,224,122,.6); }
+.heroContactEmail {
+  display: inline-flex; align-items: center; gap: .35rem; width: fit-content; max-width: 100%;
+  padding: .3rem .65rem; border-radius: 999px;
+  border: 1px solid rgba(255,209,102,.35); background: rgba(255,209,102,.12);
+  color: #ffd166 !important; font-size: .82rem !important; font-weight: 800 !important; letter-spacing: .01em;
+  transition: background .15s ease, border-color .15s ease;
+}
+.heroContactEmail:hover, .heroContactEmail:focus-visible { background: rgba(255,209,102,.22); border-color: rgba(255,209,102,.55); }
 .heroRequestSummary { display: grid; grid-template-columns: 112px minmax(0, 1fr) max-content; gap: .85rem; align-items: center; margin-top: .75rem; padding: .85rem; border: 1px solid rgba(255,209,102,.16); border-radius: 12px; background: rgba(255,209,102,.055); }
 .heroPhotoStack { display: grid; gap: .4rem; width: 112px; }
 .heroDefaultPhoto { position: relative; display: grid; place-items: center; overflow: hidden; width: 112px; aspect-ratio: 4 / 3; border: 1px solid rgba(255,209,102,.28); border-radius: 10px; background: radial-gradient(circle at 30% 20%, rgba(255,209,102,.18), transparent 48%), rgba(255,255,255,.045); color: #ffd166; text-decoration: none; }
@@ -51,6 +67,7 @@
 .heroRequestSummary p { display: -webkit-box; overflow: hidden; margin: .3rem 0 0; color: rgba(255,255,255,.72); line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .heroRequestActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .45rem; }
 .leadQuickActions { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: 1.15rem; }
+.leadHeroSide { display: grid; gap: .85rem; align-content: start; min-width: 0; }
 .leadStageCard { display: grid; gap: .55rem; align-self: center; padding: .85rem; border: 1px solid rgba(255,255,255,.14); border-radius: 12px; background: rgba(255,255,255,.045); }
 .leadStageCard strong { color: #ffd166; font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; }
 .leadStageCard a { position: relative; display: flex; align-items: center; gap: .55rem; width: 100%; min-height: 34px; padding: .55rem .65rem; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: rgba(255,255,255,.045); color: rgba(255,255,255,.66); font-size: .78rem; font-weight: 800; text-align: left; text-decoration: none; }

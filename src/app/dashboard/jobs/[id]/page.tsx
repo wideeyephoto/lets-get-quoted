@@ -9,6 +9,7 @@ import { listPayments, type Payment, type PaymentStatus } from '@/lib/payments';
 import { listInvoices, selectPrimaryInvoice, type Invoice, type InvoiceStatus } from '@/lib/invoices';
 import { createLinkedFeedItems, getActiveClientAccessCount, listJobFeed, sortJobFeed, type JobFeedEvent } from '@/lib/job-feed';
 import { listCrew, listCrewIdsForJob } from '@/lib/crew';
+import { getLeadByConvertedJob } from '@/lib/leads';
 import {
   createClientJobLinkAction,
   createCostAction,
@@ -127,7 +128,7 @@ type PipelineChecklistItem = {
   href: string;
 };
 
-function buildPipelineChecklist(job: Job, payments: Payment[], invoices: Invoice[], activeClientLinkCount: number): PipelineChecklistItem[] {
+function buildPipelineChecklist(job: Job, payments: Payment[], invoices: Invoice[], activeClientLinkCount: number, originatingLeadId: string | null): PipelineChecklistItem[] {
   const hasPaymentRequest = payments.some((payment) => payment.status === 'requested' || payment.status === 'processing' || payment.status === 'paid');
   const paidTotal = payments.filter((payment) => payment.status === 'paid').reduce((sum, payment) => sum + Number(payment.amount), 0);
   const hasSignedInvoice = invoices.some((invoice) => invoice.status === 'signed' || invoice.status === 'paid');
@@ -142,7 +143,7 @@ function buildPipelineChecklist(job: Job, payments: Payment[], invoices: Invoice
       label: 'Quote shared',
       detail: `${quoteDetail} · ${feedDetail}`,
       complete: job.quoted_amount > 0 && activeClientLinkCount > 0,
-      href: `/dashboard/jobs/${job.id}#job-feed`,
+      href: originatingLeadId ? `/dashboard/leads/${originatingLeadId}` : `/dashboard/jobs/${job.id}#job-feed`,
     },
     {
       label: 'Quote accepted',
@@ -217,6 +218,7 @@ export default async function JobDetailPage({
     .eq('id', accountId)
     .maybeSingle();
   const stripeOnboarded = accountRow?.connect_onboarded ?? false;
+  const originatingLead = await getLeadByConvertedJob(supabase, accountId, job.id);
 
   const boundUpdateJob = updateJobAction.bind(null, job.id);
   const boundUpdateJobCrew = updateJobCrewAction.bind(null, job.id);
@@ -232,7 +234,7 @@ export default async function JobDetailPage({
   const linkedFeedItems = createLinkedFeedItems(feed, payments, invoices, accountId, job.id);
   const hasActiveClientView = activeClientLinkCount > 0 || Boolean(searchParams.clientToken);
   const clientViewHref = searchParams.clientToken ? `/client/jobs/${searchParams.clientToken}` : null;
-  const pipelineChecklist = buildPipelineChecklist(job, payments, invoices, activeClientLinkCount);
+  const pipelineChecklist = buildPipelineChecklist(job, payments, invoices, activeClientLinkCount, originatingLead?.id ?? null);
   const heroStatus = deriveJobListBadge(job, payments, invoices, activeClientLinkCount);
   const nextPipelineIndex = pipelineChecklist.findIndex((item) => !item.complete);
   const currentPipelineIndex = nextPipelineIndex === -1 ? pipelineChecklist.length - 1 : nextPipelineIndex;

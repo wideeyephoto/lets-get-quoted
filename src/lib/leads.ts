@@ -150,6 +150,24 @@ export async function getLead(
   return data as Lead | null;
 }
 
+// Reverse lookup of convertLeadToJob — used so a job created from a lead can
+// link back to that lead (e.g. to undo an accidentally sent quote).
+export async function getLeadByConvertedJob(
+  supabase: SupabaseClient,
+  accountId: string,
+  jobId: string
+): Promise<Lead | null> {
+  const { data, error } = await supabase
+    .from('leads')
+    .select('*')
+    .eq('account_id', accountId)
+    .eq('converted_job', jobId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data as Lead | null;
+}
+
 // Appends newly uploaded photo paths to the lead's existing attachments.
 export async function addLeadPhotos(
   supabase: SupabaseClient,
@@ -329,6 +347,34 @@ export async function convertLeadToJob(
     throw error;
   }
   return job;
+}
+
+// Reverses convertLeadToJob: deletes the job that was created (cascading to
+// its feed events, costs, invoices, schedule requests, etc. via FK
+// constraints) and puts the lead back into a pre-conversion state so the
+// quote can be redone with correct details.
+export async function unconvertLeadFromJob(
+  supabase: SupabaseClient,
+  accountId: string,
+  leadId: string
+): Promise<Lead> {
+  const lead = await getLead(supabase, accountId, leadId);
+  if (!lead) throw new Error('Lead not found.');
+  if (!lead.converted_job) throw new Error('This lead has not been converted to a job yet.');
+
+  await deleteJob(supabase, accountId, lead.converted_job);
+
+  const revertedStatus: LeadStatus = lead.quote_visit ? 'contacted' : 'new';
+  const { data, error } = await supabase
+    .from('leads')
+    .update({ converted_job: null, status: revertedStatus, updated_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('id', leadId)
+    .select('*')
+    .single();
+
+  if (error || !data) throw error ?? new Error('Unable to undo the sent quote.');
+  return data as Lead;
 }
 
 export async function scheduleLeadQuoteVisit(

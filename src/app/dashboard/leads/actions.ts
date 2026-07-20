@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
 import { createClientJobAccessToken, createJobFeedEvent } from '@/lib/job-feed';
 import { formatJobQuoteSummary } from '@/lib/jobs';
-import { clearLeadQuoteVisit, convertLeadToJob, createLead, getLead, scheduleLeadQuoteVisit, updateLeadDetails, updateLeadStatus, type LeadStatus } from '@/lib/leads';
+import { clearLeadQuoteVisit, convertLeadToJob, createLead, getLead, scheduleLeadQuoteVisit, unconvertLeadFromJob, updateLeadDetails, updateLeadStatus, type LeadStatus } from '@/lib/leads';
 import { uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, createScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
@@ -175,7 +175,10 @@ export async function sendLeadQuoteVisitOptionsAction(leadId: string, formData: 
 
 export async function convertLeadAction(leadId: string, formData: FormData) {
   const amount = Number(formData.get('quotedAmount'));
-  const quotedAmount = Number.isFinite(amount) && amount >= 0 ? amount : 0;
+  if (!Number.isFinite(amount) || amount < 1) {
+    throw new Error('Enter a quoted amount of at least $1 before sending the quote.');
+  }
+  const quotedAmount = amount;
   const estimatedHours = optionalAmount(formData.get('estimatedHours'));
   const sendClientText = formData.get('sendClientText') === 'on';
   const { supabase, accountId } = await requireOwnerContext();
@@ -240,3 +243,12 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
   revalidatePath('/dashboard/jobs');
   redirect(`/dashboard/jobs/${job.id}?tab=feed&clientToken=${token}`);
 }
+
+export async function undoConvertLeadAction(leadId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  await unconvertLeadFromJob(supabase, accountId, leadId);
+  revalidatePath(`/dashboard/leads/${leadId}`);
+  revalidatePath('/dashboard/leads');
+  revalidatePath('/dashboard/jobs');
+}
+

@@ -2,12 +2,15 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
 import PhotoGallery from '@/components/photo-gallery';
+import LeadRadiusMap from '@/components/lead-radius-map';
 import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
 import { expireStaleLeads, formatElapsedTime, formatLeadSource, getLead, listLeads, type Lead, type LeadQuoteVisit } from '@/lib/leads';
 import { expandScheduledJobs, formatJobSchedule, formatJobTime, listJobs, type Job, type ScheduledJobOccurrence } from '@/lib/jobs';
-import { clearLeadQuoteVisitAction, convertLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, updateLeadDetailsAction } from '../actions';
+import { formatPhoneDashes } from '@/lib/phone';
+import { clearLeadQuoteVisitAction, convertLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, undoConvertLeadAction, updateLeadDetailsAction } from '../actions';
 import LeadAvailabilityScheduler from './LeadAvailabilityScheduler';
 import QuoteStartDateCalendar from './QuoteStartDateCalendar';
+import UndoQuoteButton from './UndoQuoteButton';
 import SaveButton from '@/components/save-button';
 import styles from '../leads.module.css';
 
@@ -103,6 +106,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const defaultPhoto = photos[0];
   const updateLeadDetails = updateLeadDetailsAction.bind(null, lead.id);
   const convertLead = convertLeadAction.bind(null, lead.id);
+  const undoConvertLead = undoConvertLeadAction.bind(null, lead.id);
   const rescheduleLater = clearLeadQuoteVisitAction.bind(null, lead.id);
   const scheduleVisit = scheduleLeadQuoteVisitAction.bind(null, lead.id);
   const sendQuoteVisitOptions = sendLeadQuoteVisitOptionsAction.bind(null, lead.id);
@@ -232,16 +236,26 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           </div>
           <div className={styles.heroContactSummary}>
             <div className={styles.heroContactItem}>
-              <span>Phone</span>
-              {lead.phone ? <a href={`tel:${lead.phone}`}>{lead.phone}</a> : <strong>Not provided</strong>}
-            </div>
-            <div className={styles.heroContactItem}>
-              <span>Email</span>
-              {lead.email ? <a href={`mailto:${lead.email}`}>{lead.email}</a> : <strong>Not provided</strong>}
+              <span>Contact</span>
+              {lead.phone ? (
+                <a href={`tel:${lead.phone}`} className={styles.heroPhoneLink} aria-label={`Call ${lead.phone}`}>
+                  <span aria-hidden="true">📞</span> {formatPhoneDashes(lead.phone)}
+                </a>
+              ) : (
+                <strong>No phone provided</strong>
+              )}
+              {lead.email ? (
+                <a href={`mailto:${lead.email}`} className={styles.heroContactEmail} aria-label={`Email ${lead.email}`}>
+                  <span aria-hidden="true">📧</span> {lead.email}
+                </a>
+              ) : (
+                <strong>No email provided</strong>
+              )}
             </div>
             <div className={styles.heroContactItem}>
               <span>Project address</span>
               <strong>{lead.address || 'Not provided'}</strong>
+              <LeadRadiusMap address={lead.address} radiusMiles={10} size="mini" />
             </div>
           </div>
           <div className={styles.heroRequestSummary}>
@@ -283,23 +297,26 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
             {workflowState === 'estimateScheduled' ? <Link className="btn primary" href="#lead-estimate">Send Quote &amp; Request Sign-Off</Link> : null}
             {workflowState === 'estimateScheduled' ? <Link className="btn secondary" href="#availability-snapshot">Review scheduled estimate</Link> : null}
             {workflowState === 'converted' ? <Link className="btn primary" href={`/dashboard/jobs/${lead.converted_job}`}>{convertedJobLabel}</Link> : null}
+            {workflowState === 'converted' ? <UndoQuoteButton action={undoConvertLead} /> : null}
           </div>
         </div>
-        <div className={styles.leadStageCard}>
-          <strong>Lead path</strong>
-          {leadPathSteps.map((step) => (
-            <Link
-              key={step.label}
-              href={step.href}
-              className={[
-                step.complete ? styles.stageComplete : '',
-                step.current ? styles.currentStatusButton : '',
-              ].filter(Boolean).join(' ')}
-              aria-current={step.current ? 'step' : undefined}
-            >
-              {step.label}
-            </Link>
-          ))}
+        <div className={styles.leadHeroSide}>
+          <div className={styles.leadStageCard}>
+            <strong>Lead path</strong>
+            {leadPathSteps.map((step) => (
+              <Link
+                key={step.label}
+                href={step.href}
+                className={[
+                  step.complete ? styles.stageComplete : '',
+                  step.current ? styles.currentStatusButton : '',
+                ].filter(Boolean).join(' ')}
+                aria-current={step.current ? 'step' : undefined}
+              >
+                {step.label}
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -420,8 +437,9 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                   <label htmlFor="quotedAmount">Quoted amount</label>
                   <div className={`currency-input ${styles.quoteAmountInput}`}>
                     <span aria-hidden="true">$</span>
-                    <input id="quotedAmount" name="quotedAmount" type="number" min="0" step="0.01" inputMode="decimal" placeholder="0.00" />
+                    <input id="quotedAmount" name="quotedAmount" type="number" min="1" step="0.01" inputMode="decimal" placeholder="0.00" required />
                   </div>
+                  <small>Enter at least $1 before sending the quote.</small>
                 </div>
                 <label htmlFor="estimatedHours">Estimated hours</label>
                 <input id="estimatedHours" name="estimatedHours" type="number" min="0" step="0.25" defaultValue={lead.estimated_hours ?? ''} placeholder="16" />

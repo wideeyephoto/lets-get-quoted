@@ -1942,6 +1942,21 @@ li + li { margin-top: 0.45rem; }
   position: absolute; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
   font-size: .82rem; color: rgba(255,255,255,.7); background: rgba(0,0,0,.4); padding: .3rem .7rem; border-radius: 999px;
 }
+
+.lead-radius-map-card { position: relative; overflow: hidden; min-height: 190px; border: 1px solid rgba(255,209,102,.2); border-radius: 12px; background: rgba(255,209,102,.045); }
+.lead-radius-map { width: 100%; height: 190px; }
+.lead-radius-map-badge {
+  position: absolute; top: .55rem; left: .55rem; z-index: 2; padding: .24rem .55rem; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.14); background: rgba(5,10,18,.72); backdrop-filter: blur(8px);
+  color: #ffd166; font-size: .62rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase;
+}
+.lead-radius-map-empty {
+  position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255,255,255,.4); font-size: .78rem;
+}
+.lead-radius-map-card--mini { min-height: 72px; margin-top: .4rem; pointer-events: none; }
+.lead-radius-map-card--mini .lead-radius-map { height: 72px; }
+.lead-radius-map-card--mini .lead-radius-map-empty { font-size: .68rem; }
+
 @media (max-width: 640px) {
   .photo-gallery-grid { grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); }
   .photo-thumb.default-photo-thumb { grid-column: span 2; grid-row: span 2; }

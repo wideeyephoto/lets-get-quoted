@@ -12,3 +12,13 @@ export function displayPhone(value: string) {
   }
   return value;
 }
+
+export function formatPhoneDashes(value: string | null | undefined): string {
+  if (!value) return '';
+  const digits = value.replace(/\D/g, '');
+  const tenDigits = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;
+  if (tenDigits.length === 10) {
+    return `${tenDigits.slice(0, 3)}-${tenDigits.slice(3, 6)}-${tenDigits.slice(6)}`;
+  }
+  return value;
+}
