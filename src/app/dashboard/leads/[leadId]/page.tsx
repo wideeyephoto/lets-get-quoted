@@ -58,7 +58,7 @@ function buildAvailability(jobs: Job[], leads: Lead[], scheduleDayHours: number,
   const occurrences = expandScheduledJobs(scheduledJobs, scheduleDayHours);
   const quoteVisits = leads.filter((lead) => lead.quote_visit?.scheduledFor);
 
-  return Array.from({ length: 10 }, (_, index) => {
+  return Array.from({ length: 7 }, (_, index) => {
     const date = addDays(startDate, index);
     const key = dateKey(date);
     const dayJobs = occurrences.filter((job) => job.scheduled_for === key);
@@ -99,8 +99,8 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
   const today = new Date();
   const availabilityStart = parseDateKey(searchParams.availabilityStart) ?? today;
-  const previousAvailabilityStart = dateKey(addDays(availabilityStart, -10));
-  const nextAvailabilityStart = dateKey(addDays(availabilityStart, 10));
+  const previousAvailabilityStart = dateKey(addDays(availabilityStart, -7));
+  const nextAvailabilityStart = dateKey(addDays(availabilityStart, 7));
   const availability = buildAvailability(jobs, leads, scheduleDayHours, availabilityStart);
   const availabilityHref = (startKey: string) => {
     const query = new URLSearchParams();
@@ -281,16 +281,16 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           <details id="availability-snapshot" className={`panel workspace-section-card workspace-details ${styles.calendarCard}`}>
             <summary className="workspace-details-summary job-action-summary">
               <div className="section-heading workspace-section-heading"><p className="eyebrow">Calendar</p><h2>Availability snapshot</h2></div>
-              <span className="workspace-details-copy">Check nearby openings and quick-book a 9:00 AM quote visit.</span>
+              <span className="workspace-details-copy">Check nearby openings and book a quote visit with the right time.</span>
             </summary>
             <div className={styles.availabilityHeader}>
               <div>
-                <p className={styles.calendarHint}>Click a day to immediately book a 9:00 AM in-person quote visit.</p>
+                <p className={styles.calendarHint}>Pick a day and adjust the visit time before booking.</p>
                 <strong>{availability[0]?.label} - {availability[availability.length - 1]?.label}</strong>
               </div>
               <div className={styles.availabilityControls}>
-                <Link className="btn secondary" href={availabilityHref(previousAvailabilityStart)}>&larr; Previous 10</Link>
-                <Link className="btn secondary" href={availabilityHref(nextAvailabilityStart)}>Next 10 &rarr;</Link>
+                <Link className="btn secondary" href={availabilityHref(previousAvailabilityStart)}>&larr; Previous week</Link>
+                <Link className="btn secondary" href={availabilityHref(nextAvailabilityStart)}>Next week &rarr;</Link>
               </div>
             </div>
             <div className={styles.availabilityGrid}>
@@ -300,10 +300,9 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                 return (
                   <form action={scheduleVisit} className={styles.availabilityForm} key={day.key}>
                     <input type="hidden" name="quoteVisitDate" value={day.key} />
-                    <input type="hidden" name="quoteVisitTime" value="09:00" />
                     <input type="hidden" name="quoteVisitDuration" value="60" />
                     <input type="hidden" name="quoteVisitNotes" value="Booked from the lead availability snapshot." />
-                    <button className={`${styles.availabilityDay}${busy ? ` ${styles.busyDay}` : ''}${isToday ? ` ${styles.todayAvailabilityDay}` : ''}`} type="submit">
+                    <div className={`${styles.availabilityDay}${busy ? ` ${styles.busyDay}` : ''}${isToday ? ` ${styles.todayAvailabilityDay}` : ''}`}>
                       <strong>{day.label}</strong>
                       <span>{busy ? `${day.jobs.length} job${day.jobs.length === 1 ? '' : 's'} / ${day.visits.length} quote visit${day.visits.length === 1 ? '' : 's'}` : 'Open'}</span>
                       <small>{day.hours ? `${day.hours} est hrs` : nextScheduledJobLabel(day.jobs)}</small>
@@ -317,8 +316,11 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                           ))}
                         </span>
                       ) : null}
-                      <em>{busy ? 'Book anyway at 9:00 AM' : 'Book 9:00 AM'}</em>
-                    </button>
+                      <div className={styles.availabilityBookingControls}>
+                        <TimeSlotSelect id={`quoteVisitTime-${day.key}`} name="quoteVisitTime" defaultValue="09:00" />
+                        <button className="btn primary" type="submit">{busy ? 'Book anyway' : 'Book visit'}</button>
+                      </div>
+                    </div>
                   </form>
                 );
               })}
