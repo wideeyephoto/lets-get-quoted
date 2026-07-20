@@ -3074,6 +3074,27 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 }
 .crew-avatar-add.pending { font-size: 0.8rem; }
 .crew-avatar-upload:hover .crew-avatar-add { filter: brightness(1.1); transform: scale(1.05); }
+
+/* Job hero contact badges — green phone / yellow email pills, matching the
+   lead detail page's .heroPhoneLink / .heroContactEmail. */
+.job-hero-contact { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-top: 0.7rem; }
+.hero-phone-link {
+  display: inline-flex; align-items: center; gap: 0.35rem; width: fit-content; max-width: 100%;
+  padding: 0.3rem 0.65rem; border-radius: 999px;
+  border: 1px solid rgba(57,224,122,.4); background: rgba(57,224,122,.14);
+  color: #39e07a !important; font-size: 1rem; font-weight: 900; letter-spacing: .01em;
+  text-decoration: none; transition: background .15s ease, border-color .15s ease;
+}
+.hero-phone-link:hover, .hero-phone-link:focus-visible { background: rgba(57,224,122,.24); border-color: rgba(57,224,122,.6); }
+.hero-email-link {
+  display: inline-flex; align-items: center; gap: 0.35rem; width: fit-content; max-width: 100%;
+  padding: 0.3rem 0.65rem; border-radius: 999px;
+  border: 1px solid rgba(255,209,102,.35); background: rgba(255,209,102,.12);
+  color: #ffd166 !important; font-size: 0.82rem !important; font-weight: 800 !important; letter-spacing: .01em;
+  text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  transition: background .15s ease, border-color .15s ease;
+}
+.hero-email-link:hover, .hero-email-link:focus-visible { background: rgba(255,209,102,.22); border-color: rgba(255,209,102,.55); }
 .job-ref { font-family: var(--font-mono), 'JetBrains Mono', monospace; font-size: 0.78rem; color: rgba(255,255,255,0.55); }
 .job-client { font-weight: 700; font-size: 1.05rem; margin-top: 0.35rem; }
 .job-meta { color: rgba(255,255,255,0.6); font-size: 0.9rem; margin-top: 0.15rem; }

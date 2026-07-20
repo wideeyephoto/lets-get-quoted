@@ -10,6 +10,7 @@ import { listInvoices, selectPrimaryInvoice, type Invoice, type InvoiceStatus } 
 import { createLinkedFeedItems, getActiveClientAccessCount, listJobFeed, sortJobFeed, type JobFeedEvent } from '@/lib/job-feed';
 import { listCrew, listCrewIdsForJob } from '@/lib/crew';
 import { getLeadByConvertedJob } from '@/lib/leads';
+import { formatPhoneDashes } from '@/lib/phone';
 import {
   createClientJobLinkAction,
   createCostAction,
@@ -293,6 +294,20 @@ export default async function JobDetailPage({
             <span className={`status-badge status-${heroStatus.tone}`} title={heroStatus.title}>{heroStatus.label}</span>
             <span className="workspace-inline-note">{job.address || 'No address on file yet'}</span>
           </div>
+          {job.client_phone || job.client_email ? (
+            <div className="job-hero-contact">
+              {job.client_phone ? (
+                <a href={`tel:${job.client_phone}`} className="hero-phone-link" aria-label={`Call ${job.client_phone}`}>
+                  <span aria-hidden="true">📞</span> {formatPhoneDashes(job.client_phone)}
+                </a>
+              ) : null}
+              {job.client_email ? (
+                <a href={`mailto:${job.client_email}`} className="hero-email-link" aria-label={`Email ${job.client_email}`}>
+                  <span aria-hidden="true">📧</span> {job.client_email}
+                </a>
+              ) : null}
+            </div>
+          ) : null}
           <div className="job-command-facts" aria-label="Job facts">
             <span>
               <strong>
