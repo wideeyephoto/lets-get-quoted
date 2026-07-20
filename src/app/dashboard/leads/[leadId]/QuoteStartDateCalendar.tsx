@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, type MouseEvent } from 'react';
 import TimeSlotSelect from '@/components/time-slot-select';
 import styles from '../leads.module.css';
@@ -27,7 +28,19 @@ type SelectedOption = {
   time: string;
 };
 
-export default function QuoteStartDateCalendar({ availability }: { availability: AvailabilityDay[] }) {
+export default function QuoteStartDateCalendar({
+  availability,
+  windowLabel,
+  previousHref,
+  nextHref,
+  canViewPrevious,
+}: {
+  availability: AvailabilityDay[];
+  windowLabel: string;
+  previousHref: string;
+  nextHref: string;
+  canViewPrevious: boolean;
+}) {
   const [selectedOptions, setSelectedOptions] = useState<SelectedOption[]>([]);
 
   function addOption(event: MouseEvent<HTMLButtonElement>, day: AvailabilityDay) {
@@ -65,13 +78,21 @@ export default function QuoteStartDateCalendar({ availability }: { availability:
           <strong>30-day start date calendar</strong>
           <p>Pick up to 3 start-day options to include with the quote.</p>
         </div>
-        <span>Next 30 days</span>
+        <div className={styles.quoteStartCalendarHeaderMeta}>
+          <span>{windowLabel}</span>
+          <div className={styles.quoteStartCalendarControls}>
+            {canViewPrevious ? <Link className="btn secondary" href={previousHref}>&larr; Previous month</Link> : null}
+            <Link className="btn secondary" href={nextHref}>Next month &rarr;</Link>
+          </div>
+        </div>
       </div>
 
       <div className={styles.quoteStartCalendarGrid}>
         {availability.map((day) => {
           const isSelected = selectedOptions.some((option) => option.date === day.key);
           const hasSelectionRoom = selectedOptions.length < 3 || isSelected;
+          const primaryHint = day.jobHints[0];
+          const extraJobs = Math.max(0, day.jobHints.length - 1);
 
           return (
             <div
@@ -79,19 +100,16 @@ export default function QuoteStartDateCalendar({ availability }: { availability:
               data-start-option-card
               key={day.key}
             >
-              <strong>{day.label}</strong>
-              <span>{day.summary}</span>
-              <small>{day.detail}</small>
-              {day.jobHints.length > 0 ? (
-                <span className={styles.quoteStartJobList}>
-                  {day.jobHints.map((job) => (
-                    <span key={job.id}>
-                      <b>{job.clientName}</b>
-                      <small>{job.time}</small>
-                      <small className={styles.availabilityCity}>{job.city}</small>
-                    </span>
-                  ))}
-                </span>
+              <div className={styles.quoteStartDayHeader}>
+                <strong>{day.label}</strong>
+                <span className={styles.quoteStartStatus}>{day.busy ? day.summary : 'Open'}</span>
+              </div>
+              <small className={styles.quoteStartDetail}>{day.detail}</small>
+              {primaryHint ? (
+                <div className={styles.quoteStartHintRow}>
+                  <span className={styles.quoteStartCityChip}>{primaryHint.city}</span>
+                  {extraJobs > 0 ? <small>+{extraJobs} more</small> : null}
+                </div>
               ) : null}
               <div className={styles.quoteStartDayActions}>
                 <TimeSlotSelect id={`quoteSchedulePickerTime-${day.key}`} name={`quoteSchedulePickerTime-${day.key}`} defaultValue="09:00" />

@@ -92,7 +92,7 @@ function nextScheduledJobLabel(jobs: ScheduledJobOccurrence<Job>[]) {
   return `${nextJob.client_name}${time ? ` at ${time}` : ''}`;
 }
 
-export default async function LeadDetailPage({ params, searchParams }: { params: { leadId: string }; searchParams: { edit?: string; availabilityStart?: string } }) {
+export default async function LeadDetailPage({ params, searchParams }: { params: { leadId: string }; searchParams: { edit?: string; availabilityStart?: string; quoteStartStart?: string } }) {
   const { supabase, accountId } = await requireOwnerContext();
   await expireStaleLeads(supabase, accountId);
   const [lead, jobs, leads, { data: account }] = await Promise.all([
@@ -116,11 +116,15 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
   const today = new Date();
   const availabilityStart = parseDateKey(searchParams.availabilityStart) ?? today;
+  const quoteStartStart = parseDateKey(searchParams.quoteStartStart) ?? today;
   const previousAvailabilityStart = dateKey(addDays(availabilityStart, -7));
   const nextAvailabilityStart = dateKey(addDays(availabilityStart, 7));
   const canViewPreviousAvailability = dateKey(availabilityStart) > dateKey(today);
+  const previousQuoteStart = dateKey(addDays(quoteStartStart, -30));
+  const nextQuoteStart = dateKey(addDays(quoteStartStart, 30));
+  const canViewPreviousQuoteStart = dateKey(quoteStartStart) > dateKey(today);
   const availability = buildAvailability(jobs, leads, scheduleDayHours, availabilityStart);
-  const quoteStartAvailability = buildAvailability(jobs, leads, scheduleDayHours, today, 30);
+  const quoteStartAvailability = buildAvailability(jobs, leads, scheduleDayHours, quoteStartStart, 30);
   const availabilityCards = availability.map((day) => ({
     key: day.key,
     label: day.label,
@@ -158,7 +162,15 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
     const query = new URLSearchParams();
     if (searchParams.edit) query.set('edit', searchParams.edit);
     query.set('availabilityStart', startKey);
+    if (searchParams.quoteStartStart) query.set('quoteStartStart', searchParams.quoteStartStart);
     return `/dashboard/leads/${lead.id}?${query.toString()}#availability-snapshot`;
+  };
+  const quoteStartHref = (startKey: string) => {
+    const query = new URLSearchParams();
+    if (searchParams.edit) query.set('edit', searchParams.edit);
+    if (searchParams.availabilityStart) query.set('availabilityStart', searchParams.availabilityStart);
+    query.set('quoteStartStart', startKey);
+    return `/dashboard/leads/${lead.id}?${query.toString()}#lead-estimate`;
   };
   return (
     <main className={`wide-shell workspace-shell ${styles.leadCommandShell}`}>
@@ -308,7 +320,13 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                 <details className={styles.optionalScheduleDetails}>
                   <summary>Suggest 3 job start times</summary>
                   <p>Optional. Text three service options with the quote so the client can book quickly.</p>
-                  <QuoteStartDateCalendar availability={quoteStartAvailabilityCards} />
+                  <QuoteStartDateCalendar
+                    availability={quoteStartAvailabilityCards}
+                    windowLabel={`${quoteStartAvailabilityCards[0]?.label} - ${quoteStartAvailabilityCards[quoteStartAvailabilityCards.length - 1]?.label}`}
+                    previousHref={quoteStartHref(previousQuoteStart)}
+                    nextHref={quoteStartHref(nextQuoteStart)}
+                    canViewPrevious={canViewPreviousQuoteStart}
+                  />
                 </details>
                 <SaveButton>Send Quote and Request Sign Off</SaveButton>
               </form>
