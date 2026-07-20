@@ -191,16 +191,16 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
             {visitLabel ? <span className={styles.visitPill}>Quote visit {visitLabel}</span> : null}
           </div>
           <div className={styles.leadQuickActions}>
-            {!lead.converted_job && !hasScheduledEstimate ? <Link className="btn primary" href="#availability-snapshot">Schedule quote</Link> : null}
-            {!lead.converted_job ? <Link className="btn secondary" href="#lead-estimate">Provide estimate</Link> : null}
+            {!lead.converted_job && !hasScheduledEstimate ? <Link className="btn primary" href="#availability-snapshot">Schedule estimate</Link> : null}
+            {!lead.converted_job ? <Link className="btn secondary" href="#lead-estimate">Send Quote &amp; Request Sign-Off</Link> : null}
             {!lead.converted_job ? <Link className="btn secondary" href="#lead-estimate">Convert to job &amp; Schedule Start Date</Link> : null}
             {lead.converted_job ? <Link className="btn primary" href={`/dashboard/jobs/${lead.converted_job}`}>{convertedJobLabel}</Link> : null}
           </div>
         </div>
         <div className={styles.leadStageCard}>
           <strong>Lead path</strong>
-          {hasScheduledEstimate ? <span className={styles.stageComplete}>Schedule quote</span> : <Link href="#availability-snapshot">Schedule quote</Link>}
-          <Link className={['quoted', 'won'].includes(lead.status) ? styles.stageComplete : undefined} href="#lead-estimate">Provide estimate</Link>
+          {hasScheduledEstimate ? <span className={styles.stageComplete}>Schedule estimate</span> : <Link href="#availability-snapshot">Schedule estimate</Link>}
+          <Link className={['quoted', 'won'].includes(lead.status) ? styles.stageComplete : undefined} href="#lead-estimate">Send Quote &amp; Request Sign-Off</Link>
           {lead.converted_job ? <Link className={styles.stageComplete} href={`/dashboard/jobs/${lead.converted_job}`}>Schedule start date</Link> : <Link href="#lead-estimate">Schedule start date</Link>}
         </div>
       </section>
@@ -311,7 +311,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
 
           {!lead.converted_job ? (
             <section id="lead-estimate" className="panel workspace-section-card">
-              <div className="section-heading workspace-section-heading"><p className="eyebrow">Step 2</p><h2>Send quote / estimate</h2></div>
+              <div className="section-heading workspace-section-heading"><p className="eyebrow">Step 2</p><h2>Send Quote &amp; Request Sign-Off</h2></div>
               <p>Enter the amount and send the initial quote. Job start options can stay tucked away until you need them.</p>
               <form action={convertLead} className={styles.actionForm}>
                 <div className={styles.quoteAmountField}>
