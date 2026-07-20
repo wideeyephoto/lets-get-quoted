@@ -198,17 +198,21 @@ export default function LeadAvailabilityScheduler({
             const option = selectedOptions[index];
             return (
               <div className={`${styles.selectedOptionCard}${option ? ` ${styles.selectedOptionFilled}` : ''}`} key={`client-choice-${index + 1}`}>
-                <span>Option {index + 1}</span>
+                <span className={styles.selectedOptionTag}>Option {index + 1}</span>
                 {option ? (
                   <>
-                    <strong>{option.label}</strong>
-                    <small>{option.time}</small>
-                    <button type="button" className={styles.removeOptionButton} onClick={() => removeClientOption(option.date)}>Remove</button>
+                    <div className={styles.selectedOptionMeta}>
+                      <strong>{option.label}</strong>
+                      <small>{option.time}</small>
+                    </div>
+                    <button type="button" className={styles.removeOptionButton} onClick={() => removeClientOption(option.date)} aria-label={`Remove option ${index + 1}`}>
+                      x
+                    </button>
                     <input type="hidden" name={`quoteVisitOptionDate${index + 1}`} value={option.date} />
                     <input type="hidden" name={`quoteVisitOptionTime${index + 1}`} value={option.time} />
                   </>
                 ) : (
-                  <small>Pick from week above</small>
+                  <small className={styles.emptyOptionCopy}>Pick from week above</small>
                 )}
               </div>
             );
