@@ -27,7 +27,7 @@
 .leadHero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); gap: 1.25rem; align-items: stretch; }
 .leadHeroMain { min-width: 0; }
 .leadTitleRow { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
-.leadTitleRow h1 { margin-right: auto; }
+.leadTitleRow h1 { margin-right: 0; }
 .leadTitleRow form { flex: 0 0 auto; }
 .leadQuickActions { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: 1.15rem; }
 .leadStageCard { display: grid; gap: .55rem; align-self: center; padding: .85rem; border: 1px solid rgba(255,255,255,.14); border-radius: 12px; background: rgba(255,255,255,.045); }

@@ -128,10 +128,6 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                 Client has been contacted
               </button>
             </form>
-            <Link className="btn secondary" href="/dashboard/leads">Back to leads</Link>
-            {lead.phone ? <a className="btn secondary" href={`tel:${lead.phone}`}>Call</a> : null}
-            {textLink ? <a className="btn secondary" href={textLink}>Text client</a> : null}
-            {lead.email ? <a className="btn secondary" href={`mailto:${lead.email}`}>Email</a> : null}
             {lead.converted_job ? <Link className="btn primary" href={`/dashboard/jobs/${lead.converted_job}`}>{convertedJobLabel}</Link> : null}
           </div>
         </div>
