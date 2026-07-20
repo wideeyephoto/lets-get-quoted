@@ -95,7 +95,7 @@ export default function ClientScheduleOptionsCalendar({ availability }: { availa
         <div className="client-schedule-selection-header">
           <div>
             <strong>Selected schedule options</strong>
-            <span>Choose exactly 3 dates to text the client.</span>
+            <span>Choose up to 3 dates to text the client.</span>
           </div>
           <span>{selectedOptions.length}/3 selected</span>
         </div>

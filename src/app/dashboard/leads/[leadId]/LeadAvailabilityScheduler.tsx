@@ -183,7 +183,7 @@ export default function LeadAvailabilityScheduler({
         action={sendQuoteVisitOptionsAction}
         className={`schedule-client-options-form ${styles.calendarSelectionTray}`}
         onSubmit={(event) => {
-          if (selectedOptions.length !== 3) event.preventDefault();
+          if (selectedOptions.length === 0) event.preventDefault();
         }}
       >
         <div className={styles.calendarSelectionHeader}>
@@ -230,10 +230,10 @@ export default function LeadAvailabilityScheduler({
             </label>
           </div>
           <div className={styles.calendarSelectionActions}>
-            {selectedOptions.length !== 3 ? <p className={styles.calendarSelectionHint}>Choose exactly 3 options before sending.</p> : <p className={styles.calendarSelectionHint}>Ready to text these 3 options.</p>}
+            {selectedOptions.length === 0 ? <p className={styles.calendarSelectionHint}>Choose up to 3 options before sending.</p> : <p className={styles.calendarSelectionHint}>Ready to text {selectedOptions.length} option{selectedOptions.length === 1 ? '' : 's'}.</p>}
             <div className={styles.calendarActionButtons}>
               <button type="button" className="btn ghost" onClick={clearClientOptions} disabled={selectedOptions.length === 0}>Clear</button>
-              <CalendarSendButton disabled={selectedOptions.length !== 3} />
+              <CalendarSendButton disabled={selectedOptions.length === 0} />
             </div>
           </div>
         </div>

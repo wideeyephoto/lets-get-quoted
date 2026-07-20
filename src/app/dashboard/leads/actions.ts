@@ -152,7 +152,7 @@ export async function sendLeadQuoteVisitOptionsAction(leadId: string, formData: 
   if (formData.get('quoteVisitOptionsSmsConsent') !== 'on') throw new Error('Confirm the client agreed to receive scheduling texts.');
 
   const options = quoteVisitOptionsFromForm(formData);
-  if (options.length !== 3) throw new Error('Add exactly 3 quote visit options before texting the client.');
+  if (options.length === 0) throw new Error('Add at least 1 quote visit option before texting the client.');
 
   const [{ data: account }, { data: site }] = await Promise.all([
     supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),

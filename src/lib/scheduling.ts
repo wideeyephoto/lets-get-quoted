@@ -86,7 +86,7 @@ export async function createScheduleRequest(
   input: { clientPhone: string; options: ScheduleOption[] }
 ): Promise<{ request: JobScheduleRequest; token: string }> {
   const options = normalizeOptions(input.options);
-  if (options.length !== 3) throw new Error('Add exactly 3 scheduling options before texting the client.');
+  if (options.length === 0) throw new Error('Add at least 1 scheduling option before texting the client.');
 
   const { data: job, error: jobError } = await supabase
     .from('jobs')

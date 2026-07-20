@@ -162,7 +162,7 @@ export default function QuoteStartDateCalendar({
             <span>The client agreed to receive transactional scheduling texts. Required when sending quick booking options without the quote text flow. Reply STOP to opt out.</span>
           </label>
           <div className={styles.quoteStartFooterActions}>
-            <p className={styles.calendarSelectionHint}>{selectedOptions.length === 3 ? 'These 3 start options will be included with the quote.' : 'Select up to 3 start options from the 30-day calendar.'}</p>
+            <p className={styles.calendarSelectionHint}>{selectedOptions.length > 0 ? `${selectedOptions.length} start option${selectedOptions.length === 1 ? '' : 's'} will be included with the quote.` : 'Select up to 3 start options from the 30-day calendar.'}</p>
             <button type="button" className="btn ghost" onClick={clearOptions} disabled={selectedOptions.length === 0}>Clear</button>
           </div>
         </div>
