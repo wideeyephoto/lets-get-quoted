@@ -345,3 +345,33 @@ export async function createPaymentFeedEvent(
     actionUrl: `/pay/${payment.id}`,
   });
 }
+
+// Chargeback lifecycle events. Deliberately INTERNAL visibility — a dispute is
+// between the contractor, the homeowner's bank, and the platform; it must never
+// surface on the homeowner's client dashboard. Distinct `kind` per stage so the
+// created/won/lost events coexist under job_feed's (source, kind) uniqueness.
+export async function createDisputeFeedEvent(
+  supabase: SupabaseClient,
+  paymentId: string,
+  kind: 'payment_disputed' | 'dispute_won' | 'dispute_lost',
+  title: string,
+  body: string | null
+): Promise<void> {
+  const { data: payment, error } = await supabase
+    .from('payments')
+    .select('id, account_id, job_id, amount')
+    .eq('id', paymentId)
+    .maybeSingle();
+
+  if (error || !payment) return;
+
+  await createJobFeedEvent(supabase, payment.account_id, payment.job_id, {
+    kind,
+    title,
+    body,
+    visibility: 'internal',
+    amount: Number(payment.amount),
+    sourceTable: 'payments',
+    sourceId: payment.id,
+  });
+}

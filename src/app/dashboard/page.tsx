@@ -36,7 +36,7 @@ export default async function DashboardPage() {
   await expireStaleLeads(supabase, accountId);
 
   const [{ data: account }, { data: identityData }, { data: site }, jobs, leads] = await Promise.all([
-    supabase.from('accounts').select('connect_onboarded, schedule_day_hours').eq('id', accountId).single(),
+    supabase.from('accounts').select('connect_onboarded, connect_disabled_at, schedule_day_hours').eq('id', accountId).single(),
     supabase.auth.getUserIdentities(),
     supabase.from('sites').select('published, subdomain, custom_domain, custom_domain_verified_at').eq('account_id', accountId).maybeSingle(),
     listJobs(supabase, accountId),
@@ -44,6 +44,10 @@ export default async function DashboardPage() {
   ]);
 
   const onboarded = account?.connect_onboarded ?? false;
+  // Distinct from "never onboarded": Stripe disabled transfers on an account
+  // that was previously working, so the contractor can no longer be paid until
+  // they resolve it. This warrants a prominent alert, not the generic nudge.
+  const connectDisabledAt = account?.connect_disabled_at ?? null;
   const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
   const linkedMethodCount = identityData?.identities?.length ?? 1;
   const sitePublished = site?.published ?? false;
@@ -192,6 +196,29 @@ export default async function DashboardPage() {
 
   return (
     <main className="wide-shell workspace-shell">
+      {connectDisabledAt ? (
+        <section
+          className="panel workspace-section-card"
+          style={{ borderColor: '#dc2626', background: 'rgba(220, 38, 38, 0.06)' }}
+        >
+          <div className="section-heading workspace-section-heading">
+            <p className="eyebrow" style={{ color: '#dc2626' }}>⚠ Payouts paused</p>
+            <h2>Stripe disabled your payments</h2>
+          </div>
+          <p className="workspace-card-copy">
+            Stripe has turned off transfers for your account, so homeowner deposits and
+            stage payments can&apos;t be collected right now. This usually means Stripe needs
+            more information to keep your account verified. Reconnect to see what&apos;s required
+            and restore payouts.
+          </p>
+          <div className="actions" style={{ marginTop: '0.75rem' }}>
+            <Link href="/dashboard/settings" className="btn primary">
+              Resolve payout issue
+            </Link>
+          </div>
+        </section>
+      ) : null}
+
       {!onboardingComplete ? (
         <section className="panel workspace-section-card onboarding-panel">
           <div className="section-heading workspace-section-heading">

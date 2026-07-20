@@ -192,10 +192,40 @@ try {
   assert(paymentF.status === 'refunded', `payment F should be refunded, got ${paymentF.status}`);
   console.log('PASS: charge.refunded -> payment status refunded');
 
-  // --- Test G: charge.dispute.created is at least logged (no throw, 200 response) ---
-  res = await postWebhook(makeEvent('charge.dispute.created', { id: `dp_test_${suffix}`, object: 'dispute', amount: 50000, reason: 'fraudulent', status: 'warning_needs_response', payment_intent: `pi_test_f_${suffix}`, metadata: { payment_id: f.paymentId } }));
-  assert(res.status === 200, `webhook POST G (dispute) should 200, got ${res.status}`);
-  console.log('PASS: charge.dispute.created handled without error (check dev server console for the [DISPUTE] log line)');
+  // --- Test G: charge.dispute.created transitions a paid payment to disputed ---
+  // Disputes carry no charge metadata, so the handler matches on the stored
+  // payment intent id — not metadata.payment_id.
+  const g = await makeJobAndPayment({ withInvoice: false });
+  await admin.from('payments').update({ status: 'paid', paid_at: new Date().toISOString(), stripe_payment_intent: `pi_test_g_${suffix}` }).eq('id', g.paymentId);
+  res = await postWebhook(makeEvent('charge.dispute.created', { id: `dp_test_g_${suffix}`, object: 'dispute', amount: 50000, reason: 'fraudulent', status: 'warning_needs_response', payment_intent: `pi_test_g_${suffix}` }));
+  assert(res.status === 200, `webhook POST G (dispute created) should 200, got ${res.status}`);
+  const { data: paymentG } = await admin.from('payments').select('status, disputed_at, dispute_reason').eq('id', g.paymentId).single();
+  assert(paymentG.status === 'disputed', `payment G should be disputed, got ${paymentG.status}`);
+  assert(paymentG.disputed_at, 'payment G should record disputed_at');
+  assert(paymentG.dispute_reason === 'fraudulent', `payment G should record the dispute reason, got ${paymentG.dispute_reason}`);
+  console.log('PASS: charge.dispute.created -> payment status disputed (matched by payment_intent)');
+
+  // --- Test H: charge.dispute.closed (won) reverts the payment to paid ---
+  res = await postWebhook(makeEvent('charge.dispute.closed', { id: `dp_test_g_${suffix}`, object: 'dispute', status: 'won', payment_intent: `pi_test_g_${suffix}` }));
+  assert(res.status === 200, `webhook POST H (dispute won) should 200, got ${res.status}`);
+  const { data: paymentGWon } = await admin.from('payments').select('status, dispute_status').eq('id', g.paymentId).single();
+  assert(paymentGWon.status === 'paid', `payment G should revert to paid after a won dispute, got ${paymentGWon.status}`);
+  assert(paymentGWon.dispute_status === 'won', 'payment G should record dispute_status won');
+  console.log('PASS: charge.dispute.closed(won) -> payment reverts to paid');
+
+  // --- Test I: charge.dispute.closed (lost) refunds the payment and voids its invoice ---
+  const i = await makeJobAndPayment({ withInvoice: true, invoiceAlreadySigned: false });
+  await admin.from('payments').update({ status: 'paid', paid_at: new Date().toISOString(), stripe_payment_intent: `pi_test_i_${suffix}` }).eq('id', i.paymentId);
+  res = await postWebhook(makeEvent('charge.dispute.created', { id: `dp_test_i_${suffix}`, object: 'dispute', amount: 50000, reason: 'product_not_received', status: 'needs_response', payment_intent: `pi_test_i_${suffix}` }));
+  assert(res.status === 200, `webhook POST I (dispute created) should 200, got ${res.status}`);
+  res = await postWebhook(makeEvent('charge.dispute.closed', { id: `dp_test_i_${suffix}`, object: 'dispute', status: 'lost', payment_intent: `pi_test_i_${suffix}` }));
+  assert(res.status === 200, `webhook POST I (dispute lost) should 200, got ${res.status}`);
+  const { data: paymentILost } = await admin.from('payments').select('status, dispute_status').eq('id', i.paymentId).single();
+  assert(paymentILost.status === 'refunded', `payment I should be refunded after a lost dispute, got ${paymentILost.status}`);
+  assert(paymentILost.dispute_status === 'lost', 'payment I should record dispute_status lost');
+  const { data: invoiceI } = await admin.from('invoices').select('status').eq('id', i.invoiceId).single();
+  assert(invoiceI.status === 'void', `invoice I should be voided after a lost dispute, got ${invoiceI.status}`);
+  console.log('PASS: charge.dispute.closed(lost) -> payment refunded + linked invoice voided');
 
   console.log('\nAll payment webhook flow tests passed.');
 } finally {

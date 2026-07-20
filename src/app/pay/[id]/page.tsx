@@ -67,6 +67,7 @@ export default async function PublicPaymentPage({
     paid: 'This payment has already been completed. Thank you!',
     failed: 'The last payment attempt failed. You can try again below.',
     refunded: 'This payment has been refunded.',
+    disputed: 'This payment is under dispute with your bank and cannot be paid here.',
   };
 
   const alreadyPaid = payment.status === 'paid';

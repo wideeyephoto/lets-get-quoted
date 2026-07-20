@@ -3338,6 +3338,54 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .pac-icon { display: none; }
 .pac-logo::after { filter: invert(1) grayscale(1); opacity: 0.62; margin: 0.35rem 0.55rem 0.45rem; }
 
+/* Centered modal dialog (Add expense popup) */
+.app-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10001;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 4vh 1rem 1rem;
+  overflow-y: auto;
+  background: rgba(4, 10, 18, 0.66);
+  backdrop-filter: blur(3px);
+  animation: app-modal-fade 0.14s ease-out;
+}
+
+.app-modal {
+  width: 100%;
+  max-width: 560px;
+  margin: auto;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  background: #101c2b;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.5);
+  animation: app-modal-rise 0.16s ease-out;
+}
+
+.app-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.app-modal-head h2 { margin: 0; font-size: 1.15rem; }
+.app-modal-body { padding: 1.25rem; }
+
+@keyframes app-modal-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes app-modal-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .detail-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
 .detail-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; margin-top: 1rem; align-items: start; }
 

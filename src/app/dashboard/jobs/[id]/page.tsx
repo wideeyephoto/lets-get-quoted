@@ -31,6 +31,7 @@ import SaveButton from '@/components/save-button';
 import QuickFillButtons from '@/components/quick-fill-buttons';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
+import AddExpenseModal, { CloseOnSuccess } from './AddExpenseModal';
 
 const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
   requested: 'Awaiting payment',
@@ -38,6 +39,7 @@ const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
   paid: 'Paid',
   failed: 'Failed',
   refunded: 'Refunded',
+  disputed: 'Disputed',
 };
 
 const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = {
@@ -72,6 +74,9 @@ const FEED_KIND_LABEL: Record<string, string> = {
   payment_paid: 'Payment received',
   payment_failed: 'Payment issue',
   payment_refunded: 'Refund',
+  payment_disputed: 'Chargeback',
+  dispute_won: 'Chargeback won',
+  dispute_lost: 'Chargeback lost',
   invoice_created: 'Invoice',
   invoice_signoff_link: 'Client sign-off',
   invoice_sent: 'Invoice sent',
@@ -93,6 +98,9 @@ const FEED_KIND_ICON: Record<string, string> = {
   payment_paid: '✓',
   payment_failed: '!',
   payment_refunded: '↩',
+  payment_disputed: '⚠',
+  dispute_won: '✓',
+  dispute_lost: '⚠',
   invoice_created: 'I',
   invoice_signoff_link: '✓',
   invoice_sent: 'I',
@@ -313,7 +321,15 @@ export default async function JobDetailPage({
           </div>
           <div className="actions workspace-actions">
             <Link href={`/dashboard/jobs/${job.id}?open=payment#request-payment`} className="btn primary">Request payment</Link>
-            <a href="#job-costs" className="btn secondary">Add expense</a>
+            <AddExpenseModal triggerClassName="btn secondary" triggerLabel="Add expense" title="Add expense" defaultOpen={searchParams.open === 'costs'}>
+              <form action={boundCreateCost} className="cost-form">
+                <JobExpenseFields crew={crew} />
+                <div style={{ marginTop: '0.8rem' }}>
+                  <SaveButton pendingLabel="Adding…" savedLabel="Added ✓">+ Add expense</SaveButton>
+                </div>
+                <CloseOnSuccess />
+              </form>
+            </AddExpenseModal>
             {job.status !== 'complete' && job.status !== 'archived' ? (
               <form action={boundMarkJobComplete}>
                 <SaveButton className="btn secondary" pendingLabel="Completing…" savedLabel="Completed ✓">Mark complete</SaveButton>
@@ -816,12 +832,17 @@ export default async function JobDetailPage({
                 <span className="workspace-details-copy">Log materials, labor, subcontractors, receipts, and other costs.</span>
               </summary>
 
-              <form action={boundCreateCost} className="cost-form">
-                <JobExpenseFields crew={crew} />
-                <div style={{ marginTop: '0.8rem' }}>
-                  <SaveButton pendingLabel="Adding…" savedLabel="Added ✓">+ Add expense</SaveButton>
-                </div>
-              </form>
+              <div className="cost-add-row" style={{ marginBottom: '0.9rem' }}>
+                <AddExpenseModal triggerClassName="btn secondary" triggerLabel="+ Add expense" title="Add expense">
+                  <form action={boundCreateCost} className="cost-form">
+                    <JobExpenseFields crew={crew} />
+                    <div style={{ marginTop: '0.8rem' }}>
+                      <SaveButton pendingLabel="Adding…" savedLabel="Added ✓">+ Add expense</SaveButton>
+                    </div>
+                    <CloseOnSuccess />
+                  </form>
+                </AddExpenseModal>
+              </div>
 
               {costs.length === 0 ? (
                 <p className="empty-state">No expenses logged yet.</p>

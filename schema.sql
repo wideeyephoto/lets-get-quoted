@@ -57,6 +57,14 @@ begin
   end if;
 end $$;
 
+-- Added after the initial release: a paid payment can be charged back by the
+-- homeowner. `disputed` is a distinct, non-terminal state (Stripe may resolve
+-- it in the contractor's favor) — kept separate from `refunded` so it doesn't
+-- silently count toward paid volume or disappear from the contractor's view.
+-- Runs outside the do-block above because ALTER TYPE ... ADD VALUE cannot be
+-- issued from a PL/pgSQL function body.
+alter type payment_status add value if not exists 'disputed';
+
 -- ----------------------------------------------------------------------------
 -- ACCOUNTS  — the contractor business. THE BILLABLE UNIT.
 -- (prototype: this was the implicit "site" + freeJobsUsed + plan)
@@ -77,6 +85,10 @@ create table if not exists accounts (
   -- Stripe Connect (moving HOMEOWNER money to this contractor)
   stripe_connect_id     text,
   connect_onboarded     boolean not null default false,
+  -- Set when Stripe disables transfers on a PREVIOUSLY working account (vs. one
+  -- that simply never finished onboarding). Drives the contractor-facing
+  -- "payouts paused" alert; cleared when the account is reactivated.
+  connect_disabled_at   timestamptz,
 
   -- integrations
   quickbooks_realm_id   text,
@@ -88,6 +100,7 @@ create table if not exists accounts (
 
 alter table accounts add column if not exists account_number bigint generated always as identity (start with 100001);
 alter table accounts add column if not exists schedule_day_hours numeric(5,2) not null default 8;
+alter table accounts add column if not exists connect_disabled_at timestamptz;
 
 -- ----------------------------------------------------------------------------
 -- MEMBERSHIPS  — links a person (auth.users) to an account with a role.
@@ -373,6 +386,10 @@ alter table payments add column if not exists stripe_checkout_session text;
 alter table payments add column if not exists homeowner_phone text;
 alter table payments add column if not exists sms_consent boolean not null default false;
 alter table payments add column if not exists sms_consent_at timestamptz;
+-- Chargeback tracking (see the `disputed` payment_status value above).
+alter table payments add column if not exists disputed_at timestamptz;
+alter table payments add column if not exists dispute_reason text;
+alter table payments add column if not exists dispute_status text;
 
 -- ----------------------------------------------------------------------------
 -- SMS EVENTS  — transactional delivery log and lifecycle idempotency.

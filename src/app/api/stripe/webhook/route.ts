@@ -3,11 +3,46 @@ import { getStripeClient } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/auth';
 import { getRecipientTransferStatus } from '@/lib/stripe-connect';
 import { sendPaymentSmsEvent } from '@/lib/sms';
-import { createPaymentFeedEvent } from '@/lib/job-feed';
+import { createPaymentFeedEvent, createDisputeFeedEvent } from '@/lib/job-feed';
+import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 
 // Stripe webhooks require the raw request body for signature verification,
 // so this route must not be statically optimized or have its body parsed.
 export const dynamic = 'force-dynamic';
+
+const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
+
+// Emails the account owner an out-of-band alert. Best-effort by contract: a
+// send failure is swallowed so it can never bubble out of a webhook handler
+// (that would make Stripe retry the whole event and re-run DB mutations).
+async function emailContractorAlert(
+  admin: ReturnType<typeof createAdminClient>,
+  accountId: string,
+  alert: { subject: string; heading: string; bodyLines: string[]; ctaLabel: string; ctaPath: string; tone?: 'warning' | 'info' }
+) {
+  try {
+    const [{ data: account }, ownerEmail] = await Promise.all([
+      admin.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
+      getAccountOwnerEmail(admin, accountId),
+    ]);
+    if (!ownerEmail) {
+      console.warn(`No owner email for account ${accountId}; alert "${alert.subject}" not emailed.`);
+      return;
+    }
+    await sendContractorAlertEmail({
+      recipientEmail: ownerEmail,
+      businessName: account?.business_name || "Let's Get Quoted",
+      subject: alert.subject,
+      heading: alert.heading,
+      bodyLines: alert.bodyLines,
+      ctaLabel: alert.ctaLabel,
+      ctaUrl: `${APP_ORIGIN}${alert.ctaPath}`,
+      tone: alert.tone,
+    });
+  } catch (err) {
+    console.error(`Contractor alert email failed (non-fatal) for account ${accountId}:`, err);
+  }
+}
 
 async function markPaymentPaid(admin: ReturnType<typeof createAdminClient>, paymentId: string, stripePaymentIntent: string | null) {
   const { data: payment, error: fetchError } = await admin
@@ -188,35 +223,176 @@ export async function POST(request: Request) {
   // Connect account updated — capabilities may have changed
   if (event.type === 'account.updated') {
     const stripeAccount = event.data.object;
-    const accountId = stripeAccount.id;
+    const stripeAccountId = stripeAccount.id;
 
     // Legacy account.updated events contain a v1 Account shape. Retrieve the
     // authoritative Recipient capability through Accounts v2 before updating.
-    const transferStatus = await getRecipientTransferStatus(accountId);
+    const transferStatus = await getRecipientTransferStatus(stripeAccountId);
     if (transferStatus === null) {
       // Status couldn't be read (missing/unavailable in the API response) —
       // don't let an ambiguous read force a working contractor's account
       // offline. Only flip `connect_onboarded` on a concrete status value;
       // Stripe will redeliver this event, so a transient read failure isn't lost.
-      console.warn(`Connect account ${accountId}: stripe_transfers status unavailable, skipping connect_onboarded update.`);
+      console.warn(`Connect account ${stripeAccountId}: stripe_transfers status unavailable, skipping connect_onboarded update.`);
     } else {
-      await admin
+      const isActive = transferStatus === 'active';
+      const { data: current } = await admin
         .from('accounts')
-        .update({ connect_onboarded: transferStatus === 'active' })
-        .eq('stripe_connect_id', accountId);
-      console.log(`Connect account ${accountId} stripe_transfers status: ${transferStatus}`);
+        .select('id, connect_onboarded, connect_disabled_at')
+        .eq('stripe_connect_id', stripeAccountId)
+        .maybeSingle();
+
+      if (current) {
+        if (isActive) {
+          // Active (first activation or a recovery) — clear any prior disabled
+          // stamp so the dashboard alert goes away.
+          await admin
+            .from('accounts')
+            .update({ connect_onboarded: true, connect_disabled_at: null })
+            .eq('id', current.id);
+        } else {
+          // Transfers are not active. Only stamp `connect_disabled_at` when a
+          // PREVIOUSLY working account is being disabled — this distinguishes a
+          // real revocation (contractor can no longer get paid, needs an alert)
+          // from an account that simply never finished onboarding. Keep the
+          // first disabled timestamp on redelivery.
+          const wasWorking = current.connect_onboarded && !current.connect_disabled_at;
+          await admin
+            .from('accounts')
+            .update({
+              connect_onboarded: false,
+              ...(wasWorking ? { connect_disabled_at: new Date().toISOString() } : {}),
+            })
+            .eq('id', current.id);
+          if (wasWorking) {
+            console.error(`[CONNECT] Account ${current.id} (${stripeAccountId}) transfers disabled: status=${transferStatus}`);
+            await emailContractorAlert(admin, current.id, {
+              subject: 'Your payouts are paused',
+              heading: 'Stripe paused your payments',
+              bodyLines: [
+                'Stripe has turned off transfers for your account, so homeowner deposits and stage payments can’t be collected right now.',
+                'This usually means Stripe needs more information to keep your account verified. Reconnect to see what’s required and restore payouts.',
+              ],
+              ctaLabel: 'Resolve payout issue',
+              ctaPath: '/dashboard/settings',
+            });
+          }
+        }
+      }
+      console.log(`Connect account ${stripeAccountId} stripe_transfers status: ${transferStatus}`);
     }
   }
 
-  // Dispute/chargeback — no dedicated payment status for this yet (would need
-  // a schema migration to add one), but log prominently so a chargeback is at
-  // least visible server-side instead of silently invisible.
+  // Chargeback opened — the homeowner's bank is pulling the funds back. Since
+  // this platform is losses_collector, a lost dispute is the platform's money,
+  // so make it a first-class, contractor-visible state rather than a log line.
   if (event.type === 'charge.dispute.created') {
     const dispute = event.data.object;
-    const paymentId = dispute.metadata?.payment_id ?? dispute.payment_intent;
+    const paymentIntentId =
+      typeof dispute.payment_intent === 'string' ? dispute.payment_intent : dispute.payment_intent?.id ?? null;
     console.error(
-      `[DISPUTE] Chargeback opened for payment ${paymentId}: amount=${dispute.amount} reason=${dispute.reason} status=${dispute.status}`
+      `[DISPUTE] Chargeback opened: payment_intent=${paymentIntentId} amount=${dispute.amount} reason=${dispute.reason} status=${dispute.status}`
     );
+
+    if (paymentIntentId) {
+      // Disputes don't carry our charge metadata, so match on the stored
+      // payment intent id rather than dispute.metadata (which is empty).
+      const { data: payment } = await admin
+        .from('payments')
+        .select('id, account_id, job_id, status')
+        .eq('stripe_payment_intent', paymentIntentId)
+        .maybeSingle();
+
+      if (payment && payment.status === 'paid') {
+        const { data: transitioned } = await admin
+          .from('payments')
+          .update({
+            status: 'disputed',
+            disputed_at: new Date().toISOString(),
+            dispute_reason: dispute.reason ?? null,
+            dispute_status: dispute.status ?? null,
+          })
+          .eq('id', payment.id)
+          .eq('status', 'paid')
+          .select('id')
+          .maybeSingle();
+        if (transitioned) {
+          await createDisputeFeedEvent(
+            admin,
+            payment.id,
+            'payment_disputed',
+            'Chargeback opened',
+            `The homeowner disputed this payment${dispute.reason ? ` (${dispute.reason})` : ''}. Stripe is reviewing it — respond promptly with evidence.`
+          );
+          await emailContractorAlert(admin, payment.account_id, {
+            subject: 'A payment was disputed',
+            heading: 'A homeowner opened a chargeback',
+            bodyLines: [
+              `A homeowner disputed a payment${dispute.reason ? ` (reason: ${dispute.reason})` : ''}. Stripe is reviewing it and the funds are held until it resolves.`,
+              'Respond promptly with evidence — photos, the signed invoice, and any messages help your case.',
+            ],
+            ctaLabel: 'Open the job',
+            ctaPath: `/dashboard/jobs/${payment.job_id}`,
+          });
+        }
+      }
+    }
+  }
+
+  // Chargeback resolved. Won → the payment stands (revert to paid). Lost → the
+  // funds are gone; treat like a refund (mark refunded, void any linked invoice).
+  if (event.type === 'charge.dispute.closed') {
+    const dispute = event.data.object;
+    const paymentIntentId =
+      typeof dispute.payment_intent === 'string' ? dispute.payment_intent : dispute.payment_intent?.id ?? null;
+    console.error(`[DISPUTE] Chargeback closed: payment_intent=${paymentIntentId} status=${dispute.status}`);
+
+    if (paymentIntentId && (dispute.status === 'won' || dispute.status === 'lost')) {
+      const { data: payment } = await admin
+        .from('payments')
+        .select('id, account_id, job_id, invoice_id, status')
+        .eq('stripe_payment_intent', paymentIntentId)
+        .maybeSingle();
+
+      if (payment && payment.status === 'disputed') {
+        if (dispute.status === 'won') {
+          const { data: transitioned } = await admin
+            .from('payments')
+            .update({ status: 'paid', dispute_status: 'won' })
+            .eq('id', payment.id)
+            .eq('status', 'disputed')
+            .select('id')
+            .maybeSingle();
+          if (transitioned) {
+            await createDisputeFeedEvent(admin, payment.id, 'dispute_won', 'Chargeback won', 'Stripe resolved the dispute in your favor. The payment stands.');
+          }
+        } else {
+          const { data: transitioned } = await admin
+            .from('payments')
+            .update({ status: 'refunded', dispute_status: 'lost' })
+            .eq('id', payment.id)
+            .eq('status', 'disputed')
+            .select('id')
+            .maybeSingle();
+          if (transitioned) {
+            if (payment.invoice_id) {
+              await admin.from('invoices').update({ status: 'void' }).eq('id', payment.invoice_id);
+            }
+            await createDisputeFeedEvent(admin, payment.id, 'dispute_lost', 'Chargeback lost', 'The dispute was lost and the funds were withdrawn from your balance.');
+            await emailContractorAlert(admin, payment.account_id, {
+              subject: 'Chargeback lost — funds withdrawn',
+              heading: 'A chargeback was resolved against you',
+              bodyLines: [
+                'The payment dispute was lost, and the funds were withdrawn from your balance.',
+                'Any invoice linked to this payment has been voided.',
+              ],
+              ctaLabel: 'Open the job',
+              ctaPath: `/dashboard/jobs/${payment.job_id}`,
+            });
+          }
+        }
+      }
+    }
   }
 
   return NextResponse.json({ received: true });

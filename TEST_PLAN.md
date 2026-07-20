@@ -23,8 +23,10 @@ node scripts/test-payment-webhook-flow.mjs
 ```
 
 Covers: `checkout.session.completed` (+ duplicate-delivery idempotency),
-`checkout.session.expired`, `charge.failed`, `charge.refunded`,
-`charge.dispute.created`, and invoice auto-paid linking. This pass found and
+`checkout.session.expired`, `charge.failed`, `charge.refunded`, the full
+chargeback lifecycle (`charge.dispute.created` → `disputed`,
+`charge.dispute.closed` won → back to `paid`, lost → `refunded` + linked
+invoice voided), and invoice auto-paid linking. This pass found and
 fixed two real bugs:
 - A duplicate webhook delivery (Stripe explicitly guarantees at-least-once,
   not exactly-once, delivery) used to overwrite `paid_at` with a later
@@ -238,18 +240,23 @@ stripe trigger charge.refunded
 - ✅ RESOLVED (earlier session): Contractor fee transparency before checkout —
   `/pay/[id]` shows an estimated fee via `getQuotedFee()` before checkout ever
   starts, not just after.
-- ⚠️ IMPROVED (2026-07-16), not fully closed: Connect capability auto-disable —
-  `account.updated` now only flips `connect_onboarded` off on a concrete
-  (non-null) capability read, so a transient/ambiguous Stripe API response can
-  no longer force a working contractor's account offline. Still no
-  contractor-facing alert if a capability is later genuinely revoked.
-- ⚠️ IMPROVED (2026-07-16), not fully closed: Destination-charge/transfer
-  failure recovery — `charge.dispute.created` is now logged server-side
-  (`[DISPUTE]` log lines) so a chargeback is no longer completely invisible.
-  Still no dedicated `disputed` payment status (would need a schema
-  migration), no automatic homeowner/contractor notification, and no
-  automatic retry/reversal handling for a failed destination transfer
-  specifically.
+- ✅ RESOLVED (2026-07-20): Connect capability auto-disable now alerts the
+  contractor. `account.updated` records `connect_disabled_at` when a
+  PREVIOUSLY working account has transfers turned off (distinct from one that
+  never finished onboarding); the dashboard shows a prominent "Payouts paused"
+  banner AND the account owner is emailed (Resend) out-of-band so they find out
+  even without the dashboard open. Cleared automatically on reactivation.
+- ✅ RESOLVED (2026-07-20): Chargebacks are now a first-class state, not just a
+  log line. `charge.dispute.created` flips the payment to a new `disputed`
+  status (matched by `stripe_payment_intent`, since disputes carry no charge
+  metadata — the old `dispute.metadata.payment_id` lookup never matched),
+  posts an INTERNAL job-feed alert (never shown to the homeowner), and emails
+  the contractor. `charge.dispute.closed` resolves it: won → back to `paid`,
+  lost → `refunded` with the linked invoice voided (and a "funds withdrawn"
+  email). A disputed payment no longer silently counts toward the fee-volume
+  bracket. Alert emails are best-effort (a Resend failure is swallowed so it
+  can't make Stripe retry the event). Remaining gap: no SMS alert, and no
+  automatic retry/reversal handling for a failed destination transfer.
 - ❌ QuickBooks OAuth two-way sync (CSV export is the only path today)
 - ❌ Twilio missed-call text-back + AI (Claude) text intake
 - ❌ Wisetack financing integration (schema has a dormant `finance_plans`

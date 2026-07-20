@@ -5,7 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendPaymentSmsEvent } from '@/lib/sms';
 
 export type PaymentKind = 'deposit' | 'stage' | 'final' | 'plan_installment';
-export type PaymentStatus = 'requested' | 'processing' | 'paid' | 'failed' | 'refunded';
+export type PaymentStatus = 'requested' | 'processing' | 'paid' | 'failed' | 'refunded' | 'disputed';
 
 export type Payment = {
   id: string;
@@ -25,6 +25,9 @@ export type Payment = {
   sms_consent_at: string | null;
   requested_at: string;
   paid_at: string | null;
+  disputed_at: string | null;
+  dispute_reason: string | null;
+  dispute_status: string | null;
   sms_events?: { event_type: string; status: string; sent_at: string | null }[];
 };
 
