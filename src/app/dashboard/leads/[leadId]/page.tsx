@@ -112,6 +112,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const sendQuoteVisitOptions = sendLeadQuoteVisitOptionsAction.bind(null, lead.id);
   const convertedJobLabel = lead.status === 'won' ? 'Open job' : 'Open quote';
   const visitLabel = formatVisit(lead.quote_visit);
+  const hasScheduledEstimate = Boolean(lead.quote_visit);
   const mapSrc = mapEmbedSrc(lead.address);
   const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
   const today = new Date();
@@ -190,7 +191,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
             {visitLabel ? <span className={styles.visitPill}>Quote visit {visitLabel}</span> : null}
           </div>
           <div className={styles.leadQuickActions}>
-            {!lead.converted_job ? <Link className="btn primary" href="#availability-snapshot">Schedule quote</Link> : null}
+            {!lead.converted_job && !hasScheduledEstimate ? <Link className="btn primary" href="#availability-snapshot">Schedule quote</Link> : null}
             {!lead.converted_job ? <Link className="btn secondary" href="#lead-estimate">Provide estimate</Link> : null}
             {!lead.converted_job ? <Link className="btn secondary" href="#lead-estimate">Convert to job &amp; Schedule Start Date</Link> : null}
             {lead.converted_job ? <Link className="btn primary" href={`/dashboard/jobs/${lead.converted_job}`}>{convertedJobLabel}</Link> : null}
@@ -198,7 +199,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
         </div>
         <div className={styles.leadStageCard}>
           <strong>Lead path</strong>
-          <Link className={lead.quote_visit ? styles.stageComplete : undefined} href="#availability-snapshot">Schedule quote</Link>
+          {hasScheduledEstimate ? <span className={styles.stageComplete}>Schedule quote</span> : <Link href="#availability-snapshot">Schedule quote</Link>}
           <Link className={['quoted', 'won'].includes(lead.status) ? styles.stageComplete : undefined} href="#lead-estimate">Provide estimate</Link>
           {lead.converted_job ? <Link className={styles.stageComplete} href={`/dashboard/jobs/${lead.converted_job}`}>Schedule start date</Link> : <Link href="#lead-estimate">Schedule start date</Link>}
         </div>
@@ -287,7 +288,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
         </section>
 
         <aside className={styles.actionPanel}>
-          {!lead.converted_job ? (
+          {!lead.converted_job && !hasScheduledEstimate ? (
             <LeadAvailabilityScheduler
               availability={availabilityCards}
               leadPhone={lead.phone ?? ''}

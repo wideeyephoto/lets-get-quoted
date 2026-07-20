@@ -110,7 +110,7 @@ export default function LeadAvailabilityScheduler({
       <div className={styles.calendarSurfaceHeader}>
         <div className="section-heading workspace-section-heading">
           <p className="eyebrow">Calendar</p>
-          <h2>Availability snapshot</h2>
+          <h2>Schedule Client Estimate</h2>
         </div>
         <span className="workspace-details-copy">Book the quote now or build 3 times for the client from the same calendar.</span>
       </div>
