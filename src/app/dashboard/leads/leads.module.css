@@ -53,6 +53,11 @@
 .inlineEditDetails { padding-top: .2rem; }
 .inlineEditDetails summary { width: fit-content; list-style: none; cursor: pointer; }
 .inlineEditDetails summary::-webkit-details-marker { display: none; }
+.clientRequestDetails { display: grid; gap: .75rem; margin-top: .1rem; }
+.clientRequestSummary { display: inline-flex; align-items: center; width: fit-content; min-height: 34px; padding: .45rem .75rem; border: 1px solid rgba(255,255,255,.1); border-radius: 999px; background: rgba(255,255,255,.04); color: #ffd166; font-size: .76rem; font-weight: 800; list-style: none; cursor: pointer; }
+.clientRequestSummary::-webkit-details-marker { display: none; }
+.clientRequestDetails[open] .clientRequestSummary { border-color: rgba(255,209,102,.28); background: rgba(255,209,102,.08); }
+.clientRequestBody { display: grid; gap: .85rem; }
 .leadMapCard { overflow: hidden; border: 1px solid rgba(255,209,102,.2); border-radius: 10px; background: rgba(255,209,102,.055); }
 .leadMapCard > div { display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .75rem .85rem; border-bottom: 1px solid rgba(255,255,255,.08); }
 .leadMapCard span { color: rgba(255,255,255,.5); font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
@@ -210,7 +215,7 @@
 .timelineList small { color: rgba(255,255,255,.55); }
 .currentStatusButton { border-color: rgba(255,209,102,.48) !important; background: rgba(255,209,102,.12) !important; color: #ffd166 !important; }
 .source { display: inline-flex; width: fit-content; padding: .3rem .55rem; border-radius: 4px; background: rgba(255,209,102,.12); color: #ffd166; font-size: .72rem; font-weight: 700; text-transform: capitalize; }
-@media (max-width: 1240px) { .leadHero, .detailGrid { grid-template-columns: 1fr; } .leadStageCard { grid-template-columns: repeat(4, minmax(0, 1fr)); } .leadStageCard strong { grid-column: 1 / -1; } .leadStageCard span { min-height: 44px; } .actionPanel { position: static; } .calendarSelectionFooter { grid-template-columns: 1fr; } .selectedOptionList { grid-template-columns: 1fr; } }
+@media (max-width: 1240px) { .leadHero, .detailGrid { grid-template-columns: 1fr; } .leadStageCard { grid-template-columns: repeat(4, minmax(0, 1fr)); } .leadStageCard strong { grid-column: 1 / -1; } .leadStageCard span { min-height: 44px; } .actionPanel { position: static; order: -1; } .calendarSelectionFooter { grid-template-columns: 1fr; } .selectedOptionList { grid-template-columns: 1fr; } }
 @media (max-width: 980px) { .selectedOptionCard { border-radius: 14px; } }
 @media (max-width: 720px) { .quoteVisitActions { grid-template-columns: 1fr; } .quoteVisitActions :global(.schedule-popover summary) { width: 100%; } .quoteVisitActions :global(.schedule-inline-form) { grid-template-columns: 1fr; } .quoteVisitActions :global(.schedule-preset-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 1120px) { .availabilityGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }

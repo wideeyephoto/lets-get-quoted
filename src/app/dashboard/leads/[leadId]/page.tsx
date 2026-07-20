@@ -217,42 +217,46 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
               <div className={styles.dataBlock}><span>Email</span>{lead.email ? <a href={`mailto:${lead.email}`}>{lead.email}</a> : <p>Not provided</p>}</div>
             </div>
             <div className={styles.dataBlock}><span>Project address</span><p>{lead.address || 'Not provided'}</p></div>
-            {mapSrc ? (
-              <div className={styles.leadMapCard}>
-                <div><span>Job Location</span><strong>{lead.address}</strong></div>
-                <iframe title={`Map showing ${lead.address}`} src={mapSrc} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
-              </div>
-            ) : null}
             <div className={styles.dataBlock}><span>Project details</span><p>{lead.message || 'Not provided'}</p></div>
-            <details className={styles.inlineEditDetails} open={searchParams.edit === 'client'}>
-              <summary className="btn secondary">Edit client/request details</summary>
-              <form action={updateLeadDetails} className={`form-grid ${styles.leadEditForm}`}>
-                <input type="hidden" name="projectType" value={lead.project_type ?? ''} />
-                <input type="hidden" name="estimatedHours" value={lead.estimated_hours ?? ''} />
-                <div className="field">
-                  <label htmlFor="leadName">Client name</label>
-                  <input id="leadName" name="name" defaultValue={lead.name ?? ''} required />
-                </div>
-                <div className="field">
-                  <label htmlFor="leadPhone">Phone</label>
-                  <input id="leadPhone" name="phone" type="tel" defaultValue={lead.phone ?? ''} />
-                </div>
-                <div className="field">
-                  <label htmlFor="leadEmail">Email</label>
-                  <input id="leadEmail" name="email" type="email" defaultValue={lead.email ?? ''} />
-                </div>
-                <div className="field">
-                  <label htmlFor="leadAddress">Project address</label>
-                  <input id="leadAddress" name="address" defaultValue={lead.address ?? ''} />
-                </div>
-                <div className="field full">
-                  <label htmlFor="leadMessage">Project details</label>
-                  <textarea id="leadMessage" name="message" rows={4} defaultValue={lead.message ?? ''} />
-                </div>
-                <div className="field full">
-                  <SaveButton>Save lead details</SaveButton>
-                </div>
-              </form>
+            <details className={styles.clientRequestDetails} open={searchParams.edit === 'client'}>
+              <summary className={styles.clientRequestSummary}>
+                <span>{mapSrc ? 'Map and edit details' : 'Edit details'}</span>
+              </summary>
+              <div className={styles.clientRequestBody}>
+                {mapSrc ? (
+                  <div className={styles.leadMapCard}>
+                    <div><span>Job Location</span><strong>{lead.address}</strong></div>
+                    <iframe title={`Map showing ${lead.address}`} src={mapSrc} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+                  </div>
+                ) : null}
+                <form action={updateLeadDetails} className={`form-grid ${styles.leadEditForm}`}>
+                  <input type="hidden" name="projectType" value={lead.project_type ?? ''} />
+                  <input type="hidden" name="estimatedHours" value={lead.estimated_hours ?? ''} />
+                  <div className="field">
+                    <label htmlFor="leadName">Client name</label>
+                    <input id="leadName" name="name" defaultValue={lead.name ?? ''} required />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="leadPhone">Phone</label>
+                    <input id="leadPhone" name="phone" type="tel" defaultValue={lead.phone ?? ''} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="leadEmail">Email</label>
+                    <input id="leadEmail" name="email" type="email" defaultValue={lead.email ?? ''} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="leadAddress">Project address</label>
+                    <input id="leadAddress" name="address" defaultValue={lead.address ?? ''} />
+                  </div>
+                  <div className="field full">
+                    <label htmlFor="leadMessage">Project details</label>
+                    <textarea id="leadMessage" name="message" rows={4} defaultValue={lead.message ?? ''} />
+                  </div>
+                  <div className="field full">
+                    <SaveButton>Save lead details</SaveButton>
+                  </div>
+                </form>
+              </div>
             </details>
           </section>
 
