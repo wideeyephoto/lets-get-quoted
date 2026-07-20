@@ -2,14 +2,13 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
 import PhotoGallery from '@/components/photo-gallery';
-import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
 import { expireStaleLeads, formatElapsedTime, formatLeadSource, getLead, listLeads, type Lead, type LeadQuoteVisit } from '@/lib/leads';
 import { expandScheduledJobs, formatJobSchedule, formatJobTime, listJobs, type Job, type ScheduledJobOccurrence } from '@/lib/jobs';
 import { clearLeadQuoteVisitAction, convertLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, updateLeadDetailsAction } from '../actions';
 import LeadAvailabilityScheduler from './LeadAvailabilityScheduler';
+import QuoteStartDateCalendar from './QuoteStartDateCalendar';
 import SaveButton from '@/components/save-button';
-import TimeSlotSelect from '@/components/time-slot-select';
 import styles from '../leads.module.css';
 
 function mapEmbedSrc(address: string | null) {
@@ -71,12 +70,12 @@ function dayLabel(date: Date) {
   return new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(date);
 }
 
-function buildAvailability(jobs: Job[], leads: Lead[], scheduleDayHours: number, startDate: Date) {
+function buildAvailability(jobs: Job[], leads: Lead[], scheduleDayHours: number, startDate: Date, length = 7) {
   const scheduledJobs = jobs.filter((job) => job.status !== 'archived' && job.scheduled_for);
   const occurrences = expandScheduledJobs(scheduledJobs, scheduleDayHours);
   const quoteVisits = leads.filter((lead) => lead.quote_visit?.scheduledFor);
 
-  return Array.from({ length: 7 }, (_, index) => {
+  return Array.from({ length }, (_, index) => {
     const date = addDays(startDate, index);
     const key = dateKey(date);
     const dayJobs = occurrences.filter((job) => job.scheduled_for === key);
@@ -121,6 +120,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const nextAvailabilityStart = dateKey(addDays(availabilityStart, 7));
   const canViewPreviousAvailability = dateKey(availabilityStart) > dateKey(today);
   const availability = buildAvailability(jobs, leads, scheduleDayHours, availabilityStart);
+  const quoteStartAvailability = buildAvailability(jobs, leads, scheduleDayHours, today, 30);
   const availabilityCards = availability.map((day) => ({
     key: day.key,
     label: day.label,
@@ -132,6 +132,22 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
     busy: day.jobs.length + day.visits.length > 0,
     isToday: day.key === dateKey(today),
     jobHints: day.jobs.slice(0, 3).map((job) => ({
+      id: `${job.id}-${job.scheduled_for}-${job.scheduled_time ?? 'anytime'}`,
+      clientName: job.client_name,
+      time: formatJobTime(job.scheduled_time) || 'Time TBD',
+      city: extractCity(job.address),
+    })),
+  }));
+  const quoteStartAvailabilityCards = quoteStartAvailability.map((day) => ({
+    key: day.key,
+    label: day.label,
+    summary: day.jobs.length + day.visits.length > 0
+      ? `${day.jobs.length} job${day.jobs.length === 1 ? '' : 's'} / ${day.visits.length} quote visit${day.visits.length === 1 ? '' : 's'}`
+      : 'Open',
+    detail: day.hours ? `${day.hours} est hrs` : nextScheduledJobLabel(day.jobs),
+    busy: day.jobs.length + day.visits.length > 0,
+    isToday: day.key === dateKey(today),
+    jobHints: day.jobs.slice(0, 2).map((job) => ({
       id: `${job.id}-${job.scheduled_for}-${job.scheduled_time ?? 'anytime'}`,
       clientName: job.client_name,
       time: formatJobTime(job.scheduled_time) || 'Time TBD',
@@ -292,22 +308,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                 <details className={styles.optionalScheduleDetails}>
                   <summary>Suggest 3 job start times</summary>
                   <p>Optional. Text three service options with the quote so the client can book quickly.</p>
-                  {[1, 2, 3].map((optionNumber) => (
-                    <div className="schedule-option-grid" key={optionNumber}>
-                      <div>
-                        <label htmlFor={`quoteScheduleDate${optionNumber}`}>Option {optionNumber} date</label>
-                        <ScheduledDatePicker id={`quoteScheduleDate${optionNumber}`} name={`quoteScheduleDate${optionNumber}`} />
-                      </div>
-                      <div>
-                        <label htmlFor={`quoteScheduleTime${optionNumber}`}>Option {optionNumber} time</label>
-                        <TimeSlotSelect id={`quoteScheduleTime${optionNumber}`} name={`quoteScheduleTime${optionNumber}`} />
-                      </div>
-                    </div>
-                  ))}
-                  <label className="sms-consent-check">
-                    <input name="quoteScheduleSmsConsent" type="checkbox" />
-                    <span>The client agreed to receive transactional scheduling texts. Required only when sending quick booking options. Reply STOP to opt out.</span>
-                  </label>
+                  <QuoteStartDateCalendar availability={quoteStartAvailabilityCards} />
                 </details>
                 <SaveButton>Send Quote and Request Sign Off</SaveButton>
               </form>
