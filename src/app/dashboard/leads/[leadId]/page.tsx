@@ -379,8 +379,6 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
               <Link href={closeEditHref} className={styles.modalCloseButton} aria-label="Close edit details">x</Link>
             </div>
             <form action={updateLeadDetails} className={`form-grid ${styles.leadEditForm}`}>
-              <input type="hidden" name="projectType" value={lead.project_type ?? ''} />
-              <input type="hidden" name="estimatedHours" value={lead.estimated_hours ?? ''} />
               <div className="field">
                 <label htmlFor="leadName">Client name</label>
                 <input id="leadName" name="name" defaultValue={lead.name ?? ''} required />
@@ -396,6 +394,14 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
               <div className="field">
                 <label htmlFor="leadAddress">Project address</label>
                 <input id="leadAddress" name="address" defaultValue={lead.address ?? ''} />
+              </div>
+              <div className="field">
+                <label htmlFor="leadProjectType">Project type</label>
+                <input id="leadProjectType" name="projectType" defaultValue={lead.project_type ?? ''} placeholder="Roof replacement" />
+              </div>
+              <div className="field">
+                <label htmlFor="leadEstimatedHours">Estimated hours</label>
+                <input id="leadEstimatedHours" name="estimatedHours" type="number" min="0" step="0.25" defaultValue={lead.estimated_hours ?? ''} placeholder="16" />
               </div>
               <div className="field full">
                 <label htmlFor="leadMessage">Project details</label>

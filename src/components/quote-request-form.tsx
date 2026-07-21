@@ -92,6 +92,22 @@ export default function QuoteRequestForm({ site }: QuoteRequestFormProps) {
       <label className={styles.field}><span>Phone</span><input name="phone" type="tel" autoComplete="tel" maxLength={40} /></label>
       <label className={`${styles.field} ${styles.wide}`}><span>Email {emailRequired ? '(required)' : '(optional)'}</span><input name="email" type="email" autoComplete="email" maxLength={160} required={emailRequired} /></label>
       <div className={`${styles.field} ${styles.wide}`}><label htmlFor="quote-address">Project address</label><AddressAutocomplete id="quote-address" name="address" placeholder="1418 Maplewood Ave, Royal Oak, MI" maxLength={240} /></div>
+      <label className={`${styles.field} ${styles.wide}`}>
+        <span>Project type (optional)</span>
+        <input name="projectType" list="quote-project-type-options" maxLength={100} placeholder="Roof replacement, kitchen remodel, deck…" autoComplete="off" />
+        <datalist id="quote-project-type-options">
+          <option value="Roof replacement" />
+          <option value="Roof repair" />
+          <option value="Kitchen remodel" />
+          <option value="Bathroom remodel" />
+          <option value="Deck / patio" />
+          <option value="Siding" />
+          <option value="Windows & doors" />
+          <option value="Painting" />
+          <option value="Flooring" />
+          <option value="Addition / new build" />
+        </datalist>
+      </label>
       <label className={`${styles.field} ${styles.wide}`}><span>Tell us about the project</span><textarea name="message" maxLength={3000} required /></label>
       <div className={`${styles.field} ${styles.wide}`}>
         <div className={styles.photoHeader}>

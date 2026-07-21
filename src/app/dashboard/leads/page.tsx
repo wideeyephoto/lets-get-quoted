@@ -57,7 +57,12 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
                       </div>
                       {(lead.phone || lead.email) && <div className={styles.contactHint}>{lead.phone || lead.email}</div>}
                     </Link>
-                    {lead.converted_job ? <Link className={styles.openJobLink} href={`/dashboard/jobs/${lead.converted_job}`}>Open job →</Link> : null}
+                    {lead.phone || lead.converted_job ? (
+                      <div className={styles.cardActions}>
+                        {lead.phone ? <a className={styles.callLink} href={`tel:${lead.phone}`} aria-label={`Call ${lead.name || 'lead'}`}>📞 Call</a> : null}
+                        {lead.converted_job ? <Link className={styles.openJobLink} href={`/dashboard/jobs/${lead.converted_job}`}>Open job →</Link> : null}
+                      </div>
+                    ) : null}
                   </div>
                 );
               })}{columnLeads.length === 0 && <p className={styles.empty}>No leads here.</p>}</div></section>;
