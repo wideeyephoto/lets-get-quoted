@@ -29,12 +29,12 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
       </header>
 
       <section className={styles.forgeHero} id="top">
-        <img className={styles.heroImage} src={heroImage} alt="Contractor project in progress" fetchPriority="high" decoding="async" />
+        <img className={styles.heroImage} src={heroImage} alt="Recent completed job" fetchPriority="high" decoding="async" />
         <div className={styles.forgeScrim} />
         <div className={styles.forgeHeroCopy}>
-          <p className={styles.kicker}>Built right. Built to last.</p>
+          <p className={styles.kicker}>Done right. Every time.</p>
           <h1>{site.headline || 'Serious work. Solid results.'}</h1>
-          <p className={styles.heroText}>{site.tagline || `Trusted construction across ${site.service_area || 'your community'}.`}</p>
+          <p className={styles.heroText}>{site.tagline || `Trusted service across ${site.service_area || 'your community'}.`}</p>
           <HeroQuickForm site={site} />
           <SiteProofStrip site={site} />
         </div>
@@ -56,7 +56,7 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
       <section className={styles.forgeWork} id="work">
         <div className={styles.sectionHeading}>
           <div><p className={styles.kicker}>Selected work</p><h2>Made for real life.</h2></div>
-          <p>Renovations, additions, and ground-up work delivered with practical care.</p>
+          <p>Every job delivered with practical care, start to finish.</p>
         </div>
         <div className={styles.forgeGallery}>
           {gallery.slice(0, 3).map((image, index) => (
@@ -72,7 +72,7 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
 
       <section className={styles.forgeContact} id="contact">
         <p className={styles.kicker}>Have a project in mind?</p>
-        <h2>Let&apos;s build something that holds up.</h2>
+        <h2>Let&apos;s get it done right.</h2>
         {site.phone && <p>Prefer to talk? Call <a href={`tel:${site.phone}`}>{site.phone}</a>.</p>}
         <SiteProofStrip site={site} />
         <QuoteRequestForm site={site} />

@@ -20,7 +20,7 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
     <main className={`${styles.site} ${styles.vista}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode}>
       <header className={styles.vistaHeader}>
         <a className={styles.vistaBrand} href="#top">{site.logo_url ? <img className={styles.logo} src={site.logo_url} alt={site.company_name} /> : site.company_name}</a>
-        <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#studio', label: 'Studio' }, { href: '#work', label: 'Work' }, { href: '#contact', label: 'Connect' }]} />
+        <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#studio', label: 'About' }, { href: '#work', label: 'Work' }, { href: '#contact', label: 'Connect' }]} />
         <div className={styles.vistaActions}>
           {site.phone && <a className={styles.vistaPhone} href={`tel:${site.phone}`}>{site.phone}</a>}
           <a className={styles.vistaMenu} href="#contact">Get a quote <span aria-hidden="true">→</span></a>
@@ -30,9 +30,9 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
       <section className={styles.vistaHero} id="top">
         <img className={styles.heroImage} src={heroImage} alt="Featured completed project" fetchPriority="high" decoding="async" />
         <div className={styles.vistaHeroCopy}>
-          <p className={styles.kicker}>Build / Renovate / Refine</p>
-          <h1>{site.headline || 'Spaces with purpose.'}</h1>
-          <p>{site.tagline || 'We build considered homes and interiors for how you actually live.'}</p>
+          <p className={styles.kicker}>Diagnose / Repair / Deliver</p>
+          <h1>{site.headline || 'Service with purpose.'}</h1>
+          <p>{site.tagline || 'We show up, solve the problem, and treat your home like our own.'}</p>
           <HeroQuickForm site={site} />
           <SiteProofStrip site={site} />
         </div>
@@ -41,12 +41,12 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
 
       <section className={styles.vistaStatement} id="studio">
         <p>We are {site.company_name}.</p>
-        <h2>Part builder, part problem-solver, always focused on the finish.</h2>
+        <h2>Part problem-solver, part perfectionist, always focused on getting it right.</h2>
         <div><span>{site.service_area || 'Local projects'}</span><span>{site.license || 'Licensed & insured'}</span></div>
       </section>
 
       <section className={styles.vistaWork} id="work">
-        <div className={styles.vistaWorkHeading}><p className={styles.kicker}>Selected spaces</p><span>{String(gallery.length).padStart(2, '0')} projects</span></div>
+        <div className={styles.vistaWorkHeading}><p className={styles.kicker}>Recent work</p><span>{String(gallery.length).padStart(2, '0')} projects</span></div>
         <div className={styles.vistaGallery}>
           {gallery.slice(0, 5).map((image, index) => (
             <figure key={image.id} className={index === 0 || index === 3 ? styles.vistaWide : undefined}>
@@ -60,7 +60,7 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
       <SiteContentSections site={site} />
 
       <section className={styles.vistaContact} id="contact">
-        <p className={styles.kicker}>Next project</p><h2>Have a space in mind?</h2>
+        <p className={styles.kicker}>Next project</p><h2>Ready when you are?</h2>
         {site.phone && <a href={`tel:${site.phone}`}>{site.phone} <span>↗</span></a>}
         <SiteProofStrip site={site} />
         <QuoteRequestForm site={site} />

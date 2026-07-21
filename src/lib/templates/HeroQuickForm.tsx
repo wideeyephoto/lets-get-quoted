@@ -14,16 +14,16 @@ type HeroQuickFormProps = {
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_PHOTOS = 6;
 
-const SIZE_OPTIONS: { value: EstimateSize; label: string; hint: string }[] = [
-  { value: 'small', label: 'Small', hint: 'Touch-up or single room' },
-  { value: 'medium', label: 'Medium', hint: 'Full room remodel' },
-  { value: 'large', label: 'Large', hint: 'Whole-home or addition' },
+const SIZE_OPTIONS: { value: EstimateSize; label: string }[] = [
+  { value: 'small', label: 'Small' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'large', label: 'Large' },
 ];
 
-const TIER_OPTIONS: { value: EstimateMaterialTier; label: string; hint: string }[] = [
-  { value: 'economical', label: 'Economical', hint: 'Budget-friendly materials' },
-  { value: 'standard', label: 'Standard', hint: 'Balanced quality & cost' },
-  { value: 'premium', label: 'Premium', hint: 'High-end finishes' },
+const TIER_OPTIONS: { value: EstimateMaterialTier; label: string }[] = [
+  { value: 'economical', label: 'Economical' },
+  { value: 'standard', label: 'Standard' },
+  { value: 'premium', label: 'Premium' },
 ];
 
 function formatCurrency(value: number): string {
@@ -224,7 +224,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
           <h2>{estimateLabel}</h2>
           <p className={styles.heroFormNote}>Tell us what you need done — a couple quick questions, then we&apos;ll show your range.</p>
           <textarea
-            placeholder="e.g. Kitchen remodel, new deck, roof replacement..."
+            placeholder="e.g. AC repair, deep clean, fence installation..."
             maxLength={500}
             rows={2}
             required

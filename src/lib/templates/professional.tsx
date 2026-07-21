@@ -32,27 +32,31 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
 
       <section className={styles.guildHero} id="top">
         <div className={styles.guildHeroCopy}>
-          <p className={styles.kicker}>Craftsmanship you can count on</p>
-          <h1>{site.headline || 'A better way to build and renovate.'}</h1>
-          <p className={styles.heroText}>{site.tagline || 'Thoughtful planning, dependable crews, and a finish you will be proud to live with.'}</p>
+          <p className={styles.kicker}>Work you can count on</p>
+          <h1>{site.headline || 'A better way to get the job done.'}</h1>
+          <p className={styles.heroText}>{site.tagline || 'Thoughtful planning, dependable crews, and results you will be glad you called us for.'}</p>
           {site.phone && <a className={styles.textLink} href={`tel:${site.phone}`}>Call {site.phone}</a>}
           <HeroQuickForm site={site} />
           <SiteProofStrip site={site} />
         </div>
         <div className={styles.guildHeroMedia}>
-          <img src={heroImage} alt="Completed contractor project" fetchPriority="high" decoding="async" />
-          <div className={styles.guildBadge}><strong>Built locally</strong><span>{site.service_area || 'Serving our community'}</span></div>
+          <img src={heroImage} alt="Recent completed job" fetchPriority="high" decoding="async" />
+          <div className={styles.guildBadge}><strong>Proudly local</strong><span>{site.service_area || 'Serving our community'}</span></div>
         </div>
       </section>
 
       <section className={styles.guildIntro} id="services">
         <div><p className={styles.kicker}>One team, start to finish</p><h2>Experience that makes the process easier.</h2></div>
-        <p>We pair practical construction knowledge with straightforward project management, so every phase feels considered and under control.</p>
+        <p>We pair hands-on trade experience with straightforward, no-surprises service, so every job feels considered and under control.</p>
       </section>
 
       <section className={styles.guildServices} aria-label="Services">
-        {['Renovations & additions', 'Kitchens & interiors', 'New construction'].map((service, index) => (
-          <article key={service}><span>0{index + 1}</span><h3>{service}</h3><p>Detailed scopes, durable materials, and crews who respect your property.</p></article>
+        {[
+          { title: 'Repairs & tune-ups', body: 'Fast, reliable service when something needs fixing.' },
+          { title: 'Installs & upgrades', body: 'Quality work when it is time to replace or upgrade.' },
+          { title: 'Inspections & maintenance', body: 'Preventive care that catches small issues before they grow.' },
+        ].map((service, index) => (
+          <article key={service.title}><span>0{index + 1}</span><h3>{service.title}</h3><p>{service.body}</p></article>
         ))}
       </section>
 
@@ -66,7 +70,7 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
       <SiteContentSections site={site} />
 
       <section className={styles.guildContact} id="contact">
-        <div><p className={styles.kicker}>Ready when you are</p><h2>Tell us what you&apos;re planning.</h2></div>
+        <div><p className={styles.kicker}>Ready when you are</p><h2>Tell us what you need.</h2></div>
         <div><p>{site.hours || 'Monday-Friday, 7am-5pm'}</p><p>{site.service_area || 'Local and regional projects'}</p>{site.phone && <a className={styles.primaryCta} href={`tel:${site.phone}`}>Call {site.phone}</a>}</div>
         <SiteProofStrip site={site} />
         <QuoteRequestForm site={site} />
