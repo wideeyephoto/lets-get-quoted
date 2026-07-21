@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import PhotoGallery from '@/components/photo-gallery';
 import AddressAutocomplete from '@/components/address-autocomplete';
-import { deriveJobListBadge } from '@/lib/job-badges';
+import { deriveJobListBadge, computeJobMilestones } from '@/lib/job-badges';
 import { getJob, listCosts, computeMargin, formatJobQuoteSummary, formatJobSchedule, formatMoney, formatPercent, type Cost, type Job } from '@/lib/jobs';
 import { createJobPhotoUrls } from '@/lib/job-photo-storage';
 import { listPayments, type Payment, type PaymentStatus } from '@/lib/payments';
@@ -147,12 +147,7 @@ type PipelineChecklistItem = {
 };
 
 function buildPipelineChecklist(job: Job, payments: Payment[], invoices: Invoice[], activeClientLinkCount: number, originatingLeadId: string | null): PipelineChecklistItem[] {
-  const hasPaymentRequest = payments.some((payment) => payment.status === 'requested' || payment.status === 'processing' || payment.status === 'paid');
-  const paidTotal = payments.filter((payment) => payment.status === 'paid').reduce((sum, payment) => sum + Number(payment.amount), 0);
-  const hasSignedInvoice = invoices.some((invoice) => invoice.status === 'signed' || invoice.status === 'paid');
-  const hasPaidInvoice = invoices.some((invoice) => invoice.status === 'paid');
-  const isComplete = job.status === 'complete' || job.status === 'archived';
-  const quoteAccepted = job.status === 'in_progress' || isComplete || Boolean(job.scheduled_for) || hasPaymentRequest || invoices.length > 0;
+  const milestones = computeJobMilestones(job, payments, invoices, activeClientLinkCount);
   const quoteDetail = job.quoted_amount > 0 ? `${formatMoney(job.quoted_amount)} quoted` : 'Add quote amount';
   const feedDetail = activeClientLinkCount > 0 ? 'Job Feed shared' : 'Share Job Feed link';
 
@@ -160,31 +155,31 @@ function buildPipelineChecklist(job: Job, payments: Payment[], invoices: Invoice
     {
       label: 'Quote shared',
       detail: `${quoteDetail} · ${feedDetail}`,
-      complete: job.quoted_amount > 0 && activeClientLinkCount > 0,
+      complete: milestones.quoteShared,
       href: originatingLeadId ? `/dashboard/leads/${originatingLeadId}` : `/dashboard/jobs/${job.id}#job-feed`,
     },
     {
       label: 'Quote accepted',
-      detail: quoteAccepted ? 'Approved for work' : 'Awaiting client approval',
-      complete: quoteAccepted,
+      detail: milestones.quoteAccepted ? 'Approved for work' : 'Awaiting client approval',
+      complete: milestones.quoteAccepted,
       href: `/dashboard/jobs/${job.id}?edit=client#job-details`,
     },
     {
       label: 'Scheduled / underway',
       detail: job.scheduled_for ? formatJobSchedule(job.scheduled_for, job.scheduled_time) : 'Schedule the work',
-      complete: Boolean(job.scheduled_for) || job.status === 'in_progress' || isComplete,
+      complete: milestones.scheduled,
       href: `/dashboard/jobs/${job.id}?open=scheduling#job-scheduling`,
     },
     {
       label: 'Invoice / payment requested',
-      detail: hasPaymentRequest ? `${payments.length} payment link${payments.length === 1 ? '' : 's'} created` : 'Send invoice or payment link',
-      complete: hasPaymentRequest,
+      detail: milestones.paymentRequested ? `${milestones.paymentLinkCount} payment link${milestones.paymentLinkCount === 1 ? '' : 's'} created` : 'Send invoice or payment link',
+      complete: milestones.paymentRequested,
       href: `/dashboard/jobs/${job.id}?open=payment#request-payment`,
     },
     {
       label: 'Paid / signed off',
-      detail: paidTotal > 0 ? `${formatMoney(paidTotal)} paid` : hasSignedInvoice ? 'Client signed invoice' : 'Awaiting payment or sign-off',
-      complete: paidTotal > 0 || hasPaidInvoice || hasSignedInvoice || isComplete,
+      detail: milestones.paidTotal > 0 ? `${formatMoney(milestones.paidTotal)} paid` : milestones.hasSignedInvoice ? 'Client signed invoice' : 'Awaiting payment or sign-off',
+      complete: milestones.paidOrSignedOff,
       href: `/dashboard/jobs/${job.id}?open=payment#request-payment`,
     },
   ];

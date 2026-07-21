@@ -25,6 +25,46 @@ function hasQuoteRevision(job: Job, invoices: Invoice[]): boolean {
   });
 }
 
+export type JobMilestones = {
+  quoteShared: boolean;
+  quoteAccepted: boolean;
+  scheduled: boolean;
+  paymentRequested: boolean;
+  paidOrSignedOff: boolean;
+  isComplete: boolean;
+  paidTotal: number;
+  paymentLinkCount: number;
+  hasSignedInvoice: boolean;
+};
+
+// Canonical pipeline-milestone flags for a job. Centralized so the job-detail
+// checklist derives "where is this job" from ONE place instead of recomputing
+// slightly different booleans — keeping the checklist internally consistent.
+export function computeJobMilestones(
+  job: Job,
+  payments: Payment[],
+  invoices: Invoice[],
+  activeClientLinkCount: number
+): JobMilestones {
+  const hasPaymentRequest = payments.some((payment) => payment.status === 'requested' || payment.status === 'processing' || payment.status === 'paid');
+  const paidTotal = payments.filter((payment) => payment.status === 'paid').reduce((sum, payment) => sum + Number(payment.amount), 0);
+  const hasSignedInvoice = invoices.some((invoice) => invoice.status === 'signed' || invoice.status === 'paid');
+  const hasPaidInvoice = invoices.some((invoice) => invoice.status === 'paid');
+  const isComplete = job.status === 'complete' || job.status === 'archived';
+
+  return {
+    quoteShared: job.quoted_amount > 0 && activeClientLinkCount > 0,
+    quoteAccepted: job.status === 'in_progress' || isComplete || Boolean(job.scheduled_for) || hasPaymentRequest || invoices.length > 0,
+    scheduled: Boolean(job.scheduled_for) || job.status === 'in_progress' || isComplete,
+    paymentRequested: hasPaymentRequest,
+    paidOrSignedOff: paidTotal > 0 || hasPaidInvoice || hasSignedInvoice || isComplete,
+    isComplete,
+    paidTotal,
+    paymentLinkCount: payments.length,
+    hasSignedInvoice,
+  };
+}
+
 export function deriveJobListBadge(
   job: Job,
   payments: Payment[],

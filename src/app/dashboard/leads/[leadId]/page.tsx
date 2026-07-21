@@ -478,7 +478,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                 <input id="estimatedHours" name="estimatedHours" type="number" min="0" step="0.25" defaultValue={lead.estimated_hours ?? ''} placeholder="16" />
                 <QuickFillButtons label="Quick add:" targetId="estimatedHours" values={[{ label: '4 hrs', value: '4' }, { label: '8 hrs', value: '8' }, { label: '16 hrs', value: '16' }, { label: '24 hrs', value: '24' }, { label: '40 hrs', value: '40' }]} />
                 <label className={`sms-consent-check ${styles.quoteTextCheck}`}>
-                  <input name="sendClientText" type="checkbox" defaultChecked />
+                  <input id="sendClientTextCheckbox" name="sendClientText" type="checkbox" defaultChecked />
                   <span>
                     <strong>Text quote and sign-off link</strong>
                     <small>Send the client their quote dashboard link. Reply STOP to opt out.</small>

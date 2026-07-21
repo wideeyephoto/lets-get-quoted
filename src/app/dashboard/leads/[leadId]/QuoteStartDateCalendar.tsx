@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type MouseEvent } from 'react';
+import { useEffect, useState, type MouseEvent } from 'react';
 import TimeSlotSelect from '@/components/time-slot-select';
 import styles from '../leads.module.css';
 
@@ -42,6 +42,18 @@ export default function QuoteStartDateCalendar({
   canViewPrevious: boolean;
 }) {
   const [selectedOptions, setSelectedOptions] = useState<SelectedOption[]>([]);
+  // The scheduling-consent checkbox is only needed on the no-text path (where the
+  // options are texted on their own). When "Text quote" is on, that text already
+  // carries consent, so hide the box to avoid a confusing extra checkbox.
+  const [textFlowOn, setTextFlowOn] = useState(true);
+  useEffect(() => {
+    const checkbox = document.getElementById('sendClientTextCheckbox') as HTMLInputElement | null;
+    if (!checkbox) return;
+    setTextFlowOn(checkbox.checked);
+    const handler = () => setTextFlowOn(checkbox.checked);
+    checkbox.addEventListener('change', handler);
+    return () => checkbox.removeEventListener('change', handler);
+  }, []);
 
   function addOption(event: MouseEvent<HTMLButtonElement>, day: AvailabilityDay) {
     const card = event.currentTarget.closest('[data-start-option-card]');
@@ -157,10 +169,12 @@ export default function QuoteStartDateCalendar({
           })}
         </div>
         <div className={styles.quoteStartSelectionFooter}>
-          <label className={`sms-consent-check ${styles.calendarConsentCheck}`}>
-            <input name="quoteScheduleSmsConsent" type="checkbox" />
-            <span>The client agreed to receive transactional scheduling texts. Required when sending quick booking options without the quote text flow. Reply STOP to opt out.</span>
-          </label>
+          {!textFlowOn ? (
+            <label className={`sms-consent-check ${styles.calendarConsentCheck}`}>
+              <input name="quoteScheduleSmsConsent" type="checkbox" />
+              <span>The client agreed to receive transactional scheduling texts. Required when sending quick booking options without the quote text flow. Reply STOP to opt out.</span>
+            </label>
+          ) : null}
           <div className={styles.quoteStartFooterActions}>
             <p className={styles.calendarSelectionHint}>{selectedOptions.length > 0 ? `${selectedOptions.length} start option${selectedOptions.length === 1 ? '' : 's'} will be included with the quote.` : 'Select up to 3 start options from the 30-day calendar.'}</p>
             <button type="button" className="btn ghost" onClick={clearOptions} disabled={selectedOptions.length === 0}>Clear</button>
