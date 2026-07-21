@@ -45,7 +45,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   const estimateLabel = getEstimateButtonLabel(quoteForm);
   const wizardEnabled = estimateRanges.enabled;
 
-  const [step, setStep] = useState<'describe' | 'qa' | 'details' | 'contact' | 'result'>(wizardEnabled ? 'describe' : 'contact');
+  const [step, setStep] = useState<'describe' | 'qa' | 'contact' | 'result'>(wizardEnabled ? 'describe' : 'contact');
   const [description, setDescription] = useState('');
   const [name, setName] = useState('');
   const [contact, setContact] = useState('');
@@ -71,7 +71,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
     }
     if (result?.size) setSize(result.size);
     if (result?.tier) setTier(result.tier);
-    setStep('details');
+    setStep('contact');
   }
 
   async function handleDescribeContinue(event: React.FormEvent<HTMLFormElement>) {
@@ -99,8 +99,8 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
       const result = await response.json().catch(() => null);
       applyChatResult(result);
     } catch {
-      // AI is a convenience, not a requirement — fall back to manual details silently.
-      setStep('details');
+      // AI is a convenience, not a requirement — fall back to contact info silently.
+      setStep('contact');
     } finally {
       setIsClassifying(false);
     }
@@ -120,7 +120,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
       const result = await response.json().catch(() => null);
       applyChatResult(result);
     } catch {
-      setStep('details');
+      setStep('contact');
     } finally {
       setIsClassifying(false);
     }
@@ -209,6 +209,12 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
             required
             value={description}
             onChange={(event) => setDescription(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                formRef.current?.requestSubmit();
+              }
+            }}
           />
           <button type="submit" disabled={isClassifying}>{isClassifying ? 'Thinking...' : 'Continue'}</button>
         </>
@@ -226,30 +232,6 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
             onChange={(event) => setChatAnswer(event.target.value)}
           />
           <button type="submit" disabled={isClassifying}>{isClassifying ? 'Thinking...' : 'Next'}</button>
-        </>
-      )}
-
-      {step === 'details' && (
-        <>
-          <h2>{estimateLabel}</h2>
-          <p className={styles.heroFormNote}>Based on your description, here&apos;s our best guess — adjust if needed.</p>
-          <p className={styles.heroFormNote}>Job size</p>
-          <div className={styles.heroFormChipRow}>
-            {SIZE_OPTIONS.map((option) => (
-              <button type="button" key={option.value} className={styles.heroFormChip} data-selected={size === option.value} onClick={() => setSize(option.value)}>
-                {option.label}
-              </button>
-            ))}
-          </div>
-          <p className={styles.heroFormNote}>Materials</p>
-          <div className={styles.heroFormChipRow}>
-            {TIER_OPTIONS.map((option) => (
-              <button type="button" key={option.value} className={styles.heroFormChip} data-selected={tier === option.value} onClick={() => setTier(option.value)}>
-                {option.label}
-              </button>
-            ))}
-          </div>
-          <button type="button" onClick={() => setStep('contact')}>Continue</button>
         </>
       )}
 
