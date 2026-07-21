@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useTransition } from 'react';
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { DEFAULT_ESTIMATE_RANGES, getSiteContent, mergeSiteContent, type NormalizedSiteContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteShowcaseContent, type SiteTestimonialsContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, type NormalizedSiteContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteShowcaseContent, type SiteTestimonialsContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import { checkSubdomainAvailableAction, generateSiteTextAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
 import ImageLibrary from './ImageLibrary';
@@ -26,20 +26,6 @@ const TABS: { id: BuilderTab; label: string }[] = [
   { id: 'sections', label: 'Sections' },
   { id: 'publish', label: 'Publish' },
 ];
-
-// True when the contractor hasn't touched the price-range fields since the
-// platform's generic (remodeling-scale) defaults were applied — a strong
-// signal the numbers are still wrong for their specific trade.
-function isUsingDefaultEstimateRanges(ranges: SiteEstimateRangesContent): boolean {
-  const bandsMatch = (['small', 'medium', 'large'] as const).every(
-    (key) => ranges[key].min === DEFAULT_ESTIMATE_RANGES[key].min && ranges[key].max === DEFAULT_ESTIMATE_RANGES[key].max
-  );
-  return (
-    bandsMatch &&
-    ranges.economicalMultiplier === DEFAULT_ESTIMATE_RANGES.economicalMultiplier &&
-    ranges.premiumMultiplier === DEFAULT_ESTIMATE_RANGES.premiumMultiplier
-  );
-}
 
 function createContentId(prefix: string): string {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
@@ -402,32 +388,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 </div>
 
                 <div className={styles.contentCard}>
-                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.estimateRanges.enabled} onChange={(event) => updateEstimateRanges({ ...siteContent.estimateRanges, enabled: event.target.checked })} /><span><strong>Instant estimate ranges</strong><small>After the quick-capture form, ask job size + material tier and show a rough $ range right away. Review the placeholder numbers below before turning this on — homeowners will see them.</small></span></label>
-                  {siteContent.estimateRanges.enabled && (
-                    <>
-                      {isUsingDefaultEstimateRanges(siteContent.estimateRanges) && (
-                        <p className={styles.warnNotice}>
-                          ⚠ These six numbers are still the platform&apos;s generic default price ranges — they&apos;re calibrated for general remodeling jobs and are almost certainly wrong for your trade (e.g. a repair-based business should use much smaller numbers). Homeowners will see these exact figures. Update all six values below before sending traffic to this site.
-                        </p>
-                      )}
-                      <div className={styles.formColumns}>
-                        <label className={styles.formField}><span>Small job — low</span><input type="number" min={0} step={50} value={siteContent.estimateRanges.small.min} onChange={(event) => updateEstimateRanges({ ...siteContent.estimateRanges, small: { ...siteContent.estimateRanges.small, min: Number(event.target.value) || 0 } })} /></label>
-                        <label className={styles.formField}><span>Small job — high</span><input type="number" min={0} step={50} value={siteContent.estimateRanges.small.max} onChange={(event) => updateEstimateRanges({ ...siteContent.estimateRanges, small: { ...siteContent.estimateRanges.small, max: Number(event.target.value) || 0 } })} /></label>
-                      </div>
-                      <div className={styles.formColumns}>
-                        <label className={styles.formField}><span>Medium job — low</span><input type="number" min={0} step={50} value={siteContent.estimateRanges.medium.min} onChange={(event) => updateEstimateRanges({ ...siteContent.estimateRanges, medium: { ...siteContent.estimateRanges.medium, min: Number(event.target.value) || 0 } })} /></label>
-                        <label className={styles.formField}><span>Medium job — high</span><input type="number" min={0} step={50} value={siteContent.estimateRanges.medium.max} onChange={(event) => updateEstimateRanges({ ...siteContent.estimateRanges, medium: { ...siteContent.estimateRanges.medium, max: Number(event.target.value) || 0 } })} /></label>
-                      </div>
-                      <div className={styles.formColumns}>
-                        <label className={styles.formField}><span>Large job — low</span><input type="number" min={0} step={50} value={siteContent.estimateRanges.large.min} onChange={(event) => updateEstimateRanges({ ...siteContent.estimateRanges, large: { ...siteContent.estimateRanges.large, min: Number(event.target.value) || 0 } })} /></label>
-                        <label className={styles.formField}><span>Large job — high</span><input type="number" min={0} step={50} value={siteContent.estimateRanges.large.max} onChange={(event) => updateEstimateRanges({ ...siteContent.estimateRanges, large: { ...siteContent.estimateRanges.large, max: Number(event.target.value) || 0 } })} /></label>
-                      </div>
-                      <div className={styles.formColumns}>
-                        <label className={styles.formField}><span>Economical materials adjustment</span><div className={styles.colorControl}><input type="number" step={1} value={Math.round((siteContent.estimateRanges.economicalMultiplier - 1) * 100)} onChange={(event) => updateEstimateRanges({ ...siteContent.estimateRanges, economicalMultiplier: 1 + (Number(event.target.value) || 0) / 100 })} /><span>%</span></div></label>
-                        <label className={styles.formField}><span>Premium materials adjustment</span><div className={styles.colorControl}><input type="number" step={1} value={Math.round((siteContent.estimateRanges.premiumMultiplier - 1) * 100)} onChange={(event) => updateEstimateRanges({ ...siteContent.estimateRanges, premiumMultiplier: 1 + (Number(event.target.value) || 0) / 100 })} /><span>%</span></div></label>
-                      </div>
-                    </>
-                  )}
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.estimateRanges.enabled} onChange={(event) => updateEstimateRanges({ ...siteContent.estimateRanges, enabled: event.target.checked })} /><span><strong>Instant estimate</strong><small>After the quick-capture form, our AI asks the homeowner a couple of quick questions to size up the job, then shows a rough $ range right away.</small></span></label>
                 </div>
 
                 <div className={styles.contentCard}>
