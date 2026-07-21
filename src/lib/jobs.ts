@@ -218,15 +218,19 @@ async function generateJobRef(supabase: SupabaseClient, accountId: string): Prom
   const { data } = await supabase
     .from('jobs')
     .select('ref')
-    .eq('account_id', accountId)
-    .order('created_at', { ascending: false })
-    .limit(1);
+    .eq('account_id', accountId);
 
-  const lastRef = data?.[0]?.ref as string | undefined;
-  const lastNumber = lastRef ? parseInt(lastRef.replace(/^J-/, ''), 10) : NaN;
-  const nextNumber = Number.isFinite(lastNumber) ? lastNumber + 1 : 1001;
+  // Use the highest NUMERIC J-<n> ref across all of the account's jobs. Basing
+  // it on the most-recently-created ref broke when that ref wasn't numeric
+  // (e.g. a seed like "J-E2E"): parseInt -> NaN reset the counter to 1001 and
+  // collided with the existing J-1001 (unique account_id+ref).
+  let maxNumber = 1000;
+  for (const row of data ?? []) {
+    const match = /^J-(\d+)$/.exec((row as { ref?: string }).ref ?? '');
+    if (match) maxNumber = Math.max(maxNumber, parseInt(match[1], 10));
+  }
 
-  return `J-${nextNumber}`;
+  return `J-${maxNumber + 1}`;
 }
 
 // -- Jobs CRUD (uses a session-scoped client so RLS enforces isolation) ---
@@ -294,33 +298,37 @@ export async function getJob(supabase: SupabaseClient, accountId: string, jobId:
 }
 
 export async function createJob(supabase: SupabaseClient, accountId: string, input: JobInput): Promise<Job> {
-  const ref = await generateJobRef(supabase, accountId);
+  // Retry on a duplicate-ref unique violation (23505): two near-simultaneous
+  // creates can compute the same next ref; regenerating picks up the just-taken
+  // one. Rethrow any other error immediately.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const ref = await generateJobRef(supabase, accountId);
 
-  const { data, error } = await supabase
-    .from('jobs')
-    .insert({
-      account_id: accountId,
-      ref,
-      client_name: input.clientName,
-      client_phone: input.clientPhone ?? null,
-      client_email: input.clientEmail ?? null,
-      address: input.address ?? null,
-      scope: input.scope ?? null,
-      status: input.status ?? 'new_lead',
-      scheduled_for: input.scheduledFor ?? null,
-      scheduled_time: input.scheduledTime ?? null,
-      estimated_hours: input.estimatedHours ?? null,
-      quoted_amount: input.quotedAmount ?? 0,
-      photo_paths: input.photoPaths ?? [],
-    })
-    .select('*')
-    .single();
+    const { data, error } = await supabase
+      .from('jobs')
+      .insert({
+        account_id: accountId,
+        ref,
+        client_name: input.clientName,
+        client_phone: input.clientPhone ?? null,
+        client_email: input.clientEmail ?? null,
+        address: input.address ?? null,
+        scope: input.scope ?? null,
+        status: input.status ?? 'new_lead',
+        scheduled_for: input.scheduledFor ?? null,
+        scheduled_time: input.scheduledTime ?? null,
+        estimated_hours: input.estimatedHours ?? null,
+        quoted_amount: input.quotedAmount ?? 0,
+        photo_paths: input.photoPaths ?? [],
+      })
+      .select('*')
+      .single();
 
-  if (error || !data) {
-    throw error ?? new Error('Unable to create job');
+    if (!error && data) return data as Job;
+    if (error?.code !== '23505') throw error ?? new Error('Unable to create job');
   }
 
-  return data as Job;
+  throw new Error('Unable to create job: could not allocate a unique job number. Please try again.');
 }
 
 export async function updateJob(
