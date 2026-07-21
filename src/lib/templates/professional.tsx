@@ -6,6 +6,7 @@ import QuoteRequestForm from '@/components/quote-request-form';
 import HeroQuickForm from './HeroQuickForm';
 import SiteContentSections from './SiteContentSections';
 import SiteNavLinks from './SiteNavLinks';
+import SiteProofStrip from './SiteProofStrip';
 import styles from './themes.module.css';
 
 export default function GuildTemplate({ site, galleryImages = [] }: TemplateProps) {
@@ -35,6 +36,7 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
           <p className={styles.heroText}>{site.tagline || 'Thoughtful planning, dependable crews, and a finish you will be proud to live with.'}</p>
           {site.phone && <a className={styles.textLink} href={`tel:${site.phone}`}>Call {site.phone}</a>}
           <HeroQuickForm site={site} />
+          <SiteProofStrip site={site} />
         </div>
         <div className={styles.guildHeroMedia}>
           <img src={heroImage} alt="Completed contractor project" />
@@ -65,6 +67,7 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
       <section className={styles.guildContact} id="contact">
         <div><p className={styles.kicker}>Ready when you are</p><h2>Tell us what you&apos;re planning.</h2></div>
         <div><p>{site.hours || 'Monday-Friday, 7am-5pm'}</p><p>{site.service_area || 'Local and regional projects'}</p>{site.phone && <a className={styles.primaryCta} href={`tel:${site.phone}`}>Call {site.phone}</a>}</div>
+        <SiteProofStrip site={site} />
         <QuoteRequestForm site={site} />
       </section>
 

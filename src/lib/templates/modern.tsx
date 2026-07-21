@@ -5,6 +5,7 @@ import QuoteRequestForm from '@/components/quote-request-form';
 import HeroQuickForm from './HeroQuickForm';
 import SiteContentSections from './SiteContentSections';
 import SiteNavLinks from './SiteNavLinks';
+import SiteProofStrip from './SiteProofStrip';
 import styles from './themes.module.css';
 
 export default function VistaTemplate({ site, galleryImages = [] }: TemplateProps) {
@@ -33,6 +34,7 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
           <h1>{site.headline || 'Spaces with purpose.'}</h1>
           <p>{site.tagline || 'We build considered homes and interiors for how you actually live.'}</p>
           <HeroQuickForm site={site} />
+          <SiteProofStrip site={site} />
         </div>
         <a className={styles.vistaScroll} href="#studio">Explore ↓</a>
       </section>
@@ -60,6 +62,7 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
       <section className={styles.vistaContact} id="contact">
         <p className={styles.kicker}>Next project</p><h2>Have a space in mind?</h2>
         {site.phone && <a href={`tel:${site.phone}`}>{site.phone} <span>↗</span></a>}
+        <SiteProofStrip site={site} />
         <QuoteRequestForm site={site} />
       </section>
 

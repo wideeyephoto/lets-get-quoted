@@ -5,6 +5,7 @@ import QuoteRequestForm from '@/components/quote-request-form';
 import HeroQuickForm from './HeroQuickForm';
 import SiteContentSections from './SiteContentSections';
 import SiteNavLinks from './SiteNavLinks';
+import SiteProofStrip from './SiteProofStrip';
 import styles from './themes.module.css';
 
 export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProps) {
@@ -34,6 +35,7 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
           <h1>{site.headline || 'Serious work. Solid results.'}</h1>
           <p className={styles.heroText}>{site.tagline || `Trusted construction across ${site.service_area || 'your community'}.`}</p>
           <HeroQuickForm site={site} />
+          <SiteProofStrip site={site} />
         </div>
         <div className={styles.forgeIndex} aria-hidden="true">01 / 03</div>
       </section>
@@ -71,6 +73,7 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
         <p className={styles.kicker}>Have a project in mind?</p>
         <h2>Let&apos;s build something that holds up.</h2>
         {site.phone && <p>Prefer to talk? Call <a href={`tel:${site.phone}`}>{site.phone}</a>.</p>}
+        <SiteProofStrip site={site} />
         <QuoteRequestForm site={site} />
       </section>
 

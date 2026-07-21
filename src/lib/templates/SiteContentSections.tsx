@@ -3,13 +3,11 @@ import {
   getPublishedCertifications,
   getPublishedFaqs,
   getPublishedFinancing,
-  getPublishedRatingBadge,
   getPublishedServiceAreas,
   getPublishedShowcase,
   getPublishedStats,
   getPublishedStickyCallBar,
   getPublishedTestimonials,
-  getPublishedTrustBadges,
 } from '@/lib/site-content';
 import StatCounters from './StatCounters';
 import styles from './themes.module.css';
@@ -26,8 +24,6 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
   const showcase = getPublishedShowcase(site.content);
   const testimonials = getPublishedTestimonials(site.content);
   const faqs = getPublishedFaqs(site.content);
-  const ratingBadge = getPublishedRatingBadge(site.content);
-  const trustBadges = getPublishedTrustBadges(site.content);
   const financing = getPublishedFinancing(site.content);
   const serviceAreas = getPublishedServiceAreas(site.content);
   const certifications = getPublishedCertifications(site.content);
@@ -35,9 +31,9 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
   const stickyCallBar = getPublishedStickyCallBar(site.content, site.phone);
 
   const hasInFlowSections = Boolean(showcase || testimonials || faqs || serviceAreas || certifications || stats);
-  const hasTrustCluster = Boolean(ratingBadge || trustBadges || financing);
+  const hasFinancing = Boolean(financing);
 
-  if (!hasInFlowSections && !hasTrustCluster && !stickyCallBar) return null;
+  if (!hasInFlowSections && !hasFinancing && !stickyCallBar) return null;
 
   // Only ever render an outbound apply link for an explicit https URL — never a
   // contractor-typed javascript:/data: string. Trim + case-insensitive scheme so
@@ -45,37 +41,13 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
   const rawApplyUrl = financing ? financing.applyUrl.trim() : '';
   const financingApplyUrl = /^https:\/\//i.test(rawApplyUrl) ? rawApplyUrl : '';
 
-  // NOTE: no aggregateRating/Review JSON-LD is emitted here. Google's policy
-  // disallows self-serving review structured data on a LocalBusiness (owner-
-  // entered ratings about their own business), so it wouldn't earn a rich
-  // result and could risk a manual action. The visible badge below is fine as
-  // plain on-page content; schema will follow once reviews come from a verified
-  // third-party source (the Google-reviews import).
-  const roundedRating = ratingBadge ? Math.round(ratingBadge.rating) : 0;
+  // Rating + credential proof now render in <SiteProofStrip> directly beside the
+  // hero and contact forms (where proof converts), not mid-page. Financing stays
+  // here as a standalone callout. No self-serving aggregateRating JSON-LD is
+  // emitted (Google disallows owner-entered review markup on a LocalBusiness).
 
   return (
     <>
-      {ratingBadge && (
-        <section className={styles.ratingBadge} aria-label="Customer rating">
-          <div className={styles.ratingStars} aria-hidden="true">{'★'.repeat(roundedRating)}{'☆'.repeat(5 - roundedRating)}</div>
-          <p className={styles.ratingValue}>{ratingBadge.rating.toFixed(1)}</p>
-          <p className={styles.ratingMeta}>from {ratingBadge.reviewCount} {ratingBadge.sourceLabel}</p>
-        </section>
-      )}
-
-      {trustBadges && (
-        <section className={styles.trustBadges} aria-label="Credentials">
-          <ul className={styles.trustBadgeList}>
-            {trustBadges.badges.map((badge) => (
-              <li key={badge.id} className={styles.trustChip}>
-                <span className={styles.trustChipMark} aria-hidden="true">✓</span>
-                {badge.label}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
       {financing && (
         <section className={styles.financing} aria-label="Financing">
           <div className={styles.financingInner}>

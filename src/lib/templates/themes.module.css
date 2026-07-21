@@ -40,6 +40,18 @@
 .heroFormChip[data-selected='true'] { border-color: var(--theme-accent); background: color-mix(in srgb, var(--theme-accent) 22%, white); }
 .heroFormResult { margin: 0; font-family: var(--theme-display); font-size: 1.6rem; font-weight: 800; color: #17140f; }
 .heroFormCall { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 48px; margin-top: .2rem; padding: .7rem 1rem; border-radius: calc(var(--theme-radius, 8px) * .6); background: var(--theme-accent); color: #111; font-weight: 800; font-size: .88rem; }
+
+/* Proof strip — rating + credential chips rendered beside a lead form. Info
+   (rating value, count, labels) is currentColor for contrast; the accent stars
+   and ticks are aria-hidden decoration. */
+.proofStrip { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .85rem; margin-top: 1.1rem; }
+.proofRating { display: inline-flex; align-items: center; gap: .4rem; font-size: .92rem; }
+.proofStars { color: var(--theme-accent); letter-spacing: .04em; }
+.proofRating strong { font-weight: 800; }
+.proofRatingMeta { color: color-mix(in srgb, currentColor 68%, transparent); font-size: .82rem; }
+.proofChip { display: inline-flex; align-items: center; gap: .35rem; padding: .32rem .7rem; border: 1px solid color-mix(in srgb, currentColor 22%, transparent); border-radius: 999px; font-size: .8rem; font-weight: 600; }
+.proofChip > span { color: var(--theme-accent); font-weight: 900; font-size: .85em; }
+.guild[data-mode='dark'] .proofStars, .guild[data-mode='dark'] .proofChip > span { color: color-mix(in srgb, var(--theme-accent) 60%, #ffffff); }
 .heroFormPhotoRow { display: flex; flex-direction: column; gap: .35rem; }
 .heroFormPhotoInput { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .heroFormPhotoRow .heroFormPhotoButton { margin-top: 0; padding: .5rem .65rem; border: 1px dashed #d8d3c6; border-radius: calc(var(--theme-radius, 8px) * .6); background: #fff; color: #6b675e; font-weight: 700; font-size: .76rem; text-align: left; }
