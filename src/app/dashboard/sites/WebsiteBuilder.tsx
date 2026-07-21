@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useTransition } from 'react';
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, type NormalizedSiteContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, type NormalizedSiteContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import { checkSubdomainAvailableAction, generateSiteTextAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
 import ImageLibrary from './ImageLibrary';
@@ -234,6 +234,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
   const updateServiceAreas = useCallback((serviceAreas: SiteServiceAreasContent) => {
     updateSiteContent({ serviceAreas });
+  }, [updateSiteContent]);
+
+  const updateCertifications = useCallback((certifications: SiteCertificationsContent) => {
+    updateSiteContent({ certifications });
   }, [updateSiteContent]);
 
   const toggleShowcaseImage = useCallback((image: SiteImage) => {
@@ -560,6 +564,25 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     ))}
                   </div>
                   <button type="button" className={styles.secondaryAction} onClick={() => updateServiceAreas({ ...siteContent.serviceAreas, enabled: true, cities: [...siteContent.serviceAreas.cities, ''] })}>Add city</button>
+                </div>
+
+                <div className={styles.contentCard}>
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.certifications.enabled} onChange={(event) => updateCertifications({ ...siteContent.certifications, enabled: event.target.checked })} /><span><strong>Certifications &amp; awards</strong><small>A strip of recognizable credentials — BBB A+, EPA Lead-Safe, manufacturer certifications, &quot;Best of&quot; awards. Add a label and optionally a logo from your images.</small></span></label>
+                  <label className={styles.formField}><span>Section title</span><input value={siteContent.certifications.title} onChange={(event) => updateCertifications({ ...siteContent.certifications, title: event.target.value })} /></label>
+                  <div className={styles.stackList}>
+                    {siteContent.certifications.items.map((item, index) => (
+                      <div className={styles.stackItem} key={item.id}>
+                        <div className={styles.itemHeader}><strong>{item.label || `Item ${index + 1}`}</strong><button type="button" onClick={() => updateCertifications({ ...siteContent.certifications, items: siteContent.certifications.items.filter((cert) => cert.id !== item.id) })}>Remove</button></div>
+                        <label className={styles.formField}><span>Label</span><input value={item.label} onChange={(event) => updateCertifications({ ...siteContent.certifications, items: siteContent.certifications.items.map((cert) => cert.id === item.id ? { ...cert, label: event.target.value } : cert) })} placeholder="EPA Lead-Safe Certified" /></label>
+                        <label className={styles.formField}><span>Logo image (optional)</span><select value={item.imageUrl} onChange={(event) => {
+                          const image = selectableImages.find((candidate) => candidate.url === event.target.value);
+                          updateCertifications({ ...siteContent.certifications, items: siteContent.certifications.items.map((cert) => cert.id === item.id ? { ...cert, imageUrl: event.target.value, imageAlt: image?.alt || cert.imageAlt || cert.label || 'Certification' } : cert) });
+                        }}><option value="">No image</option>{selectableImages.map((image) => <option key={`${item.id}-${image.id}`} value={image.url}>{image.alt}</option>)}</select></label>
+                        {item.imageUrl && <div className={styles.reviewImagePreview}><img src={item.imageUrl} alt={item.imageAlt || item.label || 'Certification preview'} /></div>}
+                      </div>
+                    ))}
+                  </div>
+                  <button type="button" className={styles.secondaryAction} onClick={() => updateCertifications({ ...siteContent.certifications, enabled: true, items: [...siteContent.certifications.items, { id: createContentId('cert'), label: '', imageUrl: '', imageAlt: '' }] })}>Add certification</button>
                 </div>
 
                 <div className={styles.integrationCard}>

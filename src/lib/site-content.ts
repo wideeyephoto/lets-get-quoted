@@ -82,6 +82,19 @@ export type SiteServiceAreasContent = {
   cities: string[];
 };
 
+export type SiteCertificationItem = {
+  id: string;
+  label: string;
+  imageUrl: string;
+  imageAlt: string;
+};
+
+export type SiteCertificationsContent = {
+  enabled: boolean;
+  title: string;
+  items: SiteCertificationItem[];
+};
+
 export type SiteQuoteFormContent = {
   emailRequired: boolean;
   // Controls the wording used on the quote-request call-to-action ('Quick Estimate'
@@ -150,6 +163,7 @@ export type NormalizedSiteContent = {
   trustBadges: SiteTrustBadgesContent;
   financing: SiteFinancingContent;
   serviceAreas: SiteServiceAreasContent;
+  certifications: SiteCertificationsContent;
 };
 
 export const DEFAULT_SHOWCASE_TITLE = 'Project showcase';
@@ -159,6 +173,7 @@ export const DEFAULT_RATING_SOURCE_LABEL = 'Verified reviews';
 export const DEFAULT_FINANCING_BLURB = 'Flexible financing available on approved credit.';
 export const DEFAULT_SERVICE_AREAS_TITLE = 'Areas we serve';
 export const DEFAULT_SERVICE_AREAS_INTRO = 'Proudly serving homeowners across the region.';
+export const DEFAULT_CERTIFICATIONS_TITLE = 'Certifications & awards';
 
 export const DEFAULT_TRUST_BADGES: SiteTrustBadgeItem[] = [
   { id: 'licensed', label: 'Licensed', enabled: true },
@@ -270,6 +285,17 @@ function parseCities(value: unknown): string[] {
   return value.map((item) => toString(item)).slice(0, 80);
 }
 
+function parseCertifications(value: unknown): SiteCertificationItem[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.filter(isRecord).map((item, index) => ({
+    id: toString(item.id, `cert-${index + 1}`),
+    label: toString(item.label),
+    imageUrl: toString(item.imageUrl),
+    imageAlt: toString(item.imageAlt),
+  }));
+}
+
 export function getSiteContent(content: Record<string, unknown> | null | undefined): NormalizedSiteContent {
   const root = isRecord(content) ? content : {};
   const showcase = isRecord(root.showcase) ? root.showcase : {};
@@ -282,6 +308,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const trustBadges = isRecord(root.trustBadges) ? root.trustBadges : {};
   const financing = isRecord(root.financing) ? root.financing : {};
   const serviceAreas = isRecord(root.serviceAreas) ? root.serviceAreas : {};
+  const certifications = isRecord(root.certifications) ? root.certifications : {};
 
   return {
     showcase: {
@@ -340,6 +367,11 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       intro: toString(serviceAreas.intro, DEFAULT_SERVICE_AREAS_INTRO),
       cities: parseCities(serviceAreas.cities),
     },
+    certifications: {
+      enabled: toBoolean(certifications.enabled),
+      title: toString(certifications.title, DEFAULT_CERTIFICATIONS_TITLE),
+      items: parseCertifications(certifications.items),
+    },
   };
 }
 
@@ -396,4 +428,10 @@ export function getPublishedServiceAreas(content: Record<string, unknown> | null
   const serviceAreas = getSiteContent(content).serviceAreas;
   const cities = serviceAreas.cities.map((city) => city.trim()).filter(Boolean);
   return serviceAreas.enabled && cities.length > 0 ? { ...serviceAreas, cities } : null;
+}
+
+export function getPublishedCertifications(content: Record<string, unknown> | null | undefined): SiteCertificationsContent | null {
+  const certifications = getSiteContent(content).certifications;
+  const items = certifications.items.filter((item) => item.label.trim() || item.imageUrl.trim());
+  return certifications.enabled && items.length > 0 ? { ...certifications, items } : null;
 }

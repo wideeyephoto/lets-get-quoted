@@ -1,5 +1,6 @@
 import type { Site } from '@/lib/sites';
 import {
+  getPublishedCertifications,
   getPublishedFaqs,
   getPublishedFinancing,
   getPublishedRatingBadge,
@@ -27,9 +28,10 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
   const trustBadges = getPublishedTrustBadges(site.content);
   const financing = getPublishedFinancing(site.content);
   const serviceAreas = getPublishedServiceAreas(site.content);
+  const certifications = getPublishedCertifications(site.content);
   const stickyCallBar = getPublishedStickyCallBar(site.content, site.phone);
 
-  const hasInFlowSections = Boolean(showcase || testimonials || faqs || serviceAreas);
+  const hasInFlowSections = Boolean(showcase || testimonials || faqs || serviceAreas || certifications);
   const hasTrustCluster = Boolean(ratingBadge || trustBadges || financing);
 
   if (!hasInFlowSections && !hasTrustCluster && !stickyCallBar) return null;
@@ -149,6 +151,23 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
               <ul className={styles.serviceAreaList}>
                 {serviceAreas.cities.map((city, index) => (
                   <li key={`${city}-${index}`} className={styles.serviceAreaChip}>{city}</li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {certifications && (
+            <section className={styles.extraSection} id="certifications">
+              <div className={styles.extraSectionHeader}>
+                <p className={styles.kicker}>Credentials</p>
+                <h2>{certifications.title}</h2>
+              </div>
+              <ul className={styles.certList}>
+                {certifications.items.map((item) => (
+                  <li key={item.id} className={styles.certItem}>
+                    {item.imageUrl && <img src={item.imageUrl} alt={item.imageAlt || item.label || 'Certification'} />}
+                    {item.label && <span>{item.label}</span>}
+                  </li>
                 ))}
               </ul>
             </section>

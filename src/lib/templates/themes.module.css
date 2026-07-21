@@ -81,6 +81,12 @@
 .ratingBadge .ratingValue { margin: 0; font-family: var(--theme-display); font-size: clamp(2rem, 5vw, 2.8rem); line-height: 1; font-weight: 800; }
 .ratingBadge .ratingMeta { margin: 0; font-size: .82rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: color-mix(in srgb, currentColor 70%, transparent); }
 
+/* Certifications & awards strip (toggleable) */
+.certList { display: flex; flex-wrap: wrap; align-items: center; gap: 1.1rem 1.6rem; margin: 0; padding: 0; list-style: none; }
+.certItem { display: inline-flex; flex-direction: column; align-items: center; gap: .45rem; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: color-mix(in srgb, currentColor 76%, transparent); }
+.certItem img { height: 54px; width: auto; max-width: 150px; object-fit: contain; filter: grayscale(1); opacity: .72; transition: filter .3s ease, opacity .3s ease; }
+.certItem:hover img { filter: grayscale(0); opacity: 1; }
+
 /* Service-area city list (toggleable) */
 .serviceAreaList { display: flex; flex-wrap: wrap; gap: .55rem .6rem; margin: 0; padding: 0; list-style: none; max-width: 960px; }
 .serviceAreaChip { padding: .5rem .95rem; border: 1px solid color-mix(in srgb, currentColor 16%, transparent); border-radius: 999px; font-size: .9rem; font-weight: 600; }
