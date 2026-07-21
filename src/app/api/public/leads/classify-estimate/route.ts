@@ -50,6 +50,9 @@ export async function POST(request: NextRequest) {
   const answer = typeof body?.answer === 'string' ? body.answer.trim().slice(0, 300) : '';
   const previousResponseId = typeof body?.previousResponseId === 'string' ? body.previousResponseId.slice(0, 120) : '';
   const turn = Number.isFinite(body?.turn) ? Math.max(0, Math.min(MAX_QUESTIONS, Number(body.turn))) : 0;
+  const businessName = typeof body?.businessName === 'string' ? body.businessName.trim().slice(0, 120) : '';
+  const businessSummary = typeof body?.businessSummary === 'string' ? body.businessSummary.trim().slice(0, 200) : '';
+  const serviceArea = typeof body?.serviceArea === 'string' ? body.serviceArea.trim().slice(0, 120) : '';
 
   if (!siteId || (!description && !previousResponseId)) {
     return NextResponse.json({ error: 'Missing description.' }, { status: 400 });
@@ -70,8 +73,17 @@ export async function POST(request: NextRequest) {
   }
 
   const questionsRemaining = MAX_QUESTIONS - turn;
+  // Free context from the site's own profile (already stored, no extra AI call) —
+  // helps the model tailor questions/classification to this specific trade and
+  // region instead of asking generically. Only needed on the first turn; once
+  // chained via previous_response_id the model already has this in context.
+  const businessContext = !previousResponseId && (businessName || businessSummary || serviceArea)
+    ? ` This business is "${businessName || 'unknown'}"${businessSummary ? ` (${businessSummary})` : ''}${serviceArea ? `, serving ${serviceArea}` : ''}. Use this to inform what kind of work is likely being described.`
+    : '';
   const instructions =
-    "You help a home-improvement contractor's website understand a project's scope before showing a rough price range. " +
+    "You help a home-improvement contractor's website understand a project's scope before showing a rough price range." +
+    businessContext +
+    ' ' +
     `Ask short, simple follow-up questions one at a time to clarify job size and material/finish level. You may ask up to ${questionsRemaining} more question(s) — fewer if you already have enough information. ` +
     'Respond with strict JSON only, no other text. ' +
     'While still asking: {"type":"question","question":"<one short, plain-language question>"}. ' +

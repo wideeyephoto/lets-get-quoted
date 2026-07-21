@@ -7,7 +7,7 @@ import type { Site } from '@/lib/sites';
 import styles from './themes.module.css';
 
 type HeroQuickFormProps = {
-  site: Pick<Site, 'id' | 'published' | 'content'>;
+  site: Pick<Site, 'id' | 'published' | 'content' | 'company_name' | 'tagline' | 'headline' | 'service_area'>;
 };
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -87,7 +87,14 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
       const response = await fetch('/api/public/leads/classify-estimate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ siteId: site.id, description: trimmedDescription, turn: 0 }),
+        body: JSON.stringify({
+          siteId: site.id,
+          description: trimmedDescription,
+          turn: 0,
+          businessName: site.company_name,
+          businessSummary: site.tagline || site.headline || '',
+          serviceArea: site.service_area || '',
+        }),
       });
       const result = await response.json().catch(() => null);
       applyChatResult(result);
