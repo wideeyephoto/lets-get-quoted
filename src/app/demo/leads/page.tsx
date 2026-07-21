@@ -7,9 +7,9 @@ import styles from '../../dashboard/leads/leads.module.css';
 export const dynamic = 'force-dynamic';
 
 const COLUMNS: { status: LeadStatus; label: string }[] = [
-  { status: 'new', label: 'New' },
+  { status: 'new', label: 'New request' },
   { status: 'contacted', label: 'Contacted' },
-  { status: 'quoted', label: 'Quoted' },
+  { status: 'quoted', label: 'Quote sent' },
   { status: 'won', label: 'Won' },
   { status: 'lost', label: 'Lost' },
 ];

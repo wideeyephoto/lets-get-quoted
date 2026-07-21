@@ -15,6 +15,16 @@ import SaveButton, { ScrollTopOnSaveProvider } from '@/components/save-button';
 import QuickFillButtons from '@/components/quick-fill-buttons';
 import styles from '../leads.module.css';
 
+// Canonical lead-status labels, matching the board vocabulary (e.g. 'quoted'
+// reads "Quote sent") instead of leaking the raw enum through CSS capitalize.
+const LEAD_STATUS_LABEL: Record<string, string> = {
+  new: 'New request',
+  contacted: 'Contacted',
+  quoted: 'Quote sent',
+  won: 'Won',
+  lost: 'Lost',
+};
+
 function extractCity(address: string | null): string {
   if (!address) return 'No address on file';
   const normalized = address.replace(/\s+/g, ' ').trim();
@@ -241,7 +251,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           <div className={styles.detailBadges}>
             <span className={styles.source}>{formatLeadSource(lead.source)}</span>
             <span className={styles.receivedBadge}>Received {formatElapsedTime(lead.created_at)} ago</span>
-            <span className={styles.statusPill}>{lead.status}</span>
+            <span className={styles.statusPill}>{LEAD_STATUS_LABEL[lead.status] ?? lead.status}</span>
             {visitLabel ? <span className={styles.visitPill}>Quote visit {visitLabel}</span> : null}
           </div>
           <div className={styles.leadStatusActions}>

@@ -127,7 +127,7 @@ function formatFeedTime(value: string): string {
 }
 
 function getFeedDisplayTitle(event: JobFeedEvent): string {
-  if (event.kind === 'job_created') return 'Quote shared';
+  if (event.kind === 'job_created') return 'Quote sent';
   if (event.kind === 'client_link_created') return 'Client view link created';
   if (event.kind === 'client_link_revoked') return 'Client view links revoked';
   return event.title || event.kind;
@@ -153,14 +153,14 @@ function buildPipelineChecklist(job: Job, payments: Payment[], invoices: Invoice
 
   return [
     {
-      label: 'Quote shared',
+      label: 'Quote sent',
       detail: `${quoteDetail} · ${feedDetail}`,
       complete: milestones.quoteShared,
       href: originatingLeadId ? `/dashboard/leads/${originatingLeadId}` : `/dashboard/jobs/${job.id}#job-feed`,
     },
     {
-      label: 'Quote accepted',
-      detail: milestones.quoteAccepted ? 'Approved for work' : 'Awaiting client approval',
+      label: 'Quote approved',
+      detail: milestones.quoteAccepted ? 'Client approved' : 'Awaiting client approval',
       complete: milestones.quoteAccepted,
       href: `/dashboard/jobs/${job.id}?edit=client#job-details`,
     },
@@ -806,8 +806,8 @@ export default async function JobDetailPage({
                     ))}
                   </div>
                   <div className="field full inline-action-form">
-                    <SaveButton formAction={updateJobCrewAction.bind(null, job.id, true)} aria-label="Save crew assignment and text newly added crew">Save &amp; text new crew</SaveButton>
-                    <SaveButton className="btn secondary" formAction={updateJobCrewAction.bind(null, job.id, false)} aria-label="Save crew assignment without texting">Save, no text</SaveButton>
+                    <SaveButton formAction={updateJobCrewAction.bind(null, job.id, true)} aria-label="Save crew assignment and text newly added crew">Save &amp; text</SaveButton>
+                    <SaveButton className="btn secondary" formAction={updateJobCrewAction.bind(null, job.id, false)} aria-label="Save crew assignment without texting">Save without texting</SaveButton>
                   </div>
                 </form>
               )}

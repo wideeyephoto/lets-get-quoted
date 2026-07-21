@@ -7,9 +7,9 @@ import SaveButton from '@/components/save-button';
 import styles from './leads.module.css';
 
 const COLUMNS: { status: LeadStatus; label: string }[] = [
-  { status: 'new', label: 'New' },
+  { status: 'new', label: 'New request' },
   { status: 'contacted', label: 'Contacted' },
-  { status: 'quoted', label: 'Quoted' },
+  { status: 'quoted', label: 'Quote sent' },
   { status: 'won', label: 'Won' },
   { status: 'lost', label: 'Lost' },
 ];

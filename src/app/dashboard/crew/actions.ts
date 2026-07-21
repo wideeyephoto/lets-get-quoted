@@ -14,6 +14,7 @@ import {
 } from '@/lib/crew';
 import { deleteCrewPhotos, isCrewPhotoFile, uploadCrewPhoto, validateCrewPhotoFile } from '@/lib/crew-photo-storage';
 import { getJob } from '@/lib/jobs';
+import { createJobFeedEvent } from '@/lib/job-feed';
 import { ensureSmsConsentBaseline, sendCrewAssignmentSms } from '@/lib/sms';
 
 function optionalText(value: FormDataEntryValue | null): string | undefined {
@@ -145,7 +146,7 @@ export async function assignCrewToJobAction(crewId: string, notify: boolean, for
   if (notify && added.includes(crewId)) {
     try {
       const { data: account } = await supabase.from('accounts').select('business_name').eq('id', accountId).single();
-      await sendCrewAssignmentSms({
+      const result = await sendCrewAssignmentSms({
         accountId,
         crewId: member.id,
         phone: member.phone,
@@ -157,6 +158,16 @@ export async function assignCrewToJobAction(crewId: string, notify: boolean, for
         scheduledFor: job.scheduled_for,
         scheduledTime: job.scheduled_time,
       });
+      // Record the notification (only on a real send) so the schedule's "Crew
+      // Notified" status is consistent no matter which surface assigned the crew.
+      if (result?.status === 'sent') {
+        await createJobFeedEvent(supabase, accountId, jobId, {
+          kind: 'job_update',
+          title: 'Crew assignment text sent',
+          body: `Texted ${member.name} about their assignment to ${job.ref}.`,
+          visibility: 'internal',
+        });
+      }
     } catch (error) {
       console.error(`Crew assignment SMS failed for crew ${crewId} on job ${jobId}:`, error);
     }

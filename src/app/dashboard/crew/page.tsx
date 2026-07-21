@@ -129,7 +129,7 @@ export default async function CrewPage({ searchParams }: { searchParams: { statu
                             ))}
                           </select>
                           <button type="submit" formAction={assignCrewToJobAction.bind(null, member.id, true)} className="btn secondary" aria-label={`Assign ${member.name} to the selected job and text them`}>Assign &amp; text</button>
-                          <button type="submit" formAction={assignCrewToJobAction.bind(null, member.id, false)} className="btn secondary" aria-label={`Assign ${member.name} to the selected job without texting`}>Assign, no text</button>
+                          <button type="submit" formAction={assignCrewToJobAction.bind(null, member.id, false)} className="btn secondary" aria-label={`Assign ${member.name} to the selected job without texting`}>Assign without texting</button>
                         </form>
                       )
                     ) : null}

@@ -82,15 +82,15 @@ export function deriveJobListBadge(
   if (job.status === 'archived') return { label: 'Archived', tone: 'archived' };
   if (job.status === 'complete') return { label: 'Complete', tone: 'complete' };
   if (failedPayment) return { label: 'Payment issue', tone: 'flag', title: 'A payment attempt failed.' };
-  if (requestedPayment) return { label: 'Invoice sent · Waiting on payment', tone: 'in_progress' };
+  if (requestedPayment) return { label: 'Invoice sent · Awaiting payment', tone: 'in_progress' };
   if (processingPayment) return { label: 'Payment processing', tone: 'in_progress' };
   if (quoteNeedsRevision) return { label: 'Send revised quote', tone: 'flag', title: 'Current job quote differs from an existing quote/invoice total.' };
-  if (signedInvoice && !paidPayment) return { label: 'Client signed off on quote', tone: 'in_progress' };
-  if (sentInvoice) return { label: 'Quote sent · Awaiting sign-off', tone: 'in_progress' };
+  if (signedInvoice && !paidPayment) return { label: 'Client signed invoice', tone: 'in_progress' };
+  if (sentInvoice) return { label: 'Invoice sent · Awaiting sign-off', tone: 'in_progress' };
   if (paidPayment && !job.scheduled_for) return { label: 'Paid · Schedule work', tone: 'in_progress' };
   if (job.scheduled_for) return { label: 'Work scheduled', tone: 'in_progress' };
   if (job.status === 'in_progress') return { label: 'Ready for invoice', tone: 'in_progress' };
-  if (job.quoted_amount > 0 && activeClientLinkCount === 0) return { label: 'Share quote', tone: 'new_lead' };
-  if (job.quoted_amount > 0) return { label: 'Awaiting quote approval', tone: 'new_lead' };
+  if (job.quoted_amount > 0 && activeClientLinkCount === 0) return { label: 'Send quote', tone: 'new_lead' };
+  if (job.quoted_amount > 0) return { label: 'Quote sent · Awaiting approval', tone: 'new_lead' };
   return { label: 'Add quote', tone: 'new_lead' };
 }

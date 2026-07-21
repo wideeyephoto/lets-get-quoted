@@ -100,7 +100,7 @@
 .detailSection { display: grid; gap: 1rem; }
 .detailBadges { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .7rem; }
 .receivedBadge { display: inline-flex; width: fit-content; padding: .3rem .55rem; border-radius: 4px; background: rgba(255,122,33,.12); color: #ffb26b; font-size: .72rem; font-weight: 700; }
-.statusPill { display: inline-flex; width: fit-content; padding: .3rem .55rem; border-radius: 4px; background: rgba(255,255,255,.08); color: rgba(255,255,255,.72); font-size: .72rem; font-weight: 800; text-transform: capitalize; }
+.statusPill { display: inline-flex; width: fit-content; padding: .3rem .55rem; border-radius: 4px; background: rgba(255,255,255,.08); color: rgba(255,255,255,.72); font-size: .72rem; font-weight: 800; }
 .visitPill { display: inline-flex; width: fit-content; padding: .3rem .55rem; border-radius: 4px; background: rgba(74,222,128,.13); color: #bbf7d0; font-size: .72rem; font-weight: 800; }
 .leadStatusActions { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: .85rem; }
 .leadStatusActions form { margin: 0; }
