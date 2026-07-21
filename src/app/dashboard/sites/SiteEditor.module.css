@@ -51,6 +51,8 @@
 .sectionIntro { padding-bottom: .8rem; border-bottom: 1px solid rgba(255,255,255,.1); }
 .sectionIntro h2 { margin: 0 0 .35rem; font-size: 1.35rem; }
 .sectionIntro p { margin: 0; font-size: .88rem; }
+.sectionIntro button { margin-top: .7rem; }
+.sectionIntro small { display: block; margin-top: .4rem; color: #9ca8b8; font-size: .78rem; line-height: 1.4; }
 .formField { display: grid; gap: .45rem; color: #f7f5ef; font-size: .83rem; font-weight: 700; }
 .formField input, .formField textarea, .formField select { width: 100%; min-height: 43px; padding: .68rem .75rem; border: 1px solid rgba(255,255,255,.16); border-radius: 6px; outline: none; background: rgba(255,255,255,.055); color: #f7f5ef; font-weight: 400; resize: vertical; }
 .formField textarea { min-height: 76px; }

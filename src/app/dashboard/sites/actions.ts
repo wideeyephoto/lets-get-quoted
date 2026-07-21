@@ -108,6 +108,108 @@ export async function checkSubdomainAvailableAction(subdomain: string): Promise<
   return !data || data.account_id === accountId;
 }
 
+// Random tone seeds injected into the AI prompt so two contractors of the
+// same trade don't land on identical (unedited) example copy — combined with
+// a high sampling temperature this keeps generated text varied from click to
+// click and from account to account.
+const COPY_STYLE_SEEDS = [
+  'warm and neighborly',
+  'no-nonsense and direct',
+  'confident and premium',
+  'friendly and down-to-earth',
+  'straightforward and trustworthy',
+  'energetic and modern',
+  'calm and reassuring',
+  'plainspoken and blue-collar',
+];
+
+export type GeneratedSiteText = {
+  headline: string;
+  tagline: string;
+  seo_title: string;
+  seo_description: string;
+};
+
+function extractOutputText(payload: unknown): string {
+  const record = payload as { output_text?: unknown; output?: unknown[] };
+  if (typeof record?.output_text === 'string') return record.output_text;
+  const message = record?.output?.find((item): item is { type: string; content?: unknown[] } => (item as { type?: string })?.type === 'message');
+  const textPart = message?.content?.find((part): part is { type: string; text?: string } => (part as { type?: string })?.type === 'output_text');
+  return textPart?.text ?? '{}';
+}
+
+// Generates fresh, randomized example headline/tagline/SEO copy for the
+// contractor's own site so they have something specific (not a generic
+// boilerplate placeholder) to personalize before publishing. Does not save
+// anything — the caller applies the result to local state and the usual
+// Save button persists it.
+export async function generateSiteTextAction(): Promise<GeneratedSiteText> {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const { data: sites } = await supabase
+    .from('sites')
+    .select('company_name, service_area')
+    .eq('account_id', accountId)
+    .limit(1);
+
+  if (!sites || sites.length === 0) {
+    throw new Error('No site found for your account');
+  }
+
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('AI text generation is not configured yet.');
+  }
+
+  const companyName = sites[0].company_name || 'this local business';
+  const serviceArea = sites[0].service_area || '';
+  const styleSeed = COPY_STYLE_SEEDS[Math.floor(Math.random() * COPY_STYLE_SEEDS.length)];
+
+  const instructions =
+    "You write short example marketing copy for a local home-services contractor's website. " +
+    'Infer their trade (HVAC, plumbing, landscaping, cleaning, roofing, electrical, etc.) from the business name. ' +
+    `Write in a ${styleSeed} tone. ` +
+    'Avoid generic filler like "quality you can trust" or "customer satisfaction is our priority" — be specific to the trade and mention concrete services or benefits a homeowner in that trade would care about. ' +
+    'This is placeholder example text the contractor will personalize later, so make it feel like a real, distinct business rather than a generic template. ' +
+    'Respond with strict JSON only, no other text, in this exact shape: ' +
+    '{"headline":"<one short punchy line, under 70 characters>","tagline":"<one or two sentences, under 160 characters>","seo_title":"<search engine page title, under 60 characters, include the business name>","seo_description":"<search engine meta description, under 160 characters>"}.';
+
+  const input =
+    `Business name: ${companyName}. ${serviceArea ? `Service area: ${serviceArea}. ` : ''}` +
+    'Generate the example website text described above. Respond with json only.';
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        temperature: 1.1,
+        instructions,
+        input,
+        text: { format: { type: 'json_object' } },
+      }),
+    });
+
+    if (!response.ok) throw new Error(`OpenAI request failed: ${response.status}`);
+    const payload = await response.json();
+    const parsed = JSON.parse(extractOutputText(payload));
+
+    return {
+      headline: typeof parsed.headline === 'string' ? parsed.headline.slice(0, 200) : '',
+      tagline: typeof parsed.tagline === 'string' ? parsed.tagline.slice(0, 300) : '',
+      seo_title: typeof parsed.seo_title === 'string' ? parsed.seo_title.slice(0, 60) : '',
+      seo_description: typeof parsed.seo_description === 'string' ? parsed.seo_description.slice(0, 160) : '',
+    };
+  } catch (error) {
+    console.error('Site text generation failed:', error);
+    throw new Error('Could not generate example text right now. Please try again.');
+  }
+}
+
 export async function verifyCustomDomainAction(domainValue: string) {
   const { accountId } = await requireOwnerContext();
   const domain = normalizeDomain(domainValue);

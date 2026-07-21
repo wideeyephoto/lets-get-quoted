@@ -6,7 +6,7 @@ import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { DEFAULT_ESTIMATE_RANGES, getSiteContent, mergeSiteContent, type NormalizedSiteContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteShowcaseContent, type SiteTestimonialsContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
-import { checkSubdomainAvailableAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
+import { checkSubdomainAvailableAction, generateSiteTextAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
 import ImageLibrary from './ImageLibrary';
 import LivePreview from './LivePreview';
 import ThemeIcon from './ThemeIcon';
@@ -79,6 +79,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [subdomainStatus, setSubdomainStatus] = useState<'idle' | 'available' | 'taken'>('idle');
   const [domainStatus, setDomainStatus] = useState<'idle' | 'checking' | 'verified' | 'unverified'>(site.custom_domain_verified_at ? 'verified' : 'idle');
+  const [isGeneratingText, setIsGeneratingText] = useState(false);
   const [isPending, startTransition] = useTransition();
   const galleryImages = getSiteGallery(site.content);
   const siteContent = getSiteContent(site.content);
@@ -128,6 +129,33 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       }
     });
   }, [site]);
+
+  const handleGenerateText = useCallback(() => {
+    const hasExistingText = Boolean(site.headline || site.tagline || site.seo_title || site.seo_description);
+    if (hasExistingText && !window.confirm('This will replace your current headline, tagline, and SEO text with new AI-generated examples. Continue?')) {
+      return;
+    }
+    setIsGeneratingText(true);
+    setMessage(null);
+    startTransition(async () => {
+      try {
+        const generated = await generateSiteTextAction();
+        setSite((current) => ({
+          ...current,
+          headline: generated.headline || current.headline,
+          tagline: generated.tagline || current.tagline,
+          seo_title: generated.seo_title || current.seo_title,
+          seo_description: generated.seo_description || current.seo_description,
+        }));
+        setIsDirty(true);
+        setMessage({ type: 'success', text: 'Example text generated — personalize it before you publish!' });
+      } catch (error) {
+        setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to generate example text.' });
+      } finally {
+        setIsGeneratingText(false);
+      }
+    });
+  }, [site.headline, site.tagline, site.seo_title, site.seo_description]);
 
   const selectHeroImage = useCallback((image: SiteImage) => {
     handleChange('hero_url', image.url);
@@ -334,7 +362,14 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
           <div className={styles.tabContent} role="tabpanel">
             {activeTab === 'business' && (
               <div className={styles.formSection}>
-                <div className={styles.sectionIntro}><h2>Business information</h2><p>This content appears throughout your website.</p></div>
+                <div className={styles.sectionIntro}>
+                  <h2>Business information</h2>
+                  <p>This content appears throughout your website.</p>
+                  <button type="button" className="btn secondary" onClick={handleGenerateText} disabled={isGeneratingText}>
+                    {isGeneratingText ? 'Generating...' : '✨ Generate example text with AI'}
+                  </button>
+                  <small>Fills the headline, tagline, and SEO text below with random, trade-specific example copy — a starting point to personalize, not final copy.</small>
+                </div>
                 <label className={styles.formField}><span>Company name</span><input value={site.company_name} onChange={(event) => handleChange('company_name', event.target.value)} /></label>
                 <label className={styles.formField}><span>Headline</span><textarea rows={2} value={site.headline || ''} onChange={(event) => handleChange('headline', event.target.value || null)} placeholder="Built with purpose. Finished with care." /></label>
                 <label className={styles.formField}><span>Tagline</span><textarea rows={3} value={site.tagline || ''} onChange={(event) => handleChange('tagline', event.target.value || null)} placeholder="Tell homeowners what makes your business different." /></label>
