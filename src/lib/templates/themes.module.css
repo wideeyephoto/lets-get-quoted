@@ -29,6 +29,7 @@
 .heroQuickFormRow { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
 .heroFormChipRow { display: flex; gap: .4rem; }
 .heroQuickForm input { width: 100%; padding: .6rem .7rem; border: 1px solid #d8d3c6; border-radius: calc(var(--theme-radius, 8px) * .6); font-size: .84rem; color: #17140f; background: #fff; font-family: inherit; }
+.heroQuickForm textarea { width: 100%; padding: .6rem .7rem; border: 1px solid #d8d3c6; border-radius: calc(var(--theme-radius, 8px) * .6); font-size: .84rem; color: #17140f; background: #fff; font-family: inherit; resize: vertical; min-height: 3.6rem; }
 .heroQuickForm button { margin-top: .1rem; padding: .75rem; border: 0; border-radius: calc(var(--theme-radius, 8px) * .6); background: var(--theme-accent); color: #111; font-weight: 800; font-size: .82rem; cursor: pointer; }
 .heroQuickForm button:disabled { opacity: .6; cursor: progress; }
 .heroFormStatus { margin: 0; font-size: .78rem; }

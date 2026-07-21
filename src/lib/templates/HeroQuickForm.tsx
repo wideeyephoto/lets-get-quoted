@@ -31,20 +31,13 @@ function formatCurrency(value: number): string {
 // Compact lead capture rendered inside the hero section so it's visible above
 // the fold without scrolling. When the contractor has enabled instant
 // estimate ranges (see site-content.ts), this expands into a short wizard —
-// name/contact, then job size + material tier — and shows a rough $ range
-// client-side before submitting a single lead with everything included.
-// Otherwise it's just the two-field quick capture, submitted immediately.
+// describe the project, then job size + material tier, then name/contact —
+// and shows a rough $ range client-side only after contact info is given,
+// submitting a single lead with everything included. Otherwise it's just the
+// two-field quick capture, submitted immediately.
 export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const startedAt = useRef(Date.now());
-  const [step, setStep] = useState<'contact' | 'details' | 'result'>('contact');
-  const [name, setName] = useState('');
-  const [contact, setContact] = useState('');
-  const [size, setSize] = useState<EstimateSize>('medium');
-  const [tier, setTier] = useState<EstimateMaterialTier>('standard');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [status, setStatus] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
-
   const siteContent = getSiteContent(site.content);
   const quoteForm = siteContent.quoteForm;
   const estimateRanges = siteContent.estimateRanges;
@@ -52,7 +45,26 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   const estimateLabel = getEstimateButtonLabel(quoteForm);
   const wizardEnabled = estimateRanges.enabled;
 
-  function handleContactContinue(event: React.FormEvent<HTMLFormElement>) {
+  const [step, setStep] = useState<'describe' | 'details' | 'contact' | 'result'>(wizardEnabled ? 'describe' : 'contact');
+  const [description, setDescription] = useState('');
+  const [name, setName] = useState('');
+  const [contact, setContact] = useState('');
+  const [size, setSize] = useState<EstimateSize>('medium');
+  const [tier, setTier] = useState<EstimateMaterialTier>('standard');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [status, setStatus] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
+
+  function handleDescribeContinue(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!description.trim()) {
+      setStatus({ tone: 'error', text: "Tell us what you need done." });
+      return;
+    }
+    setStatus(null);
+    setStep('details');
+  }
+
+  function handleContactSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmedContact = contact.trim();
     if (!name.trim() || !trimmedContact) return;
@@ -65,11 +77,11 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
     }
 
     setStatus(null);
-    if (wizardEnabled) setStep('details');
+    if (wizardEnabled) submitLead({ size, tier, description });
     else submitLead();
   }
 
-  async function submitLead(details?: { size: EstimateSize; tier: EstimateMaterialTier }) {
+  async function submitLead(details?: { size: EstimateSize; tier: EstimateMaterialTier; description: string }) {
     if (!site.published || window.self !== window.top) {
       setStatus({ tone: 'error', text: `${estimateLabel} requests become active when this website is published.` });
       return;
@@ -89,7 +101,9 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
         const range = computeEstimateRange(estimateRanges, details.size, details.tier);
         const sizeLabel = SIZE_OPTIONS.find((option) => option.value === details.size)?.label ?? details.size;
         const tierLabel = TIER_OPTIONS.find((option) => option.value === details.tier)?.label ?? details.tier;
-        data.set('message', `Instant estimate request — Job size: ${sizeLabel}. Materials: ${tierLabel}. Estimated range shown: ${formatCurrency(range.min)}-${formatCurrency(range.max)}.`);
+        const summary = `Job size: ${sizeLabel}. Materials: ${tierLabel}. Estimated range shown: ${formatCurrency(range.min)}-${formatCurrency(range.max)}.`;
+        const trimmedDescription = details.description.trim();
+        data.set('message', trimmedDescription ? `${trimmedDescription}\n\n${summary}` : summary);
       }
 
       const response = await fetch('/api/public/leads', { method: 'POST', body: data });
@@ -115,27 +129,26 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   const range = wizardEnabled ? computeEstimateRange(estimateRanges, size, tier) : null;
 
   return (
-    <form ref={formRef} className={styles.heroQuickForm} onSubmit={step === 'contact' ? handleContactContinue : (event) => event.preventDefault()}>
+    <form
+      ref={formRef}
+      className={styles.heroQuickForm}
+      onSubmit={step === 'describe' ? handleDescribeContinue : step === 'contact' ? handleContactSubmit : (event) => event.preventDefault()}
+    >
       <label className={styles.heroFormHoneypot} aria-hidden="true">Company<input name="company" tabIndex={-1} autoComplete="off" /></label>
 
-      {step === 'contact' && (
+      {step === 'describe' && (
         <>
           <h2>{estimateLabel}</h2>
-          <p className={styles.heroFormNote}>{wizardEnabled ? 'Two quick steps — see a rough range instantly.' : "Just two fields — we'll follow up with the rest."}</p>
-          <div className={styles.heroQuickFormRow}>
-            <input name="name" placeholder="Your name" autoComplete="name" maxLength={100} required value={name} onChange={(event) => setName(event.target.value)} />
-            <input
-              name="contact"
-              type={emailRequired ? 'email' : 'text'}
-              placeholder={emailRequired ? 'Email' : 'Phone or email'}
-              autoComplete={emailRequired ? 'email' : 'tel'}
-              maxLength={160}
-              required
-              value={contact}
-              onChange={(event) => setContact(event.target.value)}
-            />
-          </div>
-          <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Sending...' : wizardEnabled ? 'Continue' : `Get My ${estimateLabel}`}</button>
+          <p className={styles.heroFormNote}>Tell us what you need done — a couple quick questions, then we&apos;ll show your range.</p>
+          <textarea
+            placeholder="e.g. Kitchen remodel, new deck, roof replacement..."
+            maxLength={500}
+            rows={2}
+            required
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+          />
+          <button type="submit" disabled={isSubmitting}>Continue</button>
         </>
       )}
 
@@ -158,7 +171,28 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
               </button>
             ))}
           </div>
-          <button type="button" disabled={isSubmitting} onClick={() => submitLead({ size, tier })}>{isSubmitting ? 'Calculating...' : 'See My Instant Estimate'}</button>
+          <button type="button" onClick={() => setStep('contact')}>Continue</button>
+        </>
+      )}
+
+      {step === 'contact' && (
+        <>
+          <h2>{estimateLabel}</h2>
+          <p className={styles.heroFormNote}>{wizardEnabled ? "Add your info to see your range — we'll follow up too." : "Just two fields — we'll follow up with the rest."}</p>
+          <div className={styles.heroQuickFormRow}>
+            <input name="name" placeholder="Your name" autoComplete="name" maxLength={100} required value={name} onChange={(event) => setName(event.target.value)} />
+            <input
+              name="contact"
+              type={emailRequired ? 'email' : 'text'}
+              placeholder={emailRequired ? 'Email' : 'Phone or email'}
+              autoComplete={emailRequired ? 'email' : 'tel'}
+              maxLength={160}
+              required
+              value={contact}
+              onChange={(event) => setContact(event.target.value)}
+            />
+          </div>
+          <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Sending...' : wizardEnabled ? `See My ${estimateLabel}` : `Get My ${estimateLabel}`}</button>
         </>
       )}
 
