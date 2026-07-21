@@ -11,7 +11,7 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
   const gallery = galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES.slice(0, 5);
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[0].url;
   const themeStyle = {
-    '--theme-accent': site.accent_override || '#d8ff45',
+    '--theme-accent': site.accent_override || '#35dd9e',
     '--theme-display': site.header_font || 'var(--font-display), Arial Black, Helvetica, sans-serif',
   } as CSSProperties;
 
@@ -20,7 +20,7 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
       <header className={styles.vistaHeader}>
         <a className={styles.vistaBrand} href="#top">{site.logo_url ? <img className={styles.logo} src={site.logo_url} alt={site.company_name} /> : site.company_name}</a>
         <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#studio', label: 'Studio' }, { href: '#work', label: 'Work' }, { href: '#contact', label: 'Connect' }]} />
-        <a className={styles.vistaMenu} href="#contact" aria-label="Contact us">↗</a>
+        <a className={styles.vistaMenu} href="#contact">Get a quote <span aria-hidden="true">→</span></a>
       </header>
 
       <section className={styles.vistaHero} id="top">

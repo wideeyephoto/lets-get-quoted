@@ -13,7 +13,7 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[3].url;
   const estimateLabel = getEstimateButtonLabel(getSiteContent(site.content).quoteForm);
   const themeStyle = {
-    '--theme-accent': site.accent_override || '#a33a2b',
+    '--theme-accent': site.accent_override || '#a5472d',
     '--theme-display': site.header_font || 'var(--font-guild-display), Georgia, Times New Roman, serif',
   } as CSSProperties;
 
