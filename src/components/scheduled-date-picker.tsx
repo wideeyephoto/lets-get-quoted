@@ -1,12 +1,15 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import FloatingPanel from '@/components/floating-panel';
 
 type ScheduledDatePickerProps = {
   id: string;
   name: string;
   defaultValue?: string;
   required?: boolean;
+  // Accepted for API compatibility; no longer needed now that the calendar
+  // floats in a portal and is never clipped by a scrolling ancestor.
   scrollIntoViewOnOpen?: boolean;
 };
 
@@ -80,11 +83,11 @@ function addMonths(date: Date, months: number): Date {
   return new Date(date.getFullYear(), date.getMonth() + months, 1);
 }
 
-export default function ScheduledDatePicker({ id, name, defaultValue = '', required = false, scrollIntoViewOnOpen = false }: ScheduledDatePickerProps) {
+export default function ScheduledDatePicker({ id, name, defaultValue = '', required = false }: ScheduledDatePickerProps) {
   const [selectedDate, setSelectedDate] = useState(defaultValue);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState(() => dateFromKey(defaultValue) ?? new Date());
-  const pickerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const quickDateOptions = buildQuickDateOptions(required);
   const calendarCells = buildCalendarCells(visibleMonth);
   const todayKey = dateToKey(new Date());
@@ -96,20 +99,8 @@ export default function ScheduledDatePicker({ id, name, defaultValue = '', requi
     if (nextDate) setVisibleMonth(nextDate);
   }
 
-  function toggleCalendar() {
-    setIsCalendarOpen((current) => {
-      const nextIsOpen = !current;
-      if (nextIsOpen && scrollIntoViewOnOpen) {
-        requestAnimationFrame(() => {
-          pickerRef.current?.scrollIntoView({ block: 'start', inline: 'nearest' });
-        });
-      }
-      return nextIsOpen;
-    });
-  }
-
   return (
-    <div className="scheduled-date-picker" ref={pickerRef}>
+    <div className="scheduled-date-picker">
       <div className="modern-date-control">
         <div className="modern-date-display" aria-hidden="true">
           <span>Date</span>
@@ -118,16 +109,16 @@ export default function ScheduledDatePicker({ id, name, defaultValue = '', requi
         <input id={id} name={name} type="hidden" value={selectedDate} />
         <div className="modern-date-picker-shell">
           <button
+            ref={buttonRef}
             type="button"
             className="modern-date-button"
             aria-label="Choose scheduled date"
             aria-expanded={isCalendarOpen}
-            onClick={toggleCalendar}
+            onClick={() => setIsCalendarOpen((current) => !current)}
           >
             {selectedDate ? formatDateLabel(selectedDate) : 'Choose date'}
           </button>
-          {isCalendarOpen ? (
-            <div className="modern-calendar-panel">
+          <FloatingPanel anchorRef={buttonRef} open={isCalendarOpen} onClose={() => setIsCalendarOpen(false)} className="modern-calendar-panel" width={312}>
               <div className="modern-calendar-header">
                 <button type="button" aria-label="Previous month" onClick={() => setVisibleMonth((current) => addMonths(current, -1))}>
                   Prev
@@ -160,8 +151,7 @@ export default function ScheduledDatePicker({ id, name, defaultValue = '', requi
                   Clear date
                 </button>
               ) : null}
-            </div>
-          ) : null}
+          </FloatingPanel>
         </div>
         <div className="quick-add-buttons modern-date-chips" aria-label="Quick date choices">
           {quickDateOptions.map((option) => (
