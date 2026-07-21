@@ -101,6 +101,7 @@
 .jobPhotoImport button { min-height: 38px; padding: .55rem .75rem; border: 1px solid rgba(255,255,255,.16); border-radius: 6px; background: rgba(255,255,255,.06); color: #f7f5ef; font-weight: 800; cursor: pointer; }
 .jobPhotoImport button:disabled { opacity: .55; cursor: default; }
 .emptyHelper { margin: 0; color: #9ca8b8; font-size: .82rem; }
+.publishRequirement { margin: 0; padding: .7rem .85rem; border: 1px solid rgba(255,209,102,.35); border-radius: 8px; background: rgba(255,209,102,.09); color: #ffd166; font-size: .82rem; font-weight: 600; }
 
 /* Compact toggle-and-label rows (trust badges) */
 .fieldHint { margin: 0; color: #9ca8b8; font-size: .78rem; line-height: 1.4; }

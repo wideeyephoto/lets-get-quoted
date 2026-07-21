@@ -286,6 +286,11 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
   const handlePublish = useCallback(() => {
     const nextPublished = !site.published;
+    if (nextPublished && !site.company_name.trim()) {
+      setActiveTab('business');
+      setMessage({ type: 'error', text: 'Add a company name on the Business tab before publishing.' });
+      return;
+    }
     if (nextPublished && !site.subdomain && (!site.custom_domain || domainStatus !== 'verified')) {
       setMessage({ type: 'error', text: 'Add an LGQ subdomain or verify your custom domain before publishing.' });
       return;
@@ -620,6 +625,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 <div className={styles.sectionIntro}><h2>Search & sharing</h2><p>Control how your website appears in search results and social links.</p></div>
                 <label className={styles.formField}><span>SEO title</span><input maxLength={60} value={site.seo_title || ''} onChange={(event) => handleChange('seo_title', event.target.value || null)} placeholder={site.company_name} /><small>{(site.seo_title || '').length}/60 characters</small></label>
                 <label className={styles.formField}><span>SEO description</span><textarea rows={3} maxLength={160} value={site.seo_description || ''} onChange={(event) => handleChange('seo_description', event.target.value || null)} placeholder={site.tagline || 'Describe your services and location.'} /><small>{(site.seo_description || '').length}/160 characters. Your hero image is used for social sharing.</small></label>
+                {!site.published && !site.company_name.trim() && <p className={styles.publishRequirement}>A company name is required to publish. Add one on the Business tab.</p>}
                 <div className={styles.publishCard}>
                   <div><span className={`${styles.statusDot} ${site.published ? styles.liveDot : ''}`} /><div><strong>{site.published ? 'Website is live' : 'Website is private'}</strong><p>{site.published ? 'Homeowners can visit your website.' : 'Only you can see the saved preview.'}</p></div></div>
                   <button type="button" onClick={handlePublish} disabled={isPending}>{site.published ? 'Unpublish' : 'Save & publish'}</button>

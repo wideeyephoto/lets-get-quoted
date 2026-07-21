@@ -199,6 +199,10 @@ export async function publishSite(
     throw new Error('Site not found for this account.');
   }
 
+  if (published && !site.company_name?.trim()) {
+    throw new Error('Add a company name before publishing your site.');
+  }
+
   if (published && !site.subdomain && !site.custom_domain) {
     throw new Error('Must set either subdomain or custom domain before publishing.');
   }
