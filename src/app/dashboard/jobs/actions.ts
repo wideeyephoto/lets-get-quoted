@@ -517,19 +517,20 @@ export async function createManualJobFeedAction(jobId: string, formData: FormDat
       getJob(supabase, accountId, jobId),
       supabase.from('accounts').select('business_name').eq('id', accountId).single(),
     ]);
-    if (!job) throw new Error('Job not found for this account.');
-
-    const clientPhone = job.client_phone ? normalizeUsPhone(job.client_phone) : null;
-    if (!clientPhone) throw new Error('Add a valid client phone number before sending job update texts.');
-
-    await recordSmsConsent(accountId, clientPhone, 'job_update');
-    await sendJobUpdateSms({
-      phone: clientPhone,
-      businessName: account?.business_name || "Let's Get Quoted contractor",
-      jobRef: job.ref,
-      title,
-      body,
-    });
+    // The update is already posted above; texting the client is best-effort.
+    // The composer only offers the text option when a phone is on file, so a
+    // missing number here just skips the SMS rather than failing the whole post.
+    const clientPhone = job?.client_phone ? normalizeUsPhone(job.client_phone) : null;
+    if (job && clientPhone) {
+      await recordSmsConsent(accountId, clientPhone, 'job_update');
+      await sendJobUpdateSms({
+        phone: clientPhone,
+        businessName: account?.business_name || "Let's Get Quoted contractor",
+        jobRef: job.ref,
+        title,
+        body,
+      });
+    }
   }
 
   revalidatePath(`/dashboard/jobs/${jobId}`);

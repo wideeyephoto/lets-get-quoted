@@ -40,7 +40,7 @@ export default async function LeadsPage() {
           <div className={styles.board}>
             {COLUMNS.map((column) => {
               const columnLeads = leads.filter((lead) => lead.status === column.status);
-              return <section className={`${styles.column}${column.status === 'new' ? ` ${styles.newColumn}` : ''}`} key={column.status}><header className={styles.columnHeader}><h2>{column.status === 'new' ? 'Needs response' : column.label}</h2><span>{columnLeads.length}</span></header><div className={styles.cards}>{columnLeads.map((lead) => {
+              return <section className={`${styles.column} ${styles[`col_${column.status}`]}`} key={column.status}><header className={styles.columnHeader}><h2>{column.status === 'new' ? 'Needs response' : column.label}</h2><span>{columnLeads.length}</span></header><div className={styles.cards}>{columnLeads.map((lead) => {
                 const isUrgent = lead.status === 'new' && lead.source === 'website_form';
                 return (
                   <Link className={`${styles.leadCard}${isUrgent ? ` ${styles.urgentCard}` : ''}`} href={`/dashboard/leads/${lead.id}`} key={lead.id}>

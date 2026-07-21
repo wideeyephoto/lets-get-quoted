@@ -31,8 +31,8 @@ export default async function InvoiceDetailPage({
       <main className="wide-shell">
         <div className="panel">
           <p className="empty-state">Invoice not found.</p>
-          <Link href={`/dashboard/jobs/${params.id}?tab=invoices`} className="btn secondary">
-            Back to invoices
+          <Link href={`/dashboard/jobs/${params.id}?open=payment#request-payment`} className="btn secondary">
+            Back to job
           </Link>
         </div>
       </main>
@@ -60,8 +60,8 @@ export default async function InvoiceDetailPage({
             <span className="workspace-inline-note">{items.length} line item{items.length === 1 ? '' : 's'}</span>
           </div>
           <div className="actions workspace-actions">
-            <Link href={`/dashboard/jobs/${params.id}?tab=invoices`} className="btn secondary">
-              Back to invoices
+            <Link href={`/dashboard/jobs/${params.id}?open=payment#request-payment`} className="btn secondary">
+              Back to job
             </Link>
           </div>
         </div>

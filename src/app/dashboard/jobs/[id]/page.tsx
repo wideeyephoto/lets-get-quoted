@@ -14,6 +14,7 @@ import { formatPhoneDashes } from '@/lib/phone';
 import {
   createClientJobLinkAction,
   createCostAction,
+  createManualJobFeedAction,
   deleteCostAction,
   deleteJobAction,
   markJobCompleteAction,
@@ -243,6 +244,7 @@ export default async function JobDetailPage({
   const boundMarkJobComplete = markJobCompleteAction.bind(null, job.id);
   const boundSendScheduleOptions = sendClientScheduleOptionsAction.bind(null, job.id);
   const boundCreateClientJobLink = createClientJobLinkAction.bind(null, job.id);
+  const boundPostFeedUpdate = createManualJobFeedAction.bind(null, job.id);
   const boundRefundPayment = refundPaymentAction.bind(null, job.id);
   const boundMarkPaymentFailed = markPaymentFailedAction.bind(null, job.id);
   const boundRetryPaymentText = retryPaymentTextAction.bind(null, job.id);
@@ -380,6 +382,35 @@ export default async function JobDetailPage({
               <p className="eyebrow">Job feed</p>
               <h2>Job Feed</h2>
             </div>
+            <details className="workspace-details job-feed-composer" open={searchParams.open === 'update'}>
+              <summary className="workspace-details-summary">
+                <span className="btn secondary">+ Post an update</span>
+                <span className="workspace-details-copy">Log progress on this job{job.client_phone ? ' and optionally text the client' : ''}.</span>
+              </summary>
+              <form action={boundPostFeedUpdate} className="form-grid job-feed-composer-form">
+                <input type="hidden" name="visibility" value="client" />
+                <div className="field full">
+                  <label htmlFor="feedTitle">Update</label>
+                  <input id="feedTitle" name="title" required placeholder="Crew arrived on site" maxLength={120} />
+                </div>
+                <div className="field full">
+                  <label htmlFor="feedBody">Details (optional)</label>
+                  <textarea id="feedBody" name="body" rows={3} placeholder="Started demo on the north wall — on track to finish Thursday." />
+                </div>
+                {job.client_phone ? (
+                  <label className="sms-consent-check field full">
+                    <input name="notifyClientSms" type="checkbox" />
+                    <span>
+                      <strong>Also text this update to {job.client_name}</strong>
+                      <small>Sends to {formatPhoneDashes(job.client_phone)}. Reply STOP to opt out.</small>
+                    </span>
+                  </label>
+                ) : null}
+                <div className="field full">
+                  <SaveButton pendingLabel="Posting…" savedLabel="Posted ✓">Post update</SaveButton>
+                </div>
+              </form>
+            </details>
             {displayedFeed.length === 0 ? (
               <p className="empty-state">No job feed updates yet.</p>
             ) : (

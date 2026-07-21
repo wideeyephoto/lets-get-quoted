@@ -142,7 +142,7 @@ export async function deleteInvoiceAction(jobId: string, invoiceId: string) {
   await deleteInvoice(supabase, accountId, invoiceId);
 
   revalidatePath(`/dashboard/jobs/${jobId}`);
-  redirect(`/dashboard/jobs/${jobId}?tab=invoices`);
+  redirect(`/dashboard/jobs/${jobId}?open=payment#request-payment`);
 }
 
 export async function cancelInvoiceAction(jobId: string, invoiceId: string) {

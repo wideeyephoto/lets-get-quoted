@@ -4,6 +4,7 @@ import { connectStripeAction } from './stripe-actions';
 import { expandScheduledJobs, formatJobTime, listJobs } from '@/lib/jobs';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { expireStaleLeads, listLeads } from '@/lib/leads';
+import { listActiveScheduleRequests } from '@/lib/scheduling';
 
 function toDateKey(year: number, monthIndex: number, day: number): string {
   return `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -127,7 +128,14 @@ export default async function DashboardPage() {
     (sum, day) => sum + day.jobs.filter((job) => !job.scheduled_time).length,
     0
   );
-  const unscheduledJobCount = jobs.filter((job) => job.status !== 'complete' && job.status !== 'archived' && !job.scheduled_for).length;
+  const unscheduledActiveJobs = jobs.filter((job) => job.status !== 'complete' && job.status !== 'archived' && !job.scheduled_for);
+  const unscheduledJobCount = unscheduledActiveJobs.length;
+  // Count jobs whose LATEST live schedule request is "needs more options" — a
+  // raw count of needs_more_options rows would over-count (the status is never
+  // cleared once set) and disagree with the schedule board, which dedupes to
+  // the latest request per job via the same helper.
+  const scheduleRequestByJob = await listActiveScheduleRequests(supabase, accountId, unscheduledActiveJobs.map((job) => job.id));
+  const stuckScheduleCount = Object.values(scheduleRequestByJob).filter((request) => request.status === 'needs_more_options').length;
   const priorityItems = [
     !onboarded
       ? {
@@ -165,6 +173,15 @@ export default async function DashboardPage() {
           cta: 'View quotes',
         }
       : null,
+    stuckScheduleCount > 0
+      ? {
+          key: 'schedule-response',
+          label: `${stuckScheduleCount} client${stuckScheduleCount === 1 ? '' : 's'} want${stuckScheduleCount === 1 ? 's' : ''} different dates`,
+          detail: 'They passed on the times you sent — send a fresh set of dates.',
+          href: '/dashboard/schedule#unscheduled-jobs',
+          cta: 'Send new dates',
+        }
+      : null,
     jobsNeedingCrewCount > 0
       ? {
           key: 'crew',
@@ -188,8 +205,8 @@ export default async function DashboardPage() {
           key: 'unscheduled',
           label: `${unscheduledJobCount} open job${unscheduledJobCount === 1 ? '' : 's'} not scheduled`,
           detail: 'Put approved work on the calendar.',
-          href: '/dashboard/jobs',
-          cta: 'View jobs',
+          href: '/dashboard/schedule#unscheduled-jobs',
+          cta: 'Schedule work',
         }
       : null,
   ].filter((item): item is { key: string; label: string; detail: string; href: string; cta: string } => Boolean(item)).slice(0, 5);

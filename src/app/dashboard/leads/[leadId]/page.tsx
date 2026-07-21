@@ -7,7 +7,7 @@ import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
 import { expireStaleLeads, formatElapsedTime, formatLeadSource, getLead, listLeads, type Lead, type LeadQuoteVisit } from '@/lib/leads';
 import { expandScheduledJobs, formatJobSchedule, formatJobTime, listJobs, type Job, type ScheduledJobOccurrence } from '@/lib/jobs';
 import { formatPhoneDashes } from '@/lib/phone';
-import { clearLeadQuoteVisitAction, convertLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, undoConvertLeadAction, updateLeadDetailsAction } from '../actions';
+import { clearLeadQuoteVisitAction, convertLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, undoConvertLeadAction, updateLeadDetailsAction, updateLeadStatusAction } from '../actions';
 import LeadAvailabilityScheduler from './LeadAvailabilityScheduler';
 import QuoteStartDateCalendar from './QuoteStartDateCalendar';
 import UndoQuoteButton from './UndoQuoteButton';
@@ -110,6 +110,9 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const rescheduleLater = clearLeadQuoteVisitAction.bind(null, lead.id);
   const scheduleVisit = scheduleLeadQuoteVisitAction.bind(null, lead.id);
   const sendQuoteVisitOptions = sendLeadQuoteVisitOptionsAction.bind(null, lead.id);
+  const markLeadContacted = updateLeadStatusAction.bind(null, lead.id, 'contacted');
+  const markLeadWon = updateLeadStatusAction.bind(null, lead.id, 'won');
+  const markLeadLost = updateLeadStatusAction.bind(null, lead.id, 'lost');
   const convertedJobLabel = lead.status === 'won' ? 'Open job' : 'Open quote';
   const visitLabel = formatVisit(lead.quote_visit);
   const hasScheduledEstimate = Boolean(lead.quote_visit);
@@ -192,7 +195,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
       complete: true,
     },
     {
-      label: 'Send Quote & Request Sign-Off',
+      label: 'Send the quote',
       href: '#lead-estimate',
       current: true,
       complete: false,
@@ -211,7 +214,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
       complete: false,
     },
     {
-      label: 'Send Quote & Request Sign-Off',
+      label: 'Send the quote',
       href: '#lead-estimate',
       current: false,
       complete: false,
@@ -234,6 +237,21 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
             <span className={styles.receivedBadge}>Received {formatElapsedTime(lead.created_at)} ago</span>
             <span className={styles.statusPill}>{lead.status}</span>
             {visitLabel ? <span className={styles.visitPill}>Quote visit {visitLabel}</span> : null}
+          </div>
+          <div className={styles.leadStatusActions}>
+            <span className={styles.leadStatusActionsLabel}>Update status</span>
+            {lead.status === 'new' ? (
+              <form action={markLeadContacted}><SaveButton className="btn secondary">Log first contact</SaveButton></form>
+            ) : null}
+            {lead.status !== 'won' ? (
+              <form action={markLeadWon}><SaveButton className="btn ghost">Mark won</SaveButton></form>
+            ) : null}
+            {lead.status !== 'lost' ? (
+              <form action={markLeadLost}><SaveButton className="btn ghost">Mark lost</SaveButton></form>
+            ) : null}
+            {lead.status === 'won' || lead.status === 'lost' ? (
+              <form action={markLeadContacted}><SaveButton className="btn ghost">Reopen</SaveButton></form>
+            ) : null}
           </div>
           <div className={styles.heroContactSummary}>
             <div className={styles.heroContactItem}>
@@ -295,7 +313,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           </div>
           <div className={styles.leadQuickActions}>
             {workflowState === 'newLead' ? <Link className="btn primary" href="#availability-snapshot">Schedule estimate</Link> : null}
-            {workflowState === 'estimateScheduled' ? <Link className="btn primary" href="#lead-estimate">Send Quote &amp; Request Sign-Off</Link> : null}
+            {workflowState === 'estimateScheduled' ? <Link className="btn primary" href="#lead-estimate">Send the quote</Link> : null}
             {workflowState === 'estimateScheduled' ? <Link className="btn secondary" href="#availability-snapshot">Review scheduled estimate</Link> : null}
             {workflowState === 'converted' ? <Link className="btn primary" href={`/dashboard/jobs/${lead.converted_job}`}>{convertedJobLabel}</Link> : null}
             {workflowState === 'converted' ? <UndoQuoteButton action={undoConvertLead} /> : null}
@@ -431,8 +449,8 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
 
           {!lead.converted_job ? (
             <section id="lead-estimate" className={`panel workspace-section-card ${hasScheduledEstimate ? styles.primaryActionCard : ''}`}>
-              <div className="section-heading workspace-section-heading"><p className="eyebrow">Step 2</p><h2>Send Quote &amp; Request Sign-Off</h2></div>
-              <p>Enter the amount and send the initial quote. Job start options can stay tucked away until you need them.</p>
+              <div className="section-heading workspace-section-heading"><p className="eyebrow">Step 2</p><h2>Send the quote</h2></div>
+              <p>Enter the amount and text the client their quote. Job start options can stay tucked away until you need them.</p>
               <form action={convertLead} className={styles.actionForm}>
                 <div className={styles.quoteAmountField}>
                   <label htmlFor="quotedAmount">Quoted amount</label>
@@ -462,7 +480,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                     canViewPrevious={canViewPreviousQuoteStart}
                   />
                 </details>
-                <SaveButton>Send Quote and Request Sign Off</SaveButton>
+                <SaveButton>Send quote</SaveButton>
               </form>
             </section>
           ) : null}

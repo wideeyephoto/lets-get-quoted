@@ -5,6 +5,9 @@ import { listCrew, listCrewIdsForJob } from '@/lib/crew';
 import { formatJobSchedule } from '@/lib/jobs';
 import { recordSmsConsent, sendCrewScheduleSelectedSms, sendSchedulingOptionsSms } from '@/lib/sms';
 import { createJobFeedEvent } from '@/lib/job-feed';
+import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
+
+const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
 export type ScheduleOption = {
   date: string;
@@ -171,6 +174,59 @@ export async function getPublicScheduleRequest(token: string): Promise<PublicSch
   return hydratePublicScheduleRequest(admin, scheduleRequest);
 }
 
+// Best-effort owner alert when a client responds to a scheduling request. The
+// client-facing selection flow must never fail because an email couldn't be
+// sent, so every error here is swallowed and logged — the response is already
+// persisted and surfaced on the job feed and dashboard by the time this runs.
+async function notifyOwnerOfScheduleResponse(
+  admin: SupabaseClient,
+  request: PublicScheduleRequest,
+  kind: 'selected' | 'needs_more_options',
+  detail: { option?: ScheduleOption; notes: string | null }
+): Promise<void> {
+  try {
+    const ownerEmail = await getAccountOwnerEmail(admin, request.account_id);
+    if (!ownerEmail) return;
+
+    const ctaUrl = `${APP_ORIGIN}/dashboard/jobs/${request.job_id}?open=scheduling#job-scheduling`;
+    const clientName = request.job.client_name || 'Your client';
+
+    if (kind === 'selected' && detail.option) {
+      await sendContractorAlertEmail({
+        recipientEmail: ownerEmail,
+        businessName: request.businessName,
+        subject: `${clientName} picked a start date`,
+        heading: `${clientName} picked a start date`,
+        bodyLines: [
+          `${clientName} chose ${formatScheduleOption(detail.option)} for ${request.job.ref}.`,
+          ...(detail.notes ? [`Their note: ${detail.notes}`] : []),
+          'The job is now on your calendar for that date.',
+        ],
+        ctaLabel: 'Open the job',
+        ctaUrl,
+        tone: 'info',
+      });
+    } else if (kind === 'needs_more_options') {
+      await sendContractorAlertEmail({
+        recipientEmail: ownerEmail,
+        businessName: request.businessName,
+        subject: `${clientName} asked for different dates`,
+        heading: `${clientName} wants different dates`,
+        bodyLines: [
+          `${clientName} passed on the dates you sent for ${request.job.ref}.`,
+          ...(detail.notes ? [`Their note: ${detail.notes}`] : []),
+          'Send them a fresh set of dates to keep the job moving.',
+        ],
+        ctaLabel: 'Send new dates',
+        ctaUrl,
+        tone: 'warning',
+      });
+    }
+  } catch (error) {
+    console.error(`Unable to email owner about schedule response for request ${request.id}:`, error);
+  }
+}
+
 async function applyScheduleSelection(request: PublicScheduleRequest, optionIndex: number, notes: string | null): Promise<PublicScheduleRequest> {
   if (request.status !== 'open') return request;
 
@@ -237,6 +293,8 @@ async function applyScheduleSelection(request: PublicScheduleRequest, optionInde
   } catch (error) {
     console.error(`Unable to notify crew for schedule request ${request.id}:`, error);
   }
+
+  await notifyOwnerOfScheduleResponse(admin, request, 'selected', { option, notes });
 
   return { ...request, status: 'selected', selected_index: optionIndex, selected_date: option.date, selected_time: option.time, client_notes: notes, responded_at: respondedAt };
 }
@@ -313,5 +371,52 @@ async function applyDifferentScheduleRequest(request: PublicScheduleRequest, not
     meta: { client_notes: notes, needs_more_options: true },
   });
 
+  await notifyOwnerOfScheduleResponse(admin, request, 'needs_more_options', { notes });
+
   return { ...request, status: 'needs_more_options', client_notes: notes, responded_at: respondedAt };
+}
+
+export type JobScheduleRequestSummary = {
+  jobId: string;
+  status: JobScheduleRequest['status'];
+  selectedDate: string | null;
+  selectedTime: string | null;
+  clientNotes: string | null;
+  respondedAt: string | null;
+  sentAt: string | null;
+};
+
+// Latest live scheduling request per job, keyed by job id — used to surface an
+// "awaiting client" / "wants different dates" flag on the schedule board and
+// dashboard so a pending or bounced request never sits invisibly.
+export async function listActiveScheduleRequests(
+  supabase: SupabaseClient,
+  accountId: string,
+  jobIds: string[]
+): Promise<Record<string, JobScheduleRequestSummary>> {
+  if (jobIds.length === 0) return {};
+
+  const { data, error } = await supabase
+    .from('job_schedule_requests')
+    .select('job_id, status, selected_date, selected_time, client_notes, responded_at, sent_at, created_at')
+    .eq('account_id', accountId)
+    .in('job_id', jobIds)
+    .in('status', ['open', 'needs_more_options', 'selected'])
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+
+  const byJob: Record<string, JobScheduleRequestSummary> = {};
+  for (const row of data ?? []) {
+    if (byJob[row.job_id]) continue; // rows are newest-first; keep the latest per job
+    byJob[row.job_id] = {
+      jobId: row.job_id,
+      status: row.status,
+      selectedDate: row.selected_date,
+      selectedTime: row.selected_time,
+      clientNotes: row.client_notes,
+      respondedAt: row.responded_at,
+      sentAt: row.sent_at,
+    };
+  }
+  return byJob;
 }

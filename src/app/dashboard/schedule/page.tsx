@@ -9,6 +9,7 @@ import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
 import { scheduleJobAction, sendClientScheduleOptionsAction, updateJobCrewAction } from '../jobs/actions';
 import { updateCrewAction } from '../crew/actions';
+import { listActiveScheduleRequests } from '@/lib/scheduling';
 import ScheduleCalendar from './schedule-calendar';
 import ClientScheduleOptionsCalendar from './client-schedule-options-calendar';
 
@@ -121,6 +122,7 @@ export default async function SchedulePage({
   );
   const crewInitialsById = new Map(crew.map((member) => [member.id, crewInitials(member.name)]));
   const crewById = new Map(crew.map((member) => [member.id, member]));
+  const scheduleRequestByJob = await listActiveScheduleRequests(supabase, accountId, unscheduledJobs.map((job) => job.id));
 
   const { year, monthIndex } = parseMonthParam(searchParams.month);
   const firstWeekday = new Date(year, monthIndex, 1).getDay();
@@ -339,6 +341,7 @@ export default async function SchedulePage({
               const boundSchedule = scheduleJobAction.bind(null, job.id);
               const boundSendScheduleOptions = sendClientScheduleOptionsAction.bind(null, job.id);
               const boundUpdateCrew = updateJobCrewAction.bind(null, job.id, true);
+              const scheduleRequest = scheduleRequestByJob[job.id];
               const assignedCrewIds = assignmentsByJob[job.id] ?? [];
               const assignedCrewIdSet = new Set(assignedCrewIds);
               const assignedCrewInitials = (assignmentsByJob[job.id] ?? [])
@@ -355,6 +358,15 @@ export default async function SchedulePage({
                       <span className="method-detail">
                         {STATUS_LABEL[job.status]} · {job.address || 'No address on file'} · Est. hours: {job.estimated_hours ? `${job.estimated_hours} hrs` : 'Not set'}
                       </span>
+                      {scheduleRequest && scheduleRequest.status !== 'selected' ? (
+                        <div>
+                          <span className={`schedule-request-flag ${scheduleRequest.status === 'needs_more_options' ? 'warn' : 'pending'}`}>
+                            {scheduleRequest.status === 'needs_more_options'
+                              ? '● Client asked for different dates — send new ones'
+                              : '● Dates sent — waiting on the client'}
+                          </span>
+                        </div>
+                      ) : null}
                       <div className="schedule-crew-initials" aria-label={assignedCrewInitials.length > 0 ? `Assigned crew: ${assignedCrewInitials.join(', ')}` : 'No crew assigned'}>
                         <details className="schedule-crew-picker" name={`schedule-crew-picker-${job.id}`}>
                           <summary>Crew</summary>
@@ -458,7 +470,7 @@ export default async function SchedulePage({
                         <form action={boundSendScheduleOptions} className="schedule-inline-form schedule-client-options-form">
                           <div className="schedule-client-options-intro">
                             <strong>Send up to 3 dates that you&apos;re available to your client.</strong>
-                            <span>You will receive a text and notifications in your dashboard when they have responded.</span>
+                            <span>We&apos;ll email you and flag it on your dashboard the moment they respond.</span>
                           </div>
                           <div className="schedule-inline-field schedule-inline-date">
                             <label htmlFor={`scheduleClientPhone-${job.id}`}>Client mobile</label>

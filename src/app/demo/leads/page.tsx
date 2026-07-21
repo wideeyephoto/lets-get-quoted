@@ -43,7 +43,7 @@ export default function DemoLeadsPage() {
             {COLUMNS.map((column) => {
               const columnLeads = leads.filter((lead) => lead.status === column.status);
               return (
-                <section className={`${styles.column}${column.status === 'new' ? ` ${styles.newColumn}` : ''}`} key={column.status}>
+                <section className={`${styles.column} ${styles[`col_${column.status}`]}`} key={column.status}>
                   <header className={styles.columnHeader}>
                     <h2>{column.status === 'new' ? 'Needs response' : column.label}</h2>
                     <span>{columnLeads.length}</span>
