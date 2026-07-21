@@ -23,7 +23,7 @@ export default function ImageLibrary({
   onSelectHero,
   onToggleGallery,
 }: ImageLibraryProps) {
-  const [source, setSource] = useState<'stock' | 'upload'>('stock');
+  const [source, setSource] = useState<'stock' | 'upload'>('upload');
   const [uploads, setUploads] = useState(initialUploads);
   const [message, setMessage] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -90,8 +90,8 @@ export default function ImageLibrary({
     <div className={styles.library}>
       <div className={styles.libraryToolbar}>
         <div className={styles.segmented} aria-label="Image source">
-          <button type="button" className={source === 'stock' ? styles.activeSegment : undefined} onClick={() => setSource('stock')}>Stock</button>
           <button type="button" className={source === 'upload' ? styles.activeSegment : undefined} onClick={() => setSource('upload')}>Your uploads</button>
+          <button type="button" className={source === 'stock' ? styles.activeSegment : undefined} onClick={() => setSource('stock')}>Stock</button>
         </div>
         <label className={styles.uploadButton}>
           {isUploading ? `Uploading ${uploadProgress}%` : isPending ? 'Working...' : 'Upload image'}
