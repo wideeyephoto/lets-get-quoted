@@ -16,6 +16,22 @@ function ConnectStripeSubmitButton() {
   );
 }
 
+// Supabase returns a terse "phone already registered" when the number belongs
+// to another auth user. Map that to a message that tells the owner what to do;
+// pass through anything else (e.g. a wrong OTP) unchanged.
+function describePhoneLinkError(error: { message?: string; code?: string }): string {
+  const message = error.message ?? '';
+  const code = error.code ?? '';
+  const alreadyUsed =
+    code === 'phone_exists' ||
+    code === 'user_already_exists' ||
+    /already (been )?registered|already in use|already exists/i.test(message);
+  if (alreadyUsed) {
+    return 'That number is already used by another account. Remove it there first, or sign in with it directly.';
+  }
+  return message || 'Unable to add this phone number.';
+}
+
 type Props = {
   email: string | null;
   phone: string | null;
@@ -153,7 +169,7 @@ export default function SignInMethods({ email, phone, providers, stripeOnboarded
     const { error } = await supabase.auth.updateUser({ phone: phoneInput });
     setBusyProvider(null);
     if (error) {
-      setMessage({ type: 'error', text: error.message });
+      setMessage({ type: 'error', text: describePhoneLinkError(error) });
       return;
     }
     setPhoneOtpStep(true);
@@ -167,7 +183,7 @@ export default function SignInMethods({ email, phone, providers, stripeOnboarded
     const { error } = await supabase.auth.verifyOtp({ phone: phoneInput, token: phoneOtpCode, type: 'phone_change' });
     setBusyProvider(null);
     if (error) {
-      setMessage({ type: 'error', text: error.message });
+      setMessage({ type: 'error', text: describePhoneLinkError(error) });
       return;
     }
     setMessage({ type: 'success', text: 'Phone number added as a sign-in method.' });
