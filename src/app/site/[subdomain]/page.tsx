@@ -33,7 +33,11 @@ export async function generateMetadata({ params }: PublicSitePageProps): Promise
     : `https://${site.subdomain}.${rootDomain}`;
 
   return {
-    title,
+    // absolute bypasses the root layout's '%s · Let's Get Quoted' template so a
+    // contractor's own domain/tab doesn't carry the SaaS brand. Guard against an
+    // empty title (blank company name) — undefined lets the root default apply
+    // rather than emitting an empty <title>.
+    title: title ? { absolute: title } : undefined,
     description,
     alternates: { canonical },
     openGraph: {

@@ -27,7 +27,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = site.seo_title || site.company_name;
   const description = site.seo_description || site.tagline || `${site.company_name} contractor services`;
   return {
-    title,
+    // absolute bypasses the root layout's '%s · Let's Get Quoted' template so a
+    // contractor's own domain/tab doesn't carry the SaaS brand. Guard against an
+    // empty title (blank company name) — undefined lets the root default apply
+    // rather than emitting an empty <title>.
+    title: title ? { absolute: title } : undefined,
     description,
     alternates: { canonical: `https://${site.custom_domain}` },
     openGraph: { title, description, type: 'website', url: `https://${site.custom_domain}`, images: site.hero_url ? [{ url: site.hero_url }] : [] },

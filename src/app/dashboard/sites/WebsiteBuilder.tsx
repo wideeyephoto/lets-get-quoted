@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useTransition } from 'react';
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, type NormalizedSiteContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteShowcaseContent, type SiteTestimonialsContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, type NormalizedSiteContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteShowcaseContent, type SiteStickyCallBarContent, type SiteTestimonialsContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import { checkSubdomainAvailableAction, generateSiteTextAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
 import ImageLibrary from './ImageLibrary';
@@ -65,6 +65,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   const [subdomainStatus, setSubdomainStatus] = useState<'idle' | 'available' | 'taken'>('idle');
   const [domainStatus, setDomainStatus] = useState<'idle' | 'checking' | 'verified' | 'unverified'>(site.custom_domain_verified_at ? 'verified' : 'idle');
   const [isGeneratingText, setIsGeneratingText] = useState(false);
+  // Local string state for the free-numeric rating fields so decimal typing
+  // (e.g. "4.9") isn't clobbered by re-normalization on every keystroke.
+  const [ratingInput, setRatingInput] = useState(() => String(getSiteContent(initialSite.content).ratingBadge.rating));
+  const [reviewCountInput, setReviewCountInput] = useState(() => String(getSiteContent(initialSite.content).ratingBadge.reviewCount));
   const [isPending, startTransition] = useTransition();
   const galleryImages = getSiteGallery(site.content);
   const siteContent = getSiteContent(site.content);
@@ -209,6 +213,14 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
   const updateTestimonials = useCallback((testimonials: SiteTestimonialsContent) => {
     updateSiteContent({ testimonials });
+  }, [updateSiteContent]);
+
+  const updateStickyCallBar = useCallback((stickyCallBar: SiteStickyCallBarContent) => {
+    updateSiteContent({ stickyCallBar });
+  }, [updateSiteContent]);
+
+  const updateRatingBadge = useCallback((ratingBadge: SiteRatingBadgeContent) => {
+    updateSiteContent({ ratingBadge });
   }, [updateSiteContent]);
 
   const toggleShowcaseImage = useCallback((image: SiteImage) => {
@@ -482,6 +494,21 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     ))}
                   </div>
                   <button type="button" className={styles.secondaryAction} onClick={() => updateTestimonials({ ...siteContent.testimonials, enabled: true, items: [...siteContent.testimonials.items, { id: createContentId('testimonial'), author: '', text: '', rating: 5, label: '', imageUrl: '', imageAlt: '' }] })}>Add testimonial</button>
+                </div>
+
+                <div className={styles.contentCard}>
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.stickyCallBar.enabled} onChange={(event) => updateStickyCallBar({ ...siteContent.stickyCallBar, enabled: event.target.checked })} /><span><strong>Sticky call bar (mobile)</strong><small>Pins a tap-to-call button to the bottom of every phone screen, so homeowners can reach you in one tap. Needs a phone number on the Business tab.</small></span></label>
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.stickyCallBar.showQuote} onChange={(event) => updateStickyCallBar({ ...siteContent.stickyCallBar, showQuote: event.target.checked })} /><span><strong>Add a &quot;Free quote&quot; button</strong><small>Adds a second button beside Call that jumps straight to your quote form.</small></span></label>
+                  {siteContent.stickyCallBar.enabled && !site.phone && <p className={styles.emptyHelper}>Add a phone number on the Business tab to make this bar appear.</p>}
+                </div>
+
+                <div className={styles.contentCard}>
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.ratingBadge.enabled} onChange={(event) => updateRatingBadge({ ...siteContent.ratingBadge, enabled: event.target.checked })} /><span><strong>Star-rating badge</strong><small>Shows a &quot;4.9 ★ from 37 reviews&quot; trust badge near your reviews. Enter your real average rating and review count — only enable this if the numbers are accurate.</small></span></label>
+                  <div className={styles.formColumns}>
+                    <label className={styles.formField}><span>Average rating (1–5)</span><input type="number" min={1} max={5} step={0.1} value={ratingInput} onChange={(event) => { const raw = event.target.value; setRatingInput(raw); if (raw !== '') updateRatingBadge({ ...siteContent.ratingBadge, rating: Number(raw) }); }} onBlur={() => setRatingInput(String(siteContent.ratingBadge.rating))} /></label>
+                    <label className={styles.formField}><span>Number of reviews</span><input type="number" min={0} step={1} value={reviewCountInput} onChange={(event) => { const raw = event.target.value; setReviewCountInput(raw); if (raw !== '') updateRatingBadge({ ...siteContent.ratingBadge, reviewCount: Number(raw) }); }} onBlur={() => setReviewCountInput(String(siteContent.ratingBadge.reviewCount))} /></label>
+                  </div>
+                  <label className={styles.formField}><span>Source label</span><input value={siteContent.ratingBadge.sourceLabel} onChange={(event) => updateRatingBadge({ ...siteContent.ratingBadge, sourceLabel: event.target.value })} placeholder="Google reviews" /></label>
                 </div>
 
                 <div className={styles.integrationCard}>

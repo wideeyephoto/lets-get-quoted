@@ -75,6 +75,24 @@
 .faqItem summary { padding: 1rem 1.1rem; font-weight: 800; cursor: pointer; }
 .faqItem p { margin: 0; padding: 0 1.1rem 1.1rem; color: color-mix(in srgb, currentColor 76%, transparent); line-height: 1.65; }
 
+/* Aggregate-rating badge (toggleable) */
+.ratingBadge { display: flex; flex-direction: column; align-items: center; gap: .3rem; padding: clamp(2.25rem, 4vw, 3.25rem) 5vw; text-align: center; border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); background: color-mix(in srgb, currentColor 4%, transparent); }
+.ratingStars { color: var(--theme-accent); font-size: 1.5rem; letter-spacing: .14em; }
+.ratingBadge .ratingValue { margin: 0; font-family: var(--theme-display); font-size: clamp(2rem, 5vw, 2.8rem); line-height: 1; font-weight: 800; }
+.ratingBadge .ratingMeta { margin: 0; font-size: .82rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: color-mix(in srgb, currentColor 70%, transparent); }
+
+/* Sticky mobile call / quote bar (toggleable) */
+.stickyCallBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: flex; gap: .5rem; padding: .55rem .7rem calc(.55rem + env(safe-area-inset-bottom, 0px)); background: #16130e; border-top: 1px solid rgba(255,255,255,.14); box-shadow: 0 -10px 26px -14px rgba(0,0,0,.65); }
+.stickyCallBar a { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: .45rem; min-height: 48px; border-radius: var(--theme-radius, 6px); font-weight: 800; font-size: .92rem; }
+.stickyCallBar .stickyCall { background: var(--theme-accent); color: #14110b; }
+.stickyCallBar .stickyQuote { background: transparent; color: #f4f1e8; border: 1.5px solid rgba(244,241,232,.4); }
+.stickyCallBar svg { width: 17px; height: 17px; }
+@media (min-width: 768px) { .stickyCallBar { display: none; } }
+/* Reserve room so the fixed bar never covers footer content. Tracks the bar's
+   real height (min-height 48px + 1.1rem padding + border) plus the device
+   safe-area inset, rather than a hard value that falls short on notched phones. */
+@media (max-width: 767px) { .site:has(.stickyCallBar) { padding-bottom: calc(50px + 1.1rem + env(safe-area-inset-bottom, 0px)); } }
+
 /* Forge */
 .forge { background: #10100f; color: #f3f0e7; font-family: var(--font-forge-body), Arial, sans-serif; --theme-radius: 2px; }
 .forge[data-mode='light'] { background: #ebe7dc; color: #151514; }

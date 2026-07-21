@@ -43,6 +43,20 @@ export type SiteTestimonialsContent = {
   items: SiteTestimonialItem[];
 };
 
+export type SiteStickyCallBarContent = {
+  enabled: boolean;
+  showQuote: boolean;
+};
+
+export type SiteRatingBadgeContent = {
+  // Off by default. When on, renders an on-page aggregate-rating badge AND
+  // emits LocalBusiness + aggregateRating/Review JSON-LD for rich results.
+  enabled: boolean;
+  rating: number;
+  reviewCount: number;
+  sourceLabel: string;
+};
+
 export type SiteQuoteFormContent = {
   emailRequired: boolean;
   // Controls the wording used on the quote-request call-to-action ('Quick Estimate'
@@ -106,11 +120,14 @@ export type NormalizedSiteContent = {
   testimonials: SiteTestimonialsContent;
   quoteForm: SiteQuoteFormContent;
   estimateRanges: SiteEstimateRangesContent;
+  stickyCallBar: SiteStickyCallBarContent;
+  ratingBadge: SiteRatingBadgeContent;
 };
 
 export const DEFAULT_SHOWCASE_TITLE = 'Project showcase';
 export const DEFAULT_FAQ_TITLE = 'Frequently asked questions';
 export const DEFAULT_TESTIMONIALS_TITLE = 'What homeowners say';
+export const DEFAULT_RATING_SOURCE_LABEL = 'Verified reviews';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -128,6 +145,13 @@ function toRating(value: unknown): number {
   const rating = typeof value === 'number' ? value : Number(value);
   if (!Number.isFinite(rating)) return 5;
   return Math.min(5, Math.max(1, Math.round(rating)));
+}
+
+// Like toRating but keeps one decimal place (e.g. 4.9) for the aggregate badge.
+function toRatingValue(value: unknown, fallback = 5): number {
+  const rating = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(rating)) return fallback;
+  return Math.min(5, Math.max(1, Math.round(rating * 10) / 10));
 }
 
 function toPositiveNumber(value: unknown, fallback: number): number {
@@ -197,6 +221,8 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const testimonials = isRecord(root.testimonials) ? root.testimonials : {};
   const quoteForm = isRecord(root.quoteForm) ? root.quoteForm : {};
   const estimateRanges = isRecord(root.estimateRanges) ? root.estimateRanges : {};
+  const stickyCallBar = isRecord(root.stickyCallBar) ? root.stickyCallBar : {};
+  const ratingBadge = isRecord(root.ratingBadge) ? root.ratingBadge : {};
 
   return {
     showcase: {
@@ -220,6 +246,16 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     quoteForm: {
       emailRequired: toBoolean(quoteForm.emailRequired),
       estimateLabel: quoteForm.estimateLabel === 'instant' ? 'instant' : 'quick',
+    },
+    stickyCallBar: {
+      enabled: toBoolean(stickyCallBar.enabled),
+      showQuote: stickyCallBar.showQuote !== false,
+    },
+    ratingBadge: {
+      enabled: toBoolean(ratingBadge.enabled),
+      rating: toRatingValue(ratingBadge.rating),
+      reviewCount: Math.max(0, Math.round(toPositiveNumber(ratingBadge.reviewCount, 0))),
+      sourceLabel: toString(ratingBadge.sourceLabel, DEFAULT_RATING_SOURCE_LABEL),
     },
     estimateRanges: {
       enabled: toBoolean(estimateRanges.enabled),
@@ -255,4 +291,17 @@ export function getPublishedTestimonials(content: Record<string, unknown> | null
   const testimonials = getSiteContent(content).testimonials;
   const items = testimonials.items.filter((item) => item.text.trim());
   return testimonials.enabled && items.length > 0 ? { ...testimonials, items } : null;
+}
+
+export function getPublishedStickyCallBar(
+  content: Record<string, unknown> | null | undefined,
+  phone: string | null | undefined,
+): SiteStickyCallBarContent | null {
+  const stickyCallBar = getSiteContent(content).stickyCallBar;
+  return stickyCallBar.enabled && Boolean(phone && phone.trim()) ? stickyCallBar : null;
+}
+
+export function getPublishedRatingBadge(content: Record<string, unknown> | null | undefined): SiteRatingBadgeContent | null {
+  const ratingBadge = getSiteContent(content).ratingBadge;
+  return ratingBadge.enabled && ratingBadge.reviewCount > 0 ? ratingBadge : null;
 }

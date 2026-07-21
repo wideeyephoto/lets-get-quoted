@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import type { Site, TemplateType } from '@/lib/sites';
@@ -45,6 +46,11 @@ export default function ThemeDemoPage({ params }: ThemeDemoPageProps) {
   return <Template site={site} galleryImages={STOCK_SITE_IMAGES.slice(0, 5)} />;
 }
 
-export function generateMetadata({ params }: ThemeDemoPageProps) {
-  return { title: `${params.template} theme preview | Let's Get Quoted` };
+export function generateMetadata({ params }: ThemeDemoPageProps): Metadata {
+  // These are internal placeholder demos ('Northline Builders') — keep them out
+  // of the index so they don't compete with or dilute real client sites.
+  return {
+    title: `${params.template} theme preview | Let's Get Quoted`,
+    robots: { index: false, follow: false },
+  };
 }
