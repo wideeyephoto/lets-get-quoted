@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/auth';
 import { getSiteGallery } from '@/lib/site-images';
 import { getPublicSiteBySubdomain } from '@/lib/sites';
 import { getTemplate } from '@/lib/templates';
+import SiteStructuredData from '@/lib/templates/SiteStructuredData';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +19,12 @@ export default async function PublicSitePage({ params }: PublicSitePageProps) {
   const Template = getTemplate(site.template);
   if (!Template) notFound();
 
-  return <Template site={site} galleryImages={getSiteGallery(site.content)} />;
+  return (
+    <>
+      <SiteStructuredData site={site} />
+      <Template site={site} galleryImages={getSiteGallery(site.content)} />
+    </>
+  );
 }
 
 export async function generateMetadata({ params }: PublicSitePageProps): Promise<Metadata> {

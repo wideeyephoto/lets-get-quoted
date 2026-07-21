@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/auth';
 import { getSiteGallery } from '@/lib/site-images';
 import { getPublicSiteByCustomDomain } from '@/lib/sites';
 import { getTemplate } from '@/lib/templates';
+import SiteStructuredData from '@/lib/templates/SiteStructuredData';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +19,12 @@ export default async function CustomDomainSitePage({ params }: Props) {
   if (!site || !site.custom_domain_verified_at) notFound();
   const Template = getTemplate(site.template);
   if (!Template) notFound();
-  return <Template site={site} galleryImages={getSiteGallery(site.content)} />;
+  return (
+    <>
+      <SiteStructuredData site={site} />
+      <Template site={site} galleryImages={getSiteGallery(site.content)} />
+    </>
+  );
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
