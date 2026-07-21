@@ -24,8 +24,8 @@ export async function POST(request: NextRequest) {
   const phone = text(data, 'phone', 40);
   const email = text(data, 'email', 160).toLowerCase();
   const message = text(data, 'message', 3000);
-  if (!siteId || !name || !message) {
-    return NextResponse.json({ error: 'Add your name and project details.' }, { status: 400 });
+  if (!siteId || !name) {
+    return NextResponse.json({ error: 'Add your name to send this request.' }, { status: 400 });
   }
 
   const admin = createAdminClient();

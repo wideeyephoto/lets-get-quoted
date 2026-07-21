@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
+import HeroQuickForm from './HeroQuickForm';
 import SiteContentSections from './SiteContentSections';
 import SiteNavLinks from './SiteNavLinks';
 import styles from './themes.module.css';
@@ -28,6 +29,7 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
           <p className={styles.kicker}>Build / Renovate / Refine</p>
           <h1>{site.headline || 'Spaces with purpose.'}</h1>
           <p>{site.tagline || 'We build considered homes and interiors for how you actually live.'}</p>
+          <HeroQuickForm site={site} />
         </div>
         <a className={styles.vistaScroll} href="#studio">Explore ↓</a>
       </section>

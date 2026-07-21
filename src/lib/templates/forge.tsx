@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
+import HeroQuickForm from './HeroQuickForm';
 import SiteContentSections from './SiteContentSections';
 import SiteNavLinks from './SiteNavLinks';
 import styles from './themes.module.css';
@@ -32,7 +33,7 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
           <p className={styles.kicker}>Built right. Built to last.</p>
           <h1>{site.headline || 'Serious work. Solid results.'}</h1>
           <p className={styles.heroText}>{site.tagline || `Trusted construction across ${site.service_area || 'your community'}.`}</p>
-          <a className={styles.primaryCta} href="#contact">Start your project</a>
+          <HeroQuickForm site={site} />
         </div>
         <div className={styles.forgeIndex} aria-hidden="true">01 / 03</div>
       </section>

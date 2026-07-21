@@ -45,13 +45,56 @@ export type SiteTestimonialsContent = {
 
 export type SiteQuoteFormContent = {
   emailRequired: boolean;
+  // Controls the wording used on the quote-request call-to-action ('Quick Estimate'
+  // vs 'Instant Estimate') across the hero quick-capture form and the full form.
+  estimateLabel: 'quick' | 'instant';
 };
+
+export function getEstimateButtonLabel(quoteForm: Pick<SiteQuoteFormContent, 'estimateLabel'>): string {
+  return quoteForm.estimateLabel === 'instant' ? 'Instant Estimate' : 'Quick Estimate';
+}
+
+export type EstimateSizeBand = { min: number; max: number };
+export type EstimateSize = 'small' | 'medium' | 'large';
+export type EstimateMaterialTier = 'economical' | 'standard' | 'premium';
+
+export type SiteEstimateRangesContent = {
+  // Off by default — these are placeholder $ ranges until the contractor
+  // reviews/edits them in the builder, so no site quotes a homeowner with
+  // unreviewed numbers.
+  enabled: boolean;
+  small: EstimateSizeBand;
+  medium: EstimateSizeBand;
+  large: EstimateSizeBand;
+  // Stored as multipliers (e.g. 0.85 = 15% below standard, 1.25 = 25% above).
+  economicalMultiplier: number;
+  premiumMultiplier: number;
+};
+
+export const DEFAULT_ESTIMATE_RANGES: SiteEstimateRangesContent = {
+  enabled: false,
+  small: { min: 2000, max: 6000 },
+  medium: { min: 6000, max: 20000 },
+  large: { min: 20000, max: 60000 },
+  economicalMultiplier: 0.85,
+  premiumMultiplier: 1.25,
+};
+
+export function computeEstimateRange(ranges: SiteEstimateRangesContent, size: EstimateSize, tier: EstimateMaterialTier): EstimateSizeBand {
+  const band = ranges[size];
+  const multiplier = tier === 'economical' ? ranges.economicalMultiplier : tier === 'premium' ? ranges.premiumMultiplier : 1;
+  return {
+    min: Math.max(0, Math.round((band.min * multiplier) / 50) * 50),
+    max: Math.max(0, Math.round((band.max * multiplier) / 50) * 50),
+  };
+}
 
 export type NormalizedSiteContent = {
   showcase: SiteShowcaseContent;
   faqs: SiteFaqContent;
   testimonials: SiteTestimonialsContent;
   quoteForm: SiteQuoteFormContent;
+  estimateRanges: SiteEstimateRangesContent;
 };
 
 export const DEFAULT_SHOWCASE_TITLE = 'Project showcase';
@@ -74,6 +117,19 @@ function toRating(value: unknown): number {
   const rating = typeof value === 'number' ? value : Number(value);
   if (!Number.isFinite(rating)) return 5;
   return Math.min(5, Math.max(1, Math.round(rating)));
+}
+
+function toPositiveNumber(value: unknown, fallback: number): number {
+  const num = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(num) && num >= 0 ? num : fallback;
+}
+
+function parseEstimateBand(value: unknown, fallback: EstimateSizeBand): EstimateSizeBand {
+  const record = isRecord(value) ? value : {};
+  return {
+    min: toPositiveNumber(record.min, fallback.min),
+    max: toPositiveNumber(record.max, fallback.max),
+  };
 }
 
 function parseShowcaseItems(value: unknown): SiteShowcaseItem[] {
@@ -129,6 +185,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const faqs = isRecord(root.faqs) ? root.faqs : {};
   const testimonials = isRecord(root.testimonials) ? root.testimonials : {};
   const quoteForm = isRecord(root.quoteForm) ? root.quoteForm : {};
+  const estimateRanges = isRecord(root.estimateRanges) ? root.estimateRanges : {};
 
   return {
     showcase: {
@@ -151,6 +208,15 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     },
     quoteForm: {
       emailRequired: toBoolean(quoteForm.emailRequired),
+      estimateLabel: quoteForm.estimateLabel === 'instant' ? 'instant' : 'quick',
+    },
+    estimateRanges: {
+      enabled: toBoolean(estimateRanges.enabled),
+      small: parseEstimateBand(estimateRanges.small, DEFAULT_ESTIMATE_RANGES.small),
+      medium: parseEstimateBand(estimateRanges.medium, DEFAULT_ESTIMATE_RANGES.medium),
+      large: parseEstimateBand(estimateRanges.large, DEFAULT_ESTIMATE_RANGES.large),
+      economicalMultiplier: toPositiveNumber(estimateRanges.economicalMultiplier, DEFAULT_ESTIMATE_RANGES.economicalMultiplier),
+      premiumMultiplier: toPositiveNumber(estimateRanges.premiumMultiplier, DEFAULT_ESTIMATE_RANGES.premiumMultiplier),
     },
   };
 }

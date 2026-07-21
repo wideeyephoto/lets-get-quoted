@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Above-the-fold lead form — Option A vs Option B</title>
+<style>
+  :root {
+    --accent: #a33a2b;
+    --ink: #201a17;
+    --card-bg: #ffffff;
+    --page-bg: #f4efe9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    background: var(--page-bg);
+    color: var(--ink);
+  }
+  .intro {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 28px 24px 8px;
+  }
+  .intro h1 { font-size: 22px; margin: 0 0 6px; }
+  .intro p { margin: 0 0 4px; color: #55483f; line-height: 1.5; }
+  .toggle {
+    max-width: 900px;
+    margin: 12px auto 28px;
+    padding: 0 24px;
+    display: flex;
+    gap: 8px;
+  }
+  .toggle button {
+    border: 1px solid #cbb9ab;
+    background: #fff;
+    padding: 8px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .toggle button.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  .frame-wrap {
+    max-width: 980px;
+    margin: 0 auto 56px;
+    padding: 0 24px;
+  }
+  .frame-label {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .frame-label h2 { font-size: 16px; margin: 0; }
+  .frame-label span { font-size: 12px; color: #7a6c60; }
+
+  /* viewport box that mimics the visible browser area before scrolling */
+  .viewport-box {
+    position: relative;
+    width: 100%;
+    height: 720px;
+    border: 2px solid var(--ink);
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+    transition: width 0.25s ease;
+  }
+  .viewport-box.mobile { max-width: 390px; }
+
+  .fold-line {
+    position: absolute;
+    left: 0; right: 0; top: 720px;
+    border-top: 2px dashed #c0392b;
+    z-index: 5;
+    display: flex;
+    justify-content: flex-end;
+  }
+  .fold-line span {
+    background: #c0392b;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 0 0 4px 4px;
+    transform: translateY(0);
+  }
+
+  .scroll-inner {
+    height: 100%;
+    overflow-y: auto;
+  }
+
+  /* --- shared hero shell (Guild/split-hero look, representative of the pattern) --- */
+  header.site-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid #eee;
+    font-family: Georgia, serif;
+  }
+  header.site-header strong { font-size: 16px; }
+  header.site-header nav { display: flex; gap: 16px; font-size: 13px; color: #6b5d52; }
+
+  .hero {
+    display: flex;
+    gap: 28px;
+    padding: 32px 24px 40px;
+    align-items: flex-start;
+    background: linear-gradient(135deg, #f7efe6 0%, #efe1d3 100%);
+  }
+  .viewport-box.mobile .hero { flex-direction: column; }
+
+  .hero-copy { flex: 1.1; min-width: 0; }
+  .hero-copy .kicker {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 700;
+    margin: 0 0 10px;
+  }
+  .hero-copy h1 {
+    font-family: Georgia, serif;
+    font-size: 30px;
+    line-height: 1.15;
+    margin: 0 0 12px;
+  }
+  .viewport-box.mobile .hero-copy h1 { font-size: 24px; }
+  .hero-copy p.tagline { font-size: 14px; color: #55483f; line-height: 1.5; margin: 0 0 18px; max-width: 46ch; }
+  .trust-row { display: flex; gap: 18px; font-size: 12px; color: #6b5d52; }
+  .trust-row strong { display: block; color: var(--ink); font-size: 13px; }
+
+  .lead-card {
+    flex: 1;
+    min-width: 0;
+    background: var(--card-bg);
+    border: 1px solid #e6dccf;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(60, 40, 20, 0.08);
+  }
+  .lead-card h3 { margin: 0 0 4px; font-size: 15px; }
+  .lead-card .sub { margin: 0 0 14px; font-size: 12px; color: #7a6c60; }
+
+  .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+  .field span { font-size: 11px; font-weight: 600; color: #55483f; }
+  .field input, .field select, .field textarea {
+    border: 1px solid #d8ccbd;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: inherit;
+  }
+  .field textarea { resize: none; }
+  .row2 { display: flex; gap: 10px; }
+  .row2 .field { flex: 1; }
+
+  .dropzone {
+    border: 1px dashed #c9bba9;
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 11px;
+    color: #8a7c6f;
+    text-align: center;
+    margin-bottom: 10px;
+  }
+
+  .submit-btn {
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 11px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .microcopy { text-align: center; font-size: 11px; color: #9b8d80; margin-top: 8px; }
+
+  .below-fold-note {
+    padding: 40px 24px;
+    text-align: center;
+    color: #8a7c6f;
+    font-size: 13px;
+    border-top: 1px dashed #ddd0c0;
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+  }
+  .badge.good { background: #e3f3e1; color: #2f7a2b; }
+  .badge.bad { background: #fbe3e0; color: #b3341f; }
+</style>
+</head>
+<body>
+  <div class="intro">
+    <h1>Above-the-fold lead form — two options</h1>
+    <p>Both mockups reuse the existing "Guild" split-hero layout (headline/trust copy on the left, a card on the right) as a stand-in — Forge and Vista use full-bleed photo heroes and would get the same card treatment overlaid on the image instead of a plain background.</p>
+    <p>The red dashed line marks a typical laptop "fold" (~720px of visible height before scrolling). Toggle Desktop/Mobile to see how each holds up.</p>
+  </div>
+  <div class="toggle">
+    <button id="btn-desktop" class="active">Desktop width</button>
+    <button id="btn-mobile">Mobile width (390px)</button>
+  </div>
+
+  <!-- OPTION A -->
+  <div class="frame-wrap">
+    <div class="frame-label">
+      <h2>Option A — Condensed quick-capture <span class="badge good" style="margin-left:8px;">fits above the fold</span></h2>
+      <span>Name + one contact field + submit. Expands to full form after submit.</span>
+    </div>
+    <div class="viewport-box" id="box-a">
+      <div class="scroll-inner">
+        <header class="site-header">
+          <strong>Acme Builders</strong>
+          <nav><span>Services</span><span>Projects</span><span>Contact</span></nav>
+        </header>
+        <section class="hero">
+          <div class="hero-copy">
+            <p class="kicker">Craftsmanship you can count on</p>
+            <h1>A better way to build and renovate.</h1>
+            <p class="tagline">Thoughtful planning, dependable crews, and a finish you'll be proud to live with.</p>
+            <div class="trust-row">
+              <div><strong>Licensed &amp; insured</strong>Michigan</div>
+              <div><strong>500+ projects</strong>since 2009</div>
+            </div>
+          </div>
+          <div class="lead-card">
+            <h3>Get a free quote</h3>
+            <p class="sub">Takes about 15 seconds.</p>
+            <div class="field"><span>Name</span><input placeholder="Jane Smith" /></div>
+            <div class="field"><span>Phone or email</span><input placeholder="(555) 123-4567" /></div>
+            <button class="submit-btn" type="button">Get My Free Quote →</button>
+            <p class="microcopy">We'll ask a few more details next.</p>
+          </div>
+        </section>
+      </div>
+      <div class="fold-line"><span>FOLD ~720px</span></div>
+    </div>
+    <p class="below-fold-note">↓ Full form (address, project type, message, photos) appears in a follow-up step / modal — scrolled content below is unaffected.</p>
+  </div>
+
+  <!-- OPTION B -->
+  <div class="frame-wrap">
+    <div class="frame-label">
+      <h2>Option B — Full form embedded in hero <span class="badge bad" style="margin-left:8px;">overflows the fold</span></h2>
+      <span>All 7+ fields, incl. photo upload, crammed into the hero card.</span>
+    </div>
+    <div class="viewport-box" id="box-b">
+      <div class="scroll-inner">
+        <header class="site-header">
+          <strong>Acme Builders</strong>
+          <nav><span>Services</span><span>Projects</span><span>Contact</span></nav>
+        </header>
+        <section class="hero">
+          <div class="hero-copy">
+            <p class="kicker">Craftsmanship you can count on</p>
+            <h1>A better way to build and renovate.</h1>
+            <p class="tagline">Thoughtful planning, dependable crews, and a finish you'll be proud to live with.</p>
+            <div class="trust-row">
+              <div><strong>Licensed &amp; insured</strong>Michigan</div>
+              <div><strong>500+ projects</strong>since 2009</div>
+            </div>
+          </div>
+          <div class="lead-card">
+            <h3>Request your free quote</h3>
+            <p class="sub">Tell us about your project.</p>
+            <div class="row2">
+              <div class="field"><span>Name</span><input placeholder="Jane Smith" /></div>
+              <div class="field"><span>Phone</span><input placeholder="(555) 123-4567" /></div>
+            </div>
+            <div class="field"><span>Email</span><input placeholder="jane@email.com" /></div>
+            <div class="field"><span>Project address</span><input placeholder="1418 Maplewood Ave" /></div>
+            <div class="field"><span>Project type</span><input placeholder="Kitchen remodel" /></div>
+            <div class="field"><span>Tell us about the project</span><textarea rows="3" placeholder="Describe the scope..."></textarea></div>
+            <div class="dropzone">Choose photos (optional, up to 6)</div>
+            <button class="submit-btn" type="button">Quick Quote</button>
+          </div>
+        </section>
+      </div>
+      <div class="fold-line"><span>FOLD ~720px</span></div>
+    </div>
+    <p class="below-fold-note">The submit button and photo picker typically sit past the fold line on both desktop and mobile — the visitor has to scroll inside (or past) the hero before they can finish.</p>
+  </div>
+
+  <script>
+    var boxA = document.getElementById('box-a');
+    var boxB = document.getElementById('box-b');
+    var btnDesktop = document.getElementById('btn-desktop');
+    var btnMobile = document.getElementById('btn-mobile');
+    function setMode(mobile) {
+      boxA.classList.toggle('mobile', mobile);
+      boxB.classList.toggle('mobile', mobile);
+      btnDesktop.classList.toggle('active', !mobile);
+      btnMobile.classList.toggle('active', mobile);
+    }
+    btnDesktop.addEventListener('click', function () { setMode(false); });
+    btnMobile.addEventListener('click', function () { setMode(true); });
+  </script>
+</body>
+</html>

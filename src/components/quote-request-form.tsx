@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { compressImage } from '@/lib/client-images';
-import { getSiteContent } from '@/lib/site-content';
+import { getEstimateButtonLabel, getSiteContent } from '@/lib/site-content';
 import type { Site } from '@/lib/sites';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import styles from './quote-request-form.module.css';
@@ -16,7 +16,9 @@ type QuoteRequestFormProps = {
 export default function QuoteRequestForm({ site }: QuoteRequestFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
-  const emailRequired = getSiteContent(site.content).quoteForm.emailRequired;
+  const quoteForm = getSiteContent(site.content).quoteForm;
+  const emailRequired = quoteForm.emailRequired;
+  const estimateLabel = getEstimateButtonLabel(quoteForm);
   const [progress, setProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
@@ -41,7 +43,7 @@ export default function QuoteRequestForm({ site }: QuoteRequestFormProps) {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!site.published || window.self !== window.top) {
-      setMessage({ type: 'error', text: 'Quick Quote requests become active when this website is published.' });
+      setMessage({ type: 'error', text: `${estimateLabel} requests become active when this website is published.` });
       return;
     }
 
@@ -92,22 +94,6 @@ export default function QuoteRequestForm({ site }: QuoteRequestFormProps) {
       <label className={styles.field}><span>Phone</span><input name="phone" type="tel" autoComplete="tel" maxLength={40} /></label>
       <label className={`${styles.field} ${styles.wide}`}><span>Email {emailRequired ? '(required)' : '(optional)'}</span><input name="email" type="email" autoComplete="email" maxLength={160} required={emailRequired} /></label>
       <div className={`${styles.field} ${styles.wide}`}><label htmlFor="quote-address">Project address</label><AddressAutocomplete id="quote-address" name="address" placeholder="1418 Maplewood Ave, Royal Oak, MI" maxLength={240} /></div>
-      <label className={`${styles.field} ${styles.wide}`}>
-        <span>Project type (optional)</span>
-        <input name="projectType" list="quote-project-type-options" maxLength={100} placeholder="Roof replacement, kitchen remodel, deck…" autoComplete="off" />
-        <datalist id="quote-project-type-options">
-          <option value="Roof replacement" />
-          <option value="Roof repair" />
-          <option value="Kitchen remodel" />
-          <option value="Bathroom remodel" />
-          <option value="Deck / patio" />
-          <option value="Siding" />
-          <option value="Windows & doors" />
-          <option value="Painting" />
-          <option value="Flooring" />
-          <option value="Addition / new build" />
-        </datalist>
-      </label>
       <label className={`${styles.field} ${styles.wide}`}><span>Tell us about the project</span><textarea name="message" maxLength={3000} required /></label>
       <div className={`${styles.field} ${styles.wide}`}>
         <div className={styles.photoHeader}>
@@ -146,7 +132,7 @@ export default function QuoteRequestForm({ site }: QuoteRequestFormProps) {
       </div>
       <label className={styles.honeypot} aria-hidden="true">Company<input name="company" tabIndex={-1} autoComplete="off" /></label>
       {isSubmitting && <div className={styles.progress}><progress value={progress} max="100" /><span>{progress}%</span></div>}
-      <button className={styles.submit} type="submit" disabled={isSubmitting}>{isSubmitting ? 'Sending request...' : 'Quick Quote'}</button>
+      <button className={styles.submit} type="submit" disabled={isSubmitting}>{isSubmitting ? 'Sending request...' : estimateLabel}</button>
       {message && <p className={`${styles.message} ${message.type === 'success' ? styles.success : styles.error}`} role="status">{message.text}</p>}
     </form>
   );

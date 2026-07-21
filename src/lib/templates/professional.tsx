@@ -1,7 +1,9 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
+import { getEstimateButtonLabel, getSiteContent } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
+import HeroQuickForm from './HeroQuickForm';
 import SiteContentSections from './SiteContentSections';
 import SiteNavLinks from './SiteNavLinks';
 import styles from './themes.module.css';
@@ -9,6 +11,7 @@ import styles from './themes.module.css';
 export default function GuildTemplate({ site, galleryImages = [] }: TemplateProps) {
   const gallery = galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES.slice(3, 6);
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[3].url;
+  const estimateLabel = getEstimateButtonLabel(getSiteContent(site.content).quoteForm);
   const themeStyle = {
     '--theme-accent': site.accent_override || '#a33a2b',
     '--theme-display': site.header_font || 'var(--font-guild-display), Georgia, Times New Roman, serif',
@@ -22,7 +25,7 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
           <span><strong>{site.company_name}</strong><small>{site.license || 'Licensed contractor'}</small></span>
         </a>
         <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#services', label: 'Services' }, { href: '#work', label: 'Projects' }, { href: '#contact', label: 'Contact' }]} />
-        <a className={styles.guildQuote} href="#contact">Quick Quote</a>
+        <a className={styles.guildQuote} href="#contact">{estimateLabel}</a>
       </header>
 
       <section className={styles.guildHero} id="top">
@@ -30,10 +33,8 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
           <p className={styles.kicker}>Craftsmanship you can count on</p>
           <h1>{site.headline || 'A better way to build and renovate.'}</h1>
           <p className={styles.heroText}>{site.tagline || 'Thoughtful planning, dependable crews, and a finish you will be proud to live with.'}</p>
-          <div className={styles.contactActions}>
-            <a className={styles.primaryCta} href="#contact">Plan your project</a>
-            {site.phone && <a className={styles.textLink} href={`tel:${site.phone}`}>Call {site.phone}</a>}
-          </div>
+          {site.phone && <a className={styles.textLink} href={`tel:${site.phone}`}>Call {site.phone}</a>}
+          <HeroQuickForm site={site} />
         </div>
         <div className={styles.guildHeroMedia}>
           <img src={heroImage} alt="Completed contractor project" />

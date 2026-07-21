@@ -21,6 +21,23 @@
 [data-button='ghost'] .primaryCta { padding-inline: 0; border-bottom: 2px solid currentColor; background: transparent; color: inherit; border-radius: 0; }
 [data-button='outline'] .primaryCta:hover, [data-button='ghost'] .primaryCta:hover { box-shadow: none; filter: none; }
 .contactActions { display: flex; flex-wrap: wrap; align-items: center; gap: 1.25rem; }
+
+/* Hero quick-capture form — kept compact so it renders above the fold */
+.heroQuickForm { position: relative; z-index: 2; display: grid; gap: .6rem; width: min(400px, 100%); margin-top: 1.5rem; padding: 1.1rem 1.2rem 1.25rem; border-radius: var(--theme-radius, 8px); background: rgba(255,255,255,.97); color: #17140f; box-shadow: 0 20px 45px -18px rgba(0,0,0,.5); }
+.heroQuickForm h2 { margin: 0; font-family: var(--theme-display); font-size: 1.05rem; font-weight: 800; line-height: 1.15; color: #17140f; text-transform: none; }
+.heroFormNote { margin: 0 0 .1rem; font-size: .74rem; color: #6b675e; }
+.heroQuickFormRow { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
+.heroFormChipRow { display: flex; gap: .4rem; }
+.heroQuickForm input { width: 100%; padding: .6rem .7rem; border: 1px solid #d8d3c6; border-radius: calc(var(--theme-radius, 8px) * .6); font-size: .84rem; color: #17140f; background: #fff; font-family: inherit; }
+.heroQuickForm button { margin-top: .1rem; padding: .75rem; border: 0; border-radius: calc(var(--theme-radius, 8px) * .6); background: var(--theme-accent); color: #111; font-weight: 800; font-size: .82rem; cursor: pointer; }
+.heroQuickForm button:disabled { opacity: .6; cursor: progress; }
+.heroFormStatus { margin: 0; font-size: .78rem; }
+.heroFormStatus[data-tone='error'] { color: #b3341f; }
+.heroFormStatus[data-tone='success'] { color: #1f7a3f; }
+.heroFormHoneypot { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+.heroFormChip { flex: 1; padding: .5rem .4rem; border: 1px solid #d8d3c6; border-radius: calc(var(--theme-radius, 8px) * .6); background: #fff; color: #17140f; font-size: .78rem; font-weight: 700; cursor: pointer; }
+.heroFormChip[data-selected='true'] { border-color: var(--theme-accent); background: color-mix(in srgb, var(--theme-accent) 22%, white); }
+.heroFormResult { margin: 0; font-family: var(--theme-display); font-size: 1.6rem; font-weight: 800; color: #17140f; }
 .sectionHeading { display: flex; align-items: flex-end; justify-content: space-between; gap: 2rem; }
 .sectionHeading > p { max-width: 34rem; }
 .extraSections { background: color-mix(in srgb, currentColor 4%, transparent); }
@@ -205,6 +222,8 @@
   .vistaContact { margin: 0; padding-inline: 1.25rem; }
   .vistaContact h2 { font-size: 3.1rem; }
   .vistaContact > a { font-size: 1.1rem; }
+  .heroQuickForm { margin-top: 1rem; padding: .9rem 1rem 1.05rem; }
+  .heroQuickFormRow { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 440px) {
