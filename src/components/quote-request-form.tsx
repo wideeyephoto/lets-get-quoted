@@ -42,6 +42,13 @@ export default function QuoteRequestForm({ site }: QuoteRequestFormProps) {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
+    const phoneValue = (form.elements.namedItem('phone') as HTMLInputElement | null)?.value.trim() ?? '';
+    const emailValue = (form.elements.namedItem('email') as HTMLInputElement | null)?.value.trim() ?? '';
+    if (!phoneValue && !emailValue) {
+      setMessage({ type: 'error', text: 'Add a phone number or email so we can reach you.' });
+      return;
+    }
     if (!site.published || window.self !== window.top) {
       setMessage({ type: 'error', text: `${estimateLabel} requests become active when this website is published.` });
       return;
@@ -52,7 +59,6 @@ export default function QuoteRequestForm({ site }: QuoteRequestFormProps) {
     setProgress(5);
 
     try {
-      const form = event.currentTarget;
       const data = new FormData(form);
       data.set('siteId', site.id);
       data.set('startedAt', String(startedAt.current));
@@ -76,7 +82,7 @@ export default function QuoteRequestForm({ site }: QuoteRequestFormProps) {
       });
 
       setProgress(100);
-      setMessage({ type: 'success', text: 'Your project request was sent. The contractor will follow up soon.' });
+      setMessage({ type: 'success', text: "Your request was sent — we'll call you back within about an hour." });
       formRef.current?.reset();
       setSelectedPhotos([]);
       if (photoInputRef.current) photoInputRef.current.value = '';
@@ -132,7 +138,8 @@ export default function QuoteRequestForm({ site }: QuoteRequestFormProps) {
       </div>
       <label className={styles.honeypot} aria-hidden="true">Company<input name="company" tabIndex={-1} autoComplete="off" /></label>
       {isSubmitting && <div className={styles.progress}><progress value={progress} max="100" /><span>{progress}%</span></div>}
-      <button className={styles.submit} type="submit" disabled={isSubmitting}>{isSubmitting ? 'Sending request...' : estimateLabel}</button>
+      <p className={styles.reassure}>Free &amp; no obligation — we reply within about an hour.</p>
+      <button className={styles.submit} type="submit" disabled={isSubmitting}>{isSubmitting ? 'Sending request...' : 'Get My Free Estimate'}</button>
       {message && <p className={`${styles.message} ${message.type === 'success' ? styles.success : styles.error}`} role="status">{message.text}</p>}
     </form>
   );

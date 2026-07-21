@@ -20,7 +20,10 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
       <header className={styles.vistaHeader}>
         <a className={styles.vistaBrand} href="#top">{site.logo_url ? <img className={styles.logo} src={site.logo_url} alt={site.company_name} /> : site.company_name}</a>
         <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#studio', label: 'Studio' }, { href: '#work', label: 'Work' }, { href: '#contact', label: 'Connect' }]} />
-        <a className={styles.vistaMenu} href="#contact">Get a quote <span aria-hidden="true">→</span></a>
+        <div className={styles.vistaActions}>
+          {site.phone && <a className={styles.vistaPhone} href={`tel:${site.phone}`}>{site.phone}</a>}
+          <a className={styles.vistaMenu} href="#contact">Get a quote <span aria-hidden="true">→</span></a>
+        </div>
       </header>
 
       <section className={styles.vistaHero} id="top">

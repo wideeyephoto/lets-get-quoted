@@ -8,7 +8,7 @@ import type { Site } from '@/lib/sites';
 import styles from './themes.module.css';
 
 type HeroQuickFormProps = {
-  site: Pick<Site, 'id' | 'published' | 'content' | 'company_name' | 'tagline' | 'headline' | 'service_area'>;
+  site: Pick<Site, 'id' | 'published' | 'content' | 'company_name' | 'tagline' | 'headline' | 'service_area' | 'phone'>;
 };
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -194,7 +194,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
       if (details) {
         setStep('result');
       } else {
-        setStatus({ tone: 'success', text: `Thanks! We'll follow up shortly with your ${estimateLabel.toLowerCase()}.` });
+        setStatus({ tone: 'success', text: `Thanks! We'll call you back within about an hour with your free estimate.` });
         formRef.current?.reset();
         setName('');
         setContact('');
@@ -259,7 +259,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
       {step === 'contact' && (
         <>
           <h2>{estimateLabel}</h2>
-          <p className={styles.heroFormNote}>{wizardEnabled ? "Add your info to see your range — we'll follow up too." : "Just two fields — we'll follow up with the rest."}</p>
+          <p className={styles.heroFormNote}>{wizardEnabled ? 'Add your info to see your range. Free & no obligation — we reply within about an hour.' : 'Free & no obligation — we reply within about an hour.'}</p>
           <div className={styles.heroQuickFormRow}>
             <input name="name" placeholder="Your name" autoComplete="name" maxLength={100} required value={name} onChange={(event) => setName(event.target.value)} />
             <input
@@ -296,7 +296,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
               </div>
             )}
           </div>
-          <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Sending...' : wizardEnabled ? `See My ${estimateLabel}` : `Get My ${estimateLabel}`}</button>
+          <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Sending...' : wizardEnabled ? 'See My Free Estimate' : 'Get My Free Estimate'}</button>
         </>
       )}
 
@@ -305,6 +305,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
           <h2>Your estimated range</h2>
           <p className={styles.heroFormResult}>{formatCurrency(range.min)} – {formatCurrency(range.max)}</p>
           <p className={styles.heroFormNote}>This is a rough estimate, not a final quote — we&apos;ll follow up to confirm exact pricing for your project.</p>
+          {site.phone && <a className={styles.heroFormCall} href={`tel:${site.phone}`}>Call now to lock it in</a>}
         </>
       )}
 
