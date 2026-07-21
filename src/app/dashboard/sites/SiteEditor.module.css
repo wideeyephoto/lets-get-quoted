@@ -64,6 +64,24 @@
 .formSection .themeOption { display: grid; grid-template-columns: 132px 1fr; }
 .formSection .themeIcon { height: 100%; aspect-ratio: 4 / 3; }
 .contentCard { display: grid; gap: .9rem; padding: 1rem; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(255,255,255,.035); }
+
+/* Collapsible section (accordion) */
+.sectionCard { border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(255,255,255,.035); }
+.sectionCardOpen { border-color: rgba(255,255,255,.22); background: rgba(255,255,255,.05); }
+.sectionCardHead { display: flex; align-items: stretch; }
+.sectionCardSwitch { display: inline-flex; align-items: center; padding: 0 .1rem 0 .95rem; cursor: pointer; }
+.sectionCardSwitch input { width: 18px; height: 18px; accent-color: #ff7a21; cursor: pointer; }
+.sectionCardTrigger { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .85rem .95rem; background: transparent; border: 0; color: #f7f5ef; font: inherit; text-align: left; cursor: pointer; }
+.sectionCardTitle { display: inline-flex; align-items: center; gap: .55rem; min-width: 0; font-size: .95rem; font-weight: 700; }
+.sectionCardState { flex: none; font-size: .62rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 2px 7px; border-radius: 999px; background: rgba(255,255,255,.1); color: #9ca8b8; }
+.sectionCardStateOn { background: rgba(255,122,33,.18); color: #ffb27a; }
+.sectionCardChevron { flex: none; color: #9ca8b8; font-size: .8rem; transition: transform .18s ease; }
+.sectionCardOpen .sectionCardChevron { transform: rotate(180deg); }
+.sectionCardTrigger:focus-visible { outline: 2px solid #ff9b54; outline-offset: -2px; border-radius: 8px; }
+.sectionCardBody { display: grid; gap: .9rem; padding: .9rem 1rem 1rem; border-top: 1px solid rgba(255,255,255,.1); }
+.sectionCardDesc { margin: 0; color: #9ca8b8; font-size: .8rem; line-height: 1.45; }
+.srOnly { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+@media (prefers-reduced-motion: reduce) { .sectionCardChevron { transition: none; } }
 .toggleRow { display: flex; align-items: flex-start; gap: .75rem; color: #f7f5ef; cursor: pointer; }
 .toggleRow input { width: 18px; height: 18px; margin-top: .15rem; accent-color: #ff7a21; }
 .toggleRow span { display: grid; gap: .2rem; }
