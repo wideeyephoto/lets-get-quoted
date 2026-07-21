@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useTransition } from 'react';
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, type NormalizedSiteContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteShowcaseContent, type SiteStickyCallBarContent, type SiteTestimonialsContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, type NormalizedSiteContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import { checkSubdomainAvailableAction, generateSiteTextAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
 import ImageLibrary from './ImageLibrary';
@@ -69,6 +69,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   // (e.g. "4.9") isn't clobbered by re-normalization on every keystroke.
   const [ratingInput, setRatingInput] = useState(() => String(getSiteContent(initialSite.content).ratingBadge.rating));
   const [reviewCountInput, setReviewCountInput] = useState(() => String(getSiteContent(initialSite.content).ratingBadge.reviewCount));
+  const [monthlyFromInput, setMonthlyFromInput] = useState(() => String(getSiteContent(initialSite.content).financing.monthlyFrom));
   const [isPending, startTransition] = useTransition();
   const galleryImages = getSiteGallery(site.content);
   const siteContent = getSiteContent(site.content);
@@ -221,6 +222,18 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
   const updateRatingBadge = useCallback((ratingBadge: SiteRatingBadgeContent) => {
     updateSiteContent({ ratingBadge });
+  }, [updateSiteContent]);
+
+  const updateTrustBadges = useCallback((trustBadges: SiteTrustBadgesContent) => {
+    updateSiteContent({ trustBadges });
+  }, [updateSiteContent]);
+
+  const updateFinancing = useCallback((financing: SiteFinancingContent) => {
+    updateSiteContent({ financing });
+  }, [updateSiteContent]);
+
+  const updateServiceAreas = useCallback((serviceAreas: SiteServiceAreasContent) => {
+    updateSiteContent({ serviceAreas });
   }, [updateSiteContent]);
 
   const toggleShowcaseImage = useCallback((image: SiteImage) => {
@@ -509,6 +522,44 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     <label className={styles.formField}><span>Number of reviews</span><input type="number" min={0} step={1} value={reviewCountInput} onChange={(event) => { const raw = event.target.value; setReviewCountInput(raw); if (raw !== '') updateRatingBadge({ ...siteContent.ratingBadge, reviewCount: Number(raw) }); }} onBlur={() => setReviewCountInput(String(siteContent.ratingBadge.reviewCount))} /></label>
                   </div>
                   <label className={styles.formField}><span>Source label</span><input value={siteContent.ratingBadge.sourceLabel} onChange={(event) => updateRatingBadge({ ...siteContent.ratingBadge, sourceLabel: event.target.value })} placeholder="Google reviews" /></label>
+                </div>
+
+                <div className={styles.contentCard}>
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.trustBadges.enabled} onChange={(event) => updateTrustBadges({ ...siteContent.trustBadges, enabled: event.target.checked })} /><span><strong>Trust badges</strong><small>A row of reassurance chips (Licensed, Insured, Bonded…) on your public site. Toggle the ones that apply and edit the labels.</small></span></label>
+                  <div className={styles.stackList}>
+                    {siteContent.trustBadges.badges.map((badge) => (
+                      <div className={styles.stackItem} key={badge.id}>
+                        <div className={styles.itemHeader}><strong>{badge.label || 'Badge'}</strong><button type="button" onClick={() => updateTrustBadges({ ...siteContent.trustBadges, badges: siteContent.trustBadges.badges.filter((item) => item.id !== badge.id) })}>Remove</button></div>
+                        <label className={styles.formField}><span>Label</span><input value={badge.label} onChange={(event) => updateTrustBadges({ ...siteContent.trustBadges, badges: siteContent.trustBadges.badges.map((item) => item.id === badge.id ? { ...item, label: event.target.value } : item) })} /></label>
+                        <label className={styles.toggleRow}><input type="checkbox" checked={badge.enabled} onChange={(event) => updateTrustBadges({ ...siteContent.trustBadges, badges: siteContent.trustBadges.badges.map((item) => item.id === badge.id ? { ...item, enabled: event.target.checked } : item) })} /><span><strong>Show this badge</strong></span></label>
+                      </div>
+                    ))}
+                  </div>
+                  <button type="button" className={styles.secondaryAction} onClick={() => updateTrustBadges({ ...siteContent.trustBadges, enabled: true, badges: [...siteContent.trustBadges.badges, { id: createContentId('badge'), label: '', enabled: true }] })}>Add badge</button>
+                </div>
+
+                <div className={styles.contentCard}>
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.financing.enabled} onChange={(event) => updateFinancing({ ...siteContent.financing, enabled: event.target.checked })} /><span><strong>Financing callout</strong><small>Reframe the price — show &quot;Projects from $X/mo&quot; so sticker shock doesn&apos;t kill the lead. Only appears once the monthly amount is set.</small></span></label>
+                  <div className={styles.formColumns}>
+                    <label className={styles.formField}><span>From ($/month)</span><input type="number" min={0} step={1} value={monthlyFromInput} onChange={(event) => { const raw = event.target.value; setMonthlyFromInput(raw); if (raw !== '') updateFinancing({ ...siteContent.financing, monthlyFrom: Number(raw) }); }} onBlur={() => setMonthlyFromInput(String(siteContent.financing.monthlyFrom))} /></label>
+                    <label className={styles.formField}><span>Apply link (optional)</span><input type="url" value={siteContent.financing.applyUrl} onChange={(event) => updateFinancing({ ...siteContent.financing, applyUrl: event.target.value })} placeholder="https://..." /></label>
+                  </div>
+                  <label className={styles.formField}><span>Supporting line</span><input value={siteContent.financing.blurb} onChange={(event) => updateFinancing({ ...siteContent.financing, blurb: event.target.value })} placeholder="Flexible financing available on approved credit." /></label>
+                </div>
+
+                <div className={styles.contentCard}>
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.serviceAreas.enabled} onChange={(event) => updateServiceAreas({ ...siteContent.serviceAreas, enabled: event.target.checked })} /><span><strong>Service-area cities</strong><small>List the towns and neighborhoods you cover. The names become on-page keywords that help you rank for &quot;[trade] in [city]&quot; searches — and reassure homeowners you serve their area.</small></span></label>
+                  <label className={styles.formField}><span>Section title</span><input value={siteContent.serviceAreas.title} onChange={(event) => updateServiceAreas({ ...siteContent.serviceAreas, title: event.target.value })} /></label>
+                  <label className={styles.formField}><span>Intro copy</span><input value={siteContent.serviceAreas.intro} onChange={(event) => updateServiceAreas({ ...siteContent.serviceAreas, intro: event.target.value })} /></label>
+                  <div className={styles.stackList}>
+                    {siteContent.serviceAreas.cities.map((city, index) => (
+                      <div className={styles.stackItem} key={index}>
+                        <div className={styles.itemHeader}><strong>City {index + 1}</strong><button type="button" onClick={() => updateServiceAreas({ ...siteContent.serviceAreas, cities: siteContent.serviceAreas.cities.filter((_, itemIndex) => itemIndex !== index) })}>Remove</button></div>
+                        <label className={styles.formField}><span>Name</span><input value={city} onChange={(event) => updateServiceAreas({ ...siteContent.serviceAreas, cities: siteContent.serviceAreas.cities.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} placeholder="e.g. Riverton" /></label>
+                      </div>
+                    ))}
+                  </div>
+                  <button type="button" className={styles.secondaryAction} onClick={() => updateServiceAreas({ ...siteContent.serviceAreas, enabled: true, cities: [...siteContent.serviceAreas.cities, ''] })}>Add city</button>
                 </div>
 
                 <div className={styles.integrationCard}>

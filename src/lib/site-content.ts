@@ -57,6 +57,31 @@ export type SiteRatingBadgeContent = {
   sourceLabel: string;
 };
 
+export type SiteTrustBadgeItem = {
+  id: string;
+  label: string;
+  enabled: boolean;
+};
+
+export type SiteTrustBadgesContent = {
+  enabled: boolean;
+  badges: SiteTrustBadgeItem[];
+};
+
+export type SiteFinancingContent = {
+  enabled: boolean;
+  monthlyFrom: number;
+  blurb: string;
+  applyUrl: string;
+};
+
+export type SiteServiceAreasContent = {
+  enabled: boolean;
+  title: string;
+  intro: string;
+  cities: string[];
+};
+
 export type SiteQuoteFormContent = {
   emailRequired: boolean;
   // Controls the wording used on the quote-request call-to-action ('Quick Estimate'
@@ -122,12 +147,26 @@ export type NormalizedSiteContent = {
   estimateRanges: SiteEstimateRangesContent;
   stickyCallBar: SiteStickyCallBarContent;
   ratingBadge: SiteRatingBadgeContent;
+  trustBadges: SiteTrustBadgesContent;
+  financing: SiteFinancingContent;
+  serviceAreas: SiteServiceAreasContent;
 };
 
 export const DEFAULT_SHOWCASE_TITLE = 'Project showcase';
 export const DEFAULT_FAQ_TITLE = 'Frequently asked questions';
 export const DEFAULT_TESTIMONIALS_TITLE = 'What homeowners say';
 export const DEFAULT_RATING_SOURCE_LABEL = 'Verified reviews';
+export const DEFAULT_FINANCING_BLURB = 'Flexible financing available on approved credit.';
+export const DEFAULT_SERVICE_AREAS_TITLE = 'Areas we serve';
+export const DEFAULT_SERVICE_AREAS_INTRO = 'Proudly serving homeowners across the region.';
+
+export const DEFAULT_TRUST_BADGES: SiteTrustBadgeItem[] = [
+  { id: 'licensed', label: 'Licensed', enabled: true },
+  { id: 'insured', label: 'Insured', enabled: true },
+  { id: 'bonded', label: 'Bonded', enabled: true },
+  { id: 'free-estimates', label: 'Free estimates', enabled: true },
+  { id: 'guaranteed', label: 'Satisfaction guaranteed', enabled: true },
+];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -214,6 +253,23 @@ function parseTestimonials(value: unknown): SiteTestimonialItem[] {
   }));
 }
 
+function parseTrustBadges(value: unknown): SiteTrustBadgeItem[] {
+  if (!Array.isArray(value)) return DEFAULT_TRUST_BADGES.map((badge) => ({ ...badge }));
+
+  return value.filter(isRecord).map((item, index) => ({
+    id: toString(item.id, `badge-${index + 1}`),
+    label: toString(item.label),
+    enabled: item.enabled !== false,
+  }));
+}
+
+function parseCities(value: unknown): string[] {
+  // Keep empty strings so a just-added blank input survives re-render while
+  // editing (getPublishedServiceAreas filters empties for the public site).
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => toString(item)).slice(0, 80);
+}
+
 export function getSiteContent(content: Record<string, unknown> | null | undefined): NormalizedSiteContent {
   const root = isRecord(content) ? content : {};
   const showcase = isRecord(root.showcase) ? root.showcase : {};
@@ -223,6 +279,9 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const estimateRanges = isRecord(root.estimateRanges) ? root.estimateRanges : {};
   const stickyCallBar = isRecord(root.stickyCallBar) ? root.stickyCallBar : {};
   const ratingBadge = isRecord(root.ratingBadge) ? root.ratingBadge : {};
+  const trustBadges = isRecord(root.trustBadges) ? root.trustBadges : {};
+  const financing = isRecord(root.financing) ? root.financing : {};
+  const serviceAreas = isRecord(root.serviceAreas) ? root.serviceAreas : {};
 
   return {
     showcase: {
@@ -265,6 +324,22 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       economicalMultiplier: toPositiveNumber(estimateRanges.economicalMultiplier, DEFAULT_ESTIMATE_RANGES.economicalMultiplier),
       premiumMultiplier: toPositiveNumber(estimateRanges.premiumMultiplier, DEFAULT_ESTIMATE_RANGES.premiumMultiplier),
     },
+    trustBadges: {
+      enabled: toBoolean(trustBadges.enabled),
+      badges: parseTrustBadges(trustBadges.badges),
+    },
+    financing: {
+      enabled: toBoolean(financing.enabled),
+      monthlyFrom: Math.max(0, Math.round(toPositiveNumber(financing.monthlyFrom, 0))),
+      blurb: toString(financing.blurb, DEFAULT_FINANCING_BLURB),
+      applyUrl: toString(financing.applyUrl),
+    },
+    serviceAreas: {
+      enabled: toBoolean(serviceAreas.enabled),
+      title: toString(serviceAreas.title, DEFAULT_SERVICE_AREAS_TITLE),
+      intro: toString(serviceAreas.intro, DEFAULT_SERVICE_AREAS_INTRO),
+      cities: parseCities(serviceAreas.cities),
+    },
   };
 }
 
@@ -304,4 +379,21 @@ export function getPublishedStickyCallBar(
 export function getPublishedRatingBadge(content: Record<string, unknown> | null | undefined): SiteRatingBadgeContent | null {
   const ratingBadge = getSiteContent(content).ratingBadge;
   return ratingBadge.enabled && ratingBadge.reviewCount > 0 ? ratingBadge : null;
+}
+
+export function getPublishedTrustBadges(content: Record<string, unknown> | null | undefined): SiteTrustBadgesContent | null {
+  const trustBadges = getSiteContent(content).trustBadges;
+  const badges = trustBadges.badges.filter((badge) => badge.enabled && badge.label.trim());
+  return trustBadges.enabled && badges.length > 0 ? { ...trustBadges, badges } : null;
+}
+
+export function getPublishedFinancing(content: Record<string, unknown> | null | undefined): SiteFinancingContent | null {
+  const financing = getSiteContent(content).financing;
+  return financing.enabled && financing.monthlyFrom > 0 ? financing : null;
+}
+
+export function getPublishedServiceAreas(content: Record<string, unknown> | null | undefined): SiteServiceAreasContent | null {
+  const serviceAreas = getSiteContent(content).serviceAreas;
+  const cities = serviceAreas.cities.map((city) => city.trim()).filter(Boolean);
+  return serviceAreas.enabled && cities.length > 0 ? { ...serviceAreas, cities } : null;
 }

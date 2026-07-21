@@ -1,10 +1,13 @@
 import type { Site } from '@/lib/sites';
 import {
   getPublishedFaqs,
+  getPublishedFinancing,
   getPublishedRatingBadge,
+  getPublishedServiceAreas,
   getPublishedShowcase,
   getPublishedStickyCallBar,
   getPublishedTestimonials,
+  getPublishedTrustBadges,
 } from '@/lib/site-content';
 import styles from './themes.module.css';
 
@@ -12,16 +15,30 @@ type SiteContentSectionsProps = {
   site: Site;
 };
 
+function formatMoney(value: number): string {
+  return `$${value.toLocaleString('en-US')}`;
+}
+
 export default function SiteContentSections({ site }: SiteContentSectionsProps) {
   const showcase = getPublishedShowcase(site.content);
   const testimonials = getPublishedTestimonials(site.content);
   const faqs = getPublishedFaqs(site.content);
   const ratingBadge = getPublishedRatingBadge(site.content);
+  const trustBadges = getPublishedTrustBadges(site.content);
+  const financing = getPublishedFinancing(site.content);
+  const serviceAreas = getPublishedServiceAreas(site.content);
   const stickyCallBar = getPublishedStickyCallBar(site.content, site.phone);
 
-  const hasInFlowSections = Boolean(showcase || testimonials || faqs);
+  const hasInFlowSections = Boolean(showcase || testimonials || faqs || serviceAreas);
+  const hasTrustCluster = Boolean(ratingBadge || trustBadges || financing);
 
-  if (!hasInFlowSections && !ratingBadge && !stickyCallBar) return null;
+  if (!hasInFlowSections && !hasTrustCluster && !stickyCallBar) return null;
+
+  // Only ever render an outbound apply link for an explicit https URL — never a
+  // contractor-typed javascript:/data: string. Trim + case-insensitive scheme so
+  // a valid "HTTPS://" isn't silently dropped.
+  const rawApplyUrl = financing ? financing.applyUrl.trim() : '';
+  const financingApplyUrl = /^https:\/\//i.test(rawApplyUrl) ? rawApplyUrl : '';
 
   // NOTE: no aggregateRating/Review JSON-LD is emitted here. Google's policy
   // disallows self-serving review structured data on a LocalBusiness (owner-
@@ -38,6 +55,31 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
           <div className={styles.ratingStars} aria-hidden="true">{'★'.repeat(roundedRating)}{'☆'.repeat(5 - roundedRating)}</div>
           <p className={styles.ratingValue}>{ratingBadge.rating.toFixed(1)}</p>
           <p className={styles.ratingMeta}>from {ratingBadge.reviewCount} {ratingBadge.sourceLabel}</p>
+        </section>
+      )}
+
+      {trustBadges && (
+        <section className={styles.trustBadges} aria-label="Credentials">
+          <ul className={styles.trustBadgeList}>
+            {trustBadges.badges.map((badge) => (
+              <li key={badge.id} className={styles.trustChip}>
+                <span className={styles.trustChipMark} aria-hidden="true">✓</span>
+                {badge.label}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {financing && (
+        <section className={styles.financing} aria-label="Financing">
+          <div className={styles.financingInner}>
+            <p className={styles.financingLead}>Projects from <strong>{formatMoney(financing.monthlyFrom)}/mo</strong></p>
+            {financing.blurb && <p className={styles.financingBlurb}>{financing.blurb}</p>}
+            {financingApplyUrl && (
+              <a className={styles.financingApply} href={financingApplyUrl} target="_blank" rel="noopener noreferrer nofollow">Check your rate</a>
+            )}
+          </div>
         </section>
       )}
 
@@ -94,6 +136,21 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
                   </details>
                 ))}
               </div>
+            </section>
+          )}
+
+          {serviceAreas && (
+            <section className={styles.extraSection} id="areas">
+              <div className={styles.extraSectionHeader}>
+                <p className={styles.kicker}>Service area</p>
+                <h2>{serviceAreas.title}</h2>
+                {serviceAreas.intro && <p>{serviceAreas.intro}</p>}
+              </div>
+              <ul className={styles.serviceAreaList}>
+                {serviceAreas.cities.map((city, index) => (
+                  <li key={`${city}-${index}`} className={styles.serviceAreaChip}>{city}</li>
+                ))}
+              </ul>
             </section>
           )}
         </div>

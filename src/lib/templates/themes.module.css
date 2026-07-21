@@ -81,6 +81,26 @@
 .ratingBadge .ratingValue { margin: 0; font-family: var(--theme-display); font-size: clamp(2rem, 5vw, 2.8rem); line-height: 1; font-weight: 800; }
 .ratingBadge .ratingMeta { margin: 0; font-size: .82rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: color-mix(in srgb, currentColor 70%, transparent); }
 
+/* Service-area city list (toggleable) */
+.serviceAreaList { display: flex; flex-wrap: wrap; gap: .55rem .6rem; margin: 0; padding: 0; list-style: none; max-width: 960px; }
+.serviceAreaChip { padding: .5rem .95rem; border: 1px solid color-mix(in srgb, currentColor 16%, transparent); border-radius: 999px; font-size: .9rem; font-weight: 600; }
+
+/* Trust-badge chip strip (toggleable) */
+.trustBadges { padding: clamp(1.75rem, 3.5vw, 2.75rem) 5vw; border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); background: color-mix(in srgb, currentColor 4%, transparent); }
+.trustBadgeList { display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem .7rem; margin: 0; padding: 0; list-style: none; }
+.trustChip { display: inline-flex; align-items: center; gap: .45rem; padding: .5rem .95rem; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 999px; font-size: .85rem; font-weight: 700; }
+.trustChipMark { display: inline-flex; align-items: center; justify-content: center; width: 1.15rem; height: 1.15rem; border-radius: 50%; background: var(--theme-accent); color: #14110b; font-size: .72rem; font-weight: 900; }
+
+/* Financing callout (toggleable) */
+.financing { padding: clamp(1.75rem, 3.5vw, 2.75rem) 5vw; border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); background: color-mix(in srgb, currentColor 4%, transparent); }
+.financingInner { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .5rem 1.25rem; max-width: 880px; margin: 0 auto; text-align: center; }
+.financing .financingLead { margin: 0; font-family: var(--theme-display); font-size: clamp(1.4rem, 3.5vw, 2rem); line-height: 1.1; }
+/* Price stays full-contrast currentColor (bold carries the emphasis) — accent
+   text on the near-white callout background fails contrast on light templates. */
+.financing .financingLead strong { font-weight: 800; }
+.financing .financingBlurb { margin: 0; color: color-mix(in srgb, currentColor 72%, transparent); font-size: .92rem; }
+.financing .financingApply { display: inline-flex; align-items: center; min-height: 44px; padding: .6rem 1.15rem; border-radius: var(--theme-radius, 6px); background: var(--theme-accent); color: #14110b; font-weight: 800; font-size: .88rem; }
+
 /* Sticky mobile call / quote bar (toggleable) */
 .stickyCallBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: flex; gap: .5rem; padding: .55rem .7rem calc(.55rem + env(safe-area-inset-bottom, 0px)); background: #16130e; border-top: 1px solid rgba(255,255,255,.14); box-shadow: 0 -10px 26px -14px rgba(0,0,0,.65); }
 .stickyCallBar a { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: .45rem; min-height: 48px; border-radius: var(--theme-radius, 6px); font-weight: 800; font-size: .92rem; }
