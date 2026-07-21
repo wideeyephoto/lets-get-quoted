@@ -157,8 +157,8 @@
 .vistaMenu { justify-self: end; display: grid; width: 42px; aspect-ratio: 1; place-items: center; border: 1px solid #111; border-radius: 50%; font-size: 1.2rem; }
 .vistaHero { position: relative; min-height: min(820px, calc(100svh - 82px)); margin: 0 1.5vw; overflow: hidden; background: #222; color: white; }
 .vistaHero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.62), transparent 65%); }
-.vistaHeroCopy { position: absolute; z-index: 1; left: 4vw; bottom: 8vh; max-width: 760px; }
-.vistaHeroCopy h1 { margin-bottom: 1.2rem; font-family: var(--theme-display); font-size: 8rem; line-height: .82; text-transform: uppercase; }
+.vistaHeroCopy { position: absolute; z-index: 1; left: 4vw; right: 4vw; top: 6vh; bottom: 6vh; max-width: 760px; display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
+.vistaHeroCopy h1 { margin-bottom: 1.2rem; font-family: var(--theme-display); font-size: clamp(2.75rem, 7vw, 6.5rem); line-height: .85; text-transform: uppercase; }
 .vistaHeroCopy > p:last-child { max-width: 32rem; font-size: 1.08rem; line-height: 1.55; }
 .vistaScroll { position: absolute; z-index: 1; right: 3vw; bottom: 4vh; font-size: .8rem; font-weight: 800; text-transform: uppercase; }
 .vistaStatement { padding: clamp(6rem, 12vw, 12rem) 6vw; }
@@ -210,7 +210,7 @@
   .guildIntro h2, .guildWork h2, .guildContact h2 { font-size: 2.75rem; }
   .guildGallery img { aspect-ratio: 4 / 3; }
   .vistaHero { margin: 0; min-height: 75svh; }
-  .vistaHeroCopy { left: 1.25rem; right: 1.25rem; bottom: 4rem; }
+  .vistaHeroCopy { left: 1.25rem; right: 1.25rem; top: 1.5rem; bottom: 4rem; }
   .vistaHeroCopy h1 { font-size: 3.25rem; line-height: .9; overflow-wrap: normal; }
   .vistaScroll { display: none; }
   .vistaStatement { padding-inline: 1.25rem; }
