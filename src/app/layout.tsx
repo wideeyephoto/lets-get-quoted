@@ -1,9 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import {
-  Anton, Baloo_2, Barlow, Bebas_Neue, Bitter, Chakra_Petch, Comfortaa, Cormorant_Garamond,
-  Fraunces, IBM_Plex_Sans, Inter, JetBrains_Mono, Josefin_Sans, Karla, Libre_Baskerville,
-  Manrope, Nunito, Oswald, Playfair_Display, Poppins, Rajdhani, Sora, Space_Grotesk, Work_Sans,
-} from 'next/font/google';
+import { Anton, Barlow, Fraunces, IBM_Plex_Sans, Inter, JetBrains_Mono, Space_Grotesk, Work_Sans } from 'next/font/google';
 import { headers } from 'next/headers';
 import type { ReactNode } from 'react';
 import { AppShell } from '@/components/app-shell';
@@ -61,115 +57,6 @@ const vistaBodyFont = Inter({
   weight: ['400', '500', '600'],
 });
 
-// 17 more template webfont pairings (20 templates total). Several templates
-// intentionally share a body/display font with a sibling in the same visual
-// family — differentiated by color, radius, and layout, not typography alone.
-const havenDisplayFont = Cormorant_Garamond({
-  subsets: ['latin'],
-  variable: '--font-haven-display',
-  weight: ['400', '600'],
-});
-
-const havenBodyFont = Manrope({
-  subsets: ['latin'],
-  variable: '--font-haven-body',
-  weight: ['400', '500', '600'],
-});
-
-const lumenDisplayFont = Poppins({
-  subsets: ['latin'],
-  variable: '--font-lumen-display',
-  weight: ['400', '500', '600'],
-});
-
-const lumenBodyFont = Karla({
-  subsets: ['latin'],
-  variable: '--font-lumen-body',
-  weight: ['400', '500', '700'],
-});
-
-const atlasDisplayFont = Sora({
-  subsets: ['latin'],
-  variable: '--font-atlas-display',
-  weight: ['400', '600', '700'],
-});
-
-const circuitDisplayFont = Chakra_Petch({
-  subsets: ['latin'],
-  variable: '--font-circuit-display',
-  weight: ['400', '600', '700'],
-});
-
-const anchorDisplayFont = Libre_Baskerville({
-  subsets: ['latin'],
-  variable: '--font-anchor-display',
-  weight: ['400', '700'],
-});
-
-const foundryDisplayFont = Oswald({
-  subsets: ['latin'],
-  variable: '--font-foundry-display',
-  weight: ['400', '500', '700'],
-});
-
-const ironcladDisplayFont = Bebas_Neue({
-  subsets: ['latin'],
-  variable: '--font-ironclad-display',
-  weight: '400',
-});
-
-const beaconDisplayFont = Baloo_2({
-  subsets: ['latin'],
-  variable: '--font-beacon-display',
-  weight: ['500', '700'],
-});
-
-const beaconBodyFont = Nunito({
-  subsets: ['latin'],
-  variable: '--font-beacon-body',
-  weight: ['400', '600', '700'],
-});
-
-const timberDisplayFont = Bitter({
-  subsets: ['latin'],
-  variable: '--font-timber-display',
-  weight: ['400', '600', '700'],
-});
-
-const heritageDisplayFont = Playfair_Display({
-  subsets: ['latin'],
-  variable: '--font-heritage-display',
-  weight: ['400', '600', '700'],
-});
-
-const bloomDisplayFont = Comfortaa({
-  subsets: ['latin'],
-  variable: '--font-bloom-display',
-  weight: ['400', '600', '700'],
-});
-
-const novaDisplayFont = Rajdhani({
-  subsets: ['latin'],
-  variable: '--font-nova-display',
-  weight: ['500', '600', '700'],
-});
-
-const driftDisplayFont = Josefin_Sans({
-  subsets: ['latin'],
-  variable: '--font-drift-display',
-  weight: ['400', '500', '600'],
-});
-
-const templateFontVariables = [
-  havenDisplayFont.variable, havenBodyFont.variable,
-  lumenDisplayFont.variable, lumenBodyFont.variable,
-  atlasDisplayFont.variable, circuitDisplayFont.variable, anchorDisplayFont.variable,
-  foundryDisplayFont.variable, ironcladDisplayFont.variable,
-  beaconDisplayFont.variable, beaconBodyFont.variable,
-  timberDisplayFont.variable, heritageDisplayFont.variable,
-  bloomDisplayFont.variable, novaDisplayFont.variable, driftDisplayFont.variable,
-].join(' ');
-
 const SITE_URL = 'https://letsgetquoted.com';
 
 export const metadata: Metadata = {
@@ -207,7 +94,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
   return (
     <html lang="en">
-      <body className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} ${forgeDisplayFont.variable} ${forgeBodyFont.variable} ${guildDisplayFont.variable} ${guildBodyFont.variable} ${vistaBodyFont.variable} ${templateFontVariables}`}>
+      <body className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} ${forgeDisplayFont.variable} ${forgeBodyFont.variable} ${guildDisplayFont.variable} ${guildBodyFont.variable} ${vistaBodyFont.variable}`}>
         <AppShellProvider>
           <AppShell forceStandaloneSite={isStandaloneSite}>{children}</AppShell>
         </AppShellProvider>

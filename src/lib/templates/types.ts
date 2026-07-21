@@ -30,8 +30,12 @@ export function registerTemplate(id: string, component: TemplateComponent) {
   templates[id] = component;
 }
 
+// Fall back to Forge for any unknown/retired template id so an existing site
+// that had picked a legacy template keeps rendering instead of 404-ing.
+const FALLBACK_TEMPLATE_ID = 'carbon';
+
 export function getTemplate(templateId: string): TemplateComponent | null {
-  return templates[templateId] ?? null;
+  return templates[templateId] ?? templates[FALLBACK_TEMPLATE_ID] ?? null;
 }
 
 export const AVAILABLE_TEMPLATES: TemplateConfig[] = [

@@ -1,10 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-export type TemplateType =
-  | 'carbon' | 'professional' | 'modern' | 'minimal'
-  | 'atlas' | 'summit' | 'meridian' | 'beacon' | 'foundry' | 'lumen'
-  | 'anchor' | 'timber' | 'circuit' | 'cascade' | 'ironclad' | 'bloom'
-  | 'blueprint' | 'nova' | 'heritage' | 'drift';
+// The 3 curated templates. Legacy sites may still hold a retired id in the DB;
+// getTemplate falls those back to Forge, so this narrow type is safe.
+export type TemplateType = 'carbon' | 'professional' | 'modern';
 export type PortalMode = 'light' | 'dark';
 
 export type Site = {

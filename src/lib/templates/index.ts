@@ -2,44 +2,12 @@ import { registerTemplate, getTemplate } from './types';
 import ForgeTemplate from './forge';
 import GuildTemplate from './professional';
 import VistaTemplate from './modern';
-import HavenTemplate from './minimal';
-import MeridianTemplate from './meridian';
-import BlueprintTemplate from './blueprint';
-import LumenTemplate from './lumen';
-import AtlasTemplate from './atlas';
-import CircuitTemplate from './circuit';
-import CascadeTemplate from './cascade';
-import AnchorTemplate from './anchor';
-import FoundryTemplate from './foundry';
-import IroncladTemplate from './ironclad';
-import SummitTemplate from './summit';
-import BeaconTemplate from './beacon';
-import TimberTemplate from './timber';
-import HeritageTemplate from './heritage';
-import BloomTemplate from './bloom';
-import DriftTemplate from './drift';
-import NovaTemplate from './nova';
 
-// Register all available templates
+// Only the 3 curated templates are offered and maintained. Any legacy template
+// id stored on an existing site falls back to Forge via getTemplate (see
+// ./types), so no published site ever 404s.
 registerTemplate('carbon', ForgeTemplate);
 registerTemplate('professional', GuildTemplate);
 registerTemplate('modern', VistaTemplate);
-registerTemplate('minimal', HavenTemplate);
-registerTemplate('meridian', MeridianTemplate);
-registerTemplate('blueprint', BlueprintTemplate);
-registerTemplate('lumen', LumenTemplate);
-registerTemplate('atlas', AtlasTemplate);
-registerTemplate('circuit', CircuitTemplate);
-registerTemplate('cascade', CascadeTemplate);
-registerTemplate('anchor', AnchorTemplate);
-registerTemplate('foundry', FoundryTemplate);
-registerTemplate('ironclad', IroncladTemplate);
-registerTemplate('summit', SummitTemplate);
-registerTemplate('beacon', BeaconTemplate);
-registerTemplate('timber', TimberTemplate);
-registerTemplate('heritage', HeritageTemplate);
-registerTemplate('bloom', BloomTemplate);
-registerTemplate('drift', DriftTemplate);
-registerTemplate('nova', NovaTemplate);
 
 export { getTemplate };
