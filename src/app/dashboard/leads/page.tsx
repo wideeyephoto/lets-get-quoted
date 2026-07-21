@@ -23,7 +23,7 @@ function responseLabel(lead: Lead) {
   return 'Lost';
 }
 
-export default async function LeadsPage() {
+export default async function LeadsPage({ searchParams }: { searchParams: { add?: string } }) {
   const { supabase, accountId } = await requireOwnerContext();
   await expireStaleLeads(supabase, accountId);
   const leads = await listLeads(supabase, accountId);
@@ -36,23 +36,29 @@ export default async function LeadsPage() {
     <main className="wide-shell workspace-shell">
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading"><p className="eyebrow">Pipeline</p><h2>Current leads</h2></div>
-        {leads.length === 0 ? <p className="empty-state">No leads yet. Published website requests will appear here.</p> : (
+        <div className="actions" style={{ marginBottom: '1rem' }}>
+          <Link href="/dashboard/leads?add=1#add-lead" className="btn primary">+ Add lead</Link>
+        </div>
+        {leads.length === 0 ? <p className="empty-state">No leads yet. Website requests will appear here — or <Link href="/dashboard/leads?add=1#add-lead">add a lead manually</Link>.</p> : (
           <div className={styles.board}>
             {COLUMNS.map((column) => {
               const columnLeads = leads.filter((lead) => lead.status === column.status);
               return <section className={`${styles.column} ${styles[`col_${column.status}`]}`} key={column.status}><header className={styles.columnHeader}><h2>{column.status === 'new' ? 'Needs response' : column.label}</h2><span>{columnLeads.length}</span></header><div className={styles.cards}>{columnLeads.map((lead) => {
                 const isUrgent = lead.status === 'new' && lead.source === 'website_form';
                 return (
-                  <Link className={`${styles.leadCard}${isUrgent ? ` ${styles.urgentCard}` : ''}`} href={`/dashboard/leads/${lead.id}`} key={lead.id}>
-                    <div className={styles.cardTopline}><strong>{lead.name || 'Unnamed request'}</strong><span className={isUrgent ? styles.needsBadge : styles.statusBadge}>{responseLabel(lead)}</span></div>
-                    <p>{lead.project_type || lead.message || 'Project details not provided'}</p>
-                    <div className={styles.cardMetaGrid}>
-                      <span>{formatLeadSource(lead.source)}</span>
-                      <span>Estimated hours: {lead.estimated_hours ? `${lead.estimated_hours} hrs` : 'Not set'}</span>
-                      <time dateTime={lead.created_at}>Received {formatElapsedTime(lead.created_at)} ago</time>
-                    </div>
-                    {(lead.phone || lead.email) && <div className={styles.contactHint}>{lead.phone || lead.email}</div>}
-                  </Link>
+                  <div className={styles.leadCardWrap} key={lead.id}>
+                    <Link className={`${styles.leadCard}${isUrgent ? ` ${styles.urgentCard}` : ''}`} href={`/dashboard/leads/${lead.id}`}>
+                      <div className={styles.cardTopline}><strong>{lead.name || 'Unnamed request'}</strong><span className={isUrgent ? styles.needsBadge : styles.statusBadge}>{responseLabel(lead)}</span></div>
+                      <p>{lead.project_type || lead.message || 'Project details not provided'}</p>
+                      <div className={styles.cardMetaGrid}>
+                        <span>{formatLeadSource(lead.source)}</span>
+                        <span>Estimated hours: {lead.estimated_hours ? `${lead.estimated_hours} hrs` : 'Not set'}</span>
+                        <time dateTime={lead.created_at}>Received {formatElapsedTime(lead.created_at)} ago</time>
+                      </div>
+                      {(lead.phone || lead.email) && <div className={styles.contactHint}>{lead.phone || lead.email}</div>}
+                    </Link>
+                    {lead.converted_job ? <Link className={styles.openJobLink} href={`/dashboard/jobs/${lead.converted_job}`}>Open job →</Link> : null}
+                  </div>
                 );
               })}{columnLeads.length === 0 && <p className={styles.empty}>No leads here.</p>}</div></section>;
             })}
@@ -84,7 +90,7 @@ export default async function LeadsPage() {
       </div>
 
       <section className="panel workspace-section-card">
-        <details className="workspace-details" open={leads.length === 0}>
+        <details id="add-lead" className="workspace-details" open={leads.length === 0 || searchParams.add === '1'}>
           <summary className="workspace-details-summary">
             <span className="btn primary">+ Add manual lead</span>
             <span className="workspace-details-copy">Log a lead that came in by phone, in person, or referral.</span>

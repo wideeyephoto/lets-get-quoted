@@ -106,6 +106,10 @@
 .leadStatusActions form { margin: 0; }
 .leadStatusActionsLabel { font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; color: rgba(255,255,255,.42); font-weight: 800; margin-right: .1rem; }
 .leadStatusActions :global(.btn) { padding: .42rem .8rem; font-size: .82rem; }
+.leadCardWrap { display: flex; flex-direction: column; gap: .35rem; }
+.openJobLink { align-self: flex-start; padding: .28rem .6rem; border-radius: 6px; font-size: .76rem; font-weight: 800; color: #86efac; background: rgba(74,222,128,.12); border: 1px solid rgba(74,222,128,.28); text-decoration: none; }
+.openJobLink:hover { background: rgba(74,222,128,.2); }
+.contactWarn { color: #fca5a5; font-size: .74rem; }
 .contactGrid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
 .inlineEditDetails { padding-top: .2rem; }
 .inlineEditDetails summary { width: fit-content; list-style: none; cursor: pointer; }

@@ -12,6 +12,7 @@ import LeadAvailabilityScheduler from './LeadAvailabilityScheduler';
 import QuoteStartDateCalendar from './QuoteStartDateCalendar';
 import UndoQuoteButton from './UndoQuoteButton';
 import SaveButton, { ScrollTopOnSaveProvider } from '@/components/save-button';
+import QuickFillButtons from '@/components/quick-fill-buttons';
 import styles from '../leads.module.css';
 
 function extractCity(address: string | null): string {
@@ -270,6 +271,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
               ) : (
                 <strong>No email provided</strong>
               )}
+              {!lead.phone && lead.email ? <small className={styles.contactWarn}>Email-only — text tools won&apos;t reach this lead.</small> : null}
             </div>
             <div className={styles.heroContactItem}>
               <span>Project address</span>
@@ -313,6 +315,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           </div>
           <div className={styles.leadQuickActions}>
             {workflowState === 'newLead' ? <Link className="btn primary" href="#availability-snapshot">Schedule estimate</Link> : null}
+            {workflowState === 'newLead' ? <Link className="btn secondary" href="#lead-estimate">Skip to quote</Link> : null}
             {workflowState === 'estimateScheduled' ? <Link className="btn primary" href="#lead-estimate">Send the quote</Link> : null}
             {workflowState === 'estimateScheduled' ? <Link className="btn secondary" href="#availability-snapshot">Review scheduled estimate</Link> : null}
             {workflowState === 'converted' ? <Link className="btn primary" href={`/dashboard/jobs/${lead.converted_job}`}>{convertedJobLabel}</Link> : null}
@@ -462,6 +465,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                 </div>
                 <label htmlFor="estimatedHours">Estimated hours</label>
                 <input id="estimatedHours" name="estimatedHours" type="number" min="0" step="0.25" defaultValue={lead.estimated_hours ?? ''} placeholder="16" />
+                <QuickFillButtons label="Quick add:" targetId="estimatedHours" values={[{ label: '4 hrs', value: '4' }, { label: '8 hrs', value: '8' }, { label: '16 hrs', value: '16' }, { label: '24 hrs', value: '24' }, { label: '40 hrs', value: '40' }]} />
                 <label className={`sms-consent-check ${styles.quoteTextCheck}`}>
                   <input name="sendClientText" type="checkbox" defaultChecked />
                   <span>
