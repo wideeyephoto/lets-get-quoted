@@ -90,7 +90,9 @@ export async function POST(request: NextRequest) {
         model: 'gpt-4o-mini',
         temperature: 0,
         instructions,
-        input: previousResponseId ? answer : description,
+        // OpenAI requires the word "json" to appear in the input when using
+        // text.format: json_object — the instructions alone don't count.
+        input: `${previousResponseId ? answer : description}\n\nRespond with json only.`,
         previous_response_id: previousResponseId || undefined,
         text: { format: { type: 'json_object' } },
       }),
