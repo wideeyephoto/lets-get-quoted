@@ -4,7 +4,8 @@ import SignInMethods from './SignInMethods';
 import FinanceReports from './FinanceReports';
 import { getAvailableTaxYears, buildProfitAndLoss, buildScheduleCWorksheet, build1099PrepList } from '@/lib/tax-reports';
 import SaveButton from '@/components/save-button';
-import { updateScheduleDayHoursAction } from './actions';
+import DeleteAccountButton from './DeleteAccountButton';
+import { updateScheduleDayHoursAction, deleteAccountAction } from './actions';
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -129,6 +130,18 @@ export default async function SettingsPage({
             Log out
           </button>
         </form>
+      </section>
+
+      <section className="panel workspace-section-card danger-zone">
+        <div className="section-heading workspace-section-heading compact-heading">
+          <p className="eyebrow danger-zone-eyebrow">Danger zone</p>
+          <h2>Delete account</h2>
+        </div>
+        <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+          Permanently delete {businessName} and everything in it, and free your phone/email to use
+          on another account. This can&apos;t be undone.
+        </p>
+        <DeleteAccountButton action={deleteAccountAction} businessName={businessName} />
       </section>
     </main>
   );

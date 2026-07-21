@@ -3089,6 +3089,12 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .schedule-crew-notify-toggle input { accent-color: #19d6ae; }
 .schedule-crew-picker-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.6rem; }
 
+/* Account "Danger zone" — delete account */
+.danger-zone { border-color: rgba(220, 38, 38, 0.3); }
+.danger-zone-eyebrow { color: #f87171; }
+.delete-account-confirm { display: grid; gap: 0.5rem; max-width: 520px; }
+.delete-account-confirm label { font-size: 0.85rem; color: rgba(255,255,255,0.72); }
+
 /* Avatar-as-uploader: click the "+" badge to add/replace a crew photo. The
    badge sits OUTSIDE the circle (which is overflow:hidden), so it lives as a
    sibling on the positioned label wrapper. */
