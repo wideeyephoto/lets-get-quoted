@@ -533,12 +533,13 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 </SectionCard>
 
                 <SectionCard title="Trust badges" description="A row of reassurance chips (Licensed, Insured, Bonded…) on your public site. Toggle the ones that apply and edit the labels." enabled={siteContent.trustBadges.enabled} onToggleEnabled={(value) => updateTrustBadges({ ...siteContent.trustBadges, enabled: value })} open={openSection === 'trustBadges'} onToggleOpen={() => toggleSection('trustBadges')}>
-                  <div className={styles.stackList}>
+                  <p className={styles.fieldHint}>Check to show, uncheck to hide. Edit the label inline.</p>
+                  <div className={styles.badgeList}>
                     {siteContent.trustBadges.badges.map((badge) => (
-                      <div className={styles.stackItem} key={badge.id}>
-                        <div className={styles.itemHeader}><strong>{badge.label || 'Badge'}</strong><button type="button" onClick={() => updateTrustBadges({ ...siteContent.trustBadges, badges: siteContent.trustBadges.badges.filter((item) => item.id !== badge.id) })}>Remove</button></div>
-                        <label className={styles.formField}><span>Label</span><input value={badge.label} onChange={(event) => updateTrustBadges({ ...siteContent.trustBadges, badges: siteContent.trustBadges.badges.map((item) => item.id === badge.id ? { ...item, label: event.target.value } : item) })} /></label>
-                        <label className={styles.toggleRow}><input type="checkbox" checked={badge.enabled} onChange={(event) => updateTrustBadges({ ...siteContent.trustBadges, badges: siteContent.trustBadges.badges.map((item) => item.id === badge.id ? { ...item, enabled: event.target.checked } : item) })} /><span><strong>Show this badge</strong></span></label>
+                      <div className={styles.badgeRow} key={badge.id}>
+                        <input type="checkbox" checked={badge.enabled} onChange={(event) => updateTrustBadges({ ...siteContent.trustBadges, badges: siteContent.trustBadges.badges.map((item) => item.id === badge.id ? { ...item, enabled: event.target.checked } : item) })} aria-label={`Show ${badge.label || 'badge'}`} />
+                        <input className={`${styles.badgeInput}${badge.enabled ? '' : ` ${styles.badgeInputOff}`}`} value={badge.label} onChange={(event) => updateTrustBadges({ ...siteContent.trustBadges, badges: siteContent.trustBadges.badges.map((item) => item.id === badge.id ? { ...item, label: event.target.value } : item) })} placeholder="Badge label" />
+                        <button type="button" className={styles.badgeRemove} onClick={() => updateTrustBadges({ ...siteContent.trustBadges, badges: siteContent.trustBadges.badges.filter((item) => item.id !== badge.id) })} aria-label={`Remove ${badge.label || 'badge'}`}>×</button>
                       </div>
                     ))}
                   </div>

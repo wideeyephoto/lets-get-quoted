@@ -101,6 +101,17 @@
 .jobPhotoImport button { min-height: 38px; padding: .55rem .75rem; border: 1px solid rgba(255,255,255,.16); border-radius: 6px; background: rgba(255,255,255,.06); color: #f7f5ef; font-weight: 800; cursor: pointer; }
 .jobPhotoImport button:disabled { opacity: .55; cursor: default; }
 .emptyHelper { margin: 0; color: #9ca8b8; font-size: .82rem; }
+
+/* Compact toggle-and-label rows (trust badges) */
+.fieldHint { margin: 0; color: #9ca8b8; font-size: .78rem; line-height: 1.4; }
+.badgeList { display: grid; gap: .4rem; }
+.badgeRow { display: flex; align-items: center; gap: .6rem; }
+.badgeRow > input[type='checkbox'] { flex: none; width: 18px; height: 18px; accent-color: #ff7a21; cursor: pointer; }
+.badgeInput { flex: 1; min-width: 0; min-height: 40px; padding: .5rem .7rem; border: 1px solid rgba(255,255,255,.16); border-radius: 6px; background: rgba(255,255,255,.055); color: #f7f5ef; font-size: .85rem; }
+.badgeInput:focus { outline: none; border-color: #ff9b54; box-shadow: 0 0 0 3px rgba(255,122,33,.12); }
+.badgeInputOff { opacity: .5; }
+.badgeRemove { flex: none; width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.14); border-radius: 6px; background: transparent; color: #9ca8b8; font-size: 1.25rem; line-height: 1; cursor: pointer; }
+.badgeRemove:hover { color: #ff8a6a; border-color: rgba(255,138,106,.4); }
 .stackList { display: grid; gap: .8rem; }
 .stackItem { display: grid; gap: .75rem; padding: .85rem; border: 1px solid rgba(255,255,255,.1); border-radius: 7px; background: rgba(0,0,0,.18); }
 .itemHeader strong { font-size: .84rem; }
