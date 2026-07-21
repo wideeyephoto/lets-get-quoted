@@ -7,22 +7,33 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useAppShell } from './app-shell-provider';
 import { supabase } from '@/lib/supabase';
 
-const baseNavItems = [
+// Order follows the pipeline (Leads -> Jobs -> Schedule) with Crew, a resource,
+// after the stages instead of splitting them. `hint` surfaces the vocabulary
+// each stage owns (quotes/invoices/payments live inside Jobs) as a hover title.
+const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/', label: 'Home' },
   { href: '/dashboard', label: 'Dashboard' },
-  { href: '/dashboard/leads', label: 'Leads' },
-  { href: '/dashboard/jobs', label: 'Jobs' },
-  { href: '/dashboard/crew', label: 'Crew' },
-  { href: '/dashboard/schedule', label: 'Schedule' },
+  { href: '/dashboard/leads', label: 'Leads', hint: 'New & website leads' },
+  { href: '/dashboard/jobs', label: 'Jobs', hint: 'Quotes · Invoices · Payments' },
+  { href: '/dashboard/schedule', label: 'Schedule', hint: 'Calendar & unscheduled work' },
+  { href: '/dashboard/crew', label: 'Crew', hint: 'Your team & assignments' },
   { href: '/dashboard/sites', label: 'Website' },
   { href: '/dashboard/settings', label: 'Account' },
 ];
+
+// The connected-pill "flow" styling now spans all three pipeline stages.
+const FLOW_CLASS: Record<string, string> = {
+  '/dashboard/leads': ' flow-link flow-start',
+  '/dashboard/jobs': ' flow-link flow-mid',
+  '/dashboard/schedule': ' flow-link flow-end',
+};
 
 type AccountStatus = {
   onboarded: boolean;
   sitePublished: boolean;
   newQuoteRequestCount: number;
-  activeJobCount: number;
+  jobsNeedingAttentionCount: number;
+  unscheduledJobCount: number;
   newestQuoteRequestId: string | null;
   newestQuoteRequestCreatedAt: string | null;
 };
@@ -40,7 +51,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [stripeOnboarded, setStripeOnboarded] = useState<boolean | null>(null);
   const [sitePublished, setSitePublished] = useState(false);
   const [newQuoteRequestCount, setNewQuoteRequestCount] = useState(0);
-  const [activeJobCount, setActiveJobCount] = useState(0);
+  const [jobsNeedingAttentionCount, setJobsNeedingAttentionCount] = useState(0);
+  const [unscheduledJobCount, setUnscheduledJobCount] = useState(0);
   const [newestQuoteRequestId, setNewestQuoteRequestId] = useState<string | null>(null);
   const [newestQuoteRequestCreatedAt, setNewestQuoteRequestCreatedAt] = useState<string | null>(null);
   const [dismissedQuoteRequestId, setDismissedQuoteRequestId] = useState<string | null>(null);
@@ -97,7 +109,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   useEffect(() => {
     if (!isDashboard || !isLoggedIn) {
       setNewQuoteRequestCount(0);
-      setActiveJobCount(0);
+      setJobsNeedingAttentionCount(0);
+      setUnscheduledJobCount(0);
       setNewestQuoteRequestId(null);
       setNewestQuoteRequestCreatedAt(null);
       return;
@@ -110,7 +123,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           setStripeOnboarded(Boolean(data.onboarded));
           setSitePublished(Boolean(data.sitePublished));
           setNewQuoteRequestCount(Number(data.newQuoteRequestCount ?? 0));
-          setActiveJobCount(Number(data.activeJobCount ?? 0));
+          setJobsNeedingAttentionCount(Number(data.jobsNeedingAttentionCount ?? 0));
+          setUnscheduledJobCount(Number(data.unscheduledJobCount ?? 0));
           setNewestQuoteRequestId(data.newestQuoteRequestId ?? null);
           setNewestQuoteRequestCreatedAt(data.newestQuoteRequestCreatedAt ?? null);
         }
@@ -190,21 +204,19 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             <nav className="topnav" aria-label="Primary">
               {navItems.map((item) => {
                 const active = item.href === '/' ? pathname === item.href : pathname.startsWith(item.href);
-                const flowClass = item.href === '/dashboard/leads'
-                  ? ' flow-link flow-start'
-                  : item.href === '/dashboard/jobs'
-                    ? ' flow-link flow-end'
-                    : '';
+                const flowClass = FLOW_CLASS[item.href] ?? '';
 
                 return (
                   <Link
                     href={item.href}
                     className={`topnav-link${active ? ' active' : ''}${flowClass}`}
                     key={item.href}
+                    title={item.hint}
                   >
                     {item.label}
                     {item.href === '/dashboard/leads' && newQuoteRequestCount > 0 ? <span className="topnav-count">{newQuoteRequestCount}</span> : null}
-                    {item.href === '/dashboard/jobs' && activeJobCount > 0 ? <span className="topnav-count">{activeJobCount}</span> : null}
+                    {item.href === '/dashboard/jobs' && jobsNeedingAttentionCount > 0 ? <span className="topnav-count">{jobsNeedingAttentionCount}</span> : null}
+                    {item.href === '/dashboard/schedule' && unscheduledJobCount > 0 ? <span className="topnav-count">{unscheduledJobCount}</span> : null}
                   </Link>
                 );
               })}

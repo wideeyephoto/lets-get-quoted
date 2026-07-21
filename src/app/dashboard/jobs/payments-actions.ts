@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import { getJob } from '@/lib/jobs';
-import { cancelPaymentRequest, createDepositRequest, getPaymentDetails, refundPayment, markPaymentFailed, retryPayment, type PaymentKind } from '@/lib/payments';
+import { cancelPaymentRequest, createDepositRequest, getPaymentDetails, refundPayment, markPaymentFailed, markPaymentPaidManually, retryPayment, type PaymentKind } from '@/lib/payments';
 import { addInvoiceItem, createInvoice, listInvoices, selectPrimaryInvoice } from '@/lib/invoices';
 import { createPaymentFeedEvent, createJobFeedEvent } from '@/lib/job-feed';
 import { normalizeUsPhone } from '@/lib/phone';
@@ -62,6 +62,30 @@ export async function markPaymentFailedAction(jobId: string, paymentId: string) 
   const { supabase, accountId } = await requireOwnerContext();
 
   await markPaymentFailed(supabase, accountId, paymentId);
+
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
+// Record a cash/check payment collected outside Stripe.
+export async function markPaymentPaidManuallyAction(jobId: string, paymentId: string, method: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const safeMethod = (['cash', 'check', 'other'].includes(method) ? method : 'cash');
+  const payment = await getPaymentDetails(supabase, accountId, paymentId);
+  if (!payment || payment.job_id !== jobId) throw new Error('Payment not found for this job.');
+
+  const settled = await markPaymentPaidManually(supabase, accountId, paymentId);
+  if (settled) {
+    await createJobFeedEvent(supabase, accountId, jobId, {
+      kind: 'payment_paid',
+      title: 'Payment received',
+      body: `${payment.label ?? 'Payment'} marked paid (${safeMethod}).`,
+      visibility: 'client_financial',
+      amount: Number(payment.amount),
+      sourceTable: 'payments',
+      sourceId: paymentId,
+      actionUrl: `/pay/${paymentId}`,
+    });
+  }
 
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }

@@ -153,6 +153,12 @@ h3 {
   border-bottom-right-radius: 0.7rem;
 }
 
+.topnav-link.flow-mid {
+  border-left-color: rgba(255, 209, 102, 0.08);
+  border-right-color: rgba(255, 209, 102, 0.08);
+  border-radius: 0.7rem;
+}
+
 .topnav-link.flow-end {
   border-left-color: rgba(255, 209, 102, 0.08);
   border-top-left-radius: 0.7rem;

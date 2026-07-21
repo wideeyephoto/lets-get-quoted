@@ -23,8 +23,8 @@ import {
   updateJobAction,
   updateJobCrewAction,
 } from '../actions';
-import { createDepositRequestAction, refundPaymentAction, markPaymentFailedAction, retryPaymentAction, retryPaymentTextAction, cancelPaymentRequestAction } from '../payments-actions';
-import { cancelInvoiceAction } from '../invoices-actions';
+import { createDepositRequestAction, refundPaymentAction, markPaymentFailedAction, markPaymentPaidManuallyAction, retryPaymentAction, retryPaymentTextAction, cancelPaymentRequestAction } from '../payments-actions';
+import { cancelInvoiceAction, createInvoiceAction } from '../invoices-actions';
 import DeleteJobButton from './DeleteJobButton';
 import PaymentActionButtons from './PaymentActionButtons';
 import ConfirmActionButton from './ConfirmActionButton';
@@ -227,6 +227,7 @@ export default async function JobDetailPage({
     : 0;
   const invoiceDisplayTotal = jobInvoice ? Math.max(Number(jobInvoice.total), Number(job.quoted_amount)) : Number(job.quoted_amount);
   const invoiceBalance = jobInvoice ? Math.max(0, invoiceDisplayTotal - invoicePaidTotal) : null;
+  const outstandingBalance = Math.max(0, invoiceDisplayTotal - invoicePaidTotal);
   const jobPhotoUrls = await createJobPhotoUrls(accountId, job.photo_paths || []);
   const jobPhotos = (job.photo_paths || []).map((path, index) => ({ path, url: jobPhotoUrls[index] })).filter((photo) => photo.url);
   const { data: accountRow } = await supabase
@@ -246,6 +247,7 @@ export default async function JobDetailPage({
   const boundSendScheduleOptions = sendClientScheduleOptionsAction.bind(null, job.id);
   const boundCreateClientJobLink = createClientJobLinkAction.bind(null, job.id);
   const boundPostFeedUpdate = createManualJobFeedAction.bind(null, job.id);
+  const boundCreateInvoice = createInvoiceAction.bind(null, job.id);
   const boundRefundPayment = refundPaymentAction.bind(null, job.id);
   const boundMarkPaymentFailed = markPaymentFailedAction.bind(null, job.id);
   const boundRetryPaymentText = retryPaymentTextAction.bind(null, job.id);
@@ -545,7 +547,9 @@ export default async function JobDetailPage({
               {jobInvoice ? (
                 <Link href={`/dashboard/jobs/${job.id}/invoices/${jobInvoice.id}`} className="btn secondary">Open invoice</Link>
               ) : (
-                <span className="workspace-details-copy">Created automatically when you send a payment link.</span>
+                <form action={boundCreateInvoice}>
+                  <SaveButton className="btn secondary" pendingLabel="Creating…" savedLabel="Created ✓">Build itemized invoice</SaveButton>
+                </form>
               )}
             </div>
 
@@ -607,7 +611,7 @@ export default async function JobDetailPage({
                 </div>
                 <div className="field">
                   <label htmlFor="pay-amount">Amount ($)</label>
-                  <input id="pay-amount" name="amount" type="number" min="0.01" step="0.01" required placeholder="2500" />
+                  <input id="pay-amount" name="amount" type="number" min="0.01" step="0.01" required placeholder="2500" defaultValue={outstandingBalance > 0 ? outstandingBalance : undefined} />
                 </div>
                 <div className="field">
                   <label htmlFor="pay-label">Notes (optional)</label>
@@ -663,6 +667,8 @@ export default async function JobDetailPage({
                         onMarkFailed={boundMarkPaymentFailed}
                         onRetry={retryPaymentAction}
                         onCancel={cancelPaymentRequestAction}
+                        onMarkPaidManually={markPaymentPaidManuallyAction}
+                        canRefund={Boolean(payment.stripe_payment_intent)}
                       />
                       {payment.sms_events?.some((event) => event.event_type === 'payment_requested' && event.status === 'failed') && (
                         <form action={boundRetryPaymentText.bind(null, payment.id)}>

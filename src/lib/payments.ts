@@ -342,6 +342,51 @@ export async function markPaymentFailed(supabase: SupabaseClient, accountId: str
   if (data) await sendPaymentSmsEvent(paymentId, 'payment_failed');
 }
 
+// Settle a payment request that was paid OUTSIDE Stripe (cash/check). Mirrors
+// the webhook's settle-and-reconcile, but session-scoped and without a Stripe
+// intent, so these rows stay identifiable as manual (stripe_payment_intent is
+// null → the Refund button, which needs a Stripe intent, is hidden). Returns
+// whether it actually transitioned, so the caller only posts the feed event on
+// a real settle. Idempotent: only a still-open request/failed row transitions,
+// never an already-paid/processing one (avoids racing a real Stripe completion).
+export async function markPaymentPaidManually(
+  supabase: SupabaseClient,
+  accountId: string,
+  paymentId: string
+): Promise<boolean> {
+  const payment = await getPaymentDetails(supabase, accountId, paymentId);
+  if (!payment) throw new Error('Payment not found for this account.');
+
+  const { data: settled, error } = await supabase
+    .from('payments')
+    .update({ status: 'paid', paid_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('id', paymentId)
+    .in('status', ['requested', 'failed'])
+    .select('id')
+    .maybeSingle();
+  if (error) throw error;
+  if (!settled) return false;
+
+  // Reconcile the linked invoice — flip it to paid ONLY when fully collected,
+  // so a partial cash deposit never marks the whole invoice paid (unlike the
+  // Stripe webhook, which over-marks on any payment).
+  if (payment.invoice?.id) {
+    const invoiceId = payment.invoice.id as string;
+    const invoiceTotal = Number(payment.invoice.total);
+    const invoiceStatus = payment.invoice.status as string;
+    const jobPayments = await listPayments(supabase, accountId, payment.job_id as string);
+    const paidTotal = jobPayments
+      .filter((row) => row.invoice_id === invoiceId && row.status === 'paid')
+      .reduce((sum, row) => sum + Number(row.amount), 0);
+    if (invoiceStatus !== 'paid' && paidTotal >= invoiceTotal) {
+      await supabase.from('invoices').update({ status: 'paid' }).eq('id', invoiceId);
+    }
+  }
+
+  return true;
+}
+
 // Cancel a payment request that hasn't been acted on yet (no Stripe checkout
 // session ever started). Deletes the row outright since no money changed
 // hands — this is for "I asked for the wrong amount/link by mistake" cases,

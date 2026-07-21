@@ -14,13 +14,13 @@ export async function GET() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ loggedIn: false, onboarded: false, sitePublished: false, siteUrl: null, newQuoteRequestCount: 0, activeJobCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null });
+    return NextResponse.json({ loggedIn: false, onboarded: false, sitePublished: false, siteUrl: null, newQuoteRequestCount: 0, jobsNeedingAttentionCount: 0, unscheduledJobCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null });
   }
 
   const membership = await getCurrentMembership(user.id);
 
   if (!membership.accountId) {
-    return NextResponse.json({ loggedIn: true, onboarded: false, sitePublished: false, siteUrl: null, newQuoteRequestCount: 0, activeJobCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null });
+    return NextResponse.json({ loggedIn: true, onboarded: false, sitePublished: false, siteUrl: null, newQuoteRequestCount: 0, jobsNeedingAttentionCount: 0, unscheduledJobCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null });
   }
 
   const admin = createAdminClient();
@@ -42,7 +42,12 @@ export async function GET() {
       .limit(1),
       listJobs(admin, membership.accountId),
   ]);
-      const activeJobCount = jobs.filter((job) => job.status !== 'complete' && job.status !== 'archived').length;
+      // Badges mean "needs YOUR attention", not inventory. Jobs = quotes still
+      // in the approval stage (drop the moment they're approved -> in_progress);
+      // Schedule = approved work with no date yet. Kept disjoint so one job never
+      // lights up both badges.
+      const jobsNeedingAttentionCount = jobs.filter((job) => job.status === 'new_lead').length;
+      const unscheduledJobCount = jobs.filter((job) => job.status === 'in_progress' && !job.scheduled_for).length;
 
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
   const sitePublished = site?.published ?? false;
@@ -60,7 +65,8 @@ export async function GET() {
     sitePublished,
     siteUrl,
     newQuoteRequestCount: newQuoteRequestCount ?? 0,
-    activeJobCount,
+    jobsNeedingAttentionCount,
+    unscheduledJobCount,
     newestQuoteRequestId: newQuoteRequests?.[0]?.id ?? null,
     newestQuoteRequestCreatedAt: newQuoteRequests?.[0]?.created_at ?? null,
   });

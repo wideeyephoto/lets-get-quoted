@@ -12,7 +12,13 @@ interface PaymentActionButtonsProps {
   onMarkFailed: (jobId: string, paymentId: string) => Promise<void>;
   onRetry: (paymentId: string) => Promise<string>;
   onCancel: (jobId: string, paymentId: string) => Promise<void>;
+  onMarkPaidManually?: (jobId: string, paymentId: string, method: string) => Promise<void>;
+  // Refunds go through Stripe, so only offer Refund on rows that were paid via
+  // Stripe (they carry a payment intent). Cash/check rows can't be refunded here.
+  canRefund?: boolean;
 }
+
+const compactBtn = { fontSize: '0.75rem', padding: '0.25rem 0.5rem' } as const;
 
 export default function PaymentActionButtons({
   jobId,
@@ -22,10 +28,29 @@ export default function PaymentActionButtons({
   onMarkFailed,
   onRetry,
   onCancel,
+  onMarkPaidManually,
+  canRefund = true,
 }: PaymentActionButtonsProps) {
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [method, setMethod] = useState('cash');
+
+  const handleMarkPaid = async () => {
+    if (!onMarkPaidManually) return;
+    if (!window.confirm(`Mark this payment as paid by ${method}? Use this only for money collected outside the app (cash or check).`)) return;
+
+    setLoading('markPaid');
+    setError(null);
+    try {
+      await onMarkPaidManually(jobId, paymentId, method);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to mark payment as paid');
+    } finally {
+      setLoading(null);
+    }
+  };
 
   const handleRefund = async () => {
     if (!window.confirm('Are you sure you want to refund this payment?')) return;
@@ -92,23 +117,51 @@ export default function PaymentActionButtons({
   return (
     <div style={{ display: 'flex', gap: '0.25rem' }}>
       {status === 'requested' && (
-        <button
-          onClick={handleCancel}
-          disabled={loading !== null}
-          className="btn secondary compact"
-          title="Cancel this payment request"
-          style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
-        >
-          {loading === 'cancel' ? '⏳' : '×'} Cancel
-        </button>
+        <>
+          {onMarkPaidManually && (
+            <>
+              <select
+                value={method}
+                onChange={(event) => setMethod(event.currentTarget.value)}
+                disabled={loading !== null}
+                className="btn secondary compact"
+                title="Payment method"
+                aria-label="Payment method for a payment collected outside the app"
+                style={compactBtn}
+              >
+                <option value="cash">Cash</option>
+                <option value="check">Check</option>
+                <option value="other">Other</option>
+              </select>
+              <button
+                onClick={handleMarkPaid}
+                disabled={loading !== null}
+                className="btn secondary compact"
+                title="Record a cash or check payment collected outside the app"
+                style={compactBtn}
+              >
+                {loading === 'markPaid' ? '⏳' : '✓'} Mark paid
+              </button>
+            </>
+          )}
+          <button
+            onClick={handleCancel}
+            disabled={loading !== null}
+            className="btn secondary compact"
+            title="Cancel this payment request"
+            style={compactBtn}
+          >
+            {loading === 'cancel' ? '⏳' : '×'} Cancel
+          </button>
+        </>
       )}
-      {status === 'paid' && (
+      {status === 'paid' && canRefund && (
         <button
           onClick={handleRefund}
           disabled={loading !== null}
           className="btn secondary compact"
           title="Refund this payment"
-          style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem' }}
+          style={compactBtn}
         >
           {loading === 'refund' ? '⏳' : '↩️'} Refund
         </button>
