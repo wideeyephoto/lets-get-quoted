@@ -45,7 +45,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   const estimateLabel = getEstimateButtonLabel(quoteForm);
   const wizardEnabled = estimateRanges.enabled;
 
-  const [step, setStep] = useState<'describe' | 'details' | 'contact' | 'result'>(wizardEnabled ? 'describe' : 'contact');
+  const [step, setStep] = useState<'describe' | 'qa' | 'details' | 'contact' | 'result'>(wizardEnabled ? 'describe' : 'contact');
   const [description, setDescription] = useState('');
   const [name, setName] = useState('');
   const [contact, setContact] = useState('');
@@ -54,6 +54,25 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isClassifying, setIsClassifying] = useState(false);
   const [status, setStatus] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
+
+  const [chatQuestion, setChatQuestion] = useState('');
+  const [chatAnswer, setChatAnswer] = useState('');
+  const [chatResponseId, setChatResponseId] = useState('');
+  const [chatTurn, setChatTurn] = useState(0);
+
+  function applyChatResult(result: any) {
+    if (result?.type === 'question' && result.question) {
+      setChatQuestion(result.question);
+      setChatResponseId(result.responseId ?? '');
+      setChatTurn((current) => current + 1);
+      setChatAnswer('');
+      setStep('qa');
+      return;
+    }
+    if (result?.size) setSize(result.size);
+    if (result?.tier) setTier(result.tier);
+    setStep('details');
+  }
 
   async function handleDescribeContinue(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -68,16 +87,35 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
       const response = await fetch('/api/public/leads/classify-estimate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ siteId: site.id, description: trimmedDescription }),
+        body: JSON.stringify({ siteId: site.id, description: trimmedDescription, turn: 0 }),
       });
       const result = await response.json().catch(() => null);
-      if (result?.size) setSize(result.size);
-      if (result?.tier) setTier(result.tier);
+      applyChatResult(result);
     } catch {
-      // AI classification is a convenience, not a requirement — fall back to defaults silently.
+      // AI is a convenience, not a requirement — fall back to manual details silently.
+      setStep('details');
     } finally {
       setIsClassifying(false);
+    }
+  }
+
+  async function handleChatAnswerSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmedAnswer = chatAnswer.trim();
+    if (!trimmedAnswer) return;
+    setIsClassifying(true);
+    try {
+      const response = await fetch('/api/public/leads/classify-estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ siteId: site.id, previousResponseId: chatResponseId, answer: trimmedAnswer, turn: chatTurn }),
+      });
+      const result = await response.json().catch(() => null);
+      applyChatResult(result);
+    } catch {
       setStep('details');
+    } finally {
+      setIsClassifying(false);
     }
   }
 
@@ -149,7 +187,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
     <form
       ref={formRef}
       className={styles.heroQuickForm}
-      onSubmit={step === 'describe' ? handleDescribeContinue : step === 'contact' ? handleContactSubmit : (event) => event.preventDefault()}
+      onSubmit={step === 'describe' ? handleDescribeContinue : step === 'qa' ? handleChatAnswerSubmit : step === 'contact' ? handleContactSubmit : (event) => event.preventDefault()}
     >
       <label className={styles.heroFormHoneypot} aria-hidden="true">Company<input name="company" tabIndex={-1} autoComplete="off" /></label>
 
@@ -166,6 +204,21 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
             onChange={(event) => setDescription(event.target.value)}
           />
           <button type="submit" disabled={isClassifying}>{isClassifying ? 'Thinking...' : 'Continue'}</button>
+        </>
+      )}
+
+      {step === 'qa' && (
+        <>
+          <h2>{estimateLabel}</h2>
+          <p className={styles.heroFormNote}>{chatQuestion}</p>
+          <input
+            placeholder="Your answer"
+            maxLength={300}
+            required
+            value={chatAnswer}
+            onChange={(event) => setChatAnswer(event.target.value)}
+          />
+          <button type="submit" disabled={isClassifying}>{isClassifying ? 'Thinking...' : 'Next'}</button>
         </>
       )}
 
