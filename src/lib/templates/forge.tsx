@@ -6,6 +6,7 @@ import HeroQuickForm from './HeroQuickForm';
 import SiteContentSections from './SiteContentSections';
 import SiteNavLinks from './SiteNavLinks';
 import SiteProofStrip from './SiteProofStrip';
+import SiteDesktopCta from './SiteDesktopCta';
 import styles from './themes.module.css';
 
 export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProps) {
@@ -28,7 +29,7 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
       </header>
 
       <section className={styles.forgeHero} id="top">
-        <img className={styles.heroImage} src={heroImage} alt="Contractor project in progress" />
+        <img className={styles.heroImage} src={heroImage} alt="Contractor project in progress" fetchPriority="high" decoding="async" />
         <div className={styles.forgeScrim} />
         <div className={styles.forgeHeroCopy}>
           <p className={styles.kicker}>Built right. Built to last.</p>
@@ -60,7 +61,7 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
         <div className={styles.forgeGallery}>
           {gallery.slice(0, 3).map((image, index) => (
             <figure key={image.id} className={index === 0 ? styles.forgeGalleryLead : undefined}>
-              <img src={image.url} alt={image.alt} />
+              <img src={image.url} alt={image.alt} loading="lazy" decoding="async" />
               <figcaption><span>0{index + 1}</span>{image.alt}</figcaption>
             </figure>
           ))}
@@ -77,6 +78,7 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
         <QuoteRequestForm site={site} />
       </section>
 
+      <SiteDesktopCta site={site} />
       <footer className={styles.forgeFooter}><strong>{site.company_name}</strong><span>{site.service_area || 'Proudly serving our local community'}</span><small>Powered by Let&apos;s Get Quoted</small></footer>
     </main>
   );

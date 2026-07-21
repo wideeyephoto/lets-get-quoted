@@ -138,6 +138,18 @@
    safe-area inset, rather than a hard value that falls short on notched phones. */
 @media (max-width: 767px) { .site:has(.stickyCallBar) { padding-bottom: calc(50px + 1.1rem + env(safe-area-inset-bottom, 0px)); } }
 
+/* Persistent desktop CTA (fixed bottom-right; mobile handled by header/sticky bar) */
+.desktopCta { display: none; }
+@media (min-width: 768px) { .desktopCta { position: fixed; right: 1.5rem; bottom: 1.5rem; z-index: 50; display: flex; gap: .6rem; } }
+.desktopCta a { display: inline-flex; align-items: center; gap: .45rem; min-height: 48px; padding: .7rem 1.15rem; border-radius: 999px; font-weight: 800; font-size: .9rem; box-shadow: 0 14px 30px -12px rgba(0,0,0,.5); transition: transform .18s ease, box-shadow .22s ease; }
+.desktopCta a:hover { transform: translateY(-2px); box-shadow: 0 18px 38px -12px rgba(0,0,0,.55); }
+.desktopCta .desktopCtaCall { background: #17140f; color: #fff; }
+.desktopCta .desktopCtaQuote { background: var(--theme-accent); color: #14110b; }
+.desktopCta svg { width: 16px; height: 16px; }
+.guild .desktopCtaQuote { color: #fff; }
+/* Reserve bottom space so the fixed CTA never covers the footer at page end. */
+@media (min-width: 768px) { .site:has(.desktopCta) { padding-bottom: 96px; } }
+
 /* Forge */
 .forge { background: #10100f; color: #f3f0e7; font-family: var(--font-forge-body), Arial, sans-serif; --theme-radius: 2px; }
 .forge[data-mode='light'] { background: #ebe7dc; color: #151514; }

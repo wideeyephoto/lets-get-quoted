@@ -72,7 +72,7 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
               <div className={`${styles.showcaseGrid} ${styles[`showcase-${showcase.layout}`] || ''}`}>
                 {showcase.items.map((item, index) => (
                   <figure key={`${item.id}-${index}`}>
-                    <img src={item.url} alt={item.alt} />
+                    <img src={item.url} alt={item.alt} loading="lazy" decoding="async" />
                     <figcaption>{item.caption || item.alt}</figcaption>
                   </figure>
                 ))}

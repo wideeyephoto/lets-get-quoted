@@ -7,6 +7,7 @@ import HeroQuickForm from './HeroQuickForm';
 import SiteContentSections from './SiteContentSections';
 import SiteNavLinks from './SiteNavLinks';
 import SiteProofStrip from './SiteProofStrip';
+import SiteDesktopCta from './SiteDesktopCta';
 import styles from './themes.module.css';
 
 export default function GuildTemplate({ site, galleryImages = [] }: TemplateProps) {
@@ -39,7 +40,7 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
           <SiteProofStrip site={site} />
         </div>
         <div className={styles.guildHeroMedia}>
-          <img src={heroImage} alt="Completed contractor project" />
+          <img src={heroImage} alt="Completed contractor project" fetchPriority="high" decoding="async" />
           <div className={styles.guildBadge}><strong>Built locally</strong><span>{site.service_area || 'Serving our community'}</span></div>
         </div>
       </section>
@@ -58,7 +59,7 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
       <section className={styles.guildWork} id="work">
         <div className={styles.sectionHeading}><div><p className={styles.kicker}>Recent work</p><h2>Quality is visible in the details.</h2></div></div>
         <div className={styles.guildGallery}>
-          {gallery.slice(0, 3).map((image) => <figure key={image.id}><img src={image.url} alt={image.alt} /><figcaption>{image.alt}</figcaption></figure>)}
+          {gallery.slice(0, 3).map((image) => <figure key={image.id}><img src={image.url} alt={image.alt} loading="lazy" decoding="async" /><figcaption>{image.alt}</figcaption></figure>)}
         </div>
       </section>
 
@@ -71,6 +72,7 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
         <QuoteRequestForm site={site} />
       </section>
 
+      <SiteDesktopCta site={site} />
       <footer className={styles.guildFooter}><strong>{site.company_name}</strong><span>{site.license || 'Licensed & insured'}</span><small>Powered by Let&apos;s Get Quoted</small></footer>
     </main>
   );

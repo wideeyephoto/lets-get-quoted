@@ -28,7 +28,7 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
       </header>
 
       <section className={styles.vistaHero} id="top">
-        <img className={styles.heroImage} src={heroImage} alt="Featured completed project" />
+        <img className={styles.heroImage} src={heroImage} alt="Featured completed project" fetchPriority="high" decoding="async" />
         <div className={styles.vistaHeroCopy}>
           <p className={styles.kicker}>Build / Renovate / Refine</p>
           <h1>{site.headline || 'Spaces with purpose.'}</h1>
@@ -50,7 +50,7 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
         <div className={styles.vistaGallery}>
           {gallery.slice(0, 5).map((image, index) => (
             <figure key={image.id} className={index === 0 || index === 3 ? styles.vistaWide : undefined}>
-              <img src={image.url} alt={image.alt} />
+              <img src={image.url} alt={image.alt} loading="lazy" decoding="async" />
               <figcaption><span>{image.alt}</span><small>0{index + 1}</small></figcaption>
             </figure>
           ))}
