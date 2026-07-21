@@ -12,7 +12,7 @@ import LivePreview from './LivePreview';
 import ThemeIcon from './ThemeIcon';
 import styles from './SiteEditor.module.css';
 
-type BuilderTab = 'business' | 'design' | 'images' | 'sections' | 'publish';
+type BuilderTab = 'business' | 'design' | 'images' | 'publish';
 
 type WebsiteBuilderProps = {
   site: Site;
@@ -23,7 +23,6 @@ const TABS: { id: BuilderTab; label: string }[] = [
   { id: 'business', label: 'Business' },
   { id: 'design', label: 'Design' },
   { id: 'images', label: 'Images' },
-  { id: 'sections', label: 'Sections' },
   { id: 'publish', label: 'Publish' },
 ];
 
@@ -378,8 +377,24 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
               </div>
             )}
 
-            {activeTab === 'sections' && (
+            {activeTab === 'design' && (
               <div className={styles.formSection}>
+                <div className={styles.sectionIntro}><h2>Colors & style</h2><p>Set the visual direction of your website.</p></div>
+                <div className={styles.themeGrid}>
+                  {AVAILABLE_TEMPLATES.map((template) => (
+                    <button type="button" key={template.id} className={`${styles.themeOption}${site.template === template.id ? ` ${styles.selectedTheme}` : ''}`} onClick={() => handleChange('template', template.id as TemplateType)} aria-pressed={site.template === template.id}>
+                      <ThemeIcon name={template.name} accent={template.accent} fontVar={template.fontVar} />
+                      <span className={styles.themeOptionInfo}><strong>{template.name}</strong><small>{template.description}</small></span>
+                    </button>
+                  ))}
+                </div>
+                <div className={styles.formColumns}>
+                  <label className={styles.formField}><span>Accent color</span><div className={styles.colorControl}><input type="color" value={site.accent_override || '#ff7a21'} onChange={(event) => handleChange('accent_override', event.target.value)} /><input value={site.accent_override || '#ff7a21'} onChange={(event) => handleChange('accent_override', event.target.value)} /></div></label>
+                  <label className={styles.formField}><span>Color mode</span><select value={site.portal_mode} onChange={(event) => handleChange('portal_mode', event.target.value as Site['portal_mode'])}><option value="light">Light</option><option value="dark">Dark</option></select></label>
+                </div>
+                <label className={styles.formField}><span>Heading font</span><select value={site.header_font || ''} onChange={(event) => handleChange('header_font', event.target.value || null)}><option value="">Theme default</option><option value="Georgia, Times New Roman, serif">Classic serif</option><option value="Arial Black, Helvetica, sans-serif">Bold sans</option><option value="Trebuchet MS, sans-serif">Humanist sans</option></select></label>
+                <label className={styles.formField}><span>Button style</span><select value={site.button_style || 'solid'} onChange={(event) => handleChange('button_style', event.target.value)}><option value="solid">Solid</option><option value="outline">Outline</option><option value="ghost">Minimal</option></select></label>
+
                 <div className={styles.sectionIntro}><h2>Pages & sections</h2><p>Add rich sections that make the public website feel complete.</p></div>
 
                 <div className={styles.contentCard}>
@@ -473,26 +488,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <div><strong>Google reviews import</strong><p>Importing live Google reviews requires a Places or Google Business Profile integration so we can fetch reviews with proper attribution.</p></div>
                   <button type="button" disabled>Coming next</button>
                 </div>
-              </div>
-            )}
-
-            {activeTab === 'design' && (
-              <div className={styles.formSection}>
-                <div className={styles.sectionIntro}><h2>Colors & style</h2><p>Set the visual direction of your website.</p></div>
-                <div className={styles.themeGrid}>
-                  {AVAILABLE_TEMPLATES.map((template) => (
-                    <button type="button" key={template.id} className={`${styles.themeOption}${site.template === template.id ? ` ${styles.selectedTheme}` : ''}`} onClick={() => handleChange('template', template.id as TemplateType)} aria-pressed={site.template === template.id}>
-                      <ThemeIcon name={template.name} accent={template.accent} fontVar={template.fontVar} />
-                      <span className={styles.themeOptionInfo}><strong>{template.name}</strong><small>{template.description}</small></span>
-                    </button>
-                  ))}
-                </div>
-                <div className={styles.formColumns}>
-                  <label className={styles.formField}><span>Accent color</span><div className={styles.colorControl}><input type="color" value={site.accent_override || '#ff7a21'} onChange={(event) => handleChange('accent_override', event.target.value)} /><input value={site.accent_override || '#ff7a21'} onChange={(event) => handleChange('accent_override', event.target.value)} /></div></label>
-                  <label className={styles.formField}><span>Color mode</span><select value={site.portal_mode} onChange={(event) => handleChange('portal_mode', event.target.value as Site['portal_mode'])}><option value="light">Light</option><option value="dark">Dark</option></select></label>
-                </div>
-                <label className={styles.formField}><span>Heading font</span><select value={site.header_font || ''} onChange={(event) => handleChange('header_font', event.target.value || null)}><option value="">Theme default</option><option value="Georgia, Times New Roman, serif">Classic serif</option><option value="Arial Black, Helvetica, sans-serif">Bold sans</option><option value="Trebuchet MS, sans-serif">Humanist sans</option></select></label>
-                <label className={styles.formField}><span>Button style</span><select value={site.button_style || 'solid'} onChange={(event) => handleChange('button_style', event.target.value)}><option value="solid">Solid</option><option value="outline">Outline</option><option value="ghost">Minimal</option></select></label>
               </div>
             )}
 
