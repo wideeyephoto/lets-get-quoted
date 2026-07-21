@@ -3,7 +3,7 @@ import SaveButton from '@/components/save-button';
 import { getClientJobDashboard } from '@/lib/job-feed';
 import { formatMoney } from '@/lib/jobs';
 import { formatScheduleOption } from '@/lib/scheduling';
-import { requestDifferentClientJobScheduleOptionsAction, selectClientJobScheduleOptionAction } from './actions';
+import { approveClientJobQuoteAction, requestDifferentClientJobScheduleOptionsAction, selectClientJobScheduleOptionAction } from './actions';
 
 const STATUS_LABEL: Record<string, string> = {
   new_lead: 'New request',
@@ -103,6 +103,29 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
               <SaveButton className="btn secondary" pendingLabel="Sending..." savedLabel="Sent">Request different dates</SaveButton>
             </div>
           </form>
+        </section>
+      ) : null}
+
+      {!dashboard.quoteApproved && dashboard.scheduleRequest?.status !== 'open' ? (
+        <section className="panel workspace-section-card client-attention-card">
+          <div className="section-heading workspace-section-heading">
+            <p className="eyebrow">Ready to move forward?</p>
+            <h2>Approve your quote</h2>
+          </div>
+          <p className="workspace-card-copy">Review the details below. When you&apos;re ready, approve the quote and your contractor will get started.</p>
+          <form action={approveClientJobQuoteAction.bind(null, params.token)}>
+            <SaveButton pendingLabel="Approving..." savedLabel="Approved ✓">Approve quote</SaveButton>
+          </form>
+        </section>
+      ) : null}
+
+      {dashboard.feed.some((event) => event.kind === 'quote_approved') ? (
+        <section className="panel workspace-section-card client-attention-card success">
+          <div className="section-heading workspace-section-heading">
+            <p className="eyebrow">Quote approved</p>
+            <h2>You&apos;re all set</h2>
+          </div>
+          <p className="workspace-card-copy">Thanks! Your contractor has been notified and will be in touch about next steps.</p>
         </section>
       ) : null}
 

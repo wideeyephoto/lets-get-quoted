@@ -86,7 +86,7 @@ export async function createScheduleRequest(
   supabase: SupabaseClient,
   accountId: string,
   jobId: string,
-  input: { clientPhone: string; options: ScheduleOption[] }
+  input: { clientPhone: string | null; options: ScheduleOption[] }
 ): Promise<{ request: JobScheduleRequest; token: string }> {
   const options = normalizeOptions(input.options);
   if (options.length === 0) throw new Error('Add at least 1 scheduling option before texting the client.');
@@ -117,7 +117,7 @@ export async function createScheduleRequest(
       account_id: accountId,
       job_id: jobId,
       token_hash: hashToken(token),
-      client_phone: input.clientPhone,
+      client_phone: input.clientPhone ?? null,
       options,
       status: 'open',
       sent_at: now.toISOString(),

@@ -2558,6 +2558,10 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   margin-top: 0.35rem;
 }
 
+.quote-delivery-banner { margin-bottom: 1.1rem; }
+.quote-delivery-copy-row { display: flex; gap: 0.5rem; margin-top: 0.65rem; flex-wrap: wrap; align-items: center; }
+.quote-delivery-link { flex: 1 1 240px; min-width: 0; padding: 0.5rem 0.7rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.16); background: rgba(255, 255, 255, 0.05); color: inherit; font-size: 0.84rem; }
+
 .schedule-choice-shell {
   max-width: 980px;
 }

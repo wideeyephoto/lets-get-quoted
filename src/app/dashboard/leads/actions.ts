@@ -10,6 +10,7 @@ import { uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, createScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
 import { recordSmsConsent, sendClientJobDashboardSms, sendLeadQuoteVisitOptionsSms, sendLeadQuoteVisitSms } from '@/lib/sms';
+import { sendClientQuoteEmail } from '@/lib/email';
 
 function optionalText(value: FormDataEntryValue | null): string | null {
   const text = (value ?? '').toString().trim();
@@ -182,10 +183,10 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
   const estimatedHours = optionalAmount(formData.get('estimatedHours'));
   const sendClientText = formData.get('sendClientText') === 'on';
   const { supabase, accountId } = await requireOwnerContext();
-  const lead = sendClientText ? await getLead(supabase, accountId, leadId) : null;
-  const clientPhone = sendClientText ? normalizeUsPhone(lead?.phone ?? '') : null;
-  // Don't block converting the lead if the sign-off text can't be sent — the
-  // send below is already guarded on a valid phone, so a missing one just skips.
+  const lead = await getLead(supabase, accountId, leadId);
+  if (!lead) throw new Error('Lead not found.');
+  const clientPhone = sendClientText ? normalizeUsPhone(lead.phone ?? '') : null;
+  const clientEmail = sendClientText ? (lead.email?.trim() || null) : null;
 
   const job = await convertLeadToJob(supabase, accountId, leadId, quotedAmount, estimatedHours);
   await createJobFeedEvent(supabase, accountId, job.id, {
@@ -199,8 +200,20 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
   const token = await createClientJobAccessToken(supabase, accountId, job.id, { clientPhone: job.client_phone, clientEmail: job.client_email });
   const quickBooking = scheduleOptionsFromForm(formData);
 
-  if (quickBooking.hasInput && sendClientText && clientPhone) {
-    const { request } = await createScheduleRequest(supabase, accountId, job.id, { clientPhone, options: quickBooking.options });
+  // Prefer SMS, fall back to email, and if neither can reach the client, say so
+  // plainly instead of redirecting as though it sent.
+  const willText = Boolean(sendClientText && clientPhone);
+  const willEmail = Boolean(sendClientText && !clientPhone && clientEmail);
+  const willDeliver = willText || willEmail;
+
+  let businessName = "Let's Get Quoted contractor";
+  if (sendClientText) {
+    const { data: account } = await supabase.from('accounts').select('business_name').eq('id', accountId).single();
+    businessName = account?.business_name || businessName;
+  }
+
+  if (quickBooking.hasInput && willDeliver) {
+    const { request } = await createScheduleRequest(supabase, accountId, job.id, { clientPhone: clientPhone ?? job.client_phone ?? null, options: quickBooking.options });
     const optionSummary = request.options.map((option, index) => `${index + 1}. ${formatScheduleOption(option)}`).join(' ');
 
     await createJobFeedEvent(supabase, accountId, job.id, {
@@ -212,15 +225,51 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
     });
   }
 
-  if (sendClientText && clientPhone) {
-    const { data: account } = await supabase.from('accounts').select('business_name').eq('id', accountId).single();
-    await recordSmsConsent(accountId, clientPhone, 'client_job_dashboard');
-    await sendClientJobDashboardSms({
-      phone: clientPhone,
-      businessName: account?.business_name || "Let's Get Quoted contractor",
-      jobRef: job.ref,
-      token,
-      includesScheduleOptions: quickBooking.hasInput,
+  // Best-effort delivery: a provider failure here must not error-page the owner
+  // after the job already exists, and we only claim "sent" when it truly sent.
+  let delivery: 'sms' | 'email' | 'no_contact' | 'failed' | null = sendClientText ? 'no_contact' : null;
+  if (clientPhone) {
+    try {
+      await recordSmsConsent(accountId, clientPhone, 'client_job_dashboard');
+      await sendClientJobDashboardSms({
+        phone: clientPhone,
+        businessName,
+        jobRef: job.ref,
+        token,
+        includesScheduleOptions: quickBooking.hasInput,
+      });
+      delivery = 'sms';
+    } catch (err) {
+      console.error(`Quote SMS failed for job ${job.id}:`, err);
+      delivery = 'failed';
+    }
+  } else if (clientEmail) {
+    try {
+      const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
+      await sendClientQuoteEmail({
+        recipientEmail: clientEmail,
+        businessName,
+        clientName: job.client_name,
+        jobRef: job.ref,
+        quotedAmount,
+        quoteUrl: `${origin}/client/jobs/${token}`,
+        includesScheduleOptions: quickBooking.hasInput,
+      });
+      delivery = 'email';
+    } catch (err) {
+      console.error(`Quote email failed for job ${job.id}:`, err);
+      delivery = 'failed';
+    }
+  }
+
+  if (delivery === 'sms' || delivery === 'email') {
+    await createJobFeedEvent(supabase, accountId, job.id, {
+      kind: 'job_update',
+      title: delivery === 'sms' ? 'Quote texted to client' : 'Quote emailed to client',
+      body: delivery === 'sms'
+        ? `The quote and sign-off link were texted to ${job.client_name}.`
+        : `The quote and sign-off link were emailed to ${clientEmail}.`,
+      visibility: 'client',
     });
   }
 
@@ -242,7 +291,8 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
   }
   revalidatePath('/dashboard/leads');
   revalidatePath('/dashboard/jobs');
-  redirect(`/dashboard/jobs/${job.id}?tab=feed&clientToken=${token}`);
+  const deliveryParam = delivery ? `&delivery=${delivery}` : '';
+  redirect(`/dashboard/jobs/${job.id}?tab=feed&clientToken=${token}${deliveryParam}`);
 }
 
 export async function undoConvertLeadAction(leadId: string) {

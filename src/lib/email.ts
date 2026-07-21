@@ -4,6 +4,7 @@ import { generateInvoiceHtml } from '@/emails/InvoiceEmail';
 import { generateInvoicePdf } from '@/emails/InvoicePdf';
 import type { Invoice, InvoiceItem } from './invoices';
 import type { Lead } from './leads';
+import { formatMoney } from './jobs';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -100,6 +101,47 @@ export async function sendInvoiceEmail(input: SendInvoiceEmailInput): Promise<vo
     console.error('Invoice email error:', err);
     throw err;
   }
+}
+
+export interface SendClientQuoteEmailInput {
+  recipientEmail: string;
+  businessName: string;
+  clientName: string;
+  jobRef: string;
+  quotedAmount: number;
+  quoteUrl: string;
+  includesScheduleOptions?: boolean;
+}
+
+// Client-facing quote email — the fallback channel when a lead has an email but
+// no textable mobile, so the quote still reaches them instead of silently
+// stalling. Throws on provider rejection so the caller can flag delivery failed.
+export async function sendClientQuoteEmail(input: SendClientQuoteEmailInput): Promise<void> {
+  // Unlike the best-effort alert helpers, this is a PRIMARY delivery channel
+  // whose outcome is reported to the owner (and to the client feed). If the
+  // provider isn't configured, throw so the caller flags delivery='failed'
+  // and shows the honest "copy the link" banner — never a false "emailed".
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('Email provider is not configured.');
+  }
+
+  const scheduleLine = input.includesScheduleOptions
+    ? `<p style="margin:0 0 12px;line-height:1.5">You can also pick a start date right on your quote page.</p>`
+    : '';
+
+  const result = await resend.emails.send({
+    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    to: input.recipientEmail,
+    subject: `Your quote ${input.jobRef} from ${input.businessName}`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#b45309;font-weight:700;letter-spacing:0.04em">YOUR QUOTE</p><h1 style="font-size:24px;margin:0 0 12px">${escapeHtml(input.clientName)}, here's your quote from ${escapeHtml(input.businessName)}</h1><p style="margin:0 0 12px;font-size:18px"><strong>${escapeHtml(formatMoney(input.quotedAmount))}</strong></p>${scheduleLine}<p style="margin:0 0 20px;line-height:1.5">Review the full details and approve your quote online — no login needed.</p><p><a href="${escapeHtml(input.quoteUrl)}" style="display:inline-block;padding:12px 18px;background:#172033;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">View &amp; approve your quote</a></p><p style="margin-top:28px;color:#6b7280;font-size:13px">${escapeHtml(input.businessName)} · Let's Get Quoted</p></div>`,
+    reply_to: 'hello@letsgetquoted.com',
+  });
+
+  if (result.error) {
+    console.error('Failed to send client quote email:', result.error);
+    throw new Error(result.error.message);
+  }
+  console.log(`Client quote email sent to ${input.recipientEmail}: ${input.jobRef}`);
 }
 
 // Generic contractor-facing alert email (payout paused, chargeback opened,

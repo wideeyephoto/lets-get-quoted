@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requestDifferentClientJobScheduleOptions, selectClientJobScheduleOption } from '@/lib/scheduling';
+import { approveClientJobQuote } from '@/lib/job-feed';
 
 function optionalText(value: FormDataEntryValue | null): string | null {
   const text = (value ?? '').toString().trim();
@@ -22,4 +23,10 @@ export async function requestDifferentClientJobScheduleOptionsAction(token: stri
   await requestDifferentClientJobScheduleOptions(token, optionalText(formData.get('notes')));
   revalidatePath(`/client/jobs/${token}`);
   redirect(`/client/jobs/${token}?schedule-requested=1`);
+}
+
+export async function approveClientJobQuoteAction(token: string) {
+  await approveClientJobQuote(token);
+  revalidatePath(`/client/jobs/${token}`);
+  redirect(`/client/jobs/${token}?approved=1`);
 }

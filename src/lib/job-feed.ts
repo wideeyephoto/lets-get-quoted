@@ -1,9 +1,13 @@
 import { createHash, randomBytes } from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
-import { getJob, formatJobSchedule } from '@/lib/jobs';
+import { getJob, formatJobSchedule, formatMoney } from '@/lib/jobs';
+import { getLeadByConvertedJob, updateLeadStatus } from '@/lib/leads';
+import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 import type { Invoice } from '@/lib/invoices';
 import type { Payment } from '@/lib/payments';
+
+const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
 export type JobFeedVisibility = 'internal' | 'client' | 'client_financial';
 
@@ -48,6 +52,7 @@ export type ClientJobDashboard = {
     selected_index: number | null;
     client_notes: string | null;
   } | null;
+  quoteApproved: boolean;
 };
 
 function hasFeedAction(feed: JobFeedEvent[], sourceTable: string, sourceId: string, actionUrl: string): boolean {
@@ -301,6 +306,8 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
     ...createLinkedFeedItems(feedResult, (payments ?? []) as Payment[], (invoices ?? []) as Invoice[], access.account_id, access.job_id),
   ]).filter((event) => event.visibility === 'client' || event.visibility === 'client_financial');
 
+  const quoteApproved = feed.some((event) => event.kind === 'quote_approved') || job.status !== 'new_lead';
+
   return {
     businessName: site?.company_name || account?.business_name || "Let's Get Quoted contractor",
     job: {
@@ -311,7 +318,96 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
     payments: (payments ?? []) as Payment[],
     invoices: (invoices ?? []) as Invoice[],
     scheduleRequest: scheduleRequest as ClientJobDashboard['scheduleRequest'],
+    quoteApproved,
   };
+}
+
+// Public, token-guarded: the client clicks "Approve quote" on their dashboard.
+// Records approval idempotently, promotes the job out of the quote stage,
+// advances the originating lead to won, and alerts the owner (best-effort).
+export async function approveClientJobQuote(clientToken: string): Promise<void> {
+  const admin = createAdminClient();
+  const tokenHash = hashToken(clientToken);
+  const now = new Date().toISOString();
+
+  const { data: access, error: accessError } = await admin
+    .from('client_job_access')
+    .select('account_id, job_id, expires_at, revoked_at')
+    .eq('token_hash', tokenHash)
+    .maybeSingle();
+  if (accessError || !access || access.revoked_at || (access.expires_at && access.expires_at < now)) {
+    throw new Error('This job link is no longer available.');
+  }
+
+  const accountId = access.account_id as string;
+  const jobId = access.job_id as string;
+
+  const job = await getJob(admin, accountId, jobId);
+  if (!job) throw new Error('Job not found.');
+
+  // Idempotency guard: gate ALL side effects on there being no prior approval,
+  // so a double-submit can't re-email the owner or churn the lead. (The feed
+  // insert also dedupes on (source_table, source_id, kind), but it returns the
+  // existing row silently, so the explicit pre-check is what stops the rest.)
+  const { data: existingApproval } = await admin
+    .from('job_feed')
+    .select('id')
+    .eq('source_table', 'jobs')
+    .eq('source_id', jobId)
+    .eq('kind', 'quote_approved')
+    .maybeSingle();
+  if (existingApproval) return;
+
+  const quotedAmount = Number(job.quoted_amount) || 0;
+
+  await createJobFeedEvent(admin, accountId, jobId, {
+    kind: 'quote_approved',
+    title: 'Client approved the quote',
+    body: `${job.client_name} approved the quote${quotedAmount > 0 ? ` (${formatMoney(quotedAmount)})` : ''}.`,
+    visibility: 'client',
+    amount: quotedAmount > 0 ? quotedAmount : null,
+    sourceTable: 'jobs',
+    sourceId: jobId,
+  });
+
+  // Only ever promote from the quote stage — never downgrade an in-progress,
+  // complete, or archived job.
+  if (job.status === 'new_lead') {
+    await admin.from('jobs').update({ status: 'in_progress' }).eq('account_id', accountId).eq('id', jobId);
+  }
+
+  const lead = await getLeadByConvertedJob(admin, accountId, jobId);
+  if (lead && lead.status !== 'won') {
+    await updateLeadStatus(admin, accountId, lead.id, 'won');
+  }
+
+  // Best-effort owner alert — approval must never fail because the email failed.
+  try {
+    const ownerEmail = await getAccountOwnerEmail(admin, accountId);
+    if (ownerEmail) {
+      const [{ data: account }, { data: site }] = await Promise.all([
+        admin.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
+        admin.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
+      ]);
+      const businessName = site?.company_name || account?.business_name || "Let's Get Quoted contractor";
+      await sendContractorAlertEmail({
+        recipientEmail: ownerEmail,
+        businessName,
+        subject: `${job.client_name} approved the quote`,
+        heading: `${job.client_name} approved the quote`,
+        bodyLines: [
+          `${job.client_name} approved the quote for ${job.ref}.`,
+          ...(quotedAmount > 0 ? [`Quote total: ${formatMoney(quotedAmount)}.`] : []),
+          'The job is now marked in progress.',
+        ],
+        ctaLabel: 'Open the job',
+        ctaUrl: `${APP_ORIGIN}/dashboard/jobs/${jobId}`,
+        tone: 'info',
+      });
+    }
+  } catch (error) {
+    console.error(`Unable to email owner about quote approval for job ${jobId}:`, error);
+  }
 }
 
 export async function createPaymentFeedEvent(

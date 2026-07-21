@@ -34,6 +34,7 @@ import QuickFillButtons from '@/components/quick-fill-buttons';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
 import AddExpenseModal, { CloseOnSuccess } from './AddExpenseModal';
+import QuoteDeliveryBanner from './QuoteDeliveryBanner';
 
 const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
   requested: 'Awaiting payment',
@@ -193,7 +194,7 @@ export default async function JobDetailPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { tab?: string; clientToken?: string; edit?: string; open?: string };
+  searchParams: { tab?: string; clientToken?: string; edit?: string; open?: string; delivery?: string };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
 
@@ -251,6 +252,8 @@ export default async function JobDetailPage({
   const linkedFeedItems = createLinkedFeedItems(feed, payments, invoices, accountId, job.id);
   const hasActiveClientView = activeClientLinkCount > 0 || Boolean(searchParams.clientToken);
   const clientViewHref = searchParams.clientToken ? `/client/jobs/${searchParams.clientToken}` : null;
+  const quoteLinkOrigin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
+  const clientLink = searchParams.clientToken ? `${quoteLinkOrigin}/client/jobs/${searchParams.clientToken}` : null;
   const pipelineChecklist = buildPipelineChecklist(job, payments, invoices, activeClientLinkCount, originatingLead?.id ?? null);
   const heroStatus = deriveJobListBadge(job, payments, invoices, activeClientLinkCount);
   const nextPipelineIndex = pipelineChecklist.findIndex((item) => !item.complete);
@@ -285,6 +288,9 @@ export default async function JobDetailPage({
   return (
     <ScrollTopOnSaveProvider>
     <main className="wide-shell workspace-shell">
+      {searchParams.delivery ? (
+        <QuoteDeliveryBanner delivery={searchParams.delivery} clientLink={clientLink} clientName={job.client_name} clientEmail={job.client_email} />
+      ) : null}
       <section className="workspace-hero panel job-command-hero">
         <div className="workspace-hero-copy">
           <div className="job-title-row">
