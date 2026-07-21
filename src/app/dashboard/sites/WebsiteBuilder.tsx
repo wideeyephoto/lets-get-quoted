@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useTransition } from 'react';
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, type NormalizedSiteContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, type NormalizedSiteContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import { checkSubdomainAvailableAction, generateSiteTextAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
 import ImageLibrary from './ImageLibrary';
@@ -238,6 +238,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
   const updateCertifications = useCallback((certifications: SiteCertificationsContent) => {
     updateSiteContent({ certifications });
+  }, [updateSiteContent]);
+
+  const updateStats = useCallback((stats: SiteStatsContent) => {
+    updateSiteContent({ stats });
   }, [updateSiteContent]);
 
   const toggleShowcaseImage = useCallback((image: SiteImage) => {
@@ -583,6 +587,25 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     ))}
                   </div>
                   <button type="button" className={styles.secondaryAction} onClick={() => updateCertifications({ ...siteContent.certifications, enabled: true, items: [...siteContent.certifications.items, { id: createContentId('cert'), label: '', imageUrl: '', imageAlt: '' }] })}>Add certification</button>
+                </div>
+
+                <div className={styles.contentCard}>
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.stats.enabled} onChange={(event) => updateStats({ ...siteContent.stats, enabled: event.target.checked })} /><span><strong>Animated stats</strong><small>A band of big numbers that count up as visitors scroll — jobs completed, years in business, % satisfaction. Instant credibility.</small></span></label>
+                  <label className={styles.formField}><span>Section title</span><input value={siteContent.stats.title} onChange={(event) => updateStats({ ...siteContent.stats, title: event.target.value })} /></label>
+                  <div className={styles.stackList}>
+                    {siteContent.stats.items.map((item, index) => (
+                      <div className={styles.stackItem} key={item.id}>
+                        <div className={styles.itemHeader}><strong>{item.label || `Stat ${index + 1}`}</strong><button type="button" onClick={() => updateStats({ ...siteContent.stats, items: siteContent.stats.items.filter((stat) => stat.id !== item.id) })}>Remove</button></div>
+                        <div className={styles.formColumns}>
+                          <label className={styles.formField}><span>Prefix</span><input value={item.prefix} maxLength={4} onChange={(event) => updateStats({ ...siteContent.stats, items: siteContent.stats.items.map((stat) => stat.id === item.id ? { ...stat, prefix: event.target.value } : stat) })} placeholder="$" /></label>
+                          <label className={styles.formField}><span>Value</span><input type="number" min={0} value={item.value} onChange={(event) => updateStats({ ...siteContent.stats, items: siteContent.stats.items.map((stat) => stat.id === item.id ? { ...stat, value: Number(event.target.value) } : stat) })} /></label>
+                          <label className={styles.formField}><span>Suffix</span><input value={item.suffix} maxLength={4} onChange={(event) => updateStats({ ...siteContent.stats, items: siteContent.stats.items.map((stat) => stat.id === item.id ? { ...stat, suffix: event.target.value } : stat) })} placeholder="+ / %" /></label>
+                        </div>
+                        <label className={styles.formField}><span>Label</span><input value={item.label} onChange={(event) => updateStats({ ...siteContent.stats, items: siteContent.stats.items.map((stat) => stat.id === item.id ? { ...stat, label: event.target.value } : stat) })} placeholder="Jobs completed" /></label>
+                      </div>
+                    ))}
+                  </div>
+                  <button type="button" className={styles.secondaryAction} onClick={() => updateStats({ ...siteContent.stats, enabled: true, items: [...siteContent.stats.items, { id: createContentId('stat'), value: 0, prefix: '', suffix: '', label: '' }] })}>Add stat</button>
                 </div>
 
                 <div className={styles.integrationCard}>

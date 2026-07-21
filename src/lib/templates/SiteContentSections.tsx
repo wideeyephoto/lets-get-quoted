@@ -6,10 +6,12 @@ import {
   getPublishedRatingBadge,
   getPublishedServiceAreas,
   getPublishedShowcase,
+  getPublishedStats,
   getPublishedStickyCallBar,
   getPublishedTestimonials,
   getPublishedTrustBadges,
 } from '@/lib/site-content';
+import StatCounters from './StatCounters';
 import styles from './themes.module.css';
 
 type SiteContentSectionsProps = {
@@ -29,9 +31,10 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
   const financing = getPublishedFinancing(site.content);
   const serviceAreas = getPublishedServiceAreas(site.content);
   const certifications = getPublishedCertifications(site.content);
+  const stats = getPublishedStats(site.content);
   const stickyCallBar = getPublishedStickyCallBar(site.content, site.phone);
 
-  const hasInFlowSections = Boolean(showcase || testimonials || faqs || serviceAreas || certifications);
+  const hasInFlowSections = Boolean(showcase || testimonials || faqs || serviceAreas || certifications || stats);
   const hasTrustCluster = Boolean(ratingBadge || trustBadges || financing);
 
   if (!hasInFlowSections && !hasTrustCluster && !stickyCallBar) return null;
@@ -155,6 +158,8 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
               </ul>
             </section>
           )}
+
+          {stats && <StatCounters title={stats.title} items={stats.items} />}
 
           {certifications && (
             <section className={styles.extraSection} id="certifications">
