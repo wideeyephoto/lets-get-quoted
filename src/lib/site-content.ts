@@ -80,12 +80,23 @@ export const DEFAULT_ESTIMATE_RANGES: SiteEstimateRangesContent = {
   premiumMultiplier: 1.25,
 };
 
+// Shown ranges lean toward the cheaper side on purpose — this is a rough,
+// pre-visit estimate, and a scary high top-end number is what actually turns
+// a lead away before the contractor ever gets a chance to quote the real
+// price in person. We keep the low end (the floor the contractor set) as-is
+// since that's what makes the range feel credible, and pull the top end down
+// by this fraction of the original spread instead.
+const ESTIMATE_HIGH_END_LEAN_FACTOR = 0.7;
+
 export function computeEstimateRange(ranges: SiteEstimateRangesContent, size: EstimateSize, tier: EstimateMaterialTier): EstimateSizeBand {
   const band = ranges[size];
   const multiplier = tier === 'economical' ? ranges.economicalMultiplier : tier === 'premium' ? ranges.premiumMultiplier : 1;
+  const min = band.min * multiplier;
+  const max = band.max * multiplier;
+  const leanedMax = min + (max - min) * ESTIMATE_HIGH_END_LEAN_FACTOR;
   return {
-    min: Math.max(0, Math.round((band.min * multiplier) / 50) * 50),
-    max: Math.max(0, Math.round((band.max * multiplier) / 50) * 50),
+    min: Math.max(0, Math.round(min / 50) * 50),
+    max: Math.max(0, Math.round(leanedMax / 50) * 50),
   };
 }
 

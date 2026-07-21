@@ -39,6 +39,14 @@
 .heroFormChip { flex: 1; padding: .5rem .4rem; border: 1px solid #d8d3c6; border-radius: calc(var(--theme-radius, 8px) * .6); background: #fff; color: #17140f; font-size: .78rem; font-weight: 700; cursor: pointer; }
 .heroFormChip[data-selected='true'] { border-color: var(--theme-accent); background: color-mix(in srgb, var(--theme-accent) 22%, white); }
 .heroFormResult { margin: 0; font-family: var(--theme-display); font-size: 1.6rem; font-weight: 800; color: #17140f; }
+.heroFormPhotoRow { display: flex; flex-direction: column; gap: .35rem; }
+.heroFormPhotoInput { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.heroFormPhotoRow .heroFormPhotoButton { margin-top: 0; padding: .5rem .65rem; border: 1px dashed #d8d3c6; border-radius: calc(var(--theme-radius, 8px) * .6); background: #fff; color: #6b675e; font-weight: 700; font-size: .76rem; text-align: left; }
+.heroFormPhotoRow .heroFormPhotoButton:disabled { opacity: .6; cursor: default; }
+.heroFormPhotoList { display: flex; flex-wrap: wrap; gap: .35rem; }
+.heroFormPhotoChip { display: inline-flex; align-items: center; gap: .3rem; padding: .3rem .5rem; border-radius: 999px; background: #f2efe6; color: #17140f; font-size: .72rem; font-weight: 600; }
+.heroFormPhotoList .heroFormPhotoChip button { margin: 0; padding: 0; width: 1rem; height: 1rem; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: transparent; color: #6b675e; font-size: .8rem; line-height: 1; }
+.heroFormPhotoList .heroFormPhotoChip button:hover { background: rgba(0,0,0,.08); }
 .sectionHeading { display: flex; align-items: flex-end; justify-content: space-between; gap: 2rem; }
 .sectionHeading > p { max-width: 34rem; }
 .extraSections { background: color-mix(in srgb, currentColor 4%, transparent); }

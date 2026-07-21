@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { compressImage } from '@/lib/client-images';
 import { normalizeUsPhone } from '@/lib/phone';
 import { computeEstimateRange, getEstimateButtonLabel, getSiteContent, type EstimateMaterialTier, type EstimateSize } from '@/lib/site-content';
 import type { Site } from '@/lib/sites';
@@ -11,6 +12,7 @@ type HeroQuickFormProps = {
 };
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MAX_PHOTOS = 6;
 
 const SIZE_OPTIONS: { value: EstimateSize; label: string; hint: string }[] = [
   { value: 'small', label: 'Small', hint: 'Touch-up or single room' },
@@ -37,6 +39,7 @@ function formatCurrency(value: number): string {
 // two-field quick capture, submitted immediately.
 export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const startedAt = useRef(Date.now());
   const siteContent = getSiteContent(site.content);
   const quoteForm = siteContent.quoteForm;
@@ -59,6 +62,17 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   const [chatAnswer, setChatAnswer] = useState('');
   const [chatResponseId, setChatResponseId] = useState('');
   const [chatTurn, setChatTurn] = useState(0);
+  const [selectedPhotos, setSelectedPhotos] = useState<File[]>([]);
+
+  function addPhotos(files: FileList | File[]) {
+    const images = Array.from(files).filter((file) => file.type.startsWith('image/'));
+    setSelectedPhotos((current) => [...current, ...images].slice(0, MAX_PHOTOS));
+    if (photoInputRef.current) photoInputRef.current.value = '';
+  }
+
+  function removePhoto(index: number) {
+    setSelectedPhotos((current) => current.filter((_, photoIndex) => photoIndex !== index));
+  }
 
   function applyChatResult(result: { type?: string; question?: string; responseId?: string; size?: EstimateSize; tier?: EstimateMaterialTier } | null) {
     if (result?.type === 'question' && result.question) {
@@ -168,6 +182,11 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
         data.set('message', trimmedDescription ? `${trimmedDescription}\n\n${summary}` : summary);
       }
 
+      data.delete('photos');
+      for (const photo of selectedPhotos.slice(0, MAX_PHOTOS)) {
+        data.append('photos', await compressImage(photo, 1600, 0.8));
+      }
+
       const response = await fetch('/api/public/leads', { method: 'POST', body: data });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || 'Unable to send your request.');
@@ -181,6 +200,8 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
         setContact('');
         startedAt.current = Date.now();
       }
+      setSelectedPhotos([]);
+      if (photoInputRef.current) photoInputRef.current.value = '';
     } catch (error) {
       setStatus({ tone: 'error', text: error instanceof Error ? error.message : 'Unable to send your request.' });
     } finally {
@@ -251,6 +272,29 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
               value={contact}
               onChange={(event) => setContact(event.target.value)}
             />
+          </div>
+          <div className={styles.heroFormPhotoRow}>
+            <input
+              ref={photoInputRef}
+              className={styles.heroFormPhotoInput}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/avif"
+              multiple
+              onChange={(event) => addPhotos(event.currentTarget.files ?? [])}
+            />
+            <button type="button" className={styles.heroFormPhotoButton} onClick={() => photoInputRef.current?.click()} disabled={selectedPhotos.length >= MAX_PHOTOS}>
+              {selectedPhotos.length > 0 ? `Add more photos (${selectedPhotos.length}/${MAX_PHOTOS})` : 'Add photos (optional)'}
+            </button>
+            {selectedPhotos.length > 0 && (
+              <div className={styles.heroFormPhotoList}>
+                {selectedPhotos.map((photo, index) => (
+                  <span className={styles.heroFormPhotoChip} key={`${photo.name}-${photo.lastModified}-${index}`}>
+                    {photo.name.length > 16 ? `${photo.name.slice(0, 13)}\u2026` : photo.name}
+                    <button type="button" onClick={() => removePhoto(index)} aria-label={`Remove ${photo.name}`}>×</button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Sending...' : wizardEnabled ? `See My ${estimateLabel}` : `Get My ${estimateLabel}`}</button>
         </>
