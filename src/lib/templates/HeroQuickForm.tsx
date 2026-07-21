@@ -60,7 +60,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   const [chatResponseId, setChatResponseId] = useState('');
   const [chatTurn, setChatTurn] = useState(0);
 
-  function applyChatResult(result: any) {
+  function applyChatResult(result: { type?: string; question?: string; responseId?: string; size?: EstimateSize; tier?: EstimateMaterialTier } | null) {
     if (result?.type === 'question' && result.question) {
       setChatQuestion(result.question);
       setChatResponseId(result.responseId ?? '');

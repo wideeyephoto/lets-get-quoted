@@ -26,10 +26,11 @@ function fallback() {
   return { type: 'classification' as const, size: 'medium' as const, tier: 'standard' as const };
 }
 
-function extractOutputText(payload: any): string {
-  if (typeof payload?.output_text === 'string') return payload.output_text;
-  const message = payload?.output?.find((item: any) => item.type === 'message');
-  const textPart = message?.content?.find((part: any) => part.type === 'output_text');
+function extractOutputText(payload: unknown): string {
+  const record = payload as { output_text?: unknown; output?: unknown[] };
+  if (typeof record?.output_text === 'string') return record.output_text;
+  const message = record?.output?.find((item): item is { type: string; content?: unknown[] } => (item as { type?: string })?.type === 'message');
+  const textPart = message?.content?.find((part): part is { type: string; text?: string } => (part as { type?: string })?.type === 'output_text');
   return textPart?.text ?? '{}';
 }
 
