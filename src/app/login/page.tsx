@@ -141,17 +141,25 @@ export default function LoginPage() {
     setLoading(true);
     setMessage('');
     try {
-      const { error } = await supabase.auth.verifyOtp({ phone: normalizedPhone, token: nextCode, type: 'sms' });
-      if (error) throw error;
-      // Hard navigation (not router.replace): a soft client nav can race the
-      // auth cookie the browser client just wrote, so the server renders
-      // /dashboard with no session and bounces back to /login. A full-page load
-      // guarantees the request carries the new cookie.
+      // Verify on the SERVER so the session cookies are written server-side and
+      // are visible to the middleware/server components. The previous
+      // client-side verifyOtp wrote a session the server never accepted, so the
+      // dashboard bounced back to /login. Mirrors the email /auth/callback flow.
+      const res = await fetch('/auth/verify-phone', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ phone: normalizedPhone, code: nextCode }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!res.ok || !data.ok) {
+        setMessage(data.error || 'That code could not be verified.');
+        setLoading(false);
+        return;
+      }
+      // Cookies are set on the response — a full navigation carries them.
       window.location.assign('/dashboard');
-      return;
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'That code could not be verified.');
-    } finally {
       setLoading(false);
     }
   }

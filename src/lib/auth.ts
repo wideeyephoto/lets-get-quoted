@@ -22,10 +22,15 @@ export async function getCurrentMembership(userId: string): Promise<CurrentMembe
   // Use the admin client to bypass RLS.
   const supabase = createAdminClient();
 
+  // limit(1) + oldest-first so a user who ended up with duplicate memberships
+  // (e.g. from a past provisioning race) resolves deterministically instead of
+  // maybeSingle() erroring on multiple rows and bouncing them to /login.
   const { data, error: membershipError } = await supabase
     .from('memberships')
     .select('account_id, role')
     .eq('user_id', userId)
+    .order('created_at', { ascending: true })
+    .limit(1)
     .maybeSingle();
 
   if (membershipError || !data) {
@@ -45,6 +50,8 @@ export async function ensureAccountMembership(userId: string) {
     .from('memberships')
     .select('account_id, role')
     .eq('user_id', userId)
+    .order('created_at', { ascending: true })
+    .limit(1)
     .maybeSingle();
 
   if (existingMembership) {
