@@ -324,6 +324,8 @@ export async function updateJobCrewAction(jobId: string, notify: boolean, formDa
       for (const member of newlyAssigned) {
         try {
           await sendCrewAssignmentSms({
+            accountId,
+            crewId: member.id,
             phone: member.phone,
             crewName: member.name,
             businessName,
@@ -363,6 +365,8 @@ export async function toggleJobCrewAction(jobId: string, crewId: string, notify 
       const businessName = account?.business_name || "Let's Get Quoted contractor";
       try {
         await sendCrewAssignmentSms({
+          accountId,
+          crewId: member.id,
           phone: member.phone,
           crewName: member.name,
           businessName,
@@ -406,6 +410,8 @@ export async function textCrewJobDateAction(jobId: string) {
   for (const member of assignedCrew) {
     try {
       await sendCrewScheduleSelectedSms({
+        accountId,
+        crewId: member.id,
         phone: member.phone,
         crewName: member.name,
         businessName,

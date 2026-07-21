@@ -54,7 +54,12 @@ export async function listCrew(
 
   const { data, error } = await query;
   if (error) throw error;
-  return (data ?? []) as CrewMember[];
+  // Roster order: active members first, then case-insensitive A→Z by name
+  // (created_at is only the DB tiebreaker). Reads like a roster rather than
+  // signup order, and keeps archived crew from floating to the top.
+  return ((data ?? []) as CrewMember[]).sort(
+    (a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
+  );
 }
 
 export async function createCrewMember(

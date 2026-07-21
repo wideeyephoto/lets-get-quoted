@@ -7,6 +7,7 @@ import { formatPhoneDashes } from '@/lib/phone';
 import CrewWorkHistory from '@/components/crew-work-history';
 import SaveButton from '@/components/save-button';
 import CrewPhotoUpload from './CrewPhotoUpload';
+import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
 import { assignCrewToJobAction, createCrewAction, deleteArchivedCrewAction, setCrewActiveAction, updateCrewAction, updateCrewPhotoAction } from './actions';
 
 function initialsFor(name: string) {
@@ -117,16 +118,20 @@ export default async function CrewPage({ searchParams }: { searchParams: { statu
                   </div>
                   <div className="crew-card-actions">
                     {member.active ? (
-                      <form action={assignCrewToJobAction.bind(null, member.id, true)} className="inline-action-form">
-                        <select name="jobId" aria-label={`Assign ${member.name} to job`} disabled={assignableJobs.length === 0} required>
-                          <option value="">Choose job</option>
-                          {assignableJobs.map((job) => (
-                            <option key={job.id} value={job.id}>{job.ref} - {job.client_name} ({formatJobSchedule(job.scheduled_for, job.scheduled_time)})</option>
-                          ))}
-                        </select>
-                        <button type="submit" formAction={assignCrewToJobAction.bind(null, member.id, true)} className="btn secondary" disabled={assignableJobs.length === 0} aria-label={`Assign ${member.name} to the selected job and text them`}>Assign &amp; text</button>
-                        <button type="submit" formAction={assignCrewToJobAction.bind(null, member.id, false)} className="btn secondary" disabled={assignableJobs.length === 0} aria-label={`Assign ${member.name} to the selected job without texting`}>Assign, no text</button>
-                      </form>
+                      assignableJobs.length === 0 ? (
+                        <p className="crew-assign-empty">No open jobs to assign yet.</p>
+                      ) : (
+                        <form action={assignCrewToJobAction.bind(null, member.id, true)} className="inline-action-form">
+                          <select name="jobId" aria-label={`Assign ${member.name} to job`} required>
+                            <option value="">Choose job</option>
+                            {assignableJobs.map((job) => (
+                              <option key={job.id} value={job.id}>{job.ref} - {job.client_name} ({formatJobSchedule(job.scheduled_for, job.scheduled_time)})</option>
+                            ))}
+                          </select>
+                          <button type="submit" formAction={assignCrewToJobAction.bind(null, member.id, true)} className="btn secondary" aria-label={`Assign ${member.name} to the selected job and text them`}>Assign &amp; text</button>
+                          <button type="submit" formAction={assignCrewToJobAction.bind(null, member.id, false)} className="btn secondary" aria-label={`Assign ${member.name} to the selected job without texting`}>Assign, no text</button>
+                        </form>
+                      )
                     ) : null}
                     <form action={setCrewActiveAction.bind(null, member.id, !member.active)}>
                       <button type="submit" className="btn secondary">
@@ -134,9 +139,15 @@ export default async function CrewPage({ searchParams }: { searchParams: { statu
                       </button>
                     </form>
                     {!member.active ? (
-                      <form action={deleteArchivedCrewAction.bind(null, member.id)}>
-                        <button type="submit" className="btn danger">Delete</button>
-                      </form>
+                      <ConfirmActionButton
+                        action={deleteArchivedCrewAction.bind(null, member.id)}
+                        confirmMessage={`Delete ${member.name}? This can't be undone.`}
+                        className="btn danger"
+                        pendingLabel="Deleting…"
+                        savedLabel="Deleted ✓"
+                      >
+                        Delete
+                      </ConfirmActionButton>
                     ) : null}
                   </div>
 

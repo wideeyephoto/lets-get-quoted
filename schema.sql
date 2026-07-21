@@ -409,6 +409,66 @@ create table if not exists sms_events (
   unique (payment_id, event_type)
 );
 
+-- Extend the ledger to also record CREW assignment/schedule texts (originally
+-- payment-only). Idempotent / re-runnable. All metadata-only or fast-validate.
+alter table sms_events alter column payment_id drop not null;
+alter table sms_events add column if not exists context text not null default 'payment';
+-- ON DELETE CASCADE (not set null): a crew-context row with no crew_id would
+-- violate sms_events_target_check below, so deleting a crew member must remove
+-- its log rows rather than orphan them into an invalid state.
+alter table sms_events add column if not exists crew_id uuid references crew(id) on delete cascade;
+
+-- Repair an already-deployed crew_id FK that was created with ON DELETE SET NULL.
+do $$
+begin
+  if exists (
+    select 1 from pg_constraint c
+    where c.conrelid = 'sms_events'::regclass and c.conname = 'sms_events_crew_id_fkey'
+      and pg_get_constraintdef(c.oid) not ilike '%on delete cascade%'
+  ) then
+    alter table sms_events drop constraint sms_events_crew_id_fkey;
+    alter table sms_events add constraint sms_events_crew_id_fkey
+      foreign key (crew_id) references crew(id) on delete cascade;
+  end if;
+end $$;
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'sms_events_context_check') then
+    alter table sms_events add constraint sms_events_context_check check (context in ('payment','crew'));
+  end if;
+end $$;
+
+-- Replace the payment-only event_type check with a superset that also allows
+-- crew events (distinctly named so re-runs are true no-ops).
+alter table sms_events drop constraint if exists sms_events_event_type_check;
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'sms_events_event_type_allowed') then
+    alter table sms_events add constraint sms_events_event_type_allowed
+      check (event_type in (
+        'payment_requested','payment_paid','payment_failed','payment_refunded',
+        'crew_assigned','crew_scheduled'
+      ));
+  end if;
+end $$;
+
+-- A row targets either a payment (payment_id) or a crew member (crew_id).
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'sms_events_target_check') then
+    alter table sms_events add constraint sms_events_target_check
+      check (
+        (context = 'payment' and payment_id is not null)
+        or (context = 'crew' and crew_id is not null)
+      );
+  end if;
+end $$;
+
+create index if not exists sms_events_account_crew_idx
+  on sms_events (account_id, crew_id, created_at desc)
+  where crew_id is not null;
+
 create table if not exists sms_consent (
   id              uuid primary key default gen_random_uuid(),
   account_id      uuid not null references accounts(id) on delete cascade,

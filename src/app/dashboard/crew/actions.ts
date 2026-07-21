@@ -14,7 +14,7 @@ import {
 } from '@/lib/crew';
 import { deleteCrewPhotos, isCrewPhotoFile, uploadCrewPhoto, validateCrewPhotoFile } from '@/lib/crew-photo-storage';
 import { getJob } from '@/lib/jobs';
-import { sendCrewAssignmentSms } from '@/lib/sms';
+import { ensureSmsConsentBaseline, sendCrewAssignmentSms } from '@/lib/sms';
 
 function optionalText(value: FormDataEntryValue | null): string | undefined {
   const text = (value ?? '').toString().trim();
@@ -42,6 +42,10 @@ export async function createCrewAction(formData: FormData) {
     hourlyRate: Number.isFinite(hourlyRateRaw) && hourlyRateRaw > 0 ? hourlyRateRaw : 0,
   });
 
+  // Seed a baseline consent row so a future STOP from this crew number has a
+  // row to flip (the inbound handler only updates existing rows). Best-effort.
+  await ensureSmsConsentBaseline(accountId, phone).catch(() => {});
+
   if (isCrewPhotoFile(photo)) {
     const photoPath = await uploadCrewPhoto(accountId, member.id, photo);
     await updateCrewPhoto(supabase, accountId, member.id, photoPath);
@@ -68,6 +72,9 @@ export async function updateCrewAction(crewId: string, formData: FormData) {
     roleLabel: optionalText(formData.get('roleLabel')),
     hourlyRate: Number.isFinite(hourlyRateRaw) && hourlyRateRaw > 0 ? hourlyRateRaw : 0,
   });
+
+  // Keep a baseline consent row in step with the (possibly new) phone number.
+  await ensureSmsConsentBaseline(accountId, phone).catch(() => {});
 
   revalidatePath('/dashboard/crew');
   revalidatePath('/dashboard/jobs');
@@ -139,6 +146,8 @@ export async function assignCrewToJobAction(crewId: string, notify: boolean, for
     try {
       const { data: account } = await supabase.from('accounts').select('business_name').eq('id', accountId).single();
       await sendCrewAssignmentSms({
+        accountId,
+        crewId: member.id,
         phone: member.phone,
         crewName: member.name,
         businessName: account?.business_name || "Let's Get Quoted contractor",

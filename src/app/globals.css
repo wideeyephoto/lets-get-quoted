@@ -3110,6 +3110,12 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 }
 .crew-avatar-add.pending { font-size: 0.8rem; }
 .crew-avatar-upload:hover .crew-avatar-add { filter: brightness(1.1); transform: scale(1.05); }
+/* Keyboard focus lands on the visually-hidden file input; surface it on the
+   "+" badge so the avatar uploader is a visible focus target. */
+.crew-avatar-upload:focus-within .crew-avatar-add {
+  outline: 2px solid #fff; outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(255,122,33,0.6);
+}
 
 /* Job hero contact badges — green phone / yellow email pills, matching the
    lead detail page's .heroPhoneLink / .heroContactEmail. */
@@ -3588,6 +3594,16 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
     grid-template-columns: 1fr;
     justify-self: stretch;
   }
+}
+
+@media (max-width: 640px) {
+  /* Crew card actions stack and go full-width so the job dropdown + assign
+     buttons are readable on a phone instead of crammed at min(360px,50vw). */
+  .crew-card-actions { flex-direction: column; align-items: stretch; }
+  .crew-card-actions form { width: 100%; }
+  .crew-card-actions .inline-action-form { flex-direction: column; align-items: stretch; width: 100%; }
+  .crew-card-actions .inline-action-form select { max-width: none; width: 100%; }
+  .crew-card-actions .btn { width: 100%; }
 }
 
 @media (max-width: 640px) {

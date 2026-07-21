@@ -1,8 +1,10 @@
 import { createAdminClient } from '@/lib/auth';
 import { formatJobSchedule, formatMoney } from '@/lib/jobs';
+import { normalizeUsPhone } from '@/lib/phone';
 import { createHmac, timingSafeEqual } from 'crypto';
 
 export type PaymentSmsEvent = 'payment_requested' | 'payment_paid' | 'payment_failed' | 'payment_refunded';
+export type CrewSmsEvent = 'crew_assigned' | 'crew_scheduled';
 
 type SmsPayment = {
   id: string;
@@ -98,6 +100,87 @@ export async function recordSmsConsent(accountId: string, phone: string, source 
   if (error) throw error;
 }
 
+// True if this account has recorded an opt-out (STOP) for the phone. Consent
+// rows store the E.164-normalized number, so we normalize before matching.
+export async function isPhoneOptedOut(accountId: string, phone: string): Promise<boolean> {
+  const normalized = normalizeUsPhone(phone) ?? phone.trim();
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from('sms_consent')
+    .select('status')
+    .eq('account_id', accountId)
+    .eq('phone_number', normalized)
+    .maybeSingle();
+  // Fail closed: if consent can't be read, treat as opted-out and skip the
+  // send rather than risk texting someone who opted out.
+  if (error) {
+    console.error(`Consent check failed for ${normalized}; skipping crew send:`, error.message);
+    return true;
+  }
+  return data?.status === 'opted_out';
+}
+
+// Records a baseline opted-in consent row the first time we see a crew phone,
+// so a later STOP has a row to flip (the inbound handler only UPDATEs existing
+// rows). Insert-if-absent: never overwrites an existing row — so a prior
+// opt-out is preserved and this never re-opts-in — and never throws.
+export async function ensureSmsConsentBaseline(accountId: string, phone: string, source = 'crew_added'): Promise<void> {
+  const normalized = normalizeUsPhone(phone);
+  if (!normalized) return; // can't track an unparseable number
+  const admin = createAdminClient();
+  const now = new Date().toISOString();
+  await admin.from('sms_consent').upsert({
+    account_id: accountId,
+    phone_number: normalized,
+    status: 'opted_in',
+    source,
+    consented_at: now,
+    updated_at: now,
+  }, { onConflict: 'account_id,phone_number', ignoreDuplicates: true });
+}
+
+// Sends a crew-directed text through the consent ledger: an opted-out number is
+// skipped (and logged as opted_out); otherwise a pending sms_events row is
+// written, the text is sent, and the row is marked sent/failed. The number is
+// normalized to match how consent/STOP rows are stored.
+async function deliverCrewSms(params: {
+  accountId: string;
+  crewId: string;
+  phone: string;
+  eventType: CrewSmsEvent;
+  body: string;
+}): Promise<{ status: 'sent' | 'opted_out' | 'failed' }> {
+  const admin = createAdminClient();
+  const normalized = normalizeUsPhone(params.phone) ?? params.phone.trim();
+
+  const base = {
+    account_id: params.accountId,
+    crew_id: params.crewId,
+    context: 'crew',
+    event_type: params.eventType,
+    phone_number: normalized,
+    body: params.body,
+  };
+
+  if (await isPhoneOptedOut(params.accountId, normalized)) {
+    await admin.from('sms_events').insert({ ...base, status: 'opted_out' });
+    return { status: 'opted_out' };
+  }
+
+  const { data: event } = await admin.from('sms_events').insert({ ...base, status: 'pending' }).select('id').single();
+
+  try {
+    const providerId = await sendTwilioMessage(normalized, params.body);
+    if (event) await admin.from('sms_events').update({ status: 'sent', provider_id: providerId, sent_at: new Date().toISOString() }).eq('id', event.id);
+    return { status: 'sent' };
+  } catch (sendError) {
+    const reason = sendError instanceof Error ? sendError.message : 'SMS delivery failed.';
+    if (event) await admin.from('sms_events').update({ status: 'failed', error_reason: reason }).eq('id', event.id);
+    console.error(`Crew SMS ${params.eventType} failed for crew ${params.crewId}:`, reason);
+    return { status: 'failed' };
+  }
+}
+
 export async function sendPaymentSmsEvent(paymentId: string, eventType: PaymentSmsEvent) {
   const admin = createAdminClient();
   const { data, error } = await admin
@@ -173,11 +256,13 @@ export async function retryFailedPaymentSmsEvent(paymentId: string, eventType: P
   return sendPaymentSmsEvent(paymentId, eventType);
 }
 
-// Fire-and-forget notification for crew job assignments. Unlike payment SMS,
-// this isn't tracked in the sms_events ledger (that table's schema is
-// payment-specific) — the caller is expected to catch/log failures without
+// Notifies a crew member they were assigned to a job. Routes through
+// deliverCrewSms, so it respects opt-outs and is recorded in the sms_events
+// ledger (context='crew'). Callers still catch/log failures without
 // blocking the assignment itself.
 export async function sendCrewAssignmentSms(params: {
+  accountId: string;
+  crewId: string;
   phone: string;
   crewName: string;
   businessName: string;
@@ -192,10 +277,12 @@ export async function sendCrewAssignmentSms(params: {
     ? ` Scheduled ${formatJobSchedule(params.scheduledFor, params.scheduledTime)}.`
     : '';
   const body = `Let's Get Quoted: Hi ${params.crewName}, ${params.businessName} assigned you to job ${params.jobRef} — ${params.clientName}${addressNote}.${scheduledNote} Reply STOP to opt out.`;
-  return sendTwilioMessage(params.phone, body);
+  return deliverCrewSms({ accountId: params.accountId, crewId: params.crewId, phone: params.phone, eventType: 'crew_assigned', body });
 }
 
 export async function sendCrewScheduleSelectedSms(params: {
+  accountId: string;
+  crewId: string;
   phone: string;
   crewName: string;
   businessName: string;
@@ -208,7 +295,7 @@ export async function sendCrewScheduleSelectedSms(params: {
   const addressNote = params.address ? params.address : 'Address not set';
   const scheduledNote = formatJobSchedule(params.scheduledFor, params.scheduledTime);
   const body = `Let's Get Quoted: Hi ${params.crewName}, job ${params.jobRef} for ${params.clientName} is scheduled for ${scheduledNote}. Address: ${addressNote}. ${params.businessName}. Reply STOP to opt out.`;
-  return sendTwilioMessage(params.phone, body);
+  return deliverCrewSms({ accountId: params.accountId, crewId: params.crewId, phone: params.phone, eventType: 'crew_scheduled', body });
 }
 
 export async function sendJobUpdateSms(params: {

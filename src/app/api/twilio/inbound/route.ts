@@ -31,8 +31,8 @@ export async function POST(request: Request) {
 
   // Messaging Services with Advanced Opt-Out send their own keyword response.
   if (twilioOptOutType) return twiml();
-  if (OPT_OUT.has(keyword)) return twiml('Let\'s Get Quoted: You are unsubscribed from payment texts. Reply START to resume.');
-  if (OPT_IN.has(keyword)) return twiml('Let\'s Get Quoted: Payment text messages have resumed. Reply STOP to opt out.');
+  if (OPT_OUT.has(keyword)) return twiml('Let\'s Get Quoted: You are unsubscribed and will no longer receive texts. Reply START to resume.');
+  if (OPT_IN.has(keyword)) return twiml('Let\'s Get Quoted: You are re-subscribed and will receive texts again. Reply STOP to opt out.');
   if (keyword === 'HELP') return twiml('Let\'s Get Quoted support: hello@letsgetquoted.com. Reply STOP to opt out. Message and data rates may apply.');
   return twiml();
 }

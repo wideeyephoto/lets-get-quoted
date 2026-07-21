@@ -219,6 +219,8 @@ async function applyScheduleSelection(request: PublicScheduleRequest, optionInde
     for (const member of assignedCrew) {
       try {
         await sendCrewScheduleSelectedSms({
+          accountId: request.account_id,
+          crewId: member.id,
           phone: member.phone,
           crewName: member.name,
           businessName: request.businessName,
