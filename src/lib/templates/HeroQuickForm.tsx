@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { normalizeUsPhone } from '@/lib/phone';
 import { computeEstimateRange, getEstimateButtonLabel, getSiteContent, type EstimateMaterialTier, type EstimateSize } from '@/lib/site-content';
 import type { Site } from '@/lib/sites';
 import styles from './themes.module.css';
@@ -8,6 +9,8 @@ import styles from './themes.module.css';
 type HeroQuickFormProps = {
   site: Pick<Site, 'id' | 'published' | 'content'>;
 };
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const SIZE_OPTIONS: { value: EstimateSize; label: string; hint: string }[] = [
   { value: 'small', label: 'Small', hint: 'Touch-up or single room' },
@@ -51,7 +54,17 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
 
   function handleContactContinue(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!name.trim() || !contact.trim()) return;
+    const trimmedContact = contact.trim();
+    if (!name.trim() || !trimmedContact) return;
+
+    const isEmail = emailRequired || trimmedContact.includes('@');
+    const valid = isEmail ? EMAIL_REGEX.test(trimmedContact) : Boolean(normalizeUsPhone(trimmedContact));
+    if (!valid) {
+      setStatus({ tone: 'error', text: isEmail ? 'Enter a valid email address.' : 'Enter a valid phone number.' });
+      return;
+    }
+
+    setStatus(null);
     if (wizardEnabled) setStep('details');
     else submitLead();
   }

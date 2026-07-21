@@ -3,9 +3,12 @@ import { createAdminClient } from '@/lib/auth';
 import { sendLeadNotificationEmail } from '@/lib/email';
 import { createLead } from '@/lib/leads';
 import { deleteLeadPhotos, uploadLeadPhoto } from '@/lib/lead-photo-storage';
+import { normalizeUsPhone } from '@/lib/phone';
 import { getSiteContent } from '@/lib/site-content';
 
 export const runtime = 'nodejs';
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function text(data: FormData, key: string, maxLength: number) {
   return String(data.get(key) ?? '').trim().slice(0, maxLength);
@@ -27,6 +30,12 @@ export async function POST(request: NextRequest) {
   if (!siteId || !name) {
     return NextResponse.json({ error: 'Add your name to send this request.' }, { status: 400 });
   }
+  if (phone && !normalizeUsPhone(phone)) {
+    return NextResponse.json({ error: 'Enter a valid phone number.' }, { status: 400 });
+  }
+  if (email && !EMAIL_REGEX.test(email)) {
+    return NextResponse.json({ error: 'Enter a valid email address.' }, { status: 400 });
+  }
 
   const admin = createAdminClient();
   const { data: site } = await admin
@@ -42,7 +51,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Add your email address so the contractor can follow up.' }, { status: 400 });
   }
   if (!phone && !email) {
-    return NextResponse.json({ error: 'Add a phone number or email so the contractor can follow up.' }, { status: 400 });
+    return NextResponse.json({ error: 'Add a valid phone number or email so the contractor can follow up.' }, { status: 400 });
   }
 
   const photos = data.getAll('photos').filter((item): item is File => item instanceof File && item.size > 0).slice(0, 6);
