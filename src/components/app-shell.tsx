@@ -116,22 +116,32 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       return;
     }
     let cancelled = false;
-    fetch('/api/account/status', { cache: 'no-store' })
-      .then((res) => (res.ok ? res.json() as Promise<AccountStatus> : null))
-      .then((data) => {
-        if (!cancelled && data) {
-          setStripeOnboarded(Boolean(data.onboarded));
-          setSitePublished(Boolean(data.sitePublished));
-          setNewQuoteRequestCount(Number(data.newQuoteRequestCount ?? 0));
-          setJobsNeedingAttentionCount(Number(data.jobsNeedingAttentionCount ?? 0));
-          setUnscheduledJobCount(Number(data.unscheduledJobCount ?? 0));
-          setNewestQuoteRequestId(data.newestQuoteRequestId ?? null);
-          setNewestQuoteRequestCreatedAt(data.newestQuoteRequestCreatedAt ?? null);
-        }
-      })
-      .catch(() => {});
+    const loadStatus = () => {
+      fetch('/api/account/status', { cache: 'no-store' })
+        .then((res) => (res.ok ? res.json() as Promise<AccountStatus> : null))
+        .then((data) => {
+          if (!cancelled && data) {
+            setStripeOnboarded(Boolean(data.onboarded));
+            setSitePublished(Boolean(data.sitePublished));
+            setNewQuoteRequestCount(Number(data.newQuoteRequestCount ?? 0));
+            setJobsNeedingAttentionCount(Number(data.jobsNeedingAttentionCount ?? 0));
+            setUnscheduledJobCount(Number(data.unscheduledJobCount ?? 0));
+            setNewestQuoteRequestId(data.newestQuoteRequestId ?? null);
+            setNewestQuoteRequestCreatedAt(data.newestQuoteRequestCreatedAt ?? null);
+          }
+        })
+        .catch(() => {});
+    };
+    loadStatus();
+    // Surface a new lead/job even while the owner sits on one page: re-check on
+    // an interval, and immediately whenever they switch back to the tab.
+    const interval = window.setInterval(loadStatus, 60000);
+    const onFocus = () => loadStatus();
+    window.addEventListener('focus', onFocus);
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', onFocus);
     };
   }, [isDashboard, isLoggedIn, pathname]);
 

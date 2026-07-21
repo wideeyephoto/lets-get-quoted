@@ -113,6 +113,9 @@
 .callLink { padding: .28rem .6rem; border-radius: 6px; font-size: .76rem; font-weight: 800; color: #7dd3fc; background: rgba(56,189,248,.12); border: 1px solid rgba(56,189,248,.28); text-decoration: none; }
 .callLink:hover { background: rgba(56,189,248,.2); }
 .contactWarn { color: #fca5a5; font-size: .74rem; }
+.quotePreview { margin-top: .4rem; padding: .6rem .75rem; border-radius: 8px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.09); }
+.quotePreview > span { font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; color: rgba(255,255,255,.42); font-weight: 800; }
+.quotePreview p { margin: .25rem 0 0; font-size: .86rem; color: rgba(247,245,239,.82); }
 .contactGrid { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
 .inlineEditDetails { padding-top: .2rem; }
 .inlineEditDetails summary { width: fit-content; list-style: none; cursor: pointer; }

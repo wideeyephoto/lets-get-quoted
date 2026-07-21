@@ -6,7 +6,7 @@ import LeadRadiusMap from '@/components/lead-radius-map';
 import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
 import { expireStaleLeads, formatElapsedTime, formatLeadSource, getLead, listLeads, type Lead, type LeadQuoteVisit } from '@/lib/leads';
 import { expandScheduledJobs, formatJobSchedule, formatJobTime, listJobs, type Job, type ScheduledJobOccurrence } from '@/lib/jobs';
-import { formatPhoneDashes } from '@/lib/phone';
+import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
 import { clearLeadQuoteVisitAction, convertLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, undoConvertLeadAction, updateLeadDetailsAction, updateLeadStatusAction } from '../actions';
 import LeadAvailabilityScheduler from './LeadAvailabilityScheduler';
 import QuoteStartDateCalendar from './QuoteStartDateCalendar';
@@ -116,6 +116,11 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const markLeadLost = updateLeadStatusAction.bind(null, lead.id, 'lost');
   const convertedJobLabel = lead.status === 'won' ? 'Open job' : 'Open quote';
   const visitLabel = formatVisit(lead.quote_visit);
+  // Mirror convertLeadAction's channel logic exactly (normalizable phone -> text,
+  // else email, else no contact) so the preview never claims a text that a
+  // malformed number won't actually receive.
+  const quotePreviewPhone = normalizeUsPhone(lead.phone ?? '');
+  const quotePreviewEmail = lead.email?.trim() || null;
   const hasScheduledEstimate = Boolean(lead.quote_visit);
   const workflowState = lead.converted_job ? 'converted' : hasScheduledEstimate ? 'estimateScheduled' : 'newLead';
   const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
@@ -479,6 +484,16 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                     <small>Send the client their quote dashboard link. Reply STOP to opt out.</small>
                   </span>
                 </label>
+                <div className={styles.quotePreview}>
+                  <span>Your client will receive</span>
+                  {quotePreviewPhone ? (
+                    <p><strong>📱 A text</strong> to {formatPhoneDashes(quotePreviewPhone)} with a secure link to view &amp; approve their quote.</p>
+                  ) : quotePreviewEmail ? (
+                    <p><strong>📧 An email</strong> to {quotePreviewEmail} with a link to view &amp; approve their quote — no mobile on file.</p>
+                  ) : (
+                    <p><strong>⚠ No phone or email on file.</strong> You&apos;ll get a link to copy and send yourself.</p>
+                  )}
+                </div>
                 <details className={styles.optionalScheduleDetails}>
                   <summary>Suggest 3 job start times</summary>
                   <p>Optional. Text three service options with the quote so the client can book quickly.</p>
