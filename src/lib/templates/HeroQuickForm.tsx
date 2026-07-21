@@ -52,16 +52,33 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   const [size, setSize] = useState<EstimateSize>('medium');
   const [tier, setTier] = useState<EstimateMaterialTier>('standard');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isClassifying, setIsClassifying] = useState(false);
   const [status, setStatus] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
 
-  function handleDescribeContinue(event: React.FormEvent<HTMLFormElement>) {
+  async function handleDescribeContinue(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!description.trim()) {
+    const trimmedDescription = description.trim();
+    if (!trimmedDescription) {
       setStatus({ tone: 'error', text: "Tell us what you need done." });
       return;
     }
     setStatus(null);
-    setStep('details');
+    setIsClassifying(true);
+    try {
+      const response = await fetch('/api/public/leads/classify-estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ siteId: site.id, description: trimmedDescription }),
+      });
+      const result = await response.json().catch(() => null);
+      if (result?.size) setSize(result.size);
+      if (result?.tier) setTier(result.tier);
+    } catch {
+      // AI classification is a convenience, not a requirement — fall back to defaults silently.
+    } finally {
+      setIsClassifying(false);
+      setStep('details');
+    }
   }
 
   function handleContactSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -148,13 +165,14 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
             value={description}
             onChange={(event) => setDescription(event.target.value)}
           />
-          <button type="submit" disabled={isSubmitting}>Continue</button>
+          <button type="submit" disabled={isClassifying}>{isClassifying ? 'Thinking...' : 'Continue'}</button>
         </>
       )}
 
       {step === 'details' && (
         <>
           <h2>{estimateLabel}</h2>
+          <p className={styles.heroFormNote}>Based on your description, here&apos;s our best guess — adjust if needed.</p>
           <p className={styles.heroFormNote}>Job size</p>
           <div className={styles.heroFormChipRow}>
             {SIZE_OPTIONS.map((option) => (
