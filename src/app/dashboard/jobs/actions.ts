@@ -62,9 +62,9 @@ export async function createJobAction(formData: FormData) {
   const sendClientText = formData.get('sendClientText') === 'on';
   const normalizedClientPhone = clientPhone ? normalizeUsPhone(clientPhone) : null;
 
-  if (sendClientText && !normalizedClientPhone) {
-    throw new Error('Add a valid client phone number before sending the client dashboard text.');
-  }
+  // A missing phone shouldn't block creating the job — the "Send Client Text"
+  // option is best-effort. The job is created regardless; the dashboard text is
+  // only sent below when a valid phone was provided.
 
   const photoFiles = formData.getAll('photos').filter((item): item is File => item instanceof File && item.size > 0);
   const photoPaths: string[] = [];

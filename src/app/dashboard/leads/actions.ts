@@ -184,7 +184,8 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
   const lead = sendClientText ? await getLead(supabase, accountId, leadId) : null;
   const clientPhone = sendClientText ? normalizeUsPhone(lead?.phone ?? '') : null;
-  if (sendClientText && !clientPhone) throw new Error('Add a valid client phone number before texting the quote sign-off link.');
+  // Don't block converting the lead if the sign-off text can't be sent — the
+  // send below is already guarded on a valid phone, so a missing one just skips.
 
   const job = await convertLeadToJob(supabase, accountId, leadId, quotedAmount, estimatedHours);
   await createJobFeedEvent(supabase, accountId, job.id, {
