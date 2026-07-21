@@ -40,6 +40,7 @@
 .notice { margin-bottom: 1rem; padding: .8rem 1rem; border: 1px solid; border-radius: 7px; font-size: .9rem; }
 .successNotice { border-color: rgba(74,222,128,.35); background: rgba(22,101,52,.2); color: #bbf7d0; }
 .errorNotice { border-color: rgba(248,113,113,.4); background: rgba(127,29,29,.24); color: #fecaca; }
+.warnNotice { margin: .5rem 0 .9rem; padding: .7rem .9rem; border: 1px solid rgba(251,191,36,.45); border-radius: 7px; background: rgba(120,53,15,.28); color: #fde68a; font-size: .85rem; line-height: 1.4; }
 .builderGrid { display: grid; grid-template-columns: minmax(410px, 520px) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
 .editorPanel { min-width: 0; overflow: hidden; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(8,18,31,.9); }
 .builderTabs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); padding: .4rem; border-bottom: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.025); }
