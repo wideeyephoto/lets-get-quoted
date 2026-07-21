@@ -112,7 +112,10 @@ export default async function SchedulePage({
   const activeJobs = jobs.filter((job) => job.status !== 'archived');
   const scheduledJobs = activeJobs.filter((job) => job.scheduled_for);
   const scheduledJobOccurrences = expandScheduledJobs(scheduledJobs, scheduleDayHours);
-  const unscheduledJobs = activeJobs.filter((job) => !job.scheduled_for);
+  const readinessRank = (status: Job['status']) => (status === 'in_progress' ? 0 : status === 'new_lead' ? 1 : 2);
+  const unscheduledJobs = activeJobs
+    .filter((job) => !job.scheduled_for)
+    .sort((a, b) => readinessRank(a.status) - readinessRank(b.status));
 
   const crew = await listCrew(supabase, accountId, { activeOnly: true });
   const assignmentsByJob = await listCrewAssignmentsForJobs(
@@ -196,7 +199,7 @@ export default async function SchedulePage({
         .from('job_feed')
         .select('job_id, created_at')
         .eq('account_id', accountId)
-        .eq('title', 'Crew date text sent')
+        .in('title', ['Crew date text sent', 'Crew assignment text sent'])
         .in('job_id', scheduledJobIds)
         .order('created_at', { ascending: false })
     : { data: [] as Array<{ job_id: string; created_at: string }> };
@@ -365,6 +368,11 @@ export default async function SchedulePage({
                               ? '● Client asked for different dates — send new ones'
                               : '● Dates sent — waiting on the client'}
                           </span>
+                        </div>
+                      ) : null}
+                      {job.status === 'new_lead' ? (
+                        <div>
+                          <span className="schedule-request-flag muted">○ Quote not approved yet</span>
                         </div>
                       ) : null}
                       <div className="schedule-crew-initials" aria-label={assignedCrewInitials.length > 0 ? `Assigned crew: ${assignedCrewInitials.join(', ')}` : 'No crew assigned'}>

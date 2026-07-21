@@ -3519,6 +3519,7 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .schedule-request-flag { display: inline-flex; align-items: center; gap: .32rem; width: fit-content; margin-top: .4rem; padding: .24rem .55rem; border-radius: 999px; font-size: .72rem; font-weight: 800; letter-spacing: .01em; }
 .schedule-request-flag.pending { background: rgba(96,165,250,.14); color: #93c5fd; border: 1px solid rgba(96,165,250,.3); }
 .schedule-request-flag.warn { background: rgba(251,146,60,.16); color: #fdba74; border: 1px solid rgba(251,146,60,.34); }
+.schedule-request-flag.muted { background: rgba(255,255,255,.06); color: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.16); }
 .job-feed-share-strip { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .85rem; margin: 1rem 0 0; border: 1px solid rgba(255,209,102,.18); border-radius: 14px; background: rgba(255,209,102,.045); }
 .job-feed-share-strip strong { color: #f7f5ef; }
 .job-feed-share-strip p { margin: .15rem 0 .25rem; color: rgba(247,245,239,.6); font-size: .86rem; }

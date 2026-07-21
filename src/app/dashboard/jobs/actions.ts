@@ -321,9 +321,10 @@ export async function updateJobCrewAction(jobId: string, notify: boolean, formDa
       const businessName = account?.business_name || "Let's Get Quoted contractor";
       const newlyAssigned = crewMembers.filter((member) => added.includes(member.id));
 
+      let sentCount = 0;
       for (const member of newlyAssigned) {
         try {
-          await sendCrewAssignmentSms({
+          const result = await sendCrewAssignmentSms({
             accountId,
             crewId: member.id,
             phone: member.phone,
@@ -335,9 +336,22 @@ export async function updateJobCrewAction(jobId: string, notify: boolean, formDa
             scheduledFor: job.scheduled_for,
             scheduledTime: job.scheduled_time,
           });
+          if (result?.status === 'sent') sentCount += 1;
         } catch (error) {
           console.error(`Crew assignment SMS failed for crew ${member.id} on job ${jobId}:`, error);
         }
+      }
+
+      // Only mark the crew notified when a text ACTUALLY went out — deliverCrewSms
+      // returns a status (opted_out / failed) instead of throwing, so the status
+      // must not flip to "notified" when nothing was delivered.
+      if (sentCount > 0) {
+        await createJobFeedEvent(supabase, accountId, jobId, {
+          kind: 'job_update',
+          title: 'Crew assignment text sent',
+          body: `Texted ${sentCount} crew ${sentCount === 1 ? 'member' : 'members'} about their assignment to ${job.ref}.`,
+          visibility: 'internal',
+        });
       }
     }
   }
@@ -364,7 +378,7 @@ export async function toggleJobCrewAction(jobId: string, crewId: string, notify 
     if (job && member) {
       const businessName = account?.business_name || "Let's Get Quoted contractor";
       try {
-        await sendCrewAssignmentSms({
+        const result = await sendCrewAssignmentSms({
           accountId,
           crewId: member.id,
           phone: member.phone,
@@ -376,6 +390,16 @@ export async function toggleJobCrewAction(jobId: string, crewId: string, notify 
           scheduledFor: job.scheduled_for,
           scheduledTime: job.scheduled_time,
         });
+        // Only mark notified on a real send — opted_out / failed come back as a
+        // status (not a throw), so the catch below can't gate this.
+        if (result?.status === 'sent') {
+          await createJobFeedEvent(supabase, accountId, jobId, {
+            kind: 'job_update',
+            title: 'Crew assignment text sent',
+            body: `Texted ${member.name} about their assignment to ${job.ref}.`,
+            visibility: 'internal',
+          });
+        }
       } catch (error) {
         console.error(`Crew assignment SMS failed for crew ${crewId} on job ${jobId}:`, error);
       }
