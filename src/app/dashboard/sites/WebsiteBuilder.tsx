@@ -349,7 +349,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
                 <div className={styles.contentCard}>
                   <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.quoteForm.emailRequired} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, emailRequired: event.target.checked })} /><span><strong>Require email on quote form</strong><small>Ask homeowners for an email address on every request so future email campaigns have clean contact data.</small></span></label>
-                  <label className={styles.formField}><span>Quote form wording</span><select value={siteContent.quoteForm.estimateLabel} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, estimateLabel: event.target.value as SiteQuoteFormContent['estimateLabel'] })}><option value="quick">"Quick Estimate"</option><option value="instant">"Instant Estimate"</option></select></label>
+                  <label className={styles.formField}><span>Quote form wording</span><select value={siteContent.quoteForm.estimateLabel} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, estimateLabel: event.target.value as SiteQuoteFormContent['estimateLabel'] })}><option value="quick">&quot;Quick Estimate&quot;</option><option value="instant">&quot;Instant Estimate&quot;</option></select></label>
                 </div>
 
                 <div className={styles.contentCard}>
