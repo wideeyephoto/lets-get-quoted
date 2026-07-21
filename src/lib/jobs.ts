@@ -267,7 +267,12 @@ export async function listJobs(
     }
 
     const quoteOnlyJobIds = new Set((quoteLeads ?? []).map((lead) => lead.converted_job).filter(Boolean));
-    jobs = jobs.filter((job) => !quoteOnlyJobIds.has(job.id));
+    // Only hide jobs that are still unapproved quotes (status 'new_lead' from a
+    // quoted/lost lead — those live on the Leads page). Once a job is
+    // in_progress, complete, or archived it's real work and must show on the
+    // Jobs pipeline regardless of the originating lead's status; otherwise a
+    // completed lead-job would disappear from Jobs entirely.
+    jobs = jobs.filter((job) => !(quoteOnlyJobIds.has(job.id) && job.status === 'new_lead'));
   }
 
   return sortJobsByStatus(jobs);

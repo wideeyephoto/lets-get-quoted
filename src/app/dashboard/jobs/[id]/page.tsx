@@ -28,7 +28,7 @@ import DeleteJobButton from './DeleteJobButton';
 import PaymentActionButtons from './PaymentActionButtons';
 import ConfirmActionButton from './ConfirmActionButton';
 import JobExpenseFields from '@/components/job-expense-fields';
-import SaveButton from '@/components/save-button';
+import SaveButton, { ScrollTopOnSaveProvider } from '@/components/save-button';
 import QuickFillButtons from '@/components/quick-fill-buttons';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
@@ -281,6 +281,7 @@ export default async function JobDetailPage({
   ]).filter((event) => event.visibility !== 'internal');
 
   return (
+    <ScrollTopOnSaveProvider>
     <main className="wide-shell workspace-shell">
       <section className="workspace-hero panel job-command-hero">
         <div className="workspace-hero-copy">
@@ -934,6 +935,7 @@ export default async function JobDetailPage({
         </section>
 
     </main>
+    </ScrollTopOnSaveProvider>
   );
 }
 

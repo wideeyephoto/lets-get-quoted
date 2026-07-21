@@ -11,7 +11,7 @@ import { clearLeadQuoteVisitAction, convertLeadAction, scheduleLeadQuoteVisitAct
 import LeadAvailabilityScheduler from './LeadAvailabilityScheduler';
 import QuoteStartDateCalendar from './QuoteStartDateCalendar';
 import UndoQuoteButton from './UndoQuoteButton';
-import SaveButton from '@/components/save-button';
+import SaveButton, { ScrollTopOnSaveProvider } from '@/components/save-button';
 import styles from '../leads.module.css';
 
 function extractCity(address: string | null): string {
@@ -218,6 +218,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
     },
   ];
   return (
+    <ScrollTopOnSaveProvider>
     <main className={`wide-shell workspace-shell ${styles.leadCommandShell}`}>
       <section className={`workspace-hero panel ${styles.leadHero}`}>
         <div className={styles.leadHeroMain}>
@@ -468,5 +469,6 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
         </aside>
       </div>
     </main>
+    </ScrollTopOnSaveProvider>
   );
 }

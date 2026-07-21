@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { sendMagicLinkAction } from './actions';
 import { normalizeUsPhone } from '@/lib/phone';
 import { supabase } from '@/lib/supabase';
@@ -65,7 +64,6 @@ function MicrosoftIcon() {
 }
 
 export default function LoginPage() {
-  const router = useRouter();
   const [step, setStep] = useState<'request' | 'verify'>('request');
   const [identifier, setIdentifier] = useState('');
   const [normalizedPhone, setNormalizedPhone] = useState('');
@@ -145,8 +143,12 @@ export default function LoginPage() {
     try {
       const { error } = await supabase.auth.verifyOtp({ phone: normalizedPhone, token: nextCode, type: 'sms' });
       if (error) throw error;
-      router.replace('/dashboard');
-      router.refresh();
+      // Hard navigation (not router.replace): a soft client nav can race the
+      // auth cookie the browser client just wrote, so the server renders
+      // /dashboard with no session and bounces back to /login. A full-page load
+      // guarantees the request carries the new cookie.
+      window.location.assign('/dashboard');
+      return;
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'That code could not be verified.');
     } finally {

@@ -75,7 +75,9 @@
 .leadStageCard a:hover { border-color: rgba(255,209,102,.32); color: #fff; }
 .leadStageCard .stageComplete { color: #fff; border-color: rgba(74,222,128,.22); background: rgba(74,222,128,.08); }
 .leadStageCard .stageComplete::before { background: #4ade80; box-shadow: 0 0 0 5px rgba(74,222,128,.13); }
-.detailGrid { display: grid; grid-template-columns: minmax(0, 1.04fr) minmax(430px, .96fr); gap: 1.1rem; align-items: start; }
+/* Single column at every width — the calendar (action panel) on top, the
+   timeline below — so it never "jumps up" into a second column on wide screens. */
+.detailGrid { display: grid; grid-template-columns: 1fr; gap: 1.1rem; align-items: start; }
 .leadContextStack { display: grid; gap: 1rem; min-width: 0; }
 .detailSection { display: grid; gap: 1rem; }
 .detailBadges { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-top: .7rem; }
@@ -95,7 +97,7 @@
 .modalCloseButton { display: inline-grid; flex: 0 0 auto; place-items: center; width: 34px; height: 34px; border: 1px solid rgba(255,255,255,.12); border-radius: 999px; background: rgba(255,255,255,.05); color: #ffd166; font-weight: 900; text-decoration: none; }
 .modalCloseButton:hover, .modalCloseButton:focus-visible { border-color: rgba(255,209,102,.42); background: rgba(255,209,102,.1); outline: none; }
 .editModalActions { display: flex !important; justify-content: flex-end; gap: .55rem; }
-.actionPanel { position: sticky; top: 6.75rem; display: grid; gap: 1rem; align-content: start; min-width: 0; }
+.actionPanel { position: static; order: -1; display: grid; gap: 1rem; align-content: start; min-width: 0; }
 .actionPanel h2, .actionPanel p { overflow-wrap: anywhere; }
 .actionPanel :global(.schedule-option-grid) { grid-template-columns: 1fr; }
 .actionForm { display: grid; gap: .65rem; padding-top: .5rem; }
