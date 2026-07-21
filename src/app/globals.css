@@ -540,13 +540,29 @@ li + li { margin-top: 0.45rem; }
 .flow-strip-arrow { color: rgba(247, 245, 239, 0.32); }
 .flow-strip-highlight { color: var(--accent-2); }
 
+/* Solid fallback first; the clipped gradient only applies where supported, so
+   the headline is never invisible in browsers/modes where background-clip:text
+   fails (e.g. Windows High Contrast / forced-colors). */
 .gradient-text {
-  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-2) 50%, var(--accent) 100%);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: gradient-shift 6s ease-in-out infinite;
+  color: var(--accent-2);
+}
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .gradient-text {
+    background: linear-gradient(90deg, var(--accent) 0%, var(--accent-2) 50%, var(--accent) 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: gradient-shift 6s ease-in-out infinite;
+  }
+}
+@media (forced-colors: active) {
+  .gradient-text {
+    forced-color-adjust: none;
+    background: none;
+    color: CanvasText;
+    -webkit-text-fill-color: currentColor;
+  }
 }
 
 @keyframes gradient-shift {
@@ -735,8 +751,8 @@ li + li { margin-top: 0.45rem; }
   position: absolute;
   top: 40%;
   transform: translateY(-50%);
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -841,9 +857,11 @@ li + li { margin-top: 0.45rem; }
 }
 
 .pricing-tier-label { font-weight: 700; font-size: 0.88rem; margin-top: 0.8rem; }
-.pricing-tier-range { font-family: var(--font-mono), monospace; font-size: 0.76rem; color: rgba(247, 245, 239, 0.5); }
+.pricing-tier-range { font-family: var(--font-mono), monospace; font-size: 0.76rem; color: rgba(247, 245, 239, 0.72); }
 
-.pricing-footnote { margin: 1.6rem 0 0; font-size: 0.78rem; color: rgba(247, 245, 239, 0.42); }
+.pricing-footnote { margin: 1.6rem 0 0; font-size: 0.8rem; color: rgba(247, 245, 239, 0.72); }
+.hero-reassure { margin: 0.9rem 0 0; font-size: 0.85rem; color: rgba(247, 245, 239, 0.72); }
+.mid-cta { display: flex; flex-wrap: wrap; gap: 0.7rem; justify-content: center; margin-top: 1.8rem; }
 
 /* ---------------------------------------------------------------- */
 /* Homepage: trust badges                                            */

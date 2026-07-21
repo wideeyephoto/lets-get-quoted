@@ -41,7 +41,7 @@ type AccountStatus = {
 const QUOTE_REQUEST_ALERT_DISMISSED_KEY = 'lgq-dismissed-quote-request-alert';
 
 function getPrimaryAction() {
-  return { href: '/login', label: 'Sign in' };
+  return { href: '/login', label: 'Create Free Account' };
 }
 
 export function AppShell({ children, forceStandaloneSite = false }: { children: ReactNode; forceStandaloneSite?: boolean }) {
@@ -84,7 +84,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     ? baseNavItems.filter((item) => item.href !== '/' && item.href !== '/dashboard/sites')
     : isStandaloneSite || pathname.startsWith('/demo')
       ? []
-      : [{ href: '/login', label: 'Create Free Account' }];
+      : [{ href: '/login', label: 'Sign in' }];
 
   useEffect(() => {
     closeNav();

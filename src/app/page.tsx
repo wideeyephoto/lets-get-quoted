@@ -2,8 +2,6 @@ import Link from 'next/link';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import TemplateSlider from '@/components/template-slider';
 
-export const dynamic = 'force-dynamic';
-
 // Homepage showcases a curated set of 3 flagship templates in a slider —
 // the full catalog (17 and growing) lives behind "See a live demo" / the
 // in-app theme picker, not stacked on the landing page.
@@ -151,7 +149,7 @@ const featureGrid = [
     icon: <SignatureIcon />,
   },
   {
-    title: 'Stripe Connect payments',
+    title: 'Stripe-powered payments',
     body: 'Card and bank payments processed through Stripe, with your fee tier tracked automatically.',
     icon: <CardIcon />,
   },
@@ -175,15 +173,43 @@ const feeTiers = [
 ];
 
 const trustBadges = [
-  { label: 'PCI-compliant payments via Stripe', icon: <ShieldIcon /> },
-  { label: 'Direct-to-bank payouts via Stripe Connect', icon: <BankIcon /> },
+  { label: 'Card payments run on Stripe — we never see card numbers', icon: <ShieldIcon /> },
+  { label: 'Card & bank payments run on Stripe and pay out to your account', icon: <BankIcon /> },
   { label: 'Encrypted in transit, every request', icon: <LockIcon /> },
-  { label: 'Row-level data isolation per account', icon: <LayersIcon /> },
+  { label: "Your data is walled off from every other contractor's", icon: <LayersIcon /> },
 ];
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      name: "Let's Get Quoted",
+      url: 'https://letsgetquoted.com',
+      logo: 'https://letsgetquoted.com/SITE-LOGO-1.png',
+    },
+    {
+      '@type': 'SoftwareApplication',
+      name: "Let's Get Quoted",
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web',
+      description:
+        'A premium contractor website plus Stripe-powered payments — send a branded quote, get it e-signed, and get paid straight to your bank.',
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'USD',
+        description:
+          'Free to start. No subscription or setup fee — a platform fee of 0.65%–1.25% applies only when a homeowner pays you.',
+      },
+    },
+  ],
+};
 
 export default function HomePage() {
   return (
     <main className="marketing-shell">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
       <div className="ambient-glow ambient-glow-b" aria-hidden="true" />
 
@@ -200,19 +226,20 @@ export default function HomePage() {
           </div>
           <h1>Quote it. Sign it. Get paid. <span className="gradient-text">Straight to your bank.</span></h1>
           <p className="hero-text">
-            Let&apos;s Get Quoted pairs a premium, professionally designed website with a payment engine built on
-            Stripe Connect &mdash; so a signed quote turns into a bank deposit without you chasing a single check.
+            One tool for your website, quotes, e-signatures, and getting paid &mdash; so a signed quote becomes a
+            bank deposit without the web guy, the paper contract, or chasing a single check. Payments run on Stripe.
           </p>
           <div className="actions">
             <Link href="/login" className="btn primary">
               Create Free Account
             </Link>
             <Link href="/demo" className="btn secondary">
-              See It in Action
+              Explore the demo &mdash; no signup
             </Link>
           </div>
+          <p className="hero-reassure">Free to start &middot; No credit card &middot; You only pay when a homeowner pays you.</p>
           <ul className="hero-trust-row">
-            <li><ShieldIcon /><span>Bank-grade payouts via Stripe Connect</span></li>
+            <li><ShieldIcon /><span>Paid straight to your bank, on Stripe</span></li>
             <li><SignatureIcon /><span>E-signatures built in</span></li>
             <li><TrendDownIcon /><span>Fees drop to 0.65% as you grow</span></li>
           </ul>
@@ -272,8 +299,8 @@ export default function HomePage() {
           <p className="eyebrow">Transparent pricing</p>
           <h2>The more you grow, the less you pay.</h2>
           <p>
-            Our platform fee scales down automatically with your trailing 12-month payment volume &mdash; no calls
-            to sales, no renegotiating.
+            You only pay when a homeowner actually pays you &mdash; no subscription, no setup fee. Our platform fee
+            scales down automatically with your trailing 12-month volume, with no calls to sales.
           </p>
         </div>
         <div className="pricing-tiers">
@@ -288,7 +315,11 @@ export default function HomePage() {
             </div>
           ))}
         </div>
-        <p className="pricing-footnote">Platform fee only &mdash; standard Stripe card-processing fees apply separately.</p>
+        <p className="pricing-footnote">Platform fee only. Standard Stripe processing (about 2.9% + 30&cent; per card charge) applies separately.</p>
+        <div className="mid-cta">
+          <Link href="/login" className="btn primary">Create Free Account</Link>
+          <Link href="/demo" className="btn secondary">See your fee tier in the live demo</Link>
+        </div>
       </section>
 
       <section className="section-block proof-band">

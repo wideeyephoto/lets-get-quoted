@@ -56,6 +56,8 @@ export default function TemplateSlider({ templates }: Props) {
   const count = templates.length;
 
   useEffect(() => {
+    // Respect reduced-motion: don't auto-rotate at all for those users.
+    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     const id = setInterval(() => {
       if (!pausedRef.current) setActive((current) => (current + 1) % count);
     }, 5000);
@@ -83,6 +85,8 @@ export default function TemplateSlider({ templates }: Props) {
       className="template-deck"
       onMouseEnter={() => { pausedRef.current = true; }}
       onMouseLeave={() => { pausedRef.current = false; }}
+      onFocus={() => { pausedRef.current = true; }}
+      onBlur={() => { pausedRef.current = false; }}
     >
       <div className="template-deck-stage">
         {/* invisible sizer so the absolutely-positioned cards get real height */}
@@ -129,7 +133,7 @@ export default function TemplateSlider({ templates }: Props) {
         <strong>{current.name}</strong>
         <span className="template-card-desc">{current.description}</span>
         <span className="template-card-cta">
-          View live demo <ArrowRightIcon />
+          Preview this website <ArrowRightIcon />
         </span>
       </Link>
 

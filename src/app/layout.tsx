@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import {
   Anton, Baloo_2, Barlow, Bebas_Neue, Bitter, Chakra_Petch, Comfortaa, Cormorant_Garamond,
   Fraunces, IBM_Plex_Sans, Inter, JetBrains_Mono, Josefin_Sans, Karla, Libre_Baskerville,
@@ -170,9 +170,36 @@ const templateFontVariables = [
   bloomDisplayFont.variable, novaDisplayFont.variable, driftDisplayFont.variable,
 ].join(' ');
 
+const SITE_URL = 'https://letsgetquoted.com';
+
 export const metadata: Metadata = {
-  title: 'Let\'s Get Quoted',
-  description: 'A contractor-first quote-to-paid experience with Supabase-backed workflows.',
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Let's Get Quoted — Contractor websites that get you paid, straight to your bank",
+    template: "%s · Let's Get Quoted",
+  },
+  description:
+    'A premium contractor website plus Stripe-powered payments. Send a branded quote, get it e-signed, and the money lands straight in your bank. No subscription — you only pay when you get paid.',
+  applicationName: "Let's Get Quoted",
+  alternates: { canonical: '/' },
+  openGraph: {
+    type: 'website',
+    url: SITE_URL,
+    siteName: "Let's Get Quoted",
+    title: 'Contractor websites that get you paid — straight to your bank',
+    description:
+      'Send a branded quote, get it e-signed, and collect card or bank payments — one tool built for contractors. No subscription; you only pay when you get paid.',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Contractor websites that get you paid — straight to your bank',
+    description:
+      'Quote, e-sign, and get paid to your bank — one tool built for contractors. No subscription; pay only when you get paid.',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#06131f',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
