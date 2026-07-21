@@ -136,25 +136,10 @@ export default async function DashboardPage() {
   // the latest request per job via the same helper.
   const scheduleRequestByJob = await listActiveScheduleRequests(supabase, accountId, unscheduledActiveJobs.map((job) => job.id));
   const stuckScheduleCount = Object.values(scheduleRequestByJob).filter((request) => request.status === 'needs_more_options').length;
+  // Setup tasks (Stripe, website) live in the onboarding checklist and the
+  // topbar pills — keeping them out of the priority list stops the triple-listing
+  // and prevents the 5-item cap from bumping real operational work.
   const priorityItems = [
-    !onboarded
-      ? {
-          key: 'stripe',
-          label: 'Connect Stripe payouts',
-          detail: 'Activate homeowner deposits and stage payments.',
-          href: '/dashboard/settings',
-          cta: 'Open account',
-        }
-      : null,
-    !sitePublished
-      ? {
-          key: 'website',
-          label: 'Publish your website',
-          detail: 'Turn website visitors into new quote requests.',
-          href: '/dashboard/sites',
-          cta: 'Open website',
-        }
-      : null,
     openLeadCount > 0
       ? {
           key: 'leads',

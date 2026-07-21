@@ -35,6 +35,7 @@ import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
 import AddExpenseModal, { CloseOnSuccess } from './AddExpenseModal';
 import QuoteDeliveryBanner from './QuoteDeliveryBanner';
+import CopyLinkButton from './CopyLinkButton';
 
 const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
   requested: 'Awaiting payment',
@@ -670,6 +671,9 @@ export default async function JobDetailPage({
                         onMarkPaidManually={markPaymentPaidManuallyAction}
                         canRefund={Boolean(payment.stripe_payment_intent)}
                       />
+                      {payment.status === 'requested' || payment.status === 'processing' ? (
+                        <CopyLinkButton url={`${quoteLinkOrigin}/pay/${payment.id}`} label="Copy pay link" />
+                      ) : null}
                       {payment.sms_events?.some((event) => event.event_type === 'payment_requested' && event.status === 'failed') && (
                         <form action={boundRetryPaymentText.bind(null, payment.id)}>
                           <SaveButton className="btn secondary" pendingLabel="Sending…" savedLabel="Sent ✓">
