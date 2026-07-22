@@ -190,8 +190,8 @@ export type SiteBlogContent = {
 export type SiteHeroBadgeContent = { preset: string };
 
 export const HERO_BADGE_PRESETS = [
-  { key: 'support', icon: '◷', title: '24-Hour', subtitle: 'Ready support', label: '24-hour ready support' },
   { key: 'licensed', icon: '✓', title: 'Licensed & insured', subtitle: 'Fully vetted pros', label: 'Licensed & insured' },
+  { key: 'support', icon: '◷', title: '24-Hour', subtitle: 'Ready support', label: '24-hour ready support' },
   { key: 'estimates', icon: '$', title: 'Free estimates', subtitle: 'No-obligation quotes', label: 'Free estimates' },
   { key: 'guarantee', icon: '★', title: 'Satisfaction', subtitle: 'Guaranteed work', label: 'Satisfaction guaranteed' },
   { key: 'local', icon: '⌂', title: 'Locally owned', subtitle: 'In your community', label: 'Locally owned' },
@@ -607,7 +607,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       intro: toString(blog.intro),
       posts: parseBlogPosts(blog.posts),
     },
-    heroBadge: { preset: toString(heroBadge.preset, 'support') },
+    heroBadge: { preset: toString(heroBadge.preset, 'licensed') },
   };
 }
 
