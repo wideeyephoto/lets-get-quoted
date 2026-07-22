@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
+import { getHeroBadge } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
@@ -19,6 +20,7 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
   const gallery = galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES.slice(0, 4);
   void gallery;
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
+  const heroBadge = getHeroBadge(site.content);
   const themeStyle = {
     '--theme-accent': site.accent_override || '#f15a29',
     '--theme-on-accent': '#ffffff',
@@ -55,10 +57,12 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
           <span className={styles.fixitHeroBlob} aria-hidden="true" />
           <span className={styles.fixitHeroShape} aria-hidden="true" />
           <img className={styles.fixitHeroImg} src={heroImage} alt="Professional handyman ready to help" fetchPriority="high" decoding="async" />
-          <div className={styles.fixitHeroCard} data-parallax="0.14">
-            <span className={styles.fixitHeroCardIcon} aria-hidden="true">◷</span>
-            <div><strong>24-Hour</strong><small>Ready support</small></div>
-          </div>
+          {heroBadge && (
+            <div className={styles.fixitHeroCard} data-parallax="0.14">
+              <span className={styles.fixitHeroCardIcon} aria-hidden="true">{heroBadge.icon}</span>
+              <div><strong>{heroBadge.title}</strong><small>{heroBadge.subtitle}</small></div>
+            </div>
+          )}
           <div className={`${styles.fixitHeroCard} ${styles.fixitHeroStat}`} data-parallax="0.2">
             <span className={styles.fixitHeroCardIcon} aria-hidden="true">✓</span>
             <div><strong>Licensed &amp; insured</strong><small>Fully vetted pros</small></div>

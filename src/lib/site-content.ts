@@ -184,6 +184,21 @@ export type SiteBlogContent = {
   posts: SiteBlogPost[];
 };
 
+// Floating hero badge — the small trust chip shown on the hero of photo-badge
+// templates (Fixit today). Owners pick one of these presets or hide it; the
+// preset key drives the icon/title/subtitle so the template stays declarative.
+export type SiteHeroBadgeContent = { preset: string };
+
+export const HERO_BADGE_PRESETS = [
+  { key: 'support', icon: '◷', title: '24-Hour', subtitle: 'Ready support', label: '24-hour ready support' },
+  { key: 'licensed', icon: '✓', title: 'Licensed & insured', subtitle: 'Fully vetted pros', label: 'Licensed & insured' },
+  { key: 'estimates', icon: '$', title: 'Free estimates', subtitle: 'No-obligation quotes', label: 'Free estimates' },
+  { key: 'guarantee', icon: '★', title: 'Satisfaction', subtitle: 'Guaranteed work', label: 'Satisfaction guaranteed' },
+  { key: 'local', icon: '⌂', title: 'Locally owned', subtitle: 'In your community', label: 'Locally owned' },
+] as const;
+
+export type HeroBadgePreset = (typeof HERO_BADGE_PRESETS)[number];
+
 export type SiteQuoteFormContent = {
   emailRequired: boolean;
   // Controls the wording used on the quote-request call-to-action ('Quick Estimate'
@@ -259,6 +274,7 @@ export type NormalizedSiteContent = {
   services: SiteServicesContent;
   howItWorks: SiteHowItWorksContent;
   blog: SiteBlogContent;
+  heroBadge: SiteHeroBadgeContent;
 };
 
 export const DEFAULT_SHOWCASE_TITLE = 'Project showcase';
@@ -493,6 +509,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const services = isRecord(root.services) ? root.services : {};
   const howItWorks = isRecord(root.howItWorks) ? root.howItWorks : {};
   const blog = isRecord(root.blog) ? root.blog : {};
+  const heroBadge = isRecord(root.heroBadge) ? root.heroBadge : {};
 
   return {
     showcase: {
@@ -590,6 +607,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       intro: toString(blog.intro),
       posts: parseBlogPosts(blog.posts),
     },
+    heroBadge: { preset: toString(heroBadge.preset, 'support') },
   };
 }
 
@@ -706,4 +724,12 @@ export function getPublishedBlogPost(
       (post) => post.slug === slug && post.status === 'published' && post.title.trim() && post.body.trim(),
     ) ?? null
   );
+}
+
+// The floating hero badge to render, or null when the owner chose to hide it.
+// Falls back to the first preset if an unknown key somehow persists.
+export function getHeroBadge(content: Record<string, unknown> | null | undefined): HeroBadgePreset | null {
+  const preset = getSiteContent(content).heroBadge.preset;
+  if (preset === 'none') return null;
+  return HERO_BADGE_PRESETS.find((badge) => badge.key === preset) ?? HERO_BADGE_PRESETS[0];
 }
