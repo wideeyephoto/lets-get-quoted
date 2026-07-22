@@ -71,6 +71,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   const [isGeneratingText, setIsGeneratingText] = useState(false);
   const [isGeneratingBlog, setIsGeneratingBlog] = useState(false);
   const [uploadingCoverId, setUploadingCoverId] = useState<string | null>(null);
+  const [blogTopic, setBlogTopic] = useState('');
   // Local string state for the free-numeric rating fields so decimal typing
   // (e.g. "4.9") isn't clobbered by re-normalization on every keystroke.
   const [ratingInput, setRatingInput] = useState(() => String(getSiteContent(initialSite.content).ratingBadge.rating));
@@ -158,7 +159,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     setMessage(null);
     startTransition(async () => {
       try {
-        const draft = await generateBlogPostAction();
+        const draft = await generateBlogPostAction(blogTopic.trim() || undefined);
         setSite((current) => {
           const content = getSiteContent(current.content);
           // Unique slug among existing posts so /blog/[slug] never collides.
@@ -180,6 +181,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
           return { ...current, content: mergeSiteContent(current.content, { blog: { ...content.blog, enabled: true, posts: [post, ...content.blog.posts] } }) };
         });
         setIsDirty(true);
+        setBlogTopic('');
         setMessage({ type: 'success', text: 'Draft created — review and edit it, then flip it to Published when you’re happy. Nothing goes live until you publish.' });
       } catch (error) {
         setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to generate a draft.' });
@@ -187,7 +189,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
         setIsGeneratingBlog(false);
       }
     });
-  }, []);
+  }, [blogTopic]);
 
   const handleGenerateText = useCallback(() => {
     const hasExistingText = Boolean(site.headline || site.tagline || site.seo_title || site.seo_description);
@@ -591,6 +593,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 <SectionCard title="Blog" description="Helpful articles for homeowners — maintenance tips, seasonal advice, and what to know before hiring. AI can draft them; you review and publish." evidence="Fresh, useful posts give Google more local pages to rank and give past customers a reason to return — search visibility that compounds over time." enabled={siteContent.blog.enabled} onToggleEnabled={(value) => updateBlog({ ...siteContent.blog, enabled: value })} open={openSection === 'blog'} onToggleOpen={() => toggleSection('blog')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.blog.title} onChange={(event) => updateBlog({ ...siteContent.blog, title: event.target.value })} /></label>
                   <label className={styles.formField}><span>Intro copy (optional)</span><input value={siteContent.blog.intro} onChange={(event) => updateBlog({ ...siteContent.blog, intro: event.target.value })} /></label>
+                  <label className={styles.formField}><span>What should the next post be about? (optional)</span><input value={blogTopic} maxLength={200} onChange={(event) => setBlogTopic(event.target.value)} placeholder="e.g. Fall gutter maintenance checklist — leave blank and AI picks a seasonal topic" /></label>
                   <button type="button" className="btn secondary" onClick={handleGenerateBlogDraft} disabled={isGeneratingBlog}>{isGeneratingBlog ? 'Writing a draft…' : '✨ Generate a draft with AI'}</button>
                   <p className={styles.fieldHint}>Drafts are saved unpublished — nothing goes live until you flip a post to Published.</p>
                   <div className={styles.stackList}>
