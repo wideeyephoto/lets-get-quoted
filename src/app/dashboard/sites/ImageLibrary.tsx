@@ -112,10 +112,10 @@ export default function ImageLibrary({
             return (
               <article className={styles.imageTile} key={image.id}>
                 <img src={image.url} alt={image.alt} />
-                <div className={styles.imageMeta}><span>{image.category}</span>{isHero && <strong>Hero</strong>}</div>
+                <div className={styles.imageMeta}><span>{image.category}</span>{isHero ? <strong>Hero</strong> : inGallery ? <strong>In gallery</strong> : null}</div>
                 <div className={styles.imageActions}>
-                  <button type="button" onClick={() => onSelectHero(image)} disabled={isHero}>Use as hero</button>
-                  <button type="button" onClick={() => onToggleGallery(image)}>{inGallery ? 'Remove' : 'Add to gallery'}</button>
+                  <button type="button" onClick={() => onSelectHero(image)} disabled={isHero}>{isHero ? 'Current hero' : 'Set as hero'}</button>
+                  <button type="button" onClick={() => onToggleGallery(image)}>{inGallery ? 'Remove from gallery' : 'Add to gallery'}</button>
                   {image.source === 'upload' && <button type="button" className={styles.deleteImage} onClick={() => handleDelete(image)} disabled={isInUse} aria-label={`Delete ${image.alt}`}>{isInUse ? 'In use' : 'Delete'}</button>}
                 </div>
               </article>

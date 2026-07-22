@@ -169,6 +169,15 @@
 .colorControl input[type='color'] { min-height: 43px; padding: 4px; cursor: pointer; }
 .logoPreview { display: grid; min-height: 88px; place-items: center; padding: 1rem; border: 1px solid rgba(255,255,255,.1); border-radius: 6px; background: #fff; }
 .logoPreview img { max-width: 180px; max-height: 70px; }
+.imageSlots { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem; }
+.imageSlot { display: flex; flex-direction: column; gap: .7rem; padding: 1rem; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; background: rgba(255,255,255,.03); }
+.imageSlotHead { display: grid; gap: .15rem; }
+.imageSlotHead strong { font-size: .92rem; color: #f7f5ef; }
+.imageSlotHead small { color: #9ca8b8; font-size: .76rem; line-height: 1.4; }
+.imageSlotEmpty { display: grid; place-items: center; min-height: 88px; padding: 1rem; border: 1px dashed rgba(255,255,255,.2); border-radius: 8px; color: #8f9aaa; font-size: .8rem; text-align: center; line-height: 1.45; }
+.heroSlotPreview { overflow: hidden; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; }
+.heroSlotPreview img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+.imageSlotActions { margin-top: auto; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .domainControl { display: grid; grid-template-columns: 1fr auto; gap: .5rem; }
 .domainControl button { padding: 0 .9rem; border: 1px solid rgba(255,255,255,.18); border-radius: 6px; background: rgba(255,255,255,.07); color: #fff; font-weight: 700; cursor: pointer; }
 .dnsCard { display: grid; gap: .5rem; padding: .9rem; border: 1px solid rgba(255,209,102,.25); border-radius: 6px; background: rgba(255,209,102,.06); }
@@ -206,6 +215,7 @@
   .libraryToolbar { align-items: stretch; flex-direction: column; }
   .segmented, .segmented button, .uploadButton { width: 100%; }
   .themeGrid, .formSection .themeGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .imageSlots { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 1120px) {

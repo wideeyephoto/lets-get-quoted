@@ -737,18 +737,35 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
             {activeTab === 'images' && (
               <div className={styles.formSection}>
-                <div className={styles.sectionIntro}><h2>Images</h2><p>Choose a hero image and up to five gallery images.</p></div>
-                <div className={styles.formField}>
-                  <span>Logo</span>
-                  {site.logo_url && <div className={styles.logoPreview}><img src={site.logo_url} alt="Current logo" /></div>}
-                  <label className={styles.blogCoverUpload}>
-                    <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={isUploadingLogo} onChange={(event) => { const file = event.target.files?.[0]; event.currentTarget.value = ''; if (file) handleLogoUpload(file); }} />
-                    <span>{isUploadingLogo ? 'Uploading…' : site.logo_url ? 'Replace logo' : 'Upload your logo'}</span>
-                  </label>
-                  {site.logo_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('logo_url', null)}>Remove logo</button>}
+                <div className={styles.sectionIntro}><h2>Images</h2><p>Upload your photos once, then choose where each one goes on your site.</p></div>
+
+                <div className={styles.imageSlots}>
+                  <div className={styles.imageSlot}>
+                    <div className={styles.imageSlotHead}><strong>Logo</strong><small>Shown small in your header and footer.</small></div>
+                    {site.logo_url
+                      ? <div className={styles.logoPreview}><img src={site.logo_url} alt="Current logo" /></div>
+                      : <div className={styles.imageSlotEmpty}>No logo yet</div>}
+                    <div className={styles.imageSlotActions}>
+                      <label className={styles.blogCoverUpload}>
+                        <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={isUploadingLogo} onChange={(event) => { const file = event.target.files?.[0]; event.currentTarget.value = ''; if (file) handleLogoUpload(file); }} />
+                        <span>{isUploadingLogo ? 'Uploading…' : site.logo_url ? 'Replace logo' : 'Upload your logo'}</span>
+                      </label>
+                      {site.logo_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('logo_url', null)}>Remove</button>}
+                    </div>
+                  </div>
+
+                  <div className={styles.imageSlot}>
+                    <div className={styles.imageSlotHead}><strong>Hero image</strong><small>The big photo at the top of your homepage.</small></div>
+                    {site.hero_url
+                      ? <div className={styles.heroSlotPreview}><img src={site.hero_url} alt="Current hero image" /></div>
+                      : <div className={styles.imageSlotEmpty}>No hero image yet — pick one from your library below.</div>}
+                    <div className={styles.imageSlotActions}>
+                      {site.hero_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('hero_url', null)}>Remove</button>}
+                    </div>
+                  </div>
                 </div>
-                <label className={styles.formField}><span>Logo URL (optional — or upload above)</span><input type="url" value={site.logo_url || ''} onChange={(event) => handleChange('logo_url', event.target.value || null)} placeholder="https://..." /></label>
-                <label className={styles.formField}><span>Hero image</span><input type="url" value={site.hero_url || ''} onChange={(event) => handleChange('hero_url', event.target.value || null)} placeholder="Paste an image URL…" /><small>…or just pick one from the library below — uploads and stock photos both work.</small></label>
+
+                <div className={styles.sectionIntro}><h2>Photo library</h2><p>Every photo you upload lives here. Set one as your hero, or add photos to your gallery — the shared pool your Showcase, reviews, and before/after sections pull from.</p></div>
                 <ImageLibrary stockImages={STOCK_SITE_IMAGES} initialUploads={uploadedImages} galleryImages={galleryImages} heroUrl={site.hero_url} onSelectHero={selectHeroImage} onToggleGallery={toggleGalleryImage} />
               </div>
             )}
