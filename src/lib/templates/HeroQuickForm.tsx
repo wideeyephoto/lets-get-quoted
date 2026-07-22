@@ -157,6 +157,17 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
     }
   }
 
+  // Restart the wizard from the description (kept, so it can be edited).
+  // Chat state is reset — the AI thread can't be resumed after backtracking.
+  function restartWizard() {
+    setChatQuestion('');
+    setChatAnswer('');
+    setChatResponseId('');
+    setChatTurn(0);
+    setStatus(null);
+    setStep('describe');
+  }
+
   function handleContactSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmedContact = contact.trim();
@@ -227,6 +238,13 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   }
 
   const range = wizardEnabled ? computeEstimateRange(estimateRanges, size, tier) : null;
+  const stepIndex = step === 'describe' ? 0 : step === 'qa' ? 1 : step === 'contact' ? 2 : 3;
+  const thinking = (
+    <span className={styles.heroFormThinking}>
+      Thinking
+      <span className={styles.heroFormDots} aria-hidden="true"><i /><i /><i /></span>
+    </span>
+  );
 
   return (
     <form
@@ -236,8 +254,14 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
     >
       <label className={styles.heroFormHoneypot} aria-hidden="true">Company<input name="company" tabIndex={-1} autoComplete="off" /></label>
 
+      {wizardEnabled && (
+        <div className={styles.heroFormProgress} aria-hidden="true">
+          {[0, 1, 2].map((index) => <span key={index} data-active={index <= Math.min(stepIndex, 2)} />)}
+        </div>
+      )}
+
       {step === 'describe' && (
-        <>
+        <div className={styles.heroFormStep} key="describe">
           <h2>{estimateLabel}</h2>
           <p className={styles.heroFormNote}>Tell us what you need done — a couple quick questions, then we&apos;ll show your range.</p>
           <textarea
@@ -255,14 +279,14 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
               }
             }}
           />
-          <button type="submit" disabled={isClassifying}>{isClassifying ? 'Thinking...' : 'Continue'}</button>
-        </>
+          <button type="submit" disabled={isClassifying}>{isClassifying ? thinking : 'Continue'}</button>
+        </div>
       )}
 
       {step === 'qa' && (
-        <>
+        <div className={styles.heroFormStep} key="qa">
           <h2>{estimateLabel}</h2>
-          <p id="hqf-question" className={styles.heroFormNote}>{chatQuestion}</p>
+          <p id="hqf-question" className={styles.heroFormQuestion}>{chatQuestion}</p>
           <input
             aria-labelledby="hqf-question"
             placeholder="Your answer"
@@ -271,12 +295,13 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
             value={chatAnswer}
             onChange={(event) => setChatAnswer(event.target.value)}
           />
-          <button type="submit" disabled={isClassifying}>{isClassifying ? 'Thinking...' : 'Next'}</button>
-        </>
+          <button type="submit" disabled={isClassifying}>{isClassifying ? thinking : 'Next'}</button>
+          <button type="button" className={styles.heroFormRestart} onClick={restartWizard}>← Start over</button>
+        </div>
       )}
 
       {step === 'contact' && (
-        <>
+        <div className={styles.heroFormStep} key="contact">
           <h2>{estimateLabel}</h2>
           <p className={styles.heroFormNote}>{wizardEnabled ? 'Add your info to see your range. Free & no obligation — we reply within about an hour.' : 'Free & no obligation — we reply within about an hour.'}</p>
           <div className={styles.heroQuickFormRow}>
@@ -320,16 +345,20 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
           </div>
           <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Sending...' : wizardEnabled ? 'See My Free Estimate' : 'Get My Free Estimate'}</button>
           {site.phone && <a className={styles.heroFormOrCall} href={`tel:${site.phone}`}>or call <strong>{site.phone}</strong> — free quote</a>}
-        </>
+          {wizardEnabled && <button type="button" className={styles.heroFormRestart} onClick={restartWizard}>← Start over</button>}
+        </div>
       )}
 
       {step === 'result' && range && (
-        <>
+        <div className={styles.heroFormStep} key="result">
           <h2>Your estimated range</h2>
-          <p className={styles.heroFormResult}>{formatCurrency(range.min)} – {formatCurrency(range.max)}</p>
+          <div className={styles.heroFormResultPanel}>
+            <p className={styles.heroFormResult}>{formatCurrency(range.min)} – {formatCurrency(range.max)}</p>
+            <span className={styles.heroFormResultBadge}>✓ Request sent</span>
+          </div>
           <p className={styles.heroFormNote}>This is a rough estimate, not a final quote — we&apos;ll follow up to confirm exact pricing for your project.</p>
           {site.phone && <a className={styles.heroFormCall} href={`tel:${site.phone}`}>Call now to lock it in</a>}
-        </>
+        </div>
       )}
 
       {status && <p className={styles.heroFormStatus} data-tone={status.tone} role={status.tone === 'error' ? 'alert' : 'status'}>{status.text}</p>}

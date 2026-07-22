@@ -45,8 +45,34 @@
 .heroFormHoneypot { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 .heroFormChip { flex: 1; padding: .5rem .4rem; border: 1px solid #d8d3c6; border-radius: calc(var(--theme-radius, 8px) * .6); background: #fff; color: #17140f; font-size: .78rem; font-weight: 700; cursor: pointer; }
 .heroFormChip[data-selected='true'] { border-color: var(--theme-accent); background: color-mix(in srgb, var(--theme-accent) 22%, white); }
-.heroFormResult { margin: 0; font-family: var(--theme-display); font-size: 1.6rem; font-weight: 800; color: #17140f; }
-.heroFormCall { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 48px; margin-top: .2rem; padding: .7rem 1rem; border-radius: calc(var(--theme-radius, 8px) * .6); background: var(--theme-accent); color: #111; font-weight: 800; font-size: .88rem; }
+.heroFormResult { margin: 0; font-family: var(--theme-display); font-size: 1.7rem; font-weight: 800; color: #17140f; }
+.heroFormCall { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 48px; margin-top: .2rem; padding: .7rem 1rem; border-radius: calc(var(--theme-radius, 8px) * .6); background: var(--theme-accent); color: #111; font-weight: 800; font-size: .88rem; transition: transform .2s ease, filter .2s ease; }
+.heroFormCall:hover { transform: translateY(-1px); filter: brightness(1.05); }
+/* Estimate-wizard polish. Steps are wrapped in .heroFormStep (preserving the
+   form's grid gap) and slide in transform-only — an opacity entrance can
+   stall invisible in the throttled preview iframe. */
+.heroFormStep { display: grid; gap: .6rem; animation: heroStepIn .32s cubic-bezier(.22, .61, .36, 1) both; }
+@keyframes heroStepIn { from { transform: translateY(8px); } to { transform: none; } }
+.heroFormProgress { display: flex; gap: .3rem; }
+.heroFormProgress span { flex: 1; height: 4px; border-radius: 999px; background: #e7e3d8; transition: background .35s ease; }
+.heroFormProgress span[data-active='true'] { background: var(--theme-accent); }
+/* The AI's follow-up question, presented as a chat-style callout. */
+.heroFormQuestion { margin: 0; padding: .55rem .75rem; border-left: 3px solid var(--theme-accent); border-radius: 0 calc(var(--theme-radius, 8px) * .5) calc(var(--theme-radius, 8px) * .5) 0; background: color-mix(in srgb, var(--theme-accent) 10%, #fff); font-size: .84rem; font-weight: 600; line-height: 1.45; color: #17140f; }
+.heroQuickForm .heroFormRestart { justify-self: start; min-height: 0; margin: 0; padding: 0; border: none; background: transparent; color: #6b675e; font-size: .72rem; font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.heroQuickForm .heroFormRestart:hover { color: #17140f; }
+.heroQuickForm button[type='submit'] { transition: transform .2s ease, filter .2s ease; }
+.heroQuickForm button[type='submit']:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.05); }
+.heroFormThinking { display: inline-flex; align-items: center; gap: .1rem; }
+.heroFormDots { display: inline-flex; gap: 3px; margin-left: 4px; }
+.heroFormDots i { width: 4px; height: 4px; border-radius: 50%; background: currentColor; animation: heroDotBounce 1s ease-in-out infinite; }
+.heroFormDots i:nth-child(2) { animation-delay: .15s; }
+.heroFormDots i:nth-child(3) { animation-delay: .3s; }
+@keyframes heroDotBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+/* Result reveal — springy scale-in accent panel with a "sent" confirmation. */
+.heroFormResultPanel { display: grid; gap: .3rem; padding: .85rem 1rem; border-radius: calc(var(--theme-radius, 8px) * .6); border: 1px solid color-mix(in srgb, var(--theme-accent) 40%, transparent); background: color-mix(in srgb, var(--theme-accent) 12%, #fff); animation: heroResultIn .45s cubic-bezier(.34, 1.56, .64, 1) both; }
+@keyframes heroResultIn { from { transform: scale(.94); } to { transform: none; } }
+.heroFormResultBadge { justify-self: start; font-size: .68rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #1f7a3f; }
+@media (prefers-reduced-motion: reduce) { .heroFormStep, .heroFormResultPanel, .heroFormDots i { animation: none; } .heroQuickForm button[type='submit'], .heroFormCall { transition: none; } .heroQuickForm button[type='submit']:hover:not(:disabled), .heroFormCall:hover { transform: none; } }
 
 /* Proof strip — rating + credential chips rendered beside a lead form. Info
    (rating value, count, labels) is currentColor for contrast; the accent stars
