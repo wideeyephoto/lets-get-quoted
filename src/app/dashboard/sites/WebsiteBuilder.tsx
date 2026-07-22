@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useTransition } from 'react';
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, type NormalizedSiteContent, type SiteBeforeAfterContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, type NormalizedSiteContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import { checkSubdomainAvailableAction, generateSiteTextAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
 import ImageLibrary from './ImageLibrary';
@@ -252,6 +252,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
   const updateBeforeAfter = useCallback((beforeAfter: SiteBeforeAfterContent) => {
     updateSiteContent({ beforeAfter });
+  }, [updateSiteContent]);
+
+  const updateAnnouncement = useCallback((announcement: SiteAnnouncementContent) => {
+    updateSiteContent({ announcement });
   }, [updateSiteContent]);
 
   const toggleShowcaseImage = useCallback((image: SiteImage) => {
@@ -526,6 +530,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     ))}
                   </div>
                   <button type="button" className={styles.secondaryAction} onClick={() => updateTestimonials({ ...siteContent.testimonials, enabled: true, items: [...siteContent.testimonials.items, { id: createContentId('testimonial'), author: '', text: '', rating: 5, label: '', imageUrl: '', imageAlt: '' }] })}>Add testimonial</button>
+                </SectionCard>
+
+                <SectionCard title="Availability bar" description="A slim band above your header for one timely, high-urgency line — booking status, same-day service, a seasonal note. You type the message, so it never invents urgency; it only appears once filled in." enabled={siteContent.announcement.enabled} onToggleEnabled={(value) => updateAnnouncement({ ...siteContent.announcement, enabled: value })} open={openSection === 'announcement'} onToggleOpen={() => toggleSection('announcement')}>
+                  <label className={styles.formField}><span>Message</span><input value={siteContent.announcement.message} maxLength={140} onChange={(event) => updateAnnouncement({ ...siteContent.announcement, message: event.target.value })} placeholder="Now booking August installs" /></label>
+                  <label className={styles.formField}><span>Second line (optional)</span><input value={siteContent.announcement.subtext} maxLength={140} onChange={(event) => updateAnnouncement({ ...siteContent.announcement, subtext: event.target.value })} placeholder="Same-day estimates · Licensed &amp; insured" /></label>
+                  {siteContent.announcement.enabled && !siteContent.announcement.message.trim() && <p className={styles.emptyHelper}>Add a message above for the bar to appear on your site.</p>}
                 </SectionCard>
 
                 <SectionCard title="Sticky call bar (mobile)" description="Pins a tap-to-call button to the bottom of every phone screen, so homeowners can reach you in one tap. Needs a phone number on the Business tab." enabled={siteContent.stickyCallBar.enabled} onToggleEnabled={(value) => updateStickyCallBar({ ...siteContent.stickyCallBar, enabled: value })} open={openSection === 'stickyBar'} onToggleOpen={() => toggleSection('stickyBar')}>

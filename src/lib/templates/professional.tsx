@@ -8,6 +8,7 @@ import SiteContentSections from './SiteContentSections';
 import SiteNavLinks from './SiteNavLinks';
 import SiteProofStrip from './SiteProofStrip';
 import SiteDesktopCta from './SiteDesktopCta';
+import SiteAnnouncementBar from './SiteAnnouncementBar';
 import styles from './themes.module.css';
 
 export default function GuildTemplate({ site, galleryImages = [] }: TemplateProps) {
@@ -21,6 +22,7 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
 
   return (
     <main className={`${styles.site} ${styles.guild}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode}>
+      <SiteAnnouncementBar site={site} />
       <header className={styles.guildHeader}>
         <a className={styles.guildBrand} href="#top">
           {site.logo_url && <img className={styles.logo} src={site.logo_url} alt="" />}

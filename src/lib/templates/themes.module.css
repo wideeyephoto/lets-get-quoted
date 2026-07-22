@@ -115,6 +115,19 @@
 .baHandle:focus-visible .baHandleGrip { outline: 2px solid var(--theme-accent); outline-offset: 3px; }
 .baCaption { padding-top: .7rem; font-size: .85rem; font-weight: 600; letter-spacing: .02em; color: color-mix(in srgb, currentColor 78%, transparent); }
 
+/* Availability / urgency bar (toggleable) — mounts above the header. Dark
+   ground + accent dot with a faint white ring, so the dot reads on the dark
+   bar under any template accent or a contractor's custom (even dark) accent. */
+.announceBar { display: flex; align-items: center; justify-content: center; gap: 7px 12px; flex-wrap: wrap; padding: 9px 18px; background: #16181d; color: #fff; font-size: 13px; line-height: 1.4; text-align: center; }
+.announceDot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--theme-accent, #f0b429); box-shadow: 0 0 0 1px color-mix(in srgb, #fff 32%, transparent); animation: announcePulse 2.4s ease-out infinite; }
+.announceMsg { font-weight: 800; letter-spacing: .01em; overflow-wrap: anywhere; }
+.announceSub { font-weight: 600; color: color-mix(in srgb, #fff 72%, transparent); overflow-wrap: anywhere; }
+.announceSub::before { content: '·'; margin-right: 12px; color: color-mix(in srgb, #fff 45%, transparent); }
+@keyframes announcePulse { 0% { box-shadow: 0 0 0 1px color-mix(in srgb, #fff 32%, transparent), 0 0 0 0 color-mix(in srgb, var(--theme-accent, #f0b429) 60%, transparent); } 70% { box-shadow: 0 0 0 1px color-mix(in srgb, #fff 32%, transparent), 0 0 0 8px transparent; } 100% { box-shadow: 0 0 0 1px color-mix(in srgb, #fff 32%, transparent), 0 0 0 0 transparent; } }
+/* Below ~560px message + subtext stack; drop the leading '·' so it doesn't orphan a wrapped line. */
+@media (max-width: 560px) { .announceSub::before { display: none; } }
+@media (prefers-reduced-motion: reduce) { .announceDot { animation: none; } }
+
 /* Certifications & awards strip (toggleable) */
 .certList { display: flex; flex-wrap: wrap; align-items: center; gap: 1.1rem 1.6rem; margin: 0; padding: 0; list-style: none; }
 .certItem { display: inline-flex; flex-direction: column; align-items: center; gap: .45rem; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: color-mix(in srgb, currentColor 76%, transparent); }

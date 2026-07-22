@@ -6,6 +6,7 @@ import HeroQuickForm from './HeroQuickForm';
 import SiteContentSections from './SiteContentSections';
 import SiteNavLinks from './SiteNavLinks';
 import SiteProofStrip from './SiteProofStrip';
+import SiteAnnouncementBar from './SiteAnnouncementBar';
 import styles from './themes.module.css';
 
 export default function VistaTemplate({ site, galleryImages = [] }: TemplateProps) {
@@ -18,6 +19,7 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
 
   return (
     <main className={`${styles.site} ${styles.vista}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode}>
+      <SiteAnnouncementBar site={site} />
       <header className={styles.vistaHeader}>
         <a className={styles.vistaBrand} href="#top">{site.logo_url ? <img className={styles.logo} src={site.logo_url} alt={site.company_name} /> : site.company_name}</a>
         <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#studio', label: 'About' }, { href: '#work', label: 'Work' }, { href: '#contact', label: 'Connect' }]} />

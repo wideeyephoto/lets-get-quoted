@@ -125,6 +125,14 @@ export type SiteBeforeAfterContent = {
   items: SiteBeforeAfterItem[];
 };
 
+// A thin availability/urgency band mounted above the site header (not in the
+// mid-page content stack). Contractor-typed so it never fabricates urgency.
+export type SiteAnnouncementContent = {
+  enabled: boolean;
+  message: string;
+  subtext: string;
+};
+
 export type SiteQuoteFormContent = {
   emailRequired: boolean;
   // Controls the wording used on the quote-request call-to-action ('Quick Estimate'
@@ -196,6 +204,7 @@ export type NormalizedSiteContent = {
   certifications: SiteCertificationsContent;
   stats: SiteStatsContent;
   beforeAfter: SiteBeforeAfterContent;
+  announcement: SiteAnnouncementContent;
 };
 
 export const DEFAULT_SHOWCASE_TITLE = 'Project showcase';
@@ -371,6 +380,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const certifications = isRecord(root.certifications) ? root.certifications : {};
   const stats = isRecord(root.stats) ? root.stats : {};
   const beforeAfter = isRecord(root.beforeAfter) ? root.beforeAfter : {};
+  const announcement = isRecord(root.announcement) ? root.announcement : {};
 
   return {
     showcase: {
@@ -444,6 +454,11 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       title: toString(beforeAfter.title, DEFAULT_BEFORE_AFTER_TITLE),
       intro: toString(beforeAfter.intro, DEFAULT_BEFORE_AFTER_INTRO),
       items: parseBeforeAfter(beforeAfter.items),
+    },
+    announcement: {
+      enabled: toBoolean(announcement.enabled),
+      message: toString(announcement.message).slice(0, 140),
+      subtext: toString(announcement.subtext).slice(0, 140),
     },
   };
 }
@@ -519,4 +534,9 @@ export function getPublishedBeforeAfter(content: Record<string, unknown> | null 
   const beforeAfter = getSiteContent(content).beforeAfter;
   const items = beforeAfter.items.filter((item) => item.beforeUrl.trim() && item.afterUrl.trim());
   return beforeAfter.enabled && items.length > 0 ? { ...beforeAfter, items } : null;
+}
+
+export function getPublishedAnnouncement(content: Record<string, unknown> | null | undefined): SiteAnnouncementContent | null {
+  const announcement = getSiteContent(content).announcement;
+  return announcement.enabled && announcement.message.trim() ? announcement : null;
 }

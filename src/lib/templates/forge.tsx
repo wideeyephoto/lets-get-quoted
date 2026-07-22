@@ -7,6 +7,7 @@ import SiteContentSections from './SiteContentSections';
 import SiteNavLinks from './SiteNavLinks';
 import SiteProofStrip from './SiteProofStrip';
 import SiteDesktopCta from './SiteDesktopCta';
+import SiteAnnouncementBar from './SiteAnnouncementBar';
 import styles from './themes.module.css';
 
 export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProps) {
@@ -19,16 +20,18 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
 
   return (
     <main className={`${styles.site} ${styles.forge}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode}>
-      <header className={styles.forgeHeader}>
-        <a className={styles.brand} href="#top" aria-label={`${site.company_name} home`}>
-          {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" /> : <span className={styles.brandBlock}>F</span>}
-          <strong>{site.company_name}</strong>
-        </a>
-        <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#work', label: 'Work' }, { href: '#about', label: 'About' }, { href: '#contact', label: 'Contact' }]} />
-        {site.phone && <a className={styles.headerPhone} href={`tel:${site.phone}`}>{site.phone}</a>}
-      </header>
-
+      <SiteAnnouncementBar site={site} />
       <section className={styles.forgeHero} id="top">
+        {/* Header lives inside the hero so its absolute overlay pins to the hero
+            top (below the availability bar), not the page top. */}
+        <header className={styles.forgeHeader}>
+          <a className={styles.brand} href="#top" aria-label={`${site.company_name} home`}>
+            {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" /> : <span className={styles.brandBlock}>F</span>}
+            <strong>{site.company_name}</strong>
+          </a>
+          <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#work', label: 'Work' }, { href: '#about', label: 'About' }, { href: '#contact', label: 'Contact' }]} />
+          {site.phone && <a className={styles.headerPhone} href={`tel:${site.phone}`}>{site.phone}</a>}
+        </header>
         <img className={styles.heroImage} src={heroImage} alt="Recent completed job" fetchPriority="high" decoding="async" />
         <div className={styles.forgeScrim} />
         <div className={styles.forgeHeroCopy}>
