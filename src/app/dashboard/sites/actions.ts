@@ -167,12 +167,18 @@ export async function generateSiteTextAction(): Promise<GeneratedSiteText> {
 
   const instructions =
     "You write short example marketing copy for a local home-services contractor's website. " +
-    'Infer their trade (HVAC, plumbing, landscaping, cleaning, roofing, electrical, etc.) from the business name. ' +
+    'Infer their trade (HVAC, plumbing, landscaping, cleaning, roofing, electrical, remodeling, etc.) from the business name. ' +
     `Write in a ${styleSeed} tone. ` +
+    'Optimize for LOCAL search: when a service area is provided, identify its primary city or region and pair the trade with that location so a homeowner searching "[trade] in [city]" would match. If no service area is given, lead with the trade alone and never invent a location. ' +
     'Avoid generic filler like "quality you can trust" or "customer satisfaction is our priority" — be specific to the trade and mention concrete services or benefits a homeowner in that trade would care about. ' +
     'This is placeholder example text the contractor will personalize later, so make it feel like a real, distinct business rather than a generic template. ' +
     'Respond with strict JSON only, no other text, in this exact shape: ' +
-    '{"headline":"<one short punchy line, under 70 characters>","tagline":"<one or two sentences, under 160 characters>","seo_title":"<search engine page title, under 60 characters, include the business name>","seo_description":"<search engine meta description, under 160 characters>"}.';
+    '{' +
+    '"headline":"<one short punchy line under 70 characters, specific to the trade; weave in the primary city only when it reads naturally, e.g. \'Trusted Kitchen Remodeling in Austin\'>",' +
+    '"tagline":"<one or two sentences under 160 characters>",' +
+    '"seo_title":"<under 60 characters; when a location is given, lead with the primary city and trade then the business name (e.g. \'Austin Kitchen Remodeling | Northline Builders\'); otherwise lead with the trade and business name>",' +
+    '"seo_description":"<under 160 characters; name the trade and the service area/city when given, and end with a clear call to action like \'Free estimates.\'>"' +
+    '}.';
 
   const input =
     `Business name: ${companyName}. ${serviceArea ? `Service area: ${serviceArea}. ` : ''}` +
