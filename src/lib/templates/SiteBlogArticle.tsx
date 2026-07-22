@@ -20,8 +20,27 @@ export default function SiteBlogArticle({ site, post }: { site: Site; post: Site
   const themeStyle = { '--theme-accent': site.accent_override || '#2563eb' } as CSSProperties;
   const date = formatBlogDate(post.date);
 
+  // BlogPosting schema so the post can qualify for article rich results. This is
+  // legitimate content markup (not the disallowed self-serving review schema).
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
+  const base = site.custom_domain_verified_at && site.custom_domain
+    ? `https://${site.custom_domain}`
+    : `https://${site.subdomain}.${rootDomain}`;
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: post.title,
+    description: post.excerpt || undefined,
+    datePublished: post.date || undefined,
+    image: post.coverImage || site.hero_url || undefined,
+    author: { '@type': 'Organization', name: site.company_name || 'Local business' },
+    publisher: { '@type': 'Organization', name: site.company_name || 'Local business' },
+    mainEntityOfPage: `${base}/blog/${post.slug}`,
+  };
+
   return (
     <main className={styles.blogArticleShell} style={themeStyle}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <BlogReadingProgress />
       <div className={styles.blogArticle}>
         <a className={styles.blogBack} href="/">{site.company_name || 'Home'}</a>
