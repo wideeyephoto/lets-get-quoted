@@ -36,6 +36,7 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
       <section className={styles.vistaHero} id="top">
         <img className={styles.heroImage} src={heroImage} alt="Featured completed project" fetchPriority="high" decoding="async" />
         <div className={styles.vistaHeroCopy}>
+          <span className={styles.vistaBigType} aria-hidden="true">{site.company_name}</span>
           <p className={styles.kicker}>Diagnose / Repair / Deliver</p>
           <h1>{site.headline || 'Service with purpose.'}</h1>
           <p>{site.tagline || 'We show up, solve the problem, and treat your home like our own.'}</p>

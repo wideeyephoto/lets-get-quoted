@@ -16,6 +16,11 @@ import styles from './themes.module.css';
 export default function GuildTemplate({ site, galleryImages = [] }: TemplateProps) {
   const gallery = galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES.slice(3, 6);
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[3].url;
+  // Second shot for the stacked hero photo — a distinct image from the main one.
+  const secondImage =
+    gallery.find((image) => image.url !== heroImage)?.url ||
+    STOCK_SITE_IMAGES.find((image) => image.url !== heroImage)?.url ||
+    STOCK_SITE_IMAGES[5].url;
   const estimateLabel = getEstimateButtonLabel(getSiteContent(site.content).quoteForm);
   const themeStyle = {
     '--theme-accent': site.accent_override || '#a5472d',
@@ -45,7 +50,12 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
           <SiteProofStrip site={site} />
         </div>
         <div className={styles.guildHeroMedia}>
-          <img src={heroImage} alt="Recent completed job" fetchPriority="high" decoding="async" />
+          <div className={styles.guildHeroFrame}>
+            <img src={heroImage} alt="Recent completed job" fetchPriority="high" decoding="async" />
+          </div>
+          <figure className={styles.guildHeroInset}>
+            <img src={secondImage} alt="A detail from our recent work" loading="lazy" decoding="async" />
+          </figure>
           <div className={styles.guildBadge}><strong>Proudly local</strong><span>{site.service_area || 'Serving our community'}</span></div>
         </div>
       </section>

@@ -215,7 +215,7 @@
 /* Slow Ken Burns push on hero photography (Forge/Vista full-bleed, Guild framed).
    Transform-only so it can't trigger the throttled-iframe opacity stall. */
 @keyframes heroKenBurns { from { transform: scale(1.03); } to { transform: scale(1.12); } }
-@media (prefers-reduced-motion: reduce) { .heroImage, .guildHeroMedia > img { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .heroImage, .guildHeroFrame > img { animation: none; } }
 .forgeScrim { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(10,10,9,.94) 0%, rgba(10,10,9,.55) 50%, rgba(10,10,9,.1) 100%), linear-gradient(0deg, rgba(10,10,9,.55), transparent 50%), repeating-linear-gradient(90deg, rgba(243,240,231,.045) 0 1px, transparent 1px 88px); }
 .forgeHeroCopy { position: relative; z-index: 1; width: min(830px, 82vw); }
 .forgeHeroCopy h1 { max-width: 11ch; margin-bottom: 1.25rem; font-family: var(--theme-display); font-size: clamp(3.35rem, 9vw, 7.5rem); font-weight: 900; line-height: .84; letter-spacing: -.01em; text-transform: uppercase; }
@@ -269,8 +269,13 @@
 .guildHero { min-height: 700px; display: grid; grid-template-columns: .95fr 1.05fr; gap: clamp(1.5rem, 4vw, 3.5rem); align-items: stretch; padding-right: 4vw; }
 .guildHeroCopy { display: flex; flex-direction: column; justify-content: center; padding: 6vw 0 6vw 6vw; }
 .guildHeroCopy h1 { margin-bottom: 1.5rem; font-family: var(--theme-display); font-size: clamp(3rem, 6vw, 5.75rem); font-weight: 500; line-height: .99; letter-spacing: -.015em; }
-.guildHeroMedia { position: relative; min-height: 560px; border-radius: 16px; overflow: hidden; box-shadow: 0 40px 90px -50px rgba(45,34,22,.45); }
-.guildHeroMedia > img { width: 100%; height: 100%; object-fit: cover; animation: heroKenBurns 27s ease-in-out infinite alternate; }
+.guildHeroMedia { position: relative; min-height: 560px; }
+.guildHeroFrame { position: relative; height: 100%; border-radius: 16px; overflow: hidden; box-shadow: 0 40px 90px -50px rgba(45,34,22,.45); }
+.guildHeroFrame > img { width: 100%; height: 100%; object-fit: cover; animation: heroKenBurns 27s ease-in-out infinite alternate; }
+/* Second photo stacked over the main frame — overhangs the bottom-right corner. */
+.guildHeroInset { position: absolute; z-index: 2; right: -1.25rem; bottom: -1.75rem; width: 44%; margin: 0; border-radius: 12px; overflow: hidden; border: 6px solid #fff; box-shadow: 0 30px 60px -30px rgba(45,34,22,.5); }
+.guildHeroInset img { display: block; width: 100%; aspect-ratio: 4 / 3.2; object-fit: cover; transition: transform .6s cubic-bezier(.22, .61, .36, 1); }
+.guildHeroInset:hover img { transform: scale(1.06); }
 .guildBadge { position: absolute; left: 1.5rem; bottom: 1.5rem; display: flex; flex-direction: column; max-width: 250px; padding: 1.15rem 1.5rem; border-radius: 12px; background: var(--theme-accent); color: #fff; box-shadow: 0 24px 50px -24px rgba(0,0,0,.45); animation: guildBob 6s ease-in-out infinite; }
 @keyframes guildBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 @media (prefers-reduced-motion: reduce) { .guildBadge { animation: none; } }
@@ -320,6 +325,8 @@
 .vistaHeroCopy .kicker { align-self: flex-start; margin-bottom: 1.4rem; padding: .42rem .85rem; border: 1px solid rgba(255,255,255,.4); border-radius: 999px; color: #fff; }
 .vistaHeroCopy h1 { margin-bottom: 1.35rem; font-family: var(--theme-display); font-size: clamp(2.9rem, 7.6vw, 7rem); line-height: .92; letter-spacing: -.02em; text-transform: uppercase; }
 .vistaHeroCopy > p:last-child { max-width: 34rem; font-size: 1.12rem; line-height: 1.55; color: rgba(255,255,255,.86); }
+/* Oversized outlined wordmark bleeding behind the hero copy for editorial pop. */
+.vistaBigType { position: absolute; z-index: -1; left: 0; bottom: -.05em; margin: 0; font-family: var(--theme-display); font-weight: 800; font-size: clamp(4rem, 17vw, 14rem); line-height: .78; text-transform: uppercase; letter-spacing: -.03em; color: transparent; -webkit-text-stroke: 1.5px rgba(255,255,255,.16); white-space: nowrap; pointer-events: none; }
 .vistaScroll { position: absolute; z-index: 1; right: 3vw; bottom: 4vh; display: inline-flex; align-items: center; gap: .45rem; font-size: .76rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #fff; }
 .vistaScroll span { animation: vistaBounce 1.8s ease-in-out infinite; }
 @keyframes vistaBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(5px); } }
@@ -498,7 +505,7 @@
 /* scoped restyle of shared sections to the Care look */
 .handy .extraSections { background: transparent; }
 .handy .extraSection { border-top: none; padding: clamp(3rem, 6vw, 5.5rem) clamp(1.25rem, 5vw, 4rem); }
-.handy .extraSection:nth-of-type(even) { background: #eef5fb; }
+.handy .extraSection:nth-of-type(even) { background: linear-gradient(180deg, #fff, #eef5fb 16%, #eef5fb 84%, #fff); }
 .handy .extraSectionHeader h2 { font-family: var(--theme-display); font-weight: 700; font-size: clamp(1.9rem, 4vw, 3rem); line-height: 1.1; color: #333d47; }
 .handy .serviceCard { background: #fff; border: 1px solid #eef2f7; border-radius: 16px; box-shadow: 0 22px 46px -30px rgba(51,61,71,.35); }
 .handy .serviceCard:hover { border-color: color-mix(in srgb, var(--theme-accent) 40%, transparent); box-shadow: 0 26px 52px -26px color-mix(in srgb, var(--theme-accent) 42%, transparent); }
@@ -603,7 +610,7 @@
 .coatFooterCall { display: inline-flex; align-items: center; gap: .5rem; min-height: 46px; padding: .5rem 1.2rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #fff); font-weight: 800; font-size: .95rem; }
 .coatFooter small { opacity: .6; font-size: .78rem; }
 .coat .extraSection { border-top: none; padding: clamp(3rem, 6vw, 5.5rem) clamp(1.25rem, 5vw, 4rem); }
-.coat .extraSection:nth-of-type(even) { background: var(--coat-surface); }
+.coat .extraSection:nth-of-type(even) { background: linear-gradient(180deg, #fff, var(--coat-surface) 16%, var(--coat-surface) 84%, #fff); }
 .coat .extraSectionHeader h2 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(1.9rem, 4vw, 3rem); line-height: 1.06; letter-spacing: -.02em; color: var(--coat-ink); }
 .coat .kicker { color: var(--theme-accent); }
 .coat .serviceCard { background: #fff; border: 1px solid #ececf1; border-radius: 18px; box-shadow: 0 22px 46px -30px rgba(27,26,31,.3); }
@@ -692,7 +699,7 @@
 .fixitFooterCall { display: inline-flex; align-items: center; gap: .5rem; min-height: 46px; padding: .5rem 1.2rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #fff); font-weight: 800; font-size: .95rem; }
 .fixitFooter small { opacity: .6; font-size: .78rem; }
 .fixit .extraSection { border-top: none; padding: clamp(3rem, 6vw, 5.5rem) clamp(1.25rem, 5vw, 4rem); }
-.fixit .extraSection:nth-of-type(even) { background: var(--fx-surface); }
+.fixit .extraSection:nth-of-type(even) { background: linear-gradient(180deg, #fff, var(--fx-surface) 16%, var(--fx-surface) 84%, #fff); }
 .fixit .extraSectionHeader h2 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(1.9rem, 4vw, 3rem); line-height: 1.06; letter-spacing: -.02em; color: var(--fx-ink); }
 .fixit .kicker { color: var(--theme-accent); }
 .fixit .serviceCard { background: #fff; border: 1px solid #ececef; border-radius: 16px; box-shadow: 0 22px 46px -30px rgba(43,43,48,.28); }
@@ -754,7 +761,7 @@
 .renoFooterCall { display: inline-flex; align-items: center; gap: .5rem; min-height: 46px; padding: .5rem 1.2rem; background: var(--theme-accent); color: var(--theme-on-accent, #1b2431); font-weight: 800; font-size: .95rem; }
 .renoFooter small { opacity: .6; font-size: .78rem; }
 .reno .extraSection { border-top: none; padding: clamp(3rem, 6vw, 5.5rem) clamp(1.25rem, 5vw, 4rem); }
-.reno .extraSection:nth-of-type(even) { background: var(--rn-surface); }
+.reno .extraSection:nth-of-type(even) { background: linear-gradient(180deg, #fff, var(--rn-surface) 16%, var(--rn-surface) 84%, #fff); }
 .reno .extraSectionHeader h2 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(1.9rem, 4vw, 3rem); line-height: 1.06; letter-spacing: -.02em; color: var(--rn-ink); }
 .reno .kicker { color: color-mix(in srgb, var(--theme-accent) 78%, #7a6412); }
 .reno .serviceCard { background: #fff; border: 1px solid #e6e8ec; border-radius: 4px; box-shadow: 0 22px 46px -30px rgba(27,36,49,.32); }
@@ -832,7 +839,7 @@
 .shineFooterCall { display: inline-flex; align-items: center; gap: .5rem; min-height: 46px; padding: .5rem 1.2rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #0f1b2d); font-weight: 800; font-size: .95rem; }
 .shineFooter small { opacity: .6; font-size: .78rem; }
 .shine .extraSection { border-top: none; padding: clamp(3rem, 6vw, 5.5rem) clamp(1.25rem, 5vw, 4rem); }
-.shine .extraSection:nth-of-type(even) { background: var(--sh-surface); }
+.shine .extraSection:nth-of-type(even) { background: linear-gradient(180deg, #fff, var(--sh-surface) 16%, var(--sh-surface) 84%, #fff); }
 .shine .extraSectionHeader h2 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(1.9rem, 4vw, 3rem); line-height: 1.06; letter-spacing: -.02em; color: var(--sh-ink); }
 .shine .kicker { color: color-mix(in srgb, var(--theme-accent) 80%, #8a7400); }
 .shine .serviceCard { background: #fff; border: 1px solid #e7e9ed; border-radius: 16px; box-shadow: 0 22px 46px -30px rgba(15,27,45,.28); }
