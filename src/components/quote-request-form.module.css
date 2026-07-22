@@ -19,7 +19,7 @@
 .field label { color: inherit; opacity: .78; }
 .field input, .field select, .field textarea { width: 100%; min-height: 50px; padding: 13px 16px; border: 1px solid color-mix(in srgb, currentColor 16%, transparent); border-radius: var(--theme-radius, 4px); outline: none; background: rgba(255,255,255,.94); color: #14161a; font: 500 15px/1.4 inherit; letter-spacing: normal; text-transform: none; transition: border-color .2s ease, box-shadow .2s ease; }
 .field textarea { min-height: 124px; resize: vertical; }
-.field input::placeholder, .field select::placeholder, .field textarea::placeholder { color: #8b8f98; }
+.field input::placeholder, .field select::placeholder, .field textarea::placeholder { color: #6b7280; }
 .field input:hover, .field select:hover, .field textarea:hover { border-color: color-mix(in srgb, currentColor 30%, transparent); }
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--theme-accent, #f0b429); background: #fff; box-shadow: 0 0 0 4px color-mix(in srgb, var(--theme-accent, #f0b429) 25%, transparent); }
 .wide { grid-column: 1 / -1; }

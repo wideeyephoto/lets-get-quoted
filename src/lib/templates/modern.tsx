@@ -42,7 +42,7 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
           <HeroQuickForm site={site} />
           <SiteProofStrip site={site} />
         </div>
-        <a className={styles.vistaScroll} href="#studio">Explore ↓</a>
+        <a className={styles.vistaScroll} href="#studio" aria-label="Skip to about section">Explore <span aria-hidden="true">↓</span></a>
       </section>
 
       <section className={styles.vistaStatement} data-reveal id="studio">
@@ -67,7 +67,7 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
 
       <section className={styles.vistaContact} id="contact">
         <p className={styles.kicker}>Next project</p><h2>Ready when you are?</h2>
-        {site.phone && <a href={`tel:${site.phone}`}>{site.phone} <span>↗</span></a>}
+        {site.phone && <a href={`tel:${site.phone}`}>Call {site.phone} <span aria-hidden="true">↗</span></a>}
         <SiteProofStrip site={site} />
         <QuoteRequestForm site={site} />
       </section>

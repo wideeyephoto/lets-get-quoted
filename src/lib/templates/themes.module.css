@@ -152,7 +152,7 @@
    text on the near-white callout background fails contrast on light templates. */
 .financing .financingLead strong { font-weight: 800; }
 .financing .financingBlurb { margin: 0; color: color-mix(in srgb, currentColor 72%, transparent); font-size: .92rem; }
-.financing .financingApply { display: inline-flex; align-items: center; min-height: 44px; padding: .6rem 1.15rem; border-radius: var(--theme-radius, 6px); background: var(--theme-accent); color: #14110b; font-weight: 800; font-size: .88rem; }
+.financing .financingApply { display: inline-flex; align-items: center; min-height: 44px; padding: .6rem 1.15rem; border-radius: var(--theme-radius, 6px); background: var(--theme-accent); color: var(--theme-on-accent, #14110b); font-weight: 800; font-size: .88rem; }
 
 /* Sticky mobile call / quote bar (toggleable) */
 .stickyCallBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: flex; gap: .5rem; padding: .55rem .7rem calc(.55rem + env(safe-area-inset-bottom, 0px)); background: #16130e; border-top: 1px solid rgba(255,255,255,.14); box-shadow: 0 -10px 26px -14px rgba(0,0,0,.65); }
@@ -186,7 +186,7 @@
 .forge[data-mode='light'] .forgeTrust span, .forge[data-mode='light'] .forgeAbout > p:last-child, .forge[data-mode='light'] .forgeFooter { color: #68645b; }
 .forge[data-mode='light'] .forgeFooter strong { color: #151514; }
 .forge .kicker { font-family: var(--font-mono); font-size: .7rem; font-weight: 500; letter-spacing: .18em; }
-.forgeHeader { position: absolute; z-index: 3; inset: 0 0 auto; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 84px; padding: 0 4vw; border-bottom: 1px solid rgba(255,255,255,.16); }
+.forgeHeader { position: absolute; z-index: 3; inset: 0 0 auto; background: linear-gradient(180deg, rgba(10,10,9,.62), transparent); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 84px; padding: 0 4vw; border-bottom: 1px solid rgba(255,255,255,.16); }
 .brand { display: inline-flex; align-items: center; gap: .75rem; font-size: .9rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
 .brandBlock { display: grid; width: 36px; aspect-ratio: 1; place-items: center; background: var(--theme-accent); color: #111; font-family: var(--theme-display); font-size: 1.4rem; }
 .headerPhone { justify-self: end; font-family: var(--font-mono); font-size: .82rem; font-weight: 500; letter-spacing: .04em; }
@@ -239,7 +239,7 @@
 .guildBrand { display: flex; align-items: center; gap: .9rem; }
 .guildBrand span { display: flex; flex-direction: column; }
 .guildBrand strong { font-family: var(--theme-display); font-size: 1.35rem; font-weight: 600; letter-spacing: -.01em; }
-.guildBrand small { font-family: var(--font-mono); margin-top: .2rem; color: #837c6f; font-size: .64rem; letter-spacing: .1em; text-transform: uppercase; }
+.guildBrand small { font-family: var(--font-mono); margin-top: .2rem; color: #6a6459; font-size: .64rem; letter-spacing: .1em; text-transform: uppercase; }
 .guildQuote { justify-self: end; padding-bottom: .35rem; border-bottom: 2px solid var(--theme-accent); font-weight: 700; letter-spacing: .02em; transition: color .2s ease; }
 .guildQuote:hover { color: var(--theme-accent); }
 .guildHero { min-height: 700px; display: grid; grid-template-columns: .95fr 1.05fr; gap: clamp(1.5rem, 4vw, 3.5rem); align-items: stretch; padding-right: 4vw; }

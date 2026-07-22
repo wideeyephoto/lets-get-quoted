@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { compressImage } from '@/lib/client-images';
 import { normalizeUsPhone } from '@/lib/phone';
 import { computeEstimateRange, getEstimateButtonLabel, getSiteContent, type EstimateMaterialTier, type EstimateSize } from '@/lib/site-content';
@@ -49,6 +49,23 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   const wizardEnabled = estimateRanges.enabled;
 
   const [step, setStep] = useState<'describe' | 'qa' | 'contact' | 'result'>(wizardEnabled ? 'describe' : 'contact');
+
+  // On each wizard step change (not initial mount / StrictMode re-run), move
+  // focus into the new step so keyboard/SR users aren't dropped on <body> when
+  // the previous step's button unmounts — the focused field's accessible name
+  // (or the result heading) announces the step. Mirrors the main quote form.
+  const prevStepRef = useRef(step);
+  useEffect(() => {
+    if (prevStepRef.current === step) return;
+    prevStepRef.current = step;
+    const form = formRef.current;
+    if (!form) return;
+    const field = form.querySelector<HTMLElement>('input:not([tabindex="-1"]):not([type="file"]), textarea');
+    const target = field ?? form.querySelector<HTMLElement>('h2');
+    if (!target) return;
+    if (target.tagName === 'H2') target.setAttribute('tabindex', '-1');
+    target.focus({ preventScroll: true });
+  }, [step]);
   const [description, setDescription] = useState('');
   const [name, setName] = useState('');
   const [contact, setContact] = useState('');
@@ -224,6 +241,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
           <h2>{estimateLabel}</h2>
           <p className={styles.heroFormNote}>Tell us what you need done — a couple quick questions, then we&apos;ll show your range.</p>
           <textarea
+            aria-label="Describe your project"
             placeholder="e.g. AC repair, deep clean, fence installation..."
             maxLength={500}
             rows={2}
@@ -244,8 +262,9 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
       {step === 'qa' && (
         <>
           <h2>{estimateLabel}</h2>
-          <p className={styles.heroFormNote}>{chatQuestion}</p>
+          <p id="hqf-question" className={styles.heroFormNote}>{chatQuestion}</p>
           <input
+            aria-labelledby="hqf-question"
             placeholder="Your answer"
             maxLength={300}
             required
@@ -261,9 +280,10 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
           <h2>{estimateLabel}</h2>
           <p className={styles.heroFormNote}>{wizardEnabled ? 'Add your info to see your range. Free & no obligation — we reply within about an hour.' : 'Free & no obligation — we reply within about an hour.'}</p>
           <div className={styles.heroQuickFormRow}>
-            <input name="name" placeholder="Your name" autoComplete="name" maxLength={100} required value={name} onChange={(event) => setName(event.target.value)} />
+            <input name="name" aria-label="Your name" placeholder="Your name" autoComplete="name" maxLength={100} required value={name} onChange={(event) => setName(event.target.value)} />
             <input
               name="contact"
+              aria-label={emailRequired ? 'Email' : 'Phone or email'}
               type={emailRequired ? 'email' : 'text'}
               placeholder={emailRequired ? 'Email' : 'Phone or email'}
               autoComplete={emailRequired ? 'email' : 'tel'}
@@ -277,6 +297,8 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
             <input
               ref={photoInputRef}
               className={styles.heroFormPhotoInput}
+              tabIndex={-1}
+              aria-hidden="true"
               type="file"
               accept="image/jpeg,image/png,image/webp,image/avif"
               multiple
@@ -310,7 +332,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
         </>
       )}
 
-      {status && <p className={styles.heroFormStatus} data-tone={status.tone} role="status">{status.text}</p>}
+      {status && <p className={styles.heroFormStatus} data-tone={status.tone} role={status.tone === 'error' ? 'alert' : 'status'}>{status.text}</p>}
     </form>
   );
 }

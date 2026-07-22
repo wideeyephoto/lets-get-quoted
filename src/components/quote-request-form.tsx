@@ -187,7 +187,7 @@ export default function QuoteRequestForm({ site }: QuoteRequestFormProps) {
               addPhotos(event.dataTransfer.files);
             }}
           >
-            <input ref={photoInputRef} id="quote-photos" className={styles.photoInput} name="photos" type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple onChange={(event) => addPhotos(event.currentTarget.files ?? [])} />
+            <input ref={photoInputRef} id="quote-photos" className={styles.photoInput} name="photos" type="file" tabIndex={-1} aria-hidden="true" accept="image/jpeg,image/png,image/webp,image/avif" multiple onChange={(event) => addPhotos(event.currentTarget.files ?? [])} />
             <div className={styles.photoActions}>
               <button type="button" className={styles.photoChooseButton} onClick={() => photoInputRef.current?.click()} disabled={selectedPhotos.length >= MAX_PHOTOS}>
                 Choose photos
@@ -219,7 +219,7 @@ export default function QuoteRequestForm({ site }: QuoteRequestFormProps) {
       </div>
 
       <label className={styles.honeypot} aria-hidden="true">Company<input name="company" tabIndex={-1} autoComplete="off" /></label>
-      {isSubmitting && <div className={styles.progress}><progress value={progress} max="100" /><span>{progress}%</span></div>}
+      {isSubmitting && <div className={styles.progress}><progress value={progress} max="100" aria-label="Upload progress" /><span>{progress}%</span></div>}
 
       <div className={styles.stepNav}>
         {step > 0 && <button type="button" className={styles.back} onClick={goToPreviousStep} disabled={isSubmitting}>Back</button>}
@@ -228,7 +228,7 @@ export default function QuoteRequestForm({ site }: QuoteRequestFormProps) {
           : <button type="submit" className={styles.next} disabled={isSubmitting}>{isSubmitting ? 'Sending request...' : 'Get My Free Estimate'}</button>}
       </div>
 
-      {message && <p className={`${styles.message} ${message.type === 'success' ? styles.success : styles.error}`} role="status">{message.text}</p>}
+      {message && <p className={`${styles.message} ${message.type === 'success' ? styles.success : styles.error}`} role={message.type === 'error' ? 'alert' : 'status'}>{message.text}</p>}
     </form>
   );
 }
