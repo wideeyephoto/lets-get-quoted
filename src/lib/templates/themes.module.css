@@ -226,7 +226,9 @@
 /* Trust-badge chip strip (toggleable) */
 .trustBadges { padding: clamp(1.75rem, 3.5vw, 2.75rem) 5vw; border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); background: color-mix(in srgb, currentColor 4%, transparent); }
 .trustBadgeList { display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem .7rem; margin: 0; padding: 0; list-style: none; }
-.trustChip { display: inline-flex; align-items: center; gap: .45rem; padding: .5rem .95rem; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 999px; font-size: .85rem; font-weight: 700; }
+.trustChip { display: inline-flex; align-items: center; gap: .45rem; padding: .5rem .95rem; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 999px; font-size: .85rem; font-weight: 700; transition: border-color .25s ease, background .25s ease, transform .25s ease; }
+.trustChip:hover { border-color: color-mix(in srgb, var(--theme-accent) 50%, transparent); background: color-mix(in srgb, var(--theme-accent) 10%, transparent); transform: translateY(-2px); }
+@media (prefers-reduced-motion: reduce) { .trustChip { transition: none; } .trustChip:hover { transform: none; } }
 .trustChipMark { display: inline-flex; align-items: center; justify-content: center; width: 1.15rem; height: 1.15rem; border-radius: 50%; background: var(--theme-accent); color: #14110b; font-size: .72rem; font-weight: 900; }
 
 /* Financing callout (toggleable) */
