@@ -48,6 +48,8 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
       </header>
 
       <section className={styles.shineHero} id="top">
+        <span className={styles.shineGlow1} aria-hidden="true" />
+        <span className={styles.shineGlow2} aria-hidden="true" />
         <div className={styles.shineHeroCopy}>
           <h1>{site.headline || 'Pure living starts with a spotless home.'}</h1>
           <p className={styles.shineHeroText}>{site.tagline || 'Professional home cleaning and maintenance, designed to give you comfort, hygiene, and peace of mind.'}</p>

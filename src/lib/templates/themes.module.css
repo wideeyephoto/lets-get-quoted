@@ -713,10 +713,10 @@
 .coatPhotoSide { position: absolute; z-index: 2; right: -3%; bottom: -5%; width: 46%; margin: 0; border-radius: 16px; overflow: hidden; border: 5px solid var(--coat-maroon); box-shadow: 0 30px 60px -30px rgba(0,0,0,.6); }
 .coatPhotoSide img { display: block; width: 100%; aspect-ratio: 4 / 3.3; object-fit: cover; transition: transform .6s cubic-bezier(.22, .61, .36, 1); }
 .coatPhotoSide:hover img { transform: scale(1.07); }
-.coatHeroBadge { position: absolute; z-index: 3; left: -4%; top: 8%; display: flex; align-items: center; gap: .6rem; padding: .65rem 1rem; border-radius: 14px; background: #fff; color: var(--coat-ink); box-shadow: 0 22px 44px -22px rgba(0,0,0,.5); animation: coatFloat 8s ease-in-out infinite .6s; }
+.coatHeroBadge { position: absolute; z-index: 3; left: -4%; top: 8%; display: flex; align-items: center; gap: .6rem; padding: .65rem 1rem; border-radius: 14px; background: #fff; color: #1b1a1f; box-shadow: 0 22px 44px -22px rgba(0,0,0,.5); animation: coatFloat 8s ease-in-out infinite .6s; }
 .coatHeroBadgeIcon { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 999px; background: color-mix(in srgb, var(--theme-accent) 16%, transparent); color: var(--theme-accent); }
 .coatHeroBadge strong { display: block; font-size: .9rem; }
-.coatHeroBadge small { font-size: .72rem; color: var(--coat-muted); }
+.coatHeroBadge small { font-size: .72rem; color: #6a6870; }
 .coatBtn { display: inline-flex; align-items: center; gap: .45rem; min-height: 50px; padding: .8rem 1.6rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #fff); font-weight: 700; font-size: .98rem; box-shadow: 0 16px 30px -14px color-mix(in srgb, var(--theme-accent) 70%, transparent); transition: transform .2s ease, filter .2s ease; }
 .coatBtn:hover { transform: translateY(-2px); filter: brightness(1.06); }
 .coatEyebrow { margin: 0 0 .6rem; font-size: .78rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--theme-accent); }
@@ -802,8 +802,10 @@
 .fixitHeroImg { position: relative; z-index: 1; display: block; width: min(400px, 84%); margin: 0 auto; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 6px; animation: fixitFloat 7s ease-in-out infinite; }
 .fixitHeroCard { position: absolute; z-index: 2; right: 0; top: 34%; display: flex; align-items: center; gap: .6rem; padding: .7rem 1rem; border-radius: 12px; background: #fff; border: 1px solid #eee; box-shadow: 0 22px 44px -22px rgba(0,0,0,.32); }
 .fixitHeroCardIcon { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 999px; background: color-mix(in srgb, var(--theme-accent) 14%, transparent); color: var(--theme-accent); }
-.fixitHeroCard strong { display: block; font-size: .95rem; color: var(--fx-ink); }
-.fixitHeroCard small { font-size: .74rem; color: var(--fx-muted); }
+/* Literal ink — the card stays white in dark mode, where the ink vars flip
+   light and would make this text unreadable. */
+.fixitHeroCard strong { display: block; font-size: .95rem; color: #2b2b30; }
+.fixitHeroCard small { font-size: .74rem; color: #6a6a72; }
 .fixitDots { position: absolute; z-index: 0; right: 2%; bottom: 4%; width: 96px; height: 96px; background-image: radial-gradient(var(--theme-accent) 1.6px, transparent 1.9px); background-size: 14px 14px; opacity: .85; }
 /* Soft accent halo behind the photo — adds depth so the hero doesn't read empty. */
 .fixitHeroBlob { position: absolute; z-index: 0; top: -6%; right: -4%; width: 60%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--theme-accent) 30%, transparent), transparent 68%); filter: blur(4px); animation: fixitBlob 9s ease-in-out infinite; }
@@ -930,9 +932,17 @@
 .shineHeader .navLinks { text-transform: none; letter-spacing: 0; font-size: .94rem; font-weight: 600; }
 .shineHeader .navLinks a { color: rgba(255,255,255,.86); }
 .shineHeader .navLinks a:hover { color: #fff; }
-.shineHeaderCta { justify-self: end; display: inline-flex; align-items: center; gap: .4rem; min-height: 44px; padding: .55rem 1.2rem; border-radius: 999px; background: #fff; color: var(--sh-navy); font-weight: 700; font-size: .88rem; white-space: nowrap; transition: transform .2s ease; }
+.shineHeaderCta { justify-self: end; display: inline-flex; align-items: center; gap: .4rem; min-height: 44px; padding: .55rem 1.2rem; border-radius: 999px; background: #fff; color: #0f1b2d; font-weight: 700; font-size: .88rem; white-space: nowrap; transition: transform .2s ease; }
 .shineHeaderCta:hover { transform: translateY(-1px); }
-.shineHero { display: grid; grid-template-columns: 1.05fr .95fr; gap: clamp(1.5rem, 4vw, 3.5rem); align-items: center; padding: clamp(2.5rem, 6vw, 5rem) clamp(1.25rem, 5vw, 4rem) clamp(3rem, 7vw, 5.5rem); background: radial-gradient(120% 100% at 15% 0, #16273d, var(--sh-navy) 62%); color: #fff; }
+.shineHero { position: relative; overflow: hidden; display: grid; grid-template-columns: 1.05fr .95fr; gap: clamp(1.5rem, 4vw, 3.5rem); align-items: center; padding: clamp(2.5rem, 6vw, 5rem) clamp(1.25rem, 5vw, 4rem) clamp(3rem, 7vw, 5.5rem); background: radial-gradient(120% 100% at 15% 0, #16273d, var(--sh-navy) 62%); color: #fff; }
+.shineHeroCopy, .shineHeroMedia { position: relative; z-index: 1; }
+/* Soft aurora glows drifting behind the hero — accent-tinted + cool white,
+   transform-only so they can't stall invisible in the preview iframe. */
+.shineGlow1, .shineGlow2 { position: absolute; z-index: 0; border-radius: 50%; filter: blur(70px); pointer-events: none; will-change: transform; }
+.shineGlow1 { width: 540px; height: 540px; top: -20%; right: -8%; background: radial-gradient(circle, color-mix(in srgb, var(--theme-accent) 30%, transparent), transparent 70%); animation: shineGlowA 16s ease-in-out infinite; }
+.shineGlow2 { width: 440px; height: 440px; bottom: -24%; left: -10%; background: radial-gradient(circle, rgba(140,190,255,.17), transparent 70%); animation: shineGlowB 21s ease-in-out infinite; }
+@keyframes shineGlowA { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(-44px, 32px, 0) scale(1.12); } }
+@keyframes shineGlowB { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(48px, -26px, 0) scale(1.08); } }
 .shineHeroCopy { max-width: 620px; }
 .shineHeroCopy h1 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(2.5rem, 5.6vw, 4.4rem); line-height: 1.04; letter-spacing: -.02em; margin: 0 0 1.2rem; text-wrap: balance; overflow-wrap: anywhere; }
 .shineHeroText { font-size: clamp(1rem, 1.4vw, 1.16rem); line-height: 1.6; color: rgba(255,255,255,.78); margin: 0 0 1.7rem; max-width: 46ch; }
@@ -944,18 +954,23 @@
 .shineHeroMedia { position: relative; min-height: 400px; }
 .shineCollage { display: grid; grid-template-columns: 1.12fr .88fr; gap: clamp(.7rem, 1.5vw, 1.05rem); align-items: start; }
 .shinePhotoCard { position: relative; margin: 0; border-radius: 20px; overflow: hidden; background: #16273d; box-shadow: 0 40px 80px -34px rgba(0,0,0,.6); }
-.shinePhotoCard::after { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 1px rgba(255,255,255,.1); pointer-events: none; }
+/* Framed photos (Purely reference): accent border on the tall main shot,
+   white border on the offset side shot. */
+.shinePhotoMain { border: 4px solid color-mix(in srgb, var(--theme-accent) 85%, #fff); }
+.shinePhotoSide { border: 4px solid rgba(255,255,255,.92); }
 .shinePhoto { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .65s cubic-bezier(.22, .61, .36, 1); }
 .shinePhotoCard:hover .shinePhoto { transform: scale(1.06); }
 .shinePhotoMain { aspect-ratio: 3 / 4.15; }
 .shinePhotoSide { aspect-ratio: 3 / 3.5; margin-top: clamp(2.4rem, 7vw, 4.6rem); }
-.shineBadge { position: absolute; z-index: 2; display: flex; align-items: center; gap: .6rem; padding: .7rem 1rem; border-radius: 14px; background: #fff; color: var(--sh-ink); box-shadow: 0 22px 44px -22px rgba(0,0,0,.4); }
+/* Literal ink (not var(--sh-ink)) — the badge stays white in dark mode, where
+   the ink var flips light and made this text unreadable. */
+.shineBadge { position: absolute; z-index: 2; display: flex; align-items: center; gap: .6rem; padding: .7rem 1rem; border-radius: 14px; background: #fff; color: #14202e; box-shadow: 0 22px 44px -22px rgba(0,0,0,.4); }
 .shineBadgeSupport { top: 2%; right: -2%; flex-direction: column; gap: .3rem; text-align: center; }
 .shineBadgeSupport strong { font-size: .82rem; }
 .shineBadgeIcon { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 999px; background: var(--sh-navy); color: var(--theme-accent); }
 .shineBadgeCustomers { bottom: 5%; left: -4%; }
 .shineBadgeCustomers strong { font-size: 1.05rem; }
-.shineBadgeCustomers small { display: block; font-size: .72rem; color: var(--sh-muted); }
+.shineBadgeCustomers small { display: block; font-size: .72rem; color: #5c6675; }
 .shineAvatars { display: inline-flex; flex: 0 0 auto; }
 .shineAvatars span { width: 24px; height: 24px; border-radius: 999px; border: 2px solid #fff; margin-left: -8px; background: linear-gradient(135deg, #cbd3dd, #8b97a6); }
 .shineAvatars span:first-child { margin-left: 0; }
@@ -1004,7 +1019,7 @@
   .shineHeader .navLinks { display: none; }
 }
 @media (max-width: 560px) { .shineFooterBar { flex-direction: column; align-items: stretch; text-align: center; } .shineFooterCall { justify-content: center; } .shineBadgeSupport { right: 0; } .shineBadgeCustomers { left: 0; } }
-@media (prefers-reduced-motion: reduce) { .shineHeroCopy > *, .shineBadge { animation: none; } .shinePhotoCard:hover .shinePhoto { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .shineHeroCopy > *, .shineBadge, .shineGlow1, .shineGlow2 { animation: none; } .shinePhotoCard:hover .shinePhoto { transform: none; } }
 
 /* ===== Dark modes — Coat / Fixit / Reno / Shine (data-mode='dark') =====
    Additive, Care-style: each template's colors flow through its --xx-ink/
