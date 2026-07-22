@@ -43,7 +43,11 @@ export default function SiteBlogArticle({ site, post }: { site: Site; post: Site
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <BlogReadingProgress />
       <div className={styles.blogArticle}>
-        <a className={styles.blogBack} href="/">{site.company_name || 'Home'}</a>
+        <nav className={styles.blogCrumb} aria-label="Breadcrumb">
+          <a href="/">{site.company_name || 'Home'}</a>
+          <span aria-hidden="true">/</span>
+          <a href="/blog">Blog</a>
+        </nav>
         <article>
           <header className={styles.blogArticleHead}>
             {date && <time className={styles.blogArticleDate} dateTime={post.date}>{date}</time>}

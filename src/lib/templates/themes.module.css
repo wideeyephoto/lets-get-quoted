@@ -115,6 +115,10 @@
 @media (prefers-reduced-motion: reduce) { .blogProgress span { transition: none; } }
 .blogArticle { max-width: 760px; margin: 0 auto; padding: clamp(1.75rem, 5vw, 4rem) clamp(1.25rem, 5vw, 2rem) clamp(3rem, 7vw, 5rem); }
 .blogBack { display: inline-block; margin-bottom: clamp(1.5rem, 4vw, 3rem); font-weight: 800; font-size: 1.05rem; color: var(--theme-accent); text-decoration: none; }
+.blogCrumb { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: clamp(1.5rem, 4vw, 3rem); font-weight: 700; font-size: .95rem; }
+.blogCrumb a { color: var(--theme-accent); text-decoration: none; }
+.blogCrumb a:hover { text-decoration: underline; }
+.blogCrumb span { color: #98a1b3; }
 .blogArticleHead { margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid #e6e9ef; }
 .blogArticleDate { display: block; margin-bottom: .8rem; font-size: .82rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #6a7385; }
 .blogArticle h1 { margin: 0; font-size: clamp(2rem, 5vw, 3rem); line-height: 1.08; letter-spacing: -.02em; font-weight: 800; text-wrap: balance; }
