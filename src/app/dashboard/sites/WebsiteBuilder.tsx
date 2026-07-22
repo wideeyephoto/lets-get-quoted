@@ -105,6 +105,28 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
         : { hint: `${siteContent.blog.posts.length} ${siteContent.blog.posts.length === 1 ? 'draft' : 'drafts'}`, hintTone: 'ok' }
       : contentHint(siteContent.blog.enabled, 0, 'post');
 
+  // Launch checklist — mirrors the publish gates so first-time owners can see
+  // what's missing before they hit Publish (instead of error-by-error).
+  const hasLiveSection =
+    (siteContent.services.enabled && siteContent.services.items.some((svc) => svc.title.trim())) ||
+    (siteContent.howItWorks.enabled && siteContent.howItWorks.steps.some((step) => step.title.trim())) ||
+    (siteContent.showcase.enabled && siteContent.showcase.items.length > 0) ||
+    (siteContent.faqs.enabled && siteContent.faqs.items.some((faq) => faq.question.trim() && faq.answer.trim())) ||
+    (siteContent.testimonials.enabled && siteContent.testimonials.items.some((item) => item.text.trim())) ||
+    (siteContent.serviceAreas.enabled && siteContent.serviceAreas.cities.some((city) => city.trim())) ||
+    (siteContent.certifications.enabled && siteContent.certifications.items.some((item) => item.label.trim())) ||
+    (siteContent.stats.enabled && siteContent.stats.items.some((item) => item.label.trim())) ||
+    (siteContent.beforeAfter.enabled && siteContent.beforeAfter.items.some((pair) => pair.beforeUrl && pair.afterUrl)) ||
+    (siteContent.blog.enabled && publishedPostCount > 0);
+
+  const launchChecklist = [
+    { label: 'Company name', done: Boolean(site.company_name.trim()), hint: 'Business tab' },
+    { label: 'Phone number', done: Boolean(site.phone), hint: 'Business tab — powers the call buttons' },
+    { label: 'Hero image', done: Boolean(site.hero_url), hint: 'Images tab' },
+    { label: 'Web address', done: Boolean(site.subdomain) || Boolean(site.custom_domain && domainStatus === 'verified'), hint: 'Add a subdomain below, or verify a custom domain' },
+    { label: 'At least one content section', done: hasLiveSection, hint: 'Design tab — e.g. Services or FAQs' },
+  ];
+
   const handleChange = useCallback((field: keyof Site, value: Site[keyof Site]) => {
     setSite((current) => ({ ...current, [field]: value }));
     setIsDirty(true);
@@ -615,12 +637,16 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
                 <div className={styles.sectionIntro}><h2>Pages & sections</h2><p>Add rich sections that make the public website feel complete.</p></div>
 
+                <div className={styles.cardGroupLabel}>Capture leads</div>
+
                 <SectionCard title="Quote form" description="How homeowners request a quote from your site." open={openSection === 'quoteForm'} onToggleOpen={() => toggleSection('quoteForm')}>
                   <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.quoteForm.emailRequired} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, emailRequired: event.target.checked })} /><span><strong>Require email on quote form</strong><small>Ask homeowners for an email address on every request so future email campaigns have clean contact data.</small></span></label>
                   <label className={styles.formField}><span>Quote form wording</span><select value={siteContent.quoteForm.estimateLabel} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, estimateLabel: event.target.value as SiteQuoteFormContent['estimateLabel'] })}><option value="quick">&quot;Quick Estimate&quot;</option><option value="instant">&quot;Instant Estimate&quot;</option></select></label>
                 </SectionCard>
 
                 <SectionCard title="Instant estimate" description="After the quick-capture form, our AI asks the homeowner a couple of quick questions to size up the job, then shows a rough $ range right away." enabled={siteContent.estimateRanges.enabled} onToggleEnabled={(value) => updateEstimateRanges({ ...siteContent.estimateRanges, enabled: value })} open={openSection === 'estimate'} onToggleOpen={() => toggleSection('estimate')} />
+
+                <div className={styles.cardGroupLabel}>Content sections</div>
 
                 <SectionCard title="Services" description="Icon cards for the work you do — the first thing most home-services visitors scan for. Add a few with an icon, name, and one-line description." evidence="A clear service grid lets a visitor confirm 'they do what I need' in seconds — the fastest way to hold a home-services visitor's attention." enabled={siteContent.services.enabled} onToggleEnabled={(value) => updateServices({ ...siteContent.services, enabled: value })} {...contentHint(siteContent.services.enabled, siteContent.services.items.filter((svc) => svc.title.trim()).length, 'service')} open={openSection === 'services'} onToggleOpen={() => toggleSection('services')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.services.title} onChange={(event) => updateServices({ ...siteContent.services, title: event.target.value })} /></label>
@@ -761,6 +787,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <button type="button" className={styles.secondaryAction} onClick={() => updateTestimonials({ ...siteContent.testimonials, enabled: true, items: [...siteContent.testimonials.items, { id: createContentId('testimonial'), author: '', text: '', rating: 5, label: '', imageUrl: '', imageAlt: '' }] })}>Add testimonial</button>
                 </SectionCard>
 
+                <div className={styles.cardGroupLabel}>Trust &amp; conversion extras</div>
+
                 <SectionCard title="Availability bar" description="A slim band above your header for one timely, high-urgency line — booking status, same-day service, a seasonal note. You type the message, so it never invents urgency; it only appears once filled in." evidence={'Urgency converts — emergency-ready trades close highest (12–16%); a "same-day" or "now booking" line cuts hesitation.'} enabled={siteContent.announcement.enabled} onToggleEnabled={(value) => updateAnnouncement({ ...siteContent.announcement, enabled: value })} open={openSection === 'announcement'} onToggleOpen={() => toggleSection('announcement')}>
                   <label className={styles.formField}><span>Message</span><input value={siteContent.announcement.message} maxLength={140} onChange={(event) => updateAnnouncement({ ...siteContent.announcement, message: event.target.value })} placeholder="Now booking August installs" /></label>
                   <label className={styles.formField}><span>Second line (optional)</span><input value={siteContent.announcement.subtext} maxLength={140} onChange={(event) => updateAnnouncement({ ...siteContent.announcement, subtext: event.target.value })} placeholder="Same-day estimates · Licensed &amp; insured" /></label>
@@ -887,6 +915,18 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
             {activeTab === 'publish' && (
               <div className={styles.formSection}>
                 <div className={styles.sectionIntro}><h2>Publish</h2><p>Choose where homeowners can find your website.</p></div>
+                <div className={styles.checklistCard}>
+                  <strong>Launch checklist</strong>
+                  <ul>
+                    {launchChecklist.map((item) => (
+                      <li key={item.label} data-done={item.done ? 'true' : 'false'}>
+                        <span className={styles.checklistMark} aria-hidden="true">{item.done ? '✓' : '○'}</span>
+                        <span>{item.label}</span>
+                        {!item.done && <small>{item.hint}</small>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
                 <label className={styles.formField}><span>LGQ subdomain</span><div className={styles.domainControl}><input value={site.subdomain || ''} onChange={(event) => handleChange('subdomain', event.target.value.toLowerCase() || null)} placeholder="northline-builders" /><button type="button" onClick={checkSubdomain} disabled={isPending}>Check</button></div><small>{site.subdomain || 'your-business'}.{ROOT_DOMAIN}{subdomainStatus === 'available' ? ' - available' : subdomainStatus === 'taken' ? ' - unavailable' : ''}</small></label>
                 <label className={styles.formField}><span>Custom domain</span><div className={styles.domainControl}><input value={site.custom_domain || ''} onChange={(event) => handleChange('custom_domain', event.target.value || null)} placeholder="www.yourbusiness.com" /><button type="button" onClick={verifyCustomDomain} disabled={isPending}>{domainStatus === 'checking' ? 'Checking...' : 'Verify DNS'}</button></div><small>{domainStatus === 'verified' ? 'Verified and connected.' : 'Add a CNAME record pointing to domains.letsgetquoted.com.'}</small></label>
                 <div className={styles.dnsCard}><strong>DNS setup</strong><p>For a subdomain such as www, create a CNAME record:</p><code>www &nbsp; CNAME &nbsp; domains.letsgetquoted.com</code><p>For a root domain, use your DNS provider&apos;s CNAME flattening or redirect the root to www.</p></div>

@@ -77,6 +77,15 @@
 .sectionCardStateOn { background: rgba(255,122,33,.18); color: #ffb27a; }
 .sectionCardHint { flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .68rem; font-weight: 600; color: #9ca8b8; }
 .sectionCardHintWarn { color: #f5b83d; }
+.cardGroupLabel { margin: .65rem 0 -.35rem; font-size: .7rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #9ca8b8; }
+.checklistCard { display: grid; gap: .65rem; padding: 1rem 1.1rem; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; background: rgba(255,255,255,.03); }
+.checklistCard > strong { font-size: .9rem; color: #f7f5ef; }
+.checklistCard ul { display: grid; gap: .45rem; margin: 0; padding: 0; list-style: none; }
+.checklistCard li { display: flex; align-items: baseline; gap: .55rem; font-size: .85rem; font-weight: 600; color: #f7f5ef; }
+.checklistCard li[data-done='false'] { color: #9ca8b8; }
+.checklistCard li small { color: #9ca8b8; font-weight: 400; font-size: .74rem; }
+.checklistMark { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; font-size: .68rem; font-weight: 800; background: rgba(255,255,255,.08); color: #9ca8b8; }
+.checklistCard li[data-done='true'] .checklistMark { background: rgba(74,222,128,.16); color: #4ade80; }
 .sectionCardChevron { flex: none; color: #9ca8b8; font-size: .8rem; transition: transform .18s ease; }
 .sectionCardOpen .sectionCardChevron { transform: rotate(180deg); }
 .sectionCardTrigger:focus-visible { outline: 2px solid #ff9b54; outline-offset: -2px; border-radius: 8px; }
