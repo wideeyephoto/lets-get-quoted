@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import Image from 'next/image';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
@@ -7,6 +8,7 @@ import SiteContentSections from './SiteContentSections';
 import SiteNavLinks from './SiteNavLinks';
 import SiteProofStrip from './SiteProofStrip';
 import SiteAnnouncementBar from './SiteAnnouncementBar';
+import ScrollReveal from './ScrollReveal';
 import styles from './themes.module.css';
 
 export default function VistaTemplate({ site, galleryImages = [] }: TemplateProps) {
@@ -14,12 +16,14 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[0].url;
   const themeStyle = {
     '--theme-accent': site.accent_override || '#35dd9e',
+    '--theme-on-accent': '#111',
     '--theme-display': site.header_font || 'var(--font-display), Arial Black, Helvetica, sans-serif',
   } as CSSProperties;
 
   return (
     <main className={`${styles.site} ${styles.vista}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode}>
       <SiteAnnouncementBar site={site} />
+      <ScrollReveal />
       <header className={styles.vistaHeader}>
         <a className={styles.vistaBrand} href="#top">{site.logo_url ? <img className={styles.logo} src={site.logo_url} alt={site.company_name} /> : site.company_name}</a>
         <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#studio', label: 'About' }, { href: '#work', label: 'Work' }, { href: '#contact', label: 'Connect' }]} />
@@ -41,18 +45,18 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
         <a className={styles.vistaScroll} href="#studio">Explore ↓</a>
       </section>
 
-      <section className={styles.vistaStatement} id="studio">
+      <section className={styles.vistaStatement} data-reveal id="studio">
         <p>We are {site.company_name}.</p>
         <h2>Part problem-solver, part perfectionist, always focused on getting it right.</h2>
         <div><span>{site.service_area || 'Local projects'}</span><span>{site.license || 'Licensed & insured'}</span></div>
       </section>
 
-      <section className={styles.vistaWork} id="work">
+      <section className={styles.vistaWork} data-reveal id="work">
         <div className={styles.vistaWorkHeading}><p className={styles.kicker}>Recent work</p><span>{String(gallery.length).padStart(2, '0')} projects</span></div>
         <div className={styles.vistaGallery}>
           {gallery.slice(0, 5).map((image, index) => (
             <figure key={image.id} className={index === 0 || index === 3 ? styles.vistaWide : undefined}>
-              <img src={image.url} alt={image.alt} loading="lazy" decoding="async" />
+              <Image src={image.url} alt={image.alt} width={1600} height={index === 0 || index === 3 ? 800 : 1200} sizes={index === 0 || index === 3 ? '(max-width: 820px) 100vw, 95vw' : '(max-width: 820px) 100vw, 48vw'} />
               <figcaption><span>{image.alt}</span><small>0{index + 1}</small></figcaption>
             </figure>
           ))}

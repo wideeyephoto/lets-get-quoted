@@ -28,9 +28,9 @@
 .heroFormNote { margin: 0 0 .1rem; font-size: .74rem; color: #6b675e; }
 .heroQuickFormRow { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
 .heroFormChipRow { display: flex; gap: .4rem; }
-.heroQuickForm input { width: 100%; padding: .6rem .7rem; border: 1px solid #d8d3c6; border-radius: calc(var(--theme-radius, 8px) * .6); font-size: .84rem; color: #17140f; background: #fff; font-family: inherit; }
+.heroQuickForm input { width: 100%; min-height: 44px; padding: .6rem .7rem; border: 1px solid #d8d3c6; border-radius: calc(var(--theme-radius, 8px) * .6); font-size: .84rem; color: #17140f; background: #fff; font-family: inherit; }
 .heroQuickForm textarea { width: 100%; padding: .6rem .7rem; border: 1px solid #d8d3c6; border-radius: calc(var(--theme-radius, 8px) * .6); font-size: .84rem; color: #17140f; background: #fff; font-family: inherit; resize: vertical; min-height: 3.6rem; }
-.heroQuickForm button { margin-top: .1rem; padding: .75rem; border: 0; border-radius: calc(var(--theme-radius, 8px) * .6); background: var(--theme-accent); color: #111; font-weight: 800; font-size: .82rem; cursor: pointer; }
+.heroQuickForm button { margin-top: .1rem; min-height: 48px; padding: .75rem; border: 0; border-radius: calc(var(--theme-radius, 8px) * .6); background: var(--theme-accent); color: #111; font-weight: 800; font-size: .82rem; cursor: pointer; }
 .heroQuickForm button:disabled { opacity: .6; cursor: progress; }
 .heroFormStatus { margin: 0; font-size: .78rem; }
 .heroFormStatus[data-tone='error'] { color: #b3341f; }
@@ -157,7 +157,7 @@
 /* Sticky mobile call / quote bar (toggleable) */
 .stickyCallBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: flex; gap: .5rem; padding: .55rem .7rem calc(.55rem + env(safe-area-inset-bottom, 0px)); background: #16130e; border-top: 1px solid rgba(255,255,255,.14); box-shadow: 0 -10px 26px -14px rgba(0,0,0,.65); }
 .stickyCallBar a { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: .45rem; min-height: 48px; border-radius: var(--theme-radius, 6px); font-weight: 800; font-size: .92rem; }
-.stickyCallBar .stickyCall { background: var(--theme-accent); color: #14110b; }
+.stickyCallBar .stickyCall { background: var(--theme-accent); color: var(--theme-on-accent, #14110b); }
 .stickyCallBar .stickyQuote { background: transparent; color: #f4f1e8; border: 1.5px solid rgba(244,241,232,.4); }
 .stickyCallBar svg { width: 17px; height: 17px; }
 @media (min-width: 768px) { .stickyCallBar { display: none; } }
@@ -232,6 +232,9 @@
 .guild[data-mode='dark'] .guildQuote:hover, .guild[data-mode='dark'] .textLink:hover { color: color-mix(in srgb, var(--theme-accent) 60%, #ffffff); }
 .guild[data-button='solid'] .primaryCta { color: #fff; }
 .guild .heroQuickForm button, .guild .heroFormCall { color: #fff; }
+.heroFormOrCall { display: inline-flex; align-items: center; justify-content: center; gap: .3rem; min-height: 44px; margin-top: .1rem; font-size: .8rem; font-weight: 700; color: #17140f; text-decoration: none; }
+.heroFormOrCall strong { text-decoration: underline; text-decoration-color: var(--theme-accent); text-underline-offset: 2px; }
+.guild .heroQuickForm { border: 1px solid rgba(0,0,0,.10); }
 .guildHeader { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 100px; padding: 0 5vw; border-bottom: 1px solid #d9d2c1; }
 .guildBrand { display: flex; align-items: center; gap: .9rem; }
 .guildBrand span { display: flex; flex-direction: column; }

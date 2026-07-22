@@ -10,7 +10,7 @@
 .back { flex: 0 0 auto; min-height: 54px; padding: 14px 22px; border: 1px solid color-mix(in srgb, currentColor 26%, transparent); border-radius: var(--theme-radius, 4px); background: transparent; color: inherit; font-size: 14px; font-weight: 800; cursor: pointer; transition: border-color .2s ease, background .2s ease; }
 .back:hover:not(:disabled) { border-color: color-mix(in srgb, currentColor 45%, transparent); background: color-mix(in srgb, currentColor 8%, transparent); }
 .back:disabled { opacity: .55; cursor: default; }
-.next { flex: 1 1 auto; min-height: 54px; padding: 14px 22px; border: none; border-radius: var(--theme-radius, 4px); background: var(--theme-accent, #f0b429); color: #111; font-size: 15px; font-weight: 800; cursor: pointer; box-shadow: 0 16px 32px -16px color-mix(in srgb, var(--theme-accent, #f0b429) 70%, transparent); transition: transform .2s ease, box-shadow .2s ease, filter .2s ease; }
+.next { flex: 1 1 auto; min-height: 54px; padding: 14px 22px; border: none; border-radius: var(--theme-radius, 4px); background: var(--theme-accent, #f0b429); color: var(--theme-on-accent, #111); font-size: 15px; font-weight: 800; cursor: pointer; box-shadow: 0 16px 32px -16px color-mix(in srgb, var(--theme-accent, #f0b429) 70%, transparent); transition: transform .2s ease, box-shadow .2s ease, filter .2s ease; }
 .next:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.06); box-shadow: 0 20px 40px -16px color-mix(in srgb, var(--theme-accent, #f0b429) 85%, transparent); }
 .next:active:not(:disabled) { transform: translateY(0); }
 .next:disabled { opacity: .55; cursor: default; box-shadow: none; }
@@ -30,7 +30,7 @@
 .photoDropzone:hover { border-style: solid; background: color-mix(in srgb, var(--theme-accent, #f0b429) 14%, rgba(255,255,255,.94)); }
 .photoInput { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .photoActions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.photoChooseButton { min-height: 42px; padding: 10px 16px; border: none; border-radius: 999px; background: var(--theme-accent, #f0b429); color: #111; font: 800 14px/1 inherit; cursor: pointer; box-shadow: 0 12px 24px -18px rgba(0,0,0,.55); }
+.photoChooseButton { min-height: 42px; padding: 10px 16px; border: none; border-radius: 999px; background: var(--theme-accent, #f0b429); color: var(--theme-on-accent, #111); font: 800 14px/1 inherit; cursor: pointer; box-shadow: 0 12px 24px -18px rgba(0,0,0,.55); }
 .photoChooseButton:disabled { opacity: .55; cursor: default; }
 .photoList { display: grid; gap: 8px; }
 .photoItem { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid rgba(0,0,0,.08); border-radius: calc(var(--theme-radius, 4px) + 4px); background: rgba(255,255,255,.72); color: #14161a; text-transform: none; letter-spacing: normal; }

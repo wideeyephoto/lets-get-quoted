@@ -297,6 +297,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
             )}
           </div>
           <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Sending...' : wizardEnabled ? 'See My Free Estimate' : 'Get My Free Estimate'}</button>
+          {site.phone && <a className={styles.heroFormOrCall} href={`tel:${site.phone}`}>or call <strong>{site.phone}</strong> — free quote</a>}
         </>
       )}
 

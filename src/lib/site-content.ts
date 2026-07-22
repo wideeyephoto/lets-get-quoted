@@ -406,7 +406,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       estimateLabel: quoteForm.estimateLabel === 'instant' ? 'instant' : 'quick',
     },
     stickyCallBar: {
-      enabled: toBoolean(stickyCallBar.enabled),
+      enabled: stickyCallBar.enabled !== false,
       showQuote: stickyCallBar.showQuote !== false,
     },
     ratingBadge: {

@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import Image from 'next/image';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getEstimateButtonLabel, getSiteContent } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
@@ -9,6 +10,7 @@ import SiteNavLinks from './SiteNavLinks';
 import SiteProofStrip from './SiteProofStrip';
 import SiteDesktopCta from './SiteDesktopCta';
 import SiteAnnouncementBar from './SiteAnnouncementBar';
+import ScrollReveal from './ScrollReveal';
 import styles from './themes.module.css';
 
 export default function GuildTemplate({ site, galleryImages = [] }: TemplateProps) {
@@ -17,12 +19,14 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
   const estimateLabel = getEstimateButtonLabel(getSiteContent(site.content).quoteForm);
   const themeStyle = {
     '--theme-accent': site.accent_override || '#a5472d',
+    '--theme-on-accent': '#fff',
     '--theme-display': site.header_font || 'var(--font-guild-display), Georgia, Times New Roman, serif',
   } as CSSProperties;
 
   return (
     <main className={`${styles.site} ${styles.guild}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode}>
       <SiteAnnouncementBar site={site} />
+      <ScrollReveal />
       <header className={styles.guildHeader}>
         <a className={styles.guildBrand} href="#top">
           {site.logo_url && <img className={styles.logo} src={site.logo_url} alt="" />}
@@ -47,12 +51,12 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
         </div>
       </section>
 
-      <section className={styles.guildIntro} id="services">
+      <section className={styles.guildIntro} data-reveal id="services">
         <div><p className={styles.kicker}>One team, start to finish</p><h2>Experience that makes the process easier.</h2></div>
         <p>We pair hands-on trade experience with straightforward, no-surprises service, so every job feels considered and under control.</p>
       </section>
 
-      <section className={styles.guildServices} aria-label="Services">
+      <section className={styles.guildServices} data-reveal aria-label="Services">
         {[
           { title: 'Repairs & tune-ups', body: 'Fast, reliable service when something needs fixing.' },
           { title: 'Installs & upgrades', body: 'Quality work when it is time to replace or upgrade.' },
@@ -62,10 +66,10 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
         ))}
       </section>
 
-      <section className={styles.guildWork} id="work">
+      <section className={styles.guildWork} data-reveal id="work">
         <div className={styles.sectionHeading}><div><p className={styles.kicker}>Recent work</p><h2>Quality is visible in the details.</h2></div></div>
         <div className={styles.guildGallery}>
-          {gallery.slice(0, 3).map((image) => <figure key={image.id}><img src={image.url} alt={image.alt} loading="lazy" decoding="async" /><figcaption>{image.alt}</figcaption></figure>)}
+          {gallery.slice(0, 3).map((image) => <figure key={image.id}><Image src={image.url} alt={image.alt} width={1200} height={1500} sizes="(max-width: 820px) 100vw, 32vw" /><figcaption>{image.alt}</figcaption></figure>)}
         </div>
       </section>
 

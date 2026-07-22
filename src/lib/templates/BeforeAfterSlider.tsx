@@ -80,7 +80,7 @@ function Slider({ item }: { item: SiteBeforeAfterItem }) {
 // once from SiteContentSections, so it appears on every template.
 export default function BeforeAfterSlider({ title, intro, items }: { title: string; intro: string; items: SiteBeforeAfterItem[] }) {
   return (
-    <section className={styles.extraSection} id="before-after">
+    <section className={styles.extraSection} data-reveal id="before-after">
       <div className={styles.extraSectionHeader}>
         <p className={styles.kicker}>Before &amp; after</p>
         <h2>{title}</h2>

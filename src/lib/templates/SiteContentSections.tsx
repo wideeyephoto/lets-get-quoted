@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import type { Site } from '@/lib/sites';
 import {
   getPublishedBeforeAfter,
@@ -52,7 +53,7 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
   return (
     <>
       {financing && (
-        <section className={styles.financing} aria-label="Financing">
+        <section className={styles.financing} data-reveal aria-label="Financing">
           <div className={styles.financingInner}>
             <p className={styles.financingLead}>Projects from <strong>{formatMoney(financing.monthlyFrom)}/mo</strong></p>
             {financing.blurb && <p className={styles.financingBlurb}>{financing.blurb}</p>}
@@ -66,7 +67,7 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
       {hasInFlowSections && (
         <div className={styles.extraSections}>
           {showcase && (
-            <section className={styles.extraSection} id="showcase">
+            <section className={styles.extraSection} data-reveal id="showcase">
               <div className={styles.extraSectionHeader}>
                 <p className={styles.kicker}>Showcase</p>
                 <h2>{showcase.title}</h2>
@@ -75,7 +76,7 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
               <div className={`${styles.showcaseGrid} ${styles[`showcase-${showcase.layout}`] || ''}`}>
                 {showcase.items.map((item, index) => (
                   <figure key={`${item.id}-${index}`}>
-                    <img src={item.url} alt={item.alt} loading="lazy" decoding="async" />
+                    <Image src={item.url} alt={item.alt} width={1200} height={900} sizes={index === 0 && showcase.layout === 'featured' ? '60vw' : '30vw'} />
                     <figcaption>{item.caption || item.alt}</figcaption>
                   </figure>
                 ))}
@@ -84,7 +85,7 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
           )}
 
           {testimonials && (
-            <section className={styles.extraSection} id="reviews">
+            <section className={styles.extraSection} data-reveal id="reviews">
               <div className={styles.extraSectionHeader}>
                 <p className={styles.kicker}>Reviews</p>
                 <h2>{testimonials.title}</h2>
@@ -103,7 +104,7 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
           )}
 
           {faqs && (
-            <section className={styles.extraSection} id="faqs">
+            <section className={styles.extraSection} data-reveal id="faqs">
               <div className={styles.extraSectionHeader}>
                 <p className={styles.kicker}>FAQs</p>
                 <h2>{faqs.title}</h2>
@@ -120,7 +121,7 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
           )}
 
           {serviceAreas && (
-            <section className={styles.extraSection} id="areas">
+            <section className={styles.extraSection} data-reveal id="areas">
               <div className={styles.extraSectionHeader}>
                 <p className={styles.kicker}>Service area</p>
                 <h2>{serviceAreas.title}</h2>
@@ -139,7 +140,7 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
           {beforeAfter && <BeforeAfterSlider title={beforeAfter.title} intro={beforeAfter.intro} items={beforeAfter.items} />}
 
           {certifications && (
-            <section className={styles.extraSection} id="certifications">
+            <section className={styles.extraSection} data-reveal id="certifications">
               <div className={styles.extraSectionHeader}>
                 <p className={styles.kicker}>Credentials</p>
                 <h2>{certifications.title}</h2>
@@ -147,7 +148,7 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
               <ul className={styles.certList}>
                 {certifications.items.map((item) => (
                   <li key={item.id} className={styles.certItem}>
-                    {item.imageUrl && <img src={item.imageUrl} alt={item.imageAlt || item.label || 'Certification'} />}
+                    {item.imageUrl && <img src={item.imageUrl} alt={item.imageAlt || item.label || 'Certification'} loading="lazy" decoding="async" />}
                     {item.label && <span>{item.label}</span>}
                   </li>
                 ))}

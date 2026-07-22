@@ -30,14 +30,14 @@ export default function StatCounters({ title, items }: { title: string; items: S
           observer.disconnect();
         }
       },
-      { threshold: 0.3 },
+      { threshold: 0, rootMargin: '0px 0px -12% 0px' },
     );
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
 
   return (
-    <section ref={sectionRef} className={styles.extraSection} id="stats">
+    <section ref={sectionRef} className={styles.extraSection} data-reveal id="stats">
       <div className={styles.extraSectionHeader}>
         <p className={styles.kicker}>Track record</p>
         <h2>{title}</h2>
