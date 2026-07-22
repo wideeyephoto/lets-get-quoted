@@ -17,8 +17,13 @@ import styles from './themes.module.css';
 // shared sections.
 export default function ShineTemplate({ site, galleryImages = [] }: TemplateProps) {
   const gallery = galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES.slice(0, 4);
-  void gallery;
-  const heroImage = site.hero_url || STOCK_SITE_IMAGES[0].url;
+  const heroImage = site.hero_url || gallery[0]?.url || STOCK_SITE_IMAGES[0].url;
+  // Second photo for the floating collage — prefer a distinct gallery shot so
+  // the two cards don't duplicate, falling back to a different stock image.
+  const secondImage =
+    gallery.find((image) => image.url !== heroImage)?.url ||
+    STOCK_SITE_IMAGES.find((image) => image.url !== heroImage)?.url ||
+    STOCK_SITE_IMAGES[1].url;
   const themeStyle = {
     '--theme-accent': site.accent_override || '#ffd60a',
     '--theme-on-accent': '#0f1b2d',
@@ -51,12 +56,19 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
           <SiteProofStrip site={site} />
         </div>
         <div className={styles.shineHeroMedia}>
-          <img className={styles.shineHeroImg} src={heroImage} alt="Recent cleaning project" fetchPriority="high" decoding="async" />
-          <div className={`${styles.shineBadge} ${styles.shineBadgeSupport}`} data-parallax="0.12">
+          <div className={styles.shineCollage}>
+            <figure className={`${styles.shinePhotoCard} ${styles.shinePhotoMain}`} data-parallax="0.05">
+              <img className={styles.shinePhoto} src={heroImage} alt="Recent cleaning project" fetchPriority="high" decoding="async" />
+            </figure>
+            <figure className={`${styles.shinePhotoCard} ${styles.shinePhotoSide}`} data-parallax="0.13">
+              <img className={styles.shinePhoto} src={secondImage} alt="Our cleaning team at work" loading="lazy" decoding="async" />
+            </figure>
+          </div>
+          <div className={`${styles.shineBadge} ${styles.shineBadgeSupport}`} data-parallax="0.2">
             <span className={styles.shineBadgeIcon} aria-hidden="true">☎</span>
             <strong>24/7 Support</strong>
           </div>
-          <div className={`${styles.shineBadge} ${styles.shineBadgeCustomers}`} data-parallax="0.18">
+          <div className={`${styles.shineBadge} ${styles.shineBadgeCustomers}`} data-parallax="0.26">
             <span className={styles.shineAvatars} aria-hidden="true"><span /><span /><span /></span>
             <div><strong>500+</strong><small>Satisfied customers</small></div>
           </div>
