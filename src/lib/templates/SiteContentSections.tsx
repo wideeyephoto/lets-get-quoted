@@ -5,6 +5,7 @@ import {
   getPublishedCertifications,
   getPublishedFaqs,
   getPublishedFinancing,
+  getPublishedHowItWorks,
   getPublishedServiceAreas,
   getPublishedServices,
   getPublishedShowcase,
@@ -14,6 +15,7 @@ import {
 } from '@/lib/site-content';
 import BeforeAfterSlider from './BeforeAfterSlider';
 import SiteServices from './SiteServices';
+import SiteProcess from './SiteProcess';
 import StatCounters from './StatCounters';
 import styles from './themes.module.css';
 
@@ -27,6 +29,7 @@ function formatMoney(value: number): string {
 
 export default function SiteContentSections({ site }: SiteContentSectionsProps) {
   const services = getPublishedServices(site.content);
+  const howItWorks = getPublishedHowItWorks(site.content);
   const showcase = getPublishedShowcase(site.content);
   const testimonials = getPublishedTestimonials(site.content);
   const faqs = getPublishedFaqs(site.content);
@@ -37,7 +40,7 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
   const beforeAfter = getPublishedBeforeAfter(site.content);
   const stickyCallBar = getPublishedStickyCallBar(site.content, site.phone);
 
-  const hasInFlowSections = Boolean(services || showcase || testimonials || faqs || serviceAreas || certifications || stats || beforeAfter);
+  const hasInFlowSections = Boolean(services || howItWorks || showcase || testimonials || faqs || serviceAreas || certifications || stats || beforeAfter);
   const hasFinancing = Boolean(financing);
 
   if (!hasInFlowSections && !hasFinancing && !stickyCallBar) return null;
@@ -70,6 +73,7 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
       {hasInFlowSections && (
         <div className={styles.extraSections}>
           {services && <SiteServices title={services.title} intro={services.intro} items={services.items} />}
+          {howItWorks && <SiteProcess title={howItWorks.title} intro={howItWorks.intro} steps={howItWorks.steps} />}
           {showcase && (
             <section className={styles.extraSection} data-reveal id="showcase">
               <div className={styles.extraSectionHeader}>

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useTransition } from 'react';
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, type NormalizedSiteContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, type NormalizedSiteContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { checkSubdomainAvailableAction, generateSiteTextAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
@@ -263,6 +263,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     updateSiteContent({ services });
   }, [updateSiteContent]);
 
+  const updateHowItWorks = useCallback((howItWorks: SiteHowItWorksContent) => {
+    updateSiteContent({ howItWorks });
+  }, [updateSiteContent]);
+
   const toggleShowcaseImage = useCallback((image: SiteImage) => {
     const selected = siteContent.showcase.items.some((item) => item.id === image.id);
     const items = selected
@@ -476,6 +480,21 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     ))}
                   </div>
                   {siteContent.services.items.length < 8 && <button type="button" className={styles.secondaryAction} onClick={() => updateServices({ ...siteContent.services, enabled: true, items: [...siteContent.services.items, { id: createContentId('svc'), icon: 'spark', title: '', description: '' }] })}>Add service</button>}
+                </SectionCard>
+
+                <SectionCard title="How it works" description="A simple 3–4 step walkthrough of what happens after they reach out — book, we arrive, job done. Removes the 'what do I have to do?' hesitation." evidence="Showing the process upfront lowers the perceived effort of reaching out — people act when they can see exactly what happens next." enabled={siteContent.howItWorks.enabled} onToggleEnabled={(value) => updateHowItWorks({ ...siteContent.howItWorks, enabled: value })} open={openSection === 'howItWorks'} onToggleOpen={() => toggleSection('howItWorks')}>
+                  <label className={styles.formField}><span>Section title</span><input value={siteContent.howItWorks.title} onChange={(event) => updateHowItWorks({ ...siteContent.howItWorks, title: event.target.value })} /></label>
+                  <label className={styles.formField}><span>Intro copy (optional)</span><input value={siteContent.howItWorks.intro} onChange={(event) => updateHowItWorks({ ...siteContent.howItWorks, intro: event.target.value })} /></label>
+                  <div className={styles.stackList}>
+                    {siteContent.howItWorks.steps.map((step, index) => (
+                      <div className={styles.stackItem} key={step.id}>
+                        <div className={styles.itemHeader}><strong>{step.title || `Step ${index + 1}`}</strong><button type="button" onClick={() => updateHowItWorks({ ...siteContent.howItWorks, steps: siteContent.howItWorks.steps.filter((s) => s.id !== step.id) })}>Remove</button></div>
+                        <label className={styles.formField}><span>Step title</span><input value={step.title} maxLength={60} onChange={(event) => updateHowItWorks({ ...siteContent.howItWorks, steps: siteContent.howItWorks.steps.map((s) => s.id === step.id ? { ...s, title: event.target.value } : s) })} placeholder="Book online or call" /></label>
+                        <label className={styles.formField}><span>Description</span><input value={step.description} maxLength={160} onChange={(event) => updateHowItWorks({ ...siteContent.howItWorks, steps: siteContent.howItWorks.steps.map((s) => s.id === step.id ? { ...s, description: event.target.value } : s) })} placeholder="Tell us what you need and pick a time that works." /></label>
+                      </div>
+                    ))}
+                  </div>
+                  {siteContent.howItWorks.steps.length < 5 && <button type="button" className={styles.secondaryAction} onClick={() => updateHowItWorks({ ...siteContent.howItWorks, enabled: true, steps: [...siteContent.howItWorks.steps, { id: createContentId('step'), title: '', description: '' }] })}>Add step</button>}
                 </SectionCard>
 
                 <SectionCard title="Showcase gallery" description="Highlight finished work, project details, and job photos." evidence="Real project photos alongside reviews produced 55% more leads in one study — genuine work outperforms stock." enabled={siteContent.showcase.enabled} onToggleEnabled={(value) => updateShowcase({ ...siteContent.showcase, enabled: value })} open={openSection === 'showcase'} onToggleOpen={() => toggleSection('showcase')}>

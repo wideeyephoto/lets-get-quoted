@@ -126,6 +126,13 @@
 .serviceCard p { margin: 0; font-size: .88rem; line-height: 1.5; color: color-mix(in srgb, currentColor 78%, transparent); }
 @media (prefers-reduced-motion: reduce) { .serviceCard { transition: none; } }
 
+/* How-it-works numbered steps (toggleable) */
+.processGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 1.5rem 1.25rem; margin: 0; padding: 0; list-style: none; }
+.processStep { display: flex; flex-direction: column; gap: .45rem; }
+.processNum { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 999px; background: color-mix(in srgb, var(--theme-accent) 16%, transparent); color: var(--theme-accent); font-family: var(--theme-display, inherit); font-weight: 800; font-size: 1.15rem; margin-bottom: .35rem; }
+.processStep h3 { margin: 0; font-size: 1.05rem; line-height: 1.25; }
+.processStep p { margin: 0; font-size: .9rem; line-height: 1.5; color: color-mix(in srgb, currentColor 78%, transparent); }
+
 /* Availability / urgency bar (toggleable) — mounts above the header. Dark
    ground + accent dot with a faint white ring, so the dot reads on the dark
    bar under any template accent or a contractor's custom (even dark) accent. */

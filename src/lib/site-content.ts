@@ -149,6 +149,21 @@ export type SiteServicesContent = {
   items: SiteServiceItem[];
 };
 
+// Numbered "how it works" steps — the process a homeowner goes through
+// (book → we arrive → job done). Step numbers are derived from order.
+export type SiteProcessStep = {
+  id: string;
+  title: string;
+  description: string;
+};
+
+export type SiteHowItWorksContent = {
+  enabled: boolean;
+  title: string;
+  intro: string;
+  steps: SiteProcessStep[];
+};
+
 export type SiteQuoteFormContent = {
   emailRequired: boolean;
   // Controls the wording used on the quote-request call-to-action ('Quick Estimate'
@@ -222,6 +237,7 @@ export type NormalizedSiteContent = {
   beforeAfter: SiteBeforeAfterContent;
   announcement: SiteAnnouncementContent;
   services: SiteServicesContent;
+  howItWorks: SiteHowItWorksContent;
 };
 
 export const DEFAULT_SHOWCASE_TITLE = 'Project showcase';
@@ -235,6 +251,7 @@ export const DEFAULT_CERTIFICATIONS_TITLE = 'Certifications & awards';
 export const DEFAULT_STATS_TITLE = 'By the numbers';
 export const DEFAULT_BEFORE_AFTER_TITLE = 'Before & after';
 export const DEFAULT_SERVICES_TITLE = 'What we do';
+export const DEFAULT_HOW_IT_WORKS_TITLE = 'How it works';
 export const DEFAULT_BEFORE_AFTER_INTRO = 'Drag to see the transformation.';
 
 export const DEFAULT_TRUST_BADGES: SiteTrustBadgeItem[] = [
@@ -394,6 +411,16 @@ function parseServices(value: unknown): SiteServiceItem[] {
   }));
 }
 
+function parseProcessSteps(value: unknown): SiteProcessStep[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.filter(isRecord).slice(0, 5).map((item, index) => ({
+    id: toString(item.id, `step-${index + 1}`),
+    title: toString(item.title),
+    description: toString(item.description),
+  }));
+}
+
 export function getSiteContent(content: Record<string, unknown> | null | undefined): NormalizedSiteContent {
   const root = isRecord(content) ? content : {};
   const showcase = isRecord(root.showcase) ? root.showcase : {};
@@ -411,6 +438,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const beforeAfter = isRecord(root.beforeAfter) ? root.beforeAfter : {};
   const announcement = isRecord(root.announcement) ? root.announcement : {};
   const services = isRecord(root.services) ? root.services : {};
+  const howItWorks = isRecord(root.howItWorks) ? root.howItWorks : {};
 
   return {
     showcase: {
@@ -495,6 +523,12 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       title: toString(services.title, DEFAULT_SERVICES_TITLE),
       intro: toString(services.intro),
       items: parseServices(services.items),
+    },
+    howItWorks: {
+      enabled: toBoolean(howItWorks.enabled),
+      title: toString(howItWorks.title, DEFAULT_HOW_IT_WORKS_TITLE),
+      intro: toString(howItWorks.intro),
+      steps: parseProcessSteps(howItWorks.steps),
     },
   };
 }
@@ -581,4 +615,10 @@ export function getPublishedServices(content: Record<string, unknown> | null | u
   const services = getSiteContent(content).services;
   const items = services.items.filter((item) => item.title.trim());
   return services.enabled && items.length > 0 ? { ...services, items } : null;
+}
+
+export function getPublishedHowItWorks(content: Record<string, unknown> | null | undefined): SiteHowItWorksContent | null {
+  const howItWorks = getSiteContent(content).howItWorks;
+  const steps = howItWorks.steps.filter((step) => step.title.trim());
+  return howItWorks.enabled && steps.length > 0 ? { ...howItWorks, steps } : null;
 }
