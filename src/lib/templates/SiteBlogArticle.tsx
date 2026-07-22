@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import type { Site } from '@/lib/sites';
 import type { SiteBlogPost } from '@/lib/site-content';
+import BlogReadingProgress from './BlogReadingProgress';
 import styles from './themes.module.css';
 
 // Standalone article page for a single published post. Rendered outside the
@@ -21,6 +22,7 @@ export default function SiteBlogArticle({ site, post }: { site: Site; post: Site
 
   return (
     <main className={styles.blogArticleShell} style={themeStyle}>
+      <BlogReadingProgress />
       <div className={styles.blogArticle}>
         <a className={styles.blogBack} href="/">{site.company_name || 'Home'}</a>
         <article>

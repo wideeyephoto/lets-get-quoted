@@ -109,6 +109,10 @@
 /* Standalone article page — own full-bleed light shell (renders outside the
    template, and the SaaS body is dark, so it must set its own background). */
 .blogArticleShell { min-height: 100vh; background: #fff; color: #1c2230; font-family: var(--font-body), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; border-top: 4px solid var(--theme-accent); }
+/* Reading-progress bar — fixed over the top accent line, fills as you scroll. */
+.blogProgress { position: fixed; top: 0; left: 0; right: 0; height: 4px; z-index: 60; background: transparent; pointer-events: none; }
+.blogProgress span { display: block; height: 100%; width: 0; background: var(--theme-accent); transition: width .12s linear; }
+@media (prefers-reduced-motion: reduce) { .blogProgress span { transition: none; } }
 .blogArticle { max-width: 760px; margin: 0 auto; padding: clamp(1.75rem, 5vw, 4rem) clamp(1.25rem, 5vw, 2rem) clamp(3rem, 7vw, 5rem); }
 .blogBack { display: inline-block; margin-bottom: clamp(1.5rem, 4vw, 3rem); font-weight: 800; font-size: 1.05rem; color: var(--theme-accent); text-decoration: none; }
 .blogArticleHead { margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid #e6e9ef; }
