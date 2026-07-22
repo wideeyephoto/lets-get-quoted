@@ -6,6 +6,10 @@ import styles from './SiteEditor.module.css';
 type SectionCardProps = {
   title: string;
   description?: string;
+  // A short, evidence-backed "why this converts" tip shown when the card is
+  // open — nudges owners to fill in the high-impact sections. Sourced from the
+  // home-services CRO audit.
+  evidence?: string;
   // When these are provided, the header shows an enable checkbox + On/Off pill.
   // Omit them for sections that are always active (e.g. the quote form).
   enabled?: boolean;
@@ -19,7 +23,7 @@ type SectionCardProps = {
 // optional enable toggle + On/Off state, and a chevron; the configuration
 // collapses so the Design tab stays a short, scannable list instead of one long
 // scroll.
-export default function SectionCard({ title, description, enabled, onToggleEnabled, open, onToggleOpen, children }: SectionCardProps) {
+export default function SectionCard({ title, description, evidence, enabled, onToggleEnabled, open, onToggleOpen, children }: SectionCardProps) {
   const hasSwitch = typeof enabled === 'boolean' && Boolean(onToggleEnabled);
 
   return (
@@ -44,6 +48,12 @@ export default function SectionCard({ title, description, enabled, onToggleEnabl
       {open && (
         <div className={styles.sectionCardBody}>
           {description && <p className={styles.sectionCardDesc}>{description}</p>}
+          {evidence && (
+            <p className={styles.sectionCardEvidence}>
+              <strong>Why this converts</strong>
+              {evidence}
+            </p>
+          )}
           {children}
         </div>
       )}
