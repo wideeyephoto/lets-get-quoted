@@ -6,6 +6,7 @@ import HandyTemplate from './handy';
 import CoatTemplate from './coat';
 import FixitTemplate from './fixit';
 import RenoTemplate from './reno';
+import ShineTemplate from './shine';
 
 // Only the 3 curated templates are offered and maintained. Any legacy template
 // id stored on an existing site falls back to Forge via getTemplate (see
@@ -17,5 +18,6 @@ registerTemplate('handy', HandyTemplate);
 registerTemplate('coat', CoatTemplate);
 registerTemplate('fixit', FixitTemplate);
 registerTemplate('reno', RenoTemplate);
+registerTemplate('shine', ShineTemplate);
 
 export { getTemplate };

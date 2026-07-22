@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 // The 3 curated templates. Legacy sites may still hold a retired id in the DB;
 // getTemplate falls those back to Forge, so this narrow type is safe.
-export type TemplateType = 'carbon' | 'professional' | 'modern' | 'handy' | 'fresh' | 'nova' | 'aqua' | 'coat' | 'fixit' | 'reno';
+export type TemplateType = 'carbon' | 'professional' | 'modern' | 'handy' | 'fresh' | 'nova' | 'aqua' | 'coat' | 'fixit' | 'reno' | 'shine';
 export type PortalMode = 'light' | 'dark';
 
 export type Site = {

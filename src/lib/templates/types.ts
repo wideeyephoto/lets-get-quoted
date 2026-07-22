@@ -91,6 +91,13 @@ export const AVAILABLE_TEMPLATES: TemplateConfig[] = [
     accent: '#f5b421',
     fontVar: 'var(--font-display), system-ui, sans-serif',
   },
+  {
+    id: 'shine',
+    name: 'Shine',
+    description: 'Modern premium cleaning — deep-navy + bright-yellow, rounded cards, floating hero badges',
+    accent: '#ffd60a',
+    fontVar: 'var(--font-display), system-ui, sans-serif',
+  },
 ];
 // Note: 17 additional templates (Haven, Meridian, Blueprint, Lumen, Atlas, Circuit,
 // Cascade, Anchor, Foundry, Ironclad, Summit, Beacon, Timber, Heritage, Bloom, Drift,

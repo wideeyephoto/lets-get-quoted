@@ -754,3 +754,75 @@
 }
 @media (max-width: 560px) { .renoFooterBar { flex-direction: column; align-items: stretch; text-align: center; } .renoFooterCall { justify-content: center; } }
 @media (prefers-reduced-motion: reduce) { .renoHeroCopy > * { animation: none; } }
+
+/* ===== Shine — modern premium cleaning (Purely reference) ===== */
+.shine { background: #fff; color: #14202e; font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; --sh-navy: #0f1b2d; --sh-ink: #14202e; --sh-muted: #5c6675; --sh-surface: #f2f3f5; }
+.shineHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1.5rem; padding: .9rem clamp(1.25rem, 4vw, 3.5rem); background: rgba(15,27,45,.92); backdrop-filter: blur(10px); }
+.shineBrand { display: inline-flex; align-items: center; gap: .55rem; font-size: 1.15rem; color: #fff; }
+.shineBrand strong { font-family: var(--theme-display); font-weight: 800; color: #fff; }
+.shineBrandMark { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; background: var(--theme-accent); color: var(--sh-navy); font-size: .9rem; }
+.shineHeader .navLinks { text-transform: none; letter-spacing: 0; font-size: .94rem; font-weight: 600; }
+.shineHeader .navLinks a { color: rgba(255,255,255,.86); }
+.shineHeader .navLinks a:hover { color: #fff; }
+.shineHeaderCta { justify-self: end; display: inline-flex; align-items: center; gap: .4rem; min-height: 44px; padding: .55rem 1.2rem; border-radius: 999px; background: #fff; color: var(--sh-navy); font-weight: 700; font-size: .88rem; white-space: nowrap; transition: transform .2s ease; }
+.shineHeaderCta:hover { transform: translateY(-1px); }
+.shineHero { display: grid; grid-template-columns: 1.05fr .95fr; gap: clamp(1.5rem, 4vw, 3.5rem); align-items: center; padding: clamp(2.5rem, 6vw, 5rem) clamp(1.25rem, 5vw, 4rem) clamp(3rem, 7vw, 5.5rem); background: radial-gradient(120% 100% at 15% 0, #16273d, var(--sh-navy) 62%); color: #fff; }
+.shineHeroCopy { max-width: 620px; }
+.shineHeroCopy h1 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(2.5rem, 5.6vw, 4.4rem); line-height: 1.04; letter-spacing: -.02em; margin: 0 0 1.2rem; text-wrap: balance; overflow-wrap: anywhere; }
+.shineHeroText { font-size: clamp(1rem, 1.4vw, 1.16rem); line-height: 1.6; color: rgba(255,255,255,.78); margin: 0 0 1.7rem; max-width: 46ch; }
+.shineHeroActions { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.shineBtn { display: inline-flex; align-items: center; gap: .45rem; min-height: 50px; padding: .8rem 1.6rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #0f1b2d); font-weight: 700; font-size: .96rem; box-shadow: 0 16px 30px -14px color-mix(in srgb, var(--theme-accent) 55%, transparent); transition: transform .2s ease, filter .2s ease; }
+.shineBtn:hover { transform: translateY(-2px); filter: brightness(1.04); }
+.shineBtnGhost { display: inline-flex; align-items: center; gap: .45rem; min-height: 50px; padding: .8rem 1.4rem; border-radius: 999px; border: 1.5px solid rgba(255,255,255,.5); color: #fff; font-weight: 700; font-size: .96rem; transition: background .2s ease, border-color .2s ease; }
+.shineBtnGhost:hover { background: rgba(255,255,255,.1); border-color: #fff; }
+.shineHeroMedia { position: relative; min-height: 400px; }
+.shineHeroImg { width: 100%; aspect-ratio: 4 / 3.4; object-fit: cover; border-radius: 18px; box-shadow: 0 40px 80px -34px rgba(0,0,0,.6); }
+.shineBadge { position: absolute; z-index: 2; display: flex; align-items: center; gap: .6rem; padding: .7rem 1rem; border-radius: 14px; background: #fff; color: var(--sh-ink); box-shadow: 0 22px 44px -22px rgba(0,0,0,.4); }
+.shineBadgeSupport { top: 6%; right: -3%; flex-direction: column; gap: .3rem; text-align: center; }
+.shineBadgeSupport strong { font-size: .82rem; }
+.shineBadgeIcon { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 999px; background: var(--sh-navy); color: var(--theme-accent); }
+.shineBadgeCustomers { bottom: 8%; left: -4%; }
+.shineBadgeCustomers strong { font-size: 1.05rem; }
+.shineBadgeCustomers small { display: block; font-size: .72rem; color: var(--sh-muted); }
+.shineAvatars { display: inline-flex; flex: 0 0 auto; }
+.shineAvatars span { width: 24px; height: 24px; border-radius: 999px; border: 2px solid #fff; margin-left: -8px; background: linear-gradient(135deg, #cbd3dd, #8b97a6); }
+.shineAvatars span:first-child { margin-left: 0; }
+.shineEyebrow { margin: 0 0 .6rem; font-size: .78rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: color-mix(in srgb, var(--theme-accent) 80%, #8a7400); }
+.shineContact { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(1.75rem, 4vw, 3.5rem); align-items: center; padding: clamp(3rem, 7vw, 6rem) clamp(1.25rem, 5vw, 4rem); background: var(--sh-surface); }
+.shineContactCopy { display: grid; gap: 1rem; align-content: start; }
+.shineContactCopy h2 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(1.9rem, 4vw, 2.9rem); line-height: 1.06; letter-spacing: -.02em; color: var(--sh-ink); margin: 0; }
+.shineContactCopy > p { margin: 0; font-size: 1.02rem; line-height: 1.6; color: var(--sh-muted); }
+.shineContactCopy .shineBtn { justify-self: start; }
+.shineFooter { background: var(--sh-navy); padding: clamp(1.5rem, 4vw, 2.5rem) clamp(1.25rem, 5vw, 4rem); }
+.shineFooterBar { display: flex; align-items: center; justify-content: space-between; gap: 1rem 1.5rem; flex-wrap: wrap; padding: 1.1rem 0; color: #9aa6b6; }
+.shineFooterBrand { display: inline-flex; align-items: center; gap: .5rem; font-family: var(--theme-display); font-weight: 800; font-size: 1.15rem; color: #fff; }
+.shineFooterCall { display: inline-flex; align-items: center; gap: .5rem; min-height: 46px; padding: .5rem 1.2rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #0f1b2d); font-weight: 800; font-size: .95rem; }
+.shineFooter small { opacity: .6; font-size: .78rem; }
+.shine .extraSection { border-top: none; padding: clamp(3rem, 6vw, 5.5rem) clamp(1.25rem, 5vw, 4rem); }
+.shine .extraSection:nth-of-type(even) { background: var(--sh-surface); }
+.shine .extraSectionHeader h2 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(1.9rem, 4vw, 3rem); line-height: 1.06; letter-spacing: -.02em; color: var(--sh-ink); }
+.shine .kicker { color: color-mix(in srgb, var(--theme-accent) 80%, #8a7400); }
+.shine .serviceCard { background: #fff; border: 1px solid #e7e9ed; border-radius: 16px; box-shadow: 0 22px 46px -30px rgba(15,27,45,.28); }
+.shine .serviceIcon { background: var(--sh-navy); color: var(--theme-accent); border-radius: 12px; }
+.shine .serviceCard h3 { color: var(--sh-ink); }
+.shine .serviceCard p { color: var(--sh-muted); }
+.shine .statItem { background: var(--sh-navy); border-radius: 16px; padding: 1.4rem 1rem; }
+.shine .statValue { color: var(--theme-accent); }
+.shine .statLabel { color: rgba(255,255,255,.72); }
+.shine .processNum { background: color-mix(in srgb, var(--theme-accent) 18%, transparent); color: color-mix(in srgb, var(--theme-accent) 80%, #8a7400); }
+.shineHeroCopy > * { animation: shineRise .7s cubic-bezier(.22, .61, .36, 1) both; }
+.shineHeroCopy > *:nth-child(1) { animation-delay: .05s; }
+.shineHeroCopy > *:nth-child(2) { animation-delay: .13s; }
+.shineHeroCopy > *:nth-child(3) { animation-delay: .21s; }
+.shineHeroCopy > *:nth-child(4) { animation-delay: .29s; }
+@keyframes shineRise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+.shineHeroImg { animation: shineFloat 7s ease-in-out infinite; }
+@keyframes shineFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@media (max-width: 900px) {
+  .shineHero, .shineContact { grid-template-columns: 1fr; }
+  .shineHeroMedia { order: -1; max-width: 460px; margin-inline: auto; }
+  .shineHeader { grid-template-columns: auto 1fr; }
+  .shineHeader .navLinks { display: none; }
+}
+@media (max-width: 560px) { .shineFooterBar { flex-direction: column; align-items: stretch; text-align: center; } .shineFooterCall { justify-content: center; } .shineBadgeSupport { right: 0; } .shineBadgeCustomers { left: 0; } }
+@media (prefers-reduced-motion: reduce) { .shineHeroCopy > *, .shineHeroImg { animation: none; } }
