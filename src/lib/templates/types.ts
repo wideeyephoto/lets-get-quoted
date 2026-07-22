@@ -77,6 +77,13 @@ export const AVAILABLE_TEMPLATES: TemplateConfig[] = [
     accent: '#e5322a',
     fontVar: 'var(--font-display), system-ui, sans-serif',
   },
+  {
+    id: 'fixit',
+    name: 'Fixit',
+    description: 'Clean, professional handyman look — orange accent, angular hero, parallax + motion',
+    accent: '#f15a29',
+    fontVar: 'var(--font-display), system-ui, sans-serif',
+  },
 ];
 // Note: 17 additional templates (Haven, Meridian, Blueprint, Lumen, Atlas, Circuit,
 // Cascade, Anchor, Foundry, Ironclad, Summit, Beacon, Timber, Heritage, Bloom, Drift,
