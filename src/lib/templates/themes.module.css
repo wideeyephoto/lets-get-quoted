@@ -68,10 +68,14 @@
 .extraSectionHeader h2 { margin: 0; font-family: var(--theme-display); font-size: clamp(2.2rem, 5vw, 4.5rem); line-height: .98; }
 .extraSectionHeader > p:last-child { margin: 0; color: color-mix(in srgb, currentColor 72%, transparent); line-height: 1.65; }
 .showcaseGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
-.showcaseGrid figure { min-width: 0; margin: 0; overflow: hidden; }
-.showcaseGrid img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; transition: transform .45s ease; }
-.showcaseGrid figure:hover img { transform: scale(1.04); }
-.showcaseGrid figcaption { padding-top: .7rem; color: color-mix(in srgb, currentColor 78%, transparent); font-size: .82rem; font-weight: 700; text-transform: uppercase; }
+.showcaseGrid figure { position: relative; min-width: 0; margin: 0; overflow: hidden; border-radius: calc(var(--theme-radius, 6px) + 6px); }
+.showcaseGrid img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; transition: transform .5s cubic-bezier(.22, .61, .36, 1); }
+.showcaseGrid figure:hover img { transform: scale(1.06); }
+/* Caption floats over the photo on a gradient scrim with an accent tick. */
+.showcaseGrid figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 1.6rem .95rem .85rem; color: #fff; font-size: .82rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; background: linear-gradient(to top, rgba(0,0,0,.74), rgba(0,0,0,.12) 62%, transparent); }
+.showcaseGrid figcaption:empty { display: none; }
+.showcaseGrid figcaption::before { content: ''; display: inline-block; width: 18px; height: 3px; margin-right: .5rem; vertical-align: middle; background: var(--theme-accent); border-radius: 2px; }
+@media (prefers-reduced-motion: reduce) { .showcaseGrid figure:hover img { transform: none; } }
 .showcase-featured figure:first-child { grid-column: span 2; grid-row: span 2; }
 .showcase-featured figure:first-child img { height: 100%; aspect-ratio: auto; }
 .showcase-masonry figure:nth-child(3n + 1) img { aspect-ratio: 4 / 5; }
@@ -215,7 +219,9 @@
 
 /* Service-area city list (toggleable) */
 .serviceAreaList { display: flex; flex-wrap: wrap; gap: .55rem .6rem; margin: 0; padding: 0; list-style: none; max-width: 960px; }
-.serviceAreaChip { padding: .5rem .95rem; border: 1px solid color-mix(in srgb, currentColor 16%, transparent); border-radius: 999px; font-size: .9rem; font-weight: 600; }
+.serviceAreaChip { padding: .5rem .95rem; border: 1px solid color-mix(in srgb, currentColor 16%, transparent); border-radius: 999px; font-size: .9rem; font-weight: 600; transition: border-color .25s ease, background .25s ease, transform .25s ease; }
+.serviceAreaChip:hover { border-color: color-mix(in srgb, var(--theme-accent) 55%, transparent); background: color-mix(in srgb, var(--theme-accent) 12%, transparent); transform: translateY(-2px); }
+@media (prefers-reduced-motion: reduce) { .serviceAreaChip { transition: none; } .serviceAreaChip:hover { transform: none; } }
 
 /* Trust-badge chip strip (toggleable) */
 .trustBadges { padding: clamp(1.75rem, 3.5vw, 2.75rem) 5vw; border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); background: color-mix(in srgb, currentColor 4%, transparent); }
