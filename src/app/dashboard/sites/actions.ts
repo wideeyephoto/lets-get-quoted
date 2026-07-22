@@ -149,6 +149,14 @@ function asArray(value: unknown): unknown[] {
 function isObj(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
+// Must match ServiceIcon's key set (src/lib/templates/ServiceIcon.tsx). The AI
+// sometimes invents a key (e.g. 'roof'), so anything off-list falls back to a
+// generic mark rather than being stored and rendered as the wrong/empty icon.
+const SERVICE_ICON_KEYS = new Set(['spark', 'wrench', 'droplet', 'bolt', 'home', 'star', 'shield', 'clock', 'leaf', 'grid', 'truck', 'sparkles', 'roller']);
+function normalizeIcon(value: unknown): string {
+  const key = asString(value, 20);
+  return SERVICE_ICON_KEYS.has(key) ? key : 'spark';
+}
 
 function extractOutputText(payload: unknown): string {
   const record = payload as { output_text?: unknown; output?: unknown[] };
@@ -202,7 +210,7 @@ export async function generateSiteTextAction(): Promise<GeneratedSiteText> {
     '"hours":"<typical hours for this trade, e.g. \'Mon-Fri 8am-6pm, Sat 9am-2pm\'>",' +
     '"service_area":"<the area served in a few words; if none was provided, a natural generic like \'your local area\'>",' +
     '"cities":["<4 to 6 nearby city or neighborhood names for the service area; empty array if the area is unknown>"],' +
-    '"services":[{"icon":"<one of: wrench, droplet, bolt, roller, sparkles, home, shield, leaf, grid, truck, clock, star, spark>","title":"<a real service this trade offers, under 40 characters>","description":"<one concrete line under 130 characters>"}],' +
+    '"services":[{"icon":"<pick the single closest match from EXACTLY this list and never invent another word: wrench, droplet, bolt, roller, sparkles, home, shield, leaf, grid, truck, clock, star, spark>","title":"<a real service this trade offers, under 40 characters>","description":"<one concrete line under 130 characters>"}],' +
     '"faqs":[{"question":"<a real question a homeowner asks this trade>","answer":"<a concise, helpful answer under 300 characters>"}],' +
     '"testimonials":[{"author":"<a realistic first name and last initial>","text":"<a believable 1-2 sentence review of this trade>","rating":5,"label":"<a city or short role, optional>"}],' +
     '"stats":[{"value":<a plausible whole number>,"suffix":"<a plus sign or empty>","label":"<e.g. Jobs completed, Years in business, 5-star reviews>"}]' +
@@ -246,7 +254,7 @@ export async function generateSiteTextAction(): Promise<GeneratedSiteText> {
       services: asArray(parsed.services)
         .filter(isObj)
         .slice(0, 5)
-        .map((s) => ({ icon: asString(s.icon, 20) || 'spark', title: asString(s.title, 60), description: asString(s.description, 140) }))
+        .map((s) => ({ icon: normalizeIcon(s.icon), title: asString(s.title, 60), description: asString(s.description, 140) }))
         .filter((s) => s.title),
       faqs: asArray(parsed.faqs)
         .filter(isObj)
