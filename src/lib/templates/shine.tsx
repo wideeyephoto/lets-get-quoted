@@ -30,6 +30,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
   );
   const heroBadge = getHeroBadge(site.content);
   const showStats = getHeroShowStats(site.content);
+  const heroBackground = getSlotImage(site.content, 'heroBackground', '');
   const themeStyle = {
     '--theme-accent': site.accent_override || '#ffd60a',
     '--theme-on-accent': '#0f1b2d',
@@ -51,7 +52,13 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
         <a className={styles.shineHeaderCta} href="#contact">Book a call <span aria-hidden="true">→</span></a>
       </header>
 
-      <section className={styles.shineHero} id="top">
+      <section className={`${styles.shineHero}${heroBackground ? ` ${styles.shineHeroHasBg}` : ''}`} id="top">
+        {/* Full-bleed hero background. Always present so it's hover-to-replace in
+            the preview even before a photo is chosen; shows the photo + scrim
+            once set, otherwise stays transparent over the navy gradient. */}
+        <div className={`${styles.shineHeroBg}${heroBackground ? ` ${styles.shineHeroBgActive}` : ''}`} data-edit="image-heroBackground">
+          {heroBackground && <img src={heroBackground} alt="" fetchPriority="high" decoding="async" />}
+        </div>
         <span className={styles.shineGlow1} aria-hidden="true" />
         <span className={styles.shineGlow2} aria-hidden="true" />
         <div className={styles.shineHeroCopy}>

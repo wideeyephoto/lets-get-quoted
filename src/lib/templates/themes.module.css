@@ -945,6 +945,12 @@
 @media (prefers-reduced-motion: reduce) { .shineBrandMark, .shineHeaderCta span { transition: none; } .shineBrand:hover .shineBrandMark { transform: none; } }
 .shineHero { position: relative; overflow: hidden; display: grid; grid-template-columns: 1.05fr .95fr; gap: clamp(1.5rem, 4vw, 3.5rem); align-items: center; padding: clamp(2.5rem, 6vw, 5rem) clamp(1.25rem, 5vw, 4rem) clamp(3rem, 7vw, 5.5rem); background: radial-gradient(120% 100% at 15% 0, #16273d, var(--sh-navy) 62%); color: #fff; }
 .shineHeroCopy, .shineHeroMedia { position: relative; z-index: 1; }
+.shineHeroBg { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
+.shineHeroBg img { width: 100%; height: 100%; object-fit: cover; }
+/* Legibility scrim — darker on the left where the copy sits, lighter on the
+   right so the floating photo tiles read against it (the Purely reference). */
+.shineHeroBgActive::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(9,16,28,.92) 0%, rgba(9,16,28,.66) 46%, rgba(9,16,28,.34) 100%); }
+.shineHeroHasBg .shineHeroText { color: rgba(255,255,255,.86); }
 /* Soft aurora glows drifting behind the hero — accent-tinted + cool white,
    transform-only so they can't stall invisible in the preview iframe. */
 .shineGlow1, .shineGlow2 { position: absolute; z-index: 0; border-radius: 50%; filter: blur(70px); pointer-events: none; will-change: transform; }

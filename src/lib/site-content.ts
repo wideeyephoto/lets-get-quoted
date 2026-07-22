@@ -763,6 +763,7 @@ export function getHeroShowStats(content: Record<string, unknown> | null | undef
 // swapping. The key is the slot id used in `content.images` and the
 // `data-edit="image-<slot>"` preview marker; the value is the builder label.
 export const IMAGE_SLOT_LABELS: Record<string, string> = {
+  heroBackground: 'Hero background photo',
   heroSecondary: 'Second hero photo',
   stats: 'Stats section photo',
   about: 'About-section photo',
