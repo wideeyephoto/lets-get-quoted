@@ -164,6 +164,26 @@ export type SiteHowItWorksContent = {
   steps: SiteProcessStep[];
 };
 
+// Blog posts (AI-drafted, owner-published). Stored in content so there's no
+// separate table/migration; a post is public only when status === 'published'.
+export type SiteBlogPost = {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  body: string;
+  coverImage: string;
+  status: 'draft' | 'published';
+  date: string;
+};
+
+export type SiteBlogContent = {
+  enabled: boolean;
+  title: string;
+  intro: string;
+  posts: SiteBlogPost[];
+};
+
 export type SiteQuoteFormContent = {
   emailRequired: boolean;
   // Controls the wording used on the quote-request call-to-action ('Quick Estimate'
@@ -238,6 +258,7 @@ export type NormalizedSiteContent = {
   announcement: SiteAnnouncementContent;
   services: SiteServicesContent;
   howItWorks: SiteHowItWorksContent;
+  blog: SiteBlogContent;
 };
 
 export const DEFAULT_SHOWCASE_TITLE = 'Project showcase';
@@ -252,6 +273,7 @@ export const DEFAULT_STATS_TITLE = 'By the numbers';
 export const DEFAULT_BEFORE_AFTER_TITLE = 'Before & after';
 export const DEFAULT_SERVICES_TITLE = 'What we do';
 export const DEFAULT_HOW_IT_WORKS_TITLE = 'How it works';
+export const DEFAULT_BLOG_TITLE = 'From our blog';
 export const DEFAULT_BEFORE_AFTER_INTRO = 'Drag to see the transformation.';
 
 export const DEFAULT_TRUST_BADGES: SiteTrustBadgeItem[] = [
@@ -421,6 +443,37 @@ function parseProcessSteps(value: unknown): SiteProcessStep[] {
   }));
 }
 
+// Turn a title into a URL-safe slug (lowercase, hyphenated, alnum only).
+export function slugifyBlogTitle(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+}
+
+function parseBlogPosts(value: unknown): SiteBlogPost[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.filter(isRecord).slice(0, 60).map((item, index) => {
+    const title = toString(item.title);
+    const rawStatus = toString(item.status);
+    const rawSlug = toString(item.slug);
+    return {
+      id: toString(item.id, `post-${index + 1}`),
+      slug: rawSlug ? slugifyBlogTitle(rawSlug) : slugifyBlogTitle(title) || `post-${index + 1}`,
+      title,
+      excerpt: toString(item.excerpt),
+      body: toString(item.body),
+      coverImage: toString(item.coverImage),
+      status: rawStatus === 'published' ? 'published' : 'draft',
+      date: toString(item.date),
+    };
+  });
+}
+
 export function getSiteContent(content: Record<string, unknown> | null | undefined): NormalizedSiteContent {
   const root = isRecord(content) ? content : {};
   const showcase = isRecord(root.showcase) ? root.showcase : {};
@@ -439,6 +492,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const announcement = isRecord(root.announcement) ? root.announcement : {};
   const services = isRecord(root.services) ? root.services : {};
   const howItWorks = isRecord(root.howItWorks) ? root.howItWorks : {};
+  const blog = isRecord(root.blog) ? root.blog : {};
 
   return {
     showcase: {
@@ -529,6 +583,12 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       title: toString(howItWorks.title, DEFAULT_HOW_IT_WORKS_TITLE),
       intro: toString(howItWorks.intro),
       steps: parseProcessSteps(howItWorks.steps),
+    },
+    blog: {
+      enabled: toBoolean(blog.enabled),
+      title: toString(blog.title, DEFAULT_BLOG_TITLE),
+      intro: toString(blog.intro),
+      posts: parseBlogPosts(blog.posts),
     },
   };
 }
@@ -621,4 +681,29 @@ export function getPublishedHowItWorks(content: Record<string, unknown> | null |
   const howItWorks = getSiteContent(content).howItWorks;
   const steps = howItWorks.steps.filter((step) => step.title.trim());
   return howItWorks.enabled && steps.length > 0 ? { ...howItWorks, steps } : null;
+}
+
+// Public blog gate: only published posts with a title + body, newest first.
+// Returns null when the section is off or has no publishable posts.
+export function getPublishedBlog(content: Record<string, unknown> | null | undefined): SiteBlogContent | null {
+  const blog = getSiteContent(content).blog;
+  const posts = blog.posts
+    .filter((post) => post.status === 'published' && post.title.trim() && post.body.trim())
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  return blog.enabled && posts.length > 0 ? { ...blog, posts } : null;
+}
+
+// A single published post by slug (for /blog/[slug]). Ignores the section's
+// enabled flag — a shared link should resolve even mid-review — but still
+// requires the post itself to be published.
+export function getPublishedBlogPost(
+  content: Record<string, unknown> | null | undefined,
+  slug: string,
+): SiteBlogPost | null {
+  const blog = getSiteContent(content).blog;
+  return (
+    blog.posts.find(
+      (post) => post.slug === slug && post.status === 'published' && post.title.trim() && post.body.trim(),
+    ) ?? null
+  );
 }
