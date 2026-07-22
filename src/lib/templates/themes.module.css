@@ -115,6 +115,17 @@
 .baHandle:focus-visible .baHandleGrip { outline: 2px solid var(--theme-accent); outline-offset: 3px; }
 .baCaption { padding-top: .7rem; font-size: .85rem; font-weight: 600; letter-spacing: .02em; color: color-mix(in srgb, currentColor 78%, transparent); }
 
+/* Services grid (toggleable, icon cards) — the centerpiece of the home-services
+   look. currentColor surfaces + accent-tinted icons adapt to any template. */
+.serviceGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 1.1rem; }
+.serviceCard { display: flex; flex-direction: column; gap: .55rem; padding: 1.35rem; border-radius: 14px; background: color-mix(in srgb, currentColor 4%, transparent); border: 1px solid color-mix(in srgb, currentColor 12%, transparent); transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+.serviceCard:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--theme-accent) 45%, transparent); box-shadow: 0 18px 34px -22px color-mix(in srgb, var(--theme-accent) 60%, transparent); }
+.serviceIcon { display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; border-radius: 12px; background: color-mix(in srgb, var(--theme-accent) 15%, transparent); color: var(--theme-accent); }
+.serviceIcon svg { width: 25px; height: 25px; }
+.serviceCard h3 { margin: 0; font-size: 1.05rem; line-height: 1.25; }
+.serviceCard p { margin: 0; font-size: .88rem; line-height: 1.5; color: color-mix(in srgb, currentColor 78%, transparent); }
+@media (prefers-reduced-motion: reduce) { .serviceCard { transition: none; } }
+
 /* Availability / urgency bar (toggleable) — mounts above the header. Dark
    ground + accent dot with a faint white ring, so the dot reads on the dark
    bar under any template accent or a contractor's custom (even dark) accent. */

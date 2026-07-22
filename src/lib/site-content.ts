@@ -133,6 +133,22 @@ export type SiteAnnouncementContent = {
   subtext: string;
 };
 
+// Icon service-card grid — the centerpiece of the home-services aesthetic.
+// `icon` is a key into ServiceIcon's set (falls back to a generic mark).
+export type SiteServiceItem = {
+  id: string;
+  icon: string;
+  title: string;
+  description: string;
+};
+
+export type SiteServicesContent = {
+  enabled: boolean;
+  title: string;
+  intro: string;
+  items: SiteServiceItem[];
+};
+
 export type SiteQuoteFormContent = {
   emailRequired: boolean;
   // Controls the wording used on the quote-request call-to-action ('Quick Estimate'
@@ -205,6 +221,7 @@ export type NormalizedSiteContent = {
   stats: SiteStatsContent;
   beforeAfter: SiteBeforeAfterContent;
   announcement: SiteAnnouncementContent;
+  services: SiteServicesContent;
 };
 
 export const DEFAULT_SHOWCASE_TITLE = 'Project showcase';
@@ -217,6 +234,7 @@ export const DEFAULT_SERVICE_AREAS_INTRO = 'Proudly serving homeowners across th
 export const DEFAULT_CERTIFICATIONS_TITLE = 'Certifications & awards';
 export const DEFAULT_STATS_TITLE = 'By the numbers';
 export const DEFAULT_BEFORE_AFTER_TITLE = 'Before & after';
+export const DEFAULT_SERVICES_TITLE = 'What we do';
 export const DEFAULT_BEFORE_AFTER_INTRO = 'Drag to see the transformation.';
 
 export const DEFAULT_TRUST_BADGES: SiteTrustBadgeItem[] = [
@@ -365,6 +383,17 @@ function parseBeforeAfter(value: unknown): SiteBeforeAfterItem[] {
   }));
 }
 
+function parseServices(value: unknown): SiteServiceItem[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.filter(isRecord).slice(0, 8).map((item, index) => ({
+    id: toString(item.id, `svc-${index + 1}`),
+    icon: toString(item.icon, 'spark'),
+    title: toString(item.title),
+    description: toString(item.description),
+  }));
+}
+
 export function getSiteContent(content: Record<string, unknown> | null | undefined): NormalizedSiteContent {
   const root = isRecord(content) ? content : {};
   const showcase = isRecord(root.showcase) ? root.showcase : {};
@@ -381,6 +410,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const stats = isRecord(root.stats) ? root.stats : {};
   const beforeAfter = isRecord(root.beforeAfter) ? root.beforeAfter : {};
   const announcement = isRecord(root.announcement) ? root.announcement : {};
+  const services = isRecord(root.services) ? root.services : {};
 
   return {
     showcase: {
@@ -459,6 +489,12 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       enabled: toBoolean(announcement.enabled),
       message: toString(announcement.message).slice(0, 140),
       subtext: toString(announcement.subtext).slice(0, 140),
+    },
+    services: {
+      enabled: toBoolean(services.enabled),
+      title: toString(services.title, DEFAULT_SERVICES_TITLE),
+      intro: toString(services.intro),
+      items: parseServices(services.items),
     },
   };
 }
@@ -539,4 +575,10 @@ export function getPublishedBeforeAfter(content: Record<string, unknown> | null 
 export function getPublishedAnnouncement(content: Record<string, unknown> | null | undefined): SiteAnnouncementContent | null {
   const announcement = getSiteContent(content).announcement;
   return announcement.enabled && announcement.message.trim() ? announcement : null;
+}
+
+export function getPublishedServices(content: Record<string, unknown> | null | undefined): SiteServicesContent | null {
+  const services = getSiteContent(content).services;
+  const items = services.items.filter((item) => item.title.trim());
+  return services.enabled && items.length > 0 ? { ...services, items } : null;
 }

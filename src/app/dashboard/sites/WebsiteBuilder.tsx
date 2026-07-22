@@ -4,8 +4,9 @@ import { useCallback, useEffect, useState, useTransition } from 'react';
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, type NormalizedSiteContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, type NormalizedSiteContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
+import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { checkSubdomainAvailableAction, generateSiteTextAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
 import ImageLibrary from './ImageLibrary';
 import LivePreview from './LivePreview';
@@ -258,6 +259,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     updateSiteContent({ announcement });
   }, [updateSiteContent]);
 
+  const updateServices = useCallback((services: SiteServicesContent) => {
+    updateSiteContent({ services });
+  }, [updateSiteContent]);
+
   const toggleShowcaseImage = useCallback((image: SiteImage) => {
     const selected = siteContent.showcase.items.some((item) => item.id === image.id);
     const items = selected
@@ -456,6 +461,22 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 </SectionCard>
 
                 <SectionCard title="Instant estimate" description="After the quick-capture form, our AI asks the homeowner a couple of quick questions to size up the job, then shows a rough $ range right away." enabled={siteContent.estimateRanges.enabled} onToggleEnabled={(value) => updateEstimateRanges({ ...siteContent.estimateRanges, enabled: value })} open={openSection === 'estimate'} onToggleOpen={() => toggleSection('estimate')} />
+
+                <SectionCard title="Services" description="Icon cards for the work you do — the first thing most home-services visitors scan for. Add a few with an icon, name, and one-line description." evidence="A clear service grid lets a visitor confirm 'they do what I need' in seconds — the fastest way to hold a home-services visitor's attention." enabled={siteContent.services.enabled} onToggleEnabled={(value) => updateServices({ ...siteContent.services, enabled: value })} open={openSection === 'services'} onToggleOpen={() => toggleSection('services')}>
+                  <label className={styles.formField}><span>Section title</span><input value={siteContent.services.title} onChange={(event) => updateServices({ ...siteContent.services, title: event.target.value })} /></label>
+                  <label className={styles.formField}><span>Intro copy (optional)</span><input value={siteContent.services.intro} onChange={(event) => updateServices({ ...siteContent.services, intro: event.target.value })} /></label>
+                  <div className={styles.stackList}>
+                    {siteContent.services.items.map((item, index) => (
+                      <div className={styles.stackItem} key={item.id}>
+                        <div className={styles.itemHeader}><strong>{item.title || `Service ${index + 1}`}</strong><button type="button" onClick={() => updateServices({ ...siteContent.services, items: siteContent.services.items.filter((svc) => svc.id !== item.id) })}>Remove</button></div>
+                        <div className={styles.formField}><span>Icon</span><div className={styles.iconPicker}>{SERVICE_ICON_KEYS.map((key) => (<button type="button" key={`${item.id}-${key}`} className={`${styles.iconPickerBtn}${item.icon === key ? ` ${styles.iconPickerBtnOn}` : ''}`} aria-label={`Icon: ${key}`} aria-pressed={item.icon === key} onClick={() => updateServices({ ...siteContent.services, items: siteContent.services.items.map((svc) => svc.id === item.id ? { ...svc, icon: key } : svc) })}><ServiceIcon name={key} /></button>))}</div></div>
+                        <label className={styles.formField}><span>Service name</span><input value={item.title} maxLength={60} onChange={(event) => updateServices({ ...siteContent.services, items: siteContent.services.items.map((svc) => svc.id === item.id ? { ...svc, title: event.target.value } : svc) })} placeholder="Interior painting" /></label>
+                        <label className={styles.formField}><span>Short description</span><input value={item.description} maxLength={140} onChange={(event) => updateServices({ ...siteContent.services, items: siteContent.services.items.map((svc) => svc.id === item.id ? { ...svc, description: event.target.value } : svc) })} placeholder="Walls, ceilings, and trim — clean lines, on schedule." /></label>
+                      </div>
+                    ))}
+                  </div>
+                  {siteContent.services.items.length < 8 && <button type="button" className={styles.secondaryAction} onClick={() => updateServices({ ...siteContent.services, enabled: true, items: [...siteContent.services.items, { id: createContentId('svc'), icon: 'spark', title: '', description: '' }] })}>Add service</button>}
+                </SectionCard>
 
                 <SectionCard title="Showcase gallery" description="Highlight finished work, project details, and job photos." evidence="Real project photos alongside reviews produced 55% more leads in one study — genuine work outperforms stock." enabled={siteContent.showcase.enabled} onToggleEnabled={(value) => updateShowcase({ ...siteContent.showcase, enabled: value })} open={openSection === 'showcase'} onToggleOpen={() => toggleSection('showcase')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.showcase.title} onChange={(event) => updateShowcase({ ...siteContent.showcase, title: event.target.value })} /></label>
