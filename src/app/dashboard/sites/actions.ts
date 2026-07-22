@@ -128,7 +128,27 @@ export type GeneratedSiteText = {
   tagline: string;
   seo_title: string;
   seo_description: string;
+  hours: string;
+  service_area: string;
+  cities: string[];
+  services: { icon: string; title: string; description: string }[];
+  faqs: { question: string; answer: string }[];
+  // Generated as examples only; the caller seeds these into the site but leaves
+  // testimonials + stats DISABLED so no fabricated review/number publishes until
+  // the contractor replaces them with real ones and turns them on.
+  testimonials: { author: string; text: string; rating: number; label: string }[];
+  stats: { value: number; suffix: string; label: string }[];
 };
+
+function asString(value: unknown, max: number): string {
+  return typeof value === 'string' ? value.slice(0, max) : '';
+}
+function asArray(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+function isObj(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
 
 function extractOutputText(payload: unknown): string {
   const record = payload as { output_text?: unknown; output?: unknown[] };
@@ -172,13 +192,21 @@ export async function generateSiteTextAction(): Promise<GeneratedSiteText> {
     'Optimize for LOCAL search: when a service area is provided, identify its primary city or region and pair the trade with that location so a homeowner searching "[trade] in [city]" would match. If no service area is given, lead with the trade alone and never invent a location. ' +
     'Avoid generic filler like "quality you can trust" or "customer satisfaction is our priority" — be specific to the trade and mention concrete services or benefits a homeowner in that trade would care about. ' +
     'This is placeholder example text the contractor will personalize later, so make it feel like a real, distinct business rather than a generic template. ' +
+    'Also produce example content to fill out the whole site: the real services this trade offers, common homeowner FAQs, typical business hours, the service area with nearby cities, a couple of example testimonials, and a few headline stats. ' +
     'Respond with strict JSON only, no other text, in this exact shape: ' +
     '{' +
     '"headline":"<one short punchy line under 70 characters, specific to the trade; weave in the primary city only when it reads naturally, e.g. \'Trusted Kitchen Remodeling in Austin\'>",' +
     '"tagline":"<one or two sentences under 160 characters>",' +
     '"seo_title":"<under 60 characters; when a location is given, lead with the primary city and trade then the business name (e.g. \'Austin Kitchen Remodeling | Northline Builders\'); otherwise lead with the trade and business name>",' +
-    '"seo_description":"<under 160 characters; name the trade and the service area/city when given, and end with a clear call to action like \'Free estimates.\'>"' +
-    '}.';
+    '"seo_description":"<under 160 characters; name the trade and the service area/city when given, and end with a clear call to action like \'Free estimates.\'>",' +
+    '"hours":"<typical hours for this trade, e.g. \'Mon-Fri 8am-6pm, Sat 9am-2pm\'>",' +
+    '"service_area":"<the area served in a few words; if none was provided, a natural generic like \'your local area\'>",' +
+    '"cities":["<4 to 6 nearby city or neighborhood names for the service area; empty array if the area is unknown>"],' +
+    '"services":[{"icon":"<one of: wrench, droplet, bolt, roller, sparkles, home, shield, leaf, grid, truck, clock, star, spark>","title":"<a real service this trade offers, under 40 characters>","description":"<one concrete line under 130 characters>"}],' +
+    '"faqs":[{"question":"<a real question a homeowner asks this trade>","answer":"<a concise, helpful answer under 300 characters>"}],' +
+    '"testimonials":[{"author":"<a realistic first name and last initial>","text":"<a believable 1-2 sentence review of this trade>","rating":5,"label":"<a city or short role, optional>"}],' +
+    '"stats":[{"value":<a plausible whole number>,"suffix":"<a plus sign or empty>","label":"<e.g. Jobs completed, Years in business, 5-star reviews>"}]' +
+    '}. Include 4 to 5 services, 5 faqs, 2 to 3 testimonials, and 3 to 4 stats.';
 
   const input =
     `Business name: ${companyName}. ${serviceArea ? `Service area: ${serviceArea}. ` : ''}` +
@@ -205,10 +233,36 @@ export async function generateSiteTextAction(): Promise<GeneratedSiteText> {
     const parsed = JSON.parse(extractOutputText(payload));
 
     return {
-      headline: typeof parsed.headline === 'string' ? parsed.headline.slice(0, 200) : '',
-      tagline: typeof parsed.tagline === 'string' ? parsed.tagline.slice(0, 300) : '',
-      seo_title: typeof parsed.seo_title === 'string' ? parsed.seo_title.slice(0, 60) : '',
-      seo_description: typeof parsed.seo_description === 'string' ? parsed.seo_description.slice(0, 160) : '',
+      headline: asString(parsed.headline, 200),
+      tagline: asString(parsed.tagline, 300),
+      seo_title: asString(parsed.seo_title, 60),
+      seo_description: asString(parsed.seo_description, 160),
+      hours: asString(parsed.hours, 80),
+      service_area: asString(parsed.service_area, 120),
+      cities: asArray(parsed.cities)
+        .filter((c): c is string => typeof c === 'string')
+        .slice(0, 8)
+        .map((c) => c.slice(0, 50)),
+      services: asArray(parsed.services)
+        .filter(isObj)
+        .slice(0, 5)
+        .map((s) => ({ icon: asString(s.icon, 20) || 'spark', title: asString(s.title, 60), description: asString(s.description, 140) }))
+        .filter((s) => s.title),
+      faqs: asArray(parsed.faqs)
+        .filter(isObj)
+        .slice(0, 6)
+        .map((f) => ({ question: asString(f.question, 180), answer: asString(f.answer, 400) }))
+        .filter((f) => f.question && f.answer),
+      testimonials: asArray(parsed.testimonials)
+        .filter(isObj)
+        .slice(0, 3)
+        .map((t) => ({ author: asString(t.author, 60), text: asString(t.text, 300), rating: Math.min(5, Math.max(1, Math.round(Number(t.rating) || 5))), label: asString(t.label, 60) }))
+        .filter((t) => t.text),
+      stats: asArray(parsed.stats)
+        .filter(isObj)
+        .slice(0, 4)
+        .map((s) => ({ value: Math.max(0, Math.round(Number(s.value) || 0)), suffix: asString(s.suffix, 4), label: asString(s.label, 40) }))
+        .filter((s) => s.label),
     };
   } catch (error) {
     console.error('Site text generation failed:', error);

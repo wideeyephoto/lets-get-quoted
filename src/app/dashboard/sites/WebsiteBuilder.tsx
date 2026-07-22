@@ -129,7 +129,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
   const handleGenerateText = useCallback(() => {
     const hasExistingText = Boolean(site.headline || site.tagline || site.seo_title || site.seo_description);
-    if (hasExistingText && !window.confirm('This will replace your current headline, tagline, and SEO text with new AI-generated examples. Continue?')) {
+    if (hasExistingText && !window.confirm('This replaces your headline, tagline, SEO, hours, and service area, and fills the Services, FAQs, and Service-area sections with fresh AI examples. Testimonials and stats are generated too but left OFF until you replace them with real ones. Continue?')) {
       return;
     }
     setIsGeneratingText(true);
@@ -137,17 +137,41 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     startTransition(async () => {
       try {
         const generated = await generateSiteTextAction();
-        setSite((current) => ({
-          ...current,
-          headline: generated.headline || current.headline,
-          tagline: generated.tagline || current.tagline,
-          seo_title: generated.seo_title || current.seo_title,
-          seo_description: generated.seo_description || current.seo_description,
-        }));
+        setSite((current) => {
+          const content = getSiteContent(current.content);
+          const contentUpdates: Partial<NormalizedSiteContent> = {};
+          if (generated.services.length) {
+            contentUpdates.services = { enabled: true, title: content.services.title || 'Our services', intro: '', items: generated.services.map((s, i) => ({ id: `svc-${i + 1}`, icon: s.icon, title: s.title, description: s.description })) };
+          }
+          if (generated.faqs.length) {
+            contentUpdates.faqs = { enabled: true, title: content.faqs.title || 'Frequently asked questions', items: generated.faqs.map((f, i) => ({ id: `faq-${i + 1}`, question: f.question, answer: f.answer })) };
+          }
+          if (generated.cities.length) {
+            contentUpdates.serviceAreas = { enabled: true, title: content.serviceAreas.title || 'Areas we serve', intro: content.serviceAreas.intro, cities: generated.cities };
+          }
+          // Testimonials + stats seeded but left OFF — no fabricated review/number
+          // publishes until the contractor swaps in real ones and enables them.
+          if (generated.testimonials.length) {
+            contentUpdates.testimonials = { enabled: false, title: content.testimonials.title || 'What homeowners say', sourceMode: 'manual', items: generated.testimonials.map((t, i) => ({ id: `tst-${i + 1}`, author: t.author, text: t.text, rating: t.rating, label: t.label, imageUrl: '', imageAlt: '' })) };
+          }
+          if (generated.stats.length) {
+            contentUpdates.stats = { enabled: false, title: content.stats.title || 'By the numbers', items: generated.stats.map((s, i) => ({ id: `stat-${i + 1}`, value: s.value, prefix: '', suffix: s.suffix, label: s.label })) };
+          }
+          return {
+            ...current,
+            headline: generated.headline || current.headline,
+            tagline: generated.tagline || current.tagline,
+            seo_title: generated.seo_title || current.seo_title,
+            seo_description: generated.seo_description || current.seo_description,
+            hours: generated.hours || current.hours,
+            service_area: generated.service_area || current.service_area,
+            content: mergeSiteContent(current.content, contentUpdates),
+          };
+        });
         setIsDirty(true);
-        setMessage({ type: 'success', text: 'Example text generated — personalize it before you publish!' });
+        setMessage({ type: 'success', text: 'Full example site generated — review and personalize it. Testimonials & stats are off until you add real ones. Then publish!' });
       } catch (error) {
-        setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to generate example text.' });
+        setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to generate example content.' });
       } finally {
         setIsGeneratingText(false);
       }
@@ -412,9 +436,9 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <h2>Business information</h2>
                   <p>This content appears throughout your website.</p>
                   <button type="button" className="btn secondary" onClick={handleGenerateText} disabled={isGeneratingText}>
-                    {isGeneratingText ? 'Generating...' : '✨ Generate example text with AI'}
+                    {isGeneratingText ? 'Building your site...' : '✨ Generate a full example site with AI'}
                   </button>
-                  <small>Fills the headline, tagline, and SEO text below with random, trade-specific example copy — a starting point to personalize, not final copy.</small>
+                  <small>Fills your headline, tagline, SEO, hours, service area, Services, and FAQs with trade-specific examples to personalize. Testimonials and stats are generated too, but left off until you swap in your real ones.</small>
                 </div>
                 <label className={styles.formField}><span>Company name</span><input value={site.company_name} onChange={(event) => handleChange('company_name', event.target.value)} /></label>
                 <label className={styles.formField}><span>Headline</span><textarea rows={2} value={site.headline || ''} onChange={(event) => handleChange('headline', event.target.value || null)} placeholder="Built with purpose. Finished with care." /></label>
