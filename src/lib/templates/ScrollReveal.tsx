@@ -17,6 +17,11 @@ export default function ScrollReveal() {
   useEffect(() => {
     if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // In an embedded iframe (the builder preview) the reader doesn't scroll the
+    // frame, so below-fold sections observed here would never intersect and would
+    // stay hidden. Skip the reveal there — show everything immediately; the live
+    // top-level published site still gets the scroll animation.
+    if (window.self !== window.top) return;
 
     const elements = Array.from(document.querySelectorAll<HTMLElement>('[data-reveal], [data-stagger]'));
     if (elements.length === 0) return;
