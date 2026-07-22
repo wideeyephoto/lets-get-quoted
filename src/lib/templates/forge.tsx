@@ -10,6 +10,7 @@ import SiteProofStrip from './SiteProofStrip';
 import SiteDesktopCta from './SiteDesktopCta';
 import SiteAnnouncementBar from './SiteAnnouncementBar';
 import ScrollReveal from './ScrollReveal';
+import Parallax from './Parallax';
 import styles from './themes.module.css';
 
 export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProps) {
@@ -25,6 +26,7 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
     <main className={`${styles.site} ${styles.forge}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode}>
       <SiteAnnouncementBar site={site} />
       <ScrollReveal />
+      <Parallax />
       <section className={styles.forgeHero} id="top">
         {/* Header lives inside the hero so its absolute overlay pins to the hero
             top (below the availability bar), not the page top. */}
@@ -45,7 +47,7 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
           <HeroQuickForm site={site} />
           <SiteProofStrip site={site} />
         </div>
-        <div className={styles.forgeIndex} aria-hidden="true">01 / 03</div>
+        <div className={styles.forgeIndex} data-parallax="0.18" aria-hidden="true">01 / 03</div>
       </section>
 
       <section className={styles.forgeTrust} data-reveal aria-label="Business details">
@@ -55,7 +57,7 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
       </section>
 
       <section className={styles.forgeAbout} data-reveal id="about">
-        <p className={styles.sectionNumber}>02</p>
+        <p className={styles.sectionNumber} data-parallax="0.14">02</p>
         <div><p className={styles.kicker}>What we bring</p><h2>Clear plans. Skilled hands. No surprises.</h2></div>
         <p>From the first walkthrough to the final clean-up, we keep the work organized, the communication direct, and the standards high.</p>
       </section>

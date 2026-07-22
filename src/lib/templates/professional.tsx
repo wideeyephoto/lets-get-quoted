@@ -11,6 +11,7 @@ import SiteProofStrip from './SiteProofStrip';
 import SiteDesktopCta from './SiteDesktopCta';
 import SiteAnnouncementBar from './SiteAnnouncementBar';
 import ScrollReveal from './ScrollReveal';
+import Parallax from './Parallax';
 import styles from './themes.module.css';
 
 export default function GuildTemplate({ site, galleryImages = [] }: TemplateProps) {
@@ -32,6 +33,7 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
     <main className={`${styles.site} ${styles.guild}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode}>
       <SiteAnnouncementBar site={site} />
       <ScrollReveal />
+      <Parallax />
       <header className={styles.guildHeader}>
         <a className={styles.guildBrand} href="#top">
           {site.logo_url && <img className={styles.logo} src={site.logo_url} alt="" />}
@@ -53,7 +55,7 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
           <div className={styles.guildHeroFrame}>
             <img src={heroImage} alt="Recent completed job" fetchPriority="high" decoding="async" />
           </div>
-          <figure className={styles.guildHeroInset}>
+          <figure className={styles.guildHeroInset} data-parallax="0.12">
             <img src={secondImage} alt="A detail from our recent work" loading="lazy" decoding="async" />
           </figure>
           <div className={styles.guildBadge}><strong>Proudly local</strong><span>{site.service_area || 'Serving our community'}</span></div>

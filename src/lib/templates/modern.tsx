@@ -9,6 +9,7 @@ import SiteNavLinks from './SiteNavLinks';
 import SiteProofStrip from './SiteProofStrip';
 import SiteAnnouncementBar from './SiteAnnouncementBar';
 import ScrollReveal from './ScrollReveal';
+import Parallax from './Parallax';
 import styles from './themes.module.css';
 
 export default function VistaTemplate({ site, galleryImages = [] }: TemplateProps) {
@@ -24,6 +25,7 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
     <main className={`${styles.site} ${styles.vista}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode}>
       <SiteAnnouncementBar site={site} />
       <ScrollReveal />
+      <Parallax />
       <header className={styles.vistaHeader}>
         <a className={styles.vistaBrand} href="#top">{site.logo_url ? <img className={styles.logo} src={site.logo_url} alt={site.company_name} /> : site.company_name}</a>
         <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#studio', label: 'About' }, { href: '#work', label: 'Work' }, { href: '#contact', label: 'Connect' }]} />
@@ -36,7 +38,7 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
       <section className={styles.vistaHero} id="top">
         <img className={styles.heroImage} src={heroImage} alt="Featured completed project" fetchPriority="high" decoding="async" />
         <div className={styles.vistaHeroCopy}>
-          <span className={styles.vistaBigType} aria-hidden="true">{site.company_name}</span>
+          <span className={styles.vistaBigType} data-parallax="0.1" aria-hidden="true">{site.company_name}</span>
           <p className={styles.kicker}>Diagnose / Repair / Deliver</p>
           <h1>{site.headline || 'Service with purpose.'}</h1>
           <p>{site.tagline || 'We show up, solve the problem, and treat your home like our own.'}</p>

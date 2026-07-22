@@ -59,7 +59,7 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
         </div>
         <div className={styles.fixitHeroMedia}>
           <span className={styles.fixitHeroBlob} aria-hidden="true" />
-          <span className={styles.fixitHeroShape} aria-hidden="true" />
+          <span className={styles.fixitHeroShape} data-parallax="0.07" aria-hidden="true" />
           <img className={styles.fixitHeroImg} src={heroImage} alt="Professional handyman ready to help" fetchPriority="high" decoding="async" />
           {heroBadge && (
             <div className={styles.fixitHeroCard} data-parallax="0.14">

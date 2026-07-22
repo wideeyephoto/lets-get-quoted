@@ -9,6 +9,7 @@ import SiteNavLinks from './SiteNavLinks';
 import SiteProofStrip from './SiteProofStrip';
 import SiteAnnouncementBar from './SiteAnnouncementBar';
 import ScrollReveal from './ScrollReveal';
+import Parallax from './Parallax';
 import styles from './themes.module.css';
 
 const WHY_POINTS = [
@@ -50,6 +51,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
     <main className={`${styles.site} ${styles.handy}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode}>
       <SiteAnnouncementBar site={site} />
       <ScrollReveal />
+      <Parallax />
 
       <header className={styles.careHeader}>
         <a className={styles.careBrand} href="#top" aria-label={`${site.company_name} home`}>
@@ -77,7 +79,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
             {site.phone && <a className={styles.careBtnGhost} href={`tel:${site.phone}`}>Call us now</a>}
           </div>
         </div>
-        <div className={styles.careHeroMedia}>
+        <div className={styles.careHeroMedia} data-parallax="0.08">
           <span className={styles.careDot1} aria-hidden="true" />
           <span className={styles.careDot2} aria-hidden="true" />
           <div className={styles.careHeroCircle}>

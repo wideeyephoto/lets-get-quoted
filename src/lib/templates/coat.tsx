@@ -9,6 +9,7 @@ import SiteProofStrip from './SiteProofStrip';
 import SiteDesktopCta from './SiteDesktopCta';
 import SiteAnnouncementBar from './SiteAnnouncementBar';
 import ScrollReveal from './ScrollReveal';
+import Parallax from './Parallax';
 import styles from './themes.module.css';
 
 // Coat — bold painting / finishes aesthetic (Home Rakshak reference): a deep
@@ -34,6 +35,7 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
     <main className={`${styles.site} ${styles.coat}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode}>
       <SiteAnnouncementBar site={site} />
       <ScrollReveal />
+      <Parallax />
 
       <header className={styles.coatHeader}>
         <a className={styles.coatBrand} href="#top" aria-label={`${site.company_name} home`}>
@@ -45,7 +47,7 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
       </header>
 
       <section className={styles.coatHero} id="top">
-        <div className={styles.coatBokeh} aria-hidden="true">
+        <div className={styles.coatBokeh} data-parallax="0.2" aria-hidden="true">
           <span className={styles.coatCircle} />
           <span className={styles.coatCircle} />
           <span className={styles.coatCircle} />
@@ -65,7 +67,7 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
         </div>
         <div className={styles.coatHeroMedia}>
           <img className={styles.coatHeroImg} src={heroImage} alt="Recent painting project" fetchPriority="high" decoding="async" />
-          <figure className={styles.coatPhotoSide}>
+          <figure className={styles.coatPhotoSide} data-parallax="0.13">
             <img src={secondImage} alt="A freshly finished interior" loading="lazy" decoding="async" />
           </figure>
           {heroBadge && (

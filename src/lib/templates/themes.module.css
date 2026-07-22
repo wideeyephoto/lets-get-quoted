@@ -876,6 +876,8 @@
 .renoHeroMedia { position: relative; min-height: 380px; }
 .renoHeroImg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; clip-path: polygon(14% 0, 100% 0, 100% 100%, 0 100%); }
 .renoHexBadge { position: absolute; z-index: 2; left: 4%; bottom: 10%; display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: var(--theme-accent); color: var(--rn-navy); font-size: 1.5rem; }
+/* Second, hollow hex drifting at a different parallax speed for depth. */
+.renoHexGhost { position: absolute; z-index: 2; right: 6%; top: 12%; width: 46px; height: 46px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: color-mix(in srgb, var(--theme-accent) 34%, transparent); }
 .renoBtn { display: inline-flex; align-items: center; gap: .45rem; min-height: 50px; padding: .8rem 1.6rem; background: var(--theme-accent); color: var(--theme-on-accent, #1b2431); font-weight: 800; font-size: .9rem; letter-spacing: .03em; text-transform: uppercase; box-shadow: 0 16px 30px -14px color-mix(in srgb, var(--theme-accent) 70%, transparent); transition: transform .2s ease, filter .2s ease; }
 .renoBtn:hover { transform: translateY(-2px); filter: brightness(1.05); }
 .renoContact { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(1.75rem, 4vw, 3.5rem); align-items: center; padding: clamp(3rem, 7vw, 6rem) clamp(1.25rem, 5vw, 4rem); background: var(--rn-surface); }
