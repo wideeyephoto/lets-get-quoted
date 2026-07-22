@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import Image from 'next/image';
+import SafeImage from './SafeImage';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
@@ -56,7 +56,7 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
         <div className={styles.vistaGallery}>
           {gallery.slice(0, 5).map((image, index) => (
             <figure key={image.id} className={index === 0 || index === 3 ? styles.vistaWide : undefined}>
-              <Image src={image.url} alt={image.alt} width={1600} height={index === 0 || index === 3 ? 800 : 1200} sizes={index === 0 || index === 3 ? '(max-width: 820px) 100vw, 95vw' : '(max-width: 820px) 100vw, 48vw'} />
+              <SafeImage src={image.url} alt={image.alt} width={1600} height={index === 0 || index === 3 ? 800 : 1200} sizes={index === 0 || index === 3 ? '(max-width: 820px) 100vw, 95vw' : '(max-width: 820px) 100vw, 48vw'} />
               <figcaption><span>{image.alt}</span><small>0{index + 1}</small></figcaption>
             </figure>
           ))}

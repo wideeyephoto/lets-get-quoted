@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import Image from 'next/image';
+import SafeImage from './SafeImage';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getEstimateButtonLabel, getSiteContent } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
@@ -41,7 +41,6 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
           <p className={styles.kicker}>Work you can count on</p>
           <h1>{site.headline || 'A better way to get the job done.'}</h1>
           <p className={styles.heroText}>{site.tagline || 'Thoughtful planning, dependable crews, and results you will be glad you called us for.'}</p>
-          {site.phone && <a className={styles.textLink} href={`tel:${site.phone}`}>Call {site.phone}</a>}
           <HeroQuickForm site={site} />
           <SiteProofStrip site={site} />
         </div>
@@ -69,7 +68,7 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
       <section className={styles.guildWork} data-reveal id="work">
         <div className={styles.sectionHeading}><div><p className={styles.kicker}>Recent work</p><h2>Quality is visible in the details.</h2></div></div>
         <div className={styles.guildGallery}>
-          {gallery.slice(0, 3).map((image) => <figure key={image.id}><Image src={image.url} alt={image.alt} width={1200} height={1500} sizes="(max-width: 820px) 100vw, 32vw" /><figcaption>{image.alt}</figcaption></figure>)}
+          {gallery.slice(0, 3).map((image) => <figure key={image.id}><SafeImage src={image.url} alt={image.alt} width={1200} height={1500} sizes="(max-width: 820px) 100vw, 32vw" /><figcaption>{image.alt}</figcaption></figure>)}
         </div>
       </section>
 

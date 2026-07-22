@@ -36,10 +36,9 @@ export default function ScrollReveal() {
       { threshold: 0, rootMargin: '0px 0px -8% 0px' },
     );
 
-    // Anything already in (or near) view on load reveals immediately with no
-    // entrance; only genuinely below-fold elements get the hidden state + wait.
     // Reveal immediately (no entrance) anything whose top is already on-screen,
-    // so a section peeking at the bottom edge never flashes hidden-then-in.
+    // so a section peeking at the bottom edge never flashes hidden-then-in;
+    // only genuinely below-fold elements get the hidden state and wait.
     const revealNowAbove = window.innerHeight;
     for (const element of elements) {
       if (element.getBoundingClientRect().top < revealNowAbove) {

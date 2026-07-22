@@ -1,4 +1,4 @@
-import Image from 'next/image';
+import SafeImage from './SafeImage';
 import type { Site } from '@/lib/sites';
 import {
   getPublishedBeforeAfter,
@@ -76,7 +76,7 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
               <div className={`${styles.showcaseGrid} ${styles[`showcase-${showcase.layout}`] || ''}`}>
                 {showcase.items.map((item, index) => (
                   <figure key={`${item.id}-${index}`}>
-                    <Image src={item.url} alt={item.alt} width={1200} height={900} sizes={index === 0 && showcase.layout === 'featured' ? '60vw' : '30vw'} />
+                    <SafeImage src={item.url} alt={item.alt} width={1200} height={900} sizes={index === 0 && showcase.layout === 'featured' ? '60vw' : '30vw'} />
                     <figcaption>{item.caption || item.alt}</figcaption>
                   </figure>
                 ))}

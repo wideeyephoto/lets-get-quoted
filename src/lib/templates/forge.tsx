@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import Image from 'next/image';
+import SafeImage from './SafeImage';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
@@ -68,7 +68,7 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
         <div className={styles.forgeGallery}>
           {gallery.slice(0, 3).map((image, index) => (
             <figure key={image.id} className={index === 0 ? styles.forgeGalleryLead : undefined}>
-              <Image src={image.url} alt={image.alt} width={1600} height={index === 0 ? 2000 : 1000} sizes={index === 0 ? '(max-width: 820px) 100vw, 60vw' : '(max-width: 820px) 100vw, 35vw'} />
+              <SafeImage src={image.url} alt={image.alt} width={1600} height={index === 0 ? 2000 : 1000} sizes={index === 0 ? '(max-width: 820px) 100vw, 60vw' : '(max-width: 820px) 100vw, 35vw'} />
               <figcaption><span>0{index + 1}</span>{image.alt}</figcaption>
             </figure>
           ))}
