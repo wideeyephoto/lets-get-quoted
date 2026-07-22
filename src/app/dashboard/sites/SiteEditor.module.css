@@ -112,6 +112,14 @@
 
 /* Compact toggle-and-label rows (trust badges) */
 .fieldHint { margin: 0; color: #9ca8b8; font-size: .78rem; line-height: 1.4; }
+.blogCoverPreview { position: relative; align-self: flex-start; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,.12); }
+.blogCoverPreview img { display: block; width: 200px; height: 120px; object-fit: cover; }
+.blogCoverPreview button { position: absolute; top: 6px; right: 6px; border: none; border-radius: 999px; padding: 4px 10px; background: rgba(0,0,0,.72); color: #fff; font-size: .72rem; font-weight: 700; cursor: pointer; }
+.blogCoverPreview button:hover { background: rgba(0,0,0,.9); }
+.blogCoverUpload { position: relative; display: inline-flex; align-items: center; justify-content: center; align-self: flex-start; min-height: 40px; padding: .5rem 1rem; border: 1px dashed rgba(255,255,255,.28); border-radius: 9px; color: #f7f5ef; font-size: .85rem; font-weight: 700; cursor: pointer; transition: border-color .2s ease, background .2s ease; }
+.blogCoverUpload:hover { border-color: #ff7a21; background: rgba(255,122,33,.08); }
+.blogCoverUpload input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.blogCoverUpload input:disabled { cursor: default; }
 .badgeList { display: grid; gap: .4rem; }
 .badgeRow { display: flex; align-items: center; gap: .6rem; }
 .badgeRow > input[type='checkbox'] { flex: none; width: 18px; height: 18px; accent-color: #ff7a21; cursor: pointer; }

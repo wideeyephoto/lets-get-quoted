@@ -7,7 +7,8 @@ import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getSiteContent, mergeSiteContent, HERO_BADGE_PRESETS, slugifyBlogTitle, type NormalizedSiteContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
-import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
+import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
+import { compressImage } from '@/lib/client-images';
 import ImageLibrary from './ImageLibrary';
 import LivePreview from './LivePreview';
 import SectionCard from './SectionCard';
@@ -69,6 +70,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   const [domainStatus, setDomainStatus] = useState<'idle' | 'checking' | 'verified' | 'unverified'>(site.custom_domain_verified_at ? 'verified' : 'idle');
   const [isGeneratingText, setIsGeneratingText] = useState(false);
   const [isGeneratingBlog, setIsGeneratingBlog] = useState(false);
+  const [uploadingCoverId, setUploadingCoverId] = useState<string | null>(null);
   // Local string state for the free-numeric rating fields so decimal typing
   // (e.g. "4.9") isn't clobbered by re-normalization on every keystroke.
   const [ratingInput, setRatingInput] = useState(() => String(getSiteContent(initialSite.content).ratingBadge.rating));
@@ -127,6 +129,29 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       }
     });
   }, [site]);
+
+  const handleBlogCoverUpload = useCallback((postId: string, file: File) => {
+    setUploadingCoverId(postId);
+    setMessage(null);
+    startTransition(async () => {
+      try {
+        const compressed = await compressImage(file, 1600, 0.82);
+        const formData = new FormData();
+        formData.set('image', compressed);
+        const image = await uploadSiteImageAction(formData);
+        setSiteImages((current) => [image, ...current]);
+        setSite((current) => {
+          const content = getSiteContent(current.content);
+          return { ...current, content: mergeSiteContent(current.content, { blog: { ...content.blog, posts: content.blog.posts.map((p) => p.id === postId ? { ...p, coverImage: image.url } : p) } }) };
+        });
+        setIsDirty(true);
+      } catch (error) {
+        setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Could not upload that image. Please try another.' });
+      } finally {
+        setUploadingCoverId(null);
+      }
+    });
+  }, []);
 
   const handleGenerateBlogDraft = useCallback(() => {
     setIsGeneratingBlog(true);
@@ -575,7 +600,19 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                         <label className={styles.toggleRow}><input type="checkbox" checked={post.status === 'published'} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, status: event.target.checked ? 'published' : 'draft' } : p) })} /><span><strong>Published</strong><small>{post.status === 'published' ? 'Live on your site.' : 'Draft — only you can see it until you publish.'}</small></span></label>
                         <label className={styles.formField}><span>Title</span><input value={post.title} maxLength={120} onChange={(event) => { const title = event.target.value; updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, title, slug: (!p.slug || /^post-\d+$/.test(p.slug)) ? slugifyBlogTitle(title) : p.slug } : p) }); }} placeholder="5 signs it’s time to reseal your deck" /></label>
                         <label className={styles.formField}><span>Excerpt</span><input value={post.excerpt} maxLength={200} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, excerpt: event.target.value } : p) })} placeholder="One sentence that makes someone want to read." /></label>
-                        <label className={styles.formField}><span>Cover image URL (optional)</span><input value={post.coverImage} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, coverImage: event.target.value } : p) })} placeholder="https://…" /></label>
+                        <div className={styles.formField}>
+                          <span>Cover photo (optional)</span>
+                          {post.coverImage && (
+                            <div className={styles.blogCoverPreview}>
+                              <img src={post.coverImage} alt="Cover preview" />
+                              <button type="button" onClick={() => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, coverImage: '' } : p) })}>Remove</button>
+                            </div>
+                          )}
+                          <label className={styles.blogCoverUpload}>
+                            <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={uploadingCoverId === post.id} onChange={(event) => { const file = event.target.files?.[0]; event.currentTarget.value = ''; if (file) handleBlogCoverUpload(post.id, file); }} />
+                            <span>{uploadingCoverId === post.id ? 'Uploading…' : post.coverImage ? 'Replace photo' : 'Upload a cover photo'}</span>
+                          </label>
+                        </div>
                         <label className={styles.formField}><span>Body</span><textarea rows={10} value={post.body} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, body: event.target.value } : p) })} placeholder="Write in short paragraphs separated by a blank line." /></label>
                       </div>
                     ))}
