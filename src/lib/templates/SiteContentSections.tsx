@@ -179,6 +179,7 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
                   </a>
                 ))}
               </div>
+              <a className={styles.blogViewAll} href="/blog">View all posts <span aria-hidden="true">→</span></a>
             </section>
           )}
 
