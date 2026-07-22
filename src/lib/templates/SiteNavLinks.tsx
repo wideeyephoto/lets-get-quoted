@@ -1,5 +1,5 @@
 import type { Site } from '@/lib/sites';
-import { getPublishedFaqs, getPublishedShowcase, getPublishedTestimonials } from '@/lib/site-content';
+import { getPublishedBlog, getPublishedFaqs, getPublishedShowcase, getPublishedTestimonials } from '@/lib/site-content';
 
 type SiteNavLink = {
   href: string;
@@ -18,6 +18,7 @@ export default function SiteNavLinks({ site, links, className }: SiteNavLinksPro
   if (getPublishedShowcase(site.content)) dynamicLinks.push({ href: '#showcase', label: 'Showcase' });
   if (getPublishedTestimonials(site.content)) dynamicLinks.push({ href: '#reviews', label: 'Reviews' });
   if (getPublishedFaqs(site.content)) dynamicLinks.push({ href: '#faqs', label: 'FAQs' });
+  if (getPublishedBlog(site.content)) dynamicLinks.push({ href: '#blog', label: 'Blog' });
 
   return (
     <nav className={className} aria-label="Main navigation">
