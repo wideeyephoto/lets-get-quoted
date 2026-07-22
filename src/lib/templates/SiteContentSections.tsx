@@ -3,6 +3,7 @@ import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import type { Site } from '@/lib/sites';
 import {
   getPublishedBeforeAfter,
+  getPublishedBlog,
   getPublishedCertifications,
   getPublishedFaqs,
   getPublishedFinancing,
@@ -28,6 +29,15 @@ function formatMoney(value: number): string {
   return `$${value.toLocaleString('en-US')}`;
 }
 
+// Format a stored 'YYYY-MM-DD' blog date. Parse as local midnight so the day
+// never shifts under the server timezone; empty string on anything unparseable.
+function formatBlogDate(iso: string): string {
+  if (!iso) return '';
+  const parsed = new Date(`${iso}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
 export default function SiteContentSections({ site }: SiteContentSectionsProps) {
   const services = getPublishedServices(site.content);
   const howItWorks = getPublishedHowItWorks(site.content);
@@ -39,9 +49,10 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
   const certifications = getPublishedCertifications(site.content);
   const stats = getPublishedStats(site.content);
   const beforeAfter = getPublishedBeforeAfter(site.content);
+  const blog = getPublishedBlog(site.content);
   const stickyCallBar = getPublishedStickyCallBar(site.content, site.phone);
 
-  const hasInFlowSections = Boolean(services || howItWorks || showcase || testimonials || faqs || serviceAreas || certifications || stats || beforeAfter);
+  const hasInFlowSections = Boolean(services || howItWorks || showcase || testimonials || faqs || serviceAreas || certifications || stats || beforeAfter || blog);
   const hasFinancing = Boolean(financing);
 
   if (!hasInFlowSections && !hasFinancing && !stickyCallBar) return null;
@@ -147,6 +158,29 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
           {stats && <StatCounters title={stats.title} items={stats.items} photo={site.hero_url || STOCK_SITE_IMAGES[2].url} />}
 
           {beforeAfter && <BeforeAfterSlider title={beforeAfter.title} intro={beforeAfter.intro} items={beforeAfter.items} />}
+
+          {blog && (
+            <section className={styles.extraSection} id="blog">
+              <div className={styles.extraSectionHeader} data-reveal>
+                <p className={styles.kicker}>Blog</p>
+                <h2>{blog.title}</h2>
+                {blog.intro && <p>{blog.intro}</p>}
+              </div>
+              <div className={styles.blogGrid} data-stagger>
+                {blog.posts.slice(0, 6).map((post) => (
+                  <a key={post.id} className={styles.blogCard} href={`/blog/${post.slug}`}>
+                    {post.coverImage && <img className={styles.blogCardImg} src={post.coverImage} alt="" loading="lazy" decoding="async" />}
+                    <div className={styles.blogCardBody}>
+                      {formatBlogDate(post.date) && <time className={styles.blogCardDate} dateTime={post.date}>{formatBlogDate(post.date)}</time>}
+                      <h3>{post.title}</h3>
+                      {post.excerpt && <p>{post.excerpt}</p>}
+                      <span className={styles.blogCardMore}>Read more <span aria-hidden="true">→</span></span>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
 
           {certifications && (
             <section className={styles.extraSection} data-reveal id="certifications">

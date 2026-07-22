@@ -89,6 +89,34 @@
 @media (max-width: 900px) { .testimonialGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .testimonialGrid { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .testimonialCard { transition: none; } .testimonialCard:hover { transform: none; } }
+
+/* ===== Blog — homepage card grid (in-template) + standalone article page ===== */
+.blogGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; }
+.blogCard { display: flex; flex-direction: column; overflow: hidden; border: 1px solid color-mix(in srgb, currentColor 12%, transparent); border-radius: calc(var(--theme-radius, 6px) + 8px); background: color-mix(in srgb, currentColor 5%, transparent); color: inherit; text-decoration: none; box-shadow: 0 22px 44px -34px rgba(0,0,0,.3); transition: transform .35s cubic-bezier(.22, .61, .36, 1), box-shadow .35s ease, border-color .35s ease; }
+.blogCard:hover { transform: translateY(-6px); box-shadow: 0 36px 64px -32px rgba(0,0,0,.4); border-color: color-mix(in srgb, var(--theme-accent) 45%, transparent); }
+.blogCardImg { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; }
+.blogCardBody { display: grid; gap: .55rem; padding: 1.25rem 1.35rem 1.4rem; }
+.blogCardDate { font-size: .74rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: color-mix(in srgb, currentColor 58%, transparent); }
+.blogCard h3 { margin: 0; font-family: var(--theme-display); font-size: 1.2rem; line-height: 1.2; }
+.blogCardBody p { margin: 0; line-height: 1.6; font-size: .95rem; color: color-mix(in srgb, currentColor 78%, transparent); }
+.blogCardMore { margin-top: .2rem; font-weight: 700; font-size: .9rem; color: var(--theme-accent); }
+.blogCardMore span { display: inline-block; transition: transform .3s ease; }
+.blogCard:hover .blogCardMore span { transform: translateX(4px); }
+/* Standalone article page — own full-bleed light shell (renders outside the
+   template, and the SaaS body is dark, so it must set its own background). */
+.blogArticleShell { min-height: 100vh; background: #fff; color: #1c2230; font-family: var(--font-body), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+.blogArticle { max-width: 760px; margin: 0 auto; padding: clamp(1.75rem, 5vw, 4rem) clamp(1.25rem, 5vw, 2rem) clamp(3rem, 7vw, 5rem); }
+.blogBack { display: inline-block; margin-bottom: clamp(1.5rem, 4vw, 3rem); font-weight: 800; font-size: 1.05rem; color: var(--theme-accent); text-decoration: none; }
+.blogArticleHead { margin-bottom: 1.5rem; }
+.blogArticleDate { display: block; margin-bottom: .8rem; font-size: .82rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #6a7385; }
+.blogArticle h1 { margin: 0; font-size: clamp(2rem, 5vw, 3rem); line-height: 1.08; letter-spacing: -.02em; font-weight: 800; text-wrap: balance; }
+.blogArticleImg { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 16px; margin: 1.75rem 0 0; }
+.blogArticleBody { display: grid; gap: 1.25rem; margin-top: 2rem; }
+.blogArticleBody p { margin: 0; font-size: 1.12rem; line-height: 1.75; color: #2b3342; overflow-wrap: anywhere; }
+.blogBackBottom { display: inline-block; margin-top: clamp(2rem, 5vw, 3.5rem); font-weight: 700; color: var(--theme-accent); text-decoration: none; }
+@media (max-width: 900px) { .blogGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .blogGrid { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .blogCard { transition: none; } .blogCard:hover { transform: none; } .blogCardMore span { transition: none; } }
 .faqList { display: grid; gap: .75rem; max-width: 920px; }
 .faqItem { border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: var(--theme-radius, 6px); background: color-mix(in srgb, currentColor 5%, transparent); }
 .faqItem summary { padding: 1rem 1.1rem; font-weight: 800; cursor: pointer; }

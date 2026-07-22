@@ -10,7 +10,10 @@ export async function middleware(request: NextRequest) {
   if (hostname.endsWith(`.${rootDomain}`) && !reservedHosts.has(hostname)) {
     const subdomain = hostname.slice(0, -(rootDomain.length + 1));
     const publicSiteUrl = request.nextUrl.clone();
-    publicSiteUrl.pathname = `/site/${subdomain}`;
+    // Preserve sub-paths (e.g. /blog/[slug]) so a tenant host serves more than
+    // just the homepage; '/' maps to the /site/[subdomain] index route.
+    const suffix = request.nextUrl.pathname === '/' ? '' : request.nextUrl.pathname;
+    publicSiteUrl.pathname = `/site/${subdomain}${suffix}`;
     // Strip any client-supplied value first — these headers gate internal
     // rendering behavior and must only ever reflect this middleware's own
     // trusted checks, never something an external request could spoof.
@@ -23,7 +26,9 @@ export async function middleware(request: NextRequest) {
   const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
   if (hostname && !isLocalHost && !reservedHosts.has(hostname)) {
     const customSiteUrl = request.nextUrl.clone();
-    customSiteUrl.pathname = `/site-domain/${encodeURIComponent(hostname)}`;
+    // Preserve sub-paths (e.g. /blog/[slug]); '/' maps to the site-domain index.
+    const suffix = request.nextUrl.pathname === '/' ? '' : request.nextUrl.pathname;
+    customSiteUrl.pathname = `/site-domain/${encodeURIComponent(hostname)}${suffix}`;
     const requestHeaders = new Headers(request.headers);
     requestHeaders.delete('x-lgq-standalone-site');
     requestHeaders.set('x-lgq-standalone-site', '1');
