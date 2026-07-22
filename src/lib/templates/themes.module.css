@@ -510,3 +510,39 @@
   .careCtaInner { flex-direction: column; align-items: flex-start; }
 }
 @media (prefers-reduced-motion: reduce) { .careBtn { transition: none; } .careDot1, .careDot2 { animation: none; } }
+
+/* Care — dark mode (data-mode='dark'). Additive: only overrides the light
+   surfaces; the teal bands (trust strip / works / CTA) and footer are already
+   dark and stay as vivid accents on the deep-teal ground. */
+.handy[data-mode='dark'] { background: #0d161a; color: #d5e0e6; }
+.handy[data-mode='dark'] .careHeader { background: rgba(13,22,26,.9); border-bottom-color: rgba(255,255,255,.08); }
+.handy[data-mode='dark'] .careBrand strong, .handy[data-mode='dark'] .careHeaderPhone { color: #eef4f7; }
+.handy[data-mode='dark'] .careHero { background: linear-gradient(180deg, #11212b, #0d161a); }
+.handy[data-mode='dark'] .careHeroCopy h1,
+.handy[data-mode='dark'] .careWhyCard h2,
+.handy[data-mode='dark'] .careEstimateCopy h2,
+.handy[data-mode='dark'] .careContactCopy h2,
+.handy[data-mode='dark'] .extraSectionHeader h2,
+.handy[data-mode='dark'] .statValue,
+.handy[data-mode='dark'] .serviceCard h3,
+.handy[data-mode='dark'] .careMiniCard strong { color: #eef4f7; }
+.handy[data-mode='dark'] .careHeroText,
+.handy[data-mode='dark'] .careEstimateCopy > p,
+.handy[data-mode='dark'] .careContactCopy > p,
+.handy[data-mode='dark'] .serviceCard p,
+.handy[data-mode='dark'] .careCheckList li,
+.handy[data-mode='dark'] .careMiniCard small { color: #9db0bb; }
+.handy[data-mode='dark'] .careEyebrow,
+.handy[data-mode='dark'] .kicker,
+.handy[data-mode='dark'] .careAccentText,
+.handy[data-mode='dark'] .careBtnGhost,
+.handy[data-mode='dark'] .serviceIcon { color: #4fdcc7; }
+.handy[data-mode='dark'] .careBtnGhost { border-color: color-mix(in srgb, #4fdcc7 45%, transparent); }
+.handy[data-mode='dark'] .careMiniCard,
+.handy[data-mode='dark'] .serviceCard { background: #14222b; border-color: rgba(255,255,255,.08); }
+.handy[data-mode='dark'] .careWhyCard,
+.handy[data-mode='dark'] .careEstimate,
+.handy[data-mode='dark'] .extraSection:nth-of-type(even),
+.handy[data-mode='dark'] .statItem { background: #11202a; }
+.handy[data-mode='dark'] .serviceIcon,
+.handy[data-mode='dark'] .careCheck { background: color-mix(in srgb, var(--theme-accent) 22%, transparent); color: #4fdcc7; }
