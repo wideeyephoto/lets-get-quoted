@@ -249,7 +249,9 @@
    text on the near-white callout background fails contrast on light templates. */
 .financing .financingLead strong { font-weight: 800; }
 .financing .financingBlurb { margin: 0; color: color-mix(in srgb, currentColor 72%, transparent); font-size: .92rem; }
-.financing .financingApply { display: inline-flex; align-items: center; min-height: 44px; padding: .6rem 1.15rem; border-radius: var(--theme-radius, 6px); background: var(--theme-accent); color: var(--theme-on-accent, #14110b); font-weight: 800; font-size: .88rem; }
+.financing .financingApply { display: inline-flex; align-items: center; min-height: 44px; padding: .6rem 1.15rem; border-radius: var(--theme-radius, 6px); background: var(--theme-accent); color: var(--theme-on-accent, #14110b); font-weight: 800; font-size: .88rem; transition: transform .2s ease, filter .2s ease, box-shadow .2s ease; }
+.financing .financingApply:hover { transform: translateY(-2px); filter: brightness(1.05); box-shadow: 0 16px 30px -14px color-mix(in srgb, var(--theme-accent) 70%, transparent); }
+@media (prefers-reduced-motion: reduce) { .financing .financingApply { transition: none; } .financing .financingApply:hover { transform: none; } }
 
 /* Sticky mobile call / quote bar (toggleable) */
 .stickyCallBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: flex; gap: .5rem; padding: .55rem .7rem calc(.55rem + env(safe-area-inset-bottom, 0px)); background: #16130e; border-top: 1px solid rgba(255,255,255,.14); box-shadow: 0 -10px 26px -14px rgba(0,0,0,.65); }
