@@ -163,7 +163,7 @@ export default function QuoteRequestForm({ site }: QuoteRequestFormProps) {
   }
 
   return (
-    <form ref={formRef} className={styles.form} onSubmit={handleSubmit}>
+    <form ref={formRef} className={styles.form} onSubmit={handleSubmit} data-edit="quoteForm">
       <div className={styles.stepper}>
         <div className={styles.stepBar}>
           <span className={styles.stepFill} style={{ width: `${((step + 1) / TOTAL_STEPS) * 100}%` }} />

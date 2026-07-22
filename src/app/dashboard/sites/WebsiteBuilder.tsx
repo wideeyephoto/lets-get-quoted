@@ -236,6 +236,58 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     return () => window.removeEventListener('keydown', handleKeydown);
   }, [isDirty, isPending, handleSave]);
 
+  // Click-to-edit: the preview iframe posts which region was clicked; jump to
+  // the matching tab, open the matching section card, and focus the field.
+  useEffect(() => {
+    const SECTION_TARGETS: Record<string, string> = {
+      'our-services': 'services',
+      'how-it-works': 'howItWorks',
+      showcase: 'showcase',
+      reviews: 'testimonials',
+      faqs: 'faqs',
+      blog: 'blog',
+      areas: 'serviceAreas',
+      certifications: 'certifications',
+      stats: 'stats',
+      'before-after': 'beforeAfter',
+      announcement: 'announcement',
+      quoteForm: 'quoteForm',
+      estimate: 'estimate',
+      contact: 'quoteForm',
+    };
+
+    function onEditRequest(event: MessageEvent) {
+      if (event.origin !== window.location.origin || event.data?.type !== 'lgq:edit-request') return;
+      const target = String(event.data.target || '');
+
+      const focusField = (id: string) => {
+        // Double rAF: the tab's panel must render before the field exists.
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          const el = document.getElementById(id) as HTMLElement | null;
+          el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el?.focus({ preventScroll: true });
+        }));
+      };
+
+      if (target === 'hero') { setActiveTab('business'); focusField('bf-headline'); return; }
+      if (target === 'identity') { setActiveTab('business'); focusField('bf-company'); return; }
+      if (target === 'heroImage' || target === 'logo' || target === 'work') {
+        setActiveTab('images');
+        requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById('builder-tabpanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })));
+        return;
+      }
+      const section = SECTION_TARGETS[target];
+      if (section) {
+        setActiveTab('design');
+        setOpenSection(section);
+        requestAnimationFrame(() => requestAnimationFrame(() => document.querySelector(`.${styles.sectionCardOpen}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })));
+      }
+    }
+
+    window.addEventListener('message', onEditRequest);
+    return () => window.removeEventListener('message', onEditRequest);
+  }, []);
+
   const handleLogoUpload = useCallback((file: File) => {
     setIsUploadingLogo(true);
     setMessage(null);
@@ -671,9 +723,9 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   </button>
                   <small>Fills your headline, tagline, SEO, hours, service area, Services, and FAQs with trade-specific examples to personalize. Testimonials and stats are generated too, but left off until you swap in your real ones.</small>
                 </div>
-                <label className={styles.formField}><span>Company name</span><input value={site.company_name} onChange={(event) => handleChange('company_name', event.target.value)} /></label>
-                <label className={styles.formField}><span>Headline</span><textarea rows={2} value={site.headline || ''} onChange={(event) => handleChange('headline', event.target.value || null)} placeholder="Built with purpose. Finished with care." /></label>
-                <label className={styles.formField}><span>Tagline</span><textarea rows={3} value={site.tagline || ''} onChange={(event) => handleChange('tagline', event.target.value || null)} placeholder="Tell homeowners what makes your business different." /></label>
+                <label className={styles.formField}><span>Company name</span><input id="bf-company" value={site.company_name} onChange={(event) => handleChange('company_name', event.target.value)} /></label>
+                <label className={styles.formField}><span>Headline</span><textarea id="bf-headline" rows={2} value={site.headline || ''} onChange={(event) => handleChange('headline', event.target.value || null)} placeholder="Built with purpose. Finished with care." /></label>
+                <label className={styles.formField}><span>Tagline</span><textarea id="bf-tagline" rows={3} value={site.tagline || ''} onChange={(event) => handleChange('tagline', event.target.value || null)} placeholder="Tell homeowners what makes your business different." /></label>
                 <div className={styles.formColumns}>
                   <label className={styles.formField}><span>Phone</span><input type="tel" value={site.phone || ''} onChange={(event) => handleChange('phone', event.target.value || null)} placeholder="(555) 123-4567" /></label>
                   <label className={styles.formField}><span>License</span><input value={site.license || ''} onChange={(event) => handleChange('license', event.target.value || null)} placeholder="LIC #123456" /></label>

@@ -13,7 +13,7 @@ export default function SiteAnnouncementBar({ site }: { site: Pick<Site, 'conten
   if (!announcement) return null;
 
   return (
-    <div className={styles.announceBar} role="region" aria-label="Availability">
+    <div className={styles.announceBar} role="region" aria-label="Availability" data-edit="announcement">
       <span className={styles.announceDot} aria-hidden="true" />
       <span className={styles.announceMsg}>{announcement.message}</span>
       {announcement.subtext && <span className={styles.announceSub}>{announcement.subtext}</span>}

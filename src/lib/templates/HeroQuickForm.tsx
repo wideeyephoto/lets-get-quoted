@@ -251,6 +251,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
       ref={formRef}
       className={styles.heroQuickForm}
       onSubmit={step === 'describe' ? handleDescribeContinue : step === 'qa' ? handleChatAnswerSubmit : step === 'contact' ? handleContactSubmit : (event) => event.preventDefault()}
+      data-edit={wizardEnabled ? 'estimate' : 'quoteForm'}
     >
       <label className={styles.heroFormHoneypot} aria-hidden="true">Company<input name="company" tabIndex={-1} autoComplete="off" /></label>
 

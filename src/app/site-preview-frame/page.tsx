@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { getSiteGallery } from '@/lib/site-images';
 import type { Site } from '@/lib/sites';
 import { getTemplate } from '@/lib/templates';
+import PreviewEditBridge from './PreviewEditBridge';
 
 export default function SitePreviewFramePage() {
   const [site, setSite] = useState<Site | null>(null);
@@ -25,5 +26,10 @@ export default function SitePreviewFramePage() {
 
   const Template = getTemplate(site.template);
   if (!Template) return <main style={{ padding: '2rem' }}>Theme unavailable.</main>;
-  return <Template site={site} galleryImages={getSiteGallery(site.content)} />;
+  return (
+    <>
+      <PreviewEditBridge />
+      <Template site={site} galleryImages={getSiteGallery(site.content)} />
+    </>
+  );
 }
