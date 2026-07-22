@@ -43,7 +43,7 @@ export default function StatCounters({ title, items, photo }: { title: string; i
         <h2>{title}</h2>
       </div>
       <div className={styles.statsMedia}>
-        <img className={styles.statsPhoto} src={photo} alt="" loading="lazy" decoding="async" />
+        <img className={styles.statsPhoto} src={photo} alt="" loading="lazy" decoding="async" data-edit="image-stats" />
         <div className={styles.statsCard} data-parallax="0.1">
           <div className={styles.statGrid}>
             {items.map((item) => (

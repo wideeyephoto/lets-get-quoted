@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroShowStats } from '@/lib/site-content';
+import { getHeroBadge, getHeroShowStats, getSlotImage } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
@@ -21,10 +21,13 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
   const heroImage = site.hero_url || gallery[0]?.url || STOCK_SITE_IMAGES[0].url;
   // Second photo for the floating collage — prefer a distinct gallery shot so
   // the two cards don't duplicate, falling back to a different stock image.
-  const secondImage =
+  const secondImage = getSlotImage(
+    site.content,
+    'heroSecondary',
     gallery.find((image) => image.url !== heroImage)?.url ||
-    STOCK_SITE_IMAGES.find((image) => image.url !== heroImage)?.url ||
-    STOCK_SITE_IMAGES[1].url;
+      STOCK_SITE_IMAGES.find((image) => image.url !== heroImage)?.url ||
+      STOCK_SITE_IMAGES[1].url,
+  );
   const heroBadge = getHeroBadge(site.content);
   const showStats = getHeroShowStats(site.content);
   const themeStyle = {
@@ -65,7 +68,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
             <figure className={`${styles.shinePhotoCard} ${styles.shinePhotoMain}`} data-parallax="0.05">
               <img className={styles.shinePhoto} src={heroImage} alt="Recent cleaning project" fetchPriority="high" decoding="async" />
             </figure>
-            <figure className={`${styles.shinePhotoCard} ${styles.shinePhotoSide}`} data-parallax="0.13">
+            <figure className={`${styles.shinePhotoCard} ${styles.shinePhotoSide}`} data-parallax="0.13" data-edit="image-heroSecondary">
               <img className={styles.shinePhoto} src={secondImage} alt="Our cleaning team at work" loading="lazy" decoding="async" />
             </figure>
           </div>

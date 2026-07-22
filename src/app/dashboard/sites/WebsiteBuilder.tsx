@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useTransition, type ReactNode } from 
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, HERO_BADGE_PRESETS, slugifyBlogTitle, type NormalizedSiteContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, HERO_BADGE_PRESETS, IMAGE_SLOT_LABELS, slugifyBlogTitle, type NormalizedSiteContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
@@ -139,6 +139,9 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   // When set (from clicking a showcase tile in the preview), the showcase image
   // picker replaces THIS tile in place instead of toggling selection.
   const [replacingShowcaseId, setReplacingShowcaseId] = useState<string | null>(null);
+  // When set (from clicking a secondary template photo in the preview), the
+  // image library assigns the next picked image to this content.images slot.
+  const [pickingSlot, setPickingSlot] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const galleryImages = getSiteGallery(site.content);
   const siteContent = getSiteContent(site.content);
@@ -286,6 +289,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       if (target === 'hero') { setActiveTab('business'); focusField('bf-headline'); return; }
       if (target === 'identity') { setActiveTab('business'); focusField('bf-company'); return; }
       if (target === 'heroBadge') { setActiveTab('design'); setOpenSection('colors'); flashCard('heroBadge', 'design-hero-badge'); return; }
+      if (target.startsWith('image-')) {
+        setActiveTab('images');
+        setPickingSlot(target.slice('image-'.length));
+        requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById('image-library')?.scrollIntoView({ behavior: 'smooth', block: 'start' })));
+        return;
+      }
       if (target.startsWith('showcase-')) {
         setActiveTab('design');
         setOpenSection('showcase');
@@ -318,6 +327,11 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   useEffect(() => {
     if (activeTab !== 'design' || openSection !== 'showcase') setReplacingShowcaseId(null);
   }, [activeTab, openSection]);
+
+  // Same for the image-slot picker: it only applies on the Images tab.
+  useEffect(() => {
+    if (activeTab !== 'images') setPickingSlot(null);
+  }, [activeTab]);
 
   const handleLogoUpload = useCallback((file: File) => {
     setIsUploadingLogo(true);
@@ -495,6 +509,17 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   const updateSiteContent = useCallback((updates: Partial<NormalizedSiteContent>) => {
     handleChange('content', mergeSiteContent(site.content, updates));
   }, [handleChange, site.content]);
+
+  const assignSlotImage = useCallback((slot: string, image: SiteImage) => {
+    updateSiteContent({ images: { ...siteContent.images, [slot]: image.url } });
+    setPickingSlot(null);
+  }, [siteContent.images, updateSiteContent]);
+
+  const resetSlotImage = useCallback((slot: string) => {
+    const nextImages = { ...siteContent.images };
+    delete nextImages[slot];
+    updateSiteContent({ images: nextImages });
+  }, [siteContent.images, updateSiteContent]);
 
   const updateShowcase = useCallback((showcase: SiteShowcaseContent) => {
     updateSiteContent({ showcase });
@@ -810,8 +835,36 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   </div>
                 </div>
 
-                <div className={styles.sectionIntro}><h2>Photo library</h2><p>Every photo you upload lives here. Set one as your hero, or add photos to your gallery — the shared pool your Showcase, reviews, and before/after sections pull from.</p></div>
-                <ImageLibrary stockImages={STOCK_SITE_IMAGES} initialUploads={uploadedImages} galleryImages={galleryImages} heroUrl={site.hero_url} onSelectHero={selectHeroImage} onToggleGallery={toggleGalleryImage} />
+                {Object.keys(siteContent.images).length > 0 && (
+                  <>
+                    <div className={styles.cardGroupLabel}>Other section photos</div>
+                    <div className={styles.imageSlots}>
+                      {Object.entries(siteContent.images).map(([slot, url]) => (
+                        <div key={slot} className={styles.imageSlot}>
+                          <div className={styles.imageSlotHead}><strong>{IMAGE_SLOT_LABELS[slot] || slot}</strong><small>Custom photo — overrides the template default.</small></div>
+                          <div className={styles.heroSlotPreview}><img src={url} alt={`${IMAGE_SLOT_LABELS[slot] || slot} preview`} /></div>
+                          <div className={styles.imageSlotActions}>
+                            <button type="button" className={styles.secondaryAction} onClick={() => { setPickingSlot(slot); requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById('image-library')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))); }}>Replace</button>
+                            <button type="button" className={styles.secondaryAction} onClick={() => resetSlotImage(slot)}>Reset to default</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                <div id="image-library">
+                  <div className={styles.sectionIntro}><h2>Photo library</h2><p>Every photo you upload lives here. Set one as your hero, add photos to your gallery — the shared pool your Showcase, reviews, and before/after sections pull from — or swap a section photo you clicked in the preview.</p></div>
+                  <ImageLibrary
+                    stockImages={STOCK_SITE_IMAGES}
+                    initialUploads={uploadedImages}
+                    galleryImages={galleryImages}
+                    heroUrl={site.hero_url}
+                    onSelectHero={selectHeroImage}
+                    onToggleGallery={toggleGalleryImage}
+                    pickMode={pickingSlot ? { label: IMAGE_SLOT_LABELS[pickingSlot] || 'this photo', onPick: (image) => assignSlotImage(pickingSlot, image), onCancel: () => setPickingSlot(null) } : null}
+                  />
+                </div>
               </div>
             )}
 

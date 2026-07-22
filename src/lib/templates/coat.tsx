@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge } from '@/lib/site-content';
+import { getHeroBadge, getSlotImage } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
@@ -20,10 +20,13 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
   const gallery = galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES.slice(0, 4);
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
   // Second shot for the hero collage — a distinct image so the two cards differ.
-  const secondImage =
+  const secondImage = getSlotImage(
+    site.content,
+    'heroSecondary',
     gallery.find((image) => image.url !== heroImage)?.url ||
-    STOCK_SITE_IMAGES.find((image) => image.url !== heroImage)?.url ||
-    STOCK_SITE_IMAGES[2].url;
+      STOCK_SITE_IMAGES.find((image) => image.url !== heroImage)?.url ||
+      STOCK_SITE_IMAGES[2].url,
+  );
   const heroBadge = getHeroBadge(site.content);
   const themeStyle = {
     '--theme-accent': site.accent_override || '#e5322a',
@@ -67,7 +70,7 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
         </div>
         <div className={styles.coatHeroMedia}>
           <img className={styles.coatHeroImg} src={heroImage} alt="Recent painting project" fetchPriority="high" decoding="async" />
-          <figure className={styles.coatPhotoSide} data-parallax="0.13">
+          <figure className={styles.coatPhotoSide} data-parallax="0.13" data-edit="image-heroSecondary">
             <img src={secondImage} alt="A freshly finished interior" loading="lazy" decoding="async" />
           </figure>
           {heroBadge && (

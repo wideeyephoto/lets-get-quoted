@@ -275,6 +275,11 @@ export type NormalizedSiteContent = {
   howItWorks: SiteHowItWorksContent;
   blog: SiteBlogContent;
   heroBadge: SiteHeroBadgeContent;
+  // Per-slot overrides for the template's secondary/decorative photos (second
+  // hero collage shot, stats-section photo, etc.), keyed by slot id. Empty
+  // unless the owner has explicitly swapped one; templates fall back to their
+  // auto-derived default when a slot is unset. See IMAGE_SLOT_LABELS.
+  images: Record<string, string>;
 };
 
 export const DEFAULT_SHOWCASE_TITLE = 'Project showcase';
@@ -510,6 +515,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const howItWorks = isRecord(root.howItWorks) ? root.howItWorks : {};
   const blog = isRecord(root.blog) ? root.blog : {};
   const heroBadge = isRecord(root.heroBadge) ? root.heroBadge : {};
+  const images = isRecord(root.images) ? root.images : {};
 
   return {
     showcase: {
@@ -608,7 +614,19 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       posts: parseBlogPosts(blog.posts),
     },
     heroBadge: { preset: toString(heroBadge.preset, 'licensed'), showStats: heroBadge.showStats !== false },
+    images: parseImageSlots(images),
   };
+}
+
+// Keep only string→non-empty-string entries whose slot is a known template
+// image slot, so a malformed content blob can't inject arbitrary keys.
+function parseImageSlots(value: Record<string, unknown>): Record<string, string> {
+  const slots: Record<string, string> = {};
+  for (const key of Object.keys(IMAGE_SLOT_LABELS)) {
+    const url = value[key];
+    if (typeof url === 'string' && url.trim()) slots[key] = url.trim();
+  }
+  return slots;
 }
 
 export function mergeSiteContent(content: Record<string, unknown>, updates: Partial<NormalizedSiteContent>): Record<string, unknown> {
@@ -739,4 +757,19 @@ export function getHeroBadge(content: Record<string, unknown> | null | undefined
 // it independently of the trust chip via the Hero badge control.
 export function getHeroShowStats(content: Record<string, unknown> | null | undefined): boolean {
   return getSiteContent(content).heroBadge.showStats;
+}
+
+// The decorative/secondary photo slots a template can expose for direct
+// swapping. The key is the slot id used in `content.images` and the
+// `data-edit="image-<slot>"` preview marker; the value is the builder label.
+export const IMAGE_SLOT_LABELS: Record<string, string> = {
+  heroSecondary: 'Second hero photo',
+  stats: 'Stats section photo',
+  about: 'About-section photo',
+};
+
+// A template's photo for a given slot: the owner's explicit override if set,
+// otherwise the template's auto-derived fallback (unchanged legacy behaviour).
+export function getSlotImage(content: Record<string, unknown> | null | undefined, slot: string, fallback: string): string {
+  return getSiteContent(content).images[slot] || fallback;
 }

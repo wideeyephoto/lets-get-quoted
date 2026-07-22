@@ -6,6 +6,8 @@ import { compressImage } from '@/lib/client-images';
 import { deleteSiteImageAction } from './actions';
 import styles from './SiteEditor.module.css';
 
+type PickMode = { label: string; onPick: (image: SiteImage) => void; onCancel: () => void };
+
 type ImageLibraryProps = {
   stockImages: SiteImage[];
   initialUploads: SiteImage[];
@@ -13,6 +15,7 @@ type ImageLibraryProps = {
   heroUrl: string | null;
   onSelectHero: (image: SiteImage) => void;
   onToggleGallery: (image: SiteImage) => void;
+  pickMode?: PickMode | null;
 };
 
 export default function ImageLibrary({
@@ -22,6 +25,7 @@ export default function ImageLibrary({
   heroUrl,
   onSelectHero,
   onToggleGallery,
+  pickMode,
 }: ImageLibraryProps) {
   const [source, setSource] = useState<'stock' | 'upload'>('upload');
   const [uploads, setUploads] = useState(initialUploads);
@@ -88,6 +92,12 @@ export default function ImageLibrary({
 
   return (
     <div className={styles.library}>
+      {pickMode && (
+        <p className={styles.replacingHint}>
+          Choose a photo for <strong>{pickMode.label}</strong> — click any image below.
+          <button type="button" onClick={pickMode.onCancel}>Cancel</button>
+        </p>
+      )}
       <div className={styles.libraryToolbar}>
         <div className={styles.segmented} aria-label="Image source">
           <button type="button" className={source === 'upload' ? styles.activeSegment : undefined} onClick={() => setSource('upload')}>Your uploads</button>
@@ -114,9 +124,15 @@ export default function ImageLibrary({
                 <img src={image.url} alt={image.alt} />
                 <div className={styles.imageMeta}><span>{image.category}</span>{isHero ? <strong>Hero</strong> : inGallery ? <strong>In gallery</strong> : null}</div>
                 <div className={styles.imageActions}>
-                  <button type="button" onClick={() => onSelectHero(image)} disabled={isHero}>{isHero ? 'Current hero' : 'Set as hero'}</button>
-                  <button type="button" onClick={() => onToggleGallery(image)}>{inGallery ? 'Remove from gallery' : 'Add to gallery'}</button>
-                  {image.source === 'upload' && <button type="button" className={styles.deleteImage} onClick={() => handleDelete(image)} disabled={isInUse} aria-label={`Delete ${image.alt}`}>{isInUse ? 'In use' : 'Delete'}</button>}
+                  {pickMode ? (
+                    <button type="button" onClick={() => pickMode.onPick(image)}>Use this photo</button>
+                  ) : (
+                    <>
+                      <button type="button" onClick={() => onSelectHero(image)} disabled={isHero}>{isHero ? 'Current hero' : 'Set as hero'}</button>
+                      <button type="button" onClick={() => onToggleGallery(image)}>{inGallery ? 'Remove from gallery' : 'Add to gallery'}</button>
+                      {image.source === 'upload' && <button type="button" className={styles.deleteImage} onClick={() => handleDelete(image)} disabled={isInUse} aria-label={`Delete ${image.alt}`}>{isInUse ? 'In use' : 'Delete'}</button>}
+                    </>
+                  )}
                 </div>
               </article>
             );

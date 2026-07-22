@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getPublishedHowItWorks, getPublishedServices } from '@/lib/site-content';
+import { getPublishedHowItWorks, getPublishedServices, getSlotImage } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroQuickForm from './HeroQuickForm';
@@ -26,7 +26,7 @@ const TRUST_ITEMS = ['Licensed & insured', 'Same-day service', 'Free estimates',
 // white cards on light blue-gray sections, teal CTAs, a dark navy footer.
 export default function HandyTemplate({ site, galleryImages = [] }: TemplateProps) {
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
-  const aboutImage = STOCK_SITE_IMAGES[3].url;
+  const aboutImage = getSlotImage(site.content, 'about', STOCK_SITE_IMAGES[3].url);
   const gallery = galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES.slice(1, 4);
 
   const themeStyle = {
@@ -98,7 +98,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
         <div className={styles.careWhyMedia} data-reveal="left">
           <span className={styles.careDot1} aria-hidden="true" />
           <span className={styles.careDot2} aria-hidden="true" />
-          <div className={styles.careHeroCircle}>
+          <div className={styles.careHeroCircle} data-edit="image-about">
             <img src={aboutImage} alt="Our team on the job" loading="lazy" decoding="async" />
           </div>
         </div>

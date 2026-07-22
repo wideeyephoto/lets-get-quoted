@@ -14,6 +14,7 @@ import {
   getPublishedStats,
   getPublishedStickyCallBar,
   getPublishedTestimonials,
+  getSlotImage,
 } from '@/lib/site-content';
 import BeforeAfterSlider from './BeforeAfterSlider';
 import SiteServices from './SiteServices';
@@ -155,7 +156,7 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
             </section>
           )}
 
-          {stats && <StatCounters title={stats.title} items={stats.items} photo={site.hero_url || STOCK_SITE_IMAGES[2].url} />}
+          {stats && <StatCounters title={stats.title} items={stats.items} photo={getSlotImage(site.content, 'stats', site.hero_url || STOCK_SITE_IMAGES[2].url)} />}
 
           {beforeAfter && <BeforeAfterSlider title={beforeAfter.title} intro={beforeAfter.intro} items={beforeAfter.items} />}
 
