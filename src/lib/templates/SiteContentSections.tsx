@@ -1,5 +1,6 @@
 import type { Site } from '@/lib/sites';
 import {
+  getPublishedBeforeAfter,
   getPublishedCertifications,
   getPublishedFaqs,
   getPublishedFinancing,
@@ -9,6 +10,7 @@ import {
   getPublishedStickyCallBar,
   getPublishedTestimonials,
 } from '@/lib/site-content';
+import BeforeAfterSlider from './BeforeAfterSlider';
 import StatCounters from './StatCounters';
 import styles from './themes.module.css';
 
@@ -28,9 +30,10 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
   const serviceAreas = getPublishedServiceAreas(site.content);
   const certifications = getPublishedCertifications(site.content);
   const stats = getPublishedStats(site.content);
+  const beforeAfter = getPublishedBeforeAfter(site.content);
   const stickyCallBar = getPublishedStickyCallBar(site.content, site.phone);
 
-  const hasInFlowSections = Boolean(showcase || testimonials || faqs || serviceAreas || certifications || stats);
+  const hasInFlowSections = Boolean(showcase || testimonials || faqs || serviceAreas || certifications || stats || beforeAfter);
   const hasFinancing = Boolean(financing);
 
   if (!hasInFlowSections && !hasFinancing && !stickyCallBar) return null;
@@ -132,6 +135,8 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
           )}
 
           {stats && <StatCounters title={stats.title} items={stats.items} />}
+
+          {beforeAfter && <BeforeAfterSlider title={beforeAfter.title} intro={beforeAfter.intro} items={beforeAfter.items} />}
 
           {certifications && (
             <section className={styles.extraSection} id="certifications">

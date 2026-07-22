@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useTransition } from 'react';
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, type NormalizedSiteContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, type NormalizedSiteContent, type SiteBeforeAfterContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import { checkSubdomainAvailableAction, generateSiteTextAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
 import ImageLibrary from './ImageLibrary';
@@ -248,6 +248,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
   const updateStats = useCallback((stats: SiteStatsContent) => {
     updateSiteContent({ stats });
+  }, [updateSiteContent]);
+
+  const updateBeforeAfter = useCallback((beforeAfter: SiteBeforeAfterContent) => {
+    updateSiteContent({ beforeAfter });
   }, [updateSiteContent]);
 
   const toggleShowcaseImage = useCallback((image: SiteImage) => {
@@ -607,6 +611,31 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     ))}
                   </div>
                   <button type="button" className={styles.secondaryAction} onClick={() => updateStats({ ...siteContent.stats, enabled: true, items: [...siteContent.stats.items, { id: createContentId('stat'), value: 0, prefix: '', suffix: '', label: '' }] })}>Add stat</button>
+                </SectionCard>
+
+                <SectionCard title="Before &amp; after" description="Drag-to-reveal comparison sliders — the most shared element on a remodeler's site. Each pair needs both a before and an after image to appear on your site." enabled={siteContent.beforeAfter.enabled} onToggleEnabled={(value) => updateBeforeAfter({ ...siteContent.beforeAfter, enabled: value })} open={openSection === 'beforeAfter'} onToggleOpen={() => toggleSection('beforeAfter')}>
+                  <label className={styles.formField}><span>Section title</span><input value={siteContent.beforeAfter.title} onChange={(event) => updateBeforeAfter({ ...siteContent.beforeAfter, title: event.target.value })} /></label>
+                  <label className={styles.formField}><span>Intro copy</span><input value={siteContent.beforeAfter.intro} onChange={(event) => updateBeforeAfter({ ...siteContent.beforeAfter, intro: event.target.value })} /></label>
+                  <div className={styles.stackList}>
+                    {siteContent.beforeAfter.items.map((item, index) => (
+                      <div className={styles.stackItem} key={item.id}>
+                        <div className={styles.itemHeader}><strong>{item.label || `Pair ${index + 1}`}</strong><button type="button" onClick={() => updateBeforeAfter({ ...siteContent.beforeAfter, items: siteContent.beforeAfter.items.filter((pair) => pair.id !== item.id) })}>Remove</button></div>
+                        <div className={styles.formColumns}>
+                          <label className={styles.formField}><span>Before image</span><select value={item.beforeUrl} onChange={(event) => {
+                            const image = selectableImages.find((candidate) => candidate.url === event.target.value);
+                            updateBeforeAfter({ ...siteContent.beforeAfter, items: siteContent.beforeAfter.items.map((pair) => pair.id === item.id ? { ...pair, beforeUrl: event.target.value, beforeAlt: image?.alt || pair.beforeAlt || 'Before' } : pair) });
+                          }}><option value="">Select image</option>{selectableImages.map((image) => <option key={`${item.id}-b-${image.id}`} value={image.url}>{image.alt}</option>)}</select></label>
+                          <label className={styles.formField}><span>After image</span><select value={item.afterUrl} onChange={(event) => {
+                            const image = selectableImages.find((candidate) => candidate.url === event.target.value);
+                            updateBeforeAfter({ ...siteContent.beforeAfter, items: siteContent.beforeAfter.items.map((pair) => pair.id === item.id ? { ...pair, afterUrl: event.target.value, afterAlt: image?.alt || pair.afterAlt || 'After' } : pair) });
+                          }}><option value="">Select image</option>{selectableImages.map((image) => <option key={`${item.id}-a-${image.id}`} value={image.url}>{image.alt}</option>)}</select></label>
+                        </div>
+                        {(item.beforeUrl || item.afterUrl) && <div className={styles.formColumns}>{item.beforeUrl && <div className={styles.reviewImagePreview}><img src={item.beforeUrl} alt="Before preview" /></div>}{item.afterUrl && <div className={styles.reviewImagePreview}><img src={item.afterUrl} alt="After preview" /></div>}</div>}
+                        <label className={styles.formField}><span>Caption (optional)</span><input value={item.label} onChange={(event) => updateBeforeAfter({ ...siteContent.beforeAfter, items: siteContent.beforeAfter.items.map((pair) => pair.id === item.id ? { ...pair, label: event.target.value } : pair) })} placeholder="Kitchen remodel, roof replacement..." /></label>
+                      </div>
+                    ))}
+                  </div>
+                  <button type="button" className={styles.secondaryAction} onClick={() => updateBeforeAfter({ ...siteContent.beforeAfter, enabled: true, items: [...siteContent.beforeAfter.items, { id: createContentId('ba'), beforeUrl: '', beforeAlt: '', afterUrl: '', afterAlt: '', label: '' }] })}>Add pair</button>
                 </SectionCard>
 
                 <div className={styles.integrationCard}>

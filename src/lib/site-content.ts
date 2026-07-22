@@ -109,6 +109,22 @@ export type SiteStatsContent = {
   items: SiteStatItem[];
 };
 
+export type SiteBeforeAfterItem = {
+  id: string;
+  beforeUrl: string;
+  beforeAlt: string;
+  afterUrl: string;
+  afterAlt: string;
+  label: string;
+};
+
+export type SiteBeforeAfterContent = {
+  enabled: boolean;
+  title: string;
+  intro: string;
+  items: SiteBeforeAfterItem[];
+};
+
 export type SiteQuoteFormContent = {
   emailRequired: boolean;
   // Controls the wording used on the quote-request call-to-action ('Quick Estimate'
@@ -179,6 +195,7 @@ export type NormalizedSiteContent = {
   serviceAreas: SiteServiceAreasContent;
   certifications: SiteCertificationsContent;
   stats: SiteStatsContent;
+  beforeAfter: SiteBeforeAfterContent;
 };
 
 export const DEFAULT_SHOWCASE_TITLE = 'Project showcase';
@@ -190,6 +207,8 @@ export const DEFAULT_SERVICE_AREAS_TITLE = 'Areas we serve';
 export const DEFAULT_SERVICE_AREAS_INTRO = 'Proudly serving homeowners across the region.';
 export const DEFAULT_CERTIFICATIONS_TITLE = 'Certifications & awards';
 export const DEFAULT_STATS_TITLE = 'By the numbers';
+export const DEFAULT_BEFORE_AFTER_TITLE = 'Before & after';
+export const DEFAULT_BEFORE_AFTER_INTRO = 'Drag to see the transformation.';
 
 export const DEFAULT_TRUST_BADGES: SiteTrustBadgeItem[] = [
   { id: 'licensed', label: 'Licensed', enabled: true },
@@ -324,6 +343,19 @@ function parseStats(value: unknown): SiteStatItem[] {
   }));
 }
 
+function parseBeforeAfter(value: unknown): SiteBeforeAfterItem[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.filter(isRecord).map((item, index) => ({
+    id: toString(item.id, `ba-${index + 1}`),
+    beforeUrl: toString(item.beforeUrl),
+    beforeAlt: toString(item.beforeAlt),
+    afterUrl: toString(item.afterUrl),
+    afterAlt: toString(item.afterAlt),
+    label: toString(item.label),
+  }));
+}
+
 export function getSiteContent(content: Record<string, unknown> | null | undefined): NormalizedSiteContent {
   const root = isRecord(content) ? content : {};
   const showcase = isRecord(root.showcase) ? root.showcase : {};
@@ -338,6 +370,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const serviceAreas = isRecord(root.serviceAreas) ? root.serviceAreas : {};
   const certifications = isRecord(root.certifications) ? root.certifications : {};
   const stats = isRecord(root.stats) ? root.stats : {};
+  const beforeAfter = isRecord(root.beforeAfter) ? root.beforeAfter : {};
 
   return {
     showcase: {
@@ -405,6 +438,12 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       enabled: toBoolean(stats.enabled),
       title: toString(stats.title, DEFAULT_STATS_TITLE),
       items: parseStats(stats.items),
+    },
+    beforeAfter: {
+      enabled: toBoolean(beforeAfter.enabled),
+      title: toString(beforeAfter.title, DEFAULT_BEFORE_AFTER_TITLE),
+      intro: toString(beforeAfter.intro, DEFAULT_BEFORE_AFTER_INTRO),
+      items: parseBeforeAfter(beforeAfter.items),
     },
   };
 }
@@ -474,4 +513,10 @@ export function getPublishedStats(content: Record<string, unknown> | null | unde
   const stats = getSiteContent(content).stats;
   const items = stats.items.filter((item) => item.label.trim());
   return stats.enabled && items.length > 0 ? { ...stats, items } : null;
+}
+
+export function getPublishedBeforeAfter(content: Record<string, unknown> | null | undefined): SiteBeforeAfterContent | null {
+  const beforeAfter = getSiteContent(content).beforeAfter;
+  const items = beforeAfter.items.filter((item) => item.beforeUrl.trim() && item.afterUrl.trim());
+  return beforeAfter.enabled && items.length > 0 ? { ...beforeAfter, items } : null;
 }

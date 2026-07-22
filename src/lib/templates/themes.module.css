@@ -100,6 +100,21 @@
 .statValue { font-family: var(--theme-display); font-size: clamp(2.4rem, 6vw, 4rem); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
 .statLabel { font-size: .85rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: color-mix(in srgb, currentColor 70%, transparent); }
 
+/* Before & after slider (toggleable) */
+.baGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 1.25rem; }
+.baItem { margin: 0; }
+.baFrame { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 10px; cursor: ew-resize; touch-action: pan-y; user-select: none; -webkit-user-select: none; background: color-mix(in srgb, currentColor 8%, transparent); }
+.baImg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.baBefore { position: absolute; inset: 0; }
+.baTag { position: absolute; top: .7rem; padding: .25rem .6rem; border-radius: 999px; background: rgba(0,0,0,.6); color: #fff; font-size: .66rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; pointer-events: none; }
+.baTagBefore { left: .7rem; }
+.baTagAfter { right: .7rem; }
+.baHandle { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.2); }
+.baHandleGrip { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: #fff; color: #111; font-size: 1.05rem; font-weight: 900; letter-spacing: -1px; box-shadow: 0 4px 14px rgba(0,0,0,.35); cursor: ew-resize; }
+.baHandle:focus-visible { outline: none; }
+.baHandle:focus-visible .baHandleGrip { outline: 2px solid var(--theme-accent); outline-offset: 3px; }
+.baCaption { padding-top: .7rem; font-size: .85rem; font-weight: 600; letter-spacing: .02em; color: color-mix(in srgb, currentColor 78%, transparent); }
+
 /* Certifications & awards strip (toggleable) */
 .certList { display: flex; flex-wrap: wrap; align-items: center; gap: 1.1rem 1.6rem; margin: 0; padding: 0; list-style: none; }
 .certItem { display: inline-flex; flex-direction: column; align-items: center; gap: .45rem; font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: color-mix(in srgb, currentColor 76%, transparent); }
