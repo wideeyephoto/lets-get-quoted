@@ -187,7 +187,7 @@ export type SiteBlogContent = {
 // Floating hero badge — the small trust chip shown on the hero of photo-badge
 // templates (Fixit today). Owners pick one of these presets or hide it; the
 // preset key drives the icon/title/subtitle so the template stays declarative.
-export type SiteHeroBadgeContent = { preset: string };
+export type SiteHeroBadgeContent = { preset: string; showStats: boolean };
 
 export const HERO_BADGE_PRESETS = [
   { key: 'licensed', icon: '✓', title: 'Licensed & insured', subtitle: 'Fully vetted pros', label: 'Licensed & insured' },
@@ -607,7 +607,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       intro: toString(blog.intro),
       posts: parseBlogPosts(blog.posts),
     },
-    heroBadge: { preset: toString(heroBadge.preset, 'licensed') },
+    heroBadge: { preset: toString(heroBadge.preset, 'licensed'), showStats: heroBadge.showStats !== false },
   };
 }
 
@@ -732,4 +732,11 @@ export function getHeroBadge(content: Record<string, unknown> | null | undefined
   const preset = getSiteContent(content).heroBadge.preset;
   if (preset === 'none') return null;
   return HERO_BADGE_PRESETS.find((badge) => badge.key === preset) ?? HERO_BADGE_PRESETS[0];
+}
+
+// The extra decorative floating badge on the hero (Shine's "500+ customers",
+// Fixit's second card, Guild's "Proudly local", Reno's hex). Owners can hide
+// it independently of the trust chip via the Hero badge control.
+export function getHeroShowStats(content: Record<string, unknown> | null | undefined): boolean {
+  return getSiteContent(content).heroBadge.showStats;
 }

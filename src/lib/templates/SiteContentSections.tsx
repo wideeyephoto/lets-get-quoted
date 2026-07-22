@@ -95,7 +95,7 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
               </div>
               <div className={`${styles.showcaseGrid} ${styles[`showcase-${showcase.layout}`] || ''}`} data-stagger>
                 {showcase.items.map((item, index) => (
-                  <figure key={`${item.id}-${index}`}>
+                  <figure key={`${item.id}-${index}`} data-edit={`showcase-${item.id}`}>
                     <SafeImage src={item.url} alt={item.alt} width={1200} height={900} sizes={index === 0 && showcase.layout === 'featured' ? '60vw' : '30vw'} />
                     <figcaption>{item.caption || item.alt}</figcaption>
                   </figure>

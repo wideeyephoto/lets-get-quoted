@@ -134,6 +134,11 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   // Briefly highlights the Logo/Hero slot after you click that image in the
   // live preview, so it's obvious which photo you're about to replace.
   const [flashSlot, setFlashSlot] = useState<'hero' | 'logo' | null>(null);
+  // Same, for a Design-tab field jumped to from the preview (e.g. hero badge).
+  const [flashField, setFlashField] = useState<string | null>(null);
+  // When set (from clicking a showcase tile in the preview), the showcase image
+  // picker replaces THIS tile in place instead of toggling selection.
+  const [replacingShowcaseId, setReplacingShowcaseId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const galleryImages = getSiteGallery(site.content);
   const siteContent = getSiteContent(site.content);
@@ -272,8 +277,22 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
         }));
       };
 
+      const flashCard = (fieldKey: string, scrollId: string) => {
+        setFlashField(fieldKey);
+        setTimeout(() => setFlashField((current) => (current === fieldKey ? null : current)), 1600);
+        requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(scrollId)?.scrollIntoView({ behavior: 'smooth', block: 'center' })));
+      };
+
       if (target === 'hero') { setActiveTab('business'); focusField('bf-headline'); return; }
       if (target === 'identity') { setActiveTab('business'); focusField('bf-company'); return; }
+      if (target === 'heroBadge') { setActiveTab('design'); setOpenSection('colors'); flashCard('heroBadge', 'design-hero-badge'); return; }
+      if (target.startsWith('showcase-')) {
+        setActiveTab('design');
+        setOpenSection('showcase');
+        setReplacingShowcaseId(target.slice('showcase-'.length));
+        flashCard('showcase', 'showcase-picker');
+        return;
+      }
       if (target === 'heroImage' || target === 'logo' || target === 'work') {
         setActiveTab('images');
         const slot = target === 'logo' ? 'logo' : target === 'heroImage' ? 'hero' : null;
@@ -293,6 +312,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     window.addEventListener('message', onEditRequest);
     return () => window.removeEventListener('message', onEditRequest);
   }, []);
+
+  // Showcase replace-mode only makes sense while its card is open; leaving it
+  // clears the pending target so a later plain "Add" doesn't silently swap.
+  useEffect(() => {
+    if (activeTab !== 'design' || openSection !== 'showcase') setReplacingShowcaseId(null);
+  }, [activeTab, openSection]);
 
   const handleLogoUpload = useCallback((file: File) => {
     setIsUploadingLogo(true);
@@ -566,6 +591,20 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   }, [updateSiteContent]);
 
   const toggleShowcaseImage = useCallback((image: SiteImage) => {
+    // Replace-in-place: when a tile is targeted (from clicking it in the live
+    // preview, or the Replace button), swap that tile's image while keeping its
+    // position, and drop any other copy of the picked image to avoid dupes.
+    if (replacingShowcaseId) {
+      const index = siteContent.showcase.items.findIndex((item) => item.id === replacingShowcaseId);
+      setReplacingShowcaseId(null);
+      if (index === -1) return;
+      const next = siteContent.showcase.items.slice();
+      next[index] = { ...image, caption: image.alt };
+      const items = next.filter((item, itemIndex) => itemIndex === index || item.id !== image.id);
+      updateShowcase({ ...siteContent.showcase, items });
+      return;
+    }
+
     const selected = siteContent.showcase.items.some((item) => item.id === image.id);
     const items = selected
       ? siteContent.showcase.items.filter((item) => item.id !== image.id)
@@ -577,7 +616,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     }
 
     updateShowcase({ ...siteContent.showcase, items });
-  }, [siteContent.showcase, updateShowcase]);
+  }, [replacingShowcaseId, siteContent.showcase, updateShowcase]);
 
   const checkSubdomain = useCallback(() => {
     const subdomain = site.subdomain?.trim().toLowerCase();
@@ -793,7 +832,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   </div>
                   <label className={styles.formField}><span>Heading font</span><select value={site.header_font || ''} onChange={(event) => handleChange('header_font', event.target.value || null)}><option value="">Theme default</option><option value="Georgia, Times New Roman, serif">Classic serif</option><option value="Arial Black, Helvetica, sans-serif">Bold sans</option><option value="Trebuchet MS, sans-serif">Humanist sans</option></select></label>
                   <label className={styles.formField}><span>Button style</span><select value={site.button_style || 'solid'} onChange={(event) => handleChange('button_style', event.target.value)}><option value="solid">Solid</option><option value="outline">Outline</option><option value="ghost">Minimal</option></select></label>
-                  <label className={styles.formField}><span>Hero badge</span><select value={siteContent.heroBadge.preset} onChange={(event) => updateSiteContent({ heroBadge: { preset: event.target.value } })}>{HERO_BADGE_PRESETS.map((badge) => <option key={badge.key} value={badge.key}>{badge.label}</option>)}<option value="none">No badge</option></select><small className={styles.fieldHint}>The floating trust chip on your hero photo (shown on templates with a hero badge — Fixit, Shine & Coat).</small></label>
+                  <div className={`${styles.formField}${flashField === 'heroBadge' ? ` ${styles.fieldFlash}` : ''}`} id="design-hero-badge">
+                    <span>Hero badge</span>
+                    <select value={siteContent.heroBadge.preset} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, preset: event.target.value } })}>{HERO_BADGE_PRESETS.map((badge) => <option key={badge.key} value={badge.key}>{badge.label}</option>)}<option value="none">No badge</option></select>
+                    <small className={styles.fieldHint}>The floating trust chip on your hero photo (Fixit, Shine, Coat &amp; more).</small>
+                    <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.heroBadge.showStats} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, showStats: event.target.checked } })} /><span><strong>Show the extra floating badge</strong><small>The second decorative chip (e.g. &ldquo;500+ customers&rdquo;, &ldquo;Proudly local&rdquo;). Turn off to remove it.</small></span></label>
+                  </div>
                 </SectionCard>
 
                 <div className={styles.sectionIntro}><h2>Pages & sections</h2><p>Add rich sections that make the public website feel complete.</p></div>
@@ -875,13 +919,27 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <label className={styles.formField}><span>Intro copy</span><textarea rows={2} value={siteContent.showcase.intro} onChange={(event) => updateShowcase({ ...siteContent.showcase, intro: event.target.value })} /></label>
                   <label className={styles.formField}><span>Layout</span><select value={siteContent.showcase.layout} onChange={(event) => updateShowcase({ ...siteContent.showcase, layout: event.target.value as SiteShowcaseContent['layout'] })}><option value="grid">Clean grid</option><option value="featured">Feature first image</option><option value="masonry">Masonry-style mix</option></select></label>
                   <div className={styles.contentSubhead}><strong>Showcase images</strong><small>{siteContent.showcase.items.length}/9 selected</small></div>
-                  <div className={styles.compactImageGrid}>
+                  {siteContent.showcase.items.length > 0 && (
+                    <div className={styles.showcaseSelected} aria-label="Showcase images, in order">
+                      {siteContent.showcase.items.map((item) => (
+                        <div key={item.id} className={`${styles.showcaseSelectedTile}${replacingShowcaseId === item.id ? ` ${styles.showcaseSelectedTileActive}` : ''}`}>
+                          <img src={item.url} alt={item.alt} />
+                          <div className={styles.showcaseSelectedActions}>
+                            <button type="button" onClick={() => setReplacingShowcaseId((current) => (current === item.id ? null : item.id))}>{replacingShowcaseId === item.id ? 'Cancel' : 'Replace'}</button>
+                            <button type="button" aria-label={`Remove ${item.alt}`} onClick={() => { setReplacingShowcaseId((current) => (current === item.id ? null : current)); updateShowcase({ ...siteContent.showcase, items: siteContent.showcase.items.filter((other) => other.id !== item.id) }); }}>✕</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {replacingShowcaseId && <p className={styles.replacingHint}>Pick a replacement below — it swaps into the highlighted tile, keeping its spot. <button type="button" onClick={() => setReplacingShowcaseId(null)}>Cancel</button></p>}
+                  <div className={styles.compactImageGrid} id="showcase-picker">
                     {selectableImages.map((image) => {
                       const selected = siteContent.showcase.items.some((item) => item.id === image.id);
                       return (
-                        <button type="button" key={image.id} className={`${styles.compactImageTile}${selected ? ` ${styles.selectedImageTile}` : ''}`} onClick={() => toggleShowcaseImage(image)} aria-pressed={selected}>
+                        <button type="button" key={image.id} className={`${styles.compactImageTile}${selected && !replacingShowcaseId ? ` ${styles.selectedImageTile}` : ''}`} onClick={() => toggleShowcaseImage(image)} aria-pressed={selected}>
                           <img src={image.url} alt={image.alt} />
-                          <span>{selected ? 'Selected' : 'Add'}</span>
+                          <span>{replacingShowcaseId ? 'Use this' : selected ? 'Selected' : 'Add'}</span>
                         </button>
                       );
                     })}

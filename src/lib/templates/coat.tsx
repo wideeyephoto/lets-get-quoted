@@ -71,7 +71,7 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
             <img src={secondImage} alt="A freshly finished interior" loading="lazy" decoding="async" />
           </figure>
           {heroBadge && (
-            <div className={styles.coatHeroBadge}>
+            <div className={styles.coatHeroBadge} data-edit="heroBadge">
               <span className={styles.coatHeroBadgeIcon} aria-hidden="true">{heroBadge.icon}</span>
               <div><strong>{heroBadge.title}</strong><small>{heroBadge.subtitle}</small></div>
             </div>

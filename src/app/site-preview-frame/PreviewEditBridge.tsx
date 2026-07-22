@@ -18,7 +18,7 @@ type Editable = { key: string; node: Element; isImage: boolean };
 
 function resolveEditable(el: Element): Editable | null {
   const explicit = el.closest('[data-edit]');
-  if (explicit) return { key: explicit.getAttribute('data-edit') || '', node: explicit, isImage: false };
+  if (explicit) return { key: explicit.getAttribute('data-edit') || '', node: explicit, isImage: explicit.tagName === 'FIGURE' || !!explicit.querySelector('img') };
 
   const header = el.closest('header');
   if (header) {

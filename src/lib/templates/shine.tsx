@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge } from '@/lib/site-content';
+import { getHeroBadge, getHeroShowStats } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
@@ -26,6 +26,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
     STOCK_SITE_IMAGES.find((image) => image.url !== heroImage)?.url ||
     STOCK_SITE_IMAGES[1].url;
   const heroBadge = getHeroBadge(site.content);
+  const showStats = getHeroShowStats(site.content);
   const themeStyle = {
     '--theme-accent': site.accent_override || '#ffd60a',
     '--theme-on-accent': '#0f1b2d',
@@ -69,15 +70,17 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
             </figure>
           </div>
           {heroBadge && (
-            <div className={`${styles.shineBadge} ${styles.shineBadgeSupport}`} data-parallax="0.2">
+            <div className={`${styles.shineBadge} ${styles.shineBadgeSupport}`} data-parallax="0.2" data-edit="heroBadge">
               <span className={styles.shineBadgeIcon} aria-hidden="true">{heroBadge.icon}</span>
               <strong>{heroBadge.title}</strong>
             </div>
           )}
-          <div className={`${styles.shineBadge} ${styles.shineBadgeCustomers}`} data-parallax="0.26">
-            <span className={styles.shineAvatars} aria-hidden="true"><span /><span /><span /></span>
-            <div><strong>500+</strong><small>Satisfied customers</small></div>
-          </div>
+          {showStats && (
+            <div className={`${styles.shineBadge} ${styles.shineBadgeCustomers}`} data-parallax="0.26" data-edit="heroBadge">
+              <span className={styles.shineAvatars} aria-hidden="true"><span /><span /><span /></span>
+              <div><strong>500+</strong><small>Satisfied customers</small></div>
+            </div>
+          )}
         </div>
       </section>
 

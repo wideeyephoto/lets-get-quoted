@@ -110,6 +110,16 @@
 .compactImageTile span { display: block; padding: .5rem; color: #c8d0dc; font-size: .72rem; font-weight: 800; text-transform: uppercase; }
 .selectedImageTile { border-color: #ffd166; box-shadow: 0 0 0 2px rgba(255,209,102,.18); }
 .selectedImageTile span { color: #ffd166; }
+.showcaseSelected { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: .55rem; margin-bottom: .35rem; }
+.showcaseSelectedTile { position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,.14); border-radius: 8px; background: rgba(255,255,255,.04); }
+.showcaseSelectedTile img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.showcaseSelectedTileActive { border-color: #ff7a21; box-shadow: 0 0 0 2px rgba(255,122,33,.35); }
+.showcaseSelectedActions { position: absolute; inset: auto 0 0 0; display: flex; gap: 1px; }
+.showcaseSelectedActions button { flex: 1; min-height: 28px; padding: .3rem; border: 0; background: rgba(6,12,20,.82); color: #f7f5ef; font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; cursor: pointer; }
+.showcaseSelectedActions button:last-child { flex: 0 0 32px; color: #ffb4a7; }
+.showcaseSelectedActions button:hover { background: rgba(6,12,20,.95); }
+.replacingHint { margin: 0; padding: .6rem .7rem; border: 1px solid rgba(255,122,33,.4); border-radius: 7px; background: rgba(255,122,33,.1); color: #ffd9c2; font-size: .8rem; line-height: 1.45; }
+.replacingHint button { margin-left: .25rem; border: 0; background: none; color: #ff9b54; font-weight: 800; text-decoration: underline; cursor: pointer; }
 .jobPhotoImport { display: flex; align-items: center; justify-content: space-between; gap: .85rem; padding: .85rem; border: 1px dashed rgba(255,255,255,.18); border-radius: 7px; background: rgba(0,0,0,.16); }
 .jobPhotoImport div { display: grid; gap: .25rem; }
 .jobPhotoImport small { color: #9ca8b8; font-size: .78rem; line-height: 1.4; }
@@ -180,6 +190,8 @@
 .imageSlotActions { margin-top: auto; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .slotFlash { animation: slotFlash 1.5s ease; }
 @keyframes slotFlash { 0%, 45% { border-color: #ff7a21; box-shadow: 0 0 0 3px rgba(255,122,33,.55); } 100% { border-color: rgba(255,255,255,.12); box-shadow: 0 0 0 3px rgba(255,122,33,0); } }
+.fieldFlash { border-radius: 8px; animation: fieldFlash 1.6s ease; }
+@keyframes fieldFlash { 0%, 45% { box-shadow: 0 0 0 3px rgba(255,122,33,.5); } 100% { box-shadow: 0 0 0 3px rgba(255,122,33,0); } }
 .domainControl { display: grid; grid-template-columns: 1fr auto; gap: .5rem; }
 .domainControl button { padding: 0 .9rem; border: 1px solid rgba(255,255,255,.18); border-radius: 6px; background: rgba(255,255,255,.07); color: #fff; font-weight: 700; cursor: pointer; }
 .dnsCard { display: grid; gap: .5rem; padding: .9rem; border: 1px solid rgba(255,209,102,.25); border-radius: 6px; background: rgba(255,209,102,.06); }
