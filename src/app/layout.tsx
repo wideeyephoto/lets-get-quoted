@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Anton, Barlow, Fraunces, IBM_Plex_Sans, Inter, JetBrains_Mono, Space_Grotesk, Work_Sans } from 'next/font/google';
+import { Anton, Barlow, Fraunces, IBM_Plex_Sans, Inter, JetBrains_Mono, Poppins, Space_Grotesk, Work_Sans } from 'next/font/google';
 import { headers } from 'next/headers';
 import type { ReactNode } from 'react';
 import { AppShell } from '@/components/app-shell';
@@ -57,6 +57,12 @@ const vistaBodyFont = Inter({
   weight: ['400', '500', '600'],
 });
 
+const careFont = Poppins({
+  subsets: ['latin'],
+  variable: '--font-care',
+  weight: ['400', '500', '600', '700', '800'],
+});
+
 const SITE_URL = 'https://letsgetquoted.com';
 
 export const metadata: Metadata = {
@@ -94,7 +100,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
   return (
     <html lang="en">
-      <body className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} ${forgeDisplayFont.variable} ${forgeBodyFont.variable} ${guildDisplayFont.variable} ${guildBodyFont.variable} ${vistaBodyFont.variable}`}>
+      <body className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} ${forgeDisplayFont.variable} ${forgeBodyFont.variable} ${guildDisplayFont.variable} ${guildBodyFont.variable} ${vistaBodyFont.variable} ${careFont.variable}`}>
         <AppShellProvider>
           <AppShell forceStandaloneSite={isStandaloneSite}>{children}</AppShell>
         </AppShellProvider>

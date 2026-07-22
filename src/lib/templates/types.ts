@@ -65,10 +65,10 @@ export const AVAILABLE_TEMPLATES: TemplateConfig[] = [
   },
   {
     id: 'handy',
-    name: 'Handy',
-    description: 'Bright and friendly, with icon service cards — built for handyman & repair trades',
-    accent: '#ee5a1a',
-    fontVar: 'var(--font-display), system-ui, sans-serif',
+    name: 'Care',
+    description: 'Fresh home-services look — cyan-green gradients, rounded cards, and clear CTAs',
+    accent: '#12c2c9',
+    fontVar: 'var(--font-care), system-ui, sans-serif',
   },
 ];
 // Note: 17 additional templates (Haven, Meridian, Blueprint, Lumen, Atlas, Circuit,
