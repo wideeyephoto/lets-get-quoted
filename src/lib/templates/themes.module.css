@@ -991,3 +991,26 @@
 .shine[data-mode='dark'] { background: #0f1626; color: #e9edf5; --sh-ink: #e9edf5; --sh-muted: #98a2b3; --sh-surface: #172032; }
 .shine[data-mode='dark'] .serviceCard { background: #172032; border-color: #263149; }
 .shine[data-mode='dark'] .extraSection:nth-of-type(even) { background: linear-gradient(180deg, #0f1626, var(--sh-surface) 16%, var(--sh-surface) 84%, #0f1626); }
+
+/* ===== Mobile nav — floating menu button + full-screen overlay =====
+   Portaled to <body> (see SiteNavLinks.tsx), shown only where templates hide
+   their nav links. Dark neutral ground + the site accent, like the
+   announcement bar, so it reads on every template and both color modes.
+   Overlay entrance is transform-only — an opacity animation can stall
+   invisible in the throttled preview iframe. */
+.mobileNavToggle { position: fixed; left: 1rem; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 75; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 4px; width: 52px; height: 52px; border: none; border-radius: 999px; background: #16181d; box-shadow: 0 18px 36px -14px rgba(0,0,0,.6), inset 0 0 0 2px color-mix(in srgb, var(--theme-accent, #f0b429) 60%, transparent); cursor: pointer; }
+.mobileNavToggle span { width: 20px; height: 2px; border-radius: 2px; background: #fff; transition: transform .25s ease, opacity .2s ease; }
+.mobileNavToggle[aria-expanded='true'] span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.mobileNavToggle[aria-expanded='true'] span:nth-child(2) { opacity: 0; }
+.mobileNavToggle[aria-expanded='true'] span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+.mobileNavOverlay { position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column; justify-content: center; gap: 1.4rem; padding: 2rem 1.9rem calc(120px + env(safe-area-inset-bottom, 0px)); background: rgba(13,14,18,.97); color: #fff; overflow-y: auto; animation: mobileNavIn .28s cubic-bezier(.22, .61, .36, 1) both; }
+@keyframes mobileNavIn { from { transform: translateY(18px); } to { transform: none; } }
+.mobileNavClose { position: absolute; top: calc(1rem + env(safe-area-inset-top, 0px)); right: 1rem; width: 44px; height: 44px; border: none; border-radius: 999px; background: rgba(255,255,255,.1); color: #fff; font-size: 1.05rem; cursor: pointer; }
+.mobileNavBrand { margin: 0; font-size: .82rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: color-mix(in srgb, #fff 55%, transparent); }
+.mobileNavLinks { display: flex; flex-direction: column; gap: .3rem; }
+.mobileNavLinks a { padding: .5rem 0; font-size: 1.6rem; font-weight: 800; color: #fff; text-decoration: none; }
+.mobileNavLinks a:hover, .mobileNavLinks a:active { color: var(--theme-accent, #f0b429); }
+.mobileNavCall { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 52px; padding: .8rem 1.5rem; border-radius: 999px; background: var(--theme-accent, #f0b429); color: var(--theme-on-accent, #111); font-weight: 800; font-size: 1rem; text-decoration: none; align-self: flex-start; }
+@media (max-width: 900px) { .mobileNavToggle { display: inline-flex; } }
+@media (min-width: 901px) { .mobileNavOverlay { display: none; } }
+@media (prefers-reduced-motion: reduce) { .mobileNavOverlay { animation: none; } .mobileNavToggle span { transition: none; } }
