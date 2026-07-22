@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
+import { getHeroBadge } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
@@ -22,6 +23,7 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
     gallery.find((image) => image.url !== heroImage)?.url ||
     STOCK_SITE_IMAGES.find((image) => image.url !== heroImage)?.url ||
     STOCK_SITE_IMAGES[2].url;
+  const heroBadge = getHeroBadge(site.content);
   const themeStyle = {
     '--theme-accent': site.accent_override || '#e5322a',
     '--theme-on-accent': '#ffffff',
@@ -66,10 +68,12 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
           <figure className={styles.coatPhotoSide}>
             <img src={secondImage} alt="A freshly finished interior" loading="lazy" decoding="async" />
           </figure>
-          <div className={styles.coatHeroBadge}>
-            <span className={styles.coatHeroBadgeIcon} aria-hidden="true">✓</span>
-            <div><strong>Premium finishes</strong><small>Licensed &amp; insured</small></div>
-          </div>
+          {heroBadge && (
+            <div className={styles.coatHeroBadge}>
+              <span className={styles.coatHeroBadgeIcon} aria-hidden="true">{heroBadge.icon}</span>
+              <div><strong>{heroBadge.title}</strong><small>{heroBadge.subtitle}</small></div>
+            </div>
+          )}
         </div>
       </section>
 

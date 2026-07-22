@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
+import { getHeroBadge } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
@@ -24,6 +25,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
     gallery.find((image) => image.url !== heroImage)?.url ||
     STOCK_SITE_IMAGES.find((image) => image.url !== heroImage)?.url ||
     STOCK_SITE_IMAGES[1].url;
+  const heroBadge = getHeroBadge(site.content);
   const themeStyle = {
     '--theme-accent': site.accent_override || '#ffd60a',
     '--theme-on-accent': '#0f1b2d',
@@ -64,10 +66,12 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
               <img className={styles.shinePhoto} src={secondImage} alt="Our cleaning team at work" loading="lazy" decoding="async" />
             </figure>
           </div>
-          <div className={`${styles.shineBadge} ${styles.shineBadgeSupport}`} data-parallax="0.2">
-            <span className={styles.shineBadgeIcon} aria-hidden="true">☎</span>
-            <strong>24/7 Support</strong>
-          </div>
+          {heroBadge && (
+            <div className={`${styles.shineBadge} ${styles.shineBadgeSupport}`} data-parallax="0.2">
+              <span className={styles.shineBadgeIcon} aria-hidden="true">{heroBadge.icon}</span>
+              <strong>{heroBadge.title}</strong>
+            </div>
+          )}
           <div className={`${styles.shineBadge} ${styles.shineBadgeCustomers}`} data-parallax="0.26">
             <span className={styles.shineAvatars} aria-hidden="true"><span /><span /><span /></span>
             <div><strong>500+</strong><small>Satisfied customers</small></div>
