@@ -219,7 +219,7 @@
 /* Availability / urgency bar (toggleable) — mounts above the header. Dark
    ground + accent dot with a faint white ring, so the dot reads on the dark
    bar under any template accent or a contractor's custom (even dark) accent. */
-.announceBar { display: flex; align-items: center; justify-content: center; gap: 7px 12px; flex-wrap: wrap; padding: 9px 18px; background: #16181d; color: #fff; font-size: 13px; line-height: 1.4; text-align: center; }
+.announceBar { display: flex; align-items: center; justify-content: center; gap: 7px 12px; flex-wrap: wrap; padding: 9px 18px; background: #16181d; color: #fff; font-size: 13px; line-height: 1.4; text-align: center; box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--theme-accent, #f0b429) 45%, transparent); }
 .announceDot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--theme-accent, #f0b429); box-shadow: 0 0 0 1px color-mix(in srgb, #fff 32%, transparent); animation: announcePulse 2.4s ease-out infinite; }
 .announceMsg { font-weight: 800; letter-spacing: .01em; overflow-wrap: anywhere; }
 .announceSub { font-weight: 600; color: color-mix(in srgb, #fff 72%, transparent); overflow-wrap: anywhere; }

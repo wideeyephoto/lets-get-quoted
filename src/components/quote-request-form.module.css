@@ -1,9 +1,13 @@
 .form { display: flex; flex-direction: column; gap: 16px; width: min(760px, 100%); margin-top: 32px; padding: clamp(1.5rem, 3vw, 2.25rem); border-radius: calc(var(--theme-radius, 4px) + 16px); background: color-mix(in srgb, currentColor 6%, transparent); border: 1px solid color-mix(in srgb, currentColor 14%, transparent); box-shadow: 0 30px 60px -35px rgba(0,0,0,.45); text-align: left; }
 .step { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .step[hidden] { display: none; }
+/* Each step slides in when it becomes active (transform-only so fields can never
+   get stuck invisible in a throttled preview iframe). */
+.step:not([hidden]) { animation: quoteStepIn .35s cubic-bezier(.22, .61, .36, 1) both; }
+@keyframes quoteStepIn { from { transform: translateY(10px); } to { transform: none; } }
 .stepper { display: grid; gap: 8px; }
 .stepBar { height: 6px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, currentColor 14%, transparent); }
-.stepFill { display: block; height: 100%; border-radius: 999px; background: var(--theme-accent, #f0b429); transition: width .3s ease; }
+.stepFill { display: block; height: 100%; border-radius: 999px; background: var(--theme-accent, #f0b429); box-shadow: 0 0 10px -1px color-mix(in srgb, var(--theme-accent, #f0b429) 65%, transparent); transition: width .35s cubic-bezier(.22, .61, .36, 1); }
 .stepLabel { margin: 0; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; opacity: .72; }
 .optional { font-style: normal; font-weight: 700; opacity: .58; text-transform: none; letter-spacing: normal; }
 .stepNav { display: flex; gap: 12px; align-items: center; margin-top: 4px; }
@@ -30,7 +34,8 @@
 .photoDropzone:hover { border-style: solid; background: color-mix(in srgb, var(--theme-accent, #f0b429) 14%, rgba(255,255,255,.94)); }
 .photoInput { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .photoActions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.photoChooseButton { min-height: 42px; padding: 10px 16px; border: none; border-radius: 999px; background: var(--theme-accent, #f0b429); color: var(--theme-on-accent, #111); font: 800 14px/1 inherit; cursor: pointer; box-shadow: 0 12px 24px -18px rgba(0,0,0,.55); }
+.photoChooseButton { min-height: 42px; padding: 10px 16px; border: none; border-radius: 999px; background: var(--theme-accent, #f0b429); color: var(--theme-on-accent, #111); font: 800 14px/1 inherit; cursor: pointer; box-shadow: 0 12px 24px -18px rgba(0,0,0,.55); transition: transform .2s ease, filter .2s ease; }
+.photoChooseButton:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.05); }
 .photoChooseButton:disabled { opacity: .55; cursor: default; }
 .photoList { display: grid; gap: 8px; }
 .photoItem { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border: 1px solid rgba(0,0,0,.08); border-radius: calc(var(--theme-radius, 4px) + 4px); background: rgba(255,255,255,.72); color: #14161a; text-transform: none; letter-spacing: normal; }
@@ -47,4 +52,4 @@
 .success { color: #052e16 !important; -webkit-text-fill-color: #052e16; background: #dcfce7; border: 1px solid #86efac; }
 .error { color: #7f1d1d !important; -webkit-text-fill-color: #7f1d1d; background: #fee2e2; border: 1px solid #fca5a5; }
 @media (max-width: 600px) { .form { padding: 1.5rem; } .step { grid-template-columns: 1fr; } .photoActions { align-items: stretch; } .photoChooseButton { width: 100%; } }
-@media (prefers-reduced-motion: reduce) { .stepFill, .next { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .stepFill, .next, .photoChooseButton { transition: none; } .step:not([hidden]) { animation: none; } }
