@@ -24,12 +24,17 @@ export default function LivePreview({ site }: LivePreviewProps) {
     return () => window.removeEventListener('message', handleReady);
   }, []);
 
+  // Debounced: while the owner is typing, wait for a 150ms pause instead of
+  // re-rendering the whole preview iframe on every keystroke.
   useEffect(() => {
     if (!loaded) return;
-    iframeRef.current?.contentWindow?.postMessage(
-      { type: 'lgq:site-preview', site },
-      window.location.origin
-    );
+    const timer = setTimeout(() => {
+      iframeRef.current?.contentWindow?.postMessage(
+        { type: 'lgq:site-preview', site },
+        window.location.origin
+      );
+    }, 150);
+    return () => clearTimeout(timer);
   }, [loaded, site]);
 
   function sendDraft() {

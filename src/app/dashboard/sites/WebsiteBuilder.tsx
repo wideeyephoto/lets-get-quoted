@@ -38,6 +38,11 @@ const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
 // Header hint for a section card: item count when there's content, a warning
 // when the section is On but empty (it renders nothing publicly until filled —
 // which otherwise reads as "checked but not showing").
+function wordCount(text: string): number {
+  const trimmed = text.trim();
+  return trimmed ? trimmed.split(/\s+/).length : 0;
+}
+
 function contentHint(enabled: boolean, count: number, noun: string, plural?: string): { hint?: string; hintTone?: 'ok' | 'warn' } {
   if (enabled && count === 0) return { hint: "empty — won't show yet", hintTone: 'warn' };
   if (count > 0) return { hint: `${count} ${count === 1 ? noun : plural || `${noun}s`}`, hintTone: 'ok' };
@@ -89,6 +94,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   const [ratingInput, setRatingInput] = useState(() => String(getSiteContent(initialSite.content).ratingBadge.rating));
   const [reviewCountInput, setReviewCountInput] = useState(() => String(getSiteContent(initialSite.content).ratingBadge.reviewCount));
   const [monthlyFromInput, setMonthlyFromInput] = useState(() => String(getSiteContent(initialSite.content).financing.monthlyFrom));
+  // Same decimal/clear-clobber guard for the per-stat Value fields: keep the
+  // raw string while a stat is being edited so clearing doesn't snap to 0.
+  const [statValueInputs, setStatValueInputs] = useState<Record<string, string>>({});
+  const [uploadingTestimonialId, setUploadingTestimonialId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const galleryImages = getSiteGallery(site.content);
   const siteContent = getSiteContent(site.content);
@@ -204,6 +213,29 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
         setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Could not upload that logo. Please try another image.' });
       } finally {
         setIsUploadingLogo(false);
+      }
+    });
+  }, []);
+
+  const handleTestimonialImageUpload = useCallback((testimonialId: string, file: File) => {
+    setUploadingTestimonialId(testimonialId);
+    setMessage(null);
+    startTransition(async () => {
+      try {
+        const compressed = await compressImage(file, 1400, 0.82);
+        const formData = new FormData();
+        formData.set('image', compressed);
+        const image = await uploadSiteImageAction(formData);
+        setSiteImages((current) => [image, ...current]);
+        setSite((current) => {
+          const content = getSiteContent(current.content);
+          return { ...current, content: mergeSiteContent(current.content, { testimonials: { ...content.testimonials, items: content.testimonials.items.map((t) => t.id === testimonialId ? { ...t, imageUrl: image.url, imageAlt: t.imageAlt || t.author || 'Customer review image' } : t) } }) };
+        });
+        setIsDirty(true);
+      } catch (error) {
+        setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Could not upload that image. Please try another.' });
+      } finally {
+        setUploadingTestimonialId(null);
       }
     });
   }, []);
@@ -559,13 +591,28 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
       <div className={styles.builderGrid}>
         <section className={styles.editorPanel}>
-          <div className={styles.builderTabs} role="tablist" aria-label="Website settings">
+          <div
+            className={styles.builderTabs}
+            role="tablist"
+            aria-label="Website settings"
+            onKeyDown={(event) => {
+              if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+              event.preventDefault();
+              const index = TABS.findIndex((tab) => tab.id === activeTab);
+              const next = TABS[(index + (event.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length];
+              setActiveTab(next.id);
+              document.getElementById(`builder-tab-${next.id}`)?.focus();
+            }}
+          >
             {TABS.map((tab) => (
               <button
                 type="button"
                 key={tab.id}
+                id={`builder-tab-${tab.id}`}
                 role="tab"
                 aria-selected={activeTab === tab.id}
+                aria-controls="builder-tabpanel"
+                tabIndex={activeTab === tab.id ? 0 : -1}
                 className={activeTab === tab.id ? styles.activeBuilderTab : undefined}
                 onClick={() => setActiveTab(tab.id)}
               >
@@ -574,7 +621,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
             ))}
           </div>
 
-          <div className={styles.tabContent} role="tabpanel">
+          <div className={styles.tabContent} id="builder-tabpanel" role="tabpanel" aria-labelledby={`builder-tab-${activeTab}`}>
             {activeTab === 'business' && (
               <div className={styles.formSection}>
                 <div className={styles.sectionIntro}>
@@ -610,7 +657,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   {site.logo_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('logo_url', null)}>Remove logo</button>}
                 </div>
                 <label className={styles.formField}><span>Logo URL (optional — or upload above)</span><input type="url" value={site.logo_url || ''} onChange={(event) => handleChange('logo_url', event.target.value || null)} placeholder="https://..." /></label>
-                <label className={styles.formField}><span>Hero image URL</span><input type="url" value={site.hero_url || ''} onChange={(event) => handleChange('hero_url', event.target.value || null)} placeholder="Choose below or paste a URL" /></label>
+                <label className={styles.formField}><span>Hero image</span><input type="url" value={site.hero_url || ''} onChange={(event) => handleChange('hero_url', event.target.value || null)} placeholder="Paste an image URL…" /><small>…or just pick one from the library below — uploads and stock photos both work.</small></label>
                 <ImageLibrary stockImages={STOCK_SITE_IMAGES} initialUploads={uploadedImages} galleryImages={galleryImages} heroUrl={site.hero_url} onSelectHero={selectHeroImage} onToggleGallery={toggleGalleryImage} />
               </div>
             )}
@@ -705,7 +752,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                             <span>{uploadingCoverId === post.id ? 'Uploading…' : post.coverImage ? 'Replace photo' : 'Upload a cover photo'}</span>
                           </label>
                         </div>
-                        <label className={styles.formField}><span>Body</span><textarea rows={10} value={post.body} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, body: event.target.value } : p) })} placeholder="Write in short paragraphs separated by a blank line." /></label>
+                        <label className={styles.formField}><span>Body</span><textarea rows={10} value={post.body} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, body: event.target.value } : p) })} placeholder="Write in short paragraphs separated by a blank line." /><small>{wordCount(post.body)} words · ~{Math.max(1, Math.round(wordCount(post.body) / 220))} min read{wordCount(post.body) > 0 && wordCount(post.body) < 300 ? ' — aim for 400+ words so the post feels substantial' : ''}</small></label>
                       </div>
                     ))}
                   </div>
@@ -773,7 +820,13 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                         </div>
                         <label className={styles.formField}><span>Project label</span><input value={item.label} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.map((testimonial) => testimonial.id === item.id ? { ...testimonial, label: event.target.value } : testimonial) })} placeholder="Kitchen remodel, deck build, emergency repair..." /></label>
                         <div className={styles.formColumns}>
-                          <label className={styles.formField}><span>Review image URL</span><input type="url" value={item.imageUrl} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.map((testimonial) => testimonial.id === item.id ? { ...testimonial, imageUrl: event.target.value, imageAlt: testimonial.imageAlt || testimonial.author || 'Customer review image' } : testimonial) })} placeholder="https://..." /></label>
+                          <div className={styles.formField}>
+                            <span>Photo (optional)</span>
+                            <label className={styles.blogCoverUpload}>
+                              <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={uploadingTestimonialId === item.id} onChange={(event) => { const file = event.target.files?.[0]; event.currentTarget.value = ''; if (file) handleTestimonialImageUpload(item.id, file); }} />
+                              <span>{uploadingTestimonialId === item.id ? 'Uploading…' : item.imageUrl ? 'Replace photo' : 'Upload a photo'}</span>
+                            </label>
+                          </div>
                           <label className={styles.formField}><span>Choose image</span><select value={item.imageUrl} onChange={(event) => {
                             const image = selectableImages.find((candidate) => candidate.url === event.target.value);
                             updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.map((testimonial) => testimonial.id === item.id ? { ...testimonial, imageUrl: event.target.value, imageAlt: image?.alt || testimonial.imageAlt || testimonial.author || 'Customer review image' } : testimonial) });
@@ -870,7 +923,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                         <div className={styles.itemHeader}><strong>{item.label || `Stat ${index + 1}`}</strong><button type="button" onClick={() => updateStats({ ...siteContent.stats, items: siteContent.stats.items.filter((stat) => stat.id !== item.id) })}>Remove</button></div>
                         <div className={styles.formColumns}>
                           <label className={styles.formField}><span>Prefix</span><input value={item.prefix} maxLength={4} onChange={(event) => updateStats({ ...siteContent.stats, items: siteContent.stats.items.map((stat) => stat.id === item.id ? { ...stat, prefix: event.target.value } : stat) })} placeholder="$" /></label>
-                          <label className={styles.formField}><span>Value</span><input type="number" min={0} value={item.value} onChange={(event) => updateStats({ ...siteContent.stats, items: siteContent.stats.items.map((stat) => stat.id === item.id ? { ...stat, value: Number(event.target.value) } : stat) })} /></label>
+                          <label className={styles.formField}><span>Value</span><input type="number" min={0} value={statValueInputs[item.id] ?? String(item.value)} onChange={(event) => { const raw = event.target.value; setStatValueInputs((current) => ({ ...current, [item.id]: raw })); if (raw !== '') updateStats({ ...siteContent.stats, items: siteContent.stats.items.map((stat) => stat.id === item.id ? { ...stat, value: Number(raw) } : stat) }); }} onBlur={() => setStatValueInputs((current) => { const next = { ...current }; delete next[item.id]; return next; })} /></label>
                           <label className={styles.formField}><span>Suffix</span><input value={item.suffix} maxLength={4} onChange={(event) => updateStats({ ...siteContent.stats, items: siteContent.stats.items.map((stat) => stat.id === item.id ? { ...stat, suffix: event.target.value } : stat) })} placeholder="+ / %" /></label>
                         </div>
                         <label className={styles.formField}><span>Label</span><input value={item.label} onChange={(event) => updateStats({ ...siteContent.stats, items: siteContent.stats.items.map((stat) => stat.id === item.id ? { ...stat, label: event.target.value } : stat) })} placeholder="Jobs completed" /></label>
