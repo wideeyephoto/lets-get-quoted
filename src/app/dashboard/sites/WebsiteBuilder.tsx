@@ -9,13 +9,13 @@ import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
 import { compressImage } from '@/lib/client-images';
-import ImageLibrary from './ImageLibrary';
+import ImagePickerModal from './ImagePickerModal';
 import LivePreview from './LivePreview';
 import SectionCard from './SectionCard';
 import ThemeIcon from './ThemeIcon';
 import styles from './SiteEditor.module.css';
 
-type BuilderTab = 'business' | 'design' | 'images' | 'publish';
+type BuilderTab = 'business' | 'design' | 'publish';
 
 type WebsiteBuilderProps = {
   site: Site;
@@ -25,7 +25,6 @@ type WebsiteBuilderProps = {
 const TABS: { id: BuilderTab; label: string }[] = [
   { id: 'business', label: 'Business' },
   { id: 'design', label: 'Design' },
-  { id: 'images', label: 'Images' },
   { id: 'publish', label: 'Publish' },
 ];
 
@@ -119,7 +118,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   const [isGeneratingBlog, setIsGeneratingBlog] = useState(false);
   const [uploadingCoverId, setUploadingCoverId] = useState<string | null>(null);
   const [blogTopic, setBlogTopic] = useState('');
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   // Local string state for the free-numeric rating fields so decimal typing
   // (e.g. "4.9") isn't clobbered by re-normalization on every keystroke.
   const [ratingInput, setRatingInput] = useState(() => String(getSiteContent(initialSite.content).ratingBadge.rating));
@@ -131,17 +129,16 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   const [uploadingTestimonialId, setUploadingTestimonialId] = useState<string | null>(null);
   // One list item is editable at a time; new items open for editing right away.
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
-  // Briefly highlights the Logo/Hero slot after you click that image in the
-  // live preview, so it's obvious which photo you're about to replace.
-  const [flashSlot, setFlashSlot] = useState<'hero' | 'logo' | null>(null);
-  // Same, for a Design-tab field jumped to from the preview (e.g. hero badge).
+  // Briefly highlights a Design-tab field jumped to from the preview (e.g. the
+  // hero badge control).
   const [flashField, setFlashField] = useState<string | null>(null);
   // When set (from clicking a showcase tile in the preview), the showcase image
   // picker replaces THIS tile in place instead of toggling selection.
   const [replacingShowcaseId, setReplacingShowcaseId] = useState<string | null>(null);
-  // When set (from clicking a secondary template photo in the preview), the
-  // image library assigns the next picked image to this content.images slot.
-  const [pickingSlot, setPickingSlot] = useState<string | null>(null);
+  // The "Replace photo" popup: which image is being replaced. Opened by clicking
+  // any photo in the preview or an inline Replace-photo button; the chosen image
+  // is routed by `kind` (site hero/logo, or a content.images section slot).
+  const [picker, setPicker] = useState<{ label: string; kind: 'hero' | 'logo' | 'slot'; slot?: string } | null>(null);
   const [isPending, startTransition] = useTransition();
   const galleryImages = getSiteGallery(site.content);
   const siteContent = getSiteContent(site.content);
@@ -289,10 +286,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       if (target === 'hero') { setActiveTab('business'); focusField('bf-headline'); return; }
       if (target === 'identity') { setActiveTab('business'); focusField('bf-company'); return; }
       if (target === 'heroBadge') { setActiveTab('design'); setOpenSection('colors'); flashCard('heroBadge', 'design-hero-badge'); return; }
+      // Every photo opens the "Replace photo" popup, routed by what was clicked.
+      if (target === 'heroImage') { setPicker({ label: 'the hero image', kind: 'hero' }); return; }
+      if (target === 'logo') { setPicker({ label: 'your logo', kind: 'logo' }); return; }
       if (target.startsWith('image-')) {
-        setActiveTab('images');
-        setPickingSlot(target.slice('image-'.length));
-        requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById('image-library')?.scrollIntoView({ behavior: 'smooth', block: 'start' })));
+        const slot = target.slice('image-'.length);
+        setPicker({ label: IMAGE_SLOT_LABELS[slot] || 'this photo', kind: 'slot', slot });
         return;
       }
       if (target.startsWith('showcase-')) {
@@ -300,14 +299,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
         setOpenSection('showcase');
         setReplacingShowcaseId(target.slice('showcase-'.length));
         flashCard('showcase', 'showcase-picker');
-        return;
-      }
-      if (target === 'heroImage' || target === 'logo' || target === 'work') {
-        setActiveTab('images');
-        const slot = target === 'logo' ? 'logo' : target === 'heroImage' ? 'hero' : null;
-        const scrollId = slot ? `img-slot-${slot}` : 'builder-tabpanel';
-        if (slot) { setFlashSlot(slot); setTimeout(() => setFlashSlot((current) => (current === slot ? null : current)), 1600); }
-        requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(scrollId)?.scrollIntoView({ behavior: 'smooth', block: slot ? 'center' : 'start' })));
         return;
       }
       const section = SECTION_TARGETS[target];
@@ -327,31 +318,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   useEffect(() => {
     if (activeTab !== 'design' || openSection !== 'showcase') setReplacingShowcaseId(null);
   }, [activeTab, openSection]);
-
-  // Same for the image-slot picker: it only applies on the Images tab.
-  useEffect(() => {
-    if (activeTab !== 'images') setPickingSlot(null);
-  }, [activeTab]);
-
-  const handleLogoUpload = useCallback((file: File) => {
-    setIsUploadingLogo(true);
-    setMessage(null);
-    startTransition(async () => {
-      try {
-        const compressed = await compressImage(file, 640, 0.85);
-        const formData = new FormData();
-        formData.set('image', compressed);
-        const image = await uploadSiteImageAction(formData);
-        setSiteImages((current) => [image, ...current]);
-        setSite((current) => ({ ...current, logo_url: image.url }));
-        setIsDirty(true);
-      } catch (error) {
-        setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Could not upload that logo. Please try another image.' });
-      } finally {
-        setIsUploadingLogo(false);
-      }
-    });
-  }, []);
 
   const handleTestimonialImageUpload = useCallback((testimonialId: string, file: File) => {
     setUploadingTestimonialId(testimonialId);
@@ -512,7 +478,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
   const assignSlotImage = useCallback((slot: string, image: SiteImage) => {
     updateSiteContent({ images: { ...siteContent.images, [slot]: image.url } });
-    setPickingSlot(null);
   }, [siteContent.images, updateSiteContent]);
 
   const resetSlotImage = useCallback((slot: string) => {
@@ -520,6 +485,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     delete nextImages[slot];
     updateSiteContent({ images: nextImages });
   }, [siteContent.images, updateSiteContent]);
+
+  const openPicker = useCallback((label: string, kind: 'hero' | 'logo' | 'slot', slot?: string) => {
+    setPicker({ label, kind, slot });
+  }, []);
 
   const updateShowcase = useCallback((showcase: SiteShowcaseContent) => {
     updateSiteContent({ showcase });
@@ -793,6 +762,30 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   </button>
                   <small>Fills your headline, tagline, SEO, hours, service area, Services, and FAQs with trade-specific examples to personalize. Testimonials and stats are generated too, but left off until you swap in your real ones.</small>
                 </div>
+
+                <div className={styles.imageSlots}>
+                  <div className={styles.imageSlot}>
+                    <div className={styles.imageSlotHead}><strong>Logo</strong><small>Shown small in your header and footer.</small></div>
+                    {site.logo_url
+                      ? <div className={styles.logoPreview}><img src={site.logo_url} alt="Current logo" /></div>
+                      : <div className={styles.imageSlotEmpty}>No logo yet</div>}
+                    <div className={styles.imageSlotActions}>
+                      <button type="button" className={styles.secondaryAction} onClick={() => openPicker('your logo', 'logo')}>{site.logo_url ? 'Replace photo' : 'Add a logo'}</button>
+                      {site.logo_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('logo_url', null)}>Remove</button>}
+                    </div>
+                  </div>
+                  <div className={styles.imageSlot}>
+                    <div className={styles.imageSlotHead}><strong>Hero image</strong><small>The big photo at the top of your homepage.</small></div>
+                    {site.hero_url
+                      ? <div className={styles.heroSlotPreview}><img src={site.hero_url} alt="Current hero image" /></div>
+                      : <div className={styles.imageSlotEmpty}>No hero image yet</div>}
+                    <div className={styles.imageSlotActions}>
+                      <button type="button" className={styles.secondaryAction} onClick={() => openPicker('the hero image', 'hero')}>{site.hero_url ? 'Replace photo' : 'Add a hero image'}</button>
+                      {site.hero_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('hero_url', null)}>Remove</button>}
+                    </div>
+                  </div>
+                </div>
+
                 <label className={styles.formField}><span>Company name</span><input id="bf-company" value={site.company_name} onChange={(event) => handleChange('company_name', event.target.value)} /></label>
                 <label className={styles.formField}><span>Headline</span><textarea id="bf-headline" rows={2} value={site.headline || ''} onChange={(event) => handleChange('headline', event.target.value || null)} placeholder="Built with purpose. Finished with care." /></label>
                 <label className={styles.formField}><span>Tagline</span><textarea id="bf-tagline" rows={3} value={site.tagline || ''} onChange={(event) => handleChange('tagline', event.target.value || null)} placeholder="Tell homeowners what makes your business different." /></label>
@@ -802,69 +795,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 </div>
                 <label className={styles.formField}><span>Service area</span><input value={site.service_area || ''} onChange={(event) => handleChange('service_area', event.target.value || null)} placeholder="City and surrounding communities" /></label>
                 <label className={styles.formField}><span>Business hours</span><input value={site.hours || ''} onChange={(event) => handleChange('hours', event.target.value || null)} placeholder="Monday-Friday, 7am-5pm" /></label>
-              </div>
-            )}
-
-            {activeTab === 'images' && (
-              <div className={styles.formSection}>
-                <div className={styles.sectionIntro}><h2>Images</h2><p>Upload your photos once, then choose where each one goes on your site.</p></div>
-
-                <div className={styles.imageSlots}>
-                  <div className={`${styles.imageSlot}${flashSlot === 'logo' ? ` ${styles.slotFlash}` : ''}`} id="img-slot-logo">
-                    <div className={styles.imageSlotHead}><strong>Logo</strong><small>Shown small in your header and footer.</small></div>
-                    {site.logo_url
-                      ? <div className={styles.logoPreview}><img src={site.logo_url} alt="Current logo" /></div>
-                      : <div className={styles.imageSlotEmpty}>No logo yet</div>}
-                    <div className={styles.imageSlotActions}>
-                      <label className={styles.blogCoverUpload}>
-                        <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={isUploadingLogo} onChange={(event) => { const file = event.target.files?.[0]; event.currentTarget.value = ''; if (file) handleLogoUpload(file); }} />
-                        <span>{isUploadingLogo ? 'Uploading…' : site.logo_url ? 'Replace logo' : 'Upload your logo'}</span>
-                      </label>
-                      {site.logo_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('logo_url', null)}>Remove</button>}
-                    </div>
-                  </div>
-
-                  <div className={`${styles.imageSlot}${flashSlot === 'hero' ? ` ${styles.slotFlash}` : ''}`} id="img-slot-hero">
-                    <div className={styles.imageSlotHead}><strong>Hero image</strong><small>The big photo at the top of your homepage.</small></div>
-                    {site.hero_url
-                      ? <div className={styles.heroSlotPreview}><img src={site.hero_url} alt="Current hero image" /></div>
-                      : <div className={styles.imageSlotEmpty}>No hero image yet — pick one from your library below.</div>}
-                    <div className={styles.imageSlotActions}>
-                      {site.hero_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('hero_url', null)}>Remove</button>}
-                    </div>
-                  </div>
-                </div>
-
-                {Object.keys(siteContent.images).length > 0 && (
-                  <>
-                    <div className={styles.cardGroupLabel}>Other section photos</div>
-                    <div className={styles.imageSlots}>
-                      {Object.entries(siteContent.images).map(([slot, url]) => (
-                        <div key={slot} className={styles.imageSlot}>
-                          <div className={styles.imageSlotHead}><strong>{IMAGE_SLOT_LABELS[slot] || slot}</strong><small>Custom photo — overrides the template default.</small></div>
-                          <div className={styles.heroSlotPreview}><img src={url} alt={`${IMAGE_SLOT_LABELS[slot] || slot} preview`} /></div>
-                          <div className={styles.imageSlotActions}>
-                            <button type="button" className={styles.secondaryAction} onClick={() => { setPickingSlot(slot); requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById('image-library')?.scrollIntoView({ behavior: 'smooth', block: 'start' }))); }}>Replace</button>
-                            <button type="button" className={styles.secondaryAction} onClick={() => resetSlotImage(slot)}>Reset to default</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-
-                <div id="image-library">
-                  <div className={styles.sectionIntro}><h2>Photo library</h2><p>Every photo you upload lives here. Set one as your hero, add photos to your gallery — the shared pool your Showcase, reviews, and before/after sections pull from — or swap a section photo you clicked in the preview.</p></div>
-                  <ImageLibrary
-                    stockImages={STOCK_SITE_IMAGES}
-                    initialUploads={uploadedImages}
-                    galleryImages={galleryImages}
-                    heroUrl={site.hero_url}
-                    onSelectHero={selectHeroImage}
-                    onToggleGallery={toggleGalleryImage}
-                    pickMode={pickingSlot ? { label: IMAGE_SLOT_LABELS[pickingSlot] || 'this photo', onPick: (image) => assignSlotImage(pickingSlot, image), onCancel: () => setPickingSlot(null) } : null}
-                  />
-                </div>
               </div>
             )}
 
@@ -1136,6 +1066,14 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
                 <SectionCard title="Animated stats" description="A band of big numbers that count up as visitors scroll — jobs completed, years in business, % satisfaction. Instant credibility." evidence="Concrete numbers — jobs done, years in business, response time — are instant, scannable credibility next to your work." enabled={siteContent.stats.enabled} onToggleEnabled={(value) => updateStats({ ...siteContent.stats, enabled: value })} {...contentHint(siteContent.stats.enabled, siteContent.stats.items.filter((item) => item.label.trim()).length, 'stat')} open={openSection === 'stats'} onToggleOpen={() => toggleSection('stats')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.stats.title} onChange={(event) => updateStats({ ...siteContent.stats, title: event.target.value })} /></label>
+                  <div className={styles.imageSlot}>
+                    <div className={styles.imageSlotHead}><strong>Section photo</strong><small>The photo behind the numbers.</small></div>
+                    <div className={styles.heroSlotPreview}><img src={siteContent.images.stats || site.hero_url || STOCK_SITE_IMAGES[2].url} alt="Stats section photo" /></div>
+                    <div className={styles.imageSlotActions}>
+                      <button type="button" className={styles.secondaryAction} onClick={() => openPicker('the stats photo', 'slot', 'stats')}>Replace photo</button>
+                      {siteContent.images.stats && <button type="button" className={styles.secondaryAction} onClick={() => resetSlotImage('stats')}>Reset to default</button>}
+                    </div>
+                  </div>
                   <div className={styles.stackList}>
                     {siteContent.stats.items.map((item, index) => (
                       <StackItem key={item.id} title={item.label.trim() || `Stat ${index + 1}`} meta={`${item.prefix}${item.value.toLocaleString('en-US')}${item.suffix}`} editing={editingItemId === item.id} onEdit={() => setEditingItemId(item.id)} onSave={saveItem} onRemove={() => updateStats({ ...siteContent.stats, items: siteContent.stats.items.filter((stat) => stat.id !== item.id) })}>
@@ -1222,6 +1160,29 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
           <span>Unsaved changes</span>
           <button type="button" onClick={handleSave} disabled={isPending}>{isPending ? 'Saving…' : 'Save now'}</button>
         </div>
+      )}
+
+      {picker && (
+        <ImagePickerModal
+          label={picker.label}
+          stockImages={STOCK_SITE_IMAGES}
+          uploads={siteImages}
+          galleryImages={galleryImages}
+          heroUrl={site.hero_url}
+          onSelectHero={selectHeroImage}
+          onToggleGallery={toggleGalleryImage}
+          onUpload={(image) => setSiteImages((current) => [image, ...current])}
+          onClose={() => setPicker(null)}
+          onReset={picker.kind === 'slot' && picker.slot && siteContent.images[picker.slot]
+            ? () => { resetSlotImage(picker.slot as string); setPicker(null); }
+            : undefined}
+          onPick={(image) => {
+            if (picker.kind === 'hero') selectHeroImage(image);
+            else if (picker.kind === 'logo') handleChange('logo_url', image.url);
+            else if (picker.slot) assignSlotImage(picker.slot, image);
+            setPicker(null);
+          }}
+        />
       )}
     </main>
   );

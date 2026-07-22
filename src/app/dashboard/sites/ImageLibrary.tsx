@@ -6,7 +6,7 @@ import { compressImage } from '@/lib/client-images';
 import { deleteSiteImageAction } from './actions';
 import styles from './SiteEditor.module.css';
 
-type PickMode = { label: string; onPick: (image: SiteImage) => void; onCancel: () => void };
+type PickMode = { onPick: (image: SiteImage) => void };
 
 type ImageLibraryProps = {
   stockImages: SiteImage[];
@@ -16,6 +16,7 @@ type ImageLibraryProps = {
   onSelectHero: (image: SiteImage) => void;
   onToggleGallery: (image: SiteImage) => void;
   pickMode?: PickMode | null;
+  onUpload?: (image: SiteImage) => void;
 };
 
 export default function ImageLibrary({
@@ -26,6 +27,7 @@ export default function ImageLibrary({
   onSelectHero,
   onToggleGallery,
   pickMode,
+  onUpload,
 }: ImageLibraryProps) {
   const [source, setSource] = useState<'stock' | 'upload'>('upload');
   const [uploads, setUploads] = useState(initialUploads);
@@ -62,6 +64,7 @@ export default function ImageLibrary({
       });
       setUploadProgress(100);
       setUploads((current) => [image, ...current]);
+      onUpload?.(image);
       setSource('upload');
       setMessage(`Image optimized from ${(file.size / 1024 / 1024).toFixed(1)} MB to ${(compressed.size / 1024 / 1024).toFixed(1)} MB.`);
     } catch (error) {
@@ -92,12 +95,6 @@ export default function ImageLibrary({
 
   return (
     <div className={styles.library}>
-      {pickMode && (
-        <p className={styles.replacingHint}>
-          Choose a photo for <strong>{pickMode.label}</strong> — click any image below.
-          <button type="button" onClick={pickMode.onCancel}>Cancel</button>
-        </p>
-      )}
       <div className={styles.libraryToolbar}>
         <div className={styles.segmented} aria-label="Image source">
           <button type="button" className={source === 'upload' ? styles.activeSegment : undefined} onClick={() => setSource('upload')}>Your uploads</button>
