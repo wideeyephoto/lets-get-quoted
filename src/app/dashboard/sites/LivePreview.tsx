@@ -50,7 +50,7 @@ export default function LivePreview({ site }: LivePreviewProps) {
       <div className={styles.previewToolbar}>
         <div>
           <strong>Live preview</strong>
-          <span>Click any section to edit it</span>
+          <span>Click any section or photo to edit it</span>
         </div>
         <div className={styles.deviceToggle} aria-label="Preview size">
           <button

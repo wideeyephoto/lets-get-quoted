@@ -131,6 +131,9 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   const [uploadingTestimonialId, setUploadingTestimonialId] = useState<string | null>(null);
   // One list item is editable at a time; new items open for editing right away.
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  // Briefly highlights the Logo/Hero slot after you click that image in the
+  // live preview, so it's obvious which photo you're about to replace.
+  const [flashSlot, setFlashSlot] = useState<'hero' | 'logo' | null>(null);
   const [isPending, startTransition] = useTransition();
   const galleryImages = getSiteGallery(site.content);
   const siteContent = getSiteContent(site.content);
@@ -273,7 +276,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       if (target === 'identity') { setActiveTab('business'); focusField('bf-company'); return; }
       if (target === 'heroImage' || target === 'logo' || target === 'work') {
         setActiveTab('images');
-        requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById('builder-tabpanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })));
+        const slot = target === 'logo' ? 'logo' : target === 'heroImage' ? 'hero' : null;
+        const scrollId = slot ? `img-slot-${slot}` : 'builder-tabpanel';
+        if (slot) { setFlashSlot(slot); setTimeout(() => setFlashSlot((current) => (current === slot ? null : current)), 1600); }
+        requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(scrollId)?.scrollIntoView({ behavior: 'smooth', block: slot ? 'center' : 'start' })));
         return;
       }
       const section = SECTION_TARGETS[target];
@@ -740,7 +746,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 <div className={styles.sectionIntro}><h2>Images</h2><p>Upload your photos once, then choose where each one goes on your site.</p></div>
 
                 <div className={styles.imageSlots}>
-                  <div className={styles.imageSlot}>
+                  <div className={`${styles.imageSlot}${flashSlot === 'logo' ? ` ${styles.slotFlash}` : ''}`} id="img-slot-logo">
                     <div className={styles.imageSlotHead}><strong>Logo</strong><small>Shown small in your header and footer.</small></div>
                     {site.logo_url
                       ? <div className={styles.logoPreview}><img src={site.logo_url} alt="Current logo" /></div>
@@ -754,7 +760,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     </div>
                   </div>
 
-                  <div className={styles.imageSlot}>
+                  <div className={`${styles.imageSlot}${flashSlot === 'hero' ? ` ${styles.slotFlash}` : ''}`} id="img-slot-hero">
                     <div className={styles.imageSlotHead}><strong>Hero image</strong><small>The big photo at the top of your homepage.</small></div>
                     {site.hero_url
                       ? <div className={styles.heroSlotPreview}><img src={site.hero_url} alt="Current hero image" /></div>

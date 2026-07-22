@@ -178,6 +178,8 @@
 .heroSlotPreview { overflow: hidden; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; }
 .heroSlotPreview img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
 .imageSlotActions { margin-top: auto; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.slotFlash { animation: slotFlash 1.5s ease; }
+@keyframes slotFlash { 0%, 45% { border-color: #ff7a21; box-shadow: 0 0 0 3px rgba(255,122,33,.55); } 100% { border-color: rgba(255,255,255,.12); box-shadow: 0 0 0 3px rgba(255,122,33,0); } }
 .domainControl { display: grid; grid-template-columns: 1fr auto; gap: .5rem; }
 .domainControl button { padding: 0 .9rem; border: 1px solid rgba(255,255,255,.18); border-radius: 6px; background: rgba(255,255,255,.07); color: #fff; font-weight: 700; cursor: pointer; }
 .dnsCard { display: grid; gap: .5rem; padding: .9rem; border: 1px solid rgba(255,209,102,.25); border-radius: 6px; background: rgba(255,209,102,.06); }
