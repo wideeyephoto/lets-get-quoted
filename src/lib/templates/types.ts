@@ -63,6 +63,13 @@ export const AVAILABLE_TEMPLATES: TemplateConfig[] = [
     accent: '#d8ff45',
     fontVar: 'var(--font-display), Arial Black, Helvetica, sans-serif',
   },
+  {
+    id: 'handy',
+    name: 'Handy',
+    description: 'Bright and friendly, with icon service cards — built for handyman & repair trades',
+    accent: '#ee5a1a',
+    fontVar: 'var(--font-display), system-ui, sans-serif',
+  },
 ];
 // Note: 17 additional templates (Haven, Meridian, Blueprint, Lumen, Atlas, Circuit,
 // Cascade, Anchor, Foundry, Ironclad, Summit, Beacon, Timber, Heritage, Bloom, Drift,

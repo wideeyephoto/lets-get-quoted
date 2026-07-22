@@ -394,3 +394,40 @@
   .forgeHeroCopy h1 { overflow-wrap: anywhere; }
   .primaryCta { width: 100%; }
 }
+
+/* ===== Handy — bright, friendly home-services (handyman / repair) ===== */
+.handy { background: #f4f7fb; color: #16233c; font-family: var(--font-body), "Segoe UI", system-ui, sans-serif; }
+.handy .kicker { color: color-mix(in srgb, var(--theme-accent) 70%, #241206); }
+.handyHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1.25rem; padding: .8rem clamp(1.25rem, 4vw, 3rem); background: color-mix(in srgb, #f4f7fb 88%, transparent); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(22,35,60,.09); }
+.handyBrand { display: inline-flex; align-items: center; gap: .6rem; font-size: 1.02rem; }
+.handyBrand strong { font-family: var(--theme-display); font-weight: 800; letter-spacing: -.01em; }
+.handyBrandMark { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 11px; background: var(--theme-accent); color: var(--theme-on-accent, #fff); font-family: var(--theme-display); font-weight: 800; font-size: 1.15rem; }
+.handyHeaderActions { display: flex; align-items: center; gap: 1.1rem; justify-self: end; }
+.handyHeaderPhone { font-weight: 800; font-size: .95rem; white-space: nowrap; }
+.handyHero { position: relative; display: grid; grid-template-columns: 1.05fr .95fr; gap: clamp(1.75rem, 4vw, 3.5rem); align-items: center; padding: clamp(2.5rem, 6vw, 5rem) clamp(1.25rem, 5vw, 4rem) clamp(3rem, 7vw, 6rem); overflow: hidden; }
+.handyHeroBlob { position: absolute; top: -25%; right: -12%; width: 60%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--theme-accent) 20%, transparent), transparent 68%); pointer-events: none; z-index: 0; }
+.handyHeroCopy { position: relative; z-index: 1; }
+.handyHeroCopy h1 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(2.3rem, 5.4vw, 4rem); line-height: 1.03; letter-spacing: -.025em; margin: 0 0 1rem; text-wrap: balance; overflow-wrap: anywhere; }
+.handyHeroText { font-size: clamp(1rem, 1.5vw, 1.2rem); line-height: 1.55; color: color-mix(in srgb, #16233c 76%, transparent); margin: 0 0 1.5rem; max-width: 52ch; }
+.handyHeroActions { display: flex; align-items: center; gap: 1rem 1.4rem; flex-wrap: wrap; margin-bottom: 1.6rem; }
+.handyHeroCall { font-weight: 800; font-size: .95rem; text-decoration: underline; text-decoration-color: var(--theme-accent); text-underline-offset: 3px; }
+.handyHeroForm { position: relative; z-index: 1; display: flex; justify-content: center; }
+.handyHeroForm .heroQuickForm { width: min(430px, 100%); margin-top: 0; border: 1px solid rgba(22,35,60,.09); box-shadow: 0 34px 66px -34px rgba(22,35,60,.42); }
+.handyContact { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(1.75rem, 4vw, 3.5rem); align-items: start; padding: clamp(3rem, 7vw, 6rem) clamp(1.25rem, 5vw, 4rem); background: #fff; border-top: 1px solid rgba(22,35,60,.09); }
+.handyContactCopy { display: grid; gap: 1.1rem; align-content: start; }
+.handyContactCopy h2 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(1.9rem, 4vw, 2.9rem); line-height: 1.05; margin: 0; letter-spacing: -.02em; }
+.handyContactCopy > p { margin: 0; font-size: 1.02rem; line-height: 1.55; color: color-mix(in srgb, #16233c 74%, transparent); }
+.handyContactCopy .primaryCta { justify-self: start; }
+.handyFooter { display: grid; gap: .4rem; padding: 2.75rem clamp(1.25rem, 5vw, 4rem); background: #0f1c30; color: #c9d4e4; text-align: center; }
+.handyFooter strong { font-family: var(--theme-display); font-size: 1.25rem; color: #fff; }
+.handyFooter small { opacity: .58; font-size: .78rem; }
+@media (max-width: 900px) {
+  .handyHero, .handyContact { grid-template-columns: 1fr; }
+  .handyHeader { grid-template-columns: 1fr auto; }
+  .handyHeader .navLinks { display: none; }
+  .handyHeaderActions .primaryCta { width: auto; }
+}
+@media (max-width: 560px) {
+  .handyHeaderPhone { display: none; }
+  .handyHeaderActions .primaryCta { width: auto; }
+}
