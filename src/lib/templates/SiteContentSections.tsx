@@ -1,4 +1,5 @@
 import SafeImage from './SafeImage';
+import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import type { Site } from '@/lib/sites';
 import {
   getPublishedBeforeAfter,
@@ -143,7 +144,7 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
             </section>
           )}
 
-          {stats && <StatCounters title={stats.title} items={stats.items} />}
+          {stats && <StatCounters title={stats.title} items={stats.items} photo={site.hero_url || STOCK_SITE_IMAGES[2].url} />}
 
           {beforeAfter && <BeforeAfterSlider title={beforeAfter.title} intro={beforeAfter.intro} items={beforeAfter.items} />}
 

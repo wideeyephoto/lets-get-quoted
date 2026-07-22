@@ -12,7 +12,7 @@ function formatNumber(n: number): string {
 // section scrolls into view; prefers-reduced-motion (or a 0 target) jumps
 // straight to the final value. Labels are always static text, so the meaning is
 // present even before/without the animation.
-export default function StatCounters({ title, items }: { title: string; items: SiteStatItem[] }) {
+export default function StatCounters({ title, items, photo }: { title: string; items: SiteStatItem[]; photo: string }) {
   const sectionRef = useRef<HTMLElement>(null);
   const [visible, setVisible] = useState(false);
 
@@ -42,15 +42,20 @@ export default function StatCounters({ title, items }: { title: string; items: S
         <p className={styles.kicker}>Track record</p>
         <h2>{title}</h2>
       </div>
-      <div className={styles.statGrid}>
-        {items.map((item) => (
-          <div key={item.id} className={styles.statItem}>
-            <div className={styles.statValue}>
-              {item.prefix}<StatNumber target={item.value} run={visible} />{item.suffix}
-            </div>
-            <div className={styles.statLabel}>{item.label}</div>
+      <div className={styles.statsMedia}>
+        <img className={styles.statsPhoto} src={photo} alt="" loading="lazy" decoding="async" />
+        <div className={styles.statsCard} data-parallax="0.1">
+          <div className={styles.statGrid}>
+            {items.map((item) => (
+              <div key={item.id} className={styles.statItem}>
+                <div className={styles.statValue}>
+                  {item.prefix}<StatNumber target={item.value} run={visible} />{item.suffix}
+                </div>
+                <div className={styles.statLabel}>{item.label}</div>
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
       </div>
     </section>
   );

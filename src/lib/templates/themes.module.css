@@ -99,6 +99,23 @@
 .statItem { display: flex; flex-direction: column; gap: .35rem; }
 .statValue { font-family: var(--theme-display); font-size: clamp(2.4rem, 6vw, 4rem); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
 .statLabel { font-size: .85rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: color-mix(in srgb, currentColor 70%, transparent); }
+/* Stats as a card floating over a static photo (Purely "about" style). The card
+   lifts on hover and parallaxes over the photo where the template mounts
+   <Parallax/>. A dark panel + white text stays legible on any photo and across
+   every template, so per-template stat colors are overridden here. */
+.statsMedia { position: relative; margin-top: clamp(1.75rem, 3vw, 2.75rem); }
+.statsPhoto { display: block; width: 100%; aspect-ratio: 16 / 7; object-fit: cover; border-radius: 22px; }
+.statsCard { position: absolute; z-index: 2; left: clamp(1rem, 4vw, 3rem); bottom: clamp(-2.25rem, -2vw, -1.25rem); max-width: min(620px, 84%); padding: clamp(1.35rem, 2.6vw, 2.25rem); border-radius: 20px; background: linear-gradient(150deg, #1b2634, #0e141d); box-shadow: 0 44px 90px -34px rgba(0,0,0,.55); transition: transform .45s cubic-bezier(.22, .61, .36, 1); }
+.statsCard:hover { transform: translateY(-8px); }
+.statsCard .statGrid { grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: clamp(1.25rem, 3vw, 2.5rem); }
+.site .statsCard .statItem { background: transparent; padding: 0; border: none; }
+.site .statsCard .statValue { color: #fff; }
+.site .statsCard .statLabel { color: rgba(255,255,255,.68); }
+@media (max-width: 640px) {
+  .statsPhoto { aspect-ratio: 4 / 3; }
+  .statsCard { position: static; max-width: none; margin: -2.5rem .75rem 0; }
+}
+@media (prefers-reduced-motion: reduce) { .statsCard { transition: none; } }
 
 /* Before & after slider (toggleable) */
 .baGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 1.25rem; }
