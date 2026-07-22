@@ -33,6 +33,17 @@ function createContentId(prefix: string): string {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
+
+// Header hint for a section card: item count when there's content, a warning
+// when the section is On but empty (it renders nothing publicly until filled —
+// which otherwise reads as "checked but not showing").
+function contentHint(enabled: boolean, count: number, noun: string, plural?: string): { hint?: string; hintTone?: 'ok' | 'warn' } {
+  if (enabled && count === 0) return { hint: "empty — won't show yet", hintTone: 'warn' };
+  if (count > 0) return { hint: `${count} ${count === 1 ? noun : plural || `${noun}s`}`, hintTone: 'ok' };
+  return {};
+}
+
 function siteUpdates(site: Site) {
   return {
     template: site.template,
@@ -72,6 +83,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   const [isGeneratingBlog, setIsGeneratingBlog] = useState(false);
   const [uploadingCoverId, setUploadingCoverId] = useState<string | null>(null);
   const [blogTopic, setBlogTopic] = useState('');
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   // Local string state for the free-numeric rating fields so decimal typing
   // (e.g. "4.9") isn't clobbered by re-normalization on every keystroke.
   const [ratingInput, setRatingInput] = useState(() => String(getSiteContent(initialSite.content).ratingBadge.rating));
@@ -81,6 +93,17 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   const galleryImages = getSiteGallery(site.content);
   const siteContent = getSiteContent(site.content);
   const selectableImages = [...siteImages, ...STOCK_SITE_IMAGES];
+
+  // Blog card hint: live-post count, or a warning when it's enabled with only
+  // drafts (the section renders nothing publicly until a post is published).
+  const publishedPostCount = siteContent.blog.posts.filter((post) => post.status === 'published' && post.title.trim() && post.body.trim()).length;
+  const blogHint: { hint?: string; hintTone?: 'ok' | 'warn' } = publishedPostCount > 0
+    ? { hint: `${publishedPostCount} live ${publishedPostCount === 1 ? 'post' : 'posts'}`, hintTone: 'ok' }
+    : siteContent.blog.posts.length > 0
+      ? siteContent.blog.enabled
+        ? { hint: 'drafts only — publish one to go live', hintTone: 'warn' }
+        : { hint: `${siteContent.blog.posts.length} ${siteContent.blog.posts.length === 1 ? 'draft' : 'drafts'}`, hintTone: 'ok' }
+      : contentHint(siteContent.blog.enabled, 0, 'post');
 
   const handleChange = useCallback((field: keyof Site, value: Site[keyof Site]) => {
     setSite((current) => ({ ...current, [field]: value }));
@@ -130,6 +153,38 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       }
     });
   }, [site]);
+
+  // Ctrl/Cmd+S saves instead of triggering the browser's save-page dialog.
+  useEffect(() => {
+    function handleKeydown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        if (isDirty && !isPending) handleSave();
+      }
+    }
+    window.addEventListener('keydown', handleKeydown);
+    return () => window.removeEventListener('keydown', handleKeydown);
+  }, [isDirty, isPending, handleSave]);
+
+  const handleLogoUpload = useCallback((file: File) => {
+    setIsUploadingLogo(true);
+    setMessage(null);
+    startTransition(async () => {
+      try {
+        const compressed = await compressImage(file, 640, 0.85);
+        const formData = new FormData();
+        formData.set('image', compressed);
+        const image = await uploadSiteImageAction(formData);
+        setSiteImages((current) => [image, ...current]);
+        setSite((current) => ({ ...current, logo_url: image.url }));
+        setIsDirty(true);
+      } catch (error) {
+        setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Could not upload that logo. Please try another image.' });
+      } finally {
+        setIsUploadingLogo(false);
+      }
+    });
+  }, []);
 
   const handleBlogCoverUpload = useCallback((postId: string, file: File) => {
     setUploadingCoverId(postId);
@@ -385,7 +440,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
         const available = await checkSubdomainAvailableAction(subdomain);
         setSubdomainStatus(available ? 'available' : 'taken');
         setMessage(available
-          ? { type: 'success', text: `${subdomain}.letsgetquoted.com is available.` }
+          ? { type: 'success', text: `${subdomain}.${ROOT_DOMAIN} is available.` }
           : { type: 'error', text: 'That subdomain is already in use.' });
       } catch (error) {
         setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to check this subdomain.' });
@@ -444,7 +499,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     });
   }, [site]);
 
-  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
+  const rootDomain = ROOT_DOMAIN;
   const liveDomain =
     site.custom_domain && domainStatus === 'verified'
       ? site.custom_domain
@@ -523,8 +578,16 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
             {activeTab === 'images' && (
               <div className={styles.formSection}>
                 <div className={styles.sectionIntro}><h2>Images</h2><p>Choose a hero image and up to five gallery images.</p></div>
-                <label className={styles.formField}><span>Logo URL</span><input type="url" value={site.logo_url || ''} onChange={(event) => handleChange('logo_url', event.target.value || null)} placeholder="https://..." /></label>
-                {site.logo_url && <div className={styles.logoPreview}><img src={site.logo_url} alt="Current logo" /></div>}
+                <div className={styles.formField}>
+                  <span>Logo</span>
+                  {site.logo_url && <div className={styles.logoPreview}><img src={site.logo_url} alt="Current logo" /></div>}
+                  <label className={styles.blogCoverUpload}>
+                    <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={isUploadingLogo} onChange={(event) => { const file = event.target.files?.[0]; event.currentTarget.value = ''; if (file) handleLogoUpload(file); }} />
+                    <span>{isUploadingLogo ? 'Uploading…' : site.logo_url ? 'Replace logo' : 'Upload your logo'}</span>
+                  </label>
+                  {site.logo_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('logo_url', null)}>Remove logo</button>}
+                </div>
+                <label className={styles.formField}><span>Logo URL (optional — or upload above)</span><input type="url" value={site.logo_url || ''} onChange={(event) => handleChange('logo_url', event.target.value || null)} placeholder="https://..." /></label>
                 <label className={styles.formField}><span>Hero image URL</span><input type="url" value={site.hero_url || ''} onChange={(event) => handleChange('hero_url', event.target.value || null)} placeholder="Choose below or paste a URL" /></label>
                 <ImageLibrary stockImages={STOCK_SITE_IMAGES} initialUploads={uploadedImages} galleryImages={galleryImages} heroUrl={site.hero_url} onSelectHero={selectHeroImage} onToggleGallery={toggleGalleryImage} />
               </div>
@@ -559,7 +622,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
                 <SectionCard title="Instant estimate" description="After the quick-capture form, our AI asks the homeowner a couple of quick questions to size up the job, then shows a rough $ range right away." enabled={siteContent.estimateRanges.enabled} onToggleEnabled={(value) => updateEstimateRanges({ ...siteContent.estimateRanges, enabled: value })} open={openSection === 'estimate'} onToggleOpen={() => toggleSection('estimate')} />
 
-                <SectionCard title="Services" description="Icon cards for the work you do — the first thing most home-services visitors scan for. Add a few with an icon, name, and one-line description." evidence="A clear service grid lets a visitor confirm 'they do what I need' in seconds — the fastest way to hold a home-services visitor's attention." enabled={siteContent.services.enabled} onToggleEnabled={(value) => updateServices({ ...siteContent.services, enabled: value })} open={openSection === 'services'} onToggleOpen={() => toggleSection('services')}>
+                <SectionCard title="Services" description="Icon cards for the work you do — the first thing most home-services visitors scan for. Add a few with an icon, name, and one-line description." evidence="A clear service grid lets a visitor confirm 'they do what I need' in seconds — the fastest way to hold a home-services visitor's attention." enabled={siteContent.services.enabled} onToggleEnabled={(value) => updateServices({ ...siteContent.services, enabled: value })} {...contentHint(siteContent.services.enabled, siteContent.services.items.filter((svc) => svc.title.trim()).length, 'service')} open={openSection === 'services'} onToggleOpen={() => toggleSection('services')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.services.title} onChange={(event) => updateServices({ ...siteContent.services, title: event.target.value })} /></label>
                   <label className={styles.formField}><span>Intro copy (optional)</span><input value={siteContent.services.intro} onChange={(event) => updateServices({ ...siteContent.services, intro: event.target.value })} /></label>
                   <div className={styles.stackList}>
@@ -575,7 +638,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   {siteContent.services.items.length < 8 && <button type="button" className={styles.secondaryAction} onClick={() => updateServices({ ...siteContent.services, enabled: true, items: [...siteContent.services.items, { id: createContentId('svc'), icon: 'spark', title: '', description: '' }] })}>Add service</button>}
                 </SectionCard>
 
-                <SectionCard title="How it works" description="A simple 3–4 step walkthrough of what happens after they reach out — book, we arrive, job done. Removes the 'what do I have to do?' hesitation." evidence="Showing the process upfront lowers the perceived effort of reaching out — people act when they can see exactly what happens next." enabled={siteContent.howItWorks.enabled} onToggleEnabled={(value) => updateHowItWorks({ ...siteContent.howItWorks, enabled: value })} open={openSection === 'howItWorks'} onToggleOpen={() => toggleSection('howItWorks')}>
+                <SectionCard title="How it works" description="A simple 3–4 step walkthrough of what happens after they reach out — book, we arrive, job done. Removes the 'what do I have to do?' hesitation." evidence="Showing the process upfront lowers the perceived effort of reaching out — people act when they can see exactly what happens next." enabled={siteContent.howItWorks.enabled} onToggleEnabled={(value) => updateHowItWorks({ ...siteContent.howItWorks, enabled: value })} {...contentHint(siteContent.howItWorks.enabled, siteContent.howItWorks.steps.filter((step) => step.title.trim()).length, 'step')} open={openSection === 'howItWorks'} onToggleOpen={() => toggleSection('howItWorks')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.howItWorks.title} onChange={(event) => updateHowItWorks({ ...siteContent.howItWorks, title: event.target.value })} /></label>
                   <label className={styles.formField}><span>Intro copy (optional)</span><input value={siteContent.howItWorks.intro} onChange={(event) => updateHowItWorks({ ...siteContent.howItWorks, intro: event.target.value })} /></label>
                   <div className={styles.stackList}>
@@ -590,7 +653,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   {siteContent.howItWorks.steps.length < 5 && <button type="button" className={styles.secondaryAction} onClick={() => updateHowItWorks({ ...siteContent.howItWorks, enabled: true, steps: [...siteContent.howItWorks.steps, { id: createContentId('step'), title: '', description: '' }] })}>Add step</button>}
                 </SectionCard>
 
-                <SectionCard title="Blog" description="Helpful articles for homeowners — maintenance tips, seasonal advice, and what to know before hiring. AI can draft them; you review and publish." evidence="Fresh, useful posts give Google more local pages to rank and give past customers a reason to return — search visibility that compounds over time." enabled={siteContent.blog.enabled} onToggleEnabled={(value) => updateBlog({ ...siteContent.blog, enabled: value })} open={openSection === 'blog'} onToggleOpen={() => toggleSection('blog')}>
+                <SectionCard title="Blog" description="Helpful articles for homeowners — maintenance tips, seasonal advice, and what to know before hiring. AI can draft them; you review and publish." evidence="Fresh, useful posts give Google more local pages to rank and give past customers a reason to return — search visibility that compounds over time." enabled={siteContent.blog.enabled} onToggleEnabled={(value) => updateBlog({ ...siteContent.blog, enabled: value })} {...blogHint} open={openSection === 'blog'} onToggleOpen={() => toggleSection('blog')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.blog.title} onChange={(event) => updateBlog({ ...siteContent.blog, title: event.target.value })} /></label>
                   <label className={styles.formField}><span>Intro copy (optional)</span><input value={siteContent.blog.intro} onChange={(event) => updateBlog({ ...siteContent.blog, intro: event.target.value })} /></label>
                   <label className={styles.formField}><span>What should the next post be about? (optional)</span><input value={blogTopic} maxLength={200} onChange={(event) => setBlogTopic(event.target.value)} placeholder="e.g. Fall gutter maintenance checklist — leave blank and AI picks a seasonal topic" /></label>
@@ -623,7 +686,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <button type="button" className={styles.secondaryAction} onClick={() => updateBlog({ ...siteContent.blog, enabled: true, posts: [{ id: createContentId('post'), slug: '', title: '', excerpt: '', body: '', coverImage: '', status: 'draft', date: new Date().toISOString().slice(0, 10) }, ...siteContent.blog.posts] })}>Add post manually</button>
                 </SectionCard>
 
-                <SectionCard title="Showcase gallery" description="Highlight finished work, project details, and job photos." evidence="Real project photos alongside reviews produced 55% more leads in one study — genuine work outperforms stock." enabled={siteContent.showcase.enabled} onToggleEnabled={(value) => updateShowcase({ ...siteContent.showcase, enabled: value })} open={openSection === 'showcase'} onToggleOpen={() => toggleSection('showcase')}>
+                <SectionCard title="Showcase gallery" description="Highlight finished work, project details, and job photos." evidence="Real project photos alongside reviews produced 55% more leads in one study — genuine work outperforms stock." enabled={siteContent.showcase.enabled} onToggleEnabled={(value) => updateShowcase({ ...siteContent.showcase, enabled: value })} {...contentHint(siteContent.showcase.enabled, siteContent.showcase.items.length, 'image')} open={openSection === 'showcase'} onToggleOpen={() => toggleSection('showcase')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.showcase.title} onChange={(event) => updateShowcase({ ...siteContent.showcase, title: event.target.value })} /></label>
                   <label className={styles.formField}><span>Intro copy</span><textarea rows={2} value={siteContent.showcase.intro} onChange={(event) => updateShowcase({ ...siteContent.showcase, intro: event.target.value })} /></label>
                   <label className={styles.formField}><span>Layout</span><select value={siteContent.showcase.layout} onChange={(event) => updateShowcase({ ...siteContent.showcase, layout: event.target.value as SiteShowcaseContent['layout'] })}><option value="grid">Clean grid</option><option value="featured">Feature first image</option><option value="masonry">Masonry-style mix</option></select></label>
@@ -657,7 +720,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   )}
                 </SectionCard>
 
-                <SectionCard title="FAQs" description="Answer common homeowner questions before they request a quote." enabled={siteContent.faqs.enabled} onToggleEnabled={(value) => updateFaqs({ ...siteContent.faqs, enabled: value })} open={openSection === 'faqs'} onToggleOpen={() => toggleSection('faqs')}>
+                <SectionCard title="FAQs" description="Answer common homeowner questions before they request a quote." enabled={siteContent.faqs.enabled} onToggleEnabled={(value) => updateFaqs({ ...siteContent.faqs, enabled: value })} {...contentHint(siteContent.faqs.enabled, siteContent.faqs.items.filter((faq) => faq.question.trim() && faq.answer.trim()).length, 'question')} open={openSection === 'faqs'} onToggleOpen={() => toggleSection('faqs')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.faqs.title} onChange={(event) => updateFaqs({ ...siteContent.faqs, title: event.target.value })} /></label>
                   <div className={styles.stackList}>
                     {siteContent.faqs.items.map((item, index) => (
@@ -671,7 +734,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <button type="button" className={styles.secondaryAction} onClick={() => updateFaqs({ ...siteContent.faqs, enabled: true, items: [...siteContent.faqs.items, { id: createContentId('faq'), question: '', answer: '' }] })}>Add FAQ</button>
                 </SectionCard>
 
-                <SectionCard title="Testimonials" description="Show quotes from real customers on your public site." evidence="97% of homeowners read reviews before hiring a local pro, and the first few weigh the most." enabled={siteContent.testimonials.enabled} onToggleEnabled={(value) => updateTestimonials({ ...siteContent.testimonials, enabled: value })} open={openSection === 'testimonials'} onToggleOpen={() => toggleSection('testimonials')}>
+                <SectionCard title="Testimonials" description="Show quotes from real customers on your public site." evidence="97% of homeowners read reviews before hiring a local pro, and the first few weigh the most." enabled={siteContent.testimonials.enabled} onToggleEnabled={(value) => updateTestimonials({ ...siteContent.testimonials, enabled: value })} {...contentHint(siteContent.testimonials.enabled, siteContent.testimonials.items.filter((item) => item.text.trim()).length, 'review')} open={openSection === 'testimonials'} onToggleOpen={() => toggleSection('testimonials')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.testimonials.title} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, title: event.target.value })} /></label>
                   <label className={styles.formField}><span>Source mode</span><select value={siteContent.testimonials.sourceMode} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, sourceMode: event.target.value as SiteTestimonialsContent['sourceMode'] })}><option value="manual">Manual testimonials</option><option value="mixed">Manual + imported</option><option value="google">Google import</option></select></label>
                   <div className={styles.stackList}>
@@ -739,7 +802,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <label className={styles.formField}><span>Supporting line</span><input value={siteContent.financing.blurb} onChange={(event) => updateFinancing({ ...siteContent.financing, blurb: event.target.value })} placeholder="Flexible financing available on approved credit." /></label>
                 </SectionCard>
 
-                <SectionCard title="Service-area cities" description={'List the towns and neighborhoods you cover. The names become on-page keywords that help you rank for "[trade] in [city]" searches — and reassure homeowners you serve their area.'} evidence={'Visitors decide "do they even serve me?" in ~3 seconds — naming their town reassures them and matches local search.'} enabled={siteContent.serviceAreas.enabled} onToggleEnabled={(value) => updateServiceAreas({ ...siteContent.serviceAreas, enabled: value })} open={openSection === 'serviceAreas'} onToggleOpen={() => toggleSection('serviceAreas')}>
+                <SectionCard title="Service-area cities" description={'List the towns and neighborhoods you cover. The names become on-page keywords that help you rank for "[trade] in [city]" searches — and reassure homeowners you serve their area.'} evidence={'Visitors decide "do they even serve me?" in ~3 seconds — naming their town reassures them and matches local search.'} enabled={siteContent.serviceAreas.enabled} onToggleEnabled={(value) => updateServiceAreas({ ...siteContent.serviceAreas, enabled: value })} {...contentHint(siteContent.serviceAreas.enabled, siteContent.serviceAreas.cities.filter((city) => city.trim()).length, 'city', 'cities')} open={openSection === 'serviceAreas'} onToggleOpen={() => toggleSection('serviceAreas')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.serviceAreas.title} onChange={(event) => updateServiceAreas({ ...siteContent.serviceAreas, title: event.target.value })} /></label>
                   <label className={styles.formField}><span>Intro copy</span><input value={siteContent.serviceAreas.intro} onChange={(event) => updateServiceAreas({ ...siteContent.serviceAreas, intro: event.target.value })} /></label>
                   <div className={styles.stackList}>
@@ -753,7 +816,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <button type="button" className={styles.secondaryAction} onClick={() => updateServiceAreas({ ...siteContent.serviceAreas, enabled: true, cities: [...siteContent.serviceAreas.cities, ''] })}>Add city</button>
                 </SectionCard>
 
-                <SectionCard title="Certifications & awards" description={'A strip of recognizable credentials — BBB A+, EPA Lead-Safe, manufacturer certifications, "Best of" awards. Add a label and optionally a logo from your images.'} evidence="Recognizable third-party credentials (BBB A+, EPA, manufacturer certs) shortcut trust faster than anything you can say about yourself." enabled={siteContent.certifications.enabled} onToggleEnabled={(value) => updateCertifications({ ...siteContent.certifications, enabled: value })} open={openSection === 'certifications'} onToggleOpen={() => toggleSection('certifications')}>
+                <SectionCard title="Certifications & awards" description={'A strip of recognizable credentials — BBB A+, EPA Lead-Safe, manufacturer certifications, "Best of" awards. Add a label and optionally a logo from your images.'} evidence="Recognizable third-party credentials (BBB A+, EPA, manufacturer certs) shortcut trust faster than anything you can say about yourself." enabled={siteContent.certifications.enabled} onToggleEnabled={(value) => updateCertifications({ ...siteContent.certifications, enabled: value })} {...contentHint(siteContent.certifications.enabled, siteContent.certifications.items.filter((item) => item.label.trim()).length, 'item')} open={openSection === 'certifications'} onToggleOpen={() => toggleSection('certifications')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.certifications.title} onChange={(event) => updateCertifications({ ...siteContent.certifications, title: event.target.value })} /></label>
                   <div className={styles.stackList}>
                     {siteContent.certifications.items.map((item, index) => (
@@ -771,7 +834,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <button type="button" className={styles.secondaryAction} onClick={() => updateCertifications({ ...siteContent.certifications, enabled: true, items: [...siteContent.certifications.items, { id: createContentId('cert'), label: '', imageUrl: '', imageAlt: '' }] })}>Add certification</button>
                 </SectionCard>
 
-                <SectionCard title="Animated stats" description="A band of big numbers that count up as visitors scroll — jobs completed, years in business, % satisfaction. Instant credibility." evidence="Concrete numbers — jobs done, years in business, response time — are instant, scannable credibility next to your work." enabled={siteContent.stats.enabled} onToggleEnabled={(value) => updateStats({ ...siteContent.stats, enabled: value })} open={openSection === 'stats'} onToggleOpen={() => toggleSection('stats')}>
+                <SectionCard title="Animated stats" description="A band of big numbers that count up as visitors scroll — jobs completed, years in business, % satisfaction. Instant credibility." evidence="Concrete numbers — jobs done, years in business, response time — are instant, scannable credibility next to your work." enabled={siteContent.stats.enabled} onToggleEnabled={(value) => updateStats({ ...siteContent.stats, enabled: value })} {...contentHint(siteContent.stats.enabled, siteContent.stats.items.filter((item) => item.label.trim()).length, 'stat')} open={openSection === 'stats'} onToggleOpen={() => toggleSection('stats')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.stats.title} onChange={(event) => updateStats({ ...siteContent.stats, title: event.target.value })} /></label>
                   <div className={styles.stackList}>
                     {siteContent.stats.items.map((item, index) => (
@@ -789,7 +852,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <button type="button" className={styles.secondaryAction} onClick={() => updateStats({ ...siteContent.stats, enabled: true, items: [...siteContent.stats.items, { id: createContentId('stat'), value: 0, prefix: '', suffix: '', label: '' }] })}>Add stat</button>
                 </SectionCard>
 
-                <SectionCard title="Before &amp; after" description="Drag-to-reveal comparison sliders — the most shared element on a remodeler's site. Each pair needs both a before and an after image to appear on your site." evidence="Before/after galleries paired with reviews produced 55% more leads — for trades, the transformation is the product." enabled={siteContent.beforeAfter.enabled} onToggleEnabled={(value) => updateBeforeAfter({ ...siteContent.beforeAfter, enabled: value })} open={openSection === 'beforeAfter'} onToggleOpen={() => toggleSection('beforeAfter')}>
+                <SectionCard title="Before &amp; after" description="Drag-to-reveal comparison sliders — the most shared element on a remodeler's site. Each pair needs both a before and an after image to appear on your site." evidence="Before/after galleries paired with reviews produced 55% more leads — for trades, the transformation is the product." enabled={siteContent.beforeAfter.enabled} onToggleEnabled={(value) => updateBeforeAfter({ ...siteContent.beforeAfter, enabled: value })} {...contentHint(siteContent.beforeAfter.enabled, siteContent.beforeAfter.items.filter((pair) => pair.beforeUrl && pair.afterUrl).length, 'pair')} open={openSection === 'beforeAfter'} onToggleOpen={() => toggleSection('beforeAfter')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.beforeAfter.title} onChange={(event) => updateBeforeAfter({ ...siteContent.beforeAfter, title: event.target.value })} /></label>
                   <label className={styles.formField}><span>Intro copy</span><input value={siteContent.beforeAfter.intro} onChange={(event) => updateBeforeAfter({ ...siteContent.beforeAfter, intro: event.target.value })} /></label>
                   <div className={styles.stackList}>
@@ -824,7 +887,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
             {activeTab === 'publish' && (
               <div className={styles.formSection}>
                 <div className={styles.sectionIntro}><h2>Publish</h2><p>Choose where homeowners can find your website.</p></div>
-                <label className={styles.formField}><span>LGQ subdomain</span><div className={styles.domainControl}><input value={site.subdomain || ''} onChange={(event) => handleChange('subdomain', event.target.value.toLowerCase() || null)} placeholder="northline-builders" /><button type="button" onClick={checkSubdomain} disabled={isPending}>Check</button></div><small>{site.subdomain || 'your-business'}.letsgetquoted.com{subdomainStatus === 'available' ? ' - available' : subdomainStatus === 'taken' ? ' - unavailable' : ''}</small></label>
+                <label className={styles.formField}><span>LGQ subdomain</span><div className={styles.domainControl}><input value={site.subdomain || ''} onChange={(event) => handleChange('subdomain', event.target.value.toLowerCase() || null)} placeholder="northline-builders" /><button type="button" onClick={checkSubdomain} disabled={isPending}>Check</button></div><small>{site.subdomain || 'your-business'}.{ROOT_DOMAIN}{subdomainStatus === 'available' ? ' - available' : subdomainStatus === 'taken' ? ' - unavailable' : ''}</small></label>
                 <label className={styles.formField}><span>Custom domain</span><div className={styles.domainControl}><input value={site.custom_domain || ''} onChange={(event) => handleChange('custom_domain', event.target.value || null)} placeholder="www.yourbusiness.com" /><button type="button" onClick={verifyCustomDomain} disabled={isPending}>{domainStatus === 'checking' ? 'Checking...' : 'Verify DNS'}</button></div><small>{domainStatus === 'verified' ? 'Verified and connected.' : 'Add a CNAME record pointing to domains.letsgetquoted.com.'}</small></label>
                 <div className={styles.dnsCard}><strong>DNS setup</strong><p>For a subdomain such as www, create a CNAME record:</p><code>www &nbsp; CNAME &nbsp; domains.letsgetquoted.com</code><p>For a root domain, use your DNS provider&apos;s CNAME flattening or redirect the root to www.</p></div>
                 <div className={styles.sectionIntro}><h2>Search & sharing</h2><p>Control how your website appears in search results and social links.</p></div>
@@ -843,6 +906,13 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
         <LivePreview site={site} />
       </div>
+
+      {isDirty && (
+        <div className={styles.savePill}>
+          <span>Unsaved changes</span>
+          <button type="button" onClick={handleSave} disabled={isPending}>{isPending ? 'Saving…' : 'Save now'}</button>
+        </div>
+      )}
     </main>
   );
 }

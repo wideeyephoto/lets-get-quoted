@@ -14,6 +14,11 @@ type SectionCardProps = {
   // Omit them for sections that are always active (e.g. the quote form).
   enabled?: boolean;
   onToggleEnabled?: (enabled: boolean) => void;
+  // Content-status hint beside the On/Off pill — e.g. "4 services", or a warn
+  // tone when the section is enabled but empty (it renders nothing publicly
+  // until it has content, which otherwise reads as "On but not showing").
+  hint?: string;
+  hintTone?: 'ok' | 'warn';
   open: boolean;
   onToggleOpen: () => void;
   children?: ReactNode;
@@ -23,7 +28,7 @@ type SectionCardProps = {
 // optional enable toggle + On/Off state, and a chevron; the configuration
 // collapses so the Design tab stays a short, scannable list instead of one long
 // scroll.
-export default function SectionCard({ title, description, evidence, enabled, onToggleEnabled, open, onToggleOpen, children }: SectionCardProps) {
+export default function SectionCard({ title, description, evidence, enabled, onToggleEnabled, hint, hintTone, open, onToggleOpen, children }: SectionCardProps) {
   const hasSwitch = typeof enabled === 'boolean' && Boolean(onToggleEnabled);
 
   return (
@@ -40,6 +45,9 @@ export default function SectionCard({ title, description, evidence, enabled, onT
             {title}
             {hasSwitch && (
               <span className={`${styles.sectionCardState}${enabled ? ` ${styles.sectionCardStateOn}` : ''}`}>{enabled ? 'On' : 'Off'}</span>
+            )}
+            {hint && (
+              <span className={`${styles.sectionCardHint}${hintTone === 'warn' ? ` ${styles.sectionCardHintWarn}` : ''}`}>{hint}</span>
             )}
           </span>
           <span className={styles.sectionCardChevron} aria-hidden="true">▾</span>

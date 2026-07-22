@@ -43,7 +43,7 @@
 .warnNotice { margin: .5rem 0 .9rem; padding: .7rem .9rem; border: 1px solid rgba(251,191,36,.45); border-radius: 7px; background: rgba(120,53,15,.28); color: #fde68a; font-size: .85rem; line-height: 1.4; }
 .builderGrid { display: grid; grid-template-columns: minmax(410px, 520px) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
 .editorPanel { min-width: 0; overflow: hidden; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(8,18,31,.9); }
-.builderTabs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); padding: .4rem; border-bottom: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.025); }
+.builderTabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: .4rem; border-bottom: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.025); }
 .builderTabs button { min-height: 48px; padding: .55rem .4rem; border: 0; border-bottom: 2px solid transparent; background: transparent; color: #9ca8b8; font-size: .78rem; font-weight: 700; cursor: pointer; }
 .builderTabs .activeBuilderTab { border-bottom-color: #ff7a21; color: #fff; }
 .tabContent { max-height: calc(100vh - 15.5rem); min-height: 620px; overflow-y: auto; }
@@ -75,6 +75,8 @@
 .sectionCardTitle { display: inline-flex; align-items: center; gap: .55rem; min-width: 0; font-size: .95rem; font-weight: 700; }
 .sectionCardState { flex: none; font-size: .62rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 2px 7px; border-radius: 999px; background: rgba(255,255,255,.1); color: #9ca8b8; }
 .sectionCardStateOn { background: rgba(255,122,33,.18); color: #ffb27a; }
+.sectionCardHint { flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .68rem; font-weight: 600; color: #9ca8b8; }
+.sectionCardHintWarn { color: #f5b83d; }
 .sectionCardChevron { flex: none; color: #9ca8b8; font-size: .8rem; transition: transform .18s ease; }
 .sectionCardOpen .sectionCardChevron { transform: rotate(180deg); }
 .sectionCardTrigger:focus-visible { outline: 2px solid #ff9b54; outline-offset: -2px; border-radius: 8px; }
@@ -112,6 +114,15 @@
 
 /* Compact toggle-and-label rows (trust badges) */
 .fieldHint { margin: 0; color: #9ca8b8; font-size: .78rem; line-height: 1.4; }
+/* Floating save pill — the header Save button scrolls away on the long Design
+   tab, so unsaved changes surface a fixed reminder with a one-tap save. */
+.savePill { position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 60; display: flex; align-items: center; gap: .9rem; padding: .55rem .6rem .55rem 1.05rem; border-radius: 999px; border: 1px solid rgba(255,255,255,.14); background: rgba(10,22,36,.96); box-shadow: 0 22px 44px -18px rgba(0,0,0,.7); font-size: .82rem; color: #f7f5ef; animation: savePillIn .25s cubic-bezier(.22, .61, .36, 1) both; }
+.savePill > span { display: inline-flex; align-items: center; gap: .5rem; font-weight: 700; }
+.savePill > span::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #f5b83d; }
+.savePill button { min-height: 40px; padding: .45rem 1.15rem; border: none; border-radius: 999px; background: #ff7a21; color: #14110b; font-weight: 800; font-size: .82rem; cursor: pointer; }
+.savePill button:disabled { opacity: .6; cursor: default; }
+@keyframes savePillIn { from { transform: translateY(12px); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .savePill { animation: none; } }
 .blogCoverPreview { position: relative; align-self: flex-start; border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,.12); }
 .blogCoverPreview img { display: block; width: 200px; height: 120px; object-fit: cover; }
 .blogCoverPreview button { position: absolute; top: 6px; right: 6px; border: none; border-radius: 999px; padding: 4px 10px; background: rgba(0,0,0,.72); color: #fff; font-size: .72rem; font-weight: 700; cursor: pointer; }
