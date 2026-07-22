@@ -14,6 +14,13 @@
 .site p { color: inherit; }
 .logo { width: auto; height: 42px; object-fit: contain; }
 .navLinks { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .65rem clamp(1rem, 3vw, 2.5rem); font-size: .8rem; font-weight: 700; text-transform: uppercase; }
+/* Shared nav-link hover: an accent underline that grows from the left. Uses a
+   background gradient (not ::after) so it never collides with Vista's own
+   ::after underline, which is excluded below. */
+.navLinks a { background-image: linear-gradient(var(--theme-accent), var(--theme-accent)); background-repeat: no-repeat; background-position: left bottom; background-size: 0% 2px; padding-bottom: 3px; transition: background-size .25s ease, color .2s ease; }
+.navLinks a:hover { background-size: 100% 2px; }
+.vista .navLinks a { background-image: none; }
+@media (prefers-reduced-motion: reduce) { .navLinks a { transition: color .2s ease; } }
 .kicker { margin-bottom: 1rem; font-size: .73rem; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }
 .primaryCta { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; padding: .75rem 1.2rem; border-radius: var(--theme-radius, 4px); background: var(--theme-accent); color: #111; font-weight: 800; transition: transform .25s ease, box-shadow .25s ease, filter .25s ease; }
 .primaryCta:hover { transform: translateY(-2px); filter: brightness(1.06); box-shadow: 0 16px 32px -16px color-mix(in srgb, var(--theme-accent) 65%, transparent); }
