@@ -84,6 +84,13 @@ export const AVAILABLE_TEMPLATES: TemplateConfig[] = [
     accent: '#f15a29',
     fontVar: 'var(--font-display), system-ui, sans-serif',
   },
+  {
+    id: 'reno',
+    name: 'Renovation',
+    description: 'Dark-navy + golden-yellow renovation look — hexagon motifs, angular hero, bold headlines',
+    accent: '#f5b421',
+    fontVar: 'var(--font-display), system-ui, sans-serif',
+  },
 ];
 // Note: 17 additional templates (Haven, Meridian, Blueprint, Lumen, Atlas, Circuit,
 // Cascade, Anchor, Foundry, Ironclad, Summit, Beacon, Timber, Heritage, Bloom, Drift,

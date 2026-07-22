@@ -694,3 +694,63 @@
   .fixitFooterCall { justify-content: center; }
 }
 @media (prefers-reduced-motion: reduce) { .fixitHeroCopy > *, .fixitHeroImg { animation: none; } }
+
+/* ===== Reno — dark-navy + yellow renovation look (Renovation reference) ===== */
+.reno { background: #fff; color: #26303c; font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; --rn-navy: #1b2431; --rn-ink: #26303c; --rn-muted: #667180; --rn-surface: #f4f5f7; }
+.renoHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1.5rem; padding: .8rem clamp(1.25rem, 4vw, 3.5rem); background: rgba(255,255,255,.96); backdrop-filter: blur(10px); border-bottom: 3px solid var(--theme-accent); }
+.renoBrand { display: inline-flex; align-items: center; gap: .55rem; font-size: 1.2rem; color: var(--rn-ink); }
+.renoBrand strong { font-family: var(--theme-display); font-weight: 800; letter-spacing: -.01em; }
+.renoHex { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 34px; height: 34px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: var(--theme-accent); color: var(--rn-navy); font-size: .9rem; }
+.renoHeader .navLinks { text-transform: uppercase; letter-spacing: .04em; font-size: .82rem; font-weight: 700; }
+.renoHeaderPhone { justify-self: end; display: inline-flex; align-items: center; gap: .5rem; font-weight: 800; font-size: .95rem; color: var(--rn-ink); white-space: nowrap; }
+.renoHero { position: relative; display: grid; grid-template-columns: 1.05fr .95fr; align-items: stretch; background: var(--rn-navy); color: #fff; }
+.renoHeroCopy { position: relative; z-index: 1; max-width: 620px; align-self: center; padding: clamp(2.5rem, 6vw, 5rem) clamp(1.25rem, 5vw, 4rem); }
+.renoEyebrow { margin: 0 0 1rem; font-size: .8rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--theme-accent); }
+.renoHeroCopy h1 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(2.6rem, 5.8vw, 4.6rem); line-height: 1.02; letter-spacing: -.03em; margin: 0 0 1.2rem; text-wrap: balance; overflow-wrap: anywhere; }
+.renoHeroText { font-size: clamp(1rem, 1.4vw, 1.16rem); line-height: 1.6; color: rgba(255,255,255,.8); margin: 0 0 1.7rem; max-width: 46ch; }
+.renoHeroActions { display: flex; align-items: center; gap: 1.1rem 1.4rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.renoHeroCall { color: #fff; font-weight: 600; font-size: .95rem; }
+.renoHeroCall strong { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--theme-accent); }
+.renoHeroMedia { position: relative; min-height: 380px; }
+.renoHeroImg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; clip-path: polygon(14% 0, 100% 0, 100% 100%, 0 100%); }
+.renoHexBadge { position: absolute; z-index: 2; left: 4%; bottom: 10%; display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: var(--theme-accent); color: var(--rn-navy); font-size: 1.5rem; }
+.renoBtn { display: inline-flex; align-items: center; gap: .45rem; min-height: 50px; padding: .8rem 1.6rem; background: var(--theme-accent); color: var(--theme-on-accent, #1b2431); font-weight: 800; font-size: .9rem; letter-spacing: .03em; text-transform: uppercase; box-shadow: 0 16px 30px -14px color-mix(in srgb, var(--theme-accent) 70%, transparent); transition: transform .2s ease, filter .2s ease; }
+.renoBtn:hover { transform: translateY(-2px); filter: brightness(1.05); }
+.renoContact { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(1.75rem, 4vw, 3.5rem); align-items: center; padding: clamp(3rem, 7vw, 6rem) clamp(1.25rem, 5vw, 4rem); background: var(--rn-surface); }
+.renoContactCopy { display: grid; gap: 1rem; align-content: start; }
+.renoContactCopy h2 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(1.9rem, 4vw, 2.9rem); line-height: 1.06; letter-spacing: -.02em; color: var(--rn-ink); margin: 0; }
+.renoContactCopy > p { margin: 0; font-size: 1.02rem; line-height: 1.6; color: var(--rn-muted); }
+.renoContactCopy .renoBtn { justify-self: start; }
+.renoFooter { background: var(--rn-navy); padding: clamp(1.5rem, 4vw, 2.5rem) clamp(1.25rem, 5vw, 4rem); }
+.renoFooterBar { display: flex; align-items: center; justify-content: space-between; gap: 1rem 1.5rem; flex-wrap: wrap; padding: 1.1rem 0; color: #aab4c0; }
+.renoFooterBrand { display: inline-flex; align-items: center; gap: .5rem; font-family: var(--theme-display); font-weight: 800; font-size: 1.2rem; color: #fff; }
+.renoFooterCall { display: inline-flex; align-items: center; gap: .5rem; min-height: 46px; padding: .5rem 1.2rem; background: var(--theme-accent); color: var(--theme-on-accent, #1b2431); font-weight: 800; font-size: .95rem; }
+.renoFooter small { opacity: .6; font-size: .78rem; }
+.reno .extraSection { border-top: none; padding: clamp(3rem, 6vw, 5.5rem) clamp(1.25rem, 5vw, 4rem); }
+.reno .extraSection:nth-of-type(even) { background: var(--rn-surface); }
+.reno .extraSectionHeader h2 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(1.9rem, 4vw, 3rem); line-height: 1.06; letter-spacing: -.02em; color: var(--rn-ink); }
+.reno .kicker { color: color-mix(in srgb, var(--theme-accent) 78%, #7a6412); }
+.reno .serviceCard { background: #fff; border: 1px solid #e6e8ec; border-radius: 4px; box-shadow: 0 22px 46px -30px rgba(27,36,49,.32); }
+.reno .serviceIcon { clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); border-radius: 0; background: var(--rn-navy); color: var(--theme-accent); }
+.reno .serviceCard h3 { color: var(--rn-ink); }
+.reno .serviceCard p { color: var(--rn-muted); }
+.reno .statItem { background: var(--rn-navy); border-radius: 4px; padding: 1.4rem 1rem; }
+.reno .statValue { color: #fff; }
+.reno .statLabel { color: rgba(255,255,255,.7); }
+.reno .processNum { clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); border-radius: 0; background: var(--theme-accent); color: var(--rn-navy); }
+.renoHeroCopy > * { animation: renoRise .7s cubic-bezier(.22, .61, .36, 1) both; }
+.renoHeroCopy > *:nth-child(1) { animation-delay: .05s; }
+.renoHeroCopy > *:nth-child(2) { animation-delay: .13s; }
+.renoHeroCopy > *:nth-child(3) { animation-delay: .21s; }
+.renoHeroCopy > *:nth-child(4) { animation-delay: .29s; }
+.renoHeroCopy > *:nth-child(5) { animation-delay: .37s; }
+@keyframes renoRise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+@media (max-width: 900px) {
+  .renoHero, .renoContact { grid-template-columns: 1fr; }
+  .renoHeroMedia { order: -1; min-height: 300px; }
+  .renoHeroImg { clip-path: none; }
+  .renoHeader { grid-template-columns: auto 1fr; }
+  .renoHeader .navLinks { display: none; }
+}
+@media (max-width: 560px) { .renoFooterBar { flex-direction: column; align-items: stretch; text-align: center; } .renoFooterCall { justify-content: center; } }
+@media (prefers-reduced-motion: reduce) { .renoHeroCopy > * { animation: none; } }
