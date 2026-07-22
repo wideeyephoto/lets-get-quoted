@@ -7,13 +7,13 @@ import styles from './themes.module.css';
 // each template's palette (light or dark).
 export default function SiteServices({ title, intro, items }: Pick<SiteServicesContent, 'title' | 'intro' | 'items'>) {
   return (
-    <section className={styles.extraSection} data-reveal id="our-services">
-      <div className={styles.extraSectionHeader}>
+    <section className={styles.extraSection} id="our-services">
+      <div className={styles.extraSectionHeader} data-reveal>
         <p className={styles.kicker}>Services</p>
         <h2>{title}</h2>
         {intro && <p>{intro}</p>}
       </div>
-      <div className={styles.serviceGrid}>
+      <div className={styles.serviceGrid} data-stagger>
         {items.map((item) => (
           <article key={item.id} className={styles.serviceCard}>
             <span className={styles.serviceIcon}><ServiceIcon name={item.icon} /></span>

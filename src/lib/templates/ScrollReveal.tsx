@@ -18,7 +18,7 @@ export default function ScrollReveal() {
     if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    const elements = Array.from(document.querySelectorAll<HTMLElement>('[data-reveal]'));
+    const elements = Array.from(document.querySelectorAll<HTMLElement>('[data-reveal], [data-stagger]'));
     if (elements.length === 0) return;
 
     const observer = new IntersectionObserver(

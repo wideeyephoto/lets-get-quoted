@@ -19,8 +19,21 @@
    attribute selectors are allowed. Gated on no-preference so reduced-motion
    users and any no-JS render (which never gets a state) show content at once. */
 @media (prefers-reduced-motion: no-preference) {
-  [data-reveal][data-reveal-state='init'] { opacity: 0; transform: translateY(22px); }
-  [data-reveal][data-reveal-state='in'] { opacity: 1; transform: none; transition: opacity .6s cubic-bezier(.22, .61, .36, 1), transform .6s cubic-bezier(.22, .61, .36, 1); }
+  /* Element reveal — fade up, or slide in from a side (data-reveal="left|right"). */
+  [data-reveal][data-reveal-state='init'] { opacity: 0; transform: translateY(24px); }
+  [data-reveal='left'][data-reveal-state='init'] { transform: translateX(-30px); }
+  [data-reveal='right'][data-reveal-state='init'] { transform: translateX(30px); }
+  [data-reveal][data-reveal-state='in'] { opacity: 1; transform: none; transition: opacity .7s cubic-bezier(.22, .61, .36, 1), transform .7s cubic-bezier(.22, .61, .36, 1); }
+
+  /* Staggered children — cards/items cascade in when the container enters. */
+  [data-stagger][data-reveal-state='init'] > * { opacity: 0; transform: translateY(22px); }
+  [data-stagger][data-reveal-state='in'] > * { opacity: 1; transform: none; transition: opacity .55s ease, transform .55s ease; }
+  [data-stagger][data-reveal-state='in'] > *:nth-child(2) { transition-delay: .08s; }
+  [data-stagger][data-reveal-state='in'] > *:nth-child(3) { transition-delay: .16s; }
+  [data-stagger][data-reveal-state='in'] > *:nth-child(4) { transition-delay: .24s; }
+  [data-stagger][data-reveal-state='in'] > *:nth-child(5) { transition-delay: .32s; }
+  [data-stagger][data-reveal-state='in'] > *:nth-child(6) { transition-delay: .40s; }
+  [data-stagger][data-reveal-state='in'] > *:nth-child(n+7) { transition-delay: .48s; }
 }
 
 * { box-sizing: border-box; }

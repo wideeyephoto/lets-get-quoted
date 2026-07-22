@@ -86,21 +86,21 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
         </div>
       </section>
 
-      <div className={styles.careTrustStrip}>
+      <div className={styles.careTrustStrip} data-reveal>
         {TRUST_ITEMS.map((item) => <span key={item}>{item}</span>)}
       </div>
 
       <SiteContentSections site={site} />
 
       <section className={styles.careWhy} id="why">
-        <div className={styles.careWhyMedia}>
+        <div className={styles.careWhyMedia} data-reveal="left">
           <span className={styles.careDot1} aria-hidden="true" />
           <span className={styles.careDot2} aria-hidden="true" />
           <div className={styles.careHeroCircle}>
             <img src={aboutImage} alt="Our team on the job" loading="lazy" decoding="async" />
           </div>
         </div>
-        <div className={styles.careWhyCard}>
+        <div className={styles.careWhyCard} data-reveal="right">
           <p className={styles.careEyebrow}>Why choose us</p>
           <h2>Quality work, every single time</h2>
           <ul className={styles.careCheckList}>
@@ -112,11 +112,11 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
       </section>
 
       <section className={styles.careWorks} aria-label="Recent work">
-        <div className={styles.careWorksHead}>
+        <div className={styles.careWorksHead} data-reveal>
           <p className={styles.careEyebrowLight}>Our work</p>
           <h2>Quality you can see</h2>
         </div>
-        <div className={styles.careWorksGrid}>
+        <div className={styles.careWorksGrid} data-stagger>
           {gallery.slice(0, 3).map((image, index) => (
             <figure key={image.id}>
               <img src={image.url} alt={image.alt} loading="lazy" decoding="async" />
@@ -126,7 +126,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
         </div>
       </section>
 
-      <section className={styles.careEstimate} id="estimate">
+      <section className={styles.careEstimate} id="estimate" data-reveal>
         <div className={styles.careEstimateCopy}>
           <p className={styles.careEyebrow}>Instant estimate</p>
           <h2>See your price in about 60 seconds</h2>
@@ -137,7 +137,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
       </section>
 
       <section className={styles.careCta} aria-label="Get started">
-        <div className={styles.careCtaInner}>
+        <div className={styles.careCtaInner} data-reveal>
           <div>
             <h2>Ready to get it done?</h2>
             <p>Free estimates and a satisfaction guarantee on every job.</p>
@@ -149,7 +149,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
         </div>
       </section>
 
-      <section className={styles.careContact} id="contact">
+      <section className={styles.careContact} id="contact" data-reveal>
         <div className={styles.careContactCopy}>
           <p className={styles.careEyebrow}>Get started</p>
           <h2>Tell us about your project</h2>

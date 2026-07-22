@@ -6,13 +6,13 @@ import styles from './themes.module.css';
 // is decorative. Accent-tinted, currentColor text — adapts to any template.
 export default function SiteProcess({ title, intro, steps }: Pick<SiteHowItWorksContent, 'title' | 'intro' | 'steps'>) {
   return (
-    <section className={styles.extraSection} data-reveal id="how-it-works">
-      <div className={styles.extraSectionHeader}>
+    <section className={styles.extraSection} id="how-it-works">
+      <div className={styles.extraSectionHeader} data-reveal>
         <p className={styles.kicker}>How it works</p>
         <h2>{title}</h2>
         {intro && <p>{intro}</p>}
       </div>
-      <ol className={styles.processGrid}>
+      <ol className={styles.processGrid} data-stagger>
         {steps.map((step, index) => (
           <li key={step.id} className={styles.processStep}>
             <span className={styles.processNum} aria-hidden="true">{index + 1}</span>
