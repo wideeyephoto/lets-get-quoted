@@ -620,7 +620,7 @@
 .coatHeroCopy > *:nth-child(3) { animation-delay: .21s; }
 .coatHeroCopy > *:nth-child(4) { animation-delay: .29s; }
 .coatHeroCopy > *:nth-child(5) { animation-delay: .37s; }
-@keyframes coatRise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+@keyframes coatRise { from { transform: translateY(22px); } to { transform: none; } }
 .coatHeroImg { animation: coatFloat 7s ease-in-out infinite; }
 @keyframes coatFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
 @media (prefers-reduced-motion: reduce) { .coatCircle, .coatHeroCopy > *, .coatHeroImg { animation: none; } }
@@ -681,7 +681,7 @@
 .fixitHeroCopy > *:nth-child(3) { animation-delay: .21s; }
 .fixitHeroCopy > *:nth-child(4) { animation-delay: .29s; }
 .fixitHeroCopy > *:nth-child(5) { animation-delay: .37s; }
-@keyframes fixitRise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+@keyframes fixitRise { from { transform: translateY(22px); } to { transform: none; } }
 @keyframes fixitFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 @media (max-width: 900px) {
   .fixitHero, .fixitContact { grid-template-columns: 1fr; }
@@ -744,7 +744,7 @@
 .renoHeroCopy > *:nth-child(3) { animation-delay: .21s; }
 .renoHeroCopy > *:nth-child(4) { animation-delay: .29s; }
 .renoHeroCopy > *:nth-child(5) { animation-delay: .37s; }
-@keyframes renoRise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+@keyframes renoRise { from { transform: translateY(22px); } to { transform: none; } }
 @media (max-width: 900px) {
   .renoHero, .renoContact { grid-template-columns: 1fr; }
   .renoHeroMedia { order: -1; min-height: 300px; }
@@ -815,7 +815,7 @@
 .shineHeroCopy > *:nth-child(2) { animation-delay: .13s; }
 .shineHeroCopy > *:nth-child(3) { animation-delay: .21s; }
 .shineHeroCopy > *:nth-child(4) { animation-delay: .29s; }
-@keyframes shineRise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+@keyframes shineRise { from { transform: translateY(22px); } to { transform: none; } }
 .shineHeroImg { animation: shineFloat 7s ease-in-out infinite; }
 @keyframes shineFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
 @media (max-width: 900px) {
