@@ -4,10 +4,10 @@ import { useCallback, useEffect, useState, useTransition } from 'react';
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, HERO_BADGE_PRESETS, type NormalizedSiteContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, HERO_BADGE_PRESETS, slugifyBlogTitle, type NormalizedSiteContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
-import { checkSubdomainAvailableAction, generateSiteTextAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
+import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
 import ImageLibrary from './ImageLibrary';
 import LivePreview from './LivePreview';
 import SectionCard from './SectionCard';
@@ -68,6 +68,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   const [subdomainStatus, setSubdomainStatus] = useState<'idle' | 'available' | 'taken'>('idle');
   const [domainStatus, setDomainStatus] = useState<'idle' | 'checking' | 'verified' | 'unverified'>(site.custom_domain_verified_at ? 'verified' : 'idle');
   const [isGeneratingText, setIsGeneratingText] = useState(false);
+  const [isGeneratingBlog, setIsGeneratingBlog] = useState(false);
   // Local string state for the free-numeric rating fields so decimal typing
   // (e.g. "4.9") isn't clobbered by re-normalization on every keystroke.
   const [ratingInput, setRatingInput] = useState(() => String(getSiteContent(initialSite.content).ratingBadge.rating));
@@ -126,6 +127,42 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       }
     });
   }, [site]);
+
+  const handleGenerateBlogDraft = useCallback(() => {
+    setIsGeneratingBlog(true);
+    setMessage(null);
+    startTransition(async () => {
+      try {
+        const draft = await generateBlogPostAction();
+        setSite((current) => {
+          const content = getSiteContent(current.content);
+          // Unique slug among existing posts so /blog/[slug] never collides.
+          const slugBase = slugifyBlogTitle(draft.title) || 'post';
+          const existing = new Set(content.blog.posts.map((p) => p.slug));
+          let slug = slugBase;
+          let n = 2;
+          while (existing.has(slug)) slug = `${slugBase}-${n++}`;
+          const post = {
+            id: createContentId('post'),
+            slug,
+            title: draft.title,
+            excerpt: draft.excerpt,
+            body: draft.body,
+            coverImage: '',
+            status: 'draft' as const,
+            date: new Date().toISOString().slice(0, 10),
+          };
+          return { ...current, content: mergeSiteContent(current.content, { blog: { ...content.blog, enabled: true, posts: [post, ...content.blog.posts] } }) };
+        });
+        setIsDirty(true);
+        setMessage({ type: 'success', text: 'Draft created — review and edit it, then flip it to Published when you’re happy. Nothing goes live until you publish.' });
+      } catch (error) {
+        setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to generate a draft.' });
+      } finally {
+        setIsGeneratingBlog(false);
+      }
+    });
+  }, []);
 
   const handleGenerateText = useCallback(() => {
     const hasExistingText = Boolean(site.headline || site.tagline || site.seo_title || site.seo_description);
@@ -289,6 +326,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
   const updateHowItWorks = useCallback((howItWorks: SiteHowItWorksContent) => {
     updateSiteContent({ howItWorks });
+  }, [updateSiteContent]);
+
+  const updateBlog = useCallback((blog: SiteBlogContent) => {
+    updateSiteContent({ blog });
   }, [updateSiteContent]);
 
   const toggleShowcaseImage = useCallback((image: SiteImage) => {
@@ -520,6 +561,26 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     ))}
                   </div>
                   {siteContent.howItWorks.steps.length < 5 && <button type="button" className={styles.secondaryAction} onClick={() => updateHowItWorks({ ...siteContent.howItWorks, enabled: true, steps: [...siteContent.howItWorks.steps, { id: createContentId('step'), title: '', description: '' }] })}>Add step</button>}
+                </SectionCard>
+
+                <SectionCard title="Blog" description="Helpful articles for homeowners — maintenance tips, seasonal advice, and what to know before hiring. AI can draft them; you review and publish." evidence="Fresh, useful posts give Google more local pages to rank and give past customers a reason to return — search visibility that compounds over time." enabled={siteContent.blog.enabled} onToggleEnabled={(value) => updateBlog({ ...siteContent.blog, enabled: value })} open={openSection === 'blog'} onToggleOpen={() => toggleSection('blog')}>
+                  <label className={styles.formField}><span>Section title</span><input value={siteContent.blog.title} onChange={(event) => updateBlog({ ...siteContent.blog, title: event.target.value })} /></label>
+                  <label className={styles.formField}><span>Intro copy (optional)</span><input value={siteContent.blog.intro} onChange={(event) => updateBlog({ ...siteContent.blog, intro: event.target.value })} /></label>
+                  <button type="button" className="btn secondary" onClick={handleGenerateBlogDraft} disabled={isGeneratingBlog}>{isGeneratingBlog ? 'Writing a draft…' : '✨ Generate a draft with AI'}</button>
+                  <p className={styles.fieldHint}>Drafts are saved unpublished — nothing goes live until you flip a post to Published.</p>
+                  <div className={styles.stackList}>
+                    {siteContent.blog.posts.map((post, index) => (
+                      <div className={styles.stackItem} key={post.id}>
+                        <div className={styles.itemHeader}><strong>{post.title || `Post ${index + 1}`}</strong><button type="button" onClick={() => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.filter((p) => p.id !== post.id) })}>Remove</button></div>
+                        <label className={styles.toggleRow}><input type="checkbox" checked={post.status === 'published'} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, status: event.target.checked ? 'published' : 'draft' } : p) })} /><span><strong>Published</strong><small>{post.status === 'published' ? 'Live on your site.' : 'Draft — only you can see it until you publish.'}</small></span></label>
+                        <label className={styles.formField}><span>Title</span><input value={post.title} maxLength={120} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, title: event.target.value } : p) })} placeholder="5 signs it’s time to reseal your deck" /></label>
+                        <label className={styles.formField}><span>Excerpt</span><input value={post.excerpt} maxLength={200} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, excerpt: event.target.value } : p) })} placeholder="One sentence that makes someone want to read." /></label>
+                        <label className={styles.formField}><span>Cover image URL (optional)</span><input value={post.coverImage} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, coverImage: event.target.value } : p) })} placeholder="https://…" /></label>
+                        <label className={styles.formField}><span>Body</span><textarea rows={10} value={post.body} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, body: event.target.value } : p) })} placeholder="Write in short paragraphs separated by a blank line." /></label>
+                      </div>
+                    ))}
+                  </div>
+                  <button type="button" className={styles.secondaryAction} onClick={() => updateBlog({ ...siteContent.blog, enabled: true, posts: [{ id: createContentId('post'), slug: '', title: '', excerpt: '', body: '', coverImage: '', status: 'draft', date: new Date().toISOString().slice(0, 10) }, ...siteContent.blog.posts] })}>Add post manually</button>
                 </SectionCard>
 
                 <SectionCard title="Showcase gallery" description="Highlight finished work, project details, and job photos." evidence="Real project photos alongside reviews produced 55% more leads in one study — genuine work outperforms stock." enabled={siteContent.showcase.enabled} onToggleEnabled={(value) => updateShowcase({ ...siteContent.showcase, enabled: value })} open={openSection === 'showcase'} onToggleOpen={() => toggleSection('showcase')}>

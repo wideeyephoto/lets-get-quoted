@@ -6,6 +6,7 @@ import { deleteSiteImage, importJobPhotoAsSiteImage, uploadSiteImage } from '@/l
 import { createJobPhotoUrls } from '@/lib/job-photo-storage';
 import type { Site } from '@/lib/sites';
 import { normalizeDomain, verifyDomain } from '@/lib/domains';
+import { draftBlogPost, type GeneratedBlogPost } from '@/lib/blog-generate';
 import {
   getOrCreateSite,
   updateSite,
@@ -275,6 +276,31 @@ export async function generateSiteTextAction(): Promise<GeneratedSiteText> {
   } catch (error) {
     console.error('Site text generation failed:', error);
     throw new Error('Could not generate example text right now. Please try again.');
+  }
+}
+
+// Draft one blog post for the owner's site. Returns raw fields; the builder
+// assembles the SiteBlogPost as a DRAFT so nothing publishes without approval.
+export async function generateBlogPostAction(topic?: string): Promise<GeneratedBlogPost> {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const { data: sites } = await supabase
+    .from('sites')
+    .select('company_name, service_area')
+    .eq('account_id', accountId)
+    .limit(1);
+
+  if (!sites || sites.length === 0) throw new Error('No site found for your account');
+
+  try {
+    return await draftBlogPost({
+      companyName: sites[0].company_name || '',
+      serviceArea: sites[0].service_area || '',
+      topic: typeof topic === 'string' ? topic : '',
+    });
+  } catch (error) {
+    console.error('Blog post generation failed:', error);
+    throw new Error('Could not generate a draft right now. Please try again.');
   }
 }
 
