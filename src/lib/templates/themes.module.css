@@ -744,6 +744,9 @@
 @media (max-width: 900px) {
   .coatHero, .coatContact { grid-template-columns: 1fr; }
   .coatHeroMedia { order: -1; max-width: 440px; margin-inline: auto; }
+  /* Copy overlays the hero image as a translucent text box instead of
+     dropping below it. */
+  .coatHeroCopy { position: relative; z-index: 3; margin: -3rem .25rem 0; padding: 1.4rem 1.2rem 1.5rem; border-radius: 16px; background: rgba(20,7,9,.62); backdrop-filter: blur(8px); box-shadow: 0 24px 48px -26px rgba(0,0,0,.55); }
   .coatHeader { grid-template-columns: auto 1fr; }
   .coatHeader .navLinks { display: none; }
 }
@@ -841,6 +844,10 @@
 @media (max-width: 900px) {
   .fixitHero, .fixitContact { grid-template-columns: 1fr; }
   .fixitHeroMedia { order: -1; max-width: 460px; margin-inline: auto; min-height: 360px; }
+  /* Copy overlays the hero image as a surface text box (auto-themes via
+     --fx-surface in dark mode) instead of dropping below it. */
+  .fixitHeroCopy { position: relative; z-index: 3; margin: -3rem .25rem 0; padding: 1.4rem 1.2rem 1.5rem; border-radius: 16px; background: var(--fx-surface); box-shadow: 0 24px 48px -26px rgba(0,0,0,.4); }
+  .fixitHeroStat, .fixitDots { display: none; }
   .fixitHeader { grid-template-columns: auto 1fr; }
   .fixitHeader .navLinks { display: none; }
 }
@@ -904,6 +911,8 @@
   .renoHero, .renoContact { grid-template-columns: 1fr; }
   .renoHeroMedia { order: -1; min-height: 300px; }
   .renoHeroImg { clip-path: none; }
+  /* Copy overlays the hero image as a translucent navy text box. */
+  .renoHeroCopy { position: relative; z-index: 3; margin: -2.75rem 1rem 0; padding: 1.4rem 1.2rem 1.5rem; border-radius: 12px; background: rgba(15,20,28,.68); backdrop-filter: blur(8px); box-shadow: 0 24px 48px -26px rgba(0,0,0,.55); }
   .renoHeader { grid-template-columns: auto 1fr; }
   .renoHeader .navLinks { display: none; }
 }
@@ -985,6 +994,10 @@
 @media (max-width: 900px) {
   .shineHero, .shineContact { grid-template-columns: 1fr; }
   .shineHeroMedia { order: -1; max-width: 460px; margin-inline: auto; }
+  /* Copy overlays the hero collage as a translucent navy text box; the
+     bottom-left badge would sit under it, so it hides on mobile. */
+  .shineHeroCopy { position: relative; z-index: 3; margin: -3rem .25rem 0; padding: 1.4rem 1.2rem 1.5rem; border-radius: 16px; background: rgba(9,16,28,.64); backdrop-filter: blur(8px); box-shadow: 0 24px 48px -26px rgba(0,0,0,.55); }
+  .shineBadgeCustomers { display: none; }
   .shineHeader { grid-template-columns: auto 1fr; }
   .shineHeader .navLinks { display: none; }
 }

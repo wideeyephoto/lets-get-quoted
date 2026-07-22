@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge } from '@/lib/site-content';
+import { getHeroBadge, HERO_BADGE_PRESETS } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
@@ -21,6 +21,10 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
   void gallery;
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
   const heroBadge = getHeroBadge(site.content);
+  // Second floating card: always a DIFFERENT preset than the selected badge so
+  // the two cards never duplicate (the default badge is 'licensed', which used
+  // to collide with this card's hardcoded Licensed & insured copy).
+  const secondBadge = HERO_BADGE_PRESETS.find((preset) => preset.key !== heroBadge?.key) ?? HERO_BADGE_PRESETS[0];
   const themeStyle = {
     '--theme-accent': site.accent_override || '#f15a29',
     '--theme-on-accent': '#ffffff',
@@ -63,10 +67,12 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
               <div><strong>{heroBadge.title}</strong><small>{heroBadge.subtitle}</small></div>
             </div>
           )}
-          <div className={`${styles.fixitHeroCard} ${styles.fixitHeroStat}`} data-parallax="0.2">
-            <span className={styles.fixitHeroCardIcon} aria-hidden="true">✓</span>
-            <div><strong>Licensed &amp; insured</strong><small>Fully vetted pros</small></div>
-          </div>
+          {heroBadge && (
+            <div className={`${styles.fixitHeroCard} ${styles.fixitHeroStat}`} data-parallax="0.2">
+              <span className={styles.fixitHeroCardIcon} aria-hidden="true">{secondBadge.icon}</span>
+              <div><strong>{secondBadge.title}</strong><small>{secondBadge.subtitle}</small></div>
+            </div>
+          )}
           <span className={styles.fixitDots} data-parallax="0.24" aria-hidden="true" />
         </div>
       </section>
