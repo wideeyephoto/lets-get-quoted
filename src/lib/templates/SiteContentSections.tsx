@@ -87,13 +87,13 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
           {services && <SiteServices title={services.title} intro={services.intro} items={services.items} />}
           {howItWorks && <SiteProcess title={howItWorks.title} intro={howItWorks.intro} steps={howItWorks.steps} />}
           {showcase && (
-            <section className={styles.extraSection} data-reveal id="showcase">
-              <div className={styles.extraSectionHeader}>
+            <section className={styles.extraSection} id="showcase">
+              <div className={styles.extraSectionHeader} data-reveal>
                 <p className={styles.kicker}>Showcase</p>
                 <h2>{showcase.title}</h2>
                 {showcase.intro && <p>{showcase.intro}</p>}
               </div>
-              <div className={`${styles.showcaseGrid} ${styles[`showcase-${showcase.layout}`] || ''}`}>
+              <div className={`${styles.showcaseGrid} ${styles[`showcase-${showcase.layout}`] || ''}`} data-stagger>
                 {showcase.items.map((item, index) => (
                   <figure key={`${item.id}-${index}`}>
                     <SafeImage src={item.url} alt={item.alt} width={1200} height={900} sizes={index === 0 && showcase.layout === 'featured' ? '60vw' : '30vw'} />
@@ -141,13 +141,13 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
           )}
 
           {serviceAreas && (
-            <section className={styles.extraSection} data-reveal id="areas">
-              <div className={styles.extraSectionHeader}>
+            <section className={styles.extraSection} id="areas">
+              <div className={styles.extraSectionHeader} data-reveal>
                 <p className={styles.kicker}>Service area</p>
                 <h2>{serviceAreas.title}</h2>
                 {serviceAreas.intro && <p>{serviceAreas.intro}</p>}
               </div>
-              <ul className={styles.serviceAreaList}>
+              <ul className={styles.serviceAreaList} data-stagger>
                 {serviceAreas.cities.map((city, index) => (
                   <li key={`${city}-${index}`} className={styles.serviceAreaChip}>{city}</li>
                 ))}
@@ -183,12 +183,12 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
           )}
 
           {certifications && (
-            <section className={styles.extraSection} data-reveal id="certifications">
-              <div className={styles.extraSectionHeader}>
+            <section className={styles.extraSection} id="certifications">
+              <div className={styles.extraSectionHeader} data-reveal>
                 <p className={styles.kicker}>Credentials</p>
                 <h2>{certifications.title}</h2>
               </div>
-              <ul className={styles.certList}>
+              <ul className={styles.certList} data-stagger>
                 {certifications.items.map((item) => (
                   <li key={item.id} className={styles.certItem}>
                     {item.imageUrl && <img src={item.imageUrl} alt={item.imageAlt || item.label || 'Certification'} loading="lazy" decoding="async" />}
