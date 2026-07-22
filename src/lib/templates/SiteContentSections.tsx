@@ -94,12 +94,12 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
           )}
 
           {testimonials && (
-            <section className={styles.extraSection} data-reveal id="reviews">
-              <div className={styles.extraSectionHeader}>
+            <section className={styles.extraSection} id="reviews">
+              <div className={styles.extraSectionHeader} data-reveal>
                 <p className={styles.kicker}>Reviews</p>
                 <h2>{testimonials.title}</h2>
               </div>
-              <div className={styles.testimonialGrid}>
+              <div className={styles.testimonialGrid} data-stagger>
                 {testimonials.items.map((item) => (
                   <article key={item.id} className={styles.testimonialCard}>
                     {item.imageUrl && <img className={styles.testimonialImage} src={item.imageUrl} alt={item.imageAlt || item.author || 'Customer review image'} />}
