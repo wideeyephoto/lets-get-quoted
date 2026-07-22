@@ -964,3 +964,30 @@
 }
 @media (max-width: 560px) { .shineFooterBar { flex-direction: column; align-items: stretch; text-align: center; } .shineFooterCall { justify-content: center; } .shineBadgeSupport { right: 0; } .shineBadgeCustomers { left: 0; } }
 @media (prefers-reduced-motion: reduce) { .shineHeroCopy > *, .shineBadge { animation: none; } .shinePhotoCard:hover .shinePhoto { transform: none; } }
+
+/* ===== Dark modes — Coat / Fixit / Reno / Shine (data-mode='dark') =====
+   Additive, Care-style: each template's colors flow through its --xx-ink/
+   muted/surface vars, so redefining the vars + the few hardcoded-white
+   surfaces (header, service cards, even-section gradient endpoints) is
+   enough. Heroes and footers are already dark and keep their identity;
+   floating white badges/cards stay white for contrast over photos. */
+.coat[data-mode='dark'] { background: #17151a; color: #e9e6ee; --coat-ink: #e9e6ee; --coat-muted: #a5a0af; --coat-surface: #201d26; }
+.coat[data-mode='dark'] .coatHeader { background: rgba(23,21,26,.94); border-bottom-color: #2a2732; }
+.coat[data-mode='dark'] .serviceCard { background: #201d26; border-color: #2f2b3a; }
+.coat[data-mode='dark'] .extraSection:nth-of-type(even) { background: linear-gradient(180deg, #17151a, var(--coat-surface) 16%, var(--coat-surface) 84%, #17151a); }
+.coat[data-mode='dark'] .coatFooterBar { background: #0f0d12; }
+
+.fixit[data-mode='dark'] { background: #17181d; color: #e9eaef; --fx-ink: #e9eaef; --fx-muted: #9ba1ae; --fx-surface: #1f2129; }
+.fixit[data-mode='dark'] .fixitHeader { background: rgba(23,24,29,.95); border-bottom-color: #262933; }
+.fixit[data-mode='dark'] .serviceCard { background: #1f2129; border-color: #2b2f3a; }
+.fixit[data-mode='dark'] .fixitPhoneIcon { border-color: #363b47; }
+.fixit[data-mode='dark'] .extraSection:nth-of-type(even) { background: linear-gradient(180deg, #17181d, var(--fx-surface) 16%, var(--fx-surface) 84%, #17181d); }
+
+.reno[data-mode='dark'] { background: #141a23; color: #e9edf3; --rn-ink: #e9edf3; --rn-muted: #98a2b0; --rn-surface: #1b2431; }
+.reno[data-mode='dark'] .renoHeader { background: rgba(20,26,35,.96); }
+.reno[data-mode='dark'] .serviceCard { background: #1b2431; border-color: #2a3442; }
+.reno[data-mode='dark'] .extraSection:nth-of-type(even) { background: linear-gradient(180deg, #141a23, var(--rn-surface) 16%, var(--rn-surface) 84%, #141a23); }
+
+.shine[data-mode='dark'] { background: #0f1626; color: #e9edf5; --sh-ink: #e9edf5; --sh-muted: #98a2b3; --sh-surface: #172032; }
+.shine[data-mode='dark'] .serviceCard { background: #172032; border-color: #263149; }
+.shine[data-mode='dark'] .extraSection:nth-of-type(even) { background: linear-gradient(180deg, #0f1626, var(--sh-surface) 16%, var(--sh-surface) 84%, #0f1626); }
