@@ -557,7 +557,7 @@
 .coatHeaderCta { justify-self: end; display: inline-flex; align-items: center; gap: .4rem; min-height: 44px; padding: .6rem 1.25rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #fff); font-weight: 700; font-size: .9rem; white-space: nowrap; transition: transform .2s ease, filter .2s ease; }
 .coatHeaderCta:hover { transform: translateY(-1px); filter: brightness(1.06); }
 .coatHero { position: relative; overflow: hidden; display: grid; grid-template-columns: 1.1fr .9fr; gap: clamp(1.5rem, 4vw, 3.5rem); align-items: center; padding: clamp(2.5rem, 6vw, 5rem) clamp(1.25rem, 5vw, 4rem) clamp(3rem, 7vw, 5.5rem); background: radial-gradient(120% 120% at 80% 8%, #5c1015, var(--coat-maroon) 60%); color: #fff; }
-.coatBokeh { position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: .9; filter: blur(6px); background-image: radial-gradient(circle at 12% 32%, rgba(229,50,42,.5) 0 42px, transparent 44px), radial-gradient(circle at 27% 72%, rgba(255,255,255,.06) 0 30px, transparent 32px), radial-gradient(circle at 70% 16%, rgba(229,50,42,.34) 0 60px, transparent 62px), radial-gradient(circle at 88% 60%, rgba(229,50,42,.28) 0 40px, transparent 42px), radial-gradient(circle at 46% 22%, rgba(255,255,255,.05) 0 20px, transparent 22px); }
+.coatBokeh { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
 .coatHeroCopy { position: relative; z-index: 1; max-width: 640px; }
 .coatEyebrowLight { margin: 0 0 1rem; font-size: .78rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: color-mix(in srgb, var(--theme-accent) 45%, #fff); }
 .coatHeroCopy h1 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(2.5rem, 5.6vw, 4.4rem); line-height: 1.02; letter-spacing: -.025em; margin: 0 0 1.2rem; text-wrap: balance; overflow-wrap: anywhere; }
@@ -603,9 +603,17 @@
   .coatFooterCall { justify-content: center; }
 }
 @media (prefers-reduced-motion: reduce) { .coatBtn, .coatHeaderCta { transition: none; } }
-/* Coat motion — drifting bokeh, a staggered hero entrance, and a floating photo */
-.coatBokeh { animation: coatDrift 22s ease-in-out infinite alternate; }
-@keyframes coatDrift { 0% { transform: translate(0, 0) rotate(0deg) scale(1); } 100% { transform: translate(-3%, 2.5%) rotate(4deg) scale(1.07); } }
+/* Coat motion — floating bokeh circles, a staggered hero entrance, floating photo */
+.coatCircle { position: absolute; border-radius: 50%; filter: blur(1px); background: color-mix(in srgb, var(--theme-accent) 55%, transparent); will-change: transform; }
+.coatCircle:nth-child(1) { width: 130px; height: 130px; top: 14%; left: 6%; opacity: .5; animation: coatBob1 9s ease-in-out infinite; }
+.coatCircle:nth-child(2) { width: 64px; height: 64px; top: 60%; left: 18%; opacity: .4; background: color-mix(in srgb, #ffffff 22%, transparent); animation: coatBob2 12s ease-in-out infinite .4s; }
+.coatCircle:nth-child(3) { width: 200px; height: 200px; top: 8%; right: 14%; opacity: .32; animation: coatBob3 14s ease-in-out infinite .8s; }
+.coatCircle:nth-child(4) { width: 90px; height: 90px; top: 64%; right: 8%; opacity: .3; animation: coatBob1 11s ease-in-out infinite 1.2s; }
+.coatCircle:nth-child(5) { width: 46px; height: 46px; top: 30%; left: 42%; opacity: .5; animation: coatBob2 8s ease-in-out infinite .2s; }
+.coatCircle:nth-child(6) { width: 150px; height: 150px; bottom: -6%; left: 30%; opacity: .22; background: color-mix(in srgb, #7a1418 60%, transparent); animation: coatBob3 16s ease-in-out infinite; }
+@keyframes coatBob1 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(16px, -26px) scale(1.08); } }
+@keyframes coatBob2 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-22px, 18px) scale(.92); } }
+@keyframes coatBob3 { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(26px, 20px); } }
 .coatHeroCopy > * { animation: coatRise .7s cubic-bezier(.22, .61, .36, 1) both; }
 .coatHeroCopy > *:nth-child(1) { animation-delay: .05s; }
 .coatHeroCopy > *:nth-child(2) { animation-delay: .13s; }
@@ -615,4 +623,4 @@
 @keyframes coatRise { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
 .coatHeroImg { animation: coatFloat 7s ease-in-out infinite; }
 @keyframes coatFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
-@media (prefers-reduced-motion: reduce) { .coatBokeh, .coatHeroCopy > *, .coatHeroImg { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .coatCircle, .coatHeroCopy > *, .coatHeroImg { animation: none; } }

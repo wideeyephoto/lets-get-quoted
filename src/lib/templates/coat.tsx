@@ -39,7 +39,14 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
       </header>
 
       <section className={styles.coatHero} id="top">
-        <span className={styles.coatBokeh} aria-hidden="true" />
+        <div className={styles.coatBokeh} aria-hidden="true">
+          <span className={styles.coatCircle} />
+          <span className={styles.coatCircle} />
+          <span className={styles.coatCircle} />
+          <span className={styles.coatCircle} />
+          <span className={styles.coatCircle} />
+          <span className={styles.coatCircle} />
+        </div>
         <div className={styles.coatHeroCopy}>
           <p className={styles.coatEyebrowLight}>Brushing dreams to life</p>
           <h1>{site.headline || 'We turn your space into living art.'}</h1>
