@@ -118,9 +118,15 @@
 @media (max-width: 600px) { .blogGrid { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .blogCard { transition: none; } .blogCard:hover { transform: none; } .blogCardMore span { transition: none; } }
 .faqList { display: grid; gap: .75rem; max-width: 920px; }
-.faqItem { border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: var(--theme-radius, 6px); background: color-mix(in srgb, currentColor 5%, transparent); }
-.faqItem summary { padding: 1rem 1.1rem; font-weight: 800; cursor: pointer; }
-.faqItem p { margin: 0; padding: 0 1.1rem 1.1rem; color: color-mix(in srgb, currentColor 76%, transparent); line-height: 1.65; }
+.faqItem { border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: calc(var(--theme-radius, 6px) + 4px); background: color-mix(in srgb, currentColor 5%, transparent); transition: border-color .25s ease, box-shadow .25s ease; }
+.faqItem:hover { border-color: color-mix(in srgb, var(--theme-accent) 40%, transparent); }
+.faqItem[open] { border-color: color-mix(in srgb, var(--theme-accent) 50%, transparent); box-shadow: 0 20px 44px -30px color-mix(in srgb, var(--theme-accent) 55%, transparent); }
+.faqItem summary { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.05rem 1.2rem; font-weight: 800; cursor: pointer; list-style: none; }
+.faqItem summary::-webkit-details-marker { display: none; }
+.faqItem summary::after { content: '+'; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: color-mix(in srgb, var(--theme-accent) 14%, transparent); color: var(--theme-accent); font-size: 1.2rem; line-height: 1; transition: transform .3s cubic-bezier(.34, 1.56, .64, 1), background .25s ease; }
+.faqItem[open] summary::after { transform: rotate(45deg); background: color-mix(in srgb, var(--theme-accent) 24%, transparent); }
+.faqItem p { margin: 0; padding: 0 1.2rem 1.15rem; color: color-mix(in srgb, currentColor 76%, transparent); line-height: 1.65; }
+@media (prefers-reduced-motion: reduce) { .faqItem, .faqItem summary::after { transition: none; } }
 
 /* Aggregate-rating badge (toggleable) */
 .ratingBadge { display: flex; flex-direction: column; align-items: center; gap: .3rem; padding: clamp(2.25rem, 4vw, 3.25rem) 5vw; text-align: center; border-top: 1px solid color-mix(in srgb, currentColor 14%, transparent); background: color-mix(in srgb, currentColor 4%, transparent); }
@@ -181,10 +187,12 @@
 
 /* How-it-works numbered steps (toggleable) */
 .processGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 1.5rem 1.25rem; margin: 0; padding: 0; list-style: none; }
-.processStep { display: flex; flex-direction: column; gap: .45rem; }
-.processNum { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 999px; background: color-mix(in srgb, var(--theme-accent) 16%, transparent); color: var(--theme-accent); font-family: var(--theme-display, inherit); font-weight: 800; font-size: 1.15rem; margin-bottom: .35rem; }
+.processStep { position: relative; display: flex; flex-direction: column; gap: .45rem; }
+.processNum { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 999px; background: color-mix(in srgb, var(--theme-accent) 16%, transparent); color: var(--theme-accent); font-family: var(--theme-display, inherit); font-weight: 800; font-size: 1.15rem; margin-bottom: .35rem; transition: transform .3s cubic-bezier(.34, 1.56, .64, 1), box-shadow .3s ease, background .25s ease; }
+.processStep:hover .processNum { transform: scale(1.1) rotate(-4deg); background: color-mix(in srgb, var(--theme-accent) 26%, transparent); box-shadow: 0 14px 28px -12px color-mix(in srgb, var(--theme-accent) 70%, transparent); }
 .processStep h3 { margin: 0; font-size: 1.05rem; line-height: 1.25; }
 .processStep p { margin: 0; font-size: .9rem; line-height: 1.5; color: color-mix(in srgb, currentColor 78%, transparent); }
+@media (prefers-reduced-motion: reduce) { .processNum { transition: none; } .processStep:hover .processNum { transform: none; } }
 
 /* Availability / urgency bar (toggleable) — mounts above the header. Dark
    ground + accent dot with a faint white ring, so the dot reads on the dark

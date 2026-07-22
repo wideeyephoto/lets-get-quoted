@@ -124,12 +124,12 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
           )}
 
           {faqs && (
-            <section className={styles.extraSection} data-reveal id="faqs">
-              <div className={styles.extraSectionHeader}>
+            <section className={styles.extraSection} id="faqs">
+              <div className={styles.extraSectionHeader} data-reveal>
                 <p className={styles.kicker}>FAQs</p>
                 <h2>{faqs.title}</h2>
               </div>
-              <div className={styles.faqList}>
+              <div className={styles.faqList} data-stagger>
                 {faqs.items.map((item) => (
                   <details key={item.id} className={styles.faqItem}>
                     <summary>{item.question}</summary>
