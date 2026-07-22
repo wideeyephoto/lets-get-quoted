@@ -546,3 +546,60 @@
 .handy[data-mode='dark'] .statItem { background: #11202a; }
 .handy[data-mode='dark'] .serviceIcon,
 .handy[data-mode='dark'] .careCheck { background: color-mix(in srgb, var(--theme-accent) 22%, transparent); color: #4fdcc7; }
+
+/* ===== Coat — bold painting / finishes look (Home Rakshak reference) ===== */
+.coat { background: #fff; color: #1b1a1f; font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; --coat-ink: #1b1a1f; --coat-muted: #6a6870; --coat-surface: #f4f3f6; --coat-maroon: #3a080b; }
+.coatHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1.5rem; padding: .85rem clamp(1.25rem, 4vw, 3.5rem); background: rgba(255,255,255,.94); backdrop-filter: blur(10px); border-bottom: 1px solid #ececf1; }
+.coatBrand { display: inline-flex; align-items: center; gap: .55rem; font-size: 1.1rem; color: var(--coat-ink); }
+.coatBrand strong { font-family: var(--theme-display); font-weight: 800; letter-spacing: -.01em; }
+.coatBrandMark { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 9px; background: var(--theme-accent); color: #fff; font-size: .9rem; }
+.coatHeader .navLinks { text-transform: none; letter-spacing: 0; font-size: .94rem; font-weight: 600; }
+.coatHeaderCta { justify-self: end; display: inline-flex; align-items: center; gap: .4rem; min-height: 44px; padding: .6rem 1.25rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #fff); font-weight: 700; font-size: .9rem; white-space: nowrap; transition: transform .2s ease, filter .2s ease; }
+.coatHeaderCta:hover { transform: translateY(-1px); filter: brightness(1.06); }
+.coatHero { position: relative; overflow: hidden; display: grid; grid-template-columns: 1.1fr .9fr; gap: clamp(1.5rem, 4vw, 3.5rem); align-items: center; padding: clamp(2.5rem, 6vw, 5rem) clamp(1.25rem, 5vw, 4rem) clamp(3rem, 7vw, 5.5rem); background: radial-gradient(120% 120% at 80% 8%, #5c1015, var(--coat-maroon) 60%); color: #fff; }
+.coatBokeh { position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: .9; filter: blur(6px); background-image: radial-gradient(circle at 12% 32%, rgba(229,50,42,.5) 0 42px, transparent 44px), radial-gradient(circle at 27% 72%, rgba(255,255,255,.06) 0 30px, transparent 32px), radial-gradient(circle at 70% 16%, rgba(229,50,42,.34) 0 60px, transparent 62px), radial-gradient(circle at 88% 60%, rgba(229,50,42,.28) 0 40px, transparent 42px), radial-gradient(circle at 46% 22%, rgba(255,255,255,.05) 0 20px, transparent 22px); }
+.coatHeroCopy { position: relative; z-index: 1; max-width: 640px; }
+.coatEyebrowLight { margin: 0 0 1rem; font-size: .78rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: color-mix(in srgb, var(--theme-accent) 45%, #fff); }
+.coatHeroCopy h1 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(2.5rem, 5.6vw, 4.4rem); line-height: 1.02; letter-spacing: -.025em; margin: 0 0 1.2rem; text-wrap: balance; overflow-wrap: anywhere; }
+.coatHeroText { font-size: clamp(1rem, 1.4vw, 1.18rem); line-height: 1.6; color: rgba(255,255,255,.86); margin: 0 0 1.7rem; max-width: 48ch; }
+.coatHeroActions { display: flex; align-items: center; gap: 1.1rem 1.4rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.coatHeroCall { color: #fff; font-weight: 600; font-size: .95rem; }
+.coatHeroCall strong { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--theme-accent); }
+.coatHeroMedia { position: relative; z-index: 1; }
+.coatHeroImg { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 22px; box-shadow: 0 40px 80px -34px rgba(0,0,0,.6); }
+.coatBtn { display: inline-flex; align-items: center; gap: .45rem; min-height: 50px; padding: .8rem 1.6rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #fff); font-weight: 700; font-size: .98rem; box-shadow: 0 16px 30px -14px color-mix(in srgb, var(--theme-accent) 70%, transparent); transition: transform .2s ease, filter .2s ease; }
+.coatBtn:hover { transform: translateY(-2px); filter: brightness(1.06); }
+.coatEyebrow { margin: 0 0 .6rem; font-size: .78rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--theme-accent); }
+.coatContact { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(1.75rem, 4vw, 3.5rem); align-items: center; padding: clamp(3rem, 7vw, 6rem) clamp(1.25rem, 5vw, 4rem); background: var(--coat-surface); }
+.coatContactCopy { display: grid; gap: 1rem; align-content: start; }
+.coatContactCopy h2 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(1.9rem, 4vw, 2.9rem); line-height: 1.06; letter-spacing: -.02em; color: var(--coat-ink); margin: 0; }
+.coatContactCopy > p { margin: 0; font-size: 1.02rem; line-height: 1.6; color: var(--coat-muted); }
+.coatContactCopy .coatBtn { justify-self: start; }
+.coatFooter { padding: clamp(1.5rem, 4vw, 2.5rem) clamp(1.25rem, 5vw, 4rem) clamp(2rem, 4vw, 3rem); }
+.coatFooterBar { display: flex; align-items: center; justify-content: space-between; gap: 1rem 1.5rem; flex-wrap: wrap; padding: 1.1rem clamp(1.25rem, 3vw, 2rem); border-radius: 18px; background: #17151a; color: #cfccd6; }
+.coatFooterBrand { display: inline-flex; align-items: center; gap: .5rem; font-family: var(--theme-display); font-weight: 800; font-size: 1.15rem; color: #fff; }
+.coatFooterCall { display: inline-flex; align-items: center; gap: .5rem; min-height: 46px; padding: .5rem 1.2rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #fff); font-weight: 800; font-size: .95rem; }
+.coatFooter small { opacity: .6; font-size: .78rem; }
+.coat .extraSection { border-top: none; padding: clamp(3rem, 6vw, 5.5rem) clamp(1.25rem, 5vw, 4rem); }
+.coat .extraSection:nth-of-type(even) { background: var(--coat-surface); }
+.coat .extraSectionHeader h2 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(1.9rem, 4vw, 3rem); line-height: 1.06; letter-spacing: -.02em; color: var(--coat-ink); }
+.coat .kicker { color: var(--theme-accent); }
+.coat .serviceCard { background: #fff; border: 1px solid #ececf1; border-radius: 18px; box-shadow: 0 22px 46px -30px rgba(27,26,31,.3); }
+.coat .serviceIcon { background: color-mix(in srgb, var(--theme-accent) 12%, transparent); color: var(--theme-accent); border-radius: 14px; }
+.coat .serviceCard h3 { color: var(--coat-ink); }
+.coat .serviceCard p { color: var(--coat-muted); }
+.coat .statValue { color: var(--coat-ink); }
+.coat .statItem { background: var(--coat-surface); border-radius: 16px; padding: 1.4rem 1rem; }
+.coat .processNum { background: color-mix(in srgb, var(--theme-accent) 14%, transparent); color: var(--theme-accent); }
+@media (max-width: 900px) {
+  .coatHero, .coatContact { grid-template-columns: 1fr; }
+  .coatHeroMedia { order: -1; max-width: 440px; margin-inline: auto; }
+  .coatHeader { grid-template-columns: auto 1fr; }
+  .coatHeader .navLinks { display: none; }
+}
+@media (max-width: 560px) {
+  .coatHeaderCta { padding: .55rem 1rem; font-size: .82rem; }
+  .coatFooterBar { flex-direction: column; align-items: stretch; text-align: center; }
+  .coatFooterCall { justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) { .coatBtn, .coatHeaderCta { transition: none; } }

@@ -70,6 +70,13 @@ export const AVAILABLE_TEMPLATES: TemplateConfig[] = [
     accent: '#12c2c9',
     fontVar: 'var(--font-care), system-ui, sans-serif',
   },
+  {
+    id: 'coat',
+    name: 'Coat',
+    description: 'Bold painting & finishes — deep-maroon hero with red bokeh, red accents, rounded cards',
+    accent: '#e5322a',
+    fontVar: 'var(--font-display), system-ui, sans-serif',
+  },
 ];
 // Note: 17 additional templates (Haven, Meridian, Blueprint, Lumen, Atlas, Circuit,
 // Cascade, Anchor, Foundry, Ironclad, Summit, Beacon, Timber, Heritage, Bloom, Drift,
