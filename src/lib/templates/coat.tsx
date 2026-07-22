@@ -16,8 +16,12 @@ import styles from './themes.module.css';
 // header / footer; the mid-page content reuses the shared sections.
 export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps) {
   const gallery = galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES.slice(0, 4);
-  void gallery; // gallery renders via SiteContentSections' showcase when enabled
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
+  // Second shot for the hero collage — a distinct image so the two cards differ.
+  const secondImage =
+    gallery.find((image) => image.url !== heroImage)?.url ||
+    STOCK_SITE_IMAGES.find((image) => image.url !== heroImage)?.url ||
+    STOCK_SITE_IMAGES[2].url;
   const themeStyle = {
     '--theme-accent': site.accent_override || '#e5322a',
     '--theme-on-accent': '#ffffff',
@@ -59,6 +63,13 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
         </div>
         <div className={styles.coatHeroMedia}>
           <img className={styles.coatHeroImg} src={heroImage} alt="Recent painting project" fetchPriority="high" decoding="async" />
+          <figure className={styles.coatPhotoSide}>
+            <img src={secondImage} alt="A freshly finished interior" loading="lazy" decoding="async" />
+          </figure>
+          <div className={styles.coatHeroBadge}>
+            <span className={styles.coatHeroBadgeIcon} aria-hidden="true">✓</span>
+            <div><strong>Premium finishes</strong><small>Licensed &amp; insured</small></div>
+          </div>
         </div>
       </section>
 

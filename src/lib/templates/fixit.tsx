@@ -52,11 +52,16 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
           <SiteProofStrip site={site} />
         </div>
         <div className={styles.fixitHeroMedia}>
+          <span className={styles.fixitHeroBlob} aria-hidden="true" />
           <span className={styles.fixitHeroShape} aria-hidden="true" />
           <img className={styles.fixitHeroImg} src={heroImage} alt="Professional handyman ready to help" fetchPriority="high" decoding="async" />
           <div className={styles.fixitHeroCard} data-parallax="0.14">
             <span className={styles.fixitHeroCardIcon} aria-hidden="true">◷</span>
             <div><strong>24-Hour</strong><small>Ready support</small></div>
+          </div>
+          <div className={`${styles.fixitHeroCard} ${styles.fixitHeroStat}`} data-parallax="0.2">
+            <span className={styles.fixitHeroCardIcon} aria-hidden="true">✓</span>
+            <div><strong>Licensed &amp; insured</strong><small>Fully vetted pros</small></div>
           </div>
           <span className={styles.fixitDots} data-parallax="0.24" aria-hidden="true" />
         </div>

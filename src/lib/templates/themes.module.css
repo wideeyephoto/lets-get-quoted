@@ -210,8 +210,12 @@
 .brand { display: inline-flex; align-items: center; gap: .75rem; font-size: .9rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
 .brandBlock { display: grid; width: 36px; aspect-ratio: 1; place-items: center; background: var(--theme-accent); color: #111; font-family: var(--theme-display); font-size: 1.4rem; }
 .headerPhone { justify-self: end; font-family: var(--font-mono); font-size: .82rem; font-weight: 500; letter-spacing: .04em; }
-.forgeHero { position: relative; min-height: min(850px, 92svh); display: flex; align-items: flex-end; padding: clamp(7rem, 14vw, 12rem) 6vw 8vh; }
-.heroImage { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.forgeHero { position: relative; overflow: hidden; min-height: min(850px, 92svh); display: flex; align-items: flex-end; padding: clamp(7rem, 14vw, 12rem) 6vw 8vh; }
+.heroImage { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; animation: heroKenBurns 22s ease-in-out infinite alternate; }
+/* Slow Ken Burns push on hero photography (Forge/Vista full-bleed, Guild framed).
+   Transform-only so it can't trigger the throttled-iframe opacity stall. */
+@keyframes heroKenBurns { from { transform: scale(1.03); } to { transform: scale(1.12); } }
+@media (prefers-reduced-motion: reduce) { .heroImage, .guildHeroMedia > img { animation: none; } }
 .forgeScrim { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(10,10,9,.94) 0%, rgba(10,10,9,.55) 50%, rgba(10,10,9,.1) 100%), linear-gradient(0deg, rgba(10,10,9,.55), transparent 50%), repeating-linear-gradient(90deg, rgba(243,240,231,.045) 0 1px, transparent 1px 88px); }
 .forgeHeroCopy { position: relative; z-index: 1; width: min(830px, 82vw); }
 .forgeHeroCopy h1 { max-width: 11ch; margin-bottom: 1.25rem; font-family: var(--theme-display); font-size: clamp(3.35rem, 9vw, 7.5rem); font-weight: 900; line-height: .84; letter-spacing: -.01em; text-transform: uppercase; }
@@ -266,8 +270,10 @@
 .guildHeroCopy { display: flex; flex-direction: column; justify-content: center; padding: 6vw 0 6vw 6vw; }
 .guildHeroCopy h1 { margin-bottom: 1.5rem; font-family: var(--theme-display); font-size: clamp(3rem, 6vw, 5.75rem); font-weight: 500; line-height: .99; letter-spacing: -.015em; }
 .guildHeroMedia { position: relative; min-height: 560px; border-radius: 16px; overflow: hidden; box-shadow: 0 40px 90px -50px rgba(45,34,22,.45); }
-.guildHeroMedia > img { width: 100%; height: 100%; object-fit: cover; }
-.guildBadge { position: absolute; left: 1.5rem; bottom: 1.5rem; display: flex; flex-direction: column; max-width: 250px; padding: 1.15rem 1.5rem; border-radius: 12px; background: var(--theme-accent); color: #fff; box-shadow: 0 24px 50px -24px rgba(0,0,0,.45); }
+.guildHeroMedia > img { width: 100%; height: 100%; object-fit: cover; animation: heroKenBurns 27s ease-in-out infinite alternate; }
+.guildBadge { position: absolute; left: 1.5rem; bottom: 1.5rem; display: flex; flex-direction: column; max-width: 250px; padding: 1.15rem 1.5rem; border-radius: 12px; background: var(--theme-accent); color: #fff; box-shadow: 0 24px 50px -24px rgba(0,0,0,.45); animation: guildBob 6s ease-in-out infinite; }
+@keyframes guildBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@media (prefers-reduced-motion: reduce) { .guildBadge { animation: none; } }
 .guildBadge strong { font-family: var(--theme-display); font-size: 1.15rem; font-weight: 600; }
 .guildBadge span { margin-top: .3rem; font-size: .82rem; opacity: .92; }
 .textLink { font-weight: 700; border-bottom: 1.5px solid var(--theme-accent); padding-bottom: 1px; transition: color .2s ease; }
@@ -315,6 +321,9 @@
 .vistaHeroCopy h1 { margin-bottom: 1.35rem; font-family: var(--theme-display); font-size: clamp(2.9rem, 7.6vw, 7rem); line-height: .92; letter-spacing: -.02em; text-transform: uppercase; }
 .vistaHeroCopy > p:last-child { max-width: 34rem; font-size: 1.12rem; line-height: 1.55; color: rgba(255,255,255,.86); }
 .vistaScroll { position: absolute; z-index: 1; right: 3vw; bottom: 4vh; display: inline-flex; align-items: center; gap: .45rem; font-size: .76rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #fff; }
+.vistaScroll span { animation: vistaBounce 1.8s ease-in-out infinite; }
+@keyframes vistaBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(5px); } }
+@media (prefers-reduced-motion: reduce) { .vistaScroll span { animation: none; } }
 .vistaStatement { padding: clamp(6rem, 12vw, 11rem) 6vw clamp(3rem, 6vw, 5rem); }
 .vistaStatement > p { font-size: .74rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: color-mix(in srgb, currentColor 70%, transparent); }
 .vistaStatement h2 { max-width: 20ch; margin: 1.4rem 0 0; font-family: var(--theme-display); font-size: clamp(2.6rem, 6vw, 5.4rem); font-weight: 500; line-height: .99; letter-spacing: -.015em; }
@@ -426,6 +435,10 @@
 .careHeroCircle { position: relative; z-index: 1; width: min(420px, 84%); aspect-ratio: 1; border-radius: 50%; padding: 14px; background: var(--care-grad); box-shadow: 0 40px 80px -42px rgba(30,203,214,.6); animation: carePulse 5.5s ease-in-out infinite; }
 .careHeroCircle img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; transition: transform .5s ease; }
 .careHeroCircle:hover img { transform: scale(1.06); }
+/* Slow orbiting dashed ring around the photo circle for extra life. */
+.careHeroCircle::after { content: ''; position: absolute; inset: -16px; border-radius: 50%; border: 2px dashed var(--theme-accent); opacity: .4; pointer-events: none; animation: careSpin 26s linear infinite; }
+@keyframes careSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .careHeroCircle::after { animation: none; } }
 @keyframes carePulse { 0%, 100% { transform: scale(1); box-shadow: 0 40px 80px -42px rgba(30,203,214,.55); } 50% { transform: scale(1.03); box-shadow: 0 48px 96px -40px rgba(30,203,214,.8); } }
 @media (prefers-reduced-motion: reduce) { .careHeroCircle { animation: none; } .careHeroCircle img { transition: none; } }
 .careDot1 { position: absolute; z-index: 0; width: 92px; height: 92px; border-radius: 50%; background: var(--care-grad); opacity: .9; top: 2%; left: 6%; animation: careFloat 6s ease-in-out infinite; }
@@ -567,6 +580,15 @@
 .coatHeroCall strong { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--theme-accent); }
 .coatHeroMedia { position: relative; z-index: 1; }
 .coatHeroImg { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 22px; box-shadow: 0 40px 80px -34px rgba(0,0,0,.6); }
+/* Second offset photo + floating trust badge — turns the single shot into a
+   layered collage so the maroon hero reads richer, not empty. */
+.coatPhotoSide { position: absolute; z-index: 2; right: -3%; bottom: -5%; width: 46%; margin: 0; border-radius: 16px; overflow: hidden; border: 5px solid var(--coat-maroon); box-shadow: 0 30px 60px -30px rgba(0,0,0,.6); }
+.coatPhotoSide img { display: block; width: 100%; aspect-ratio: 4 / 3.3; object-fit: cover; transition: transform .6s cubic-bezier(.22, .61, .36, 1); }
+.coatPhotoSide:hover img { transform: scale(1.07); }
+.coatHeroBadge { position: absolute; z-index: 3; left: -4%; top: 8%; display: flex; align-items: center; gap: .6rem; padding: .65rem 1rem; border-radius: 14px; background: #fff; color: var(--coat-ink); box-shadow: 0 22px 44px -22px rgba(0,0,0,.5); animation: coatFloat 8s ease-in-out infinite .6s; }
+.coatHeroBadgeIcon { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 999px; background: color-mix(in srgb, var(--theme-accent) 16%, transparent); color: var(--theme-accent); }
+.coatHeroBadge strong { display: block; font-size: .9rem; }
+.coatHeroBadge small { font-size: .72rem; color: var(--coat-muted); }
 .coatBtn { display: inline-flex; align-items: center; gap: .45rem; min-height: 50px; padding: .8rem 1.6rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #fff); font-weight: 700; font-size: .98rem; box-shadow: 0 16px 30px -14px color-mix(in srgb, var(--theme-accent) 70%, transparent); transition: transform .2s ease, filter .2s ease; }
 .coatBtn:hover { transform: translateY(-2px); filter: brightness(1.06); }
 .coatEyebrow { margin: 0 0 .6rem; font-size: .78rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--theme-accent); }
@@ -623,7 +645,7 @@
 @keyframes coatRise { from { transform: translateY(22px); } to { transform: none; } }
 .coatHeroImg { animation: coatFloat 7s ease-in-out infinite; }
 @keyframes coatFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
-@media (prefers-reduced-motion: reduce) { .coatCircle, .coatHeroCopy > *, .coatHeroImg { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .coatCircle, .coatHeroCopy > *, .coatHeroImg, .coatHeroBadge { animation: none; } }
 
 /* ===== Fixit — clean handyman look (Handify reference) ===== */
 .fixit { background: #fff; color: #2b2b30; font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; --fx-ink: #2b2b30; --fx-muted: #6a6a72; --fx-surface: #f5f5f7; }
@@ -652,6 +674,11 @@
 .fixitHeroCard strong { display: block; font-size: .95rem; color: var(--fx-ink); }
 .fixitHeroCard small { font-size: .74rem; color: var(--fx-muted); }
 .fixitDots { position: absolute; z-index: 0; right: 2%; bottom: 4%; width: 96px; height: 96px; background-image: radial-gradient(var(--theme-accent) 1.6px, transparent 1.9px); background-size: 14px 14px; opacity: .85; }
+/* Soft accent halo behind the photo — adds depth so the hero doesn't read empty. */
+.fixitHeroBlob { position: absolute; z-index: 0; top: -6%; right: -4%; width: 60%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--theme-accent) 30%, transparent), transparent 68%); filter: blur(4px); animation: fixitBlob 9s ease-in-out infinite; }
+@keyframes fixitBlob { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(0, -10px, 0) scale(1.06); } }
+/* Second floating card — bottom-left, balancing the 24-hour card on the right. */
+.fixitHeroStat { right: auto; top: auto; left: -1%; bottom: 5%; }
 .fixitBtn { display: inline-flex; align-items: center; gap: .45rem; min-height: 50px; padding: .8rem 1.6rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #fff); font-weight: 700; font-size: .98rem; box-shadow: 0 16px 30px -14px color-mix(in srgb, var(--theme-accent) 70%, transparent); transition: transform .2s ease, filter .2s ease, box-shadow .2s ease; }
 .fixitBtn:hover { transform: translateY(-2px); filter: brightness(1.05); box-shadow: 0 22px 40px -14px color-mix(in srgb, var(--theme-accent) 80%, transparent); }
 .fixitContact { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(1.75rem, 4vw, 3.5rem); align-items: center; padding: clamp(3rem, 7vw, 6rem) clamp(1.25rem, 5vw, 4rem); background: var(--fx-surface); }
@@ -693,7 +720,7 @@
   .fixitFooterBar { flex-direction: column; align-items: stretch; text-align: center; }
   .fixitFooterCall { justify-content: center; }
 }
-@media (prefers-reduced-motion: reduce) { .fixitHeroCopy > *, .fixitHeroImg { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .fixitHeroCopy > *, .fixitHeroImg, .fixitHeroBlob { animation: none; } }
 
 /* ===== Reno — dark-navy + yellow renovation look (Renovation reference) ===== */
 .reno { background: #fff; color: #26303c; font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; --rn-navy: #1b2431; --rn-ink: #26303c; --rn-muted: #667180; --rn-surface: #f4f5f7; }
