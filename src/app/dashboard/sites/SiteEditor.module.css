@@ -1,11 +1,10 @@
-.themeGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.themeGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .7rem; }
 .themeOption { overflow: hidden; padding: 0; border: 1px solid rgba(255,255,255,.14); border-radius: 8px; background: rgba(255,255,255,.035); color: inherit; text-align: left; cursor: pointer; }
 .themeIcon { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 16 / 10; overflow: hidden; background: radial-gradient(circle at 28% 22%, color-mix(in srgb, var(--tile-accent) 40%, transparent), transparent 62%), #10141d; }
 .themeIcon::after { content: ''; position: absolute; inset: auto 0 0 0; height: 3px; background: var(--tile-accent); opacity: .85; }
 .themeIconLetter { position: relative; font-size: 1.9rem; font-weight: 700; letter-spacing: .01em; color: var(--tile-accent); text-shadow: 0 1px 14px color-mix(in srgb, var(--tile-accent) 55%, transparent); }
-.themeOptionInfo { display: block; padding: .9rem; }
-.themeOption strong { display: block; margin-bottom: .35rem; }
-.themeOption small { display: block; color: #c8d0dc; line-height: 1.4; }
+.themeOptionInfo { display: block; padding: .5rem .4rem .6rem; text-align: center; }
+.themeOption strong { display: block; font-size: .82rem; }
 .selectedTheme { border-color: #ffd166; box-shadow: 0 0 0 2px rgba(255,209,102,.2); }
 .library { margin-top: 1rem; }
 .libraryToolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
@@ -153,6 +152,14 @@
 .itemHeader strong { font-size: .84rem; }
 .itemHeader button, .secondaryAction { min-height: 38px; padding: .55rem .75rem; border: 1px solid rgba(255,255,255,.16); border-radius: 6px; background: rgba(255,255,255,.06); color: #f7f5ef; font-weight: 800; cursor: pointer; }
 .itemHeader button { min-height: 32px; color: #ffb4a7; font-size: .72rem; }
+/* Collapsible list items: title row is a button (click to edit / save-close),
+   Edit is neutral, Save is green, Remove keeps the salmon danger tone. */
+.itemActions { display: flex; gap: .4rem; flex: none; }
+.itemHeader .itemTitleBtn { flex: 1; min-width: 0; display: inline-flex; align-items: baseline; gap: .5rem; min-height: 0; margin: 0; padding: 0; border: none; background: transparent; color: #f7f5ef; font-size: inherit; text-align: left; cursor: pointer; }
+.itemHeader .itemTitleBtn strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.itemHeader .itemTitleBtn small { flex: none; color: #9ca8b8; font-size: .7rem; font-weight: 700; }
+.itemHeader .itemEditBtn { color: #c8d0dc; }
+.itemHeader .itemSaveBtn { border-color: rgba(74,222,128,.4); background: rgba(74,222,128,.12); color: #4ade80; }
 .secondaryAction { justify-self: start; }
 .reviewImagePreview { overflow: hidden; width: min(180px, 100%); border: 1px solid rgba(255,255,255,.12); border-radius: 7px; background: rgba(255,255,255,.04); }
 .reviewImagePreview img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }

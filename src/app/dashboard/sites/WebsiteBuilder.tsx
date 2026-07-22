@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, useTransition } from 'react';
+import { useCallback, useEffect, useState, useTransition, type ReactNode } from 'react';
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
@@ -38,6 +38,37 @@ const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
 // Header hint for a section card: item count when there's content, a warning
 // when the section is On but empty (it renders nothing publicly until filled —
 // which otherwise reads as "checked but not showing").
+// Collapsible list item: collapsed it's a one-line summary row (title + Edit/
+// Remove); expanded it shows the fields with a Save button that collapses it
+// and persists the site. Kills the wall-of-open-forms feeling in item lists.
+function StackItem({ title, meta, editing, onEdit, onSave, onRemove, children }: {
+  title: string;
+  meta?: string;
+  editing: boolean;
+  onEdit: () => void;
+  onSave: () => void;
+  onRemove: () => void;
+  children?: ReactNode;
+}) {
+  return (
+    <div className={styles.stackItem}>
+      <div className={styles.itemHeader}>
+        <button type="button" className={styles.itemTitleBtn} onClick={editing ? onSave : onEdit} aria-expanded={editing}>
+          <strong>{title}</strong>
+          {meta && <small>{meta}</small>}
+        </button>
+        <div className={styles.itemActions}>
+          {editing
+            ? <button type="button" className={styles.itemSaveBtn} onClick={onSave}>Save</button>
+            : <button type="button" className={styles.itemEditBtn} onClick={onEdit}>Edit</button>}
+          <button type="button" onClick={onRemove}>Remove</button>
+        </div>
+      </div>
+      {editing && children}
+    </div>
+  );
+}
+
 function wordCount(text: string): number {
   const trimmed = text.trim();
   return trimmed ? trimmed.split(/\s+/).length : 0;
@@ -98,6 +129,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   // raw string while a stat is being edited so clearing doesn't snap to 0.
   const [statValueInputs, setStatValueInputs] = useState<Record<string, string>>({});
   const [uploadingTestimonialId, setUploadingTestimonialId] = useState<string | null>(null);
+  // One list item is editable at a time; new items open for editing right away.
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const galleryImages = getSiteGallery(site.content);
   const siteContent = getSiteContent(site.content);
@@ -184,6 +217,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       }
     });
   }, [site]);
+
+  // Per-item Save: collapse the editor and persist the whole draft.
+  const saveItem = useCallback(() => {
+    setEditingItemId(null);
+    handleSave();
+  }, [handleSave]);
 
   // Ctrl/Cmd+S saves instead of triggering the browser's save-page dialog.
   useEffect(() => {
@@ -669,7 +708,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     {AVAILABLE_TEMPLATES.map((template) => (
                       <button type="button" key={template.id} className={`${styles.themeOption}${site.template === template.id ? ` ${styles.selectedTheme}` : ''}`} onClick={() => handleChange('template', template.id as TemplateType)} aria-pressed={site.template === template.id}>
                         <ThemeIcon name={template.name} accent={template.accent} fontVar={template.fontVar} />
-                        <span className={styles.themeOptionInfo}><strong>{template.name}</strong><small>{template.description}</small></span>
+                        <span className={styles.themeOptionInfo}><strong>{template.name}</strong></span>
                       </button>
                     ))}
                   </div>
@@ -700,15 +739,14 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <label className={styles.formField}><span>Intro copy (optional)</span><input value={siteContent.services.intro} onChange={(event) => updateServices({ ...siteContent.services, intro: event.target.value })} /></label>
                   <div className={styles.stackList}>
                     {siteContent.services.items.map((item, index) => (
-                      <div className={styles.stackItem} key={item.id}>
-                        <div className={styles.itemHeader}><strong>{item.title || `Service ${index + 1}`}</strong><button type="button" onClick={() => updateServices({ ...siteContent.services, items: siteContent.services.items.filter((svc) => svc.id !== item.id) })}>Remove</button></div>
+                      <StackItem key={item.id} title={item.title.trim() || `Service ${index + 1}`} editing={editingItemId === item.id} onEdit={() => setEditingItemId(item.id)} onSave={saveItem} onRemove={() => updateServices({ ...siteContent.services, items: siteContent.services.items.filter((svc) => svc.id !== item.id) })}>
                         <div className={styles.formField}><span>Icon</span><div className={styles.iconPicker}>{SERVICE_ICON_KEYS.map((key) => (<button type="button" key={`${item.id}-${key}`} className={`${styles.iconPickerBtn}${item.icon === key ? ` ${styles.iconPickerBtnOn}` : ''}`} aria-label={`Icon: ${key}`} aria-pressed={item.icon === key} onClick={() => updateServices({ ...siteContent.services, items: siteContent.services.items.map((svc) => svc.id === item.id ? { ...svc, icon: key } : svc) })}><ServiceIcon name={key} /></button>))}</div></div>
                         <label className={styles.formField}><span>Service name</span><input value={item.title} maxLength={60} onChange={(event) => updateServices({ ...siteContent.services, items: siteContent.services.items.map((svc) => svc.id === item.id ? { ...svc, title: event.target.value } : svc) })} placeholder="Interior painting" /></label>
                         <label className={styles.formField}><span>Short description</span><input value={item.description} maxLength={140} onChange={(event) => updateServices({ ...siteContent.services, items: siteContent.services.items.map((svc) => svc.id === item.id ? { ...svc, description: event.target.value } : svc) })} placeholder="Walls, ceilings, and trim — clean lines, on schedule." /></label>
-                      </div>
+                      </StackItem>
                     ))}
                   </div>
-                  {siteContent.services.items.length < 8 && <button type="button" className={styles.secondaryAction} onClick={() => updateServices({ ...siteContent.services, enabled: true, items: [...siteContent.services.items, { id: createContentId('svc'), icon: 'spark', title: '', description: '' }] })}>Add service</button>}
+                  {siteContent.services.items.length < 8 && <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('svc'); updateServices({ ...siteContent.services, enabled: true, items: [...siteContent.services.items, { id, icon: 'spark', title: '', description: '' }] }); setEditingItemId(id); }}>Add service</button>}
                 </SectionCard>
 
                 <SectionCard title="How it works" description="A simple 3–4 step walkthrough of what happens after they reach out — book, we arrive, job done. Removes the 'what do I have to do?' hesitation." evidence="Showing the process upfront lowers the perceived effort of reaching out — people act when they can see exactly what happens next." enabled={siteContent.howItWorks.enabled} onToggleEnabled={(value) => updateHowItWorks({ ...siteContent.howItWorks, enabled: value })} {...contentHint(siteContent.howItWorks.enabled, siteContent.howItWorks.steps.filter((step) => step.title.trim()).length, 'step')} open={openSection === 'howItWorks'} onToggleOpen={() => toggleSection('howItWorks')}>
@@ -716,14 +754,13 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <label className={styles.formField}><span>Intro copy (optional)</span><input value={siteContent.howItWorks.intro} onChange={(event) => updateHowItWorks({ ...siteContent.howItWorks, intro: event.target.value })} /></label>
                   <div className={styles.stackList}>
                     {siteContent.howItWorks.steps.map((step, index) => (
-                      <div className={styles.stackItem} key={step.id}>
-                        <div className={styles.itemHeader}><strong>{step.title || `Step ${index + 1}`}</strong><button type="button" onClick={() => updateHowItWorks({ ...siteContent.howItWorks, steps: siteContent.howItWorks.steps.filter((s) => s.id !== step.id) })}>Remove</button></div>
+                      <StackItem key={step.id} title={step.title.trim() || `Step ${index + 1}`} editing={editingItemId === step.id} onEdit={() => setEditingItemId(step.id)} onSave={saveItem} onRemove={() => updateHowItWorks({ ...siteContent.howItWorks, steps: siteContent.howItWorks.steps.filter((s) => s.id !== step.id) })}>
                         <label className={styles.formField}><span>Step title</span><input value={step.title} maxLength={60} onChange={(event) => updateHowItWorks({ ...siteContent.howItWorks, steps: siteContent.howItWorks.steps.map((s) => s.id === step.id ? { ...s, title: event.target.value } : s) })} placeholder="Book online or call" /></label>
                         <label className={styles.formField}><span>Description</span><input value={step.description} maxLength={160} onChange={(event) => updateHowItWorks({ ...siteContent.howItWorks, steps: siteContent.howItWorks.steps.map((s) => s.id === step.id ? { ...s, description: event.target.value } : s) })} placeholder="Tell us what you need and pick a time that works." /></label>
-                      </div>
+                      </StackItem>
                     ))}
                   </div>
-                  {siteContent.howItWorks.steps.length < 5 && <button type="button" className={styles.secondaryAction} onClick={() => updateHowItWorks({ ...siteContent.howItWorks, enabled: true, steps: [...siteContent.howItWorks.steps, { id: createContentId('step'), title: '', description: '' }] })}>Add step</button>}
+                  {siteContent.howItWorks.steps.length < 5 && <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('step'); updateHowItWorks({ ...siteContent.howItWorks, enabled: true, steps: [...siteContent.howItWorks.steps, { id, title: '', description: '' }] }); setEditingItemId(id); }}>Add step</button>}
                 </SectionCard>
 
                 <SectionCard title="Blog" description="Helpful articles for homeowners — maintenance tips, seasonal advice, and what to know before hiring. AI can draft them; you review and publish." evidence="Fresh, useful posts give Google more local pages to rank and give past customers a reason to return — search visibility that compounds over time." enabled={siteContent.blog.enabled} onToggleEnabled={(value) => updateBlog({ ...siteContent.blog, enabled: value })} {...blogHint} open={openSection === 'blog'} onToggleOpen={() => toggleSection('blog')}>
@@ -734,8 +771,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <p className={styles.fieldHint}>Drafts are saved unpublished — nothing goes live until you flip a post to Published.</p>
                   <div className={styles.stackList}>
                     {siteContent.blog.posts.map((post, index) => (
-                      <div className={styles.stackItem} key={post.id}>
-                        <div className={styles.itemHeader}><strong>{post.title || `Post ${index + 1}`}</strong><button type="button" onClick={() => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.filter((p) => p.id !== post.id) })}>Remove</button></div>
+                      <StackItem key={post.id} title={post.title.trim() || `Post ${index + 1}`} meta={post.status === 'published' ? 'Live' : 'Draft'} editing={editingItemId === post.id} onEdit={() => setEditingItemId(post.id)} onSave={saveItem} onRemove={() => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.filter((p) => p.id !== post.id) })}>
                         <label className={styles.toggleRow}><input type="checkbox" checked={post.status === 'published'} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, status: event.target.checked ? 'published' : 'draft' } : p) })} /><span><strong>Published</strong><small>{post.status === 'published' ? 'Live on your site.' : 'Draft — only you can see it until you publish.'}</small></span></label>
                         <label className={styles.formField}><span>Title</span><input value={post.title} maxLength={120} onChange={(event) => { const title = event.target.value; updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, title, slug: (!p.slug || /^post-\d+$/.test(p.slug)) ? slugifyBlogTitle(title) : p.slug } : p) }); }} placeholder="5 signs it’s time to reseal your deck" /></label>
                         <label className={styles.formField}><span>Excerpt</span><input value={post.excerpt} maxLength={200} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, excerpt: event.target.value } : p) })} placeholder="One sentence that makes someone want to read." /></label>
@@ -753,10 +789,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                           </label>
                         </div>
                         <label className={styles.formField}><span>Body</span><textarea rows={10} value={post.body} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, body: event.target.value } : p) })} placeholder="Write in short paragraphs separated by a blank line." /><small>{wordCount(post.body)} words · ~{Math.max(1, Math.round(wordCount(post.body) / 220))} min read{wordCount(post.body) > 0 && wordCount(post.body) < 300 ? ' — aim for 400+ words so the post feels substantial' : ''}</small></label>
-                      </div>
+                      </StackItem>
                     ))}
                   </div>
-                  <button type="button" className={styles.secondaryAction} onClick={() => updateBlog({ ...siteContent.blog, enabled: true, posts: [{ id: createContentId('post'), slug: '', title: '', excerpt: '', body: '', coverImage: '', status: 'draft', date: new Date().toISOString().slice(0, 10) }, ...siteContent.blog.posts] })}>Add post manually</button>
+                  <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('post'); updateBlog({ ...siteContent.blog, enabled: true, posts: [{ id, slug: '', title: '', excerpt: '', body: '', coverImage: '', status: 'draft', date: new Date().toISOString().slice(0, 10) }, ...siteContent.blog.posts] }); setEditingItemId(id); }}>Add post manually</button>
                 </SectionCard>
 
                 <SectionCard title="Showcase gallery" description="Highlight finished work, project details, and job photos." evidence="Real project photos alongside reviews produced 55% more leads in one study — genuine work outperforms stock." enabled={siteContent.showcase.enabled} onToggleEnabled={(value) => updateShowcase({ ...siteContent.showcase, enabled: value })} {...contentHint(siteContent.showcase.enabled, siteContent.showcase.items.length, 'image')} open={openSection === 'showcase'} onToggleOpen={() => toggleSection('showcase')}>
@@ -797,14 +833,13 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.faqs.title} onChange={(event) => updateFaqs({ ...siteContent.faqs, title: event.target.value })} /></label>
                   <div className={styles.stackList}>
                     {siteContent.faqs.items.map((item, index) => (
-                      <div className={styles.stackItem} key={item.id}>
-                        <div className={styles.itemHeader}><strong>Question {index + 1}</strong><button type="button" onClick={() => updateFaqs({ ...siteContent.faqs, items: siteContent.faqs.items.filter((faq) => faq.id !== item.id) })}>Remove</button></div>
+                      <StackItem key={item.id} title={item.question.trim() || `Question ${index + 1}`} editing={editingItemId === item.id} onEdit={() => setEditingItemId(item.id)} onSave={saveItem} onRemove={() => updateFaqs({ ...siteContent.faqs, items: siteContent.faqs.items.filter((faq) => faq.id !== item.id) })}>
                         <label className={styles.formField}><span>Question</span><input value={item.question} onChange={(event) => updateFaqs({ ...siteContent.faqs, items: siteContent.faqs.items.map((faq) => faq.id === item.id ? { ...faq, question: event.target.value } : faq) })} /></label>
                         <label className={styles.formField}><span>Answer</span><textarea rows={3} value={item.answer} onChange={(event) => updateFaqs({ ...siteContent.faqs, items: siteContent.faqs.items.map((faq) => faq.id === item.id ? { ...faq, answer: event.target.value } : faq) })} /></label>
-                      </div>
+                      </StackItem>
                     ))}
                   </div>
-                  <button type="button" className={styles.secondaryAction} onClick={() => updateFaqs({ ...siteContent.faqs, enabled: true, items: [...siteContent.faqs.items, { id: createContentId('faq'), question: '', answer: '' }] })}>Add FAQ</button>
+                  <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('faq'); updateFaqs({ ...siteContent.faqs, enabled: true, items: [...siteContent.faqs.items, { id, question: '', answer: '' }] }); setEditingItemId(id); }}>Add FAQ</button>
                 </SectionCard>
 
                 <SectionCard title="Testimonials" description="Show quotes from real customers on your public site." evidence="97% of homeowners read reviews before hiring a local pro, and the first few weigh the most." enabled={siteContent.testimonials.enabled} onToggleEnabled={(value) => updateTestimonials({ ...siteContent.testimonials, enabled: value })} {...contentHint(siteContent.testimonials.enabled, siteContent.testimonials.items.filter((item) => item.text.trim()).length, 'review')} open={openSection === 'testimonials'} onToggleOpen={() => toggleSection('testimonials')}>
@@ -812,8 +847,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <label className={styles.formField}><span>Source mode</span><select value={siteContent.testimonials.sourceMode} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, sourceMode: event.target.value as SiteTestimonialsContent['sourceMode'] })}><option value="manual">Manual testimonials</option><option value="mixed">Manual + imported</option><option value="google">Google import</option></select></label>
                   <div className={styles.stackList}>
                     {siteContent.testimonials.items.map((item, index) => (
-                      <div className={styles.stackItem} key={item.id}>
-                        <div className={styles.itemHeader}><strong>Testimonial {index + 1}</strong><button type="button" onClick={() => updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.filter((testimonial) => testimonial.id !== item.id) })}>Remove</button></div>
+                      <StackItem key={item.id} title={item.author.trim() || `Testimonial ${index + 1}`} meta={`${item.rating}★`} editing={editingItemId === item.id} onEdit={() => setEditingItemId(item.id)} onSave={saveItem} onRemove={() => updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.filter((testimonial) => testimonial.id !== item.id) })}>
                         <div className={styles.formColumns}>
                           <label className={styles.formField}><span>Customer</span><input value={item.author} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.map((testimonial) => testimonial.id === item.id ? { ...testimonial, author: event.target.value } : testimonial) })} /></label>
                           <label className={styles.formField}><span>Rating</span><select value={item.rating} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.map((testimonial) => testimonial.id === item.id ? { ...testimonial, rating: Number(event.target.value) } : testimonial) })}>{[5, 4, 3, 2, 1].map((rating) => <option key={rating} value={rating}>{rating} stars</option>)}</select></label>
@@ -834,10 +868,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                         </div>
                         {item.imageUrl && <div className={styles.reviewImagePreview}><img src={item.imageUrl} alt={item.imageAlt || item.author || 'Review image preview'} /></div>}
                         <label className={styles.formField}><span>Review text</span><textarea rows={4} value={item.text} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.map((testimonial) => testimonial.id === item.id ? { ...testimonial, text: event.target.value } : testimonial) })} /></label>
-                      </div>
+                      </StackItem>
                     ))}
                   </div>
-                  <button type="button" className={styles.secondaryAction} onClick={() => updateTestimonials({ ...siteContent.testimonials, enabled: true, items: [...siteContent.testimonials.items, { id: createContentId('testimonial'), author: '', text: '', rating: 5, label: '', imageUrl: '', imageAlt: '' }] })}>Add testimonial</button>
+                  <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('testimonial'); updateTestimonials({ ...siteContent.testimonials, enabled: true, items: [...siteContent.testimonials.items, { id, author: '', text: '', rating: 5, label: '', imageUrl: '', imageAlt: '' }] }); setEditingItemId(id); }}>Add testimonial</button>
                 </SectionCard>
 
                 <div className={styles.cardGroupLabel}>Trust &amp; conversion extras</div>
@@ -886,11 +920,11 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 <SectionCard title="Service-area cities" description={'List the towns and neighborhoods you cover. The names become on-page keywords that help you rank for "[trade] in [city]" searches — and reassure homeowners you serve their area.'} evidence={'Visitors decide "do they even serve me?" in ~3 seconds — naming their town reassures them and matches local search.'} enabled={siteContent.serviceAreas.enabled} onToggleEnabled={(value) => updateServiceAreas({ ...siteContent.serviceAreas, enabled: value })} {...contentHint(siteContent.serviceAreas.enabled, siteContent.serviceAreas.cities.filter((city) => city.trim()).length, 'city', 'cities')} open={openSection === 'serviceAreas'} onToggleOpen={() => toggleSection('serviceAreas')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.serviceAreas.title} onChange={(event) => updateServiceAreas({ ...siteContent.serviceAreas, title: event.target.value })} /></label>
                   <label className={styles.formField}><span>Intro copy</span><input value={siteContent.serviceAreas.intro} onChange={(event) => updateServiceAreas({ ...siteContent.serviceAreas, intro: event.target.value })} /></label>
-                  <div className={styles.stackList}>
+                  <div className={styles.badgeList}>
                     {siteContent.serviceAreas.cities.map((city, index) => (
-                      <div className={styles.stackItem} key={index}>
-                        <div className={styles.itemHeader}><strong>City {index + 1}</strong><button type="button" onClick={() => updateServiceAreas({ ...siteContent.serviceAreas, cities: siteContent.serviceAreas.cities.filter((_, itemIndex) => itemIndex !== index) })}>Remove</button></div>
-                        <label className={styles.formField}><span>Name</span><input value={city} onChange={(event) => updateServiceAreas({ ...siteContent.serviceAreas, cities: siteContent.serviceAreas.cities.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} placeholder="e.g. Riverton" /></label>
+                      <div className={styles.badgeRow} key={index}>
+                        <input className={styles.badgeInput} value={city} aria-label={`City ${index + 1}`} onChange={(event) => updateServiceAreas({ ...siteContent.serviceAreas, cities: siteContent.serviceAreas.cities.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} placeholder="e.g. Riverton" />
+                        <button type="button" className={styles.badgeRemove} onClick={() => updateServiceAreas({ ...siteContent.serviceAreas, cities: siteContent.serviceAreas.cities.filter((_, itemIndex) => itemIndex !== index) })} aria-label={`Remove ${city || 'city'}`}>×</button>
                       </div>
                     ))}
                   </div>
@@ -901,36 +935,34 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.certifications.title} onChange={(event) => updateCertifications({ ...siteContent.certifications, title: event.target.value })} /></label>
                   <div className={styles.stackList}>
                     {siteContent.certifications.items.map((item, index) => (
-                      <div className={styles.stackItem} key={item.id}>
-                        <div className={styles.itemHeader}><strong>{item.label || `Item ${index + 1}`}</strong><button type="button" onClick={() => updateCertifications({ ...siteContent.certifications, items: siteContent.certifications.items.filter((cert) => cert.id !== item.id) })}>Remove</button></div>
+                      <StackItem key={item.id} title={item.label.trim() || `Item ${index + 1}`} editing={editingItemId === item.id} onEdit={() => setEditingItemId(item.id)} onSave={saveItem} onRemove={() => updateCertifications({ ...siteContent.certifications, items: siteContent.certifications.items.filter((cert) => cert.id !== item.id) })}>
                         <label className={styles.formField}><span>Label</span><input value={item.label} onChange={(event) => updateCertifications({ ...siteContent.certifications, items: siteContent.certifications.items.map((cert) => cert.id === item.id ? { ...cert, label: event.target.value } : cert) })} placeholder="EPA Lead-Safe Certified" /></label>
                         <label className={styles.formField}><span>Logo image (optional)</span><select value={item.imageUrl} onChange={(event) => {
                           const image = selectableImages.find((candidate) => candidate.url === event.target.value);
                           updateCertifications({ ...siteContent.certifications, items: siteContent.certifications.items.map((cert) => cert.id === item.id ? { ...cert, imageUrl: event.target.value, imageAlt: image?.alt || cert.imageAlt || cert.label || 'Certification' } : cert) });
                         }}><option value="">No image</option>{selectableImages.map((image) => <option key={`${item.id}-${image.id}`} value={image.url}>{image.alt}</option>)}</select></label>
                         {item.imageUrl && <div className={styles.reviewImagePreview}><img src={item.imageUrl} alt={item.imageAlt || item.label || 'Certification preview'} /></div>}
-                      </div>
+                      </StackItem>
                     ))}
                   </div>
-                  <button type="button" className={styles.secondaryAction} onClick={() => updateCertifications({ ...siteContent.certifications, enabled: true, items: [...siteContent.certifications.items, { id: createContentId('cert'), label: '', imageUrl: '', imageAlt: '' }] })}>Add certification</button>
+                  <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('cert'); updateCertifications({ ...siteContent.certifications, enabled: true, items: [...siteContent.certifications.items, { id, label: '', imageUrl: '', imageAlt: '' }] }); setEditingItemId(id); }}>Add certification</button>
                 </SectionCard>
 
                 <SectionCard title="Animated stats" description="A band of big numbers that count up as visitors scroll — jobs completed, years in business, % satisfaction. Instant credibility." evidence="Concrete numbers — jobs done, years in business, response time — are instant, scannable credibility next to your work." enabled={siteContent.stats.enabled} onToggleEnabled={(value) => updateStats({ ...siteContent.stats, enabled: value })} {...contentHint(siteContent.stats.enabled, siteContent.stats.items.filter((item) => item.label.trim()).length, 'stat')} open={openSection === 'stats'} onToggleOpen={() => toggleSection('stats')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.stats.title} onChange={(event) => updateStats({ ...siteContent.stats, title: event.target.value })} /></label>
                   <div className={styles.stackList}>
                     {siteContent.stats.items.map((item, index) => (
-                      <div className={styles.stackItem} key={item.id}>
-                        <div className={styles.itemHeader}><strong>{item.label || `Stat ${index + 1}`}</strong><button type="button" onClick={() => updateStats({ ...siteContent.stats, items: siteContent.stats.items.filter((stat) => stat.id !== item.id) })}>Remove</button></div>
+                      <StackItem key={item.id} title={item.label.trim() || `Stat ${index + 1}`} meta={`${item.prefix}${item.value.toLocaleString('en-US')}${item.suffix}`} editing={editingItemId === item.id} onEdit={() => setEditingItemId(item.id)} onSave={saveItem} onRemove={() => updateStats({ ...siteContent.stats, items: siteContent.stats.items.filter((stat) => stat.id !== item.id) })}>
                         <div className={styles.formColumns}>
                           <label className={styles.formField}><span>Prefix</span><input value={item.prefix} maxLength={4} onChange={(event) => updateStats({ ...siteContent.stats, items: siteContent.stats.items.map((stat) => stat.id === item.id ? { ...stat, prefix: event.target.value } : stat) })} placeholder="$" /></label>
                           <label className={styles.formField}><span>Value</span><input type="number" min={0} value={statValueInputs[item.id] ?? String(item.value)} onChange={(event) => { const raw = event.target.value; setStatValueInputs((current) => ({ ...current, [item.id]: raw })); if (raw !== '') updateStats({ ...siteContent.stats, items: siteContent.stats.items.map((stat) => stat.id === item.id ? { ...stat, value: Number(raw) } : stat) }); }} onBlur={() => setStatValueInputs((current) => { const next = { ...current }; delete next[item.id]; return next; })} /></label>
                           <label className={styles.formField}><span>Suffix</span><input value={item.suffix} maxLength={4} onChange={(event) => updateStats({ ...siteContent.stats, items: siteContent.stats.items.map((stat) => stat.id === item.id ? { ...stat, suffix: event.target.value } : stat) })} placeholder="+ / %" /></label>
                         </div>
                         <label className={styles.formField}><span>Label</span><input value={item.label} onChange={(event) => updateStats({ ...siteContent.stats, items: siteContent.stats.items.map((stat) => stat.id === item.id ? { ...stat, label: event.target.value } : stat) })} placeholder="Jobs completed" /></label>
-                      </div>
+                      </StackItem>
                     ))}
                   </div>
-                  <button type="button" className={styles.secondaryAction} onClick={() => updateStats({ ...siteContent.stats, enabled: true, items: [...siteContent.stats.items, { id: createContentId('stat'), value: 0, prefix: '', suffix: '', label: '' }] })}>Add stat</button>
+                  <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('stat'); updateStats({ ...siteContent.stats, enabled: true, items: [...siteContent.stats.items, { id, value: 0, prefix: '', suffix: '', label: '' }] }); setEditingItemId(id); }}>Add stat</button>
                 </SectionCard>
 
                 <SectionCard title="Before &amp; after" description="Drag-to-reveal comparison sliders — the most shared element on a remodeler's site. Each pair needs both a before and an after image to appear on your site." evidence="Before/after galleries paired with reviews produced 55% more leads — for trades, the transformation is the product." enabled={siteContent.beforeAfter.enabled} onToggleEnabled={(value) => updateBeforeAfter({ ...siteContent.beforeAfter, enabled: value })} {...contentHint(siteContent.beforeAfter.enabled, siteContent.beforeAfter.items.filter((pair) => pair.beforeUrl && pair.afterUrl).length, 'pair')} open={openSection === 'beforeAfter'} onToggleOpen={() => toggleSection('beforeAfter')}>
@@ -938,8 +970,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <label className={styles.formField}><span>Intro copy</span><input value={siteContent.beforeAfter.intro} onChange={(event) => updateBeforeAfter({ ...siteContent.beforeAfter, intro: event.target.value })} /></label>
                   <div className={styles.stackList}>
                     {siteContent.beforeAfter.items.map((item, index) => (
-                      <div className={styles.stackItem} key={item.id}>
-                        <div className={styles.itemHeader}><strong>{item.label || `Pair ${index + 1}`}</strong><button type="button" onClick={() => updateBeforeAfter({ ...siteContent.beforeAfter, items: siteContent.beforeAfter.items.filter((pair) => pair.id !== item.id) })}>Remove</button></div>
+                      <StackItem key={item.id} title={item.label.trim() || `Pair ${index + 1}`} meta={item.beforeUrl && item.afterUrl ? 'complete' : 'needs images'} editing={editingItemId === item.id} onEdit={() => setEditingItemId(item.id)} onSave={saveItem} onRemove={() => updateBeforeAfter({ ...siteContent.beforeAfter, items: siteContent.beforeAfter.items.filter((pair) => pair.id !== item.id) })}>
                         <div className={styles.formColumns}>
                           <label className={styles.formField}><span>Before image</span><select value={item.beforeUrl} onChange={(event) => {
                             const image = selectableImages.find((candidate) => candidate.url === event.target.value);
@@ -952,10 +983,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                         </div>
                         {(item.beforeUrl || item.afterUrl) && <div className={styles.formColumns}>{item.beforeUrl && <div className={styles.reviewImagePreview}><img src={item.beforeUrl} alt="Before preview" /></div>}{item.afterUrl && <div className={styles.reviewImagePreview}><img src={item.afterUrl} alt="After preview" /></div>}</div>}
                         <label className={styles.formField}><span>Caption (optional)</span><input value={item.label} onChange={(event) => updateBeforeAfter({ ...siteContent.beforeAfter, items: siteContent.beforeAfter.items.map((pair) => pair.id === item.id ? { ...pair, label: event.target.value } : pair) })} placeholder="Kitchen remodel, roof replacement..." /></label>
-                      </div>
+                      </StackItem>
                     ))}
                   </div>
-                  <button type="button" className={styles.secondaryAction} onClick={() => updateBeforeAfter({ ...siteContent.beforeAfter, enabled: true, items: [...siteContent.beforeAfter.items, { id: createContentId('ba'), beforeUrl: '', beforeAlt: '', afterUrl: '', afterAlt: '', label: '' }] })}>Add pair</button>
+                  <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('ba'); updateBeforeAfter({ ...siteContent.beforeAfter, enabled: true, items: [...siteContent.beforeAfter.items, { id, beforeUrl: '', beforeAlt: '', afterUrl: '', afterAlt: '', label: '' }] }); setEditingItemId(id); }}>Add pair</button>
                 </SectionCard>
 
                 <div className={styles.integrationCard}>
