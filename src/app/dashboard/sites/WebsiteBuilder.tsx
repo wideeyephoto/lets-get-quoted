@@ -132,13 +132,14 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   // Briefly highlights a Design-tab field jumped to from the preview (e.g. the
   // hero badge control).
   const [flashField, setFlashField] = useState<string | null>(null);
-  // When set (from clicking a showcase tile in the preview), the showcase image
-  // picker replaces THIS tile in place instead of toggling selection.
-  const [replacingShowcaseId, setReplacingShowcaseId] = useState<string | null>(null);
   // The "Replace photo" popup: which image is being replaced. Opened by clicking
   // any photo in the preview or an inline Replace-photo button; the chosen image
-  // is routed by `kind` (site hero/logo, or a content.images section slot).
-  const [picker, setPicker] = useState<{ label: string; kind: 'hero' | 'logo' | 'slot'; slot?: string } | null>(null);
+  // is routed by `kind` (site hero/logo, content.images slot, a before/after
+  // side, or a showcase tile — scItemId null appends a new showcase image).
+  const [picker, setPicker] = useState<
+    | { label: string; kind: 'hero' | 'logo' | 'slot' | 'beforeAfter' | 'showcase'; slot?: string; baItemId?: string; baSide?: 'before' | 'after'; scItemId?: string | null }
+    | null
+  >(null);
   const [isPending, startTransition] = useTransition();
   const galleryImages = getSiteGallery(site.content);
   const siteContent = getSiteContent(site.content);
@@ -294,11 +295,15 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
         setPicker({ label: IMAGE_SLOT_LABELS[slot] || 'this photo', kind: 'slot', slot });
         return;
       }
+      if (target.startsWith('baimg-')) {
+        const rest = target.slice('baimg-'.length);
+        const side = rest.endsWith('-before') ? 'before' : 'after';
+        const baItemId = rest.slice(0, rest.length - side.length - 1);
+        setPicker({ label: side === 'before' ? 'the before photo' : 'the after photo', kind: 'beforeAfter', baItemId, baSide: side });
+        return;
+      }
       if (target.startsWith('showcase-')) {
-        setActiveTab('design');
-        setOpenSection('showcase');
-        setReplacingShowcaseId(target.slice('showcase-'.length));
-        flashCard('showcase', 'showcase-picker');
+        setPicker({ label: 'this showcase photo', kind: 'showcase', scItemId: target.slice('showcase-'.length) });
         return;
       }
       const section = SECTION_TARGETS[target];
@@ -313,11 +318,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     return () => window.removeEventListener('message', onEditRequest);
   }, []);
 
-  // Showcase replace-mode only makes sense while its card is open; leaving it
-  // clears the pending target so a later plain "Add" doesn't silently swap.
-  useEffect(() => {
-    if (activeTab !== 'design' || openSection !== 'showcase') setReplacingShowcaseId(null);
-  }, [activeTab, openSection]);
 
   const handleTestimonialImageUpload = useCallback((testimonialId: string, file: File) => {
     setUploadingTestimonialId(testimonialId);
@@ -568,6 +568,17 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     updateSiteContent({ beforeAfter });
   }, [updateSiteContent]);
 
+  const setBeforeAfterImage = useCallback((itemId: string, side: 'before' | 'after', image: SiteImage) => {
+    updateBeforeAfter({
+      ...siteContent.beforeAfter,
+      items: siteContent.beforeAfter.items.map((pair) => pair.id !== itemId
+        ? pair
+        : side === 'before'
+          ? { ...pair, beforeUrl: image.url, beforeAlt: image.alt || pair.beforeAlt || 'Before' }
+          : { ...pair, afterUrl: image.url, afterAlt: image.alt || pair.afterAlt || 'After' }),
+    });
+  }, [siteContent.beforeAfter, updateBeforeAfter]);
+
   const updateAnnouncement = useCallback((announcement: SiteAnnouncementContent) => {
     updateSiteContent({ announcement });
   }, [updateSiteContent]);
@@ -584,33 +595,25 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     updateSiteContent({ blog });
   }, [updateSiteContent]);
 
-  const toggleShowcaseImage = useCallback((image: SiteImage) => {
-    // Replace-in-place: when a tile is targeted (from clicking it in the live
-    // preview, or the Replace button), swap that tile's image while keeping its
-    // position, and drop any other copy of the picked image to avoid dupes.
-    if (replacingShowcaseId) {
-      const index = siteContent.showcase.items.findIndex((item) => item.id === replacingShowcaseId);
-      setReplacingShowcaseId(null);
-      if (index === -1) return;
-      const next = siteContent.showcase.items.slice();
-      next[index] = { ...image, caption: image.alt };
-      const items = next.filter((item, itemIndex) => itemIndex === index || item.id !== image.id);
-      updateShowcase({ ...siteContent.showcase, items });
+  const replaceShowcaseImage = useCallback((itemId: string | null, image: SiteImage) => {
+    const current = siteContent.showcase.items;
+    // itemId null → append (the "Add photo" flow); otherwise swap that tile in
+    // place, keeping its position and dropping any other copy of the picked image.
+    if (!itemId) {
+      if (current.length >= 9) {
+        setMessage({ type: 'error', text: 'Choose up to nine showcase images.' });
+        return;
+      }
+      updateShowcase({ ...siteContent.showcase, enabled: true, items: [...current, { ...image, caption: image.alt }] });
       return;
     }
-
-    const selected = siteContent.showcase.items.some((item) => item.id === image.id);
-    const items = selected
-      ? siteContent.showcase.items.filter((item) => item.id !== image.id)
-      : [...siteContent.showcase.items, { ...image, caption: image.alt }];
-
-    if (!selected && items.length > 9) {
-      setMessage({ type: 'error', text: 'Choose up to nine showcase images.' });
-      return;
-    }
-
+    const index = current.findIndex((item) => item.id === itemId);
+    if (index === -1) return;
+    const next = current.slice();
+    next[index] = { ...image, caption: image.alt };
+    const items = next.filter((item, itemIndex) => itemIndex === index || item.id !== image.id);
     updateShowcase({ ...siteContent.showcase, items });
-  }, [replacingShowcaseId, siteContent.showcase, updateShowcase]);
+  }, [siteContent.showcase, updateShowcase]);
 
   const checkSubdomain = useCallback(() => {
     const subdomain = site.subdomain?.trim().toLowerCase();
@@ -901,32 +904,21 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.showcase.title} onChange={(event) => updateShowcase({ ...siteContent.showcase, title: event.target.value })} /></label>
                   <label className={styles.formField}><span>Intro copy</span><textarea rows={2} value={siteContent.showcase.intro} onChange={(event) => updateShowcase({ ...siteContent.showcase, intro: event.target.value })} /></label>
                   <label className={styles.formField}><span>Layout</span><select value={siteContent.showcase.layout} onChange={(event) => updateShowcase({ ...siteContent.showcase, layout: event.target.value as SiteShowcaseContent['layout'] })}><option value="grid">Clean grid</option><option value="featured">Feature first image</option><option value="masonry">Masonry-style mix</option></select></label>
-                  <div className={styles.contentSubhead}><strong>Showcase images</strong><small>{siteContent.showcase.items.length}/9 selected</small></div>
+                  <div className={styles.contentSubhead}><strong>Showcase images</strong><small>{siteContent.showcase.items.length}/9 · shown in this order</small></div>
                   {siteContent.showcase.items.length > 0 && (
                     <div className={styles.showcaseSelected} aria-label="Showcase images, in order">
                       {siteContent.showcase.items.map((item) => (
-                        <div key={item.id} className={`${styles.showcaseSelectedTile}${replacingShowcaseId === item.id ? ` ${styles.showcaseSelectedTileActive}` : ''}`}>
+                        <div key={item.id} className={styles.showcaseSelectedTile}>
                           <img src={item.url} alt={item.alt} />
                           <div className={styles.showcaseSelectedActions}>
-                            <button type="button" onClick={() => setReplacingShowcaseId((current) => (current === item.id ? null : item.id))}>{replacingShowcaseId === item.id ? 'Cancel' : 'Replace'}</button>
-                            <button type="button" aria-label={`Remove ${item.alt}`} onClick={() => { setReplacingShowcaseId((current) => (current === item.id ? null : current)); updateShowcase({ ...siteContent.showcase, items: siteContent.showcase.items.filter((other) => other.id !== item.id) }); }}>✕</button>
+                            <button type="button" onClick={() => setPicker({ label: 'this showcase photo', kind: 'showcase', scItemId: item.id })}>Replace</button>
+                            <button type="button" aria-label={`Remove ${item.alt}`} onClick={() => updateShowcase({ ...siteContent.showcase, items: siteContent.showcase.items.filter((other) => other.id !== item.id) })}>✕</button>
                           </div>
                         </div>
                       ))}
                     </div>
                   )}
-                  {replacingShowcaseId && <p className={styles.replacingHint}>Pick a replacement below — it swaps into the highlighted tile, keeping its spot. <button type="button" onClick={() => setReplacingShowcaseId(null)}>Cancel</button></p>}
-                  <div className={styles.compactImageGrid} id="showcase-picker">
-                    {selectableImages.map((image) => {
-                      const selected = siteContent.showcase.items.some((item) => item.id === image.id);
-                      return (
-                        <button type="button" key={image.id} className={`${styles.compactImageTile}${selected && !replacingShowcaseId ? ` ${styles.selectedImageTile}` : ''}`} onClick={() => toggleShowcaseImage(image)} aria-pressed={selected}>
-                          <img src={image.url} alt={image.alt} />
-                          <span>{replacingShowcaseId ? 'Use this' : selected ? 'Selected' : 'Add'}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {siteContent.showcase.items.length < 9 && <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: 'a showcase photo', kind: 'showcase', scItemId: null })}>Add photo</button>}
                   <div className={styles.jobPhotoImport}>
                     <div><strong>Completed job photos</strong><small>Import private job photos into public site images for the showcase.</small></div>
                     <button type="button" onClick={loadJobPhotoOptions} disabled={isPending}>{jobPhotosLoaded ? 'Refresh job photos' : 'Load job photos'}</button>
@@ -1095,17 +1087,26 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <div className={styles.stackList}>
                     {siteContent.beforeAfter.items.map((item, index) => (
                       <StackItem key={item.id} title={item.label.trim() || `Pair ${index + 1}`} meta={item.beforeUrl && item.afterUrl ? 'complete' : 'needs images'} editing={editingItemId === item.id} onEdit={() => setEditingItemId(item.id)} onSave={saveItem} onRemove={() => updateBeforeAfter({ ...siteContent.beforeAfter, items: siteContent.beforeAfter.items.filter((pair) => pair.id !== item.id) })}>
-                        <div className={styles.formColumns}>
-                          <label className={styles.formField}><span>Before image</span><select value={item.beforeUrl} onChange={(event) => {
-                            const image = selectableImages.find((candidate) => candidate.url === event.target.value);
-                            updateBeforeAfter({ ...siteContent.beforeAfter, items: siteContent.beforeAfter.items.map((pair) => pair.id === item.id ? { ...pair, beforeUrl: event.target.value, beforeAlt: image?.alt || pair.beforeAlt || 'Before' } : pair) });
-                          }}><option value="">Select image</option>{selectableImages.map((image) => <option key={`${item.id}-b-${image.id}`} value={image.url}>{image.alt}</option>)}</select></label>
-                          <label className={styles.formField}><span>After image</span><select value={item.afterUrl} onChange={(event) => {
-                            const image = selectableImages.find((candidate) => candidate.url === event.target.value);
-                            updateBeforeAfter({ ...siteContent.beforeAfter, items: siteContent.beforeAfter.items.map((pair) => pair.id === item.id ? { ...pair, afterUrl: event.target.value, afterAlt: image?.alt || pair.afterAlt || 'After' } : pair) });
-                          }}><option value="">Select image</option>{selectableImages.map((image) => <option key={`${item.id}-a-${image.id}`} value={image.url}>{image.alt}</option>)}</select></label>
+                        <div className={styles.imageSlots}>
+                          <div className={styles.imageSlot}>
+                            <div className={styles.imageSlotHead}><strong>Before</strong></div>
+                            {item.beforeUrl
+                              ? <div className={styles.heroSlotPreview}><img src={item.beforeUrl} alt="Before preview" /></div>
+                              : <div className={styles.imageSlotEmpty}>No before photo</div>}
+                            <div className={styles.imageSlotActions}>
+                              <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: 'the before photo', kind: 'beforeAfter', baItemId: item.id, baSide: 'before' })}>{item.beforeUrl ? 'Replace photo' : 'Add photo'}</button>
+                            </div>
+                          </div>
+                          <div className={styles.imageSlot}>
+                            <div className={styles.imageSlotHead}><strong>After</strong></div>
+                            {item.afterUrl
+                              ? <div className={styles.heroSlotPreview}><img src={item.afterUrl} alt="After preview" /></div>
+                              : <div className={styles.imageSlotEmpty}>No after photo</div>}
+                            <div className={styles.imageSlotActions}>
+                              <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: 'the after photo', kind: 'beforeAfter', baItemId: item.id, baSide: 'after' })}>{item.afterUrl ? 'Replace photo' : 'Add photo'}</button>
+                            </div>
+                          </div>
                         </div>
-                        {(item.beforeUrl || item.afterUrl) && <div className={styles.formColumns}>{item.beforeUrl && <div className={styles.reviewImagePreview}><img src={item.beforeUrl} alt="Before preview" /></div>}{item.afterUrl && <div className={styles.reviewImagePreview}><img src={item.afterUrl} alt="After preview" /></div>}</div>}
                         <label className={styles.formField}><span>Caption (optional)</span><input value={item.label} onChange={(event) => updateBeforeAfter({ ...siteContent.beforeAfter, items: siteContent.beforeAfter.items.map((pair) => pair.id === item.id ? { ...pair, label: event.target.value } : pair) })} placeholder="Kitchen remodel, roof replacement..." /></label>
                       </StackItem>
                     ))}
@@ -1179,6 +1180,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
           onPick={(image) => {
             if (picker.kind === 'hero') selectHeroImage(image);
             else if (picker.kind === 'logo') handleChange('logo_url', image.url);
+            else if (picker.kind === 'beforeAfter' && picker.baItemId && picker.baSide) setBeforeAfterImage(picker.baItemId, picker.baSide, image);
+            else if (picker.kind === 'showcase') replaceShowcaseImage(picker.scItemId ?? null, image);
             else if (picker.slot) assignSlotImage(picker.slot, image);
             setPicker(null);
           }}
