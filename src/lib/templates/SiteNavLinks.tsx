@@ -17,14 +17,11 @@ type SiteNavLinksProps = {
   className: string;
 };
 
-// Desktop nav links + a shared mobile menu. Template headers all hide their
-// nav links on small screens, and their layouts differ too much to inject a
-// hamburger into each — so the mobile menu is a floating button (fixed
-// bottom-left, clear of the sticky call bar and the bottom-right desktop CTA)
-// that opens a full-screen overlay with the same links plus a call CTA.
-//
-// Both are PORTALED to <body>: several template headers use backdrop-filter,
-// which makes the header a containing block that would trap position:fixed
+// Desktop nav links + a shared mobile menu. The hamburger toggle renders
+// IN-TREE inside each template's header (top-right via grid `order`, styled
+// with currentColor so it adapts to every header's palette). The full-screen
+// overlay is PORTALED to <body>: several headers use backdrop-filter, which
+// makes the header a containing block that would trap position:fixed
 // children. Because <body> is outside the template's themeStyle scope, the
 // accent vars are measured off the in-tree nav and re-applied to the portal.
 // No scroll lock while open — a lock would swallow the native anchor jump
@@ -70,19 +67,20 @@ export default function SiteNavLinks({ site, links, className }: SiteNavLinksPro
         {allLinks.map((link) => <a key={link.href} href={link.href}>{link.label}</a>)}
       </nav>
 
+      <button
+        type="button"
+        className={styles.mobileNavToggle}
+        aria-expanded={open}
+        aria-label={open ? 'Close menu' : 'Open menu'}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <span aria-hidden="true" />
+        <span aria-hidden="true" />
+        <span aria-hidden="true" />
+      </button>
+
       {mounted && createPortal(
         <div style={portalStyle}>
-          <button
-            type="button"
-            className={styles.mobileNavToggle}
-            aria-expanded={open}
-            aria-label={open ? 'Close menu' : 'Open menu'}
-            onClick={() => setOpen((value) => !value)}
-          >
-            <span aria-hidden="true" />
-            <span aria-hidden="true" />
-            <span aria-hidden="true" />
-          </button>
           {open && (
             <div className={styles.mobileNavOverlay} role="dialog" aria-modal="true" aria-label="Menu">
               <button type="button" className={styles.mobileNavClose} onClick={() => setOpen(false)} aria-label="Close menu">✕</button>
