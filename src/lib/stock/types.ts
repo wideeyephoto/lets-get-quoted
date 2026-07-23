@@ -70,6 +70,25 @@ export type WebsiteImageAssignment = {
   selectedAt: string;
 };
 
+// A Pexels photo shaped for the "Replace photo" picker gallery (client-safe).
+export type PexelsPickPhoto = {
+  id: string; // `pexels-<n>` (used as a SiteImage id / React key)
+  providerImageId: string; // `<n>`
+  url: string;
+  thumbnailUrl: string;
+  alt: string;
+  photographerName: string;
+  photographerUrl: string;
+  sourceUrl: string;
+  width: number;
+  height: number;
+};
+
+export type PexelsSearchResult = {
+  configured: boolean;
+  photos: PexelsPickPhoto[];
+};
+
 // Render-ready output of the stock-image pipeline. `ok: false` (empty
 // selections) means Pexels was unavailable, so the caller keeps existing
 // placeholders. Safe to reference from client code (no server-only imports).

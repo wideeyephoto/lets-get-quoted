@@ -9,7 +9,7 @@ import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
 import { SEO_TITLE_MAX as SEO_TITLE_LIMIT, SEO_DESC_MAX as SEO_DESC_LIMIT } from '@/lib/seo/seo-copy';
-import type { StockImageResult, WebsiteImageAssignment } from '@/lib/stock/types';
+import type { PexelsPickPhoto, StockImageResult, WebsiteImageAssignment } from '@/lib/stock/types';
 import { compressImage } from '@/lib/client-images';
 import ImagePickerModal from './ImagePickerModal';
 import DomainConnector from './DomainConnector';
@@ -91,6 +91,25 @@ function isStockUrl(stockImages: WebsiteImageAssignment[], url: string | null | 
   return Boolean(url) && stockImages.some((item) => item.provider === 'pexels' && item.imageUrl === url);
 }
 
+// The default Pexels search for the "Replace photo" popup, based on which slot
+// is being edited plus the contractor's trade — so opening the hero picker
+// lands on trade-relevant hero shots, the About picker on worker shots, etc.
+function pexelsQueryFor(picker: { kind: string; slot?: string }, trade: string): string {
+  const t = (trade || '').trim() || 'home services';
+  switch (picker.kind) {
+    case 'logo': return '';
+    case 'showcase': return `${t} completed work`;
+    case 'beforeAfter': return `${t} home`;
+    case 'slot':
+      if (picker.slot === 'heroBackground') return `${t} house exterior wide`;
+      if (picker.slot === 'heroSecondary') return `${t} detail close up`;
+      if (picker.slot === 'about') return `${t} worker at work`;
+      if (picker.slot === 'stats') return `${t} finished residential result`;
+      return t;
+    default: return `${t} home exterior`; // hero, heroExtra
+  }
+}
+
 // Apply auto-selected stock photos to the site, preserving the owner's uploads
 // and any image they've already set (an existing image is only replaced if it's
 // currently a stock photo or empty). Returns the changed hero + a content
@@ -112,7 +131,10 @@ function applyStockImages(current: Site, images: StockImageResult): { heroUrl: s
   };
 
   if (images.gallery.length > 0) {
-    const keptUploads = content.showcase.items.filter((item) => item.source === 'upload');
+    // Keep the owner's own photos — uploads AND any non-stock photo they picked
+    // (e.g. Unsplash from the old library) — only refreshing previously
+    // auto-applied stock tiles.
+    const keptItems = content.showcase.items.filter((item) => item.source === 'upload' || !isStockUrl(stock, item.url));
     const wasEmpty = content.showcase.items.length === 0;
     contentUpdates.showcase = {
       ...content.showcase,
@@ -121,7 +143,7 @@ function applyStockImages(current: Site, images: StockImageResult): { heroUrl: s
       // don't relabel a showcase the owner has already customized.
       title: wasEmpty ? STOCK_SHOWCASE_TITLE : content.showcase.title,
       intro: wasEmpty ? STOCK_SHOWCASE_INTRO : content.showcase.intro,
-      items: [...keptUploads, ...images.gallery],
+      items: [...keptItems, ...images.gallery],
     };
   }
 
@@ -654,6 +676,42 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       } finally {
         setIsRegeneratingImages(false);
       }
+    });
+  }, []);
+
+  // When a photo is picked from the "Replace photo" popup, keep content.stockImages
+  // in sync so attribution stays accurate: record a Pexels pick (with credit),
+  // or drop a single-slot's prior attribution when it's replaced by an upload.
+  const recordPickedStock = useCallback((ctx: { kind: string; slot?: string }, image: SiteImage, pexels?: PexelsPickPhoto) => {
+    setSite((current) => {
+      const content = getSiteContent(current.content);
+      const slot = ctx.kind === 'hero' ? 'hero' : ctx.kind === 'slot' ? ctx.slot : undefined;
+      let next = content.stockImages;
+      if (pexels) {
+        next = next.filter((item) => (slot ? item.slot !== slot : true) && item.imageUrl !== pexels.url);
+        const role = ctx.kind === 'hero' ? 'hero' : ctx.kind === 'slot' ? (ctx.slot || 'slot') : ctx.kind === 'showcase' ? 'gallery' : ctx.kind;
+        next = [...next, {
+          id: slot ? `pick-${slot}` : `pick-${pexels.providerImageId}`,
+          role,
+          ...(slot ? { slot } : {}),
+          provider: 'pexels' as const,
+          providerImageId: pexels.providerImageId,
+          sourceUrl: pexels.sourceUrl,
+          imageUrl: pexels.url,
+          thumbnailUrl: pexels.thumbnailUrl,
+          alt: image.alt || pexels.alt,
+          photographerName: pexels.photographerName,
+          photographerUrl: pexels.photographerUrl,
+          width: pexels.width,
+          height: pexels.height,
+          selectedAutomatically: false,
+          selectedAt: new Date().toISOString(),
+        }];
+      } else if (slot) {
+        next = next.filter((item) => item.slot !== slot);
+      }
+      if (next === content.stockImages) return current;
+      return { ...current, content: mergeSiteContent(current.content, { stockImages: next }) };
     });
   }, []);
 
@@ -1571,10 +1629,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       {picker && (
         <ImagePickerModal
           label={picker.label}
-          stockImages={STOCK_SITE_IMAGES}
           uploads={siteImages}
           galleryImages={galleryImages}
           heroUrl={site.hero_url}
+          pexelsQuery={pexelsQueryFor(picker, siteContent.trade)}
           onSelectHero={selectHeroImage}
           onToggleGallery={toggleGalleryImage}
           onUpload={(image) => setSiteImages((current) => [image, ...current])}
@@ -1582,13 +1640,15 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
           onReset={picker.kind === 'slot' && picker.slot && siteContent.images[picker.slot]
             ? () => { resetSlotImage(picker.slot as string); setPicker(null); }
             : undefined}
-          onPick={(image) => {
+          onPick={(image, pexels) => {
             if (picker.kind === 'hero') selectHeroImage(image);
             else if (picker.kind === 'logo') handleChange('logo_url', image.url);
             else if (picker.kind === 'beforeAfter' && picker.baItemId && picker.baSide) setBeforeAfterImage(picker.baItemId, picker.baSide, image);
             else if (picker.kind === 'showcase') replaceShowcaseImage(picker.scItemId ?? null, image);
             else if (picker.kind === 'heroExtra') { if (typeof picker.heroExtraIndex === 'number') replaceHeroExtraImage(picker.heroExtraIndex, image); else addHeroExtraImage(image); }
             else if (picker.slot) assignSlotImage(picker.slot, image);
+            // Logos aren't stock photos; don't record attribution for them.
+            if (picker.kind !== 'logo') recordPickedStock(picker, image, pexels);
             setPicker(null);
           }}
         />

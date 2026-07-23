@@ -10,6 +10,8 @@ import { draftBlogPost, type GeneratedBlogPost } from '@/lib/blog-generate';
 import { generateSeoCopy } from '@/lib/seo/seo-copy';
 import { siteToSeoInput } from '@/lib/seo/site-seo';
 import { generateStockImages, type StockImageResult } from '@/lib/stock/generate';
+import { fetchStockPool, isPexelsConfigured } from '@/lib/stock/pexels';
+import type { ImageOrientation, PexelsSearchResult } from '@/lib/stock/types';
 import { getSiteContent } from '@/lib/site-content';
 import {
   getOrCreateSite,
@@ -397,6 +399,33 @@ export async function generateBlogPostAction(topic?: string): Promise<GeneratedB
     console.error('Blog post generation failed:', error);
     throw new Error('Could not generate a draft right now. Please try again.');
   }
+}
+
+// Search Pexels for the "Replace photo" picker's stock gallery. Auth-gated
+// (owner only), returns a `configured` flag so the UI can distinguish "no key"
+// from "no results", and never throws.
+export async function searchPexelsAction(query: string, orientation?: ImageOrientation): Promise<PexelsSearchResult> {
+  await requireOwnerContext();
+  const configured = isPexelsConfigured();
+  const trimmed = (query || '').trim().slice(0, 100);
+  if (!configured || !trimmed) return { configured, photos: [] };
+
+  const pool = await fetchStockPool([trimmed], orientation);
+  return {
+    configured,
+    photos: pool.map((photo) => ({
+      id: `pexels-${photo.id}`,
+      providerImageId: String(photo.id),
+      url: photo.imageUrl,
+      thumbnailUrl: photo.thumbnailUrl,
+      alt: photo.alt,
+      photographerName: photo.photographerName,
+      photographerUrl: photo.photographerUrl,
+      sourceUrl: photo.sourceUrl,
+      width: photo.width,
+      height: photo.height,
+    })),
+  };
 }
 
 export async function verifyCustomDomainAction(domainValue: string) {

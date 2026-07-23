@@ -74,7 +74,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
         <div className={styles.shineHeroMedia}>
           {/* Aligned 2x2 grid (Purely): photo · card / card · photo. */}
           <figure className={`${styles.shinePhotoCard} ${styles.shinePhotoMain}`}>
-            <HeroImageCycle images={getHeroImages(site.content, heroImage)} className={styles.shinePhoto} alt="Recent cleaning project" />
+            <HeroImageCycle images={getHeroImages(site.content, heroImage)} className={styles.shinePhoto} alt="Home cleaning work" />
           </figure>
           {heroBadge ? (
             <div className={`${styles.shineBadge} ${styles.shineBadgeSupport}`} data-edit="heroBadge">
@@ -96,7 +96,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
             </div>
           )}
           <figure className={`${styles.shinePhotoCard} ${styles.shinePhotoSide}`} data-edit="image-heroSecondary">
-            <img className={styles.shinePhoto} src={secondImage} alt="Our cleaning team at work" loading="lazy" decoding="async" />
+            <img className={styles.shinePhoto} src={secondImage} alt="Close-up detail of cleaning work" loading="lazy" decoding="async" />
           </figure>
         </div>
       </section>

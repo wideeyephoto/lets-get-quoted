@@ -57,7 +57,7 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
           <SiteProofStrip site={site} />
         </div>
         <div className={styles.renoHeroMedia}>
-          <HeroImageCycle images={getHeroImages(site.content, heroImage)} className={styles.renoHeroImg} alt="Recent renovation project" />
+          <HeroImageCycle images={getHeroImages(site.content, heroImage)} className={styles.renoHeroImg} alt="Home renovation work" />
           <span className={styles.renoHexBadge} data-parallax="0.16" aria-hidden="true">⌂</span>
           <span className={styles.renoHexGhost} data-parallax="0.26" aria-hidden="true" />
         </div>

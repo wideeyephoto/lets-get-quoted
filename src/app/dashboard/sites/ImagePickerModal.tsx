@@ -3,16 +3,19 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { SiteImage } from '@/lib/site-images';
+import type { PexelsPickPhoto } from '@/lib/stock/types';
 import ImageLibrary from './ImageLibrary';
 import styles from './SiteEditor.module.css';
 
 type ImagePickerModalProps = {
   label: string;
-  stockImages: SiteImage[];
   uploads: SiteImage[];
   galleryImages: SiteImage[];
   heroUrl: string | null;
-  onPick: (image: SiteImage) => void;
+  // The stock (Pexels) search is prefilled with a query based on the slot being
+  // edited + the contractor's trade.
+  pexelsQuery?: string;
+  onPick: (image: SiteImage, pexels?: PexelsPickPhoto) => void;
   onSelectHero: (image: SiteImage) => void;
   onToggleGallery: (image: SiteImage) => void;
   onUpload?: (image: SiteImage) => void;
@@ -25,10 +28,10 @@ type ImagePickerModalProps = {
 // whatever slot was clicked. Portaled to <body> so it floats over the builder.
 export default function ImagePickerModal({
   label,
-  stockImages,
   uploads,
   galleryImages,
   heroUrl,
+  pexelsQuery,
   onPick,
   onSelectHero,
   onToggleGallery,
@@ -69,10 +72,10 @@ export default function ImagePickerModal({
         </div>
         <div className={styles.pickerBody}>
           <ImageLibrary
-            stockImages={stockImages}
             initialUploads={uploads}
             galleryImages={galleryImages}
             heroUrl={heroUrl}
+            pexelsQuery={pexelsQuery}
             onSelectHero={onSelectHero}
             onToggleGallery={onToggleGallery}
             onUpload={onUpload}

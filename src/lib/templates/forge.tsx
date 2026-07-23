@@ -40,7 +40,7 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
           <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#work', label: 'Work' }, { href: '#about', label: 'About' }, { href: '#contact', label: 'Contact' }]} />
           {site.phone && <a className={styles.headerPhone} href={`tel:${site.phone}`}>{site.phone}</a>}
         </header>
-        <HeroImageCycle images={getHeroImages(site.content, heroImage)} className={styles.heroImage} alt="Recent completed job" />
+        <HeroImageCycle images={getHeroImages(site.content, heroImage)} className={styles.heroImage} alt="Home construction work" />
         <div className={styles.forgeScrim} />
         <div className={styles.forgeHeroCopy}>
           <p className={styles.kicker}>Done right. Every time.</p>

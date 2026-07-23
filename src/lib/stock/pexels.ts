@@ -90,8 +90,11 @@ async function searchPexels(query: string, orientation?: ImageOrientation, perPa
  */
 export async function fetchStockPool(queries: string[], orientation?: ImageOrientation): Promise<PexelsPhoto[]> {
   if (!isPexelsConfigured() || queries.length === 0) return [];
-  const perQuery = Math.max(6, Math.ceil(POOL_CAP / Math.max(1, queries.length)) + 3);
-  const results = await Promise.all(queries.slice(0, 8).map((query) => searchPexels(query, orientation, perQuery)));
+  // Cap generously — the image plan emits ~9 distinct queries; never drop a
+  // planned (service-specific) query. perQuery is sized off what we actually run.
+  const capped = queries.slice(0, 12);
+  const perQuery = Math.max(6, Math.ceil(POOL_CAP / capped.length) + 3);
+  const results = await Promise.all(capped.map((query) => searchPexels(query, orientation, perQuery)));
 
   const byId = new Map<number, PexelsPhoto>();
   for (const photos of results) {

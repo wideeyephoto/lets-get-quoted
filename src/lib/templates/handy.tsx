@@ -100,7 +100,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
           <span className={styles.careDot1} aria-hidden="true" />
           <span className={styles.careDot2} aria-hidden="true" />
           <div className={styles.careHeroCircle} data-edit="image-about">
-            <img src={aboutImage} alt="Our team on the job" loading="lazy" decoding="async" />
+            <img src={aboutImage} alt="A professional at work" loading="lazy" decoding="async" />
           </div>
         </div>
         <div className={styles.careWhyCard} data-reveal="right">

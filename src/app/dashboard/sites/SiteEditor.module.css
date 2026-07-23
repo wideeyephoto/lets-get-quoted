@@ -100,6 +100,14 @@
 .stockBlock { display: grid; gap: .6rem; margin-top: .5rem; padding-top: .9rem; border-top: 1px solid rgba(255,255,255,.1); }
 .stockBlock strong { color: #f7f5ef; font-size: .85rem; }
 .stockBlock button { justify-self: start; }
+/* Pexels stock search inside the "Replace photo" popup. */
+.pexelsPanel { display: grid; gap: .7rem; }
+.pexelsSearch { display: flex; gap: .5rem; }
+.pexelsSearch input { flex: 1; min-height: 42px; padding: .6rem .75rem; border: 1px solid rgba(255,255,255,.16); border-radius: 8px; background: rgba(255,255,255,.055); color: #f7f5ef; }
+.pexelsSearch input:focus { outline: none; border-color: #ff9b54; box-shadow: 0 0 0 3px rgba(255,122,33,.12); }
+.pexelsSearch button { flex: none; min-height: 42px; padding: 0 1.1rem; border: 1px solid #ff7a21; border-radius: 8px; background: rgba(255,122,33,.16); color: #ffb27a; font-weight: 800; cursor: pointer; }
+.pexelsSearch button:disabled { opacity: .55; cursor: default; }
+.pexelsNote { margin: 0; color: #9ca8b8; font-size: .77rem; line-height: 1.45; }
 .checklistCard { display: grid; gap: .65rem; padding: 1rem 1.1rem; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; background: rgba(255,255,255,.03); }
 .checklistCard > strong { font-size: .9rem; color: #f7f5ef; }
 .checklistCard ul { display: grid; gap: .45rem; margin: 0; padding: 0; list-style: none; }

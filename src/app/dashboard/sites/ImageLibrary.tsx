@@ -1,15 +1,15 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import type { SiteImage } from '@/lib/site-images';
+import type { PexelsPickPhoto } from '@/lib/stock/types';
 import { compressImage } from '@/lib/client-images';
-import { deleteSiteImageAction } from './actions';
+import { deleteSiteImageAction, searchPexelsAction } from './actions';
 import styles from './SiteEditor.module.css';
 
-type PickMode = { onPick: (image: SiteImage) => void };
+type PickMode = { onPick: (image: SiteImage, pexels?: PexelsPickPhoto) => void };
 
 type ImageLibraryProps = {
-  stockImages: SiteImage[];
   initialUploads: SiteImage[];
   galleryImages: SiteImage[];
   heroUrl: string | null;
@@ -17,10 +17,16 @@ type ImageLibraryProps = {
   onToggleGallery: (image: SiteImage) => void;
   pickMode?: PickMode | null;
   onUpload?: (image: SiteImage) => void;
+  // Default Pexels query for the Stock tab, based on the slot/role being edited
+  // and the contractor's trade (e.g. "window cleaning home exterior").
+  pexelsQuery?: string;
 };
 
+function pexelsToSiteImage(photo: PexelsPickPhoto): SiteImage {
+  return { id: photo.id, url: photo.url, alt: photo.alt || 'Representative service photo', category: 'craft', source: 'stock' };
+}
+
 export default function ImageLibrary({
-  stockImages,
   initialUploads,
   galleryImages,
   heroUrl,
@@ -28,6 +34,7 @@ export default function ImageLibrary({
   onToggleGallery,
   pickMode,
   onUpload,
+  pexelsQuery = '',
 }: ImageLibraryProps) {
   const [source, setSource] = useState<'stock' | 'upload'>('upload');
   const [uploads, setUploads] = useState(initialUploads);
@@ -36,7 +43,37 @@ export default function ImageLibrary({
   const [isUploading, setIsUploading] = useState(false);
   const [isPending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
-  const images = source === 'stock' ? stockImages : uploads;
+
+  // Pexels stock search state.
+  const [query, setQuery] = useState(pexelsQuery);
+  const [pexels, setPexels] = useState<PexelsPickPhoto[]>([]);
+  const [pexelsConfigured, setPexelsConfigured] = useState(true);
+  const [pexelsLoading, setPexelsLoading] = useState(false);
+  const [pexelsSearched, setPexelsSearched] = useState(false);
+
+  const runSearch = (term: string) => {
+    const q = term.trim();
+    if (!q) return;
+    setPexelsLoading(true);
+    startTransition(async () => {
+      try {
+        const result = await searchPexelsAction(q);
+        setPexelsConfigured(result.configured);
+        setPexels(result.photos);
+      } catch {
+        setPexels([]);
+      } finally {
+        setPexelsLoading(false);
+        setPexelsSearched(true);
+      }
+    });
+  };
+
+  // Auto-run the role/trade default query the first time the Stock tab opens.
+  useEffect(() => {
+    if (source === 'stock' && !pexelsSearched && !pexelsLoading) runSearch(query || pexelsQuery);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source]);
 
   async function handleUpload(file: File | undefined) {
     if (!file) return;
@@ -98,21 +135,53 @@ export default function ImageLibrary({
       <div className={styles.libraryToolbar}>
         <div className={styles.segmented} aria-label="Image source">
           <button type="button" className={source === 'upload' ? styles.activeSegment : undefined} onClick={() => setSource('upload')}>Your uploads</button>
-          <button type="button" className={source === 'stock' ? styles.activeSegment : undefined} onClick={() => setSource('stock')}>Stock</button>
+          <button type="button" className={source === 'stock' ? styles.activeSegment : undefined} onClick={() => setSource('stock')}>Stock photos</button>
         </div>
         <label className={styles.uploadButton}>
-          {isUploading ? `Uploading ${uploadProgress}%` : isPending ? 'Working...' : 'Upload image'}
+          {isUploading ? `Uploading ${uploadProgress}%` : 'Upload image'}
           <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={isPending || isUploading} onChange={(event) => handleUpload(event.target.files?.[0])} />
         </label>
       </div>
 
       {isUploading && <div className={styles.uploadProgress}><span style={{ width: `${uploadProgress}%` }} /></div>}
       {message && <p className={styles.libraryMessage}>{message}</p>}
-      {images.length === 0 ? (
+
+      {source === 'stock' ? (
+        <div className={styles.pexelsPanel}>
+          <form
+            className={styles.pexelsSearch}
+            onSubmit={(event) => { event.preventDefault(); runSearch(query); }}
+          >
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search stock photos (e.g. roofing, clean windows)" aria-label="Search stock photos" />
+            <button type="submit" disabled={pexelsLoading || !query.trim()}>{pexelsLoading ? 'Searching…' : 'Search'}</button>
+          </form>
+          <p className={styles.pexelsNote}>Representative stock photos from Pexels. Pick one now, or replace it later with a photo of your own work.</p>
+
+          {!pexelsConfigured ? (
+            <div className={styles.emptyLibrary}>Stock photos aren’t set up yet. Add a PEXELS_API_KEY to enable them, or upload your own photo.</div>
+          ) : pexelsLoading ? (
+            <div className={styles.emptyLibrary}>Searching Pexels…</div>
+          ) : pexels.length === 0 ? (
+            <div className={styles.emptyLibrary}>{pexelsSearched ? 'No photos found — try different words, or upload your own.' : 'Search for stock photos above.'}</div>
+          ) : (
+            <div className={styles.imageGrid}>
+              {pexels.map((photo) => (
+                <article className={styles.imageTile} key={photo.id}>
+                  <img src={photo.thumbnailUrl || photo.url} alt={photo.alt} loading="lazy" />
+                  <div className={styles.imageMeta}><span>{photo.photographerName ? `© ${photo.photographerName}` : 'Pexels'}</span></div>
+                  <div className={styles.imageActions}>
+                    <button type="button" onClick={() => pickMode?.onPick(pexelsToSiteImage(photo), photo)}>Use this photo</button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : uploads.length === 0 ? (
         <div className={styles.emptyLibrary}>Upload project photos to build your image library.</div>
       ) : (
         <div className={styles.imageGrid}>
-          {images.map((image) => {
+          {uploads.map((image) => {
             const inGallery = galleryImages.some((item) => item.id === image.id);
             const isHero = heroUrl === image.url;
             const isInUse = inGallery || isHero;
