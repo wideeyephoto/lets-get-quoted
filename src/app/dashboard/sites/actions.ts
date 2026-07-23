@@ -145,6 +145,10 @@ export type GeneratedSiteText = {
   // the contractor replaces them with real ones and turns them on.
   testimonials: { author: string; text: string; rating: number; label: string }[];
   stats: { value: number; suffix: string; label: string }[];
+  // Trade-appropriate instant-estimate price bands (null when the model's
+  // numbers failed the sanity check) — the caller applies them so the smart
+  // intake never shows remodel-scale defaults for a service trade.
+  estimateRanges: { small: { min: number; max: number }; medium: { min: number; max: number }; large: { min: number; max: number } } | null;
   // Auto-selected Pexels stock photos for the site's image roles. Always
   // present; `ok: false` (empty selections) when Pexels was unavailable, so the
   // rest of the generated site still applies.
@@ -164,6 +168,27 @@ function isObj(value: unknown): value is Record<string, unknown> {
 // sometimes invents a key (e.g. 'roof'), so anything off-list falls back to a
 // generic mark rather than being stored and rendered as the wrong/empty icon.
 const SERVICE_ICON_KEYS = new Set(['spark', 'wrench', 'droplet', 'bolt', 'home', 'star', 'shield', 'clock', 'leaf', 'grid', 'truck', 'sparkles', 'roller']);
+
+// Accept the model's estimate bands only when they're coherent: each band a
+// sane $25-$200k range with min < max, and the bands ascending. Anything off
+// returns null and the site keeps its existing/default bands.
+function parseEstimateRanges(value: unknown): GeneratedSiteText['estimateRanges'] {
+  if (!isObj(value)) return null;
+  const band = (raw: unknown): { min: number; max: number } | null => {
+    if (!isObj(raw)) return null;
+    const min = Math.round(Number(raw.min));
+    const max = Math.round(Number(raw.max));
+    if (!Number.isFinite(min) || !Number.isFinite(max)) return null;
+    if (min < 25 || max > 200000 || min >= max) return null;
+    return { min, max };
+  };
+  const small = band(value.small);
+  const medium = band(value.medium);
+  const large = band(value.large);
+  if (!small || !medium || !large) return null;
+  if (small.min > medium.min || medium.min > large.min) return null;
+  return { small, medium, large };
+}
 function normalizeIcon(value: unknown): string {
   const key = asString(value, 20);
   return SERVICE_ICON_KEYS.has(key) ? key : 'spark';
@@ -229,12 +254,14 @@ export async function generateSiteTextAction(
     '"seo_description":"<under 160 characters; name the trade and the service area/city when given, and end with a clear call to action like \'Free estimates.\'>",' +
     '"hours":"<typical hours for this trade, e.g. \'Mon-Fri 8am-6pm, Sat 9am-2pm\'>",' +
     '"service_area":"<the area served in a few words; if none was provided, a natural generic like \'your local area\'>",' +
-    '"cities":["<4 to 6 nearby city or neighborhood names for the service area; empty array if the area is unknown>"],' +
+    '"cities":["<12 nearby city, town, or neighborhood names for the service area, casting a wide radius; empty array if the area is unknown>"],' +
     '"services":[{"icon":"<pick the single closest match from EXACTLY this list and never invent another word: wrench, droplet, bolt, roller, sparkles, home, shield, leaf, grid, truck, clock, star, spark>","title":"<a real service this trade offers, under 40 characters>","description":"<one concrete line under 130 characters>"}],' +
     '"faqs":[{"question":"<a real question a homeowner asks this trade>","answer":"<a concise, helpful answer under 300 characters>"}],' +
     '"testimonials":[{"author":"<a realistic first name and last initial>","text":"<a believable 1-2 sentence review of this trade>","rating":5,"label":"<a city or short role, optional>"}],' +
-    '"stats":[{"value":<a plausible whole number>,"suffix":"<a plus sign or empty>","label":"<e.g. Jobs completed, Years in business, 5-star reviews>"}]' +
-    '}. Include 4 to 5 services, 5 faqs, 2 to 3 testimonials, and 3 to 4 stats.';
+    '"stats":[{"value":<a plausible whole number>,"suffix":"<a plus sign or empty>","label":"<e.g. Jobs completed, Years in business, 5-star reviews>"}],' +
+    '"estimate_ranges":{"small":{"min":<number>,"max":<number>},"medium":{"min":<number>,"max":<number>},"large":{"min":<number>,"max":<number>}}' +
+    '}. Include 4 to 5 services, 5 faqs, 2 to 3 testimonials, and 3 to 4 stats. ' +
+    'estimate_ranges are realistic UP-FRONT price bands in whole US dollars for THIS SPECIFIC TRADE, used to show homeowners a rough instant estimate: small = a minor fix or routine service call, medium = a moderate day-scale job, large = this trade\'s biggest common residential job. Example: a house-cleaning business might use 120-250 / 250-600 / 600-1500, while a roofer might use 400-1200 / 1500-6000 / 8000-20000. Never use remodel-scale numbers for service trades.';
 
   const input =
     `Business name: ${companyName}. ${tradeInput ? `Trade / field of work: ${tradeInput}. ` : ''}${serviceArea ? `Service area: ${serviceArea}. ` : ''}` +
@@ -267,7 +294,7 @@ export async function generateSiteTextAction(
       .filter((s) => s.title);
     const cities = asArray(parsed.cities)
       .filter((c): c is string => typeof c === 'string')
-      .slice(0, 8)
+      .slice(0, 12)
       .map((c) => c.slice(0, 50));
 
     // Build SEO copy deterministically rather than trusting the model — the
@@ -318,6 +345,7 @@ export async function generateSiteTextAction(
         .slice(0, 4)
         .map((s) => ({ value: Math.max(0, Math.round(Number(s.value) || 0)), suffix: asString(s.suffix, 4), label: asString(s.label, 40) }))
         .filter((s) => s.label),
+      estimateRanges: parseEstimateRanges(parsed.estimate_ranges),
     };
   } catch (error) {
     console.error('Site text generation failed:', error);

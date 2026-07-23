@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroImages, getLogoStyle, getPublishedHowItWorks, getPublishedServices, getSlotImage } from '@/lib/site-content';
+import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getPublishedHowItWorks, getPublishedServices, getPublishedWhyUs, getSiteContent, getSlotImage } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
@@ -12,13 +12,6 @@ import SiteAnnouncementBar from './SiteAnnouncementBar';
 import ScrollReveal from './ScrollReveal';
 import Parallax from './Parallax';
 import styles from './themes.module.css';
-
-const WHY_POINTS = [
-  'Verified, background-checked pros',
-  'Upfront, honest pricing',
-  'Fast, friendly response',
-  'Quality work, guaranteed',
-];
 
 const TRUST_ITEMS = ['Licensed & insured', 'Same-day service', 'Free estimates', 'Satisfaction guaranteed'];
 
@@ -41,15 +34,20 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
   const headlineLast = headlineWords.length > 1 ? headlineWords.pop()! : '';
   const headlineMain = headlineWords.join(' ');
 
+  const whyUs = getPublishedWhyUs(site.content);
+  const workGallery = getSiteContent(site.content).workGallery;
+  const heroBadge = getHeroBadge(site.content);
+  const secondBadge = getHeroSecondBadge(site.content);
+
   const navLinks = [
     ...(getPublishedServices(site.content) ? [{ href: '#our-services', label: 'Services' }] : []),
-    { href: '#why', label: 'Why us' },
+    ...(whyUs ? [{ href: '#why', label: 'Why us' }] : []),
     ...(getPublishedHowItWorks(site.content) ? [{ href: '#how-it-works', label: 'How it works' }] : []),
     { href: '#contact', label: 'Contact' },
   ];
 
   return (
-    <main className={`${styles.site} ${styles.handy}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode} data-logo-style={getLogoStyle(site.content)}>
+    <main className={`${styles.site} ${styles.handy}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)}>
       <SiteAnnouncementBar site={site} />
       <ScrollReveal />
       <Parallax />
@@ -71,10 +69,24 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
           <p className={styles.careEyebrow}>{site.service_area ? `Serving ${site.service_area}` : 'Trusted home services'}</p>
           <h1>{headlineMain} {headlineLast && <span className={styles.careAccentText}>{headlineLast}</span>}</h1>
           <p className={styles.careHeroText}>{site.tagline || 'Reliable, friendly help for every job around the home — booked in minutes, done right the first time.'}</p>
-          <div className={styles.careHeroCards}>
-            <div className={styles.careMiniCard}><strong>Best home service</strong><small>for your home</small></div>
-            <div className={styles.careMiniCard}><strong>Licensed &amp; insured</strong><small>vetted local pros</small></div>
-          </div>
+          {(heroBadge || secondBadge.mode !== 'none') && (
+            <div className={styles.careHeroCards} data-edit="heroBadge">
+              {heroBadge && (
+                <div className={styles.careMiniCard}>
+                  <strong><span aria-hidden="true">{heroBadge.icon}</span> {heroBadge.title}</strong>
+                  {heroBadge.subtitle && <small>{heroBadge.subtitle}</small>}
+                </div>
+              )}
+              {secondBadge.mode === 'badge' ? (
+                <div className={styles.careMiniCard}>
+                  <strong><span aria-hidden="true">{secondBadge.badge.icon}</span> {secondBadge.badge.title}</strong>
+                  {secondBadge.badge.subtitle && <small>{secondBadge.badge.subtitle}</small>}
+                </div>
+              ) : secondBadge.mode === 'default' ? (
+                <div className={styles.careMiniCard}><strong>Best home service</strong><small>for your home</small></div>
+              ) : null}
+            </div>
+          )}
           <div className={styles.careHeroActions}>
             <a className={styles.careBtn} href="#estimate">Get my free estimate</a>
             {site.phone && <a className={styles.careBtnGhost} href={`tel:${site.phone}`}>Call us now</a>}
@@ -95,35 +107,37 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
 
       <SiteContentSections site={site} />
 
-      <section className={styles.careWhy} id="why">
-        <div className={styles.careWhyMedia} data-reveal="left">
-          <span className={styles.careDot1} aria-hidden="true" />
-          <span className={styles.careDot2} aria-hidden="true" />
-          <div className={styles.careHeroCircle} data-edit="image-about">
-            <img src={aboutImage} alt="A professional at work" loading="lazy" decoding="async" />
+      {whyUs && (
+        <section className={styles.careWhy} id="why">
+          <div className={styles.careWhyMedia} data-reveal="left">
+            <span className={styles.careDot1} aria-hidden="true" />
+            <span className={styles.careDot2} aria-hidden="true" />
+            <div className={styles.careHeroCircle} data-edit="image-about">
+              <img src={aboutImage} alt="A professional at work" loading="lazy" decoding="async" />
+            </div>
           </div>
-        </div>
-        <div className={styles.careWhyCard} data-reveal="right">
-          <p className={styles.careEyebrow}>Why choose us</p>
-          <h2>Quality work, every single time</h2>
-          <ul className={styles.careCheckList}>
-            {WHY_POINTS.map((point) => (
-              <li key={point}><span className={styles.careCheck} aria-hidden="true">✓</span>{point}</li>
-            ))}
-          </ul>
-        </div>
-      </section>
+          <div className={styles.careWhyCard} data-reveal="right" data-edit="whyUs">
+            <p className={styles.careEyebrow}>Why choose us</p>
+            <h2>{whyUs.title}</h2>
+            <ul className={styles.careCheckList}>
+              {whyUs.points.map((point) => (
+                <li key={point}><span className={styles.careCheck} aria-hidden="true">✓</span>{point}</li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
 
       <section className={styles.careWorks} aria-label="Recent work">
-        <div className={styles.careWorksHead} data-reveal>
-          <p className={styles.careEyebrowLight}>Our work</p>
-          <h2>Quality you can see</h2>
+        <div className={styles.careWorksHead} data-reveal data-edit="workGallery">
+          <p className={styles.careEyebrowLight}>{workGallery.eyebrow}</p>
+          <h2>{workGallery.title}</h2>
         </div>
         <div className={styles.careWorksGrid} data-stagger>
           {gallery.slice(0, 3).map((image, index) => (
             <figure key={image.id}>
               <img src={image.url} alt={image.alt} loading="lazy" decoding="async" />
-              <figcaption>0{index + 1}. {image.alt}</figcaption>
+              <figcaption>0{index + 1}. {image.caption || image.alt}</figcaption>
             </figure>
           ))}
         </div>

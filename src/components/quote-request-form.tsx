@@ -5,6 +5,7 @@ import { compressImage } from '@/lib/client-images';
 import { getEstimateButtonLabel, getSiteContent } from '@/lib/site-content';
 import type { Site } from '@/lib/sites';
 import AddressAutocomplete from '@/components/address-autocomplete';
+import HeroQuickForm from '@/lib/templates/HeroQuickForm';
 import styles from './quote-request-form.module.css';
 
 const MAX_PHOTOS = 6;
@@ -13,10 +14,20 @@ const TOTAL_STEPS = STEP_LABELS.length;
 const LAST_STEP = TOTAL_STEPS - 1;
 
 type QuoteRequestFormProps = {
-  site: Pick<Site, 'id' | 'published' | 'content'>;
+  site: Pick<Site, 'id' | 'published' | 'content' | 'company_name' | 'tagline' | 'headline' | 'service_area' | 'phone'>;
 };
 
 export default function QuoteRequestForm({ site }: QuoteRequestFormProps) {
+  // The full multi-field form is opt-in (off by default). When it's off, the
+  // compact smart-intake capture takes its place so the #contact section
+  // always still collects leads.
+  if (!getSiteContent(site.content).quoteForm.enabled) {
+    return <HeroQuickForm site={site} />;
+  }
+  return <QuoteRequestFormFull site={site} />;
+}
+
+function QuoteRequestFormFull({ site }: QuoteRequestFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const projectStepRef = useRef<HTMLDivElement>(null);
   const contactStepRef = useRef<HTMLDivElement>(null);

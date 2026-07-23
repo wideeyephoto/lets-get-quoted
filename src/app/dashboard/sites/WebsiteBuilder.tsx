@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, REORDERABLE_SECTIONS, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, slugifyBlogTitle, type NormalizedSiteContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, REORDERABLE_SECTIONS, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, slugifyBlogTitle, type NormalizedSiteContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteWorkGalleryContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
@@ -430,6 +430,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       quoteForm: 'quoteForm',
       estimate: 'estimate',
       contact: 'quoteForm',
+      whyUs: 'whyUs',
+      workGallery: 'workGallery',
     };
 
     function onEditRequest(event: MessageEvent) {
@@ -602,6 +604,11 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
           }
           if (generated.stats.length) {
             contentUpdates.stats = { enabled: false, title: content.stats.title || 'By the numbers', items: generated.stats.map((s, i) => ({ id: `stat-${i + 1}`, value: s.value, prefix: '', suffix: s.suffix, label: s.label })) };
+          }
+          // Trade-appropriate instant-estimate bands, so the smart intake never
+          // quotes remodel-scale prices for a service trade.
+          if (generated.estimateRanges) {
+            contentUpdates.estimateRanges = { ...content.estimateRanges, enabled: true, ...generated.estimateRanges };
           }
           // Fold in auto-selected stock photos (hero, slots, gallery), preserving
           // any images the owner already set.
@@ -879,6 +886,14 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
   const updateAnnouncement = useCallback((announcement: SiteAnnouncementContent) => {
     updateSiteContent({ announcement });
+  }, [updateSiteContent]);
+
+  const updateWhyUs = useCallback((whyUs: SiteWhyUsContent) => {
+    updateSiteContent({ whyUs });
+  }, [updateSiteContent]);
+
+  const updateWorkGallery = useCallback((workGallery: SiteWorkGalleryContent) => {
+    updateSiteContent({ workGallery });
   }, [updateSiteContent]);
 
   const updateServices = useCallback((services: SiteServicesContent) => {
@@ -1268,12 +1283,20 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 <div className={styles.cardGroupLabel}>Get you leads</div>
                 <p className={styles.cardGroupHint}>Two ways to capture a job: the form sends the visitor&apos;s details to you — the estimator shows them a ballpark price instantly.</p>
 
-                <SectionCard title="Quote request form" description="Visitors send you their job details; you reply with a price." open={openSection === 'quoteForm'} onToggleOpen={() => toggleSection('quoteForm')}>
+                <SectionCard title="Quote request form" description="The full multi-field form where visitors send you their job details. When it's off, the quick smart-intake capture takes its place — visitors can always reach you either way." enabled={siteContent.quoteForm.enabled} onToggleEnabled={(value) => updateQuoteForm({ ...siteContent.quoteForm, enabled: value })} open={openSection === 'quoteForm'} onToggleOpen={() => toggleSection('quoteForm')}>
                   <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.quoteForm.emailRequired} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, emailRequired: event.target.checked })} /><span><strong>Require email on quote form</strong><small>Ask homeowners for an email address on every request so future email campaigns have clean contact data.</small></span></label>
                   <label className={styles.formField}><span>Form title shown on your page</span><select value={siteContent.quoteForm.estimateLabel} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, estimateLabel: event.target.value as SiteQuoteFormContent['estimateLabel'] })}><option value="quick">&quot;Quick Estimate&quot;</option><option value="instant">&quot;Instant Estimate&quot;</option></select><small>This only changes the form&apos;s title — the automatic AI estimator is the card below.</small></label>
                 </SectionCard>
 
-                <SectionCard title="Instant price estimate (AI)" description="Gives visitors an automatic ballpark price, no waiting — after the quick form, our AI asks a couple of questions to size up the job, then shows a rough $ range right away." enabled={siteContent.estimateRanges.enabled} onToggleEnabled={(value) => updateEstimateRanges({ ...siteContent.estimateRanges, enabled: value })} open={openSection === 'estimate'} onToggleOpen={() => toggleSection('estimate')} />
+                <SectionCard title="Instant price estimate (AI)" description="Gives visitors an automatic ballpark price, no waiting — after the quick form, our AI asks a couple of questions to size up the job, then shows a rough $ range right away." enabled={siteContent.estimateRanges.enabled} onToggleEnabled={(value) => updateEstimateRanges({ ...siteContent.estimateRanges, enabled: value })} open={openSection === 'estimate'} onToggleOpen={() => toggleSection('estimate')}>
+                  <p className={styles.fieldHint}>Set the price bands for your trade — the AI decides whether a described job is small, medium, or large, then shows that band. &quot;✨ Generate a full example site&quot; fills these with typical prices for your trade.</p>
+                  {(['small', 'medium', 'large'] as const).map((bandKey) => (
+                    <div className={styles.formColumns} key={bandKey}>
+                      <label className={styles.formField}><span>{bandKey === 'small' ? 'Small job — from ($)' : bandKey === 'medium' ? 'Medium job — from ($)' : 'Large job — from ($)'}</span><input type="number" min={0} value={siteContent.estimateRanges[bandKey].min} onChange={(event) => updateEstimateRanges({ ...siteContent.estimateRanges, [bandKey]: { ...siteContent.estimateRanges[bandKey], min: Math.max(0, Math.round(Number(event.target.value) || 0)) } })} /></label>
+                      <label className={styles.formField}><span>up to ($)</span><input type="number" min={0} value={siteContent.estimateRanges[bandKey].max} onChange={(event) => updateEstimateRanges({ ...siteContent.estimateRanges, [bandKey]: { ...siteContent.estimateRanges[bandKey], max: Math.max(0, Math.round(Number(event.target.value) || 0)) } })} /></label>
+                    </div>
+                  ))}
+                </SectionCard>
 
                 <div className={styles.cardGroupLabel}>Main sections</div>
 
@@ -1583,6 +1606,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 <SectionCard title="Announcement bar" description={'A strip across the top of your site for one timely line — e.g. "Now booking for August". You type the message, so it never invents urgency; it only appears once filled in.'} evidence={'Urgency converts — emergency-ready trades close highest (12–16%); a "same-day" or "now booking" line cuts hesitation.'} enabled={siteContent.announcement.enabled} onToggleEnabled={(value) => updateAnnouncement({ ...siteContent.announcement, enabled: value })} open={openSection === 'announcement'} onToggleOpen={() => toggleSection('announcement')}>
                   <label className={styles.formField}><span>Message</span><input value={siteContent.announcement.message} maxLength={140} onChange={(event) => updateAnnouncement({ ...siteContent.announcement, message: event.target.value })} placeholder="Now booking August installs" /></label>
                   <label className={styles.formField}><span>Second line (optional)</span><input value={siteContent.announcement.subtext} maxLength={140} onChange={(event) => updateAnnouncement({ ...siteContent.announcement, subtext: event.target.value })} placeholder="Same-day estimates · Licensed &amp; insured" /></label>
+                  <label className={styles.formField}><span>Last day to show (optional)</span><input type="date" value={siteContent.announcement.endDate} onChange={(event) => updateAnnouncement({ ...siteContent.announcement, endDate: event.target.value })} /><small>The bar hides itself automatically after this date — great for limited-time promos.</small></label>
                   {siteContent.announcement.enabled && !siteContent.announcement.message.trim() && <p className={styles.emptyHelper}>Add a message above for the bar to appear on your site.</p>}
                 </SectionCard>
 
@@ -1590,6 +1614,30 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.stickyCallBar.showQuote} onChange={(event) => updateStickyCallBar({ ...siteContent.stickyCallBar, showQuote: event.target.checked })} /><span><strong>Add a &quot;Free quote&quot; button</strong><small>Adds a second button beside Call that jumps straight to your quote form.</small></span></label>
                   {siteContent.stickyCallBar.enabled && !site.phone && <p className={styles.emptyHelper}>Add a phone number on the Business tab to make this bar appear.</p>}
                 </SectionCard>
+
+                {site.template === 'handy' && (
+                  <>
+                    <div className={styles.cardGroupLabel}>Care template sections</div>
+
+                    <SectionCard title="Why choose us" description="The checklist card beside your team photo — your promise points, in your words." enabled={siteContent.whyUs.enabled} onToggleEnabled={(value) => updateWhyUs({ ...siteContent.whyUs, enabled: value })} open={openSection === 'whyUs'} onToggleOpen={() => toggleSection('whyUs')}>
+                      <label className={styles.formField}><span>Heading</span><input value={siteContent.whyUs.title} maxLength={80} onChange={(event) => updateWhyUs({ ...siteContent.whyUs, title: event.target.value })} /></label>
+                      <div className={styles.badgeList}>
+                        {siteContent.whyUs.points.map((point, index) => (
+                          <div className={styles.badgeRow} key={index}>
+                            <input className={styles.badgeInput} value={point} maxLength={80} aria-label={`Point ${index + 1}`} onChange={(event) => updateWhyUs({ ...siteContent.whyUs, points: siteContent.whyUs.points.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} placeholder="e.g. Upfront, honest pricing" />
+                            <button type="button" className={styles.badgeRemove} onClick={() => updateWhyUs({ ...siteContent.whyUs, points: siteContent.whyUs.points.filter((_, itemIndex) => itemIndex !== index) })} aria-label={`Remove ${point || 'point'}`}>×</button>
+                          </div>
+                        ))}
+                      </div>
+                      {siteContent.whyUs.points.length < 6 && <button type="button" className={styles.secondaryAction} onClick={() => updateWhyUs({ ...siteContent.whyUs, points: [...siteContent.whyUs.points, ''] })}>Add point</button>}
+                    </SectionCard>
+
+                    <SectionCard title="Our work heading" description="The heading over the three-photo work band. The photos come from your image gallery; their titles come from the Photo gallery card." open={openSection === 'workGallery'} onToggleOpen={() => toggleSection('workGallery')}>
+                      <label className={styles.formField}><span>Small line above</span><input value={siteContent.workGallery.eyebrow} maxLength={40} onChange={(event) => updateWorkGallery({ ...siteContent.workGallery, eyebrow: event.target.value })} /></label>
+                      <label className={styles.formField}><span>Heading</span><input value={siteContent.workGallery.title} maxLength={80} onChange={(event) => updateWorkGallery({ ...siteContent.workGallery, title: event.target.value })} /></label>
+                    </SectionCard>
+                  </>
+                )}
               </div>
             )}
 

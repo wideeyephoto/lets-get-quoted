@@ -163,7 +163,34 @@ export type SiteAnnouncementContent = {
   enabled: boolean;
   message: string;
   subtext: string;
+  // 'YYYY-MM-DD' — last day the bar shows; '' runs indefinitely. The public
+  // render hides it automatically after this date so promos can expire.
+  endDate: string;
 };
+
+// Care template's "Why choose us" checklist card.
+export type SiteWhyUsContent = {
+  enabled: boolean;
+  title: string;
+  points: string[];
+};
+
+export const DEFAULT_WHY_US_TITLE = 'Quality work, every single time';
+export const DEFAULT_WHY_US_POINTS = [
+  'Verified, background-checked pros',
+  'Upfront, honest pricing',
+  'Fast, friendly response',
+  'Quality work, guaranteed',
+];
+
+// Care template's "Our work" photo band heading.
+export type SiteWorkGalleryContent = {
+  eyebrow: string;
+  title: string;
+};
+
+export const DEFAULT_WORK_GALLERY_EYEBROW = 'Our work';
+export const DEFAULT_WORK_GALLERY_TITLE = 'Quality you can see';
 
 // Icon service-card grid — the centerpiece of the home-services aesthetic.
 // `icon` is a key into ServiceIcon's set (falls back to a generic mark).
@@ -245,6 +272,10 @@ export const HERO_BADGE_STYLES = [
 const HERO_BADGE_STYLE_KEYS = new Set<string>(HERO_BADGE_STYLES.map((style) => style.key));
 
 export type SiteQuoteFormContent = {
+  // Whether the FULL multi-field quote form renders at #contact. Off by
+  // default — the smart-intake capture takes its place so visitors always
+  // still have a way to reach out.
+  enabled: boolean;
   emailRequired: boolean;
   // Controls the wording used on the quote-request call-to-action ('Quick Estimate'
   // vs 'Instant Estimate') across the hero quick-capture form and the full form.
@@ -272,11 +303,16 @@ export type SiteEstimateRangesContent = {
   premiumMultiplier: number;
 };
 
+// Deliberately modest, trade-neutral fallback bands. The wizard is on by
+// default, so a contractor who hasn't set their own prices must never show a
+// remodel-scale number for a routine service call — too low is recoverable
+// (the contractor confirms the real price), too high loses the lead outright.
+// AI site generation replaces these with trade-appropriate bands.
 export const DEFAULT_ESTIMATE_RANGES: SiteEstimateRangesContent = {
-  enabled: false,
-  small: { min: 2000, max: 6000 },
-  medium: { min: 6000, max: 20000 },
-  large: { min: 20000, max: 60000 },
+  enabled: true,
+  small: { min: 150, max: 450 },
+  medium: { min: 450, max: 1800 },
+  large: { min: 1800, max: 7500 },
   economicalMultiplier: 0.85,
   premiumMultiplier: 1.25,
 };
@@ -316,6 +352,8 @@ export type NormalizedSiteContent = {
   stats: SiteStatsContent;
   beforeAfter: SiteBeforeAfterContent;
   announcement: SiteAnnouncementContent;
+  whyUs: SiteWhyUsContent;
+  workGallery: SiteWorkGalleryContent;
   services: SiteServicesContent;
   howItWorks: SiteHowItWorksContent;
   blog: SiteBlogContent;
@@ -494,6 +532,11 @@ function parseTrustBadges(value: unknown): SiteTrustBadgeItem[] {
   }));
 }
 
+function parseWhyPoints(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => toString(item).slice(0, 80)).slice(0, 6);
+}
+
 function parseCities(value: unknown): string[] {
   // Keep empty strings so a just-added blank input survives re-render while
   // editing (getPublishedServiceAreas filters empties for the public site).
@@ -605,6 +648,8 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const stats = isRecord(root.stats) ? root.stats : {};
   const beforeAfter = isRecord(root.beforeAfter) ? root.beforeAfter : {};
   const announcement = isRecord(root.announcement) ? root.announcement : {};
+  const whyUs = isRecord(root.whyUs) ? root.whyUs : {};
+  const workGallery = isRecord(root.workGallery) ? root.workGallery : {};
   const services = isRecord(root.services) ? root.services : {};
   const howItWorks = isRecord(root.howItWorks) ? root.howItWorks : {};
   const blog = isRecord(root.blog) ? root.blog : {};
@@ -639,6 +684,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       googleImportedAt: toString(testimonials.googleImportedAt),
     },
     quoteForm: {
+      enabled: quoteForm.enabled === true,
       emailRequired: toBoolean(quoteForm.emailRequired),
       estimateLabel: quoteForm.estimateLabel === 'instant' ? 'instant' : 'quick',
     },
@@ -653,7 +699,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       sourceLabel: toString(ratingBadge.sourceLabel, DEFAULT_RATING_SOURCE_LABEL),
     },
     estimateRanges: {
-      enabled: toBoolean(estimateRanges.enabled),
+      enabled: estimateRanges.enabled !== false,
       small: parseEstimateBand(estimateRanges.small, DEFAULT_ESTIMATE_RANGES.small),
       medium: parseEstimateBand(estimateRanges.medium, DEFAULT_ESTIMATE_RANGES.medium),
       large: parseEstimateBand(estimateRanges.large, DEFAULT_ESTIMATE_RANGES.large),
@@ -696,6 +742,16 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       enabled: toBoolean(announcement.enabled),
       message: toString(announcement.message).slice(0, 140),
       subtext: toString(announcement.subtext).slice(0, 140),
+      endDate: /^\d{4}-\d{2}-\d{2}$/.test(toString(announcement.endDate)) ? toString(announcement.endDate) : '',
+    },
+    whyUs: {
+      enabled: whyUs.enabled !== false,
+      title: toString(whyUs.title, DEFAULT_WHY_US_TITLE).slice(0, 80),
+      points: whyUs.points === undefined ? [...DEFAULT_WHY_US_POINTS] : parseWhyPoints(whyUs.points),
+    },
+    workGallery: {
+      eyebrow: toString(workGallery.eyebrow, DEFAULT_WORK_GALLERY_EYEBROW).slice(0, 40),
+      title: toString(workGallery.title, DEFAULT_WORK_GALLERY_TITLE).slice(0, 80),
     },
     services: {
       enabled: toBoolean(services.enabled),
@@ -704,7 +760,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       items: parseServices(services.items),
     },
     howItWorks: {
-      enabled: toBoolean(howItWorks.enabled),
+      enabled: howItWorks.enabled !== false,
       title: toString(howItWorks.title, DEFAULT_HOW_IT_WORKS_TITLE),
       intro: toString(howItWorks.intro),
       // Never-set (undefined) → starter steps; an explicit array (even empty, i.e.
@@ -862,7 +918,22 @@ export function getPublishedBeforeAfter(content: Record<string, unknown> | null 
 
 export function getPublishedAnnouncement(content: Record<string, unknown> | null | undefined): SiteAnnouncementContent | null {
   const announcement = getSiteContent(content).announcement;
-  return announcement.enabled && announcement.message.trim() ? announcement : null;
+  if (!announcement.enabled || !announcement.message.trim()) return null;
+  // An expired run date hides the bar without the owner having to remember to
+  // turn it off. The bar shows through the END of its last day (local server time).
+  if (announcement.endDate) {
+    const end = new Date(`${announcement.endDate}T23:59:59`);
+    if (!Number.isNaN(end.getTime()) && end.getTime() < Date.now()) return null;
+  }
+  return announcement;
+}
+
+// Care template's "Why choose us" checklist: hidden when toggled off or when
+// every point is blank.
+export function getPublishedWhyUs(content: Record<string, unknown> | null | undefined): SiteWhyUsContent | null {
+  const whyUs = getSiteContent(content).whyUs;
+  const points = whyUs.points.filter((point) => point.trim());
+  return whyUs.enabled && points.length > 0 ? { ...whyUs, points } : null;
 }
 
 export function getPublishedServices(content: Record<string, unknown> | null | undefined): SiteServicesContent | null {
