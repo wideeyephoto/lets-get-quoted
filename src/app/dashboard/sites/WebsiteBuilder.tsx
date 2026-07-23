@@ -1401,6 +1401,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                       <label className={styles.formField}><span>Message (optional)</span><input maxLength={140} value={siteContent.leadFilters.fullyBooked.message} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, fullyBooked: { ...siteContent.leadFilters.fullyBooked, message: event.target.value } })} placeholder="We're currently booked up — send your request and we'll reach out as soon as a spot opens." /></label>
                     </div>
                   )}
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.leadFilters.phoneVerification} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, phoneVerification: event.target.checked })} /><span><strong>Verify phone numbers with a text code</strong><small>The strongest junk filter — visitors confirm a 6-digit code before the AI intake submits. Verified leads get a green badge. Skipped automatically if texting isn&apos;t configured.</small></span></label>
                 </SectionCard>
 
                 <div className={styles.cardGroupLabel}>Main sections</div>

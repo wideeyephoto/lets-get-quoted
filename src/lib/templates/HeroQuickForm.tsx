@@ -82,6 +82,43 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   // Soft fit signals from the AI (out-of-area / excluded work) — shown as
   // notes and passed along as lead flags, never used to block submission.
   const [fit, setFit] = useState<{ inArea: boolean | null; excluded: boolean }>({ inArea: null, excluded: false });
+  // Phone verification (owner-enabled): the server texts a code and returns an
+  // HMAC token; we submit code+token with the lead. 'skipped' means the server
+  // said verification isn't active (toggle off / texting not configured).
+  const [verify, setVerify] = useState<{ token: string; expiresAt: number } | null>(null);
+  const [verifyCode, setVerifyCode] = useState('');
+  const [verifySkipped, setVerifySkipped] = useState(false);
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const needsVerification = wizardEnabled && leadFilters.phoneVerification && !verifySkipped;
+
+  async function sendVerifyCode() {
+    const trimmed = contact.trim();
+    if (!normalizeUsPhone(trimmed)) {
+      setStatus({ tone: 'error', text: 'Enter a valid phone number first.' });
+      return;
+    }
+    setIsSendingCode(true);
+    setStatus(null);
+    try {
+      const response = await fetch('/api/public/leads/verify-phone', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ siteId: site.id, phone: trimmed }),
+      });
+      const result = await response.json().catch(() => null);
+      if (result?.skipped) {
+        setVerifySkipped(true);
+        return;
+      }
+      if (!response.ok || !result?.token) throw new Error(result?.error || 'Could not send the code.');
+      setVerify({ token: result.token, expiresAt: Number(result.expiresAt) });
+      setStatus({ tone: 'success', text: 'Code texted — enter it below.' });
+    } catch (error) {
+      setStatus({ tone: 'error', text: error instanceof Error ? error.message : 'Could not send the code.' });
+    } finally {
+      setIsSendingCode(false);
+    }
+  }
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isClassifying, setIsClassifying] = useState(false);
   const [status, setStatus] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
@@ -200,6 +237,10 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
         setStatus({ tone: 'error', text: 'Enter a valid phone number so we can text or call you with your quote.' });
         return;
       }
+      if (needsVerification && (!verify || !verifyCode.trim())) {
+        setStatus({ tone: 'error', text: 'Verify your phone first — tap "Text me a code" and enter the code.' });
+        return;
+      }
       const trimmedEmail = email.trim();
       if (wizardEmailField === 'required' && !EMAIL_REGEX.test(trimmedEmail)) {
         setStatus({ tone: 'error', text: 'Enter a valid email address.' });
@@ -266,6 +307,12 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
         }
         if (fit.inArea !== null) data.set('inArea', String(fit.inArea));
         if (fit.excluded) data.set('excluded', 'true');
+        data.set('wizard', '1');
+        if (verify && verifyCode.trim()) {
+          data.set('verifyToken', verify.token);
+          data.set('verifyExpires', String(verify.expiresAt));
+          data.set('verifyCode', verifyCode.trim());
+        }
       }
 
       data.delete('photos');
@@ -386,9 +433,34 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
               maxLength={160}
               required
               value={contact}
-              onChange={(event) => setContact(event.target.value)}
+              onChange={(event) => {
+                setContact(event.target.value);
+                if (wizardEnabled) {
+                  setVerify(null);
+                  setVerifyCode('');
+                }
+              }}
             />
           </div>
+          {needsVerification && (
+            <div className={styles.heroFormVerifyRow}>
+              <button type="button" className={styles.heroFormVerifyBtn} onClick={sendVerifyCode} disabled={isSendingCode}>
+                {isSendingCode ? 'Sending…' : verify ? 'Resend code' : 'Text me a code'}
+              </button>
+              {verify && (
+                <input
+                  aria-label="Verification code"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="6-digit code"
+                  maxLength={6}
+                  required
+                  value={verifyCode}
+                  onChange={(event) => setVerifyCode(event.target.value.replace(/\D/g, ''))}
+                />
+              )}
+            </div>
+          )}
           {wizardEnabled && wizardEmailField !== 'off' && (
             <input
               aria-label={wizardEmailField === 'required' ? 'Email' : 'Email (optional)'}

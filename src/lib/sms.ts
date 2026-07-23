@@ -323,6 +323,18 @@ export async function sendClientJobDashboardSms(params: {
   return sendTwilioMessage(params.phone, message);
 }
 
+// Whether an SMS provider is configured — features that depend on texting
+// (phone verification, decline texts) degrade gracefully when it isn't.
+export function isSmsConfigured(): boolean {
+  return twilioConfiguration() !== null;
+}
+
+// One-time code for verifying a lead's phone number before intake submits.
+export async function sendVerificationCodeSms(params: { phone: string; businessName: string; code: string }) {
+  const message = `Let's Get Quoted: Your ${params.businessName} verification code is ${params.code}. It expires in 10 minutes.`;
+  return sendTwilioMessage(params.phone, message);
+}
+
 // One-tap polite decline for a lead that isn't a fit — closing the loop in one
 // text protects reviews vs. ghosting. Caller checks opt-out state first.
 export async function sendLeadDeclineSms(params: {
