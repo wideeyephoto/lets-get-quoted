@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroBadgeStyle, getHeroShowStats, getSlotImage } from '@/lib/site-content';
+import { getHeroBadge, getHeroBadgeStyle, getHeroSecondBadge, getSlotImage } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
@@ -29,7 +29,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
       STOCK_SITE_IMAGES[1].url,
   );
   const heroBadge = getHeroBadge(site.content);
-  const showStats = getHeroShowStats(site.content);
+  const second = getHeroSecondBadge(site.content);
   const heroBackground = getSlotImage(site.content, 'heroBackground', '');
   const themeStyle = {
     '--theme-accent': site.accent_override || '#ffd60a',
@@ -81,12 +81,19 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
               <strong>{heroBadge.title}</strong>
             </div>
           ) : <span className={styles.shineBadgeSupport} aria-hidden="true" />}
-          {showStats ? (
+          {second.mode === 'none' ? (
+            <span className={styles.shineBadgeCustomers} aria-hidden="true" />
+          ) : second.mode === 'default' ? (
             <div className={`${styles.shineBadge} ${styles.shineBadgeCustomers}`} data-edit="heroBadge">
               <span className={styles.shineAvatars} aria-hidden="true"><span /><span /><span /></span>
               <div><strong>500+</strong><small>Satisfied customers</small></div>
             </div>
-          ) : <span className={styles.shineBadgeCustomers} aria-hidden="true" />}
+          ) : (
+            <div className={`${styles.shineBadge} ${styles.shineBadgeCustomers}`} data-edit="heroBadge">
+              <span className={styles.shineBadgeIcon} aria-hidden="true">{second.badge.icon}</span>
+              <strong>{second.badge.title}</strong>
+            </div>
+          )}
           <figure className={`${styles.shinePhotoCard} ${styles.shinePhotoSide}`} data-edit="image-heroSecondary">
             <img className={styles.shinePhoto} src={secondImage} alt="Our cleaning team at work" loading="lazy" decoding="async" />
           </figure>

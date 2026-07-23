@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroBadgeStyle, getHeroShowStats, HERO_BADGE_PRESETS } from '@/lib/site-content';
+import { getHeroBadge, getHeroBadgeStyle, getHeroSecondBadge, HERO_BADGE_PRESETS } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
@@ -24,8 +24,9 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
   // Second floating card: always a DIFFERENT preset than the selected badge so
   // the two cards never duplicate (the default badge is 'licensed', which used
   // to collide with this card's hardcoded Licensed & insured copy).
-  const secondBadge = HERO_BADGE_PRESETS.find((preset) => preset.key !== heroBadge?.key) ?? HERO_BADGE_PRESETS[0];
-  const showStats = getHeroShowStats(site.content);
+  const autoSecond = HERO_BADGE_PRESETS.find((preset) => preset.key !== heroBadge?.key) ?? HERO_BADGE_PRESETS[0];
+  const second = getHeroSecondBadge(site.content);
+  const secondBadge = second.mode === 'none' ? null : second.mode === 'default' ? autoSecond : second.badge;
   const themeStyle = {
     '--theme-accent': site.accent_override || '#f15a29',
     '--theme-on-accent': '#ffffff',
@@ -68,7 +69,7 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
               <div><strong>{heroBadge.title}</strong><small>{heroBadge.subtitle}</small></div>
             </div>
           )}
-          {showStats && (
+          {secondBadge && (
             <div className={`${styles.fixitHeroCard} ${styles.fixitHeroStat}`} data-parallax="0.2" data-edit="heroBadge">
               <span className={styles.fixitHeroCardIcon} aria-hidden="true">{secondBadge.icon}</span>
               <div><strong>{secondBadge.title}</strong><small>{secondBadge.subtitle}</small></div>

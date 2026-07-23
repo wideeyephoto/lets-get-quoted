@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import SafeImage from './SafeImage';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getEstimateButtonLabel, getHeroBadgeStyle, getHeroShowStats, getSiteContent, getSlotImage } from '@/lib/site-content';
+import { getEstimateButtonLabel, getHeroBadgeStyle, getHeroSecondBadge, getSiteContent, getSlotImage } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroQuickForm from './HeroQuickForm';
@@ -26,7 +26,7 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
       STOCK_SITE_IMAGES[5].url,
   );
   const estimateLabel = getEstimateButtonLabel(getSiteContent(site.content).quoteForm);
-  const showStats = getHeroShowStats(site.content);
+  const second = getHeroSecondBadge(site.content);
   const themeStyle = {
     '--theme-accent': site.accent_override || '#a5472d',
     '--theme-on-accent': '#fff',
@@ -62,7 +62,13 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
           <figure className={styles.guildHeroInset} data-parallax="0.12" data-edit="image-heroSecondary">
             <img src={secondImage} alt="A detail from our recent work" loading="lazy" decoding="async" />
           </figure>
-          {showStats && <div className={styles.guildBadge} data-edit="heroBadge"><strong>Proudly local</strong><span>{site.service_area || 'Serving our community'}</span></div>}
+          {second.mode !== 'none' && (
+            <div className={styles.guildBadge} data-edit="heroBadge">
+              {second.mode === 'default'
+                ? <><strong>Proudly local</strong><span>{site.service_area || 'Serving our community'}</span></>
+                : <><strong>{second.badge.title}</strong>{second.badge.subtitle && <span>{second.badge.subtitle}</span>}</>}
+            </div>
+          )}
         </div>
       </section>
 

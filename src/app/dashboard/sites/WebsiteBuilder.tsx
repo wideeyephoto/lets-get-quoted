@@ -848,7 +848,19 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     )}
                   </div>
                   <label className={styles.formField}><span>Badge style</span><select value={siteContent.heroBadge.style} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, style: event.target.value } })}>{HERO_BADGE_STYLES.map((style) => <option key={style.key} value={style.key}>{style.label}</option>)}</select></label>
-                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.heroBadge.showStats} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, showStats: event.target.checked } })} /><span><strong>Show the extra floating badge</strong><small>The second decorative chip (e.g. &ldquo;500+ customers&rdquo;, &ldquo;Proudly local&rdquo;). Turn off to remove it.</small></span></label>
+                  <div className={styles.formField}>
+                    <span>Extra floating badge</span>
+                    <select value={siteContent.heroBadge.secondPreset} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, secondPreset: event.target.value } })}>
+                      <option value="default">Template default (e.g. &ldquo;500+ customers&rdquo;)</option>
+                      {HERO_BADGE_PRESETS.map((badge) => <option key={`second-${badge.key}`} value={badge.key}>{badge.title}</option>)}
+                      <option value="custom">Custom badge…</option>
+                      <option value="none">No extra badge</option>
+                    </select>
+                    <small className={styles.fieldHint}>The second chip beside your hero photo (Shine, Fixit &amp; Guild).</small>
+                    {siteContent.heroBadge.secondPreset === 'custom' && (
+                      <input value={siteContent.heroBadge.secondCustomLabel} maxLength={40} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, secondCustomLabel: event.target.value } })} placeholder="e.g. Family Owned" />
+                    )}
+                  </div>
                 </SectionCard>
 
                 <div className={styles.sectionIntro}><h2>Pages & sections</h2><p>Add rich sections that make the public website feel complete.</p></div>

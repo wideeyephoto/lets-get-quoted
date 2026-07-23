@@ -187,7 +187,7 @@ export type SiteBlogContent = {
 // Floating hero badge — the small trust chip shown on the hero of photo-badge
 // templates (Fixit today). Owners pick one of these presets or hide it; the
 // preset key drives the icon/title/subtitle so the template stays declarative.
-export type SiteHeroBadgeContent = { preset: string; showStats: boolean; style: string; customLabel: string };
+export type SiteHeroBadgeContent = { preset: string; showStats: boolean; style: string; customLabel: string; secondPreset: string; secondCustomLabel: string };
 
 export const HERO_BADGE_PRESETS = [
   { key: 'estimates', icon: '$', title: 'Free Estimates', subtitle: 'No-obligation quotes', label: 'Free estimates' },
@@ -635,6 +635,12 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       showStats: heroBadge.showStats !== false,
       style: HERO_BADGE_STYLE_KEYS.has(toString(heroBadge.style)) ? toString(heroBadge.style) : 'solid',
       customLabel: toString(heroBadge.customLabel).slice(0, 40),
+      // The second/extra floating badge: 'default' keeps each template's built-in
+      // one (Shine "500+ customers", Guild "Proudly local", Fixit's auto second),
+      // 'none' hides it, or a preset key / 'custom' picks a specific badge. Falls
+      // back from the legacy showStats boolean so old sites keep their choice.
+      secondPreset: toString(heroBadge.secondPreset) || (heroBadge.showStats === false ? 'none' : 'default'),
+      secondCustomLabel: toString(heroBadge.secondCustomLabel).slice(0, 40),
     },
     images: parseImageSlots(images),
     sectionOrder: parseSectionOrder(root.sectionOrder),
@@ -790,6 +796,23 @@ export function getHeroBadgeStyle(content: Record<string, unknown> | null | unde
 // it independently of the trust chip via the Hero badge control.
 export function getHeroShowStats(content: Record<string, unknown> | null | undefined): boolean {
   return getSiteContent(content).heroBadge.showStats;
+}
+
+// What the second/extra floating badge should be: 'none' (hidden), 'default'
+// (the template's built-in second badge), or an explicit badge (a chosen preset
+// or custom text). Templates render each mode however suits their layout.
+export type HeroSecondBadge = { mode: 'none' } | { mode: 'default' } | { mode: 'badge'; badge: HeroBadgePreset };
+
+export function getHeroSecondBadge(content: Record<string, unknown> | null | undefined): HeroSecondBadge {
+  const heroBadge = getSiteContent(content).heroBadge;
+  const preset = heroBadge.secondPreset;
+  if (preset === 'none') return { mode: 'none' };
+  if (preset === 'custom') {
+    const title = heroBadge.secondCustomLabel.trim();
+    return title ? { mode: 'badge', badge: { key: 'custom', icon: '✓', title, subtitle: '', label: title } } : { mode: 'default' };
+  }
+  const found = HERO_BADGE_PRESETS.find((badge) => badge.key === preset);
+  return found ? { mode: 'badge', badge: found } : { mode: 'default' };
 }
 
 // The decorative/secondary photo slots a template can expose for direct
