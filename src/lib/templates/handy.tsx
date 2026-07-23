@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getPublishedHowItWorks, getPublishedServices, getPublishedWhyUs, getSiteContent, getSlotImage } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
+import ProjectShowcase from './ProjectShowcase';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroQuickForm from './HeroQuickForm';
@@ -36,7 +37,13 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
   const headlineMain = headlineWords.join(' ');
 
   const whyUs = getPublishedWhyUs(site.content);
-  const workGallery = getSiteContent(site.content).workGallery;
+  const projectShowcase = getSiteContent(site.content).projectShowcase;
+  const ownShowcase = projectShowcase.items.filter((item) => item.url && item.alt);
+  // The owner's own project photos once they've added any; otherwise the shared
+  // gallery so the band is never empty on a fresh site. Capped at 5.
+  const showcaseItems = ownShowcase.length > 0
+    ? ownShowcase.map((item) => ({ id: item.id, url: item.url, alt: item.alt, caption: item.caption }))
+    : gallery.slice(0, 5).map((item) => ({ id: item.id, url: item.url, alt: item.alt }));
   const heroBadge = getHeroBadge(site.content);
   const secondBadge = getHeroSecondBadge(site.content);
 
@@ -129,20 +136,16 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
         </section>
       )}
 
-      <section className={styles.careWorks} aria-label="Recent work">
-        <div className={styles.careWorksHead} data-reveal data-edit="workGallery">
-          <p className={styles.careEyebrowLight}>{workGallery.eyebrow}</p>
-          <h2>{workGallery.title}</h2>
-        </div>
-        <div className={styles.careWorksGrid} data-stagger>
-          {gallery.slice(0, 3).map((image, index) => (
-            <figure key={image.id}>
-              <img src={image.url} alt={image.alt} loading="lazy" decoding="async" />
-              <figcaption>0{index + 1}. {image.caption || image.alt}</figcaption>
-            </figure>
-          ))}
-        </div>
-      </section>
+      {projectShowcase.enabled && (
+        <section className={styles.careWorks} aria-label="Project showcase">
+          <ProjectShowcase
+            eyebrow={projectShowcase.eyebrow}
+            title={projectShowcase.title}
+            style={projectShowcase.style}
+            items={showcaseItems}
+          />
+        </section>
+      )}
 
       <section className={styles.careEstimate} id="estimate" data-reveal>
         <div className={styles.careEstimateCopy}>

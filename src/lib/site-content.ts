@@ -192,6 +192,30 @@ export type SiteWorkGalleryContent = {
 export const DEFAULT_WORK_GALLERY_EYEBROW = 'Our work';
 export const DEFAULT_WORK_GALLERY_TITLE = 'Quality you can see';
 
+// "Project showcase" band — its OWN editable set of 3-5 project photos (separate
+// from the Photo gallery), presented as an animated slider in one of three
+// styles. Falls back to the shared gallery for the render until the owner adds
+// their own project photos. `items` reuses SiteShowcaseItem (url/alt/caption).
+export type SiteProjectShowcaseStyle = 'slideshow' | 'coverflow' | 'spotlight';
+
+export type SiteProjectShowcaseContent = {
+  enabled: boolean;
+  eyebrow: string;
+  title: string;
+  style: SiteProjectShowcaseStyle;
+  items: SiteShowcaseItem[];
+};
+
+export const DEFAULT_PROJECT_SHOWCASE_EYEBROW = 'Project showcase';
+export const DEFAULT_PROJECT_SHOWCASE_TITLE = 'Our recent projects';
+export const PROJECT_SHOWCASE_STYLES: { key: SiteProjectShowcaseStyle; label: string }[] = [
+  { key: 'slideshow', label: 'Slideshow — full cross-fade with captions' },
+  { key: 'coverflow', label: 'Coverflow — 3D angled carousel' },
+  { key: 'spotlight', label: 'Spotlight — big photo + thumbnail strip' },
+];
+const PROJECT_SHOWCASE_STYLE_KEYS = new Set<string>(PROJECT_SHOWCASE_STYLES.map((style) => style.key));
+export const MAX_PROJECT_SHOWCASE_ITEMS = 5;
+
 // Icon service-card grid — the centerpiece of the home-services aesthetic.
 // `icon` is a key into ServiceIcon's set (falls back to a generic mark).
 export type SiteServiceItem = {
@@ -347,6 +371,7 @@ export type NormalizedSiteContent = {
   announcement: SiteAnnouncementContent;
   whyUs: SiteWhyUsContent;
   workGallery: SiteWorkGalleryContent;
+  projectShowcase: SiteProjectShowcaseContent;
   services: SiteServicesContent;
   howItWorks: SiteHowItWorksContent;
   blog: SiteBlogContent;
@@ -637,6 +662,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const announcement = isRecord(root.announcement) ? root.announcement : {};
   const whyUs = isRecord(root.whyUs) ? root.whyUs : {};
   const workGallery = isRecord(root.workGallery) ? root.workGallery : {};
+  const projectShowcase = isRecord(root.projectShowcase) ? root.projectShowcase : {};
   const services = isRecord(root.services) ? root.services : {};
   const howItWorks = isRecord(root.howItWorks) ? root.howItWorks : {};
   const blog = isRecord(root.blog) ? root.blog : {};
@@ -748,6 +774,15 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     workGallery: {
       eyebrow: toString(workGallery.eyebrow, DEFAULT_WORK_GALLERY_EYEBROW).slice(0, 40),
       title: toString(workGallery.title, DEFAULT_WORK_GALLERY_TITLE).slice(0, 80),
+    },
+    projectShowcase: {
+      // On by default so existing Care sites keep their work band; the owner can
+      // toggle it off to hide the whole section.
+      enabled: projectShowcase.enabled !== false,
+      eyebrow: toString(projectShowcase.eyebrow, DEFAULT_PROJECT_SHOWCASE_EYEBROW).slice(0, 40),
+      title: toString(projectShowcase.title, DEFAULT_PROJECT_SHOWCASE_TITLE).slice(0, 80),
+      style: PROJECT_SHOWCASE_STYLE_KEYS.has(toString(projectShowcase.style)) ? (toString(projectShowcase.style) as SiteProjectShowcaseStyle) : 'slideshow',
+      items: parseShowcaseItems(projectShowcase.items).slice(0, MAX_PROJECT_SHOWCASE_ITEMS),
     },
     services: {
       enabled: toBoolean(services.enabled),

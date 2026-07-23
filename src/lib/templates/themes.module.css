@@ -679,6 +679,46 @@
 .careWorksGrid img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 14px; box-shadow: 0 24px 44px -24px rgba(0,0,0,.4); }
 .careWorksGrid figcaption { margin-top: .8rem; font-weight: 700; font-size: .95rem; text-align: center; color: #fff; }
 
+/* Project showcase — three animated presentations of 3-5 project photos. */
+.projectShowcase { max-width: 1100px; margin: 0 auto; }
+.psControls { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1.25rem; }
+.psArrow { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 999px; border: 1px solid rgba(255,255,255,.35); background: rgba(255,255,255,.08); color: #fff; font-size: 1.6rem; line-height: 1; cursor: pointer; transition: background .2s ease, transform .2s ease; }
+.psArrow:hover { background: rgba(255,255,255,.2); transform: translateY(-1px); }
+.psDots { display: flex; align-items: center; gap: .5rem; }
+.psDot { width: 10px; height: 10px; padding: 0; border: 0; border-radius: 999px; background: rgba(255,255,255,.35); cursor: pointer; transition: background .2s ease, width .2s ease; }
+.psDotActive { width: 26px; background: var(--theme-accent); }
+.psCaption { text-align: center; margin: 1.25rem 0 0; font-weight: 700; font-size: 1.05rem; color: #fff; }
+
+/* Slideshow — full cross-fade with a caption gradient. */
+.psStage { position: relative; aspect-ratio: 16 / 9; border-radius: 18px; overflow: hidden; box-shadow: 0 30px 60px -30px rgba(0,0,0,.55); }
+.psSlide { position: absolute; inset: 0; margin: 0; opacity: 0; transition: opacity .8s ease; }
+.psSlide[data-active='true'] { opacity: 1; }
+.psSlide img { width: 100%; height: 100%; object-fit: cover; }
+.psSlide figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 2.25rem 1.4rem 1rem; background: linear-gradient(transparent, rgba(0,0,0,.72)); color: #fff; font-weight: 700; font-size: 1.05rem; }
+
+/* Coverflow — a 3D angled carousel; the active photo sits flat and centered. */
+.psCoverflowTrack { position: relative; height: clamp(230px, 40vw, 400px); display: flex; align-items: center; justify-content: center; perspective: 1400px; }
+.psCoverItem { position: absolute; width: clamp(220px, 40vw, 440px); aspect-ratio: 3 / 2; padding: 0; border: 0; background: none; cursor: pointer; transform-style: preserve-3d; transition: transform .5s cubic-bezier(.2,.7,.2,1), opacity .5s ease; transform: translateX(calc(var(--ps-offset) * 46%)) rotateY(calc(var(--ps-offset) * -32deg)) scale(.78); opacity: .5; }
+.psCoverItem[data-active='true'] { transform: translateX(0) rotateY(0) scale(1); opacity: 1; cursor: default; }
+.psCoverItem[aria-hidden='true'] { opacity: 0; pointer-events: none; }
+.psCoverItem img { width: 100%; height: 100%; object-fit: cover; border-radius: 14px; box-shadow: 0 30px 55px -26px rgba(0,0,0,.65); }
+
+/* Spotlight — a big Ken Burns hero photo with a clickable thumbnail strip. */
+.psSpotlightMain { position: relative; margin: 0; aspect-ratio: 16 / 9; border-radius: 18px; overflow: hidden; box-shadow: 0 30px 60px -30px rgba(0,0,0,.55); }
+.psSpotlightMain img { width: 100%; height: 100%; object-fit: cover; animation: psKenBurns 12s ease-in-out infinite alternate; }
+.psSpotlightMain figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 2.25rem 1.4rem 1rem; background: linear-gradient(transparent, rgba(0,0,0,.72)); color: #fff; font-weight: 700; font-size: 1.05rem; }
+.psThumbs { display: flex; gap: .6rem; margin-top: 1rem; overflow-x: auto; padding-bottom: .3rem; }
+.psThumb { flex: 0 0 auto; width: 104px; aspect-ratio: 3 / 2; padding: 0; border: 2px solid transparent; border-radius: 10px; overflow: hidden; background: none; cursor: pointer; opacity: .55; transition: opacity .2s ease, border-color .2s ease; }
+.psThumb img { width: 100%; height: 100%; object-fit: cover; }
+.psThumbActive { opacity: 1; border-color: var(--theme-accent); }
+
+@keyframes psKenBurns { from { transform: scale(1); } to { transform: scale(1.09); } }
+@media (prefers-reduced-motion: reduce) {
+  .psSlide { transition: none; }
+  .psCoverItem { transition: none; }
+  .psSpotlightMain img { animation: none; }
+}
+
 .careEstimate { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(1.75rem, 4vw, 3.5rem); align-items: center; padding: clamp(3rem, 6vw, 5rem) clamp(1.25rem, 5vw, 4rem); background: #eef5fb; }
 .careEstimateCopy h2 { font-family: var(--theme-display); font-weight: 700; font-size: clamp(1.8rem, 3.6vw, 2.7rem); line-height: 1.1; color: #333d47; margin: 0 0 .7rem; }
 .careEstimateCopy > p { margin: 0 0 1.2rem; font-size: 1.02rem; line-height: 1.6; color: #616b76; max-width: 44ch; }
