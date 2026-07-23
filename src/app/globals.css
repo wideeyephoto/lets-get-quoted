@@ -290,6 +290,53 @@ h3 {
 
 .website-nav-badge:hover { transform: translateY(-1px) scale(1.03); box-shadow: 0 6px 18px rgba(236, 72, 153, 0.42); }
 
+/* Once the site is actually live the badge stops selling and starts reporting:
+   a neutral pill with slow equaliser bars. The gradient above stays for the
+   un-published state, where it's a call to action to go build the site. */
+.website-nav-badge.live {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: none;
+}
+
+.website-nav-badge.live:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: none;
+}
+
+.website-nav-signal {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+  flex: 0 0 auto;
+}
+
+.website-nav-signal i {
+  width: 3px;
+  height: 100%;
+  border-radius: 1px;
+  background: #34d399;
+  transform-origin: bottom;
+  animation: website-nav-bars 3.4s ease-in-out infinite;
+}
+
+.website-nav-signal i:nth-child(2) { animation-delay: 0.5s; }
+.website-nav-signal i:nth-child(3) { animation-delay: 1s; }
+
+@keyframes website-nav-bars {
+  0%, 100% { transform: scaleY(0.4); }
+  50% { transform: scaleY(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .website-nav-signal i { animation: none; transform: scaleY(0.7); }
+  .website-nav-badge.live:hover { transform: none; }
+}
+
 @media (max-width: 860px) {
   .website-nav-badge { order: -2; }
 }

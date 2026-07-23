@@ -182,10 +182,19 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           {isDashboard && isLoggedIn ? (
             <Link
               href="/dashboard/sites"
-              className="website-nav-badge"
+              className={`website-nav-badge${sitePublished ? ' live' : ''}`}
               title={sitePublished ? 'Your website is live — manage it' : 'Build your free contractor website'}
             >
-              ✨ {sitePublished ? 'Website: Live' : 'Build your Website'}
+              {sitePublished ? (
+                <>
+                  <span className="website-nav-signal" aria-hidden="true"><i /><i /><i /></span>
+                  Website: Live
+                </>
+              ) : (
+                <>
+                  <span aria-hidden="true">✨</span> Build your Website
+                </>
+              )}
             </Link>
           ) : null}
 
