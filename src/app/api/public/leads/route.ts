@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendLeadNotificationEmail } from '@/lib/email';
-import { createLead, getLeadTriage, LEAD_PRUNE_FLAGS, type LeadTriage } from '@/lib/leads';
+import { createLead, getLeadTriage, LEAD_PRUNE_FLAGS, type Lead, type LeadTriage } from '@/lib/leads';
 import { deleteLeadPhotos, uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { isLeadVerificationValid } from '@/lib/lead-verification';
 import { normalizeUsPhone } from '@/lib/phone';
@@ -14,6 +15,29 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function text(data: FormData, key: string, maxLength: number) {
   return String(data.get(key) ?? '').trim().slice(0, maxLength);
+}
+
+// Best-effort owner email for a new or repeat lead — never throws.
+async function notifyOwner(
+  admin: SupabaseClient,
+  site: { account_id: string; company_name: string },
+  lead: Lead,
+  request: NextRequest,
+) {
+  try {
+    const { data: owner } = await admin.from('memberships').select('user_id').eq('account_id', site.account_id).eq('role', 'owner').limit(1).maybeSingle();
+    if (!owner?.user_id) return;
+    const { data: ownerUser } = await admin.auth.admin.getUserById(owner.user_id);
+    if (!ownerUser.user?.email) return;
+    await sendLeadNotificationEmail({
+      recipientEmail: ownerUser.user.email,
+      businessName: site.company_name,
+      lead,
+      dashboardUrl: `${request.nextUrl.origin}/dashboard/leads/${lead.id}`,
+    });
+  } catch (error) {
+    console.error('Lead notification email failed:', error);
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -127,7 +151,7 @@ export async function POST(request: NextRequest) {
     const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const { data: recent } = await admin
       .from('leads')
-      .select('id, phone, email, message, triage')
+      .select('*')
       .eq('account_id', site.account_id)
       .in('status', ['new', 'contacted', 'quoted'])
       .gte('created_at', cutoff)
@@ -140,14 +164,18 @@ export async function POST(request: NextRequest) {
       const stamp = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       const mergedMessage = `${duplicate.message || ''}\n\n— Repeat request (${stamp}): ${message || '(no new details)'}`.trim().slice(0, 6000);
       const existingTriage = getLeadTriage({ triage: duplicate.triage as LeadTriage | null });
+      // A repeat request signals intent: unsnooze the lead so it resurfaces.
+      const mergedTriage = { ...existingTriage, flags: [...new Set([...existingTriage.flags, ...flags, 'repeat'])], snoozedUntil: null };
       await admin
         .from('leads')
         .update({
           message: mergedMessage,
-          triage: { ...existingTriage, flags: [...new Set([...existingTriage.flags, ...flags, 'repeat'])] },
+          triage: mergedTriage,
           updated_at: new Date().toISOString(),
         })
         .eq('id', duplicate.id);
+      // Still notify the owner — a homeowner asking twice is hotter, not spam.
+      await notifyOwner(admin, site, { ...(duplicate as Lead), message: mergedMessage, triage: mergedTriage }, request);
       return NextResponse.json({ ok: true, leadId: duplicate.id });
     }
   }
@@ -168,22 +196,7 @@ export async function POST(request: NextRequest) {
       triage,
     });
 
-    const { data: owner } = await admin.from('memberships').select('user_id').eq('account_id', site.account_id).eq('role', 'owner').limit(1).maybeSingle();
-    if (owner?.user_id) {
-      const { data: ownerUser } = await admin.auth.admin.getUserById(owner.user_id);
-      if (ownerUser.user?.email) {
-        try {
-          await sendLeadNotificationEmail({
-            recipientEmail: ownerUser.user.email,
-            businessName: site.company_name,
-            lead,
-            dashboardUrl: `${request.nextUrl.origin}/dashboard/leads/${lead.id}`,
-          });
-        } catch (error) {
-          console.error('Lead notification email failed:', error);
-        }
-      }
-    }
+    await notifyOwner(admin, site, lead, request);
 
     return NextResponse.json({ ok: true, leadId: lead.id }, { status: 201 });
   } catch (error) {
