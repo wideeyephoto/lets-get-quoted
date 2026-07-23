@@ -1336,39 +1336,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
             {activeTab === 'page' && (
               <div className={styles.formSection}>
-                <div className={styles.sectionIntro}><h2>Your page</h2><p>Everything a visitor sees on your page, top to bottom — sections, lead capture, and trust boosters.</p></div>
-
-                <SectionCard title="Page order" description="Drag to reorder the sections on your public page; click one to open its card below. Off sections keep their spot but stay hidden until you turn them on." open={openSection === 'sectionOrder'} onToggleOpen={() => toggleSection('sectionOrder')}>
-                  <ul className={styles.sectionOrderList}>
-                    {siteContent.sectionOrder.map((key, index) => {
-                      const meta = REORDERABLE_SECTIONS.find((section) => section.key === key);
-                      if (!meta) return null;
-                      return (
-                        <li
-                          key={key}
-                          draggable
-                          onDragStart={(event) => { setDragKey(key); event.dataTransfer.effectAllowed = 'move'; }}
-                          onDragOver={(event) => event.preventDefault()}
-                          onDrop={(event) => { event.preventDefault(); if (dragKey) reorderSections(dragKey, key); setDragKey(null); }}
-                          onDragEnd={() => setDragKey(null)}
-                          className={`${styles.sectionOrderItem}${dragKey === key ? ` ${styles.sectionOrderDragging}` : ''}`}
-                        >
-                          <span className={styles.sectionOrderGrip} aria-hidden="true">⠿</span>
-                          <button type="button" className={styles.sectionOrderJump} onClick={() => jumpTo('page', key)}>
-                            {meta.label}
-                            {!sectionEnabled[key] && <em className={styles.sectionOrderOff}>off</em>}
-                            {sectionHints[key]?.hint && <em className={styles.sectionOrderHint} data-tone={sectionHints[key].hintTone || 'ok'}>{sectionHints[key].hint}</em>}
-                          </button>
-                          <span className={styles.sectionOrderMove}>
-                            <button type="button" aria-label={`Move ${meta.label} up`} disabled={index === 0} onClick={() => moveSectionBy(key, -1)}>↑</button>
-                            <button type="button" aria-label={`Move ${meta.label} down`} disabled={index === siteContent.sectionOrder.length - 1} onClick={() => moveSectionBy(key, 1)}>↓</button>
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </SectionCard>
-
                 <div className={styles.cardGroupLabel}>Get you leads</div>
                 <p className={styles.cardGroupHint}>Two ways to capture a job: the form sends the visitor&apos;s details to you — the estimator shows them a ballpark price instantly.</p>
 
@@ -1751,6 +1718,37 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     </SectionCard>
                   </>
                 )}
+
+                <SectionCard title="Rearrange Sections" description="Drag to reorder the sections on your public page; click one to open its card above. Off sections keep their spot but stay hidden until you turn them on." open={openSection === 'sectionOrder'} onToggleOpen={() => toggleSection('sectionOrder')}>
+                  <ul className={styles.sectionOrderList}>
+                    {siteContent.sectionOrder.map((key, index) => {
+                      const meta = REORDERABLE_SECTIONS.find((section) => section.key === key);
+                      if (!meta) return null;
+                      return (
+                        <li
+                          key={key}
+                          draggable
+                          onDragStart={(event) => { setDragKey(key); event.dataTransfer.effectAllowed = 'move'; }}
+                          onDragOver={(event) => event.preventDefault()}
+                          onDrop={(event) => { event.preventDefault(); if (dragKey) reorderSections(dragKey, key); setDragKey(null); }}
+                          onDragEnd={() => setDragKey(null)}
+                          className={`${styles.sectionOrderItem}${dragKey === key ? ` ${styles.sectionOrderDragging}` : ''}`}
+                        >
+                          <span className={styles.sectionOrderGrip} aria-hidden="true">⠿</span>
+                          <button type="button" className={styles.sectionOrderJump} onClick={() => jumpTo('page', key)}>
+                            {meta.label}
+                            {!sectionEnabled[key] && <em className={styles.sectionOrderOff}>off</em>}
+                            {sectionHints[key]?.hint && <em className={styles.sectionOrderHint} data-tone={sectionHints[key].hintTone || 'ok'}>{sectionHints[key].hint}</em>}
+                          </button>
+                          <span className={styles.sectionOrderMove}>
+                            <button type="button" aria-label={`Move ${meta.label} up`} disabled={index === 0} onClick={() => moveSectionBy(key, -1)}>↑</button>
+                            <button type="button" aria-label={`Move ${meta.label} down`} disabled={index === siteContent.sectionOrder.length - 1} onClick={() => moveSectionBy(key, 1)}>↓</button>
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </SectionCard>
               </div>
             )}
 
