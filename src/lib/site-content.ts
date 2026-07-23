@@ -327,6 +327,9 @@ export type NormalizedSiteContent = {
   // 'plain' | 'rounded' | 'framed' | 'circle'. Set on the template root as
   // data-logo-style; one CSS block styles every template's logo.
   logoStyle: string;
+  // The owner's trade / contractor type (e.g. "window cleaning", "roofing"),
+  // used together with the business name to generate on-brand AI content.
+  trade: string;
 };
 
 export const MAX_EXTRA_HERO_IMAGES = 2;
@@ -715,6 +718,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       ? root.heroImages.filter((url): url is string => typeof url === 'string' && url.trim().length > 0).map((url) => url.trim()).slice(0, MAX_EXTRA_HERO_IMAGES)
       : [],
     logoStyle: LOGO_STYLE_KEYS.has(toString(root.logoStyle)) ? toString(root.logoStyle) : 'plain',
+    trade: toString(root.trade).slice(0, 80),
   };
 }
 

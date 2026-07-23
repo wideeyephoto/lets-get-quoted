@@ -414,7 +414,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     setMessage(null);
     startTransition(async () => {
       try {
-        const generated = await generateSiteTextAction();
+        const generated = await generateSiteTextAction(getSiteContent(site.content).trade);
         setSite((current) => {
           const content = getSiteContent(current.content);
           const contentUpdates: Partial<NormalizedSiteContent> = {};
@@ -454,7 +454,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
         setIsGeneratingText(false);
       }
     });
-  }, [site.headline, site.tagline, site.seo_title, site.seo_description]);
+  }, [site.headline, site.tagline, site.seo_title, site.seo_description, site.content]);
 
   const selectHeroImage = useCallback((image: SiteImage) => {
     handleChange('hero_url', image.url);
@@ -796,10 +796,13 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <button type="button" className="btn secondary" onClick={handleGenerateText} disabled={isGeneratingText}>
                     {isGeneratingText ? 'Building your site...' : '✨ Generate a full example site with AI'}
                   </button>
-                  <small>Fills your headline, tagline, SEO, hours, service area, Services, and FAQs with trade-specific examples to personalize. Testimonials and stats are generated too, but left off until you swap in your real ones.</small>
+                  <small>Uses your <strong>company name</strong> and <strong>field of work</strong> to fill your headline, tagline, SEO, hours, service area, Services, and FAQs with trade-specific examples. Testimonials and stats are generated too, but left off until you swap in your real ones.</small>
                 </div>
 
-                <label className={styles.formField}><span>Company name</span><input id="bf-company" value={site.company_name} onChange={(event) => handleChange('company_name', event.target.value)} /></label>
+                <div className={styles.formColumns}>
+                  <label className={styles.formField}><span>Company name</span><input id="bf-company" value={site.company_name} onChange={(event) => handleChange('company_name', event.target.value)} /></label>
+                  <label className={styles.formField}><span>Field of work / trade</span><input value={siteContent.trade} onChange={(event) => updateSiteContent({ trade: event.target.value })} placeholder="e.g. Window cleaning, roofing, HVAC" /></label>
+                </div>
                 <label className={styles.formField}><span>Headline</span><textarea id="bf-headline" rows={2} value={site.headline || ''} onChange={(event) => handleChange('headline', event.target.value || null)} placeholder="Built with purpose. Finished with care." /></label>
                 <label className={styles.formField}><span>Tagline</span><textarea id="bf-tagline" rows={3} value={site.tagline || ''} onChange={(event) => handleChange('tagline', event.target.value || null)} placeholder="Tell homeowners what makes your business different." /></label>
                 <div className={styles.formColumns}>
