@@ -59,13 +59,16 @@ button, input, select, textarea { font: inherit; }
 }
 
 .topbar-inner {
-  max-width: 1180px;
+  /* Wider than the 1180px page content on purpose: the dashboard row carries
+     the logo, the website badge, the Stripe pill and six nav links, which need
+     ~1260px. At 1180px it wrapped on every desktop, dropping the right-aligned
+     nav onto its own line below the chips. */
+  max-width: 1340px;
   margin: 0 auto;
   display: flex;
   align-items: center;
-  /* Wrap at any width. Without this the packed dashboard row (logo + website
-     badge + Stripe pill + 6 nav links) overflows instead of moving to a
-     second line. */
+  /* Kept as the graceful fallback for genuinely narrow windows — without it
+     the row overflows instead of moving to a second line. */
   flex-wrap: wrap;
   gap: 0.6rem 1rem;
   padding: 0.95rem 1rem;
@@ -146,7 +149,7 @@ h3 {
 .topnav {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.3rem;
 }
 
 .topnav-link {
@@ -154,7 +157,7 @@ h3 {
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  padding: 0.65rem 0.9rem;
+  padding: 0.65rem 0.75rem;
   border-radius: 999px;
   color: rgba(247, 245, 239, 0.74);
   line-height: 1.12;
@@ -381,7 +384,8 @@ h3 {
   border: 1px solid rgba(255, 255, 255, 0.16);
   background: rgba(255, 255, 255, 0.07);
   color: #e2e8f0;
-  margin-left: 0.75rem;
+  /* No extra margin — .topbar-inner's gap already spaces the chips, and the
+     row needs every pixel to stay on one line. */
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
