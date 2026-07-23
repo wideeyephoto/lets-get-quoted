@@ -92,6 +92,10 @@
 .checklistCard li small { color: #9ca8b8; font-weight: 400; font-size: .74rem; }
 .checklistMark { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; font-size: .68rem; font-weight: 800; background: rgba(255,255,255,.08); color: #9ca8b8; }
 .checklistCard li[data-done='true'] .checklistMark { background: rgba(74,222,128,.16); color: #4ade80; }
+/* Unmet checklist items are deep-links to the tab/card where they get fixed. */
+.checklistGo { display: inline-flex; align-items: baseline; gap: .55rem; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.checklistGo:hover > span, .checklistGo:focus-visible > span { color: #ffb27a; text-decoration: underline; }
+.checklistGo:focus-visible { outline: 2px solid #ff9b54; outline-offset: 2px; border-radius: 4px; }
 .sectionCardChevron { flex: none; color: #9ca8b8; font-size: .8rem; transition: transform .18s ease; }
 .sectionCardOpen .sectionCardChevron { transform: rotate(180deg); }
 .sectionCardTrigger:focus-visible { outline: 2px solid #ff9b54; outline-offset: -2px; border-radius: 8px; }

@@ -16,7 +16,7 @@ import SectionCard from './SectionCard';
 import ThemeIcon from './ThemeIcon';
 import styles from './SiteEditor.module.css';
 
-type BuilderTab = 'business' | 'design' | 'publish';
+type BuilderTab = 'business' | 'page' | 'design' | 'publish';
 
 type WebsiteBuilderProps = {
   site: Site;
@@ -25,6 +25,7 @@ type WebsiteBuilderProps = {
 
 const TABS: { id: BuilderTab; label: string }[] = [
   { id: 'business', label: 'Business' },
+  { id: 'page', label: 'Your page' },
   { id: 'design', label: 'Design' },
   { id: 'publish', label: 'Publish' },
 ];
@@ -161,8 +162,22 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
         : { hint: `${siteContent.blog.posts.length} ${siteContent.blog.posts.length === 1 ? 'draft' : 'drafts'}`, hintTone: 'ok' }
       : contentHint(siteContent.blog.enabled, 0, 'post');
 
+  // Jump to a tab, open a card, and optionally focus a field — powers the
+  // launch-checklist deep-links. Double rAF: the target tab's panel must render
+  // before the element exists to scroll to.
+  const jumpTo = useCallback((tab: BuilderTab, card: string | null, fieldId?: string) => {
+    setActiveTab(tab);
+    if (card) setOpenSection(card);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const el = (fieldId ? document.getElementById(fieldId) : document.querySelector(`.${styles.sectionCardOpen}`)) as HTMLElement | null;
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (fieldId) el?.focus({ preventScroll: true });
+    }));
+  }, []);
+
   // Launch checklist — mirrors the publish gates so first-time owners can see
-  // what's missing before they hit Publish (instead of error-by-error).
+  // what's missing before they hit Publish (instead of error-by-error). Each
+  // unmet item deep-links to the tab/card/field where it gets fixed.
   const hasLiveSection =
     (siteContent.services.enabled && siteContent.services.items.some((svc) => svc.title.trim())) ||
     (siteContent.howItWorks.enabled && siteContent.howItWorks.steps.some((step) => step.title.trim())) ||
@@ -176,12 +191,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     (siteContent.blog.enabled && publishedPostCount > 0);
 
   const launchChecklist = [
-    { label: 'Company name', done: Boolean(site.company_name.trim()), hint: 'Business tab — Business basics' },
-    { label: 'Phone number', done: Boolean(site.phone), hint: 'Business tab — powers the call buttons' },
-    { label: 'Hero image', done: Boolean(site.hero_url), hint: 'Design tab — Hero photos' },
-    { label: 'Web address', done: Boolean(site.subdomain) || Boolean(site.custom_domain && domainStatus === 'verified'), hint: 'Add a subdomain below, or verify a custom domain' },
-    { label: 'At least one content section', done: hasLiveSection, hint: 'Design tab — e.g. Services or FAQs' },
-    { label: 'Google listing filled in', done: Boolean((site.seo_title || '').trim() || (site.seo_description || '').trim()), hint: 'Business tab — How you show up on Google' },
+    { label: 'Company name', done: Boolean(site.company_name.trim()), hint: 'Business tab — Business basics', go: () => jumpTo('business', 'basics', 'bf-company') },
+    { label: 'Phone number', done: Boolean(site.phone), hint: 'Business tab — powers the call buttons', go: () => jumpTo('business', 'contactInfo', 'bf-phone') },
+    { label: 'Hero image', done: Boolean(site.hero_url), hint: 'Design tab — Hero photos', go: () => jumpTo('design', 'heroPhotos') },
+    { label: 'Web address', done: Boolean(site.subdomain) || Boolean(site.custom_domain && domainStatus === 'verified'), hint: 'Add a subdomain below, or verify a custom domain', go: () => jumpTo('publish', null, 'pub-subdomain') },
+    { label: 'At least one content section', done: hasLiveSection, hint: 'Your page tab — e.g. Services or FAQs', go: () => jumpTo('page', 'services') },
+    { label: 'Google listing filled in', done: Boolean((site.seo_title || '').trim() || (site.seo_description || '').trim()), hint: 'Business tab — How you show up on Google', go: () => jumpTo('business', 'seo', 'bf-seo-title') },
   ];
 
   const handleChange = useCallback((field: keyof Site, value: Site[keyof Site]) => {
@@ -316,7 +331,9 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       }
       const section = SECTION_TARGETS[target];
       if (section) {
-        setActiveTab('design');
+        // Every SECTION_TARGETS card lives on the "Your page" tab. If a card
+        // ever moves to another tab, route it explicitly above instead.
+        setActiveTab('page');
         setOpenSection(section);
         requestAnimationFrame(() => requestAnimationFrame(() => document.querySelector(`.${styles.sectionCardOpen}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })));
       }
@@ -932,7 +949,13 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   </div>
                 </SectionCard>
 
-                <div className={styles.sectionIntro}><h2>Pages & sections</h2><p>Add rich sections that make the public website feel complete.</p></div>
+                <p className={styles.movedNote}>Looking for your page&apos;s sections? They moved to <strong>Your page</strong>.</p>
+              </div>
+            )}
+
+            {activeTab === 'page' && (
+              <div className={styles.formSection}>
+                <div className={styles.sectionIntro}><h2>Your page</h2><p>Everything a visitor sees on your page, top to bottom — sections, lead capture, and trust boosters.</p></div>
 
                 <SectionCard title="Page order" description="Drag to reorder the sections on your public page. Off sections keep their spot but stay hidden until you turn them on." open={openSection === 'sectionOrder'} onToggleOpen={() => toggleSection('sectionOrder')}>
                   <ul className={styles.sectionOrderList}>
@@ -1000,52 +1023,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   {siteContent.services.items.length < 8 && <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('svc'); updateServices({ ...siteContent.services, enabled: true, items: [...siteContent.services.items, { id, icon: 'spark', title: '', description: '' }] }); setEditingItemId(id); }}>Add service</button>}
                 </SectionCard>
 
-                <SectionCard title="How it works" description="A simple 3–4 step walkthrough of what happens after they reach out — book, we arrive, job done. Removes the 'what do I have to do?' hesitation." evidence="Showing the process upfront lowers the perceived effort of reaching out — people act when they can see exactly what happens next." enabled={siteContent.howItWorks.enabled} onToggleEnabled={(value) => updateHowItWorks({ ...siteContent.howItWorks, enabled: value })} {...contentHint(siteContent.howItWorks.enabled, siteContent.howItWorks.steps.filter((step) => step.title.trim()).length, 'step')} open={openSection === 'howItWorks'} onToggleOpen={() => toggleSection('howItWorks')}>
-                  <label className={styles.formField}><span>Section title</span><input value={siteContent.howItWorks.title} onChange={(event) => updateHowItWorks({ ...siteContent.howItWorks, title: event.target.value })} /></label>
-                  <label className={styles.formField}><span>Intro copy (optional)</span><input value={siteContent.howItWorks.intro} onChange={(event) => updateHowItWorks({ ...siteContent.howItWorks, intro: event.target.value })} /></label>
-                  <div className={styles.stackList}>
-                    {siteContent.howItWorks.steps.map((step, index) => (
-                      <StackItem key={step.id} title={step.title.trim() || `Step ${index + 1}`} editing={editingItemId === step.id} onEdit={() => setEditingItemId(step.id)} onSave={saveItem} onRemove={() => updateHowItWorks({ ...siteContent.howItWorks, steps: siteContent.howItWorks.steps.filter((s) => s.id !== step.id) })}>
-                        <label className={styles.formField}><span>Step title</span><input value={step.title} maxLength={60} onChange={(event) => updateHowItWorks({ ...siteContent.howItWorks, steps: siteContent.howItWorks.steps.map((s) => s.id === step.id ? { ...s, title: event.target.value } : s) })} placeholder="Book online or call" /></label>
-                        <label className={styles.formField}><span>Description</span><input value={step.description} maxLength={160} onChange={(event) => updateHowItWorks({ ...siteContent.howItWorks, steps: siteContent.howItWorks.steps.map((s) => s.id === step.id ? { ...s, description: event.target.value } : s) })} placeholder="Tell us what you need and pick a time that works." /></label>
-                      </StackItem>
-                    ))}
-                  </div>
-                  {siteContent.howItWorks.steps.length < 5 && <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('step'); updateHowItWorks({ ...siteContent.howItWorks, enabled: true, steps: [...siteContent.howItWorks.steps, { id, title: '', description: '' }] }); setEditingItemId(id); }}>Add step</button>}
-                </SectionCard>
-
-                <SectionCard title="Blog" description="Helpful articles for homeowners — maintenance tips, seasonal advice, and what to know before hiring. AI can draft them; you review and publish." evidence="Fresh, useful posts give Google more local pages to rank and give past customers a reason to return — search visibility that compounds over time." enabled={siteContent.blog.enabled} onToggleEnabled={(value) => updateBlog({ ...siteContent.blog, enabled: value })} {...blogHint} open={openSection === 'blog'} onToggleOpen={() => toggleSection('blog')}>
-                  <label className={styles.formField}><span>Section title</span><input value={siteContent.blog.title} onChange={(event) => updateBlog({ ...siteContent.blog, title: event.target.value })} /></label>
-                  <label className={styles.formField}><span>Intro copy (optional)</span><input value={siteContent.blog.intro} onChange={(event) => updateBlog({ ...siteContent.blog, intro: event.target.value })} /></label>
-                  <label className={styles.formField}><span>What should the next post be about? (optional)</span><input value={blogTopic} maxLength={200} onChange={(event) => setBlogTopic(event.target.value)} placeholder="e.g. Fall gutter maintenance checklist — leave blank and AI picks a seasonal topic" /></label>
-                  <button type="button" className="btn secondary" onClick={handleGenerateBlogDraft} disabled={isGeneratingBlog}>{isGeneratingBlog ? 'Writing a draft…' : '✨ Generate a draft with AI'}</button>
-                  <p className={styles.fieldHint}>Drafts are saved unpublished — nothing goes live until you flip a post to Published.</p>
-                  <div className={styles.stackList}>
-                    {siteContent.blog.posts.map((post, index) => (
-                      <StackItem key={post.id} title={post.title.trim() || `Post ${index + 1}`} meta={post.status === 'published' ? 'Live' : 'Draft'} editing={editingItemId === post.id} onEdit={() => setEditingItemId(post.id)} onSave={saveItem} onRemove={() => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.filter((p) => p.id !== post.id) })}>
-                        <label className={styles.toggleRow}><input type="checkbox" checked={post.status === 'published'} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, status: event.target.checked ? 'published' : 'draft' } : p) })} /><span><strong>Published</strong><small>{post.status === 'published' ? 'Live on your site.' : 'Draft — only you can see it until you publish.'}</small></span></label>
-                        <label className={styles.formField}><span>Title</span><input value={post.title} maxLength={120} onChange={(event) => { const title = event.target.value; updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, title, slug: (!p.slug || /^post-\d+$/.test(p.slug)) ? slugifyBlogTitle(title) : p.slug } : p) }); }} placeholder="5 signs it’s time to reseal your deck" /></label>
-                        <label className={styles.formField}><span>Excerpt</span><input value={post.excerpt} maxLength={200} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, excerpt: event.target.value } : p) })} placeholder="One sentence that makes someone want to read." /></label>
-                        <div className={styles.formField}>
-                          <span>Cover photo (optional)</span>
-                          {post.coverImage && (
-                            <div className={styles.blogCoverPreview}>
-                              <img src={post.coverImage} alt="Cover preview" />
-                              <button type="button" onClick={() => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, coverImage: '' } : p) })}>Remove</button>
-                            </div>
-                          )}
-                          <label className={styles.blogCoverUpload}>
-                            <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={uploadingCoverId === post.id} onChange={(event) => { const file = event.target.files?.[0]; event.currentTarget.value = ''; if (file) handleBlogCoverUpload(post.id, file); }} />
-                            <span>{uploadingCoverId === post.id ? 'Uploading…' : post.coverImage ? 'Replace photo' : 'Upload a cover photo'}</span>
-                          </label>
-                        </div>
-                        <label className={styles.formField}><span>Body</span><textarea rows={10} value={post.body} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, body: event.target.value } : p) })} placeholder="Write in short paragraphs separated by a blank line." /><small>{wordCount(post.body)} words · ~{Math.max(1, Math.round(wordCount(post.body) / 220))} min read{wordCount(post.body) > 0 && wordCount(post.body) < 300 ? ' — aim for 400+ words so the post feels substantial' : ''}</small></label>
-                      </StackItem>
-                    ))}
-                  </div>
-                  <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('post'); updateBlog({ ...siteContent.blog, enabled: true, posts: [{ id, slug: '', title: '', excerpt: '', body: '', coverImage: '', status: 'draft', date: new Date().toISOString().slice(0, 10) }, ...siteContent.blog.posts] }); setEditingItemId(id); }}>Add post manually</button>
-                </SectionCard>
-
                 <SectionCard title="Photo gallery" description="Highlight finished work, project details, and job photos." evidence="Real project photos alongside reviews produced 55% more leads in one study — genuine work outperforms stock." enabled={siteContent.showcase.enabled} onToggleEnabled={(value) => updateShowcase({ ...siteContent.showcase, enabled: value })} {...contentHint(siteContent.showcase.enabled, siteContent.showcase.items.length, 'image')} open={openSection === 'showcase'} onToggleOpen={() => toggleSection('showcase')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.showcase.title} onChange={(event) => updateShowcase({ ...siteContent.showcase, title: event.target.value })} /></label>
                   <label className={styles.formField}><span>Intro copy</span><textarea rows={2} value={siteContent.showcase.intro} onChange={(event) => updateShowcase({ ...siteContent.showcase, intro: event.target.value })} /></label>
@@ -1083,17 +1060,37 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   )}
                 </SectionCard>
 
-                <SectionCard title="Common questions (FAQ)" description="Answer common homeowner questions before they request a quote." enabled={siteContent.faqs.enabled} onToggleEnabled={(value) => updateFaqs({ ...siteContent.faqs, enabled: value })} {...contentHint(siteContent.faqs.enabled, siteContent.faqs.items.filter((faq) => faq.question.trim() && faq.answer.trim()).length, 'question')} open={openSection === 'faqs'} onToggleOpen={() => toggleSection('faqs')}>
-                  <label className={styles.formField}><span>Section title</span><input value={siteContent.faqs.title} onChange={(event) => updateFaqs({ ...siteContent.faqs, title: event.target.value })} /></label>
+                <SectionCard title="Before &amp; after" description="Drag-to-reveal comparison sliders — the most shared element on a remodeler's site. Each pair needs both a before and an after image to appear on your site." evidence="Before/after galleries paired with reviews produced 55% more leads — for trades, the transformation is the product." enabled={siteContent.beforeAfter.enabled} onToggleEnabled={(value) => updateBeforeAfter({ ...siteContent.beforeAfter, enabled: value })} {...contentHint(siteContent.beforeAfter.enabled, siteContent.beforeAfter.items.filter((pair) => pair.beforeUrl && pair.afterUrl).length, 'pair')} open={openSection === 'beforeAfter'} onToggleOpen={() => toggleSection('beforeAfter')}>
+                  <label className={styles.formField}><span>Section title</span><input value={siteContent.beforeAfter.title} onChange={(event) => updateBeforeAfter({ ...siteContent.beforeAfter, title: event.target.value })} /></label>
+                  <label className={styles.formField}><span>Intro copy</span><input value={siteContent.beforeAfter.intro} onChange={(event) => updateBeforeAfter({ ...siteContent.beforeAfter, intro: event.target.value })} /></label>
                   <div className={styles.stackList}>
-                    {siteContent.faqs.items.map((item, index) => (
-                      <StackItem key={item.id} title={item.question.trim() || `Question ${index + 1}`} editing={editingItemId === item.id} onEdit={() => setEditingItemId(item.id)} onSave={saveItem} onRemove={() => updateFaqs({ ...siteContent.faqs, items: siteContent.faqs.items.filter((faq) => faq.id !== item.id) })}>
-                        <label className={styles.formField}><span>Question</span><input value={item.question} onChange={(event) => updateFaqs({ ...siteContent.faqs, items: siteContent.faqs.items.map((faq) => faq.id === item.id ? { ...faq, question: event.target.value } : faq) })} /></label>
-                        <label className={styles.formField}><span>Answer</span><textarea rows={3} value={item.answer} onChange={(event) => updateFaqs({ ...siteContent.faqs, items: siteContent.faqs.items.map((faq) => faq.id === item.id ? { ...faq, answer: event.target.value } : faq) })} /></label>
+                    {siteContent.beforeAfter.items.map((item, index) => (
+                      <StackItem key={item.id} title={item.label.trim() || `Pair ${index + 1}`} meta={item.beforeUrl && item.afterUrl ? 'complete' : 'needs images'} editing={editingItemId === item.id} onEdit={() => setEditingItemId(item.id)} onSave={saveItem} onRemove={() => updateBeforeAfter({ ...siteContent.beforeAfter, items: siteContent.beforeAfter.items.filter((pair) => pair.id !== item.id) })}>
+                        <div className={styles.imageSlots}>
+                          <div className={styles.imageSlot}>
+                            <div className={styles.imageSlotHead}><strong>Before</strong></div>
+                            {item.beforeUrl
+                              ? <div className={styles.heroSlotPreview}><img src={item.beforeUrl} alt="Before preview" /></div>
+                              : <div className={styles.imageSlotEmpty}>No before photo</div>}
+                            <div className={styles.imageSlotActions}>
+                              <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: 'the before photo', kind: 'beforeAfter', baItemId: item.id, baSide: 'before' })}>{item.beforeUrl ? 'Replace photo' : 'Add photo'}</button>
+                            </div>
+                          </div>
+                          <div className={styles.imageSlot}>
+                            <div className={styles.imageSlotHead}><strong>After</strong></div>
+                            {item.afterUrl
+                              ? <div className={styles.heroSlotPreview}><img src={item.afterUrl} alt="After preview" /></div>
+                              : <div className={styles.imageSlotEmpty}>No after photo</div>}
+                            <div className={styles.imageSlotActions}>
+                              <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: 'the after photo', kind: 'beforeAfter', baItemId: item.id, baSide: 'after' })}>{item.afterUrl ? 'Replace photo' : 'Add photo'}</button>
+                            </div>
+                          </div>
+                        </div>
+                        <label className={styles.formField}><span>Caption (optional)</span><input value={item.label} onChange={(event) => updateBeforeAfter({ ...siteContent.beforeAfter, items: siteContent.beforeAfter.items.map((pair) => pair.id === item.id ? { ...pair, label: event.target.value } : pair) })} placeholder="Kitchen remodel, roof replacement..." /></label>
                       </StackItem>
                     ))}
                   </div>
-                  <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('faq'); updateFaqs({ ...siteContent.faqs, enabled: true, items: [...siteContent.faqs.items, { id, question: '', answer: '' }] }); setEditingItemId(id); }}>Add FAQ</button>
+                  <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('ba'); updateBeforeAfter({ ...siteContent.beforeAfter, enabled: true, items: [...siteContent.beforeAfter.items, { id, beforeUrl: '', beforeAlt: '', afterUrl: '', afterAlt: '', label: '' }] }); setEditingItemId(id); }}>Add pair</button>
                 </SectionCard>
 
                 <SectionCard title="Customer reviews" description="Show quotes from real customers on your public site." evidence="97% of homeowners read reviews before hiring a local pro, and the first few weigh the most." enabled={siteContent.testimonials.enabled} onToggleEnabled={(value) => updateTestimonials({ ...siteContent.testimonials, enabled: value })} {...contentHint(siteContent.testimonials.enabled, siteContent.testimonials.items.filter((item) => item.text.trim()).length, 'review')} open={openSection === 'testimonials'} onToggleOpen={() => toggleSection('testimonials')}>
@@ -1155,78 +1152,31 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('testimonial'); updateTestimonials({ ...siteContent.testimonials, enabled: true, items: [...siteContent.testimonials.items, { id, author: '', text: '', rating: 5, label: '', imageUrl: '', imageAlt: '' }] }); setEditingItemId(id); }}>Add testimonial</button>
                 </SectionCard>
 
-                <div className={styles.cardGroupLabel}>Trust boosters</div>
-
-                <SectionCard title="Announcement bar" description={'A strip across the top of your site for one timely line — e.g. "Now booking for August". You type the message, so it never invents urgency; it only appears once filled in.'} evidence={'Urgency converts — emergency-ready trades close highest (12–16%); a "same-day" or "now booking" line cuts hesitation.'} enabled={siteContent.announcement.enabled} onToggleEnabled={(value) => updateAnnouncement({ ...siteContent.announcement, enabled: value })} open={openSection === 'announcement'} onToggleOpen={() => toggleSection('announcement')}>
-                  <label className={styles.formField}><span>Message</span><input value={siteContent.announcement.message} maxLength={140} onChange={(event) => updateAnnouncement({ ...siteContent.announcement, message: event.target.value })} placeholder="Now booking August installs" /></label>
-                  <label className={styles.formField}><span>Second line (optional)</span><input value={siteContent.announcement.subtext} maxLength={140} onChange={(event) => updateAnnouncement({ ...siteContent.announcement, subtext: event.target.value })} placeholder="Same-day estimates · Licensed &amp; insured" /></label>
-                  {siteContent.announcement.enabled && !siteContent.announcement.message.trim() && <p className={styles.emptyHelper}>Add a message above for the bar to appear on your site.</p>}
-                </SectionCard>
-
-                <SectionCard title="Tap-to-call bar (mobile)" description="Pins a tap-to-call button to the bottom of every phone screen, so homeowners can reach you in one tap. Needs a phone number on the Business tab." evidence="For home services the phone closes 25–55× better than a form; a one-tap bar that follows the visitor keeps it in reach (sticky CTAs lift conversions 15–40%)." enabled={siteContent.stickyCallBar.enabled} onToggleEnabled={(value) => updateStickyCallBar({ ...siteContent.stickyCallBar, enabled: value })} open={openSection === 'stickyBar'} onToggleOpen={() => toggleSection('stickyBar')}>
-                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.stickyCallBar.showQuote} onChange={(event) => updateStickyCallBar({ ...siteContent.stickyCallBar, showQuote: event.target.checked })} /><span><strong>Add a &quot;Free quote&quot; button</strong><small>Adds a second button beside Call that jumps straight to your quote form.</small></span></label>
-                  {siteContent.stickyCallBar.enabled && !site.phone && <p className={styles.emptyHelper}>Add a phone number on the Business tab to make this bar appear.</p>}
-                </SectionCard>
-
-                <SectionCard title="Star-rating badge" description={'Shows a "4.9 ★ from 37 reviews" trust badge near your reviews. Enter your real average rating and review count — only enable this if the numbers are accurate.'} evidence="97% of buyers check reviews first — a rating shown right beside your form is what turns that trust into a call." enabled={siteContent.ratingBadge.enabled} onToggleEnabled={(value) => updateRatingBadge({ ...siteContent.ratingBadge, enabled: value })} open={openSection === 'rating'} onToggleOpen={() => toggleSection('rating')}>
-                  <div className={styles.formColumns}>
-                    <label className={styles.formField}><span>Average rating (1–5)</span><input type="number" min={1} max={5} step={0.1} value={ratingInput} onChange={(event) => { const raw = event.target.value; setRatingInput(raw); if (raw !== '') updateRatingBadge({ ...siteContent.ratingBadge, rating: Number(raw) }); }} onBlur={() => setRatingInput(String(siteContent.ratingBadge.rating))} /></label>
-                    <label className={styles.formField}><span>Number of reviews</span><input type="number" min={0} step={1} value={reviewCountInput} onChange={(event) => { const raw = event.target.value; setReviewCountInput(raw); if (raw !== '') updateRatingBadge({ ...siteContent.ratingBadge, reviewCount: Number(raw) }); }} onBlur={() => setReviewCountInput(String(siteContent.ratingBadge.reviewCount))} /></label>
-                  </div>
-                  <label className={styles.formField}><span>Source label</span><input value={siteContent.ratingBadge.sourceLabel} onChange={(event) => updateRatingBadge({ ...siteContent.ratingBadge, sourceLabel: event.target.value })} placeholder="Google reviews" /></label>
-                </SectionCard>
-
-                <SectionCard title="Trust badges" description="A row of reassurance chips (Licensed, Insured, Bonded…) on your public site. Toggle the ones that apply and edit the labels." evidence="Licensed / insured / bonded pros are seen ~5× more likely to finish the job; these chips lower the risk of reaching out." enabled={siteContent.trustBadges.enabled} onToggleEnabled={(value) => updateTrustBadges({ ...siteContent.trustBadges, enabled: value })} open={openSection === 'trustBadges'} onToggleOpen={() => toggleSection('trustBadges')}>
-                  <p className={styles.fieldHint}>Check to show, uncheck to hide. Edit the label inline.</p>
-                  <div className={styles.badgeList}>
-                    {siteContent.trustBadges.badges.map((badge) => (
-                      <div className={styles.badgeRow} key={badge.id}>
-                        <input type="checkbox" checked={badge.enabled} onChange={(event) => updateTrustBadges({ ...siteContent.trustBadges, badges: siteContent.trustBadges.badges.map((item) => item.id === badge.id ? { ...item, enabled: event.target.checked } : item) })} aria-label={`Show ${badge.label || 'badge'}`} />
-                        <input className={`${styles.badgeInput}${badge.enabled ? '' : ` ${styles.badgeInputOff}`}`} value={badge.label} onChange={(event) => updateTrustBadges({ ...siteContent.trustBadges, badges: siteContent.trustBadges.badges.map((item) => item.id === badge.id ? { ...item, label: event.target.value } : item) })} placeholder="Badge label" />
-                        <button type="button" className={styles.badgeRemove} onClick={() => updateTrustBadges({ ...siteContent.trustBadges, badges: siteContent.trustBadges.badges.filter((item) => item.id !== badge.id) })} aria-label={`Remove ${badge.label || 'badge'}`}>×</button>
-                      </div>
-                    ))}
-                  </div>
-                  <button type="button" className={styles.secondaryAction} onClick={() => updateTrustBadges({ ...siteContent.trustBadges, enabled: true, badges: [...siteContent.trustBadges.badges, { id: createContentId('badge'), label: '', enabled: true }] })}>Add badge</button>
-                </SectionCard>
-
-                <SectionCard title="Financing offer" description={'Reframe the price — show "Projects from $X/mo" so sticker shock doesn\'t kill the lead. Only appears once the monthly amount is set.'} evidence={'Sticker shock is a top silent reason a lead never calls — reframing price as "$X/mo" keeps them in the conversation.'} enabled={siteContent.financing.enabled} onToggleEnabled={(value) => updateFinancing({ ...siteContent.financing, enabled: value })} open={openSection === 'financing'} onToggleOpen={() => toggleSection('financing')}>
-                  <div className={styles.formColumns}>
-                    <label className={styles.formField}><span>From ($/month)</span><input type="number" min={0} step={1} value={monthlyFromInput} onChange={(event) => { const raw = event.target.value; setMonthlyFromInput(raw); if (raw !== '') updateFinancing({ ...siteContent.financing, monthlyFrom: Number(raw) }); }} onBlur={() => setMonthlyFromInput(String(siteContent.financing.monthlyFrom))} /></label>
-                    <label className={styles.formField}><span>Apply link (optional)</span><input type="url" value={siteContent.financing.applyUrl} onChange={(event) => updateFinancing({ ...siteContent.financing, applyUrl: event.target.value })} placeholder="https://..." /></label>
-                  </div>
-                  <label className={styles.formField}><span>Supporting line</span><input value={siteContent.financing.blurb} onChange={(event) => updateFinancing({ ...siteContent.financing, blurb: event.target.value })} placeholder="Flexible financing available on approved credit." /></label>
-                </SectionCard>
-
-                <SectionCard title="Cities you serve" description={'List the towns and neighborhoods you cover. The names become on-page keywords that help you rank for "[trade] in [city]" searches — and reassure homeowners you serve their area.'} evidence={'Visitors decide "do they even serve me?" in ~3 seconds — naming their town reassures them and matches local search.'} enabled={siteContent.serviceAreas.enabled} onToggleEnabled={(value) => updateServiceAreas({ ...siteContent.serviceAreas, enabled: value })} {...contentHint(siteContent.serviceAreas.enabled, siteContent.serviceAreas.cities.filter((city) => city.trim()).length, 'city', 'cities')} open={openSection === 'serviceAreas'} onToggleOpen={() => toggleSection('serviceAreas')}>
-                  <label className={styles.formField}><span>Section title</span><input value={siteContent.serviceAreas.title} onChange={(event) => updateServiceAreas({ ...siteContent.serviceAreas, title: event.target.value })} /></label>
-                  <label className={styles.formField}><span>Intro copy</span><input value={siteContent.serviceAreas.intro} onChange={(event) => updateServiceAreas({ ...siteContent.serviceAreas, intro: event.target.value })} /></label>
-                  <div className={styles.badgeList}>
-                    {siteContent.serviceAreas.cities.map((city, index) => (
-                      <div className={styles.badgeRow} key={index}>
-                        <input className={styles.badgeInput} value={city} aria-label={`City ${index + 1}`} onChange={(event) => updateServiceAreas({ ...siteContent.serviceAreas, cities: siteContent.serviceAreas.cities.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} placeholder="e.g. Riverton" />
-                        <button type="button" className={styles.badgeRemove} onClick={() => updateServiceAreas({ ...siteContent.serviceAreas, cities: siteContent.serviceAreas.cities.filter((_, itemIndex) => itemIndex !== index) })} aria-label={`Remove ${city || 'city'}`}>×</button>
-                      </div>
-                    ))}
-                  </div>
-                  <button type="button" className={styles.secondaryAction} onClick={() => updateServiceAreas({ ...siteContent.serviceAreas, enabled: true, cities: [...siteContent.serviceAreas.cities, ''] })}>Add city</button>
-                </SectionCard>
-
-                <SectionCard title="Certifications & awards" description={'A strip of recognizable credentials — BBB A+, EPA Lead-Safe, manufacturer certifications, "Best of" awards. Add a label and optionally a logo from your images.'} evidence="Recognizable third-party credentials (BBB A+, EPA, manufacturer certs) shortcut trust faster than anything you can say about yourself." enabled={siteContent.certifications.enabled} onToggleEnabled={(value) => updateCertifications({ ...siteContent.certifications, enabled: value })} {...contentHint(siteContent.certifications.enabled, siteContent.certifications.items.filter((item) => item.label.trim()).length, 'item')} open={openSection === 'certifications'} onToggleOpen={() => toggleSection('certifications')}>
-                  <label className={styles.formField}><span>Section title</span><input value={siteContent.certifications.title} onChange={(event) => updateCertifications({ ...siteContent.certifications, title: event.target.value })} /></label>
+                <SectionCard title="How it works" description="A simple 3–4 step walkthrough of what happens after they reach out — book, we arrive, job done. Removes the 'what do I have to do?' hesitation." evidence="Showing the process upfront lowers the perceived effort of reaching out — people act when they can see exactly what happens next." enabled={siteContent.howItWorks.enabled} onToggleEnabled={(value) => updateHowItWorks({ ...siteContent.howItWorks, enabled: value })} {...contentHint(siteContent.howItWorks.enabled, siteContent.howItWorks.steps.filter((step) => step.title.trim()).length, 'step')} open={openSection === 'howItWorks'} onToggleOpen={() => toggleSection('howItWorks')}>
+                  <label className={styles.formField}><span>Section title</span><input value={siteContent.howItWorks.title} onChange={(event) => updateHowItWorks({ ...siteContent.howItWorks, title: event.target.value })} /></label>
+                  <label className={styles.formField}><span>Intro copy (optional)</span><input value={siteContent.howItWorks.intro} onChange={(event) => updateHowItWorks({ ...siteContent.howItWorks, intro: event.target.value })} /></label>
                   <div className={styles.stackList}>
-                    {siteContent.certifications.items.map((item, index) => (
-                      <StackItem key={item.id} title={item.label.trim() || `Item ${index + 1}`} editing={editingItemId === item.id} onEdit={() => setEditingItemId(item.id)} onSave={saveItem} onRemove={() => updateCertifications({ ...siteContent.certifications, items: siteContent.certifications.items.filter((cert) => cert.id !== item.id) })}>
-                        <label className={styles.formField}><span>Label</span><input value={item.label} onChange={(event) => updateCertifications({ ...siteContent.certifications, items: siteContent.certifications.items.map((cert) => cert.id === item.id ? { ...cert, label: event.target.value } : cert) })} placeholder="EPA Lead-Safe Certified" /></label>
-                        <label className={styles.formField}><span>Logo image (optional)</span><select value={item.imageUrl} onChange={(event) => {
-                          const image = selectableImages.find((candidate) => candidate.url === event.target.value);
-                          updateCertifications({ ...siteContent.certifications, items: siteContent.certifications.items.map((cert) => cert.id === item.id ? { ...cert, imageUrl: event.target.value, imageAlt: image?.alt || cert.imageAlt || cert.label || 'Certification' } : cert) });
-                        }}><option value="">No image</option>{selectableImages.map((image) => <option key={`${item.id}-${image.id}`} value={image.url}>{image.alt}</option>)}</select></label>
-                        {item.imageUrl && <div className={styles.reviewImagePreview}><img src={item.imageUrl} alt={item.imageAlt || item.label || 'Certification preview'} /></div>}
+                    {siteContent.howItWorks.steps.map((step, index) => (
+                      <StackItem key={step.id} title={step.title.trim() || `Step ${index + 1}`} editing={editingItemId === step.id} onEdit={() => setEditingItemId(step.id)} onSave={saveItem} onRemove={() => updateHowItWorks({ ...siteContent.howItWorks, steps: siteContent.howItWorks.steps.filter((s) => s.id !== step.id) })}>
+                        <label className={styles.formField}><span>Step title</span><input value={step.title} maxLength={60} onChange={(event) => updateHowItWorks({ ...siteContent.howItWorks, steps: siteContent.howItWorks.steps.map((s) => s.id === step.id ? { ...s, title: event.target.value } : s) })} placeholder="Book online or call" /></label>
+                        <label className={styles.formField}><span>Description</span><input value={step.description} maxLength={160} onChange={(event) => updateHowItWorks({ ...siteContent.howItWorks, steps: siteContent.howItWorks.steps.map((s) => s.id === step.id ? { ...s, description: event.target.value } : s) })} placeholder="Tell us what you need and pick a time that works." /></label>
                       </StackItem>
                     ))}
                   </div>
-                  <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('cert'); updateCertifications({ ...siteContent.certifications, enabled: true, items: [...siteContent.certifications.items, { id, label: '', imageUrl: '', imageAlt: '' }] }); setEditingItemId(id); }}>Add certification</button>
+                  {siteContent.howItWorks.steps.length < 5 && <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('step'); updateHowItWorks({ ...siteContent.howItWorks, enabled: true, steps: [...siteContent.howItWorks.steps, { id, title: '', description: '' }] }); setEditingItemId(id); }}>Add step</button>}
+                </SectionCard>
+
+                <SectionCard title="Common questions (FAQ)" description="Answer common homeowner questions before they request a quote." enabled={siteContent.faqs.enabled} onToggleEnabled={(value) => updateFaqs({ ...siteContent.faqs, enabled: value })} {...contentHint(siteContent.faqs.enabled, siteContent.faqs.items.filter((faq) => faq.question.trim() && faq.answer.trim()).length, 'question')} open={openSection === 'faqs'} onToggleOpen={() => toggleSection('faqs')}>
+                  <label className={styles.formField}><span>Section title</span><input value={siteContent.faqs.title} onChange={(event) => updateFaqs({ ...siteContent.faqs, title: event.target.value })} /></label>
+                  <div className={styles.stackList}>
+                    {siteContent.faqs.items.map((item, index) => (
+                      <StackItem key={item.id} title={item.question.trim() || `Question ${index + 1}`} editing={editingItemId === item.id} onEdit={() => setEditingItemId(item.id)} onSave={saveItem} onRemove={() => updateFaqs({ ...siteContent.faqs, items: siteContent.faqs.items.filter((faq) => faq.id !== item.id) })}>
+                        <label className={styles.formField}><span>Question</span><input value={item.question} onChange={(event) => updateFaqs({ ...siteContent.faqs, items: siteContent.faqs.items.map((faq) => faq.id === item.id ? { ...faq, question: event.target.value } : faq) })} /></label>
+                        <label className={styles.formField}><span>Answer</span><textarea rows={3} value={item.answer} onChange={(event) => updateFaqs({ ...siteContent.faqs, items: siteContent.faqs.items.map((faq) => faq.id === item.id ? { ...faq, answer: event.target.value } : faq) })} /></label>
+                      </StackItem>
+                    ))}
+                  </div>
+                  <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('faq'); updateFaqs({ ...siteContent.faqs, enabled: true, items: [...siteContent.faqs.items, { id, question: '', answer: '' }] }); setEditingItemId(id); }}>Add FAQ</button>
                 </SectionCard>
 
                 <SectionCard title="Animated stats" description="A band of big numbers that count up as visitors scroll — jobs completed, years in business, % satisfaction. Instant credibility." evidence="Concrete numbers — jobs done, years in business, response time — are instant, scannable credibility next to your work." enabled={siteContent.stats.enabled} onToggleEnabled={(value) => updateStats({ ...siteContent.stats, enabled: value })} {...contentHint(siteContent.stats.enabled, siteContent.stats.items.filter((item) => item.label.trim()).length, 'stat')} open={openSection === 'stats'} onToggleOpen={() => toggleSection('stats')}>
@@ -1254,37 +1204,112 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('stat'); updateStats({ ...siteContent.stats, enabled: true, items: [...siteContent.stats.items, { id, value: 0, prefix: '', suffix: '', label: '' }] }); setEditingItemId(id); }}>Add stat</button>
                 </SectionCard>
 
-                <SectionCard title="Before &amp; after" description="Drag-to-reveal comparison sliders — the most shared element on a remodeler's site. Each pair needs both a before and an after image to appear on your site." evidence="Before/after galleries paired with reviews produced 55% more leads — for trades, the transformation is the product." enabled={siteContent.beforeAfter.enabled} onToggleEnabled={(value) => updateBeforeAfter({ ...siteContent.beforeAfter, enabled: value })} {...contentHint(siteContent.beforeAfter.enabled, siteContent.beforeAfter.items.filter((pair) => pair.beforeUrl && pair.afterUrl).length, 'pair')} open={openSection === 'beforeAfter'} onToggleOpen={() => toggleSection('beforeAfter')}>
-                  <label className={styles.formField}><span>Section title</span><input value={siteContent.beforeAfter.title} onChange={(event) => updateBeforeAfter({ ...siteContent.beforeAfter, title: event.target.value })} /></label>
-                  <label className={styles.formField}><span>Intro copy</span><input value={siteContent.beforeAfter.intro} onChange={(event) => updateBeforeAfter({ ...siteContent.beforeAfter, intro: event.target.value })} /></label>
+                <SectionCard title="Blog" description="Helpful articles for homeowners — maintenance tips, seasonal advice, and what to know before hiring. AI can draft them; you review and publish." evidence="Fresh, useful posts give Google more local pages to rank and give past customers a reason to return — search visibility that compounds over time." enabled={siteContent.blog.enabled} onToggleEnabled={(value) => updateBlog({ ...siteContent.blog, enabled: value })} {...blogHint} open={openSection === 'blog'} onToggleOpen={() => toggleSection('blog')}>
+                  <label className={styles.formField}><span>Section title</span><input value={siteContent.blog.title} onChange={(event) => updateBlog({ ...siteContent.blog, title: event.target.value })} /></label>
+                  <label className={styles.formField}><span>Intro copy (optional)</span><input value={siteContent.blog.intro} onChange={(event) => updateBlog({ ...siteContent.blog, intro: event.target.value })} /></label>
+                  <label className={styles.formField}><span>What should the next post be about? (optional)</span><input value={blogTopic} maxLength={200} onChange={(event) => setBlogTopic(event.target.value)} placeholder="e.g. Fall gutter maintenance checklist — leave blank and AI picks a seasonal topic" /></label>
+                  <button type="button" className="btn secondary" onClick={handleGenerateBlogDraft} disabled={isGeneratingBlog}>{isGeneratingBlog ? 'Writing a draft…' : '✨ Generate a draft with AI'}</button>
+                  <p className={styles.fieldHint}>Drafts are saved unpublished — nothing goes live until you flip a post to Published.</p>
                   <div className={styles.stackList}>
-                    {siteContent.beforeAfter.items.map((item, index) => (
-                      <StackItem key={item.id} title={item.label.trim() || `Pair ${index + 1}`} meta={item.beforeUrl && item.afterUrl ? 'complete' : 'needs images'} editing={editingItemId === item.id} onEdit={() => setEditingItemId(item.id)} onSave={saveItem} onRemove={() => updateBeforeAfter({ ...siteContent.beforeAfter, items: siteContent.beforeAfter.items.filter((pair) => pair.id !== item.id) })}>
-                        <div className={styles.imageSlots}>
-                          <div className={styles.imageSlot}>
-                            <div className={styles.imageSlotHead}><strong>Before</strong></div>
-                            {item.beforeUrl
-                              ? <div className={styles.heroSlotPreview}><img src={item.beforeUrl} alt="Before preview" /></div>
-                              : <div className={styles.imageSlotEmpty}>No before photo</div>}
-                            <div className={styles.imageSlotActions}>
-                              <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: 'the before photo', kind: 'beforeAfter', baItemId: item.id, baSide: 'before' })}>{item.beforeUrl ? 'Replace photo' : 'Add photo'}</button>
+                    {siteContent.blog.posts.map((post, index) => (
+                      <StackItem key={post.id} title={post.title.trim() || `Post ${index + 1}`} meta={post.status === 'published' ? 'Live' : 'Draft'} editing={editingItemId === post.id} onEdit={() => setEditingItemId(post.id)} onSave={saveItem} onRemove={() => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.filter((p) => p.id !== post.id) })}>
+                        <label className={styles.toggleRow}><input type="checkbox" checked={post.status === 'published'} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, status: event.target.checked ? 'published' : 'draft' } : p) })} /><span><strong>Published</strong><small>{post.status === 'published' ? 'Live on your site.' : 'Draft — only you can see it until you publish.'}</small></span></label>
+                        <label className={styles.formField}><span>Title</span><input value={post.title} maxLength={120} onChange={(event) => { const title = event.target.value; updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, title, slug: (!p.slug || /^post-\d+$/.test(p.slug)) ? slugifyBlogTitle(title) : p.slug } : p) }); }} placeholder="5 signs it’s time to reseal your deck" /></label>
+                        <label className={styles.formField}><span>Excerpt</span><input value={post.excerpt} maxLength={200} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, excerpt: event.target.value } : p) })} placeholder="One sentence that makes someone want to read." /></label>
+                        <div className={styles.formField}>
+                          <span>Cover photo (optional)</span>
+                          {post.coverImage && (
+                            <div className={styles.blogCoverPreview}>
+                              <img src={post.coverImage} alt="Cover preview" />
+                              <button type="button" onClick={() => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, coverImage: '' } : p) })}>Remove</button>
                             </div>
-                          </div>
-                          <div className={styles.imageSlot}>
-                            <div className={styles.imageSlotHead}><strong>After</strong></div>
-                            {item.afterUrl
-                              ? <div className={styles.heroSlotPreview}><img src={item.afterUrl} alt="After preview" /></div>
-                              : <div className={styles.imageSlotEmpty}>No after photo</div>}
-                            <div className={styles.imageSlotActions}>
-                              <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: 'the after photo', kind: 'beforeAfter', baItemId: item.id, baSide: 'after' })}>{item.afterUrl ? 'Replace photo' : 'Add photo'}</button>
-                            </div>
-                          </div>
+                          )}
+                          <label className={styles.blogCoverUpload}>
+                            <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={uploadingCoverId === post.id} onChange={(event) => { const file = event.target.files?.[0]; event.currentTarget.value = ''; if (file) handleBlogCoverUpload(post.id, file); }} />
+                            <span>{uploadingCoverId === post.id ? 'Uploading…' : post.coverImage ? 'Replace photo' : 'Upload a cover photo'}</span>
+                          </label>
                         </div>
-                        <label className={styles.formField}><span>Caption (optional)</span><input value={item.label} onChange={(event) => updateBeforeAfter({ ...siteContent.beforeAfter, items: siteContent.beforeAfter.items.map((pair) => pair.id === item.id ? { ...pair, label: event.target.value } : pair) })} placeholder="Kitchen remodel, roof replacement..." /></label>
+                        <label className={styles.formField}><span>Body</span><textarea rows={10} value={post.body} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, body: event.target.value } : p) })} placeholder="Write in short paragraphs separated by a blank line." /><small>{wordCount(post.body)} words · ~{Math.max(1, Math.round(wordCount(post.body) / 220))} min read{wordCount(post.body) > 0 && wordCount(post.body) < 300 ? ' — aim for 400+ words so the post feels substantial' : ''}</small></label>
                       </StackItem>
                     ))}
                   </div>
-                  <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('ba'); updateBeforeAfter({ ...siteContent.beforeAfter, enabled: true, items: [...siteContent.beforeAfter.items, { id, beforeUrl: '', beforeAlt: '', afterUrl: '', afterAlt: '', label: '' }] }); setEditingItemId(id); }}>Add pair</button>
+                  <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('post'); updateBlog({ ...siteContent.blog, enabled: true, posts: [{ id, slug: '', title: '', excerpt: '', body: '', coverImage: '', status: 'draft', date: new Date().toISOString().slice(0, 10) }, ...siteContent.blog.posts] }); setEditingItemId(id); }}>Add post manually</button>
+                </SectionCard>
+
+                <div className={styles.cardGroupLabel}>Trust boosters</div>
+
+                <SectionCard title="Star-rating badge" description={'Shows a "4.9 ★ from 37 reviews" trust badge near your reviews. Enter your real average rating and review count — only enable this if the numbers are accurate.'} evidence="97% of buyers check reviews first — a rating shown right beside your form is what turns that trust into a call." enabled={siteContent.ratingBadge.enabled} onToggleEnabled={(value) => updateRatingBadge({ ...siteContent.ratingBadge, enabled: value })} open={openSection === 'rating'} onToggleOpen={() => toggleSection('rating')}>
+                  <div className={styles.formColumns}>
+                    <label className={styles.formField}><span>Average rating (1–5)</span><input type="number" min={1} max={5} step={0.1} value={ratingInput} onChange={(event) => { const raw = event.target.value; setRatingInput(raw); if (raw !== '') updateRatingBadge({ ...siteContent.ratingBadge, rating: Number(raw) }); }} onBlur={() => setRatingInput(String(siteContent.ratingBadge.rating))} /></label>
+                    <label className={styles.formField}><span>Number of reviews</span><input type="number" min={0} step={1} value={reviewCountInput} onChange={(event) => { const raw = event.target.value; setReviewCountInput(raw); if (raw !== '') updateRatingBadge({ ...siteContent.ratingBadge, reviewCount: Number(raw) }); }} onBlur={() => setReviewCountInput(String(siteContent.ratingBadge.reviewCount))} /></label>
+                  </div>
+                  <label className={styles.formField}><span>Source label</span><input value={siteContent.ratingBadge.sourceLabel} onChange={(event) => updateRatingBadge({ ...siteContent.ratingBadge, sourceLabel: event.target.value })} placeholder="Google reviews" /></label>
+                </SectionCard>
+
+                <SectionCard title="Trust badges" description="A row of reassurance chips (Licensed, Insured, Bonded…) on your public site. Toggle the ones that apply and edit the labels." evidence="Licensed / insured / bonded pros are seen ~5× more likely to finish the job; these chips lower the risk of reaching out." enabled={siteContent.trustBadges.enabled} onToggleEnabled={(value) => updateTrustBadges({ ...siteContent.trustBadges, enabled: value })} open={openSection === 'trustBadges'} onToggleOpen={() => toggleSection('trustBadges')}>
+                  <p className={styles.fieldHint}>Check to show, uncheck to hide. Edit the label inline.</p>
+                  <div className={styles.badgeList}>
+                    {siteContent.trustBadges.badges.map((badge) => (
+                      <div className={styles.badgeRow} key={badge.id}>
+                        <input type="checkbox" checked={badge.enabled} onChange={(event) => updateTrustBadges({ ...siteContent.trustBadges, badges: siteContent.trustBadges.badges.map((item) => item.id === badge.id ? { ...item, enabled: event.target.checked } : item) })} aria-label={`Show ${badge.label || 'badge'}`} />
+                        <input className={`${styles.badgeInput}${badge.enabled ? '' : ` ${styles.badgeInputOff}`}`} value={badge.label} onChange={(event) => updateTrustBadges({ ...siteContent.trustBadges, badges: siteContent.trustBadges.badges.map((item) => item.id === badge.id ? { ...item, label: event.target.value } : item) })} placeholder="Badge label" />
+                        <button type="button" className={styles.badgeRemove} onClick={() => updateTrustBadges({ ...siteContent.trustBadges, badges: siteContent.trustBadges.badges.filter((item) => item.id !== badge.id) })} aria-label={`Remove ${badge.label || 'badge'}`}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                  <button type="button" className={styles.secondaryAction} onClick={() => updateTrustBadges({ ...siteContent.trustBadges, enabled: true, badges: [...siteContent.trustBadges.badges, { id: createContentId('badge'), label: '', enabled: true }] })}>Add badge</button>
+                </SectionCard>
+
+                <SectionCard title="Certifications & awards" description={'A strip of recognizable credentials — BBB A+, EPA Lead-Safe, manufacturer certifications, "Best of" awards. Add a label and optionally a logo from your images.'} evidence="Recognizable third-party credentials (BBB A+, EPA, manufacturer certs) shortcut trust faster than anything you can say about yourself." enabled={siteContent.certifications.enabled} onToggleEnabled={(value) => updateCertifications({ ...siteContent.certifications, enabled: value })} {...contentHint(siteContent.certifications.enabled, siteContent.certifications.items.filter((item) => item.label.trim()).length, 'item')} open={openSection === 'certifications'} onToggleOpen={() => toggleSection('certifications')}>
+                  <label className={styles.formField}><span>Section title</span><input value={siteContent.certifications.title} onChange={(event) => updateCertifications({ ...siteContent.certifications, title: event.target.value })} /></label>
+                  <div className={styles.stackList}>
+                    {siteContent.certifications.items.map((item, index) => (
+                      <StackItem key={item.id} title={item.label.trim() || `Item ${index + 1}`} editing={editingItemId === item.id} onEdit={() => setEditingItemId(item.id)} onSave={saveItem} onRemove={() => updateCertifications({ ...siteContent.certifications, items: siteContent.certifications.items.filter((cert) => cert.id !== item.id) })}>
+                        <label className={styles.formField}><span>Label</span><input value={item.label} onChange={(event) => updateCertifications({ ...siteContent.certifications, items: siteContent.certifications.items.map((cert) => cert.id === item.id ? { ...cert, label: event.target.value } : cert) })} placeholder="EPA Lead-Safe Certified" /></label>
+                        <label className={styles.formField}><span>Logo image (optional)</span><select value={item.imageUrl} onChange={(event) => {
+                          const image = selectableImages.find((candidate) => candidate.url === event.target.value);
+                          updateCertifications({ ...siteContent.certifications, items: siteContent.certifications.items.map((cert) => cert.id === item.id ? { ...cert, imageUrl: event.target.value, imageAlt: image?.alt || cert.imageAlt || cert.label || 'Certification' } : cert) });
+                        }}><option value="">No image</option>{selectableImages.map((image) => <option key={`${item.id}-${image.id}`} value={image.url}>{image.alt}</option>)}</select></label>
+                        {item.imageUrl && <div className={styles.reviewImagePreview}><img src={item.imageUrl} alt={item.imageAlt || item.label || 'Certification preview'} /></div>}
+                      </StackItem>
+                    ))}
+                  </div>
+                  <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('cert'); updateCertifications({ ...siteContent.certifications, enabled: true, items: [...siteContent.certifications.items, { id, label: '', imageUrl: '', imageAlt: '' }] }); setEditingItemId(id); }}>Add certification</button>
+                </SectionCard>
+
+                <SectionCard title="Cities you serve" description={'List the towns and neighborhoods you cover. The names become on-page keywords that help you rank for "[trade] in [city]" searches — and reassure homeowners you serve their area.'} evidence={'Visitors decide "do they even serve me?" in ~3 seconds — naming their town reassures them and matches local search.'} enabled={siteContent.serviceAreas.enabled} onToggleEnabled={(value) => updateServiceAreas({ ...siteContent.serviceAreas, enabled: value })} {...contentHint(siteContent.serviceAreas.enabled, siteContent.serviceAreas.cities.filter((city) => city.trim()).length, 'city', 'cities')} open={openSection === 'serviceAreas'} onToggleOpen={() => toggleSection('serviceAreas')}>
+                  <label className={styles.formField}><span>Section title</span><input value={siteContent.serviceAreas.title} onChange={(event) => updateServiceAreas({ ...siteContent.serviceAreas, title: event.target.value })} /></label>
+                  <label className={styles.formField}><span>Intro copy</span><input value={siteContent.serviceAreas.intro} onChange={(event) => updateServiceAreas({ ...siteContent.serviceAreas, intro: event.target.value })} /></label>
+                  <div className={styles.badgeList}>
+                    {siteContent.serviceAreas.cities.map((city, index) => (
+                      <div className={styles.badgeRow} key={index}>
+                        <input className={styles.badgeInput} value={city} aria-label={`City ${index + 1}`} onChange={(event) => updateServiceAreas({ ...siteContent.serviceAreas, cities: siteContent.serviceAreas.cities.map((item, itemIndex) => itemIndex === index ? event.target.value : item) })} placeholder="e.g. Riverton" />
+                        <button type="button" className={styles.badgeRemove} onClick={() => updateServiceAreas({ ...siteContent.serviceAreas, cities: siteContent.serviceAreas.cities.filter((_, itemIndex) => itemIndex !== index) })} aria-label={`Remove ${city || 'city'}`}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                  <button type="button" className={styles.secondaryAction} onClick={() => updateServiceAreas({ ...siteContent.serviceAreas, enabled: true, cities: [...siteContent.serviceAreas.cities, ''] })}>Add city</button>
+                </SectionCard>
+
+                <SectionCard title="Financing offer" description={'Reframe the price — show "Projects from $X/mo" so sticker shock doesn\'t kill the lead. Only appears once the monthly amount is set.'} evidence={'Sticker shock is a top silent reason a lead never calls — reframing price as "$X/mo" keeps them in the conversation.'} enabled={siteContent.financing.enabled} onToggleEnabled={(value) => updateFinancing({ ...siteContent.financing, enabled: value })} open={openSection === 'financing'} onToggleOpen={() => toggleSection('financing')}>
+                  <div className={styles.formColumns}>
+                    <label className={styles.formField}><span>From ($/month)</span><input type="number" min={0} step={1} value={monthlyFromInput} onChange={(event) => { const raw = event.target.value; setMonthlyFromInput(raw); if (raw !== '') updateFinancing({ ...siteContent.financing, monthlyFrom: Number(raw) }); }} onBlur={() => setMonthlyFromInput(String(siteContent.financing.monthlyFrom))} /></label>
+                    <label className={styles.formField}><span>Apply link (optional)</span><input type="url" value={siteContent.financing.applyUrl} onChange={(event) => updateFinancing({ ...siteContent.financing, applyUrl: event.target.value })} placeholder="https://..." /></label>
+                  </div>
+                  <label className={styles.formField}><span>Supporting line</span><input value={siteContent.financing.blurb} onChange={(event) => updateFinancing({ ...siteContent.financing, blurb: event.target.value })} placeholder="Flexible financing available on approved credit." /></label>
+                </SectionCard>
+
+                <div className={styles.cardGroupLabel}>Bars &amp; banners</div>
+
+                <SectionCard title="Announcement bar" description={'A strip across the top of your site for one timely line — e.g. "Now booking for August". You type the message, so it never invents urgency; it only appears once filled in.'} evidence={'Urgency converts — emergency-ready trades close highest (12–16%); a "same-day" or "now booking" line cuts hesitation.'} enabled={siteContent.announcement.enabled} onToggleEnabled={(value) => updateAnnouncement({ ...siteContent.announcement, enabled: value })} open={openSection === 'announcement'} onToggleOpen={() => toggleSection('announcement')}>
+                  <label className={styles.formField}><span>Message</span><input value={siteContent.announcement.message} maxLength={140} onChange={(event) => updateAnnouncement({ ...siteContent.announcement, message: event.target.value })} placeholder="Now booking August installs" /></label>
+                  <label className={styles.formField}><span>Second line (optional)</span><input value={siteContent.announcement.subtext} maxLength={140} onChange={(event) => updateAnnouncement({ ...siteContent.announcement, subtext: event.target.value })} placeholder="Same-day estimates · Licensed &amp; insured" /></label>
+                  {siteContent.announcement.enabled && !siteContent.announcement.message.trim() && <p className={styles.emptyHelper}>Add a message above for the bar to appear on your site.</p>}
+                </SectionCard>
+
+                <SectionCard title="Tap-to-call bar (mobile)" description="Pins a tap-to-call button to the bottom of every phone screen, so homeowners can reach you in one tap. Needs a phone number on the Business tab." evidence="For home services the phone closes 25–55× better than a form; a one-tap bar that follows the visitor keeps it in reach (sticky CTAs lift conversions 15–40%)." enabled={siteContent.stickyCallBar.enabled} onToggleEnabled={(value) => updateStickyCallBar({ ...siteContent.stickyCallBar, enabled: value })} open={openSection === 'stickyBar'} onToggleOpen={() => toggleSection('stickyBar')}>
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.stickyCallBar.showQuote} onChange={(event) => updateStickyCallBar({ ...siteContent.stickyCallBar, showQuote: event.target.checked })} /><span><strong>Add a &quot;Free quote&quot; button</strong><small>Adds a second button beside Call that jumps straight to your quote form.</small></span></label>
+                  {siteContent.stickyCallBar.enabled && !site.phone && <p className={styles.emptyHelper}>Add a phone number on the Business tab to make this bar appear.</p>}
                 </SectionCard>
               </div>
             )}
@@ -1298,13 +1323,14 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     {launchChecklist.map((item) => (
                       <li key={item.label} data-done={item.done ? 'true' : 'false'}>
                         <span className={styles.checklistMark} aria-hidden="true">{item.done ? '✓' : '○'}</span>
-                        <span>{item.label}</span>
-                        {!item.done && <small>{item.hint}</small>}
+                        {item.done
+                          ? <span>{item.label}</span>
+                          : <button type="button" className={styles.checklistGo} onClick={item.go}><span>{item.label}</span><small>{item.hint}</small></button>}
                       </li>
                     ))}
                   </ul>
                 </div>
-                <label className={styles.formField}><span>LGQ subdomain</span><div className={styles.domainControl}><input value={site.subdomain || ''} onChange={(event) => handleChange('subdomain', event.target.value.toLowerCase() || null)} placeholder="northline-builders" /><button type="button" onClick={checkSubdomain} disabled={isPending}>Check</button></div><small>{site.subdomain || 'your-business'}.{ROOT_DOMAIN}{subdomainStatus === 'available' ? ' - available' : subdomainStatus === 'taken' ? ' - unavailable' : ''}</small></label>
+                <label className={styles.formField}><span>LGQ subdomain</span><div className={styles.domainControl}><input id="pub-subdomain" value={site.subdomain || ''} onChange={(event) => handleChange('subdomain', event.target.value.toLowerCase() || null)} placeholder="northline-builders" /><button type="button" onClick={checkSubdomain} disabled={isPending}>Check</button></div><small>{site.subdomain || 'your-business'}.{ROOT_DOMAIN}{subdomainStatus === 'available' ? ' - available' : subdomainStatus === 'taken' ? ' - unavailable' : ''}</small></label>
                 <label className={styles.formField}><span>Custom domain</span><div className={styles.domainControl}><input value={site.custom_domain || ''} onChange={(event) => handleChange('custom_domain', event.target.value || null)} placeholder="www.yourbusiness.com" /><button type="button" onClick={verifyCustomDomain} disabled={isPending}>{domainStatus === 'checking' ? 'Checking...' : 'Verify DNS'}</button></div><small>{domainStatus === 'verified' ? 'Verified and connected.' : 'Add a CNAME record pointing to domains.letsgetquoted.com.'}</small></label>
                 <div className={styles.dnsCard}><strong>DNS setup</strong><p>For a subdomain such as www, create a CNAME record:</p><code>www &nbsp; CNAME &nbsp; domains.letsgetquoted.com</code><p>For a root domain, use your DNS provider&apos;s CNAME flattening or redirect the root to www.</p></div>
                 <p className={styles.movedNote}>Google title &amp; description moved to <strong>Business → How you show up on Google</strong>.</p>
