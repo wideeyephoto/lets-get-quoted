@@ -409,3 +409,20 @@
   .formSection .imageGrid { grid-template-columns: 1fr; }
   .previewStage { min-height: 560px; height: 70vh; padding: .4rem; }
 }
+/* --- Flagship AI suite: Smart Intake + Lead quality filters --- */
+/* Living gradient border: the card background is painted in padding-box and a
+   wide accent gradient in border-box slides underneath, so only the 1px border
+   animates. Declared after .sectionCardOpen so the treatment survives opening. */
+.sectionCardFeatured { border: 1px solid transparent; background: linear-gradient(#141f31, #141f31) padding-box, linear-gradient(115deg, #ff7a21, #ffd60a 28%, rgba(255,122,33,.28) 52%, #ff7a21 78%, #ffd60a) border-box; background-size: auto, 340% 100%; animation: aiBorderFlow 6.5s linear infinite, aiGlow 3.8s ease-in-out infinite; }
+.sectionCardFeatured.sectionCardOpen { background: linear-gradient(#182640, #182640) padding-box, linear-gradient(115deg, #ff7a21, #ffd60a 28%, rgba(255,122,33,.28) 52%, #ff7a21 78%, #ffd60a) border-box; background-size: auto, 340% 100%; }
+@keyframes aiBorderFlow { from { background-position: 0 0, 0% 0; } to { background-position: 0 0, 340% 0; } }
+@keyframes aiGlow { 0%, 100% { box-shadow: 0 0 20px -14px rgba(255,122,33,.5); } 50% { box-shadow: 0 0 30px -10px rgba(255,122,33,.75); } }
+/* Quiet accent membership border for the connected filters card. */
+.sectionCardLinked { border-color: rgba(255,122,33,.4); background: rgba(255,122,33,.045); }
+.sectionCardLinked.sectionCardOpen { border-color: rgba(255,122,33,.55); background: rgba(255,122,33,.07); }
+/* The visible spine tying the two cards together. */
+.aiSuite { display: grid; }
+.aiSuiteLink { position: relative; display: flex; justify-content: center; align-items: center; height: 34px; }
+.aiSuiteLink::before { content: ''; position: absolute; top: -2px; bottom: -2px; left: 50%; transform: translateX(-50%); width: 2px; background: linear-gradient(rgba(255,122,33,.8), rgba(255,122,33,.3)); }
+.aiSuiteLink span { position: relative; z-index: 1; padding: .2rem .65rem; border-radius: 999px; border: 1px solid rgba(255,122,33,.5); background: #141f31; color: #ffb27d; font-size: .66rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+@media (prefers-reduced-motion: reduce) { .sectionCardFeatured, .sectionCardFeatured.sectionCardOpen { animation: none; box-shadow: 0 0 20px -14px rgba(255,122,33,.5); } }

@@ -21,6 +21,9 @@ type SectionCardProps = {
   hintTone?: 'ok' | 'warn';
   open: boolean;
   onToggleOpen: () => void;
+  // 'featured' = the flagship treatment (animated accent border, glow);
+  // 'linked' = quiet accent border marking membership in a featured group.
+  variant?: 'featured' | 'linked';
   children?: ReactNode;
 };
 
@@ -28,11 +31,12 @@ type SectionCardProps = {
 // optional enable toggle + On/Off state, and a chevron; the configuration
 // collapses so the Design tab stays a short, scannable list instead of one long
 // scroll.
-export default function SectionCard({ title, description, evidence, enabled, onToggleEnabled, hint, hintTone, open, onToggleOpen, children }: SectionCardProps) {
+export default function SectionCard({ title, description, evidence, enabled, onToggleEnabled, hint, hintTone, open, onToggleOpen, variant, children }: SectionCardProps) {
   const hasSwitch = typeof enabled === 'boolean' && Boolean(onToggleEnabled);
+  const variantClass = variant === 'featured' ? ` ${styles.sectionCardFeatured}` : variant === 'linked' ? ` ${styles.sectionCardLinked}` : '';
 
   return (
-    <div className={`${styles.sectionCard}${open ? ` ${styles.sectionCardOpen}` : ''}`}>
+    <div className={`${styles.sectionCard}${open ? ` ${styles.sectionCardOpen}` : ''}${variantClass}`}>
       <div className={styles.sectionCardHead}>
         {hasSwitch && (
           <label className={styles.sectionCardSwitch}>
