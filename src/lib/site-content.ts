@@ -288,8 +288,11 @@ export function getEstimateButtonLabel(quoteForm: Pick<SiteQuoteFormContent, 'es
 
 // The smart-intake estimator: the AI scopes the described job and prices it
 // directly for the trade — there are no stored price bands to configure.
+// Phone is always the intake's required contact (the follow-up is a text or
+// call); `emailField` controls whether an email field appears alongside it.
 export type SiteEstimateRangesContent = {
   enabled: boolean;
+  emailField: 'off' | 'optional' | 'required';
 };
 
 export type NormalizedSiteContent = {
@@ -647,6 +650,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     },
     estimateRanges: {
       enabled: estimateRanges.enabled !== false,
+      emailField: estimateRanges.emailField === 'off' || estimateRanges.emailField === 'required' ? estimateRanges.emailField : 'optional',
     },
     trustBadges: {
       enabled: toBoolean(trustBadges.enabled),

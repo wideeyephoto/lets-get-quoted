@@ -36,6 +36,9 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   const emailRequired = quoteForm.emailRequired;
   const estimateLabel = getEstimateButtonLabel(quoteForm);
   const wizardEnabled = siteContent.estimateRanges.enabled;
+  // Owner-controlled email field on the AI intake ('off' | 'optional' |
+  // 'required') — phone is always the required contact there.
+  const wizardEmailField = siteContent.estimateRanges.emailField;
 
   const [step, setStep] = useState<'describe' | 'qa' | 'contact' | 'result'>(wizardEnabled ? 'describe' : 'contact');
 
@@ -175,8 +178,13 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
         setStatus({ tone: 'error', text: 'Enter a valid phone number so we can text or call you with your quote.' });
         return;
       }
-      if (emailRequired && !EMAIL_REGEX.test(email.trim())) {
+      const trimmedEmail = email.trim();
+      if (wizardEmailField === 'required' && !EMAIL_REGEX.test(trimmedEmail)) {
         setStatus({ tone: 'error', text: 'Enter a valid email address.' });
+        return;
+      }
+      if (wizardEmailField === 'optional' && trimmedEmail && !EMAIL_REGEX.test(trimmedEmail)) {
+        setStatus({ tone: 'error', text: 'That email address doesn’t look right — fix it or leave it blank.' });
         return;
       }
       setStatus(null);
@@ -334,8 +342,17 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
               onChange={(event) => setContact(event.target.value)}
             />
           </div>
-          {wizardEnabled && emailRequired && (
-            <input aria-label="Email" type="email" placeholder="Email" autoComplete="email" maxLength={160} required value={email} onChange={(event) => setEmail(event.target.value)} />
+          {wizardEnabled && wizardEmailField !== 'off' && (
+            <input
+              aria-label={wizardEmailField === 'required' ? 'Email' : 'Email (optional)'}
+              type="email"
+              placeholder={wizardEmailField === 'required' ? 'Email' : 'Email (optional)'}
+              autoComplete="email"
+              maxLength={160}
+              required={wizardEmailField === 'required'}
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+            />
           )}
           <div className={styles.heroFormPhotoRow}>
             <input
