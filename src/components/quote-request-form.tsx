@@ -229,7 +229,9 @@ function QuoteRequestFormFull({ site }: QuoteRequestFormProps) {
         <p className={styles.reassure}>Free &amp; no obligation — we reply within about an hour.</p>
       </div>
 
-      <label className={styles.honeypot} aria-hidden="true">Company<input name="company" tabIndex={-1} autoComplete="off" /></label>
+      {/* Honeypot: nonsense name on purpose — autofill fills "company" fields
+          and was silently flagging real visitors as bots. */}
+      <label className={styles.honeypot} aria-hidden="true">Leave this empty<input name="lgq_trap" tabIndex={-1} autoComplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" /></label>
       {isSubmitting && <div className={styles.progress}><progress value={progress} max="100" aria-label="Upload progress" /><span>{progress}%</span></div>}
 
       <div className={styles.stepNav}>

@@ -18,7 +18,11 @@ function text(data: FormData, key: string, maxLength: number) {
 
 export async function POST(request: NextRequest) {
   const data = await request.formData();
-  if (text(data, 'company', 100)) return NextResponse.json({ ok: true });
+  // Honeypot. NOTE: never name this field "company" (or anything else
+  // autofill recognizes) — browser autofill/password managers fill such
+  // fields and silently drop real visitors as "bots". The legacy 'company'
+  // field is deliberately IGNORED so stale pages don't keep losing leads.
+  if (text(data, 'lgq_trap', 100)) return NextResponse.json({ ok: true });
   const startedAt = Number(data.get('startedAt'));
   if (!Number.isFinite(startedAt) || Date.now() - startedAt < 1800) {
     return NextResponse.json({ error: 'Please take a moment to complete the form.' }, { status: 400 });

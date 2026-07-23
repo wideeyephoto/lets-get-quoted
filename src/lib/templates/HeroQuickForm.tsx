@@ -358,7 +358,9 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
       onSubmit={step === 'describe' ? handleDescribeContinue : step === 'qa' ? handleChatAnswerSubmit : step === 'contact' ? handleContactSubmit : (event) => event.preventDefault()}
       data-edit={wizardEnabled ? 'estimate' : 'quoteForm'}
     >
-      <label className={styles.heroFormHoneypot} aria-hidden="true">Company<input name="company" tabIndex={-1} autoComplete="off" /></label>
+      {/* Honeypot: the nonsense name matters — autofill/password managers fill
+          fields named "company", silently flagging real visitors as bots. */}
+      <label className={styles.heroFormHoneypot} aria-hidden="true">Leave this empty<input name="lgq_trap" tabIndex={-1} autoComplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" /></label>
 
       {bookedNote && step !== 'result' && <p className={styles.heroFormBooked}>{bookedNote}</p>}
 
