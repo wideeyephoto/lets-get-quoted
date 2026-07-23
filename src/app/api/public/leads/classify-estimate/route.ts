@@ -112,7 +112,8 @@ export async function POST(request: NextRequest) {
     ' ' +
     'Respond with strict JSON only, no other text. ' +
     askingRules +
-    '{"type":"estimate","min":<number>,"max":<number>,"in_area":true|false|null,"excluded":true|false} — min/max is a realistic pre-visit price range in whole US dollars for THIS SPECIFIC JOB as this trade would actually charge for it in the US today, including typical labor and materials. ' +
+    '{"type":"estimate","min":<number>,"max":<number>,"basis":"<short>","in_area":true|false|null,"excluded":true|false} — min/max is a realistic pre-visit price range in whole US dollars for THIS SPECIFIC JOB as this trade would actually charge for it in the US today, including typical labor and materials. ' +
+    'basis: a short plain-language phrase naming what you priced, under 60 characters, starting lowercase, no price in it (e.g. "a standard running-toilet repair", "a deep clean of a 2-bed home"). ' +
     'in_area: false ONLY when the visitor\'s stated location is clearly outside the served areas listed; true when it clearly matches or neighbors them; null when no location was given or you are unsure. ' +
     'excluded: true ONLY when the described work clearly matches something the business does NOT take on; otherwise false. Never refuse to estimate — always include min/max regardless of these two fields. ' +
     'Price the described job itself, not a generic project category: cleaning one 150 sq ft room is a low-cost routine service call, not a renovation. ' +
@@ -190,7 +191,8 @@ export async function POST(request: NextRequest) {
       excluded: parsed.excluded === true,
     };
     if (band) {
-      return NextResponse.json({ type: 'estimate', ...band, ...fit });
+      const basis = typeof parsed.basis === 'string' ? parsed.basis.trim().slice(0, 60) : '';
+      return NextResponse.json({ type: 'estimate', ...band, ...(basis ? { basis } : {}), ...fit });
     }
     return NextResponse.json({ ...fallback(), ...fit });
   } catch (error) {

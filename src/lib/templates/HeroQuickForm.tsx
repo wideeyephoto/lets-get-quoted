@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { compressImage } from '@/lib/client-images';
 import { normalizeUsPhone } from '@/lib/phone';
-import { DEFAULT_FULLY_BOOKED_MESSAGE, getEstimateButtonLabel, getSiteContent, isFullyBookedActive } from '@/lib/site-content';
+import { DEFAULT_FULLY_BOOKED_MESSAGE, getEstimateButtonLabel, getPublishedRatingBadge, getSiteContent, isFullyBookedActive } from '@/lib/site-content';
 import type { Site } from '@/lib/sites';
 import styles from './themes.module.css';
 
@@ -24,7 +24,7 @@ function formatReplyTime(ms: number): string {
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_PHOTOS = 6;
 
-type EstimateRange = { min: number; max: number };
+type EstimateRange = { min: number; max: number; basis?: string };
 
 function formatCurrency(value: number): string {
   return `$${value.toLocaleString('en-US')}`;
@@ -58,6 +58,11 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   // Real, earned response-time stat (absent = no honest claim to make).
   const avgReplyMs = typeof site.avg_response_ms === 'number' && site.avg_response_ms > 0 ? site.avg_response_ms : null;
   const replyPromise = avgReplyMs ? `typically replies within ${formatReplyTime(avgReplyMs)}` : 'we reply within about an hour';
+
+  // Star rating for the result screen — the owner's published rating badge
+  // (enabled + real review count), the same source SiteProofStrip uses.
+  const ratingBadge = getPublishedRatingBadge(site.content);
+  const ratingStars = ratingBadge ? Math.round(ratingBadge.rating) : 0;
 
   // Trade-specific example text: real service names beat generic cross-trade
   // examples ("AC repair, deep clean, fence installation") that read wrong on
@@ -164,7 +169,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
     setSelectedPhotos((current) => current.filter((_, photoIndex) => photoIndex !== index));
   }
 
-  function applyChatResult(result: { type?: string; question?: string; responseId?: string; min?: number; max?: number; inArea?: boolean | null; excluded?: boolean } | null) {
+  function applyChatResult(result: { type?: string; question?: string; responseId?: string; min?: number; max?: number; basis?: string; inArea?: boolean | null; excluded?: boolean } | null) {
     if (result?.type === 'question' && result.question) {
       setChatQuestion(result.question);
       setChatResponseId(result.responseId ?? '');
@@ -175,7 +180,8 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
     }
     const min = Number(result?.min);
     const max = Number(result?.max);
-    setEstimate(Number.isFinite(min) && Number.isFinite(max) && min > 0 && min < max ? { min: Math.round(min), max: Math.round(max) } : null);
+    const basis = typeof result?.basis === 'string' ? result.basis.trim().slice(0, 60) : '';
+    setEstimate(Number.isFinite(min) && Number.isFinite(max) && min > 0 && min < max ? { min: Math.round(min), max: Math.round(max), ...(basis ? { basis } : {}) } : null);
     setFit({ inArea: result?.inArea === true ? true : result?.inArea === false ? false : null, excluded: result?.excluded === true });
     setStep('contact');
   }
@@ -583,7 +589,19 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
             <p className={styles.heroFormResult}>{formatCurrency(estimate.min)} – {formatCurrency(estimate.max)}</p>
             <span className={styles.heroFormResultBadge}>✓ Request sent</span>
           </div>
-          <p className={styles.heroFormNote}>This is a rough estimate, not a final quote — one of our experts will reach out by <strong>{contactPref === 'text' ? 'text' : 'text or phone call'} within the next few hours</strong> to confirm exact pricing or schedule a free in-person estimate for your project.</p>
+          <p className={styles.heroFormBasis}>{estimate.basis ? `Based on ${estimate.basis}. ` : ''}A rough estimate, not a final quote.</p>
+          {ratingBadge && (
+            <div className={styles.heroFormResultRating}>
+              <span className={styles.heroFormResultStars} aria-hidden="true">{'★'.repeat(ratingStars)}{'☆'.repeat(5 - ratingStars)}</span>
+              <strong>{ratingBadge.rating.toFixed(1)}</strong>
+              <span>· {ratingBadge.reviewCount} {ratingBadge.sourceLabel}</span>
+            </div>
+          )}
+          <ol className={styles.heroFormSteps}>
+            <li><strong>Request sent</strong><span>We got your details.</span></li>
+            <li><strong>We {contactPref === 'text' ? 'text' : 'reach'} you</strong><span>Within a few hours to confirm exact pricing.</span></li>
+            <li><strong>Book your job</strong><span>Or a free in-person estimate — your call.</span></li>
+          </ol>
           {site.phone && <a className={styles.heroFormCall} href={`tel:${site.phone}`}>Call now to lock it in</a>}
         </div>
       )}
