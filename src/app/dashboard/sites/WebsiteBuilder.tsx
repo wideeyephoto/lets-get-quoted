@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, REORDERABLE_SECTIONS, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, slugifyBlogTitle, type NormalizedSiteContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteWorkGalleryContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, REORDERABLE_SECTIONS, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, slugifyBlogTitle, type NormalizedSiteContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteWorkGalleryContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
@@ -886,6 +886,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     updateSiteContent({ estimateRanges });
   }, [updateSiteContent]);
 
+  const updateLeadFilters = useCallback((leadFilters: SiteLeadFiltersContent) => {
+    updateSiteContent({ leadFilters });
+  }, [updateSiteContent]);
+
   const loadJobPhotoOptions = useCallback(() => {
     startTransition(async () => {
       try {
@@ -1374,6 +1378,29 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
                 <SectionCard title="Smart Intake with Instant Estimates via AI (Recommended)" description="Gives visitors an automatic ballpark price, no waiting — our AI asks a couple of questions to scope the job, then prices it for your trade and shows a realistic $ range. Every request still reaches you as a lead, with the shown range included." evidence="Instant online estimates capture 2–3× more leads than a plain contact form — most homeowners are price-shopping, and the ones who see a number stop searching. Answering while they're still on the page beats a next-day callback every time." enabled={siteContent.estimateRanges.enabled} onToggleEnabled={(value) => updateEstimateRanges({ ...siteContent.estimateRanges, enabled: value })} open={openSection === 'estimate'} onToggleOpen={() => toggleSection('estimate')}>
                   <label className={styles.formField}><span>Email on the AI intake</span><select value={siteContent.estimateRanges.emailField} onChange={(event) => updateEstimateRanges({ ...siteContent.estimateRanges, emailField: event.target.value as SiteEstimateRangesContent['emailField'] })}><option value="optional">Optional — ask, but don&apos;t require it</option><option value="required">Required</option><option value="off">Don&apos;t ask for email</option></select><small>A phone number is always required here — the follow-up promised to visitors is a text or call.</small></label>
+                </SectionCard>
+
+                <SectionCard title="Lead quality filters" description="Prune time-wasting requests before they reach your phone: flag out-of-area and too-small jobs, catch work you don't do, and sort 'just researching' to the bottom. Flagged leads still come in — they're just marked and ranked low, never lost." open={openSection === 'leadFilters'} onToggleOpen={() => toggleSection('leadFilters')}>
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.leadFilters.askTimeline} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, askTimeline: event.target.checked })} /><span><strong>Ask &quot;when do you need this done?&quot;</strong><small>ASAP jobs rank Hot; &quot;just researching&quot; sinks to the bottom of your leads.</small></span></label>
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.leadFilters.serviceAreaGate} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, serviceAreaGate: event.target.checked })} /><span><strong>Check the visitor&apos;s service area</strong><small>Asks for their ZIP or town and flags leads outside your &quot;Cities you serve&quot; list.{siteContent.serviceAreas.cities.filter((city) => city.trim()).length === 0 ? ' Add cities to that section to activate this.' : ''}</small></span></label>
+                  <label className={styles.formField}><span>Minimum job size ($ — 0 for none)</span><input type="number" min={0} value={siteContent.leadFilters.minJobAmount} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, minJobAmount: Math.max(0, Math.round(Number(event.target.value) || 0)) })} /><small>Estimates that top out below this get flagged &quot;Below minimum&quot;.</small></label>
+                  <div className={styles.contentSubhead}><strong>Jobs you don&apos;t take on</strong><small>the AI flags matching requests</small></div>
+                  <div className={styles.badgeList}>
+                    {siteContent.leadFilters.exclusions.map((item, index) => (
+                      <div className={styles.badgeRow} key={index}>
+                        <input className={styles.badgeInput} value={item} maxLength={80} aria-label={`Exclusion ${index + 1}`} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, exclusions: siteContent.leadFilters.exclusions.map((other, otherIndex) => otherIndex === index ? event.target.value : other) })} placeholder="e.g. mobile homes, window AC units" />
+                        <button type="button" className={styles.badgeRemove} onClick={() => updateLeadFilters({ ...siteContent.leadFilters, exclusions: siteContent.leadFilters.exclusions.filter((_, otherIndex) => otherIndex !== index) })} aria-label={`Remove ${item || 'exclusion'}`}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                  {siteContent.leadFilters.exclusions.length < 10 && <button type="button" className={styles.secondaryAction} onClick={() => updateLeadFilters({ ...siteContent.leadFilters, exclusions: [...siteContent.leadFilters.exclusions, ''] })}>Add exclusion</button>}
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.leadFilters.fullyBooked.enabled} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, fullyBooked: { ...siteContent.leadFilters.fullyBooked, enabled: event.target.checked } })} /><span><strong>Fully booked mode</strong><small>Tells visitors up front that you&apos;re booked — leads still collect, expectations set.</small></span></label>
+                  {siteContent.leadFilters.fullyBooked.enabled && (
+                    <div className={styles.formColumns}>
+                      <label className={styles.formField}><span>Booked until (optional)</span><input type="date" value={siteContent.leadFilters.fullyBooked.until} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, fullyBooked: { ...siteContent.leadFilters.fullyBooked, until: event.target.value } })} /></label>
+                      <label className={styles.formField}><span>Message (optional)</span><input maxLength={140} value={siteContent.leadFilters.fullyBooked.message} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, fullyBooked: { ...siteContent.leadFilters.fullyBooked, message: event.target.value } })} placeholder="We're currently booked up — send your request and we'll reach out as soon as a spot opens." /></label>
+                    </div>
+                  )}
                 </SectionCard>
 
                 <div className={styles.cardGroupLabel}>Main sections</div>

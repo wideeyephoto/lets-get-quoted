@@ -295,12 +295,34 @@ export type SiteEstimateRangesContent = {
   emailField: 'off' | 'optional' | 'required';
 };
 
+// Owner controls that prune low-quality website leads before they cost time.
+// Gates run on the AI intake; flags land on the lead's triage record so the
+// dashboard can sort junk down instead of hiding it entirely.
+export type SiteLeadFiltersContent = {
+  // Ask visitors for their ZIP/town (only when "Cities you serve" has
+  // entries) and flag leads that look outside the service area.
+  serviceAreaGate: boolean;
+  // 0 = no minimum. Estimates whose top end lands below this get flagged.
+  minJobAmount: number;
+  // Work the business does NOT take on (≤10 short phrases).
+  exclusions: string[];
+  // Ask "when do you need this done?" — "just researching" sorts low.
+  askTimeline: boolean;
+  // Capacity mode: keep collecting leads but set expectations up front.
+  fullyBooked: { enabled: boolean; until: string; message: string };
+  // Text a one-time code to verify the phone before the intake submits.
+  phoneVerification: boolean;
+};
+
+export const DEFAULT_FULLY_BOOKED_MESSAGE = 'We’re currently booked up — send your request and we’ll reach out as soon as a spot opens.';
+
 export type NormalizedSiteContent = {
   showcase: SiteShowcaseContent;
   faqs: SiteFaqContent;
   testimonials: SiteTestimonialsContent;
   quoteForm: SiteQuoteFormContent;
   estimateRanges: SiteEstimateRangesContent;
+  leadFilters: SiteLeadFiltersContent;
   stickyCallBar: SiteStickyCallBarContent;
   ratingBadge: SiteRatingBadgeContent;
   trustBadges: SiteTrustBadgesContent;
@@ -482,9 +504,9 @@ function parseTrustBadges(value: unknown): SiteTrustBadgeItem[] {
   }));
 }
 
-function parseWhyPoints(value: unknown): string[] {
+function parseWhyPoints(value: unknown, max = 6): string[] {
   if (!Array.isArray(value)) return [];
-  return value.map((item) => toString(item).slice(0, 80)).slice(0, 6);
+  return value.map((item) => toString(item).slice(0, 80)).slice(0, max);
 }
 
 function parseCities(value: unknown): string[] {
@@ -589,6 +611,8 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const testimonials = isRecord(root.testimonials) ? root.testimonials : {};
   const quoteForm = isRecord(root.quoteForm) ? root.quoteForm : {};
   const estimateRanges = isRecord(root.estimateRanges) ? root.estimateRanges : {};
+  const leadFilters = isRecord(root.leadFilters) ? root.leadFilters : {};
+  const fullyBooked = isRecord(leadFilters.fullyBooked) ? leadFilters.fullyBooked : {};
   const stickyCallBar = isRecord(root.stickyCallBar) ? root.stickyCallBar : {};
   const ratingBadge = isRecord(root.ratingBadge) ? root.ratingBadge : {};
   const trustBadges = isRecord(root.trustBadges) ? root.trustBadges : {};
@@ -651,6 +675,18 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     estimateRanges: {
       enabled: estimateRanges.enabled !== false,
       emailField: estimateRanges.emailField === 'off' || estimateRanges.emailField === 'required' ? estimateRanges.emailField : 'optional',
+    },
+    leadFilters: {
+      serviceAreaGate: leadFilters.serviceAreaGate !== false,
+      minJobAmount: Math.max(0, Math.round(toPositiveNumber(leadFilters.minJobAmount, 0))),
+      exclusions: parseWhyPoints(leadFilters.exclusions, 10),
+      askTimeline: leadFilters.askTimeline !== false,
+      fullyBooked: {
+        enabled: toBoolean(fullyBooked.enabled),
+        until: /^\d{4}-\d{2}-\d{2}$/.test(toString(fullyBooked.until)) ? toString(fullyBooked.until) : '',
+        message: toString(fullyBooked.message).slice(0, 140),
+      },
+      phoneVerification: toBoolean(leadFilters.phoneVerification),
     },
     trustBadges: {
       enabled: toBoolean(trustBadges.enabled),

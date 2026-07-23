@@ -4,6 +4,57 @@ import { createJob, deleteJob, type Job } from '@/lib/jobs';
 export type LeadSource = 'website_form' | 'missed_call' | 'manual' | 'referral';
 export type LeadStatus = 'new' | 'contacted' | 'quoted' | 'won' | 'lost';
 
+export type LeadScore = 'hot' | 'warm' | 'low';
+
+// Lead-quality record written at intake (flags + score) and edited by the
+// owner's triage actions (snooze / archive / decline). Stored in leads.triage.
+export type LeadTriage = {
+  score: LeadScore;
+  // 'out_of_area' | 'excluded_work' | 'below_minimum' | 'just_researching'
+  // | 'while_booked' | 'repeat' | 'phone_verified'
+  flags: string[];
+  timeline?: string;
+  location?: string;
+  estimate?: { min: number; max: number } | null;
+  snoozedUntil?: string | null;
+  archived?: boolean;
+  declinedReason?: string | null;
+};
+
+export const LEAD_PRUNE_FLAGS = new Set(['out_of_area', 'excluded_work', 'below_minimum', 'just_researching']);
+
+export const LEAD_FLAG_LABELS: Record<string, string> = {
+  out_of_area: 'Out of area',
+  excluded_work: "Work they don't do",
+  below_minimum: 'Below minimum',
+  just_researching: 'Just researching',
+  while_booked: 'Came in while booked',
+  repeat: 'Repeat request',
+  phone_verified: 'Phone verified',
+};
+
+export function getLeadTriage(lead: Pick<Lead, 'triage'>): LeadTriage {
+  const triage = lead.triage;
+  if (!triage || typeof triage !== 'object') return { score: 'warm', flags: [] };
+  return {
+    score: triage.score === 'hot' || triage.score === 'low' ? triage.score : 'warm',
+    flags: Array.isArray(triage.flags) ? triage.flags.filter((flag): flag is string => typeof flag === 'string') : [],
+    timeline: typeof triage.timeline === 'string' ? triage.timeline : undefined,
+    location: typeof triage.location === 'string' ? triage.location : undefined,
+    estimate: triage.estimate && typeof triage.estimate === 'object' ? triage.estimate : null,
+    snoozedUntil: typeof triage.snoozedUntil === 'string' ? triage.snoozedUntil : null,
+    archived: triage.archived === true,
+    declinedReason: typeof triage.declinedReason === 'string' ? triage.declinedReason : null,
+  };
+}
+
+// True while a snooze is active (snoozed leads collapse out of the board).
+export function isLeadSnoozed(triage: LeadTriage, now = new Date()): boolean {
+  if (!triage.snoozedUntil) return false;
+  const until = new Date(triage.snoozedUntil).getTime();
+  return Number.isFinite(until) && until > now.getTime();
+}
+
 export type LeadQuoteVisit = {
   scheduledFor: string;
   scheduledTime: string;
@@ -29,6 +80,7 @@ export type Lead = {
   photo_paths: string[];
   source_page: string | null;
   converted_job: string | null;
+  triage: LeadTriage | null;
   updated_at: string;
   created_at: string;
 };
@@ -44,6 +96,7 @@ export type LeadInput = {
   message?: string | null;
   photoPaths?: string[];
   sourcePage?: string | null;
+  triage?: LeadTriage | null;
 };
 
 export function formatLeadSource(source: LeadSource): string {
@@ -109,6 +162,7 @@ export async function createLead(
       message: input.message?.trim() || null,
       photo_paths: input.photoPaths ?? [],
       source_page: input.sourcePage?.trim() || null,
+      triage: input.triage ?? null,
     })
     .select('*')
     .single();

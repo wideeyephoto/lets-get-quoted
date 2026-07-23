@@ -549,6 +549,25 @@ alter table leads add column if not exists quote_visit jsonb;
 alter table leads add column if not exists photo_paths jsonb not null default '[]'::jsonb;
 alter table leads add column if not exists source_page text;
 alter table leads add column if not exists updated_at timestamptz not null default now();
+-- Lead triage (2026-07-23): AI/rule scoring + prune flags + snooze/archive.
+-- { score: 'hot'|'warm'|'low', flags: string[], timeline, location,
+--   estimate: {min,max}|null, phoneVerified, snoozedUntil, archived, declinedReason }
+alter table leads add column if not exists triage jsonb;
+
+-- Contacts an owner has blocked from submitting new website leads. Matching
+-- submissions are silently dropped (the visitor still sees success).
+create table if not exists lead_blocklist (
+  id           uuid primary key default gen_random_uuid(),
+  account_id   uuid not null references accounts(id) on delete cascade,
+  phone        text,
+  email        text,
+  reason       text,
+  created_at   timestamptz not null default now()
+);
+alter table lead_blocklist enable row level security;
+drop policy if exists lead_blocklist_all on lead_blocklist;
+create policy lead_blocklist_all on lead_blocklist for all using ( is_member(account_id) );
+create index if not exists lead_blocklist_account_idx on lead_blocklist (account_id, created_at desc);
 
 -- ----------------------------------------------------------------------------
 -- HELPFUL VIEW  — per-job margin, computed (never stored).

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { compressImage } from '@/lib/client-images';
 import { normalizeUsPhone } from '@/lib/phone';
-import { getEstimateButtonLabel, getSiteContent } from '@/lib/site-content';
+import { DEFAULT_FULLY_BOOKED_MESSAGE, getEstimateButtonLabel, getSiteContent } from '@/lib/site-content';
 import type { Site } from '@/lib/sites';
 import styles from './themes.module.css';
 
@@ -39,6 +39,16 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   // Owner-controlled email field on the AI intake ('off' | 'optional' |
   // 'required') — phone is always the required contact there.
   const wizardEmailField = siteContent.estimateRanges.emailField;
+  // Lead-quality gates (see SiteLeadFiltersContent): timeline question,
+  // service-area question (only when the owner listed cities), minimum job
+  // note, and fully-booked capacity banner. Gates flag, never block.
+  const leadFilters = siteContent.leadFilters;
+  const askTimeline = wizardEnabled && leadFilters.askTimeline;
+  const askLocation = wizardEnabled && leadFilters.serviceAreaGate && siteContent.serviceAreas.cities.some((city) => city.trim());
+  const bookedUntil = leadFilters.fullyBooked.until ? new Date(`${leadFilters.fullyBooked.until}T00:00:00`) : null;
+  const bookedNote = leadFilters.fullyBooked.enabled
+    ? `${leadFilters.fullyBooked.message || DEFAULT_FULLY_BOOKED_MESSAGE}${bookedUntil && !Number.isNaN(bookedUntil.getTime()) ? ` (booked through ${bookedUntil.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})` : ''}`
+    : '';
 
   const [step, setStep] = useState<'describe' | 'qa' | 'contact' | 'result'>(wizardEnabled ? 'describe' : 'contact');
 
@@ -67,6 +77,11 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   // The AI-priced range for the described job; null when the AI couldn't
   // price it (the lead still submits, just without a shown number).
   const [estimate, setEstimate] = useState<EstimateRange | null>(null);
+  const [timeline, setTimeline] = useState<'asap' | 'month' | 'researching'>('asap');
+  const [location, setLocation] = useState('');
+  // Soft fit signals from the AI (out-of-area / excluded work) — shown as
+  // notes and passed along as lead flags, never used to block submission.
+  const [fit, setFit] = useState<{ inArea: boolean | null; excluded: boolean }>({ inArea: null, excluded: false });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isClassifying, setIsClassifying] = useState(false);
   const [status, setStatus] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
@@ -87,7 +102,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
     setSelectedPhotos((current) => current.filter((_, photoIndex) => photoIndex !== index));
   }
 
-  function applyChatResult(result: { type?: string; question?: string; responseId?: string; min?: number; max?: number } | null) {
+  function applyChatResult(result: { type?: string; question?: string; responseId?: string; min?: number; max?: number; inArea?: boolean | null; excluded?: boolean } | null) {
     if (result?.type === 'question' && result.question) {
       setChatQuestion(result.question);
       setChatResponseId(result.responseId ?? '');
@@ -99,6 +114,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
     const min = Number(result?.min);
     const max = Number(result?.max);
     setEstimate(Number.isFinite(min) && Number.isFinite(max) && min > 0 && min < max ? { min: Math.round(min), max: Math.round(max) } : null);
+    setFit({ inArea: result?.inArea === true ? true : result?.inArea === false ? false : null, excluded: result?.excluded === true });
     setStep('contact');
   }
 
@@ -107,6 +123,10 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
     const trimmedDescription = description.trim();
     if (!trimmedDescription) {
       setStatus({ tone: 'error', text: "Tell us what you need done." });
+      return;
+    }
+    if (askLocation && !location.trim()) {
+      setStatus({ tone: 'error', text: 'Add your ZIP code or town so we can confirm we serve your area.' });
       return;
     }
     setStatus(null);
@@ -122,6 +142,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
           businessName: site.company_name,
           businessSummary: site.tagline || site.headline || '',
           serviceArea: site.service_area || '',
+          location: location.trim(),
         }),
       });
       const result = await response.json().catch(() => null);
@@ -162,6 +183,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
     setChatResponseId('');
     setChatTurn(0);
     setEstimate(null);
+    setFit({ inArea: null, excluded: false });
     setStatus(null);
     setStep('describe');
   }
@@ -226,11 +248,24 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
       }
 
       if (details) {
-        const summary = estimate
-          ? `AI estimate shown to the customer: ${formatCurrency(estimate.min)}-${formatCurrency(estimate.max)}.`
-          : 'AI estimate was unavailable — no price range was shown; needs a manual quote.';
+        const timelineLabel = timeline === 'asap' ? 'Needed ASAP' : timeline === 'month' ? 'In the next month' : 'Just researching prices';
+        const parts = [
+          estimate
+            ? `AI estimate shown to the customer: ${formatCurrency(estimate.min)}-${formatCurrency(estimate.max)}.`
+            : 'AI estimate was unavailable — no price range was shown; needs a manual quote.',
+          askTimeline ? `Timing: ${timelineLabel}.` : '',
+          location.trim() ? `Location given: ${location.trim()}.` : '',
+        ].filter(Boolean);
         const trimmedDescription = details.description.trim();
-        data.set('message', trimmedDescription ? `${trimmedDescription}\n\n${summary}` : summary);
+        data.set('message', trimmedDescription ? `${trimmedDescription}\n\n${parts.join(' ')}` : parts.join(' '));
+        data.set('timeline', timeline);
+        if (location.trim()) data.set('location', location.trim());
+        if (estimate) {
+          data.set('estimateMin', String(estimate.min));
+          data.set('estimateMax', String(estimate.max));
+        }
+        if (fit.inArea !== null) data.set('inArea', String(fit.inArea));
+        if (fit.excluded) data.set('excluded', 'true');
       }
 
       data.delete('photos');
@@ -278,6 +313,8 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
     >
       <label className={styles.heroFormHoneypot} aria-hidden="true">Company<input name="company" tabIndex={-1} autoComplete="off" /></label>
 
+      {bookedNote && step !== 'result' && <p className={styles.heroFormBooked}>{bookedNote}</p>}
+
       {wizardEnabled && (
         <div className={styles.heroFormProgress} aria-hidden="true">
           {[0, 1, 2].map((index) => <span key={index} data-active={index <= Math.min(stepIndex, 2)} />)}
@@ -303,6 +340,16 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
               }
             }}
           />
+          {askTimeline && (
+            <select aria-label="When do you need this done?" value={timeline} onChange={(event) => setTimeline(event.target.value as 'asap' | 'month' | 'researching')}>
+              <option value="asap">Needed ASAP</option>
+              <option value="month">In the next month</option>
+              <option value="researching">Just researching prices</option>
+            </select>
+          )}
+          {askLocation && (
+            <input aria-label="Your ZIP code or town" placeholder="Your ZIP code or town" maxLength={80} required value={location} onChange={(event) => setLocation(event.target.value)} />
+          )}
           <button type="submit" disabled={isClassifying}>{isClassifying ? thinking : 'Continue'}</button>
         </div>
       )}
@@ -379,6 +426,14 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
               </div>
             )}
           </div>
+          {wizardEnabled && (() => {
+            const notes = [
+              fit.inArea === false ? 'your location may be outside our usual service area' : '',
+              fit.excluded ? "this may be a type of job we don't take on" : '',
+              estimate && leadFilters.minJobAmount > 0 && estimate.max < leadFilters.minJobAmount ? `our minimum job size is ${formatCurrency(leadFilters.minJobAmount)}` : '',
+            ].filter(Boolean);
+            return notes.length ? <p className={styles.heroFormFitNote}>Heads up: {notes.join('; ')} — send your request and we&apos;ll confirm when we reach out.</p> : null;
+          })()}
           <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Sending...' : wizardEnabled && estimate ? 'See My Free Estimate' : 'Get My Free Estimate'}</button>
           {site.phone && <a className={styles.heroFormOrCall} href={`tel:${site.phone}`}>or call <strong>{site.phone}</strong> — free quote</a>}
           {wizardEnabled && <button type="button" className={styles.heroFormRestart} onClick={restartWizard}>← Start over</button>}

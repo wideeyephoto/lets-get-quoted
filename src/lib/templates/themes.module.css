@@ -36,6 +36,11 @@
 .heroQuickFormRow { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
 .heroFormChipRow { display: flex; gap: .4rem; }
 .heroQuickForm input { width: 100%; min-height: 44px; padding: .6rem .7rem; border: 1px solid #d8d3c6; border-radius: calc(var(--theme-radius, 8px) * .6); font-size: .84rem; color: #17140f; background: #fff; font-family: inherit; }
+.heroQuickForm select { width: 100%; min-height: 44px; padding: .6rem .7rem; border: 1px solid #d8d3c6; border-radius: calc(var(--theme-radius, 8px) * .6); font-size: .84rem; color: #17140f; background: #fff; font-family: inherit; }
+/* Capacity note (fully-booked mode) + soft fit warnings (out of area, below
+   minimum, excluded work) — literal inks: the card is always white. */
+.heroFormBooked { margin: 0; padding: .5rem .7rem; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--theme-accent) 45%, #d8d3c6); background: color-mix(in srgb, var(--theme-accent) 12%, #fff); color: #17140f; font-size: .78rem; line-height: 1.45; }
+.heroFormFitNote { margin: 0; padding: .45rem .65rem; border-radius: 8px; background: #fdf6e3; border: 1px solid #ecd9a0; color: #7a5f17; font-size: .76rem; line-height: 1.45; }
 .heroQuickForm textarea { width: 100%; padding: .6rem .7rem; border: 1px solid #d8d3c6; border-radius: calc(var(--theme-radius, 8px) * .6); font-size: .84rem; color: #17140f; background: #fff; font-family: inherit; resize: vertical; min-height: 3.6rem; }
 .heroQuickForm button { margin-top: .1rem; min-height: 48px; padding: .75rem; border: 0; border-radius: calc(var(--theme-radius, 8px) * .6); background: var(--theme-accent); color: #111; font-weight: 800; font-size: .82rem; cursor: pointer; }
 .heroQuickForm button:disabled { opacity: .6; cursor: progress; }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
 import { sendLeadNotificationEmail } from '@/lib/email';
-import { createLead } from '@/lib/leads';
+import { createLead, getLeadTriage, LEAD_PRUNE_FLAGS, type LeadTriage } from '@/lib/leads';
 import { deleteLeadPhotos, uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
 import { getSiteContent } from '@/lib/site-content';
@@ -46,12 +46,88 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
   if (!site) return NextResponse.json({ error: 'This website is not accepting requests.' }, { status: 404 });
 
-  const quoteForm = getSiteContent(site.content).quoteForm;
+  const siteContent = getSiteContent(site.content);
+  const quoteForm = siteContent.quoteForm;
   if (quoteForm.emailRequired && !email) {
     return NextResponse.json({ error: 'Add your email address so the contractor can follow up.' }, { status: 400 });
   }
   if (!phone && !email) {
     return NextResponse.json({ error: 'Add a valid phone number or email so the contractor can follow up.' }, { status: 400 });
+  }
+
+  const normalizedPhone = phone ? normalizeUsPhone(phone) : null;
+
+  // Blocked contacts are silently dropped — the visitor sees success, the
+  // owner's inbox stays clean, and the blocked party learns nothing.
+  if (normalizedPhone || email) {
+    const conditions = [
+      ...(normalizedPhone ? [`phone.eq.${normalizedPhone}`] : []),
+      ...(email ? [`email.eq.${email}`] : []),
+    ].join(',');
+    const { data: blocked } = await admin
+      .from('lead_blocklist')
+      .select('id')
+      .eq('account_id', site.account_id)
+      .or(conditions)
+      .limit(1);
+    if (blocked && blocked.length > 0) return NextResponse.json({ ok: true });
+  }
+
+  // Lead-quality flags + score, computed server-side from the owner's filters
+  // and what the intake learned. Flags demote; they never reject.
+  const filters = siteContent.leadFilters;
+  const timeline = text(data, 'timeline', 20);
+  const location = text(data, 'location', 120);
+  const estimateMin = Math.round(Number(data.get('estimateMin')));
+  const estimateMax = Math.round(Number(data.get('estimateMax')));
+  const estimate = Number.isFinite(estimateMin) && Number.isFinite(estimateMax) && estimateMin > 0 && estimateMin < estimateMax
+    ? { min: estimateMin, max: estimateMax }
+    : null;
+  const flags: string[] = [];
+  if (text(data, 'inArea', 8) === 'false') flags.push('out_of_area');
+  if (text(data, 'excluded', 8) === 'true') flags.push('excluded_work');
+  if (filters.minJobAmount > 0 && estimate && estimate.max < filters.minJobAmount) flags.push('below_minimum');
+  if (timeline === 'researching') flags.push('just_researching');
+  if (filters.fullyBooked.enabled) flags.push('while_booked');
+
+  const hasPruneFlag = flags.some((flag) => LEAD_PRUNE_FLAGS.has(flag));
+  const triage: LeadTriage = {
+    score: hasPruneFlag ? 'low' : normalizedPhone && estimate ? 'hot' : 'warm',
+    flags,
+    ...(timeline ? { timeline } : {}),
+    ...(location ? { location } : {}),
+    estimate,
+  };
+
+  // Repeat submitter with an open lead? Merge into it instead of stacking a
+  // duplicate card on the board.
+  if (normalizedPhone || email) {
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: recent } = await admin
+      .from('leads')
+      .select('id, phone, email, message, triage')
+      .eq('account_id', site.account_id)
+      .in('status', ['new', 'contacted', 'quoted'])
+      .gte('created_at', cutoff)
+      .order('created_at', { ascending: false })
+      .limit(25);
+    const duplicate = (recent ?? []).find((lead) =>
+      (normalizedPhone && lead.phone && normalizeUsPhone(lead.phone) === normalizedPhone) ||
+      (email && lead.email === email));
+    if (duplicate) {
+      const stamp = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const mergedMessage = `${duplicate.message || ''}\n\n— Repeat request (${stamp}): ${message || '(no new details)'}`.trim().slice(0, 6000);
+      const existingTriage = getLeadTriage({ triage: duplicate.triage as LeadTriage | null });
+      await admin
+        .from('leads')
+        .update({
+          message: mergedMessage,
+          triage: { ...existingTriage, flags: [...new Set([...existingTriage.flags, ...flags, 'repeat'])] },
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', duplicate.id);
+      return NextResponse.json({ ok: true, leadId: duplicate.id });
+    }
   }
 
   const photos = data.getAll('photos').filter((item): item is File => item instanceof File && item.size > 0).slice(0, 6);
@@ -67,6 +143,7 @@ export async function POST(request: NextRequest) {
       message,
       photoPaths,
       sourcePage: request.headers.get('referer'),
+      triage,
     });
 
     const { data: owner } = await admin.from('memberships').select('user_id').eq('account_id', site.account_id).eq('role', 'owner').limit(1).maybeSingle();

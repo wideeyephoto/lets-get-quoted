@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
+import { getSiteContent } from '@/lib/site-content';
 
 export const runtime = 'nodejs';
 
@@ -54,6 +55,7 @@ export async function POST(request: NextRequest) {
   const businessName = typeof body?.businessName === 'string' ? body.businessName.trim().slice(0, 120) : '';
   const businessSummary = typeof body?.businessSummary === 'string' ? body.businessSummary.trim().slice(0, 200) : '';
   const serviceArea = typeof body?.serviceArea === 'string' ? body.serviceArea.trim().slice(0, 120) : '';
+  const visitorLocation = typeof body?.location === 'string' ? body.location.trim().slice(0, 120) : '';
 
   if (!siteId || (!description && !previousResponseId)) {
     return NextResponse.json({ error: 'Missing description.' }, { status: 400 });
@@ -62,10 +64,20 @@ export async function POST(request: NextRequest) {
   // Only run for real, published sites — keeps this endpoint from being a
   // free-standing OpenAI proxy for anyone who finds the URL.
   const admin = createAdminClient();
-  const { data: site } = await admin.from('sites').select('id').eq('id', siteId).eq('published', true).maybeSingle();
+  const { data: site } = await admin.from('sites').select('id, content, service_area').eq('id', siteId).eq('published', true).maybeSingle();
   if (!site) {
     return NextResponse.json({ error: 'Site not found.' }, { status: 404 });
   }
+
+  // Lead-quality context from the owner's settings: served towns and excluded
+  // work, so the model can flag out-of-area or won't-do jobs alongside the
+  // estimate (flags only — the lead still submits either way).
+  const siteContent = getSiteContent(site.content as Record<string, unknown>);
+  const servedCities = siteContent.serviceAreas.cities.map((city) => city.trim()).filter(Boolean).slice(0, 20);
+  const exclusions = siteContent.leadFilters.exclusions.map((item) => item.trim()).filter(Boolean);
+  const areaContext = servedCities.length ? ` The business serves these areas: ${servedCities.join(', ')}${site.service_area ? ` (${site.service_area})` : ''}.` : '';
+  const exclusionContext = exclusions.length ? ` The business does NOT take on: ${exclusions.join('; ')}.` : '';
+  const locationContext = visitorLocation ? ` The visitor says their location is: ${visitorLocation}.` : '';
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -81,14 +93,18 @@ export async function POST(request: NextRequest) {
   const businessContext = !previousResponseId && (businessName || businessSummary || serviceArea)
     ? ` This business is "${businessName || 'unknown'}"${businessSummary ? ` (${businessSummary})` : ''}${serviceArea ? `, serving ${serviceArea}` : ''}. Use this to inform what kind of work is likely being described.`
     : '';
+  const qualityContext = !previousResponseId ? `${areaContext}${exclusionContext}${locationContext}` : '';
   const instructions =
     "You help a local home-services business's website understand a project's scope before showing a rough price range." +
     businessContext +
+    qualityContext +
     ' ' +
     `Ask short, simple follow-up questions one at a time to clarify the job's scope and quality/finish level. You may ask up to ${questionsRemaining} more question(s) — fewer if you already have enough information. ` +
     'Respond with strict JSON only, no other text. ' +
     'While still asking: {"type":"question","question":"<one short, plain-language question>"}. ' +
-    'Once ready (or out of questions): {"type":"estimate","min":<number>,"max":<number>} — a realistic pre-visit price range in whole US dollars for THIS SPECIFIC JOB as this trade would actually charge for it in the US today, including typical labor and materials. ' +
+    'Once ready (or out of questions): {"type":"estimate","min":<number>,"max":<number>,"in_area":true|false|null,"excluded":true|false} — min/max is a realistic pre-visit price range in whole US dollars for THIS SPECIFIC JOB as this trade would actually charge for it in the US today, including typical labor and materials. ' +
+    'in_area: false ONLY when the visitor\'s stated location is clearly outside the served areas listed; true when it clearly matches or neighbors them; null when no location was given or you are unsure. ' +
+    'excluded: true ONLY when the described work clearly matches something the business does NOT take on; otherwise false. Never refuse to estimate — always include min/max regardless of these two fields. ' +
     'Price the described job itself, not a generic project category: cleaning one 150 sq ft room is a low-cost routine service call, not a renovation. ' +
     'Keep the range honest but LEAN TOWARD THE AFFORDABLE SIDE, with a tight believable spread (max no more than roughly 2-2.5x min) — a scary high top number loses the customer before the business ever gets to quote in person. ' +
     'Round to natural amounts (e.g. 120-220, 850-1500, 4000-7500). ' +
@@ -125,10 +141,14 @@ export async function POST(request: NextRequest) {
     // lead without showing a price rather than showing a wrong one.
     const min = Math.round(Number(parsed.min));
     const max = Math.round(Number(parsed.max));
+    const fit = {
+      inArea: parsed.in_area === true ? true : parsed.in_area === false ? false : null,
+      excluded: parsed.excluded === true,
+    };
     if (Number.isFinite(min) && Number.isFinite(max) && min >= 25 && min < max && max <= 200000) {
-      return NextResponse.json({ type: 'estimate', min, max });
+      return NextResponse.json({ type: 'estimate', min, max, ...fit });
     }
-    return NextResponse.json(fallback());
+    return NextResponse.json({ ...fallback(), ...fit });
   } catch (error) {
     console.error('Estimate chat failed:', error);
     return NextResponse.json(fallback());

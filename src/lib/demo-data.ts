@@ -202,6 +202,7 @@ export const DEMO_LEADS: Lead[] = LEAD_SEEDS.map((seed) => ({
   photo_paths: [],
   source_page: seed.source === 'website_form' ? '/' : null,
   converted_job: seed.convertedJob ?? null,
+  triage: null,
   updated_at: leadUpdatedAt(seed),
   created_at: leadCreatedAt(seed),
 }));
