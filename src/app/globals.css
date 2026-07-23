@@ -397,7 +397,9 @@ h3 {
   justify-content: center;
   width: 22px;
   height: 22px;
-  font-size: 0.72rem;
+  /* A touch larger than the old tick — "$" is a narrower glyph and reads small
+     at the same size. */
+  font-size: 0.8rem;
   font-weight: 800;
   line-height: 1;
   background: rgba(255, 255, 255, 0.12);

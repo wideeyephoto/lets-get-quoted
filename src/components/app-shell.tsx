@@ -217,10 +217,10 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               className={`stripe-status-pill${stripeOnboarded === null ? ' checking' : stripeOnboarded ? ' connected' : ' warning'}`}
               title={stripeOnboarded ? 'Stripe payouts connected' : 'Stripe payouts not connected — click to finish setup'}
             >
-              {/* The glyph changes with the state, so it never relies on colour alone. */}
-              <span className="stripe-status-tile" aria-hidden="true">
-                {stripeOnboarded === null ? '·' : stripeOnboarded ? '✓' : '!'}
-              </span>
+              {/* A constant "$" mark — the state is carried by the tile colour AND
+                  the label wording ("connected" / "Connect" / "checking"), so it
+                  never depends on colour alone. */}
+              <span className="stripe-status-tile" aria-hidden="true">$</span>
               {stripeOnboarded === null ? 'Stripe: checking…' : stripeOnboarded ? 'Stripe connected' : 'Connect Stripe'}
             </Link>
           ) : null}
