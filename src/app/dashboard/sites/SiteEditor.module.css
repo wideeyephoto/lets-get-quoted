@@ -42,7 +42,7 @@
 .warnNotice { margin: .5rem 0 .9rem; padding: .7rem .9rem; border: 1px solid rgba(251,191,36,.45); border-radius: 7px; background: rgba(120,53,15,.28); color: #fde68a; font-size: .85rem; line-height: 1.4; }
 .builderGrid { display: grid; grid-template-columns: minmax(410px, 520px) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
 .editorPanel { min-width: 0; overflow: hidden; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(8,18,31,.9); }
-.builderTabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .4rem; padding: .5rem; border-bottom: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.025); }
+.builderTabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .4rem; padding: .5rem; border-bottom: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.025); }
 .builderTabs button { min-height: 46px; padding: .55rem .5rem; border: 1px solid transparent; border-radius: 9px; background: rgba(255,255,255,.05); color: #c8d0dc; font-size: .92rem; font-weight: 800; letter-spacing: .01em; cursor: pointer; transition: background .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease; }
 .builderTabs button:hover { background: rgba(255,255,255,.09); color: #fff; }
 .builderTabs .activeBuilderTab { background: linear-gradient(180deg, #ff8a3d, #ff7a21); border-color: #ff7a21; color: #fff; box-shadow: 0 8px 20px -8px rgba(255,122,33,.6); }
@@ -241,7 +241,6 @@
 .sectionOrderItem:active { cursor: grabbing; }
 .sectionOrderDragging { opacity: .5; border-color: #ff7a21; }
 .sectionOrderGrip { color: #6b7688; font-size: 1rem; line-height: 1; }
-.sectionOrderName { flex: 1; color: #f7f5ef; font-size: .86rem; font-weight: 700; display: flex; align-items: center; gap: .5rem; }
 /* Row label doubles as a jump link that opens the section's card below. */
 .sectionOrderJump { flex: 1; display: flex; align-items: center; gap: .5rem; padding: 0; border: 0; background: none; color: #f7f5ef; font-size: .86rem; font-weight: 700; text-align: left; cursor: pointer; }
 .sectionOrderJump:hover { color: #ffb27a; }
@@ -325,8 +324,8 @@
   .builderShell { padding: 1rem; }
   .builderHeader { align-items: stretch; flex-direction: column; }
   .builderActions { display: grid; grid-template-columns: 1fr 1fr; }
-  .builderTabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .builderTabs button { min-width: 0; padding-inline: .2rem; font-size: .68rem; }
+  .builderTabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .builderTabs button { min-width: 0; padding-inline: .2rem; font-size: .64rem; }
   .formColumns { grid-template-columns: 1fr; }
   .compactImageGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .jobPhotoImport { align-items: stretch; flex-direction: column; }

@@ -162,10 +162,13 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
         : { hint: `${siteContent.blog.posts.length} ${siteContent.blog.posts.length === 1 ? 'draft' : 'drafts'}`, hintTone: 'ok' }
       : contentHint(siteContent.blog.enabled, 0, 'post');
 
-  // Review count for hints: manual quotes, plus imported Google reviews when
-  // the source mode shows them.
-  const reviewCount = siteContent.testimonials.items.filter((item) => item.text.trim()).length
-    + (siteContent.testimonials.sourceMode !== 'manual' ? siteContent.testimonials.googleReviews.length : 0);
+  // Review count for hints — mirrors getPublishedTestimonials exactly: manual
+  // quotes are dropped in 'google' mode, Google reviews in 'manual' mode, and
+  // empty-text Google reviews never render. Counting anything the public page
+  // wouldn't show would defeat the "empty — won't show yet" warning.
+  const reviewCount =
+    (siteContent.testimonials.sourceMode === 'google' ? 0 : siteContent.testimonials.items.filter((item) => item.text.trim()).length)
+    + (siteContent.testimonials.sourceMode === 'manual' ? 0 : siteContent.testimonials.googleReviews.filter((review) => review.text.trim()).length);
 
   // Per-section enabled state + content hints, shared by the section cards and
   // the Page order jump list.
@@ -726,6 +729,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     const nextPublished = !site.published;
     if (nextPublished && !site.company_name.trim()) {
       setActiveTab('business');
+      setOpenSection('basics');
       setMessage({ type: 'error', text: 'Add a company name on the Business tab before publishing.' });
       return;
     }
