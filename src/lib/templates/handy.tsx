@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getPublishedHowItWorks, getPublishedServices, getPublishedWhyUs, getSiteContent, getSlotImage } from '@/lib/site-content';
+import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getPublishedHowItWorks, getPublishedServices, getPublishedWhyUs, getSiteContent, getSlotImage, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import ProjectShowcase from './ProjectShowcase';
 import type { TemplateProps } from '@/lib/templates/types';
@@ -23,7 +23,7 @@ const TRUST_ITEMS = ['Licensed & insured', 'Same-day service', 'Free estimates',
 export default function HandyTemplate({ site, galleryImages = [] }: TemplateProps) {
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
   const aboutImage = getSlotImage(site.content, 'about', STOCK_SITE_IMAGES[3].url);
-  const gallery = galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES.slice(1, 4);
+  const gallery = galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES;
 
   const themeStyle = {
     '--theme-accent': site.accent_override || '#12c2c9',
@@ -39,11 +39,11 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
   const whyUs = getPublishedWhyUs(site.content);
   const projectShowcase = getSiteContent(site.content).projectShowcase;
   const ownShowcase = projectShowcase.items.filter((item) => item.url && item.alt);
-  // The owner's own project photos once they've added any; otherwise the shared
-  // gallery so the band is never empty on a fresh site. Capped at 5.
+  // The owner's own project photos once they've added any (up to 10); otherwise
+  // 5 placeholders from the shared gallery so the band is never empty.
   const showcaseItems = ownShowcase.length > 0
     ? ownShowcase.map((item) => ({ id: item.id, url: item.url, alt: item.alt, caption: item.caption }))
-    : gallery.slice(0, 5).map((item) => ({ id: item.id, url: item.url, alt: item.alt }));
+    : gallery.slice(0, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS).map((item) => ({ id: item.id, url: item.url, alt: item.alt }));
   const heroBadge = getHeroBadge(site.content);
   const secondBadge = getHeroSecondBadge(site.content);
 

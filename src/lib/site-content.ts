@@ -192,7 +192,7 @@ export type SiteWorkGalleryContent = {
 export const DEFAULT_WORK_GALLERY_EYEBROW = 'Our work';
 export const DEFAULT_WORK_GALLERY_TITLE = 'Quality you can see';
 
-// "Project showcase" band — its OWN editable set of 3-5 project photos (separate
+// "Project showcase" band — its OWN editable set of project photos (separate
 // from the Photo gallery), presented as an animated slider in one of three
 // styles. Falls back to the shared gallery for the render until the owner adds
 // their own project photos. `items` reuses SiteShowcaseItem (url/alt/caption).
@@ -214,7 +214,10 @@ export const PROJECT_SHOWCASE_STYLES: { key: SiteProjectShowcaseStyle; label: st
   { key: 'spotlight', label: 'Spotlight — big photo + thumbnail strip' },
 ];
 const PROJECT_SHOWCASE_STYLE_KEYS = new Set<string>(PROJECT_SHOWCASE_STYLES.map((style) => style.key));
-export const MAX_PROJECT_SHOWCASE_ITEMS = 5;
+// The owner can build up to 10 project photos (e.g. imported job photos); a
+// site that hasn't added any yet shows 5 placeholders.
+export const MAX_PROJECT_SHOWCASE_ITEMS = 10;
+export const DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS = 5;
 
 // Icon service-card grid — the centerpiece of the home-services aesthetic.
 // `icon` is a key into ServiceIcon's set (falls back to a generic mark).

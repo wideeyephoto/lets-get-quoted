@@ -172,13 +172,13 @@
 /* Layout 2 — Featured: the first photo spans a 2x2 hero cell, the rest stay 4/3. */
 .showcase-featured figure:first-child { grid-column: span 2; grid-row: span 2; aspect-ratio: auto; }
 
-/* Layout 3 — Filmstrip: one horizontal, swipe/scrollable row that slowly drifts
-   (see FilmstripScroller). The scrollbar is hidden and scroll-snap is off — a
-   mandatory snap fights the per-frame drift — but manual swipe still works.
+/* Layout 3 — Filmstrip: one horizontal, swipe/scrollable row that advances a
+   tile every 1.5s (see FilmstripScroller). The native scrollbar is hidden;
+   snap points keep each auto-step landing cleanly on a tile.
    Edge mask hints at overflow; tiles keep the base 4/3 aspect via the figure box. */
-.showcase-filmstrip { display: flex; overflow-x: auto; padding-bottom: .25rem; scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch; -webkit-mask-image: linear-gradient(90deg, #000 92%, transparent); mask-image: linear-gradient(90deg, #000 92%, transparent); }
+.showcase-filmstrip { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: .25rem; scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch; -webkit-mask-image: linear-gradient(90deg, #000 92%, transparent); mask-image: linear-gradient(90deg, #000 92%, transparent); }
 .showcase-filmstrip::-webkit-scrollbar { width: 0; height: 0; display: none; }
-.showcase-filmstrip figure { flex: 0 0 clamp(240px, 32vw, 360px); transition: transform .3s ease; }
+.showcase-filmstrip figure { flex: 0 0 clamp(240px, 32vw, 360px); scroll-snap-align: start; transition: transform .3s ease; }
 .showcase-filmstrip figure:hover { transform: translateY(-6px); }
 @media (prefers-reduced-motion: reduce) { .showcase-filmstrip figure { transition: none; } .showcase-filmstrip figure:hover { transform: none; } }
 @media (max-width: 760px) { .showcaseGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .showcase-featured figure:first-child { grid-column: span 2; grid-row: auto; aspect-ratio: 4 / 3; } .showcase-filmstrip figure { flex-basis: min(76vw, 320px); } }
