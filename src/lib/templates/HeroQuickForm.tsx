@@ -45,6 +45,15 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   const leadFilters = siteContent.leadFilters;
   const askTimeline = wizardEnabled && leadFilters.askTimeline;
   const askLocation = wizardEnabled && leadFilters.serviceAreaGate && siteContent.serviceAreas.cities.some((city) => city.trim());
+  // Trade-specific example text: real service names beat generic cross-trade
+  // examples ("AC repair, deep clean, fence installation") that read wrong on
+  // any single contractor's site.
+  const serviceExamples = siteContent.services.items.map((item) => item.title.trim()).filter(Boolean).slice(0, 3);
+  const describePlaceholder = serviceExamples.length >= 2
+    ? `e.g. ${serviceExamples.map((example) => example.toLowerCase()).join(', ')}...`
+    : siteContent.trade.trim()
+      ? `Describe your ${siteContent.trade.trim().toLowerCase()} job — what's going on?`
+      : 'Tell us what you need done — the more detail, the better the estimate.';
   const bookedUntil = leadFilters.fullyBooked.until ? new Date(`${leadFilters.fullyBooked.until}T00:00:00`) : null;
   const bookedNote = isFullyBookedActive(leadFilters)
     ? `${leadFilters.fullyBooked.message || DEFAULT_FULLY_BOOKED_MESSAGE}${bookedUntil && !Number.isNaN(bookedUntil.getTime()) ? ` (booked through ${bookedUntil.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})` : ''}`
@@ -380,7 +389,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
           <p className={styles.heroFormNote}>Tell us what you need done — a couple quick questions, then we&apos;ll show your range.</p>
           <textarea
             aria-label="Describe your project"
-            placeholder="e.g. AC repair, deep clean, fence installation..."
+            placeholder={describePlaceholder}
             maxLength={500}
             rows={2}
             required
