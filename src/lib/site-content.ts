@@ -317,6 +317,13 @@ export const DEFAULT_STATS_TITLE = 'By the numbers';
 export const DEFAULT_BEFORE_AFTER_TITLE = 'Before & after';
 export const DEFAULT_SERVICES_TITLE = 'What we do';
 export const DEFAULT_HOW_IT_WORKS_TITLE = 'How it works';
+// Starter steps a brand-new site's "How it works" section shows until the owner
+// edits them (an explicit steps array — even empty — is respected as-is).
+export const DEFAULT_HOW_IT_WORKS_STEPS: SiteProcessStep[] = [
+  { id: 'step-1', title: 'Instant Quote with Smart Intake', description: 'We provide instant quotes by asking you a few questions' },
+  { id: 'step-2', title: 'Schedule a Free Estimate', description: 'We send you 3 times that would work for us to come assess the jobsite' },
+  { id: 'step-3', title: 'Quote for the job at hand', description: 'You will receive a text message to sign-off and be scheduled to start the job. A deposit may be required for larger jobs' },
+];
 export const DEFAULT_BLOG_TITLE = 'From our blog';
 export const DEFAULT_BEFORE_AFTER_INTRO = 'Drag to see the transformation.';
 
@@ -628,7 +635,9 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       enabled: toBoolean(howItWorks.enabled),
       title: toString(howItWorks.title, DEFAULT_HOW_IT_WORKS_TITLE),
       intro: toString(howItWorks.intro),
-      steps: parseProcessSteps(howItWorks.steps),
+      // Never-set (undefined) → starter steps; an explicit array (even empty, i.e.
+      // the owner cleared them) is respected exactly.
+      steps: howItWorks.steps === undefined ? DEFAULT_HOW_IT_WORKS_STEPS.map((step) => ({ ...step })) : parseProcessSteps(howItWorks.steps),
     },
     blog: {
       enabled: toBoolean(blog.enabled),
