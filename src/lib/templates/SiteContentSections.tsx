@@ -20,6 +20,7 @@ import {
   getSlotImage,
 } from '@/lib/site-content';
 import BeforeAfterSlider from './BeforeAfterSlider';
+import TestimonialSlider from './TestimonialSlider';
 import SiteServices from './SiteServices';
 import SiteProcess from './SiteProcess';
 import StatCounters from './StatCounters';
@@ -95,40 +96,44 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
         </div>
       </section>
     ),
-    testimonials: testimonials && (
-      <section className={styles.extraSection} id="reviews">
-        <div className={styles.extraSectionHeader} data-reveal>
-          <p className={styles.kicker}>Reviews</p>
-          <h2>{testimonials.title}</h2>
-        </div>
-        <div className={styles.testimonialGrid} data-stagger>
-          {testimonials.items.map((item) => (
-            <article key={item.id} className={styles.testimonialCard}>
-              {item.imageUrl && <img className={styles.testimonialImage} src={item.imageUrl} alt={item.imageAlt || item.author || 'Customer review image'} />}
-              <div aria-label={`${item.rating} out of 5 stars`}>{'★'.repeat(item.rating)}{'☆'.repeat(5 - item.rating)}</div>
-              <p>“{item.text}”</p>
-              <footer><strong>{item.author || 'Homeowner'}</strong>{item.label && <span>{item.label}</span>}</footer>
-            </article>
-          ))}
-          {testimonials.googleReviews.map((review) => {
-            const stars = Math.round(review.rating);
-            return (
-              <article key={review.id} className={`${styles.testimonialCard} ${styles.googleCard}`}>
-                <div className={styles.googleCardHead}>
-                  {review.authorPhoto
-                    ? <img className={styles.googleAvatar} src={review.authorPhoto} alt="" referrerPolicy="no-referrer" loading="lazy" decoding="async" />
-                    : <span className={styles.googleAvatar} aria-hidden="true">{(review.author[0] || 'G').toUpperCase()}</span>}
-                  <div>
-                    <strong>{review.author || 'Google reviewer'}</strong>
-                    <a href={review.url || testimonials.googleUrl} target="_blank" rel="noopener noreferrer nofollow" className={styles.googleTag}>Review on Google</a>
-                  </div>
+    testimonials: testimonials && (() => {
+      const cards = [
+        ...testimonials.items.map((item) => (
+          <article key={item.id} className={styles.testimonialCard}>
+            {item.imageUrl && <img className={styles.testimonialImage} src={item.imageUrl} alt={item.imageAlt || item.author || 'Customer review image'} />}
+            <div aria-label={`${item.rating} out of 5 stars`}>{'★'.repeat(item.rating)}{'☆'.repeat(5 - item.rating)}</div>
+            <p>“{item.text}”</p>
+            <footer><strong>{item.author || 'Homeowner'}</strong>{item.label && <span>{item.label}</span>}</footer>
+          </article>
+        )),
+        ...testimonials.googleReviews.map((review) => {
+          const stars = Math.round(review.rating);
+          return (
+            <article key={review.id} className={`${styles.testimonialCard} ${styles.googleCard}`}>
+              <div className={styles.googleCardHead}>
+                {review.authorPhoto
+                  ? <img className={styles.googleAvatar} src={review.authorPhoto} alt="" referrerPolicy="no-referrer" loading="lazy" decoding="async" />
+                  : <span className={styles.googleAvatar} aria-hidden="true">{(review.author[0] || 'G').toUpperCase()}</span>}
+                <div>
+                  <strong>{review.author || 'Google reviewer'}</strong>
+                  <a href={review.url || testimonials.googleUrl} target="_blank" rel="noopener noreferrer nofollow" className={styles.googleTag}>Review on Google</a>
                 </div>
-                <div aria-label={`${stars} out of 5 stars`}>{'★'.repeat(stars)}{'☆'.repeat(Math.max(0, 5 - stars))}</div>
-                <p>“{review.text}”</p>
-              </article>
-            );
-          })}
-        </div>
+              </div>
+              <div aria-label={`${stars} out of 5 stars`}>{'★'.repeat(stars)}{'☆'.repeat(Math.max(0, 5 - stars))}</div>
+              <p>“{review.text}”</p>
+            </article>
+          );
+        }),
+      ];
+      return (
+        <section className={styles.extraSection} id="reviews">
+          <div className={styles.extraSectionHeader} data-reveal>
+            <p className={styles.kicker}>Reviews</p>
+            <h2>{testimonials.title}</h2>
+          </div>
+          {testimonials.displayStyle === 'grid'
+            ? <div className={styles.testimonialGrid} data-stagger>{cards}</div>
+            : <TestimonialSlider mode={testimonials.displayStyle}>{cards}</TestimonialSlider>}
         {testimonials.googleReviews.length > 0 && (
           <p className={styles.googleAttribution} data-reveal>
             {testimonials.googleRating > 0 && <strong>{testimonials.googleRating.toFixed(1)} ★ on Google{testimonials.googleReviewCount > 0 ? ` · ${testimonials.googleReviewCount.toLocaleString('en-US')} reviews` : ''}</strong>}
@@ -136,8 +141,9 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
             <span className={styles.googlePoweredBy}>Powered by Google</span>
           </p>
         )}
-      </section>
-    ),
+        </section>
+      );
+    })(),
     faqs: faqs && (
       <section className={styles.extraSection} id="faqs">
         <div className={styles.extraSectionHeader} data-reveal>

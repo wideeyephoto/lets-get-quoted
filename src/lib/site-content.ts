@@ -53,6 +53,9 @@ export type SiteTestimonialsContent = {
   enabled: boolean;
   title: string;
   sourceMode: 'manual' | 'google' | 'mixed';
+  // How the reviews are laid out: a static grid, an auto-sliding carousel, or a
+  // one-at-a-time auto-rotating spotlight.
+  displayStyle: 'grid' | 'carousel' | 'spotlight';
   items: SiteTestimonialItem[];
   // Google Business Profile import (Places API). Empty until the owner links a
   // business and imports; the API returns at most 5 reviews, chosen by Google.
@@ -612,6 +615,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       enabled: toBoolean(testimonials.enabled),
       title: toString(testimonials.title, DEFAULT_TESTIMONIALS_TITLE),
       sourceMode: testimonials.sourceMode === 'google' || testimonials.sourceMode === 'mixed' ? testimonials.sourceMode : 'manual',
+      displayStyle: testimonials.displayStyle === 'carousel' || testimonials.displayStyle === 'spotlight' ? testimonials.displayStyle : 'grid',
       items: parseTestimonials(testimonials.items),
       googlePlaceId: toString(testimonials.googlePlaceId),
       googleName: toString(testimonials.googleName),

@@ -168,6 +168,29 @@
 @media (max-width: 600px) { .testimonialGrid { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .testimonialCard { transition: none; } .testimonialCard:hover { transform: none; } }
 
+/* Testimonials — auto-sliding carousel. Seamless because the cards are rendered
+   twice and the track slides exactly one copy width (-50%); pauses on hover. */
+.tCarousel { overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent); mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent); }
+.tCarouselTrack { display: flex; width: max-content; gap: 1.25rem; animation: tMarquee 42s linear infinite; }
+.tCarousel:hover .tCarouselTrack { animation-play-state: paused; }
+.tCarouselStatic { display: flex; flex-wrap: wrap; justify-content: center; gap: 1.25rem; }
+.tSlide { flex: 0 0 clamp(280px, 30vw, 360px); }
+.tSlide > * { height: 100%; }
+@keyframes tMarquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .tCarouselTrack { animation: none; } }
+
+/* Testimonials — spotlight: one card at a time, cross-fading (stacked in one
+   grid cell so the stage sizes to the tallest card). */
+.tSpotlight { max-width: 760px; margin-inline: auto; }
+.tSpotlightStage { display: grid; }
+.tSpotlightSlide { grid-area: 1 / 1; transition: opacity .6s ease; }
+.tSpotlight .testimonialCard { text-align: center; }
+.tSpotlight .testimonialCard p { font-size: clamp(1.05rem, 1.8vw, 1.4rem); }
+.tSpotlight .testimonialCard > div[aria-label], .tSpotlight .testimonialCard footer { justify-items: center; justify-content: center; }
+.tDots { display: flex; justify-content: center; gap: .5rem; margin-top: 1.4rem; }
+.tDot, .tDotActive { width: 9px; height: 9px; padding: 0; border: 0; border-radius: 999px; background: color-mix(in srgb, currentColor 28%, transparent); cursor: pointer; transition: width .25s ease, background .25s ease; }
+.tDotActive { width: 24px; background: var(--theme-accent); }
+
 /* ===== Blog — homepage card grid (in-template) + standalone article page ===== */
 .blogGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; }
 .blogCard { display: flex; flex-direction: column; overflow: hidden; border: 1px solid color-mix(in srgb, currentColor 12%, transparent); border-radius: calc(var(--theme-radius, 6px) + 8px); background: color-mix(in srgb, currentColor 5%, transparent); color: inherit; text-decoration: none; box-shadow: 0 22px 44px -34px rgba(0,0,0,.3); transition: transform .35s cubic-bezier(.22, .61, .36, 1), box-shadow .35s ease, border-color .35s ease; }
