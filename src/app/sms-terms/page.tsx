@@ -13,7 +13,7 @@ export default function SmsTermsPage() {
       <header className={styles.legalHeader}>
         <p className="eyebrow">Legal</p>
         <h1>SMS Terms &amp; Conditions</h1>
-        <p>These terms govern passwordless authentication and transactional payment text messages sent through Let&apos;s Get Quoted.</p>
+        <p>Let&apos;s Get Quoted is operated by LETS GET QUOTED LLC, a Michigan limited liability company. These terms govern passwordless authentication and transactional payment text messages sent through Let&apos;s Get Quoted.</p>
         <span className={styles.effectiveDate}>Effective July 15, 2026</span>
       </header>
 

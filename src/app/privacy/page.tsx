@@ -13,7 +13,7 @@ export default function PrivacyPolicyPage() {
       <header className={styles.legalHeader}>
         <p className="eyebrow">Legal</p>
         <h1>Privacy Policy</h1>
-        <p>This policy explains how Let&apos;s Get Quoted collects, uses, protects, and shares information when contractors and homeowners use our services.</p>
+        <p>Let&apos;s Get Quoted is operated by LETS GET QUOTED LLC, a Michigan limited liability company. This policy explains how Let&apos;s Get Quoted collects, uses, protects, and shares information when contractors and homeowners use our services.</p>
         <span className={styles.effectiveDate}>Effective July 15, 2026</span>
       </header>
 
