@@ -4,7 +4,10 @@ import { getSiteContent } from '@/lib/site-content';
 
 export const runtime = 'nodejs';
 
-const MAX_QUESTIONS = 3;
+// Accuracy beats speed: the model may ask up to 6 scoping questions, but is
+// told to stop the moment more questions stop improving the price — confident
+// cases still resolve in 2-3.
+const MAX_QUESTIONS = 6;
 
 // Best-effort in-memory throttle. Resets on cold start / across instances,
 // but this is a low-traffic public endpoint that calls a paid API — this is
@@ -98,7 +101,7 @@ export async function POST(request: NextRequest) {
   // ("not sure", "no") otherwise make it keep probing forever and the visitor
   // ends up with no number at all.
   const askingRules = questionsRemaining > 0
-    ? `Ask short, simple follow-up questions one at a time to clarify the job's scope and quality/finish level. You may ask up to ${questionsRemaining} more question(s) — fewer if you already have enough information. ` +
+    ? `Ask short, simple follow-up questions one at a time to clarify the job's scope and quality/finish level. You may ask up to ${questionsRemaining} more question(s), but ask another ONLY while the answer would meaningfully change the price — the moment you can price the job confidently, stop and estimate. If an answer was vague ("not sure"), try ONE different angle on that detail, then move on rather than repeating it. ` +
       'While still asking: {"type":"question","question":"<one short, plain-language question>"}. ' +
       'Once ready (or out of questions): '
     : 'You are OUT of questions — do NOT ask anything else. Even if details are vague, give your best-judgment range for the most common version of this job, priced toward the cheaper outcome. Respond ONLY with: ';
