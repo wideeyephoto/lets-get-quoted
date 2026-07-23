@@ -323,6 +323,18 @@ export async function sendClientJobDashboardSms(params: {
   return sendTwilioMessage(params.phone, message);
 }
 
+// One-tap polite decline for a lead that isn't a fit — closing the loop in one
+// text protects reviews vs. ghosting. Caller checks opt-out state first.
+export async function sendLeadDeclineSms(params: {
+  phone: string;
+  businessName: string;
+  leadName: string;
+  reason: string;
+}) {
+  const message = `Let's Get Quoted: Hi ${params.leadName}, thanks for reaching out to ${params.businessName}. Unfortunately ${params.reason}, so we won't be able to take this one on. We appreciate you thinking of us! Reply STOP to opt out.`;
+  return sendTwilioMessage(params.phone, message);
+}
+
 export async function sendLeadQuoteVisitSms(params: {
   phone: string;
   businessName: string;

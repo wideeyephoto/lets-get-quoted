@@ -5,11 +5,11 @@ import { redirect } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
 import { createClientJobAccessToken, createJobFeedEvent } from '@/lib/job-feed';
 import { formatJobQuoteSummary } from '@/lib/jobs';
-import { clearLeadQuoteVisit, convertLeadToJob, createLead, getLead, scheduleLeadQuoteVisit, unconvertLeadFromJob, updateLeadDetails, updateLeadStatus, type LeadStatus } from '@/lib/leads';
+import { clearLeadQuoteVisit, convertLeadToJob, createLead, getLead, getLeadTriage, LEAD_DECLINE_REASONS, scheduleLeadQuoteVisit, unconvertLeadFromJob, updateLeadDetails, updateLeadStatus, type LeadStatus, type LeadTriage } from '@/lib/leads';
 import { uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, createScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
-import { recordSmsConsent, sendClientJobDashboardSms, sendLeadQuoteVisitOptionsSms, sendLeadQuoteVisitSms } from '@/lib/sms';
+import { isPhoneOptedOut, recordSmsConsent, sendClientJobDashboardSms, sendLeadDeclineSms, sendLeadQuoteVisitOptionsSms, sendLeadQuoteVisitSms } from '@/lib/sms';
 import { sendClientQuoteEmail } from '@/lib/email';
 
 function optionalText(value: FormDataEntryValue | null): string | null {
@@ -293,6 +293,106 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
   revalidatePath('/dashboard/jobs');
   const deliveryParam = delivery ? `&delivery=${delivery}` : '';
   redirect(`/dashboard/jobs/${job.id}?tab=feed&clientToken=${token}${deliveryParam}`);
+}
+
+// Merge a patch into the lead's triage record (creating one if absent).
+async function patchLeadTriage(leadId: string, patch: Partial<LeadTriage>) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const lead = await getLead(supabase, accountId, leadId);
+  if (!lead) throw new Error('Lead not found.');
+  const triage = { ...getLeadTriage(lead), ...patch };
+  const { error } = await supabase
+    .from('leads')
+    .update({ triage, updated_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('id', leadId);
+  if (error) throw error;
+  revalidatePath(`/dashboard/leads/${leadId}`);
+  revalidatePath('/dashboard/leads');
+}
+
+export async function snoozeLeadAction(leadId: string, days: number) {
+  const clamped = Math.min(30, Math.max(1, Math.round(days) || 3));
+  await patchLeadTriage(leadId, { snoozedUntil: new Date(Date.now() + clamped * 24 * 60 * 60 * 1000).toISOString() });
+}
+
+export async function unsnoozeLeadAction(leadId: string) {
+  await patchLeadTriage(leadId, { snoozedUntil: null });
+}
+
+export async function archiveLeadAction(leadId: string, archived: boolean) {
+  await patchLeadTriage(leadId, { archived });
+}
+
+// One-tap decline: mark the lead lost + archived, and (when they left a
+// phone that hasn't opted out) text a polite templated close-out so the
+// homeowner isn't ghosted. SMS failure never blocks the decline.
+export async function declineLeadAction(leadId: string, reasonKey: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const lead = await getLead(supabase, accountId, leadId);
+  if (!lead) throw new Error('Lead not found.');
+  const reason = LEAD_DECLINE_REASONS[reasonKey];
+  if (!reason) throw new Error('Pick a decline reason.');
+
+  let texted = false;
+  const clientPhone = normalizeUsPhone(lead.phone ?? '');
+  if (clientPhone && !(await isPhoneOptedOut(accountId, clientPhone))) {
+    try {
+      const [{ data: account }, { data: site }] = await Promise.all([
+        supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
+        supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
+      ]);
+      await recordSmsConsent(accountId, clientPhone, 'lead_decline');
+      await sendLeadDeclineSms({
+        phone: clientPhone,
+        businessName: site?.company_name || account?.business_name || "Let's Get Quoted contractor",
+        leadName: lead.name || 'there',
+        reason,
+      });
+      texted = true;
+    } catch (error) {
+      console.error(`Decline SMS failed for lead ${leadId}:`, error);
+    }
+  }
+
+  const triage = { ...getLeadTriage(lead), archived: true, declinedReason: reasonKey };
+  const { error } = await supabase
+    .from('leads')
+    .update({ status: 'lost', triage, updated_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('id', leadId);
+  if (error) throw error;
+  revalidatePath(`/dashboard/leads/${leadId}`);
+  revalidatePath('/dashboard/leads');
+  return { texted };
+}
+
+// Block this lead's phone + email from creating future website leads, and
+// archive the lead. Blocked submissions are silently dropped at intake.
+export async function blockLeadContactAction(leadId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const lead = await getLead(supabase, accountId, leadId);
+  if (!lead) throw new Error('Lead not found.');
+  const phone = normalizeUsPhone(lead.phone ?? '');
+  const email = lead.email?.trim().toLowerCase() || null;
+  if (!phone && !email) throw new Error('This lead has no phone or email to block.');
+
+  const { error } = await supabase.from('lead_blocklist').insert({
+    account_id: accountId,
+    phone: phone || null,
+    email,
+    reason: `Blocked from lead ${leadId}`,
+  });
+  if (error) throw error;
+
+  const triage = { ...getLeadTriage(lead), archived: true };
+  await supabase
+    .from('leads')
+    .update({ status: 'lost', triage, updated_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('id', leadId);
+  revalidatePath(`/dashboard/leads/${leadId}`);
+  revalidatePath('/dashboard/leads');
 }
 
 export async function undoConvertLeadAction(leadId: string) {

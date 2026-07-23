@@ -4,11 +4,12 @@ import { requireOwnerContext } from '@/lib/auth';
 import PhotoGallery from '@/components/photo-gallery';
 import LeadRadiusMap from '@/components/lead-radius-map';
 import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
-import { expireStaleLeads, formatElapsedTime, formatLeadSource, getLead, listLeads, type Lead, type LeadQuoteVisit } from '@/lib/leads';
+import { expireStaleLeads, formatElapsedTime, formatLeadSource, getLead, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, listLeads, type Lead, type LeadQuoteVisit } from '@/lib/leads';
 import { expandScheduledJobs, formatJobSchedule, formatJobTime, listJobs, type Job, type ScheduledJobOccurrence } from '@/lib/jobs';
 import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
 import { clearLeadQuoteVisitAction, convertLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, undoConvertLeadAction, updateLeadDetailsAction, updateLeadStatusAction } from '../actions';
 import LeadAvailabilityScheduler from './LeadAvailabilityScheduler';
+import LeadTriageActions from './LeadTriageActions';
 import QuoteStartDateCalendar from './QuoteStartDateCalendar';
 import UndoQuoteButton from './UndoQuoteButton';
 import SaveButton, { ScrollTopOnSaveProvider } from '@/components/save-button';
@@ -121,6 +122,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const rescheduleLater = clearLeadQuoteVisitAction.bind(null, lead.id);
   const scheduleVisit = scheduleLeadQuoteVisitAction.bind(null, lead.id);
   const sendQuoteVisitOptions = sendLeadQuoteVisitOptionsAction.bind(null, lead.id);
+  const triage = getLeadTriage(lead);
   const markLeadContacted = updateLeadStatusAction.bind(null, lead.id, 'contacted');
   const markLeadWon = updateLeadStatusAction.bind(null, lead.id, 'won');
   const markLeadLost = updateLeadStatusAction.bind(null, lead.id, 'lost');
@@ -253,6 +255,11 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
             <span className={styles.receivedBadge}>Received {formatElapsedTime(lead.created_at)} ago</span>
             <span className={styles.statusPill}>{LEAD_STATUS_LABEL[lead.status] ?? lead.status}</span>
             {visitLabel ? <span className={styles.visitPill}>Quote visit {visitLabel}</span> : null}
+            {lead.triage && <span className={styles.scoreChip} data-score={triage.score}>{triage.score === 'hot' ? '🔥 Hot lead' : triage.score === 'low' ? 'Low priority' : 'Warm'}</span>}
+            {triage.flags.filter((flag) => flag !== 'phone_verified').map((flag) => <span className={styles.flagChip} key={flag}>{LEAD_FLAG_LABELS[flag] || flag}</span>)}
+            {triage.flags.includes('phone_verified') && <span className={styles.verifiedChip}>✓ Phone verified</span>}
+            {isLeadSnoozed(triage) && <span className={styles.flagChip}>Snoozed</span>}
+            {triage.archived && <span className={styles.flagChip}>Archived</span>}
           </div>
           <div className={styles.leadStatusActions}>
             <span className={styles.leadStatusActionsLabel}>Update status</span>
@@ -269,6 +276,13 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
               <form action={markLeadContacted}><SaveButton className="btn ghost">Reopen</SaveButton></form>
             ) : null}
           </div>
+          <LeadTriageActions
+            leadId={lead.id}
+            hasPhone={Boolean(normalizeUsPhone(lead.phone ?? ''))}
+            snoozed={isLeadSnoozed(triage)}
+            archived={triage.archived === true}
+            declinedReason={triage.declinedReason ?? null}
+          />
           <div className={styles.heroContactSummary}>
             <div className={styles.heroContactItem}>
               <span>Contact</span>

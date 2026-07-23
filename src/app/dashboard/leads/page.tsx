@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import AddressAutocomplete from '@/components/address-autocomplete';
-import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadSource, getAverageRequestResponseMs, listLeads, type Lead, type LeadStatus } from '@/lib/leads';
-import { createLeadAction } from './actions';
+import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadSource, getAverageRequestResponseMs, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, listLeads, type Lead, type LeadStatus } from '@/lib/leads';
+import { archiveLeadAction, createLeadAction, unsnoozeLeadAction } from './actions';
 import SaveButton from '@/components/save-button';
 import styles from './leads.module.css';
 
@@ -26,11 +26,23 @@ function responseLabel(lead: Lead) {
 export default async function LeadsPage({ searchParams }: { searchParams: { add?: string } }) {
   const { supabase, accountId } = await requireOwnerContext();
   await expireStaleLeads(supabase, accountId);
-  const leads = await listLeads(supabase, accountId);
-  const websiteRequests = leads.filter((lead) => lead.source === 'website_form').length;
-  const openRequests = leads.filter((lead) => !['won', 'lost'].includes(lead.status)).length;
+  const allLeads = await listLeads(supabase, accountId);
+
+  // Snoozed/archived leads collapse into "Set aside" below the board; the
+  // board itself sorts each column Hot → Warm → Low so junk sinks.
+  const SCORE_ORDER = { hot: 0, warm: 1, low: 2 } as const;
+  const triaged = allLeads.map((lead) => ({ lead, triage: getLeadTriage(lead) }));
+  const setAside = triaged.filter(({ lead, triage }) => !['won', 'lost'].includes(lead.status) && (triage.archived || isLeadSnoozed(triage)));
+  const setAsideIds = new Set(setAside.map(({ lead }) => lead.id));
+  const leads = triaged
+    .filter(({ lead }) => !setAsideIds.has(lead.id))
+    .sort((a, b) => SCORE_ORDER[a.triage.score] - SCORE_ORDER[b.triage.score])
+    .map(({ lead }) => lead);
+
+  const websiteRequests = allLeads.filter((lead) => lead.source === 'website_form').length;
+  const openRequests = allLeads.filter((lead) => !['won', 'lost'].includes(lead.status)).length;
   const needsResponse = leads.filter((lead) => lead.status === 'new' && lead.source === 'website_form').length;
-  const averageResponse = formatDuration(getAverageRequestResponseMs(leads));
+  const averageResponse = formatDuration(getAverageRequestResponseMs(allLeads));
 
   return (
     <main className="wide-shell workspace-shell">
@@ -49,6 +61,17 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
                   <div className={styles.leadCardWrap} key={lead.id}>
                     <Link className={`${styles.leadCard}${isUrgent ? ` ${styles.urgentCard}` : ''}`} href={`/dashboard/leads/${lead.id}`}>
                       <div className={styles.cardTopline}><strong>{lead.name || 'Unnamed request'}</strong><span className={isUrgent ? styles.needsBadge : styles.statusBadge}>{responseLabel(lead)}</span></div>
+                      {(() => {
+                        const triage = getLeadTriage(lead);
+                        const flagChips = triage.flags.filter((flag) => flag !== 'phone_verified').slice(0, 2);
+                        if (!lead.triage && flagChips.length === 0) return null;
+                        return (
+                          <div className={styles.cardChips}>
+                            {lead.triage && <span className={styles.scoreChip} data-score={triage.score}>{triage.score === 'hot' ? '🔥 Hot' : triage.score === 'low' ? 'Low' : 'Warm'}</span>}
+                            {flagChips.map((flag) => <span className={styles.flagChip} key={flag}>{LEAD_FLAG_LABELS[flag] || flag}</span>)}
+                          </div>
+                        );
+                      })()}
                       <p>{lead.project_type || lead.message || 'Project details not provided'}</p>
                       <div className={styles.cardMetaGrid}>
                         <span>{formatLeadSource(lead.source)}</span>
@@ -70,6 +93,33 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
           </div>
         )}
       </section>
+
+      {setAside.length > 0 && (
+        <section className="panel workspace-section-card">
+          <details className="workspace-details">
+            <summary className="workspace-details-summary">
+              <span className="btn secondary">Set aside ({setAside.length})</span>
+              <span className="workspace-details-copy">Snoozed and archived leads — out of the way, never lost.</span>
+            </summary>
+            <div className={styles.setAsideList}>
+              {setAside.map(({ lead, triage }) => (
+                <div className={styles.setAsideRow} key={lead.id}>
+                  <Link href={`/dashboard/leads/${lead.id}`} className={styles.setAsideName}>{lead.name || 'Unnamed request'}</Link>
+                  <span className={styles.setAsideWhy}>
+                    {triage.archived ? 'Archived' : `Snoozed until ${new Date(triage.snoozedUntil!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+                    {triage.declinedReason ? ' · declined' : ''}
+                  </span>
+                  {triage.archived ? (
+                    <form action={archiveLeadAction.bind(null, lead.id, false)}><button type="submit" className="btn ghost">Restore</button></form>
+                  ) : (
+                    <form action={unsnoozeLeadAction.bind(null, lead.id)}><button type="submit" className="btn ghost">Wake up</button></form>
+                  )}
+                </div>
+              ))}
+            </div>
+          </details>
+        </section>
+      )}
 
       <div className={`stat-ticker panel ${styles.requestStats}`}>
         <div className={styles.urgentStat}>

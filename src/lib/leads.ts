@@ -23,6 +23,15 @@ export type LeadTriage = {
 
 export const LEAD_PRUNE_FLAGS = new Set(['out_of_area', 'excluded_work', 'below_minimum', 'just_researching']);
 
+// One-tap decline templates — the key is stored on triage.declinedReason and
+// the value is woven into the polite close-out text.
+export const LEAD_DECLINE_REASONS: Record<string, string> = {
+  out_of_area: "we don't currently serve your area",
+  excluded_work: "this isn't a type of work we take on",
+  below_minimum: 'this job is below our minimum job size',
+  fully_booked: "we're fully booked right now",
+};
+
 export const LEAD_FLAG_LABELS: Record<string, string> = {
   out_of_area: 'Out of area',
   excluded_work: "Work they don't do",

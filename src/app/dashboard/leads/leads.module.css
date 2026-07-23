@@ -292,3 +292,22 @@
 @media (max-width: 640px) { .board { grid-template-columns: 1fr; overflow: visible; } .column { min-height: 0; } .contactGrid, .photoGrid, .leadStageCard, .calendarUtilityRow, .heroContactSummary, .heroRequestSummary { grid-template-columns: 1fr; } .heroDefaultPhoto { width: 100%; max-width: 260px; } .heroRequestActions { justify-content: stretch; } .heroRequestActions :global(.btn) { flex: 1 1 0; justify-content: center; } .availabilityHeader, .calendarSurfaceHeader, .calendarSelectionHeader, .quoteStartCalendarHeader { align-items: stretch; flex-direction: column; } .availabilityControls, .quoteStartCalendarControls { justify-content: stretch; } .availabilityControls a, .quoteStartCalendarControls a { flex: 1 1 0; justify-content: center; } .leadTitleRow { display: grid; } .calendarSurfaceHeader :global(.workspace-details-copy) { max-width: none; text-align: left; } .calendarActionButtons { flex-direction: column; } .calendarActionButtons :global(.btn) { width: 100%; } .quoteStartCalendarHeaderMeta { justify-items: stretch; } }
 @media (max-width: 560px) { .quoteStartCalendarGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 520px) { .availabilityGrid, .quoteStartCalendarGrid { grid-template-columns: 1fr; } }
+/* --- Lead triage (scoring chips, one-tap decline, set-aside) --- */
+.cardChips { display: flex; flex-wrap: wrap; gap: .3rem; margin: .35rem 0 .1rem; }
+.scoreChip { display: inline-flex; align-items: center; gap: .25rem; padding: .16rem .55rem; border-radius: 999px; font-size: .7rem; font-weight: 800; letter-spacing: .02em; border: 1px solid rgba(255,255,255,.16); color: #dbe4ef; }
+.scoreChip[data-score='hot'] { background: rgba(255,122,33,.18); border-color: rgba(255,122,33,.55); color: #ffb27d; }
+.scoreChip[data-score='low'] { background: rgba(255,255,255,.05); color: #93a1b3; }
+.flagChip { display: inline-flex; align-items: center; padding: .16rem .55rem; border-radius: 999px; font-size: .7rem; font-weight: 700; background: rgba(255,196,80,.12); border: 1px solid rgba(255,196,80,.4); color: #ffd591; }
+.verifiedChip { display: inline-flex; align-items: center; padding: .16rem .55rem; border-radius: 999px; font-size: .7rem; font-weight: 700; background: rgba(72,199,142,.12); border: 1px solid rgba(72,199,142,.45); color: #7fe0b2; }
+
+.triageBox { display: grid; gap: .45rem; margin-top: .7rem; padding: .7rem .8rem; border: 1px solid rgba(255,255,255,.1); border-radius: 10px; background: rgba(255,255,255,.03); }
+.triageRow { display: flex; flex-wrap: wrap; gap: .45rem; }
+.triageDanger { color: #ffb4a7; }
+.triageDone { display: inline-flex; align-items: center; padding: .35rem .7rem; border-radius: 8px; background: rgba(255,255,255,.06); font-size: .82rem; font-weight: 700; color: #c7d2df; }
+.triageHint { color: #9ca8b8; font-size: .75rem; }
+.triageNote { color: #7fe0b2; font-size: .78rem; font-weight: 600; }
+
+.setAsideList { display: grid; gap: .4rem; margin-top: .8rem; }
+.setAsideRow { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; padding: .5rem .75rem; border: 1px solid rgba(255,255,255,.09); border-radius: 8px; background: rgba(255,255,255,.03); }
+.setAsideName { font-weight: 700; color: inherit; }
+.setAsideWhy { color: #9ca8b8; font-size: .8rem; flex: 1; }
