@@ -232,6 +232,16 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   // Briefly highlights a Design-tab field jumped to from the preview (e.g. the
   // hero badge control).
   const [flashField, setFlashField] = useState<string | null>(null);
+  // Session undo/redo over `site` snapshots (works across saves — undoing to a
+  // pre-save state marks the builder dirty so Save can persist the recovery).
+  // Rapid keystrokes coalesce into one entry: a snapshot is only pushed when an
+  // edit lands after a quiet gap, so undo steps feel like "one change", not one
+  // character. Refs hold the stacks; the version counter re-renders the buttons.
+  const historyRef = useRef<{ past: Site[]; future: Site[] }>({ past: [], future: [] });
+  const prevSiteRef = useRef(initialSite);
+  const historyNavRef = useRef(false);
+  const lastEditAtRef = useRef(0);
+  const [, setHistoryVersion] = useState(0);
   // The "Replace photo" popup: which image is being replaced. Opened by clicking
   // any photo in the preview or an inline Replace-photo button; the chosen image
   // is routed by `kind` (site hero/logo, content.images slot, a before/after
@@ -381,6 +391,51 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     return () => document.removeEventListener('click', confirmLinkNavigation, true);
   }, [isDirty]);
 
+  // Record history on every site change (except ones applied by undo/redo).
+  // Runs post-commit, so prevSiteRef always holds the state BEFORE this change.
+  useEffect(() => {
+    if (site === prevSiteRef.current) return;
+    if (historyNavRef.current) {
+      historyNavRef.current = false;
+      prevSiteRef.current = site;
+      return;
+    }
+    const history = historyRef.current;
+    const now = Date.now();
+    if (now - lastEditAtRef.current > 800) {
+      history.past.push(prevSiteRef.current);
+      if (history.past.length > 50) history.past.shift();
+      setHistoryVersion((version) => version + 1);
+    }
+    if (history.future.length) history.future = [];
+    lastEditAtRef.current = now;
+    prevSiteRef.current = site;
+  }, [site]);
+
+  const undo = useCallback(() => {
+    const history = historyRef.current;
+    const previous = history.past.pop();
+    if (!previous) return;
+    history.future.push(prevSiteRef.current);
+    historyNavRef.current = true;
+    lastEditAtRef.current = 0;
+    setSite(previous);
+    setIsDirty(true);
+    setHistoryVersion((version) => version + 1);
+  }, []);
+
+  const redo = useCallback(() => {
+    const history = historyRef.current;
+    const next = history.future.pop();
+    if (!next) return;
+    history.past.push(prevSiteRef.current);
+    historyNavRef.current = true;
+    lastEditAtRef.current = 0;
+    setSite(next);
+    setIsDirty(true);
+    setHistoryVersion((version) => version + 1);
+  }, []);
+
   const handleSave = useCallback(() => {
     startTransition(async () => {
       try {
@@ -400,17 +455,27 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     handleSave();
   }, [handleSave]);
 
-  // Ctrl/Cmd+S saves instead of triggering the browser's save-page dialog.
+  // Ctrl/Cmd+S saves instead of triggering the browser's save-page dialog;
+  // Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z (or Ctrl+Y) step the builder history.
   useEffect(() => {
     function handleKeydown(event: KeyboardEvent) {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+      if (!(event.metaKey || event.ctrlKey)) return;
+      const key = event.key.toLowerCase();
+      if (key === 's') {
         event.preventDefault();
         if (isDirty && !isPending) handleSave();
+      } else if (key === 'z') {
+        event.preventDefault();
+        if (event.shiftKey) redo();
+        else undo();
+      } else if (key === 'y') {
+        event.preventDefault();
+        redo();
       }
     }
     window.addEventListener('keydown', handleKeydown);
     return () => window.removeEventListener('keydown', handleKeydown);
-  }, [isDirty, isPending, handleSave]);
+  }, [isDirty, isPending, handleSave, undo, redo]);
 
   // Click-to-edit: the preview iframe posts which region was clicked; jump to
   // the matching tab, open the matching section card, and focus the field.
@@ -1033,6 +1098,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
           ) : null}
         </div>
         <div className={styles.builderActions}>
+          <button type="button" className="btn secondary" onClick={undo} disabled={historyRef.current.past.length === 0} title="Undo (Ctrl+Z)" aria-label="Undo last change">↩ Undo</button>
+          <button type="button" className="btn secondary" onClick={redo} disabled={historyRef.current.future.length === 0} title="Redo (Ctrl+Shift+Z)" aria-label="Redo change">↪ Redo</button>
           <a href="/dashboard/sites/preview" target="_blank" rel="noopener noreferrer" className="btn secondary">Open full preview</a>
           <button type="button" className="btn primary" onClick={handleSave} disabled={isPending || !isDirty}>{isPending ? 'Saving...' : 'Save changes'}</button>
         </div>
