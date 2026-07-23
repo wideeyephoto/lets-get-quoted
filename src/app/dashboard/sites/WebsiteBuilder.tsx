@@ -1082,7 +1082,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                         <div className={styles.googleReviewPreview}>
                           {siteContent.testimonials.googleReviews.map((review) => (
                             <div key={review.id} className={styles.googleReviewPreviewItem}>
-                              <div>{'★'.repeat(Math.round(review.rating))}<strong> {review.author}</strong>{review.relativeTime && <em> · {review.relativeTime}</em>}</div>
+                              <div>{'★'.repeat(Math.round(review.rating))}<strong> {review.author}</strong></div>
                               <p>{review.text}</p>
                             </div>
                           ))}
@@ -1250,11 +1250,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   </div>
                   <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('ba'); updateBeforeAfter({ ...siteContent.beforeAfter, enabled: true, items: [...siteContent.beforeAfter.items, { id, beforeUrl: '', beforeAlt: '', afterUrl: '', afterAlt: '', label: '' }] }); setEditingItemId(id); }}>Add pair</button>
                 </SectionCard>
-
-                <div className={styles.integrationCard}>
-                  <div><strong>Google reviews import</strong><p>Importing live Google reviews requires a Places or Google Business Profile integration so we can fetch reviews with proper attribution.</p></div>
-                  <button type="button" disabled>Coming next</button>
-                </div>
               </div>
             )}
 

@@ -120,7 +120,7 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
                     : <span className={styles.googleAvatar} aria-hidden="true">{(review.author[0] || 'G').toUpperCase()}</span>}
                   <div>
                     <strong>{review.author || 'Google reviewer'}</strong>
-                    <a href={review.url || testimonials.googleUrl} target="_blank" rel="noopener noreferrer nofollow" className={styles.googleTag}>Review on Google{review.relativeTime ? ` · ${review.relativeTime}` : ''}</a>
+                    <a href={review.url || testimonials.googleUrl} target="_blank" rel="noopener noreferrer nofollow" className={styles.googleTag}>Review on Google</a>
                   </div>
                 </div>
                 <div aria-label={`${stars} out of 5 stars`}>{'★'.repeat(stars)}{'☆'.repeat(Math.max(0, 5 - stars))}</div>
