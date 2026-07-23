@@ -143,6 +143,7 @@ export async function POST(request: NextRequest) {
     ...(timeline ? { timeline } : {}),
     ...(location ? { location } : {}),
     estimate,
+    contactPreference: text(data, 'contactPreference', 10) === 'text' ? 'text_only' : 'any',
   };
 
   // Repeat submitter with an open lead? Merge into it instead of stacking a

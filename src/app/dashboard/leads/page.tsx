@@ -68,6 +68,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
                         return (
                           <div className={styles.cardChips}>
                             {lead.triage && <span className={styles.scoreChip} data-score={triage.score}>{triage.score === 'hot' ? '🔥 Hot' : triage.score === 'low' ? 'Low' : 'Warm'}</span>}
+                            {triage.contactPreference === 'text_only' && <span className={styles.textOnlyChip}>💬 Text only</span>}
                             {flagChips.map((flag) => <span className={styles.flagChip} key={flag}>{LEAD_FLAG_LABELS[flag] || flag}</span>)}
                           </div>
                         );

@@ -79,6 +79,8 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   const [estimate, setEstimate] = useState<EstimateRange | null>(null);
   const [timeline, setTimeline] = useState<'asap' | 'month' | 'researching'>('asap');
   const [location, setLocation] = useState('');
+  // How the homeowner wants the follow-up: some people never answer calls.
+  const [contactPref, setContactPref] = useState<'any' | 'text'>('any');
   // Soft fit signals from the AI (out-of-area / excluded work) — shown as
   // notes and passed along as lead flags, never used to block submission.
   const [fit, setFit] = useState<{ inArea: boolean | null; excluded: boolean }>({ inArea: null, excluded: false });
@@ -296,6 +298,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
             : 'AI estimate was unavailable — no price range was shown; needs a manual quote.',
           askTimeline ? `Timing: ${timelineLabel}.` : '',
           location.trim() ? `Location given: ${location.trim()}.` : '',
+          contactPref === 'text' ? 'Contact preference: TEXT ONLY — asked not to be called.' : '',
         ].filter(Boolean);
         const trimmedDescription = details.description.trim();
         data.set('message', trimmedDescription ? `${trimmedDescription}\n\n${parts.join(' ')}` : parts.join(' '));
@@ -308,6 +311,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
         if (fit.inArea !== null) data.set('inArea', String(fit.inArea));
         if (fit.excluded) data.set('excluded', 'true');
         data.set('wizard', '1');
+        data.set('contactPreference', contactPref);
         if (verify && verifyCode.trim()) {
           data.set('verifyToken', verify.token);
           data.set('verifyExpires', String(verify.expiresAt));
@@ -463,6 +467,12 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
               )}
             </div>
           )}
+          {wizardEnabled && (
+            <select aria-label="Best way to reach you" value={contactPref} onChange={(event) => setContactPref(event.target.value as 'any' | 'text')}>
+              <option value="any">Call or text me — either works</option>
+              <option value="text">Text me only — please don&apos;t call</option>
+            </select>
+          )}
           {wizardEnabled && wizardEmailField !== 'off' && (
             <input
               aria-label={wizardEmailField === 'required' ? 'Email' : 'Email (optional)'}
@@ -521,7 +531,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
             <p className={styles.heroFormResult}>{formatCurrency(estimate.min)} – {formatCurrency(estimate.max)}</p>
             <span className={styles.heroFormResultBadge}>✓ Request sent</span>
           </div>
-          <p className={styles.heroFormNote}>This is a rough estimate, not a final quote — one of our experts will reach out by <strong>text or phone call within the next few hours</strong> to confirm exact pricing for your project.</p>
+          <p className={styles.heroFormNote}>This is a rough estimate, not a final quote — one of our experts will reach out by <strong>{contactPref === 'text' ? 'text' : 'text or phone call'} within the next few hours</strong> to confirm exact pricing for your project.</p>
           {site.phone && <a className={styles.heroFormCall} href={`tel:${site.phone}`}>Call now to lock it in</a>}
         </div>
       )}

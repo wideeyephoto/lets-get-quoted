@@ -256,6 +256,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
             <span className={styles.statusPill}>{LEAD_STATUS_LABEL[lead.status] ?? lead.status}</span>
             {visitLabel ? <span className={styles.visitPill}>Quote visit {visitLabel}</span> : null}
             {lead.triage && <span className={styles.scoreChip} data-score={triage.score}>{triage.score === 'hot' ? '🔥 Hot lead' : triage.score === 'low' ? 'Low priority' : 'Warm'}</span>}
+            {triage.contactPreference === 'text_only' && <span className={styles.textOnlyChip}>💬 Text only — asked not to be called</span>}
             {triage.flags.filter((flag) => flag !== 'phone_verified').map((flag) => <span className={styles.flagChip} key={flag}>{LEAD_FLAG_LABELS[flag] || flag}</span>)}
             {triage.flags.includes('phone_verified') && <span className={styles.verifiedChip}>✓ Phone verified</span>}
             {isLeadSnoozed(triage) && <span className={styles.flagChip}>Snoozed</span>}
@@ -293,6 +294,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
               ) : (
                 <strong>No phone provided</strong>
               )}
+              {lead.phone && triage.contactPreference === 'text_only' ? <small className={styles.contactWarn}>💬 They asked for texts only — send a text before calling.</small> : null}
               {lead.email ? (
                 <a href={`mailto:${lead.email}`} className={styles.heroContactEmail} aria-label={`Email ${lead.email}`}>
                   <span aria-hidden="true">📧</span> {lead.email}

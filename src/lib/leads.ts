@@ -16,6 +16,8 @@ export type LeadTriage = {
   timeline?: string;
   location?: string;
   estimate?: { min: number; max: number } | null;
+  // 'text_only' = the homeowner asked not to be called — text first.
+  contactPreference?: 'any' | 'text_only';
   snoozedUntil?: string | null;
   archived?: boolean;
   declinedReason?: string | null;
@@ -51,6 +53,7 @@ export function getLeadTriage(lead: Pick<Lead, 'triage'>): LeadTriage {
     timeline: typeof triage.timeline === 'string' ? triage.timeline : undefined,
     location: typeof triage.location === 'string' ? triage.location : undefined,
     estimate: triage.estimate && typeof triage.estimate === 'object' ? triage.estimate : null,
+    contactPreference: triage.contactPreference === 'text_only' ? 'text_only' : 'any',
     snoozedUntil: typeof triage.snoozedUntil === 'string' ? triage.snoozedUntil : null,
     archived: triage.archived === true,
     declinedReason: typeof triage.declinedReason === 'string' ? triage.declinedReason : null,
