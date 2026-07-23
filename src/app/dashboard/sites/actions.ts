@@ -9,6 +9,8 @@ import { normalizeDomain, verifyDomain } from '@/lib/domains';
 import { draftBlogPost, type GeneratedBlogPost } from '@/lib/blog-generate';
 import { generateSeoCopy } from '@/lib/seo/seo-copy';
 import { siteToSeoInput } from '@/lib/seo/site-seo';
+import { generateStockImages, type StockImageResult } from '@/lib/stock/generate';
+import { getSiteContent } from '@/lib/site-content';
 import {
   getOrCreateSite,
   updateSite,
@@ -141,6 +143,10 @@ export type GeneratedSiteText = {
   // the contractor replaces them with real ones and turns them on.
   testimonials: { author: string; text: string; rating: number; label: string }[];
   stats: { value: number; suffix: string; label: string }[];
+  // Auto-selected Pexels stock photos for the site's image roles. Always
+  // present; `ok: false` (empty selections) when Pexels was unavailable, so the
+  // rest of the generated site still applies.
+  images: StockImageResult;
 };
 
 function asString(value: unknown, max: number): string {
@@ -276,7 +282,17 @@ export async function generateSiteTextAction(
       serviceArea: asString(parsed.service_area, 120) || serviceArea || undefined,
     });
 
+    // Populate the site's image roles with trade-relevant Pexels photos so the
+    // first preview looks complete. Never throws — on failure `images.ok` is
+    // false and the site is returned without stock photos.
+    const images = await generateStockImages({
+      seed: currentSite.id,
+      trade: tradeInput || services[0]?.title || '',
+      serviceTitles: services.map((service) => service.title),
+    });
+
     return {
+      images,
       headline: asString(parsed.headline, 200),
       tagline: asString(parsed.tagline, 300),
       seo_title: seo.title,
@@ -330,6 +346,32 @@ export async function regenerateSeoCopyAction(variantOffset: number): Promise<{ 
   const offset = Number.isFinite(variantOffset) ? Math.abs(Math.trunc(variantOffset)) : 0;
   const copy = generateSeoCopy(siteToSeoInput(site), offset);
   return { seo_title: copy.title, seo_description: copy.description };
+}
+
+// Re-pick stock photos for every image role from the saved trade + services. A
+// `nonce` (incremented by the "Regenerate all stock images" button, or 0 for a
+// fallback retry) varies the deterministic selection so the owner gets a fresh
+// set. Returns render-ready fields + attribution; the client applies them while
+// preserving the owner's uploaded photos. Never throws.
+export async function regenerateStockImagesAction(nonce: number): Promise<StockImageResult> {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const { data: sites } = await supabase
+    .from('sites')
+    .select('*')
+    .eq('account_id', accountId)
+    .limit(1);
+
+  if (!sites || sites.length === 0) {
+    throw new Error('No site found for your account');
+  }
+
+  const site = sites[0] as Site;
+  const content = getSiteContent(site.content);
+  const serviceTitles = content.services.items.map((item) => item.title).filter(Boolean);
+  const trade = content.trade || serviceTitles[0] || '';
+  const offset = Number.isFinite(nonce) ? Math.abs(Math.trunc(nonce)) : 0;
+  return generateStockImages({ seed: `${site.id}:${offset}`, trade, serviceTitles });
 }
 
 // Draft one blog post for the owner's site. Returns raw fields; the builder

@@ -1177,3 +1177,6 @@
 }
 @media (min-width: 901px) { .mobileNavOverlay { display: none; } }
 @media (prefers-reduced-motion: reduce) { .mobileNavOverlay { animation: none; } .mobileNavToggle span { transition: none; } }
+/* Pexels stock-photo attribution (required credit line). */
+.pexelsCredit { margin: 0; padding: 1rem 1.25rem; text-align: center; font-size: .72rem; color: var(--muted, #8a8f98); opacity: .8; }
+.pexelsCredit a { color: inherit; text-decoration: underline; }

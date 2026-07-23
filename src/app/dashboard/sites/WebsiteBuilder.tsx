@@ -4,11 +4,12 @@ import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, REORDERABLE_SECTIONS, slugifyBlogTitle, type NormalizedSiteContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, REORDERABLE_SECTIONS, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, slugifyBlogTitle, type NormalizedSiteContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
-import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, regenerateSeoCopyAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
+import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
 import { SEO_TITLE_MAX as SEO_TITLE_LIMIT, SEO_DESC_MAX as SEO_DESC_LIMIT } from '@/lib/seo/seo-copy';
+import type { StockImageResult, WebsiteImageAssignment } from '@/lib/stock/types';
 import { compressImage } from '@/lib/client-images';
 import ImagePickerModal from './ImagePickerModal';
 import DomainConnector from './DomainConnector';
@@ -86,6 +87,61 @@ function wordCount(text: string): number {
   return trimmed ? trimmed.split(/\s+/).length : 0;
 }
 
+function isStockUrl(stockImages: WebsiteImageAssignment[], url: string | null | undefined): boolean {
+  return Boolean(url) && stockImages.some((item) => item.provider === 'pexels' && item.imageUrl === url);
+}
+
+// Apply auto-selected stock photos to the site, preserving the owner's uploads
+// and any image they've already set (an existing image is only replaced if it's
+// currently a stock photo or empty). Returns the changed hero + a content
+// patch, or null when there's nothing to apply (Pexels was unavailable).
+function applyStockImages(current: Site, images: StockImageResult): { heroUrl: string | null; contentUpdates: Partial<NormalizedSiteContent> } | null {
+  if (!images.ok) return null;
+  const content = getSiteContent(current.content);
+  const stock = content.stockImages;
+  const replaceHero = !current.hero_url || isStockUrl(stock, current.hero_url);
+
+  const filledSlots: Record<string, string> = {};
+  for (const [slot, url] of Object.entries(images.slots)) {
+    const currentUrl = content.images[slot];
+    if (!currentUrl || isStockUrl(stock, currentUrl)) filledSlots[slot] = url;
+  }
+
+  const contentUpdates: Partial<NormalizedSiteContent> = {
+    images: { ...content.images, ...filledSlots },
+  };
+
+  if (images.gallery.length > 0) {
+    const keptUploads = content.showcase.items.filter((item) => item.source === 'upload');
+    const wasEmpty = content.showcase.items.length === 0;
+    contentUpdates.showcase = {
+      ...content.showcase,
+      enabled: true,
+      // Only apply the honest "representative photos" label to a fresh gallery;
+      // don't relabel a showcase the owner has already customized.
+      title: wasEmpty ? STOCK_SHOWCASE_TITLE : content.showcase.title,
+      intro: wasEmpty ? STOCK_SHOWCASE_INTRO : content.showcase.intro,
+      items: [...keptUploads, ...images.gallery],
+    };
+  }
+
+  // Keep attribution accurate: only record assignments we actually applied, and
+  // replace any prior record for the same role/id.
+  const applied = images.assignments.filter((assignment) => {
+    if (assignment.role === 'hero') return replaceHero;
+    if (assignment.role === 'gallery') return images.gallery.length > 0;
+    if (assignment.slot) return Boolean(filledSlots[assignment.slot]);
+    return false;
+  });
+  const appliedIds = new Set(applied.map((assignment) => assignment.id));
+  contentUpdates.stockImages = [...stock.filter((item) => !appliedIds.has(item.id)), ...applied];
+
+  return {
+    heroUrl: replaceHero ? (images.heroUrl || current.hero_url) : current.hero_url,
+    contentUpdates,
+  };
+}
+
 function contentHint(enabled: boolean, count: number, noun: string, plural?: string): { hint?: string; hintTone?: 'ok' | 'warn' } {
   if (enabled && count === 0) return { hint: "empty — won't show yet", hintTone: 'warn' };
   if (count > 0) return { hint: `${count} ${count === 1 ? noun : plural || `${noun}s`}`, hintTone: 'ok' };
@@ -131,9 +187,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   const [domainStatus, setDomainStatus] = useState<'idle' | 'checking' | 'verified' | 'unverified'>(site.custom_domain_verified_at ? 'verified' : 'idle');
   const [isGeneratingText, setIsGeneratingText] = useState(false);
   const [isRegeneratingSeo, setIsRegeneratingSeo] = useState(false);
+  const [isRegeneratingImages, setIsRegeneratingImages] = useState(false);
   // Rotates each time "Regenerate SEO copy" is clicked so the deterministic
   // generator returns a different valid variation without changing the inputs.
   const seoVariantRef = useRef(0);
+  // Rotates the stock-image selection for "Regenerate all stock images".
+  const imageNonceRef = useRef(0);
   const [isGeneratingBlog, setIsGeneratingBlog] = useState(false);
   const [uploadingCoverId, setUploadingCoverId] = useState<string | null>(null);
   const [blogTopic, setBlogTopic] = useState('');
@@ -516,6 +575,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
           if (generated.stats.length) {
             contentUpdates.stats = { enabled: false, title: content.stats.title || 'By the numbers', items: generated.stats.map((s, i) => ({ id: `stat-${i + 1}`, value: s.value, prefix: '', suffix: s.suffix, label: s.label })) };
           }
+          // Fold in auto-selected stock photos (hero, slots, gallery), preserving
+          // any images the owner already set.
+          const stock = applyStockImages(current, generated.images);
+          if (stock) Object.assign(contentUpdates, stock.contentUpdates);
           return {
             ...current,
             headline: generated.headline || current.headline,
@@ -524,11 +587,17 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
             seo_description: generated.seo_description || current.seo_description,
             hours: generated.hours || current.hours,
             service_area: generated.service_area || current.service_area,
+            hero_url: stock ? stock.heroUrl : current.hero_url,
             content: mergeSiteContent(current.content, contentUpdates),
           };
         });
         setIsDirty(true);
-        setMessage({ type: 'success', text: 'Full example site generated — headline, services, FAQs, and your Google listing (SEO) are all filled in. Review and personalize it. Testimonials & stats stay off until you add real ones. Then publish!' });
+        const imagesNote = generated.images.ok
+          ? ' Trade-relevant stock photos are added — replace any with your own anytime.'
+          : generated.images.configured
+            ? ' We couldn’t load stock photos right now — add your own, or use “Regenerate stock images” to retry.'
+            : '';
+        setMessage({ type: 'success', text: `Full example site generated — headline, services, FAQs, and your Google listing (SEO) are all filled in.${imagesNote} Testimonials & stats stay off until you add real ones. Then publish!` });
       } catch (error) {
         setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to generate example content.' });
       } finally {
@@ -554,6 +623,36 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
         setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Could not regenerate SEO copy right now.' });
       } finally {
         setIsRegeneratingSeo(false);
+      }
+    });
+  }, []);
+
+  // Re-pick trade-relevant stock photos for every image role. Confirms first
+  // (it changes several visible sections), keeps the owner's uploads, and only
+  // replaces images that are currently stock or empty.
+  const handleRegenerateStockImages = useCallback(() => {
+    if (!window.confirm('Replace the automatically chosen stock photos across your site with a fresh set? Your own uploaded photos are kept.')) return;
+    setIsRegeneratingImages(true);
+    setMessage(null);
+    startTransition(async () => {
+      try {
+        imageNonceRef.current += 1;
+        const images = await regenerateStockImagesAction(imageNonceRef.current);
+        if (!images.ok) {
+          setMessage({ type: 'error', text: images.configured ? 'Couldn’t load stock photos right now. Please try again in a moment.' : 'Stock photos aren’t set up yet. Add a PEXELS_API_KEY to enable them.' });
+          return;
+        }
+        setSite((current) => {
+          const stock = applyStockImages(current, images);
+          if (!stock) return current;
+          return { ...current, hero_url: stock.heroUrl, content: mergeSiteContent(current.content, stock.contentUpdates) };
+        });
+        setIsDirty(true);
+        setMessage({ type: 'success', text: 'Fresh stock photos selected across your site. Your uploaded photos were kept. Save to publish the changes.' });
+      } catch (error) {
+        setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Could not regenerate stock images right now.' });
+      } finally {
+        setIsRegeneratingImages(false);
       }
     });
   }, []);
@@ -1044,6 +1143,13 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     )}
                     {siteContent.heroImages.length < MAX_EXTRA_HERO_IMAGES && <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: 'an extra hero photo', kind: 'heroExtra' })}>Add hero photo</button>}
                     <small className={styles.fieldHint}>Add up to {MAX_EXTRA_HERO_IMAGES} more. They cross-fade with your hero image and reappear as parallax bands further down the page.</small>
+                  </div>
+                  <div className={styles.stockBlock}>
+                    <div>
+                      <strong>Stock photos</strong>
+                      <p className={styles.fieldHint}>Representative stock photos from Pexels. Replace any one with a photo of your own work anytime. This picks a fresh set for every image on your site and keeps your uploads.</p>
+                    </div>
+                    <button type="button" className={styles.secondaryAction} onClick={handleRegenerateStockImages} disabled={isRegeneratingImages}>{isRegeneratingImages ? 'Finding photos…' : '✨ Regenerate all stock images'}</button>
                   </div>
                 </SectionCard>
 

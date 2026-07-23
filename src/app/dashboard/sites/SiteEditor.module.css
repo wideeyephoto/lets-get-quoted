@@ -96,6 +96,10 @@
 .seoActions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .6rem; }
 .seoActions .fieldHint { flex: 1; min-width: 12rem; }
 .counterOver { color: #f5b83d !important; font-weight: 600; }
+/* Stock-photo note + regenerate-all control in the Hero photos card. */
+.stockBlock { display: grid; gap: .6rem; margin-top: .5rem; padding-top: .9rem; border-top: 1px solid rgba(255,255,255,.1); }
+.stockBlock strong { color: #f7f5ef; font-size: .85rem; }
+.stockBlock button { justify-self: start; }
 .checklistCard { display: grid; gap: .65rem; padding: 1rem 1.1rem; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; background: rgba(255,255,255,.03); }
 .checklistCard > strong { font-size: .9rem; color: #f7f5ef; }
 .checklistCard ul { display: grid; gap: .45rem; margin: 0; padding: 0; list-style: none; }

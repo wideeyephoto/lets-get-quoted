@@ -9,7 +9,7 @@ import Image from 'next/image';
 function isOptimizableHost(src: string): boolean {
   try {
     const { hostname } = new URL(src);
-    return hostname === 'images.unsplash.com' || hostname.endsWith('.supabase.co');
+    return hostname === 'images.unsplash.com' || hostname === 'images.pexels.com' || hostname.endsWith('.supabase.co');
   } catch {
     return false;
   }

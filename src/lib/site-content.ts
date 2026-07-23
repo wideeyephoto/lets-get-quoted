@@ -1,6 +1,13 @@
 import type { SiteImage } from '@/lib/site-images';
+import type { WebsiteImageAssignment } from '@/lib/stock/types';
 
 export type SiteSectionKey = 'showcase' | 'testimonials' | 'faqs';
+
+// Honest labels for a freshly generated site whose gallery holds representative
+// STOCK photos (not the contractor's real jobs). Swapped to "Our work" style
+// only once real project photos are uploaded.
+export const STOCK_SHOWCASE_TITLE = 'Representative service photos';
+export const STOCK_SHOWCASE_INTRO = 'A look at the kind of work we do. These are representative photos — we’ll swap in your own project photos anytime.';
 
 export type SiteShowcaseItem = SiteImage & {
   caption?: string;
@@ -333,6 +340,12 @@ export type NormalizedSiteContent = {
   // The owner's trade / contractor type (e.g. "window cleaning", "roofing"),
   // used together with the business name to generate on-brand AI content.
   trade: string;
+  // Provenance + attribution for auto-selected stock photos (Pexels). The
+  // render fields (hero_url, images, showcase.items) hold the URLs; this array
+  // is the source of truth for who took each photo and which role it fills, so
+  // attribution can be shown and "Regenerate all stock images" can tell stock
+  // slots from owner uploads. See src/lib/stock/types.ts.
+  stockImages: WebsiteImageAssignment[];
 };
 
 export const MAX_EXTRA_HERO_IMAGES = 2;
@@ -723,7 +736,41 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       : [],
     logoStyle: LOGO_STYLE_KEYS.has(toString(root.logoStyle)) ? toString(root.logoStyle) : 'plain',
     trade: toString(root.trade).slice(0, 80),
+    stockImages: parseStockImages(root.stockImages),
   };
+}
+
+// Validate the stored stock-image attribution records. Permissive on optional
+// fields but requires a usable imageUrl + role, and caps the count.
+function parseStockImages(value: unknown): WebsiteImageAssignment[] {
+  if (!Array.isArray(value)) return [];
+  const out: WebsiteImageAssignment[] = [];
+  for (const raw of value) {
+    if (!isRecord(raw)) continue;
+    const imageUrl = toString(raw.imageUrl);
+    const role = toString(raw.role);
+    if (!imageUrl || !role) continue;
+    out.push({
+      id: toString(raw.id) || `${role}-${out.length}`,
+      role,
+      ...(toString(raw.slot) ? { slot: toString(raw.slot) } : {}),
+      ...(toString(raw.serviceId) ? { serviceId: toString(raw.serviceId) } : {}),
+      provider: raw.provider === 'upload' ? 'upload' : 'pexels',
+      ...(toString(raw.providerImageId) ? { providerImageId: toString(raw.providerImageId) } : {}),
+      ...(toString(raw.sourceUrl) ? { sourceUrl: toString(raw.sourceUrl) } : {}),
+      imageUrl,
+      ...(toString(raw.thumbnailUrl) ? { thumbnailUrl: toString(raw.thumbnailUrl) } : {}),
+      alt: toString(raw.alt).slice(0, 200),
+      ...(toString(raw.photographerName) ? { photographerName: toString(raw.photographerName).slice(0, 120) } : {}),
+      ...(toString(raw.photographerUrl) ? { photographerUrl: toString(raw.photographerUrl) } : {}),
+      ...(toString(raw.searchQuery) ? { searchQuery: toString(raw.searchQuery).slice(0, 120) } : {}),
+      ...(typeof raw.width === 'number' ? { width: raw.width } : {}),
+      ...(typeof raw.height === 'number' ? { height: raw.height } : {}),
+      selectedAutomatically: raw.selectedAutomatically !== false,
+      selectedAt: toString(raw.selectedAt),
+    });
+  }
+  return out.slice(0, 24);
 }
 
 // Keep only string→non-empty-string entries whose slot is a known template

@@ -1,5 +1,6 @@
 import { Fragment, type ReactNode } from 'react';
 import SafeImage from './SafeImage';
+import SitePexelsAttribution from './SitePexelsAttribution';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import type { Site } from '@/lib/sites';
 import {
@@ -270,6 +271,8 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
           )}
         </div>
       )}
+
+      <SitePexelsAttribution site={site} />
     </>
   );
 }
