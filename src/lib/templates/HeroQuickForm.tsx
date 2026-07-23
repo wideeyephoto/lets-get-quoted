@@ -540,7 +540,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
             <p className={styles.heroFormResult}>{formatCurrency(estimate.min)} – {formatCurrency(estimate.max)}</p>
             <span className={styles.heroFormResultBadge}>✓ Request sent</span>
           </div>
-          <p className={styles.heroFormNote}>This is a rough estimate, not a final quote — one of our experts will reach out by <strong>{contactPref === 'text' ? 'text' : 'text or phone call'} within the next few hours</strong> to confirm exact pricing for your project.</p>
+          <p className={styles.heroFormNote}>This is a rough estimate, not a final quote — one of our experts will reach out by <strong>{contactPref === 'text' ? 'text' : 'text or phone call'} within the next few hours</strong> to confirm exact pricing or schedule a free in-person estimate for your project.</p>
           {site.phone && <a className={styles.heroFormCall} href={`tel:${site.phone}`}>Call now to lock it in</a>}
         </div>
       )}
