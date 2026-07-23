@@ -118,6 +118,23 @@ export function withPublicContact(site: Site): Site {
 // leads. Requires ≥3 responses and an average under 4 hours — otherwise null
 // and no claim is made. Computed inline (not via lib/leads) to keep this
 // module import-cycle-free. Never throws; a query error just drops the badge.
+// A lead the owner pruned via the "Not a fit?" tools. Snooze and archive patch
+// `triage` and bump `updated_at` WITHOUT changing status, so without this they
+// stay in the sample below and report the moment they were pruned as the reply
+// time — a 30-second archive would read as a 30-second response. (Decline and
+// block already set status 'lost', so they're excluded by the status filter.)
+// Kept dependency-free on purpose: this reads the raw jsonb rather than
+// importing from lib/leads, so sites.ts gains no new module edge.
+function isPrunedLead(triage: unknown): boolean {
+  if (!triage || typeof triage !== 'object') return false;
+  const record = triage as Record<string, unknown>;
+  return (
+    record.archived === true ||
+    typeof record.snoozedUntil === 'string' ||
+    typeof record.declinedReason === 'string'
+  );
+}
+
 async function withResponseStat(supabase: SupabaseClient, site: Site): Promise<Site> {
   try {
     // Only leads the owner moved FORWARD count as a genuine reply. Excluding
@@ -125,13 +142,14 @@ async function withResponseStat(supabase: SupabaseClient, site: Site): Promise<S
     // would dishonestly drag the average down) keeps the public claim honest.
     const { data } = await supabase
       .from('leads')
-      .select('status, created_at, updated_at')
+      .select('status, triage, created_at, updated_at')
       .eq('account_id', site.account_id)
       .eq('source', 'website_form')
       .in('status', ['contacted', 'quoted', 'won'])
       .order('created_at', { ascending: false })
       .limit(50);
     const times = (data ?? [])
+      .filter((lead) => !isPrunedLead(lead.triage))
       .map((lead) => new Date(lead.updated_at).getTime() - new Date(lead.created_at).getTime())
       .filter((ms) => Number.isFinite(ms) && ms > 0);
     if (times.length < 3) return site;
