@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { compressImage } from '@/lib/client-images';
 import { normalizeUsPhone } from '@/lib/phone';
-import { DEFAULT_FULLY_BOOKED_MESSAGE, getEstimateButtonLabel, getSiteContent } from '@/lib/site-content';
+import { DEFAULT_FULLY_BOOKED_MESSAGE, getEstimateButtonLabel, getSiteContent, isFullyBookedActive } from '@/lib/site-content';
 import type { Site } from '@/lib/sites';
 import styles from './themes.module.css';
 
@@ -46,7 +46,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   const askTimeline = wizardEnabled && leadFilters.askTimeline;
   const askLocation = wizardEnabled && leadFilters.serviceAreaGate && siteContent.serviceAreas.cities.some((city) => city.trim());
   const bookedUntil = leadFilters.fullyBooked.until ? new Date(`${leadFilters.fullyBooked.until}T00:00:00`) : null;
-  const bookedNote = leadFilters.fullyBooked.enabled
+  const bookedNote = isFullyBookedActive(leadFilters)
     ? `${leadFilters.fullyBooked.message || DEFAULT_FULLY_BOOKED_MESSAGE}${bookedUntil && !Number.isNaN(bookedUntil.getTime()) ? ` (booked through ${bookedUntil.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})` : ''}`
     : '';
 

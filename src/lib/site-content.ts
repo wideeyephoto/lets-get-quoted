@@ -316,6 +316,15 @@ export type SiteLeadFiltersContent = {
 
 export const DEFAULT_FULLY_BOOKED_MESSAGE = 'We’re currently booked up — send your request and we’ll reach out as soon as a spot opens.';
 
+// Fully-booked mode with a "booked until" date expires itself at the end of
+// that day — no date means it runs until the owner turns it off.
+export function isFullyBookedActive(leadFilters: SiteLeadFiltersContent, now = new Date()): boolean {
+  if (!leadFilters.fullyBooked.enabled) return false;
+  if (!leadFilters.fullyBooked.until) return true;
+  const end = new Date(`${leadFilters.fullyBooked.until}T23:59:59`);
+  return Number.isNaN(end.getTime()) || end.getTime() >= now.getTime();
+}
+
 export type NormalizedSiteContent = {
   showcase: SiteShowcaseContent;
   faqs: SiteFaqContent;

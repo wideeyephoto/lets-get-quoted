@@ -6,7 +6,7 @@ import { createLead, getLeadTriage, LEAD_PRUNE_FLAGS, type Lead, type LeadTriage
 import { deleteLeadPhotos, uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { isLeadVerificationValid } from '@/lib/lead-verification';
 import { normalizeUsPhone } from '@/lib/phone';
-import { getSiteContent } from '@/lib/site-content';
+import { getSiteContent, isFullyBookedActive } from '@/lib/site-content';
 import { isSmsConfigured } from '@/lib/sms';
 
 export const runtime = 'nodejs';
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
   if (text(data, 'excluded', 8) === 'true') flags.push('excluded_work');
   if (filters.minJobAmount > 0 && estimate && estimate.max < filters.minJobAmount) flags.push('below_minimum');
   if (timeline === 'researching') flags.push('just_researching');
-  if (filters.fullyBooked.enabled) flags.push('while_booked');
+  if (isFullyBookedActive(filters)) flags.push('while_booked');
 
   // Phone verification (AI-intake submissions only, and only when the owner
   // enabled it AND texting is configured): the HMAC binds phone+code+expiry,
