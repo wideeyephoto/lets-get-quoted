@@ -1019,7 +1019,9 @@
 .shineHeroCopy { max-width: 620px; }
 .shineHeroCopy h1 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(2.5rem, 5.6vw, 4.4rem); line-height: 1.04; letter-spacing: -.02em; margin: 0 0 1.2rem; text-wrap: balance; overflow-wrap: anywhere; }
 .shineHeroText { font-size: clamp(1rem, 1.4vw, 1.16rem); line-height: 1.6; color: rgba(255,255,255,.78); margin: 0 0 1.7rem; max-width: 46ch; }
-.shineHeroActions { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+/* The hero CTA is the smart-intake HeroQuickForm card (see .heroQuickForm);
+   center it in the stacked mobile layout. */
+.shineHeroCopy .heroQuickForm { margin-top: 1.25rem; margin-bottom: 1.5rem; text-align: left; }
 .shineBtn { display: inline-flex; align-items: center; gap: .45rem; min-height: 50px; padding: .8rem 1.6rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #0f1b2d); font-weight: 700; font-size: .96rem; box-shadow: 0 16px 30px -14px color-mix(in srgb, var(--theme-accent) 55%, transparent); transition: transform .2s ease, filter .2s ease; }
 .shineBtn:hover { transform: translateY(-2px); filter: brightness(1.04); }
 .shineBtnGhost { display: inline-flex; align-items: center; gap: .45rem; min-height: 50px; padding: .8rem 1.4rem; border-radius: 999px; border: 1.5px solid rgba(255,255,255,.5); color: #fff; font-weight: 700; font-size: .96rem; transition: background .2s ease, border-color .2s ease; }
@@ -1109,7 +1111,7 @@
   .shineHero, .shineContact { grid-template-columns: 1fr; }
   .shineHeroCopy { text-align: center; }
   .shineHeroText { margin-inline: auto; }
-  .shineHeroActions { justify-content: center; }
+  .shineHeroCopy .heroQuickForm { margin-inline: auto; }
   .shineHeroCopy .proofStrip { justify-content: center; }
   .shineHeroMedia { max-width: 560px; margin-inline: auto; }
   .shineHeader { grid-template-columns: auto 1fr; }

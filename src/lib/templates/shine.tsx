@@ -4,6 +4,7 @@ import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, get
 import HeroImageCycle from './HeroImageCycle';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
+import HeroQuickForm from './HeroQuickForm';
 import SiteContentSections from './SiteContentSections';
 import SiteNavLinks from './SiteNavLinks';
 import SiteProofStrip from './SiteProofStrip';
@@ -65,10 +66,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
         <div className={styles.shineHeroCopy}>
           <h1>{site.headline || 'Pure living starts with a spotless home.'}</h1>
           <p className={styles.shineHeroText}>{site.tagline || 'Professional home cleaning and maintenance, designed to give you comfort, hygiene, and peace of mind.'}</p>
-          <div className={styles.shineHeroActions}>
-            <a className={styles.shineBtn} href="#contact">Book a service <span aria-hidden="true">→</span></a>
-            {site.phone ? <a className={styles.shineBtnGhost} href={`tel:${site.phone}`}>Call {site.phone}</a> : <a className={styles.shineBtnGhost} href="#contact">Get a free quote</a>}
-          </div>
+          <HeroQuickForm site={site} />
           <SiteProofStrip site={site} />
         </div>
         <div className={styles.shineHeroMedia}>
