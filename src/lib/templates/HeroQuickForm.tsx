@@ -58,6 +58,9 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   const [description, setDescription] = useState('');
   const [name, setName] = useState('');
   const [contact, setContact] = useState('');
+  // Wizard-only extra email field (the wizard's main contact field is always a
+  // phone number — the promised follow-up is a text or call).
+  const [email, setEmail] = useState('');
   // The AI-priced range for the described job; null when the AI couldn't
   // price it (the lead still submits, just without a shown number).
   const [estimate, setEstimate] = useState<EstimateRange | null>(null);
@@ -165,6 +168,22 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
     const trimmedContact = contact.trim();
     if (!name.trim() || !trimmedContact) return;
 
+    if (wizardEnabled) {
+      // The AI intake always needs a real phone number — the follow-up we
+      // promise is a text or call within a few hours.
+      if (!normalizeUsPhone(trimmedContact)) {
+        setStatus({ tone: 'error', text: 'Enter a valid phone number so we can text or call you with your quote.' });
+        return;
+      }
+      if (emailRequired && !EMAIL_REGEX.test(email.trim())) {
+        setStatus({ tone: 'error', text: 'Enter a valid email address.' });
+        return;
+      }
+      setStatus(null);
+      submitLead({ description });
+      return;
+    }
+
     const isEmail = emailRequired || trimmedContact.includes('@');
     const valid = isEmail ? EMAIL_REGEX.test(trimmedContact) : Boolean(normalizeUsPhone(trimmedContact));
     if (!valid) {
@@ -173,8 +192,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
     }
 
     setStatus(null);
-    if (wizardEnabled) submitLead({ description });
-    else submitLead();
+    submitLead();
   }
 
   async function submitLead(details?: { description: string }) {
@@ -190,8 +208,14 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
       data.set('siteId', site.id);
       data.set('startedAt', String(startedAt.current));
       data.set('name', name.trim());
-      if (emailRequired || contact.includes('@')) data.set('email', contact.trim());
-      else data.set('phone', contact.trim());
+      if (details) {
+        data.set('phone', contact.trim());
+        if (email.trim()) data.set('email', email.trim());
+      } else if (emailRequired || contact.includes('@')) {
+        data.set('email', contact.trim());
+      } else {
+        data.set('phone', contact.trim());
+      }
 
       if (details) {
         const summary = estimate
@@ -217,6 +241,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
         formRef.current?.reset();
         setName('');
         setContact('');
+        setEmail('');
         startedAt.current = Date.now();
       }
       setSelectedPhotos([]);
@@ -299,16 +324,19 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
             <input name="name" aria-label="Your name" placeholder="Your name" autoComplete="name" maxLength={100} required value={name} onChange={(event) => setName(event.target.value)} />
             <input
               name="contact"
-              aria-label={emailRequired ? 'Email' : 'Phone or email'}
-              type={emailRequired ? 'email' : 'text'}
-              placeholder={emailRequired ? 'Email' : 'Phone or email'}
-              autoComplete={emailRequired ? 'email' : 'tel'}
+              aria-label={wizardEnabled ? 'Phone number' : emailRequired ? 'Email' : 'Phone or email'}
+              type={wizardEnabled ? 'tel' : emailRequired ? 'email' : 'text'}
+              placeholder={wizardEnabled ? 'Phone number' : emailRequired ? 'Email' : 'Phone or email'}
+              autoComplete={wizardEnabled ? 'tel' : emailRequired ? 'email' : 'tel'}
               maxLength={160}
               required
               value={contact}
               onChange={(event) => setContact(event.target.value)}
             />
           </div>
+          {wizardEnabled && emailRequired && (
+            <input aria-label="Email" type="email" placeholder="Email" autoComplete="email" maxLength={160} required value={email} onChange={(event) => setEmail(event.target.value)} />
+          )}
           <div className={styles.heroFormPhotoRow}>
             <input
               ref={photoInputRef}

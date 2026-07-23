@@ -26,6 +26,25 @@ type WebsiteBuilderProps = {
   uploadedImages: SiteImage[];
 };
 
+// Heading font choices. The webfont options reuse faces the app already loads
+// globally (see src/app/layout.tsx), so picking any of them adds zero page
+// weight; the last three are the original system-font stacks, kept so sites
+// that saved one still match an option.
+const HEADING_FONT_OPTIONS = [
+  { label: 'Space Grotesk — modern grotesk', value: 'var(--font-display), "Segoe UI", sans-serif' },
+  { label: 'Anton — bold poster', value: 'var(--font-forge-display), Impact, sans-serif' },
+  { label: 'Fraunces — elegant serif', value: 'var(--font-guild-display), Georgia, serif' },
+  { label: 'Poppins — rounded & friendly', value: 'var(--font-care), "Segoe UI", sans-serif' },
+  { label: 'Barlow — clean workshop sans', value: 'var(--font-forge-body), Arial, sans-serif' },
+  { label: 'Work Sans — simple & warm', value: 'var(--font-guild-body), Arial, sans-serif' },
+  { label: 'Inter — neutral modern', value: 'var(--font-vista-body), Helvetica, sans-serif' },
+  { label: 'IBM Plex Sans — technical clean', value: 'var(--font-body), Arial, sans-serif' },
+  { label: 'JetBrains Mono — typewriter tech', value: 'var(--font-mono), Consolas, monospace' },
+  { label: 'Classic serif (Georgia)', value: 'Georgia, Times New Roman, serif' },
+  { label: 'Bold sans (Arial Black)', value: 'Arial Black, Helvetica, sans-serif' },
+  { label: 'Humanist sans (Trebuchet)', value: 'Trebuchet MS, sans-serif' },
+];
+
 const TABS: { id: BuilderTab; label: string }[] = [
   { id: 'business', label: 'Business' },
   { id: 'design', label: 'Design' },
@@ -1222,7 +1241,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     <label className={styles.formField}><span>Accent color</span><div className={styles.colorControl}><input type="color" value={site.accent_override || '#ff7a21'} onChange={(event) => handleChange('accent_override', event.target.value)} /><input value={site.accent_override || '#ff7a21'} onChange={(event) => handleChange('accent_override', event.target.value)} /></div></label>
                     <label className={styles.formField}><span>Color mode</span><select value={site.portal_mode} onChange={(event) => handleChange('portal_mode', event.target.value as Site['portal_mode'])}><option value="light">Light</option><option value="dark">Dark</option></select></label>
                   </div>
-                  <label className={styles.formField}><span>Heading font</span><select value={site.header_font || ''} onChange={(event) => handleChange('header_font', event.target.value || null)}><option value="">Theme default</option><option value="Georgia, Times New Roman, serif">Classic serif</option><option value="Arial Black, Helvetica, sans-serif">Bold sans</option><option value="Trebuchet MS, sans-serif">Humanist sans</option></select></label>
+                  <label className={styles.formField}><span>Heading font</span><select value={site.header_font || ''} onChange={(event) => handleChange('header_font', event.target.value || null)}>
+                    <option value="">Theme default</option>
+                    {HEADING_FONT_OPTIONS.map((font) => <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>{font.label}</option>)}
+                  </select></label>
                   <label className={styles.formField}><span>Button style</span><select value={site.button_style || 'solid'} onChange={(event) => handleChange('button_style', event.target.value)}><option value="solid">Solid</option><option value="outline">Outline</option><option value="ghost">Minimal</option></select></label>
                 </SectionCard>
 
