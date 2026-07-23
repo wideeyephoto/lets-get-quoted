@@ -5,6 +5,7 @@ import { getSiteGallery } from '@/lib/site-images';
 import { getPublicSiteByCustomDomain } from '@/lib/sites';
 import { getTemplate } from '@/lib/templates';
 import SiteStructuredData from '@/lib/templates/SiteStructuredData';
+import { resolveSiteSeo, isSiteSeoReady } from '@/lib/seo/site-seo';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,9 +30,9 @@ export default async function CustomDomainSitePage({ params }: Props) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const site = await loadSite(params.domain);
-  if (!site) return { title: 'Site not found' };
-  const title = site.seo_title || site.company_name;
-  const description = site.seo_description || site.tagline || `${site.company_name} contractor services`;
+  if (!site) return { title: 'Site not found', robots: { index: false, follow: false } };
+  const { title, description } = resolveSiteSeo(site);
+  const canonical = `https://${site.custom_domain}`;
   return {
     // absolute bypasses the root layout's '%s · Let's Get Quoted' template so a
     // contractor's own domain/tab doesn't carry the SaaS brand. Guard against an
@@ -39,7 +40,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // rather than emitting an empty <title>.
     title: title ? { absolute: title } : undefined,
     description,
-    alternates: { canonical: `https://${site.custom_domain}` },
-    openGraph: { title, description, type: 'website', url: `https://${site.custom_domain}`, images: site.hero_url ? [{ url: site.hero_url }] : [] },
+    alternates: { canonical },
+    robots: isSiteSeoReady(site) ? undefined : { index: false, follow: true },
+    openGraph: { title, description, type: 'website', url: canonical, images: site.hero_url ? [{ url: site.hero_url }] : [] },
   };
 }

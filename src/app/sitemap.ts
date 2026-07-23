@@ -1,5 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { createAdminClient } from '@/lib/auth';
+import type { Site } from '@/lib/sites';
+import { isSiteSeoReady } from '@/lib/seo/site-seo';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,7 +10,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || `https://${rootDomain}`;
   const { data: sites } = await createAdminClient()
     .from('sites')
-    .select('subdomain, custom_domain, custom_domain_verified_at, updated_at')
+    .select('*')
     .eq('published', true);
 
   const staticPages: MetadataRoute.Sitemap = [
@@ -16,7 +18,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${appUrl}/privacy`, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${appUrl}/sms-terms`, changeFrequency: 'yearly', priority: 0.3 },
   ];
-  const sitePages: MetadataRoute.Sitemap = (sites ?? []).flatMap((site) => {
+  // Only list sites that carry real content — mirrors the noindex gate on the
+  // pages so thin/incomplete sites aren't advertised for indexing.
+  const sitePages: MetadataRoute.Sitemap = ((sites ?? []) as Site[]).flatMap((site) => {
+    if (!isSiteSeoReady(site)) return [];
     const host = site.custom_domain && site.custom_domain_verified_at
       ? site.custom_domain
       : site.subdomain ? `${site.subdomain}.${rootDomain}` : null;

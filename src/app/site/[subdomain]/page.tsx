@@ -5,6 +5,7 @@ import { getSiteGallery } from '@/lib/site-images';
 import { getPublicSiteBySubdomain } from '@/lib/sites';
 import { getTemplate } from '@/lib/templates';
 import SiteStructuredData from '@/lib/templates/SiteStructuredData';
+import { resolveSiteSeo, siteCanonicalUrl, isSiteSeoReady } from '@/lib/seo/site-seo';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,14 +30,11 @@ export default async function PublicSitePage({ params }: PublicSitePageProps) {
 
 export async function generateMetadata({ params }: PublicSitePageProps): Promise<Metadata> {
   const site = await getPublicSiteBySubdomain(createAdminClient(), params.subdomain);
-  if (!site) return { title: 'Site not found' };
+  if (!site) return { title: 'Site not found', robots: { index: false, follow: false } };
 
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
-  const title = site.seo_title || site.company_name;
-  const description = site.seo_description || site.tagline || `${site.company_name} contractor services`;
-  const canonical = site.custom_domain_verified_at && site.custom_domain
-    ? `https://${site.custom_domain}`
-    : `https://${site.subdomain}.${rootDomain}`;
+  const { title, description } = resolveSiteSeo(site);
+  const canonical = siteCanonicalUrl(site) || `https://${site.subdomain}.${rootDomain}`;
 
   return {
     // absolute bypasses the root layout's '%s · Let's Get Quoted' template so a
@@ -46,6 +44,8 @@ export async function generateMetadata({ params }: PublicSitePageProps): Promise
     title: title ? { absolute: title } : undefined,
     description,
     alternates: { canonical },
+    // Keep thin/incomplete sites out of the index until they carry real content.
+    robots: isSiteSeoReady(site) ? undefined : { index: false, follow: true },
     openGraph: {
       title,
       description,

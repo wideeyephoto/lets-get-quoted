@@ -1,13 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useState, useTransition, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from 'react';
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getSiteContent, mergeSiteContent, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, REORDERABLE_SECTIONS, slugifyBlogTitle, type NormalizedSiteContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
-import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
+import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, regenerateSeoCopyAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
+import { SEO_TITLE_MAX as SEO_TITLE_LIMIT, SEO_DESC_MAX as SEO_DESC_LIMIT } from '@/lib/seo/seo-copy';
 import { compressImage } from '@/lib/client-images';
 import ImagePickerModal from './ImagePickerModal';
 import DomainConnector from './DomainConnector';
@@ -129,6 +130,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   const [subdomainStatus, setSubdomainStatus] = useState<'idle' | 'available' | 'taken'>('idle');
   const [domainStatus, setDomainStatus] = useState<'idle' | 'checking' | 'verified' | 'unverified'>(site.custom_domain_verified_at ? 'verified' : 'idle');
   const [isGeneratingText, setIsGeneratingText] = useState(false);
+  const [isRegeneratingSeo, setIsRegeneratingSeo] = useState(false);
+  // Rotates each time "Regenerate SEO copy" is clicked so the deterministic
+  // generator returns a different valid variation without changing the inputs.
+  const seoVariantRef = useRef(0);
   const [isGeneratingBlog, setIsGeneratingBlog] = useState(false);
   const [uploadingCoverId, setUploadingCoverId] = useState<string | null>(null);
   const [blogTopic, setBlogTopic] = useState('');
@@ -532,6 +537,27 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     });
   }, [site.headline, site.tagline, site.seo_title, site.seo_description, site.content]);
 
+  // Regenerate only the SEO title + description from the contractor's real data
+  // (no AI/API needed). Each click rotates to a different valid variation and
+  // leaves every other field untouched, so manual edits elsewhere are kept.
+  const handleRegenerateSeo = useCallback(() => {
+    setIsRegeneratingSeo(true);
+    setMessage(null);
+    startTransition(async () => {
+      try {
+        seoVariantRef.current += 1;
+        const { seo_title, seo_description } = await regenerateSeoCopyAction(seoVariantRef.current);
+        setSite((current) => ({ ...current, seo_title, seo_description }));
+        setIsDirty(true);
+        setMessage({ type: 'success', text: 'Fresh SEO title and description written from your business details. Edit them anytime, then save.' });
+      } catch (error) {
+        setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Could not regenerate SEO copy right now.' });
+      } finally {
+        setIsRegeneratingSeo(false);
+      }
+    });
+  }, []);
+
   const selectHeroImage = useCallback((image: SiteImage) => {
     handleChange('hero_url', image.url);
   }, [handleChange]);
@@ -900,15 +926,26 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <label className={styles.formField}><span>Business hours</span><input value={site.hours || ''} onChange={(event) => handleChange('hours', event.target.value || null)} placeholder="Monday-Friday, 7am-5pm" /></label>
                 </SectionCard>
 
-                <SectionCard title="How you show up on Google" description="The title and description searchers see before they click. Your hero image is used when your site is shared on social." open={openSection === 'seo'} onToggleOpen={() => toggleSection('seo')}>
+                <SectionCard title="How you show up on Google" description="The page title and description searchers see before they click. Your hero image is used when your site is shared on social." open={openSection === 'seo'} onToggleOpen={() => toggleSection('seo')}>
                   <div className={styles.googleSnippet}>
                     <span className={styles.googleSnippetUrl}>{liveDomain || `${site.subdomain || 'your-business'}.${ROOT_DOMAIN}`}</span>
                     <strong className={styles.googleSnippetTitle}>{site.seo_title || site.company_name || 'Your company name'}</strong>
                     <p className={styles.googleSnippetDesc}>{site.seo_description || site.tagline || 'Your description appears here — one sentence on what you do and where.'}</p>
                   </div>
-                  <small className={styles.fieldHint}>A preview of how your site can appear in Google search results.</small>
-                  <label className={styles.formField}><span>Google listing title</span><input id="bf-seo-title" maxLength={60} value={site.seo_title || ''} onChange={(event) => handleChange('seo_title', event.target.value || null)} placeholder={site.company_name} /><small>{(site.seo_title || '').length}/60 characters</small></label>
-                  <label className={styles.formField}><span>Google listing description</span><textarea rows={3} maxLength={160} value={site.seo_description || ''} onChange={(event) => handleChange('seo_description', event.target.value || null)} placeholder={site.tagline || 'Describe your services and location.'} /><small>{(site.seo_description || '').length}/160 characters</small></label>
+                  <div className={styles.seoActions}>
+                    <small className={styles.fieldHint}>A live preview of how your site can appear in Google. Edit either field, or let us write it from your business details.</small>
+                    <button type="button" className={styles.secondaryAction} onClick={handleRegenerateSeo} disabled={isRegeneratingSeo}>{isRegeneratingSeo ? 'Writing…' : '✨ Regenerate SEO copy'}</button>
+                  </div>
+                  <label className={styles.formField}>
+                    <span>SEO page title</span>
+                    <input id="bf-seo-title" maxLength={SEO_TITLE_LIMIT + 20} value={site.seo_title || ''} onChange={(event) => handleChange('seo_title', event.target.value || null)} placeholder={site.company_name || 'Your business, service and city'} />
+                    <small className={(site.seo_title || '').length > SEO_TITLE_LIMIT ? styles.counterOver : undefined}>{(site.seo_title || '').length}/{SEO_TITLE_LIMIT} characters{(site.seo_title || '').length > SEO_TITLE_LIMIT ? ' — a bit long; Google may trim it' : ''}</small>
+                  </label>
+                  <label className={styles.formField}>
+                    <span>Meta description</span>
+                    <textarea id="bf-seo-description" rows={3} maxLength={SEO_DESC_LIMIT + 40} value={site.seo_description || ''} onChange={(event) => handleChange('seo_description', event.target.value || null)} placeholder={site.tagline || 'One sentence on what you do, where, and how customers book.'} />
+                    <small className={(site.seo_description || '').length > SEO_DESC_LIMIT ? styles.counterOver : undefined}>{(site.seo_description || '').length}/{SEO_DESC_LIMIT} characters{(site.seo_description || '').length > SEO_DESC_LIMIT ? ' — a bit long; Google may trim it' : ''}</small>
+                  </label>
                 </SectionCard>
               </div>
             )}

@@ -7,6 +7,8 @@ import { createJobPhotoUrls } from '@/lib/job-photo-storage';
 import type { Site } from '@/lib/sites';
 import { normalizeDomain, verifyDomain } from '@/lib/domains';
 import { draftBlogPost, type GeneratedBlogPost } from '@/lib/blog-generate';
+import { generateSeoCopy } from '@/lib/seo/seo-copy';
+import { siteToSeoInput } from '@/lib/seo/site-seo';
 import {
   getOrCreateSite,
   updateSite,
@@ -177,7 +179,7 @@ export async function generateSiteTextAction(trade?: string): Promise<GeneratedS
 
   const { data: sites } = await supabase
     .from('sites')
-    .select('company_name, service_area')
+    .select('*')
     .eq('account_id', accountId)
     .limit(1);
 
@@ -185,6 +187,7 @@ export async function generateSiteTextAction(trade?: string): Promise<GeneratedS
     throw new Error('No site found for your account');
   }
 
+  const currentSite = sites[0] as Site;
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error('AI text generation is not configured yet.');
@@ -244,22 +247,38 @@ export async function generateSiteTextAction(trade?: string): Promise<GeneratedS
     const payload = await response.json();
     const parsed = JSON.parse(extractOutputText(payload));
 
+    const services = asArray(parsed.services)
+      .filter(isObj)
+      .slice(0, 5)
+      .map((s) => ({ icon: normalizeIcon(s.icon), title: asString(s.title, 60), description: asString(s.description, 140) }))
+      .filter((s) => s.title);
+    const cities = asArray(parsed.cities)
+      .filter((c): c is string => typeof c === 'string')
+      .slice(0, 8)
+      .map((c) => c.slice(0, 50));
+
+    // Build SEO copy deterministically rather than trusting the model — the
+    // generator guarantees the char limits, refuses to repeat the service
+    // (killing "Window Cleaning | Window Cleaning"), and works in Let's Get
+    // Quoted's customer-experience features. Seeded on the site id so it stays
+    // stable, and enriched with the freshly generated primary service + city.
+    const seo = generateSeoCopy({
+      ...siteToSeoInput(currentSite),
+      businessName: currentSite.company_name,
+      primaryService: services[0]?.title || undefined,
+      city: cities[0] || undefined,
+      serviceArea: asString(parsed.service_area, 120) || currentSite.service_area || undefined,
+    });
+
     return {
       headline: asString(parsed.headline, 200),
       tagline: asString(parsed.tagline, 300),
-      seo_title: asString(parsed.seo_title, 60),
-      seo_description: asString(parsed.seo_description, 160),
+      seo_title: seo.title,
+      seo_description: seo.description,
       hours: asString(parsed.hours, 80),
       service_area: asString(parsed.service_area, 120),
-      cities: asArray(parsed.cities)
-        .filter((c): c is string => typeof c === 'string')
-        .slice(0, 8)
-        .map((c) => c.slice(0, 50)),
-      services: asArray(parsed.services)
-        .filter(isObj)
-        .slice(0, 5)
-        .map((s) => ({ icon: normalizeIcon(s.icon), title: asString(s.title, 60), description: asString(s.description, 140) }))
-        .filter((s) => s.title),
+      cities,
+      services,
       faqs: asArray(parsed.faqs)
         .filter(isObj)
         .slice(0, 6)
@@ -280,6 +299,31 @@ export async function generateSiteTextAction(trade?: string): Promise<GeneratedS
     console.error('Site text generation failed:', error);
     throw new Error('Could not generate example text right now. Please try again.');
   }
+}
+
+// Regenerate ONLY the SEO title + description from the contractor's real data,
+// with no AI/API dependency. `variantOffset` rotates to a different valid
+// variation each click (the builder increments it), while the base output stays
+// stable per site between page loads. The caller applies the result to the two
+// SEO fields and leaves everything else untouched, so manual edits elsewhere are
+// preserved.
+export async function regenerateSeoCopyAction(variantOffset: number): Promise<{ seo_title: string; seo_description: string }> {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const { data: sites } = await supabase
+    .from('sites')
+    .select('*')
+    .eq('account_id', accountId)
+    .limit(1);
+
+  if (!sites || sites.length === 0) {
+    throw new Error('No site found for your account');
+  }
+
+  const site = sites[0] as Site;
+  const offset = Number.isFinite(variantOffset) ? Math.abs(Math.trunc(variantOffset)) : 0;
+  const copy = generateSeoCopy(siteToSeoInput(site), offset);
+  return { seo_title: copy.title, seo_description: copy.description };
 }
 
 // Draft one blog post for the owner's site. Returns raw fields; the builder
