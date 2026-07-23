@@ -203,13 +203,17 @@ h3 {
   color: #f7f5ef;
 }
 
+/* Hollow ring rather than a filled chip. The old translucent-amber fill sat on
+   the amber pipeline pills, so badge and pill were nearly the same colour and
+   the number — the one thing saying work is waiting — barely read. */
 .topnav-count {
   display: inline-grid;
   min-width: 1.35rem;
   height: 1.35rem;
   place-items: center;
   border-radius: 999px;
-  background: rgba(255, 122, 33, 0.22);
+  background: none;
+  border: 1px solid rgba(255, 209, 102, 0.5);
   color: #ffd166;
   font-size: 0.68rem;
   font-weight: 800;
