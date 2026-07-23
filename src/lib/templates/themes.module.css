@@ -22,7 +22,7 @@
 .vista .navLinks a { background-image: none; }
 @media (prefers-reduced-motion: reduce) { .navLinks a { transition: color .2s ease; } }
 .kicker { margin-bottom: 1rem; font-size: .73rem; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }
-.primaryCta { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; padding: .75rem 1.2rem; border-radius: var(--theme-radius, 4px); background: var(--theme-accent); color: #111; font-weight: 800; transition: transform .25s ease, box-shadow .25s ease, filter .25s ease; }
+.primaryCta { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; padding: .75rem 1.2rem; border-radius: var(--theme-radius, 4px); background: var(--theme-accent); color: var(--theme-on-accent, #111); font-weight: 800; transition: transform .25s ease, box-shadow .25s ease, filter .25s ease; }
 .primaryCta:hover { transform: translateY(-2px); filter: brightness(1.06); box-shadow: 0 16px 32px -16px color-mix(in srgb, var(--theme-accent) 65%, transparent); }
 [data-button='outline'] .primaryCta { border: 2px solid currentColor; background: transparent; color: inherit; }
 [data-button='ghost'] .primaryCta { padding-inline: 0; border-bottom: 2px solid currentColor; background: transparent; color: inherit; border-radius: 0; }
@@ -53,7 +53,7 @@
 .heroFormVerifyRow input { flex: 1; min-width: 0; }
 .heroQuickForm .heroFormVerifyBtn { margin-top: 0; min-height: 44px; padding: .55rem .8rem; background: #eef0f4; color: #17140f; border: 1px solid #d8d3c6; font-weight: 700; font-size: .78rem; white-space: nowrap; flex: none; }
 .heroQuickForm textarea { width: 100%; padding: .6rem .7rem; border: 1px solid #d8d3c6; border-radius: calc(var(--theme-radius, 8px) * .6); font-size: .84rem; color: #17140f; background: #fff; font-family: inherit; resize: vertical; min-height: 3.6rem; }
-.heroQuickForm button { margin-top: .1rem; min-height: 48px; padding: .75rem; border: 0; border-radius: calc(var(--theme-radius, 8px) * .6); background: var(--theme-accent); color: #111; font-weight: 800; font-size: .82rem; cursor: pointer; }
+.heroQuickForm button { margin-top: .1rem; min-height: 48px; padding: .75rem; border: 0; border-radius: calc(var(--theme-radius, 8px) * .6); background: var(--theme-accent); color: var(--theme-on-accent, #111); font-weight: 800; font-size: .82rem; cursor: pointer; }
 .heroQuickForm button:disabled { opacity: .6; cursor: progress; }
 .heroFormStatus { margin: 0; font-size: .78rem; }
 .heroFormStatus[data-tone='error'] { color: #b3341f; }
@@ -62,7 +62,7 @@
 .heroFormChip { flex: 1; padding: .5rem .4rem; border: 1px solid #d8d3c6; border-radius: calc(var(--theme-radius, 8px) * .6); background: #fff; color: #17140f; font-size: .78rem; font-weight: 700; cursor: pointer; }
 .heroFormChip[data-selected='true'] { border-color: var(--theme-accent); background: color-mix(in srgb, var(--theme-accent) 22%, white); }
 .heroFormResult { margin: 0; font-family: var(--theme-display); font-size: 1.7rem; font-weight: 800; color: #17140f; }
-.heroFormCall { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 48px; margin-top: .2rem; padding: .7rem 1rem; border-radius: calc(var(--theme-radius, 8px) * .6); background: var(--theme-accent); color: #111; font-weight: 800; font-size: .88rem; transition: transform .2s ease, filter .2s ease; }
+.heroFormCall { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 48px; margin-top: .2rem; padding: .7rem 1rem; border-radius: calc(var(--theme-radius, 8px) * .6); background: var(--theme-accent); color: var(--theme-on-accent, #111); font-weight: 800; font-size: .88rem; transition: transform .2s ease, filter .2s ease; }
 .heroFormCall:hover { transform: translateY(-1px); filter: brightness(1.05); }
 /* Estimate-wizard polish. Steps are wrapped in .heroFormStep (preserving the
    form's grid gap) and slide in transform-only — an opacity entrance can
@@ -400,7 +400,7 @@
 .desktopCta a { display: inline-flex; align-items: center; gap: .45rem; min-height: 48px; padding: .7rem 1.15rem; border-radius: 999px; font-weight: 800; font-size: .9rem; box-shadow: 0 14px 30px -12px rgba(0,0,0,.5); transition: transform .18s ease, box-shadow .22s ease; }
 .desktopCta a:hover { transform: translateY(-2px); box-shadow: 0 18px 38px -12px rgba(0,0,0,.55); }
 .desktopCta .desktopCtaCall { background: #17140f; color: #fff; }
-.desktopCta .desktopCtaQuote { background: var(--theme-accent); color: #14110b; }
+.desktopCta .desktopCtaQuote { background: var(--theme-accent); color: var(--theme-on-accent, #14110b); }
 .desktopCta svg { width: 16px; height: 16px; }
 .guild .desktopCtaQuote { color: #fff; }
 /* Reserve bottom space so the fixed CTA never covers the footer at page end. */
@@ -463,8 +463,6 @@
 /* Lighten the accent where it sits as text on a dark surface (the work section, or dark mode) so it keeps contrast. */
 .guildWork .kicker, .guild[data-mode='dark'] .kicker, .guild[data-mode='dark'] .guildServices span { color: color-mix(in srgb, var(--theme-accent) 60%, #ffffff); }
 .guild[data-mode='dark'] .guildQuote:hover, .guild[data-mode='dark'] .textLink:hover { color: color-mix(in srgb, var(--theme-accent) 60%, #ffffff); }
-.guild[data-button='solid'] .primaryCta { color: #fff; }
-.guild .heroQuickForm button, .guild .heroFormCall { color: #fff; }
 .heroFormOrCall { display: inline-flex; align-items: center; justify-content: center; gap: .3rem; min-height: 44px; margin-top: .1rem; font-size: .8rem; font-weight: 700; color: #17140f; text-decoration: none; }
 .heroFormOrCall strong { text-decoration: underline; text-decoration-color: var(--theme-accent); text-underline-offset: 2px; }
 .guild .heroQuickForm { border: 1px solid rgba(0,0,0,.10); }
@@ -521,7 +519,7 @@
 .vista .navLinks a { position: relative; padding: .35rem 0; }
 .vista .navLinks a::after { content: ''; position: absolute; left: 0; right: 100%; bottom: 0; height: 1.5px; background: var(--theme-accent); transition: right .28s cubic-bezier(.2,.7,.2,1); }
 .vista .navLinks a:hover::after { right: 0; }
-.vistaMenu { justify-self: end; display: inline-flex; align-items: center; gap: .5rem; min-height: 42px; padding: .55rem 1.15rem; border-radius: 999px; background: var(--theme-accent); color: #0d0f0d; font-family: var(--theme-display); font-size: .8rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; transition: transform .2s ease, box-shadow .25s ease; }
+.vistaMenu { justify-self: end; display: inline-flex; align-items: center; gap: .5rem; min-height: 42px; padding: .55rem 1.15rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #0d0f0d); font-family: var(--theme-display); font-size: .8rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; transition: transform .2s ease, box-shadow .25s ease; }
 .vistaMenu:hover { transform: translateY(-1px); box-shadow: 0 10px 22px -10px color-mix(in srgb, var(--theme-accent) 70%, transparent); }
 .vistaMenu span { transition: transform .2s ease; }
 .vistaMenu:hover span { transform: translateX(3px); }

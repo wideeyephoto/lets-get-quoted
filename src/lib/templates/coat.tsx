@@ -11,6 +11,7 @@ import SiteDesktopCta from './SiteDesktopCta';
 import SiteAnnouncementBar from './SiteAnnouncementBar';
 import ScrollReveal from './ScrollReveal';
 import Parallax from './Parallax';
+import { readableOnAccent } from './theme-color';
 import styles from './themes.module.css';
 
 // Coat — bold painting / finishes aesthetic (Home Rakshak reference): a deep
@@ -31,7 +32,7 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
   const heroBadge = getHeroBadge(site.content);
   const themeStyle = {
     '--theme-accent': site.accent_override || '#e5322a',
-    '--theme-on-accent': '#ffffff',
+    '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#ffffff',
     '--theme-display': site.header_font || 'var(--font-display), system-ui, sans-serif',
   } as CSSProperties;
 

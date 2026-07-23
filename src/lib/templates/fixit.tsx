@@ -11,6 +11,7 @@ import SiteDesktopCta from './SiteDesktopCta';
 import SiteAnnouncementBar from './SiteAnnouncementBar';
 import ScrollReveal from './ScrollReveal';
 import Parallax from './Parallax';
+import { readableOnAccent } from './theme-color';
 import styles from './themes.module.css';
 
 // Fixit — clean, professional handyman look (Handify reference): white ground,
@@ -30,7 +31,7 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
   const secondBadge = second.mode === 'none' ? null : second.mode === 'default' ? autoSecond : second.badge;
   const themeStyle = {
     '--theme-accent': site.accent_override || '#f15a29',
-    '--theme-on-accent': '#ffffff',
+    '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#ffffff',
     '--theme-display': site.header_font || 'var(--font-display), system-ui, sans-serif',
   } as CSSProperties;
 

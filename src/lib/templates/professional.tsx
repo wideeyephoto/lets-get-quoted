@@ -13,6 +13,7 @@ import SiteDesktopCta from './SiteDesktopCta';
 import SiteAnnouncementBar from './SiteAnnouncementBar';
 import ScrollReveal from './ScrollReveal';
 import Parallax from './Parallax';
+import { readableOnAccent } from './theme-color';
 import styles from './themes.module.css';
 
 export default function GuildTemplate({ site, galleryImages = [] }: TemplateProps) {
@@ -30,7 +31,7 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
   const second = getHeroSecondBadge(site.content);
   const themeStyle = {
     '--theme-accent': site.accent_override || '#a5472d',
-    '--theme-on-accent': '#fff',
+    '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#fff',
     '--theme-display': site.header_font || 'var(--font-guild-display), Georgia, Times New Roman, serif',
   } as CSSProperties;
 

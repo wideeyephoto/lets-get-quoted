@@ -45,6 +45,24 @@ const HEADING_FONT_OPTIONS = [
   { label: 'Humanist sans (Trebuchet)', value: 'Trebuchet MS, sans-serif' },
 ];
 
+// Curated accent presets for the Design tab. Button/badge text color is derived
+// automatically for contrast (see readableOnAccent), so every one of these stays
+// legible on any template — no more dark-on-dark buttons from a custom hex.
+const ACCENT_PRESETS: { name: string; hex: string }[] = [
+  { name: 'Ocean blue', hex: '#2563eb' },
+  { name: 'Teal', hex: '#0d9488' },
+  { name: 'Emerald', hex: '#059669' },
+  { name: 'Lime', hex: '#65a30d' },
+  { name: 'Amber', hex: '#f59e0b' },
+  { name: 'Orange', hex: '#ea580c' },
+  { name: 'Red', hex: '#dc2626' },
+  { name: 'Rose', hex: '#e11d48' },
+  { name: 'Violet', hex: '#7c3aed' },
+  { name: 'Indigo', hex: '#4f46e5' },
+  { name: 'Slate', hex: '#475569' },
+  { name: 'Charcoal', hex: '#1f2937' },
+];
+
 const TABS: { id: BuilderTab; label: string }[] = [
   { id: 'business', label: 'Business' },
   { id: 'design', label: 'Design' },
@@ -1245,6 +1263,27 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <div className={styles.formColumns}>
                     <label className={styles.formField}><span>Accent color</span><div className={styles.colorControl}><input type="color" value={site.accent_override || '#ff7a21'} onChange={(event) => handleChange('accent_override', event.target.value)} /><input value={site.accent_override || '#ff7a21'} onChange={(event) => handleChange('accent_override', event.target.value)} /></div></label>
                     <label className={styles.formField}><span>Color mode</span><select value={site.portal_mode} onChange={(event) => handleChange('portal_mode', event.target.value as Site['portal_mode'])}><option value="light">Light</option><option value="dark">Dark</option></select></label>
+                  </div>
+                  <div className={styles.formField}>
+                    <span>Preset color schemes</span>
+                    <div className={styles.accentSwatches} role="group" aria-label="Preset accent colors">
+                      {ACCENT_PRESETS.map((preset) => {
+                        const selected = (site.accent_override || '').toLowerCase() === preset.hex.toLowerCase();
+                        return (
+                          <button
+                            key={preset.hex}
+                            type="button"
+                            className={`${styles.accentSwatch}${selected ? ` ${styles.accentSwatchActive}` : ''}`}
+                            style={{ background: preset.hex }}
+                            onClick={() => handleChange('accent_override', preset.hex)}
+                            title={preset.name}
+                            aria-label={`${preset.name}${selected ? ' (selected)' : ''}`}
+                            aria-pressed={selected}
+                          />
+                        );
+                      })}
+                    </div>
+                    <small className={styles.fieldHint}>Pick a scheme or a custom color above — button and badge text auto-adjusts to stay readable on any accent.</small>
                   </div>
                   <label className={styles.formField}><span>Heading font</span><select value={site.header_font || ''} onChange={(event) => handleChange('header_font', event.target.value || null)}>
                     <option value="">Theme default</option>

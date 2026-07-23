@@ -12,6 +12,7 @@ import SiteProofStrip from './SiteProofStrip';
 import SiteAnnouncementBar from './SiteAnnouncementBar';
 import ScrollReveal from './ScrollReveal';
 import Parallax from './Parallax';
+import { readableOnAccent } from './theme-color';
 import styles from './themes.module.css';
 
 export default function VistaTemplate({ site, galleryImages = [] }: TemplateProps) {
@@ -19,7 +20,7 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[0].url;
   const themeStyle = {
     '--theme-accent': site.accent_override || '#35dd9e',
-    '--theme-on-accent': '#111',
+    '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#111',
     '--theme-display': site.header_font || 'var(--font-display), Arial Black, Helvetica, sans-serif',
   } as CSSProperties;
 

@@ -11,6 +11,7 @@ import SiteDesktopCta from './SiteDesktopCta';
 import SiteAnnouncementBar from './SiteAnnouncementBar';
 import ScrollReveal from './ScrollReveal';
 import Parallax from './Parallax';
+import { readableOnAccent } from './theme-color';
 import styles from './themes.module.css';
 
 // Reno — dark-navy + golden-yellow renovation look (Renovation/ThemeMove
@@ -22,7 +23,7 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
   const themeStyle = {
     '--theme-accent': site.accent_override || '#f5b421',
-    '--theme-on-accent': '#1b2431',
+    '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#1b2431',
     '--theme-display': site.header_font || 'var(--font-display), system-ui, sans-serif',
   } as CSSProperties;
 

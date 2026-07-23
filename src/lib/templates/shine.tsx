@@ -12,6 +12,7 @@ import SiteDesktopCta from './SiteDesktopCta';
 import SiteAnnouncementBar from './SiteAnnouncementBar';
 import ScrollReveal from './ScrollReveal';
 import Parallax from './Parallax';
+import { readableOnAccent } from './theme-color';
 import styles from './themes.module.css';
 
 // Shine — modern, premium cleaning look (Purely reference): deep-navy ground,
@@ -35,7 +36,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
   const heroBackground = getSlotImage(site.content, 'heroBackground', '');
   const themeStyle = {
     '--theme-accent': site.accent_override || '#ffd60a',
-    '--theme-on-accent': '#0f1b2d',
+    '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#0f1b2d',
     '--theme-display': site.header_font || 'var(--font-display), system-ui, sans-serif',
   } as CSSProperties;
 
@@ -104,8 +105,8 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
       <section className={styles.shineContact} id="contact">
         <div className={styles.shineContactCopy} data-reveal>
           <p className={styles.shineEyebrow}>Book a service</p>
-          <h2>Ready for a spotless home?</h2>
-          <p>Tell us what you need cleaned and we&apos;ll get you a free quote — fast, no obligation.</p>
+          <h2>Ready to get started?</h2>
+          <p>Tell us what you need and we&apos;ll get you a free quote — fast, no obligation.</p>
           {site.phone && <a className={styles.shineBtn} href={`tel:${site.phone}`}>Call {site.phone}</a>}
           <SiteProofStrip site={site} />
         </div>

@@ -13,6 +13,7 @@ import SiteDesktopCta from './SiteDesktopCta';
 import SiteAnnouncementBar from './SiteAnnouncementBar';
 import ScrollReveal from './ScrollReveal';
 import Parallax from './Parallax';
+import { readableOnAccent } from './theme-color';
 import styles from './themes.module.css';
 
 export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProps) {
@@ -20,7 +21,7 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
   const themeStyle = {
     '--theme-accent': site.accent_override || '#f0b429',
-    '--theme-on-accent': '#111',
+    '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#111',
     '--theme-display': site.header_font || 'var(--font-forge-display), Impact, Haettenschweiler, sans-serif',
   } as CSSProperties;
 

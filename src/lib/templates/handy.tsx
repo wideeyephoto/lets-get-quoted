@@ -11,6 +11,7 @@ import SiteProofStrip from './SiteProofStrip';
 import SiteAnnouncementBar from './SiteAnnouncementBar';
 import ScrollReveal from './ScrollReveal';
 import Parallax from './Parallax';
+import { readableOnAccent } from './theme-color';
 import styles from './themes.module.css';
 
 const TRUST_ITEMS = ['Licensed & insured', 'Same-day service', 'Free estimates', 'Satisfaction guaranteed'];
@@ -25,7 +26,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
 
   const themeStyle = {
     '--theme-accent': site.accent_override || '#12c2c9',
-    '--theme-on-accent': '#062b2e',
+    '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#062b2e',
     '--theme-radius': '10px',
     '--theme-display': site.header_font || 'var(--font-care), "Segoe UI", system-ui, sans-serif',
   } as CSSProperties;
