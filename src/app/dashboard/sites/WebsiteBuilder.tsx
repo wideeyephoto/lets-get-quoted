@@ -681,7 +681,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
   const handleGenerateText = useCallback(() => {
     const hasExistingText = Boolean(site.headline || site.tagline || site.seo_title || site.seo_description);
-    if (hasExistingText && !window.confirm('This replaces your headline, tagline, SEO, hours, and service area, and fills the Services, FAQs, and Service-area sections with fresh AI examples. Testimonials and stats are generated too but left OFF until you replace them with real ones. Continue?')) {
+    if (hasExistingText && !window.confirm('This replaces your headline, tagline, SEO, hours, service area, and photo gallery heading, and fills the Services, FAQs, and Service-area sections with fresh AI examples. Testimonials and stats are generated too but left OFF until you replace them with real ones. Continue?')) {
       return;
     }
     setIsGeneratingText(true);
@@ -713,6 +713,17 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
           // any images the owner already set.
           const stock = applyStockImages(current, generated.images);
           if (stock) Object.assign(contentUpdates, stock.contentUpdates);
+          // The photo gallery's heading + intro are generated too, so the section
+          // speaks to this trade instead of the generic stock label. Applied after
+          // the stock pass so it wins over applyStockImages' fallback wording.
+          if (generated.showcase_title || generated.showcase_intro) {
+            const base = contentUpdates.showcase ?? content.showcase;
+            contentUpdates.showcase = {
+              ...base,
+              title: generated.showcase_title || base.title,
+              intro: generated.showcase_intro || base.intro,
+            };
+          }
           return {
             ...current,
             headline: generated.headline || current.headline,

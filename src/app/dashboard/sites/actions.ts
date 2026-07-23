@@ -138,6 +138,10 @@ export type GeneratedSiteText = {
   hours: string;
   service_area: string;
   cities: string[];
+  // Photo-gallery heading + intro. Worded to stay honest about the auto-picked
+  // stock photos being representative, not the contractor's own finished jobs.
+  showcase_title: string;
+  showcase_intro: string;
   services: { icon: string; title: string; description: string }[];
   faqs: { question: string; answer: string }[];
   // Generated as examples only; the caller seeds these into the site but leaves
@@ -230,6 +234,8 @@ export async function generateSiteTextAction(
     '"hours":"<typical hours for this trade, e.g. \'Mon-Fri 8am-6pm, Sat 9am-2pm\'>",' +
     '"service_area":"<the area served in a few words; if none was provided, a natural generic like \'your local area\'>",' +
     '"cities":["<12 nearby city, town, or neighborhood names for the service area, casting a wide radius; empty array if the area is unknown>"],' +
+    '"showcase_title":"<a photo-gallery heading under 50 characters naming the KIND of work this trade shows off, e.g. \'The roofing work we handle\'; NEVER claim the photos are this business\'s own finished jobs>",' +
+    '"showcase_intro":"<under 180 characters; say what a homeowner is looking at for this trade, then state plainly that these are representative photos the business will swap for their own project photos>",' +
     '"services":[{"icon":"<pick the single closest match from EXACTLY this list and never invent another word: wrench, droplet, bolt, roller, sparkles, home, shield, leaf, grid, truck, clock, star, spark>","title":"<a real service this trade offers, under 40 characters>","description":"<one concrete line under 130 characters>"}],' +
     '"faqs":[{"question":"<a real question a homeowner asks this trade>","answer":"<a concise, helpful answer under 300 characters>"}],' +
     '"testimonials":[{"author":"<a realistic first name and last initial>","text":"<a believable 1-2 sentence review of this trade>","rating":5,"label":"<a city or short role, optional>"}],' +
@@ -302,6 +308,8 @@ export async function generateSiteTextAction(
       hours: asString(parsed.hours, 80),
       service_area: asString(parsed.service_area, 120),
       cities,
+      showcase_title: asString(parsed.showcase_title, 80),
+      showcase_intro: asString(parsed.showcase_intro, 220),
       services,
       faqs: asArray(parsed.faqs)
         .filter(isObj)
