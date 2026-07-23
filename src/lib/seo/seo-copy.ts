@@ -9,9 +9,12 @@
 // button.
 //
 // Guarantees: titles never exceed SEO_TITLE_MAX, descriptions never exceed
-// SEO_DESC_MAX, no clause is ever cut mid-word, the primary service is never
-// repeated, separators never sit between identical text, and the output is
-// never blank and never contains "undefined"/"null".
+// SEO_DESC_MAX, whole clauses are dropped to fit rather than cutting a word (the
+// only exception is a single token longer than the limit, which is truncated
+// with an ellipsis, never a bare mid-word slice), the primary service is never
+// repeated in the title OR the description, separators never sit between
+// identical text, and the output is never blank / never contains
+// "undefined"/"null".
 
 export const SEO_TITLE_MAX = 60;
 export const SEO_DESC_MAX = 160;
@@ -313,7 +316,10 @@ function trimToWordBoundary(text: string, max: number): string {
   if (value.length <= max) return value;
   const slice = value.slice(0, max + 1);
   const lastSpace = slice.lastIndexOf(' ');
-  return (lastSpace > 0 ? slice.slice(0, lastSpace) : value.slice(0, max)).replace(/[\s,;:|-]+$/, '').trim();
+  if (lastSpace > 0) return slice.slice(0, lastSpace).replace(/[\s,;:|-]+$/, '').trim();
+  // A single token longer than the limit: no word boundary exists, so mark the
+  // cut with an ellipsis (still within `max`) instead of a silent mid-word slice.
+  return `${value.slice(0, max - 1).replace(/[\s,;:|-]+$/, '').trim()}…`;
 }
 
 // Build a description from a head clause and an ordered list of feature clauses,
@@ -330,43 +336,54 @@ function finalize(head: string, features: string[]): string {
 }
 
 function buildDescriptionCandidates(n: NormalizedInput): string[] {
-  const { businessName, service, serviceLower, city, locationLabel } = n;
+  const { businessName, serviceLower, city, locationLabel } = n;
   const feats = orderedFeatures(n);
-  const at = (i: number): SeoFeature | undefined => feats[i % feats.length];
-  const clause = (i: number): string => {
-    const feature = at(i);
-    return feature ? phraseFor(feature, n.seedNumber + i) : '';
+  // Pick `count` benefit clauses, skipping any excluded features (so a structure
+  // whose head already expresses a feature — e.g. "Get an instant quote" —
+  // doesn't also list it) and never repeating a feature within one description.
+  const pickClauses = (seedBase: number, count: number, exclude: SeoFeature[] = []): string[] => {
+    const pool = feats.filter((feature) => !exclude.includes(feature));
+    const out: string[] = [];
+    for (let i = 0; i < count && i < pool.length; i += 1) {
+      out.push(phraseFor(pool[(n.seedNumber + seedBase + i) % pool.length], n.seedNumber + seedBase + i * 7));
+    }
+    // De-dup in case the rotation lands on the same phrase text.
+    return out.filter((value, index) => out.indexOf(value) === index);
   };
   const inLoc = city ? `in ${city}` : locationLabel ? `in ${locationLabel}` : '';
   const across = locationLabel ? `across ${locationLabel}` : '';
-  const nounTail = joinList(feats.slice(0, 3).map((feature) => FEATURE_NOUNS[feature]));
+  const nounTail = joinList(feats.filter((f) => f !== 'instantQuotes').slice(0, 3).map((feature) => FEATURE_NOUNS[feature]));
   const candidates: Array<{ head: string; features: string[] }> = [];
 
   if (businessName) {
     const forService = serviceLower ? `for ${serviceLower}` : '';
-    candidates.push({ head: joinWords(['Get an instant quote from', businessName, forService, inLoc]), features: [clause(1), clause(2)] });
+    candidates.push({ head: joinWords(['Get an instant quote from', businessName, forService, inLoc]), features: pickClauses(1, 2, ['instantQuotes']) });
   }
   if (businessName && serviceLower) {
-    candidates.push({ head: joinWords(['Book', serviceLower, 'with', businessName, inLoc]), features: [clause(3), clause(4)] });
+    candidates.push({ head: joinWords(['Book', serviceLower, 'with', businessName, inLoc]), features: pickClauses(3, 2) });
     // Fuller, three-benefit variant that reliably lands in the 130-155 band.
-    candidates.push({ head: joinWords(['Choose', businessName, 'for', serviceLower, inLoc]), features: [clause(11), clause(12), clause(13)] });
-  }
-  if (businessName && serviceLower) {
+    candidates.push({ head: joinWords(['Choose', businessName, 'for', serviceLower, inLoc]), features: pickClauses(11, 3) });
     candidates.push({ head: joinWords([businessName, 'provides', serviceLower, across]), features: nounTail ? [`with ${nounTail}`] : [] });
   }
   if (serviceLower && (city || locationLabel)) {
-    candidates.push({ head: `${joinWords(['Need', serviceLower, inLoc])}?`, features: ['request a quote', clause(5), clause(6)] });
+    candidates.push({ head: `${joinWords(['Need', serviceLower, inLoc])}?`, features: ['request a quote', ...pickClauses(5, 2, ['instantQuotes'])] });
   }
   if (serviceLower) {
-    candidates.push({ head: joinWords([capitalizeFirst(serviceLower), inLoc, 'made easy']), features: [clause(7), clause(8)] });
+    candidates.push({ head: joinWords([capitalizeFirst(serviceLower), inLoc, 'made easy']), features: pickClauses(7, 2) });
   }
   if (businessName) {
     const lead = locationLabel ? `${businessName} serves ${locationLabel}` : `${businessName} is ready to help`;
-    candidates.push({ head: lead, features: [clause(9), clause(10)] });
+    candidates.push({ head: lead, features: pickClauses(9, 2) });
   }
 
   return candidates
-    .map(({ head, features }) => finalize(head, features.filter(Boolean)))
+    .map(({ head, features }) => {
+      // Drop any tail clause whose text already appears in the head, so a phrase
+      // never shows up twice ("Get an instant quote … get an instant quote").
+      const headLower = clean(head).toLowerCase();
+      const deduped = features.filter((value) => value && !headLower.includes(value.trim().toLowerCase()));
+      return finalize(head, deduped);
+    })
     .filter((value) => value && !containsBadToken(value));
 }
 
@@ -374,8 +391,25 @@ function joinWords(parts: string[]): string {
   return parts.map((part) => part.trim()).filter(Boolean).join(' ');
 }
 
+function countOccurrences(haystack: string, needle: string): number {
+  if (!needle) return 0;
+  const hay = haystack.toLowerCase();
+  const needleLower = needle.toLowerCase();
+  let count = 0;
+  let idx = hay.indexOf(needleLower);
+  while (idx !== -1) {
+    count += 1;
+    idx = hay.indexOf(needleLower, idx + needleLower.length);
+  }
+  return count;
+}
+
 function selectDescription(n: NormalizedInput, variantOffset: number): string {
-  const candidates = buildDescriptionCandidates(n);
+  const all = buildDescriptionCandidates(n);
+  // Prefer descriptions that don't repeat the primary service (e.g. a business
+  // named "Austin Plumbing" doing "plumbing" — mention the trade only once).
+  const nonRepeating = n.service ? all.filter((value) => countOccurrences(value, n.service) <= 1) : all;
+  const candidates = nonRepeating.length > 0 ? nonRepeating : all;
   if (candidates.length === 0) {
     const head = n.businessName || (n.service ? `${n.service} services` : 'Local home services');
     return finalize(head, [phraseFor('instantQuotes', n.seedNumber), phraseFor('onlineScheduling', n.seedNumber + 1)]);

@@ -174,7 +174,9 @@ function extractOutputText(payload: unknown): string {
 // boilerplate placeholder) to personalize before publishing. Does not save
 // anything — the caller applies the result to local state and the usual
 // Save button persists it.
-export async function generateSiteTextAction(trade?: string): Promise<GeneratedSiteText> {
+export async function generateSiteTextAction(
+  options?: { trade?: string; companyName?: string; serviceArea?: string },
+): Promise<GeneratedSiteText> {
   const { supabase, accountId } = await requireOwnerContext();
 
   const { data: sites } = await supabase
@@ -193,9 +195,12 @@ export async function generateSiteTextAction(trade?: string): Promise<GeneratedS
     throw new Error('AI text generation is not configured yet.');
   }
 
-  const companyName = sites[0].company_name || 'this local business';
-  const serviceArea = sites[0].service_area || '';
-  const tradeInput = typeof trade === 'string' ? trade.trim().slice(0, 80) : '';
+  // Prefer the values the owner has typed in the builder (which may be unsaved)
+  // over the persisted row, so one click of "Generate" works without a prior
+  // Save — including the SEO copy derived below.
+  const companyName = (typeof options?.companyName === 'string' && options.companyName.trim()) || currentSite.company_name || 'this local business';
+  const serviceArea = (typeof options?.serviceArea === 'string' && options.serviceArea.trim()) || currentSite.service_area || '';
+  const tradeInput = typeof options?.trade === 'string' ? options.trade.trim().slice(0, 80) : '';
   const styleSeed = COPY_STYLE_SEEDS[Math.floor(Math.random() * COPY_STYLE_SEEDS.length)];
 
   const instructions =
@@ -264,10 +269,11 @@ export async function generateSiteTextAction(trade?: string): Promise<GeneratedS
     // stable, and enriched with the freshly generated primary service + city.
     const seo = generateSeoCopy({
       ...siteToSeoInput(currentSite),
-      businessName: currentSite.company_name,
-      primaryService: services[0]?.title || undefined,
+      businessName: companyName === 'this local business' ? '' : companyName,
+      primaryService: services[0]?.title || tradeInput || undefined,
+      trade: tradeInput || undefined,
       city: cities[0] || undefined,
-      serviceArea: asString(parsed.service_area, 120) || currentSite.service_area || undefined,
+      serviceArea: asString(parsed.service_area, 120) || serviceArea || undefined,
     });
 
     return {

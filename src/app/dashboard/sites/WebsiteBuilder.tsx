@@ -495,7 +495,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     setMessage(null);
     startTransition(async () => {
       try {
-        const generated = await generateSiteTextAction(getSiteContent(site.content).trade);
+        const generated = await generateSiteTextAction({ trade: getSiteContent(site.content).trade, companyName: site.company_name, serviceArea: site.service_area ?? undefined });
         setSite((current) => {
           const content = getSiteContent(current.content);
           const contentUpdates: Partial<NormalizedSiteContent> = {};
@@ -528,14 +528,14 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
           };
         });
         setIsDirty(true);
-        setMessage({ type: 'success', text: 'Full example site generated — review and personalize it. Testimonials & stats are off until you add real ones. Then publish!' });
+        setMessage({ type: 'success', text: 'Full example site generated — headline, services, FAQs, and your Google listing (SEO) are all filled in. Review and personalize it. Testimonials & stats stay off until you add real ones. Then publish!' });
       } catch (error) {
         setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to generate example content.' });
       } finally {
         setIsGeneratingText(false);
       }
     });
-  }, [site.headline, site.tagline, site.seo_title, site.seo_description, site.content]);
+  }, [site.headline, site.tagline, site.seo_title, site.seo_description, site.content, site.company_name, site.service_area]);
 
   // Regenerate only the SEO title + description from the contractor's real data
   // (no AI/API needed). Each click rotates to a different valid variation and

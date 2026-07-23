@@ -61,18 +61,35 @@ export function resolveSiteSeo(site: Site): SeoCopy {
   return resolveSeoCopy({ title: site.seo_title, description: site.seo_description }, siteToSeoInput(site));
 }
 
-// A published site is index-worthy only once it carries meaningful, unique
-// contractor content — otherwise we noindex it and drop it from the sitemap so
-// thin/empty pages don't get indexed.
+// A published site is index-worthy once it carries meaningful, unique
+// contractor content; otherwise we noindex it and drop it from the sitemap so
+// thin/empty shells don't get indexed. Deliberately LENIENT: over-indexing a
+// slightly thin page is a minor SEO inefficiency, but deindexing a real
+// customer's page is severe, so any real signal (a hero photo, any copy, or any
+// ENABLED content section that actually renders) qualifies. Only a bare shell —
+// company name + address, no hero, no copy, every section off/empty — is
+// excluded. Section checks mirror what the templates render (enabled + non-empty),
+// covering every section, not just a subset.
 export function isSiteSeoReady(site: Site): boolean {
   if (!site.published || !trimmed(site.company_name)) return false;
-  const content = getSiteContent(site.content);
-  const hasCopy = Boolean(trimmed(site.headline) || trimmed(site.tagline) || trimmed(site.seo_description));
-  const hasSection =
-    content.services.items.some((item) => trimmed(item.title)) ||
-    content.faqs.items.some((item) => trimmed(item.question)) ||
-    content.showcase.items.length > 0;
-  return hasCopy || hasSection;
+
+  const hasCopy = Boolean(trimmed(site.headline) || trimmed(site.tagline) || trimmed(site.seo_title) || trimmed(site.seo_description));
+  const hasHero = Boolean(trimmed(site.hero_url));
+  if (hasCopy || hasHero) return true;
+
+  const c = getSiteContent(site.content);
+  return (
+    (c.services.enabled && c.services.items.some((item) => trimmed(item.title))) ||
+    (c.faqs.enabled && c.faqs.items.some((item) => trimmed(item.question) && trimmed(item.answer))) ||
+    (c.showcase.enabled && c.showcase.items.length > 0) ||
+    (c.beforeAfter.enabled && c.beforeAfter.items.some((item) => trimmed(item.beforeUrl) && trimmed(item.afterUrl))) ||
+    (c.testimonials.enabled && (c.testimonials.items.some((item) => trimmed(item.text)) || c.testimonials.googleReviews.length > 0)) ||
+    (c.serviceAreas.enabled && c.serviceAreas.cities.some((city) => trimmed(city))) ||
+    (c.stats.enabled && c.stats.items.some((item) => trimmed(item.label))) ||
+    (c.certifications.enabled && c.certifications.items.some((item) => trimmed(item.label) || trimmed(item.imageUrl))) ||
+    (c.blog.enabled && c.blog.posts.some((post) => post.status === 'published' && trimmed(post.title) && trimmed(post.body))) ||
+    (c.howItWorks.enabled && c.howItWorks.steps.some((step) => trimmed(step.title)))
+  );
 }
 
 // LocalBusiness JSON-LD using the most specific supported type. Consistent

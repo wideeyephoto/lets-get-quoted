@@ -174,6 +174,32 @@ test('resolveSeoCopy fills only the blank field', () => {
   assert.ok(resolved.description.length > 0 && resolved.description.length <= SEO_DESC_MAX);
 });
 
+test('description never repeats the primary service, even when the name contains the trade', () => {
+  const namesWithTrade = [
+    { seed: 'r1', businessName: 'Austin Plumbing', trade: 'Plumbing', city: 'Austin' },
+    { seed: 'r2', businessName: 'Denver Roofing Co', trade: 'Roofing', city: 'Denver' },
+    { seed: 'r3', businessName: 'Miami Lawn Care', trade: 'Lawn Care', city: 'Miami' },
+  ];
+  for (const c of namesWithTrade) {
+    const service = c.trade.toLowerCase();
+    for (let offset = 0; offset < 6; offset += 1) {
+      const { description } = generateSeoCopy(withFeatures(c), offset);
+      const count = description.toLowerCase().split(service).length - 1;
+      assert.ok(count <= 1, `service "${service}" repeated in "${description}" (seed ${c.seed}, offset ${offset})`);
+    }
+  }
+});
+
+test('description never repeats an instant-quote phrase (no duplicate lead)', () => {
+  for (const c of CONTRACTORS) {
+    for (let offset = 0; offset < 6; offset += 1) {
+      const { description } = generateSeoCopy(withFeatures(c), offset);
+      const quotes = description.toLowerCase().split('an instant quote').length - 1;
+      assert.ok(quotes <= 1, `"an instant quote" repeated in "${description}" (seed ${c.seed})`);
+    }
+  }
+});
+
 test('resolveSchemaType picks the most specific supported type', () => {
   assert.equal(resolveSchemaType('Johnson Plumbing'), 'Plumber');
   assert.equal(resolveSchemaType('BrightSpark Electric electrical'), 'Electrician');
