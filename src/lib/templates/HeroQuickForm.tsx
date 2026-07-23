@@ -213,7 +213,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
       if (details && estimate) {
         setStep('result');
       } else {
-        setStatus({ tone: 'success', text: `Thanks! We'll call you back within about an hour with your free estimate.` });
+        setStatus({ tone: 'success', text: details ? 'Thanks! Your request is in — one of our experts will text or call you within the next few hours with your exact quote.' : `Thanks! We'll call you back within about an hour with your free estimate.` });
         formRef.current?.reset();
         setName('');
         setContact('');
@@ -347,7 +347,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
             <p className={styles.heroFormResult}>{formatCurrency(estimate.min)} – {formatCurrency(estimate.max)}</p>
             <span className={styles.heroFormResultBadge}>✓ Request sent</span>
           </div>
-          <p className={styles.heroFormNote}>This is a rough estimate, not a final quote — we&apos;ll follow up to confirm exact pricing for your project.</p>
+          <p className={styles.heroFormNote}>This is a rough estimate, not a final quote — one of our experts will reach out by <strong>text or phone call within the next few hours</strong> to confirm exact pricing for your project.</p>
           {site.phone && <a className={styles.heroFormCall} href={`tel:${site.phone}`}>Call now to lock it in</a>}
         </div>
       )}
