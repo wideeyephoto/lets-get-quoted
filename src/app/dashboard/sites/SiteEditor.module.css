@@ -278,9 +278,28 @@
 .googleReviewPreviewItem p { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin: .3rem 0 0; color: #c8d0dc; font-size: .82rem; line-height: 1.45; }
 .domainControl { display: grid; grid-template-columns: 1fr auto; gap: .5rem; }
 .domainControl button { padding: 0 .9rem; border: 1px solid rgba(255,255,255,.18); border-radius: 6px; background: rgba(255,255,255,.07); color: #fff; font-weight: 700; cursor: pointer; }
-.dnsCard { display: grid; gap: .5rem; padding: .9rem; border: 1px solid rgba(255,209,102,.25); border-radius: 6px; background: rgba(255,209,102,.06); }
-.dnsCard p { margin: 0; font-size: .78rem; }
-.dnsCard code { overflow-x: auto; padding: .65rem; border-radius: 4px; background: rgba(0,0,0,.28); color: #ffd166; font-size: .75rem; }
+/* Guided custom-domain connector (DomainConnector.tsx) */
+.connector { display: grid; gap: .85rem; padding: 1rem 1.1rem; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; background: rgba(255,255,255,.03); }
+.connectorHead { display: grid; gap: .2rem; }
+.connectorHead strong { color: #f7f5ef; font-size: .92rem; }
+.connectorHead small { color: #9ca8b8; font-size: .78rem; }
+.connectorProviders { display: flex; flex-wrap: wrap; gap: .4rem; }
+.connectorProvider { min-height: 38px; padding: .45rem .9rem; border: 1px solid rgba(255,255,255,.16); border-radius: 8px; background: rgba(255,255,255,.05); color: #c8d0dc; font-size: .82rem; font-weight: 700; cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
+.connectorProvider:hover { background: rgba(255,255,255,.09); color: #fff; }
+.connectorProviderOn { background: linear-gradient(180deg, #ff8a3d, #ff7a21); border-color: #ff7a21; color: #fff; }
+.connectorOpen { display: inline-flex; align-items: center; justify-self: start; min-height: 42px; padding: .55rem 1.1rem; border-radius: 8px; background: rgba(255,122,33,.14); border: 1px solid rgba(255,122,33,.5); color: #ffb27a; font-size: .86rem; font-weight: 800; }
+.connectorOpen:hover { background: rgba(255,122,33,.22); color: #ffd0ab; }
+.connectorRecord { display: grid; gap: .35rem; padding: .75rem .8rem; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(0,0,0,.22); }
+.connectorRow { display: grid; grid-template-columns: 4.5rem 1fr auto; align-items: center; gap: .6rem; }
+.connectorRowLabel { color: #9ca8b8; font-size: .72rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.connectorRowValue { overflow-x: auto; color: #ffd166; font-size: .82rem; white-space: nowrap; }
+.connectorCopy { flex: none; min-height: 30px; padding: .25rem .7rem; border: 1px solid rgba(255,255,255,.18); border-radius: 6px; background: rgba(255,255,255,.06); color: #f7f5ef; font-size: .74rem; font-weight: 700; cursor: pointer; }
+.connectorCopy:hover { background: rgba(255,122,33,.16); border-color: #ff7a21; }
+.connectorSteps { display: grid; gap: .4rem; margin: 0; padding-left: 1.2rem; color: #d7dde6; font-size: .83rem; line-height: 1.5; }
+.connectorApex { border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(255,255,255,.025); }
+.connectorApex summary { padding: .6rem .8rem; color: #f7f5ef; font-size: .82rem; font-weight: 700; cursor: pointer; }
+.connectorApex p { margin: 0; padding: 0 .8rem .7rem; color: #c8d0dc; font-size: .8rem; line-height: 1.55; }
+.connectorNote { margin: 0; color: #9ca8b8; font-size: .77rem; line-height: 1.5; }
 .publishCard { display: grid; gap: 1rem; padding: 1rem; border: 1px solid rgba(255,255,255,.12); border-radius: 7px; background: rgba(255,255,255,.035); }
 .publishCard > div { display: flex; align-items: flex-start; gap: .75rem; }
 .publishCard strong { display: block; }

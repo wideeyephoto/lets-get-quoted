@@ -10,6 +10,7 @@ import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
 import { compressImage } from '@/lib/client-images';
 import ImagePickerModal from './ImagePickerModal';
+import DomainConnector from './DomainConnector';
 import GoogleReviewImport from './GoogleReviewImport';
 import LivePreview from './LivePreview';
 import SectionCard from './SectionCard';
@@ -1384,7 +1385,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 </div>
                 <label className={styles.formField}><span>LGQ subdomain</span><div className={styles.domainControl}><input id="pub-subdomain" value={site.subdomain || ''} onChange={(event) => handleChange('subdomain', event.target.value.toLowerCase() || null)} placeholder="northline-builders" /><button type="button" onClick={checkSubdomain} disabled={isPending}>Check</button></div><small>{site.subdomain || 'your-business'}.{ROOT_DOMAIN}{subdomainStatus === 'available' ? ' - available' : subdomainStatus === 'taken' ? ' - unavailable' : ''}</small></label>
                 <label className={styles.formField}><span>Custom domain</span><div className={styles.domainControl}><input value={site.custom_domain || ''} onChange={(event) => handleChange('custom_domain', event.target.value || null)} placeholder="www.yourbusiness.com" /><button type="button" onClick={verifyCustomDomain} disabled={isPending}>{domainStatus === 'checking' ? 'Checking...' : 'Verify DNS'}</button></div><small>{domainStatus === 'verified' ? 'Verified and connected.' : 'Add a CNAME record pointing to domains.letsgetquoted.com.'}</small></label>
-                <div className={styles.dnsCard}><strong>DNS setup</strong><p>For a subdomain such as www, create a CNAME record:</p><code>www &nbsp; CNAME &nbsp; domains.letsgetquoted.com</code><p>For a root domain, use your DNS provider&apos;s CNAME flattening or redirect the root to www.</p></div>
+                <DomainConnector domain={site.custom_domain} target="domains.letsgetquoted.com" />
                 <p className={styles.movedNote}>Google title &amp; description moved to <strong>Business → How you show up on Google</strong>.</p>
                 {!site.published && !site.company_name.trim() && <p className={styles.publishRequirement}>A company name is required to publish. Add one on the Business tab.</p>}
                 <div className={styles.publishCard}>
