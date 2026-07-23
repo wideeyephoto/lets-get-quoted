@@ -247,6 +247,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   const siteContent = getSiteContent(site.content);
   const selectableImages = [...siteImages, ...STOCK_SITE_IMAGES];
 
+  // What a stock gallery tile's overlay says when its title is blank — mirrors
+  // the public-page fallback (service names round-robin, then the trade).
+  const galleryAdTitles = siteContent.services.items.map((svc) => svc.title.trim()).filter(Boolean);
+  const galleryTrade = siteContent.trade.trim().replace(/\b\w/g, (ch) => ch.toUpperCase());
+  const galleryAutoTitle = (index: number): string => (galleryAdTitles.length ? galleryAdTitles[index % galleryAdTitles.length] : galleryTrade ? `Expert ${galleryTrade}` : '');
+
   // Blog card hint: live-post count, or a warning when it's enabled with only
   // drafts (the section renders nothing publicly until a post is published).
   const publishedPostCount = siteContent.blog.posts.filter((post) => post.status === 'published' && post.title.trim() && post.body.trim()).length;
@@ -1293,13 +1299,23 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <div className={styles.contentSubhead}><strong>Gallery Images</strong><small>{siteContent.showcase.items.length}/9 · shown in this order</small></div>
                   {siteContent.showcase.items.length > 0 && (
                     <div className={styles.showcaseSelected} aria-label="Showcase images, in order">
-                      {siteContent.showcase.items.map((item) => (
+                      {siteContent.showcase.items.map((item, index) => (
                         <div key={item.id} className={styles.showcaseSelectedTile}>
-                          <img src={item.url} alt={item.alt} />
-                          <div className={styles.showcaseSelectedActions}>
-                            <button type="button" onClick={() => setPicker({ label: 'this showcase photo', kind: 'showcase', scItemId: item.id })}>Replace</button>
-                            <button type="button" aria-label={`Remove ${item.alt}`} onClick={() => updateShowcase({ ...siteContent.showcase, items: siteContent.showcase.items.filter((other) => other.id !== item.id) })}>✕</button>
+                          <div className={styles.showcaseThumbBox}>
+                            <img src={item.url} alt={item.alt} />
+                            <div className={styles.showcaseSelectedActions}>
+                              <button type="button" onClick={() => setPicker({ label: 'this showcase photo', kind: 'showcase', scItemId: item.id })}>Replace</button>
+                              <button type="button" aria-label={`Remove ${item.alt}`} onClick={() => updateShowcase({ ...siteContent.showcase, items: siteContent.showcase.items.filter((other) => other.id !== item.id) })}>✕</button>
+                            </div>
                           </div>
+                          <input
+                            className={styles.showcaseCaptionInput}
+                            value={item.caption ?? ''}
+                            maxLength={60}
+                            placeholder={item.source === 'stock' ? galleryAutoTitle(index) || 'Title overlay' : 'Title overlay (optional)'}
+                            aria-label="Photo title overlay"
+                            onChange={(event) => updateShowcase({ ...siteContent.showcase, items: siteContent.showcase.items.map((other) => (other.id === item.id ? { ...other, caption: event.target.value } : other)) })}
+                          />
                         </div>
                       ))}
                     </div>
