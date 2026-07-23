@@ -29,6 +29,11 @@ export type Site = {
 
   logo_url: string | null;
   hero_url: string | null;
+
+  // NOT a DB column — computed at public-site load from real lead response
+  // times, for the honest "typically replies within X" badge. Null/absent when
+  // there isn't enough data to make an honest claim.
+  avg_response_ms?: number | null;
   seo_title: string | null;
   seo_description: string | null;
 
@@ -108,6 +113,35 @@ export function withPublicContact(site: Site): Site {
   return getSiteContent(site.content).phonePublic ? site : { ...site, phone: null };
 }
 
+// Honest "typically replies within X" stat: the average time from a website
+// lead arriving to the owner's first status change, over recent responded
+// leads. Requires ≥3 responses and an average under 4 hours — otherwise null
+// and no claim is made. Computed inline (not via lib/leads) to keep this
+// module import-cycle-free. Never throws; a query error just drops the badge.
+async function withResponseStat(supabase: SupabaseClient, site: Site): Promise<Site> {
+  try {
+    // Only leads the owner moved FORWARD count as a genuine reply. Excluding
+    // 'new' (unresponded) and 'lost' (fast junk declines/close-outs, which
+    // would dishonestly drag the average down) keeps the public claim honest.
+    const { data } = await supabase
+      .from('leads')
+      .select('status, created_at, updated_at')
+      .eq('account_id', site.account_id)
+      .eq('source', 'website_form')
+      .in('status', ['contacted', 'quoted', 'won'])
+      .order('created_at', { ascending: false })
+      .limit(50);
+    const times = (data ?? [])
+      .map((lead) => new Date(lead.updated_at).getTime() - new Date(lead.created_at).getTime())
+      .filter((ms) => Number.isFinite(ms) && ms > 0);
+    if (times.length < 3) return site;
+    const avg = Math.round(times.reduce((sum, ms) => sum + ms, 0) / times.length);
+    return avg <= 4 * 60 * 60 * 1000 ? { ...site, avg_response_ms: avg } : site;
+  } catch {
+    return site;
+  }
+}
+
 export async function getPublicSiteBySubdomain(
   supabase: SupabaseClient,
   subdomain: string
@@ -119,7 +153,7 @@ export async function getPublicSiteBySubdomain(
     .eq('published', true)
     .maybeSingle();
 
-  return data ? withPublicContact(data as Site) : null;
+  return data ? withResponseStat(supabase, withPublicContact(data as Site)) : null;
 }
 
 // Get public site by custom domain (no auth)
@@ -134,7 +168,7 @@ export async function getPublicSiteByCustomDomain(
     .eq('published', true)
     .maybeSingle();
 
-  return data ? withPublicContact(data as Site) : null;
+  return data ? withResponseStat(supabase, withPublicContact(data as Site)) : null;
 }
 
 // Update site

@@ -8,8 +8,18 @@ import type { Site } from '@/lib/sites';
 import styles from './themes.module.css';
 
 type HeroQuickFormProps = {
-  site: Pick<Site, 'id' | 'published' | 'content' | 'company_name' | 'tagline' | 'headline' | 'service_area' | 'phone'>;
+  site: Pick<Site, 'id' | 'published' | 'content' | 'company_name' | 'tagline' | 'headline' | 'service_area' | 'phone' | 'avg_response_ms'>;
 };
+
+// "within 25 minutes" / "within 2 hours" — always rounded UP so the claim is
+// conservative; the stat itself is only attached when it's honest (≥3 real
+// responses, average under 4h — see withResponseStat in lib/sites).
+function formatReplyTime(ms: number): string {
+  const minutes = Math.ceil(ms / 60000 / 5) * 5;
+  if (minutes < 60) return `${Math.max(5, minutes)} minutes`;
+  const hours = Math.ceil(minutes / 60);
+  return hours === 1 ? '1 hour' : `${hours} hours`;
+}
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_PHOTOS = 6;
@@ -45,6 +55,10 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   const leadFilters = siteContent.leadFilters;
   const askTimeline = wizardEnabled && leadFilters.askTimeline;
   const askLocation = wizardEnabled && leadFilters.serviceAreaGate && siteContent.serviceAreas.cities.some((city) => city.trim());
+  // Real, earned response-time stat (absent = no honest claim to make).
+  const avgReplyMs = typeof site.avg_response_ms === 'number' && site.avg_response_ms > 0 ? site.avg_response_ms : null;
+  const replyPromise = avgReplyMs ? `typically replies within ${formatReplyTime(avgReplyMs)}` : 'we reply within about an hour';
+
   // Trade-specific example text: real service names beat generic cross-trade
   // examples ("AC repair, deep clean, fence installation") that read wrong on
   // any single contractor's site.
@@ -223,6 +237,31 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
     }
   }
 
+  // Impatient visitors can bail out of the questions and still get a number —
+  // turn 99 clamps to the server's max, which forces a best-judgment estimate.
+  async function skipToEstimate() {
+    setIsClassifying(true);
+    setStatus(null);
+    try {
+      const response = await fetch('/api/public/leads/classify-estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          siteId: site.id,
+          previousResponseId: chatResponseId,
+          answer: 'Please skip the remaining questions and give your best-judgment estimate from what you already know.',
+          turn: 99,
+        }),
+      });
+      const result = await response.json().catch(() => null);
+      applyChatResult(result);
+    } catch {
+      setStep('contact');
+    } finally {
+      setIsClassifying(false);
+    }
+  }
+
   // Restart the wizard from the description (kept, so it can be edited).
   // Chat state is reset — the AI thread can't be resumed after backtracking.
   function restartWizard() {
@@ -387,6 +426,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
         <div className={styles.heroFormStep} key="describe">
           <h2>{estimateLabel}</h2>
           <p className={styles.heroFormNote}>Tell us what you need done — a couple quick questions, then we&apos;ll show your range.</p>
+          {avgReplyMs && <span className={styles.heroFormReplyChip}><span aria-hidden="true">⚡</span> Typically replies within {formatReplyTime(avgReplyMs)}</span>}
           <textarea
             aria-label="Describe your project"
             placeholder={describePlaceholder}
@@ -419,6 +459,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
       {step === 'qa' && (
         <div className={styles.heroFormStep} key="qa">
           <h2>{estimateLabel}</h2>
+          <p className={styles.heroFormQaMeta}>Question {chatTurn} <span>· just a few quick ones</span></p>
           <p id="hqf-question" className={styles.heroFormQuestion}>{chatQuestion}</p>
           <input
             aria-labelledby="hqf-question"
@@ -429,6 +470,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
             onChange={(event) => setChatAnswer(event.target.value)}
           />
           <button type="submit" disabled={isClassifying}>{isClassifying ? thinking : 'Next'}</button>
+          <button type="button" className={styles.heroFormRestart} onClick={skipToEstimate} disabled={isClassifying}>Skip the questions — show my ballpark →</button>
           <button type="button" className={styles.heroFormRestart} onClick={restartWizard}>← Start over</button>
         </div>
       )}
@@ -436,7 +478,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
       {step === 'contact' && (
         <div className={styles.heroFormStep} key="contact">
           <h2>{estimateLabel}</h2>
-          <p className={styles.heroFormNote}>{wizardEnabled && estimate ? 'Add your info to see your range. Free & no obligation — we reply within about an hour.' : 'Free & no obligation — we reply within about an hour.'}</p>
+          <p className={styles.heroFormNote}>{wizardEnabled && estimate ? `Add your info to see your range. Free & no obligation — ${replyPromise}.` : `Free & no obligation — ${replyPromise}.`}</p>
           <div className={styles.heroQuickFormRow}>
             <input name="name" aria-label="Your name" placeholder="Your name" autoComplete="name" maxLength={100} required value={name} onChange={(event) => setName(event.target.value)} />
             <input
@@ -494,6 +536,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
               onChange={(event) => setEmail(event.target.value)}
             />
           )}
+          <small className={styles.heroFormPrivacy}><span aria-hidden="true">🔒</span> Your request goes only to {site.company_name} — never sold or shared.</small>
           <div className={styles.heroFormPhotoRow}>
             <input
               ref={photoInputRef}
