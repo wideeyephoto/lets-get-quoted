@@ -172,7 +172,7 @@ export default function QuoteRequestForm({ site }: QuoteRequestFormProps) {
       </div>
 
       <div ref={projectStepRef} className={styles.step} hidden={step !== 0} role="group" aria-label="Your project" onKeyDown={handleProjectKeyDown}>
-        <label className={`${styles.field} ${styles.wide}`}><span>Tell us about the project</span><textarea name="message" maxLength={3000} required placeholder="e.g. Full kitchen remodel — new cabinets, quartz counters, and flooring. Hoping to start within the next month or two." /></label>
+        <label className={`${styles.field} ${styles.wide}`}><span>Tell us about the project</span><textarea name="message" maxLength={3000} required placeholder="Tell us what you need done, any problem areas or details, and your ideal timing. The more you share, the faster we can get you an accurate quote." /></label>
         <div className={`${styles.field} ${styles.wide}`}><label htmlFor="quote-address">Project address <em className={styles.optional}>(optional)</em></label><AddressAutocomplete id="quote-address" name="address" placeholder="1418 Maplewood Ave, Royal Oak, MI" maxLength={240} /></div>
         <div className={`${styles.field} ${styles.wide}`}>
           <div className={styles.photoHeader}>
