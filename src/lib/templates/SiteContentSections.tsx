@@ -1,7 +1,9 @@
+import { Fragment, type ReactNode } from 'react';
 import SafeImage from './SafeImage';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import type { Site } from '@/lib/sites';
 import {
+  getSectionOrder,
   getPublishedBeforeAfter,
   getPublishedBlog,
   getPublishedCertifications,
@@ -69,6 +71,120 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
   // here as a standalone callout. No self-serving aggregateRating JSON-LD is
   // emitted (Google disallows owner-entered review markup on a LocalBusiness).
 
+  // Each in-flow section keyed by its REORDERABLE_SECTIONS id; a disabled section
+  // is a falsy no-op that still holds its place. Rendered in the owner's saved
+  // order so rearranging the builder's "Page order" list reflows the page.
+  const sectionBlocks: Record<string, ReactNode> = {
+    services: services && <SiteServices title={services.title} intro={services.intro} items={services.items} />,
+    howItWorks: howItWorks && <SiteProcess title={howItWorks.title} intro={howItWorks.intro} steps={howItWorks.steps} />,
+    showcase: showcase && (
+      <section className={styles.extraSection} id="showcase">
+        <div className={styles.extraSectionHeader} data-reveal>
+          <p className={styles.kicker}>Showcase</p>
+          <h2>{showcase.title}</h2>
+          {showcase.intro && <p>{showcase.intro}</p>}
+        </div>
+        <div className={`${styles.showcaseGrid} ${styles[`showcase-${showcase.layout}`] || ''}`} data-stagger>
+          {showcase.items.map((item, index) => (
+            <figure key={`${item.id}-${index}`} data-edit={`showcase-${item.id}`}>
+              <SafeImage src={item.url} alt={item.alt} width={1200} height={900} sizes={index === 0 && showcase.layout === 'featured' ? '60vw' : '30vw'} />
+              <figcaption>{item.caption || item.alt}</figcaption>
+            </figure>
+          ))}
+        </div>
+      </section>
+    ),
+    testimonials: testimonials && (
+      <section className={styles.extraSection} id="reviews">
+        <div className={styles.extraSectionHeader} data-reveal>
+          <p className={styles.kicker}>Reviews</p>
+          <h2>{testimonials.title}</h2>
+        </div>
+        <div className={styles.testimonialGrid} data-stagger>
+          {testimonials.items.map((item) => (
+            <article key={item.id} className={styles.testimonialCard}>
+              {item.imageUrl && <img className={styles.testimonialImage} src={item.imageUrl} alt={item.imageAlt || item.author || 'Customer review image'} />}
+              <div aria-label={`${item.rating} out of 5 stars`}>{'★'.repeat(item.rating)}{'☆'.repeat(5 - item.rating)}</div>
+              <p>“{item.text}”</p>
+              <footer><strong>{item.author || 'Homeowner'}</strong>{item.label && <span>{item.label}</span>}</footer>
+            </article>
+          ))}
+        </div>
+      </section>
+    ),
+    faqs: faqs && (
+      <section className={styles.extraSection} id="faqs">
+        <div className={styles.extraSectionHeader} data-reveal>
+          <p className={styles.kicker}>FAQs</p>
+          <h2>{faqs.title}</h2>
+        </div>
+        <div className={styles.faqList} data-stagger>
+          {faqs.items.map((item) => (
+            <details key={item.id} className={styles.faqItem}>
+              <summary>{item.question}</summary>
+              <p>{item.answer}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+    ),
+    serviceAreas: serviceAreas && (
+      <section className={styles.extraSection} id="areas">
+        <div className={styles.extraSectionHeader} data-reveal>
+          <p className={styles.kicker}>Service area</p>
+          <h2>{serviceAreas.title}</h2>
+          {serviceAreas.intro && <p>{serviceAreas.intro}</p>}
+        </div>
+        <ul className={styles.serviceAreaList} data-stagger>
+          {serviceAreas.cities.map((city, index) => (
+            <li key={`${city}-${index}`} className={styles.serviceAreaChip}>{city}</li>
+          ))}
+        </ul>
+      </section>
+    ),
+    stats: stats && <StatCounters title={stats.title} items={stats.items} photo={getSlotImage(site.content, 'stats', site.hero_url || STOCK_SITE_IMAGES[2].url)} />,
+    beforeAfter: beforeAfter && <BeforeAfterSlider title={beforeAfter.title} intro={beforeAfter.intro} items={beforeAfter.items} />,
+    blog: blog && (
+      <section className={styles.extraSection} id="blog">
+        <div className={styles.extraSectionHeader} data-reveal>
+          <p className={styles.kicker}>Blog</p>
+          <h2>{blog.title}</h2>
+          {blog.intro && <p>{blog.intro}</p>}
+        </div>
+        <div className={styles.blogGrid} data-stagger>
+          {blog.posts.slice(0, 6).map((post) => (
+            <a key={post.id} className={styles.blogCard} href={`/blog/${post.slug}`}>
+              {post.coverImage && <img className={styles.blogCardImg} src={post.coverImage} alt="" loading="lazy" decoding="async" />}
+              <div className={styles.blogCardBody}>
+                {formatBlogDate(post.date) && <time className={styles.blogCardDate} dateTime={post.date}>{formatBlogDate(post.date)}</time>}
+                <h3>{post.title}</h3>
+                {post.excerpt && <p>{post.excerpt}</p>}
+                <span className={styles.blogCardMore}>Read more <span aria-hidden="true">→</span></span>
+              </div>
+            </a>
+          ))}
+        </div>
+        <a className={styles.blogViewAll} href="/blog">View all posts <span aria-hidden="true">→</span></a>
+      </section>
+    ),
+    certifications: certifications && (
+      <section className={styles.extraSection} id="certifications">
+        <div className={styles.extraSectionHeader} data-reveal>
+          <p className={styles.kicker}>Credentials</p>
+          <h2>{certifications.title}</h2>
+        </div>
+        <ul className={styles.certList} data-stagger>
+          {certifications.items.map((item) => (
+            <li key={item.id} className={styles.certItem}>
+              {item.imageUrl && <img src={item.imageUrl} alt={item.imageAlt || item.label || 'Certification'} loading="lazy" decoding="async" />}
+              {item.label && <span>{item.label}</span>}
+            </li>
+          ))}
+        </ul>
+      </section>
+    ),
+  };
+
   return (
     <>
       {financing && (
@@ -85,121 +201,7 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
 
       {hasInFlowSections && (
         <div className={styles.extraSections}>
-          {services && <SiteServices title={services.title} intro={services.intro} items={services.items} />}
-          {howItWorks && <SiteProcess title={howItWorks.title} intro={howItWorks.intro} steps={howItWorks.steps} />}
-          {showcase && (
-            <section className={styles.extraSection} id="showcase">
-              <div className={styles.extraSectionHeader} data-reveal>
-                <p className={styles.kicker}>Showcase</p>
-                <h2>{showcase.title}</h2>
-                {showcase.intro && <p>{showcase.intro}</p>}
-              </div>
-              <div className={`${styles.showcaseGrid} ${styles[`showcase-${showcase.layout}`] || ''}`} data-stagger>
-                {showcase.items.map((item, index) => (
-                  <figure key={`${item.id}-${index}`} data-edit={`showcase-${item.id}`}>
-                    <SafeImage src={item.url} alt={item.alt} width={1200} height={900} sizes={index === 0 && showcase.layout === 'featured' ? '60vw' : '30vw'} />
-                    <figcaption>{item.caption || item.alt}</figcaption>
-                  </figure>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {testimonials && (
-            <section className={styles.extraSection} id="reviews">
-              <div className={styles.extraSectionHeader} data-reveal>
-                <p className={styles.kicker}>Reviews</p>
-                <h2>{testimonials.title}</h2>
-              </div>
-              <div className={styles.testimonialGrid} data-stagger>
-                {testimonials.items.map((item) => (
-                  <article key={item.id} className={styles.testimonialCard}>
-                    {item.imageUrl && <img className={styles.testimonialImage} src={item.imageUrl} alt={item.imageAlt || item.author || 'Customer review image'} />}
-                    <div aria-label={`${item.rating} out of 5 stars`}>{'★'.repeat(item.rating)}{'☆'.repeat(5 - item.rating)}</div>
-                    <p>“{item.text}”</p>
-                    <footer><strong>{item.author || 'Homeowner'}</strong>{item.label && <span>{item.label}</span>}</footer>
-                  </article>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {faqs && (
-            <section className={styles.extraSection} id="faqs">
-              <div className={styles.extraSectionHeader} data-reveal>
-                <p className={styles.kicker}>FAQs</p>
-                <h2>{faqs.title}</h2>
-              </div>
-              <div className={styles.faqList} data-stagger>
-                {faqs.items.map((item) => (
-                  <details key={item.id} className={styles.faqItem}>
-                    <summary>{item.question}</summary>
-                    <p>{item.answer}</p>
-                  </details>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {serviceAreas && (
-            <section className={styles.extraSection} id="areas">
-              <div className={styles.extraSectionHeader} data-reveal>
-                <p className={styles.kicker}>Service area</p>
-                <h2>{serviceAreas.title}</h2>
-                {serviceAreas.intro && <p>{serviceAreas.intro}</p>}
-              </div>
-              <ul className={styles.serviceAreaList} data-stagger>
-                {serviceAreas.cities.map((city, index) => (
-                  <li key={`${city}-${index}`} className={styles.serviceAreaChip}>{city}</li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {stats && <StatCounters title={stats.title} items={stats.items} photo={getSlotImage(site.content, 'stats', site.hero_url || STOCK_SITE_IMAGES[2].url)} />}
-
-          {beforeAfter && <BeforeAfterSlider title={beforeAfter.title} intro={beforeAfter.intro} items={beforeAfter.items} />}
-
-          {blog && (
-            <section className={styles.extraSection} id="blog">
-              <div className={styles.extraSectionHeader} data-reveal>
-                <p className={styles.kicker}>Blog</p>
-                <h2>{blog.title}</h2>
-                {blog.intro && <p>{blog.intro}</p>}
-              </div>
-              <div className={styles.blogGrid} data-stagger>
-                {blog.posts.slice(0, 6).map((post) => (
-                  <a key={post.id} className={styles.blogCard} href={`/blog/${post.slug}`}>
-                    {post.coverImage && <img className={styles.blogCardImg} src={post.coverImage} alt="" loading="lazy" decoding="async" />}
-                    <div className={styles.blogCardBody}>
-                      {formatBlogDate(post.date) && <time className={styles.blogCardDate} dateTime={post.date}>{formatBlogDate(post.date)}</time>}
-                      <h3>{post.title}</h3>
-                      {post.excerpt && <p>{post.excerpt}</p>}
-                      <span className={styles.blogCardMore}>Read more <span aria-hidden="true">→</span></span>
-                    </div>
-                  </a>
-                ))}
-              </div>
-              <a className={styles.blogViewAll} href="/blog">View all posts <span aria-hidden="true">→</span></a>
-            </section>
-          )}
-
-          {certifications && (
-            <section className={styles.extraSection} id="certifications">
-              <div className={styles.extraSectionHeader} data-reveal>
-                <p className={styles.kicker}>Credentials</p>
-                <h2>{certifications.title}</h2>
-              </div>
-              <ul className={styles.certList} data-stagger>
-                {certifications.items.map((item) => (
-                  <li key={item.id} className={styles.certItem}>
-                    {item.imageUrl && <img src={item.imageUrl} alt={item.imageAlt || item.label || 'Certification'} loading="lazy" decoding="async" />}
-                    {item.label && <span>{item.label}</span>}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
+          {getSectionOrder(site.content).map((key) => <Fragment key={key}>{sectionBlocks[key]}</Fragment>)}
         </div>
       )}
 

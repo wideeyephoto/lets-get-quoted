@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useTransition, type ReactNode } from 
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, HERO_BADGE_PRESETS, IMAGE_SLOT_LABELS, slugifyBlogTitle, type NormalizedSiteContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, HERO_BADGE_PRESETS, IMAGE_SLOT_LABELS, REORDERABLE_SECTIONS, slugifyBlogTitle, type NormalizedSiteContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
@@ -140,6 +140,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     | { label: string; kind: 'hero' | 'logo' | 'slot' | 'beforeAfter' | 'showcase'; slot?: string; baItemId?: string; baSide?: 'before' | 'after'; scItemId?: string | null }
     | null
   >(null);
+  // The section key currently being dragged in the "Page order" reorder list.
+  const [dragKey, setDragKey] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const galleryImages = getSiteGallery(site.content);
   const siteContent = getSiteContent(site.content);
@@ -490,6 +492,24 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     setPicker({ label, kind, slot });
   }, []);
 
+  // Move `fromKey` so it lands just before `toKey` in the page order.
+  const reorderSections = useCallback((fromKey: string, toKey: string) => {
+    if (fromKey === toKey) return;
+    const order = siteContent.sectionOrder.filter((key) => key !== fromKey);
+    const target = order.indexOf(toKey);
+    order.splice(target === -1 ? order.length : target, 0, fromKey);
+    updateSiteContent({ sectionOrder: order });
+  }, [siteContent.sectionOrder, updateSiteContent]);
+
+  const moveSectionBy = useCallback((key: string, delta: number) => {
+    const order = siteContent.sectionOrder.slice();
+    const from = order.indexOf(key);
+    const to = from + delta;
+    if (from === -1 || to < 0 || to >= order.length) return;
+    [order[from], order[to]] = [order[to], order[from]];
+    updateSiteContent({ sectionOrder: order });
+  }, [siteContent.sectionOrder, updateSiteContent]);
+
   const updateShowcase = useCallback((showcase: SiteShowcaseContent) => {
     updateSiteContent({ showcase });
   }, [updateSiteContent]);
@@ -827,6 +847,45 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 </SectionCard>
 
                 <div className={styles.sectionIntro}><h2>Pages & sections</h2><p>Add rich sections that make the public website feel complete.</p></div>
+
+                <SectionCard title="Page order" description="Drag to reorder the sections on your public page. Off sections keep their spot but stay hidden until you turn them on." open={openSection === 'sectionOrder'} onToggleOpen={() => toggleSection('sectionOrder')}>
+                  <ul className={styles.sectionOrderList}>
+                    {siteContent.sectionOrder.map((key, index) => {
+                      const meta = REORDERABLE_SECTIONS.find((section) => section.key === key);
+                      if (!meta) return null;
+                      const enabledMap: Record<string, boolean> = {
+                        services: siteContent.services.enabled,
+                        howItWorks: siteContent.howItWorks.enabled,
+                        showcase: siteContent.showcase.enabled,
+                        testimonials: siteContent.testimonials.enabled,
+                        faqs: siteContent.faqs.enabled,
+                        serviceAreas: siteContent.serviceAreas.enabled,
+                        stats: siteContent.stats.enabled,
+                        beforeAfter: siteContent.beforeAfter.enabled,
+                        blog: siteContent.blog.enabled,
+                        certifications: siteContent.certifications.enabled,
+                      };
+                      return (
+                        <li
+                          key={key}
+                          draggable
+                          onDragStart={(event) => { setDragKey(key); event.dataTransfer.effectAllowed = 'move'; }}
+                          onDragOver={(event) => event.preventDefault()}
+                          onDrop={(event) => { event.preventDefault(); if (dragKey) reorderSections(dragKey, key); setDragKey(null); }}
+                          onDragEnd={() => setDragKey(null)}
+                          className={`${styles.sectionOrderItem}${dragKey === key ? ` ${styles.sectionOrderDragging}` : ''}`}
+                        >
+                          <span className={styles.sectionOrderGrip} aria-hidden="true">⠿</span>
+                          <span className={styles.sectionOrderName}>{meta.label}{!enabledMap[key] && <em className={styles.sectionOrderOff}>off</em>}</span>
+                          <span className={styles.sectionOrderMove}>
+                            <button type="button" aria-label={`Move ${meta.label} up`} disabled={index === 0} onClick={() => moveSectionBy(key, -1)}>↑</button>
+                            <button type="button" aria-label={`Move ${meta.label} down`} disabled={index === siteContent.sectionOrder.length - 1} onClick={() => moveSectionBy(key, 1)}>↓</button>
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </SectionCard>
 
                 <div className={styles.cardGroupLabel}>Capture leads</div>
 

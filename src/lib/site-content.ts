@@ -280,6 +280,10 @@ export type NormalizedSiteContent = {
   // unless the owner has explicitly swapped one; templates fall back to their
   // auto-derived default when a slot is unset. See IMAGE_SLOT_LABELS.
   images: Record<string, string>;
+  // The owner-chosen order of the in-flow content sections on the public page.
+  // Always a full, deduped permutation of REORDERABLE_SECTIONS keys (missing
+  // ones appended in default order) so every section renders and new ones show.
+  sectionOrder: string[];
 };
 
 export const DEFAULT_SHOWCASE_TITLE = 'Project showcase';
@@ -615,6 +619,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     },
     heroBadge: { preset: toString(heroBadge.preset, 'licensed'), showStats: heroBadge.showStats !== false },
     images: parseImageSlots(images),
+    sectionOrder: parseSectionOrder(root.sectionOrder),
   };
 }
 
@@ -773,4 +778,45 @@ export const IMAGE_SLOT_LABELS: Record<string, string> = {
 // otherwise the template's auto-derived fallback (unchanged legacy behaviour).
 export function getSlotImage(content: Record<string, unknown> | null | undefined, slot: string, fallback: string): string {
   return getSiteContent(content).images[slot] || fallback;
+}
+
+// The in-flow content sections whose page order the owner can rearrange. The
+// key matches the block key in SiteContentSections; the label is shown in the
+// builder's "Page order" panel. Default array order = the default page order.
+export const REORDERABLE_SECTIONS = [
+  { key: 'services', label: 'Services' },
+  { key: 'howItWorks', label: 'How it works' },
+  { key: 'showcase', label: 'Showcase gallery' },
+  { key: 'testimonials', label: 'Testimonials' },
+  { key: 'faqs', label: 'FAQs' },
+  { key: 'serviceAreas', label: 'Service areas' },
+  { key: 'stats', label: 'Animated stats' },
+  { key: 'beforeAfter', label: 'Before & after' },
+  { key: 'blog', label: 'Blog' },
+  { key: 'certifications', label: 'Certifications' },
+] as const;
+
+const DEFAULT_SECTION_ORDER = REORDERABLE_SECTIONS.map((section) => section.key);
+
+// Coerce a stored order into a full, deduped permutation of the known keys:
+// keep recognized keys in their saved order, drop anything unknown, then append
+// any missing keys in default order so every section still renders.
+function parseSectionOrder(value: unknown): string[] {
+  const known = new Set<string>(DEFAULT_SECTION_ORDER);
+  const seen = new Set<string>();
+  const order: string[] = [];
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      if (typeof item === 'string' && known.has(item) && !seen.has(item)) {
+        seen.add(item);
+        order.push(item);
+      }
+    }
+  }
+  for (const key of DEFAULT_SECTION_ORDER) if (!seen.has(key)) order.push(key);
+  return order;
+}
+
+export function getSectionOrder(content: Record<string, unknown> | null | undefined): string[] {
+  return getSiteContent(content).sectionOrder;
 }
