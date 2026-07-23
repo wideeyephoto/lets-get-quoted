@@ -63,7 +63,11 @@ button, input, select, textarea { font: inherit; }
   margin: 0 auto;
   display: flex;
   align-items: center;
-  gap: 1rem;
+  /* Wrap at any width. Without this the packed dashboard row (logo + website
+     badge + Stripe pill + 6 nav links) overflows instead of moving to a
+     second line. */
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
   padding: 0.95rem 1rem;
   border: 1px solid var(--line);
   border-radius: 24px;
@@ -78,7 +82,9 @@ button, input, select, textarea { font: inherit; }
   align-items: center;
   justify-content: center;
   gap: 0.7rem;
-  min-width: 0;
+  /* Never squeeze the logo pill: its wordmark is `nowrap` and the mark can't
+     shrink, so any flex compression pushed both straight through the border. */
+  flex: 0 0 auto;
   text-align: center;
   padding: 0.5rem 1.1rem;
   border-radius: 16px;
