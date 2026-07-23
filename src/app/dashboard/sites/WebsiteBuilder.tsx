@@ -1103,7 +1103,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
         <div className={styles.generatingOverlay} role="alert" aria-busy="true">
           <div className={styles.generatingCard}>
             <span className={styles.generatingSpinner} aria-hidden="true" />
-            <strong>Building your example site…</strong>
+            <strong>Creating your tailored Website…</strong>
             <small>Writing your headline, services, and FAQs, then picking photos for your trade. This takes about 10 seconds.</small>
           </div>
         </div>
@@ -1176,7 +1176,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     <label className={styles.formField}><span>Field of work / trade</span><input value={siteContent.trade} onChange={(event) => updateSiteContent({ trade: event.target.value })} placeholder="e.g. Window cleaning, roofing, HVAC" /></label>
                   </div>
                   <button type="button" className="btn secondary" onClick={handleGenerateText} disabled={isGeneratingText}>
-                    {isGeneratingText ? 'Building your site...' : '✨ Generate a full example site with AI'}
+                    {isGeneratingText ? 'Creating your tailored Website...' : '✨ Generate a full example site with AI'}
                   </button>
                   <small className={styles.fieldHint}>Fills in your whole site — headline, services, FAQs, Google listing, and more — from these two fields. Watch it appear in the preview. Testimonials and stats are generated too, but left off until you swap in your real ones.</small>
                 </SectionCard>
