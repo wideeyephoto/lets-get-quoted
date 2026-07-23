@@ -323,9 +323,19 @@ export type NormalizedSiteContent = {
   // (cross-fade) in the hero; the extras also render as parallax bands further
   // down the page. See getHeroImages / getHeroBandImages.
   heroImages: string[];
+  // How the header/footer logo is framed so a boxy logo blends in:
+  // 'plain' | 'rounded' | 'framed' | 'circle'. Set on the template root as
+  // data-logo-style; one CSS block styles every template's logo.
+  logoStyle: string;
 };
 
 export const MAX_EXTRA_HERO_IMAGES = 2;
+
+const LOGO_STYLE_KEYS = new Set(['plain', 'rounded', 'framed', 'circle']);
+
+export function getLogoStyle(content: Record<string, unknown> | null | undefined): string {
+  return getSiteContent(content).logoStyle;
+}
 
 export const DEFAULT_SHOWCASE_TITLE = 'Project showcase';
 export const DEFAULT_FAQ_TITLE = 'Frequently asked questions';
@@ -704,6 +714,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     heroImages: Array.isArray(root.heroImages)
       ? root.heroImages.filter((url): url is string => typeof url === 'string' && url.trim().length > 0).map((url) => url.trim()).slice(0, MAX_EXTRA_HERO_IMAGES)
       : [],
+    logoStyle: LOGO_STYLE_KEYS.has(toString(root.logoStyle)) ? toString(root.logoStyle) : 'plain',
   };
 }
 

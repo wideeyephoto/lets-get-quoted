@@ -799,49 +799,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <small>Fills your headline, tagline, SEO, hours, service area, Services, and FAQs with trade-specific examples to personalize. Testimonials and stats are generated too, but left off until you swap in your real ones.</small>
                 </div>
 
-                <div className={styles.imageSlots}>
-                  <div className={styles.imageSlot}>
-                    <div className={styles.imageSlotHead}><strong>Logo</strong><small>Shown small in your header and footer.</small></div>
-                    {site.logo_url
-                      ? <div className={styles.logoPreviews}><div className={styles.logoPreview}><img src={site.logo_url} alt="Logo on a light header" /><em>Light</em></div><div className={styles.logoPreviewDark}><img src={site.logo_url} alt="Logo on a dark header" /><em>Dark</em></div></div>
-                      : <div className={styles.imageSlotEmpty}>No logo yet</div>}
-                    <div className={styles.imageSlotActions}>
-                      <button type="button" className={styles.secondaryAction} onClick={() => openPicker('your logo', 'logo')}>{site.logo_url ? 'Replace photo' : 'Add a logo'}</button>
-                      {site.logo_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('logo_url', null)}>Remove</button>}
-                    </div>
-                    <small className={styles.fieldHint}>Best as a <strong>PNG or SVG with a transparent background</strong> — wide and simple. Aim for ~400×120px; it&apos;s shown up to 70px tall. Transparency keeps it clean on both light and dark headers.</small>
-                  </div>
-                  <div className={styles.imageSlot}>
-                    <div className={styles.imageSlotHead}><strong>Hero image</strong><small>The big photo at the top of your homepage.</small></div>
-                    {site.hero_url
-                      ? <div className={styles.heroSlotPreview}><img src={site.hero_url} alt="Current hero image" /></div>
-                      : <div className={styles.imageSlotEmpty}>No hero image yet</div>}
-                    <div className={styles.imageSlotActions}>
-                      <button type="button" className={styles.secondaryAction} onClick={() => openPicker('the hero image', 'hero')}>{site.hero_url ? 'Replace photo' : 'Add a hero image'}</button>
-                      {site.hero_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('hero_url', null)}>Remove</button>}
-                    </div>
-                  </div>
-                </div>
-
-                <div className={styles.formField}>
-                  <span>Extra hero photos <em className={styles.fieldOptional}>optional</em></span>
-                  {siteContent.heroImages.length > 0 && (
-                    <div className={styles.imageSlots}>
-                      {siteContent.heroImages.map((url, index) => (
-                        <div key={`${index}-${url}`} className={styles.imageSlot}>
-                          <div className={styles.heroSlotPreview}><img src={url} alt={`Extra hero photo ${index + 2}`} /></div>
-                          <div className={styles.imageSlotActions}>
-                            <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: `hero photo ${index + 2}`, kind: 'heroExtra', heroExtraIndex: index })}>Replace</button>
-                            <button type="button" className={styles.secondaryAction} onClick={() => removeHeroExtraImage(index)}>Remove</button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {siteContent.heroImages.length < MAX_EXTRA_HERO_IMAGES && <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: 'an extra hero photo', kind: 'heroExtra' })}>Add hero photo</button>}
-                  <small className={styles.fieldHint}>Add up to {MAX_EXTRA_HERO_IMAGES} more. They cross-fade with your hero image and reappear as parallax bands further down the page.</small>
-                </div>
-
                 <label className={styles.formField}><span>Company name</span><input id="bf-company" value={site.company_name} onChange={(event) => handleChange('company_name', event.target.value)} /></label>
                 <label className={styles.formField}><span>Headline</span><textarea id="bf-headline" rows={2} value={site.headline || ''} onChange={(event) => handleChange('headline', event.target.value || null)} placeholder="Built with purpose. Finished with care." /></label>
                 <label className={styles.formField}><span>Tagline</span><textarea id="bf-tagline" rows={3} value={site.tagline || ''} onChange={(event) => handleChange('tagline', event.target.value || null)} placeholder="Tell homeowners what makes your business different." /></label>
@@ -856,6 +813,51 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
             {activeTab === 'design' && (
               <div className={styles.formSection}>
+                <SectionCard title="Logo & hero images" description="Your logo, the big hero photo, and optional extra hero photos." open={openSection === 'brand'} onToggleOpen={() => toggleSection('brand')}>
+                  <div className={styles.imageSlots}>
+                    <div className={styles.imageSlot}>
+                      <div className={styles.imageSlotHead}><strong>Logo</strong><small>Shown small in your header and footer.</small></div>
+                      {site.logo_url
+                        ? <div className={styles.logoPreviews}><div className={styles.logoPreview}><img src={site.logo_url} alt="Logo on a light header" data-logo-style={siteContent.logoStyle} /><em>Light</em></div><div className={styles.logoPreviewDark}><img src={site.logo_url} alt="Logo on a dark header" data-logo-style={siteContent.logoStyle} /><em>Dark</em></div></div>
+                        : <div className={styles.imageSlotEmpty}>No logo yet</div>}
+                      <div className={styles.imageSlotActions}>
+                        <button type="button" className={styles.secondaryAction} onClick={() => openPicker('your logo', 'logo')}>{site.logo_url ? 'Replace photo' : 'Add a logo'}</button>
+                        {site.logo_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('logo_url', null)}>Remove</button>}
+                      </div>
+                      <label className={styles.formField}><span>Logo shape</span><select value={siteContent.logoStyle} onChange={(event) => updateSiteContent({ logoStyle: event.target.value })}><option value="plain">Plain (no frame)</option><option value="rounded">Rounded corners</option><option value="framed">Framed chip (padding + border)</option><option value="circle">Circle</option></select><small className={styles.fieldHint}>Add a rounded frame or chip so a boxy logo blends into the header.</small></label>
+                      <small className={styles.fieldHint}>Best as a <strong>PNG or SVG with a transparent background</strong> — wide and simple. Aim for ~400×120px; it&apos;s shown up to 70px tall.</small>
+                    </div>
+                    <div className={styles.imageSlot}>
+                      <div className={styles.imageSlotHead}><strong>Hero image</strong><small>The big photo at the top of your homepage.</small></div>
+                      {site.hero_url
+                        ? <div className={styles.heroSlotPreview}><img src={site.hero_url} alt="Current hero image" /></div>
+                        : <div className={styles.imageSlotEmpty}>No hero image yet</div>}
+                      <div className={styles.imageSlotActions}>
+                        <button type="button" className={styles.secondaryAction} onClick={() => openPicker('the hero image', 'hero')}>{site.hero_url ? 'Replace photo' : 'Add a hero image'}</button>
+                        {site.hero_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('hero_url', null)}>Remove</button>}
+                      </div>
+                    </div>
+                  </div>
+                  <div className={styles.formField}>
+                    <span>Extra hero photos <em className={styles.fieldOptional}>optional</em></span>
+                    {siteContent.heroImages.length > 0 && (
+                      <div className={styles.imageSlots}>
+                        {siteContent.heroImages.map((url, index) => (
+                          <div key={`${index}-${url}`} className={styles.imageSlot}>
+                            <div className={styles.heroSlotPreview}><img src={url} alt={`Extra hero photo ${index + 2}`} /></div>
+                            <div className={styles.imageSlotActions}>
+                              <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: `hero photo ${index + 2}`, kind: 'heroExtra', heroExtraIndex: index })}>Replace</button>
+                              <button type="button" className={styles.secondaryAction} onClick={() => removeHeroExtraImage(index)}>Remove</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {siteContent.heroImages.length < MAX_EXTRA_HERO_IMAGES && <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: 'an extra hero photo', kind: 'heroExtra' })}>Add hero photo</button>}
+                    <small className={styles.fieldHint}>Add up to {MAX_EXTRA_HERO_IMAGES} more. They cross-fade with your hero image and reappear as parallax bands further down the page.</small>
+                  </div>
+                </SectionCard>
+
                 <SectionCard title="Colors & style" description="Set the visual direction of your website — theme, accent, fonts, and buttons." open={openSection === 'colors'} onToggleOpen={() => toggleSection('colors')}>
                   <div className={styles.themeGrid}>
                     {AVAILABLE_TEMPLATES.map((template) => (

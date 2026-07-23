@@ -124,6 +124,12 @@
 .googleAttribution a { color: inherit; font-weight: 700; }
 .googlePoweredBy { font-size: .78rem; opacity: .58; }
 
+/* Logo framing (data-logo-style on the template root) so a boxy logo blends
+   into the header. currentColor-based frame adapts to light or dark headers. */
+.site[data-logo-style='rounded'] .logo { border-radius: 8px; }
+.site[data-logo-style='framed'] .logo { border-radius: 10px; padding: 5px 9px; background: color-mix(in srgb, currentColor 8%, transparent); border: 1px solid color-mix(in srgb, currentColor 22%, transparent); }
+.site[data-logo-style='circle'] .logo { border-radius: 999px; aspect-ratio: 1; object-fit: cover; }
+
 .showcaseGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
 /* The aspect box lives on the figure (a plain element we fully control) — next/image
    fights an aspect-ratio set on the <img> itself, which collapsed tiles tall and
