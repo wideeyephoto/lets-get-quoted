@@ -130,22 +130,30 @@
 .site[data-logo-style='framed'] .logo { border-radius: 10px; padding: 5px 9px; background: color-mix(in srgb, currentColor 8%, transparent); border: 1px solid color-mix(in srgb, currentColor 22%, transparent); }
 .site[data-logo-style='circle'] .logo { border-radius: 999px; aspect-ratio: 1; object-fit: cover; }
 
+/* The figure is the aspect box; the image is absolutely positioned to fill it,
+   so next/image's own width/height can't collapse the tile tall or zoom-crop. */
 .showcaseGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
-/* The aspect box lives on the figure (a plain element we fully control) — next/image
-   fights an aspect-ratio set on the <img> itself, which collapsed tiles tall and
-   made object-fit:cover zoom-crop the photo. The img just fills the figure. */
 .showcaseGrid figure { position: relative; min-width: 0; margin: 0; overflow: hidden; border-radius: calc(var(--theme-radius, 6px) + 6px); aspect-ratio: 4 / 3; }
-.showcaseGrid img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .5s cubic-bezier(.22, .61, .36, 1); }
+.showcaseGrid img { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .5s cubic-bezier(.22, .61, .36, 1); }
 .showcaseGrid figure:hover img { transform: scale(1.06); }
 /* Caption floats over the photo on a gradient scrim with an accent tick. */
-.showcaseGrid figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 1.6rem .95rem .85rem; color: #fff; font-size: .82rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; background: linear-gradient(to top, rgba(0,0,0,.74), rgba(0,0,0,.12) 62%, transparent); }
+.showcaseGrid figcaption { position: absolute; z-index: 1; left: 0; right: 0; bottom: 0; padding: 1.6rem .95rem .85rem; color: #fff; font-size: .82rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; background: linear-gradient(to top, rgba(0,0,0,.74), rgba(0,0,0,.12) 62%, transparent); }
 .showcaseGrid figcaption:empty { display: none; }
 .showcaseGrid figcaption::before { content: ''; display: inline-block; width: 18px; height: 3px; margin-right: .5rem; vertical-align: middle; background: var(--theme-accent); border-radius: 2px; }
 @media (prefers-reduced-motion: reduce) { .showcaseGrid figure:hover img { transform: none; } }
-.showcase-featured figure:first-child { grid-column: span 2; grid-row: span 2; }
-.showcase-featured figure:first-child img { height: 100%; aspect-ratio: auto; }
-.showcase-masonry figure:nth-child(3n + 1) img { aspect-ratio: 4 / 5; }
-.showcase-masonry figure:nth-child(3n + 2) img { aspect-ratio: 16 / 10; }
+
+/* Layout 2 — Featured: the first photo spans a 2x2 hero cell, the rest stay 4/3. */
+.showcase-featured figure:first-child { grid-column: span 2; grid-row: span 2; aspect-ratio: auto; }
+
+/* Layout 3 — Mosaic: fine auto-rows + per-tile row spans give a staggered,
+   varied-height quilt (works with fixed-dimension next/image, unlike CSS columns). */
+.showcase-masonry { grid-auto-rows: 12px; align-items: stretch; }
+.showcase-masonry figure { aspect-ratio: auto; grid-row: span 22; }
+.showcase-masonry figure:nth-child(4n + 1) { grid-row: span 28; }
+.showcase-masonry figure:nth-child(4n + 2) { grid-row: span 18; }
+.showcase-masonry figure:nth-child(4n + 3) { grid-row: span 24; }
+@media (max-width: 760px) { .showcaseGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .showcase-featured figure:first-child { grid-column: span 2; grid-row: auto; aspect-ratio: 4 / 3; } }
+@media (max-width: 460px) { .showcaseGrid { grid-template-columns: 1fr; } }
 .testimonialGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; }
 .testimonialCard { position: relative; display: grid; gap: 1rem; margin: 0; padding: 1.7rem 1.5rem 1.5rem; border: 1px solid color-mix(in srgb, currentColor 12%, transparent); border-radius: calc(var(--theme-radius, 6px) + 8px); background: color-mix(in srgb, currentColor 5%, transparent); box-shadow: 0 22px 44px -32px rgba(0,0,0,.35); transition: transform .35s cubic-bezier(.22, .61, .36, 1), box-shadow .35s ease, border-color .35s ease; }
 .testimonialCard:hover { transform: translateY(-6px); box-shadow: 0 36px 64px -30px rgba(0,0,0,.42); border-color: color-mix(in srgb, var(--theme-accent) 45%, transparent); }
