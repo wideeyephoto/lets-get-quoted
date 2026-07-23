@@ -214,10 +214,13 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           {isDashboard && isLoggedIn ? (
             <Link
               href="/dashboard/settings"
-              className={`stripe-status-pill${stripeOnboarded === null ? '' : stripeOnboarded ? ' connected' : ' warning'}`}
+              className={`stripe-status-pill${stripeOnboarded === null ? ' checking' : stripeOnboarded ? ' connected' : ' warning'}`}
               title={stripeOnboarded ? 'Stripe payouts connected' : 'Stripe payouts not connected — click to finish setup'}
             >
-              <span className="stripe-status-dot" aria-hidden="true" />
+              {/* The glyph changes with the state, so it never relies on colour alone. */}
+              <span className="stripe-status-tile" aria-hidden="true">
+                {stripeOnboarded === null ? '·' : stripeOnboarded ? '✓' : '!'}
+              </span>
               {stripeOnboarded === null ? 'Stripe: checking…' : stripeOnboarded ? 'Stripe connected' : 'Connect Stripe'}
             </Link>
           ) : null}

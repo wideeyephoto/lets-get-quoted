@@ -366,45 +366,67 @@ h3 {
   .website-nav-badge { order: -2; }
 }
 
+/* Shares the website badge's chip: same 12px radius, same translucent surface.
+   State lives in the leading tile — whose GLYPH changes too (✓ / !), so it
+   never depends on colour alone. */
 .stripe-status-pill {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  padding: 0.5rem 0.85rem;
-  border-radius: 999px;
+  padding: 0.35rem 0.8rem 0.35rem 0.4rem;
+  border-radius: 12px;
   font-size: 0.78rem;
   font-weight: 700;
   white-space: nowrap;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(247, 245, 239, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.07);
+  color: #e2e8f0;
   margin-left: 0.75rem;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
-.stripe-status-pill:hover { border-color: rgba(255, 255, 255, 0.28); }
+.stripe-status-pill:hover { border-color: rgba(255, 255, 255, 0.3); background: rgba(255, 255, 255, 0.12); }
 
-.stripe-status-dot {
-  width: 8px;
-  height: 8px;
+.stripe-status-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1;
+  background: rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.4);
   flex-shrink: 0;
 }
 
-.stripe-status-pill.connected {
-  border-color: rgba(163, 230, 53, 0.3);
-  background: rgba(163, 230, 53, 0.1);
-  color: #bef264;
-}
-.stripe-status-pill.connected .stripe-status-dot { background: #a3e635; }
+/* Connected uses the website badge's emerald, not the old lime, so the two
+   chips stop showing slightly different greens side by side. */
+.stripe-status-pill.connected { color: #6ee7b7; }
+.stripe-status-pill.connected .stripe-status-tile { background: rgba(52, 211, 153, 0.2); color: #6ee7b7; }
 
-.stripe-status-pill.warning {
-  border-color: rgba(251, 191, 36, 0.4);
-  background: rgba(251, 191, 36, 0.14);
-  color: #fcd34d;
+.stripe-status-pill.warning { color: #fcd34d; }
+.stripe-status-pill.warning .stripe-status-tile { background: rgba(251, 191, 36, 0.2); color: #fcd34d; }
+
+/* The status is fetched client-side, so it's briefly unknown on every load —
+   muted and blinking rather than flashing a wrong state. */
+.stripe-status-pill.checking { color: #64748b; }
+.stripe-status-pill.checking .stripe-status-tile {
+  background: rgba(255, 255, 255, 0.08);
+  color: #64748b;
+  animation: stripe-status-blink 1.6s ease-in-out infinite;
 }
-.stripe-status-pill.warning .stripe-status-dot { background: #fbbf24; }
+
+@keyframes stripe-status-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stripe-status-pill.checking .stripe-status-tile { animation: none; }
+}
 
 @media (max-width: 860px) {
   .stripe-status-pill { margin-left: 0; order: -1; }
