@@ -162,6 +162,38 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
         : { hint: `${siteContent.blog.posts.length} ${siteContent.blog.posts.length === 1 ? 'draft' : 'drafts'}`, hintTone: 'ok' }
       : contentHint(siteContent.blog.enabled, 0, 'post');
 
+  // Review count for hints: manual quotes, plus imported Google reviews when
+  // the source mode shows them.
+  const reviewCount = siteContent.testimonials.items.filter((item) => item.text.trim()).length
+    + (siteContent.testimonials.sourceMode !== 'manual' ? siteContent.testimonials.googleReviews.length : 0);
+
+  // Per-section enabled state + content hints, shared by the section cards and
+  // the Page order jump list.
+  const sectionEnabled: Record<string, boolean> = {
+    services: siteContent.services.enabled,
+    howItWorks: siteContent.howItWorks.enabled,
+    showcase: siteContent.showcase.enabled,
+    testimonials: siteContent.testimonials.enabled,
+    faqs: siteContent.faqs.enabled,
+    serviceAreas: siteContent.serviceAreas.enabled,
+    stats: siteContent.stats.enabled,
+    beforeAfter: siteContent.beforeAfter.enabled,
+    blog: siteContent.blog.enabled,
+    certifications: siteContent.certifications.enabled,
+  };
+  const sectionHints: Record<string, { hint?: string; hintTone?: 'ok' | 'warn' }> = {
+    services: contentHint(siteContent.services.enabled, siteContent.services.items.filter((svc) => svc.title.trim()).length, 'service'),
+    howItWorks: contentHint(siteContent.howItWorks.enabled, siteContent.howItWorks.steps.filter((step) => step.title.trim()).length, 'step'),
+    showcase: contentHint(siteContent.showcase.enabled, siteContent.showcase.items.length, 'image'),
+    testimonials: contentHint(siteContent.testimonials.enabled, reviewCount, 'review'),
+    faqs: contentHint(siteContent.faqs.enabled, siteContent.faqs.items.filter((faq) => faq.question.trim() && faq.answer.trim()).length, 'question'),
+    serviceAreas: contentHint(siteContent.serviceAreas.enabled, siteContent.serviceAreas.cities.filter((city) => city.trim()).length, 'city', 'cities'),
+    stats: contentHint(siteContent.stats.enabled, siteContent.stats.items.filter((item) => item.label.trim()).length, 'stat'),
+    beforeAfter: contentHint(siteContent.beforeAfter.enabled, siteContent.beforeAfter.items.filter((pair) => pair.beforeUrl && pair.afterUrl).length, 'pair'),
+    blog: blogHint,
+    certifications: contentHint(siteContent.certifications.enabled, siteContent.certifications.items.filter((item) => item.label.trim()).length, 'item'),
+  };
+
   // Jump to a tab, open a card, and optionally focus a field — powers the
   // launch-checklist deep-links. Double rAF: the target tab's panel must render
   // before the element exists to scroll to.
@@ -828,7 +860,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <small className={styles.fieldHint}>Fills in your whole site — headline, services, FAQs, Google listing, and more — from these two fields. Watch it appear in the preview. Testimonials and stats are generated too, but left off until you swap in your real ones.</small>
                 </SectionCard>
 
-                <SectionCard title="Your message" description="The big text visitors see first at the top of your page." open={openSection === 'message'} onToggleOpen={() => toggleSection('message')}>
+                <SectionCard title="Your message" description="The big text visitors see first at the top of your page." hint={site.headline ? `“${site.headline.length > 46 ? `${site.headline.slice(0, 46).trimEnd()}…` : site.headline}”` : undefined} open={openSection === 'message'} onToggleOpen={() => toggleSection('message')}>
                   <label className={styles.formField}><span>Headline</span><textarea id="bf-headline" rows={2} value={site.headline || ''} onChange={(event) => handleChange('headline', event.target.value || null)} placeholder="Built with purpose. Finished with care." /></label>
                   <label className={styles.formField}><span>Tagline</span><textarea id="bf-tagline" rows={3} value={site.tagline || ''} onChange={(event) => handleChange('tagline', event.target.value || null)} placeholder="Tell homeowners what makes your business different." /></label>
                 </SectionCard>
@@ -846,6 +878,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 </SectionCard>
 
                 <SectionCard title="How you show up on Google" description="The title and description searchers see before they click. Your hero image is used when your site is shared on social." open={openSection === 'seo'} onToggleOpen={() => toggleSection('seo')}>
+                  <div className={styles.googleSnippet}>
+                    <span className={styles.googleSnippetUrl}>{liveDomain || `${site.subdomain || 'your-business'}.${ROOT_DOMAIN}`}</span>
+                    <strong className={styles.googleSnippetTitle}>{site.seo_title || site.company_name || 'Your company name'}</strong>
+                    <p className={styles.googleSnippetDesc}>{site.seo_description || site.tagline || 'Your description appears here — one sentence on what you do and where.'}</p>
+                  </div>
+                  <small className={styles.fieldHint}>A preview of how your site can appear in Google search results.</small>
                   <label className={styles.formField}><span>Google listing title</span><input id="bf-seo-title" maxLength={60} value={site.seo_title || ''} onChange={(event) => handleChange('seo_title', event.target.value || null)} placeholder={site.company_name} /><small>{(site.seo_title || '').length}/60 characters</small></label>
                   <label className={styles.formField}><span>Google listing description</span><textarea rows={3} maxLength={160} value={site.seo_description || ''} onChange={(event) => handleChange('seo_description', event.target.value || null)} placeholder={site.tagline || 'Describe your services and location.'} /><small>{(site.seo_description || '').length}/160 characters</small></label>
                 </SectionCard>
@@ -957,23 +995,11 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
               <div className={styles.formSection}>
                 <div className={styles.sectionIntro}><h2>Your page</h2><p>Everything a visitor sees on your page, top to bottom — sections, lead capture, and trust boosters.</p></div>
 
-                <SectionCard title="Page order" description="Drag to reorder the sections on your public page. Off sections keep their spot but stay hidden until you turn them on." open={openSection === 'sectionOrder'} onToggleOpen={() => toggleSection('sectionOrder')}>
+                <SectionCard title="Page order" description="Drag to reorder the sections on your public page; click one to open its card below. Off sections keep their spot but stay hidden until you turn them on." open={openSection === 'sectionOrder'} onToggleOpen={() => toggleSection('sectionOrder')}>
                   <ul className={styles.sectionOrderList}>
                     {siteContent.sectionOrder.map((key, index) => {
                       const meta = REORDERABLE_SECTIONS.find((section) => section.key === key);
                       if (!meta) return null;
-                      const enabledMap: Record<string, boolean> = {
-                        services: siteContent.services.enabled,
-                        howItWorks: siteContent.howItWorks.enabled,
-                        showcase: siteContent.showcase.enabled,
-                        testimonials: siteContent.testimonials.enabled,
-                        faqs: siteContent.faqs.enabled,
-                        serviceAreas: siteContent.serviceAreas.enabled,
-                        stats: siteContent.stats.enabled,
-                        beforeAfter: siteContent.beforeAfter.enabled,
-                        blog: siteContent.blog.enabled,
-                        certifications: siteContent.certifications.enabled,
-                      };
                       return (
                         <li
                           key={key}
@@ -985,7 +1011,11 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                           className={`${styles.sectionOrderItem}${dragKey === key ? ` ${styles.sectionOrderDragging}` : ''}`}
                         >
                           <span className={styles.sectionOrderGrip} aria-hidden="true">⠿</span>
-                          <span className={styles.sectionOrderName}>{meta.label}{!enabledMap[key] && <em className={styles.sectionOrderOff}>off</em>}</span>
+                          <button type="button" className={styles.sectionOrderJump} onClick={() => jumpTo('page', key)}>
+                            {meta.label}
+                            {!sectionEnabled[key] && <em className={styles.sectionOrderOff}>off</em>}
+                            {sectionHints[key]?.hint && <em className={styles.sectionOrderHint} data-tone={sectionHints[key].hintTone || 'ok'}>{sectionHints[key].hint}</em>}
+                          </button>
                           <span className={styles.sectionOrderMove}>
                             <button type="button" aria-label={`Move ${meta.label} up`} disabled={index === 0} onClick={() => moveSectionBy(key, -1)}>↑</button>
                             <button type="button" aria-label={`Move ${meta.label} down`} disabled={index === siteContent.sectionOrder.length - 1} onClick={() => moveSectionBy(key, 1)}>↓</button>
@@ -1093,7 +1123,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('ba'); updateBeforeAfter({ ...siteContent.beforeAfter, enabled: true, items: [...siteContent.beforeAfter.items, { id, beforeUrl: '', beforeAlt: '', afterUrl: '', afterAlt: '', label: '' }] }); setEditingItemId(id); }}>Add pair</button>
                 </SectionCard>
 
-                <SectionCard title="Customer reviews" description="Show quotes from real customers on your public site." evidence="97% of homeowners read reviews before hiring a local pro, and the first few weigh the most." enabled={siteContent.testimonials.enabled} onToggleEnabled={(value) => updateTestimonials({ ...siteContent.testimonials, enabled: value })} {...contentHint(siteContent.testimonials.enabled, siteContent.testimonials.items.filter((item) => item.text.trim()).length, 'review')} open={openSection === 'testimonials'} onToggleOpen={() => toggleSection('testimonials')}>
+                <SectionCard title="Customer reviews" description="Show quotes from real customers on your public site." evidence="97% of homeowners read reviews before hiring a local pro, and the first few weigh the most." enabled={siteContent.testimonials.enabled} onToggleEnabled={(value) => updateTestimonials({ ...siteContent.testimonials, enabled: value })} {...contentHint(siteContent.testimonials.enabled, reviewCount, 'review')} open={openSection === 'testimonials'} onToggleOpen={() => toggleSection('testimonials')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.testimonials.title} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, title: event.target.value })} /></label>
                   <div className={styles.formColumns}>
                     <label className={styles.formField}><span>Source mode</span><select value={siteContent.testimonials.sourceMode} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, sourceMode: event.target.value as SiteTestimonialsContent['sourceMode'] })}><option value="manual">Manual testimonials</option><option value="mixed">Manual + Google</option><option value="google">Google reviews only</option></select></label>
