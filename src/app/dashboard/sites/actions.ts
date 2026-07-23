@@ -90,7 +90,7 @@ export async function publishSiteAction(published: boolean) {
   const siteId = sites[0].id;
 
   if (published && !sites[0].subdomain && (!sites[0].custom_domain || !sites[0].custom_domain_verified_at)) {
-    throw new Error('Add an LGQ subdomain or verify your custom domain before publishing.');
+    throw new Error('Add a letsgetquoted.com subdomain or verify your custom domain before publishing.');
   }
 
   await publishSite(supabase, accountId, siteId, published);

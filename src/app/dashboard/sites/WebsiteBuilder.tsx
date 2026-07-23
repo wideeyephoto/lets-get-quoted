@@ -753,7 +753,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       return;
     }
     if (nextPublished && !site.subdomain && (!site.custom_domain || domainStatus !== 'verified')) {
-      setMessage({ type: 'error', text: 'Add an LGQ subdomain or verify your custom domain before publishing.' });
+      setMessage({ type: 'error', text: 'Add a letsgetquoted.com subdomain or verify your custom domain before publishing.' });
       return;
     }
 
@@ -1369,7 +1369,21 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
             {activeTab === 'publish' && (
               <div className={styles.formSection}>
-                <div className={styles.sectionIntro}><h2>Publish</h2><p>Go live — finish the checklist, pick your web address, and flip the switch.</p></div>
+                <div className={styles.sectionIntro}><h2>Publish</h2><p>Go live — put your website on the internet, then fine-tune your web address below.</p></div>
+
+                <div className={`${styles.publishHero}${site.published ? ` ${styles.publishHeroLive}` : ''}`}>
+                  <div className={styles.publishHeroInfo}>
+                    <span className={`${styles.statusDot} ${site.published ? styles.liveDot : ''}`} aria-hidden="true" />
+                    <div>
+                      <strong>{site.published ? '🎉 Your website is live!' : 'Ready to go live?'}</strong>
+                      <p>{site.published ? 'Homeowners can visit your website right now.' : 'Publishing puts your site on the internet for anyone to visit. You can switch it back to private anytime.'}</p>
+                    </div>
+                  </div>
+                  <button type="button" className={styles.publishHeroBtn} onClick={handlePublish} disabled={isPending}>{isPending ? 'Working…' : site.published ? 'Unpublish' : '🚀 Publish my website'}</button>
+                </div>
+                {!site.published && !site.company_name.trim() && <p className={styles.publishRequirement}>A company name is required to publish. Add one on the Business tab.</p>}
+                {site.published && liveUrl && <a className={styles.publicLink} href={liveUrl} target="_blank" rel="noopener noreferrer">Open live website ↗</a>}
+
                 <div className={styles.checklistCard}>
                   <strong>Launch checklist</strong>
                   <ul>
@@ -1383,16 +1397,19 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     ))}
                   </ul>
                 </div>
-                <label className={styles.formField}><span>LGQ subdomain</span><div className={styles.domainControl}><input id="pub-subdomain" value={site.subdomain || ''} onChange={(event) => handleChange('subdomain', event.target.value.toLowerCase() || null)} placeholder="northline-builders" /><button type="button" onClick={checkSubdomain} disabled={isPending}>Check</button></div><small>{site.subdomain || 'your-business'}.{ROOT_DOMAIN}{subdomainStatus === 'available' ? ' - available' : subdomainStatus === 'taken' ? ' - unavailable' : ''}</small></label>
+                <label className={styles.formField}><span>Free letsgetquoted.com subdomain</span>
+                  <div className={styles.domainControl}>
+                    <div className={styles.subdomainInput}>
+                      <input id="pub-subdomain" value={site.subdomain || ''} onChange={(event) => handleChange('subdomain', event.target.value.toLowerCase() || null)} placeholder="northline-builders" aria-label="Subdomain" />
+                      <span className={styles.subdomainSuffix} aria-hidden="true">.{ROOT_DOMAIN}</span>
+                    </div>
+                    <button type="button" onClick={checkSubdomain} disabled={isPending}>Check</button>
+                  </div>
+                  <small>{subdomainStatus === 'available' ? `✓ ${site.subdomain}.${ROOT_DOMAIN} is available` : subdomainStatus === 'taken' ? '✕ That subdomain is already taken — try another' : 'Lowercase letters, numbers, and hyphens.'}</small>
+                </label>
                 <label className={styles.formField}><span>Custom domain</span><div className={styles.domainControl}><input value={site.custom_domain || ''} onChange={(event) => handleChange('custom_domain', event.target.value || null)} placeholder="www.yourbusiness.com" /><button type="button" onClick={verifyCustomDomain} disabled={isPending}>{domainStatus === 'checking' ? 'Checking...' : 'Verify DNS'}</button></div><small>{domainStatus === 'verified' ? 'Verified and connected.' : 'Add a CNAME record pointing to domains.letsgetquoted.com.'}</small></label>
                 <DomainConnector domain={site.custom_domain} target="domains.letsgetquoted.com" />
                 <p className={styles.movedNote}>Google title &amp; description moved to <strong>Business → How you show up on Google</strong>.</p>
-                {!site.published && !site.company_name.trim() && <p className={styles.publishRequirement}>A company name is required to publish. Add one on the Business tab.</p>}
-                <div className={styles.publishCard}>
-                  <div><span className={`${styles.statusDot} ${site.published ? styles.liveDot : ''}`} /><div><strong>{site.published ? 'Website is live' : 'Website is private'}</strong><p>{site.published ? 'Homeowners can visit your website.' : 'Only you can see the saved preview.'}</p></div></div>
-                  <button type="button" onClick={handlePublish} disabled={isPending}>{site.published ? 'Unpublish' : 'Save & publish'}</button>
-                </div>
-                {site.published && liveUrl && <a className={styles.publicLink} href={liveUrl} target="_blank" rel="noopener noreferrer">Open live website ↗</a>}
               </div>
             )}
           </div>

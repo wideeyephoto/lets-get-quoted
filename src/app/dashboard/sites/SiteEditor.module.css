@@ -278,6 +278,13 @@
 .googleReviewPreviewItem p { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin: .3rem 0 0; color: #c8d0dc; font-size: .82rem; line-height: 1.45; }
 .domainControl { display: grid; grid-template-columns: 1fr auto; gap: .5rem; }
 .domainControl button { padding: 0 .9rem; border: 1px solid rgba(255,255,255,.18); border-radius: 6px; background: rgba(255,255,255,.07); color: #fff; font-weight: 700; cursor: pointer; }
+/* Subdomain input with an inline, non-editable ".letsgetquoted.com" suffix so
+   the full URL is obvious as the owner types. The wrapper is styled as the
+   field; the real <input> inside is stripped of its default .formField chrome. */
+.subdomainInput { display: flex; align-items: center; min-height: 43px; padding-left: .75rem; border: 1px solid rgba(255,255,255,.16); border-radius: 6px; background: rgba(255,255,255,.055); overflow: hidden; }
+.subdomainInput:focus-within { border-color: #ff9b54; box-shadow: 0 0 0 3px rgba(255,122,33,.12); }
+.subdomainInput input, .subdomainInput input:focus { flex: 1; min-width: 0; min-height: 41px; padding: 0; border: 0; background: none; box-shadow: none; color: #f7f5ef; font-weight: 400; }
+.subdomainSuffix { flex: none; padding: 0 .7rem; color: #9ca8b8; font-size: .9rem; font-weight: 700; white-space: nowrap; }
 /* Guided custom-domain connector (DomainConnector.tsx) */
 .connector { display: grid; gap: .85rem; padding: 1rem 1.1rem; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; background: rgba(255,255,255,.03); }
 .connectorHead { display: grid; gap: .2rem; }
@@ -300,11 +307,26 @@
 .connectorApex summary { padding: .6rem .8rem; color: #f7f5ef; font-size: .82rem; font-weight: 700; cursor: pointer; }
 .connectorApex p { margin: 0; padding: 0 .8rem .7rem; color: #c8d0dc; font-size: .8rem; line-height: 1.55; }
 .connectorNote { margin: 0; color: #9ca8b8; font-size: .77rem; line-height: 1.5; }
-.publishCard { display: grid; gap: 1rem; padding: 1rem; border: 1px solid rgba(255,255,255,.12); border-radius: 7px; background: rgba(255,255,255,.035); }
-.publishCard > div { display: flex; align-items: flex-start; gap: .75rem; }
-.publishCard strong { display: block; }
-.publishCard p { margin: .2rem 0 0; font-size: .82rem; }
-.publishCard button { min-height: 44px; border: 0; border-radius: 6px; background: #ff7a21; color: #fff; font-weight: 800; cursor: pointer; }
+/* Publish hero — the go-live moment, pinned to the top of the Publish tab with
+   a gradient, glow, and an animated shine so it reads as the main action. */
+.publishHero { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.25rem; padding: 1.35rem 1.45rem; border-radius: 14px; border: 1px solid rgba(255,122,33,.4); background: linear-gradient(135deg, rgba(255,122,33,.18), rgba(255,138,61,.05)); box-shadow: 0 18px 42px -24px rgba(255,122,33,.75); }
+.publishHeroLive { border-color: rgba(74,222,128,.45); background: linear-gradient(135deg, rgba(74,222,128,.16), rgba(74,222,128,.04)); box-shadow: 0 18px 42px -24px rgba(74,222,128,.6); }
+.publishHeroInfo { display: flex; align-items: flex-start; gap: .75rem; min-width: 0; }
+.publishHeroInfo strong { display: block; font-size: 1.18rem; line-height: 1.2; }
+.publishHeroInfo p { margin: .3rem 0 0; max-width: 44ch; color: #c8d0dc; font-size: .84rem; line-height: 1.45; }
+.publishHeroBtn { position: relative; overflow: hidden; flex: none; min-height: 52px; padding: 0 1.7rem; border: 0; border-radius: 999px; background: linear-gradient(180deg, #ff8a3d, #ff7a21); color: #fff; font-size: 1rem; font-weight: 800; cursor: pointer; box-shadow: 0 12px 28px -10px rgba(255,122,33,.85); transition: transform .15s ease, box-shadow .15s ease, filter .15s ease; }
+.publishHeroBtn:hover:not(:disabled) { transform: translateY(-2px) scale(1.02); box-shadow: 0 18px 36px -10px rgba(255,122,33,.95); filter: brightness(1.06); }
+.publishHeroBtn:active:not(:disabled) { transform: translateY(0) scale(.99); }
+.publishHeroBtn:disabled { opacity: .6; cursor: default; }
+.publishHeroBtn::after { content: ''; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 32%, rgba(255,255,255,.4) 50%, transparent 68%); transform: translateX(-130%); }
+.publishHeroLive .publishHeroBtn { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.22); box-shadow: none; }
+.publishHeroLive .publishHeroBtn::after { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .publishHero:not(.publishHeroLive) .publishHeroBtn::after { animation: publishShine 3.6s ease-in-out infinite; }
+  .publishHeroLive .statusDot { animation: publishPulse 2.2s ease-in-out infinite; }
+}
+@keyframes publishShine { 0% { transform: translateX(-130%); } 55%, 100% { transform: translateX(130%); } }
+@keyframes publishPulse { 0%, 100% { box-shadow: 0 0 0 4px rgba(74,222,128,.14); } 50% { box-shadow: 0 0 0 9px rgba(74,222,128,.04); } }
 .statusDot { flex: 0 0 auto; width: 10px; height: 10px; margin-top: .35rem; border-radius: 50%; background: #788393; }
 .liveDot { background: #4ade80; box-shadow: 0 0 0 4px rgba(74,222,128,.12); }
 .publicLink { display: inline-flex; color: #ffd166; font-weight: 700; }
