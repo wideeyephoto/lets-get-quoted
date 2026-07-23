@@ -1027,13 +1027,15 @@
 /* Aligned 2x2 grid (Purely): photo · card on the top row, card · photo on the
    bottom. Named areas so a hidden badge leaves its cell empty without breaking
    the alignment of the other three. */
-/* align-items:start is the baseline; the bottom row pins to the bottom. This
-   makes the top two cells share a top edge and the bottom two share a bottom
-   edge, while the columns already share left/right edges — a true grid. */
-.shineHeroMedia { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: 'p1 b1' 'b2 p2'; gap: clamp(.6rem, 1.4vw, 1rem); align-items: start; }
+/* A tight staggered quilt: each photo spans two of the three rows so it nests
+   directly against its column's badge — no dead space. The thin top and bottom
+   rows are badge-height, so the top two cells share a top edge, the bottom two
+   share a bottom edge, and the columns share left/right edges — a true, snug
+   grid (both columns total photo + gap + badge, so the outline stays square). */
+.shineHeroMedia { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr auto; grid-template-areas: 'p1 b1' 'p1 p2' 'b2 p2'; gap: clamp(.6rem, 1.4vw, 1rem); align-items: start; }
 .shinePhotoCard { position: relative; margin: 0; border-radius: 20px; overflow: hidden; background: #16273d; box-shadow: 0 40px 80px -34px rgba(0,0,0,.6); }
 /* Framed photos: accent border on the main shot, white on the second. */
-.shinePhotoMain { grid-area: p1; border: 4px solid color-mix(in srgb, var(--theme-accent) 85%, #fff); aspect-ratio: 3 / 3.9; }
+.shinePhotoMain { grid-area: p1; align-self: start; border: 4px solid color-mix(in srgb, var(--theme-accent) 85%, #fff); aspect-ratio: 3 / 3.9; }
 .shinePhotoSide { grid-area: p2; align-self: end; border: 4px solid rgba(255,255,255,.92); aspect-ratio: 3 / 3.9; }
 .shinePhoto { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .65s cubic-bezier(.22, .61, .36, 1); }
 .shinePhotoCard:hover .shinePhoto { transform: scale(1.06); }
