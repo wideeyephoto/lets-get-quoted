@@ -25,10 +25,19 @@ type WebsiteBuilderProps = {
 
 const TABS: { id: BuilderTab; label: string }[] = [
   { id: 'business', label: 'Business' },
-  { id: 'page', label: 'Your page' },
   { id: 'design', label: 'Design' },
+  { id: 'page', label: 'Your page' },
   { id: 'publish', label: 'Publish' },
 ];
+
+// Card that opens when a tab is entered by clicking its tab (or arrow-keying to
+// it). Only Business and Design have a natural "start here" card; Your page and
+// Publish keep whatever was open. Click-to-edit and checklist deep-links set
+// their own target card and bypass this.
+const TAB_DEFAULT_SECTION: Partial<Record<BuilderTab, string>> = {
+  business: 'basics',
+  design: 'theme',
+};
 
 function createContentId(prefix: string): string {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
@@ -244,6 +253,15 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
   const toggleSection = useCallback((key: string) => {
     setOpenSection((prev) => (prev === key ? null : key));
+  }, []);
+
+  // Manual tab navigation (tab click / arrow keys): switch tabs and open that
+  // tab's default card so users land on something actionable (Design → Theme,
+  // Business → Business basics) instead of a wall of collapsed cards.
+  const goToTab = useCallback((id: BuilderTab) => {
+    setActiveTab(id);
+    const defaultSection = TAB_DEFAULT_SECTION[id];
+    if (defaultSection) setOpenSection(defaultSection);
   }, []);
 
   useEffect(() => {
@@ -824,7 +842,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
               event.preventDefault();
               const index = TABS.findIndex((tab) => tab.id === activeTab);
               const next = TABS[(index + (event.key === 'ArrowRight' ? 1 : TABS.length - 1)) % TABS.length];
-              setActiveTab(next.id);
+              goToTab(next.id);
               document.getElementById(`builder-tab-${next.id}`)?.focus();
             }}
           >
@@ -838,7 +856,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 aria-controls="builder-tabpanel"
                 tabIndex={activeTab === tab.id ? 0 : -1}
                 className={activeTab === tab.id ? styles.activeBuilderTab : undefined}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => goToTab(tab.id)}
               >
                 {tab.label}
               </button>
