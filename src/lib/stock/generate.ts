@@ -40,6 +40,7 @@ export async function generateStockImages(opts: {
         id: `pexels-${assignment.providerImageId}`,
         url: assignment.imageUrl,
         alt: assignment.alt || 'Representative service photo',
+        ...(assignment.caption ? { caption: assignment.caption } : {}),
         category: 'craft',
         source: 'stock',
       });

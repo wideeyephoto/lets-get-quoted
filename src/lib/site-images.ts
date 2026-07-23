@@ -7,6 +7,8 @@ export type SiteImage = {
   category: 'exterior' | 'interior' | 'kitchen' | 'craft' | 'commercial';
   source: SiteImageSource;
   storagePath?: string;
+  // Visible overlay title on gallery tiles (e.g. the service being advertised).
+  caption?: string;
 };
 
 export const STOCK_SITE_IMAGES: SiteImage[] = [

@@ -160,6 +160,17 @@
 
 /* "Replace photo" popup selector */
 .pickerOverlay { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: clamp(.75rem, 3vw, 2rem); background: rgba(4,8,14,.72); backdrop-filter: blur(3px); }
+
+/* Full-screen lock while AI builds the example site (~10s): darkens and blurs
+   everything, blocks clicks, and shows one centered spinner + message. */
+.generatingOverlay { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: center; justify-content: center; padding: 1.5rem; background: rgba(4,8,14,.82); backdrop-filter: blur(4px); animation: generatingFade .25s ease both; }
+.generatingCard { display: grid; justify-items: center; gap: .8rem; max-width: 26rem; padding: 2.2rem 2rem; border: 1px solid rgba(255,255,255,.14); border-radius: 16px; background: rgba(10,22,36,.96); box-shadow: 0 30px 70px -24px rgba(0,0,0,.8); text-align: center; color: #f7f5ef; }
+.generatingCard strong { font-size: 1.08rem; }
+.generatingCard small { color: rgba(247,245,239,.66); font-size: .86rem; line-height: 1.5; }
+.generatingSpinner { width: 44px; height: 44px; border-radius: 50%; border: 4px solid rgba(255,255,255,.16); border-top-color: var(--accent, #f97316); animation: generatingSpin .9s linear infinite; }
+@keyframes generatingSpin { to { transform: rotate(360deg); } }
+@keyframes generatingFade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .generatingSpinner { animation-duration: 2.5s; } .generatingOverlay { animation: none; } }
 .pickerModal { display: flex; flex-direction: column; width: min(760px, 100%); max-height: min(88vh, 760px); overflow: hidden; border: 1px solid rgba(255,255,255,.14); border-radius: 14px; background: #0e1622; box-shadow: 0 30px 80px -20px rgba(0,0,0,.7); }
 .pickerHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1rem 1.15rem; border-bottom: 1px solid rgba(255,255,255,.1); }
 .pickerHead strong { display: block; font-size: 1rem; color: #f7f5ef; }

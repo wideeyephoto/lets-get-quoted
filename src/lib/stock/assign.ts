@@ -70,6 +70,7 @@ function toAssignment(planned: PlannedImage, photo: PexelsPhoto, selectedAt: str
     thumbnailUrl: photo.thumbnailUrl,
     // Prefer the planned (role-aware, non-stuffed) alt; fall back to Pexels' alt.
     alt: planned.alt || photo.alt || '',
+    ...(planned.caption ? { caption: planned.caption } : {}),
     photographerName: photo.photographerName,
     photographerUrl: photo.photographerUrl,
     searchQuery: planned.searchQuery,

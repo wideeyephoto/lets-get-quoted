@@ -995,6 +995,15 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
   return (
     <main className={styles.builderShell}>
+      {isGeneratingText && (
+        <div className={styles.generatingOverlay} role="alert" aria-busy="true">
+          <div className={styles.generatingCard}>
+            <span className={styles.generatingSpinner} aria-hidden="true" />
+            <strong>Building your example site…</strong>
+            <small>Writing your headline, services, and FAQs, then picking photos for your trade. This takes about 10 seconds.</small>
+          </div>
+        </div>
+      )}
       <header className={styles.builderHeader}>
         <div>
           <p className={styles.builderEyebrow}>Website builder</p>
@@ -1280,7 +1289,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 <SectionCard title="Photo gallery" description="Highlight finished work, project details, and job photos." evidence="Real project photos alongside reviews produced 55% more leads in one study — genuine work outperforms stock." enabled={siteContent.showcase.enabled} onToggleEnabled={(value) => updateShowcase({ ...siteContent.showcase, enabled: value })} {...contentHint(siteContent.showcase.enabled, siteContent.showcase.items.length, 'image')} open={openSection === 'showcase'} onToggleOpen={() => toggleSection('showcase')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.showcase.title} onChange={(event) => updateShowcase({ ...siteContent.showcase, title: event.target.value })} /></label>
                   <label className={styles.formField}><span>Intro</span><textarea rows={2} value={siteContent.showcase.intro} onChange={(event) => updateShowcase({ ...siteContent.showcase, intro: event.target.value })} /></label>
-                  <label className={styles.formField}><span>Gallery layout</span><select value={siteContent.showcase.layout} onChange={(event) => updateShowcase({ ...siteContent.showcase, layout: event.target.value as SiteShowcaseContent['layout'] })}><option value="featured">Featured — one big photo</option><option value="grid">Uniform grid — even tiles</option><option value="masonry">Mosaic — mixed heights</option><option value="filmstrip">Filmstrip — swipeable row</option></select></label>
+                  <label className={styles.formField}><span>Gallery layout</span><select value={siteContent.showcase.layout} onChange={(event) => updateShowcase({ ...siteContent.showcase, layout: event.target.value as SiteShowcaseContent['layout'] })}><option value="featured">Featured — one big photo</option><option value="grid">Uniform grid — even tiles</option><option value="filmstrip">Filmstrip — swipeable row</option></select></label>
                   <div className={styles.contentSubhead}><strong>Gallery Images</strong><small>{siteContent.showcase.items.length}/9 · shown in this order</small></div>
                   {siteContent.showcase.items.length > 0 && (
                     <div className={styles.showcaseSelected} aria-label="Showcase images, in order">

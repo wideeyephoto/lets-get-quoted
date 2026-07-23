@@ -17,7 +17,7 @@ export type SiteShowcaseContent = {
   enabled: boolean;
   title: string;
   intro: string;
-  layout: 'grid' | 'featured' | 'masonry' | 'filmstrip';
+  layout: 'grid' | 'featured' | 'filmstrip';
   items: SiteShowcaseItem[];
 };
 
@@ -616,7 +616,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       enabled: toBoolean(showcase.enabled),
       title: toString(showcase.title, DEFAULT_SHOWCASE_TITLE),
       intro: toString(showcase.intro, 'A look at recent work and finished details.'),
-      layout: showcase.layout === 'grid' || showcase.layout === 'masonry' || showcase.layout === 'filmstrip' ? showcase.layout : 'featured',
+      layout: showcase.layout === 'grid' || showcase.layout === 'filmstrip' ? showcase.layout : 'featured',
       items: parseShowcaseItems(showcase.items),
     },
     faqs: {

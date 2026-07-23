@@ -81,7 +81,8 @@ export function buildImagePlan(trade: string | null | undefined, serviceTitles: 
       preferredSubject: i % 2 === 0 ? 'completed-work' : 'detail',
       orientation: 'landscape',
       alt: altFor('gallery', tradeWords, serviceLabel),
-      ...(serviceLabel ? {} : {}),
+      // The visible tile overlay advertises the service; alt stays descriptive.
+      caption: serviceLabel ? titleCase(serviceLabel) : `Expert ${primaryTrade}`,
     });
   }
 

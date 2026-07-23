@@ -25,6 +25,9 @@ export type PlannedImage = {
   orientation: ImageOrientation;
   // Natural, non-keyword-stuffed alt text. '' marks a decorative background.
   alt: string;
+  // Visible overlay title for gallery tiles — advertises the service, unlike
+  // alt which describes the photo for accessibility.
+  caption?: string;
   serviceId?: string;
 };
 
@@ -61,6 +64,7 @@ export type WebsiteImageAssignment = {
   imageUrl: string;
   thumbnailUrl?: string;
   alt: string;
+  caption?: string;
   photographerName?: string;
   photographerUrl?: string;
   searchQuery?: string;
