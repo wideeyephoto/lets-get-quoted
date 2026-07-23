@@ -152,7 +152,11 @@
 .showcase-masonry figure:nth-child(4n + 1) { grid-row: span 28; }
 .showcase-masonry figure:nth-child(4n + 2) { grid-row: span 18; }
 .showcase-masonry figure:nth-child(4n + 3) { grid-row: span 24; }
-@media (max-width: 760px) { .showcaseGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .showcase-featured figure:first-child { grid-column: span 2; grid-row: auto; aspect-ratio: 4 / 3; } }
+/* Layout 4 — Filmstrip: one horizontal, swipe/scrollable row with snap points.
+   Edge mask hints at overflow; tiles keep the base 4/3 aspect via the figure box. */
+.showcase-filmstrip { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: .75rem; scrollbar-width: thin; -webkit-overflow-scrolling: touch; -webkit-mask-image: linear-gradient(90deg, #000 92%, transparent); mask-image: linear-gradient(90deg, #000 92%, transparent); }
+.showcase-filmstrip figure { flex: 0 0 clamp(240px, 32vw, 360px); scroll-snap-align: start; }
+@media (max-width: 760px) { .showcaseGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .showcase-featured figure:first-child { grid-column: span 2; grid-row: auto; aspect-ratio: 4 / 3; } .showcase-filmstrip figure { flex-basis: min(76vw, 320px); } }
 @media (max-width: 460px) { .showcaseGrid { grid-template-columns: 1fr; } }
 .testimonialGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1.25rem; }
 .testimonialCard { position: relative; display: grid; gap: 1rem; margin: 0; padding: 1.7rem 1.5rem 1.5rem; border: 1px solid color-mix(in srgb, currentColor 12%, transparent); border-radius: calc(var(--theme-radius, 6px) + 8px); background: color-mix(in srgb, currentColor 5%, transparent); box-shadow: 0 22px 44px -32px rgba(0,0,0,.35); transition: transform .35s cubic-bezier(.22, .61, .36, 1), box-shadow .35s ease, border-color .35s ease; }

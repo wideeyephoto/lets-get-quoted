@@ -17,7 +17,7 @@ export type SiteShowcaseContent = {
   enabled: boolean;
   title: string;
   intro: string;
-  layout: 'grid' | 'masonry' | 'featured';
+  layout: 'grid' | 'featured' | 'masonry' | 'filmstrip';
   items: SiteShowcaseItem[];
 };
 
@@ -356,7 +356,7 @@ export function getLogoStyle(content: Record<string, unknown> | null | undefined
   return getSiteContent(content).logoStyle;
 }
 
-export const DEFAULT_SHOWCASE_TITLE = 'Project showcase';
+export const DEFAULT_SHOWCASE_TITLE = 'Specialties';
 export const DEFAULT_FAQ_TITLE = 'Frequently asked questions';
 export const DEFAULT_TESTIMONIALS_TITLE = 'What homeowners say';
 export const DEFAULT_RATING_SOURCE_LABEL = 'Verified reviews';
@@ -616,7 +616,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       enabled: toBoolean(showcase.enabled),
       title: toString(showcase.title, DEFAULT_SHOWCASE_TITLE),
       intro: toString(showcase.intro, 'A look at recent work and finished details.'),
-      layout: showcase.layout === 'masonry' || showcase.layout === 'featured' ? showcase.layout : 'grid',
+      layout: showcase.layout === 'grid' || showcase.layout === 'masonry' || showcase.layout === 'filmstrip' ? showcase.layout : 'featured',
       items: parseShowcaseItems(showcase.items),
     },
     faqs: {
@@ -720,7 +720,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     heroBadge: {
       preset: toString(heroBadge.preset, 'licensed'),
       showStats: heroBadge.showStats !== false,
-      style: HERO_BADGE_STYLE_KEYS.has(toString(heroBadge.style)) ? toString(heroBadge.style) : 'solid',
+      style: HERO_BADGE_STYLE_KEYS.has(toString(heroBadge.style)) ? toString(heroBadge.style) : 'soft',
       customLabel: toString(heroBadge.customLabel).slice(0, 40),
       // The second/extra floating badge: 'default' keeps each template's built-in
       // one (Shine "500+ customers", Guild "Proudly local", Fixit's auto second),
