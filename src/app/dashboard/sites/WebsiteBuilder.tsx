@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useTransition, type ReactNode } from 
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, HERO_BADGE_PRESETS, IMAGE_SLOT_LABELS, REORDERABLE_SECTIONS, slugifyBlogTitle, type NormalizedSiteContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, REORDERABLE_SECTIONS, slugifyBlogTitle, type NormalizedSiteContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
@@ -790,12 +790,13 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <div className={styles.imageSlot}>
                     <div className={styles.imageSlotHead}><strong>Logo</strong><small>Shown small in your header and footer.</small></div>
                     {site.logo_url
-                      ? <div className={styles.logoPreview}><img src={site.logo_url} alt="Current logo" /></div>
+                      ? <div className={styles.logoPreviews}><div className={styles.logoPreview}><img src={site.logo_url} alt="Logo on a light header" /><em>Light</em></div><div className={styles.logoPreviewDark}><img src={site.logo_url} alt="Logo on a dark header" /><em>Dark</em></div></div>
                       : <div className={styles.imageSlotEmpty}>No logo yet</div>}
                     <div className={styles.imageSlotActions}>
                       <button type="button" className={styles.secondaryAction} onClick={() => openPicker('your logo', 'logo')}>{site.logo_url ? 'Replace photo' : 'Add a logo'}</button>
                       {site.logo_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('logo_url', null)}>Remove</button>}
                     </div>
+                    <small className={styles.fieldHint}>Best as a <strong>PNG or SVG with a transparent background</strong> — wide and simple. Aim for ~400×120px; it&apos;s shown up to 70px tall. Transparency keeps it clean on both light and dark headers.</small>
                   </div>
                   <div className={styles.imageSlot}>
                     <div className={styles.imageSlotHead}><strong>Hero image</strong><small>The big photo at the top of your homepage.</small></div>
@@ -840,10 +841,14 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <label className={styles.formField}><span>Button style</span><select value={site.button_style || 'solid'} onChange={(event) => handleChange('button_style', event.target.value)}><option value="solid">Solid</option><option value="outline">Outline</option><option value="ghost">Minimal</option></select></label>
                   <div className={`${styles.formField}${flashField === 'heroBadge' ? ` ${styles.fieldFlash}` : ''}`} id="design-hero-badge">
                     <span>Hero badge</span>
-                    <select value={siteContent.heroBadge.preset} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, preset: event.target.value } })}>{HERO_BADGE_PRESETS.map((badge) => <option key={badge.key} value={badge.key}>{badge.label}</option>)}<option value="none">No badge</option></select>
+                    <select value={siteContent.heroBadge.preset} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, preset: event.target.value } })}>{HERO_BADGE_PRESETS.map((badge) => <option key={badge.key} value={badge.key}>{badge.title}</option>)}<option value="custom">Custom badge…</option><option value="none">No badge</option></select>
                     <small className={styles.fieldHint}>The floating trust chip on your hero photo (Fixit, Shine, Coat &amp; more).</small>
-                    <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.heroBadge.showStats} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, showStats: event.target.checked } })} /><span><strong>Show the extra floating badge</strong><small>The second decorative chip (e.g. &ldquo;500+ customers&rdquo;, &ldquo;Proudly local&rdquo;). Turn off to remove it.</small></span></label>
+                    {siteContent.heroBadge.preset === 'custom' && (
+                      <input value={siteContent.heroBadge.customLabel} maxLength={40} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, customLabel: event.target.value } })} placeholder="e.g. Clear Quotes. Quality Work." />
+                    )}
                   </div>
+                  <label className={styles.formField}><span>Badge style</span><select value={siteContent.heroBadge.style} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, style: event.target.value } })}>{HERO_BADGE_STYLES.map((style) => <option key={style.key} value={style.key}>{style.label}</option>)}</select></label>
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.heroBadge.showStats} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, showStats: event.target.checked } })} /><span><strong>Show the extra floating badge</strong><small>The second decorative chip (e.g. &ldquo;500+ customers&rdquo;, &ldquo;Proudly local&rdquo;). Turn off to remove it.</small></span></label>
                 </SectionCard>
 
                 <div className={styles.sectionIntro}><h2>Pages & sections</h2><p>Add rich sections that make the public website feel complete.</p></div>

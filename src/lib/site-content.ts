@@ -187,17 +187,30 @@ export type SiteBlogContent = {
 // Floating hero badge — the small trust chip shown on the hero of photo-badge
 // templates (Fixit today). Owners pick one of these presets or hide it; the
 // preset key drives the icon/title/subtitle so the template stays declarative.
-export type SiteHeroBadgeContent = { preset: string; showStats: boolean };
+export type SiteHeroBadgeContent = { preset: string; showStats: boolean; style: string; customLabel: string };
 
 export const HERO_BADGE_PRESETS = [
-  { key: 'licensed', icon: '✓', title: 'Licensed & insured', subtitle: 'Fully vetted pros', label: 'Licensed & insured' },
-  { key: 'support', icon: '◷', title: '24-Hour', subtitle: 'Ready support', label: '24-hour ready support' },
-  { key: 'estimates', icon: '$', title: 'Free estimates', subtitle: 'No-obligation quotes', label: 'Free estimates' },
-  { key: 'guarantee', icon: '★', title: 'Satisfaction', subtitle: 'Guaranteed work', label: 'Satisfaction guaranteed' },
-  { key: 'local', icon: '⌂', title: 'Locally owned', subtitle: 'In your community', label: 'Locally owned' },
+  { key: 'estimates', icon: '$', title: 'Free Estimates', subtitle: 'No-obligation quotes', label: 'Free estimates' },
+  { key: 'licensed', icon: '✓', title: 'Licensed & Insured', subtitle: 'Fully vetted pros', label: 'Licensed & insured' },
+  { key: 'sameday', icon: '⚡', title: 'Same-Day Service', subtitle: 'Fast response', label: 'Same-day service' },
+  { key: 'financing', icon: '%', title: 'Financing Available', subtitle: 'Flexible plans', label: 'Financing available' },
+  { key: 'guarantee', icon: '♥', title: 'Satisfaction Guaranteed', subtitle: 'Guaranteed work', label: 'Satisfaction guaranteed' },
+  { key: 'local', icon: '⌂', title: 'Locally Owned', subtitle: 'In your community', label: 'Locally owned' },
+  { key: 'fivestar', icon: '★', title: '5-Star Rated', subtitle: 'Loved by homeowners', label: '5-star rated' },
+  { key: 'upfront', icon: '≡', title: 'Upfront Pricing', subtitle: 'No surprises', label: 'Upfront pricing' },
+  { key: 'warranty', icon: '◆', title: 'Warranty Included', subtitle: 'Backed in writing', label: 'Warranty included' },
 ] as const;
 
-export type HeroBadgePreset = (typeof HERO_BADGE_PRESETS)[number];
+export type HeroBadgePreset = { key: string; icon: string; title: string; subtitle: string; label: string };
+
+// The three visual treatments for the floating hero badge.
+export const HERO_BADGE_STYLES = [
+  { key: 'solid', label: 'Solid' },
+  { key: 'outline', label: 'Outlined' },
+  { key: 'soft', label: 'Soft glass' },
+] as const;
+
+const HERO_BADGE_STYLE_KEYS = new Set<string>(HERO_BADGE_STYLES.map((style) => style.key));
 
 export type SiteQuoteFormContent = {
   emailRequired: boolean;
@@ -617,7 +630,12 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       intro: toString(blog.intro),
       posts: parseBlogPosts(blog.posts),
     },
-    heroBadge: { preset: toString(heroBadge.preset, 'licensed'), showStats: heroBadge.showStats !== false },
+    heroBadge: {
+      preset: toString(heroBadge.preset, 'licensed'),
+      showStats: heroBadge.showStats !== false,
+      style: HERO_BADGE_STYLE_KEYS.has(toString(heroBadge.style)) ? toString(heroBadge.style) : 'solid',
+      customLabel: toString(heroBadge.customLabel).slice(0, 40),
+    },
     images: parseImageSlots(images),
     sectionOrder: parseSectionOrder(root.sectionOrder),
   };
@@ -752,9 +770,19 @@ export function getPublishedBlogPost(
 // The floating hero badge to render, or null when the owner chose to hide it.
 // Falls back to the first preset if an unknown key somehow persists.
 export function getHeroBadge(content: Record<string, unknown> | null | undefined): HeroBadgePreset | null {
-  const preset = getSiteContent(content).heroBadge.preset;
-  if (preset === 'none') return null;
-  return HERO_BADGE_PRESETS.find((badge) => badge.key === preset) ?? HERO_BADGE_PRESETS[0];
+  const heroBadge = getSiteContent(content).heroBadge;
+  if (heroBadge.preset === 'none') return null;
+  if (heroBadge.preset === 'custom') {
+    const title = heroBadge.customLabel.trim();
+    return title ? { key: 'custom', icon: '✓', title, subtitle: '', label: title } : null;
+  }
+  return HERO_BADGE_PRESETS.find((badge) => badge.key === heroBadge.preset) ?? HERO_BADGE_PRESETS[0];
+}
+
+// The chosen badge treatment ('solid' | 'outline' | 'soft'); set on the template
+// root as data-badge-style so one rule restyles every template's hero badge.
+export function getHeroBadgeStyle(content: Record<string, unknown> | null | undefined): string {
+  return getSiteContent(content).heroBadge.style;
 }
 
 // The extra decorative floating badge on the hero (Shine's "500+ customers",

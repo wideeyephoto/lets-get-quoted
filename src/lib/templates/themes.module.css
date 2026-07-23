@@ -986,6 +986,27 @@
 .shineBadgeCustomers { bottom: 5%; left: -4%; }
 .shineBadgeCustomers strong { font-size: 1.05rem; }
 .shineBadgeCustomers small { display: block; font-size: .72rem; color: #5c6675; }
+
+/* Hero badge treatments — data-badge-style on the template root restyles every
+   template's floating hero badge at once. Default (solid) keeps each badge's
+   own white-card look; outline and soft go transparent/glass with white text. */
+.site[data-badge-style='outline'] .shineBadge,
+.site[data-badge-style='outline'] .coatHeroBadge,
+.site[data-badge-style='outline'] .fixitHeroCard,
+.site[data-badge-style='outline'] .guildBadge { background: transparent; border: 2px solid rgba(255,255,255,.82); box-shadow: none; color: #fff; }
+.site[data-badge-style='soft'] .shineBadge,
+.site[data-badge-style='soft'] .coatHeroBadge,
+.site[data-badge-style='soft'] .fixitHeroCard,
+.site[data-badge-style='soft'] .guildBadge { background: rgba(255,255,255,.16); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.34); color: #fff; }
+.site[data-badge-style='outline'] .shineBadge strong, .site[data-badge-style='soft'] .shineBadge strong,
+.site[data-badge-style='outline'] .coatHeroBadge strong, .site[data-badge-style='soft'] .coatHeroBadge strong,
+.site[data-badge-style='outline'] .coatHeroBadge small, .site[data-badge-style='soft'] .coatHeroBadge small,
+.site[data-badge-style='outline'] .fixitHeroCard strong, .site[data-badge-style='soft'] .fixitHeroCard strong,
+.site[data-badge-style='outline'] .fixitHeroCard small, .site[data-badge-style='soft'] .fixitHeroCard small,
+.site[data-badge-style='outline'] .shineBadgeCustomers strong, .site[data-badge-style='soft'] .shineBadgeCustomers strong,
+.site[data-badge-style='outline'] .shineBadgeCustomers small, .site[data-badge-style='soft'] .shineBadgeCustomers small,
+.site[data-badge-style='outline'] .guildBadge strong, .site[data-badge-style='soft'] .guildBadge strong,
+.site[data-badge-style='outline'] .guildBadge span, .site[data-badge-style='soft'] .guildBadge span { color: #fff; }
 .shineAvatars { display: inline-flex; flex: 0 0 auto; }
 .shineAvatars span { width: 24px; height: 24px; border-radius: 999px; border: 2px solid #fff; margin-left: -8px; background: linear-gradient(135deg, #cbd3dd, #8b97a6); }
 .shineAvatars span:first-child { margin-left: 0; }

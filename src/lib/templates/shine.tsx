@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroShowStats, getSlotImage } from '@/lib/site-content';
+import { getHeroBadge, getHeroBadgeStyle, getHeroShowStats, getSlotImage } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
@@ -38,7 +38,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
   } as CSSProperties;
 
   return (
-    <main className={`${styles.site} ${styles.shine}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode}>
+    <main className={`${styles.site} ${styles.shine}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)}>
       <SiteAnnouncementBar site={site} />
       <ScrollReveal />
       <Parallax />
