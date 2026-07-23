@@ -21,6 +21,7 @@ import {
   getSlotImage,
 } from '@/lib/site-content';
 import BeforeAfterSlider from './BeforeAfterSlider';
+import FilmstripScroller from './FilmstripScroller';
 import TestimonialSlider from './TestimonialSlider';
 import SiteServices from './SiteServices';
 import SiteProcess from './SiteProcess';
@@ -96,14 +97,19 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
             <h2>{showcase.title}</h2>
             {showcase.intro && <p>{showcase.intro}</p>}
           </div>
-          <div className={`${styles.showcaseGrid} ${styles[`showcase-${showcase.layout}`] || ''}`} data-stagger>
-            {showcase.items.map((item, index) => (
+          {(() => {
+            const gridClass = `${styles.showcaseGrid} ${styles[`showcase-${showcase.layout}`] || ''}`;
+            const figures = showcase.items.map((item, index) => (
               <figure key={`${item.id}-${index}`} data-edit={`showcase-${item.id}`}>
                 <SafeImage src={item.url} alt={item.alt} width={1200} height={900} sizes={index === 0 && showcase.layout === 'featured' ? '60vw' : '30vw'} />
                 <figcaption>{item.caption || (item.source === 'stock' ? adTitleFor(index) : item.alt)}</figcaption>
               </figure>
-            ))}
-          </div>
+            ));
+            // The filmstrip row drifts on its own; the other layouts are static.
+            return showcase.layout === 'filmstrip'
+              ? <FilmstripScroller className={gridClass}>{figures}</FilmstripScroller>
+              : <div className={gridClass} data-stagger>{figures}</div>;
+          })()}
         </section>
       );
     })(),

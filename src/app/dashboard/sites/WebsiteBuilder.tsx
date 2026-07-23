@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, REORDERABLE_SECTIONS, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, REORDERABLE_SECTIONS, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
@@ -1032,8 +1032,19 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     updateSiteContent({ projectShowcase });
   }, [updateSiteContent]);
 
+  // The editable project photos: the owner's own set once they've touched it,
+  // otherwise the SAME gallery fallback the template shows (so every photo on
+  // screen is an editable tile — Replace via upload/stock, caption). The first
+  // edit materializes this fallback into projectShowcase.items.
+  const projectBase = useCallback((): SiteShowcaseItem[] => {
+    const items = siteContent.projectShowcase.items;
+    if (items.length > 0) return items;
+    const source = galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES.slice(1, 4);
+    return source.slice(0, MAX_PROJECT_SHOWCASE_ITEMS).map((img) => ({ id: img.id, url: img.url, alt: img.alt, category: img.category, source: img.source, caption: '' }));
+  }, [siteContent.projectShowcase, galleryImages]);
+
   const replaceProjectImage = useCallback((itemId: string | null, image: SiteImage) => {
-    const current = siteContent.projectShowcase.items;
+    const current = projectBase();
     if (!itemId) {
       if (current.length >= MAX_PROJECT_SHOWCASE_ITEMS) {
         setMessage({ type: 'error', text: `Choose up to ${MAX_PROJECT_SHOWCASE_ITEMS} project photos.` });
@@ -1047,11 +1058,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     const next = current.slice();
     next[index] = { ...image, caption: image.alt };
     const items = next.filter((item, itemIndex) => itemIndex === index || item.id !== image.id);
-    updateProjectShowcase({ ...siteContent.projectShowcase, items });
-  }, [siteContent.projectShowcase, updateProjectShowcase]);
+    updateProjectShowcase({ ...siteContent.projectShowcase, enabled: true, items });
+  }, [siteContent.projectShowcase, projectBase, updateProjectShowcase]);
 
   const importJobPhotoToProject = useCallback((photo: JobPhotoImportOption) => {
-    if (siteContent.projectShowcase.items.length >= MAX_PROJECT_SHOWCASE_ITEMS) {
+    const base = projectBase();
+    if (base.length >= MAX_PROJECT_SHOWCASE_ITEMS) {
       setMessage({ type: 'error', text: `Choose up to ${MAX_PROJECT_SHOWCASE_ITEMS} project photos.` });
       return;
     }
@@ -1059,13 +1071,17 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       try {
         const image = await importJobPhotoToSiteImageAction(photo.path, photo.label);
         setSiteImages((current) => [image, ...current]);
-        updateProjectShowcase({ ...siteContent.projectShowcase, enabled: true, items: [...siteContent.projectShowcase.items, { ...image, caption: image.alt }] });
+        updateProjectShowcase({ ...siteContent.projectShowcase, enabled: true, items: [...projectBase(), { ...image, caption: image.alt }] });
         setMessage({ type: 'success', text: 'Job photo imported into your project showcase.' });
       } catch (error) {
         setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to import this job photo.' });
       }
     });
-  }, [siteContent.projectShowcase, updateProjectShowcase]);
+  }, [siteContent.projectShowcase, projectBase, updateProjectShowcase]);
+
+  // The tiles the Project-showcase editor renders — real items or the gallery
+  // fallback shown as editable placeholders (see projectBase).
+  const projectPhotos = projectBase();
 
   const checkSubdomain = useCallback(() => {
     const subdomain = site.subdomain?.trim().toLowerCase();
@@ -1794,31 +1810,30 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                       <label className={styles.formField}><span>Small line above</span><input value={siteContent.projectShowcase.eyebrow} maxLength={40} onChange={(event) => updateProjectShowcase({ ...siteContent.projectShowcase, eyebrow: event.target.value })} placeholder="Project showcase" /></label>
                       <label className={styles.formField}><span>Heading</span><input value={siteContent.projectShowcase.title} maxLength={80} onChange={(event) => updateProjectShowcase({ ...siteContent.projectShowcase, title: event.target.value })} placeholder="Our recent projects" /></label>
                       <label className={styles.formField}><span>Showcase style</span><select value={siteContent.projectShowcase.style} onChange={(event) => updateProjectShowcase({ ...siteContent.projectShowcase, style: event.target.value as SiteProjectShowcaseContent['style'] })}>{PROJECT_SHOWCASE_STYLES.map((style) => <option key={style.key} value={style.key}>{style.label}</option>)}</select></label>
-                      <div className={styles.contentSubhead}><strong>Project photos</strong><small>{siteContent.projectShowcase.items.length}/{MAX_PROJECT_SHOWCASE_ITEMS} · shown in this order</small></div>
-                      {siteContent.projectShowcase.items.length > 0 ? (
-                        <div className={styles.showcaseSelected} aria-label="Project photos, in order">
-                          {siteContent.projectShowcase.items.map((item) => (
-                            <div key={item.id} className={styles.showcaseSelectedTile}>
-                              <div className={styles.showcaseThumbBox}>
-                                <img src={item.url} alt={item.alt} />
-                                <div className={styles.showcaseSelectedActions}>
-                                  <button type="button" onClick={() => setPicker({ label: 'this project photo', kind: 'project', pjItemId: item.id })}>Replace</button>
-                                  <button type="button" aria-label={`Remove ${item.alt}`} onClick={() => updateProjectShowcase({ ...siteContent.projectShowcase, items: siteContent.projectShowcase.items.filter((other) => other.id !== item.id) })}>✕</button>
-                                </div>
+                      <div className={styles.contentSubhead}><strong>Project photos</strong><small>{projectPhotos.length}/{MAX_PROJECT_SHOWCASE_ITEMS} · shown in this order</small></div>
+                      {siteContent.projectShowcase.items.length === 0 && <p className={styles.fieldHint}>These are your gallery photos. Replace any (upload or stock), edit its headline, or add your own — your first edit makes them your project set.</p>}
+                      <div className={styles.showcaseSelected} aria-label="Project photos, in order">
+                        {projectPhotos.map((item) => (
+                          <div key={item.id} className={styles.showcaseSelectedTile}>
+                            <div className={styles.showcaseThumbBox}>
+                              <img src={item.url} alt={item.alt} />
+                              <div className={styles.showcaseSelectedActions}>
+                                <button type="button" onClick={() => setPicker({ label: 'this project photo', kind: 'project', pjItemId: item.id })}>Replace</button>
+                                <button type="button" aria-label={`Remove ${item.alt}`} onClick={() => updateProjectShowcase({ ...siteContent.projectShowcase, enabled: true, items: projectPhotos.filter((other) => other.id !== item.id) })}>✕</button>
                               </div>
-                              <input
-                                className={styles.showcaseCaptionInput}
-                                value={item.caption ?? ''}
-                                maxLength={60}
-                                placeholder="Caption (optional)"
-                                aria-label="Photo caption"
-                                onChange={(event) => updateProjectShowcase({ ...siteContent.projectShowcase, items: siteContent.projectShowcase.items.map((other) => (other.id === item.id ? { ...other, caption: event.target.value } : other)) })}
-                              />
                             </div>
-                          ))}
-                        </div>
-                      ) : <p className={styles.emptyHelper}>No project photos yet — the showcase uses your gallery photos until you add some here.</p>}
-                      {siteContent.projectShowcase.items.length < MAX_PROJECT_SHOWCASE_ITEMS && <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: 'a project photo', kind: 'project', pjItemId: null })}>Add photo</button>}
+                            <input
+                              className={styles.showcaseCaptionInput}
+                              value={item.caption ?? ''}
+                              maxLength={60}
+                              placeholder="Headline (optional)"
+                              aria-label="Photo headline"
+                              onChange={(event) => updateProjectShowcase({ ...siteContent.projectShowcase, enabled: true, items: projectPhotos.map((other) => (other.id === item.id ? { ...other, caption: event.target.value } : other)) })}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      {projectPhotos.length < MAX_PROJECT_SHOWCASE_ITEMS && <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: 'a project photo', kind: 'project', pjItemId: null })}>Add photo</button>}
                       <div className={styles.jobPhotoImport}>
                         <div><strong>Completed job photos</strong><small>Import private job photos into your project showcase.</small></div>
                         <button type="button" onClick={loadJobPhotoOptions} disabled={isPending}>{jobPhotosLoaded ? 'Refresh job photos' : 'Load job photos'}</button>
