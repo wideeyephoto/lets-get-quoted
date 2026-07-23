@@ -112,6 +112,18 @@
 .heroBand img { position: absolute; inset: -14% 0; width: 100%; height: 128%; object-fit: cover; }
 .heroBand::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(6,10,16,.28), rgba(6,10,16,.12) 50%, rgba(6,10,16,.34)); }
 
+/* Google review cards — attribution (author name + photo, star rating, link to
+   Google, "Powered by Google") as Google's terms require. */
+.googleCardHead { display: flex; align-items: center; gap: .6rem; margin-bottom: .3rem; }
+.googleAvatar { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; flex: 0 0 auto; border-radius: 999px; object-fit: cover; background: color-mix(in srgb, currentColor 14%, transparent); font-weight: 800; }
+.googleCardHead strong { display: block; line-height: 1.2; }
+.googleTag { display: inline-block; font-size: .78rem; opacity: .68; text-decoration: none; }
+.googleTag:hover { text-decoration: underline; }
+.googleAttribution { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: .35rem 1.3rem; margin: 1.8rem auto 0; text-align: center; }
+.googleAttribution strong { font-size: 1.02rem; }
+.googleAttribution a { color: inherit; font-weight: 700; }
+.googlePoweredBy { font-size: .78rem; opacity: .58; }
+
 .showcaseGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
 /* The aspect box lives on the figure (a plain element we fully control) — next/image
    fights an aspect-ratio set on the <img> itself, which collapsed tiles tall and

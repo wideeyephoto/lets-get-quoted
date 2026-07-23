@@ -36,11 +36,33 @@ export type SiteTestimonialItem = {
   imageAlt: string;
 };
 
+// A review imported from a Google Business Profile via the Places API. Displayed
+// with attribution (author name + photo, star rating, "via Google" link) as
+// Google's terms require; never hand-edited (it mirrors the source).
+export type SiteGoogleReview = {
+  id: string;
+  author: string;
+  authorPhoto: string;
+  rating: number;
+  text: string;
+  relativeTime: string;
+  url: string;
+};
+
 export type SiteTestimonialsContent = {
   enabled: boolean;
   title: string;
   sourceMode: 'manual' | 'google' | 'mixed';
   items: SiteTestimonialItem[];
+  // Google Business Profile import (Places API). Empty until the owner links a
+  // business and imports; the API returns at most 5 reviews, chosen by Google.
+  googlePlaceId: string;
+  googleName: string;
+  googleUrl: string;
+  googleRating: number;
+  googleReviewCount: number;
+  googleReviews: SiteGoogleReview[];
+  googleImportedAt: string;
 };
 
 export type SiteStickyCallBarContent = {
@@ -420,6 +442,19 @@ function parseTestimonials(value: unknown): SiteTestimonialItem[] {
   }));
 }
 
+function parseGoogleReviews(value: unknown): SiteGoogleReview[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(isRecord).slice(0, 5).map((item, index) => ({
+    id: toString(item.id, `google-review-${index + 1}`),
+    author: toString(item.author),
+    authorPhoto: toString(item.authorPhoto),
+    rating: toRating(item.rating),
+    text: toString(item.text),
+    relativeTime: toString(item.relativeTime),
+    url: toString(item.url),
+  }));
+}
+
 function parseTrustBadges(value: unknown): SiteTrustBadgeItem[] {
   if (!Array.isArray(value)) return DEFAULT_TRUST_BADGES.map((badge) => ({ ...badge }));
 
@@ -565,6 +600,13 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       title: toString(testimonials.title, DEFAULT_TESTIMONIALS_TITLE),
       sourceMode: testimonials.sourceMode === 'google' || testimonials.sourceMode === 'mixed' ? testimonials.sourceMode : 'manual',
       items: parseTestimonials(testimonials.items),
+      googlePlaceId: toString(testimonials.googlePlaceId),
+      googleName: toString(testimonials.googleName),
+      googleUrl: toString(testimonials.googleUrl),
+      googleRating: toRating(testimonials.googleRating),
+      googleReviewCount: typeof testimonials.googleReviewCount === 'number' ? testimonials.googleReviewCount : 0,
+      googleReviews: parseGoogleReviews(testimonials.googleReviews),
+      googleImportedAt: toString(testimonials.googleImportedAt),
     },
     quoteForm: {
       emailRequired: toBoolean(quoteForm.emailRequired),
@@ -697,8 +739,11 @@ export function getPublishedFaqs(content: Record<string, unknown> | null | undef
 
 export function getPublishedTestimonials(content: Record<string, unknown> | null | undefined): SiteTestimonialsContent | null {
   const testimonials = getSiteContent(content).testimonials;
-  const items = testimonials.items.filter((item) => item.text.trim());
-  return testimonials.enabled && items.length > 0 ? { ...testimonials, items } : null;
+  // sourceMode decides what shows: manual only, Google only, or both.
+  const items = testimonials.sourceMode === 'google' ? [] : testimonials.items.filter((item) => item.text.trim());
+  const googleReviews = testimonials.sourceMode === 'manual' ? [] : testimonials.googleReviews.filter((review) => review.text.trim());
+  if (!testimonials.enabled || items.length + googleReviews.length === 0) return null;
+  return { ...testimonials, items, googleReviews };
 }
 
 export function getPublishedStickyCallBar(

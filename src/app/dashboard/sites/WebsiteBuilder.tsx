@@ -10,6 +10,7 @@ import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
 import { compressImage } from '@/lib/client-images';
 import ImagePickerModal from './ImagePickerModal';
+import GoogleReviewImport from './GoogleReviewImport';
 import LivePreview from './LivePreview';
 import SectionCard from './SectionCard';
 import ThemeIcon from './ThemeIcon';
@@ -429,7 +430,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
           // Testimonials + stats seeded but left OFF — no fabricated review/number
           // publishes until the contractor swaps in real ones and enables them.
           if (generated.testimonials.length) {
-            contentUpdates.testimonials = { enabled: false, title: content.testimonials.title || 'What homeowners say', sourceMode: 'manual', items: generated.testimonials.map((t, i) => ({ id: `tst-${i + 1}`, author: t.author, text: t.text, rating: t.rating, label: t.label, imageUrl: '', imageAlt: '' })) };
+            contentUpdates.testimonials = { ...content.testimonials, enabled: false, title: content.testimonials.title || 'What homeowners say', sourceMode: 'manual', items: generated.testimonials.map((t, i) => ({ id: `tst-${i + 1}`, author: t.author, text: t.text, rating: t.rating, label: t.label, imageUrl: '', imageAlt: '' })) };
           }
           if (generated.stats.length) {
             contentUpdates.stats = { enabled: false, title: content.stats.title || 'By the numbers', items: generated.stats.map((s, i) => ({ id: `stat-${i + 1}`, value: s.value, prefix: '', suffix: s.suffix, label: s.label })) };
@@ -1059,7 +1060,31 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
                 <SectionCard title="Testimonials" description="Show quotes from real customers on your public site." evidence="97% of homeowners read reviews before hiring a local pro, and the first few weigh the most." enabled={siteContent.testimonials.enabled} onToggleEnabled={(value) => updateTestimonials({ ...siteContent.testimonials, enabled: value })} {...contentHint(siteContent.testimonials.enabled, siteContent.testimonials.items.filter((item) => item.text.trim()).length, 'review')} open={openSection === 'testimonials'} onToggleOpen={() => toggleSection('testimonials')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.testimonials.title} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, title: event.target.value })} /></label>
-                  <label className={styles.formField}><span>Source mode</span><select value={siteContent.testimonials.sourceMode} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, sourceMode: event.target.value as SiteTestimonialsContent['sourceMode'] })}><option value="manual">Manual testimonials</option><option value="mixed">Manual + imported</option><option value="google">Google import</option></select></label>
+                  <label className={styles.formField}><span>Source mode</span><select value={siteContent.testimonials.sourceMode} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, sourceMode: event.target.value as SiteTestimonialsContent['sourceMode'] })}><option value="manual">Manual testimonials</option><option value="mixed">Manual + Google</option><option value="google">Google reviews only</option></select></label>
+                  {siteContent.testimonials.sourceMode !== 'manual' && (
+                    <div className={styles.formField}>
+                      <span>Google reviews</span>
+                      <GoogleReviewImport
+                        placeId={siteContent.testimonials.googlePlaceId}
+                        name={siteContent.testimonials.googleName}
+                        reviewCount={siteContent.testimonials.googleReviewCount}
+                        importedCount={siteContent.testimonials.googleReviews.length}
+                        importedAt={siteContent.testimonials.googleImportedAt}
+                        onImport={(data) => updateTestimonials({ ...siteContent.testimonials, enabled: true, googlePlaceId: data.placeId, googleName: data.name, googleUrl: data.url, googleRating: data.rating, googleReviewCount: data.reviewCount, googleReviews: data.reviews, googleImportedAt: new Date().toISOString().slice(0, 10) })}
+                        onClear={() => updateTestimonials({ ...siteContent.testimonials, googlePlaceId: '', googleName: '', googleUrl: '', googleRating: 0, googleReviewCount: 0, googleReviews: [], googleImportedAt: '' })}
+                      />
+                      {siteContent.testimonials.googleReviews.length > 0 && (
+                        <div className={styles.googleReviewPreview}>
+                          {siteContent.testimonials.googleReviews.map((review) => (
+                            <div key={review.id} className={styles.googleReviewPreviewItem}>
+                              <div>{'★'.repeat(Math.round(review.rating))}<strong> {review.author}</strong>{review.relativeTime && <em> · {review.relativeTime}</em>}</div>
+                              <p>{review.text}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div className={styles.stackList}>
                     {siteContent.testimonials.items.map((item, index) => (
                       <StackItem key={item.id} title={item.author.trim() || `Testimonial ${index + 1}`} meta={`${item.rating}★`} editing={editingItemId === item.id} onEdit={() => setEditingItemId(item.id)} onSave={saveItem} onRemove={() => updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.filter((testimonial) => testimonial.id !== item.id) })}>

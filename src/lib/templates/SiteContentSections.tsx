@@ -110,7 +110,32 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
               <footer><strong>{item.author || 'Homeowner'}</strong>{item.label && <span>{item.label}</span>}</footer>
             </article>
           ))}
+          {testimonials.googleReviews.map((review) => {
+            const stars = Math.round(review.rating);
+            return (
+              <article key={review.id} className={`${styles.testimonialCard} ${styles.googleCard}`}>
+                <div className={styles.googleCardHead}>
+                  {review.authorPhoto
+                    ? <img className={styles.googleAvatar} src={review.authorPhoto} alt="" referrerPolicy="no-referrer" loading="lazy" decoding="async" />
+                    : <span className={styles.googleAvatar} aria-hidden="true">{(review.author[0] || 'G').toUpperCase()}</span>}
+                  <div>
+                    <strong>{review.author || 'Google reviewer'}</strong>
+                    <a href={review.url || testimonials.googleUrl} target="_blank" rel="noopener noreferrer nofollow" className={styles.googleTag}>Review on Google{review.relativeTime ? ` · ${review.relativeTime}` : ''}</a>
+                  </div>
+                </div>
+                <div aria-label={`${stars} out of 5 stars`}>{'★'.repeat(stars)}{'☆'.repeat(Math.max(0, 5 - stars))}</div>
+                <p>“{review.text}”</p>
+              </article>
+            );
+          })}
         </div>
+        {testimonials.googleReviews.length > 0 && (
+          <p className={styles.googleAttribution} data-reveal>
+            {testimonials.googleRating > 0 && <strong>{testimonials.googleRating.toFixed(1)} ★ on Google{testimonials.googleReviewCount > 0 ? ` · ${testimonials.googleReviewCount.toLocaleString('en-US')} reviews` : ''}</strong>}
+            {testimonials.googleUrl && <a href={testimonials.googleUrl} target="_blank" rel="noopener noreferrer nofollow">See all reviews on Google →</a>}
+            <span className={styles.googlePoweredBy}>Powered by Google</span>
+          </p>
+        )}
       </section>
     ),
     faqs: faqs && (
