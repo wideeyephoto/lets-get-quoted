@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { compressImage } from '@/lib/client-images';
 import { normalizeUsPhone } from '@/lib/phone';
-import { computeEstimateRange, getEstimateButtonLabel, getSiteContent, type EstimateMaterialTier, type EstimateSize } from '@/lib/site-content';
+import { getEstimateButtonLabel, getSiteContent } from '@/lib/site-content';
 import type { Site } from '@/lib/sites';
 import styles from './themes.module.css';
 
@@ -14,17 +14,7 @@ type HeroQuickFormProps = {
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_PHOTOS = 6;
 
-const SIZE_OPTIONS: { value: EstimateSize; label: string }[] = [
-  { value: 'small', label: 'Small' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'large', label: 'Large' },
-];
-
-const TIER_OPTIONS: { value: EstimateMaterialTier; label: string }[] = [
-  { value: 'economical', label: 'Economical' },
-  { value: 'standard', label: 'Standard' },
-  { value: 'premium', label: 'Premium' },
-];
+type EstimateRange = { min: number; max: number };
 
 function formatCurrency(value: number): string {
   return `$${value.toLocaleString('en-US')}`;
@@ -43,10 +33,9 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   const startedAt = useRef(Date.now());
   const siteContent = getSiteContent(site.content);
   const quoteForm = siteContent.quoteForm;
-  const estimateRanges = siteContent.estimateRanges;
   const emailRequired = quoteForm.emailRequired;
   const estimateLabel = getEstimateButtonLabel(quoteForm);
-  const wizardEnabled = estimateRanges.enabled;
+  const wizardEnabled = siteContent.estimateRanges.enabled;
 
   const [step, setStep] = useState<'describe' | 'qa' | 'contact' | 'result'>(wizardEnabled ? 'describe' : 'contact');
 
@@ -69,8 +58,9 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   const [description, setDescription] = useState('');
   const [name, setName] = useState('');
   const [contact, setContact] = useState('');
-  const [size, setSize] = useState<EstimateSize>('medium');
-  const [tier, setTier] = useState<EstimateMaterialTier>('standard');
+  // The AI-priced range for the described job; null when the AI couldn't
+  // price it (the lead still submits, just without a shown number).
+  const [estimate, setEstimate] = useState<EstimateRange | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isClassifying, setIsClassifying] = useState(false);
   const [status, setStatus] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
@@ -91,7 +81,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
     setSelectedPhotos((current) => current.filter((_, photoIndex) => photoIndex !== index));
   }
 
-  function applyChatResult(result: { type?: string; question?: string; responseId?: string; size?: EstimateSize; tier?: EstimateMaterialTier } | null) {
+  function applyChatResult(result: { type?: string; question?: string; responseId?: string; min?: number; max?: number } | null) {
     if (result?.type === 'question' && result.question) {
       setChatQuestion(result.question);
       setChatResponseId(result.responseId ?? '');
@@ -100,8 +90,9 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
       setStep('qa');
       return;
     }
-    if (result?.size) setSize(result.size);
-    if (result?.tier) setTier(result.tier);
+    const min = Number(result?.min);
+    const max = Number(result?.max);
+    setEstimate(Number.isFinite(min) && Number.isFinite(max) && min > 0 && min < max ? { min: Math.round(min), max: Math.round(max) } : null);
     setStep('contact');
   }
 
@@ -164,6 +155,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
     setChatAnswer('');
     setChatResponseId('');
     setChatTurn(0);
+    setEstimate(null);
     setStatus(null);
     setStep('describe');
   }
@@ -181,11 +173,11 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
     }
 
     setStatus(null);
-    if (wizardEnabled) submitLead({ size, tier, description });
+    if (wizardEnabled) submitLead({ description });
     else submitLead();
   }
 
-  async function submitLead(details?: { size: EstimateSize; tier: EstimateMaterialTier; description: string }) {
+  async function submitLead(details?: { description: string }) {
     if (!site.published || window.self !== window.top) {
       setStatus({ tone: 'error', text: `${estimateLabel} requests become active when this website is published.` });
       return;
@@ -202,10 +194,9 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
       else data.set('phone', contact.trim());
 
       if (details) {
-        const range = computeEstimateRange(estimateRanges, details.size, details.tier);
-        const sizeLabel = SIZE_OPTIONS.find((option) => option.value === details.size)?.label ?? details.size;
-        const tierLabel = TIER_OPTIONS.find((option) => option.value === details.tier)?.label ?? details.tier;
-        const summary = `Job size: ${sizeLabel}. Materials: ${tierLabel}. Estimated range shown: ${formatCurrency(range.min)}-${formatCurrency(range.max)}.`;
+        const summary = estimate
+          ? `AI estimate shown to the customer: ${formatCurrency(estimate.min)}-${formatCurrency(estimate.max)}.`
+          : 'AI estimate was unavailable — no price range was shown; needs a manual quote.';
         const trimmedDescription = details.description.trim();
         data.set('message', trimmedDescription ? `${trimmedDescription}\n\n${summary}` : summary);
       }
@@ -219,7 +210,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || 'Unable to send your request.');
 
-      if (details) {
+      if (details && estimate) {
         setStep('result');
       } else {
         setStatus({ tone: 'success', text: `Thanks! We'll call you back within about an hour with your free estimate.` });
@@ -237,7 +228,6 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
     }
   }
 
-  const range = wizardEnabled ? computeEstimateRange(estimateRanges, size, tier) : null;
   const stepIndex = step === 'describe' ? 0 : step === 'qa' ? 1 : step === 'contact' ? 2 : 3;
   const thinking = (
     <span className={styles.heroFormThinking}>
@@ -304,7 +294,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
       {step === 'contact' && (
         <div className={styles.heroFormStep} key="contact">
           <h2>{estimateLabel}</h2>
-          <p className={styles.heroFormNote}>{wizardEnabled ? 'Add your info to see your range. Free & no obligation — we reply within about an hour.' : 'Free & no obligation — we reply within about an hour.'}</p>
+          <p className={styles.heroFormNote}>{wizardEnabled && estimate ? 'Add your info to see your range. Free & no obligation — we reply within about an hour.' : 'Free & no obligation — we reply within about an hour.'}</p>
           <div className={styles.heroQuickFormRow}>
             <input name="name" aria-label="Your name" placeholder="Your name" autoComplete="name" maxLength={100} required value={name} onChange={(event) => setName(event.target.value)} />
             <input
@@ -344,17 +334,17 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
               </div>
             )}
           </div>
-          <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Sending...' : wizardEnabled ? 'See My Free Estimate' : 'Get My Free Estimate'}</button>
+          <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Sending...' : wizardEnabled && estimate ? 'See My Free Estimate' : 'Get My Free Estimate'}</button>
           {site.phone && <a className={styles.heroFormOrCall} href={`tel:${site.phone}`}>or call <strong>{site.phone}</strong> — free quote</a>}
           {wizardEnabled && <button type="button" className={styles.heroFormRestart} onClick={restartWizard}>← Start over</button>}
         </div>
       )}
 
-      {step === 'result' && range && (
+      {step === 'result' && estimate && (
         <div className={styles.heroFormStep} key="result">
           <h2>Your estimated range</h2>
           <div className={styles.heroFormResultPanel}>
-            <p className={styles.heroFormResult}>{formatCurrency(range.min)} – {formatCurrency(range.max)}</p>
+            <p className={styles.heroFormResult}>{formatCurrency(estimate.min)} – {formatCurrency(estimate.max)}</p>
             <span className={styles.heroFormResultBadge}>✓ Request sent</span>
           </div>
           <p className={styles.heroFormNote}>This is a rough estimate, not a final quote — we&apos;ll follow up to confirm exact pricing for your project.</p>

@@ -286,56 +286,11 @@ export function getEstimateButtonLabel(quoteForm: Pick<SiteQuoteFormContent, 'es
   return quoteForm.estimateLabel === 'instant' ? 'Instant Estimate' : 'Quick Estimate';
 }
 
-export type EstimateSizeBand = { min: number; max: number };
-export type EstimateSize = 'small' | 'medium' | 'large';
-export type EstimateMaterialTier = 'economical' | 'standard' | 'premium';
-
+// The smart-intake estimator: the AI scopes the described job and prices it
+// directly for the trade — there are no stored price bands to configure.
 export type SiteEstimateRangesContent = {
-  // Off by default — these are placeholder $ ranges until the contractor
-  // reviews/edits them in the builder, so no site quotes a homeowner with
-  // unreviewed numbers.
   enabled: boolean;
-  small: EstimateSizeBand;
-  medium: EstimateSizeBand;
-  large: EstimateSizeBand;
-  // Stored as multipliers (e.g. 0.85 = 15% below standard, 1.25 = 25% above).
-  economicalMultiplier: number;
-  premiumMultiplier: number;
 };
-
-// Deliberately modest, trade-neutral fallback bands. The wizard is on by
-// default, so a contractor who hasn't set their own prices must never show a
-// remodel-scale number for a routine service call — too low is recoverable
-// (the contractor confirms the real price), too high loses the lead outright.
-// AI site generation replaces these with trade-appropriate bands.
-export const DEFAULT_ESTIMATE_RANGES: SiteEstimateRangesContent = {
-  enabled: true,
-  small: { min: 150, max: 450 },
-  medium: { min: 450, max: 1800 },
-  large: { min: 1800, max: 7500 },
-  economicalMultiplier: 0.85,
-  premiumMultiplier: 1.25,
-};
-
-// Shown ranges lean toward the cheaper side on purpose — this is a rough,
-// pre-visit estimate, and a scary high top-end number is what actually turns
-// a lead away before the contractor ever gets a chance to quote the real
-// price in person. We keep the low end (the floor the contractor set) as-is
-// since that's what makes the range feel credible, and pull the top end down
-// by this fraction of the original spread instead.
-const ESTIMATE_HIGH_END_LEAN_FACTOR = 0.7;
-
-export function computeEstimateRange(ranges: SiteEstimateRangesContent, size: EstimateSize, tier: EstimateMaterialTier): EstimateSizeBand {
-  const band = ranges[size];
-  const multiplier = tier === 'economical' ? ranges.economicalMultiplier : tier === 'premium' ? ranges.premiumMultiplier : 1;
-  const min = band.min * multiplier;
-  const max = band.max * multiplier;
-  const leanedMax = min + (max - min) * ESTIMATE_HIGH_END_LEAN_FACTOR;
-  return {
-    min: Math.max(0, Math.round(min / 50) * 50),
-    max: Math.max(0, Math.round(leanedMax / 50) * 50),
-  };
-}
 
 export type NormalizedSiteContent = {
   showcase: SiteShowcaseContent;
@@ -452,14 +407,6 @@ function toRatingValue(value: unknown, fallback = 5): number {
 function toPositiveNumber(value: unknown, fallback: number): number {
   const num = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(num) && num >= 0 ? num : fallback;
-}
-
-function parseEstimateBand(value: unknown, fallback: EstimateSizeBand): EstimateSizeBand {
-  const record = isRecord(value) ? value : {};
-  return {
-    min: toPositiveNumber(record.min, fallback.min),
-    max: toPositiveNumber(record.max, fallback.max),
-  };
 }
 
 function parseShowcaseItems(value: unknown): SiteShowcaseItem[] {
@@ -700,11 +647,6 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     },
     estimateRanges: {
       enabled: estimateRanges.enabled !== false,
-      small: parseEstimateBand(estimateRanges.small, DEFAULT_ESTIMATE_RANGES.small),
-      medium: parseEstimateBand(estimateRanges.medium, DEFAULT_ESTIMATE_RANGES.medium),
-      large: parseEstimateBand(estimateRanges.large, DEFAULT_ESTIMATE_RANGES.large),
-      economicalMultiplier: toPositiveNumber(estimateRanges.economicalMultiplier, DEFAULT_ESTIMATE_RANGES.economicalMultiplier),
-      premiumMultiplier: toPositiveNumber(estimateRanges.premiumMultiplier, DEFAULT_ESTIMATE_RANGES.premiumMultiplier),
     },
     trustBadges: {
       enabled: toBoolean(trustBadges.enabled),

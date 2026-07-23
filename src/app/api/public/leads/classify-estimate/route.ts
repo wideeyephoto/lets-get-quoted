@@ -3,8 +3,6 @@ import { createAdminClient } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
-const VALID_SIZES = ['small', 'medium', 'large'] as const;
-const VALID_TIERS = ['economical', 'standard', 'premium'] as const;
 const MAX_QUESTIONS = 3;
 
 // Best-effort in-memory throttle. Resets on cold start / across instances,
@@ -22,8 +20,11 @@ function isRateLimited(ip: string): boolean {
   return history.length > RATE_LIMIT_MAX;
 }
 
+// An estimate with no numbers: the wizard still collects the lead, it just
+// skips showing a price. Never invent a generic number — a wrong range is
+// worse than none.
 function fallback() {
-  return { type: 'classification' as const, size: 'medium' as const, tier: 'standard' as const };
+  return { type: 'estimate' as const };
 }
 
 function extractOutputText(payload: unknown): string {
@@ -87,11 +88,11 @@ export async function POST(request: NextRequest) {
     `Ask short, simple follow-up questions one at a time to clarify the job's scope and quality/finish level. You may ask up to ${questionsRemaining} more question(s) — fewer if you already have enough information. ` +
     'Respond with strict JSON only, no other text. ' +
     'While still asking: {"type":"question","question":"<one short, plain-language question>"}. ' +
-    'Once ready (or out of questions): {"type":"classification","size":"small"|"medium"|"large","tier":"economical"|"standard"|"premium"}. ' +
-    'size and tier are RELATIVE TO THIS SPECIFIC BUSINESS/TRADE, not to construction projects in general — a simple repair or service call for this business is "small" even if a home-remodeling company would call that tiny. ' +
-    'size: small = minor fix, quick repair, single item, or routine service call; medium = a moderate job such as partial replacement, multiple items, or a job taking most of a day; large = a major job such as a full system/unit replacement, multi-day project, or whole-property scope. ' +
-    'tier: economical = budget/basic option, standard = typical mid-range choice (default when unclear), premium = top-of-line/high-end option. ' +
-    'If the homeowner is unsure whether they need a repair or a full replacement, ask a clarifying question (e.g. age/condition of the item) before classifying, and if still unsure, classify as the smaller/cheaper option rather than assuming the most expensive outcome.';
+    'Once ready (or out of questions): {"type":"estimate","min":<number>,"max":<number>} — a realistic pre-visit price range in whole US dollars for THIS SPECIFIC JOB as this trade would actually charge for it in the US today, including typical labor and materials. ' +
+    'Price the described job itself, not a generic project category: cleaning one 150 sq ft room is a low-cost routine service call, not a renovation. ' +
+    'Keep the range honest but LEAN TOWARD THE AFFORDABLE SIDE, with a tight believable spread (max no more than roughly 2-2.5x min) — a scary high top number loses the customer before the business ever gets to quote in person. ' +
+    'Round to natural amounts (e.g. 120-220, 850-1500, 4000-7500). ' +
+    'If the homeowner is unsure whether they need a repair or a full replacement, ask a clarifying question (e.g. age/condition of the item) before estimating, and if still unsure, price the smaller/cheaper outcome rather than assuming the most expensive one.';
 
   try {
     const response = await fetch('https://api.openai.com/v1/responses', {
@@ -120,9 +121,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ type: 'question', question: parsed.question, responseId: payload.id });
     }
 
-    const size = VALID_SIZES.includes(parsed.size) ? parsed.size : 'medium';
-    const tier = VALID_TIERS.includes(parsed.tier) ? parsed.tier : 'standard';
-    return NextResponse.json({ type: 'classification', size, tier });
+    // Sanity-gate the model's numbers; on anything incoherent, collect the
+    // lead without showing a price rather than showing a wrong one.
+    const min = Math.round(Number(parsed.min));
+    const max = Math.round(Number(parsed.max));
+    if (Number.isFinite(min) && Number.isFinite(max) && min >= 25 && min < max && max <= 200000) {
+      return NextResponse.json({ type: 'estimate', min, max });
+    }
+    return NextResponse.json(fallback());
   } catch (error) {
     console.error('Estimate chat failed:', error);
     return NextResponse.json(fallback());

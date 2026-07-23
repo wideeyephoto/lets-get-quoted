@@ -605,11 +605,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
           if (generated.stats.length) {
             contentUpdates.stats = { enabled: false, title: content.stats.title || 'By the numbers', items: generated.stats.map((s, i) => ({ id: `stat-${i + 1}`, value: s.value, prefix: '', suffix: s.suffix, label: s.label })) };
           }
-          // Trade-appropriate instant-estimate bands, so the smart intake never
-          // quotes remodel-scale prices for a service trade.
-          if (generated.estimateRanges) {
-            contentUpdates.estimateRanges = { ...content.estimateRanges, enabled: true, ...generated.estimateRanges };
-          }
           // Fold in auto-selected stock photos (hero, slots, gallery), preserving
           // any images the owner already set.
           const stock = applyStockImages(current, generated.images);
@@ -1288,15 +1283,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <label className={styles.formField}><span>Form title shown on your page</span><select value={siteContent.quoteForm.estimateLabel} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, estimateLabel: event.target.value as SiteQuoteFormContent['estimateLabel'] })}><option value="quick">&quot;Quick Estimate&quot;</option><option value="instant">&quot;Instant Estimate&quot;</option></select><small>This only changes the form&apos;s title — the automatic AI estimator is the card below.</small></label>
                 </SectionCard>
 
-                <SectionCard title="Instant price estimate (AI)" description="Gives visitors an automatic ballpark price, no waiting — after the quick form, our AI asks a couple of questions to size up the job, then shows a rough $ range right away." enabled={siteContent.estimateRanges.enabled} onToggleEnabled={(value) => updateEstimateRanges({ ...siteContent.estimateRanges, enabled: value })} open={openSection === 'estimate'} onToggleOpen={() => toggleSection('estimate')}>
-                  <p className={styles.fieldHint}>Set the price bands for your trade — the AI decides whether a described job is small, medium, or large, then shows that band. &quot;✨ Generate a full example site&quot; fills these with typical prices for your trade.</p>
-                  {(['small', 'medium', 'large'] as const).map((bandKey) => (
-                    <div className={styles.formColumns} key={bandKey}>
-                      <label className={styles.formField}><span>{bandKey === 'small' ? 'Small job — from ($)' : bandKey === 'medium' ? 'Medium job — from ($)' : 'Large job — from ($)'}</span><input type="number" min={0} value={siteContent.estimateRanges[bandKey].min} onChange={(event) => updateEstimateRanges({ ...siteContent.estimateRanges, [bandKey]: { ...siteContent.estimateRanges[bandKey], min: Math.max(0, Math.round(Number(event.target.value) || 0)) } })} /></label>
-                      <label className={styles.formField}><span>up to ($)</span><input type="number" min={0} value={siteContent.estimateRanges[bandKey].max} onChange={(event) => updateEstimateRanges({ ...siteContent.estimateRanges, [bandKey]: { ...siteContent.estimateRanges[bandKey], max: Math.max(0, Math.round(Number(event.target.value) || 0)) } })} /></label>
-                    </div>
-                  ))}
-                </SectionCard>
+                <SectionCard title="Instant price estimate (AI)" description="Gives visitors an automatic ballpark price, no waiting — our AI asks a couple of questions to scope the job, then prices it for your trade and shows a realistic $ range. Every request still reaches you as a lead, with the shown range included." enabled={siteContent.estimateRanges.enabled} onToggleEnabled={(value) => updateEstimateRanges({ ...siteContent.estimateRanges, enabled: value })} open={openSection === 'estimate'} onToggleOpen={() => toggleSection('estimate')} />
 
                 <div className={styles.cardGroupLabel}>Main sections</div>
 
