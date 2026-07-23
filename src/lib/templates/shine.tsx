@@ -71,26 +71,25 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
           <SiteProofStrip site={site} />
         </div>
         <div className={styles.shineHeroMedia}>
-          <div className={styles.shineCollage}>
-            <figure className={`${styles.shinePhotoCard} ${styles.shinePhotoMain}`} data-parallax="0.05">
-              <img className={styles.shinePhoto} src={heroImage} alt="Recent cleaning project" fetchPriority="high" decoding="async" />
-            </figure>
-            <figure className={`${styles.shinePhotoCard} ${styles.shinePhotoSide}`} data-parallax="0.13" data-edit="image-heroSecondary">
-              <img className={styles.shinePhoto} src={secondImage} alt="Our cleaning team at work" loading="lazy" decoding="async" />
-            </figure>
-          </div>
-          {heroBadge && (
-            <div className={`${styles.shineBadge} ${styles.shineBadgeSupport}`} data-parallax="0.2" data-edit="heroBadge">
+          {/* Aligned 2x2 grid (Purely): photo · card / card · photo. */}
+          <figure className={`${styles.shinePhotoCard} ${styles.shinePhotoMain}`}>
+            <img className={styles.shinePhoto} src={heroImage} alt="Recent cleaning project" fetchPriority="high" decoding="async" />
+          </figure>
+          {heroBadge ? (
+            <div className={`${styles.shineBadge} ${styles.shineBadgeSupport}`} data-edit="heroBadge">
               <span className={styles.shineBadgeIcon} aria-hidden="true">{heroBadge.icon}</span>
               <strong>{heroBadge.title}</strong>
             </div>
-          )}
-          {showStats && (
-            <div className={`${styles.shineBadge} ${styles.shineBadgeCustomers}`} data-parallax="0.26" data-edit="heroBadge">
+          ) : <span className={styles.shineBadgeSupport} aria-hidden="true" />}
+          {showStats ? (
+            <div className={`${styles.shineBadge} ${styles.shineBadgeCustomers}`} data-edit="heroBadge">
               <span className={styles.shineAvatars} aria-hidden="true"><span /><span /><span /></span>
               <div><strong>500+</strong><small>Satisfied customers</small></div>
             </div>
-          )}
+          ) : <span className={styles.shineBadgeCustomers} aria-hidden="true" />}
+          <figure className={`${styles.shinePhotoCard} ${styles.shinePhotoSide}`} data-edit="image-heroSecondary">
+            <img className={styles.shinePhoto} src={secondImage} alt="Our cleaning team at work" loading="lazy" decoding="async" />
+          </figure>
         </div>
       </section>
 
