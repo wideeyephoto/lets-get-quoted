@@ -18,6 +18,7 @@ import {
   getPublishedStats,
   getPublishedStickyCallBar,
   getPublishedTestimonials,
+  getSiteContent,
   getSlotImage,
 } from '@/lib/site-content';
 import BeforeAfterSlider from './BeforeAfterSlider';
@@ -80,23 +81,33 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
   const sectionBlocks: Record<string, ReactNode> = {
     services: services && <SiteServices title={services.title} intro={services.intro} items={services.items} />,
     howItWorks: howItWorks && <SiteProcess title={howItWorks.title} intro={howItWorks.intro} steps={howItWorks.steps} />,
-    showcase: showcase && (
-      <section className={styles.extraSection} id="showcase">
-        <div className={styles.extraSectionHeader} data-reveal>
-          <p className={styles.kicker}>Showcase</p>
-          <h2>{showcase.title}</h2>
-          {showcase.intro && <p>{showcase.intro}</p>}
-        </div>
-        <div className={`${styles.showcaseGrid} ${styles[`showcase-${showcase.layout}`] || ''}`} data-stagger>
-          {showcase.items.map((item, index) => (
-            <figure key={`${item.id}-${index}`} data-edit={`showcase-${item.id}`}>
-              <SafeImage src={item.url} alt={item.alt} width={1200} height={900} sizes={index === 0 && showcase.layout === 'featured' ? '60vw' : '30vw'} />
-              <figcaption>{item.caption || item.alt}</figcaption>
-            </figure>
-          ))}
-        </div>
-      </section>
-    ),
+    showcase: showcase && (() => {
+      // The visible tile title must ADVERTISE a service, never describe the
+      // photo. Stock tiles saved without a caption (older generations, picker
+      // picks) fall back to the site's service names round-robin, then the
+      // trade — the descriptive alt stays on the img for accessibility only.
+      const raw = getSiteContent(site.content);
+      const adTitles = raw.services.items.map((svc) => svc.title.trim()).filter(Boolean);
+      const trade = raw.trade.trim().replace(/\b\w/g, (ch) => ch.toUpperCase());
+      const adTitleFor = (index: number): string => (adTitles.length ? adTitles[index % adTitles.length] : trade ? `Expert ${trade}` : '');
+      return (
+        <section className={styles.extraSection} id="showcase">
+          <div className={styles.extraSectionHeader} data-reveal>
+            <p className={styles.kicker}>Showcase</p>
+            <h2>{showcase.title}</h2>
+            {showcase.intro && <p>{showcase.intro}</p>}
+          </div>
+          <div className={`${styles.showcaseGrid} ${styles[`showcase-${showcase.layout}`] || ''}`} data-stagger>
+            {showcase.items.map((item, index) => (
+              <figure key={`${item.id}-${index}`} data-edit={`showcase-${item.id}`}>
+                <SafeImage src={item.url} alt={item.alt} width={1200} height={900} sizes={index === 0 && showcase.layout === 'featured' ? '60vw' : '30vw'} />
+                <figcaption>{item.caption || (item.source === 'stock' ? adTitleFor(index) : item.alt)}</figcaption>
+              </figure>
+            ))}
+          </div>
+        </section>
+      );
+    })(),
     testimonials: testimonials && (() => {
       const cards = [
         ...testimonials.items.map((item) => (
