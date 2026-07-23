@@ -189,6 +189,7 @@
 .integrationCard button { min-height: 38px; padding: .55rem .8rem; border: 1px solid rgba(255,255,255,.16); border-radius: 6px; background: rgba(255,255,255,.05); color: #9ca8b8; font-weight: 800; }
 .colorControl { display: grid; grid-template-columns: 48px 1fr; gap: .5rem; }
 .colorControl input[type='color'] { min-height: 43px; padding: 4px; cursor: pointer; }
+.fieldOptional { font-style: normal; font-weight: 400; font-size: .72rem; color: #9ca8b8; }
 .logoPreviews { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem; }
 .logoPreview, .logoPreviewDark { position: relative; display: grid; min-height: 72px; place-items: center; padding: 1rem .75rem; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; }
 .logoPreview { background: #fff; }

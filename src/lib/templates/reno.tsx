@@ -1,7 +1,9 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
+import { getHeroImages } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
+import HeroImageCycle from './HeroImageCycle';
 import SiteContentSections from './SiteContentSections';
 import SiteNavLinks from './SiteNavLinks';
 import SiteProofStrip from './SiteProofStrip';
@@ -55,7 +57,7 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
           <SiteProofStrip site={site} />
         </div>
         <div className={styles.renoHeroMedia}>
-          <img className={styles.renoHeroImg} src={heroImage} alt="Recent renovation project" fetchPriority="high" decoding="async" />
+          <HeroImageCycle images={getHeroImages(site.content, heroImage)} className={styles.renoHeroImg} alt="Recent renovation project" />
           <span className={styles.renoHexBadge} data-parallax="0.16" aria-hidden="true">⌂</span>
           <span className={styles.renoHexGhost} data-parallax="0.26" aria-hidden="true" />
         </div>

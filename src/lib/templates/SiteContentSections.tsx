@@ -3,6 +3,7 @@ import SafeImage from './SafeImage';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import type { Site } from '@/lib/sites';
 import {
+  getHeroBandImages,
   getSectionOrder,
   getPublishedBeforeAfter,
   getPublishedBlog,
@@ -201,7 +202,29 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
 
       {hasInFlowSections && (
         <div className={styles.extraSections}>
-          {getSectionOrder(site.content).map((key) => <Fragment key={key}>{sectionBlocks[key]}</Fragment>)}
+          {(() => {
+            const bands = getHeroBandImages(site.content);
+            const nodes: ReactNode[] = [];
+            let bandIndex = 0;
+            let shown = 0;
+            for (const key of getSectionOrder(site.content)) {
+              const block = sectionBlocks[key];
+              if (!block) continue;
+              nodes.push(<Fragment key={key}>{block}</Fragment>);
+              shown += 1;
+              // Drop a parallax band in after every 3rd visible section.
+              if (shown % 3 === 0 && bandIndex < bands.length) {
+                nodes.push(<div key={`band-${bandIndex}`} className={styles.heroBand}><img data-parallax="0.2" src={bands[bandIndex]} alt="" loading="lazy" decoding="async" /></div>);
+                bandIndex += 1;
+              }
+            }
+            // Any leftover bands trail the sections.
+            while (bandIndex < bands.length) {
+              nodes.push(<div key={`band-${bandIndex}`} className={styles.heroBand}><img data-parallax="0.2" src={bands[bandIndex]} alt="" loading="lazy" decoding="async" /></div>);
+              bandIndex += 1;
+            }
+            return nodes;
+          })()}
         </div>
       )}
 

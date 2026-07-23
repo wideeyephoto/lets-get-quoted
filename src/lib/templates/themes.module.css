@@ -100,6 +100,18 @@
 .extraSectionHeader { display: grid; gap: .4rem; max-width: 760px; margin-bottom: 2rem; }
 .extraSectionHeader h2 { margin: 0; font-family: var(--theme-display); font-size: clamp(2.2rem, 5vw, 4.5rem); line-height: .98; }
 .extraSectionHeader > p:last-child { margin: 0; color: color-mix(in srgb, currentColor 72%, transparent); line-height: 1.65; }
+/* Hero cross-fade: base image in flow sizes the wrapper; overlays stack and
+   fade. Overlays inherit the template's hero-img class for object-fit/framing. */
+.heroCycle { display: block; position: relative; width: 100%; height: 100%; }
+.heroCycleOverlay { position: absolute; inset: 0; transition: opacity .9s ease; }
+@media (prefers-reduced-motion: reduce) { .heroCycleOverlay { transition: none; } }
+
+/* Full-width parallax band — extra hero photos reused as scrolling backdrops
+   between the mid-page sections. */
+.heroBand { position: relative; overflow: hidden; height: clamp(220px, 40vh, 440px); }
+.heroBand img { position: absolute; inset: -14% 0; width: 100%; height: 128%; object-fit: cover; }
+.heroBand::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(6,10,16,.28), rgba(6,10,16,.12) 50%, rgba(6,10,16,.34)); }
+
 .showcaseGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
 /* The aspect box lives on the figure (a plain element we fully control) — next/image
    fights an aspect-ratio set on the <img> itself, which collapsed tiles tall and

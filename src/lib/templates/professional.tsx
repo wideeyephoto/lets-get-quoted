@@ -1,7 +1,8 @@
 import type { CSSProperties } from 'react';
 import SafeImage from './SafeImage';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getEstimateButtonLabel, getHeroBadgeStyle, getHeroSecondBadge, getSiteContent, getSlotImage } from '@/lib/site-content';
+import { getEstimateButtonLabel, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getSiteContent, getSlotImage } from '@/lib/site-content';
+import HeroImageCycle from './HeroImageCycle';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroQuickForm from './HeroQuickForm';
@@ -57,7 +58,7 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
         </div>
         <div className={styles.guildHeroMedia}>
           <div className={styles.guildHeroFrame}>
-            <img src={heroImage} alt="Recent completed job" fetchPriority="high" decoding="async" />
+            <HeroImageCycle images={getHeroImages(site.content, heroImage)} alt="Recent completed job" />
           </div>
           <figure className={styles.guildHeroInset} data-parallax="0.12" data-edit="image-heroSecondary">
             <img src={secondImage} alt="A detail from our recent work" loading="lazy" decoding="async" />

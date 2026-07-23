@@ -297,7 +297,13 @@ export type NormalizedSiteContent = {
   // Always a full, deduped permutation of REORDERABLE_SECTIONS keys (missing
   // ones appended in default order) so every section renders and new ones show.
   sectionOrder: string[];
+  // Up to 2 EXTRA hero photos (beyond site.hero_url). The full hero set cycles
+  // (cross-fade) in the hero; the extras also render as parallax bands further
+  // down the page. See getHeroImages / getHeroBandImages.
+  heroImages: string[];
 };
+
+export const MAX_EXTRA_HERO_IMAGES = 2;
 
 export const DEFAULT_SHOWCASE_TITLE = 'Project showcase';
 export const DEFAULT_FAQ_TITLE = 'Frequently asked questions';
@@ -644,6 +650,9 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     },
     images: parseImageSlots(images),
     sectionOrder: parseSectionOrder(root.sectionOrder),
+    heroImages: Array.isArray(root.heroImages)
+      ? root.heroImages.filter((url): url is string => typeof url === 'string' && url.trim().length > 0).map((url) => url.trim()).slice(0, MAX_EXTRA_HERO_IMAGES)
+      : [],
   };
 }
 
@@ -870,4 +879,19 @@ function parseSectionOrder(value: unknown): string[] {
 
 export function getSectionOrder(content: Record<string, unknown> | null | undefined): string[] {
   return getSiteContent(content).sectionOrder;
+}
+
+// The full ordered hero image set (primary hero + extras), deduped. Used by the
+// hero cross-fade; a single image means no cycling (unchanged behaviour).
+export function getHeroImages(content: Record<string, unknown> | null | undefined, primary: string | null | undefined): string[] {
+  const set: string[] = [];
+  for (const url of [primary, ...getSiteContent(content).heroImages]) {
+    if (url && url.trim() && !set.includes(url)) set.push(url);
+  }
+  return set;
+}
+
+// The extra hero photos rendered as full-width parallax bands lower down.
+export function getHeroBandImages(content: Record<string, unknown> | null | undefined): string[] {
+  return getSiteContent(content).heroImages;
 }

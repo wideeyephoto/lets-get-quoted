@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroBadgeStyle, getSlotImage } from '@/lib/site-content';
+import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getSlotImage } from '@/lib/site-content';
+import HeroImageCycle from './HeroImageCycle';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
@@ -69,7 +70,7 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
           <SiteProofStrip site={site} />
         </div>
         <div className={styles.coatHeroMedia}>
-          <img className={styles.coatHeroImg} src={heroImage} alt="Recent painting project" fetchPriority="high" decoding="async" />
+          <HeroImageCycle images={getHeroImages(site.content, heroImage)} className={styles.coatHeroImg} alt="Recent painting project" />
           <figure className={styles.coatPhotoSide} data-parallax="0.13" data-edit="image-heroSecondary">
             <img src={secondImage} alt="A freshly finished interior" loading="lazy" decoding="async" />
           </figure>

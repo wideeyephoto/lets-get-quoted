@@ -1,8 +1,10 @@
 import type { CSSProperties } from 'react';
 import SafeImage from './SafeImage';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
+import { getHeroImages } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
+import HeroImageCycle from './HeroImageCycle';
 import HeroQuickForm from './HeroQuickForm';
 import SiteContentSections from './SiteContentSections';
 import SiteNavLinks from './SiteNavLinks';
@@ -36,7 +38,7 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
       </header>
 
       <section className={styles.vistaHero} id="top">
-        <img className={styles.heroImage} src={heroImage} alt="Featured completed project" fetchPriority="high" decoding="async" />
+        <HeroImageCycle images={getHeroImages(site.content, heroImage)} className={styles.heroImage} alt="Featured completed project" />
         <div className={styles.vistaHeroCopy}>
           <span className={styles.vistaBigType} data-parallax="0.1" aria-hidden="true">{site.company_name}</span>
           <p className={styles.kicker}>Diagnose / Repair / Deliver</p>

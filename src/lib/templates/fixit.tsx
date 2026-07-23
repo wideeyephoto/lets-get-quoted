@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroBadgeStyle, getHeroSecondBadge, HERO_BADGE_PRESETS } from '@/lib/site-content';
+import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, HERO_BADGE_PRESETS } from '@/lib/site-content';
+import HeroImageCycle from './HeroImageCycle';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
@@ -62,7 +63,7 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
         <div className={styles.fixitHeroMedia}>
           <span className={styles.fixitHeroBlob} aria-hidden="true" />
           <span className={styles.fixitHeroShape} data-parallax="0.07" aria-hidden="true" />
-          <img className={styles.fixitHeroImg} src={heroImage} alt="Professional handyman ready to help" fetchPriority="high" decoding="async" />
+          <HeroImageCycle images={getHeroImages(site.content, heroImage)} className={styles.fixitHeroImg} alt="Professional handyman ready to help" />
           {heroBadge && (
             <div className={styles.fixitHeroCard} data-parallax="0.14" data-edit="heroBadge">
               <span className={styles.fixitHeroCardIcon} aria-hidden="true">{heroBadge.icon}</span>

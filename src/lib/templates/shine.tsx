@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroBadgeStyle, getHeroSecondBadge, getSlotImage } from '@/lib/site-content';
+import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getSlotImage } from '@/lib/site-content';
+import HeroImageCycle from './HeroImageCycle';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
@@ -73,7 +74,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
         <div className={styles.shineHeroMedia}>
           {/* Aligned 2x2 grid (Purely): photo · card / card · photo. */}
           <figure className={`${styles.shinePhotoCard} ${styles.shinePhotoMain}`}>
-            <img className={styles.shinePhoto} src={heroImage} alt="Recent cleaning project" fetchPriority="high" decoding="async" />
+            <HeroImageCycle images={getHeroImages(site.content, heroImage)} className={styles.shinePhoto} alt="Recent cleaning project" />
           </figure>
           {heroBadge ? (
             <div className={`${styles.shineBadge} ${styles.shineBadgeSupport}`} data-edit="heroBadge">

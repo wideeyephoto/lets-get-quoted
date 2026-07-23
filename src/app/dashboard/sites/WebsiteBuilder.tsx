@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useTransition, type ReactNode } from 
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, REORDERABLE_SECTIONS, slugifyBlogTitle, type NormalizedSiteContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, REORDERABLE_SECTIONS, slugifyBlogTitle, type NormalizedSiteContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteStatsContent, type SiteStickyCallBarContent, type SiteTestimonialsContent, type SiteTrustBadgesContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
@@ -137,7 +137,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   // is routed by `kind` (site hero/logo, content.images slot, a before/after
   // side, or a showcase tile — scItemId null appends a new showcase image).
   const [picker, setPicker] = useState<
-    | { label: string; kind: 'hero' | 'logo' | 'slot' | 'beforeAfter' | 'showcase'; slot?: string; baItemId?: string; baSide?: 'before' | 'after'; scItemId?: string | null }
+    | { label: string; kind: 'hero' | 'logo' | 'slot' | 'beforeAfter' | 'showcase' | 'heroExtra'; slot?: string; baItemId?: string; baSide?: 'before' | 'after'; scItemId?: string | null; heroExtraIndex?: number }
     | null
   >(null);
   // The section key currently being dragged in the "Page order" reorder list.
@@ -492,6 +492,18 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     setPicker({ label, kind, slot });
   }, []);
 
+  const addHeroExtraImage = useCallback((image: SiteImage) => {
+    updateSiteContent({ heroImages: [...siteContent.heroImages, image.url].slice(0, MAX_EXTRA_HERO_IMAGES) });
+  }, [siteContent.heroImages, updateSiteContent]);
+
+  const replaceHeroExtraImage = useCallback((index: number, image: SiteImage) => {
+    updateSiteContent({ heroImages: siteContent.heroImages.map((url, itemIndex) => (itemIndex === index ? image.url : url)) });
+  }, [siteContent.heroImages, updateSiteContent]);
+
+  const removeHeroExtraImage = useCallback((index: number) => {
+    updateSiteContent({ heroImages: siteContent.heroImages.filter((_, itemIndex) => itemIndex !== index) });
+  }, [siteContent.heroImages, updateSiteContent]);
+
   // Move `fromKey` so it lands just before `toKey` in the page order.
   const reorderSections = useCallback((fromKey: string, toKey: string) => {
     if (fromKey === toKey) return;
@@ -808,6 +820,25 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                       {site.hero_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('hero_url', null)}>Remove</button>}
                     </div>
                   </div>
+                </div>
+
+                <div className={styles.formField}>
+                  <span>Extra hero photos <em className={styles.fieldOptional}>optional</em></span>
+                  {siteContent.heroImages.length > 0 && (
+                    <div className={styles.imageSlots}>
+                      {siteContent.heroImages.map((url, index) => (
+                        <div key={`${index}-${url}`} className={styles.imageSlot}>
+                          <div className={styles.heroSlotPreview}><img src={url} alt={`Extra hero photo ${index + 2}`} /></div>
+                          <div className={styles.imageSlotActions}>
+                            <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: `hero photo ${index + 2}`, kind: 'heroExtra', heroExtraIndex: index })}>Replace</button>
+                            <button type="button" className={styles.secondaryAction} onClick={() => removeHeroExtraImage(index)}>Remove</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {siteContent.heroImages.length < MAX_EXTRA_HERO_IMAGES && <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: 'an extra hero photo', kind: 'heroExtra' })}>Add hero photo</button>}
+                  <small className={styles.fieldHint}>Add up to {MAX_EXTRA_HERO_IMAGES} more. They cross-fade with your hero image and reappear as parallax bands further down the page.</small>
                 </div>
 
                 <label className={styles.formField}><span>Company name</span><input id="bf-company" value={site.company_name} onChange={(event) => handleChange('company_name', event.target.value)} /></label>
@@ -1258,6 +1289,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
             else if (picker.kind === 'logo') handleChange('logo_url', image.url);
             else if (picker.kind === 'beforeAfter' && picker.baItemId && picker.baSide) setBeforeAfterImage(picker.baItemId, picker.baSide, image);
             else if (picker.kind === 'showcase') replaceShowcaseImage(picker.scItemId ?? null, image);
+            else if (picker.kind === 'heroExtra') { if (typeof picker.heroExtraIndex === 'number') replaceHeroExtraImage(picker.heroExtraIndex, image); else addHeroExtraImage(image); }
             else if (picker.slot) assignSlotImage(picker.slot, image);
             setPicker(null);
           }}

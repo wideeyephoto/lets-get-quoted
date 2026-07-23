@@ -1,8 +1,10 @@
 import type { CSSProperties } from 'react';
 import SafeImage from './SafeImage';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
+import { getHeroImages } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
+import HeroImageCycle from './HeroImageCycle';
 import HeroQuickForm from './HeroQuickForm';
 import SiteContentSections from './SiteContentSections';
 import SiteNavLinks from './SiteNavLinks';
@@ -38,7 +40,7 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
           <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#work', label: 'Work' }, { href: '#about', label: 'About' }, { href: '#contact', label: 'Contact' }]} />
           {site.phone && <a className={styles.headerPhone} href={`tel:${site.phone}`}>{site.phone}</a>}
         </header>
-        <img className={styles.heroImage} src={heroImage} alt="Recent completed job" fetchPriority="high" decoding="async" />
+        <HeroImageCycle images={getHeroImages(site.content, heroImage)} className={styles.heroImage} alt="Recent completed job" />
         <div className={styles.forgeScrim} />
         <div className={styles.forgeHeroCopy}>
           <p className={styles.kicker}>Done right. Every time.</p>

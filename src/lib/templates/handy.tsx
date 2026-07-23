@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getPublishedHowItWorks, getPublishedServices, getSlotImage } from '@/lib/site-content';
+import { getHeroImages, getPublishedHowItWorks, getPublishedServices, getSlotImage } from '@/lib/site-content';
+import HeroImageCycle from './HeroImageCycle';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroQuickForm from './HeroQuickForm';
@@ -83,7 +84,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
           <span className={styles.careDot1} aria-hidden="true" />
           <span className={styles.careDot2} aria-hidden="true" />
           <div className={styles.careHeroCircle}>
-            <img src={heroImage} alt="A friendly professional ready to help" fetchPriority="high" decoding="async" />
+            <HeroImageCycle images={getHeroImages(site.content, heroImage)} alt="A friendly professional ready to help" />
           </div>
         </div>
       </section>
