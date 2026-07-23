@@ -79,6 +79,11 @@
 .sectionCardHint { flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .68rem; font-weight: 600; color: #9ca8b8; }
 .sectionCardHintWarn { color: #f5b83d; }
 .cardGroupLabel { margin: .65rem 0 -.35rem; font-size: .7rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #9ca8b8; }
+/* One-line differentiator under a group label (e.g. form vs AI estimator). */
+.cardGroupHint { margin: -.5rem 0 -.35rem; color: #9ca8b8; font-size: .78rem; line-height: 1.45; }
+/* One-release breadcrumb where a control used to live, pointing to its new home. */
+.movedNote { margin: 0; padding: .6rem .8rem; border: 1px dashed rgba(255,255,255,.2); border-radius: 8px; color: #9ca8b8; font-size: .78rem; line-height: 1.45; }
+.movedNote strong { color: #f7f5ef; }
 .checklistCard { display: grid; gap: .65rem; padding: 1rem 1.1rem; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; background: rgba(255,255,255,.03); }
 .checklistCard > strong { font-size: .9rem; color: #f7f5ef; }
 .checklistCard ul { display: grid; gap: .45rem; margin: 0; padding: 0; list-style: none; }
