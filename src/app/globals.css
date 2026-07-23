@@ -298,6 +298,31 @@ h3 {
   background: rgba(255, 255, 255, 0.07);
   border: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow: none;
+  gap: 0.5rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 12px;
+}
+
+/* Two lines: the status, and the address it's live at — so the bar answers
+   "live where?" without a click. */
+.website-nav-live-text {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.website-nav-live-label { font-size: 0.76rem; font-weight: 700; color: #34d399; }
+
+.website-nav-live-host {
+  max-width: 24ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #94a3b8;
 }
 
 .website-nav-badge.live:hover {

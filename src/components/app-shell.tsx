@@ -31,6 +31,7 @@ const FLOW_CLASS: Record<string, string> = {
 type AccountStatus = {
   onboarded: boolean;
   sitePublished: boolean;
+  siteUrl: string | null;
   newQuoteRequestCount: number;
   jobsNeedingAttentionCount: number;
   unscheduledJobCount: number;
@@ -50,6 +51,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [stripeOnboarded, setStripeOnboarded] = useState<boolean | null>(null);
   const [sitePublished, setSitePublished] = useState(false);
+  const [siteUrl, setSiteUrl] = useState<string | null>(null);
   const [newQuoteRequestCount, setNewQuoteRequestCount] = useState(0);
   const [jobsNeedingAttentionCount, setJobsNeedingAttentionCount] = useState(0);
   const [unscheduledJobCount, setUnscheduledJobCount] = useState(0);
@@ -58,6 +60,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [dismissedQuoteRequestId, setDismissedQuoteRequestId] = useState<string | null>(null);
   const isDashboard = pathname.startsWith('/dashboard');
   const primaryAction = getPrimaryAction();
+  // The bare host for the live badge — "yoursite.letsgetquoted.com", no scheme.
+  const siteHost = siteUrl ? siteUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '') : null;
   // Middleware rewrites a wildcard subdomain/custom-domain request to
   // /site/[subdomain] (or /site-domain/[host]) internally, but that rewrite
   // is transparent to the browser — usePathname() still reports the
@@ -113,6 +117,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       setUnscheduledJobCount(0);
       setNewestQuoteRequestId(null);
       setNewestQuoteRequestCreatedAt(null);
+      setSiteUrl(null);
       return;
     }
     let cancelled = false;
@@ -123,6 +128,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           if (!cancelled && data) {
             setStripeOnboarded(Boolean(data.onboarded));
             setSitePublished(Boolean(data.sitePublished));
+            setSiteUrl(data.siteUrl ?? null);
             setNewQuoteRequestCount(Number(data.newQuoteRequestCount ?? 0));
             setJobsNeedingAttentionCount(Number(data.jobsNeedingAttentionCount ?? 0));
             setUnscheduledJobCount(Number(data.unscheduledJobCount ?? 0));
@@ -183,12 +189,19 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             <Link
               href="/dashboard/sites"
               className={`website-nav-badge${sitePublished ? ' live' : ''}`}
-              title={sitePublished ? 'Your website is live — manage it' : 'Build your free contractor website'}
+              title={sitePublished ? `Your website is live${siteHost ? ` at ${siteHost}` : ''} — manage it` : 'Build your free contractor website'}
             >
               {sitePublished ? (
                 <>
                   <span className="website-nav-signal" aria-hidden="true"><i /><i /><i /></span>
-                  Website: Live
+                  {siteHost ? (
+                    <span className="website-nav-live-text">
+                      <span className="website-nav-live-label">Website: Live</span>
+                      <span className="website-nav-live-host">{siteHost}</span>
+                    </span>
+                  ) : (
+                    'Website: Live'
+                  )}
                 </>
               ) : (
                 <>
