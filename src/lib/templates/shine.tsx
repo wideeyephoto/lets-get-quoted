@@ -78,7 +78,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
           {heroBadge ? (
             <div className={`${styles.shineBadge} ${styles.shineBadgeSupport}`} data-edit="heroBadge">
               <span className={styles.shineBadgeIcon} aria-hidden="true">{heroBadge.icon}</span>
-              <strong>{heroBadge.title}</strong>
+              <div><strong>{heroBadge.title}</strong>{heroBadge.subtitle && <small>{heroBadge.subtitle}</small>}</div>
             </div>
           ) : <span className={styles.shineBadgeSupport} aria-hidden="true" />}
           {second.mode === 'none' ? (
@@ -91,7 +91,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
           ) : (
             <div className={`${styles.shineBadge} ${styles.shineBadgeCustomers}`} data-edit="heroBadge">
               <span className={styles.shineBadgeIcon} aria-hidden="true">{second.badge.icon}</span>
-              <strong>{second.badge.title}</strong>
+              <div><strong>{second.badge.title}</strong>{second.badge.subtitle && <small>{second.badge.subtitle}</small>}</div>
             </div>
           )}
           <figure className={`${styles.shinePhotoCard} ${styles.shinePhotoSide}`} data-edit="image-heroSecondary">

@@ -1141,8 +1141,37 @@
 .site[data-badge-style='outline'] .fixitHeroCard small, .site[data-badge-style='soft'] .fixitHeroCard small,
 .site[data-badge-style='outline'] .shineBadgeCustomers strong, .site[data-badge-style='soft'] .shineBadgeCustomers strong,
 .site[data-badge-style='outline'] .shineBadgeCustomers small, .site[data-badge-style='soft'] .shineBadgeCustomers small,
+.site[data-badge-style='outline'] .shineBadge small, .site[data-badge-style='soft'] .shineBadge small,
 .site[data-badge-style='outline'] .guildBadge strong, .site[data-badge-style='soft'] .guildBadge strong,
 .site[data-badge-style='outline'] .guildBadge span, .site[data-badge-style='soft'] .guildBadge span { color: #fff; }
+
+/* Badge detailing — an accent rail down the leading edge, a haloed icon chip,
+   and a response on hover, so the floating chips read as designed objects
+   instead of plain boxes. Works across all three styles (solid/outline/soft);
+   every one of these badges is already positioned, so ::before anchors safely. */
+.shineBadge, .coatHeroBadge, .fixitHeroCard, .guildBadge { overflow: hidden; transition: box-shadow .3s ease; }
+.shineBadge::before, .coatHeroBadge::before, .fixitHeroCard::before, .guildBadge::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; pointer-events: none;
+  background: linear-gradient(180deg, var(--theme-accent), color-mix(in srgb, var(--theme-accent) 20%, transparent));
+}
+/* Guild's card is already accent-filled, so its rail reads as a light edge. */
+.guildBadge::before { background: linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,.15)); }
+.shineBadge:hover, .coatHeroBadge:hover, .fixitHeroCard:hover, .guildBadge:hover { box-shadow: 0 28px 54px -20px rgba(0,0,0,.5); }
+/* The icon gets an accent halo + soft glow; hover swells it slightly. Card-level
+   hover lifts are impossible here — coat/shine badges already own `transform`
+   via their float animations, which would win over a hover transform. */
+.shineBadgeIcon, .coatHeroBadgeIcon, .fixitHeroCardIcon {
+  flex: 0 0 auto;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--theme-accent) 14%, transparent), 0 8px 16px -8px color-mix(in srgb, var(--theme-accent) 55%, transparent);
+  transition: transform .3s cubic-bezier(.22, .61, .36, 1);
+}
+.shineBadge:hover .shineBadgeIcon, .coatHeroBadge:hover .coatHeroBadgeIcon, .fixitHeroCard:hover .fixitHeroCardIcon { transform: scale(1.09); }
+.shineBadgeSupport strong { display: block; }
+.shineBadgeSupport small { display: block; margin-top: .15rem; font-size: .72rem; font-weight: 600; color: #5c6675; }
+@media (prefers-reduced-motion: reduce) {
+  .shineBadgeIcon, .coatHeroBadgeIcon, .fixitHeroCardIcon { transition: none; }
+  .shineBadge:hover .shineBadgeIcon, .coatHeroBadge:hover .coatHeroBadgeIcon, .fixitHeroCard:hover .fixitHeroCardIcon { transform: none; }
+}
 .shineAvatars { display: inline-flex; flex: 0 0 auto; }
 .shineAvatars span { width: 24px; height: 24px; border-radius: 999px; border: 2px solid #fff; margin-left: -8px; background: linear-gradient(135deg, #cbd3dd, #8b97a6); }
 .shineAvatars span:first-child { margin-left: 0; }
