@@ -94,21 +94,30 @@ export async function POST(request: NextRequest) {
     ? ` This business is "${businessName || 'unknown'}"${businessSummary ? ` (${businessSummary})` : ''}${serviceArea ? `, serving ${serviceArea}` : ''}. Use this to inform what kind of work is likely being described.`
     : '';
   const qualityContext = !previousResponseId ? `${areaContext}${exclusionContext}${locationContext}` : '';
+  // Out of questions? The model gets NO option to ask again — vague answers
+  // ("not sure", "no") otherwise make it keep probing forever and the visitor
+  // ends up with no number at all.
+  const askingRules = questionsRemaining > 0
+    ? `Ask short, simple follow-up questions one at a time to clarify the job's scope and quality/finish level. You may ask up to ${questionsRemaining} more question(s) — fewer if you already have enough information. ` +
+      'While still asking: {"type":"question","question":"<one short, plain-language question>"}. ' +
+      'Once ready (or out of questions): '
+    : 'You are OUT of questions — do NOT ask anything else. Even if details are vague, give your best-judgment range for the most common version of this job, priced toward the cheaper outcome. Respond ONLY with: ';
   const instructions =
     "You help a local home-services business's website understand a project's scope before showing a rough price range." +
     businessContext +
     qualityContext +
     ' ' +
-    `Ask short, simple follow-up questions one at a time to clarify the job's scope and quality/finish level. You may ask up to ${questionsRemaining} more question(s) — fewer if you already have enough information. ` +
     'Respond with strict JSON only, no other text. ' +
-    'While still asking: {"type":"question","question":"<one short, plain-language question>"}. ' +
-    'Once ready (or out of questions): {"type":"estimate","min":<number>,"max":<number>,"in_area":true|false|null,"excluded":true|false} — min/max is a realistic pre-visit price range in whole US dollars for THIS SPECIFIC JOB as this trade would actually charge for it in the US today, including typical labor and materials. ' +
+    askingRules +
+    '{"type":"estimate","min":<number>,"max":<number>,"in_area":true|false|null,"excluded":true|false} — min/max is a realistic pre-visit price range in whole US dollars for THIS SPECIFIC JOB as this trade would actually charge for it in the US today, including typical labor and materials. ' +
     'in_area: false ONLY when the visitor\'s stated location is clearly outside the served areas listed; true when it clearly matches or neighbors them; null when no location was given or you are unsure. ' +
     'excluded: true ONLY when the described work clearly matches something the business does NOT take on; otherwise false. Never refuse to estimate — always include min/max regardless of these two fields. ' +
     'Price the described job itself, not a generic project category: cleaning one 150 sq ft room is a low-cost routine service call, not a renovation. ' +
     'Keep the range honest but LEAN TOWARD THE AFFORDABLE SIDE, with a tight believable spread (max no more than roughly 2-2.5x min) — a scary high top number loses the customer before the business ever gets to quote in person. ' +
     'Round to natural amounts (e.g. 120-220, 850-1500, 4000-7500). ' +
-    'If the homeowner is unsure whether they need a repair or a full replacement, ask a clarifying question (e.g. age/condition of the item) before estimating, and if still unsure, price the smaller/cheaper outcome rather than assuming the most expensive one.';
+    (questionsRemaining > 0
+      ? 'If the homeowner is unsure whether they need a repair or a full replacement, ask a clarifying question (e.g. age/condition of the item) before estimating, and if still unsure, price the smaller/cheaper outcome rather than assuming the most expensive one.'
+      : 'When unsure between repair and replacement, price the repair.');
 
   try {
     const response = await fetch('https://api.openai.com/v1/responses', {
@@ -131,22 +140,54 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) throw new Error(`OpenAI request failed: ${response.status}`);
     const payload = await response.json();
-    const parsed = JSON.parse(extractOutputText(payload));
+    let parsed = JSON.parse(extractOutputText(payload));
 
     if (parsed.type === 'question' && typeof parsed.question === 'string' && turn < MAX_QUESTIONS) {
       return NextResponse.json({ type: 'question', question: parsed.question, responseId: payload.id });
     }
 
+    const readBand = (value: { min?: unknown; max?: unknown }) => {
+      const min = Math.round(Number(value.min));
+      const max = Math.round(Number(value.max));
+      return Number.isFinite(min) && Number.isFinite(max) && min >= 25 && min < max && max <= 200000 ? { min, max } : null;
+    };
+
+    // Belt and braces: if the final turn came back without usable numbers
+    // (e.g. the model tried to ask a 4th question), chain one forced retry
+    // that demands the estimate. A shown range is the whole point.
+    let band = readBand(parsed);
+    if (!band) {
+      const retryResponse = await fetch('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          temperature: 0,
+          instructions: 'No more questions. Using everything discussed, give your best-judgment price range for the most common version of this job, priced toward the cheaper outcome. Respond with strict json only: {"type":"estimate","min":<number>,"max":<number>,"in_area":true|false|null,"excluded":true|false}.',
+          input: 'Respond with the final estimate json now.',
+          previous_response_id: payload.id,
+          text: { format: { type: 'json_object' } },
+        }),
+      });
+      if (retryResponse.ok) {
+        const retryPayload = await retryResponse.json();
+        const retryParsed = JSON.parse(extractOutputText(retryPayload));
+        const retryBand = readBand(retryParsed);
+        if (retryBand) {
+          band = retryBand;
+          parsed = retryParsed;
+        }
+      }
+    }
+
     // Sanity-gate the model's numbers; on anything incoherent, collect the
     // lead without showing a price rather than showing a wrong one.
-    const min = Math.round(Number(parsed.min));
-    const max = Math.round(Number(parsed.max));
     const fit = {
       inArea: parsed.in_area === true ? true : parsed.in_area === false ? false : null,
       excluded: parsed.excluded === true,
     };
-    if (Number.isFinite(min) && Number.isFinite(max) && min >= 25 && min < max && max <= 200000) {
-      return NextResponse.json({ type: 'estimate', min, max, ...fit });
+    if (band) {
+      return NextResponse.json({ type: 'estimate', ...band, ...fit });
     }
     return NextResponse.json({ ...fallback(), ...fit });
   } catch (error) {

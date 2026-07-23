@@ -331,7 +331,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
       if (details && estimate) {
         setStep('result');
       } else {
-        setStatus({ tone: 'success', text: details ? 'Thanks! Your request is in — one of our experts will text or call you within the next few hours with your exact quote.' : `Thanks! We'll call you back within about an hour with your free estimate.` });
+        setStatus({ tone: 'success', text: details ? `Thanks! Your request is in — one of our experts will ${contactPref === 'text' ? 'text' : 'text or call'} you within the next few hours with your exact quote.` : `Thanks! We'll call you back within about an hour with your free estimate.` });
         formRef.current?.reset();
         setName('');
         setContact('');
