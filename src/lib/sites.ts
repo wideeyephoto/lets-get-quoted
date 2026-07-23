@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { getSiteContent } from '@/lib/site-content';
 
 // The 3 curated templates. Legacy sites may still hold a retired id in the DB;
 // getTemplate falls those back to Forge, so this narrow type is safe.
@@ -99,6 +100,14 @@ export async function getSite(
 }
 
 // Get public site by subdomain (no auth)
+// Strips the contractor's phone from a public render when they chose not to
+// publish it (content.phonePublic === false). Every template/CTA already
+// handles a null phone, so one strip here hides it everywhere — while the
+// dashboard and SMS flows keep using the real number.
+export function withPublicContact(site: Site): Site {
+  return getSiteContent(site.content).phonePublic ? site : { ...site, phone: null };
+}
+
 export async function getPublicSiteBySubdomain(
   supabase: SupabaseClient,
   subdomain: string
@@ -110,7 +119,7 @@ export async function getPublicSiteBySubdomain(
     .eq('published', true)
     .maybeSingle();
 
-  return data as Site | null;
+  return data ? withPublicContact(data as Site) : null;
 }
 
 // Get public site by custom domain (no auth)
@@ -125,7 +134,7 @@ export async function getPublicSiteByCustomDomain(
     .eq('published', true)
     .maybeSingle();
 
-  return data as Site | null;
+  return data ? withPublicContact(data as Site) : null;
 }
 
 // Update site

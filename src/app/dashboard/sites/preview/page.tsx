@@ -1,6 +1,6 @@
 import { requireOwnerContext } from '@/lib/auth';
 import { getSiteGallery } from '@/lib/site-images';
-import { getOrCreateSite } from '@/lib/sites';
+import { getOrCreateSite, withPublicContact } from '@/lib/sites';
 import { getTemplate } from '@/lib/templates';
 
 export const dynamic = 'force-dynamic';
@@ -14,5 +14,5 @@ export default async function SitePreviewPage() {
     return <main style={{ padding: '2rem' }}>The selected theme is unavailable.</main>;
   }
 
-  return <Template site={site} galleryImages={getSiteGallery(site.content)} />;
+  return <Template site={withPublicContact(site)} galleryImages={getSiteGallery(site.content)} />;
 }

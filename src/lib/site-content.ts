@@ -323,6 +323,10 @@ export type NormalizedSiteContent = {
   quoteForm: SiteQuoteFormContent;
   estimateRanges: SiteEstimateRangesContent;
   leadFilters: SiteLeadFiltersContent;
+  // Whether the contractor's phone number appears anywhere on the public site
+  // (call buttons, headers, footers, "or call" links). Off = every contact
+  // routes through the forms; texting/SMS features still use the real number.
+  phonePublic: boolean;
   stickyCallBar: SiteStickyCallBarContent;
   ratingBadge: SiteRatingBadgeContent;
   trustBadges: SiteTrustBadgesContent;
@@ -676,6 +680,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       enabled: estimateRanges.enabled !== false,
       emailField: estimateRanges.emailField === 'off' || estimateRanges.emailField === 'required' ? estimateRanges.emailField : 'optional',
     },
+    phonePublic: root.phonePublic !== false,
     leadFilters: {
       serviceAreaGate: leadFilters.serviceAreaGate !== false,
       minJobAmount: Math.max(0, Math.round(toPositiveNumber(leadFilters.minJobAmount, 0))),

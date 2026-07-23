@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getSiteGallery } from '@/lib/site-images';
-import type { Site } from '@/lib/sites';
+import { withPublicContact, type Site } from '@/lib/sites';
 import { getTemplate } from '@/lib/templates';
 import PreviewEditBridge from './PreviewEditBridge';
 
@@ -29,7 +29,7 @@ export default function SitePreviewFramePage() {
   return (
     <>
       <PreviewEditBridge />
-      <Template site={site} galleryImages={getSiteGallery(site.content)} />
+      <Template site={withPublicContact(site)} galleryImages={getSiteGallery(site.content)} />
     </>
   );
 }
