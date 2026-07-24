@@ -543,6 +543,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
           )}
           <small className={styles.heroFormPrivacy}><span aria-hidden="true">🔒</span> Your request goes only to {site.company_name} — never sold or shared.</small>
           <div className={styles.heroFormPhotoRow}>
+            <p className={styles.heroFormPhotoPrompt}><span aria-hidden="true">📷</span> Snap a photo of the job — it gets you a faster, more accurate quote.</p>
             <input
               ref={photoInputRef}
               className={styles.heroFormPhotoInput}
@@ -554,7 +555,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
               onChange={(event) => addPhotos(event.currentTarget.files ?? [])}
             />
             <button type="button" className={styles.heroFormPhotoButton} onClick={() => photoInputRef.current?.click()} disabled={selectedPhotos.length >= MAX_PHOTOS}>
-              {selectedPhotos.length > 0 ? `Add more photos (${selectedPhotos.length}/${MAX_PHOTOS})` : 'Add photos (optional)'}
+              {selectedPhotos.length > 0 ? `Add more photos (${selectedPhotos.length}/${MAX_PHOTOS})` : '📷 Add job photos'}
             </button>
             {selectedPhotos.length > 0 && (
               <div className={styles.heroFormPhotoList}>

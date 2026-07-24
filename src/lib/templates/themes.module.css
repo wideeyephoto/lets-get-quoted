@@ -153,7 +153,10 @@
 .guild[data-mode='dark'] .proofStars, .guild[data-mode='dark'] .proofChip > span { color: color-mix(in srgb, var(--theme-accent) 60%, #ffffff); }
 .heroFormPhotoRow { display: flex; flex-direction: column; gap: .35rem; }
 .heroFormPhotoInput { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-.heroFormPhotoRow .heroFormPhotoButton { margin-top: 0; padding: .5rem .65rem; border: 1px dashed #d8d3c6; border-radius: calc(var(--theme-radius, 8px) * .6); background: #fff; color: #6b675e; font-weight: 700; font-size: .76rem; text-align: left; }
+/* Actively nudge visitors to attach photos — better photos = faster, more
+   accurate quotes and higher-quality leads. */
+.heroFormPhotoPrompt { display: flex; align-items: center; gap: .35rem; color: #4b463d; font-size: .76rem; font-weight: 600; line-height: 1.35; }
+.heroFormPhotoRow .heroFormPhotoButton { margin-top: 0; padding: .55rem .7rem; border: 1.5px dashed color-mix(in srgb, var(--theme-accent) 55%, #d8d3c6); border-radius: calc(var(--theme-radius, 8px) * .6); background: color-mix(in srgb, var(--theme-accent) 7%, #fff); color: #4b463d; font-weight: 700; font-size: .78rem; text-align: left; }
 .heroFormPhotoRow .heroFormPhotoButton:disabled { opacity: .6; cursor: default; }
 .heroFormPhotoList { display: flex; flex-wrap: wrap; gap: .35rem; }
 .heroFormPhotoChip { display: inline-flex; align-items: center; gap: .3rem; padding: .3rem .5rem; border-radius: 999px; background: #f2efe6; color: #17140f; font-size: .72rem; font-weight: 600; }
