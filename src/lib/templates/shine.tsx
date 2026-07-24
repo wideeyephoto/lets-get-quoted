@@ -5,7 +5,6 @@ import HeroImageCycle from './HeroImageCycle';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroQuickForm from './HeroQuickForm';
-import HeroBadgeRail from './HeroBadgeRail';
 import SiteContentSections from './SiteContentSections';
 import SiteNavLinks from './SiteNavLinks';
 import SiteProofStrip from './SiteProofStrip';
@@ -84,7 +83,6 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
           <h1>{site.headline || 'Pure living starts with a spotless home.'}</h1>
           <p className={styles.shineHeroText}>{site.tagline || 'Professional home cleaning and maintenance, designed to give you comfort, hygiene, and peace of mind.'}</p>
           <HeroQuickForm site={site} />
-          <HeroBadgeRail site={site} />
           <SiteProofStrip site={site} />
         </div>
         <div className={styles.shineHeroMedia}>

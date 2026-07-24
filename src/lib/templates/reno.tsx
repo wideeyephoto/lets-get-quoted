@@ -5,7 +5,6 @@ import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroImageCycle from './HeroImageCycle';
 import HeroQuickForm from './HeroQuickForm';
-import HeroBadgeRail from './HeroBadgeRail';
 import SiteContentSections from './SiteContentSections';
 import SiteNavLinks from './SiteNavLinks';
 import SiteProofStrip from './SiteProofStrip';
@@ -62,7 +61,6 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
           <h1>{site.headline || 'Handyman services, done right.'}</h1>
           <p className={styles.renoHeroText}>{site.tagline || `Renovation, repair, and remodeling — a wide range of affordable, reliable work${site.service_area ? ` across ${site.service_area}` : ''}.`}</p>
           <HeroQuickForm site={site} />
-          <HeroBadgeRail site={site} />
           <SiteProofStrip site={site} />
         </div>
         <div className={styles.renoHeroMedia}>

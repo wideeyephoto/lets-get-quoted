@@ -197,14 +197,6 @@
 
 /* Compact toggle-and-label rows (trust badges) */
 .fieldHint { margin: 0; color: #9ca8b8; font-size: .78rem; line-height: 1.4; }
-
-/* Multi-select chip toggles (e.g. the extra hero trust chips). */
-.chipToggleGroup { display: flex; flex-wrap: wrap; gap: .4rem; }
-.chipToggle { display: inline-flex; align-items: center; gap: .35em; padding: .38rem .7rem; border-radius: 999px; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.04); color: #cdd6e2; font-size: .78rem; font-weight: 700; cursor: pointer; transition: background .12s ease, border-color .12s ease, color .12s ease; }
-.chipToggle:hover:not(:disabled) { border-color: rgba(255,255,255,.34); color: #f7f5ef; }
-.chipToggle:disabled { opacity: .4; cursor: not-allowed; }
-.chipToggleOn { background: #ff7a21; border-color: #ff7a21; color: #1a1205; }
-.chipToggle span { font-weight: 800; }
 /* Floating save pill — the header Save button scrolls away on the long Design
    tab, so unsaved changes surface a fixed reminder with a one-tap save. */
 .savePill { position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 60; display: flex; align-items: center; gap: .9rem; padding: .55rem .6rem .55rem 1.05rem; border-radius: 999px; border: 1px solid rgba(255,255,255,.14); background: rgba(10,22,36,.96); box-shadow: 0 22px 44px -18px rgba(0,0,0,.7); font-size: .82rem; color: #f7f5ef; animation: savePillIn .25s cubic-bezier(.22, .61, .36, 1) both; }

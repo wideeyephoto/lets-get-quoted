@@ -6,7 +6,6 @@ import ProjectShowcase from './ProjectShowcase';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroQuickForm from './HeroQuickForm';
-import HeroBadgeRail from './HeroBadgeRail';
 import SiteContentSections from './SiteContentSections';
 import SiteNavLinks from './SiteNavLinks';
 import SiteProofStrip from './SiteProofStrip';
@@ -110,7 +109,6 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
             </div>
           )}
           <HeroQuickForm site={site} />
-          <HeroBadgeRail site={site} />
           <SiteProofStrip site={site} />
         </div>
         <div className={styles.careHeroMedia} data-parallax="0.08">

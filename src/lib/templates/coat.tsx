@@ -3,7 +3,6 @@ import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, getSlotImage } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import HeroQuickForm from './HeroQuickForm';
-import HeroBadgeRail from './HeroBadgeRail';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
@@ -80,7 +79,6 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
           <h1>{site.headline || 'We turn your space into living art.'}</h1>
           <p className={styles.coatHeroText}>{site.tagline || `Skilled painters and flawless, lasting finishes — inside and out${site.service_area ? `, across ${site.service_area}` : ''}.`}</p>
           <HeroQuickForm site={site} />
-          <HeroBadgeRail site={site} />
           <SiteProofStrip site={site} />
         </div>
         <div className={styles.coatHeroMedia}>

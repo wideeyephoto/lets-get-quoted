@@ -5,7 +5,6 @@ import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroImageCycle from './HeroImageCycle';
 import HeroQuickForm from './HeroQuickForm';
-import HeroBadgeRail from './HeroBadgeRail';
 import SiteContentSections from './SiteContentSections';
 import SiteNavLinks from './SiteNavLinks';
 import SiteProofStrip from './SiteProofStrip';
@@ -56,7 +55,6 @@ export default function ForgeTemplate({ site }: TemplateProps) {
           <h1>{site.headline || 'Serious work. Solid results.'}</h1>
           <p className={styles.heroText}>{site.tagline || `Trusted service across ${site.service_area || 'your community'}.`}</p>
           <HeroQuickForm site={site} />
-          <HeroBadgeRail site={site} />
           <SiteProofStrip site={site} />
         </div>
         {heroBadge && (

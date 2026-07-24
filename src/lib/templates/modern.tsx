@@ -5,7 +5,6 @@ import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroImageCycle from './HeroImageCycle';
 import HeroQuickForm from './HeroQuickForm';
-import HeroBadgeRail from './HeroBadgeRail';
 import SiteContentSections from './SiteContentSections';
 import SiteNavLinks from './SiteNavLinks';
 import SiteProofStrip from './SiteProofStrip';
@@ -55,7 +54,6 @@ export default function VistaTemplate({ site }: TemplateProps) {
           <h1>{site.headline || 'Service with purpose.'}</h1>
           <p>{site.tagline || 'We show up, solve the problem, and treat your home like our own.'}</p>
           <HeroQuickForm site={site} />
-          <HeroBadgeRail site={site} />
           <SiteProofStrip site={site} />
         </div>
         {heroBadge && (

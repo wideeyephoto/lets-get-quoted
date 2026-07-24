@@ -3,7 +3,6 @@ import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import HeroQuickForm from './HeroQuickForm';
-import HeroBadgeRail from './HeroBadgeRail';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
@@ -67,7 +66,6 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
           <h1>{site.headline || 'Expert repairs, done right, every time.'}</h1>
           <p className={styles.fixitHeroText}>{site.tagline || 'Book a trusted handyman in a few clicks — installs, repairs, and assembly, quickly and hassle-free.'}</p>
           <HeroQuickForm site={site} />
-          <HeroBadgeRail site={site} />
           <SiteProofStrip site={site} />
         </div>
         <div className={styles.fixitHeroMedia}>

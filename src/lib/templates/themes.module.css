@@ -15,12 +15,6 @@
 .logo { width: auto; height: 42px; object-fit: contain; }
 .site[data-logo-size='small'] .logo { height: 32px; }
 .site[data-logo-size='large'] .logo { height: 56px; }
-
-/* Extra hero trust chips — a wrapped row under the hero text (HeroBadgeRail).
-   Tokenized so it reads correctly on every theme's hero ground. */
-.heroBadgeRail { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.1rem 0 .2rem; }
-.heroBadgeChip { display: inline-flex; align-items: center; gap: .4em; padding: .34rem .7rem; border-radius: 999px; font-size: .8rem; font-weight: 600; line-height: 1.2; background: color-mix(in srgb, currentColor 9%, transparent); border: 1px solid color-mix(in srgb, currentColor 18%, transparent); }
-.heroBadgeChip span { color: var(--theme-accent); font-weight: 800; }
 .navLinks { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .65rem clamp(1rem, 3vw, 2.5rem); font-size: .8rem; font-weight: 700; text-transform: uppercase; }
 /* Shared nav-link hover: an accent underline that grows from the left. Uses a
    background gradient (not ::after) so it never collides with Vista's own
