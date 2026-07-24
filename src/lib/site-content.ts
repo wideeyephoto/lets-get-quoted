@@ -17,6 +17,10 @@ export type SiteShowcaseContent = {
   enabled: boolean;
   title: string;
   intro: string;
+  // Custom text for this section's header nav link ('' = "Showcase"). The Photo
+  // Gallery gets used in many ways (portfolio, our work, before/after), so the
+  // menu label is editable.
+  navLabel: string;
   layout: 'grid' | 'featured' | 'filmstrip';
   items: SiteShowcaseItem[];
 };
@@ -285,7 +289,12 @@ export type SiteBlogContent = {
 // Floating hero badge — the small trust chip shown on the hero of photo-badge
 // templates (Fixit today). Owners pick one of these presets or hide it; the
 // preset key drives the icon/title/subtitle so the template stays declarative.
-export type SiteHeroBadgeContent = { preset: string; showStats: boolean; style: string; customLabel: string; secondPreset: string; secondCustomLabel: string };
+export type SiteHeroBadgeContent = { preset: string; showStats: boolean; style: string; customLabel: string; secondPreset: string; secondCustomLabel: string; extraBadges: string[] };
+
+// Beyond the two built-in floating chips (primary + secondary) that each
+// template positions itself, owners can add up to 3 more floating badges. They
+// scatter into free corners around the hero via per-template position classes.
+export const MAX_EXTRA_HERO_BADGES = 3;
 
 export const HERO_BADGE_PRESETS = [
   { key: 'estimates', icon: '$', title: 'Free Estimates', subtitle: 'No-obligation quotes', label: 'Free estimates' },
@@ -778,6 +787,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       enabled: toBoolean(showcase.enabled),
       title: toString(showcase.title, DEFAULT_SHOWCASE_TITLE),
       intro: toString(showcase.intro, "Whether it's a small job or big one, we've got you covered!"),
+      navLabel: toString(showcase.navLabel).slice(0, 24),
       layout: showcase.layout === 'grid' || showcase.layout === 'filmstrip' ? showcase.layout : 'featured',
       items: parseShowcaseItems(showcase.items),
     },
@@ -932,6 +942,14 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       // back from the legacy showStats boolean so old sites keep their choice.
       secondPreset: toString(heroBadge.secondPreset) || (heroBadge.showStats === false ? 'none' : 'default'),
       secondCustomLabel: toString(heroBadge.secondCustomLabel).slice(0, 40),
+      // Up to 3 more floating badges (preset keys only). Kept to known presets,
+      // deduped, and capped so the hero never overflows with badges.
+      extraBadges: Array.isArray(heroBadge.extraBadges)
+        ? Array.from(new Set(heroBadge.extraBadges
+            .map((key) => toString(key))
+            .filter((key) => HERO_BADGE_PRESETS.some((preset) => preset.key === key))))
+            .slice(0, MAX_EXTRA_HERO_BADGES)
+        : [],
     },
     images: parseImageSlots(images),
     sectionOrder: parseSectionOrder(root.sectionOrder),
@@ -1194,6 +1212,17 @@ export function getHeroSecondBadge(content: Record<string, unknown> | null | und
   }
   const found = HERO_BADGE_PRESETS.find((badge) => badge.key === preset);
   return found ? { mode: 'badge', badge: found } : { mode: 'default' };
+}
+
+// The extra floating badges beyond the two built-in ones, resolved to presets.
+// Empty by default, so nothing extra floats until the owner adds any.
+export function getHeroExtraBadges(content: Record<string, unknown> | null | undefined): HeroBadgePreset[] {
+  const badges: HeroBadgePreset[] = [];
+  for (const key of getSiteContent(content).heroBadge.extraBadges) {
+    const found = HERO_BADGE_PRESETS.find((badge) => badge.key === key);
+    if (found) badges.push(found);
+  }
+  return badges;
 }
 
 // The decorative/secondary photo slots a template can expose for direct
