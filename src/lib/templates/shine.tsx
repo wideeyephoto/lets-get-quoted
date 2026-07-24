@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent, getSlotImage } from '@/lib/site-content';
+import { getHeaderStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent, getSlotImage } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
@@ -36,15 +36,17 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
   const heroBackground = getSlotImage(site.content, 'heroBackground', '');
   // Shine ships without a hero eyebrow, so this only appears once the owner sets
   // one — additive, no existing Shine site changes.
-  const heroEyebrow = getSiteContent(site.content).heroEyebrow;
+  const content = getSiteContent(site.content);
+  const heroEyebrow = content.heroEyebrow;
   const themeStyle = {
     '--theme-accent': site.accent_override || '#ffd60a',
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#0f1b2d',
     '--theme-display': site.header_font || 'var(--font-display), system-ui, sans-serif',
+    ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),
   } as CSSProperties;
 
   return (
-    <main className={`${styles.site} ${styles.shine}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)}>
+    <main className={`${styles.site} ${styles.shine}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-header={getHeaderStyle(site.template, site.content)}>
       <SiteAnnouncementBar site={site} />
       <ScrollReveal />
       <Parallax />

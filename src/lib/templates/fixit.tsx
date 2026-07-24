@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent } from '@/lib/site-content';
+import { getHeaderStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
@@ -23,7 +23,8 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
   void gallery;
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
   const heroBadge = getHeroBadge(site.content);
-  const heroEyebrow = getSiteContent(site.content).heroEyebrow;
+  const content = getSiteContent(site.content);
+  const heroEyebrow = content.heroEyebrow;
   // Second floating card. Its built-in default used to auto-pick whichever
   // preset differed from the primary badge — so a site shipped asserting "Free
   // Estimates" or "Same-Day Service" that the owner never chose. The default now
@@ -38,10 +39,11 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
     '--theme-accent': site.accent_override || '#f15a29',
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#ffffff',
     '--theme-display': site.header_font || 'var(--font-display), system-ui, sans-serif',
+    ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),
   } as CSSProperties;
 
   return (
-    <main className={`${styles.site} ${styles.fixit}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)}>
+    <main className={`${styles.site} ${styles.fixit}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-header={getHeaderStyle(site.template, site.content)}>
       <SiteAnnouncementBar site={site} />
       <ScrollReveal />
       <Parallax />

@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getPublishedHowItWorks, getPublishedServices, getPublishedTrustBadges, getPublishedWhyUs, getSiteContent, getSlotImage, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS } from '@/lib/site-content';
+import { getHeaderStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getPublishedHowItWorks, getPublishedServices, getPublishedTrustBadges, getPublishedWhyUs, getSiteContent, getSlotImage, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import ProjectShowcase from './ProjectShowcase';
 import type { TemplateProps } from '@/lib/templates/types';
@@ -30,11 +30,13 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
   const aboutImage = getSlotImage(site.content, 'about', STOCK_SITE_IMAGES[3].url);
   const gallery = galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES;
 
+  const content = getSiteContent(site.content);
   const themeStyle = {
     '--theme-accent': site.accent_override || '#12c2c9',
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#062b2e',
     '--theme-radius': '10px',
     '--theme-display': site.header_font || 'var(--font-care), "Segoe UI", system-ui, sans-serif',
+    ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),
   } as CSSProperties;
 
   const headlineWords = (site.headline || 'Exceptional Home Service').trim().split(/\s+/);
@@ -43,7 +45,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
 
   const whyUs = getPublishedWhyUs(site.content);
   const trustBadges = getPublishedTrustBadges(site.content);
-  const heroEyebrow = getSiteContent(site.content).heroEyebrow;
+  const heroEyebrow = content.heroEyebrow;
   const projectShowcase = getSiteContent(site.content).projectShowcase;
   const ownShowcase = projectShowcase.items.filter((item) => item.url && item.alt);
   // The owner's own project photos once they've added any (up to 10); otherwise
@@ -62,7 +64,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
   ];
 
   return (
-    <main className={`${styles.site} ${styles.handy}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)}>
+    <main className={`${styles.site} ${styles.handy}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-header={getHeaderStyle(site.template, site.content)}>
       <SiteAnnouncementBar site={site} />
       <ScrollReveal />
       <Parallax />

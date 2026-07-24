@@ -310,6 +310,25 @@ export const HERO_BADGE_STYLES = [
 
 const HERO_BADGE_STYLE_KEYS = new Set<string>(HERO_BADGE_STYLES.map((style) => style.key));
 
+// The three selectable header layouts, each rendered in the template's own skin
+// via data-header on the root. 'balanced' = logo left / nav centered / CTA right;
+// 'left' = logo + nav grouped left, CTA far right; 'cta' = a full-height accent
+// CTA block flush to the right edge.
+export const HEADER_STYLES = [
+  { key: 'balanced', label: 'Balanced — nav centered' },
+  { key: 'left', label: 'Left-aligned — nav beside logo' },
+  { key: 'cta', label: 'Bold CTA block' },
+] as const;
+
+// The header style a site renders. Empty string when the owner hasn't chosen —
+// which the CSS treats as "the template's own built-in header," so no existing
+// site's header changes. A chosen style (balanced|left|cta) fully overrides the
+// layout for that theme. The `template` arg is unused today but kept so a
+// per-template default could be introduced without touching call sites.
+export function getHeaderStyle(_template: string, content: Record<string, unknown> | null | undefined): string {
+  return getSiteContent(content).headerStyle;
+}
+
 export type SiteQuoteFormContent = {
   // Whether the FULL multi-field quote form renders at #contact. Off by
   // default — the smart-intake capture takes its place so visitors always
@@ -390,6 +409,13 @@ export type NormalizedSiteContent = {
   // The small label above the hero headline. Blank until the owner types one;
   // each template falls back to its own wording, so no live page changes.
   heroEyebrow: string;
+  // Font for the company-name wordmark in the header/footer. Blank = the
+  // template's own default; 'var(--theme-display)' = match the heading font;
+  // otherwise a specific font-family stack. Resolves via --brand-font.
+  brandFont: string;
+  // Header layout: '' = the template's natural style, else one of
+  // HEADER_STYLES ('balanced' | 'left' | 'cta'). Drives data-header on the root.
+  headerStyle: string;
   projectShowcase: SiteProjectShowcaseContent;
   services: SiteServicesContent;
   howItWorks: SiteHowItWorksContent;
@@ -801,6 +827,8 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       body: toString(introBlock.body).slice(0, 400),
     },
     heroEyebrow: toString(root.heroEyebrow).slice(0, 50),
+    brandFont: toString(root.brandFont).slice(0, 120),
+    headerStyle: HEADER_STYLES.some((style) => style.key === root.headerStyle) ? toString(root.headerStyle) : '',
     projectShowcase: {
       // On by default so existing Care sites keep their work band; the owner can
       // toggle it off to hide the whole section.

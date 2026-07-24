@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import SafeImage from './SafeImage';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getEstimateButtonLabel, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getPublishedServices, getSiteContent, getSlotImage, getWorkBand } from '@/lib/site-content';
+import { getEstimateButtonLabel, getHeaderStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getPublishedServices, getSiteContent, getSlotImage, getWorkBand } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
@@ -43,10 +43,11 @@ export default function GuildTemplate({ site }: TemplateProps) {
     '--theme-accent': site.accent_override || '#a5472d',
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#fff',
     '--theme-display': site.header_font || 'var(--font-guild-display), Georgia, Times New Roman, serif',
+    ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),
   } as CSSProperties;
 
   return (
-    <main className={`${styles.site} ${styles.guild}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)}>
+    <main className={`${styles.site} ${styles.guild}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-header={getHeaderStyle(site.template, site.content)}>
       <SiteAnnouncementBar site={site} />
       <ScrollReveal />
       <Parallax />

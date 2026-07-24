@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent, getSlotImage } from '@/lib/site-content';
+import { getHeaderStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent, getSlotImage } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
@@ -30,17 +30,19 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
       STOCK_SITE_IMAGES[2].url,
   );
   const heroBadge = getHeroBadge(site.content);
-  const heroEyebrow = getSiteContent(site.content).heroEyebrow;
+  const content = getSiteContent(site.content);
+  const heroEyebrow = content.heroEyebrow;
   // Coat had no built-in second badge, so 'default' renders nothing here.
   const secondBadge = getHeroSecondBadge(site.content);
   const themeStyle = {
     '--theme-accent': site.accent_override || '#e5322a',
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#ffffff',
     '--theme-display': site.header_font || 'var(--font-display), system-ui, sans-serif',
+    ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),
   } as CSSProperties;
 
   return (
-    <main className={`${styles.site} ${styles.coat}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)}>
+    <main className={`${styles.site} ${styles.coat}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-header={getHeaderStyle(site.template, site.content)}>
       <SiteAnnouncementBar site={site} />
       <ScrollReveal />
       <Parallax />

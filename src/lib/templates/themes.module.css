@@ -420,7 +420,10 @@
 .forge[data-mode='light'] .forgeFooter strong { color: #151514; }
 .forge .kicker { font-family: var(--font-mono); font-size: .7rem; font-weight: 500; letter-spacing: .18em; }
 .forgeHeader { position: absolute; z-index: 3; inset: 0 0 auto; background: linear-gradient(180deg, rgba(10,10,9,.62), transparent); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 84px; padding: 0 4vw; border-bottom: 1px solid rgba(255,255,255,.16); }
-.brand { display: inline-flex; align-items: center; gap: .75rem; font-size: .9rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+/* Wordmark renders as the owner typed it (no forced case) in their chosen brand
+   font, defaulting to Forge's body face. --brand-font is set on the root only
+   when the owner picks one. */
+.brand { display: inline-flex; align-items: center; gap: .75rem; font-size: .9rem; font-weight: 700; letter-spacing: .04em; font-family: var(--brand-font, var(--font-forge-body), Arial, sans-serif); }
 .brandBlock { display: grid; width: 36px; aspect-ratio: 1; place-items: center; background: var(--theme-accent); color: #111; font-family: var(--theme-display); font-size: 1.4rem; }
 .headerPhone { justify-self: end; font-family: var(--font-mono); font-size: .82rem; font-weight: 500; letter-spacing: .04em; transition: color .2s ease; }
 .headerPhone:hover { color: var(--theme-accent); }
@@ -495,7 +498,7 @@
 .guildHeader { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 100px; padding: 0 5vw; border-bottom: 1px solid #d9d2c1; }
 .guildBrand { display: flex; align-items: center; gap: .9rem; }
 .guildBrand span { display: flex; flex-direction: column; }
-.guildBrand strong { font-family: var(--theme-display); font-size: 1.35rem; font-weight: 600; letter-spacing: -.01em; }
+.guildBrand strong { font-family: var(--brand-font, var(--theme-display)); font-size: 1.35rem; font-weight: 600; letter-spacing: -.01em; }
 .guildBrand small { font-family: var(--font-mono); margin-top: .2rem; color: #6a6459; font-size: .64rem; letter-spacing: .1em; text-transform: uppercase; }
 .guildQuote { justify-self: end; padding-bottom: .35rem; border-bottom: 2px solid var(--theme-accent); font-weight: 700; letter-spacing: .02em; transition: color .2s ease; }
 .guildQuote:hover { color: var(--theme-accent); }
@@ -574,7 +577,7 @@
    their surfaces are color-mix(currentColor ...) and follow the root flip. */
 .vista[data-mode='dark'] .vistaContact { background: #1e2321; }
 .vistaHeader { position: sticky; top: 0; z-index: 20; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 74px; padding: 0 3vw; background: inherit; border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
-.vistaBrand { font-family: var(--theme-display); font-size: 1.1rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.vistaBrand { font-family: var(--brand-font, var(--theme-display)); font-size: 1.1rem; font-weight: 700; letter-spacing: .05em; }
 .vista .navLinks { font-size: .76rem; font-weight: 600; letter-spacing: .06em; gap: clamp(1.25rem, 3vw, 2.75rem); }
 .vista .navLinks a { position: relative; padding: .35rem 0; }
 .vista .navLinks a::after { content: ''; position: absolute; left: 0; right: 100%; bottom: 0; height: 1.5px; background: var(--theme-accent); transition: right .28s cubic-bezier(.2,.7,.2,1); }
@@ -710,7 +713,7 @@
 
 .careHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1.5rem; padding: .75rem clamp(1.25rem, 4vw, 3.5rem); background: rgba(255,255,255,.93); backdrop-filter: blur(10px); border-bottom: 1px solid #eef2f7; }
 .careBrand { display: inline-flex; align-items: center; gap: .55rem; font-size: 1.15rem; }
-.careBrand strong { font-family: var(--theme-display); font-weight: 700; color: #333d47; }
+.careBrand strong { font-family: var(--brand-font, var(--theme-display)); font-weight: 700; color: #333d47; }
 .careBrandMark { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px; background: var(--care-grad); color: #fff; font-size: 1.15rem; }
 .careHeader .navLinks { text-transform: none; letter-spacing: 0; font-size: .92rem; font-weight: 600; }
 .careHeaderActions { display: flex; align-items: center; gap: 1.1rem; justify-self: end; }
@@ -908,7 +911,7 @@
 .coat { background: #fff; color: #1b1a1f; font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; --coat-ink: #1b1a1f; --coat-muted: #6a6870; --coat-surface: #f4f3f6; --coat-maroon: #3a080b; }
 .coatHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1.5rem; padding: .85rem clamp(1.25rem, 4vw, 3.5rem); background: rgba(255,255,255,.94); backdrop-filter: blur(10px); border-bottom: 1px solid #ececf1; }
 .coatBrand { display: inline-flex; align-items: center; gap: .55rem; font-size: 1.1rem; color: var(--coat-ink); }
-.coatBrand strong { font-family: var(--theme-display); font-weight: 800; letter-spacing: -.01em; }
+.coatBrand strong { font-family: var(--brand-font, var(--theme-display)); font-weight: 800; letter-spacing: -.01em; }
 .coatBrandMark { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 9px; background: var(--theme-accent); color: #fff; font-size: .9rem; }
 .coatHeader .navLinks { text-transform: none; letter-spacing: 0; font-size: .94rem; font-weight: 600; }
 .coatHeaderCta { justify-self: end; display: inline-flex; align-items: center; gap: .4rem; min-height: 44px; padding: .6rem 1.25rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #fff); font-weight: 700; font-size: .9rem; white-space: nowrap; transition: transform .2s ease, filter .2s ease; }
@@ -943,7 +946,7 @@
 .coatContactCopy .coatBtn { justify-self: start; }
 .coatFooter { padding: clamp(1.5rem, 4vw, 2.5rem) clamp(1.25rem, 5vw, 4rem) clamp(2rem, 4vw, 3rem); }
 .coatFooterBar { display: flex; align-items: center; justify-content: space-between; gap: 1rem 1.5rem; flex-wrap: wrap; padding: 1.1rem clamp(1.25rem, 3vw, 2rem); border-radius: 18px; background: #17151a; color: #cfccd6; }
-.coatFooterBrand { display: inline-flex; align-items: center; gap: .5rem; font-family: var(--theme-display); font-weight: 800; font-size: 1.15rem; color: #fff; }
+.coatFooterBrand { display: inline-flex; align-items: center; gap: .5rem; font-family: var(--brand-font, var(--theme-display)); font-weight: 800; font-size: 1.15rem; color: #fff; }
 .coatFooterCall { display: inline-flex; align-items: center; gap: .5rem; min-height: 46px; padding: .5rem 1.2rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #fff); font-weight: 800; font-size: .95rem; }
 .coatFooter small { opacity: .6; font-size: .78rem; }
 .coat .extraSection { border-top: none; padding: clamp(3rem, 6vw, 5.5rem) clamp(1.25rem, 5vw, 4rem); }
@@ -998,7 +1001,7 @@
 .fixit { background: #fff; color: #2b2b30; font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; --fx-ink: #2b2b30; --fx-muted: #6a6a72; --fx-surface: #f5f5f7; }
 .fixitHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1.5rem; padding: .85rem clamp(1.25rem, 4vw, 3.5rem); background: rgba(255,255,255,.95); backdrop-filter: blur(10px); border-bottom: 1px solid #ececef; }
 .fixitBrand { display: inline-flex; align-items: center; gap: .5rem; font-size: 1.15rem; color: var(--fx-ink); }
-.fixitBrand strong { font-family: var(--theme-display); font-weight: 800; letter-spacing: -.01em; }
+.fixitBrand strong { font-family: var(--brand-font, var(--theme-display)); font-weight: 800; letter-spacing: -.01em; }
 .fixitBrandMark { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 8px; background: color-mix(in srgb, var(--theme-accent) 14%, transparent); color: var(--theme-accent); font-size: .85rem; }
 .fixitHeader .navLinks { text-transform: none; letter-spacing: 0; font-size: .94rem; font-weight: 600; }
 .fixitHeaderPhone { justify-self: end; display: inline-flex; align-items: center; gap: .5rem; font-weight: 700; font-size: .92rem; color: var(--fx-ink); white-space: nowrap; }
@@ -1037,7 +1040,7 @@
 .fixitContactCopy .fixitBtn { justify-self: start; }
 .fixitFooter { padding: clamp(1.5rem, 4vw, 2.5rem) clamp(1.25rem, 5vw, 4rem) clamp(2rem, 4vw, 3rem); }
 .fixitFooterBar { display: flex; align-items: center; justify-content: space-between; gap: 1rem 1.5rem; flex-wrap: wrap; padding: 1.1rem clamp(1.25rem, 3vw, 2rem); border-radius: 16px; background: #201f24; color: #c9c7cf; }
-.fixitFooterBrand { display: inline-flex; align-items: center; gap: .5rem; font-family: var(--theme-display); font-weight: 800; font-size: 1.15rem; color: #fff; }
+.fixitFooterBrand { display: inline-flex; align-items: center; gap: .5rem; font-family: var(--brand-font, var(--theme-display)); font-weight: 800; font-size: 1.15rem; color: #fff; }
 .fixitFooterCall { display: inline-flex; align-items: center; gap: .5rem; min-height: 46px; padding: .5rem 1.2rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #fff); font-weight: 800; font-size: .95rem; }
 .fixitFooter small { opacity: .6; font-size: .78rem; }
 .fixit .extraSection { border-top: none; padding: clamp(3rem, 6vw, 5.5rem) clamp(1.25rem, 5vw, 4rem); }
@@ -1079,7 +1082,7 @@
 .reno { background: #fff; color: #26303c; font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; --rn-navy: #1b2431; --rn-ink: #26303c; --rn-muted: #667180; --rn-surface: #f4f5f7; }
 .renoHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1.5rem; padding: .8rem clamp(1.25rem, 4vw, 3.5rem); background: rgba(255,255,255,.96); backdrop-filter: blur(10px); border-bottom: 3px solid var(--theme-accent); }
 .renoBrand { display: inline-flex; align-items: center; gap: .55rem; font-size: 1.2rem; color: var(--rn-ink); }
-.renoBrand strong { font-family: var(--theme-display); font-weight: 800; letter-spacing: -.01em; }
+.renoBrand strong { font-family: var(--brand-font, var(--theme-display)); font-weight: 800; letter-spacing: -.01em; }
 .renoHex { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 34px; height: 34px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: var(--theme-accent); color: var(--rn-navy); font-size: .9rem; }
 .renoHeader .navLinks { text-transform: uppercase; letter-spacing: .04em; font-size: .82rem; font-weight: 700; }
 .renoHeaderPhone { justify-self: end; display: inline-flex; align-items: center; gap: .5rem; font-weight: 800; font-size: .95rem; color: var(--rn-ink); white-space: nowrap; }
@@ -1105,7 +1108,7 @@
 .renoContactCopy .renoBtn { justify-self: start; }
 .renoFooter { background: var(--rn-navy); padding: clamp(1.5rem, 4vw, 2.5rem) clamp(1.25rem, 5vw, 4rem); }
 .renoFooterBar { display: flex; align-items: center; justify-content: space-between; gap: 1rem 1.5rem; flex-wrap: wrap; padding: 1.1rem 0; color: #aab4c0; }
-.renoFooterBrand { display: inline-flex; align-items: center; gap: .5rem; font-family: var(--theme-display); font-weight: 800; font-size: 1.2rem; color: #fff; }
+.renoFooterBrand { display: inline-flex; align-items: center; gap: .5rem; font-family: var(--brand-font, var(--theme-display)); font-weight: 800; font-size: 1.2rem; color: #fff; }
 .renoFooterCall { display: inline-flex; align-items: center; gap: .5rem; min-height: 46px; padding: .5rem 1.2rem; background: var(--theme-accent); color: var(--theme-on-accent, #1b2431); font-weight: 800; font-size: .95rem; }
 .renoFooter small { opacity: .6; font-size: .78rem; }
 .reno .extraSection { border-top: none; padding: clamp(3rem, 6vw, 5.5rem) clamp(1.25rem, 5vw, 4rem); }
@@ -1145,7 +1148,7 @@
    accent block fused to the right edge; lowercase wordmark for contrast. */
 .shineHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: stretch; gap: 1.5rem; padding: 0 0 0 clamp(1.25rem, 4vw, 3.5rem); background: linear-gradient(180deg, rgba(13,24,40,.97), rgba(15,27,45,.88)); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,.07); box-shadow: 0 1px 0 color-mix(in srgb, var(--theme-accent) 24%, transparent), 0 14px 34px -24px rgba(0,0,0,.7); color: #fff; }
 .shineBrand { display: inline-flex; align-items: center; gap: .6rem; padding-block: .7rem; font-size: 1.2rem; color: #fff; }
-.shineBrand strong { font-family: var(--theme-display); font-weight: 800; letter-spacing: -.03em; text-transform: lowercase; color: #fff; }
+.shineBrand strong { font-family: var(--brand-font, var(--theme-display)); font-weight: 800; letter-spacing: -.03em; color: #fff; }
 .shineBrandMark { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--theme-accent), color-mix(in srgb, var(--theme-accent) 45%, #7cc4ff)); color: #0f1b2d; font-size: 1rem; box-shadow: 0 8px 20px -8px color-mix(in srgb, var(--theme-accent) 75%, transparent); transition: transform .25s cubic-bezier(.34, 1.56, .64, 1); }
 .shineBrand:hover .shineBrandMark { transform: rotate(-6deg) scale(1.08); }
 .shineHeader .navLinks { align-self: center; justify-self: start; text-transform: none; letter-spacing: 0; font-size: .94rem; font-weight: 600; }
@@ -1334,7 +1337,7 @@
 .shineContactCopy .shineBtn { justify-self: start; }
 .shineFooter { background: var(--sh-navy); padding: clamp(1.5rem, 4vw, 2.5rem) clamp(1.25rem, 5vw, 4rem); }
 .shineFooterBar { display: flex; align-items: center; justify-content: space-between; gap: 1rem 1.5rem; flex-wrap: wrap; padding: 1.1rem 0; color: #9aa6b6; }
-.shineFooterBrand { display: inline-flex; align-items: center; gap: .5rem; font-family: var(--theme-display); font-weight: 800; font-size: 1.15rem; color: #fff; }
+.shineFooterBrand { display: inline-flex; align-items: center; gap: .5rem; font-family: var(--brand-font, var(--theme-display)); font-weight: 800; font-size: 1.15rem; color: #fff; }
 .shineFooterCall { display: inline-flex; align-items: center; gap: .5rem; min-height: 46px; padding: .5rem 1.2rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #0f1b2d); font-weight: 800; font-size: .95rem; }
 .shineFooter small { opacity: .6; font-size: .78rem; }
 .shine .extraSection { border-top: none; padding: clamp(3rem, 6vw, 5.5rem) clamp(1.25rem, 5vw, 4rem); }
@@ -1431,6 +1434,97 @@
 }
 @media (min-width: 901px) { .mobileNavOverlay { display: none; } }
 @media (prefers-reduced-motion: reduce) { .mobileNavOverlay { animation: none; } .mobileNavToggle span { transition: none; } }
+/* ===========================================================================
+   Selectable header layouts — data-header on the template root. Absent/empty =
+   the template's own built-in header (untouched, so no live site changes). A
+   chosen value overrides the layout for that theme. Desktop only: below 901px
+   every theme collapses to its own mobile header, and these must not fight it.
+   =========================================================================== */
+@media (min-width: 901px) {
+  /* — BALANCED: logo left · nav centered · CTA right — */
+  .forge[data-header='balanced'] .forgeHeader, .guild[data-header='balanced'] .guildHeader,
+  .vista[data-header='balanced'] .vistaHeader, .handy[data-header='balanced'] .careHeader,
+  .coat[data-header='balanced'] .coatHeader, .fixit[data-header='balanced'] .fixitHeader,
+  .reno[data-header='balanced'] .renoHeader, .shine[data-header='balanced'] .shineHeader {
+    grid-template-columns: 1fr auto 1fr; align-items: center;
+  }
+  .forge[data-header='balanced'] .navLinks, .guild[data-header='balanced'] .navLinks,
+  .vista[data-header='balanced'] .navLinks, .handy[data-header='balanced'] .navLinks,
+  .coat[data-header='balanced'] .navLinks, .fixit[data-header='balanced'] .navLinks,
+  .reno[data-header='balanced'] .navLinks, .shine[data-header='balanced'] .navLinks {
+    justify-self: center; margin-left: 0;
+  }
+  .forge[data-header='balanced'] .headerPhone, .guild[data-header='balanced'] .guildQuote,
+  .vista[data-header='balanced'] .vistaActions, .handy[data-header='balanced'] .careHeaderActions,
+  .coat[data-header='balanced'] .coatHeaderCta, .fixit[data-header='balanced'] .fixitHeaderPhone,
+  .reno[data-header='balanced'] .renoHeaderPhone, .shine[data-header='balanced'] .shineHeaderCta {
+    justify-self: end;
+  }
+
+  /* — LEFT: logo + nav grouped left · CTA far right — */
+  .forge[data-header='left'] .forgeHeader, .guild[data-header='left'] .guildHeader,
+  .vista[data-header='left'] .vistaHeader, .handy[data-header='left'] .careHeader,
+  .coat[data-header='left'] .coatHeader, .fixit[data-header='left'] .fixitHeader,
+  .reno[data-header='left'] .renoHeader, .shine[data-header='left'] .shineHeader {
+    grid-template-columns: auto 1fr auto; align-items: center;
+  }
+  .forge[data-header='left'] .navLinks, .guild[data-header='left'] .navLinks,
+  .vista[data-header='left'] .navLinks, .handy[data-header='left'] .navLinks,
+  .coat[data-header='left'] .navLinks, .fixit[data-header='left'] .navLinks,
+  .reno[data-header='left'] .navLinks, .shine[data-header='left'] .navLinks {
+    justify-self: start; margin-left: clamp(1rem, 3vw, 2.5rem);
+  }
+  .forge[data-header='left'] .headerPhone, .guild[data-header='left'] .guildQuote,
+  .vista[data-header='left'] .vistaActions, .handy[data-header='left'] .careHeaderActions,
+  .coat[data-header='left'] .coatHeaderCta, .fixit[data-header='left'] .fixitHeaderPhone,
+  .reno[data-header='left'] .renoHeaderPhone, .shine[data-header='left'] .shineHeaderCta {
+    justify-self: end;
+  }
+
+  /* — CTA BLOCK: full-height accent CTA flush to the right edge — */
+  .forge[data-header='cta'] .forgeHeader, .guild[data-header='cta'] .guildHeader,
+  .vista[data-header='cta'] .vistaHeader, .handy[data-header='cta'] .careHeader,
+  .coat[data-header='cta'] .coatHeader, .fixit[data-header='cta'] .fixitHeader,
+  .reno[data-header='cta'] .renoHeader, .shine[data-header='cta'] .shineHeader {
+    grid-template-columns: auto 1fr auto; align-items: stretch;
+    padding-top: 0; padding-bottom: 0; padding-right: 0;
+  }
+  .forge[data-header='cta'] .navLinks, .guild[data-header='cta'] .navLinks,
+  .vista[data-header='cta'] .navLinks, .handy[data-header='cta'] .navLinks,
+  .coat[data-header='cta'] .navLinks, .fixit[data-header='cta'] .navLinks,
+  .reno[data-header='cta'] .navLinks, .shine[data-header='cta'] .navLinks {
+    justify-self: center; margin-left: 0;
+  }
+  /* The rightmost CTA link/button becomes the block. */
+  .forge[data-header='cta'] .headerPhone, .guild[data-header='cta'] .guildQuote,
+  .vista[data-header='cta'] .vistaMenu, .handy[data-header='cta'] .careBtn,
+  .coat[data-header='cta'] .coatHeaderCta, .fixit[data-header='cta'] .fixitHeaderPhone,
+  .reno[data-header='cta'] .renoHeaderPhone, .shine[data-header='cta'] .shineHeaderCta {
+    align-self: stretch; display: inline-flex; align-items: center; gap: .5rem;
+    min-height: 60px; margin: 0; border: 0; border-bottom: 0; border-radius: 0;
+    padding: 0 clamp(1.3rem, 2.5vw, 2.3rem);
+    background: var(--theme-accent); color: var(--theme-on-accent, #111);
+    font-weight: 800; white-space: nowrap;
+  }
+  /* Vista and Care wrap phone + button in an actions div: stretch it flush and
+     let the phone stay vertically centred beside the block. */
+  .vista[data-header='cta'] .vistaActions, .handy[data-header='cta'] .careHeaderActions {
+    align-self: stretch; align-items: stretch; gap: 0; padding-right: 0;
+  }
+  .vista[data-header='cta'] .vistaPhone, .handy[data-header='cta'] .careHeaderPhone {
+    align-self: center; margin-right: clamp(.7rem, 2vw, 1.15rem);
+  }
+
+  /* Shine's built-in header IS the CTA-block style, so switching it to balanced
+     or left has to undo the edge block: re-pad the header and restore the pill. */
+  .shine[data-header='balanced'] .shineHeader, .shine[data-header='left'] .shineHeader {
+    align-items: center; padding: 0 clamp(1.25rem, 4vw, 3.5rem);
+  }
+  .shine[data-header='balanced'] .shineHeaderCta, .shine[data-header='left'] .shineHeaderCta {
+    align-self: center; min-height: 44px; border-radius: 999px; padding: .6rem 1.3rem; font-weight: 800;
+  }
+}
+
 /* Pexels stock-photo attribution (required credit line). */
 .pexelsCredit { margin: 0; padding: 1rem 1.25rem; text-align: center; font-size: .72rem; color: var(--muted, #8a8f98); opacity: .8; }
 .pexelsCredit a { color: inherit; text-decoration: underline; }
