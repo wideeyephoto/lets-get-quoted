@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeaderStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
@@ -35,15 +35,17 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
     ? { key: 'local', icon: '⌂', title: 'Proudly local', subtitle: site.service_area }
     : null;
   const secondBadge = second.mode === 'none' ? null : second.mode === 'default' ? autoSecond : second.badge;
+  const scheme = getColorScheme(content.colorScheme);
   const themeStyle = {
-    '--theme-accent': site.accent_override || '#f15a29',
-    '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#ffffff',
+    '--theme-accent': site.accent_override || scheme?.accent || '#f15a29',
+    '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : (scheme?.onAccent || '#ffffff'),
     '--theme-display': site.header_font || 'var(--font-display), system-ui, sans-serif',
     ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),
+    ...(scheme ? { '--c-bg': scheme.bg, '--c-surface': scheme.surface, '--c-ink': scheme.ink, '--c-muted': scheme.muted, '--c-line': scheme.line, '--c-deep': scheme.deep, '--c-on-deep': scheme.onDeep, background: scheme.bg, color: scheme.ink } : {}),
   } as CSSProperties;
 
   return (
-    <main className={`${styles.site} ${styles.fixit}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-header={getHeaderStyle(site.template, site.content)}>
+    <main className={`${styles.site} ${styles.fixit}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-header={getHeaderStyle(site.template, site.content)}>
       <SiteAnnouncementBar site={site} />
       <ScrollReveal />
       <Parallax />

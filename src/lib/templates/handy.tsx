@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeaderStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getPublishedHowItWorks, getPublishedServices, getPublishedTrustBadges, getPublishedWhyUs, getSiteContent, getSlotImage, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getPublishedHowItWorks, getPublishedServices, getPublishedTrustBadges, getPublishedWhyUs, getSiteContent, getSlotImage, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import ProjectShowcase from './ProjectShowcase';
 import type { TemplateProps } from '@/lib/templates/types';
@@ -31,12 +31,14 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
   const gallery = galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES;
 
   const content = getSiteContent(site.content);
+  const scheme = getColorScheme(content.colorScheme);
   const themeStyle = {
-    '--theme-accent': site.accent_override || '#12c2c9',
-    '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#062b2e',
+    '--theme-accent': site.accent_override || scheme?.accent || '#12c2c9',
+    '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : (scheme?.onAccent || '#062b2e'),
     '--theme-radius': '10px',
     '--theme-display': site.header_font || 'var(--font-care), "Segoe UI", system-ui, sans-serif',
     ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),
+    ...(scheme ? { '--c-bg': scheme.bg, '--c-surface': scheme.surface, '--c-ink': scheme.ink, '--c-muted': scheme.muted, '--c-line': scheme.line, '--c-deep': scheme.deep, '--c-on-deep': scheme.onDeep, background: scheme.bg, color: scheme.ink } : {}),
   } as CSSProperties;
 
   const headlineWords = (site.headline || 'Exceptional Home Service').trim().split(/\s+/);
@@ -64,7 +66,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
   ];
 
   return (
-    <main className={`${styles.site} ${styles.handy}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-header={getHeaderStyle(site.template, site.content)}>
+    <main className={`${styles.site} ${styles.handy}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-header={getHeaderStyle(site.template, site.content)}>
       <SiteAnnouncementBar site={site} />
       <ScrollReveal />
       <Parallax />

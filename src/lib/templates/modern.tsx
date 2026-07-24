@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import SafeImage from './SafeImage';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeaderStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent, getWorkBand } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent, getWorkBand } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroImageCycle from './HeroImageCycle';
@@ -26,15 +26,17 @@ export default function VistaTemplate({ site }: TemplateProps) {
   // Vista's work heading is an eyebrow/count row with no h2, so a title renders
   // above it — additive, never changing a page that has no title set.
   const secondBadge = getHeroSecondBadge(site.content);
+  const scheme = getColorScheme(content.colorScheme);
   const themeStyle = {
-    '--theme-accent': site.accent_override || '#35dd9e',
-    '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#111',
+    '--theme-accent': site.accent_override || scheme?.accent || '#35dd9e',
+    '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : (scheme?.onAccent || '#111'),
     '--theme-display': site.header_font || 'var(--font-display), Arial Black, Helvetica, sans-serif',
     ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),
+    ...(scheme ? { '--c-bg': scheme.bg, '--c-surface': scheme.surface, '--c-ink': scheme.ink, '--c-muted': scheme.muted, '--c-line': scheme.line, '--c-deep': scheme.deep, '--c-on-deep': scheme.onDeep, background: scheme.bg, color: scheme.ink } : {}),
   } as CSSProperties;
 
   return (
-    <main className={`${styles.site} ${styles.vista}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-header={getHeaderStyle(site.template, site.content)}>
+    <main className={`${styles.site} ${styles.vista}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-header={getHeaderStyle(site.template, site.content)}>
       <SiteAnnouncementBar site={site} />
       <ScrollReveal />
       <Parallax />
