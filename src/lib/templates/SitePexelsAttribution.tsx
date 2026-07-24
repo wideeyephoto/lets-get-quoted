@@ -19,6 +19,7 @@ export default function SitePexelsAttribution({ site }: { site: Site }) {
       ...Object.values(content.images),
       ...content.heroImages,
       ...content.showcase.items.map((item) => item.url),
+      ...content.projectShowcase.items.map((item) => item.url),
     ].filter((url): url is string => Boolean(url)),
   );
   const stock = content.stockImages.filter((image) => image.provider === 'pexels' && displayed.has(image.imageUrl));

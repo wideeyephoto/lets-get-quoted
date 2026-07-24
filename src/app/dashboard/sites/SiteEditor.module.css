@@ -341,6 +341,10 @@
 .subdomainCardHead p { margin: 0; font-size: .84rem; color: #aeb9c7; line-height: 1.5; }
 .subdomainCardHead p span { color: #ff9b54; font-weight: 700; }
 .subdomainCard .formField { margin: 0; }
+
+/* Reviews card nudge toward real Google reviews (no fabricated testimonials). */
+.reviewsPrompt { display: grid; gap: .7rem; justify-items: start; padding: .85rem 1rem; border: 1px solid rgba(255,122,33,.32); border-left: 3px solid #ff7a21; border-radius: 10px; background: rgba(255,122,33,.07); font-size: .84rem; line-height: 1.5; color: #cdd5e0; }
+.reviewsPrompt strong { color: #f7f5ef; }
 /* Guided custom-domain connector (DomainConnector.tsx) */
 .connector { display: grid; gap: .85rem; padding: 1rem 1.1rem; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; background: rgba(255,255,255,.03); }
 .connectorHead { display: grid; gap: .2rem; }

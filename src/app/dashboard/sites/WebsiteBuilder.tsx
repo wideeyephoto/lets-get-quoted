@@ -183,6 +183,19 @@ function applyStockImages(current: Site, images: StockImageResult): { heroUrl: s
       intro: wasEmpty ? STOCK_SHOWCASE_INTRO : content.showcase.intro,
       items: [...keptItems, ...images.gallery],
     };
+
+    // Also seed the Project showcase band with 4 of the same attributed stock
+    // photos — but only when the owner hasn't added their own. They're the same
+    // Pexels-credited, representative images as the gallery (source: 'stock'),
+    // never claimed as the contractor's real completed jobs.
+    const ownProject = content.projectShowcase.items.filter((item) => item.source === 'upload' || !isStockUrl(stock, item.url));
+    if (ownProject.length === 0) {
+      contentUpdates.projectShowcase = {
+        ...content.projectShowcase,
+        enabled: true,
+        items: images.gallery.slice(0, 4).map((image) => ({ ...image })),
+      };
+    }
   }
 
   // Keep attribution accurate: only record assignments we actually applied, and
@@ -1674,6 +1687,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
                 <SectionCard title="Customer reviews" description="Show quotes from real customers on your public site." evidence="97% of homeowners read reviews before hiring a local pro, and the first few weigh the most." enabled={siteContent.testimonials.enabled} onToggleEnabled={(value) => updateTestimonials({ ...siteContent.testimonials, enabled: value })} {...contentHint(siteContent.testimonials.enabled, reviewCount, 'review')} open={openSection === 'testimonials'} onToggleOpen={() => toggleSection('testimonials')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.testimonials.title} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, title: event.target.value })} /></label>
+                  {reviewCount === 0 && (
+                    <div className={styles.reviewsPrompt}>
+                      <strong>Fill this with real reviews.</strong> Connect your Google Business Profile to pull in verified reviews automatically — the honest, one-click way. Never post reviews you didn&apos;t receive.
+                      {siteContent.testimonials.sourceMode === 'manual' && <button type="button" className={styles.secondaryAction} onClick={() => updateTestimonials({ ...siteContent.testimonials, sourceMode: 'mixed' })}>Connect Google reviews</button>}
+                    </div>
+                  )}
                   <div className={styles.formColumns}>
                     <label className={styles.formField}><span>Source mode</span><select value={siteContent.testimonials.sourceMode} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, sourceMode: event.target.value as SiteTestimonialsContent['sourceMode'] })}><option value="manual">Manual testimonials</option><option value="mixed">Manual + Google</option><option value="google">Google reviews only</option></select></label>
                     <label className={styles.formField}><span>Display style</span><select value={siteContent.testimonials.displayStyle} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, displayStyle: event.target.value as SiteTestimonialsContent['displayStyle'] })}><option value="grid">Grid — static cards</option><option value="carousel">Carousel — auto-sliding</option><option value="spotlight">Spotlight — one at a time</option></select></label>
