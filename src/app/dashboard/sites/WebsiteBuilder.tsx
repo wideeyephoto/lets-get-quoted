@@ -2021,19 +2021,25 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     ))}
                   </ul>
                 </div>
-                <label className={styles.formField}><span>Free letsgetquoted.com subdomain</span>
-                  <div className={styles.domainControl}>
-                    <div className={styles.subdomainInput}>
-                      <input id="pub-subdomain" value={site.subdomain || ''} onChange={(event) => handleChange('subdomain', event.target.value.toLowerCase() || null)} placeholder="northline-builders" aria-label="Subdomain" />
-                      <span className={styles.subdomainSuffix} aria-hidden="true">.{ROOT_DOMAIN}</span>
-                    </div>
-                    <button type="button" onClick={checkSubdomain} disabled={isPending}>Check</button>
+                <div className={styles.subdomainCard}>
+                  <div className={styles.subdomainCardHead}>
+                    <span className={styles.subdomainBadge}>★ Fastest way to go live</span>
+                    <strong>Get your free address</strong>
+                    <p>Free, instant, and included — pick a name and you&apos;re live at <span>{ROOT_DOMAIN}</span>. No DNS, no waiting.</p>
                   </div>
-                  <small>{subdomainStatus === 'available' ? `✓ ${site.subdomain}.${ROOT_DOMAIN} is available` : subdomainStatus === 'taken' ? '✕ That subdomain is already taken — try another' : 'Lowercase letters, numbers, and hyphens.'}</small>
-                </label>
-                <label className={styles.formField}><span>Custom domain</span><div className={styles.domainControl}><input value={site.custom_domain || ''} onChange={(event) => handleChange('custom_domain', event.target.value || null)} placeholder="www.yourbusiness.com" /><button type="button" onClick={verifyCustomDomain} disabled={isPending}>{domainStatus === 'checking' ? 'Checking...' : 'Verify DNS'}</button></div><small>{domainStatus === 'verified' ? 'Verified and connected.' : 'Add a CNAME record pointing to domains.letsgetquoted.com.'}</small></label>
+                  <label className={styles.formField}>
+                    <div className={styles.domainControl}>
+                      <div className={styles.subdomainInput}>
+                        <input id="pub-subdomain" value={site.subdomain || ''} onChange={(event) => handleChange('subdomain', event.target.value.toLowerCase() || null)} placeholder="northline-builders" aria-label="Subdomain" />
+                        <span className={styles.subdomainSuffix} aria-hidden="true">.{ROOT_DOMAIN}</span>
+                      </div>
+                      <button type="button" onClick={checkSubdomain} disabled={isPending}>Check</button>
+                    </div>
+                    <small>{subdomainStatus === 'available' ? `✓ ${site.subdomain}.${ROOT_DOMAIN} is available` : subdomainStatus === 'taken' ? '✕ That subdomain is already taken — try another' : 'Lowercase letters, numbers, and hyphens.'}</small>
+                  </label>
+                </div>
                 <DomainConnector domain={site.custom_domain} target="domains.letsgetquoted.com" />
-                <p className={styles.movedNote}>Google title &amp; description moved to <strong>Business → How you show up on Google</strong>.</p>
+                <label className={styles.formField}><span>Custom domain</span><div className={styles.domainControl}><input value={site.custom_domain || ''} onChange={(event) => handleChange('custom_domain', event.target.value || null)} placeholder="www.yourbusiness.com" /><button type="button" onClick={verifyCustomDomain} disabled={isPending}>{domainStatus === 'checking' ? 'Checking...' : 'Verify DNS'}</button></div><small>{domainStatus === 'verified' ? 'Verified and connected.' : 'Add a CNAME record pointing to domains.letsgetquoted.com.'}</small></label>
               </div>
             )}
           </div>
