@@ -1169,8 +1169,69 @@
 .shineBadgeSupport strong { display: block; }
 .shineBadgeSupport small { display: block; margin-top: .15rem; font-size: .72rem; font-weight: 600; color: #5c6675; }
 @media (prefers-reduced-motion: reduce) {
-  .shineBadgeIcon, .coatHeroBadgeIcon, .fixitHeroCardIcon { transition: none; }
-  .shineBadge:hover .shineBadgeIcon, .coatHeroBadge:hover .coatHeroBadgeIcon, .fixitHeroCard:hover .fixitHeroCardIcon { transform: none; }
+  .shineBadgeIcon, .coatHeroBadgeIcon, .fixitHeroCardIcon, .forgeBadgeIcon, .vistaBadgeIcon { transition: none; }
+  .shineBadge:hover .shineBadgeIcon, .coatHeroBadge:hover .coatHeroBadgeIcon, .fixitHeroCard:hover .fixitHeroCardIcon,
+  .forgeBadge:hover .forgeBadgeIcon, .vistaBadge:hover .vistaBadgeIcon { transform: none; }
+}
+
+/* Hero badges for the themes that previously ignored the Hero-badge control
+   entirely (Forge, Vista, Reno), plus Coat's second badge. Each is namespaced
+   and drawn in its own theme idiom — parity is about capability, not looks. */
+
+/* Forge — a stamped steel spec plate, square corners, mono sub-label. */
+.forgeBadge { position: absolute; z-index: 3; left: clamp(1.25rem, 5vw, 4rem); bottom: clamp(1.5rem, 6vw, 3.5rem); display: flex; align-items: center; gap: .65rem; padding: .7rem .95rem; border-radius: 2px; background: #12161c; border: 1px solid color-mix(in srgb, var(--theme-accent) 35%, transparent); color: #f3efe6; box-shadow: 0 20px 40px -20px rgba(0,0,0,.7); }
+.forgeBadge strong { display: block; font-family: var(--theme-display); font-size: .95rem; letter-spacing: .02em; text-transform: uppercase; }
+.forgeBadge small { display: block; font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: #9aa2ae; }
+.forgeBadgeIcon { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 2px; background: var(--theme-accent); color: var(--theme-on-accent, #111); font-weight: 900; }
+.forgeBadgeSecond { bottom: calc(clamp(1.5rem, 6vw, 3.5rem) + 4.6rem); }
+
+/* Vista — a clean white pill, the same language as its header CTA. */
+.vistaBadge { position: absolute; z-index: 3; right: clamp(1rem, 4vw, 3rem); top: clamp(6rem, 18vw, 10rem); display: flex; align-items: center; gap: .6rem; padding: .6rem .95rem; border-radius: 999px; background: #fff; color: #0d0f0d; box-shadow: 0 20px 44px -22px rgba(0,0,0,.45); }
+.vistaBadge strong { display: block; font-size: .88rem; font-weight: 700; }
+.vistaBadge small { display: block; font-size: .7rem; color: #5f6b62; }
+.vistaBadgeIcon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #111); font-weight: 800; }
+.vistaBadgeSecond { top: calc(clamp(6rem, 18vw, 10rem) + 4.4rem); }
+
+/* Reno — the hero's hexagon motif, promoted from decoration to a real badge. */
+.renoBadge { position: absolute; z-index: 3; left: 4%; bottom: 10%; display: flex; align-items: center; gap: .6rem; padding: .6rem .9rem; background: var(--rn-navy, #1b2431); border: 1px solid color-mix(in srgb, var(--theme-accent) 40%, transparent); color: #fff; box-shadow: 0 20px 40px -20px rgba(0,0,0,.55); }
+.renoBadge strong { display: block; font-size: .88rem; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; }
+.renoBadge small { display: block; font-size: .68rem; font-weight: 600; color: #b9c2cf; }
+.renoBadgeHex { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 34px; height: 34px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: var(--theme-accent); color: var(--theme-on-accent, #1b2431); font-size: .95rem; }
+.renoBadgeSecond { bottom: calc(10% + 4.6rem); }
+
+/* Coat — the second badge mirrors the first on the opposite corner. */
+.coatHeroBadgeSecond { left: auto; right: -4%; top: auto; bottom: 10%; }
+
+/* The new badges opt into the shared solid/outline/soft treatments. */
+.site[data-badge-style='outline'] .forgeBadge,
+.site[data-badge-style='outline'] .vistaBadge,
+.site[data-badge-style='outline'] .renoBadge { background: transparent; border: 2px solid rgba(255,255,255,.82); box-shadow: none; color: #fff; }
+.site[data-badge-style='soft'] .forgeBadge,
+.site[data-badge-style='soft'] .vistaBadge,
+.site[data-badge-style='soft'] .renoBadge { background: rgba(255,255,255,.16); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.34); color: #fff; }
+.site[data-badge-style='outline'] .forgeBadge small, .site[data-badge-style='soft'] .forgeBadge small,
+.site[data-badge-style='outline'] .vistaBadge strong, .site[data-badge-style='soft'] .vistaBadge strong,
+.site[data-badge-style='outline'] .vistaBadge small, .site[data-badge-style='soft'] .vistaBadge small,
+.site[data-badge-style='outline'] .renoBadge small, .site[data-badge-style='soft'] .renoBadge small { color: #fff; }
+
+/* Same detailing as the other themes' badges: accent rail + haloed icon. */
+.forgeBadge, .vistaBadge, .renoBadge { overflow: hidden; transition: box-shadow .3s ease; }
+.forgeBadge::before, .vistaBadge::before, .renoBadge::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; pointer-events: none;
+  background: linear-gradient(180deg, var(--theme-accent), color-mix(in srgb, var(--theme-accent) 20%, transparent));
+}
+.forgeBadge:hover, .vistaBadge:hover, .renoBadge:hover { box-shadow: 0 28px 54px -20px rgba(0,0,0,.55); }
+.forgeBadgeIcon, .vistaBadgeIcon {
+  flex: 0 0 auto;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--theme-accent) 14%, transparent), 0 8px 16px -8px color-mix(in srgb, var(--theme-accent) 55%, transparent);
+  transition: transform .3s cubic-bezier(.22, .61, .36, 1);
+}
+.forgeBadge:hover .forgeBadgeIcon, .vistaBadge:hover .vistaBadgeIcon { transform: scale(1.09); }
+
+/* Floating badges crowd a phone hero — keep the primary, drop the extra. */
+@media (max-width: 760px) {
+  .forgeBadgeSecond, .vistaBadgeSecond, .renoBadgeSecond, .coatHeroBadgeSecond { display: none; }
+  .vistaBadge { top: auto; bottom: 1rem; right: 1rem; }
 }
 .shineAvatars { display: inline-flex; flex: 0 0 auto; }
 .shineAvatars span { width: 24px; height: 24px; border-radius: 999px; border: 2px solid #fff; margin-left: -8px; background: linear-gradient(135deg, #cbd3dd, #8b97a6); }

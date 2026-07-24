@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getLogoStyle, getSlotImage } from '@/lib/site-content';
+import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSlotImage } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
@@ -30,6 +30,8 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
       STOCK_SITE_IMAGES[2].url,
   );
   const heroBadge = getHeroBadge(site.content);
+  // Coat had no built-in second badge, so 'default' renders nothing here.
+  const secondBadge = getHeroSecondBadge(site.content);
   const themeStyle = {
     '--theme-accent': site.accent_override || '#e5322a',
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#ffffff',
@@ -78,7 +80,13 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
           {heroBadge && (
             <div className={styles.coatHeroBadge} data-edit="heroBadge">
               <span className={styles.coatHeroBadgeIcon} aria-hidden="true">{heroBadge.icon}</span>
-              <div><strong>{heroBadge.title}</strong><small>{heroBadge.subtitle}</small></div>
+              <div><strong>{heroBadge.title}</strong>{heroBadge.subtitle && <small>{heroBadge.subtitle}</small>}</div>
+            </div>
+          )}
+          {secondBadge.mode === 'badge' && (
+            <div className={`${styles.coatHeroBadge} ${styles.coatHeroBadgeSecond}`} data-parallax="0.19" data-edit="heroBadge">
+              <span className={styles.coatHeroBadgeIcon} aria-hidden="true">{secondBadge.badge.icon}</span>
+              <div><strong>{secondBadge.badge.title}</strong>{secondBadge.badge.subtitle && <small>{secondBadge.badge.subtitle}</small>}</div>
             </div>
           )}
         </div>

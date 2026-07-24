@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroImages, getLogoStyle } from '@/lib/site-content';
+import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroImageCycle from './HeroImageCycle';
@@ -21,6 +21,9 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
   const gallery = galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES.slice(0, 4);
   void gallery;
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
+  const heroBadge = getHeroBadge(site.content);
+  // Reno had no built-in second badge, so 'default' renders nothing here.
+  const secondBadge = getHeroSecondBadge(site.content);
   const themeStyle = {
     '--theme-accent': site.accent_override || '#f5b421',
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#1b2431',
@@ -28,7 +31,7 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
   } as CSSProperties;
 
   return (
-    <main className={`${styles.site} ${styles.reno}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode} data-logo-style={getLogoStyle(site.content)}>
+    <main className={`${styles.site} ${styles.reno}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)}>
       <SiteAnnouncementBar site={site} />
       <ScrollReveal />
       <Parallax />
@@ -59,7 +62,21 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
         </div>
         <div className={styles.renoHeroMedia}>
           <HeroImageCycle images={getHeroImages(site.content, heroImage)} className={styles.renoHeroImg} alt="Home renovation work" />
-          <span className={styles.renoHexBadge} data-parallax="0.16" aria-hidden="true">⌂</span>
+          {heroBadge ? (
+            <div className={styles.renoBadge} data-parallax="0.16" data-edit="heroBadge">
+              <span className={styles.renoBadgeHex} aria-hidden="true">{heroBadge.icon}</span>
+              <div><strong>{heroBadge.title}</strong>{heroBadge.subtitle && <small>{heroBadge.subtitle}</small>}</div>
+            </div>
+          ) : (
+            /* No badge chosen — keep the purely decorative hex the hero was built around. */
+            <span className={styles.renoHexBadge} data-parallax="0.16" aria-hidden="true">⌂</span>
+          )}
+          {secondBadge.mode === 'badge' && (
+            <div className={`${styles.renoBadge} ${styles.renoBadgeSecond}`} data-parallax="0.22" data-edit="heroBadge">
+              <span className={styles.renoBadgeHex} aria-hidden="true">{secondBadge.badge.icon}</span>
+              <div><strong>{secondBadge.badge.title}</strong>{secondBadge.badge.subtitle && <small>{secondBadge.badge.subtitle}</small>}</div>
+            </div>
+          )}
           <span className={styles.renoHexGhost} data-parallax="0.26" aria-hidden="true" />
         </div>
       </section>

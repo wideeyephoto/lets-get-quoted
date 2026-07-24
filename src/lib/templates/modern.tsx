@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import SafeImage from './SafeImage';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroImages, getLogoStyle } from '@/lib/site-content';
+import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroImageCycle from './HeroImageCycle';
@@ -18,6 +18,9 @@ import styles from './themes.module.css';
 export default function VistaTemplate({ site, galleryImages = [] }: TemplateProps) {
   const gallery = galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES.slice(0, 5);
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[0].url;
+  const heroBadge = getHeroBadge(site.content);
+  // Vista had no built-in second badge, so 'default' renders nothing here.
+  const secondBadge = getHeroSecondBadge(site.content);
   const themeStyle = {
     '--theme-accent': site.accent_override || '#35dd9e',
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#111',
@@ -25,7 +28,7 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
   } as CSSProperties;
 
   return (
-    <main className={`${styles.site} ${styles.vista}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode} data-logo-style={getLogoStyle(site.content)}>
+    <main className={`${styles.site} ${styles.vista}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)}>
       <SiteAnnouncementBar site={site} />
       <ScrollReveal />
       <Parallax />
@@ -48,6 +51,18 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
           <HeroQuickForm site={site} />
           <SiteProofStrip site={site} />
         </div>
+        {heroBadge && (
+          <div className={styles.vistaBadge} data-parallax="0.12" data-edit="heroBadge">
+            <span className={styles.vistaBadgeIcon} aria-hidden="true">{heroBadge.icon}</span>
+            <div><strong>{heroBadge.title}</strong>{heroBadge.subtitle && <small>{heroBadge.subtitle}</small>}</div>
+          </div>
+        )}
+        {secondBadge.mode === 'badge' && (
+          <div className={`${styles.vistaBadge} ${styles.vistaBadgeSecond}`} data-parallax="0.18" data-edit="heroBadge">
+            <span className={styles.vistaBadgeIcon} aria-hidden="true">{secondBadge.badge.icon}</span>
+            <div><strong>{secondBadge.badge.title}</strong>{secondBadge.badge.subtitle && <small>{secondBadge.badge.subtitle}</small>}</div>
+          </div>
+        )}
         <a className={styles.vistaScroll} href="#studio" aria-label="Skip to about section">Explore <span aria-hidden="true">↓</span></a>
       </section>
 

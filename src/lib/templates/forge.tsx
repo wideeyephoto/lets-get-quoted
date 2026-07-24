@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import SafeImage from './SafeImage';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroImages, getLogoStyle } from '@/lib/site-content';
+import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroImageCycle from './HeroImageCycle';
@@ -19,6 +19,10 @@ import styles from './themes.module.css';
 export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProps) {
   const gallery = galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES.slice(1, 4);
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
+  const heroBadge = getHeroBadge(site.content);
+  // 'default' means "the template's own built-in second badge" — Forge never had
+  // one, so only an explicitly chosen badge renders here. Nothing is invented.
+  const secondBadge = getHeroSecondBadge(site.content);
   const themeStyle = {
     '--theme-accent': site.accent_override || '#f0b429',
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#111',
@@ -26,7 +30,7 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
   } as CSSProperties;
 
   return (
-    <main className={`${styles.site} ${styles.forge}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode} data-logo-style={getLogoStyle(site.content)}>
+    <main className={`${styles.site} ${styles.forge}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)}>
       <SiteAnnouncementBar site={site} />
       <ScrollReveal />
       <Parallax />
@@ -50,6 +54,18 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
           <HeroQuickForm site={site} />
           <SiteProofStrip site={site} />
         </div>
+        {heroBadge && (
+          <div className={styles.forgeBadge} data-parallax="0.12" data-edit="heroBadge">
+            <span className={styles.forgeBadgeIcon} aria-hidden="true">{heroBadge.icon}</span>
+            <div><strong>{heroBadge.title}</strong>{heroBadge.subtitle && <small>{heroBadge.subtitle}</small>}</div>
+          </div>
+        )}
+        {secondBadge.mode === 'badge' && (
+          <div className={`${styles.forgeBadge} ${styles.forgeBadgeSecond}`} data-parallax="0.2" data-edit="heroBadge">
+            <span className={styles.forgeBadgeIcon} aria-hidden="true">{secondBadge.badge.icon}</span>
+            <div><strong>{secondBadge.badge.title}</strong>{secondBadge.badge.subtitle && <small>{secondBadge.badge.subtitle}</small>}</div>
+          </div>
+        )}
         <div className={styles.forgeIndex} data-parallax="0.18" aria-hidden="true">01 / 03</div>
       </section>
 
