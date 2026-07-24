@@ -183,14 +183,15 @@ export const DEFAULT_WHY_US_POINTS = [
   'Quality work, guaranteed',
 ];
 
-// Care template's "Our work" photo band heading.
+// Heading over a template's built-in "recent work" photo band, which renders
+// the site's image gallery. Forge, Guild and Vista each have one. Both fields
+// are blank until the owner types something: the template supplies its own
+// wording as the fallback, so each keeps its voice ("Selected work / Made for
+// real life." on Forge) instead of collapsing to one shared default.
 export type SiteWorkGalleryContent = {
   eyebrow: string;
   title: string;
 };
-
-export const DEFAULT_WORK_GALLERY_EYEBROW = 'Our work';
-export const DEFAULT_WORK_GALLERY_TITLE = 'Quality you can see';
 
 // "Project showcase" band — its OWN editable set of project photos (separate
 // from the Photo gallery), presented as an animated slider in one of three
@@ -775,8 +776,8 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       points: whyUs.points === undefined ? [...DEFAULT_WHY_US_POINTS] : parseWhyPoints(whyUs.points),
     },
     workGallery: {
-      eyebrow: toString(workGallery.eyebrow, DEFAULT_WORK_GALLERY_EYEBROW).slice(0, 40),
-      title: toString(workGallery.title, DEFAULT_WORK_GALLERY_TITLE).slice(0, 80),
+      eyebrow: toString(workGallery.eyebrow).slice(0, 40),
+      title: toString(workGallery.title).slice(0, 80),
     },
     projectShowcase: {
       // On by default so existing Care sites keep their work band; the owner can

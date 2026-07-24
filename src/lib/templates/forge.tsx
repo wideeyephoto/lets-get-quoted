@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import SafeImage from './SafeImage';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle } from '@/lib/site-content';
+import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroImageCycle from './HeroImageCycle';
@@ -23,6 +23,8 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
   // 'default' means "the template's own built-in second badge" — Forge never had
   // one, so only an explicitly chosen badge renders here. Nothing is invented.
   const secondBadge = getHeroSecondBadge(site.content);
+  // Blank until the owner types their own, so Forge keeps its voice by default.
+  const workGallery = getSiteContent(site.content).workGallery;
   const themeStyle = {
     '--theme-accent': site.accent_override || '#f0b429',
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#111',
@@ -83,7 +85,7 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
 
       <section className={styles.forgeWork} data-reveal id="work">
         <div className={styles.sectionHeading}>
-          <div><p className={styles.kicker}>Selected work</p><h2>Made for real life.</h2></div>
+          <div data-edit="workGallery"><p className={styles.kicker}>{workGallery.eyebrow || 'Selected work'}</p><h2>{workGallery.title || 'Made for real life.'}</h2></div>
           <p>Every job delivered with practical care, start to finish.</p>
         </div>
         <div className={styles.forgeGallery}>

@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import SafeImage from './SafeImage';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle } from '@/lib/site-content';
+import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroImageCycle from './HeroImageCycle';
@@ -21,6 +21,10 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
   const heroBadge = getHeroBadge(site.content);
   // Vista had no built-in second badge, so 'default' renders nothing here.
   const secondBadge = getHeroSecondBadge(site.content);
+  // Blank until the owner types their own, so Vista keeps its voice by default.
+  // Vista's work heading is an eyebrow/count row with no h2, so an owner-set
+  // title renders above it — additive, never changing an existing page.
+  const workGallery = getSiteContent(site.content).workGallery;
   const themeStyle = {
     '--theme-accent': site.accent_override || '#35dd9e',
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#111',
@@ -73,7 +77,8 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
       </section>
 
       <section className={styles.vistaWork} data-reveal id="work">
-        <div className={styles.vistaWorkHeading}><p className={styles.kicker}>Recent work</p><span>{String(gallery.length).padStart(2, '0')} projects</span></div>
+        {workGallery.title && <h2 className={styles.vistaWorkTitle}>{workGallery.title}</h2>}
+        <div className={styles.vistaWorkHeading} data-edit="workGallery"><p className={styles.kicker}>{workGallery.eyebrow || 'Recent work'}</p><span>{String(gallery.length).padStart(2, '0')} projects</span></div>
         <div className={styles.vistaGallery}>
           {gallery.slice(0, 5).map((image, index) => (
             <figure key={image.id} className={index === 0 || index === 3 ? styles.vistaWide : undefined}>

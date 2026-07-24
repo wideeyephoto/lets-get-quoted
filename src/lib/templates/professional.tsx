@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import SafeImage from './SafeImage';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getEstimateButtonLabel, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent, getSlotImage } from '@/lib/site-content';
+import { getEstimateButtonLabel, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getPublishedServices, getSiteContent, getSlotImage } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
@@ -28,6 +28,14 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
       STOCK_SITE_IMAGES[5].url,
   );
   const estimateLabel = getEstimateButtonLabel(getSiteContent(site.content).quoteForm);
+  const heroBadge = getHeroBadge(site.content);
+  // Guild ships three generic service cards as filler. Once the owner has real
+  // services the shared #our-services section renders them, so the filler would
+  // sit above the real list saying different things — drop it in that case.
+  // Sites that never configured services keep the block, so nothing shortens.
+  const services = getPublishedServices(site.content);
+  // Blank until the owner types their own, so Guild keeps its voice by default.
+  const workGallery = getSiteContent(site.content).workGallery;
   const second = getHeroSecondBadge(site.content);
   const themeStyle = {
     '--theme-accent': site.accent_override || '#a5472d',
@@ -45,7 +53,7 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
           {site.logo_url && <img className={styles.logo} src={site.logo_url} alt="" />}
           <span><strong>{site.company_name}</strong><small>{site.license || 'Licensed contractor'}</small></span>
         </a>
-        <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#services', label: 'Services' }, { href: '#work', label: 'Projects' }, { href: '#contact', label: 'Contact' }]} />
+        <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: services ? '#our-services' : '#services', label: 'Services' }, { href: '#work', label: 'Projects' }, { href: '#contact', label: 'Contact' }]} />
         <a className={styles.guildQuote} href="#contact">{estimateLabel}</a>
       </header>
 
@@ -64,6 +72,12 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
           <figure className={styles.guildHeroInset} data-parallax="0.12" data-edit="image-heroSecondary">
             <img src={secondImage} alt="Close-up detail of service work" loading="lazy" decoding="async" />
           </figure>
+          {heroBadge && (
+            <div className={`${styles.guildBadge} ${styles.guildBadgePrimary}`} data-edit="heroBadge">
+              <span className={styles.guildBadgeIcon} aria-hidden="true">{heroBadge.icon}</span>
+              <div><strong>{heroBadge.title}</strong>{heroBadge.subtitle && <span>{heroBadge.subtitle}</span>}</div>
+            </div>
+          )}
           {second.mode !== 'none' && (
             <div className={styles.guildBadge} data-edit="heroBadge">
               {second.mode === 'default'
@@ -79,18 +93,20 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
         <p>We pair hands-on trade experience with straightforward, no-surprises service, so every job feels considered and under control.</p>
       </section>
 
-      <section className={styles.guildServices} data-reveal aria-label="Services">
-        {[
-          { title: 'Repairs & tune-ups', body: 'Fast, reliable service when something needs fixing.' },
-          { title: 'Installs & upgrades', body: 'Quality work when it is time to replace or upgrade.' },
-          { title: 'Inspections & maintenance', body: 'Preventive care that catches small issues before they grow.' },
-        ].map((service, index) => (
-          <article key={service.title}><span>0{index + 1}</span><h3>{service.title}</h3><p>{service.body}</p></article>
-        ))}
-      </section>
+      {!services && (
+        <section className={styles.guildServices} data-reveal aria-label="Services">
+          {[
+            { title: 'Repairs & tune-ups', body: 'Fast, reliable service when something needs fixing.' },
+            { title: 'Installs & upgrades', body: 'Quality work when it is time to replace or upgrade.' },
+            { title: 'Inspections & maintenance', body: 'Preventive care that catches small issues before they grow.' },
+          ].map((service, index) => (
+            <article key={service.title}><span>0{index + 1}</span><h3>{service.title}</h3><p>{service.body}</p></article>
+          ))}
+        </section>
+      )}
 
       <section className={styles.guildWork} data-reveal id="work">
-        <div className={styles.sectionHeading}><div><p className={styles.kicker}>Recent work</p><h2>Quality is visible in the details.</h2></div></div>
+        <div className={styles.sectionHeading}><div data-edit="workGallery"><p className={styles.kicker}>{workGallery.eyebrow || 'Recent work'}</p><h2>{workGallery.title || 'Quality is visible in the details.'}</h2></div></div>
         <div className={styles.guildGallery}>
           {gallery.slice(0, 3).map((image) => <figure key={image.id}><SafeImage src={image.url} alt={image.alt} width={1200} height={1500} sizes="(max-width: 820px) 100vw, 32vw" /><figcaption>{image.alt}</figcaption></figure>)}
         </div>
