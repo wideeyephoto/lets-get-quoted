@@ -224,18 +224,22 @@ function buildTitleCandidates(n: NormalizedInput): { rich: string[]; fallback: s
   const fallback: string[] = [];
   const add = (list: string[], value: string) => list.push(collapseRepeats(clean(value)));
 
+  // With a business name, EVERY title includes it — the owner wants the brand in
+  // the SEO title, always. The name-less service/city variants below are only a
+  // fallback for the rare case where no business name is set.
   if (businessName && locationLabel) add(rich, `${businessName} | ${locationLabel}`);
   if (service && city && businessName && !nameHasService) add(rich, `${service} in ${city} | ${businessName}`);
+  if (businessName && service && city && nameHasService) add(rich, `${businessName} in ${city}`);
   if (businessName && service && !nameHasService) add(rich, `${businessName} | ${service}`);
-  if (service && city) add(rich, `${service} in ${city}`);
   if (businessName && differentiator) add(rich, `${businessName} | ${differentiator}`);
-  if (service && city) add(rich, `Book ${service} in ${city}`);
-  if (service) add(rich, `${service} With Instant Quotes`);
   if (businessName && service && !nameHasService) add(rich, `${businessName} ${service}`);
-  if (service && locationLabel && !city) add(rich, `${service} in ${locationLabel}`);
+  if (!businessName && service && city) add(rich, `${service} in ${city}`);
+  if (!businessName && service && city) add(rich, `Book ${service} in ${city}`);
+  if (!businessName && service) add(rich, `${service} With Instant Quotes`);
+  if (!businessName && service && locationLabel && !city) add(rich, `${service} in ${locationLabel}`);
 
   if (businessName) add(fallback, businessName);
-  if (service) add(fallback, service);
+  else if (service) add(fallback, service);
 
   return { rich: dedupePreserveOrder(rich), fallback: dedupePreserveOrder(fallback) };
 }
