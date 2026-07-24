@@ -66,9 +66,9 @@ const ACCENT_PRESETS: { name: string; hex: string }[] = [
 ];
 
 const TABS: { id: BuilderTab; label: string }[] = [
-  { id: 'business', label: 'Business' },
-  { id: 'design', label: 'Design' },
-  { id: 'page', label: 'Your page' },
+  { id: 'business', label: 'Setup' },
+  { id: 'design', label: 'Brand' },
+  { id: 'page', label: 'Page' },
   { id: 'publish', label: 'Publish' },
 ];
 
@@ -390,12 +390,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     (siteContent.blog.enabled && publishedPostCount > 0);
 
   const launchChecklist = [
-    { label: 'Company name', done: Boolean(site.company_name.trim()), hint: 'Business tab — Business basics', go: () => jumpTo('business', 'basics', 'bf-company') },
-    { label: 'Phone number', done: Boolean(site.phone), hint: 'Business tab — powers the call buttons', go: () => jumpTo('business', 'contactInfo', 'bf-phone') },
-    { label: 'Hero image', done: Boolean(site.hero_url), hint: 'Design tab — Hero photos', go: () => jumpTo('design', 'heroPhotos') },
+    { label: 'Company name', done: Boolean(site.company_name.trim()), hint: 'Setup tab — Business basics', go: () => jumpTo('business', 'basics', 'bf-company') },
+    { label: 'Phone number', done: Boolean(site.phone), hint: 'Setup tab — powers the call buttons', go: () => jumpTo('business', 'contactInfo', 'bf-phone') },
+    { label: 'Hero image', done: Boolean(site.hero_url), hint: 'Page tab — Your hero', go: () => jumpTo('page', 'heroPhotos') },
     { label: 'Web address', done: Boolean(site.subdomain) || Boolean(site.custom_domain && domainStatus === 'verified'), hint: 'Add a subdomain below, or verify a custom domain', go: () => jumpTo('publish', null, 'pub-subdomain') },
-    { label: 'At least one content section', done: hasLiveSection, hint: 'Your page tab — e.g. Services or FAQs', go: () => jumpTo('page', 'services') },
-    { label: 'Google listing filled in', done: Boolean((site.seo_title || '').trim() || (site.seo_description || '').trim()), hint: 'Business tab — How you show up on Google', go: () => jumpTo('business', 'seo', 'bf-seo-title') },
+    { label: 'At least one content section', done: hasLiveSection, hint: 'Page tab — e.g. Services or FAQs', go: () => jumpTo('page', 'services') },
+    { label: 'Google listing filled in', done: Boolean((site.seo_title || '').trim() || (site.seo_description || '').trim()), hint: 'Publish tab — How you show up on Google', go: () => jumpTo('publish', 'seo', 'bf-seo-title') },
   ];
 
   const handleChange = useCallback((field: keyof Site, value: Site[keyof Site]) => {
@@ -573,15 +573,15 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
       // Business fields live inside collapsible cards, so the owning card must
       // open before focusField can find the input.
-      if (target === 'hero') { setActiveTab('business'); setOpenSection('message'); focusField('bf-headline'); return; }
-      if (target === 'heroEyebrow') { setActiveTab('business'); setOpenSection('message'); focusField('bf-hero-eyebrow'); return; }
+      if (target === 'hero') { setActiveTab('page'); setOpenSection('message'); focusField('bf-headline'); return; }
+      if (target === 'heroEyebrow') { setActiveTab('page'); setOpenSection('message'); focusField('bf-hero-eyebrow'); return; }
       if (target === 'identity') { setActiveTab('business'); setOpenSection('basics'); focusField('bf-company'); return; }
-      if (target === 'bizTagline') { setActiveTab('business'); setOpenSection('message'); focusField('bf-tagline'); return; }
+      if (target === 'bizTagline') { setActiveTab('page'); setOpenSection('message'); focusField('bf-tagline'); return; }
       if (target === 'bizArea') { setActiveTab('business'); setOpenSection('whereWhen'); focusField('bf-service-area'); return; }
       if (target === 'bizHours') { setActiveTab('business'); setOpenSection('whereWhen'); focusField('bf-hours'); return; }
       if (target === 'bizPhone') { setActiveTab('business'); setOpenSection('contactInfo'); focusField('bf-phone'); return; }
       if (target === 'bizLicense') { setActiveTab('business'); setOpenSection('contactInfo'); focusField('bf-license'); return; }
-      if (target === 'heroBadge') { setActiveTab('design'); setOpenSection('heroBadges'); flashCard('heroBadge', 'design-hero-badge'); return; }
+      if (target === 'heroBadge') { setActiveTab('page'); setOpenSection('heroBadges'); flashCard('heroBadge', 'design-hero-badge'); return; }
       // Every photo opens the "Replace photo" popup, routed by what was clicked.
       if (target === 'heroImage') { setPicker({ label: 'the hero image', kind: 'hero' }); return; }
       if (target === 'logo') { setPicker({ label: 'your logo', kind: 'logo' }); return; }
@@ -1303,8 +1303,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
             {activeTab === 'business' && (
               <div className={styles.formSection}>
                 <div className={styles.sectionIntro}>
-                  <h2>Business information</h2>
-                  <p>Who you are — the facts and words your whole website pulls from.</p>
+                  <h2>Setup</h2>
+                  <p>Who you are — the business facts your whole website pulls from.</p>
                 </div>
 
                 <SectionCard title="Business basics" description="Your company name and trade power everything else — including the AI quick-start below." open={openSection === 'basics'} onToggleOpen={() => toggleSection('basics')}>
@@ -1333,12 +1333,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <small className={styles.fieldHint}>Fills in your whole site — headline, services, FAQs, Google listing, and more — from these two fields. Watch it appear in the preview. Testimonials and stats are generated too, but left off until you swap in your real ones.</small>
                 </SectionCard>
 
-                <SectionCard title="Your message" description="The big text visitors see first at the top of your page." hint={site.headline ? `“${site.headline.length > 46 ? `${site.headline.slice(0, 46).trimEnd()}…` : site.headline}”` : undefined} open={openSection === 'message'} onToggleOpen={() => toggleSection('message')}>
-                  <label className={styles.formField}><span>Small line above headline</span><input id="bf-hero-eyebrow" value={siteContent.heroEyebrow} maxLength={50} onChange={(event) => updateSiteContent({ heroEyebrow: event.target.value })} placeholder={heroEyebrowPlaceholder} /><small className={styles.fieldHint}>{site.template === 'shine' ? 'Optional — Shine shows this only if you add one.' : 'Leave empty to keep your template’s own wording.'}</small></label>
-                  <label className={styles.formField}><span>Headline</span><textarea id="bf-headline" rows={2} value={site.headline || ''} onChange={(event) => handleChange('headline', event.target.value || null)} placeholder="Built with purpose. Finished with care." /></label>
-                  <label className={styles.formField}><span>Tagline</span><textarea id="bf-tagline" rows={3} value={site.tagline || ''} onChange={(event) => handleChange('tagline', event.target.value || null)} placeholder="Tell homeowners what makes your business different." /></label>
-                </SectionCard>
-
                 <SectionCard title="Contact & credentials" description="How homeowners reach you, and the license that backs your work." open={openSection === 'contactInfo'} onToggleOpen={() => toggleSection('contactInfo')}>
                   <div className={styles.formColumns}>
                     <label className={styles.formField}><span>Phone</span><input id="bf-phone" type="tel" value={site.phone || ''} onChange={(event) => handleChange('phone', event.target.value || null)} placeholder="(555) 123-4567" /></label>
@@ -1352,35 +1346,14 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <label className={styles.formField}><span>Business hours</span><input id="bf-hours" value={site.hours || ''} onChange={(event) => handleChange('hours', event.target.value || null)} placeholder="Monday-Friday, 7am-5pm" /></label>
                 </SectionCard>
 
-                <SectionCard title="How you show up on Google" description="The page title and description searchers see before they click. Your hero image is used when your site is shared on social." open={openSection === 'seo'} onToggleOpen={() => toggleSection('seo')}>
-                  <div className={styles.googleSnippet}>
-                    <span className={styles.googleSnippetUrl}>{liveDomain || `${site.subdomain || 'your-business'}.${ROOT_DOMAIN}`}</span>
-                    <strong className={styles.googleSnippetTitle}>{site.seo_title || site.company_name || 'Your company name'}</strong>
-                    <p className={styles.googleSnippetDesc}>{site.seo_description || site.tagline || 'Your description appears here — one sentence on what you do and where.'}</p>
-                  </div>
-                  <div className={styles.seoActions}>
-                    <small className={styles.fieldHint}>A live preview of how your site can appear in Google. Edit either field, or let us write it from your business details.</small>
-                    <button type="button" className={styles.secondaryAction} onClick={handleRegenerateSeo} disabled={isRegeneratingSeo}>{isRegeneratingSeo ? 'Writing…' : '✨ Regenerate SEO text'}</button>
-                  </div>
-                  <label className={styles.formField}>
-                    <span>SEO page title</span>
-                    <input id="bf-seo-title" maxLength={SEO_TITLE_LIMIT + 20} value={site.seo_title || ''} onChange={(event) => handleChange('seo_title', event.target.value || null)} placeholder={site.company_name || 'Your business, service and city'} />
-                    <small className={(site.seo_title || '').length > SEO_TITLE_LIMIT ? styles.counterOver : undefined}>{(site.seo_title || '').length}/{SEO_TITLE_LIMIT} characters{(site.seo_title || '').length > SEO_TITLE_LIMIT ? ' — a bit long; Google may trim it' : ''}</small>
-                  </label>
-                  <label className={styles.formField}>
-                    <span>Meta description</span>
-                    <textarea id="bf-seo-description" rows={3} maxLength={SEO_DESC_LIMIT + 40} value={site.seo_description || ''} onChange={(event) => handleChange('seo_description', event.target.value || null)} placeholder={site.tagline || 'One sentence on what you do, where, and how customers book.'} />
-                    <small className={(site.seo_description || '').length > SEO_DESC_LIMIT ? styles.counterOver : undefined}>{(site.seo_description || '').length}/{SEO_DESC_LIMIT} characters{(site.seo_description || '').length > SEO_DESC_LIMIT ? ' — a bit long; Google may trim it' : ''}</small>
-                  </label>
-                </SectionCard>
               </div>
             )}
 
             {activeTab === 'design' && (
               <div className={styles.formSection}>
                 <div className={styles.sectionIntro}>
-                  <h2>Design</h2>
-                  <p>How your website looks, site-wide — theme, colors, logo, and hero photos.</p>
+                  <h2>Brand</h2>
+                  <p>Your site-wide look — theme, colors, fonts, and logo. Set once, applies everywhere.</p>
                 </div>
 
                 <SectionCard title="Theme &amp; colors" description="Your theme, palette, accent, and fonts — all in one place." open={openSection === 'theme'} onToggleOpen={() => toggleSection('theme')}>
@@ -1462,6 +1435,75 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <label className={styles.formField}><span>Header style</span><select value={siteContent.headerStyle} onChange={(event) => updateSiteContent({ headerStyle: event.target.value })}><option value="">Theme default</option>{HEADER_STYLES.map((style) => <option key={style.key} value={style.key}>{style.label}</option>)}</select><small className={styles.fieldHint}>How your logo, menu and call-to-action are arranged across the top.</small></label>
                 </SectionCard>
 
+                <SectionCard title="Your logo" description="Shown small in your header and footer." open={openSection === 'logo'} onToggleOpen={() => toggleSection('logo')}>
+                  <div className={styles.imageSlot}>
+                    {site.logo_url
+                      ? <div className={styles.logoPreviews}><div className={styles.logoPreview}><img src={site.logo_url} alt="Logo on a light header" data-logo-style={siteContent.logoStyle} /><em>Light</em></div><div className={styles.logoPreviewDark}><img src={site.logo_url} alt="Logo on a dark header" data-logo-style={siteContent.logoStyle} /><em>Dark</em></div></div>
+                      : <div className={styles.imageSlotEmpty}>No logo yet</div>}
+                    <div className={styles.imageSlotActions}>
+                      <button type="button" className={styles.secondaryAction} onClick={() => openPicker('your logo', 'logo')}>{site.logo_url ? 'Replace photo' : 'Add a logo'}</button>
+                      {site.logo_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('logo_url', null)}>Remove</button>}
+                    </div>
+                    <div className={styles.formColumns}>
+                      <label className={styles.formField}><span>Logo shape</span><select value={siteContent.logoStyle} onChange={(event) => updateSiteContent({ logoStyle: event.target.value })}><option value="plain">Plain (no frame)</option><option value="rounded">Rounded corners</option><option value="framed">Framed chip (padding + border)</option><option value="circle">Circle</option></select><small className={styles.fieldHint}>Add a rounded frame or chip so a boxy logo blends into the header.</small></label>
+                      <label className={styles.formField}><span>Logo size</span><select value={siteContent.logoSize} onChange={(event) => updateSiteContent({ logoSize: event.target.value })}><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select><small className={styles.fieldHint}>How tall the logo sits in the header and footer.</small></label>
+                    </div>
+                    <small className={styles.fieldHint}>Best as a <strong>PNG or SVG with a transparent background</strong> — wide and simple. Aim for ~400×120px; it&apos;s shown up to 70px tall.</small>
+                  </div>
+                </SectionCard>
+
+              </div>
+            )}
+
+            {activeTab === 'page' && (
+              <div className={styles.formSection}>
+                <div className={styles.cardGroupLabel}>Your hero</div>
+                <p className={styles.cardGroupHint}>The top of your page — the headline, photo, and floating badges visitors see first, all in one place.</p>
+
+                <SectionCard title="Headline &amp; message" description="The big text visitors see first at the top of your page." hint={site.headline ? `“${site.headline.length > 46 ? `${site.headline.slice(0, 46).trimEnd()}…` : site.headline}”` : undefined} open={openSection === 'message'} onToggleOpen={() => toggleSection('message')}>
+                  <label className={styles.formField}><span>Small line above headline</span><input id="bf-hero-eyebrow" value={siteContent.heroEyebrow} maxLength={50} onChange={(event) => updateSiteContent({ heroEyebrow: event.target.value })} placeholder={heroEyebrowPlaceholder} /><small className={styles.fieldHint}>{site.template === 'shine' ? 'Optional — Shine shows this only if you add one.' : 'Leave empty to keep your template’s own wording.'}</small></label>
+                  <label className={styles.formField}><span>Headline</span><textarea id="bf-headline" rows={2} value={site.headline || ''} onChange={(event) => handleChange('headline', event.target.value || null)} placeholder="Built with purpose. Finished with care." /></label>
+                  <label className={styles.formField}><span>Tagline</span><textarea id="bf-tagline" rows={3} value={site.tagline || ''} onChange={(event) => handleChange('tagline', event.target.value || null)} placeholder="Tell homeowners what makes your business different." /></label>
+                </SectionCard>
+
+                <SectionCard title="Hero photos" description="The big photo at the top of your homepage, plus optional extras that cross-fade and reappear further down the page." open={openSection === 'heroPhotos'} onToggleOpen={() => toggleSection('heroPhotos')}>
+                  <div className={styles.imageSlot}>
+                    <div className={styles.imageSlotHead}><strong>Hero image</strong><small>The big photo at the top of your homepage.</small></div>
+                    {site.hero_url
+                      ? <div className={styles.heroSlotPreview}><img src={site.hero_url} alt="Current hero image" /></div>
+                      : <div className={styles.imageSlotEmpty}>No hero image yet</div>}
+                    <div className={styles.imageSlotActions}>
+                      <button type="button" className={styles.secondaryAction} onClick={() => openPicker('the hero image', 'hero')}>{site.hero_url ? 'Replace photo' : 'Add a hero image'}</button>
+                      {site.hero_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('hero_url', null)}>Remove</button>}
+                    </div>
+                  </div>
+                  <div className={styles.formField}>
+                    <span>Extra hero photos <em className={styles.fieldOptional}>optional</em></span>
+                    {siteContent.heroImages.length > 0 && (
+                      <div className={styles.imageSlots}>
+                        {siteContent.heroImages.map((url, index) => (
+                          <div key={`${index}-${url}`} className={styles.imageSlot}>
+                            <div className={styles.heroSlotPreview}><img src={url} alt={`Extra hero photo ${index + 2}`} /></div>
+                            <div className={styles.imageSlotActions}>
+                              <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: `hero photo ${index + 2}`, kind: 'heroExtra', heroExtraIndex: index })}>Replace</button>
+                              <button type="button" className={styles.secondaryAction} onClick={() => removeHeroExtraImage(index)}>Remove</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {siteContent.heroImages.length < MAX_EXTRA_HERO_IMAGES && <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: 'an extra hero photo', kind: 'heroExtra' })}>Add hero photo</button>}
+                    <small className={styles.fieldHint}>Add up to {MAX_EXTRA_HERO_IMAGES} more. They cross-fade with your hero image and reappear as parallax bands further down the page.</small>
+                  </div>
+                  <div className={styles.stockBlock}>
+                    <div>
+                      <strong>Stock photos</strong>
+                      <p className={styles.fieldHint}>Representative stock photos from Pexels. Replace any one with a photo of your own work anytime. This picks a fresh set for every image on your site and keeps your uploads.</p>
+                    </div>
+                    <button type="button" className={styles.secondaryAction} onClick={handleRegenerateStockImages} disabled={isRegeneratingImages}>{isRegeneratingImages ? 'Finding photos…' : '✨ Regenerate all stock images'}</button>
+                  </div>
+                </SectionCard>
+
                 <SectionCard title="Hero badges" description="The floating trust chips on and beside your hero photo." open={openSection === 'heroBadges'} onToggleOpen={() => toggleSection('heroBadges')}>
                   <div className={`${styles.formField}${flashField === 'heroBadge' ? ` ${styles.fieldFlash}` : ''}`} id="design-hero-badge">
                     <span>Hero badge</span>
@@ -1509,67 +1551,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   </div>
                 </SectionCard>
 
-                <SectionCard title="Your logo" description="Shown small in your header and footer." open={openSection === 'logo'} onToggleOpen={() => toggleSection('logo')}>
-                  <div className={styles.imageSlot}>
-                    {site.logo_url
-                      ? <div className={styles.logoPreviews}><div className={styles.logoPreview}><img src={site.logo_url} alt="Logo on a light header" data-logo-style={siteContent.logoStyle} /><em>Light</em></div><div className={styles.logoPreviewDark}><img src={site.logo_url} alt="Logo on a dark header" data-logo-style={siteContent.logoStyle} /><em>Dark</em></div></div>
-                      : <div className={styles.imageSlotEmpty}>No logo yet</div>}
-                    <div className={styles.imageSlotActions}>
-                      <button type="button" className={styles.secondaryAction} onClick={() => openPicker('your logo', 'logo')}>{site.logo_url ? 'Replace photo' : 'Add a logo'}</button>
-                      {site.logo_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('logo_url', null)}>Remove</button>}
-                    </div>
-                    <div className={styles.formColumns}>
-                      <label className={styles.formField}><span>Logo shape</span><select value={siteContent.logoStyle} onChange={(event) => updateSiteContent({ logoStyle: event.target.value })}><option value="plain">Plain (no frame)</option><option value="rounded">Rounded corners</option><option value="framed">Framed chip (padding + border)</option><option value="circle">Circle</option></select><small className={styles.fieldHint}>Add a rounded frame or chip so a boxy logo blends into the header.</small></label>
-                      <label className={styles.formField}><span>Logo size</span><select value={siteContent.logoSize} onChange={(event) => updateSiteContent({ logoSize: event.target.value })}><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select><small className={styles.fieldHint}>How tall the logo sits in the header and footer.</small></label>
-                    </div>
-                    <small className={styles.fieldHint}>Best as a <strong>PNG or SVG with a transparent background</strong> — wide and simple. Aim for ~400×120px; it&apos;s shown up to 70px tall.</small>
-                  </div>
-                </SectionCard>
-
-                <SectionCard title="Hero photos" description="The big photo at the top of your homepage, plus optional extras that cross-fade and reappear further down the page." open={openSection === 'heroPhotos'} onToggleOpen={() => toggleSection('heroPhotos')}>
-                  <div className={styles.imageSlot}>
-                    <div className={styles.imageSlotHead}><strong>Hero image</strong><small>The big photo at the top of your homepage.</small></div>
-                    {site.hero_url
-                      ? <div className={styles.heroSlotPreview}><img src={site.hero_url} alt="Current hero image" /></div>
-                      : <div className={styles.imageSlotEmpty}>No hero image yet</div>}
-                    <div className={styles.imageSlotActions}>
-                      <button type="button" className={styles.secondaryAction} onClick={() => openPicker('the hero image', 'hero')}>{site.hero_url ? 'Replace photo' : 'Add a hero image'}</button>
-                      {site.hero_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('hero_url', null)}>Remove</button>}
-                    </div>
-                  </div>
-                  <div className={styles.formField}>
-                    <span>Extra hero photos <em className={styles.fieldOptional}>optional</em></span>
-                    {siteContent.heroImages.length > 0 && (
-                      <div className={styles.imageSlots}>
-                        {siteContent.heroImages.map((url, index) => (
-                          <div key={`${index}-${url}`} className={styles.imageSlot}>
-                            <div className={styles.heroSlotPreview}><img src={url} alt={`Extra hero photo ${index + 2}`} /></div>
-                            <div className={styles.imageSlotActions}>
-                              <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: `hero photo ${index + 2}`, kind: 'heroExtra', heroExtraIndex: index })}>Replace</button>
-                              <button type="button" className={styles.secondaryAction} onClick={() => removeHeroExtraImage(index)}>Remove</button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {siteContent.heroImages.length < MAX_EXTRA_HERO_IMAGES && <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: 'an extra hero photo', kind: 'heroExtra' })}>Add hero photo</button>}
-                    <small className={styles.fieldHint}>Add up to {MAX_EXTRA_HERO_IMAGES} more. They cross-fade with your hero image and reappear as parallax bands further down the page.</small>
-                  </div>
-                  <div className={styles.stockBlock}>
-                    <div>
-                      <strong>Stock photos</strong>
-                      <p className={styles.fieldHint}>Representative stock photos from Pexels. Replace any one with a photo of your own work anytime. This picks a fresh set for every image on your site and keeps your uploads.</p>
-                    </div>
-                    <button type="button" className={styles.secondaryAction} onClick={handleRegenerateStockImages} disabled={isRegeneratingImages}>{isRegeneratingImages ? 'Finding photos…' : '✨ Regenerate all stock images'}</button>
-                  </div>
-                </SectionCard>
-
-                <p className={styles.movedNote}>Looking for your page&apos;s sections? They moved to <strong>Your page</strong>.</p>
-              </div>
-            )}
-
-            {activeTab === 'page' && (
-              <div className={styles.formSection}>
                 <div className={styles.cardGroupLabel}>Get you leads</div>
                 <p className={styles.cardGroupHint}>Pick ONE way to capture a job — Smart Intake (recommended) or the classic quote form below. Running both means visitors fill out both and you get doubled-up requests.</p>
 
@@ -1577,7 +1558,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 <SectionCard variant="featured" title="Smart Intake with Instant Estimates via AI (Recommended)" description="Gives visitors an automatic ballpark price, no waiting — our AI asks a couple of questions to scope the job, then prices it for your trade and shows a realistic $ range. Every request still reaches you as a lead, with the shown range included." evidence="Instant online estimates capture 2–3× more leads than a plain contact form — most homeowners are price-shopping, and the ones who see a number stop searching. Answering while they're still on the page beats a next-day callback every time." enabled={siteContent.estimateRanges.enabled} onToggleEnabled={(value) => updateEstimateRanges({ ...siteContent.estimateRanges, enabled: value })} open={openSection === 'estimate'} onToggleOpen={() => toggleSection('estimate')}>
                   <label className={styles.formField}><span>Email on the AI intake</span><select value={siteContent.estimateRanges.emailField} onChange={(event) => updateEstimateRanges({ ...siteContent.estimateRanges, emailField: event.target.value as SiteEstimateRangesContent['emailField'] })}><option value="optional">Optional — ask, but don&apos;t require it</option><option value="required">Required</option><option value="off">Don&apos;t ask for email</option></select><small>A phone number is always required here — the follow-up promised to visitors is a text or call.</small></label>
                   <label className={styles.formField}><span>What visitors see it called</span><select value={siteContent.quoteForm.estimateLabel} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, estimateLabel: event.target.value as SiteQuoteFormContent['estimateLabel'] })}><option value="instant">&quot;Instant Estimate&quot;</option><option value="quick">&quot;Instant Quote&quot;</option></select><small>The heading + button on the AI intake card.</small></label>
-                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.phonePublic} onChange={(event) => updateSiteContent({ phonePublic: event.target.checked })} /><span><strong>Show my phone number on my website</strong><small>Off = no call buttons anywhere (including &quot;Call now to lock it in&quot;) — visitors reach you through the intake and forms. Same setting as on the Business tab.</small></span></label>
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.phonePublic} onChange={(event) => updateSiteContent({ phonePublic: event.target.checked })} /><span><strong>Show my phone number on my website</strong><small>Off = no call buttons anywhere (including &quot;Call now to lock it in&quot;) — visitors reach you through the intake and forms. Same setting as on the Setup tab.</small></span></label>
                 </SectionCard>
 
                 <div className={styles.aiSuiteLink} aria-hidden="true"><span>⚡ Tuned by</span></div>
@@ -2050,7 +2031,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   </div>
                   <button type="button" className={styles.publishHeroBtn} onClick={handlePublish} disabled={isPending}>{isPending ? 'Working…' : site.published ? 'Unpublish' : '🚀 Publish my website'}</button>
                 </div>
-                {!site.published && !site.company_name.trim() && <p className={styles.publishRequirement}>A company name is required to publish. Add one on the Business tab.</p>}
+                {!site.published && !site.company_name.trim() && <p className={styles.publishRequirement}>A company name is required to publish. Add one on the Setup tab.</p>}
                 {site.published && liveUrl && <a className={styles.publicLink} href={liveUrl} target="_blank" rel="noopener noreferrer">Open live website ↗</a>}
 
                 <div className={styles.checklistCard}>
@@ -2085,6 +2066,29 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 </div>
                 <DomainConnector domain={site.custom_domain} target="domains.letsgetquoted.com" />
                 <label className={styles.formField}><span>Custom domain</span><div className={styles.domainControl}><input value={site.custom_domain || ''} onChange={(event) => handleChange('custom_domain', event.target.value || null)} placeholder="www.yourbusiness.com" /><button type="button" onClick={verifyCustomDomain} disabled={isPending}>{domainStatus === 'checking' ? 'Checking...' : 'Verify DNS'}</button></div><small>{domainStatus === 'verified' ? 'Verified and connected.' : 'Add a CNAME record pointing to domains.letsgetquoted.com.'}</small></label>
+
+                <div className={styles.cardGroupLabel}>Search appearance</div>
+                <SectionCard title="How you show up on Google" description="The page title and description searchers see before they click. Your hero image is used when your site is shared on social." open={openSection === 'seo'} onToggleOpen={() => toggleSection('seo')}>
+                  <div className={styles.googleSnippet}>
+                    <span className={styles.googleSnippetUrl}>{liveDomain || `${site.subdomain || 'your-business'}.${ROOT_DOMAIN}`}</span>
+                    <strong className={styles.googleSnippetTitle}>{site.seo_title || site.company_name || 'Your company name'}</strong>
+                    <p className={styles.googleSnippetDesc}>{site.seo_description || site.tagline || 'Your description appears here — one sentence on what you do and where.'}</p>
+                  </div>
+                  <div className={styles.seoActions}>
+                    <small className={styles.fieldHint}>A live preview of how your site can appear in Google. Edit either field, or let us write it from your business details.</small>
+                    <button type="button" className={styles.secondaryAction} onClick={handleRegenerateSeo} disabled={isRegeneratingSeo}>{isRegeneratingSeo ? 'Writing…' : '✨ Regenerate SEO text'}</button>
+                  </div>
+                  <label className={styles.formField}>
+                    <span>SEO page title</span>
+                    <input id="bf-seo-title" maxLength={SEO_TITLE_LIMIT + 20} value={site.seo_title || ''} onChange={(event) => handleChange('seo_title', event.target.value || null)} placeholder={site.company_name || 'Your business, service and city'} />
+                    <small className={(site.seo_title || '').length > SEO_TITLE_LIMIT ? styles.counterOver : undefined}>{(site.seo_title || '').length}/{SEO_TITLE_LIMIT} characters{(site.seo_title || '').length > SEO_TITLE_LIMIT ? ' — a bit long; Google may trim it' : ''}</small>
+                  </label>
+                  <label className={styles.formField}>
+                    <span>Meta description</span>
+                    <textarea id="bf-seo-description" rows={3} maxLength={SEO_DESC_LIMIT + 40} value={site.seo_description || ''} onChange={(event) => handleChange('seo_description', event.target.value || null)} placeholder={site.tagline || 'One sentence on what you do, where, and how customers book.'} />
+                    <small className={(site.seo_description || '').length > SEO_DESC_LIMIT ? styles.counterOver : undefined}>{(site.seo_description || '').length}/{SEO_DESC_LIMIT} characters{(site.seo_description || '').length > SEO_DESC_LIMIT ? ' — a bit long; Google may trim it' : ''}</small>
+                  </label>
+                </SectionCard>
               </div>
             )}
           </div>
