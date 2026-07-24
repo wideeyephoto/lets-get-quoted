@@ -193,10 +193,6 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
       setStatus({ tone: 'error', text: "Tell us what you need done." });
       return;
     }
-    if (askLocation && !location.trim()) {
-      setStatus({ tone: 'error', text: 'Add your ZIP code or town so we can confirm we serve your area.' });
-      return;
-    }
     setStatus(null);
     setIsClassifying(true);
     try {
@@ -210,7 +206,6 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
           businessName: site.company_name,
           businessSummary: site.tagline || site.headline || '',
           serviceArea: site.service_area || '',
-          location: location.trim(),
         }),
       });
       const result = await response.json().catch(() => null);
@@ -291,6 +286,10 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
       // promise is a text or call within a few hours.
       if (!normalizeUsPhone(trimmedContact)) {
         setStatus({ tone: 'error', text: 'Enter a valid phone number so we can text or call you with your quote.' });
+        return;
+      }
+      if (askLocation && !location.trim()) {
+        setStatus({ tone: 'error', text: 'Add your ZIP code or town so we can confirm we serve your area.' });
         return;
       }
       if (needsVerification && (!verify || !verifyCode.trim())) {
@@ -448,16 +447,6 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
               }
             }}
           />
-          {askTimeline && (
-            <select aria-label="When do you need this done?" value={timeline} onChange={(event) => setTimeline(event.target.value as 'asap' | 'month' | 'researching')}>
-              <option value="asap">Needed ASAP</option>
-              <option value="month">In the next month</option>
-              <option value="researching">Just researching prices</option>
-            </select>
-          )}
-          {askLocation && (
-            <input aria-label="Your ZIP code or town" placeholder="Your ZIP code or town" maxLength={80} required value={location} onChange={(event) => setLocation(event.target.value)} />
-          )}
           <button type="submit" disabled={isClassifying}>{isClassifying ? thinking : 'Continue'}</button>
         </div>
       )}
@@ -505,6 +494,16 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
               }}
             />
           </div>
+          {askLocation && (
+            <input aria-label="Your ZIP code or town" placeholder="ZIP code or town" maxLength={80} required value={location} onChange={(event) => setLocation(event.target.value)} />
+          )}
+          {askTimeline && (
+            <select aria-label="When do you need this done?" value={timeline} onChange={(event) => setTimeline(event.target.value as 'asap' | 'month' | 'researching')}>
+              <option value="asap">Needed ASAP</option>
+              <option value="month">In the next month</option>
+              <option value="researching">Just researching prices</option>
+            </select>
+          )}
           {needsVerification && (
             <div className={styles.heroFormVerifyRow}>
               <button type="button" className={styles.heroFormVerifyBtn} onClick={sendVerifyCode} disabled={isSendingCode}>
