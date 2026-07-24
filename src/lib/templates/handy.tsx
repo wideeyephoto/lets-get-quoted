@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedHowItWorks, getPublishedServices, getPublishedTrustBadges, getPublishedWhyUs, getSiteContent, getSlotImage, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroExtraBadges, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getPublishedTrustBadges, getPublishedWhyUs, getSiteContent, getSlotImage, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import ProjectShowcase from './ProjectShowcase';
 import type { TemplateProps } from '@/lib/templates/types';
@@ -56,13 +56,12 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
     ? ownShowcase.map((item) => ({ id: item.id, url: item.url, alt: item.alt, caption: item.caption }))
     : gallery.slice(0, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS).map((item) => ({ id: item.id, url: item.url, alt: item.alt }));
   const heroBadge = getHeroBadge(site.content);
+  const extraBadges = getHeroExtraBadges(site.content);
   const secondBadge = getHeroSecondBadge(site.content);
 
   const navLinks = [
     ...(getPublishedServices(site.content) ? [{ href: '#our-services', label: 'Services' }] : []),
     ...(whyUs ? [{ href: '#why', label: 'Why us' }] : []),
-    ...(getPublishedHowItWorks(site.content) ? [{ href: '#how-it-works', label: 'How it works' }] : []),
-    { href: '#contact', label: 'Contact' },
   ];
 
   return (
@@ -88,7 +87,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
           <p className={styles.careEyebrow} data-edit="heroEyebrow">{heroEyebrow || (site.service_area ? `Serving ${site.service_area}` : 'Trusted home services')}</p>
           <h1>{headlineMain} {headlineLast && <span className={styles.careAccentText}>{headlineLast}</span>}</h1>
           <p className={styles.careHeroText}>{site.tagline || 'Reliable, friendly help for every job around the home — booked in minutes, done right the first time.'}</p>
-          {(heroBadge || secondBadge.mode !== 'none') && (
+          {(heroBadge || secondBadge.mode !== 'none' || extraBadges.length > 0) && (
             <div className={styles.careHeroCards} data-edit="heroBadge">
               {heroBadge && (
                 <div className={styles.careMiniCard}>
@@ -106,6 +105,12 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
                    site. The built-in default now states only a fact. */
                 <div className={styles.careMiniCard}><strong>Proudly local</strong><small>{site.service_area}</small></div>
               ) : null}
+              {extraBadges.map((badge) => (
+                <div key={badge.key} className={styles.careMiniCard}>
+                  <strong><span aria-hidden="true">{badge.icon}</span> {badge.title}</strong>
+                  {badge.subtitle && <small>{badge.subtitle}</small>}
+                </div>
+              ))}
             </div>
           )}
           <HeroQuickForm site={site} />

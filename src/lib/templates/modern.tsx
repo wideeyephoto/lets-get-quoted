@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroExtraBadges, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroImageCycle from './HeroImageCycle';
@@ -19,6 +19,7 @@ export default function VistaTemplate({ site }: TemplateProps) {
   const content = getSiteContent(site.content);
   const heroEyebrow = content.heroEyebrow;
   const heroBadge = getHeroBadge(site.content);
+  const extraBadges = getHeroExtraBadges(site.content);
   // Vista had no built-in second badge, so 'default' renders nothing here.
   // Vista's work heading is an eyebrow/count row with no h2, so a title renders
   // above it — additive, never changing a page that has no title set.
@@ -39,7 +40,7 @@ export default function VistaTemplate({ site }: TemplateProps) {
       <Parallax />
       <header className={styles.vistaHeader}>
         <a className={styles.vistaBrand} href="#top" data-edit="identity">{site.logo_url ? <img className={styles.logo} src={site.logo_url} alt={site.company_name} data-edit="logo" /> : site.company_name}</a>
-        <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#studio', label: 'About' }, { href: '#work', label: 'Work' }, { href: '#contact', label: 'Connect' }]} />
+        <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#studio', label: 'About' }, { href: '#work', label: 'Work' }]} />
         <div className={styles.vistaActions}>
           {site.phone && <a className={styles.vistaPhone} data-edit="bizPhone" href={`tel:${site.phone}`}>{site.phone}</a>}
           <a className={styles.vistaMenu} data-edit="quoteForm" href="#contact">Get a quote <span aria-hidden="true">→</span></a>
@@ -68,6 +69,12 @@ export default function VistaTemplate({ site }: TemplateProps) {
             <div><strong>{secondBadge.badge.title}</strong>{secondBadge.badge.subtitle && <small>{secondBadge.badge.subtitle}</small>}</div>
           </div>
         )}
+        {extraBadges.map((badge, index) => (
+          <div key={badge.key} className={`${styles.vistaBadge} ${styles[`vistaBadgeXtra${index}`]}`} data-parallax="0.15" data-edit="heroBadge">
+            <span className={styles.vistaBadgeIcon} aria-hidden="true">{badge.icon}</span>
+            <div><strong>{badge.title}</strong>{badge.subtitle && <small>{badge.subtitle}</small>}</div>
+          </div>
+        ))}
         <a className={styles.vistaScroll} href="#studio" aria-label="Skip to about section">Explore <span aria-hidden="true">↓</span></a>
       </section>
 

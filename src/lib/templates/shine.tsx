@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, getSlotImage } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroExtraBadges, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, getSlotImage } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
@@ -32,6 +32,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
       STOCK_SITE_IMAGES[1].url,
   );
   const heroBadge = getHeroBadge(site.content);
+  const extraBadges = getHeroExtraBadges(site.content);
   const second = getHeroSecondBadge(site.content);
   const heroBackground = getSlotImage(site.content, 'heroBackground', '');
   // Shine ships without a hero eyebrow, so this only appears once the owner sets
@@ -65,7 +66,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
           {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.shineBrandMark} aria-hidden="true">◧</span>}
           <strong data-edit="identity">{site.company_name}</strong>
         </a>
-        <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#our-services', label: 'Services' }, { href: '#work', label: 'Work' }, { href: '#contact', label: 'Contact' }]} />
+        <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#our-services', label: 'Services' }, { href: '#work', label: 'Work' }]} />
         <a className={styles.shineHeaderCta} data-edit="quoteForm" href="#contact">Book a call <span aria-hidden="true">→</span></a>
       </header>
 
@@ -115,6 +116,12 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
           <figure className={`${styles.shinePhotoCard} ${styles.shinePhotoSide}`} data-edit="image-heroSecondary">
             <img className={styles.shinePhoto} src={secondImage} alt="Close-up detail of cleaning work" loading="lazy" decoding="async" />
           </figure>
+          {extraBadges.map((badge, index) => (
+            <div key={badge.key} className={`${styles.shineBadge} ${styles.shineBadgeXtra} ${styles[`shineBadgeXtra${index}`]}`} data-edit="heroBadge">
+              <span className={styles.shineBadgeIcon} aria-hidden="true">{badge.icon}</span>
+              <div><strong>{badge.title}</strong>{badge.subtitle && <small>{badge.subtitle}</small>}</div>
+            </div>
+          ))}
         </div>
       </section>
 

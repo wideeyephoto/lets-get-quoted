@@ -1448,6 +1448,52 @@
 /* Coat — the second badge mirrors the first on the opposite corner. */
 .coatHeroBadgeSecond { left: auto; right: -4%; top: auto; bottom: 10%; }
 
+/* Extra floating badges (3rd-5th). Each theme's two built-in badges sit in
+   fixed corners; these scatter into that theme's free corners so more trust
+   signals can float without overlapping. Positions are per-theme because every
+   hero lays its photo + copy out differently. On narrow screens they collapse
+   into the normal flow (see the mobile rule below) so they never pile up. */
+.forgeBadgeXtra0 { right: auto; left: 6vw; top: clamp(6rem, 13vw, 10rem); }
+.forgeBadgeXtra1 { right: auto; left: 6vw; top: calc(clamp(6rem, 13vw, 10rem) + 4.6rem); }
+.forgeBadgeXtra2 { right: 6vw; top: auto; bottom: 12%; }
+
+.vistaBadgeXtra0 { top: calc(clamp(6rem, 18vw, 10rem) + 3.8rem); }
+.vistaBadgeXtra1 { top: calc(clamp(6rem, 18vw, 10rem) + 7.6rem); }
+.vistaBadgeXtra2 { right: auto; left: clamp(1rem, 4vw, 3rem); top: clamp(6rem, 18vw, 10rem); }
+
+.renoBadgeXtra0 { left: auto; right: 4%; bottom: 10%; }
+.renoBadgeXtra1 { left: auto; right: 4%; bottom: calc(10% + 4.6rem); }
+.renoBadgeXtra2 { left: auto; right: 4%; bottom: auto; top: 12%; }
+
+.coatHeroBadgeXtra0 { left: auto; right: -4%; top: 8%; bottom: auto; }
+.coatHeroBadgeXtra1 { left: -4%; right: auto; top: auto; bottom: 10%; }
+.coatHeroBadgeXtra2 { left: -4%; right: auto; top: 44%; bottom: auto; }
+
+.fixitHeroCardXtra0 { right: auto; left: 0; top: 6%; bottom: auto; }
+.fixitHeroCardXtra1 { right: 0; left: auto; top: 4%; bottom: auto; }
+.fixitHeroCardXtra2 { right: 3%; left: auto; top: auto; bottom: 4%; }
+
+.guildBadgeXtra0 { left: auto; right: 1.5rem; bottom: 1.5rem; top: auto; }
+.guildBadgeXtra1 { left: auto; right: 1.5rem; bottom: calc(1.5rem + 5rem); top: auto; }
+.guildBadgeXtra2 { left: 1.5rem; right: auto; bottom: calc(1.5rem + 5rem); top: auto; }
+
+.shineBadgeXtra { position: absolute; z-index: 4; }
+.shineBadgeXtra0 { top: -5%; left: -5%; }
+.shineBadgeXtra1 { bottom: -5%; right: -5%; }
+.shineBadgeXtra2 { top: 44%; right: -9%; }
+
+/* On phones the hero photo shrinks and there's no room to scatter — let the
+   extra badges flow inline under the hero instead of floating over content. */
+@media (max-width: 720px) {
+  .forgeBadgeXtra0, .forgeBadgeXtra1, .forgeBadgeXtra2,
+  .vistaBadgeXtra0, .vistaBadgeXtra1, .vistaBadgeXtra2,
+  .renoBadgeXtra0, .renoBadgeXtra1, .renoBadgeXtra2,
+  .coatHeroBadgeXtra0, .coatHeroBadgeXtra1, .coatHeroBadgeXtra2,
+  .fixitHeroCardXtra0, .fixitHeroCardXtra1, .fixitHeroCardXtra2,
+  .guildBadgeXtra0, .guildBadgeXtra1, .guildBadgeXtra2,
+  .shineBadgeXtra { display: none; }
+}
+
 /* The new badges opt into the shared solid/outline/soft treatments. */
 .site[data-badge-style='outline'] .forgeBadge,
 .site[data-badge-style='outline'] .vistaBadge,

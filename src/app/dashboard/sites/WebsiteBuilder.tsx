@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, REORDERABLE_SECTIONS, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, MAX_EXTRA_HERO_BADGES, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, REORDERABLE_SECTIONS, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
@@ -1484,6 +1484,28 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     {siteContent.heroBadge.secondPreset === 'custom' && (
                       <input value={siteContent.heroBadge.secondCustomLabel} maxLength={40} onChange={(event) => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, secondCustomLabel: event.target.value } })} placeholder="e.g. Family Owned" />
                     )}
+                  </div>
+                  <div className={styles.formField}>
+                    <span>More badges</span>
+                    <div className={styles.chipToggleGroup}>
+                      {HERO_BADGE_PRESETS.map((badge) => {
+                        const selected = siteContent.heroBadge.extraBadges.includes(badge.key);
+                        const atLimit = siteContent.heroBadge.extraBadges.length >= MAX_EXTRA_HERO_BADGES;
+                        return (
+                          <button
+                            key={`extra-${badge.key}`}
+                            type="button"
+                            className={`${styles.chipToggle}${selected ? ` ${styles.chipToggleOn}` : ''}`}
+                            aria-pressed={selected}
+                            disabled={!selected && atLimit}
+                            onClick={() => updateSiteContent({ heroBadge: { ...siteContent.heroBadge, extraBadges: selected ? siteContent.heroBadge.extraBadges.filter((key) => key !== badge.key) : [...siteContent.heroBadge.extraBadges, badge.key] } })}
+                          >
+                            <span aria-hidden="true">{badge.icon}</span> {badge.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <small className={styles.fieldHint}>Add up to {MAX_EXTRA_HERO_BADGES} more floating badges — they scatter into the free corners around your hero (up to 5 badges total).</small>
                   </div>
                 </SectionCard>
 

@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, getSlotImage } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroExtraBadges, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, getSlotImage } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import HeroQuickForm from './HeroQuickForm';
 import type { TemplateProps } from '@/lib/templates/types';
@@ -31,6 +31,7 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
       STOCK_SITE_IMAGES[2].url,
   );
   const heroBadge = getHeroBadge(site.content);
+  const extraBadges = getHeroExtraBadges(site.content);
   const content = getSiteContent(site.content);
   const heroEyebrow = content.heroEyebrow;
   // Coat had no built-in second badge, so 'default' renders nothing here.
@@ -55,7 +56,7 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
           {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.coatBrandMark} aria-hidden="true">◆</span>}
           <strong data-edit="identity">{site.company_name}</strong>
         </a>
-        <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#our-services', label: 'Services' }, { href: '#work', label: 'Projects' }, { href: '#contact', label: 'Contact' }]} />
+        <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#our-services', label: 'Services' }, { href: '#work', label: 'Projects' }]} />
         <a className={styles.coatHeaderCta} data-edit="quoteForm" href="#contact">Book appointment <span aria-hidden="true">↗</span></a>
       </header>
 
@@ -98,6 +99,12 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
               <div><strong>{secondBadge.badge.title}</strong>{secondBadge.badge.subtitle && <small>{secondBadge.badge.subtitle}</small>}</div>
             </div>
           )}
+          {extraBadges.map((badge, index) => (
+            <div key={badge.key} className={`${styles.coatHeroBadge} ${styles[`coatHeroBadgeXtra${index}`]}`} data-parallax="0.15" data-edit="heroBadge">
+              <span className={styles.coatHeroBadgeIcon} aria-hidden="true">{badge.icon}</span>
+              <div><strong>{badge.title}</strong>{badge.subtitle && <small>{badge.subtitle}</small>}</div>
+            </div>
+          ))}
         </div>
       </section>
 

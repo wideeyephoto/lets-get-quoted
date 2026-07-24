@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroExtraBadges, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import HeroQuickForm from './HeroQuickForm';
 import type { TemplateProps } from '@/lib/templates/types';
@@ -24,6 +24,7 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
   void gallery;
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
   const heroBadge = getHeroBadge(site.content);
+  const extraBadges = getHeroExtraBadges(site.content);
   const content = getSiteContent(site.content);
   const heroEyebrow = content.heroEyebrow;
   // Second floating card. Its built-in default used to auto-pick whichever
@@ -56,7 +57,7 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
           {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.fixitBrandMark} aria-hidden="true">✖</span>}
           <strong data-edit="identity">{site.company_name}</strong>
         </a>
-        <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#our-services', label: 'Services' }, { href: '#work', label: 'Works' }, { href: '#contact', label: 'Contact' }]} />
+        <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#our-services', label: 'Services' }, { href: '#work', label: 'Works' }]} />
         {site.phone && <a className={styles.fixitHeaderPhone} data-edit="bizPhone" href={`tel:${site.phone}`}><span className={styles.fixitPhoneIcon} aria-hidden="true">✆</span>{site.phone}</a>}
       </header>
 
@@ -84,6 +85,12 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
               <div><strong>{secondBadge.title}</strong><small>{secondBadge.subtitle}</small></div>
             </div>
           )}
+          {extraBadges.map((badge, index) => (
+            <div key={badge.key} className={`${styles.fixitHeroCard} ${styles[`fixitHeroCardXtra${index}`]}`} data-parallax="0.16" data-edit="heroBadge">
+              <span className={styles.fixitHeroCardIcon} aria-hidden="true">{badge.icon}</span>
+              <div><strong>{badge.title}</strong><small>{badge.subtitle}</small></div>
+            </div>
+          ))}
           <span className={styles.fixitDots} data-parallax="0.24" aria-hidden="true" />
         </div>
       </section>

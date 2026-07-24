@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getEstimateButtonLabel, getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getSiteContent, getSlotImage, getWorkBand } from '@/lib/site-content';
+import { getEstimateButtonLabel, getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroExtraBadges, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getSiteContent, getSlotImage, getWorkBand } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
@@ -38,6 +38,7 @@ export default function GuildTemplate({ site }: TemplateProps) {
   );
   const estimateLabel = getEstimateButtonLabel(getSiteContent(site.content).quoteForm);
   const heroBadge = getHeroBadge(site.content);
+  const extraBadges = getHeroExtraBadges(site.content);
   // Guild ships three generic service cards as filler. Once the owner has real
   // services the shared #our-services section renders them, so the filler would
   // sit above the real list saying different things — drop it in that case.
@@ -65,7 +66,7 @@ export default function GuildTemplate({ site }: TemplateProps) {
           {site.logo_url && <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" />}
           <span><strong data-edit="identity">{site.company_name}</strong><small data-edit="bizLicense">{site.license || 'Licensed contractor'}</small></span>
         </a>
-        <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: services ? '#our-services' : '#services', label: 'Services' }, { href: '#work', label: 'Projects' }, { href: '#contact', label: 'Contact' }]} />
+        <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: services ? '#our-services' : '#services', label: 'Services' }, { href: '#work', label: 'Projects' }]} />
         <a className={styles.guildQuote} data-edit="quoteForm" href="#contact">{estimateLabel}</a>
       </header>
 
@@ -100,6 +101,11 @@ export default function GuildTemplate({ site }: TemplateProps) {
                 : <><strong>{second.badge.title}</strong>{second.badge.subtitle && <span>{second.badge.subtitle}</span>}</>}
             </div>
           )}
+          {extraBadges.map((badge, index) => (
+            <div key={badge.key} className={`${styles.guildBadge} ${styles[`guildBadgeXtra${index}`]}`} data-edit="heroBadge">
+              <strong>{badge.title}</strong>{badge.subtitle && <span>{badge.subtitle}</span>}
+            </div>
+          ))}
         </div>
       </section>
 
