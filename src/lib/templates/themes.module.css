@@ -1143,17 +1143,25 @@
 @media (prefers-reduced-motion: reduce) { .renoHeroCopy > * { animation: none; } }
 
 /* ===== Shine — modern premium cleaning (Purely reference) ===== */
-.shine { background: #fff; color: #14202e; font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; --sh-navy: #0f1b2d; --sh-ink: #14202e; --sh-muted: #5c6675; --sh-surface: #f2f3f5; }
+/* Shine consumes the shared color-scheme token layer (--c-*). Its own --sh-*
+   vars are aliased to those tokens, so every existing var(--sh-navy/ink/muted/
+   surface) usage follows a chosen scheme (or dark mode) with no further edits.
+   Defaults below reproduce Shine's native navy-and-white palette. */
+.shine {
+  --c-bg: #fff; --c-surface: #f2f3f5; --c-ink: #14202e; --c-muted: #5c6675; --c-line: #e7e9ed; --c-deep: #0f1b2d; --c-on-deep: #fff;
+  --sh-navy: var(--c-deep); --sh-ink: var(--c-ink); --sh-muted: var(--c-muted); --sh-surface: var(--c-surface);
+  background: var(--c-bg); color: var(--c-ink); font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+}
 /* CTA edge block header: no right padding — the booking CTA is a full-height
    accent block fused to the right edge; lowercase wordmark for contrast. */
-.shineHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: stretch; gap: 1.5rem; padding: 0 0 0 clamp(1.25rem, 4vw, 3.5rem); background: linear-gradient(180deg, rgba(13,24,40,.97), rgba(15,27,45,.88)); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,.07); box-shadow: 0 1px 0 color-mix(in srgb, var(--theme-accent) 24%, transparent), 0 14px 34px -24px rgba(0,0,0,.7); color: #fff; }
-.shineBrand { display: inline-flex; align-items: center; gap: .6rem; padding-block: .7rem; font-size: 1.2rem; color: #fff; }
-.shineBrand strong { font-family: var(--brand-font, var(--theme-display)); font-weight: 800; letter-spacing: -.03em; color: #fff; }
-.shineBrandMark { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--theme-accent), color-mix(in srgb, var(--theme-accent) 45%, #7cc4ff)); color: #0f1b2d; font-size: 1rem; box-shadow: 0 8px 20px -8px color-mix(in srgb, var(--theme-accent) 75%, transparent); transition: transform .25s cubic-bezier(.34, 1.56, .64, 1); }
+.shineHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: stretch; gap: 1.5rem; padding: 0 0 0 clamp(1.25rem, 4vw, 3.5rem); background: linear-gradient(180deg, color-mix(in srgb, var(--c-deep) 97%, transparent), color-mix(in srgb, var(--c-deep) 88%, transparent)); backdrop-filter: blur(12px); border-bottom: 1px solid color-mix(in srgb, var(--c-on-deep) 8%, transparent); box-shadow: 0 1px 0 color-mix(in srgb, var(--theme-accent) 24%, transparent), 0 14px 34px -24px rgba(0,0,0,.7); color: var(--c-on-deep); }
+.shineBrand { display: inline-flex; align-items: center; gap: .6rem; padding-block: .7rem; font-size: 1.2rem; color: var(--c-on-deep); }
+.shineBrand strong { font-family: var(--brand-font, var(--theme-display)); font-weight: 800; letter-spacing: -.03em; color: var(--c-on-deep); }
+.shineBrandMark { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--theme-accent), color-mix(in srgb, var(--theme-accent) 45%, #7cc4ff)); color: var(--theme-on-accent, #0f1b2d); font-size: 1rem; box-shadow: 0 8px 20px -8px color-mix(in srgb, var(--theme-accent) 75%, transparent); transition: transform .25s cubic-bezier(.34, 1.56, .64, 1); }
 .shineBrand:hover .shineBrandMark { transform: rotate(-6deg) scale(1.08); }
 .shineHeader .navLinks { align-self: center; justify-self: start; text-transform: none; letter-spacing: 0; font-size: .94rem; font-weight: 600; }
-.shineHeader .navLinks a { color: rgba(255,255,255,.86); }
-.shineHeader .navLinks a:hover { color: #fff; }
+.shineHeader .navLinks a { color: color-mix(in srgb, var(--c-on-deep) 86%, transparent); }
+.shineHeader .navLinks a:hover { color: var(--c-on-deep); }
 /* .shineHeader ancestor also outranks the global `.site a { color: inherit }`,
    which was washing this pill out in dark mode (inherit = light ink on white). */
 .shineHeader .shineHeaderCta { justify-self: end; align-self: stretch; display: inline-flex; align-items: center; gap: .5rem; padding: 1rem 1.7rem; border-radius: 0; background: var(--theme-accent); color: var(--theme-on-accent, #0f1b2d); font-weight: 900; font-size: .95rem; white-space: nowrap; transition: filter .2s ease; }
@@ -1161,14 +1169,14 @@
 .shineHeader .shineHeaderCta:hover { filter: brightness(1.08); }
 .shineHeaderCta:hover span { transform: translateX(3px); }
 @media (prefers-reduced-motion: reduce) { .shineBrandMark, .shineHeaderCta span { transition: none; } .shineBrand:hover .shineBrandMark { transform: none; } }
-.shineHero { position: relative; overflow: hidden; display: grid; grid-template-columns: 1.05fr .95fr; gap: clamp(1.5rem, 4vw, 3.5rem); align-items: center; padding: clamp(2.5rem, 6vw, 5rem) clamp(1.25rem, 5vw, 4rem) clamp(3rem, 7vw, 5.5rem); background: radial-gradient(120% 100% at 15% 0, #16273d, var(--sh-navy) 62%); color: #fff; }
+.shineHero { position: relative; overflow: hidden; display: grid; grid-template-columns: 1.05fr .95fr; gap: clamp(1.5rem, 4vw, 3.5rem); align-items: center; padding: clamp(2.5rem, 6vw, 5rem) clamp(1.25rem, 5vw, 4rem) clamp(3rem, 7vw, 5.5rem); background: radial-gradient(120% 100% at 15% 0, color-mix(in srgb, var(--c-deep) 84%, #7cc4ff), var(--c-deep) 62%); color: var(--c-on-deep); }
 .shineHeroCopy, .shineHeroMedia { position: relative; z-index: 1; }
 .shineHeroBg { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
 .shineHeroBg img { width: 100%; height: 100%; object-fit: cover; }
 /* Legibility scrim — darker on the left where the copy sits, lighter on the
    right so the floating photo tiles read against it (the Purely reference). */
 .shineHeroBgActive::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(9,16,28,.92) 0%, rgba(9,16,28,.66) 46%, rgba(9,16,28,.34) 100%); }
-.shineHeroHasBg .shineHeroText { color: rgba(255,255,255,.86); }
+.shineHeroHasBg .shineHeroText { color: color-mix(in srgb, var(--c-on-deep) 86%, transparent); }
 /* Soft aurora glows drifting behind the hero — accent-tinted + cool white,
    transform-only so they can't stall invisible in the preview iframe. */
 .shineGlow1, .shineGlow2 { position: absolute; z-index: 0; border-radius: 50%; filter: blur(70px); pointer-events: none; will-change: transform; }
@@ -1178,14 +1186,14 @@
 @keyframes shineGlowB { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(48px, -26px, 0) scale(1.08); } }
 .shineHeroCopy { max-width: 620px; }
 .shineHeroCopy h1 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(2.5rem, 5.6vw, 4.4rem); line-height: 1.04; letter-spacing: -.02em; margin: 0 0 1.2rem; text-wrap: balance; overflow-wrap: anywhere; }
-.shineHeroText { font-size: clamp(1rem, 1.4vw, 1.16rem); line-height: 1.6; color: rgba(255,255,255,.78); margin: 0 0 1.7rem; max-width: 46ch; }
+.shineHeroText { font-size: clamp(1rem, 1.4vw, 1.16rem); line-height: 1.6; color: color-mix(in srgb, var(--c-on-deep) 78%, transparent); margin: 0 0 1.7rem; max-width: 46ch; }
 /* The hero CTA is the smart-intake HeroQuickForm card (see .heroQuickForm);
    center it in the stacked mobile layout. */
 .shineHeroCopy .heroQuickForm { margin-top: 1.25rem; margin-bottom: 1.5rem; text-align: left; }
 .shineBtn { display: inline-flex; align-items: center; gap: .45rem; min-height: 50px; padding: .8rem 1.6rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #0f1b2d); font-weight: 700; font-size: .96rem; box-shadow: 0 16px 30px -14px color-mix(in srgb, var(--theme-accent) 55%, transparent); transition: transform .2s ease, filter .2s ease; }
 .shineBtn:hover { transform: translateY(-2px); filter: brightness(1.04); }
-.shineBtnGhost { display: inline-flex; align-items: center; gap: .45rem; min-height: 50px; padding: .8rem 1.4rem; border-radius: 999px; border: 1.5px solid rgba(255,255,255,.5); color: #fff; font-weight: 700; font-size: .96rem; transition: background .2s ease, border-color .2s ease; }
-.shineBtnGhost:hover { background: rgba(255,255,255,.1); border-color: #fff; }
+.shineBtnGhost { display: inline-flex; align-items: center; gap: .45rem; min-height: 50px; padding: .8rem 1.4rem; border-radius: 999px; border: 1.5px solid color-mix(in srgb, var(--c-on-deep) 50%, transparent); color: var(--c-on-deep); font-weight: 700; font-size: .96rem; transition: background .2s ease, border-color .2s ease; }
+.shineBtnGhost:hover { background: color-mix(in srgb, var(--c-on-deep) 10%, transparent); border-color: var(--c-on-deep); }
 /* Aligned 2x2 grid (Purely): photo · card on the top row, card · photo on the
    bottom. Named areas so a hidden badge leaves its cell empty without breaking
    the alignment of the other three. */
@@ -1195,21 +1203,21 @@
    share a bottom edge, and the columns share left/right edges — a true, snug
    grid (both columns total photo + gap + badge, so the outline stays square). */
 .shineHeroMedia { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr auto; grid-template-areas: 'p1 b1' 'p1 p2' 'b2 p2'; gap: clamp(.6rem, 1.4vw, 1rem); align-items: start; }
-.shinePhotoCard { position: relative; margin: 0; border-radius: 20px; overflow: hidden; background: #16273d; box-shadow: 0 40px 80px -34px rgba(0,0,0,.6); }
+.shinePhotoCard { position: relative; margin: 0; border-radius: 20px; overflow: hidden; background: color-mix(in srgb, var(--c-deep) 85%, #ffffff 8%); box-shadow: 0 40px 80px -34px rgba(0,0,0,.6); }
 /* Framed photos: accent border on the main shot, white on the second. */
 .shinePhotoMain { grid-area: p1; align-self: start; border: 4px solid color-mix(in srgb, var(--theme-accent) 85%, #fff); aspect-ratio: 3 / 3.9; }
-.shinePhotoSide { grid-area: p2; align-self: end; border: 4px solid rgba(255,255,255,.92); aspect-ratio: 3 / 3.9; }
+.shinePhotoSide { grid-area: p2; align-self: end; border: 4px solid color-mix(in srgb, var(--c-on-deep) 92%, transparent); aspect-ratio: 3 / 3.9; }
 .shinePhoto { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .65s cubic-bezier(.22, .61, .36, 1); }
 .shinePhotoCard:hover .shinePhoto { transform: scale(1.06); }
-/* Literal ink (not var(--sh-ink)) — the badge stays white in dark mode, where
-   the ink var flips light and made this text unreadable. */
-.shineBadge { position: relative; z-index: 2; display: flex; align-items: center; gap: .6rem; padding: .9rem 1rem; border-radius: 16px; background: #fff; color: #14202e; box-shadow: 0 22px 44px -22px rgba(0,0,0,.4); }
+/* Surface + ink are always a contrasting pair per scheme, so the badge reads as
+   a light chip on light schemes and a dark glass chip on dark ones — always legible. */
+.shineBadge { position: relative; z-index: 2; display: flex; align-items: center; gap: .6rem; padding: .9rem 1rem; border-radius: 16px; background: var(--c-surface); color: var(--c-ink); box-shadow: 0 22px 44px -22px rgba(0,0,0,.4); }
 .shineBadgeSupport { grid-area: b1; align-self: start; flex-direction: column; gap: .4rem; text-align: center; }
 .shineBadgeSupport strong { font-size: .9rem; }
 .shineBadgeIcon { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 999px; background: var(--sh-navy); color: var(--theme-accent); }
 .shineBadgeCustomers { grid-area: b2; align-self: end; }
 .shineBadgeCustomers strong { font-size: 1.15rem; }
-.shineBadgeCustomers small { display: block; font-size: .74rem; color: #5c6675; }
+.shineBadgeCustomers small { display: block; font-size: .74rem; color: var(--c-muted); }
 
 /* Hero badge treatments — data-badge-style on the template root restyles every
    template's floating hero badge at once. Default (solid) keeps each badge's
@@ -1255,7 +1263,7 @@
 }
 .shineBadge:hover .shineBadgeIcon, .coatHeroBadge:hover .coatHeroBadgeIcon, .fixitHeroCard:hover .fixitHeroCardIcon { transform: scale(1.09); }
 .shineBadgeSupport strong { display: block; }
-.shineBadgeSupport small { display: block; margin-top: .15rem; font-size: .72rem; font-weight: 600; color: #5c6675; }
+.shineBadgeSupport small { display: block; margin-top: .15rem; font-size: .72rem; font-weight: 600; color: var(--c-muted); }
 @media (prefers-reduced-motion: reduce) {
   .shineBadgeIcon, .coatHeroBadgeIcon, .fixitHeroCardIcon, .forgeBadgeIcon, .vistaBadgeIcon { transition: none; }
   .shineBadge:hover .shineBadgeIcon, .coatHeroBadge:hover .coatHeroBadgeIcon, .fixitHeroCard:hover .fixitHeroCardIcon,
@@ -1327,7 +1335,7 @@
      clear, and the bottom-right corner belongs to .vistaScroll. */
 }
 .shineAvatars { display: inline-flex; flex: 0 0 auto; }
-.shineAvatars span { width: 24px; height: 24px; border-radius: 999px; border: 2px solid #fff; margin-left: -8px; background: linear-gradient(135deg, #cbd3dd, #8b97a6); }
+.shineAvatars span { width: 24px; height: 24px; border-radius: 999px; border: 2px solid var(--c-surface); margin-left: -8px; background: linear-gradient(135deg, #cbd3dd, #8b97a6); }
 .shineAvatars span:first-child { margin-left: 0; }
 .shineEyebrow { margin: 0 0 .6rem; font-size: .78rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: color-mix(in srgb, var(--theme-accent) 80%, #8a7400); }
 .shineContact { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(1.75rem, 4vw, 3.5rem); align-items: center; padding: clamp(3rem, 7vw, 6rem) clamp(1.25rem, 5vw, 4rem); background: var(--sh-surface); }
@@ -1336,21 +1344,21 @@
 .shineContactCopy > p { margin: 0; font-size: 1.02rem; line-height: 1.6; color: var(--sh-muted); }
 .shineContactCopy .shineBtn { justify-self: start; }
 .shineFooter { background: var(--sh-navy); padding: clamp(1.5rem, 4vw, 2.5rem) clamp(1.25rem, 5vw, 4rem); }
-.shineFooterBar { display: flex; align-items: center; justify-content: space-between; gap: 1rem 1.5rem; flex-wrap: wrap; padding: 1.1rem 0; color: #9aa6b6; }
-.shineFooterBrand { display: inline-flex; align-items: center; gap: .5rem; font-family: var(--brand-font, var(--theme-display)); font-weight: 800; font-size: 1.15rem; color: #fff; }
+.shineFooterBar { display: flex; align-items: center; justify-content: space-between; gap: 1rem 1.5rem; flex-wrap: wrap; padding: 1.1rem 0; color: color-mix(in srgb, var(--c-on-deep) 64%, transparent); }
+.shineFooterBrand { display: inline-flex; align-items: center; gap: .5rem; font-family: var(--brand-font, var(--theme-display)); font-weight: 800; font-size: 1.15rem; color: var(--c-on-deep); }
 .shineFooterCall { display: inline-flex; align-items: center; gap: .5rem; min-height: 46px; padding: .5rem 1.2rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #0f1b2d); font-weight: 800; font-size: .95rem; }
 .shineFooter small { opacity: .6; font-size: .78rem; }
 .shine .extraSection { border-top: none; padding: clamp(3rem, 6vw, 5.5rem) clamp(1.25rem, 5vw, 4rem); }
-.shine .extraSection:nth-of-type(even) { background: linear-gradient(180deg, #fff, var(--sh-surface) 16%, var(--sh-surface) 84%, #fff); }
+.shine .extraSection:nth-of-type(even) { background: linear-gradient(180deg, var(--c-bg), var(--c-surface) 16%, var(--c-surface) 84%, var(--c-bg)); }
 .shine .extraSectionHeader h2 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(1.9rem, 4vw, 3rem); line-height: 1.06; letter-spacing: -.02em; color: var(--sh-ink); }
 .shine .kicker { color: color-mix(in srgb, var(--theme-accent) 80%, #8a7400); }
-.shine .serviceCard { background: #fff; border: 1px solid #e7e9ed; border-radius: 16px; box-shadow: 0 22px 46px -30px rgba(15,27,45,.28); }
+.shine .serviceCard { background: var(--c-surface); border: 1px solid var(--c-line); border-radius: 16px; box-shadow: 0 22px 46px -30px rgba(15,27,45,.28); }
 .shine .serviceIcon { background: var(--sh-navy); color: var(--theme-accent); border-radius: 12px; }
 .shine .serviceCard h3 { color: var(--sh-ink); }
 .shine .serviceCard p { color: var(--sh-muted); }
 .shine .statItem { background: var(--sh-navy); border-radius: 16px; padding: 1.4rem 1rem; }
 .shine .statValue { color: var(--theme-accent); }
-.shine .statLabel { color: rgba(255,255,255,.72); }
+.shine .statLabel { color: color-mix(in srgb, var(--c-on-deep) 72%, transparent); }
 .shine .processNum { background: color-mix(in srgb, var(--theme-accent) 18%, transparent); color: color-mix(in srgb, var(--theme-accent) 80%, #8a7400); }
 .shineHeroCopy > * { animation: shineRise .7s cubic-bezier(.22, .61, .36, 1) both; }
 .shineHeroCopy > *:nth-child(1) { animation-delay: .05s; }
@@ -1399,9 +1407,10 @@
 .reno[data-mode='dark'] .serviceCard { background: #1b2431; border-color: #2a3442; }
 .reno[data-mode='dark'] .extraSection:nth-of-type(even) { background: linear-gradient(180deg, #141a23, var(--rn-surface) 16%, var(--rn-surface) 84%, #141a23); }
 
-.shine[data-mode='dark'] { background: #0f1626; color: #e9edf5; --sh-ink: #e9edf5; --sh-muted: #98a2b3; --sh-surface: #172032; }
-.shine[data-mode='dark'] .serviceCard { background: #172032; border-color: #263149; }
-.shine[data-mode='dark'] .extraSection:nth-of-type(even) { background: linear-gradient(180deg, #0f1626, var(--sh-surface) 16%, var(--sh-surface) 84%, #0f1626); }
+/* Dark mode is now just another token override; the token-driven base rules
+   (surface/line/deep/ink) do the rest. Only applies when no scheme is set —
+   the template drops data-mode when a scheme is active. */
+.shine[data-mode='dark'] { --c-bg: #0f1626; --c-surface: #172032; --c-ink: #e9edf5; --c-muted: #98a2b3; --c-line: #263149; --c-deep: #0b1220; --c-on-deep: #e9edf5; }
 
 /* ===== Mobile nav — floating menu button + full-screen overlay =====
    Portaled to <body> (see SiteNavLinks.tsx), shown only where templates hide

@@ -320,6 +320,38 @@ export const HEADER_STYLES = [
   { key: 'cta', label: 'Bold CTA block' },
 ] as const;
 
+// Full-page color schemes. A theme owns layout/type/motion; a scheme owns the
+// whole palette through a small shared token set the templates consume
+// (--c-bg / --c-surface / --c-ink / --c-muted / --c-line / --c-deep /
+// --c-on-deep, plus the accent). Empty colorScheme = the theme's own built-in
+// palette (respecting its light/dark mode), so no existing site changes.
+// 'deep' is the inverted contrast ground a theme uses for hero/header/footer
+// chrome; 'onDeep' is text on it.
+export type ColorScheme = {
+  key: string; label: string;
+  bg: string; surface: string; ink: string; muted: string; line: string;
+  deep: string; onDeep: string; accent: string; onAccent: string;
+};
+
+export const COLOR_SCHEMES: ColorScheme[] = [
+  { key: 'midnight', label: 'Midnight — near-black + soft blue',
+    bg: '#0e1116', surface: '#191d25', ink: '#eef1f5', muted: '#99a2b0', line: '#272d38',
+    deep: '#080a0d', onDeep: '#eef1f5', accent: '#6ea8ff', onAccent: '#0b0e13' },
+  { key: 'porcelain', label: 'Porcelain — warm white + clay',
+    bg: '#f7f5f1', surface: '#ffffff', ink: '#1b1d20', muted: '#6c7076', line: '#e7e3db',
+    deep: '#1f2124', onDeep: '#f6f4ef', accent: '#c76b4a', onAccent: '#ffffff' },
+  { key: 'slate', label: 'Slate — cool grey + teal',
+    bg: '#eceff3', surface: '#ffffff', ink: '#1a2230', muted: '#5d6b7e', line: '#dce2ea',
+    deep: '#1d2734', onDeep: '#eef2f7', accent: '#2f9e8f', onAccent: '#ffffff' },
+  { key: 'forest', label: 'Forest — deep green + lime',
+    bg: '#0f1512', surface: '#182019', ink: '#e9f0ea', muted: '#95a79a', line: '#26332a',
+    deep: '#0a0f0c', onDeep: '#e9f0ea', accent: '#8fd14f', onAccent: '#0d130a' },
+];
+
+export function getColorScheme(key: string | null | undefined): ColorScheme | null {
+  return COLOR_SCHEMES.find((scheme) => scheme.key === key) || null;
+}
+
 // The header style a site renders. Empty string when the owner hasn't chosen —
 // which the CSS treats as "the template's own built-in header," so no existing
 // site's header changes. A chosen style (balanced|left|cta) fully overrides the
@@ -416,6 +448,8 @@ export type NormalizedSiteContent = {
   // Header layout: '' = the template's natural style, else one of
   // HEADER_STYLES ('balanced' | 'left' | 'cta'). Drives data-header on the root.
   headerStyle: string;
+  // Full-page color scheme key ('' = the theme's own palette). See COLOR_SCHEMES.
+  colorScheme: string;
   projectShowcase: SiteProjectShowcaseContent;
   services: SiteServicesContent;
   howItWorks: SiteHowItWorksContent;
@@ -829,6 +863,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     heroEyebrow: toString(root.heroEyebrow).slice(0, 50),
     brandFont: toString(root.brandFont).slice(0, 120),
     headerStyle: HEADER_STYLES.some((style) => style.key === root.headerStyle) ? toString(root.headerStyle) : '',
+    colorScheme: COLOR_SCHEMES.some((scheme) => scheme.key === root.colorScheme) ? toString(root.colorScheme) : '',
     projectShowcase: {
       // On by default so existing Care sites keep their work band; the owner can
       // toggle it off to hide the whole section.

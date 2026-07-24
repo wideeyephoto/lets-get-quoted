@@ -248,6 +248,15 @@
 .accentSwatch { width: 34px; height: 34px; padding: 0; border: 2px solid rgba(255,255,255,.18); border-radius: 8px; cursor: pointer; transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease; }
 .accentSwatch:hover { transform: translateY(-1px); border-color: rgba(255,255,255,.5); }
 .accentSwatchActive { border-color: #fff; box-shadow: 0 0 0 2px #ff7a21; }
+
+/* Full color-scheme picker — each chip previews the scheme's page, deep ground, and accent. */
+.schemeSwatches { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .25rem; }
+.schemeSwatch { display: flex; flex-direction: column; align-items: center; gap: .35rem; width: 72px; padding: 0; background: none; border: 0; cursor: pointer; color: inherit; }
+.schemeChip { width: 100%; height: 40px; border-radius: 9px; border: 2px solid rgba(255,255,255,.18); transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease; }
+.schemeSwatch:hover .schemeChip { transform: translateY(-1px); border-color: rgba(255,255,255,.5); }
+.schemeSwatch small { font-size: .72rem; color: var(--muted, #8a8f98); text-align: center; line-height: 1.1; }
+.schemeSwatchActive .schemeChip { border-color: #fff; box-shadow: 0 0 0 2px #ff7a21; }
+.schemeSwatchActive small { color: inherit; font-weight: 600; }
 .fieldOptional { font-style: normal; font-weight: 400; font-size: .72rem; color: #9ca8b8; }
 .logoPreviews { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem; }
 .logoPreview, .logoPreviewDark { position: relative; display: grid; min-height: 72px; place-items: center; padding: 1rem .75rem; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; }

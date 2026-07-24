@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, HEADER_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, REORDERABLE_SECTIONS, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteWorkGalleryContent, type SiteIntroBlockContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, REORDERABLE_SECTIONS, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteWorkGalleryContent, type SiteIntroBlockContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
@@ -1394,7 +1394,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     )}
                   </div>
                   <div className={styles.formField}>
-                    <span>Preset color schemes</span>
+                    <span>Accent presets</span>
                     <div className={styles.accentSwatches} role="group" aria-label="Preset accent colors">
                       {ACCENT_PRESETS.map((preset) => {
                         const selected = (site.accent_override || '').toLowerCase() === preset.hex.toLowerCase();
@@ -1412,8 +1412,42 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                         );
                       })}
                     </div>
-                    <small className={styles.fieldHint}>Pick a scheme or a custom color above — button and badge text auto-adjusts to stay readable on any accent.</small>
+                    <small className={styles.fieldHint}>Sets just the accent — button and badge text auto-adjusts to stay readable on any color.</small>
                   </div>
+                  {site.template === 'shine' && (
+                    <div className={styles.formField}>
+                      <span>Color scheme</span>
+                      <div className={styles.schemeSwatches} role="group" aria-label="Full color schemes">
+                        <button
+                          type="button"
+                          className={`${styles.schemeSwatch}${!siteContent.colorScheme ? ` ${styles.schemeSwatchActive}` : ''}`}
+                          onClick={() => updateSiteContent({ colorScheme: '' })}
+                          aria-pressed={!siteContent.colorScheme}
+                        >
+                          <span className={styles.schemeChip} style={{ background: 'linear-gradient(135deg, #0f1b2d 0 50%, #ffffff 50% 100%)' }} />
+                          <small>Theme default</small>
+                        </button>
+                        {COLOR_SCHEMES.map((scheme) => {
+                          const selected = siteContent.colorScheme === scheme.key;
+                          return (
+                            <button
+                              key={scheme.key}
+                              type="button"
+                              className={`${styles.schemeSwatch}${selected ? ` ${styles.schemeSwatchActive}` : ''}`}
+                              onClick={() => updateSiteContent({ colorScheme: scheme.key })}
+                              title={scheme.label}
+                              aria-label={`${scheme.label}${selected ? ' (selected)' : ''}`}
+                              aria-pressed={selected}
+                            >
+                              <span className={styles.schemeChip} style={{ background: `linear-gradient(135deg, ${scheme.bg} 0 38%, ${scheme.deep} 38% 66%, ${scheme.accent} 66% 100%)` }} />
+                              <small>{scheme.label.split(' — ')[0]}</small>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <small className={styles.fieldHint}>Repalettes the whole page — background, surfaces, and text — not just the accent. Overrides the light/dark toggle.</small>
+                    </div>
+                  )}
                   <label className={styles.formField}><span>Heading font</span><select value={site.header_font || ''} onChange={(event) => handleChange('header_font', event.target.value || null)}>
                     <option value="">Theme default</option>
                     {HEADING_FONT_OPTIONS.map((font) => <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>{font.label}</option>)}
