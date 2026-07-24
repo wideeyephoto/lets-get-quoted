@@ -320,6 +320,20 @@ export const HEADER_STYLES = [
   { key: 'cta', label: 'Bold CTA block' },
 ] as const;
 
+// Display treatments for the company-name wordmark (header + footer), applied
+// via data-wordmark on the root. '' = the plain name. CSS-only, so they layer
+// on top of whatever brand font is chosen.
+export const WORDMARK_STYLES = [
+  { key: 'caps', label: 'All caps — wide tracking' },
+  { key: 'initial', label: 'Accent first letter' },
+  { key: 'underline', label: 'Accent underline' },
+  { key: 'box', label: 'Boxed outline' },
+] as const;
+
+export function getWordmarkStyle(content: Record<string, unknown> | null | undefined): string {
+  return getSiteContent(content).wordmarkStyle;
+}
+
 // Full-page color schemes. A theme owns layout/type/motion; a scheme owns the
 // whole palette through a small shared token set the templates consume
 // (--c-bg / --c-surface / --c-ink / --c-muted / --c-line / --c-deep /
@@ -450,6 +464,8 @@ export type NormalizedSiteContent = {
   headerStyle: string;
   // Full-page color scheme key ('' = the theme's own palette). See COLOR_SCHEMES.
   colorScheme: string;
+  // Company-name wordmark display treatment ('' = plain). See WORDMARK_STYLES.
+  wordmarkStyle: string;
   projectShowcase: SiteProjectShowcaseContent;
   services: SiteServicesContent;
   howItWorks: SiteHowItWorksContent;
@@ -867,6 +883,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     brandFont: toString(root.brandFont).slice(0, 120),
     headerStyle: HEADER_STYLES.some((style) => style.key === root.headerStyle) ? toString(root.headerStyle) : '',
     colorScheme: COLOR_SCHEMES.some((scheme) => scheme.key === root.colorScheme) ? toString(root.colorScheme) : '',
+    wordmarkStyle: WORDMARK_STYLES.some((style) => style.key === root.wordmarkStyle) ? toString(root.wordmarkStyle) : '',
     projectShowcase: {
       // On by default so existing Care sites keep their work band; the owner can
       // toggle it off to hide the whole section.

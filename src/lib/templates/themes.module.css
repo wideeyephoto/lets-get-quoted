@@ -194,6 +194,42 @@
 .site[data-logo-style='framed'] .logo { border-radius: 10px; padding: 5px 9px; background: color-mix(in srgb, currentColor 8%, transparent); border: 1px solid color-mix(in srgb, currentColor 22%, transparent); }
 .site[data-logo-style='circle'] .logo { border-radius: 999px; aspect-ratio: 1; object-fit: cover; }
 
+/* Company-name wordmark treatments (data-wordmark on the root). The name text
+   lives in the brand <strong> for every header/footer except Vista, whose brand
+   <a> holds the text directly — both are covered by the selector list. Each
+   treatment is CSS-only so it layers on top of the chosen brand font. */
+.site[data-wordmark] .brand strong, .site[data-wordmark] .guildBrand strong,
+.site[data-wordmark] .careBrand strong, .site[data-wordmark] .shineBrand strong,
+.site[data-wordmark] .coatBrand strong, .site[data-wordmark] .fixitBrand strong,
+.site[data-wordmark] .renoBrand strong, .site[data-wordmark] .vistaBrand {
+  display: inline-block;
+}
+.site[data-wordmark='caps'] .brand strong, .site[data-wordmark='caps'] .guildBrand strong,
+.site[data-wordmark='caps'] .careBrand strong, .site[data-wordmark='caps'] .shineBrand strong,
+.site[data-wordmark='caps'] .coatBrand strong, .site[data-wordmark='caps'] .fixitBrand strong,
+.site[data-wordmark='caps'] .renoBrand strong, .site[data-wordmark='caps'] .vistaBrand {
+  text-transform: uppercase; letter-spacing: .12em;
+}
+.site[data-wordmark='initial'] .brand strong::first-letter, .site[data-wordmark='initial'] .guildBrand strong::first-letter,
+.site[data-wordmark='initial'] .careBrand strong::first-letter, .site[data-wordmark='initial'] .shineBrand strong::first-letter,
+.site[data-wordmark='initial'] .coatBrand strong::first-letter, .site[data-wordmark='initial'] .fixitBrand strong::first-letter,
+.site[data-wordmark='initial'] .renoBrand strong::first-letter, .site[data-wordmark='initial'] .vistaBrand::first-letter {
+  color: var(--theme-accent);
+}
+.site[data-wordmark='underline'] .brand strong, .site[data-wordmark='underline'] .guildBrand strong,
+.site[data-wordmark='underline'] .careBrand strong, .site[data-wordmark='underline'] .shineBrand strong,
+.site[data-wordmark='underline'] .coatBrand strong, .site[data-wordmark='underline'] .fixitBrand strong,
+.site[data-wordmark='underline'] .renoBrand strong, .site[data-wordmark='underline'] .vistaBrand {
+  background: linear-gradient(var(--theme-accent), var(--theme-accent)) 0 100% / 100% 3px no-repeat;
+  padding-bottom: 3px;
+}
+.site[data-wordmark='box'] .brand strong, .site[data-wordmark='box'] .guildBrand strong,
+.site[data-wordmark='box'] .careBrand strong, .site[data-wordmark='box'] .shineBrand strong,
+.site[data-wordmark='box'] .coatBrand strong, .site[data-wordmark='box'] .fixitBrand strong,
+.site[data-wordmark='box'] .renoBrand strong, .site[data-wordmark='box'] .vistaBrand {
+  border: 2px solid var(--theme-accent); border-radius: 6px; padding: .08em .34em; line-height: 1.15;
+}
+
 /* The figure is the aspect box; the image is absolutely positioned to fill it,
    so next/image's own width/height can't collapse the tile tall or zoom-crop. */
 .showcaseGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
@@ -343,7 +379,9 @@
 @media (prefers-reduced-motion: reduce) { .statsCard { transition: none; } }
 
 /* Before & after slider (toggleable) */
-.baGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 1.25rem; }
+/* Capped + centered so a single before/after pair reads as a focused panel
+   rather than a full-bleed billboard that needs huge, hard-to-source photos. */
+.baGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 1.25rem; max-width: 600px; margin-inline: auto; }
 .baItem { margin: 0; }
 .baFrame { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 10px; cursor: ew-resize; touch-action: pan-y; user-select: none; -webkit-user-select: none; background: color-mix(in srgb, currentColor 8%, transparent); }
 .baImg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }

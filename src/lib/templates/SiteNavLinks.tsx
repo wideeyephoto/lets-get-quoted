@@ -11,6 +11,25 @@ type SiteNavLink = {
   label: string;
 };
 
+// In the builder preview, clicking a nav link should open the editor for the
+// section it points at rather than scrolling the (non-browsable) preview. Maps
+// each header link's hash to a click-to-edit target; anything unmapped
+// (structural anchors like #top/#about) falls back to the business identity.
+const NAV_EDIT_TARGET: Record<string, string> = {
+  '#our-services': 'our-services',
+  '#services': 'our-services',
+  '#work': 'showcase',
+  '#projects': 'showcase',
+  '#why': 'whyUs',
+  '#how-it-works': 'how-it-works',
+  '#showcase': 'showcase',
+  '#reviews': 'reviews',
+  '#faqs': 'faqs',
+  '#blog': 'blog',
+  '#contact': 'contact',
+};
+const navEditTarget = (href: string): string => NAV_EDIT_TARGET[href] || 'identity';
+
 type SiteNavLinksProps = {
   site: Site;
   links: SiteNavLink[];
@@ -64,7 +83,7 @@ export default function SiteNavLinks({ site, links, className }: SiteNavLinksPro
   return (
     <>
       <nav ref={navRef} className={className} aria-label="Main navigation">
-        {allLinks.map((link) => <a key={link.href} href={link.href}>{link.label}</a>)}
+        {allLinks.map((link) => <a key={link.href} href={link.href} data-edit={navEditTarget(link.href)}>{link.label}</a>)}
       </nav>
 
       <button
@@ -87,7 +106,7 @@ export default function SiteNavLinks({ site, links, className }: SiteNavLinksPro
               <p className={styles.mobileNavBrand}>{site.company_name}</p>
               <nav className={styles.mobileNavLinks} aria-label="Menu links">
                 {allLinks.map((link) => (
-                  <a key={link.href} href={link.href} onClick={() => setOpen(false)}>{link.label}</a>
+                  <a key={link.href} href={link.href} data-edit={navEditTarget(link.href)} onClick={() => setOpen(false)}>{link.label}</a>
                 ))}
               </nav>
               {site.phone && (

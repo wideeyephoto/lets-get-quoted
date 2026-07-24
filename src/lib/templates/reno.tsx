@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroImageCycle from './HeroImageCycle';
@@ -37,19 +37,19 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
   } as CSSProperties;
 
   return (
-    <main className={`${styles.site} ${styles.reno}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-header={getHeaderStyle(site.template, site.content)}>
+    <main className={`${styles.site} ${styles.reno}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-header={getHeaderStyle(site.template, site.content)} data-wordmark={getWordmarkStyle(site.content)}>
       <SiteAnnouncementBar site={site} />
       <ScrollReveal />
       <Parallax />
 
       <header className={styles.renoHeader}>
         <a className={styles.renoBrand} href="#top" aria-label={`${site.company_name} home`}>
-          {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" /> : <span className={styles.renoHex} aria-hidden="true">⚒</span>}
-          <strong>{site.company_name}</strong>
+          {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.renoHex} aria-hidden="true">⚒</span>}
+          <strong data-edit="identity">{site.company_name}</strong>
         </a>
         <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#our-services', label: 'Services' }, { href: '#work', label: 'Projects' }, { href: '#contact', label: 'Contact' }]} />
         {site.phone && (
-          <a className={styles.renoHeaderPhone} href={`tel:${site.phone}`}>
+          <a className={styles.renoHeaderPhone} data-edit="bizPhone" href={`tel:${site.phone}`}>
             <span className={styles.renoHex} aria-hidden="true">✆</span>{site.phone}
           </a>
         )}

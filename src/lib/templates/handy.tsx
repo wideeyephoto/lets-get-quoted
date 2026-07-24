@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getPublishedHowItWorks, getPublishedServices, getPublishedTrustBadges, getPublishedWhyUs, getSiteContent, getSlotImage, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getPublishedHowItWorks, getPublishedServices, getPublishedTrustBadges, getPublishedWhyUs, getSiteContent, getSlotImage, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import ProjectShowcase from './ProjectShowcase';
 import type { TemplateProps } from '@/lib/templates/types';
@@ -66,20 +66,20 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
   ];
 
   return (
-    <main className={`${styles.site} ${styles.handy}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-header={getHeaderStyle(site.template, site.content)}>
+    <main className={`${styles.site} ${styles.handy}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-header={getHeaderStyle(site.template, site.content)} data-wordmark={getWordmarkStyle(site.content)}>
       <SiteAnnouncementBar site={site} />
       <ScrollReveal />
       <Parallax />
 
       <header className={styles.careHeader}>
         <a className={styles.careBrand} href="#top" aria-label={`${site.company_name} home`}>
-          {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" /> : <span className={styles.careBrandMark} aria-hidden="true">⌂</span>}
-          <strong>{site.company_name}</strong>
+          {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.careBrandMark} aria-hidden="true">⌂</span>}
+          <strong data-edit="identity">{site.company_name}</strong>
         </a>
         <SiteNavLinks site={site} className={styles.navLinks} links={navLinks} />
         <div className={styles.careHeaderActions}>
-          {site.phone && <a className={styles.careHeaderPhone} href={`tel:${site.phone}`}>{site.phone}</a>}
-          <a className={styles.careBtn} href="#contact">Contact us</a>
+          {site.phone && <a className={styles.careHeaderPhone} data-edit="bizPhone" href={`tel:${site.phone}`}>{site.phone}</a>}
+          <a className={styles.careBtn} data-edit="quoteForm" href="#contact">Contact us</a>
         </div>
       </header>
 
@@ -159,22 +159,6 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
           />
         </section>
       )}
-
-      <section className={styles.careCta} aria-label="Get started">
-        <div className={styles.careCtaInner} data-reveal>
-          <div>
-            <h2>Ready to get it done?</h2>
-            {/* Was "Free estimates and a satisfaction guarantee on every job" —
-                two specific claims on every Care site. Neutralized like the other
-                contact copy; real guarantees belong in the owner's trust badges. */}
-            <p>Tell us about your project and we&apos;ll follow up with a quote.</p>
-          </div>
-          <div className={styles.careCtaActions}>
-            {site.phone && <a className={styles.careCtaCall} href={`tel:${site.phone}`}>Call {site.phone}</a>}
-            <a className={styles.careCtaGhost} href="#contact">Get a free estimate</a>
-          </div>
-        </div>
-      </section>
 
       <section className={styles.careContact} id="contact" data-reveal>
         <div className={styles.careContactCopy}>

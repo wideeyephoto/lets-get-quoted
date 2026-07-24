@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroImageCycle from './HeroImageCycle';
@@ -33,16 +33,16 @@ export default function VistaTemplate({ site }: TemplateProps) {
   } as CSSProperties;
 
   return (
-    <main className={`${styles.site} ${styles.vista}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-header={getHeaderStyle(site.template, site.content)}>
+    <main className={`${styles.site} ${styles.vista}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-header={getHeaderStyle(site.template, site.content)} data-wordmark={getWordmarkStyle(site.content)}>
       <SiteAnnouncementBar site={site} />
       <ScrollReveal />
       <Parallax />
       <header className={styles.vistaHeader}>
-        <a className={styles.vistaBrand} href="#top">{site.logo_url ? <img className={styles.logo} src={site.logo_url} alt={site.company_name} /> : site.company_name}</a>
+        <a className={styles.vistaBrand} href="#top" data-edit="identity">{site.logo_url ? <img className={styles.logo} src={site.logo_url} alt={site.company_name} data-edit="logo" /> : site.company_name}</a>
         <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#studio', label: 'About' }, { href: '#work', label: 'Work' }, { href: '#contact', label: 'Connect' }]} />
         <div className={styles.vistaActions}>
-          {site.phone && <a className={styles.vistaPhone} href={`tel:${site.phone}`}>{site.phone}</a>}
-          <a className={styles.vistaMenu} href="#contact">Get a quote <span aria-hidden="true">→</span></a>
+          {site.phone && <a className={styles.vistaPhone} data-edit="bizPhone" href={`tel:${site.phone}`}>{site.phone}</a>}
+          <a className={styles.vistaMenu} data-edit="quoteForm" href="#contact">Get a quote <span aria-hidden="true">→</span></a>
         </div>
       </header>
 
@@ -89,7 +89,7 @@ export default function VistaTemplate({ site }: TemplateProps) {
         <QuoteRequestForm site={site} />
       </section>
 
-      <footer className={styles.vistaFooter}><strong>{site.company_name}</strong><span>{site.hours || 'By appointment'}</span><small>Powered by Let&apos;s Get Quoted</small></footer>
+      <footer className={styles.vistaFooter}><strong data-edit="identity">{site.company_name}</strong><span>{site.hours || 'By appointment'}</span><small>Powered by Let&apos;s Get Quoted</small></footer>
     </main>
   );
 }
