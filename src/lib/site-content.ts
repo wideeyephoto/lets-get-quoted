@@ -373,7 +373,7 @@ export type SiteQuoteFormContent = {
 };
 
 export function getEstimateButtonLabel(quoteForm: Pick<SiteQuoteFormContent, 'estimateLabel'>): string {
-  return quoteForm.estimateLabel === 'instant' ? 'Instant Estimate' : 'Quick Estimate';
+  return quoteForm.estimateLabel === 'instant' ? 'Instant Estimate' : 'Instant Quote';
 }
 
 // The smart-intake estimator: the AI scopes the described job and prices it
