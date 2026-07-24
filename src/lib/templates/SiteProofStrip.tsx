@@ -16,14 +16,14 @@ export default function SiteProofStrip({ site }: { site: Site }) {
   return (
     <div className={styles.proofStrip}>
       {ratingBadge && (
-        <span className={styles.proofRating}>
+        <span className={styles.proofRating} data-edit="ratingBadge">
           <span className={styles.proofStars} aria-hidden="true">{'★'.repeat(rounded)}{'☆'.repeat(5 - rounded)}</span>
           <strong>{ratingBadge.rating.toFixed(1)}</strong>
           <span className={styles.proofRatingMeta}>{ratingBadge.reviewCount} {ratingBadge.sourceLabel}</span>
         </span>
       )}
       {trustBadges && trustBadges.badges.map((badge) => (
-        <span key={badge.id} className={styles.proofChip}><span aria-hidden="true">✓</span> {badge.label}</span>
+        <span key={badge.id} className={styles.proofChip} data-edit="trustBadges"><span aria-hidden="true">✓</span> {badge.label}</span>
       ))}
     </div>
   );

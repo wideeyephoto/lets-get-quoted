@@ -546,6 +546,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       contact: 'quoteForm',
       whyUs: 'whyUs',
       trustBadges: 'trustBadges',
+      ratingBadge: 'rating',
       projectShowcase: 'projectShowcase',
     };
 
