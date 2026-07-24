@@ -387,6 +387,9 @@ export type NormalizedSiteContent = {
   whyUs: SiteWhyUsContent;
   workGallery: SiteWorkGalleryContent;
   introBlock: SiteIntroBlockContent;
+  // The small label above the hero headline. Blank until the owner types one;
+  // each template falls back to its own wording, so no live page changes.
+  heroEyebrow: string;
   projectShowcase: SiteProjectShowcaseContent;
   services: SiteServicesContent;
   howItWorks: SiteHowItWorksContent;
@@ -797,6 +800,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       title: toString(introBlock.title).slice(0, 120),
       body: toString(introBlock.body).slice(0, 400),
     },
+    heroEyebrow: toString(root.heroEyebrow).slice(0, 50),
     projectShowcase: {
       // On by default so existing Care sites keep their work band; the owner can
       // toggle it off to hide the whole section.

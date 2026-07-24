@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSlotImage } from '@/lib/site-content';
+import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent, getSlotImage } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
@@ -34,6 +34,9 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
   const heroBadge = getHeroBadge(site.content);
   const second = getHeroSecondBadge(site.content);
   const heroBackground = getSlotImage(site.content, 'heroBackground', '');
+  // Shine ships without a hero eyebrow, so this only appears once the owner sets
+  // one — additive, no existing Shine site changes.
+  const heroEyebrow = getSiteContent(site.content).heroEyebrow;
   const themeStyle = {
     '--theme-accent': site.accent_override || '#ffd60a',
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#0f1b2d',
@@ -65,6 +68,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
         <span className={styles.shineGlow1} aria-hidden="true" />
         <span className={styles.shineGlow2} aria-hidden="true" />
         <div className={styles.shineHeroCopy}>
+          {heroEyebrow && <p className={styles.shineEyebrow} data-edit="heroEyebrow">{heroEyebrow}</p>}
           <h1>{site.headline || 'Pure living starts with a spotless home.'}</h1>
           <p className={styles.shineHeroText}>{site.tagline || 'Professional home cleaning and maintenance, designed to give you comfort, hygiene, and peace of mind.'}</p>
           <HeroQuickForm site={site} />

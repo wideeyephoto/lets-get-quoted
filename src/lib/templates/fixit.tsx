@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle } from '@/lib/site-content';
+import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
@@ -23,6 +23,7 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
   void gallery;
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
   const heroBadge = getHeroBadge(site.content);
+  const heroEyebrow = getSiteContent(site.content).heroEyebrow;
   // Second floating card. Its built-in default used to auto-pick whichever
   // preset differed from the primary badge — so a site shipped asserting "Free
   // Estimates" or "Same-Day Service" that the owner never chose. The default now
@@ -56,7 +57,7 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
 
       <section className={styles.fixitHero} id="top">
         <div className={styles.fixitHeroCopy}>
-          <p className={styles.fixitEyebrow}><span aria-hidden="true">✖</span> Professional handyman services</p>
+          <p className={styles.fixitEyebrow} data-edit="heroEyebrow"><span aria-hidden="true">✖</span> {heroEyebrow || 'Professional handyman services'}</p>
           <h1>{site.headline || 'Expert repairs, done right, every time.'}</h1>
           <p className={styles.fixitHeroText}>{site.tagline || 'Book a trusted handyman in a few clicks — installs, repairs, and assembly, quickly and hassle-free.'}</p>
           <div className={styles.fixitHeroActions}>

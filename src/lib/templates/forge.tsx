@@ -19,7 +19,9 @@ import styles from './themes.module.css';
 export default function ForgeTemplate({ site }: TemplateProps) {
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
   const work = getWorkBand(site.content, 'Selected work', 'Made for real life.');
-  const intro = getSiteContent(site.content).introBlock;
+  const content = getSiteContent(site.content);
+  const intro = content.introBlock;
+  const heroEyebrow = content.heroEyebrow;
   const heroBadge = getHeroBadge(site.content);
   // 'default' means "the template's own built-in second badge" — Forge never had
   // one, so only an explicitly chosen badge renders here. Nothing is invented.
@@ -49,7 +51,7 @@ export default function ForgeTemplate({ site }: TemplateProps) {
         <HeroImageCycle images={getHeroImages(site.content, heroImage)} className={styles.heroImage} alt="Home construction work" />
         <div className={styles.forgeScrim} />
         <div className={styles.forgeHeroCopy}>
-          <p className={styles.kicker}>Done right. Every time.</p>
+          <p className={styles.kicker} data-edit="heroEyebrow">{heroEyebrow || 'Done right. Every time.'}</p>
           <h1>{site.headline || 'Serious work. Solid results.'}</h1>
           <p className={styles.heroText}>{site.tagline || `Trusted service across ${site.service_area || 'your community'}.`}</p>
           <HeroQuickForm site={site} />

@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSlotImage } from '@/lib/site-content';
+import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent, getSlotImage } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
@@ -30,6 +30,7 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
       STOCK_SITE_IMAGES[2].url,
   );
   const heroBadge = getHeroBadge(site.content);
+  const heroEyebrow = getSiteContent(site.content).heroEyebrow;
   // Coat had no built-in second badge, so 'default' renders nothing here.
   const secondBadge = getHeroSecondBadge(site.content);
   const themeStyle = {
@@ -63,7 +64,7 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
           <span className={styles.coatCircle} />
         </div>
         <div className={styles.coatHeroCopy}>
-          <p className={styles.coatEyebrowLight}>Brushing dreams to life</p>
+          <p className={styles.coatEyebrowLight} data-edit="heroEyebrow">{heroEyebrow || 'Brushing dreams to life'}</p>
           <h1>{site.headline || 'We turn your space into living art.'}</h1>
           <p className={styles.coatHeroText}>{site.tagline || `Skilled painters and flawless, lasting finishes — inside and out${site.service_area ? `, across ${site.service_area}` : ''}.`}</p>
           <div className={styles.coatHeroActions}>

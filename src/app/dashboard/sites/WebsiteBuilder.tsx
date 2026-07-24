@@ -565,6 +565,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       // Business fields live inside collapsible cards, so the owning card must
       // open before focusField can find the input.
       if (target === 'hero') { setActiveTab('business'); setOpenSection('message'); focusField('bf-headline'); return; }
+      if (target === 'heroEyebrow') { setActiveTab('business'); setOpenSection('message'); focusField('bf-hero-eyebrow'); return; }
       if (target === 'identity') { setActiveTab('business'); setOpenSection('basics'); focusField('bf-company'); return; }
       if (target === 'heroBadge') { setActiveTab('design'); setOpenSection('heroBadges'); flashCard('heroBadge', 'design-hero-badge'); return; }
       // Every photo opens the "Replace photo" popup, routed by what was clicked.
@@ -1026,6 +1027,21 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   // row, neither of which applies when the band owns the layout and position.
   const hasBuiltInSections = site.template === 'carbon' || site.template === 'professional' || site.template === 'modern';
 
+  // The wording each template shows in its hero eyebrow when the owner leaves the
+  // field blank — surfaced as the input placeholder so they see what they'd override.
+  const heroEyebrowPlaceholder = ((): string => {
+    switch (site.template) {
+      case 'carbon': return 'Done right. Every time.';
+      case 'professional': return 'Work you can count on';
+      case 'modern': return 'Diagnose / Repair / Deliver';
+      case 'handy': return site.service_area ? `Serving ${site.service_area}` : 'Trusted home services';
+      case 'coat': return 'Brushing dreams to life';
+      case 'fixit': return 'Professional handyman services';
+      case 'reno': return 'Professional renovation & repair';
+      default: return 'e.g. Trusted local pros';
+    }
+  })();
+
 
   const updateServices = useCallback((services: SiteServicesContent) => {
     updateSiteContent({ services });
@@ -1296,6 +1312,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 </SectionCard>
 
                 <SectionCard title="Your message" description="The big text visitors see first at the top of your page." hint={site.headline ? `“${site.headline.length > 46 ? `${site.headline.slice(0, 46).trimEnd()}…` : site.headline}”` : undefined} open={openSection === 'message'} onToggleOpen={() => toggleSection('message')}>
+                  <label className={styles.formField}><span>Small line above headline</span><input id="bf-hero-eyebrow" value={siteContent.heroEyebrow} maxLength={50} onChange={(event) => updateSiteContent({ heroEyebrow: event.target.value })} placeholder={heroEyebrowPlaceholder} /><small className={styles.fieldHint}>{site.template === 'shine' ? 'Optional — Shine shows this only if you add one.' : 'Leave empty to keep your template’s own wording.'}</small></label>
                   <label className={styles.formField}><span>Headline</span><textarea id="bf-headline" rows={2} value={site.headline || ''} onChange={(event) => handleChange('headline', event.target.value || null)} placeholder="Built with purpose. Finished with care." /></label>
                   <label className={styles.formField}><span>Tagline</span><textarea id="bf-tagline" rows={3} value={site.tagline || ''} onChange={(event) => handleChange('tagline', event.target.value || null)} placeholder="Tell homeowners what makes your business different." /></label>
                 </SectionCard>

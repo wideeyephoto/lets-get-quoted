@@ -18,7 +18,9 @@ import styles from './themes.module.css';
 export default function VistaTemplate({ site }: TemplateProps) {
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[0].url;
   const work = getWorkBand(site.content, 'Recent work', '');
-  const intro = getSiteContent(site.content).introBlock;
+  const content = getSiteContent(site.content);
+  const intro = content.introBlock;
+  const heroEyebrow = content.heroEyebrow;
   const heroBadge = getHeroBadge(site.content);
   // Vista had no built-in second badge, so 'default' renders nothing here.
   // Vista's work heading is an eyebrow/count row with no h2, so a title renders
@@ -48,7 +50,7 @@ export default function VistaTemplate({ site }: TemplateProps) {
         <HeroImageCycle images={getHeroImages(site.content, heroImage)} className={styles.heroImage} alt="Featured completed project" />
         <div className={styles.vistaHeroCopy}>
           <span className={styles.vistaBigType} data-parallax="0.1" aria-hidden="true">{site.company_name}</span>
-          <p className={styles.kicker}>Diagnose / Repair / Deliver</p>
+          <p className={styles.kicker} data-edit="heroEyebrow">{heroEyebrow || 'Diagnose / Repair / Deliver'}</p>
           <h1>{site.headline || 'Service with purpose.'}</h1>
           <p>{site.tagline || 'We show up, solve the problem, and treat your home like our own.'}</p>
           <HeroQuickForm site={site} />

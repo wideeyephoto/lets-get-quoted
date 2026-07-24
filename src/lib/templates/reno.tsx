@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle } from '@/lib/site-content';
+import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroImageCycle from './HeroImageCycle';
@@ -22,6 +22,7 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
   void gallery;
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
   const heroBadge = getHeroBadge(site.content);
+  const heroEyebrow = getSiteContent(site.content).heroEyebrow;
   // Reno had no built-in second badge, so 'default' renders nothing here.
   const secondBadge = getHeroSecondBadge(site.content);
   const themeStyle = {
@@ -51,7 +52,7 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
 
       <section className={styles.renoHero} id="top">
         <div className={styles.renoHeroCopy}>
-          <p className={styles.renoEyebrow}>Professional renovation &amp; repair</p>
+          <p className={styles.renoEyebrow} data-edit="heroEyebrow">{heroEyebrow || 'Professional renovation & repair'}</p>
           <h1>{site.headline || 'Handyman services, done right.'}</h1>
           <p className={styles.renoHeroText}>{site.tagline || `Renovation, repair, and remodeling — a wide range of affordable, reliable work${site.service_area ? ` across ${site.service_area}` : ''}.`}</p>
           <div className={styles.renoHeroActions}>

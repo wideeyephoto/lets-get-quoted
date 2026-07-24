@@ -43,6 +43,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
 
   const whyUs = getPublishedWhyUs(site.content);
   const trustBadges = getPublishedTrustBadges(site.content);
+  const heroEyebrow = getSiteContent(site.content).heroEyebrow;
   const projectShowcase = getSiteContent(site.content).projectShowcase;
   const ownShowcase = projectShowcase.items.filter((item) => item.url && item.alt);
   // The owner's own project photos once they've added any (up to 10); otherwise
@@ -80,7 +81,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
 
       <section className={styles.careHero} id="top">
         <div className={styles.careHeroCopy}>
-          <p className={styles.careEyebrow}>{site.service_area ? `Serving ${site.service_area}` : 'Trusted home services'}</p>
+          <p className={styles.careEyebrow} data-edit="heroEyebrow">{heroEyebrow || (site.service_area ? `Serving ${site.service_area}` : 'Trusted home services')}</p>
           <h1>{headlineMain} {headlineLast && <span className={styles.careAccentText}>{headlineLast}</span>}</h1>
           <p className={styles.careHeroText}>{site.tagline || 'Reliable, friendly help for every job around the home — booked in minutes, done right the first time.'}</p>
           {(heroBadge || secondBadge.mode !== 'none') && (

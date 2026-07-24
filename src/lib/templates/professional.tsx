@@ -35,7 +35,9 @@ export default function GuildTemplate({ site }: TemplateProps) {
   // sit above the real list saying different things — drop it in that case.
   // Sites that never configured services keep the block, so nothing shortens.
   const services = getPublishedServices(site.content);
-  const intro = getSiteContent(site.content).introBlock;
+  const content = getSiteContent(site.content);
+  const intro = content.introBlock;
+  const heroEyebrow = content.heroEyebrow;
   const second = getHeroSecondBadge(site.content);
   const themeStyle = {
     '--theme-accent': site.accent_override || '#a5472d',
@@ -59,7 +61,7 @@ export default function GuildTemplate({ site }: TemplateProps) {
 
       <section className={styles.guildHero} id="top">
         <div className={styles.guildHeroCopy}>
-          <p className={styles.kicker}>Work you can count on</p>
+          <p className={styles.kicker} data-edit="heroEyebrow">{heroEyebrow || 'Work you can count on'}</p>
           <h1>{site.headline || 'A better way to get the job done.'}</h1>
           <p className={styles.heroText}>{site.tagline || 'Thoughtful planning, dependable crews, and results you will be glad you called us for.'}</p>
           <HeroQuickForm site={site} />
