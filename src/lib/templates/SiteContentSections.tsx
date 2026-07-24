@@ -22,6 +22,7 @@ import {
 } from '@/lib/site-content';
 import BeforeAfterSlider from './BeforeAfterSlider';
 import FilmstripScroller from './FilmstripScroller';
+import ProjectShowcase from './ProjectShowcase';
 import TestimonialSlider from './TestimonialSlider';
 import SiteServices from './SiteServices';
 import SiteProcess from './SiteProcess';
@@ -59,7 +60,17 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
   const blog = getPublishedBlog(site.content);
   const stickyCallBar = getPublishedStickyCallBar(site.content, site.phone);
 
-  const hasInFlowSections = Boolean(services || howItWorks || showcase || testimonials || faqs || serviceAreas || certifications || stats || beforeAfter || blog);
+  // The Care template renders the Project showcase natively, inside its own dark
+  // band, so the shared stack would duplicate it there. Every OTHER theme gets it
+  // here — but only once the owner has added their own project photos. Care's
+  // fallback-to-gallery behaviour stays Care-only, so no existing site on another
+  // theme suddenly grows a section it never had.
+  const projectContent = getSiteContent(site.content).projectShowcase;
+  const projectItems = projectContent.items.filter((item) => item.url && item.alt);
+  const projectShowcase =
+    site.template !== 'handy' && projectContent.enabled && projectItems.length > 0 ? projectContent : null;
+
+  const hasInFlowSections = Boolean(services || howItWorks || showcase || testimonials || faqs || serviceAreas || certifications || stats || beforeAfter || blog || projectShowcase);
   const hasFinancing = Boolean(financing);
 
   if (!hasInFlowSections && !hasFinancing && !stickyCallBar) return null;
@@ -80,6 +91,16 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
   // order so rearranging the builder's "Page order" list reflows the page.
   const sectionBlocks: Record<string, ReactNode> = {
     services: services && <SiteServices title={services.title} intro={services.intro} items={services.items} />,
+    projectShowcase: projectShowcase && (
+      <section className={styles.projectBand} id="project-showcase" aria-label="Project showcase">
+        <ProjectShowcase
+          eyebrow={projectShowcase.eyebrow}
+          title={projectShowcase.title}
+          style={projectShowcase.style}
+          items={projectItems.map((item) => ({ id: item.id, url: item.url, alt: item.alt, caption: item.caption }))}
+        />
+      </section>
+    ),
     howItWorks: howItWorks && <SiteProcess title={howItWorks.title} intro={howItWorks.intro} steps={howItWorks.steps} />,
     showcase: showcase && (() => {
       // The visible tile title must ADVERTISE a service, never describe the

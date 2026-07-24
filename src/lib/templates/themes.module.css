@@ -684,6 +684,17 @@
 .careWorksGrid img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 14px; box-shadow: 0 24px 44px -24px rgba(0,0,0,.4); }
 .careWorksGrid figcaption { margin-top: .8rem; font-weight: 700; font-size: .95rem; text-align: center; color: #fff; }
 
+/* The Project showcase band for every theme other than Care (which has its own
+   .careWorks band). A deep neutral ground, tinted by the theme accent, so the
+   white-on-dark showcase styling below reads correctly on light themes too. */
+.projectBand {
+  padding: clamp(3rem, 6vw, 5rem) clamp(1.25rem, 5vw, 4rem);
+  background:
+    radial-gradient(120% 140% at 15% 0%, color-mix(in srgb, var(--theme-accent) 18%, transparent), transparent 60%),
+    #131a24;
+  color: #fff;
+}
+
 /* Project showcase — three animated presentations of 3-5 project photos. */
 .projectShowcase { max-width: 1100px; margin: 0 auto; }
 .psControls { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1.25rem; }

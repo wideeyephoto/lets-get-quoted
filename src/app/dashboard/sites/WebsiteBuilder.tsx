@@ -326,6 +326,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     services: siteContent.services.enabled,
     howItWorks: siteContent.howItWorks.enabled,
     showcase: siteContent.showcase.enabled,
+    projectShowcase: siteContent.projectShowcase.enabled,
     testimonials: siteContent.testimonials.enabled,
     faqs: siteContent.faqs.enabled,
     serviceAreas: siteContent.serviceAreas.enabled,
@@ -338,6 +339,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     services: contentHint(siteContent.services.enabled, siteContent.services.items.filter((svc) => svc.title.trim()).length, 'service'),
     howItWorks: contentHint(siteContent.howItWorks.enabled, siteContent.howItWorks.steps.filter((step) => step.title.trim()).length, 'step'),
     showcase: contentHint(siteContent.showcase.enabled, siteContent.showcase.items.length, 'image'),
+    projectShowcase: contentHint(siteContent.projectShowcase.enabled, siteContent.projectShowcase.items.length, 'photo'),
     testimonials: contentHint(siteContent.testimonials.enabled, reviewCount, 'review'),
     faqs: contentHint(siteContent.faqs.enabled, siteContent.faqs.items.filter((faq) => faq.question.trim() && faq.answer.trim()).length, 'question'),
     serviceAreas: contentHint(siteContent.serviceAreas.enabled, siteContent.serviceAreas.cities.filter((city) => city.trim()).length, 'city', 'cities'),
@@ -1050,6 +1052,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   const projectBase = useCallback((): SiteShowcaseItem[] => {
     const items = siteContent.projectShowcase.items;
     if (items.length > 0) return items;
+    // Only Care falls back to placeholders on the public page, so only Care seeds
+    // placeholder tiles here. On other themes the section stays hidden until the
+    // owner adds real photos — seeding would push stock shots live on first edit.
+    if (site.template !== 'handy') return [];
     const source = galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES;
     return source.slice(0, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS).map((img) => ({ id: img.id, url: img.url, alt: img.alt, category: img.category, source: img.source, caption: '' }));
   }, [siteContent.projectShowcase, galleryImages]);
@@ -1816,13 +1822,21 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                       </div>
                       {siteContent.whyUs.points.length < 6 && <button type="button" className={styles.secondaryAction} onClick={() => updateWhyUs({ ...siteContent.whyUs, points: [...siteContent.whyUs.points, ''] })}>Add point</button>}
                     </SectionCard>
+                  </>
+                )}
 
-                    <SectionCard title="Project showcase" description="An animated band of your best project photos — up to 10. Add your own here (or import from completed jobs); until you do, it shows 5 placeholder photos." enabled={siteContent.projectShowcase.enabled} onToggleEnabled={(value) => updateProjectShowcase({ ...siteContent.projectShowcase, enabled: value })} hint={siteContent.projectShowcase.items.length > 0 ? `${siteContent.projectShowcase.items.length} ${siteContent.projectShowcase.items.length === 1 ? 'photo' : 'photos'}` : 'using gallery photos'} hintTone="ok" open={openSection === 'projectShowcase'} onToggleOpen={() => toggleSection('projectShowcase')}>
+                <SectionCard title="Project showcase" description="An animated band of your best project photos — up to 10. Add your own here, or import them from completed jobs." enabled={siteContent.projectShowcase.enabled} onToggleEnabled={(value) => updateProjectShowcase({ ...siteContent.projectShowcase, enabled: value })} hint={siteContent.projectShowcase.items.length > 0 ? `${siteContent.projectShowcase.items.length} ${siteContent.projectShowcase.items.length === 1 ? 'photo' : 'photos'}` : site.template === 'handy' ? 'using placeholder photos' : 'add photos to show it'} hintTone={siteContent.projectShowcase.items.length === 0 && site.template !== 'handy' ? 'warn' : 'ok'} open={openSection === 'projectShowcase'} onToggleOpen={() => toggleSection('projectShowcase')}>
                       <label className={styles.formField}><span>Small line above</span><input value={siteContent.projectShowcase.eyebrow} maxLength={40} onChange={(event) => updateProjectShowcase({ ...siteContent.projectShowcase, eyebrow: event.target.value })} placeholder="Project showcase" /></label>
                       <label className={styles.formField}><span>Heading</span><input value={siteContent.projectShowcase.title} maxLength={80} onChange={(event) => updateProjectShowcase({ ...siteContent.projectShowcase, title: event.target.value })} placeholder="Our recent projects" /></label>
                       <label className={styles.formField}><span>Showcase style</span><select value={siteContent.projectShowcase.style} onChange={(event) => updateProjectShowcase({ ...siteContent.projectShowcase, style: event.target.value as SiteProjectShowcaseContent['style'] })}>{PROJECT_SHOWCASE_STYLES.map((style) => <option key={style.key} value={style.key}>{style.label}</option>)}</select></label>
                       <div className={styles.contentSubhead}><strong>Project photos</strong><small>{projectPhotos.length}/{MAX_PROJECT_SHOWCASE_ITEMS} · shown in this order</small></div>
-                      {siteContent.projectShowcase.items.length === 0 && <p className={styles.fieldHint}>These are placeholder photos. Replace any (upload or stock), edit its headline, or add your own — your first edit makes them your project set.</p>}
+                      {siteContent.projectShowcase.items.length === 0 && (
+                        <p className={styles.fieldHint}>
+                          {site.template === 'handy'
+                            ? 'These are placeholder photos. Replace any (upload or stock), edit its headline, or add your own — your first edit makes them your project set.'
+                            : 'Add your own project photos to show this section. On this theme it stays hidden until you do, so placeholders never go live.'}
+                        </p>
+                      )}
                       <div className={styles.showcaseSelected} aria-label="Project photos, in order">
                         {projectPhotos.map((item) => (
                           <div key={item.id} className={styles.showcaseSelectedTile}>
@@ -1862,8 +1876,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                         ) : <p className={styles.emptyHelper}>Completed jobs with photos will appear here.</p>
                       )}
                     </SectionCard>
-                  </>
-                )}
 
                 <SectionCard title="Rearrange Sections" description="Drag to reorder the sections on your public page; click one to open its card above. Off sections keep their spot but stay hidden until you turn them on." open={openSection === 'sectionOrder'} onToggleOpen={() => toggleSection('sectionOrder')}>
                   <ul className={styles.sectionOrderList}>

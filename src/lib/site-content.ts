@@ -1072,6 +1072,7 @@ export const REORDERABLE_SECTIONS = [
   { key: 'services', label: 'Services' },
   { key: 'howItWorks', label: 'How it works' },
   { key: 'showcase', label: 'Showcase gallery' },
+  { key: 'projectShowcase', label: 'Project showcase' },
   { key: 'testimonials', label: 'Testimonials' },
   { key: 'faqs', label: 'FAQs' },
   { key: 'serviceAreas', label: 'Service areas' },
