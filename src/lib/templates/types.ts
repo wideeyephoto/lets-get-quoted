@@ -7,12 +7,17 @@ export interface TemplateConfig {
   id: string;
   description: string;
   previewImage?: string;
-  // Theme's accent color + display font, used to render a branded monogram
-  // icon in the theme picker instead of a generic stock-photo thumbnail.
-  // Matches the same defaults each template component falls back to via
-  // `--theme-accent`/`--theme-display` (see src/lib/templates/<id>.tsx).
+  // Brand color for the theme's picker chip (the monogram tile in the Design
+  // tab), spread across the color wheel so the eight themes read as distinct.
+  // This is picker branding ONLY — it is not the site's accent, so changing it
+  // never touches a live site. The live accent is each template's own
+  // `--theme-accent` fallback in src/lib/templates/<id>.tsx.
   accent: string;
+  // Display font for the monogram (the theme's own display face).
   fontVar: string;
+  // Optional 2-char monogram override; defaults to name.slice(0, 2). Set it
+  // only to break a collision (Forge and Foundry both start "Fo").
+  abbr?: string;
 }
 
 export interface TemplateProps {
@@ -52,7 +57,7 @@ export const AVAILABLE_TEMPLATES: TemplateConfig[] = [
     name: 'Guild',
     description: 'Trust-led and polished for established local contractors',
     previewImage: '/template-previews/professional.jpg',
-    accent: '#a33a2b',
+    accent: '#b0472f',
     fontVar: 'var(--font-guild-display), Georgia, Times New Roman, serif',
   },
   {
@@ -60,42 +65,43 @@ export const AVAILABLE_TEMPLATES: TemplateConfig[] = [
     name: 'Vista',
     description: 'Image-first editorial layout for design-conscious builders',
     previewImage: '/template-previews/modern.jpg',
-    accent: '#d8ff45',
+    accent: '#2fbf71',
     fontVar: 'var(--font-display), Arial Black, Helvetica, sans-serif',
   },
   {
     id: 'handy',
-    name: 'Care',
+    name: 'Haven',
     description: 'Fresh home-services look — cyan-green gradients, rounded cards, and clear CTAs',
-    accent: '#12c2c9',
+    accent: '#10b0b8',
     fontVar: 'var(--font-care), system-ui, sans-serif',
   },
   {
     id: 'coat',
-    name: 'Coat',
+    name: 'Foundry',
     description: 'Bold painting & finishes — deep-maroon hero with red bokeh, red accents, rounded cards',
-    accent: '#e5322a',
+    accent: '#e0322a',
     fontVar: 'var(--font-display), system-ui, sans-serif',
+    abbr: 'Fd',
   },
   {
     id: 'fixit',
-    name: 'Fixit',
+    name: 'Tinker',
     description: 'Clean, professional handyman look — orange accent, angular hero, parallax + motion',
-    accent: '#f15a29',
+    accent: '#f5822a',
     fontVar: 'var(--font-display), system-ui, sans-serif',
   },
   {
     id: 'reno',
-    name: 'Renovation',
+    name: 'Blueprint',
     description: 'Dark-navy + golden-yellow renovation look — hexagon motifs, angular hero, bold headlines',
-    accent: '#f5b421',
+    accent: '#2f6df6',
     fontVar: 'var(--font-display), system-ui, sans-serif',
   },
   {
     id: 'shine',
-    name: 'Shine',
+    name: 'Lustre',
     description: 'Modern premium cleaning — deep-navy + bright-yellow, rounded cards, floating hero badges',
-    accent: '#ffd60a',
+    accent: '#7b5cff',
     fontVar: 'var(--font-display), system-ui, sans-serif',
   },
 ];

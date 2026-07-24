@@ -1373,7 +1373,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <div className={styles.themeGrid}>
                     {AVAILABLE_TEMPLATES.map((template) => (
                       <button type="button" key={template.id} className={`${styles.themeOption}${site.template === template.id ? ` ${styles.selectedTheme}` : ''}`} onClick={() => handleChange('template', template.id as TemplateType)} aria-pressed={site.template === template.id}>
-                        <ThemeIcon name={template.name} accent={template.accent} fontVar={template.fontVar} />
+                        <ThemeIcon name={template.name} accent={template.accent} fontVar={template.fontVar} abbr={template.abbr} />
                         <span className={styles.themeOptionInfo}><strong>{template.name}</strong></span>
                       </button>
                     ))}
