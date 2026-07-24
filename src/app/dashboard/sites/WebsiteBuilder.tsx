@@ -727,7 +727,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
             contentUpdates.testimonials = { ...content.testimonials, enabled: false, title: content.testimonials.title || 'What homeowners say', sourceMode: 'manual', items: generated.testimonials.map((t, i) => ({ id: `tst-${i + 1}`, author: t.author, text: t.text, rating: t.rating, label: t.label, imageUrl: '', imageAlt: '' })) };
           }
           if (generated.stats.length) {
-            contentUpdates.stats = { enabled: false, title: content.stats.title || 'By the numbers', items: generated.stats.map((s, i) => ({ id: `stat-${i + 1}`, value: s.value, prefix: '', suffix: s.suffix, label: s.label })) };
+            contentUpdates.stats = { enabled: true, title: content.stats.title || 'By the numbers', items: generated.stats.map((s, i) => ({ id: `stat-${i + 1}`, value: s.value, prefix: '', suffix: s.suffix, label: s.label })) };
           }
           // Fold in auto-selected stock photos (hero, slots, gallery), preserving
           // any images the owner already set.
