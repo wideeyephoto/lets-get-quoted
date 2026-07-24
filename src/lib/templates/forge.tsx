@@ -1,7 +1,6 @@
 import type { CSSProperties } from 'react';
-import SafeImage from './SafeImage';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent, getWorkBand } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroImageCycle from './HeroImageCycle';
@@ -18,7 +17,6 @@ import styles from './themes.module.css';
 
 export default function ForgeTemplate({ site }: TemplateProps) {
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
-  const work = getWorkBand(site.content, 'Selected work', 'Made for real life.');
   const content = getSiteContent(site.content);
   const intro = content.introBlock;
   const heroEyebrow = content.heroEyebrow;
@@ -87,22 +85,6 @@ export default function ForgeTemplate({ site }: TemplateProps) {
         <p>{intro.body || 'From the first walkthrough to the final clean-up, we keep the work organized, the communication direct, and the standards high.'}</p>
       </section>
 
-      {work.items.length > 0 && (
-        <section className={styles.forgeWork} data-reveal id="work">
-          <div className={styles.sectionHeading}>
-            <div><p className={styles.kicker}>{work.eyebrow}</p><h2>{work.title}</h2></div>
-            <p>{work.intro || 'Every job delivered with practical care, start to finish.'}</p>
-          </div>
-          <div className={styles.forgeGallery}>
-            {work.items.slice(0, 3).map((image, index) => (
-              <figure key={image.id} className={index === 0 ? styles.forgeGalleryLead : undefined} data-edit={`showcase-${image.id}`}>
-                <SafeImage src={image.url} alt={image.alt} width={1600} height={index === 0 ? 2000 : 1000} sizes={index === 0 ? '(max-width: 820px) 100vw, 60vw' : '(max-width: 820px) 100vw, 35vw'} />
-                <figcaption><span>0{index + 1}</span>{image.caption || image.alt}</figcaption>
-              </figure>
-            ))}
-          </div>
-        </section>
-      )}
 
       <SiteContentSections site={site} />
 

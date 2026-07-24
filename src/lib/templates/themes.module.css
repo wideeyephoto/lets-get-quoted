@@ -363,7 +363,10 @@
 
 /* Service-area city list (toggleable) */
 .serviceAreaList { display: flex; flex-wrap: wrap; gap: .55rem .6rem; margin: 0; padding: 0; list-style: none; max-width: 960px; }
-.serviceAreaChip { padding: .5rem .95rem; border: 1px solid color-mix(in srgb, currentColor 16%, transparent); border-radius: 999px; font-size: .9rem; font-weight: 600; transition: border-color .25s ease, background .25s ease, transform .25s ease; }
+/* Tie the chip to --c-ink (the scheme's readable text token) + a faint ink
+   fill, so it stays legible on any scheme ground — inheriting currentColor let
+   it wash out light-on-light on light schemes. */
+.serviceAreaChip { padding: .5rem .95rem; border: 1px solid color-mix(in srgb, var(--c-ink, currentColor) 18%, transparent); border-radius: 999px; font-size: .9rem; font-weight: 600; color: var(--c-ink, currentColor); background: color-mix(in srgb, var(--c-ink, currentColor) 5%, transparent); transition: border-color .25s ease, background .25s ease, transform .25s ease; }
 .serviceAreaChip:hover { border-color: color-mix(in srgb, var(--theme-accent) 55%, transparent); background: color-mix(in srgb, var(--theme-accent) 12%, transparent); transform: translateY(-2px); }
 @media (prefers-reduced-motion: reduce) { .serviceAreaChip { transition: none; } .serviceAreaChip:hover { transform: none; } }
 

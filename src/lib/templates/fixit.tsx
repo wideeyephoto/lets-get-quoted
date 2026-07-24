@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getColorScheme, getHeaderStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
+import HeroQuickForm from './HeroQuickForm';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
@@ -64,10 +65,7 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
           <p className={styles.fixitEyebrow} data-edit="heroEyebrow"><span aria-hidden="true">✖</span> {heroEyebrow || 'Professional handyman services'}</p>
           <h1>{site.headline || 'Expert repairs, done right, every time.'}</h1>
           <p className={styles.fixitHeroText}>{site.tagline || 'Book a trusted handyman in a few clicks — installs, repairs, and assembly, quickly and hassle-free.'}</p>
-          <div className={styles.fixitHeroActions}>
-            <a className={styles.fixitBtn} href="#contact">Get a free quote <span aria-hidden="true">↗</span></a>
-            {site.phone && <a className={styles.fixitHeroCall} href={`tel:${site.phone}`}>or call <strong>{site.phone}</strong></a>}
-          </div>
+          <HeroQuickForm site={site} />
           <SiteProofStrip site={site} />
         </div>
         <div className={styles.fixitHeroMedia}>

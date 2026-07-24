@@ -108,10 +108,8 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
               ) : null}
             </div>
           )}
-          <div className={styles.careHeroActions}>
-            <a className={styles.careBtn} href="#estimate">Get my free estimate</a>
-            {site.phone && <a className={styles.careBtnGhost} href={`tel:${site.phone}`}>Call us now</a>}
-          </div>
+          <HeroQuickForm site={site} />
+          <SiteProofStrip site={site} />
         </div>
         <div className={styles.careHeroMedia} data-parallax="0.08">
           <span className={styles.careDot1} aria-hidden="true" />
@@ -161,16 +159,6 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
           />
         </section>
       )}
-
-      <section className={styles.careEstimate} id="estimate" data-reveal>
-        <div className={styles.careEstimateCopy}>
-          <p className={styles.careEyebrow}>Instant estimate</p>
-          <h2>See your price in about 60 seconds</h2>
-          <p>Answer a couple of quick questions and get a ballpark range — no waiting, no obligation.</p>
-          <SiteProofStrip site={site} />
-        </div>
-        <HeroQuickForm site={site} />
-      </section>
 
       <section className={styles.careCta} aria-label="Get started">
         <div className={styles.careCtaInner} data-reveal>

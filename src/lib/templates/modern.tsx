@@ -1,7 +1,6 @@
 import type { CSSProperties } from 'react';
-import SafeImage from './SafeImage';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent, getWorkBand } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroImageCycle from './HeroImageCycle';
@@ -17,7 +16,6 @@ import styles from './themes.module.css';
 
 export default function VistaTemplate({ site }: TemplateProps) {
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[0].url;
-  const work = getWorkBand(site.content, 'Recent work', '');
   const content = getSiteContent(site.content);
   const intro = content.introBlock;
   const heroEyebrow = content.heroEyebrow;
@@ -80,20 +78,6 @@ export default function VistaTemplate({ site }: TemplateProps) {
         <div><span>{site.service_area || 'Local projects'}</span><span>{site.license || 'Licensed & insured'}</span></div>
       </section>
 
-      {work.items.length > 0 && (
-        <section className={styles.vistaWork} data-reveal id="work">
-          {work.title && <h2 className={styles.vistaWorkTitle}>{work.title}</h2>}
-          <div className={styles.vistaWorkHeading}><p className={styles.kicker}>{work.eyebrow}</p><span>{String(Math.min(work.items.length, 5)).padStart(2, '0')} photos</span></div>
-          <div className={styles.vistaGallery}>
-            {work.items.slice(0, 5).map((image, index) => (
-              <figure key={image.id} className={index === 0 || index === 3 ? styles.vistaWide : undefined} data-edit={`showcase-${image.id}`}>
-                <SafeImage src={image.url} alt={image.alt} width={1600} height={index === 0 || index === 3 ? 800 : 1200} sizes={index === 0 || index === 3 ? '(max-width: 820px) 100vw, 95vw' : '(max-width: 820px) 100vw, 48vw'} />
-                <figcaption><span>{image.caption || image.alt}</span><small>0{index + 1}</small></figcaption>
-              </figure>
-            ))}
-          </div>
-        </section>
-      )}
 
       <SiteContentSections site={site} />
 

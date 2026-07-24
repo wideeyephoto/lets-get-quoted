@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getColorScheme, getHeaderStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent, getSlotImage } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
+import HeroQuickForm from './HeroQuickForm';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
@@ -71,10 +72,7 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
           <p className={styles.coatEyebrowLight} data-edit="heroEyebrow">{heroEyebrow || 'Brushing dreams to life'}</p>
           <h1>{site.headline || 'We turn your space into living art.'}</h1>
           <p className={styles.coatHeroText}>{site.tagline || `Skilled painters and flawless, lasting finishes — inside and out${site.service_area ? `, across ${site.service_area}` : ''}.`}</p>
-          <div className={styles.coatHeroActions}>
-            <a className={styles.coatBtn} href="#contact">Get a free quote <span aria-hidden="true">↗</span></a>
-            {site.phone && <a className={styles.coatHeroCall} href={`tel:${site.phone}`}>or call <strong>{site.phone}</strong></a>}
-          </div>
+          <HeroQuickForm site={site} />
           <SiteProofStrip site={site} />
         </div>
         <div className={styles.coatHeroMedia}>

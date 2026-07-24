@@ -4,6 +4,7 @@ import { getColorScheme, getHeaderStyle, getHeroBadge, getHeroBadgeStyle, getHer
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroImageCycle from './HeroImageCycle';
+import HeroQuickForm from './HeroQuickForm';
 import SiteContentSections from './SiteContentSections';
 import SiteNavLinks from './SiteNavLinks';
 import SiteProofStrip from './SiteProofStrip';
@@ -59,10 +60,7 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
           <p className={styles.renoEyebrow} data-edit="heroEyebrow">{heroEyebrow || 'Professional renovation & repair'}</p>
           <h1>{site.headline || 'Handyman services, done right.'}</h1>
           <p className={styles.renoHeroText}>{site.tagline || `Renovation, repair, and remodeling — a wide range of affordable, reliable work${site.service_area ? ` across ${site.service_area}` : ''}.`}</p>
-          <div className={styles.renoHeroActions}>
-            <a className={styles.renoBtn} href="#contact">Find out more <span aria-hidden="true">»</span></a>
-            {site.phone && <a className={styles.renoHeroCall} href={`tel:${site.phone}`}>or call <strong>{site.phone}</strong></a>}
-          </div>
+          <HeroQuickForm site={site} />
           <SiteProofStrip site={site} />
         </div>
         <div className={styles.renoHeroMedia}>
