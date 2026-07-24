@@ -189,8 +189,8 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
       <footer className={styles.careFooter}>
         <div className={styles.careFooterMain}>
           <div className={styles.careFooterBrand}>
-            <span className={styles.careFooterLogo}><span aria-hidden="true">⌂</span> {site.company_name}</span>
-            <p>{site.tagline || 'Trusted, friendly home services for your neighborhood.'}</p>
+            <span className={styles.careFooterLogo} data-edit="identity"><span aria-hidden="true">⌂</span> {site.company_name}</span>
+            <p data-edit="bizTagline">{site.tagline || 'Trusted, friendly home services for your neighborhood.'}</p>
           </div>
           <div className={styles.careFooterCol}>
             <h3>Company</h3>
@@ -198,10 +198,10 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
           </div>
           <div className={styles.careFooterCol}>
             <h3>Get in touch</h3>
-            {site.phone && <a href={`tel:${site.phone}`}>{site.phone}</a>}
-            {site.service_area && <span>{site.service_area}</span>}
-            {site.hours && <span>{site.hours}</span>}
-            {site.license && <span>{site.license}</span>}
+            {site.phone && <a href={`tel:${site.phone}`} data-edit="bizPhone">{site.phone}</a>}
+            {site.service_area && <span data-edit="bizArea">{site.service_area}</span>}
+            {site.hours && <span data-edit="bizHours">{site.hours}</span>}
+            {site.license && <span data-edit="bizLicense">{site.license}</span>}
           </div>
         </div>
         <div className={styles.careFooterBar}>

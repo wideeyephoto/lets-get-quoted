@@ -73,9 +73,9 @@ export default function ForgeTemplate({ site }: TemplateProps) {
       </section>
 
       <section className={styles.forgeTrust} data-reveal aria-label="Business details">
-        <div><span>Service area</span><strong>{site.service_area || 'Local & regional'}</strong></div>
-        <div><span>Availability</span><strong>{site.hours || 'Weekdays, 7-5'}</strong></div>
-        <div><span>Credentials</span><strong>{site.license || 'Licensed & insured'}</strong></div>
+        <div data-edit="bizArea"><span>Service area</span><strong>{site.service_area || 'Local & regional'}</strong></div>
+        <div data-edit="bizHours"><span>Availability</span><strong>{site.hours || 'Weekdays, 7-5'}</strong></div>
+        <div data-edit="bizLicense"><span>Credentials</span><strong>{site.license || 'Licensed & insured'}</strong></div>
       </section>
 
       <section className={styles.forgeAbout} data-reveal id="about">
@@ -98,7 +98,7 @@ export default function ForgeTemplate({ site }: TemplateProps) {
       </section>
 
       <SiteDesktopCta site={site} />
-      <footer className={styles.forgeFooter}><strong>{site.company_name}</strong><span>{site.service_area || 'Proudly serving our local community'}</span><small>Powered by Let&apos;s Get Quoted</small></footer>
+      <footer className={styles.forgeFooter}><strong data-edit="identity">{site.company_name}</strong><span data-edit="bizArea">{site.service_area || 'Proudly serving our local community'}</span><small>Powered by Let&apos;s Get Quoted</small></footer>
     </main>
   );
 }

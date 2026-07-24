@@ -74,7 +74,7 @@ export default function VistaTemplate({ site }: TemplateProps) {
       <section className={styles.vistaStatement} data-reveal id="studio">
         <p>We are {site.company_name}.</p>
         <h2>Part problem-solver, part perfectionist, always focused on getting it right.</h2>
-        <div><span>{site.service_area || 'Local projects'}</span><span>{site.license || 'Licensed & insured'}</span></div>
+        <div><span data-edit="bizArea">{site.service_area || 'Local projects'}</span><span data-edit="bizLicense">{site.license || 'Licensed & insured'}</span></div>
       </section>
 
 

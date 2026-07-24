@@ -576,6 +576,11 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       if (target === 'hero') { setActiveTab('business'); setOpenSection('message'); focusField('bf-headline'); return; }
       if (target === 'heroEyebrow') { setActiveTab('business'); setOpenSection('message'); focusField('bf-hero-eyebrow'); return; }
       if (target === 'identity') { setActiveTab('business'); setOpenSection('basics'); focusField('bf-company'); return; }
+      if (target === 'bizTagline') { setActiveTab('business'); setOpenSection('message'); focusField('bf-tagline'); return; }
+      if (target === 'bizArea') { setActiveTab('business'); setOpenSection('whereWhen'); focusField('bf-service-area'); return; }
+      if (target === 'bizHours') { setActiveTab('business'); setOpenSection('whereWhen'); focusField('bf-hours'); return; }
+      if (target === 'bizPhone') { setActiveTab('business'); setOpenSection('contactInfo'); focusField('bf-phone'); return; }
+      if (target === 'bizLicense') { setActiveTab('business'); setOpenSection('contactInfo'); focusField('bf-license'); return; }
       if (target === 'heroBadge') { setActiveTab('design'); setOpenSection('heroBadges'); flashCard('heroBadge', 'design-hero-badge'); return; }
       // Every photo opens the "Replace photo" popup, routed by what was clicked.
       if (target === 'heroImage') { setPicker({ label: 'the hero image', kind: 'hero' }); return; }
@@ -1331,13 +1336,13 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <div className={styles.formColumns}>
                     <label className={styles.formField}><span>Phone</span><input id="bf-phone" type="tel" value={site.phone || ''} onChange={(event) => handleChange('phone', event.target.value || null)} placeholder="(555) 123-4567" /></label>
                     <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.phonePublic} onChange={(event) => updateSiteContent({ phonePublic: event.target.checked })} /><span><strong>Show my phone number on my website</strong><small>Off = your number stays private and every call button disappears — visitors reach you through the forms instead. Texting still works either way.</small></span></label>
-                    <label className={styles.formField}><span>License</span><input value={site.license || ''} onChange={(event) => handleChange('license', event.target.value || null)} placeholder="LIC #123456" /></label>
+                    <label className={styles.formField}><span>License</span><input id="bf-license" value={site.license || ''} onChange={(event) => handleChange('license', event.target.value || null)} placeholder="LIC #123456" /></label>
                   </div>
                 </SectionCard>
 
                 <SectionCard title="Where & when" description="The area you cover and the hours you work." open={openSection === 'whereWhen'} onToggleOpen={() => toggleSection('whereWhen')}>
-                  <label className={styles.formField}><span>Service area</span><input value={site.service_area || ''} onChange={(event) => handleChange('service_area', event.target.value || null)} placeholder="City and surrounding communities" /></label>
-                  <label className={styles.formField}><span>Business hours</span><input value={site.hours || ''} onChange={(event) => handleChange('hours', event.target.value || null)} placeholder="Monday-Friday, 7am-5pm" /></label>
+                  <label className={styles.formField}><span>Service area</span><input id="bf-service-area" value={site.service_area || ''} onChange={(event) => handleChange('service_area', event.target.value || null)} placeholder="City and surrounding communities" /></label>
+                  <label className={styles.formField}><span>Business hours</span><input id="bf-hours" value={site.hours || ''} onChange={(event) => handleChange('hours', event.target.value || null)} placeholder="Monday-Friday, 7am-5pm" /></label>
                 </SectionCard>
 
                 <SectionCard title="How you show up on Google" description="The page title and description searchers see before they click. Your hero image is used when your site is shared on social." open={openSection === 'seo'} onToggleOpen={() => toggleSection('seo')}>
