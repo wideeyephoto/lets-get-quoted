@@ -1341,7 +1341,15 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 <SectionCard title="Colors & fonts" description="Accent color, light or dark mode, headings, and button style." open={openSection === 'colors'} onToggleOpen={() => toggleSection('colors')}>
                   <div className={styles.formColumns}>
                     <label className={styles.formField}><span>Accent color</span><div className={styles.colorControl}><input type="color" value={site.accent_override || '#ff7a21'} onChange={(event) => handleChange('accent_override', event.target.value)} /><input value={site.accent_override || '#ff7a21'} onChange={(event) => handleChange('accent_override', event.target.value)} /></div></label>
-                    <label className={styles.formField}><span>Color mode</span><select value={site.portal_mode} onChange={(event) => handleChange('portal_mode', event.target.value as Site['portal_mode'])}><option value="light">Light</option><option value="dark">Dark</option></select></label>
+                    {/* Forge is a natively dark theme with no light variant, so the
+                        toggle did nothing there. Rather than add one (portal_mode
+                        defaults to 'light', so a light variant would re-skin every
+                        existing Forge site), don't offer a control that can't work. */}
+                    {site.template === 'carbon' ? (
+                      <div className={styles.formField}><span>Color mode</span><p className={styles.fieldHint}>Forge is a dark theme by design — it has no light mode. Pick another theme if you want a light page.</p></div>
+                    ) : (
+                      <label className={styles.formField}><span>Color mode</span><select value={site.portal_mode} onChange={(event) => handleChange('portal_mode', event.target.value as Site['portal_mode'])}><option value="light">Light</option><option value="dark">Dark</option></select></label>
+                    )}
                   </div>
                   <div className={styles.formField}>
                     <span>Preset color schemes</span>

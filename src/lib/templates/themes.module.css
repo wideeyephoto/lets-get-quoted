@@ -518,6 +518,11 @@
 /* Vista */
 .vista { background: #f4f5f3; color: #101211; font-family: var(--font-vista-body), 'Helvetica Neue', sans-serif; --theme-radius: 6px; }
 .vista[data-mode='dark'] { background: #111312; color: #f2f3f1; }
+/* The contact block is a hardcoded near-black card, which on the dark ground
+   (#111312) sat within a couple of values of the page and disappeared. Lift it
+   so it still reads as a distinct block. The shared sections need no overrides:
+   their surfaces are color-mix(currentColor ...) and follow the root flip. */
+.vista[data-mode='dark'] .vistaContact { background: #1e2321; }
 .vistaHeader { position: sticky; top: 0; z-index: 20; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 74px; padding: 0 3vw; background: inherit; border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
 .vistaBrand { font-family: var(--theme-display); font-size: 1.1rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
 .vista .navLinks { font-size: .76rem; font-weight: 600; letter-spacing: .06em; gap: clamp(1.25rem, 3vw, 2.75rem); }
