@@ -285,7 +285,13 @@ export type SiteBlogContent = {
 // Floating hero badge — the small trust chip shown on the hero of photo-badge
 // templates (Fixit today). Owners pick one of these presets or hide it; the
 // preset key drives the icon/title/subtitle so the template stays declarative.
-export type SiteHeroBadgeContent = { preset: string; showStats: boolean; style: string; customLabel: string; secondPreset: string; secondCustomLabel: string };
+export type SiteHeroBadgeContent = { preset: string; showStats: boolean; style: string; customLabel: string; secondPreset: string; secondCustomLabel: string; extraBadges: string[] };
+
+// Beyond the two floating hero chips (primary + secondary), owners can add a
+// few more trust chips that render as a wrapped row under the hero text — so a
+// page can show up to 5 badges without inventing extra float positions in every
+// template's hero layout.
+export const MAX_EXTRA_HERO_BADGES = 3;
 
 export const HERO_BADGE_PRESETS = [
   { key: 'estimates', icon: '$', title: 'Free Estimates', subtitle: 'No-obligation quotes', label: 'Free estimates' },
@@ -488,6 +494,9 @@ export type NormalizedSiteContent = {
   // 'plain' | 'rounded' | 'framed' | 'circle'. Set on the template root as
   // data-logo-style; one CSS block styles every template's logo.
   logoStyle: string;
+  // Header/footer logo scale: 'small' | 'medium' | 'large'. Set on the template
+  // root as data-logo-size; drives the shared .logo height.
+  logoSize: string;
   // The owner's trade / contractor type (e.g. "window cleaning", "roofing"),
   // used together with the business name to generate on-brand AI content.
   trade: string;
@@ -502,9 +511,14 @@ export type NormalizedSiteContent = {
 export const MAX_EXTRA_HERO_IMAGES = 2;
 
 const LOGO_STYLE_KEYS = new Set(['plain', 'rounded', 'framed', 'circle']);
+const LOGO_SIZE_KEYS = new Set(['small', 'medium', 'large']);
 
 export function getLogoStyle(content: Record<string, unknown> | null | undefined): string {
   return getSiteContent(content).logoStyle;
+}
+
+export function getLogoSize(content: Record<string, unknown> | null | undefined): string {
+  return getSiteContent(content).logoSize;
 }
 
 export const DEFAULT_SHOWCASE_TITLE = 'Quality at Every Step';
@@ -924,6 +938,15 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       // back from the legacy showStats boolean so old sites keep their choice.
       secondPreset: toString(heroBadge.secondPreset) || (heroBadge.showStats === false ? 'none' : 'default'),
       secondCustomLabel: toString(heroBadge.secondCustomLabel).slice(0, 40),
+      // Additional trust chips (preset keys only) rendered as a row under the
+      // hero text. Kept to known presets, deduped, and capped so the row never
+      // overflows or repeats a chip.
+      extraBadges: Array.isArray(heroBadge.extraBadges)
+        ? Array.from(new Set(heroBadge.extraBadges
+            .map((key) => toString(key))
+            .filter((key) => HERO_BADGE_PRESETS.some((preset) => preset.key === key))))
+            .slice(0, MAX_EXTRA_HERO_BADGES)
+        : [],
     },
     images: parseImageSlots(images),
     sectionOrder: parseSectionOrder(root.sectionOrder),
@@ -931,6 +954,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       ? root.heroImages.filter((url): url is string => typeof url === 'string' && url.trim().length > 0).map((url) => url.trim()).slice(0, MAX_EXTRA_HERO_IMAGES)
       : [],
     logoStyle: LOGO_STYLE_KEYS.has(toString(root.logoStyle)) ? toString(root.logoStyle) : 'plain',
+    logoSize: LOGO_SIZE_KEYS.has(toString(root.logoSize)) ? toString(root.logoSize) : 'medium',
     trade: toString(root.trade).slice(0, 80),
     stockImages: parseStockImages(root.stockImages),
   };
@@ -1185,6 +1209,18 @@ export function getHeroSecondBadge(content: Record<string, unknown> | null | und
   }
   const found = HERO_BADGE_PRESETS.find((badge) => badge.key === preset);
   return found ? { mode: 'badge', badge: found } : { mode: 'default' };
+}
+
+// The extra trust chips beyond the two floating badges, resolved to presets and
+// rendered as a wrapped row under the hero text (see HeroBadgeRail). Empty by
+// default, so nothing shows until the owner adds any.
+export function getHeroExtraBadges(content: Record<string, unknown> | null | undefined): HeroBadgePreset[] {
+  const badges: HeroBadgePreset[] = [];
+  for (const key of getSiteContent(content).heroBadge.extraBadges) {
+    const found = HERO_BADGE_PRESETS.find((badge) => badge.key === key);
+    if (found) badges.push(found);
+  }
+  return badges;
 }
 
 // The decorative/secondary photo slots a template can expose for direct

@@ -1,8 +1,9 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent, getSlotImage } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, getSlotImage } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import HeroQuickForm from './HeroQuickForm';
+import HeroBadgeRail from './HeroBadgeRail';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
@@ -45,7 +46,7 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
   } as CSSProperties;
 
   return (
-    <main className={`${styles.site} ${styles.coat}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-header={getHeaderStyle(site.template, site.content)} data-wordmark={getWordmarkStyle(site.content)}>
+    <main className={`${styles.site} ${styles.coat}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-logo-size={getLogoSize(site.content)} data-header={getHeaderStyle(site.template, site.content)} data-wordmark={getWordmarkStyle(site.content)}>
       <SiteAnnouncementBar site={site} />
       <ScrollReveal />
       <Parallax />
@@ -79,6 +80,7 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
           <h1>{site.headline || 'We turn your space into living art.'}</h1>
           <p className={styles.coatHeroText}>{site.tagline || `Skilled painters and flawless, lasting finishes — inside and out${site.service_area ? `, across ${site.service_area}` : ''}.`}</p>
           <HeroQuickForm site={site} />
+          <HeroBadgeRail site={site} />
           <SiteProofStrip site={site} />
         </div>
         <div className={styles.coatHeroMedia}>

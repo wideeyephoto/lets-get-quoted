@@ -1,8 +1,9 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import HeroQuickForm from './HeroQuickForm';
+import HeroBadgeRail from './HeroBadgeRail';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
@@ -46,7 +47,7 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
   } as CSSProperties;
 
   return (
-    <main className={`${styles.site} ${styles.fixit}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-header={getHeaderStyle(site.template, site.content)} data-wordmark={getWordmarkStyle(site.content)}>
+    <main className={`${styles.site} ${styles.fixit}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-logo-size={getLogoSize(site.content)} data-header={getHeaderStyle(site.template, site.content)} data-wordmark={getWordmarkStyle(site.content)}>
       <SiteAnnouncementBar site={site} />
       <ScrollReveal />
       <Parallax />
@@ -66,6 +67,7 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
           <h1>{site.headline || 'Expert repairs, done right, every time.'}</h1>
           <p className={styles.fixitHeroText}>{site.tagline || 'Book a trusted handyman in a few clicks — installs, repairs, and assembly, quickly and hassle-free.'}</p>
           <HeroQuickForm site={site} />
+          <HeroBadgeRail site={site} />
           <SiteProofStrip site={site} />
         </div>
         <div className={styles.fixitHeroMedia}>
