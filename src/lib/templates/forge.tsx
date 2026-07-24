@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import SafeImage from './SafeImage';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent } from '@/lib/site-content';
+import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getWorkBand } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroImageCycle from './HeroImageCycle';
@@ -16,15 +16,13 @@ import Parallax from './Parallax';
 import { readableOnAccent } from './theme-color';
 import styles from './themes.module.css';
 
-export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProps) {
-  const gallery = galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES.slice(1, 4);
+export default function ForgeTemplate({ site }: TemplateProps) {
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
+  const work = getWorkBand(site.content, 'Selected work', 'Made for real life.');
   const heroBadge = getHeroBadge(site.content);
   // 'default' means "the template's own built-in second badge" — Forge never had
   // one, so only an explicitly chosen badge renders here. Nothing is invented.
   const secondBadge = getHeroSecondBadge(site.content);
-  // Blank until the owner types their own, so Forge keeps its voice by default.
-  const workGallery = getSiteContent(site.content).workGallery;
   const themeStyle = {
     '--theme-accent': site.accent_override || '#f0b429',
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#111',
@@ -83,20 +81,22 @@ export default function ForgeTemplate({ site, galleryImages = [] }: TemplateProp
         <p>From the first walkthrough to the final clean-up, we keep the work organized, the communication direct, and the standards high.</p>
       </section>
 
-      <section className={styles.forgeWork} data-reveal id="work">
-        <div className={styles.sectionHeading}>
-          <div data-edit="workGallery"><p className={styles.kicker}>{workGallery.eyebrow || 'Selected work'}</p><h2>{workGallery.title || 'Made for real life.'}</h2></div>
-          <p>Every job delivered with practical care, start to finish.</p>
-        </div>
-        <div className={styles.forgeGallery}>
-          {gallery.slice(0, 3).map((image, index) => (
-            <figure key={image.id} className={index === 0 ? styles.forgeGalleryLead : undefined}>
-              <SafeImage src={image.url} alt={image.alt} width={1600} height={index === 0 ? 2000 : 1000} sizes={index === 0 ? '(max-width: 820px) 100vw, 60vw' : '(max-width: 820px) 100vw, 35vw'} />
-              <figcaption><span>0{index + 1}</span>{image.alt}</figcaption>
-            </figure>
-          ))}
-        </div>
-      </section>
+      {work.items.length > 0 && (
+        <section className={styles.forgeWork} data-reveal id="work">
+          <div className={styles.sectionHeading}>
+            <div data-edit="workGallery"><p className={styles.kicker}>{work.eyebrow}</p><h2>{work.title}</h2></div>
+            <p>{work.intro || 'Every job delivered with practical care, start to finish.'}</p>
+          </div>
+          <div className={styles.forgeGallery}>
+            {work.items.slice(0, 3).map((image, index) => (
+              <figure key={image.id} className={index === 0 ? styles.forgeGalleryLead : undefined} data-edit={`showcase-${image.id}`}>
+                <SafeImage src={image.url} alt={image.alt} width={1600} height={index === 0 ? 2000 : 1000} sizes={index === 0 ? '(max-width: 820px) 100vw, 60vw' : '(max-width: 820px) 100vw, 35vw'} />
+                <figcaption><span>0{index + 1}</span>{image.caption || image.alt}</figcaption>
+              </figure>
+            ))}
+          </div>
+        </section>
+      )}
 
       <SiteContentSections site={site} />
 

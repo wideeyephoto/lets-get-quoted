@@ -882,6 +882,38 @@ export function mergeSiteContent(content: Record<string, unknown>, updates: Part
   };
 }
 
+// Forge, Guild and Vista each render a built-in "recent work" band. It used to
+// read content.gallery — a pool nothing has been able to fill since the Images
+// tab was removed — so it always fell through to STOCK_SITE_IMAGES: the same
+// three general-construction photos on every site, whatever the trade, under a
+// heading claiming they were the contractor's own jobs.
+//
+// It now renders the owner-managed Photo gallery (showcase) in the template's
+// own styling, which also inherits the existing honest stock labelling. The
+// template's "our work" voice is used only once the contractor's OWN photos are
+// in the band AND the heading is still the generated stock one — an owner who
+// renamed the gallery keeps their wording, and an owner who wants something
+// else for this band sets content.workGallery.
+export function getWorkBand(
+  content: Record<string, unknown> | null | undefined,
+  ownWorkEyebrow: string,
+  ownWorkTitle: string,
+): { items: SiteShowcaseItem[]; eyebrow: string; title: string; intro: string } {
+  const showcase = getPublishedShowcase(content);
+  const items = showcase ? showcase.items : [];
+  const override = getSiteContent(content).workGallery;
+  const hasOwnPhotos = items.some((item) => item.source === 'upload');
+  const stillStockLabelled = showcase?.title === STOCK_SHOWCASE_TITLE;
+  const claimOwnWork = hasOwnPhotos && stillStockLabelled;
+
+  return {
+    items,
+    eyebrow: override.eyebrow || (hasOwnPhotos ? ownWorkEyebrow : 'What we do'),
+    title: override.title || (claimOwnWork ? ownWorkTitle : showcase?.title || ''),
+    intro: claimOwnWork ? '' : showcase?.intro || '',
+  };
+}
+
 export function getPublishedShowcase(content: Record<string, unknown> | null | undefined): SiteShowcaseContent | null {
   const showcase = getSiteContent(content).showcase;
   const items = showcase.items.filter((item) => item.url && item.alt);

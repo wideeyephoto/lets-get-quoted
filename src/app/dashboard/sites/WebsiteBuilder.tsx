@@ -1013,6 +1013,11 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     updateSiteContent({ workGallery });
   }, [updateSiteContent]);
 
+  // Forge, Guild and Vista render the Photo gallery inside their own built-in
+  // work band rather than from the reorderable stack, so the layout picker and
+  // the drag row don't apply to them. See getWorkBand in site-content.ts.
+  const nativeGalleryTemplate = site.template === 'carbon' || site.template === 'professional' || site.template === 'modern';
+
 
   const updateServices = useCallback((services: SiteServicesContent) => {
     updateSiteContent({ services });
@@ -1528,7 +1533,11 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 <SectionCard title="Photo gallery" description="Highlight finished work, project details, and job photos." evidence="Real project photos alongside reviews produced 55% more leads in one study — genuine work outperforms stock." enabled={siteContent.showcase.enabled} onToggleEnabled={(value) => updateShowcase({ ...siteContent.showcase, enabled: value })} {...contentHint(siteContent.showcase.enabled, siteContent.showcase.items.length, 'image')} open={openSection === 'showcase'} onToggleOpen={() => toggleSection('showcase')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.showcase.title} onChange={(event) => updateShowcase({ ...siteContent.showcase, title: event.target.value })} /></label>
                   <label className={styles.formField}><span>Intro</span><textarea rows={2} value={siteContent.showcase.intro} onChange={(event) => updateShowcase({ ...siteContent.showcase, intro: event.target.value })} /></label>
-                  <label className={styles.formField}><span>Gallery layout</span><select value={siteContent.showcase.layout} onChange={(event) => updateShowcase({ ...siteContent.showcase, layout: event.target.value as SiteShowcaseContent['layout'] })}><option value="featured">Featured — one big photo</option><option value="grid">Uniform grid — even tiles</option><option value="filmstrip">Filmstrip — swipeable row</option></select></label>
+                  {nativeGalleryTemplate ? (
+                    <p className={styles.emptyHelper}>These photos appear in your template&apos;s own work band, which sets its own layout — so there&apos;s no layout picker here. Click the band in the preview to change a photo.</p>
+                  ) : (
+                    <label className={styles.formField}><span>Gallery layout</span><select value={siteContent.showcase.layout} onChange={(event) => updateShowcase({ ...siteContent.showcase, layout: event.target.value as SiteShowcaseContent['layout'] })}><option value="featured">Featured — one big photo</option><option value="grid">Uniform grid — even tiles</option><option value="filmstrip">Filmstrip — swipeable row</option></select></label>
+                  )}
                   <div className={styles.contentSubhead}><strong>Gallery Images</strong><small>{siteContent.showcase.items.length}/9 · shown in this order</small></div>
                   {siteContent.showcase.items.length > 0 && (
                     <div className={styles.showcaseSelected} aria-label="Showcase images, in order">
@@ -1914,6 +1923,9 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                       // rather than from the reorderable stack, so dragging it here
                       // would do nothing on that theme. Don't offer the control.
                       if (key === 'projectShowcase' && site.template === 'handy') return null;
+                      // Same for the Photo gallery on Forge/Guild/Vista — it renders
+                      // in each template's own built-in work band, at a fixed spot.
+                      if (key === 'showcase' && nativeGalleryTemplate) return null;
                       return (
                         <li
                           key={key}

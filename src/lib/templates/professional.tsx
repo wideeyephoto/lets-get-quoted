@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import SafeImage from './SafeImage';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getEstimateButtonLabel, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getPublishedServices, getSiteContent, getSlotImage } from '@/lib/site-content';
+import { getEstimateButtonLabel, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getPublishedServices, getSiteContent, getSlotImage, getWorkBand } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
@@ -16,14 +16,15 @@ import Parallax from './Parallax';
 import { readableOnAccent } from './theme-color';
 import styles from './themes.module.css';
 
-export default function GuildTemplate({ site, galleryImages = [] }: TemplateProps) {
-  const gallery = galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES.slice(3, 6);
+export default function GuildTemplate({ site }: TemplateProps) {
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[3].url;
+  const work = getWorkBand(site.content, 'Recent work', 'Quality is visible in the details.');
   // Second shot for the stacked hero photo — a distinct image from the main one.
+  // Prefers a real gallery photo so the two cards don't duplicate.
   const secondImage = getSlotImage(
     site.content,
     'heroSecondary',
-    gallery.find((image) => image.url !== heroImage)?.url ||
+    work.items.find((image) => image.url !== heroImage)?.url ||
       STOCK_SITE_IMAGES.find((image) => image.url !== heroImage)?.url ||
       STOCK_SITE_IMAGES[5].url,
   );
@@ -34,8 +35,6 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
   // sit above the real list saying different things — drop it in that case.
   // Sites that never configured services keep the block, so nothing shortens.
   const services = getPublishedServices(site.content);
-  // Blank until the owner types their own, so Guild keeps its voice by default.
-  const workGallery = getSiteContent(site.content).workGallery;
   const second = getHeroSecondBadge(site.content);
   const themeStyle = {
     '--theme-accent': site.accent_override || '#a5472d',
@@ -105,12 +104,14 @@ export default function GuildTemplate({ site, galleryImages = [] }: TemplateProp
         </section>
       )}
 
-      <section className={styles.guildWork} data-reveal id="work">
-        <div className={styles.sectionHeading}><div data-edit="workGallery"><p className={styles.kicker}>{workGallery.eyebrow || 'Recent work'}</p><h2>{workGallery.title || 'Quality is visible in the details.'}</h2></div></div>
-        <div className={styles.guildGallery}>
-          {gallery.slice(0, 3).map((image) => <figure key={image.id}><SafeImage src={image.url} alt={image.alt} width={1200} height={1500} sizes="(max-width: 820px) 100vw, 32vw" /><figcaption>{image.alt}</figcaption></figure>)}
-        </div>
-      </section>
+      {work.items.length > 0 && (
+        <section className={styles.guildWork} data-reveal id="work">
+          <div className={styles.sectionHeading}><div data-edit="workGallery"><p className={styles.kicker}>{work.eyebrow}</p><h2>{work.title}</h2></div></div>
+          <div className={styles.guildGallery}>
+            {work.items.slice(0, 3).map((image) => <figure key={image.id} data-edit={`showcase-${image.id}`}><SafeImage src={image.url} alt={image.alt} width={1200} height={1500} sizes="(max-width: 820px) 100vw, 32vw" /><figcaption>{image.caption || image.alt}</figcaption></figure>)}
+          </div>
+        </section>
+      )}
 
       <SiteContentSections site={site} />
 

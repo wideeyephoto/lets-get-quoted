@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import SafeImage from './SafeImage';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent } from '@/lib/site-content';
+import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getWorkBand } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroImageCycle from './HeroImageCycle';
@@ -15,16 +15,14 @@ import Parallax from './Parallax';
 import { readableOnAccent } from './theme-color';
 import styles from './themes.module.css';
 
-export default function VistaTemplate({ site, galleryImages = [] }: TemplateProps) {
-  const gallery = galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES.slice(0, 5);
+export default function VistaTemplate({ site }: TemplateProps) {
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[0].url;
+  const work = getWorkBand(site.content, 'Recent work', '');
   const heroBadge = getHeroBadge(site.content);
   // Vista had no built-in second badge, so 'default' renders nothing here.
+  // Vista's work heading is an eyebrow/count row with no h2, so a title renders
+  // above it — additive, never changing a page that has no title set.
   const secondBadge = getHeroSecondBadge(site.content);
-  // Blank until the owner types their own, so Vista keeps its voice by default.
-  // Vista's work heading is an eyebrow/count row with no h2, so an owner-set
-  // title renders above it — additive, never changing an existing page.
-  const workGallery = getSiteContent(site.content).workGallery;
   const themeStyle = {
     '--theme-accent': site.accent_override || '#35dd9e',
     '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : '#111',
@@ -76,18 +74,20 @@ export default function VistaTemplate({ site, galleryImages = [] }: TemplateProp
         <div><span>{site.service_area || 'Local projects'}</span><span>{site.license || 'Licensed & insured'}</span></div>
       </section>
 
-      <section className={styles.vistaWork} data-reveal id="work">
-        {workGallery.title && <h2 className={styles.vistaWorkTitle}>{workGallery.title}</h2>}
-        <div className={styles.vistaWorkHeading} data-edit="workGallery"><p className={styles.kicker}>{workGallery.eyebrow || 'Recent work'}</p><span>{String(gallery.length).padStart(2, '0')} projects</span></div>
-        <div className={styles.vistaGallery}>
-          {gallery.slice(0, 5).map((image, index) => (
-            <figure key={image.id} className={index === 0 || index === 3 ? styles.vistaWide : undefined}>
-              <SafeImage src={image.url} alt={image.alt} width={1600} height={index === 0 || index === 3 ? 800 : 1200} sizes={index === 0 || index === 3 ? '(max-width: 820px) 100vw, 95vw' : '(max-width: 820px) 100vw, 48vw'} />
-              <figcaption><span>{image.alt}</span><small>0{index + 1}</small></figcaption>
-            </figure>
-          ))}
-        </div>
-      </section>
+      {work.items.length > 0 && (
+        <section className={styles.vistaWork} data-reveal id="work">
+          {work.title && <h2 className={styles.vistaWorkTitle}>{work.title}</h2>}
+          <div className={styles.vistaWorkHeading} data-edit="workGallery"><p className={styles.kicker}>{work.eyebrow}</p><span>{String(Math.min(work.items.length, 5)).padStart(2, '0')} photos</span></div>
+          <div className={styles.vistaGallery}>
+            {work.items.slice(0, 5).map((image, index) => (
+              <figure key={image.id} className={index === 0 || index === 3 ? styles.vistaWide : undefined} data-edit={`showcase-${image.id}`}>
+                <SafeImage src={image.url} alt={image.alt} width={1600} height={index === 0 || index === 3 ? 800 : 1200} sizes={index === 0 || index === 3 ? '(max-width: 820px) 100vw, 95vw' : '(max-width: 820px) 100vw, 48vw'} />
+                <figcaption><span>{image.caption || image.alt}</span><small>0{index + 1}</small></figcaption>
+              </figure>
+            ))}
+          </div>
+        </section>
+      )}
 
       <SiteContentSections site={site} />
 

@@ -49,7 +49,7 @@ function formatBlogDate(iso: string): string {
 export default function SiteContentSections({ site }: SiteContentSectionsProps) {
   const services = getPublishedServices(site.content);
   const howItWorks = getPublishedHowItWorks(site.content);
-  const showcase = getPublishedShowcase(site.content);
+  const showcaseContent = getPublishedShowcase(site.content);
   const testimonials = getPublishedTestimonials(site.content);
   const faqs = getPublishedFaqs(site.content);
   const financing = getPublishedFinancing(site.content);
@@ -59,6 +59,12 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
   const beforeAfter = getPublishedBeforeAfter(site.content);
   const blog = getPublishedBlog(site.content);
   const stickyCallBar = getPublishedStickyCallBar(site.content, site.phone);
+
+  // Forge, Guild and Vista render the Photo gallery natively, in their own
+  // built-in work band (see getWorkBand), so the shared section would show the
+  // same photos twice on those three.
+  const NATIVE_GALLERY_TEMPLATES = ['carbon', 'professional', 'modern'];
+  const showcase = NATIVE_GALLERY_TEMPLATES.includes(site.template) ? null : showcaseContent;
 
   // The Care template renders the Project showcase natively, inside its own dark
   // band, so the shared stack would duplicate it there. Every OTHER theme gets it
