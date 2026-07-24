@@ -540,10 +540,26 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
             </div>
           )}
           {wizardEnabled && (
-            <select aria-label="Best way to reach you" value={contactPref} onChange={(event) => setContactPref(event.target.value as 'any' | 'text')}>
-              <option value="any">Call or text me — either works</option>
-              <option value="text">Text me only — please don&apos;t call</option>
-            </select>
+            <div className={styles.heroFormChoice} role="group" aria-label="Best way to reach you">
+              <span className={styles.heroFormChoiceLabel}>Best way to reach you?</span>
+              <div className={styles.heroFormChipRow}>
+                {([
+                  { key: 'any', label: 'Call or text' },
+                  { key: 'text', label: 'Text only' },
+                ] as const).map((option) => (
+                  <button
+                    type="button"
+                    key={option.key}
+                    className={styles.heroFormChip}
+                    data-selected={contactPref === option.key}
+                    aria-pressed={contactPref === option.key}
+                    onClick={() => setContactPref(option.key)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
           {wizardEnabled && wizardEmailField !== 'off' && (
             <input
