@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroExtraBadges, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroImageCycle from './HeroImageCycle';
@@ -23,7 +23,6 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
   void gallery;
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
   const heroBadge = getHeroBadge(site.content);
-  const extraBadges = getHeroExtraBadges(site.content);
   const content = getSiteContent(site.content);
   const heroEyebrow = content.heroEyebrow;
   // Reno had no built-in second badge, so 'default' renders nothing here.
@@ -81,12 +80,6 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
               <div><strong>{secondBadge.badge.title}</strong>{secondBadge.badge.subtitle && <small>{secondBadge.badge.subtitle}</small>}</div>
             </div>
           )}
-          {extraBadges.map((badge, index) => (
-            <div key={badge.key} className={`${styles.renoBadge} ${styles[`renoBadgeXtra${index}`]}`} data-parallax="0.18" data-edit="heroBadge">
-              <span className={styles.renoBadgeHex} aria-hidden="true">{badge.icon}</span>
-              <div><strong>{badge.title}</strong>{badge.subtitle && <small>{badge.subtitle}</small>}</div>
-            </div>
-          ))}
           <span className={styles.renoHexGhost} data-parallax="0.26" aria-hidden="true" />
         </div>
       </section>

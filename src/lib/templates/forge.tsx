@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroExtraBadges, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroImageCycle from './HeroImageCycle';
@@ -20,7 +20,6 @@ export default function ForgeTemplate({ site }: TemplateProps) {
   const content = getSiteContent(site.content);
   const heroEyebrow = content.heroEyebrow;
   const heroBadge = getHeroBadge(site.content);
-  const extraBadges = getHeroExtraBadges(site.content);
   // 'default' means "the template's own built-in second badge" — Forge never had
   // one, so only an explicitly chosen badge renders here. Nothing is invented.
   const secondBadge = getHeroSecondBadge(site.content);
@@ -70,12 +69,6 @@ export default function ForgeTemplate({ site }: TemplateProps) {
             <div><strong>{secondBadge.badge.title}</strong>{secondBadge.badge.subtitle && <small>{secondBadge.badge.subtitle}</small>}</div>
           </div>
         )}
-        {extraBadges.map((badge, index) => (
-          <div key={badge.key} className={`${styles.forgeBadge} ${styles[`forgeBadgeXtra${index}`]}`} data-parallax="0.15" data-edit="heroBadge">
-            <span className={styles.forgeBadgeIcon} aria-hidden="true">{badge.icon}</span>
-            <div><strong>{badge.title}</strong>{badge.subtitle && <small>{badge.subtitle}</small>}</div>
-          </div>
-        ))}
         <div className={styles.forgeIndex} data-parallax="0.18" aria-hidden="true">01 / 03</div>
       </section>
 
