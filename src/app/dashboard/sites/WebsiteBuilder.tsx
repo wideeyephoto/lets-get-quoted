@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, REORDERABLE_SECTIONS, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, REORDERABLE_SECTIONS, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
@@ -369,6 +369,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     (siteContent.services.enabled && siteContent.services.items.some((svc) => svc.title.trim())) ||
     (siteContent.howItWorks.enabled && siteContent.howItWorks.steps.some((step) => step.title.trim())) ||
     (siteContent.showcase.enabled && siteContent.showcase.items.length > 0) ||
+    (siteContent.projectShowcase.enabled && siteContent.projectShowcase.items.length > 0) ||
     (siteContent.faqs.enabled && siteContent.faqs.items.some((faq) => faq.question.trim() && faq.answer.trim())) ||
     (siteContent.testimonials.enabled && siteContent.testimonials.items.some((item) => item.text.trim())) ||
     (siteContent.serviceAreas.enabled && siteContent.serviceAreas.cities.some((city) => city.trim())) ||
@@ -1049,16 +1050,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   // otherwise the SAME gallery fallback the template shows (so every photo on
   // screen is an editable tile — Replace via upload/stock, caption). The first
   // edit materializes this fallback into projectShowcase.items.
-  const projectBase = useCallback((): SiteShowcaseItem[] => {
-    const items = siteContent.projectShowcase.items;
-    if (items.length > 0) return items;
-    // Only Care falls back to placeholders on the public page, so only Care seeds
-    // placeholder tiles here. On other themes the section stays hidden until the
-    // owner adds real photos — seeding would push stock shots live on first edit.
-    if (site.template !== 'handy') return [];
-    const source = galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES;
-    return source.slice(0, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS).map((img) => ({ id: img.id, url: img.url, alt: img.alt, category: img.category, source: img.source, caption: '' }));
-  }, [siteContent.projectShowcase, galleryImages]);
+  // The owner's real project photos only. This deliberately does NOT seed the
+  // placeholder tiles Care falls back to on its public page: editing one would
+  // materialise all five stock shots into items, and they would then read as the
+  // contractor's genuine completed work — on Care, and on any theme they later
+  // switch to. Care's fallback stays a render-time detail, never saved content.
+  const projectBase = useCallback((): SiteShowcaseItem[] => siteContent.projectShowcase.items, [siteContent.projectShowcase]);
 
   const replaceProjectImage = useCallback((itemId: string | null, image: SiteImage) => {
     const current = projectBase();
@@ -1099,6 +1096,17 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   // The tiles the Project-showcase editor renders — real items or the gallery
   // fallback shown as editable placeholders (see projectBase).
   const projectPhotos = projectBase();
+  // Mirrors contentHint's contract, which the inline version ignored: a section
+  // that is OFF makes no promise about showing, so it must not warn that photos
+  // are missing. Care still falls back to placeholders when empty, so it never warns.
+  const projectShowcaseHint: { hint?: string; hintTone?: 'ok' | 'warn' } = (() => {
+    const { enabled, items } = siteContent.projectShowcase;
+    if (items.length > 0) return { hint: `${items.length} ${items.length === 1 ? 'photo' : 'photos'}`, hintTone: 'ok' };
+    if (!enabled) return {};
+    return site.template === 'handy'
+      ? { hint: 'using placeholder photos', hintTone: 'ok' }
+      : { hint: "empty — won't show yet", hintTone: 'warn' };
+  })();
 
   const checkSubdomain = useCallback(() => {
     const subdomain = site.subdomain?.trim().toLowerCase();
@@ -1825,7 +1833,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   </>
                 )}
 
-                <SectionCard title="Project showcase" description="An animated band of your best project photos — up to 10. Add your own here, or import them from completed jobs." enabled={siteContent.projectShowcase.enabled} onToggleEnabled={(value) => updateProjectShowcase({ ...siteContent.projectShowcase, enabled: value })} hint={siteContent.projectShowcase.items.length > 0 ? `${siteContent.projectShowcase.items.length} ${siteContent.projectShowcase.items.length === 1 ? 'photo' : 'photos'}` : site.template === 'handy' ? 'using placeholder photos' : 'add photos to show it'} hintTone={siteContent.projectShowcase.items.length === 0 && site.template !== 'handy' ? 'warn' : 'ok'} open={openSection === 'projectShowcase'} onToggleOpen={() => toggleSection('projectShowcase')}>
+                <SectionCard title="Project showcase" description="An animated band of your best project photos — up to 10. Add your own here, or import them from completed jobs." enabled={siteContent.projectShowcase.enabled} onToggleEnabled={(value) => updateProjectShowcase({ ...siteContent.projectShowcase, enabled: value })} {...projectShowcaseHint} open={openSection === 'projectShowcase'} onToggleOpen={() => toggleSection('projectShowcase')}>
                       <label className={styles.formField}><span>Small line above</span><input value={siteContent.projectShowcase.eyebrow} maxLength={40} onChange={(event) => updateProjectShowcase({ ...siteContent.projectShowcase, eyebrow: event.target.value })} placeholder="Project showcase" /></label>
                       <label className={styles.formField}><span>Heading</span><input value={siteContent.projectShowcase.title} maxLength={80} onChange={(event) => updateProjectShowcase({ ...siteContent.projectShowcase, title: event.target.value })} placeholder="Our recent projects" /></label>
                       <label className={styles.formField}><span>Showcase style</span><select value={siteContent.projectShowcase.style} onChange={(event) => updateProjectShowcase({ ...siteContent.projectShowcase, style: event.target.value as SiteProjectShowcaseContent['style'] })}>{PROJECT_SHOWCASE_STYLES.map((style) => <option key={style.key} value={style.key}>{style.label}</option>)}</select></label>
@@ -1833,8 +1841,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                       {siteContent.projectShowcase.items.length === 0 && (
                         <p className={styles.fieldHint}>
                           {site.template === 'handy'
-                            ? 'These are placeholder photos. Replace any (upload or stock), edit its headline, or add your own — your first edit makes them your project set.'
-                            : 'Add your own project photos to show this section. On this theme it stays hidden until you do, so placeholders never go live.'}
+                            ? 'Your site is showing placeholder photos here for now. Add your own project photos (upload, stock, or imported from a completed job) and they take over.'
+                            : 'Add your own project photos to show this section. On this theme it stays hidden until you do, so placeholder photos never go live.'}
                         </p>
                       )}
                       <div className={styles.showcaseSelected} aria-label="Project photos, in order">
@@ -1844,7 +1852,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                               <img src={item.url} alt={item.alt} />
                               <div className={styles.showcaseSelectedActions}>
                                 <button type="button" onClick={() => setPicker({ label: 'this project photo', kind: 'project', pjItemId: item.id })}>Replace</button>
-                                <button type="button" aria-label={`Remove ${item.alt}`} onClick={() => updateProjectShowcase({ ...siteContent.projectShowcase, enabled: true, items: projectPhotos.filter((other) => other.id !== item.id) })}>✕</button>
+                                <button type="button" aria-label={`Remove ${item.alt}`} onClick={() => updateProjectShowcase({ ...siteContent.projectShowcase, items: projectPhotos.filter((other) => other.id !== item.id) })}>✕</button>
                               </div>
                             </div>
                             <input
@@ -1853,7 +1861,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                               maxLength={60}
                               placeholder="Headline (optional)"
                               aria-label="Photo headline"
-                              onChange={(event) => updateProjectShowcase({ ...siteContent.projectShowcase, enabled: true, items: projectPhotos.map((other) => (other.id === item.id ? { ...other, caption: event.target.value } : other)) })}
+                              onChange={(event) => updateProjectShowcase({ ...siteContent.projectShowcase, items: projectPhotos.map((other) => (other.id === item.id ? { ...other, caption: event.target.value } : other)) })}
                             />
                           </div>
                         ))}
