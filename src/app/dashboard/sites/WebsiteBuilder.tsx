@@ -31,18 +31,20 @@ type WebsiteBuilderProps = {
 // weight; the last three are the original system-font stacks, kept so sites
 // that saved one still match an option.
 const HEADING_FONT_OPTIONS = [
-  { label: 'Space Grotesk — modern grotesk', value: 'var(--font-display), "Segoe UI", sans-serif' },
-  { label: 'Anton — bold poster', value: 'var(--font-forge-display), Impact, sans-serif' },
-  { label: 'Fraunces — elegant serif', value: 'var(--font-guild-display), Georgia, serif' },
-  { label: 'Poppins — rounded & friendly', value: 'var(--font-care), "Segoe UI", sans-serif' },
-  { label: 'Barlow — clean workshop sans', value: 'var(--font-forge-body), Arial, sans-serif' },
-  { label: 'Work Sans — simple & warm', value: 'var(--font-guild-body), Arial, sans-serif' },
-  { label: 'Inter — neutral modern', value: 'var(--font-vista-body), Helvetica, sans-serif' },
-  { label: 'IBM Plex Sans — technical clean', value: 'var(--font-body), Arial, sans-serif' },
-  { label: 'JetBrains Mono — typewriter tech', value: 'var(--font-mono), Consolas, monospace' },
-  { label: 'Classic serif (Georgia)', value: 'Georgia, Times New Roman, serif' },
-  { label: 'Bold sans (Arial Black)', value: 'Arial Black, Helvetica, sans-serif' },
-  { label: 'Humanist sans (Trebuchet)', value: 'Trebuchet MS, sans-serif' },
+  { label: 'Manrope', value: 'var(--font-manrope), system-ui, sans-serif' },
+  { label: 'Plus Jakarta Sans', value: 'var(--font-jakarta), system-ui, sans-serif' },
+  { label: 'DM Sans', value: 'var(--font-dmsans), system-ui, sans-serif' },
+  { label: 'Inter', value: 'var(--font-vista-body), system-ui, sans-serif' },
+  { label: 'Geist', value: 'var(--font-geist-sans), system-ui, sans-serif' },
+  { label: 'Instrument Sans', value: 'var(--font-instrument), system-ui, sans-serif' },
+  { label: 'Outfit', value: 'var(--font-outfit), system-ui, sans-serif' },
+  { label: 'Space Grotesk', value: 'var(--font-display), system-ui, sans-serif' },
+  { label: 'Sora', value: 'var(--font-sora), system-ui, sans-serif' },
+  { label: 'Urbanist', value: 'var(--font-urbanist), system-ui, sans-serif' },
+  { label: 'Montserrat', value: 'var(--font-montserrat), system-ui, sans-serif' },
+  { label: 'Oswald', value: 'var(--font-oswald), system-ui, sans-serif' },
+  { label: 'Bebas Neue', value: 'var(--font-bebas), Impact, sans-serif' },
+  { label: 'Poppins', value: 'var(--font-care), system-ui, sans-serif' },
 ];
 
 // Curated accent presets for the Design tab. Button/badge text color is derived

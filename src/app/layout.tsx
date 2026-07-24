@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
-import { Anton, Barlow, Fraunces, IBM_Plex_Sans, Inter, JetBrains_Mono, Poppins, Space_Grotesk, Work_Sans } from 'next/font/google';
+import { Anton, Barlow, Bebas_Neue, DM_Sans, Fraunces, IBM_Plex_Sans, Instrument_Sans, Inter, JetBrains_Mono, Manrope, Montserrat, Oswald, Outfit, Plus_Jakarta_Sans, Poppins, Sora, Space_Grotesk, Urbanist, Work_Sans } from 'next/font/google';
+import { GeistSans } from 'geist/font/sans';
 import { headers } from 'next/headers';
 import type { ReactNode } from 'react';
 import { AppShell } from '@/components/app-shell';
@@ -63,6 +64,19 @@ const careFont = Poppins({
   weight: ['400', '500', '600', '700', '800'],
 });
 
+// Curated heading-font picker set (see HEADING_FONT_OPTIONS). Variable fonts
+// omit `weight` to ship the whole axis in one file; Bebas is single-weight.
+const manropeFont = Manrope({ subsets: ['latin'], variable: '--font-manrope' });
+const jakartaFont = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-jakarta' });
+const dmSansFont = DM_Sans({ subsets: ['latin'], variable: '--font-dmsans' });
+const instrumentFont = Instrument_Sans({ subsets: ['latin'], variable: '--font-instrument' });
+const outfitFont = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
+const soraFont = Sora({ subsets: ['latin'], variable: '--font-sora' });
+const urbanistFont = Urbanist({ subsets: ['latin'], variable: '--font-urbanist' });
+const montserratFont = Montserrat({ subsets: ['latin'], variable: '--font-montserrat' });
+const oswaldFont = Oswald({ subsets: ['latin'], variable: '--font-oswald' });
+const bebasFont = Bebas_Neue({ subsets: ['latin'], variable: '--font-bebas', weight: '400' });
+
 const SITE_URL = 'https://letsgetquoted.com';
 
 export const metadata: Metadata = {
@@ -100,7 +114,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
   return (
     <html lang="en">
-      <body className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} ${forgeDisplayFont.variable} ${forgeBodyFont.variable} ${guildDisplayFont.variable} ${guildBodyFont.variable} ${vistaBodyFont.variable} ${careFont.variable}`}>
+      <body className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} ${forgeDisplayFont.variable} ${forgeBodyFont.variable} ${guildDisplayFont.variable} ${guildBodyFont.variable} ${vistaBodyFont.variable} ${careFont.variable} ${manropeFont.variable} ${jakartaFont.variable} ${dmSansFont.variable} ${GeistSans.variable} ${instrumentFont.variable} ${outfitFont.variable} ${soraFont.variable} ${urbanistFont.variable} ${montserratFont.variable} ${oswaldFont.variable} ${bebasFont.variable}`}>
         <AppShellProvider>
           <AppShell forceStandaloneSite={isStandaloneSite}>{children}</AppShell>
         </AppShellProvider>
