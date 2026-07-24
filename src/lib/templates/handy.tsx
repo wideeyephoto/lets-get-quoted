@@ -171,7 +171,10 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
         <div className={styles.careCtaInner} data-reveal>
           <div>
             <h2>Ready to get it done?</h2>
-            <p>Free estimates and a satisfaction guarantee on every job.</p>
+            {/* Was "Free estimates and a satisfaction guarantee on every job" —
+                two specific claims on every Care site. Neutralized like the other
+                contact copy; real guarantees belong in the owner's trust badges. */}
+            <p>Tell us about your project and we&apos;ll follow up with a quote.</p>
           </div>
           <div className={styles.careCtaActions}>
             {site.phone && <a className={styles.careCtaCall} href={`tel:${site.phone}`}>Call {site.phone}</a>}
