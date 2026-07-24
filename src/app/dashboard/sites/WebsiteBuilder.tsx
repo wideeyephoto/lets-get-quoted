@@ -1882,6 +1882,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     {siteContent.sectionOrder.map((key, index) => {
                       const meta = REORDERABLE_SECTIONS.find((section) => section.key === key);
                       if (!meta) return null;
+                      // Care renders the Project showcase natively in its own band
+                      // rather than from the reorderable stack, so dragging it here
+                      // would do nothing on that theme. Don't offer the control.
+                      if (key === 'projectShowcase' && site.template === 'handy') return null;
                       return (
                         <li
                           key={key}
