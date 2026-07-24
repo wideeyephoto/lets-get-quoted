@@ -1027,6 +1027,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   // row, neither of which applies when the band owns the layout and position.
   const hasBuiltInSections = site.template === 'carbon' || site.template === 'professional' || site.template === 'modern';
 
+  // Themes migrated to the full color-scheme token system. For these the scheme
+  // picker replaces the light/dark toggle (a scheme IS a light or dark palette).
+  // Expands as the remaining themes are migrated; once all are, portal_mode's UI
+  // can be retired entirely. Note: 'shine' is the template id for Lustre.
+  const hasColorSchemes = site.template === 'shine';
+
   // The wording each template shows in its hero eyebrow when the owner leaves the
   // field blank — surfaced as the input placeholder so they see what they'd override.
   const heroEyebrowPlaceholder = ((): string => {
@@ -1369,7 +1375,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <p>How your website looks, site-wide — theme, colors, logo, and hero photos.</p>
                 </div>
 
-                <SectionCard title="Theme" description="Pick the overall look your website is built on. Everything you've filled in carries over when you switch." open={openSection === 'theme'} onToggleOpen={() => toggleSection('theme')}>
+                <SectionCard title="Theme &amp; colors" description="Your theme, palette, accent, and fonts — all in one place." open={openSection === 'theme'} onToggleOpen={() => toggleSection('theme')}>
+                  <div className={styles.cardGroupLabel}>Theme</div>
                   <div className={styles.themeGrid}>
                     {AVAILABLE_TEMPLATES.map((template) => (
                       <button type="button" key={template.id} className={`${styles.themeOption}${site.template === template.id ? ` ${styles.selectedTheme}` : ''}`} onClick={() => handleChange('template', template.id as TemplateType)} aria-pressed={site.template === template.id}>
@@ -1378,43 +1385,9 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                       </button>
                     ))}
                   </div>
-                </SectionCard>
 
-                <SectionCard title="Colors & fonts" description="Accent color, light or dark mode, headings, and button style." open={openSection === 'colors'} onToggleOpen={() => toggleSection('colors')}>
-                  <div className={styles.formColumns}>
-                    <label className={styles.formField}><span>Accent color</span><div className={styles.colorControl}><input type="color" value={site.accent_override || '#ff7a21'} onChange={(event) => handleChange('accent_override', event.target.value)} /><input value={site.accent_override || '#ff7a21'} onChange={(event) => handleChange('accent_override', event.target.value)} /></div></label>
-                    {/* Forge is a natively dark theme with no light variant, so the
-                        toggle did nothing there. Rather than add one (portal_mode
-                        defaults to 'light', so a light variant would re-skin every
-                        existing Forge site), don't offer a control that can't work. */}
-                    {site.template === 'carbon' ? (
-                      <div className={styles.formField}><span>Color mode</span><p className={styles.fieldHint}>Forge is a dark theme by design — it has no light mode. Pick another theme if you want a light page.</p></div>
-                    ) : (
-                      <label className={styles.formField}><span>Color mode</span><select value={site.portal_mode} onChange={(event) => handleChange('portal_mode', event.target.value as Site['portal_mode'])}><option value="light">Light</option><option value="dark">Dark</option></select></label>
-                    )}
-                  </div>
-                  <div className={styles.formField}>
-                    <span>Accent presets</span>
-                    <div className={styles.accentSwatches} role="group" aria-label="Preset accent colors">
-                      {ACCENT_PRESETS.map((preset) => {
-                        const selected = (site.accent_override || '').toLowerCase() === preset.hex.toLowerCase();
-                        return (
-                          <button
-                            key={preset.hex}
-                            type="button"
-                            className={`${styles.accentSwatch}${selected ? ` ${styles.accentSwatchActive}` : ''}`}
-                            style={{ background: preset.hex }}
-                            onClick={() => handleChange('accent_override', preset.hex)}
-                            title={preset.name}
-                            aria-label={`${preset.name}${selected ? ' (selected)' : ''}`}
-                            aria-pressed={selected}
-                          />
-                        );
-                      })}
-                    </div>
-                    <small className={styles.fieldHint}>Sets just the accent — button and badge text auto-adjusts to stay readable on any color.</small>
-                  </div>
-                  {site.template === 'shine' && (
+                  <div className={styles.cardGroupLabel}>Color</div>
+                  {hasColorSchemes ? (
                     <div className={styles.formField}>
                       <span>Color scheme</span>
                       <div className={styles.schemeSwatches} role="group" aria-label="Full color schemes">
@@ -1445,14 +1418,45 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                           );
                         })}
                       </div>
-                      <small className={styles.fieldHint}>Repalettes the whole page — background, surfaces, and text — not just the accent. Overrides the light/dark toggle.</small>
+                      <small className={styles.fieldHint}>Repalettes the whole page — background, surfaces, and text. This is your light/dark control too: pick a light scheme (Porcelain, Slate) or a dark one (Midnight, Forest).</small>
                     </div>
+                  ) : site.template === 'carbon' ? (
+                    <div className={styles.formField}><span>Color mode</span><p className={styles.fieldHint}>Forge is a dark theme by design — it has no light mode. Pick another theme if you want a light page.</p></div>
+                  ) : (
+                    <label className={styles.formField}><span>Color mode</span><select value={site.portal_mode} onChange={(event) => handleChange('portal_mode', event.target.value as Site['portal_mode'])}><option value="light">Light</option><option value="dark">Dark</option></select></label>
                   )}
-                  <label className={styles.formField}><span>Heading font</span><select value={site.header_font || ''} onChange={(event) => handleChange('header_font', event.target.value || null)}>
-                    <option value="">Theme default</option>
-                    {HEADING_FONT_OPTIONS.map((font) => <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>{font.label}</option>)}
-                  </select></label>
-                  <label className={styles.formField}><span>Button style</span><select value={site.button_style || 'solid'} onChange={(event) => handleChange('button_style', event.target.value)}><option value="solid">Solid</option><option value="outline">Outline</option><option value="ghost">Minimal</option></select></label>
+
+                  <div className={styles.formField}>
+                    <span>Accent color</span>
+                    <div className={styles.colorControl}><input type="color" value={site.accent_override || '#ff7a21'} onChange={(event) => handleChange('accent_override', event.target.value)} /><input value={site.accent_override || '#ff7a21'} onChange={(event) => handleChange('accent_override', event.target.value)} /></div>
+                    <div className={styles.accentSwatches} role="group" aria-label="Preset accent colors">
+                      {ACCENT_PRESETS.map((preset) => {
+                        const selected = (site.accent_override || '').toLowerCase() === preset.hex.toLowerCase();
+                        return (
+                          <button
+                            key={preset.hex}
+                            type="button"
+                            className={`${styles.accentSwatch}${selected ? ` ${styles.accentSwatchActive}` : ''}`}
+                            style={{ background: preset.hex }}
+                            onClick={() => handleChange('accent_override', preset.hex)}
+                            title={preset.name}
+                            aria-label={`${preset.name}${selected ? ' (selected)' : ''}`}
+                            aria-pressed={selected}
+                          />
+                        );
+                      })}
+                    </div>
+                    <small className={styles.fieldHint}>{hasColorSchemes ? 'Overrides the scheme’s accent. ' : ''}Button and badge text auto-adjusts to stay readable on any color.</small>
+                  </div>
+
+                  <div className={styles.cardGroupLabel}>Type &amp; layout</div>
+                  <div className={styles.formColumns}>
+                    <label className={styles.formField}><span>Heading font</span><select value={site.header_font || ''} onChange={(event) => handleChange('header_font', event.target.value || null)}>
+                      <option value="">Theme default</option>
+                      {HEADING_FONT_OPTIONS.map((font) => <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>{font.label}</option>)}
+                    </select></label>
+                    <label className={styles.formField}><span>Button style</span><select value={site.button_style || 'solid'} onChange={(event) => handleChange('button_style', event.target.value)}><option value="solid">Solid</option><option value="outline">Outline</option><option value="ghost">Minimal</option></select></label>
+                  </div>
                   <label className={styles.formField}><span>Header style</span><select value={siteContent.headerStyle} onChange={(event) => updateSiteContent({ headerStyle: event.target.value })}><option value="">Theme default</option>{HEADER_STYLES.map((style) => <option key={style.key} value={style.key}>{style.label}</option>)}</select><small className={styles.fieldHint}>How your logo, menu and call-to-action are arranged across the top.</small></label>
                 </SectionCard>
 
