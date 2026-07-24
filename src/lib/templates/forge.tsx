@@ -90,7 +90,7 @@ export default function ForgeTemplate({ site }: TemplateProps) {
       {work.items.length > 0 && (
         <section className={styles.forgeWork} data-reveal id="work">
           <div className={styles.sectionHeading}>
-            <div data-edit="workGallery"><p className={styles.kicker}>{work.eyebrow}</p><h2>{work.title}</h2></div>
+            <div><p className={styles.kicker}>{work.eyebrow}</p><h2>{work.title}</h2></div>
             <p>{work.intro || 'Every job delivered with practical care, start to finish.'}</p>
           </div>
           <div className={styles.forgeGallery}>

@@ -83,7 +83,7 @@ export default function VistaTemplate({ site }: TemplateProps) {
       {work.items.length > 0 && (
         <section className={styles.vistaWork} data-reveal id="work">
           {work.title && <h2 className={styles.vistaWorkTitle}>{work.title}</h2>}
-          <div className={styles.vistaWorkHeading} data-edit="workGallery"><p className={styles.kicker}>{work.eyebrow}</p><span>{String(Math.min(work.items.length, 5)).padStart(2, '0')} photos</span></div>
+          <div className={styles.vistaWorkHeading}><p className={styles.kicker}>{work.eyebrow}</p><span>{String(Math.min(work.items.length, 5)).padStart(2, '0')} photos</span></div>
           <div className={styles.vistaGallery}>
             {work.items.slice(0, 5).map((image, index) => (
               <figure key={image.id} className={index === 0 || index === 3 ? styles.vistaWide : undefined} data-edit={`showcase-${image.id}`}>

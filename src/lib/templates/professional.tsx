@@ -112,7 +112,7 @@ export default function GuildTemplate({ site }: TemplateProps) {
 
       {work.items.length > 0 && (
         <section className={styles.guildWork} data-reveal id="work">
-          <div className={styles.sectionHeading}><div data-edit="workGallery"><p className={styles.kicker}>{work.eyebrow}</p><h2>{work.title}</h2></div></div>
+          <div className={styles.sectionHeading}><div><p className={styles.kicker}>{work.eyebrow}</p><h2>{work.title}</h2></div></div>
           <div className={styles.guildGallery}>
             {work.items.slice(0, 3).map((image) => <figure key={image.id} data-edit={`showcase-${image.id}`}><SafeImage src={image.url} alt={image.alt} width={1200} height={1500} sizes="(max-width: 820px) 100vw, 32vw" /><figcaption>{image.caption || image.alt}</figcaption></figure>)}
           </div>

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, REORDERABLE_SECTIONS, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteWorkGalleryContent, type SiteIntroBlockContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, REORDERABLE_SECTIONS, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteIntroBlockContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
@@ -537,7 +537,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       estimate: 'estimate',
       contact: 'quoteForm',
       whyUs: 'whyUs',
-      workGallery: 'workGallery',
       trustBadges: 'trustBadges',
       introBlock: 'introBlock',
       projectShowcase: 'projectShowcase',
@@ -1012,9 +1011,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     updateSiteContent({ whyUs });
   }, [updateSiteContent]);
 
-  const updateWorkGallery = useCallback((workGallery: SiteWorkGalleryContent) => {
-    updateSiteContent({ workGallery });
-  }, [updateSiteContent]);
 
   const updateIntroBlock = useCallback((introBlock: SiteIntroBlockContent) => {
     updateSiteContent({ introBlock });
@@ -1911,14 +1907,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                       <label className={styles.formField}><span>Supporting text</span><textarea rows={3} value={siteContent.introBlock.body} maxLength={400} onChange={(event) => updateIntroBlock({ ...siteContent.introBlock, body: event.target.value })} placeholder="A sentence or two about how you work." /></label>
                     )}
                     <p className={styles.emptyHelper}>Leave a box empty to keep your template&apos;s own wording.</p>
-                  </SectionCard>
-                )}
-
-                {hasBuiltInSections && (
-                  <SectionCard title="Recent work heading" description="The heading over your template's photo band. The photos come from your image gallery." open={openSection === 'workGallery'} onToggleOpen={() => toggleSection('workGallery')}>
-                    <label className={styles.formField}><span>Small line above</span><input value={siteContent.workGallery.eyebrow} maxLength={40} onChange={(event) => updateWorkGallery({ ...siteContent.workGallery, eyebrow: event.target.value })} placeholder={site.template === 'carbon' ? 'Selected work' : 'Recent work'} /></label>
-                    <label className={styles.formField}><span>Heading</span><input value={siteContent.workGallery.title} maxLength={80} onChange={(event) => updateWorkGallery({ ...siteContent.workGallery, title: event.target.value })} placeholder={site.template === 'carbon' ? 'Made for real life.' : site.template === 'professional' ? 'Quality is visible in the details.' : 'Add a heading (optional)'} /></label>
-                    <p className={styles.emptyHelper}>Leave either box empty to keep your template&apos;s own wording.</p>
                   </SectionCard>
                 )}
 
