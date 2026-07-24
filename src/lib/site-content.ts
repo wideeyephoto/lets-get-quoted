@@ -830,7 +830,10 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       items: parseCertifications(certifications.items),
     },
     stats: {
-      enabled: toBoolean(stats.enabled),
+      // On by default so the section shows once numbers exist. Items default to
+      // empty and getPublishedStats requires a labelled item, so an empty stats
+      // section still renders nothing — no fabricated figures are shown.
+      enabled: stats.enabled !== false,
       title: toString(stats.title, DEFAULT_STATS_TITLE),
       items: parseStats(stats.items),
     },
