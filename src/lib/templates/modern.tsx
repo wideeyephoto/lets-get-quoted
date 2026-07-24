@@ -17,7 +17,6 @@ import styles from './themes.module.css';
 export default function VistaTemplate({ site }: TemplateProps) {
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[0].url;
   const content = getSiteContent(site.content);
-  const intro = content.introBlock;
   const heroEyebrow = content.heroEyebrow;
   const heroBadge = getHeroBadge(site.content);
   // Vista had no built-in second badge, so 'default' renders nothing here.
@@ -72,9 +71,9 @@ export default function VistaTemplate({ site }: TemplateProps) {
         <a className={styles.vistaScroll} href="#studio" aria-label="Skip to about section">Explore <span aria-hidden="true">↓</span></a>
       </section>
 
-      <section className={styles.vistaStatement} data-reveal id="studio" data-edit="introBlock">
-        <p>{intro.eyebrow || `We are ${site.company_name}.`}</p>
-        <h2>{intro.title || 'Part problem-solver, part perfectionist, always focused on getting it right.'}</h2>
+      <section className={styles.vistaStatement} data-reveal id="studio">
+        <p>We are {site.company_name}.</p>
+        <h2>Part problem-solver, part perfectionist, always focused on getting it right.</h2>
         <div><span>{site.service_area || 'Local projects'}</span><span>{site.license || 'Licensed & insured'}</span></div>
       </section>
 

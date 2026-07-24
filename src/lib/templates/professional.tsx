@@ -44,7 +44,6 @@ export default function GuildTemplate({ site }: TemplateProps) {
   // Sites that never configured services keep the block, so nothing shortens.
   const services = getPublishedServices(site.content);
   const content = getSiteContent(site.content);
-  const intro = content.introBlock;
   const heroEyebrow = content.heroEyebrow;
   const second = getHeroSecondBadge(site.content);
   const scheme = getColorScheme(content.colorScheme);
@@ -104,9 +103,9 @@ export default function GuildTemplate({ site }: TemplateProps) {
         </div>
       </section>
 
-      <section className={styles.guildIntro} data-reveal id="services" data-edit="introBlock">
-        <div><p className={styles.kicker}>{intro.eyebrow || 'One team, start to finish'}</p><h2>{intro.title || 'Experience that makes the process easier.'}</h2></div>
-        <p>{intro.body || 'We pair hands-on trade experience with straightforward, no-surprises service, so every job feels considered and under control.'}</p>
+      <section className={styles.guildIntro} data-reveal id="services">
+        <div><p className={styles.kicker}>One team, start to finish</p><h2>Experience that makes the process easier.</h2></div>
+        <p>We pair hands-on trade experience with straightforward, no-surprises service, so every job feels considered and under control.</p>
       </section>
 
       {!services && (

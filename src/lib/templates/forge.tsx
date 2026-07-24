@@ -18,7 +18,6 @@ import styles from './themes.module.css';
 export default function ForgeTemplate({ site }: TemplateProps) {
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
   const content = getSiteContent(site.content);
-  const intro = content.introBlock;
   const heroEyebrow = content.heroEyebrow;
   const heroBadge = getHeroBadge(site.content);
   // 'default' means "the template's own built-in second badge" — Forge never had
@@ -79,10 +78,10 @@ export default function ForgeTemplate({ site }: TemplateProps) {
         <div><span>Credentials</span><strong>{site.license || 'Licensed & insured'}</strong></div>
       </section>
 
-      <section className={styles.forgeAbout} data-reveal id="about" data-edit="introBlock">
+      <section className={styles.forgeAbout} data-reveal id="about">
         <p className={styles.sectionNumber} data-parallax="0.14">02</p>
-        <div><p className={styles.kicker}>{intro.eyebrow || 'What we bring'}</p><h2>{intro.title || 'Clear plans. Skilled hands. No surprises.'}</h2></div>
-        <p>{intro.body || 'From the first walkthrough to the final clean-up, we keep the work organized, the communication direct, and the standards high.'}</p>
+        <div><p className={styles.kicker}>What we bring</p><h2>Clear plans. Skilled hands. No surprises.</h2></div>
+        <p>From the first walkthrough to the final clean-up, we keep the work organized, the communication direct, and the standards high.</p>
       </section>
 
 

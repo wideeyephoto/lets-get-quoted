@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, REORDERABLE_SECTIONS, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteIntroBlockContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, REORDERABLE_SECTIONS, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
@@ -546,7 +546,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       contact: 'quoteForm',
       whyUs: 'whyUs',
       trustBadges: 'trustBadges',
-      introBlock: 'introBlock',
       projectShowcase: 'projectShowcase',
     };
 
@@ -1011,10 +1010,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     updateSiteContent({ whyUs });
   }, [updateSiteContent]);
 
-
-  const updateIntroBlock = useCallback((introBlock: SiteIntroBlockContent) => {
-    updateSiteContent({ introBlock });
-  }, [updateSiteContent]);
 
   // Forge, Guild and Vista are the three templates with their own built-in
   // editorial sections — an intro block and a work band that renders the Photo
@@ -1888,16 +1883,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   {siteContent.stickyCallBar.enabled && site.phone && !siteContent.phonePublic && <p className={styles.emptyHelper}>Your phone number is set to hidden — this bar won&apos;t appear until you turn &quot;Show my phone number&quot; back on.</p>}
                 </SectionCard>
 
-                {hasBuiltInSections && (
-                  <SectionCard title="Intro section" description="The short block between your hero and your photos — your chance to say how you work." open={openSection === 'introBlock'} onToggleOpen={() => toggleSection('introBlock')}>
-                    <label className={styles.formField}><span>Small line above</span><input value={siteContent.introBlock.eyebrow} maxLength={40} onChange={(event) => updateIntroBlock({ ...siteContent.introBlock, eyebrow: event.target.value })} placeholder={site.template === 'carbon' ? 'What we bring' : site.template === 'professional' ? 'One team, start to finish' : `We are ${site.company_name || 'your company'}.`} /></label>
-                    <label className={styles.formField}><span>Heading</span><input value={siteContent.introBlock.title} maxLength={120} onChange={(event) => updateIntroBlock({ ...siteContent.introBlock, title: event.target.value })} placeholder={site.template === 'carbon' ? 'Clear plans. Skilled hands. No surprises.' : site.template === 'professional' ? 'Experience that makes the process easier.' : 'Part problem-solver, part perfectionist…'} /></label>
-                    {site.template !== 'modern' && (
-                      <label className={styles.formField}><span>Supporting text</span><textarea rows={3} value={siteContent.introBlock.body} maxLength={400} onChange={(event) => updateIntroBlock({ ...siteContent.introBlock, body: event.target.value })} placeholder="A sentence or two about how you work." /></label>
-                    )}
-                    <p className={styles.emptyHelper}>Leave a box empty to keep your template&apos;s own wording.</p>
-                  </SectionCard>
-                )}
 
                 {site.template === 'handy' && (
                   <>
