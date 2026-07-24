@@ -533,6 +533,9 @@
    corner — the inset photo owns bottom-right, the second badge bottom-left.
    Reuses .guildBadge so all three badge styles (solid/outline/soft) apply. */
 .guildBadgePrimary { top: 1.5rem; bottom: auto; flex-direction: row; align-items: center; gap: .85rem; animation-delay: -3s; }
+/* The primary badge is a row (icon | text); its text column must stack the
+   title over the subtitle, otherwise strong + span run together on one line. */
+.guildBadgePrimary > div { display: flex; flex-direction: column; min-width: 0; }
 /* Scoped to .guildBadge so it outranks `.guildBadge span` (0,1,1), which would
    otherwise shrink the icon and push it down with the subtitle's margin. */
 .guildBadge .guildBadgeIcon { flex: 0 0 auto; display: grid; place-items: center; width: 40px; height: 40px; margin-top: 0; border-radius: 10px; background: rgba(255,255,255,.22); font-size: 1.2rem; line-height: 1; opacity: 1; }
