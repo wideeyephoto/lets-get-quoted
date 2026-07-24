@@ -6,8 +6,8 @@ export type SiteSectionKey = 'showcase' | 'testimonials' | 'faqs';
 // Honest labels for a freshly generated site whose gallery holds representative
 // STOCK photos (not the contractor's real jobs). Swapped to "Our work" style
 // only once real project photos are uploaded.
-export const STOCK_SHOWCASE_TITLE = 'Representative service photos';
-export const STOCK_SHOWCASE_INTRO = 'A look at the kind of work we do. These are representative photos — we’ll swap in your own project photos anytime.';
+export const STOCK_SHOWCASE_TITLE = 'Quality at Every Step';
+export const STOCK_SHOWCASE_INTRO = "Whether it's a small job or big one, we've got you covered!";
 
 export type SiteShowcaseItem = SiteImage & {
   caption?: string;
@@ -491,7 +491,7 @@ export function getLogoStyle(content: Record<string, unknown> | null | undefined
   return getSiteContent(content).logoStyle;
 }
 
-export const DEFAULT_SHOWCASE_TITLE = 'Specialties';
+export const DEFAULT_SHOWCASE_TITLE = 'Quality at Every Step';
 export const DEFAULT_FAQ_TITLE = 'Frequently asked questions';
 export const DEFAULT_TESTIMONIALS_TITLE = 'What homeowners say';
 export const DEFAULT_RATING_SOURCE_LABEL = 'Verified reviews';
@@ -500,7 +500,7 @@ export const DEFAULT_SERVICE_AREAS_TITLE = 'Areas we serve';
 export const DEFAULT_SERVICE_AREAS_INTRO = 'Proudly serving homeowners across the region.';
 export const DEFAULT_CERTIFICATIONS_TITLE = 'Certifications & awards';
 export const DEFAULT_STATS_TITLE = 'By the numbers';
-export const DEFAULT_BEFORE_AFTER_TITLE = 'Before & after';
+export const DEFAULT_BEFORE_AFTER_TITLE = 'Before & After';
 export const DEFAULT_SERVICES_TITLE = 'What we do';
 export const DEFAULT_HOW_IT_WORKS_TITLE = 'How it works';
 // Starter steps a brand-new site's "How it works" section shows until the owner
@@ -511,7 +511,7 @@ export const DEFAULT_HOW_IT_WORKS_STEPS: SiteProcessStep[] = [
   { id: 'step-3', title: 'Quote for the job at hand', description: 'You will receive a text message to sign-off and be scheduled to start the job. A deposit may be required for larger jobs' },
 ];
 export const DEFAULT_BLOG_TITLE = 'From our blog';
-export const DEFAULT_BEFORE_AFTER_INTRO = 'Drag to see the transformation.';
+export const DEFAULT_BEFORE_AFTER_INTRO = 'See the transformation';
 
 export const DEFAULT_TRUST_BADGES: SiteTrustBadgeItem[] = [
   { id: 'licensed', label: 'Licensed', enabled: true },
@@ -753,7 +753,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     showcase: {
       enabled: toBoolean(showcase.enabled),
       title: toString(showcase.title, DEFAULT_SHOWCASE_TITLE),
-      intro: toString(showcase.intro, 'A look at recent work and finished details.'),
+      intro: toString(showcase.intro, "Whether it's a small job or big one, we've got you covered!"),
       layout: showcase.layout === 'grid' || showcase.layout === 'filmstrip' ? showcase.layout : 'featured',
       items: parseShowcaseItems(showcase.items),
     },

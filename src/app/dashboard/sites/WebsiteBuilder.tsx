@@ -1582,8 +1582,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 </SectionCard>
 
                 <SectionCard title="Photo gallery" description="Highlight finished work, project details, and job photos." evidence="Real project photos alongside reviews produced 55% more leads in one study — genuine work outperforms stock." enabled={siteContent.showcase.enabled} onToggleEnabled={(value) => updateShowcase({ ...siteContent.showcase, enabled: value })} {...contentHint(siteContent.showcase.enabled, siteContent.showcase.items.length, 'image')} open={openSection === 'showcase'} onToggleOpen={() => toggleSection('showcase')}>
-                  <label className={styles.formField}><span>Section title</span><input value={siteContent.showcase.title} onChange={(event) => updateShowcase({ ...siteContent.showcase, title: event.target.value })} /></label>
-                  <label className={styles.formField}><span>Intro</span><textarea rows={2} value={siteContent.showcase.intro} onChange={(event) => updateShowcase({ ...siteContent.showcase, intro: event.target.value })} /></label>
+                  <label className={styles.formField}><span>Section title</span><input value={siteContent.showcase.title} onChange={(event) => updateShowcase({ ...siteContent.showcase, title: event.target.value })} placeholder="Quality at Every Step" /></label>
+                  <label className={styles.formField}><span>Intro</span><textarea rows={2} value={siteContent.showcase.intro} onChange={(event) => updateShowcase({ ...siteContent.showcase, intro: event.target.value })} placeholder="Whether it's a small job or big one, we've got you covered!" /></label>
                   {hasBuiltInSections ? (
                     <p className={styles.emptyHelper}>These photos appear in your template&apos;s own work band, which sets its own layout — so there&apos;s no layout picker here. Click the band in the preview to change a photo.</p>
                   ) : (
@@ -1633,36 +1633,43 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 </SectionCard>
 
                 <SectionCard title="Before &amp; after" description="Drag-to-reveal comparison sliders — the most shared element on a remodeler's site. Each pair needs both a before and an after image to appear on your site." evidence="Before/after galleries paired with reviews produced 55% more leads — for trades, the transformation is the product." enabled={siteContent.beforeAfter.enabled} onToggleEnabled={(value) => updateBeforeAfter({ ...siteContent.beforeAfter, enabled: value })} {...contentHint(siteContent.beforeAfter.enabled, siteContent.beforeAfter.items.filter((pair) => pair.beforeUrl && pair.afterUrl).length, 'pair')} open={openSection === 'beforeAfter'} onToggleOpen={() => toggleSection('beforeAfter')}>
-                  <label className={styles.formField}><span>Section title</span><input value={siteContent.beforeAfter.title} onChange={(event) => updateBeforeAfter({ ...siteContent.beforeAfter, title: event.target.value })} /></label>
-                  <label className={styles.formField}><span>Intro</span><input value={siteContent.beforeAfter.intro} onChange={(event) => updateBeforeAfter({ ...siteContent.beforeAfter, intro: event.target.value })} /></label>
-                  <div className={styles.stackList}>
-                    {siteContent.beforeAfter.items.map((item, index) => (
-                      <StackItem key={item.id} title={item.label.trim() || `Pair ${index + 1}`} meta={item.beforeUrl && item.afterUrl ? 'complete' : 'needs images'} editing={editingItemId === item.id} onEdit={() => setEditingItemId(item.id)} onSave={saveItem} onRemove={() => updateBeforeAfter({ ...siteContent.beforeAfter, items: siteContent.beforeAfter.items.filter((pair) => pair.id !== item.id) })}>
-                        <div className={styles.imageSlots}>
-                          <div className={styles.imageSlot}>
-                            <div className={styles.imageSlotHead}><strong>Before</strong></div>
-                            {item.beforeUrl
-                              ? <div className={styles.heroSlotPreview}><img src={item.beforeUrl} alt="Before preview" /></div>
-                              : <div className={styles.imageSlotEmpty}>No before photo</div>}
-                            <div className={styles.imageSlotActions}>
-                              <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: 'the before photo', kind: 'beforeAfter', baItemId: item.id, baSide: 'before' })}>{item.beforeUrl ? 'Replace photo' : 'Add photo'}</button>
-                            </div>
-                          </div>
-                          <div className={styles.imageSlot}>
-                            <div className={styles.imageSlotHead}><strong>After</strong></div>
-                            {item.afterUrl
-                              ? <div className={styles.heroSlotPreview}><img src={item.afterUrl} alt="After preview" /></div>
-                              : <div className={styles.imageSlotEmpty}>No after photo</div>}
-                            <div className={styles.imageSlotActions}>
-                              <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: 'the after photo', kind: 'beforeAfter', baItemId: item.id, baSide: 'after' })}>{item.afterUrl ? 'Replace photo' : 'Add photo'}</button>
-                            </div>
+                  <label className={styles.formField}><span>Section title</span><input value={siteContent.beforeAfter.title} onChange={(event) => updateBeforeAfter({ ...siteContent.beforeAfter, title: event.target.value })} placeholder="Before & After" /></label>
+                  <label className={styles.formField}><span>Description</span><input value={siteContent.beforeAfter.intro} onChange={(event) => updateBeforeAfter({ ...siteContent.beforeAfter, intro: event.target.value })} placeholder="See the transformation" /></label>
+                  {(() => {
+                    // A single before/after pair — add each photo in one click. The
+                    // pair (with its id) is created lazily on the first photo add.
+                    const pair = siteContent.beforeAfter.items[0];
+                    const openPhotoPicker = (side: 'before' | 'after') => {
+                      let id = pair?.id;
+                      if (!id) {
+                        id = createContentId('ba');
+                        updateBeforeAfter({ ...siteContent.beforeAfter, enabled: true, items: [{ id, beforeUrl: '', beforeAlt: '', afterUrl: '', afterAlt: '', label: '' }] });
+                      }
+                      setPicker({ label: side === 'before' ? 'the before photo' : 'the after photo', kind: 'beforeAfter', baItemId: id, baSide: side });
+                    };
+                    return (
+                      <div className={styles.imageSlots}>
+                        <div className={styles.imageSlot}>
+                          <div className={styles.imageSlotHead}><strong>Before</strong></div>
+                          {pair?.beforeUrl
+                            ? <div className={styles.heroSlotPreview}><img src={pair.beforeUrl} alt="Before preview" /></div>
+                            : <div className={styles.imageSlotEmpty}>No before photo</div>}
+                          <div className={styles.imageSlotActions}>
+                            <button type="button" className={styles.secondaryAction} onClick={() => openPhotoPicker('before')}>{pair?.beforeUrl ? 'Replace photo' : 'Add photo'}</button>
                           </div>
                         </div>
-                        <label className={styles.formField}><span>Caption (optional)</span><input value={item.label} onChange={(event) => updateBeforeAfter({ ...siteContent.beforeAfter, items: siteContent.beforeAfter.items.map((pair) => pair.id === item.id ? { ...pair, label: event.target.value } : pair) })} placeholder="Kitchen remodel, roof replacement..." /></label>
-                      </StackItem>
-                    ))}
-                  </div>
-                  <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('ba'); updateBeforeAfter({ ...siteContent.beforeAfter, enabled: true, items: [...siteContent.beforeAfter.items, { id, beforeUrl: '', beforeAlt: '', afterUrl: '', afterAlt: '', label: '' }] }); setEditingItemId(id); }}>Add pair</button>
+                        <div className={styles.imageSlot}>
+                          <div className={styles.imageSlotHead}><strong>After</strong></div>
+                          {pair?.afterUrl
+                            ? <div className={styles.heroSlotPreview}><img src={pair.afterUrl} alt="After preview" /></div>
+                            : <div className={styles.imageSlotEmpty}>No after photo</div>}
+                          <div className={styles.imageSlotActions}>
+                            <button type="button" className={styles.secondaryAction} onClick={() => openPhotoPicker('after')}>{pair?.afterUrl ? 'Replace photo' : 'Add photo'}</button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </SectionCard>
 
                 <SectionCard title="Customer reviews" description="Show quotes from real customers on your public site." evidence="97% of homeowners read reviews before hiring a local pro, and the first few weigh the most." enabled={siteContent.testimonials.enabled} onToggleEnabled={(value) => updateTestimonials({ ...siteContent.testimonials, enabled: value })} {...contentHint(siteContent.testimonials.enabled, reviewCount, 'review')} open={openSection === 'testimonials'} onToggleOpen={() => toggleSection('testimonials')}>
