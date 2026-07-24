@@ -1027,6 +1027,12 @@
 .coatCircle:nth-child(4) { width: 90px; height: 90px; top: 64%; right: 8%; opacity: .3; animation: coatBob1 11s ease-in-out infinite 1.2s; }
 .coatCircle:nth-child(5) { width: 46px; height: 46px; top: 30%; left: 42%; opacity: .5; animation: coatBob2 8s ease-in-out infinite .2s; }
 .coatCircle:nth-child(6) { width: 150px; height: 150px; bottom: -6%; left: 30%; opacity: .22; background: color-mix(in srgb, #7a1418 60%, transparent); animation: coatBob3 16s ease-in-out infinite; }
+.coatCircle:nth-child(7) { width: 80px; height: 80px; top: 22%; right: 30%; opacity: .34; animation: coatBob2 13s ease-in-out infinite .6s; }
+.coatCircle:nth-child(8) { width: 40px; height: 40px; top: 78%; left: 40%; opacity: .45; background: color-mix(in srgb, #ffffff 22%, transparent); animation: coatBob1 10s ease-in-out infinite 1s; }
+.coatCircle:nth-child(9) { width: 170px; height: 170px; top: 44%; right: 22%; opacity: .18; animation: coatBob3 17s ease-in-out infinite .3s; }
+.coatCircle:nth-child(10) { width: 54px; height: 54px; top: 6%; left: 24%; opacity: .4; animation: coatBob2 9s ease-in-out infinite 1.4s; }
+.coatCircle:nth-child(11) { width: 110px; height: 110px; bottom: 4%; right: 34%; opacity: .24; background: color-mix(in srgb, #7a1418 60%, transparent); animation: coatBob1 15s ease-in-out infinite .5s; }
+.coatCircle:nth-child(12) { width: 34px; height: 34px; top: 48%; left: 12%; opacity: .5; background: color-mix(in srgb, #ffffff 20%, transparent); animation: coatBob3 11s ease-in-out infinite .9s; }
 @keyframes coatBob1 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(16px, -26px) scale(1.08); } }
 @keyframes coatBob2 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-22px, 18px) scale(.92); } }
 @keyframes coatBob3 { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(26px, 20px); } }

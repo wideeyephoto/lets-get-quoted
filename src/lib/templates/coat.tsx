@@ -67,6 +67,12 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
           <span className={styles.coatCircle} />
           <span className={styles.coatCircle} />
           <span className={styles.coatCircle} />
+          <span className={styles.coatCircle} />
+          <span className={styles.coatCircle} />
+          <span className={styles.coatCircle} />
+          <span className={styles.coatCircle} />
+          <span className={styles.coatCircle} />
+          <span className={styles.coatCircle} />
         </div>
         <div className={styles.coatHeroCopy}>
           <p className={styles.coatEyebrowLight} data-edit="heroEyebrow">{heroEyebrow || 'Brushing dreams to life'}</p>
