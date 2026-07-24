@@ -7,9 +7,7 @@ import {
   getSectionOrder,
   getPublishedBeforeAfter,
   getPublishedBlog,
-  getPublishedCertifications,
   getPublishedFaqs,
-  getPublishedFinancing,
   getPublishedHowItWorks,
   getPublishedServiceAreas,
   getPublishedServices,
@@ -33,10 +31,6 @@ type SiteContentSectionsProps = {
   site: Site;
 };
 
-function formatMoney(value: number): string {
-  return `$${value.toLocaleString('en-US')}`;
-}
-
 // Format a stored 'YYYY-MM-DD' blog date. Parse as local midnight so the day
 // never shifts under the server timezone; empty string on anything unparseable.
 function formatBlogDate(iso: string): string {
@@ -52,9 +46,7 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
   const showcaseContent = getPublishedShowcase(site.content);
   const testimonials = getPublishedTestimonials(site.content);
   const faqs = getPublishedFaqs(site.content);
-  const financing = getPublishedFinancing(site.content);
   const serviceAreas = getPublishedServiceAreas(site.content);
-  const certifications = getPublishedCertifications(site.content);
   const stats = getPublishedStats(site.content);
   const beforeAfter = getPublishedBeforeAfter(site.content);
   const blog = getPublishedBlog(site.content);
@@ -76,16 +68,9 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
   const projectShowcase =
     site.template !== 'handy' && projectContent.enabled && projectItems.length > 0 ? projectContent : null;
 
-  const hasInFlowSections = Boolean(services || howItWorks || showcase || testimonials || faqs || serviceAreas || certifications || stats || beforeAfter || blog || projectShowcase);
-  const hasFinancing = Boolean(financing);
+  const hasInFlowSections = Boolean(services || howItWorks || showcase || testimonials || faqs || serviceAreas || stats || beforeAfter || blog || projectShowcase);
 
-  if (!hasInFlowSections && !hasFinancing && !stickyCallBar) return null;
-
-  // Only ever render an outbound apply link for an explicit https URL — never a
-  // contractor-typed javascript:/data: string. Trim + case-insensitive scheme so
-  // a valid "HTTPS://" isn't silently dropped.
-  const rawApplyUrl = financing ? financing.applyUrl.trim() : '';
-  const financingApplyUrl = /^https:\/\//i.test(rawApplyUrl) ? rawApplyUrl : '';
+  if (!hasInFlowSections && !stickyCallBar) return null;
 
   // Rating + credential proof now render in <SiteProofStrip> directly beside the
   // hero and contact forms (where proof converts), not mid-page. Financing stays
@@ -243,38 +228,10 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
         <a className={styles.blogViewAll} href="/blog">View all posts <span aria-hidden="true">→</span></a>
       </section>
     ),
-    certifications: certifications && (
-      <section className={styles.extraSection} id="certifications">
-        <div className={styles.extraSectionHeader} data-reveal>
-          <p className={styles.kicker}>Credentials</p>
-          <h2>{certifications.title}</h2>
-        </div>
-        <ul className={styles.certList} data-stagger>
-          {certifications.items.map((item) => (
-            <li key={item.id} className={styles.certItem}>
-              {item.imageUrl && <img src={item.imageUrl} alt={item.imageAlt || item.label || 'Certification'} loading="lazy" decoding="async" />}
-              {item.label && <span>{item.label}</span>}
-            </li>
-          ))}
-        </ul>
-      </section>
-    ),
   };
 
   return (
     <>
-      {financing && (
-        <section className={styles.financing} data-reveal aria-label="Financing">
-          <div className={styles.financingInner}>
-            <p className={styles.financingLead}>Projects from <strong>{formatMoney(financing.monthlyFrom)}/mo</strong></p>
-            {financing.blurb && <p className={styles.financingBlurb}>{financing.blurb}</p>}
-            {financingApplyUrl && (
-              <a className={styles.financingApply} href={financingApplyUrl} target="_blank" rel="noopener noreferrer nofollow">Check your rate</a>
-            )}
-          </div>
-        </section>
-      )}
-
       {hasInFlowSections && (
         <div className={styles.extraSections}>
           {(() => {

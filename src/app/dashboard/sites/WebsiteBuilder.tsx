@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, REORDERABLE_SECTIONS, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteIntroBlockContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, REORDERABLE_SECTIONS, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteIntroBlockContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
@@ -260,7 +260,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   // (e.g. "4.9") isn't clobbered by re-normalization on every keystroke.
   const [ratingInput, setRatingInput] = useState(() => String(getSiteContent(initialSite.content).ratingBadge.rating));
   const [reviewCountInput, setReviewCountInput] = useState(() => String(getSiteContent(initialSite.content).ratingBadge.reviewCount));
-  const [monthlyFromInput, setMonthlyFromInput] = useState(() => String(getSiteContent(initialSite.content).financing.monthlyFrom));
   // Same decimal/clear-clobber guard for the per-stat Value fields: keep the
   // raw string while a stat is being edited so clearing doesn't snap to 0.
   const [statValueInputs, setStatValueInputs] = useState<Record<string, string>>({});
@@ -333,7 +332,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     stats: siteContent.stats.enabled,
     beforeAfter: siteContent.beforeAfter.enabled,
     blog: siteContent.blog.enabled,
-    certifications: siteContent.certifications.enabled,
   };
   const sectionHints: Record<string, { hint?: string; hintTone?: 'ok' | 'warn' }> = {
     services: contentHint(siteContent.services.enabled, siteContent.services.items.filter((svc) => svc.title.trim()).length, 'service'),
@@ -346,7 +344,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     stats: contentHint(siteContent.stats.enabled, siteContent.stats.items.filter((item) => item.label.trim()).length, 'stat'),
     beforeAfter: contentHint(siteContent.beforeAfter.enabled, siteContent.beforeAfter.items.filter((pair) => pair.beforeUrl && pair.afterUrl).length, 'pair'),
     blog: blogHint,
-    certifications: contentHint(siteContent.certifications.enabled, siteContent.certifications.items.filter((item) => item.label.trim()).length, 'item'),
   };
 
   // Jump to a tab, open a card, and optionally focus a field — powers the
@@ -373,7 +370,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     (siteContent.faqs.enabled && siteContent.faqs.items.some((faq) => faq.question.trim() && faq.answer.trim())) ||
     (siteContent.testimonials.enabled && siteContent.testimonials.items.some((item) => item.text.trim())) ||
     (siteContent.serviceAreas.enabled && siteContent.serviceAreas.cities.some((city) => city.trim())) ||
-    (siteContent.certifications.enabled && siteContent.certifications.items.some((item) => item.label.trim())) ||
     (siteContent.stats.enabled && siteContent.stats.items.some((item) => item.label.trim())) ||
     (siteContent.beforeAfter.enabled && siteContent.beforeAfter.items.some((pair) => pair.beforeUrl && pair.afterUrl)) ||
     (siteContent.blog.enabled && publishedPostCount > 0);
@@ -529,7 +525,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       faqs: 'faqs',
       blog: 'blog',
       areas: 'serviceAreas',
-      certifications: 'certifications',
       stats: 'stats',
       'before-after': 'beforeAfter',
       announcement: 'announcement',
@@ -972,16 +967,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     updateSiteContent({ trustBadges });
   }, [updateSiteContent]);
 
-  const updateFinancing = useCallback((financing: SiteFinancingContent) => {
-    updateSiteContent({ financing });
-  }, [updateSiteContent]);
-
   const updateServiceAreas = useCallback((serviceAreas: SiteServiceAreasContent) => {
     updateSiteContent({ serviceAreas });
-  }, [updateSiteContent]);
-
-  const updateCertifications = useCallback((certifications: SiteCertificationsContent) => {
-    updateSiteContent({ certifications });
   }, [updateSiteContent]);
 
   const updateStats = useCallback((stats: SiteStatsContent) => {
@@ -1845,23 +1832,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <button type="button" className={styles.secondaryAction} onClick={() => updateTrustBadges({ ...siteContent.trustBadges, enabled: true, badges: [...siteContent.trustBadges.badges, { id: createContentId('badge'), label: '', enabled: true }] })}>Add badge</button>
                 </SectionCard>
 
-                <SectionCard title="Certifications & awards" description={'A strip of recognizable credentials — BBB A+, EPA Lead-Safe, manufacturer certifications, "Best of" awards. Add a label and optionally a logo from your images.'} evidence="Recognizable third-party credentials (BBB A+, EPA, manufacturer certs) shortcut trust faster than anything you can say about yourself." enabled={siteContent.certifications.enabled} onToggleEnabled={(value) => updateCertifications({ ...siteContent.certifications, enabled: value })} {...contentHint(siteContent.certifications.enabled, siteContent.certifications.items.filter((item) => item.label.trim()).length, 'item')} open={openSection === 'certifications'} onToggleOpen={() => toggleSection('certifications')}>
-                  <label className={styles.formField}><span>Section title</span><input value={siteContent.certifications.title} onChange={(event) => updateCertifications({ ...siteContent.certifications, title: event.target.value })} /></label>
-                  <div className={styles.stackList}>
-                    {siteContent.certifications.items.map((item, index) => (
-                      <StackItem key={item.id} title={item.label.trim() || `Item ${index + 1}`} editing={editingItemId === item.id} onEdit={() => setEditingItemId(item.id)} onSave={saveItem} onRemove={() => updateCertifications({ ...siteContent.certifications, items: siteContent.certifications.items.filter((cert) => cert.id !== item.id) })}>
-                        <label className={styles.formField}><span>Label</span><input value={item.label} onChange={(event) => updateCertifications({ ...siteContent.certifications, items: siteContent.certifications.items.map((cert) => cert.id === item.id ? { ...cert, label: event.target.value } : cert) })} placeholder="EPA Lead-Safe Certified" /></label>
-                        <label className={styles.formField}><span>Logo image (optional)</span><select value={item.imageUrl} onChange={(event) => {
-                          const image = selectableImages.find((candidate) => candidate.url === event.target.value);
-                          updateCertifications({ ...siteContent.certifications, items: siteContent.certifications.items.map((cert) => cert.id === item.id ? { ...cert, imageUrl: event.target.value, imageAlt: image?.alt || cert.imageAlt || cert.label || 'Certification' } : cert) });
-                        }}><option value="">No image</option>{selectableImages.map((image) => <option key={`${item.id}-${image.id}`} value={image.url}>{image.alt}</option>)}</select></label>
-                        {item.imageUrl && <div className={styles.reviewImagePreview}><img src={item.imageUrl} alt={item.imageAlt || item.label || 'Certification preview'} /></div>}
-                      </StackItem>
-                    ))}
-                  </div>
-                  <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('cert'); updateCertifications({ ...siteContent.certifications, enabled: true, items: [...siteContent.certifications.items, { id, label: '', imageUrl: '', imageAlt: '' }] }); setEditingItemId(id); }}>Add certification</button>
-                </SectionCard>
-
                 <SectionCard title="Cities you serve" description={'List the towns and neighborhoods you cover. The names become on-page keywords that help you rank for "[trade] in [city]" searches — and reassure homeowners you serve their area.'} evidence={'Visitors decide "do they even serve me?" in ~3 seconds — naming their town reassures them and matches local search.'} enabled={siteContent.serviceAreas.enabled} onToggleEnabled={(value) => updateServiceAreas({ ...siteContent.serviceAreas, enabled: value })} {...contentHint(siteContent.serviceAreas.enabled, siteContent.serviceAreas.cities.filter((city) => city.trim()).length, 'city', 'cities')} open={openSection === 'serviceAreas'} onToggleOpen={() => toggleSection('serviceAreas')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.serviceAreas.title} onChange={(event) => updateServiceAreas({ ...siteContent.serviceAreas, title: event.target.value })} /></label>
                   <label className={styles.formField}><span>Intro</span><input value={siteContent.serviceAreas.intro} onChange={(event) => updateServiceAreas({ ...siteContent.serviceAreas, intro: event.target.value })} /></label>
@@ -1876,13 +1846,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <button type="button" className={styles.secondaryAction} onClick={() => updateServiceAreas({ ...siteContent.serviceAreas, enabled: true, cities: [...siteContent.serviceAreas.cities, ''] })}>Add city</button>
                 </SectionCard>
 
-                <SectionCard title="Financing offer" description={'Reframe the price — show "Projects from $X/mo" so sticker shock doesn\'t kill the lead. Only appears once the monthly amount is set.'} evidence={'Sticker shock is a top silent reason a lead never calls — reframing price as "$X/mo" keeps them in the conversation.'} enabled={siteContent.financing.enabled} onToggleEnabled={(value) => updateFinancing({ ...siteContent.financing, enabled: value })} open={openSection === 'financing'} onToggleOpen={() => toggleSection('financing')}>
-                  <div className={styles.formColumns}>
-                    <label className={styles.formField}><span>From ($/month)</span><input type="number" min={0} step={1} value={monthlyFromInput} onChange={(event) => { const raw = event.target.value; setMonthlyFromInput(raw); if (raw !== '') updateFinancing({ ...siteContent.financing, monthlyFrom: Number(raw) }); }} onBlur={() => setMonthlyFromInput(String(siteContent.financing.monthlyFrom))} /></label>
-                    <label className={styles.formField}><span>Apply link (optional)</span><input type="url" value={siteContent.financing.applyUrl} onChange={(event) => updateFinancing({ ...siteContent.financing, applyUrl: event.target.value })} placeholder="https://..." /></label>
-                  </div>
-                  <label className={styles.formField}><span>Supporting line</span><input value={siteContent.financing.blurb} onChange={(event) => updateFinancing({ ...siteContent.financing, blurb: event.target.value })} placeholder="Flexible financing available on approved credit." /></label>
-                </SectionCard>
 
                 <div className={styles.cardGroupLabel}>Bars &amp; banners</div>
 

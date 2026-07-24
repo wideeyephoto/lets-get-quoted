@@ -1198,7 +1198,6 @@ export const REORDERABLE_SECTIONS = [
   { key: 'stats', label: 'Animated stats' },
   { key: 'beforeAfter', label: 'Before & after' },
   { key: 'blog', label: 'Blog' },
-  { key: 'certifications', label: 'Certifications' },
 ] as const;
 
 const DEFAULT_SECTION_ORDER = REORDERABLE_SECTIONS.map((section) => section.key);
