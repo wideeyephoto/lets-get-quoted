@@ -27,6 +27,15 @@ export default function GuildTemplate({ site }: TemplateProps) {
       STOCK_SITE_IMAGES.find((image) => image.url !== heroImage)?.url ||
       STOCK_SITE_IMAGES[5].url,
   );
+  // A third floating photo pinned to the hero's upper-right — a distinct shot
+  // from the main and inset photos so the three don't repeat.
+  const thirdImage = getSlotImage(
+    site.content,
+    'heroTertiary',
+    work.items.find((image) => image.url !== heroImage && image.url !== secondImage)?.url ||
+      STOCK_SITE_IMAGES.find((image) => image.url !== heroImage && image.url !== secondImage)?.url ||
+      STOCK_SITE_IMAGES[4].url,
+  );
   const estimateLabel = getEstimateButtonLabel(getSiteContent(site.content).quoteForm);
   const heroBadge = getHeroBadge(site.content);
   // Guild ships three generic service cards as filler. Once the owner has real
@@ -75,6 +84,9 @@ export default function GuildTemplate({ site }: TemplateProps) {
           </div>
           <figure className={styles.guildHeroInset} data-parallax="0.12" data-edit="image-heroSecondary">
             <img src={secondImage} alt="Close-up detail of service work" loading="lazy" decoding="async" />
+          </figure>
+          <figure className={styles.guildHeroInsetTop} data-parallax="0.2" data-edit="image-heroTertiary">
+            <img src={thirdImage} alt="Additional service work" loading="lazy" decoding="async" />
           </figure>
           {heroBadge && (
             <div className={`${styles.guildBadge} ${styles.guildBadgePrimary}`} data-edit="heroBadge">

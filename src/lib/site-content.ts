@@ -1173,6 +1173,7 @@ export function getHeroSecondBadge(content: Record<string, unknown> | null | und
 export const IMAGE_SLOT_LABELS: Record<string, string> = {
   heroBackground: 'Hero background photo',
   heroSecondary: 'Second hero photo',
+  heroTertiary: 'Third hero photo',
   stats: 'Stats section photo',
   about: 'About-section photo',
 };

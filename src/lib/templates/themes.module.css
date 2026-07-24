@@ -527,6 +527,11 @@
 .guildHeroInset { position: absolute; z-index: 2; right: -1.25rem; bottom: -1.75rem; width: 44%; margin: 0; border-radius: 12px; overflow: hidden; border: 6px solid var(--c-surface); box-shadow: 0 30px 60px -30px rgba(45,34,22,.5); }
 .guildHeroInset img { display: block; width: 100%; aspect-ratio: 4 / 3.2; object-fit: cover; transition: transform .6s cubic-bezier(.22, .61, .36, 1); }
 .guildHeroInset:hover img { transform: scale(1.06); }
+/* Second floating photo, pinned to the hero's upper-right. Parallax handles its
+   motion (no CSS transform animation, which would fight the parallax translate). */
+.guildHeroInsetTop { position: absolute; z-index: 3; right: -1rem; top: -1.5rem; width: 34%; margin: 0; border-radius: 12px; overflow: hidden; border: 6px solid var(--c-surface); box-shadow: 0 26px 54px -28px rgba(45,34,22,.5); }
+.guildHeroInsetTop img { display: block; width: 100%; aspect-ratio: 4 / 3.4; object-fit: cover; transition: transform .6s cubic-bezier(.22, .61, .36, 1); }
+.guildHeroInsetTop:hover img { transform: scale(1.06); }
 .guildBadge { position: absolute; left: 1.5rem; bottom: 1.5rem; display: flex; flex-direction: column; max-width: 250px; padding: 1.15rem 1.5rem; border-radius: 12px; background: var(--theme-accent); color: var(--theme-on-accent, #fff); box-shadow: 0 24px 50px -24px rgba(0,0,0,.45); animation: guildBob 6s ease-in-out infinite; }
 /* Guild was the only template that rendered no PRIMARY hero badge, so the
    builder's "Hero badge" picker did nothing here. It takes the free top-left
