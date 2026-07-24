@@ -1031,7 +1031,9 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   // picker replaces the light/dark toggle (a scheme IS a light or dark palette).
   // Expands as the remaining themes are migrated; once all are, portal_mode's UI
   // can be retired entirely. Note: 'shine' is the template id for Lustre.
-  const hasColorSchemes = ['shine', 'reno', 'coat', 'fixit', 'handy'].includes(site.template);
+  // All eight themes are now on the color-scheme token system, so the scheme
+  // picker fully replaces the light/dark toggle everywhere.
+  const hasColorSchemes = true;
 
   // The wording each template shows in its hero eyebrow when the owner leaves the
   // field blank — surfaced as the input placeholder so they see what they'd override.
@@ -1387,44 +1389,38 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   </div>
 
                   <div className={styles.cardGroupLabel}>Color</div>
-                  {hasColorSchemes ? (
-                    <div className={styles.formField}>
-                      <span>Color scheme</span>
-                      <div className={styles.schemeSwatches} role="group" aria-label="Full color schemes">
-                        <button
-                          type="button"
-                          className={`${styles.schemeSwatch}${!siteContent.colorScheme ? ` ${styles.schemeSwatchActive}` : ''}`}
-                          onClick={() => updateSiteContent({ colorScheme: '' })}
-                          aria-pressed={!siteContent.colorScheme}
-                        >
-                          <span className={styles.schemeChip} style={{ background: 'linear-gradient(135deg, #0f1b2d 0 50%, #ffffff 50% 100%)' }} />
-                          <small>Theme default</small>
-                        </button>
-                        {COLOR_SCHEMES.map((scheme) => {
-                          const selected = siteContent.colorScheme === scheme.key;
-                          return (
-                            <button
-                              key={scheme.key}
-                              type="button"
-                              className={`${styles.schemeSwatch}${selected ? ` ${styles.schemeSwatchActive}` : ''}`}
-                              onClick={() => updateSiteContent({ colorScheme: scheme.key })}
-                              title={scheme.label}
-                              aria-label={`${scheme.label}${selected ? ' (selected)' : ''}`}
-                              aria-pressed={selected}
-                            >
-                              <span className={styles.schemeChip} style={{ background: `linear-gradient(135deg, ${scheme.bg} 0 38%, ${scheme.deep} 38% 66%, ${scheme.accent} 66% 100%)` }} />
-                              <small>{scheme.label.split(' — ')[0]}</small>
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <small className={styles.fieldHint}>Repalettes the whole page — background, surfaces, and text. This is your light/dark control too: pick a light scheme (Porcelain, Slate) or a dark one (Midnight, Forest).</small>
+                  <div className={styles.formField}>
+                    <span>Color scheme</span>
+                    <div className={styles.schemeSwatches} role="group" aria-label="Full color schemes">
+                      <button
+                        type="button"
+                        className={`${styles.schemeSwatch}${!siteContent.colorScheme ? ` ${styles.schemeSwatchActive}` : ''}`}
+                        onClick={() => updateSiteContent({ colorScheme: '' })}
+                        aria-pressed={!siteContent.colorScheme}
+                      >
+                        <span className={styles.schemeChip} style={{ background: 'linear-gradient(135deg, #3b4250 0 50%, #e9ebef 50% 100%)' }} />
+                        <small>Theme default</small>
+                      </button>
+                      {COLOR_SCHEMES.map((scheme) => {
+                        const selected = siteContent.colorScheme === scheme.key;
+                        return (
+                          <button
+                            key={scheme.key}
+                            type="button"
+                            className={`${styles.schemeSwatch}${selected ? ` ${styles.schemeSwatchActive}` : ''}`}
+                            onClick={() => updateSiteContent({ colorScheme: scheme.key })}
+                            title={scheme.label}
+                            aria-label={`${scheme.label}${selected ? ' (selected)' : ''}`}
+                            aria-pressed={selected}
+                          >
+                            <span className={styles.schemeChip} style={{ background: `linear-gradient(135deg, ${scheme.bg} 0 38%, ${scheme.deep} 38% 66%, ${scheme.accent} 66% 100%)` }} />
+                            <small>{scheme.label.split(' — ')[0]}</small>
+                          </button>
+                        );
+                      })}
                     </div>
-                  ) : site.template === 'carbon' ? (
-                    <div className={styles.formField}><span>Color mode</span><p className={styles.fieldHint}>Forge is a dark theme by design — it has no light mode. Pick another theme if you want a light page.</p></div>
-                  ) : (
-                    <label className={styles.formField}><span>Color mode</span><select value={site.portal_mode} onChange={(event) => handleChange('portal_mode', event.target.value as Site['portal_mode'])}><option value="light">Light</option><option value="dark">Dark</option></select></label>
-                  )}
+                    <small className={styles.fieldHint}>Repalettes the whole page — background, surfaces, and text. This is your light/dark control too: pick a light scheme (Porcelain, Slate) or a dark one (Midnight, Forest). &ldquo;Theme default&rdquo; keeps your theme&apos;s own colors.</small>
+                  </div>
 
                   <div className={styles.formField}>
                     <span>Accent color</span>
