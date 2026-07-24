@@ -24,9 +24,46 @@
 .kicker { margin-bottom: 1rem; font-size: .73rem; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }
 .primaryCta { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; padding: .75rem 1.2rem; border-radius: var(--theme-radius, 4px); background: var(--theme-accent); color: var(--theme-on-accent, #111); font-weight: 800; transition: transform .25s ease, box-shadow .25s ease, filter .25s ease; }
 .primaryCta:hover { transform: translateY(-2px); filter: brightness(1.06); box-shadow: 0 16px 32px -16px color-mix(in srgb, var(--theme-accent) 65%, transparent); }
-[data-button='outline'] .primaryCta { border: 2px solid currentColor; background: transparent; color: inherit; }
-[data-button='ghost'] .primaryCta { padding-inline: 0; border-bottom: 2px solid currentColor; background: transparent; color: inherit; border-radius: 0; }
-[data-button='outline'] .primaryCta:hover, [data-button='ghost'] .primaryCta:hover { box-shadow: none; filter: none; }
+/* Button style (solid | outline | ghost) applies to the primary accent CTAs in
+   EVERY theme, not just .primaryCta — otherwise the control looked like a no-op
+   since each template names its main button differently. Solid is the base;
+   outline hollows them out; ghost strips to an underline. */
+.site[data-button='outline'] .primaryCta,
+.site[data-button='outline'] .heroQuickForm button,
+.site[data-button='outline'] .desktopCtaQuote,
+.site[data-button='outline'] .shineBtn,
+.site[data-button='outline'] .shineHeaderCta,
+.site[data-button='outline'] .shineFooterCall,
+.site[data-button='outline'] .coatBtn,
+.site[data-button='outline'] .coatHeaderCta,
+.site[data-button='outline'] .coatFooterCall,
+.site[data-button='outline'] .fixitBtn,
+.site[data-button='outline'] .fixitFooterCall,
+.site[data-button='outline'] .renoBtn,
+.site[data-button='outline'] .renoFooterCall,
+.site[data-button='outline'] .careBtn,
+.site[data-button='outline'] .vistaMenu,
+.site[data-button='outline'] .guildQuote {
+  background: transparent; color: var(--theme-accent); border: 2px solid var(--theme-accent); border-bottom-width: 2px; border-radius: var(--theme-radius, 8px); box-shadow: none; filter: none;
+}
+.site[data-button='ghost'] .primaryCta,
+.site[data-button='ghost'] .heroQuickForm button,
+.site[data-button='ghost'] .desktopCtaQuote,
+.site[data-button='ghost'] .shineBtn,
+.site[data-button='ghost'] .shineHeaderCta,
+.site[data-button='ghost'] .shineFooterCall,
+.site[data-button='ghost'] .coatBtn,
+.site[data-button='ghost'] .coatHeaderCta,
+.site[data-button='ghost'] .coatFooterCall,
+.site[data-button='ghost'] .fixitBtn,
+.site[data-button='ghost'] .fixitFooterCall,
+.site[data-button='ghost'] .renoBtn,
+.site[data-button='ghost'] .renoFooterCall,
+.site[data-button='ghost'] .careBtn,
+.site[data-button='ghost'] .vistaMenu,
+.site[data-button='ghost'] .guildQuote {
+  background: transparent; color: var(--theme-accent); border: 0; border-bottom: 2px solid var(--theme-accent); border-radius: 0; box-shadow: none; filter: none;
+}
 .contactActions { display: flex; flex-wrap: wrap; align-items: center; gap: 1.25rem; }
 
 /* Hero quick-capture form — kept compact so it renders above the fold */
