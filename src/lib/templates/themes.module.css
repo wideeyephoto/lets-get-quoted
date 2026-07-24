@@ -73,7 +73,10 @@
 .heroQuickForm h2 { margin: 0; font-family: var(--theme-display); font-size: 1.05rem; font-weight: 800; line-height: 1.15; color: #17140f; text-transform: none; }
 .heroFormNote { margin: 0 0 .1rem; font-size: .74rem; color: #6b675e; }
 .heroQuickFormRow { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
+.heroFormChoice { display: grid; gap: .3rem; }
+.heroFormChoiceLabel { font-size: .74rem; font-weight: 700; color: #4b463d; }
 .heroFormChipRow { display: flex; gap: .4rem; }
+.heroFormChip:hover:not([data-selected='true']) { border-color: color-mix(in srgb, var(--theme-accent) 55%, #d8d3c6); }
 .heroQuickForm input { width: 100%; min-height: 44px; padding: .6rem .7rem; border: 1px solid #d8d3c6; border-radius: calc(var(--theme-radius, 8px) * .6); font-size: .84rem; color: #17140f; background: #fff; font-family: inherit; }
 .heroQuickForm select { width: 100%; min-height: 44px; padding: .6rem .7rem; border: 1px solid #d8d3c6; border-radius: calc(var(--theme-radius, 8px) * .6); font-size: .84rem; color: #17140f; background: #fff; font-family: inherit; }
 /* Capacity note (fully-booked mode) + soft fit warnings (out of area, below

@@ -498,11 +498,27 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
             <input aria-label="Your ZIP code or town" placeholder="ZIP code or town" maxLength={80} required value={location} onChange={(event) => setLocation(event.target.value)} />
           )}
           {askTimeline && (
-            <select aria-label="When do you need this done?" value={timeline} onChange={(event) => setTimeline(event.target.value as 'asap' | 'month' | 'researching')}>
-              <option value="asap">Needed ASAP</option>
-              <option value="month">In the next month</option>
-              <option value="researching">Just researching prices</option>
-            </select>
+            <div className={styles.heroFormChoice} role="group" aria-label="When do you need this done?">
+              <span className={styles.heroFormChoiceLabel}>When do you need this done?</span>
+              <div className={styles.heroFormChipRow}>
+                {([
+                  { key: 'asap', label: 'ASAP' },
+                  { key: 'month', label: 'Within a month' },
+                  { key: 'researching', label: 'Just researching' },
+                ] as const).map((option) => (
+                  <button
+                    type="button"
+                    key={option.key}
+                    className={styles.heroFormChip}
+                    data-selected={timeline === option.key}
+                    aria-pressed={timeline === option.key}
+                    onClick={() => setTimeline(option.key)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
           {needsVerification && (
             <div className={styles.heroFormVerifyRow}>
