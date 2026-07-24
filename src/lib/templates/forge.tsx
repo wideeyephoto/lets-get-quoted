@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import SafeImage from './SafeImage';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getWorkBand } from '@/lib/site-content';
+import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent, getWorkBand } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroImageCycle from './HeroImageCycle';
@@ -19,6 +19,7 @@ import styles from './themes.module.css';
 export default function ForgeTemplate({ site }: TemplateProps) {
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
   const work = getWorkBand(site.content, 'Selected work', 'Made for real life.');
+  const intro = getSiteContent(site.content).introBlock;
   const heroBadge = getHeroBadge(site.content);
   // 'default' means "the template's own built-in second badge" — Forge never had
   // one, so only an explicitly chosen badge renders here. Nothing is invented.
@@ -75,10 +76,10 @@ export default function ForgeTemplate({ site }: TemplateProps) {
         <div><span>Credentials</span><strong>{site.license || 'Licensed & insured'}</strong></div>
       </section>
 
-      <section className={styles.forgeAbout} data-reveal id="about">
+      <section className={styles.forgeAbout} data-reveal id="about" data-edit="introBlock">
         <p className={styles.sectionNumber} data-parallax="0.14">02</p>
-        <div><p className={styles.kicker}>What we bring</p><h2>Clear plans. Skilled hands. No surprises.</h2></div>
-        <p>From the first walkthrough to the final clean-up, we keep the work organized, the communication direct, and the standards high.</p>
+        <div><p className={styles.kicker}>{intro.eyebrow || 'What we bring'}</p><h2>{intro.title || 'Clear plans. Skilled hands. No surprises.'}</h2></div>
+        <p>{intro.body || 'From the first walkthrough to the final clean-up, we keep the work organized, the communication direct, and the standards high.'}</p>
       </section>
 
       {work.items.length > 0 && (

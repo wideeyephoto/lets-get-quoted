@@ -81,12 +81,15 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
               <div><strong>{heroBadge.title}</strong>{heroBadge.subtitle && <small>{heroBadge.subtitle}</small>}</div>
             </div>
           ) : <span className={styles.shineBadgeSupport} aria-hidden="true" />}
-          {second.mode === 'none' ? (
+          {second.mode === 'none' || (second.mode === 'default' && !site.service_area) ? (
             <span className={styles.shineBadgeCustomers} aria-hidden="true" />
           ) : second.mode === 'default' ? (
+            /* Was a hardcoded "500+ Satisfied customers" — a fabricated figure on
+               every Shine site, including brand-new businesses. The built-in
+               default now states only something true: where they work. */
             <div className={`${styles.shineBadge} ${styles.shineBadgeCustomers}`} data-edit="heroBadge">
               <span className={styles.shineAvatars} aria-hidden="true"><span /><span /><span /></span>
-              <div><strong>500+</strong><small>Satisfied customers</small></div>
+              <div><strong>Proudly local</strong><small>{site.service_area}</small></div>
             </div>
           ) : (
             <div className={`${styles.shineBadge} ${styles.shineBadgeCustomers}`} data-edit="heroBadge">

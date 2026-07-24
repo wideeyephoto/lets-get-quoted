@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, HERO_BADGE_PRESETS } from '@/lib/site-content';
+import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
@@ -23,11 +23,15 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
   void gallery;
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[1].url;
   const heroBadge = getHeroBadge(site.content);
-  // Second floating card: always a DIFFERENT preset than the selected badge so
-  // the two cards never duplicate (the default badge is 'licensed', which used
-  // to collide with this card's hardcoded Licensed & insured copy).
-  const autoSecond = HERO_BADGE_PRESETS.find((preset) => preset.key !== heroBadge?.key) ?? HERO_BADGE_PRESETS[0];
+  // Second floating card. Its built-in default used to auto-pick whichever
+  // preset differed from the primary badge — so a site shipped asserting "Free
+  // Estimates" or "Same-Day Service" that the owner never chose. The default now
+  // states only a fact (where they work), and renders nothing without one; any
+  // claim on this card has to be picked deliberately in the builder.
   const second = getHeroSecondBadge(site.content);
+  const autoSecond = site.service_area
+    ? { key: 'local', icon: '⌂', title: 'Proudly local', subtitle: site.service_area }
+    : null;
   const secondBadge = second.mode === 'none' ? null : second.mode === 'default' ? autoSecond : second.badge;
   const themeStyle = {
     '--theme-accent': site.accent_override || '#f15a29',
@@ -87,7 +91,9 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
         <div className={styles.fixitContactCopy} data-reveal>
           <p className={styles.fixitEyebrow}><span aria-hidden="true">✖</span> Make an appointment</p>
           <h2>Looking for help with a repair or install?</h2>
-          <p>Tell us what you need and we&apos;ll match you with the right pro — free, no obligation.</p>
+          {/* Was "we'll match you with the right pro", which reads as a lead-matching
+              marketplace — this is the contractor's own site. */}
+          <p>Tell us what you need and we&apos;ll get back to you with a quote — free, no obligation.</p>
           {site.phone && <a className={styles.fixitBtn} href={`tel:${site.phone}`}>Call {site.phone}</a>}
           <SiteProofStrip site={site} />
         </div>

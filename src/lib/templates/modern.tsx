@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import SafeImage from './SafeImage';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getWorkBand } from '@/lib/site-content';
+import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getSiteContent, getWorkBand } from '@/lib/site-content';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroImageCycle from './HeroImageCycle';
@@ -18,6 +18,7 @@ import styles from './themes.module.css';
 export default function VistaTemplate({ site }: TemplateProps) {
   const heroImage = site.hero_url || STOCK_SITE_IMAGES[0].url;
   const work = getWorkBand(site.content, 'Recent work', '');
+  const intro = getSiteContent(site.content).introBlock;
   const heroBadge = getHeroBadge(site.content);
   // Vista had no built-in second badge, so 'default' renders nothing here.
   // Vista's work heading is an eyebrow/count row with no h2, so a title renders
@@ -68,9 +69,9 @@ export default function VistaTemplate({ site }: TemplateProps) {
         <a className={styles.vistaScroll} href="#studio" aria-label="Skip to about section">Explore <span aria-hidden="true">↓</span></a>
       </section>
 
-      <section className={styles.vistaStatement} data-reveal id="studio">
-        <p>We are {site.company_name}.</p>
-        <h2>Part problem-solver, part perfectionist, always focused on getting it right.</h2>
+      <section className={styles.vistaStatement} data-reveal id="studio" data-edit="introBlock">
+        <p>{intro.eyebrow || `We are ${site.company_name}.`}</p>
+        <h2>{intro.title || 'Part problem-solver, part perfectionist, always focused on getting it right.'}</h2>
         <div><span>{site.service_area || 'Local projects'}</span><span>{site.license || 'Licensed & insured'}</span></div>
       </section>
 

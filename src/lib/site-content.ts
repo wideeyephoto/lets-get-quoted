@@ -183,6 +183,17 @@ export const DEFAULT_WHY_US_POINTS = [
   'Quality work, guaranteed',
 ];
 
+// The short editorial block a template runs between its hero and its work band
+// (Forge's "What we bring", Guild's "One team, start to finish", Vista's big
+// statement). All three fields are blank until the owner types something: the
+// template supplies its own wording as the fallback, so nothing on a live page
+// changes and each keeps its voice.
+export type SiteIntroBlockContent = {
+  eyebrow: string;
+  title: string;
+  body: string;
+};
+
 // Heading over a template's built-in "recent work" photo band, which renders
 // the site's image gallery. Forge, Guild and Vista each have one. Both fields
 // are blank until the owner types something: the template supplies its own
@@ -375,6 +386,7 @@ export type NormalizedSiteContent = {
   announcement: SiteAnnouncementContent;
   whyUs: SiteWhyUsContent;
   workGallery: SiteWorkGalleryContent;
+  introBlock: SiteIntroBlockContent;
   projectShowcase: SiteProjectShowcaseContent;
   services: SiteServicesContent;
   howItWorks: SiteHowItWorksContent;
@@ -666,6 +678,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const announcement = isRecord(root.announcement) ? root.announcement : {};
   const whyUs = isRecord(root.whyUs) ? root.whyUs : {};
   const workGallery = isRecord(root.workGallery) ? root.workGallery : {};
+  const introBlock = isRecord(root.introBlock) ? root.introBlock : {};
   const projectShowcase = isRecord(root.projectShowcase) ? root.projectShowcase : {};
   const services = isRecord(root.services) ? root.services : {};
   const howItWorks = isRecord(root.howItWorks) ? root.howItWorks : {};
@@ -778,6 +791,11 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     workGallery: {
       eyebrow: toString(workGallery.eyebrow).slice(0, 40),
       title: toString(workGallery.title).slice(0, 80),
+    },
+    introBlock: {
+      eyebrow: toString(introBlock.eyebrow).slice(0, 40),
+      title: toString(introBlock.title).slice(0, 120),
+      body: toString(introBlock.body).slice(0, 400),
     },
     projectShowcase: {
       // On by default so existing Care sites keep their work band; the owner can

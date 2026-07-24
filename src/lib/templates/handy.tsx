@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getPublishedHowItWorks, getPublishedServices, getPublishedWhyUs, getSiteContent, getSlotImage, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS } from '@/lib/site-content';
+import { getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getPublishedHowItWorks, getPublishedServices, getPublishedTrustBadges, getPublishedWhyUs, getSiteContent, getSlotImage, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS } from '@/lib/site-content';
 import HeroImageCycle from './HeroImageCycle';
 import ProjectShowcase from './ProjectShowcase';
 import type { TemplateProps } from '@/lib/templates/types';
@@ -15,7 +15,12 @@ import Parallax from './Parallax';
 import { readableOnAccent } from './theme-color';
 import styles from './themes.module.css';
 
-const TRUST_ITEMS = ['Licensed & insured', 'Same-day service', 'Free estimates', 'Satisfaction guaranteed'];
+// The trust strip used to be a hardcoded ['Licensed & insured', 'Same-day
+// service', 'Free estimates', 'Satisfaction guaranteed'] shown on EVERY Care
+// site. Those are specific, verifiable claims the contractor never made — a
+// business that charges for estimates was advertising free ones. It now renders
+// the owner's own trust badges (Your page → Trust badges) and hides entirely
+// when they haven't set any.
 
 // Care — a fresh home-services look modeled on the Hocare aesthetic: cyan→green
 // gradients, worker photos in gradient circles with floating dots, rounded
@@ -37,6 +42,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
   const headlineMain = headlineWords.join(' ');
 
   const whyUs = getPublishedWhyUs(site.content);
+  const trustBadges = getPublishedTrustBadges(site.content);
   const projectShowcase = getSiteContent(site.content).projectShowcase;
   const ownShowcase = projectShowcase.items.filter((item) => item.url && item.alt);
   // The owner's own project photos once they've added any (up to 10); otherwise
@@ -90,8 +96,10 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
                   <strong><span aria-hidden="true">{secondBadge.badge.icon}</span> {secondBadge.badge.title}</strong>
                   {secondBadge.badge.subtitle && <small>{secondBadge.badge.subtitle}</small>}
                 </div>
-              ) : secondBadge.mode === 'default' ? (
-                <div className={styles.careMiniCard}><strong>Best home service</strong><small>for your home</small></div>
+              ) : secondBadge.mode === 'default' && site.service_area ? (
+                /* Was "Best home service" — an unearned superlative on every Care
+                   site. The built-in default now states only a fact. */
+                <div className={styles.careMiniCard}><strong>Proudly local</strong><small>{site.service_area}</small></div>
               ) : null}
             </div>
           )}
@@ -109,9 +117,11 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
         </div>
       </section>
 
-      <div className={styles.careTrustStrip} data-reveal>
-        {TRUST_ITEMS.map((item) => <span key={item}>{item}</span>)}
-      </div>
+      {trustBadges && (
+        <div className={styles.careTrustStrip} data-reveal data-edit="trustBadges">
+          {trustBadges.badges.map((badge) => <span key={badge.id}>{badge.label}</span>)}
+        </div>
+      )}
 
       <SiteContentSections site={site} />
 

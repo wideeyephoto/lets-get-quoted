@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, REORDERABLE_SECTIONS, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteWorkGalleryContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, REORDERABLE_SECTIONS, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteCertificationsContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteFinancingContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteWorkGalleryContent, type SiteIntroBlockContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
@@ -538,6 +538,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       contact: 'quoteForm',
       whyUs: 'whyUs',
       workGallery: 'workGallery',
+      trustBadges: 'trustBadges',
+      introBlock: 'introBlock',
       projectShowcase: 'projectShowcase',
     };
 
@@ -1013,10 +1015,16 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     updateSiteContent({ workGallery });
   }, [updateSiteContent]);
 
-  // Forge, Guild and Vista render the Photo gallery inside their own built-in
-  // work band rather than from the reorderable stack, so the layout picker and
-  // the drag row don't apply to them. See getWorkBand in site-content.ts.
-  const nativeGalleryTemplate = site.template === 'carbon' || site.template === 'professional' || site.template === 'modern';
+  const updateIntroBlock = useCallback((introBlock: SiteIntroBlockContent) => {
+    updateSiteContent({ introBlock });
+  }, [updateSiteContent]);
+
+  // Forge, Guild and Vista are the three templates with their own built-in
+  // editorial sections — an intro block and a work band that renders the Photo
+  // gallery in place. They therefore get the "Intro section" and "Recent work
+  // heading" cards, and skip the gallery layout picker + the Photo gallery drag
+  // row, neither of which applies when the band owns the layout and position.
+  const hasBuiltInSections = site.template === 'carbon' || site.template === 'professional' || site.template === 'modern';
 
 
   const updateServices = useCallback((services: SiteServicesContent) => {
@@ -1533,7 +1541,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 <SectionCard title="Photo gallery" description="Highlight finished work, project details, and job photos." evidence="Real project photos alongside reviews produced 55% more leads in one study — genuine work outperforms stock." enabled={siteContent.showcase.enabled} onToggleEnabled={(value) => updateShowcase({ ...siteContent.showcase, enabled: value })} {...contentHint(siteContent.showcase.enabled, siteContent.showcase.items.length, 'image')} open={openSection === 'showcase'} onToggleOpen={() => toggleSection('showcase')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.showcase.title} onChange={(event) => updateShowcase({ ...siteContent.showcase, title: event.target.value })} /></label>
                   <label className={styles.formField}><span>Intro</span><textarea rows={2} value={siteContent.showcase.intro} onChange={(event) => updateShowcase({ ...siteContent.showcase, intro: event.target.value })} /></label>
-                  {nativeGalleryTemplate ? (
+                  {hasBuiltInSections ? (
                     <p className={styles.emptyHelper}>These photos appear in your template&apos;s own work band, which sets its own layout — so there&apos;s no layout picker here. Click the band in the preview to change a photo.</p>
                   ) : (
                     <label className={styles.formField}><span>Gallery layout</span><select value={siteContent.showcase.layout} onChange={(event) => updateShowcase({ ...siteContent.showcase, layout: event.target.value as SiteShowcaseContent['layout'] })}><option value="featured">Featured — one big photo</option><option value="grid">Uniform grid — even tiles</option><option value="filmstrip">Filmstrip — swipeable row</option></select></label>
@@ -1835,7 +1843,18 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   {siteContent.stickyCallBar.enabled && site.phone && !siteContent.phonePublic && <p className={styles.emptyHelper}>Your phone number is set to hidden — this bar won&apos;t appear until you turn &quot;Show my phone number&quot; back on.</p>}
                 </SectionCard>
 
-                {(site.template === 'carbon' || site.template === 'professional' || site.template === 'modern') && (
+                {hasBuiltInSections && (
+                  <SectionCard title="Intro section" description="The short block between your hero and your photos — your chance to say how you work." open={openSection === 'introBlock'} onToggleOpen={() => toggleSection('introBlock')}>
+                    <label className={styles.formField}><span>Small line above</span><input value={siteContent.introBlock.eyebrow} maxLength={40} onChange={(event) => updateIntroBlock({ ...siteContent.introBlock, eyebrow: event.target.value })} placeholder={site.template === 'carbon' ? 'What we bring' : site.template === 'professional' ? 'One team, start to finish' : `We are ${site.company_name || 'your company'}.`} /></label>
+                    <label className={styles.formField}><span>Heading</span><input value={siteContent.introBlock.title} maxLength={120} onChange={(event) => updateIntroBlock({ ...siteContent.introBlock, title: event.target.value })} placeholder={site.template === 'carbon' ? 'Clear plans. Skilled hands. No surprises.' : site.template === 'professional' ? 'Experience that makes the process easier.' : 'Part problem-solver, part perfectionist…'} /></label>
+                    {site.template !== 'modern' && (
+                      <label className={styles.formField}><span>Supporting text</span><textarea rows={3} value={siteContent.introBlock.body} maxLength={400} onChange={(event) => updateIntroBlock({ ...siteContent.introBlock, body: event.target.value })} placeholder="A sentence or two about how you work." /></label>
+                    )}
+                    <p className={styles.emptyHelper}>Leave a box empty to keep your template&apos;s own wording.</p>
+                  </SectionCard>
+                )}
+
+                {hasBuiltInSections && (
                   <SectionCard title="Recent work heading" description="The heading over your template's photo band. The photos come from your image gallery." open={openSection === 'workGallery'} onToggleOpen={() => toggleSection('workGallery')}>
                     <label className={styles.formField}><span>Small line above</span><input value={siteContent.workGallery.eyebrow} maxLength={40} onChange={(event) => updateWorkGallery({ ...siteContent.workGallery, eyebrow: event.target.value })} placeholder={site.template === 'carbon' ? 'Selected work' : 'Recent work'} /></label>
                     <label className={styles.formField}><span>Heading</span><input value={siteContent.workGallery.title} maxLength={80} onChange={(event) => updateWorkGallery({ ...siteContent.workGallery, title: event.target.value })} placeholder={site.template === 'carbon' ? 'Made for real life.' : site.template === 'professional' ? 'Quality is visible in the details.' : 'Add a heading (optional)'} /></label>
@@ -1925,7 +1944,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                       if (key === 'projectShowcase' && site.template === 'handy') return null;
                       // Same for the Photo gallery on Forge/Guild/Vista — it renders
                       // in each template's own built-in work band, at a fixed spot.
-                      if (key === 'showcase' && nativeGalleryTemplate) return null;
+                      if (key === 'showcase' && hasBuiltInSections) return null;
                       return (
                         <li
                           key={key}
