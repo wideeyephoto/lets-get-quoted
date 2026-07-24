@@ -82,9 +82,11 @@ export default function VistaTemplate({ site }: TemplateProps) {
       <SiteContentSections site={site} />
 
       <section className={styles.vistaContact} id="contact">
-        <p className={styles.kicker}>Next project</p><h2>Ready when you are?</h2>
-        {site.phone && <a href={`tel:${site.phone}`}>Call {site.phone} <span aria-hidden="true">↗</span></a>}
-        <SiteProofStrip site={site} />
+        <div className={styles.vistaContactCopy}>
+          <p className={styles.kicker}>Next project</p><h2>Ready when you are?</h2>
+          {site.phone && <a href={`tel:${site.phone}`}>Call {site.phone} <span aria-hidden="true">↗</span></a>}
+          <SiteProofStrip site={site} />
+        </div>
         <QuoteRequestForm site={site} />
       </section>
 

@@ -465,8 +465,9 @@
 .forgeGallery figure:hover img { transform: scale(1.04); }
 .forgeGallery figcaption { display: flex; gap: .8rem; padding-top: .8rem; font-family: var(--font-mono); font-size: .72rem; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; }
 .forgeGallery figcaption span { color: color-mix(in srgb, var(--c-on-deep) 55%, transparent); }
-.forgeContact { padding: clamp(5rem, 10vw, 10rem) 5vw; }
-.forgeContact h2 { max-width: 12ch; margin-bottom: 2.5rem; }
+.forgeContact { display: grid; grid-template-columns: 1fr minmax(0, 440px); gap: clamp(2rem, 6vw, 6rem); align-items: start; padding: clamp(5rem, 10vw, 10rem) 5vw; }
+.forgeContactCopy { display: grid; gap: 1.5rem; align-content: start; }
+.forgeContact h2 { max-width: 12ch; margin-bottom: 0; }
 .forgeFooter { display: grid; grid-template-columns: 1fr 1fr auto; gap: 2rem; padding: 2.5rem 5vw; border-top: 1px solid var(--c-line); font-family: var(--font-mono); font-size: .76rem; letter-spacing: .04em; color: var(--c-muted); }
 .forgeFooter strong { color: var(--c-ink); font-family: var(--font-forge-body); font-size: .95rem; }
 
@@ -557,8 +558,9 @@
 .guildGallery img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; transition: transform .6s cubic-bezier(.2,.7,.2,1); }
 .guildGallery figure:hover img { transform: scale(1.04); }
 .guildGallery figcaption { padding-top: .8rem; color: color-mix(in srgb, var(--c-on-deep) 76%, transparent); font-size: .82rem; letter-spacing: .02em; }
-.guildContact { display: grid; grid-template-columns: 1.15fr .85fr; gap: clamp(3rem, 8vw, 8rem); padding: clamp(5rem, 9vw, 9rem) 6vw; }
-.guildContact > div:last-child { align-self: end; }
+.guildContact { display: grid; grid-template-columns: 1fr minmax(0, 440px); gap: clamp(2.5rem, 6vw, 6rem); padding: clamp(5rem, 9vw, 9rem) 6vw; align-items: start; }
+.guildContactCopy { display: grid; gap: 1.5rem; align-content: start; }
+.guildContactMeta { margin: 0; color: var(--c-muted); font-size: 1.05rem; line-height: 1.75; }
 .guildFooter { display: grid; grid-template-columns: 1fr 1fr auto; gap: 1rem; padding: 2.5rem 6vw; border-top: 1px solid var(--c-line); }
 
 /* Guild — shared content sections in Guild's editorial idiom: warm hairline
@@ -639,10 +641,11 @@
 .vistaGallery figure:hover img { transform: scale(1.04); }
 .vistaGallery figcaption { display: flex; align-items: center; justify-content: space-between; padding-top: .8rem; font-size: .78rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
 .vistaGallery figcaption small { color: color-mix(in srgb, currentColor 72%, transparent); font-weight: 800; }
-.vistaContact { margin: 0 1.5vw 1.5vw; padding: clamp(5rem, 10vw, 10rem) 5vw; background: var(--c-deep); color: var(--c-on-deep); border-radius: 14px; }
-.vistaContact h2 { max-width: 12ch; font-family: var(--theme-display); font-size: clamp(2.8rem, 7vw, 6.4rem); line-height: .93; letter-spacing: -.02em; text-transform: uppercase; }
-.vistaContact > a { display: inline-flex; align-items: center; gap: 2rem; margin-top: 3rem; padding-bottom: .8rem; border-bottom: 2px solid var(--theme-accent); font-family: var(--theme-display); font-size: clamp(1.4rem, 3vw, 2rem); transition: gap .25s ease; }
-.vistaContact > a:hover { gap: 3rem; }
+.vistaContact { display: grid; grid-template-columns: 1fr minmax(0, 440px); gap: clamp(2rem, 5vw, 5rem); align-items: center; margin: 0 1.5vw 1.5vw; padding: clamp(4rem, 8vw, 8rem) 5vw; background: var(--c-deep); color: var(--c-on-deep); border-radius: 14px; }
+.vistaContactCopy { display: grid; gap: 1.25rem; align-content: start; }
+.vistaContact h2 { max-width: 12ch; font-family: var(--theme-display); font-size: clamp(2.4rem, 5.5vw, 4.6rem); line-height: .95; letter-spacing: -.02em; text-transform: uppercase; }
+.vistaContactCopy > a { justify-self: start; display: inline-flex; align-items: center; gap: 1.25rem; padding-bottom: .6rem; border-bottom: 2px solid var(--theme-accent); font-family: var(--theme-display); font-size: clamp(1.2rem, 2.4vw, 1.7rem); transition: gap .25s ease; }
+.vistaContactCopy > a:hover { gap: 2rem; }
 .vistaFooter { display: grid; grid-template-columns: 1fr 1fr auto; gap: 1rem; padding: 2.5rem 3vw; font-size: .78rem; letter-spacing: .04em; text-transform: uppercase; border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
 
 /* Vista — shared content sections in Vista's idiom: uppercase display headings
@@ -673,7 +676,7 @@
   .forgeIndex { display: none; }
   .forgeTrust { grid-template-columns: 1fr; padding: 0; }
   .forgeTrust > div { min-height: 92px; padding-inline: 1.25rem; border-right: 0; border-bottom: 1px solid #353531; }
-  .forgeAbout, .guildIntro, .guildContact { grid-template-columns: 1fr; padding-inline: 1.25rem; }
+  .forgeAbout, .guildIntro, .guildContact, .forgeContact, .vistaContact { grid-template-columns: 1fr; padding-inline: 1.25rem; }
   .forgeAbout h2, .forgeWork h2, .forgeContact h2 { font-size: 2.75rem; }
   .sectionNumber { display: none; }
   .sectionHeading { align-items: flex-start; flex-direction: column; }
@@ -1065,10 +1068,12 @@
 .fixitHeroImg { position: relative; z-index: 1; display: block; width: min(400px, 84%); margin: 0 auto; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 6px; animation: fixitFloat 7s ease-in-out infinite; }
 .fixitHeroCard { position: absolute; z-index: 2; right: 0; top: 34%; display: flex; align-items: center; gap: .6rem; padding: .7rem 1rem; border-radius: 12px; background: var(--c-surface); border: 1px solid var(--c-line); box-shadow: 0 22px 44px -22px rgba(0,0,0,.32); }
 .fixitHeroCardIcon { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 999px; background: color-mix(in srgb, var(--theme-accent) 14%, transparent); color: var(--theme-accent); }
-/* Literal ink — the card stays white in dark mode, where the ink vars flip
-   light and would make this text unreadable. */
-.fixitHeroCard strong { display: block; font-size: .95rem; color: #2b2b30; }
-.fixitHeroCard small { font-size: .74rem; color: #6a6a72; }
+/* Surface + ink are a contrasting pair in every scheme, so the card reads on
+   any ground. The subtitle is its own block so title/subtitle never run
+   together, and the text column can shrink without the title wrapping mid-word. */
+.fixitHeroCard > div { min-width: 0; }
+.fixitHeroCard strong { display: block; font-size: .95rem; line-height: 1.2; color: var(--c-ink); }
+.fixitHeroCard small { display: block; margin-top: .1rem; font-size: .74rem; line-height: 1.25; color: var(--c-muted); }
 .fixitDots { position: absolute; z-index: 0; right: 2%; bottom: 4%; width: 96px; height: 96px; background-image: radial-gradient(var(--theme-accent) 1.6px, transparent 1.9px); background-size: 14px 14px; opacity: .85; }
 /* Soft accent halo behind the photo — adds depth so the hero doesn't read empty. */
 .fixitHeroBlob { position: absolute; z-index: 0; top: -6%; right: -4%; width: 60%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--theme-accent) 30%, transparent), transparent 68%); filter: blur(4px); animation: fixitBlob 9s ease-in-out infinite; }

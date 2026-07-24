@@ -113,9 +113,12 @@ export default function GuildTemplate({ site }: TemplateProps) {
       <SiteContentSections site={site} />
 
       <section className={styles.guildContact} id="contact">
-        <div><p className={styles.kicker}>Ready when you are</p><h2>Tell us what you need.</h2></div>
-        <div><p>{site.hours || 'Monday-Friday, 7am-5pm'}</p><p>{site.service_area || 'Local and regional projects'}</p>{site.phone && <a className={styles.primaryCta} href={`tel:${site.phone}`}>Call {site.phone}</a>}</div>
-        <SiteProofStrip site={site} />
+        <div className={styles.guildContactCopy}>
+          <div><p className={styles.kicker}>Ready when you are</p><h2>Tell us what you need.</h2></div>
+          <p className={styles.guildContactMeta}>{site.hours || 'Monday-Friday, 7am-5pm'}<br />{site.service_area || 'Local and regional projects'}</p>
+          {site.phone && <a className={styles.primaryCta} href={`tel:${site.phone}`}>Call {site.phone}</a>}
+          <SiteProofStrip site={site} />
+        </div>
         <QuoteRequestForm site={site} />
       </section>
 

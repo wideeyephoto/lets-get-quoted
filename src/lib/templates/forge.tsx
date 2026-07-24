@@ -89,10 +89,12 @@ export default function ForgeTemplate({ site }: TemplateProps) {
       <SiteContentSections site={site} />
 
       <section className={styles.forgeContact} id="contact">
-        <p className={styles.kicker}>Have a project in mind?</p>
-        <h2>Let&apos;s get it done right.</h2>
-        {site.phone && <p>Prefer to talk? Call <a href={`tel:${site.phone}`}>{site.phone}</a>.</p>}
-        <SiteProofStrip site={site} />
+        <div className={styles.forgeContactCopy}>
+          <p className={styles.kicker}>Have a project in mind?</p>
+          <h2>Let&apos;s get it done right.</h2>
+          {site.phone && <p>Prefer to talk? Call <a href={`tel:${site.phone}`}>{site.phone}</a>.</p>}
+          <SiteProofStrip site={site} />
+        </div>
         <QuoteRequestForm site={site} />
       </section>
 
