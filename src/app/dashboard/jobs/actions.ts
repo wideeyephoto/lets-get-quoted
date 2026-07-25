@@ -25,7 +25,10 @@ import { uploadJobPhoto } from '@/lib/job-photo-storage';
 import { listCrew, listCrewIdsForJob, setJobCrewAssignments, toggleJobCrewAssignment } from '@/lib/crew';
 import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
-import { recordSmsConsent, sendClientJobDashboardSms, sendCrewAssignmentSms, sendCrewScheduleSelectedSms, sendJobUpdateSms } from '@/lib/sms';
+import { isPhoneOptedOut, recordSmsConsent, sendClientJobDashboardSms, sendCrewAssignmentSms, sendCrewScheduleSelectedSms, sendJobUpdateSms, sendReviewRequestSms } from '@/lib/sms';
+import { sendReviewRequestEmail } from '@/lib/email';
+import { getSiteContent } from '@/lib/site-content';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 function parseAmount(value: FormDataEntryValue | null): number {
   const n = Number(value);
@@ -596,4 +599,83 @@ export async function deleteCostAction(jobId: string, costId: string) {
   await deleteCost(supabase, accountId, jobId, costId);
 
   revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
+// Where a review request should point. Built from the Google Business Profile the
+// owner linked in the website builder: a Place ID gives Google's canonical
+// "write a review" deep link; failing that, the plain listing URL is a usable
+// fallback. Null when no Google business is linked — then reviews have nowhere
+// to land and the ask is suppressed. Read-only (never creates a site row).
+export async function resolveAccountReviewUrl(
+  supabase: SupabaseClient,
+  accountId: string,
+): Promise<string | null> {
+  const { data: site } = await supabase
+    .from('sites')
+    .select('content')
+    .eq('account_id', accountId)
+    .maybeSingle();
+  if (!site) return null;
+  const { testimonials } = getSiteContent(site.content as Record<string, unknown>);
+  const placeId = testimonials.googlePlaceId.trim();
+  if (placeId) return `https://search.google.com/local/writereview?placeid=${encodeURIComponent(placeId)}`;
+  const url = testimonials.googleUrl.trim();
+  return url || null;
+}
+
+// One-tap post-job review ask. Texts a happy client a link to leave a Google
+// review (email fallback when there's no textable mobile). Returns a result
+// message instead of throwing so the button can report exactly what happened —
+// texted, emailed, or why it couldn't send.
+export async function requestJobReviewAction(jobId: string): Promise<{ ok: boolean; message: string }> {
+  const { supabase, accountId } = await requireOwnerContext();
+  const job = await getJob(supabase, accountId, jobId);
+  if (!job) return { ok: false, message: 'Job not found.' };
+
+  const reviewUrl = await resolveAccountReviewUrl(supabase, accountId);
+  if (!reviewUrl) {
+    return { ok: false, message: 'Link your Google Business Profile in the website builder first so the review has somewhere to go.' };
+  }
+
+  const { data: account } = await supabase.from('accounts').select('business_name').eq('id', accountId).single();
+  const businessName = account?.business_name || "Let's Get Quoted contractor";
+  const clientFirstName = (job.client_name || 'there').trim().split(/\s+/)[0] || 'there';
+
+  const normalizedPhone = job.client_phone ? normalizeUsPhone(job.client_phone) : null;
+  const canText = normalizedPhone ? !(await isPhoneOptedOut(accountId, normalizedPhone)) : false;
+
+  let channel: 'sms' | 'email';
+  let sentTo: string;
+  try {
+    if (canText && normalizedPhone) {
+      await recordSmsConsent(accountId, normalizedPhone, 'review_request');
+      await sendReviewRequestSms({ phone: normalizedPhone, businessName, clientName: clientFirstName, reviewUrl });
+      channel = 'sms';
+      sentTo = normalizedPhone;
+    } else if (job.client_email) {
+      await sendReviewRequestEmail({ recipientEmail: job.client_email, businessName, clientName: clientFirstName, reviewUrl });
+      channel = 'email';
+      sentTo = job.client_email;
+    } else {
+      return { ok: false, message: 'No textable mobile or email on file for this client. Add one on the job first.' };
+    }
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : 'The review request could not be sent.';
+    console.error(`Review request failed for job ${jobId}:`, reason);
+    return { ok: false, message: reason };
+  }
+
+  await createJobFeedEvent(supabase, accountId, jobId, {
+    kind: 'review_requested',
+    title: channel === 'sms' ? 'Review request texted' : 'Review request emailed',
+    body: `Asked ${job.client_name} for a Google review.`,
+    visibility: 'internal',
+    meta: { review_request: true, channel, to: sentTo },
+  });
+
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+  return {
+    ok: true,
+    message: channel === 'sms' ? `Texted ${job.client_name} a review link.` : `Emailed ${job.client_name} a review link.`,
+  };
 }

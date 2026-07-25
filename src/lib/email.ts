@@ -184,6 +184,34 @@ export async function sendContractorAlertEmail(input: {
   console.log(`Contractor alert email sent to ${input.recipientEmail}: ${input.subject}`);
 }
 
+// Post-job ask for a Google review, over email — the fallback channel when the
+// client has no textable mobile (or opted out of texts) but does have an email.
+// Throws on provider rejection so the caller can report the send failed.
+export async function sendReviewRequestEmail(input: {
+  recipientEmail: string;
+  businessName: string;
+  clientName: string;
+  reviewUrl: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('Email provider is not configured.');
+  }
+
+  const result = await resend.emails.send({
+    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    to: input.recipientEmail,
+    subject: `How did we do? A quick review for ${input.businessName}`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#b45309;font-weight:700;letter-spacing:0.04em">THANK YOU</p><h1 style="font-size:24px;margin:0 0 12px">${escapeHtml(input.clientName)}, thanks for choosing ${escapeHtml(input.businessName)}</h1><p style="margin:0 0 20px;line-height:1.5">If we earned it, would you take a moment to leave a quick review? For a small business, a few words from a happy customer makes all the difference.</p><p><a href="${escapeHtml(input.reviewUrl)}" style="display:inline-block;padding:12px 18px;background:#172033;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">Leave a review</a></p><p style="margin-top:28px;color:#6b7280;font-size:13px">${escapeHtml(input.businessName)} · Let's Get Quoted</p></div>`,
+    reply_to: 'hello@letsgetquoted.com',
+  });
+
+  if (result.error) {
+    console.error('Failed to send review request email:', result.error);
+    throw new Error(result.error.message);
+  }
+  console.log(`Review request email sent to ${input.recipientEmail}`);
+}
+
 function escapeHtml(value: string | null) {
   return (value || '').replace(/[&<>'"]/g, (character) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;',

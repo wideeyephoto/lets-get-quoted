@@ -384,3 +384,17 @@ export async function sendSchedulingOptionsSms(params: {
   const message = `Let's Get Quoted: ${params.businessName} has 3 service times available for ${params.jobRef}. ${params.clientName}, choose one or request different times: ${link}. Reply STOP to opt out.`;
   return sendTwilioMessage(params.phone, message);
 }
+
+// Post-job ask for a Google review — the loop that turns a finished job back
+// into the next lead. Sent one-tap from the job page after the work's done and
+// the client's happy. Job-context text (like job updates): consent is enforced
+// by the caller via isPhoneOptedOut, so this just delivers.
+export async function sendReviewRequestSms(params: {
+  phone: string;
+  businessName: string;
+  clientName: string;
+  reviewUrl: string;
+}) {
+  const message = `Let's Get Quoted: Hi ${params.clientName}, thanks for choosing ${params.businessName}! If we earned it, a quick review means the world to a small business: ${params.reviewUrl}. Reply STOP to opt out.`;
+  return sendTwilioMessage(params.phone, message);
+}

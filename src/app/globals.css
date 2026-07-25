@@ -2309,6 +2309,30 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   margin-bottom: 0;
 }
 
+.review-request-block {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: flex-start;
+}
+
+.review-request-hint {
+  color: var(--muted, #6b7280);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  max-width: 22rem;
+}
+
+.review-request-hint.is-ok {
+  color: #15803d;
+  font-weight: 600;
+}
+
+.review-request-hint.is-error {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
 .job-command-facts {
   display: flex;
   flex-wrap: wrap;

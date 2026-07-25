@@ -18,6 +18,8 @@ import {
   deleteCostAction,
   deleteJobAction,
   markJobCompleteAction,
+  requestJobReviewAction,
+  resolveAccountReviewUrl,
   sendClientScheduleOptionsAction,
   undoJobCompleteAction,
   updateJobAction,
@@ -36,6 +38,7 @@ import TimeSlotSelect from '@/components/time-slot-select';
 import AddExpenseModal, { CloseOnSuccess } from './AddExpenseModal';
 import QuoteDeliveryBanner from './QuoteDeliveryBanner';
 import CopyLinkButton from './CopyLinkButton';
+import RequestReviewButton from './RequestReviewButton';
 
 const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
   requested: 'Awaiting payment',
@@ -90,6 +93,7 @@ const FEED_KIND_LABEL: Record<string, string> = {
   invoice_voided: 'Invoice cancelled',
   client_link_created: 'Client link',
   client_link_revoked: 'Client link',
+  review_requested: 'Review request',
 };
 
 const FEED_KIND_ICON: Record<string, string> = {
@@ -114,6 +118,7 @@ const FEED_KIND_ICON: Record<string, string> = {
   invoice_voided: '×',
   client_link_created: '↗',
   client_link_revoked: '×',
+  review_requested: '⭐',
 };
 
 function marginTier(margin: number): 'margin-good' | 'margin-ok' | 'margin-bad' {
@@ -240,6 +245,9 @@ export default async function JobDetailPage({
   const boundCreateCost = createCostAction.bind(null, job.id);
   const boundCreateDepositRequest = createDepositRequestAction.bind(null, job.id);
   const boundMarkJobComplete = markJobCompleteAction.bind(null, job.id);
+  const boundRequestReview = requestJobReviewAction.bind(null, job.id);
+  const reviewUrl = await resolveAccountReviewUrl(supabase, accountId);
+  const lastReviewRequest = feed.find((event) => event.kind === 'review_requested');
   const boundSendScheduleOptions = sendClientScheduleOptionsAction.bind(null, job.id);
   const boundCreateClientJobLink = createClientJobLinkAction.bind(null, job.id);
   const boundPostFeedUpdate = createManualJobFeedAction.bind(null, job.id);
@@ -356,6 +364,13 @@ export default async function JobDetailPage({
               <form action={boundMarkJobComplete}>
                 <SaveButton className="btn secondary" pendingLabel="Completing…" savedLabel="Completed ✓">Mark complete</SaveButton>
               </form>
+            ) : null}
+            {job.status === 'complete' ? (
+              <RequestReviewButton
+                action={boundRequestReview}
+                reviewConfigured={Boolean(reviewUrl)}
+                lastRequestedAt={lastReviewRequest?.created_at ?? null}
+              />
             ) : null}
           </div>
         </div>
