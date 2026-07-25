@@ -10,10 +10,12 @@ import {
   deleteJob,
   getJob,
   formatJobQuoteSummary,
+  saveQuoteItems,
   updateJob,
   updateJobSchedule,
   type CostType,
   type JobStatus,
+  type QuoteItem,
 } from '@/lib/jobs';
 import {
   createClientJobAccessToken,
@@ -616,6 +618,22 @@ export async function deleteCostAction(jobId: string, costId: string) {
   await deleteCost(supabase, accountId, jobId, costId);
 
   revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
+// Save the itemized quote from the job-page builder. Items are validated and the
+// job's quoted_amount is recomputed inside saveQuoteItems, so the margin panel
+// and any future invoice stay in sync. Returns the new total for the builder to
+// echo back.
+export async function saveQuoteItemsAction(jobId: string, items: QuoteItem[]): Promise<{ ok: boolean; total: number; message?: string }> {
+  const { supabase, accountId } = await requireOwnerContext();
+  try {
+    const job = await saveQuoteItems(supabase, accountId, jobId, Array.isArray(items) ? items : []);
+    revalidatePath(`/dashboard/jobs/${jobId}`);
+    return { ok: true, total: Number(job.quoted_amount) || 0 };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Could not save the quote.';
+    return { ok: false, total: 0, message };
+  }
 }
 
 // Where a review request should point. Built from the Google Business Profile the

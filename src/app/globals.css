@@ -2349,6 +2349,193 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   accent-color: #ff8a3d;
 }
 
+/* ---- Quote builder (owner, job page) ---- */
+.quote-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.quote-builder-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.quote-builder-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 8rem auto;
+  gap: 0.6rem;
+  align-items: center;
+  padding: 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.quote-builder-row-addon {
+  border-left: 3px solid #ff8a3d;
+}
+
+.quote-builder-row input[type='text'],
+.quote-builder-row input[type='number'] {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  color: inherit;
+  font: inherit;
+}
+
+.quote-builder-amount {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.quote-builder-amount span {
+  opacity: 0.6;
+}
+
+.quote-builder-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.quote-builder-controls select {
+  padding: 0.45rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.2);
+  color: inherit;
+  font: inherit;
+}
+
+.quote-builder-preselect {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.74rem;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+
+.quote-builder-preselect input {
+  accent-color: #ff8a3d;
+}
+
+.quote-builder-remove {
+  border: none;
+  background: transparent;
+  color: inherit;
+  opacity: 0.55;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.25rem;
+}
+
+.quote-builder-remove:hover {
+  opacity: 1;
+  color: #f87171;
+}
+
+.quote-builder-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.quote-builder-summary {
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 0.8rem;
+}
+
+.quote-builder-total,
+.quote-doc-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.quote-builder-total strong,
+.quote-doc-total strong {
+  font-size: 1.35rem;
+}
+
+.quote-builder-note {
+  margin: 0.3rem 0 0;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.quote-builder-save {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* ---- Quote document (client, approval) ---- */
+.quote-document {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.quote-doc-group-label {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+
+.quote-doc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.quote-doc-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.quote-doc-addon-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  cursor: pointer;
+}
+
+.quote-doc-addon-label input {
+  width: 18px;
+  height: 18px;
+  accent-color: #ff8a3d;
+}
+
+.quote-doc-line-amount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.quote-doc-total {
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  padding-top: 0.8rem;
+}
+
 .job-command-facts {
   display: flex;
   flex-wrap: wrap;

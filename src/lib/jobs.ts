@@ -3,6 +3,18 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 export type JobStatus = 'new_lead' | 'in_progress' | 'complete' | 'archived';
 export type CostType = 'material' | 'labor' | 'sub' | 'receipt' | 'other';
 
+// A single line on an itemized quote. `base` items are always included; `addon`
+// items are optional upsells the client can accept (`selected`). The quote total
+// is base + selected add-ons — see computeQuoteTotal.
+export type QuoteItemKind = 'base' | 'addon';
+export type QuoteItem = {
+  id: string;
+  label: string;
+  amount: number;
+  kind: QuoteItemKind;
+  selected: boolean;
+};
+
 export type Job = {
   id: string;
   account_id: string;
@@ -17,6 +29,7 @@ export type Job = {
   scheduled_time: string | null;
   estimated_hours: number | null;
   quoted_amount: number;
+  quote_items: QuoteItem[] | null;
   photo_paths: string[];
   created_at: string;
 };
@@ -295,6 +308,65 @@ export async function getJob(supabase: SupabaseClient, accountId: string, jobId:
   }
 
   return (data as Job) ?? null;
+}
+
+// Normalize the raw quote_items jsonb into a clean QuoteItem[]. Defensive by
+// design: the column is null on legacy jobs and could hold anything, so every
+// field is coerced and bad rows are dropped rather than trusted.
+export function parseQuoteItems(value: unknown): QuoteItem[] {
+  if (!Array.isArray(value)) return [];
+  const items: QuoteItem[] = [];
+  for (const raw of value) {
+    if (!raw || typeof raw !== 'object') continue;
+    const record = raw as Record<string, unknown>;
+    const label = typeof record.label === 'string' ? record.label.trim() : '';
+    const amount = Number(record.amount);
+    if (!label || !Number.isFinite(amount)) continue;
+    const kind: QuoteItemKind = record.kind === 'addon' ? 'addon' : 'base';
+    items.push({
+      id: typeof record.id === 'string' && record.id ? record.id : `qi-${items.length + 1}`,
+      label,
+      amount: Math.max(0, Math.round(amount * 100) / 100),
+      kind,
+      // Base items are always in the total; an add-on counts only when selected.
+      selected: kind === 'base' ? true : record.selected === true,
+    });
+  }
+  return items;
+}
+
+// The quote total: every base item plus each selected add-on.
+export function computeQuoteTotal(items: QuoteItem[]): number {
+  const total = items.reduce((sum, item) => {
+    if (item.kind === 'base' || item.selected) return sum + item.amount;
+    return sum;
+  }, 0);
+  return Math.round(total * 100) / 100;
+}
+
+// Persist an itemized quote and keep quoted_amount in lockstep with the computed
+// total, so every downstream reader (margin panel, invoices, approval email)
+// stays correct without knowing about line items. Empty items clears the
+// itemized quote back to the legacy single-amount mode.
+export async function saveQuoteItems(
+  supabase: SupabaseClient,
+  accountId: string,
+  jobId: string,
+  items: QuoteItem[],
+): Promise<Job> {
+  const clean = parseQuoteItems(items);
+  const patch = clean.length > 0
+    ? { quote_items: clean, quoted_amount: computeQuoteTotal(clean) }
+    : { quote_items: null };
+  const { data, error } = await supabase
+    .from('jobs')
+    .update(patch)
+    .eq('account_id', accountId)
+    .eq('id', jobId)
+    .select('*')
+    .single();
+  if (error || !data) throw error ?? new Error('Unable to save the quote.');
+  return data as Job;
 }
 
 export async function createJob(supabase: SupabaseClient, accountId: string, input: JobInput): Promise<Job> {

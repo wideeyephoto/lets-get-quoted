@@ -4,6 +4,7 @@ import { getClientJobDashboard } from '@/lib/job-feed';
 import { formatMoney } from '@/lib/jobs';
 import { formatScheduleOption } from '@/lib/scheduling';
 import { approveClientJobQuoteAction, requestDifferentClientJobScheduleOptionsAction, selectClientJobScheduleOptionAction } from './actions';
+import QuoteDocument from './QuoteDocument';
 
 const STATUS_LABEL: Record<string, string> = {
   new_lead: 'New request',
@@ -113,9 +114,13 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
             <h2>Approve your quote</h2>
           </div>
           <p className="workspace-card-copy">Review the details below. When you&apos;re ready, approve the quote and your contractor will get started.</p>
-          <form action={approveClientJobQuoteAction.bind(null, params.token)}>
-            <SaveButton pendingLabel="Approving..." savedLabel="Approved ✓">Approve quote</SaveButton>
-          </form>
+          {dashboard.job.quote_items.length > 0 ? (
+            <QuoteDocument items={dashboard.job.quote_items} approveAction={approveClientJobQuoteAction.bind(null, params.token)} />
+          ) : (
+            <form action={approveClientJobQuoteAction.bind(null, params.token)}>
+              <SaveButton pendingLabel="Approving..." savedLabel="Approved ✓">Approve quote</SaveButton>
+            </form>
+          )}
         </section>
       ) : null}
 

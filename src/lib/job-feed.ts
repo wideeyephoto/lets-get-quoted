@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
-import { getJob, formatJobSchedule, formatMoney } from '@/lib/jobs';
+import { getJob, formatJobSchedule, formatMoney, parseQuoteItems, computeQuoteTotal, type QuoteItem } from '@/lib/jobs';
 import { getLeadByConvertedJob, updateLeadStatus } from '@/lib/leads';
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 import type { Invoice } from '@/lib/invoices';
@@ -41,6 +41,7 @@ export type ClientJobDashboard = {
     scheduled_for: string | null;
     scheduled_time: string | null;
     schedule_label: string;
+    quote_items: QuoteItem[];
   };
   feed: JobFeedEvent[];
   payments: Payment[];
@@ -301,6 +302,17 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
 
   if (!job) return null;
 
+  // Fetch the itemized quote separately and defensively: on a DB where the
+  // migration hasn't run the column is absent, so this degrades to no line
+  // items instead of blanking every client job link.
+  const { data: quoteRow } = await admin
+    .from('jobs')
+    .select('quote_items')
+    .eq('account_id', access.account_id)
+    .eq('id', access.job_id)
+    .maybeSingle();
+  const quoteItems = parseQuoteItems(quoteRow?.quote_items);
+
   const feed = sortJobFeed([
     ...feedResult,
     ...createLinkedFeedItems(feedResult, (payments ?? []) as Payment[], (invoices ?? []) as Invoice[], access.account_id, access.job_id),
@@ -313,6 +325,7 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
     job: {
       ...job,
       schedule_label: formatJobSchedule(job.scheduled_for, job.scheduled_time),
+      quote_items: quoteItems,
     },
     feed,
     payments: (payments ?? []) as Payment[],
@@ -325,7 +338,7 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
 // Public, token-guarded: the client clicks "Approve quote" on their dashboard.
 // Records approval idempotently, promotes the job out of the quote stage,
 // advances the originating lead to won, and alerts the owner (best-effort).
-export async function approveClientJobQuote(clientToken: string): Promise<void> {
+export async function approveClientJobQuote(clientToken: string, selectedAddonIds: string[] = []): Promise<void> {
   const admin = createAdminClient();
   const tokenHash = hashToken(clientToken);
   const now = new Date().toISOString();
@@ -358,12 +371,25 @@ export async function approveClientJobQuote(clientToken: string): Promise<void> 
     .maybeSingle();
   if (existingApproval) return;
 
-  const quotedAmount = Number(job.quoted_amount) || 0;
+  // Lock in the client's add-on choices on an itemized quote and recompute the
+  // total before recording approval, so quoted_amount reflects exactly what they
+  // agreed to. Legacy single-amount quotes (no items) keep quoted_amount as-is.
+  const items = parseQuoteItems(job.quote_items);
+  let quotedAmount = Number(job.quoted_amount) || 0;
+  if (items.length > 0) {
+    const selectedSet = new Set(selectedAddonIds);
+    const finalized = items.map((item) => (item.kind === 'addon' ? { ...item, selected: selectedSet.has(item.id) } : item));
+    quotedAmount = computeQuoteTotal(finalized);
+    await admin.from('jobs').update({ quote_items: finalized, quoted_amount: quotedAmount }).eq('account_id', accountId).eq('id', jobId);
+  }
+
+  const acceptedAddons = items.filter((item) => item.kind === 'addon' && selectedAddonIds.includes(item.id));
+  const addonNote = acceptedAddons.length > 0 ? ` Added: ${acceptedAddons.map((item) => item.label).join(', ')}.` : '';
 
   await createJobFeedEvent(admin, accountId, jobId, {
     kind: 'quote_approved',
     title: 'Client approved the quote',
-    body: `${job.client_name} approved the quote${quotedAmount > 0 ? ` (${formatMoney(quotedAmount)})` : ''}.`,
+    body: `${job.client_name} approved the quote${quotedAmount > 0 ? ` (${formatMoney(quotedAmount)})` : ''}.${addonNote}`,
     visibility: 'client',
     amount: quotedAmount > 0 ? quotedAmount : null,
     sourceTable: 'jobs',

@@ -86,6 +86,7 @@ export const DEMO_JOBS: Job[] = JOB_SEEDS.map((seed) => ({
   scheduled_time: seed.scheduledOffset === null ? null : seed.scheduledTime ?? null,
   estimated_hours: seed.estimated_hours,
   quoted_amount: seed.quoted_amount,
+  quote_items: null,
   photo_paths: [],
   created_at: daysAgo(seed.createdDaysAgo),
 }));

@@ -3,7 +3,7 @@ import { requireOwnerContext } from '@/lib/auth';
 import PhotoGallery from '@/components/photo-gallery';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import { deriveJobListBadge, computeJobMilestones } from '@/lib/job-badges';
-import { getJob, listCosts, computeMargin, formatJobQuoteSummary, formatJobSchedule, formatMoney, formatPercent, type Cost, type Job } from '@/lib/jobs';
+import { getJob, listCosts, computeMargin, formatJobQuoteSummary, formatJobSchedule, formatMoney, formatPercent, parseQuoteItems, type Cost, type Job } from '@/lib/jobs';
 import { createJobPhotoUrls } from '@/lib/job-photo-storage';
 import { listPayments, type Payment, type PaymentStatus } from '@/lib/payments';
 import { listInvoices, selectPrimaryInvoice, type Invoice, type InvoiceStatus } from '@/lib/invoices';
@@ -20,6 +20,7 @@ import {
   markJobCompleteAction,
   requestJobReviewAction,
   resolveAccountReviewUrl,
+  saveQuoteItemsAction,
   sendClientScheduleOptionsAction,
   undoJobCompleteAction,
   updateJobAction,
@@ -39,6 +40,7 @@ import AddExpenseModal, { CloseOnSuccess } from './AddExpenseModal';
 import QuoteDeliveryBanner from './QuoteDeliveryBanner';
 import CopyLinkButton from './CopyLinkButton';
 import RequestReviewButton from './RequestReviewButton';
+import QuoteBuilder from './QuoteBuilder';
 
 const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
   requested: 'Awaiting payment',
@@ -246,6 +248,8 @@ export default async function JobDetailPage({
   const boundCreateDepositRequest = createDepositRequestAction.bind(null, job.id);
   const boundMarkJobComplete = markJobCompleteAction.bind(null, job.id);
   const boundRequestReview = requestJobReviewAction.bind(null, job.id);
+  const boundSaveQuoteItems = saveQuoteItemsAction.bind(null, job.id);
+  const quoteItems = parseQuoteItems(job.quote_items);
   const reviewUrl = await resolveAccountReviewUrl(supabase, accountId);
   const lastReviewRequest = feed.find((event) => event.kind === 'review_requested');
   const boundSendScheduleOptions = sendClientScheduleOptionsAction.bind(null, job.id);
@@ -394,6 +398,18 @@ export default async function JobDetailPage({
           </ol>
         </aside>
 
+      </section>
+
+      <section id="quote-breakdown" className="panel workspace-section-card">
+        <div className="section-heading workspace-section-heading">
+          <p className="eyebrow">Quote</p>
+          <h2>Quote breakdown</h2>
+        </div>
+        <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+          Itemize the work and offer optional add-ons the client can accept on their quote page. The
+          quote total updates automatically. Leave this empty to keep the single quoted amount.
+        </p>
+        <QuoteBuilder action={boundSaveQuoteItems} initialItems={quoteItems} />
       </section>
 
       <section id="job-feed" className="panel workspace-section-card job-feed-command-panel">

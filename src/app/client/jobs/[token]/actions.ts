@@ -25,8 +25,11 @@ export async function requestDifferentClientJobScheduleOptionsAction(token: stri
   redirect(`/client/jobs/${token}?schedule-requested=1`);
 }
 
-export async function approveClientJobQuoteAction(token: string) {
-  await approveClientJobQuote(token);
+export async function approveClientJobQuoteAction(token: string, formData: FormData) {
+  // Checkbox values for accepted optional add-ons (name="addon"); empty on a
+  // legacy single-amount quote, which approves exactly as before.
+  const selectedAddonIds = formData.getAll('addon').map((value) => value.toString());
+  await approveClientJobQuote(token, selectedAddonIds);
   revalidatePath(`/client/jobs/${token}`);
   redirect(`/client/jobs/${token}?approved=1`);
 }
