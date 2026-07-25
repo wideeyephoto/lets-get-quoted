@@ -5,7 +5,7 @@ import FinanceReports from './FinanceReports';
 import { getAvailableTaxYears, buildProfitAndLoss, buildScheduleCWorksheet, build1099PrepList } from '@/lib/tax-reports';
 import SaveButton from '@/components/save-button';
 import DeleteAccountButton from './DeleteAccountButton';
-import { updateScheduleDayHoursAction, updateReviewSettingsAction, updateDepositSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, deleteAccountAction } from './actions';
+import { updateScheduleDayHoursAction, updateReviewSettingsAction, updateDepositSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, sendTestDigestAction, deleteAccountAction } from './actions';
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -80,6 +80,13 @@ export default async function SettingsPage({
     .eq('id', accountId)
     .maybeSingle();
   const mailingAddress = (mailingSettings?.mailing_address as string | null) ?? '';
+
+  const { data: digestSettings } = await supabase
+    .from('accounts')
+    .select('daily_digest_enabled')
+    .eq('id', accountId)
+    .maybeSingle();
+  const dailyDigestEnabled = Boolean(digestSettings?.daily_digest_enabled);
 
   const requestedYear = searchParams.year ? parseInt(searchParams.year, 10) : NaN;
   const selectedYear = availableYears.includes(requestedYear) ? requestedYear : availableYears[0];
@@ -241,6 +248,37 @@ export default async function SettingsPage({
           <div className="form-actions">
             <SaveButton>Save reminder settings</SaveButton>
           </div>
+        </form>
+      </section>
+
+      <section className="panel workspace-section-card" id="daily-digest">
+        <div className="section-heading workspace-section-heading compact-heading">
+          <p className="eyebrow">Daily digest</p>
+          <h2>Your business, once a day</h2>
+        </div>
+        <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+          When on, each morning we email you a short digest of your business — money received,
+          new leads, quotes approved, today&apos;s schedule, appointment confirmations, new reviews,
+          and clients due to rebook. It only sends on days with something to report.
+        </p>
+        <form action={updateDigestSettingsAction} className="form-grid compact-form">
+          <label className="checkbox-row" htmlFor="dailyDigest">
+            <input
+              id="dailyDigest"
+              name="dailyDigest"
+              type="checkbox"
+              defaultChecked={dailyDigestEnabled}
+            />
+            <span>Email me a daily digest of my business</span>
+          </label>
+          <div className="form-actions">
+            <SaveButton>Save digest settings</SaveButton>
+          </div>
+        </form>
+        <form action={sendTestDigestAction} style={{ marginTop: '0.75rem' }}>
+          <SaveButton className="btn secondary" pendingLabel="Sending..." savedLabel="Sent ✓">
+            Send me a test digest
+          </SaveButton>
         </form>
       </section>
 

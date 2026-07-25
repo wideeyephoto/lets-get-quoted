@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { sendTestDigest } from '@/lib/daily-digest';
 
 function parseScheduleDayHours(value: FormDataEntryValue | null): number {
   const n = Number(value);
@@ -100,6 +101,31 @@ export async function updateReminderSettingsAction(formData: FormData) {
 
   if (error) throw new Error(error.message);
 
+  revalidatePath('/dashboard/settings');
+}
+
+// Opt-in: a once-daily digest email to the owner summarizing their business.
+export async function updateDigestSettingsAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const dailyDigest = formData.get('dailyDigest') === 'on';
+
+  const { error } = await supabase
+    .from('accounts')
+    .update({ daily_digest_enabled: dailyDigest })
+    .eq('id', accountId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/dashboard/settings');
+}
+
+// Sends the owner a one-off preview of their daily digest so they can see what
+// it looks like without waiting for the cron. Throws (surfacing the reason) if
+// there's no email on file or the send fails.
+export async function sendTestDigestAction() {
+  const { supabase, accountId } = await requireOwnerContext();
+  const result = await sendTestDigest(supabase, accountId);
+  if (!result.ok) throw new Error(result.message);
   revalidatePath('/dashboard/settings');
 }
 

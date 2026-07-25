@@ -6,6 +6,7 @@ import { computeInvoiceTotals, type Invoice, type InvoiceItem } from './invoices
 import type { Lead } from './leads';
 import { formatMoney } from './jobs';
 import { buildUnsubscribePageUrl, buildUnsubscribeOneClickUrl } from './email-suppression';
+import type { DailyDigest } from './daily-digest';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -416,6 +417,89 @@ function escapeHtml(value: string | null) {
   return (value || '').replace(/[&<>'"]/g, (character) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;',
   })[character] || character);
+}
+
+// Owner "here's your business today" digest. Transactional/relationship email to
+// the account owner about their own account — not marketing, so no unsubscribe
+// footer (they toggle it in Settings). Throws on provider rejection so the caller
+// (cron or the Settings test button) can count it as failed.
+export async function sendDailyDigestEmail(input: {
+  recipientEmail: string;
+  businessName: string;
+  digest: DailyDigest;
+  dashboardUrl: string;
+  manageUrl: string;
+  isTest?: boolean;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('Email provider is not configured.');
+  }
+  const d = input.digest;
+
+  // A labelled stat line; `accent` highlights the ones that want attention.
+  const row = (label: string, value: string, accent?: 'good' | 'warn') => {
+    const color = accent === 'warn' ? '#dc2626' : accent === 'good' ? '#059669' : '#172033';
+    return `<tr><td style="padding:8px 0;color:#4b5563;font-size:15px">${escapeHtml(label)}</td><td style="padding:8px 0;text-align:right;font-weight:700;font-size:15px;color:${color}">${value}</td></tr>`;
+  };
+  const section = (title: string, rowsHtml: string) =>
+    rowsHtml
+      ? `<p style="margin:22px 0 4px;color:#b45309;font-weight:700;letter-spacing:0.04em;font-size:12px">${escapeHtml(title.toUpperCase())}</p><table style="width:100%;border-collapse:collapse">${rowsHtml}</table>`
+      : '';
+
+  const money = [
+    d.moneyInCount > 0 ? row('Payments received', `${d.moneyInCount} · ${escapeHtml(formatMoney(d.moneyInTotal))}`, 'good') : '',
+    d.failedCount > 0 ? row('Failed charges', `${d.failedCount} · ${escapeHtml(formatMoney(d.failedTotal))}`, 'warn') : '',
+    d.openRequestsCount > 0 ? row('Awaiting payment', `${d.openRequestsCount} · ${escapeHtml(formatMoney(d.openRequestsTotal))}`) : '',
+  ].join('');
+  const pipeline = [
+    d.newLeads > 0 ? row('New leads', String(d.newLeads), 'good') : '',
+    d.quotesApproved > 0 ? row('Quotes approved', String(d.quotesApproved), 'good') : '',
+  ].join('');
+  const reputation = [
+    d.newReviews > 0 ? row('New reviews', d.newReviewsAvg != null ? `${d.newReviews} · ${d.newReviewsAvg}★ avg` : String(d.newReviews), 'good') : '',
+    d.privateFeedback > 0 ? row('Private feedback to review', String(d.privateFeedback), 'warn') : '',
+  ].join('');
+  const schedule = [
+    d.confirmations > 0 ? row('Appointments confirmed', String(d.confirmations), 'good') : '',
+    d.rebookDue > 0 ? row('Past clients due to rebook', String(d.rebookDue)) : '',
+  ].join('');
+
+  const todayList = d.todaysJobs.length
+    ? `<p style="margin:22px 0 4px;color:#b45309;font-weight:700;letter-spacing:0.04em;font-size:12px">TODAY&rsquo;S SCHEDULE · ${d.todaysJobsCount} JOB${d.todaysJobsCount === 1 ? '' : 'S'}</p>` +
+      d.todaysJobs
+        .map((j) => `<p style="margin:0 0 6px;font-size:15px;color:#172033">${j.time ? `<strong>${escapeHtml(j.time)}</strong> · ` : ''}${escapeHtml(j.clientName)}${j.ref ? ` <span style="color:#9ca3af">${escapeHtml(j.ref)}</span>` : ''}</p>`)
+        .join('')
+    : '';
+
+  const testBanner = input.isTest
+    ? `<p style="margin:0 0 14px;padding:8px 12px;background:#f4f5f7;border-radius:6px;color:#6b7280;font-size:13px">This is a test digest — the real one sends once a day when there&rsquo;s something to report.</p>`
+    : '';
+
+  const html = `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033">
+    <p style="color:#b45309;font-weight:700;letter-spacing:0.04em">DAILY DIGEST</p>
+    <h1 style="font-size:24px;margin:0 0 4px">${escapeHtml(input.businessName)}</h1>
+    <p style="margin:0 0 18px;color:#6b7280;font-size:14px">${escapeHtml(d.dateLabel)}</p>
+    ${testBanner}
+    ${section('Money', money)}
+    ${section('Pipeline', pipeline)}
+    ${todayList}
+    ${section('Schedule', schedule)}
+    ${section('Reputation', reputation)}
+    <p style="margin:26px 0 0"><a href="${escapeHtml(input.dashboardUrl)}" style="display:inline-block;padding:12px 18px;background:#172033;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">Open your dashboard</a></p>
+    <p style="margin-top:26px;color:#9ca3af;font-size:12px;line-height:1.6">You&rsquo;re getting this because the daily digest is on for ${escapeHtml(input.businessName)}. <a href="${escapeHtml(input.manageUrl)}" style="color:#9ca3af">Manage it in Settings</a>.</p>
+  </div>`;
+
+  const result = await resend.emails.send({
+    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    to: input.recipientEmail,
+    subject: `${input.isTest ? '[Test] ' : ''}Your ${input.businessName} daily digest`,
+    html,
+    reply_to: 'hello@letsgetquoted.com',
+  });
+  if (result.error) {
+    console.error('Failed to send daily digest email:', result.error);
+    throw new Error(result.error.message);
+  }
 }
 
 export async function sendLeadNotificationEmail(input: {

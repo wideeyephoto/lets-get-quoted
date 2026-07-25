@@ -123,6 +123,13 @@ alter table accounts add column if not exists review_gating_enabled boolean not 
 -- a campaign broadcast; the automated marketing sends fall back to a platform
 -- address (COMPANY_MAILING_ADDRESS) when a contractor hasn't set their own.
 alter table accounts add column if not exists mailing_address text;
+-- Opt-in: a once-daily "here's your business today" digest email to the owner
+-- (money in, new leads, quotes approved, today's schedule, confirmations,
+-- reviews, rebook nudges). Only sends on days with something to report.
+alter table accounts add column if not exists daily_digest_enabled boolean not null default false;
+-- The UTC date the digest was last sent, so a cron re-run in the same day is a
+-- no-op (account-level idempotency; the daily cron is the only writer).
+alter table accounts add column if not exists last_digest_date date;
 
 -- ----------------------------------------------------------------------------
 -- MEMBERSHIPS  — links a person (auth.users) to an account with a role.
