@@ -19,6 +19,91 @@ export type ReviewInvite = {
   responded_at: string | null;
 };
 
+export type ReviewFeedbackItem = {
+  id: string;
+  jobId: string | null;
+  clientName: string | null;
+  rating: number | null;
+  feedback: string;
+  respondedAt: string | null;
+};
+
+export type ReviewsSummary = {
+  totalInvites: number;
+  responded: number;
+  responseRate: number; // 0..1
+  avgRating: number | null;
+  starCounts: Record<1 | 2 | 3 | 4 | 5, number>;
+  googleCount: number;
+  privateCount: number;
+  recentPrivate: ReviewFeedbackItem[];
+};
+
+// Owner-facing rollup of gated review outcomes. Defensive: an un-migrated DB
+// (no review_invites table) degrades to an empty summary rather than throwing.
+export async function getReviewsSummary(supabase: SupabaseClient, accountId: string): Promise<ReviewsSummary> {
+  const { data, error } = await supabase
+    .from('review_invites')
+    .select('id, job_id, client_name, rating, feedback, routed_to, responded_at, created_at')
+    .eq('account_id', accountId)
+    .order('created_at', { ascending: false });
+
+  const rows = error ? [] : data ?? [];
+  const starCounts: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  let ratingSum = 0;
+  let responded = 0;
+  let googleCount = 0;
+  let privateCount = 0;
+  const recentPrivate: ReviewFeedbackItem[] = [];
+
+  for (const row of rows) {
+    const rating = row.rating as number | null;
+    if (rating && rating >= 1 && rating <= 5) {
+      starCounts[rating as 1 | 2 | 3 | 4 | 5] += 1;
+      ratingSum += rating;
+      responded += 1;
+    }
+    if (row.routed_to === 'google') googleCount += 1;
+    if (row.routed_to === 'private') {
+      privateCount += 1;
+      if (recentPrivate.length < 25 && row.feedback) {
+        recentPrivate.push({
+          id: row.id as string,
+          jobId: (row.job_id as string | null) ?? null,
+          clientName: (row.client_name as string | null) ?? null,
+          rating,
+          feedback: row.feedback as string,
+          respondedAt: (row.responded_at as string | null) ?? null,
+        });
+      }
+    }
+  }
+
+  return {
+    totalInvites: rows.length,
+    responded,
+    responseRate: rows.length > 0 ? responded / rows.length : 0,
+    avgRating: responded > 0 ? Math.round((ratingSum / responded) * 10) / 10 : null,
+    starCounts,
+    googleCount,
+    privateCount,
+    recentPrivate,
+  };
+}
+
+// Count of private (1-3★) feedback submitted in the window — for a dashboard
+// "needs attention" nudge.
+export async function countRecentPrivateFeedback(supabase: SupabaseClient, accountId: string, days = 30): Promise<number> {
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  const { count, error } = await supabase
+    .from('review_invites')
+    .select('id', { count: 'exact', head: true })
+    .eq('account_id', accountId)
+    .eq('routed_to', 'private')
+    .gte('responded_at', cutoff);
+  return error ? 0 : count ?? 0;
+}
+
 // Mint a gated review invite and return its token. The Google destination is
 // snapshotted so the public gate page never has to re-resolve site content.
 export async function createReviewInvite(

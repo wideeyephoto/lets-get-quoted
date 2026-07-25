@@ -4933,6 +4933,31 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   .payroll-row .payroll-num:nth-child(3) { display: none; } /* hide Jobs column on narrow */
 }
 
+/* ---------------------------------------------------------------------------
+   REVIEWS DASHBOARD — ratings & private feedback
+   --------------------------------------------------------------------------- */
+.review-bars { display: flex; flex-direction: column; gap: 0.55rem; margin-top: 0.8rem; }
+.review-bar-row { display: grid; grid-template-columns: 2.2rem 1fr auto; align-items: center; gap: 0.7rem; }
+.review-bar-label { font-weight: 700; font-size: 0.85rem; color: rgba(255,255,255,0.7); }
+.review-bar-track { height: 0.7rem; border-radius: 999px; background: rgba(255,255,255,0.06); overflow: hidden; }
+.review-bar-fill { height: 100%; border-radius: 999px; min-width: 2px; transition: width 0.3s ease; }
+.review-bar-fill.is-good { background: #bef264; }
+.review-bar-fill.is-low { background: #ffb37a; }
+.review-bar-count { font-size: 0.8rem; color: rgba(255,255,255,0.55); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.review-feedback-list { display: flex; flex-direction: column; gap: 0.7rem; margin-top: 0.6rem; }
+.review-feedback-card {
+  padding: 0.9rem 1.05rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255,179,122,0.28);
+  background: rgba(255,122,33,0.06);
+}
+.review-feedback-top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+.review-feedback-stars { color: #fbbf24; letter-spacing: 0.1em; font-size: 0.95rem; }
+.review-feedback-meta { font-size: 0.8rem; color: rgba(255,255,255,0.55); }
+.review-feedback-meta a { color: #7dd3fc; }
+.review-feedback-body { margin: 0.5rem 0 0; line-height: 1.5; color: rgba(255,255,255,0.85); white-space: pre-wrap; }
+
 .appt-confirmed-badge {
   display: inline-block;
   margin-left: 0.5rem;

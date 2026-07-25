@@ -25,6 +25,7 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard/campaigns', label: 'Campaigns', hint: 'Email & text past customers' },
   { href: '/dashboard/rebook', label: 'Rebook', hint: 'Win back past customers' },
   { href: '/dashboard/insights', label: 'Insights', hint: 'Funnel & revenue trends' },
+  { href: '/dashboard/reviews', label: 'Reviews', hint: 'Ratings & private feedback' },
   { href: '/dashboard/sites', label: 'Website' },
   { href: '/dashboard/settings', label: 'Account' },
 ];

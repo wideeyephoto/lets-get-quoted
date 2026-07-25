@@ -7,6 +7,7 @@ import { expireStaleLeads, listLeads } from '@/lib/leads';
 import { listActiveScheduleRequests } from '@/lib/scheduling';
 import { getAutomationActivity } from '@/lib/automation-activity';
 import { countRebookCandidates } from '@/lib/rebook';
+import { countRecentPrivateFeedback } from '@/lib/reviews';
 
 function toDateKey(year: number, monthIndex: number, day: number): string {
   return `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -98,11 +99,12 @@ export default async function DashboardPage() {
   const openLeadCount = leads.filter((lead) => lead.status === 'new' || lead.status === 'contacted').length;
   const quotedLeadCount = leads.filter((lead) => lead.status === 'quoted').length;
   const wonLeadCount = leads.filter((lead) => lead.status === 'won').length;
-  const [crew, assignmentsByJob, automation, rebookDue] = await Promise.all([
+  const [crew, assignmentsByJob, automation, rebookDue, privateFeedback] = await Promise.all([
     listCrew(supabase, accountId, { activeOnly: true }),
     listCrewAssignmentsForJobs(supabase, accountId, scheduledJobs.map((job) => job.id)),
     getAutomationActivity(supabase, accountId),
     countRebookCandidates(supabase, accountId),
+    countRecentPrivateFeedback(supabase, accountId),
   ]);
   const jobsByDate = new Map<string, typeof scheduledJobOccurrences>();
   for (const job of scheduledJobOccurrences) {
@@ -302,6 +304,11 @@ export default async function DashboardPage() {
             {rebookDue > 0 ? (
               <Link href="/dashboard/rebook" className="btn secondary">
                 ↺ {rebookDue} customer{rebookDue === 1 ? '' : 's'} due to rebook
+              </Link>
+            ) : null}
+            {privateFeedback > 0 ? (
+              <Link href="/dashboard/reviews" className="btn secondary">
+                💬 {privateFeedback} private review{privateFeedback === 1 ? '' : 's'} to address
               </Link>
             ) : null}
           </div>
