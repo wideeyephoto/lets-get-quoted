@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, getTradeGlyph } from '@/lib/site-content';
+import ServiceIcon from './ServiceIcon';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroImageCycle from './HeroImageCycle';
@@ -38,7 +39,7 @@ export default function VistaTemplate({ site }: TemplateProps) {
       <ScrollReveal />
       <Parallax />
       <header className={styles.vistaHeader}>
-        <a className={styles.vistaBrand} href="#top" data-edit="identity">{site.logo_url ? <img className={styles.logo} src={site.logo_url} alt={site.company_name} data-edit="logo" /> : site.company_name}</a>
+        <a className={styles.vistaBrand} href="#top" data-edit="identity">{site.logo_url ? <img className={styles.logo} src={site.logo_url} alt={site.company_name} data-edit="logo" /> : <><span className={styles.vistaBrandMark} data-edit="logo"><ServiceIcon name={getTradeGlyph(content.trade)} className={styles.brandGlyph} /></span>{site.company_name}</>}</a>
         <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#studio', label: 'About' }]} />
         <div className={styles.vistaActions}>
           {site.phone && <a className={styles.vistaPhone} data-edit="bizPhone" href={`tel:${site.phone}`}>{site.phone}</a>}

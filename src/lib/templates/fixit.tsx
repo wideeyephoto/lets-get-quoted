@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, getTradeGlyph } from '@/lib/site-content';
+import ServiceIcon from './ServiceIcon';
 import HeroImageCycle from './HeroImageCycle';
 import HeroQuickForm from './HeroQuickForm';
 import type { TemplateProps } from '@/lib/templates/types';
@@ -53,7 +54,7 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
 
       <header className={styles.fixitHeader}>
         <a className={styles.fixitBrand} href="#top" aria-label={`${site.company_name} home`}>
-          {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.fixitBrandMark} aria-hidden="true">✖</span>}
+          {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.fixitBrandMark}><ServiceIcon name={getTradeGlyph(content.trade)} className={styles.brandGlyph} /></span>}
           <strong data-edit="identity">{site.company_name}</strong>
         </a>
         <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#our-services', label: 'Services' }, { href: '#work', label: 'Works' }]} />

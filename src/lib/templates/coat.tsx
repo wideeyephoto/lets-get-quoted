@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, getSlotImage } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, getSlotImage, getTradeGlyph } from '@/lib/site-content';
+import ServiceIcon from './ServiceIcon';
 import HeroImageCycle from './HeroImageCycle';
 import HeroQuickForm from './HeroQuickForm';
 import type { TemplateProps } from '@/lib/templates/types';
@@ -52,7 +53,7 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
 
       <header className={styles.coatHeader}>
         <a className={styles.coatBrand} href="#top" aria-label={`${site.company_name} home`}>
-          {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.coatBrandMark} aria-hidden="true">◆</span>}
+          {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.coatBrandMark}><ServiceIcon name={getTradeGlyph(content.trade)} className={styles.brandGlyph} /></span>}
           <strong data-edit="identity">{site.company_name}</strong>
         </a>
         <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#our-services', label: 'Services' }, { href: '#work', label: 'Projects' }]} />

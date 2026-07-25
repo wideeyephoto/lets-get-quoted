@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, getTradeGlyph } from '@/lib/site-content';
+import ServiceIcon from './ServiceIcon';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroImageCycle from './HeroImageCycle';
@@ -42,7 +43,7 @@ export default function ForgeTemplate({ site }: TemplateProps) {
             top (below the availability bar), not the page top. */}
         <header className={styles.forgeHeader}>
           <a className={styles.brand} href="#top" aria-label={`${site.company_name} home`}>
-            {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.brandBlock}>F</span>}
+            {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.brandBlock}><ServiceIcon name={getTradeGlyph(content.trade)} className={styles.brandGlyph} /></span>}
             <strong data-edit="identity">{site.company_name}</strong>
           </a>
           <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#about', label: 'About' }]} />

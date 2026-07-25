@@ -1033,6 +1033,24 @@ export function getWorkBand(
   };
 }
 
+// A trade-appropriate default brand glyph (a ServiceIcon key) inferred from the
+// contractor's field of work. Used as the fallback logo mark when no logo has
+// been uploaded, so an AI-generated site opens with an icon that fits the trade
+// instead of a generic placeholder. Falls back to 'home' (a house) for any
+// unrecognized or blank trade.
+export function getTradeGlyph(trade: string | null | undefined): string {
+  const t = (trade || '').toLowerCase();
+  if (/electric|electrician|wiring|generator|solar|lighting/.test(t)) return 'bolt';
+  if (/paint|drywall|stain|finish|\bcoat/.test(t)) return 'roller';
+  if (/clean|maid|janitor|pressure\s*wash|window\s*wash|carpet/.test(t)) return 'sparkles';
+  if (/landscap|lawn|garden|\btree|\byard|snow|irrigation|hardscape|mow/.test(t)) return 'leaf';
+  if (/haul|mov(?:e|ing)|junk|dumpster|delivery/.test(t)) return 'truck';
+  if (/pest|extermin|inspect|secur|alarm/.test(t)) return 'shield';
+  if (/plumb|drain|sewer|pipe|\bwater|leak|hvac|heat|cool|\bair\b|furnace|boiler|mechanic|appliance/.test(t)) return 'wrench';
+  if (/roof|gutter|siding|window|door|deck|fence|concrete|mason|remodel|renov|construct|carpen|floor|tile|handy|contractor|build|repair|stump|excavat/.test(t)) return 'home';
+  return 'home';
+}
+
 export function getPublishedShowcase(content: Record<string, unknown> | null | undefined): SiteShowcaseContent | null {
   const showcase = getSiteContent(content).showcase;
   const items = showcase.items.filter((item) => item.url && item.alt);
