@@ -2921,6 +2921,58 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   font: inherit;
 }
 
+/* ---- Self-serve booking widget ---- */
+.booking-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.6rem;
+}
+
+.booking-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.booking-slot:hover {
+  border-color: rgba(255, 138, 61, 0.5);
+  transform: translateY(-1px);
+}
+
+.booking-slot input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.booking-slot:has(input:checked) {
+  border-color: #ff8a3d;
+  background: linear-gradient(135deg, rgba(255, 138, 61, 0.18), rgba(255, 138, 61, 0.05));
+  box-shadow: 0 0 0 1px rgba(255, 138, 61, 0.4);
+}
+
+.booking-slot:focus-within {
+  border-color: #ff8a3d;
+  box-shadow: 0 0 0 2px rgba(255, 138, 61, 0.5);
+}
+
+.booking-slot-day {
+  font-weight: 700;
+}
+
+.booking-slot-time {
+  font-size: 0.82rem;
+  color: var(--muted, #c8d0dc);
+}
+
 .quote-doc-line-amount {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;

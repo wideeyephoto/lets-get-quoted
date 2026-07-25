@@ -290,6 +290,11 @@ export default async function DashboardPage() {
             <a href={siteUrl} target="_blank" rel="noopener noreferrer" className="btn fun">
               🚀 Visit your site
             </a>
+            {sitePublished && site?.subdomain ? (
+              <a href={`/book/${site.subdomain}`} target="_blank" rel="noopener noreferrer" className="btn secondary">
+                📅 Online booking page
+              </a>
+            ) : null}
           </div>
         ) : null}
 
