@@ -228,6 +228,7 @@ async function chargePlanVisit(
       homeowner_phone: normalizedPhone,
       sms_consent: canText,
       sms_consent_at: canText ? new Date().toISOString() : null,
+      charge_attempts: 1,
     })
     .select('id')
     .single();
@@ -256,23 +257,35 @@ async function chargePlanVisit(
       { idempotencyKey: `recurring_${plan.id}_${dateKey}` },
     );
 
+    // Persist the intent id immediately, before branching, so a crash right after
+    // the charge still leaves a reconcilable id for the payment_intent.succeeded
+    // webhook (which is the out-of-band safety net for a lost sync write).
+    await admin.from('payments').update({ stripe_payment_intent: intent.id }).eq('id', payment.id);
+
     if (intent.status === 'succeeded') {
       await admin
         .from('payments')
-        .update({ status: 'paid', paid_at: new Date().toISOString(), stripe_payment_intent: intent.id })
+        .update({ status: 'paid', paid_at: new Date().toISOString() })
         .eq('id', payment.id);
       await createPaymentFeedEvent(admin, payment.id, 'payment_paid');
       if (canText) await sendPaymentSmsEvent(payment.id, 'payment_paid');
       return 'paid';
     }
 
-    // Anything other than succeeded (e.g. requires_action on an off-session
-    // charge) needs the customer present — record it as an SCA/needs-card failure
+    if (intent.status === 'processing' || intent.status === 'requires_capture') {
+      // Settling asynchronously — leave the row 'processing' and let the
+      // payment_intent.succeeded / .payment_failed webhook reconcile it. Do NOT
+      // mark it failed (that would wrongly dun a charge that will settle).
+      return 'skipped';
+    }
+
+    // requires_action / requires_payment_method / canceled on an off-session
+    // charge needs the customer present — record it as an SCA/needs-card failure
     // so dunning routes them to a card-update link instead of blind-retrying.
     await recordRecurringChargeFailure(
       admin,
       plan,
-      { id: payment.id, amount: plan.amount, dunning_attempts: 0, dunning_state: null, failed_at: null },
+      { id: payment.id, amount: plan.amount, dunning_attempts: 0, charge_attempts: 1, dunning_state: null, failed_at: null },
       { code: 'authentication_required', declineCode: null, message: null, intentId: intent.id },
       canText,
       false,
@@ -285,7 +298,7 @@ async function chargePlanVisit(
     await recordRecurringChargeFailure(
       admin,
       plan,
-      { id: payment.id, amount: plan.amount, dunning_attempts: 0, dunning_state: null, failed_at: null },
+      { id: payment.id, amount: plan.amount, dunning_attempts: 0, charge_attempts: 1, dunning_state: null, failed_at: null },
       extractStripeDecline(error),
       canText,
       false,
@@ -300,6 +313,22 @@ async function chargePlanVisit(
 // then attempt the auto-charge.
 async function spawnPlanOccurrence(admin: ReturnType<typeof createAdminClient>, plan: RecurringPlan): Promise<{ outcome: ChargeOutcome; jobId: string }> {
   const dateKey = plan.next_run_date;
+
+  // CLAIM this visit atomically: advance the cadence ONLY while it's still on
+  // dateKey. If a concurrent cron run (or an owner "run now") already advanced
+  // it, 0 rows change and we bail — so a plan can never spawn two jobs / two
+  // payment rows for the same visit (the Stripe idempotency key dedupes the
+  // charge, but not the DB rows / revenue counting).
+  const nowIso = new Date().toISOString();
+  const { data: claimed } = await admin
+    .from('recurring_plans')
+    .update({ next_run_date: advanceDate(dateKey, plan.frequency), last_run_at: nowIso, updated_at: nowIso })
+    .eq('id', plan.id)
+    .eq('next_run_date', dateKey)
+    .select('id')
+    .maybeSingle();
+  if (!claimed) return { outcome: 'skipped', jobId: '' };
+
   const job = await createJob(admin, plan.account_id, {
     clientName: plan.client_name,
     clientPhone: plan.client_phone,
@@ -311,15 +340,7 @@ async function spawnPlanOccurrence(admin: ReturnType<typeof createAdminClient>, 
     quotedAmount: plan.amount,
   });
 
-  await admin
-    .from('recurring_plans')
-    .update({
-      next_run_date: advanceDate(dateKey, plan.frequency),
-      last_job_id: job.id,
-      last_run_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', plan.id);
+  await admin.from('recurring_plans').update({ last_job_id: job.id }).eq('id', plan.id);
 
   await createJobFeedEvent(admin, plan.account_id, job.id, {
     kind: 'recurring_visit',
@@ -379,7 +400,8 @@ export async function runDueRecurringPlans(): Promise<RecurringRunSummary> {
 
   for (const plan of (plans ?? []) as RecurringPlan[]) {
     try {
-      const { outcome } = await spawnPlanOccurrence(admin, plan);
+      const { outcome, jobId } = await spawnPlanOccurrence(admin, plan);
+      if (!jobId) continue; // claim lost to a concurrent run — nothing spawned
       spawned++;
       if (outcome === 'paid') charged++;
       else if (outcome === 'failed') chargeFailed++;

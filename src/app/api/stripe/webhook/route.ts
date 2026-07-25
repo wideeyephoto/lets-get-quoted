@@ -213,12 +213,16 @@ export async function POST(request: Request) {
     }
   }
 
-  // Payment intent failed — alternative to charge.failed for some scenarios
+  // Payment intent failed — alternative to charge.failed for some scenarios.
   if (event.type === 'payment_intent.payment_failed') {
     const paymentIntent = event.data.object;
     const paymentId = paymentIntent.metadata?.payment_id;
+    const recurringPlanId = paymentIntent.metadata?.recurring_plan_id;
 
-    if (paymentId) {
+    // Recurring charges are owned by the dunning path (which captures the decline,
+    // schedules retries, and notifies). Skip them here so we don't double-notify
+    // or clobber dunning_state on a webhook-first race.
+    if (paymentId && !recurringPlanId) {
       console.log(`Payment intent failed for payment ${paymentId}:`, paymentIntent.last_payment_error);
       const { data: transitioned } = await admin
         .from('payments')
@@ -229,6 +233,29 @@ export async function POST(request: Request) {
         .maybeSingle();
       if (transitioned) await sendPaymentSmsEvent(paymentId, 'payment_failed');
       if (transitioned) await createPaymentFeedEvent(admin, paymentId, 'payment_failed');
+    }
+  }
+
+  // Payment intent succeeded — out-of-band reconciliation for off-session
+  // (recurring/dunning) charges: mark the payment paid idempotently even if the
+  // synchronous DB write was lost (crash between the Stripe charge and the write).
+  // The status guard means a payment already marked paid is a no-op (no double
+  // notification), so a normal charge that recorded itself is untouched.
+  if (event.type === 'payment_intent.succeeded') {
+    const paymentIntent = event.data.object;
+    const paymentId = paymentIntent.metadata?.payment_id;
+    if (paymentId) {
+      const { data: transitioned } = await admin
+        .from('payments')
+        .update({ status: 'paid', paid_at: new Date().toISOString(), stripe_payment_intent: paymentIntent.id, dunning_state: 'recovered', next_retry_at: null })
+        .eq('id', paymentId)
+        .in('status', ['requested', 'processing', 'failed'])
+        .select('id')
+        .maybeSingle();
+      if (transitioned) {
+        await createPaymentFeedEvent(admin, paymentId, 'payment_paid');
+        await sendPaymentSmsEvent(paymentId, 'payment_paid');
+      }
     }
   }
 

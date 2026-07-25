@@ -494,7 +494,8 @@ alter table payments add column if not exists recurring_plan_id uuid references 
 alter table payments add column if not exists failure_code text;      -- Stripe error code (card_declined, authentication_required, expired_card, …)
 alter table payments add column if not exists failure_message text;   -- decline_code / human message
 alter table payments add column if not exists failed_at timestamptz;  -- first failure time (preserved across retries)
-alter table payments add column if not exists dunning_attempts int not null default 0;  -- automated retries made
+alter table payments add column if not exists dunning_attempts int not null default 0;  -- retries in the CURRENT backoff cycle (reset when the client updates their card)
+alter table payments add column if not exists charge_attempts int not null default 0;   -- LIFETIME charge attempts, never reset — seeds the idempotency key + a hard cap
 alter table payments add column if not exists next_retry_at timestamptz;  -- next scheduled retry (null = none due)
 alter table payments add column if not exists dunning_state text;     -- 'scheduled' | 'needs_card' | 'exhausted' | 'recovered'
 -- The dunning sweep: failed recurring payments whose retry is due. Partial index
