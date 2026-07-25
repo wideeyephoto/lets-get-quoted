@@ -159,6 +159,57 @@ export async function createInvoice(
   return data as Invoice;
 }
 
+// Create a one-line invoice in a single shot — used by the recurring engine to
+// mint a proper itemized bill for each auto-spawned visit. Trusted callers only
+// (the caller already owns the job): unlike createInvoice this skips the getJob
+// ownership round-trip. Default status 'sent' (it's a real bill the client owes);
+// the linked payment settling flips it to 'paid' via markInvoicePaidForPayment.
+export async function createInvoiceWithSingleItem(
+  supabase: SupabaseClient,
+  accountId: string,
+  jobId: string,
+  item: { description: string; amount: number },
+  status: InvoiceStatus = 'sent',
+): Promise<Invoice> {
+  const ref = await generateInvoiceRef(supabase, accountId);
+  const total = round2(Number(item.amount) || 0);
+
+  const { data: invoice, error } = await supabase
+    .from('invoices')
+    .insert({ account_id: accountId, job_id: jobId, ref, status, total })
+    .select('*')
+    .single();
+  if (error || !invoice) throw error ?? new Error('Unable to create invoice');
+
+  const { error: itemError } = await supabase
+    .from('invoice_items')
+    .insert({ invoice_id: invoice.id, description: item.description, amount: total, sort_order: 0 });
+  if (itemError) throw itemError;
+
+  return invoice as Invoice;
+}
+
+// Reconcile a payment's linked invoice to 'paid'. The single place every
+// off-session/recurring settle path routes through (recurring sync-success, the
+// dunning retry, and the payment_intent.succeeded webhook) so a charged invoice
+// never lags its payment. Idempotent; preserves a real e-signature (only
+// backfills signed_at when the client never actually signed); never resurrects a
+// voided invoice.
+export async function markInvoicePaidForPayment(supabase: SupabaseClient, invoiceId: string): Promise<void> {
+  const { data: invoice, error } = await supabase
+    .from('invoices')
+    .select('status, signed_at')
+    .eq('id', invoiceId)
+    .maybeSingle();
+  if (error || !invoice) return;
+  if (invoice.status === 'paid' || invoice.status === 'void') return;
+
+  await supabase
+    .from('invoices')
+    .update({ status: 'paid', ...(invoice.signed_at ? {} : { signed_at: new Date().toISOString() }) })
+    .eq('id', invoiceId);
+}
+
 async function recalculateInvoiceTotal(supabase: SupabaseClient, invoiceId: string): Promise<void> {
   const [{ data: items, error }, { data: invoice, error: invoiceError }] = await Promise.all([
     supabase.from('invoice_items').select('amount').eq('invoice_id', invoiceId),

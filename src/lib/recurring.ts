@@ -8,6 +8,7 @@ import { findOrCreateClientId } from '@/lib/clients';
 import { createJobFeedEvent, createPaymentFeedEvent } from '@/lib/job-feed';
 import { sendPaymentSmsEvent } from '@/lib/sms';
 import { recordRecurringChargeFailure, extractStripeDecline } from '@/lib/dunning';
+import { createInvoiceWithSingleItem, markInvoicePaidForPayment } from '@/lib/invoices';
 
 export type RecurringFrequency = 'weekly' | 'biweekly' | 'monthly';
 
@@ -178,6 +179,7 @@ async function chargePlanVisit(
   plan: RecurringPlan,
   job: Job,
   dateKey: string,
+  invoiceId: string | null,
 ): Promise<ChargeOutcome> {
   if (!plan.auto_charge || !plan.stripe_payment_method_id || !plan.stripe_customer_id || plan.amount <= 0) {
     return 'skipped';
@@ -218,6 +220,7 @@ async function chargePlanVisit(
     .insert({
       account_id: plan.account_id,
       job_id: job.id,
+      invoice_id: invoiceId,
       recurring_plan_id: plan.id,
       kind: 'final',
       label,
@@ -267,6 +270,8 @@ async function chargePlanVisit(
         .from('payments')
         .update({ status: 'paid', paid_at: new Date().toISOString() })
         .eq('id', payment.id);
+      // Keep the visit invoice in lockstep with the charge.
+      if (invoiceId) await markInvoicePaidForPayment(admin, invoiceId);
       await createPaymentFeedEvent(admin, payment.id, 'payment_paid');
       if (canText) await sendPaymentSmsEvent(payment.id, 'payment_paid');
       return 'paid';
@@ -349,7 +354,37 @@ async function spawnPlanOccurrence(admin: ReturnType<typeof createAdminClient>, 
     visibility: 'internal',
   });
 
-  const outcome = await chargePlanVisit(admin, plan, job, dateKey);
+  // Mint a proper itemized invoice for the visit (a durable, downloadable bill
+  // with its own ref#), then hand its id to the charge so a successful auto-charge
+  // flips it to paid. Best-effort: a failure here must never sink the charge — the
+  // money path is what matters; a missing invoice is a soft loss.
+  let invoiceId: string | null = null;
+  if (plan.amount > 0) {
+    try {
+      const invoice = await createInvoiceWithSingleItem(
+        admin,
+        plan.account_id,
+        job.id,
+        { description: `${plan.title} — ${formatDateLabel(dateKey)}`, amount: plan.amount },
+        'sent',
+      );
+      invoiceId = invoice.id;
+      await createJobFeedEvent(admin, plan.account_id, job.id, {
+        kind: 'invoice_created',
+        title: 'Invoice created',
+        body: invoice.ref,
+        visibility: 'internal',
+        amount: Number(invoice.total),
+        sourceTable: 'invoices',
+        sourceId: invoice.id,
+        actionUrl: `/invoice/${invoice.id}`,
+      });
+    } catch (err) {
+      console.error(`Recurring invoice creation failed for plan ${plan.id}:`, err instanceof Error ? err.message : err);
+    }
+  }
+
+  const outcome = await chargePlanVisit(admin, plan, job, dateKey, invoiceId);
   return { outcome, jobId: job.id };
 }
 

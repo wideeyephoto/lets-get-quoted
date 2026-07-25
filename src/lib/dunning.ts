@@ -5,6 +5,7 @@ import { createPaymentFeedEvent } from '@/lib/job-feed';
 import { sendPaymentSmsEvent, sendCardUpdateSms } from '@/lib/sms';
 import { sendContractorAlertEmail, getAccountOwnerEmail, sendCardUpdateEmail } from '@/lib/email';
 import { createCardSetupSession } from '@/lib/card-on-file';
+import { markInvoicePaidForPayment } from '@/lib/invoices';
 import type { RecurringPlan } from '@/lib/recurring';
 
 // Dunning for recurring off-session charges: capture the decline, then either
@@ -253,7 +254,7 @@ export async function recordRecurringChargeFailure(
 type SweptPayment = {
   id: string; account_id: string; amount: number; platform_fee: number | null;
   dunning_attempts: number; charge_attempts: number; dunning_state: string | null; failed_at: string | null;
-  recurring_plan_id: string | null; sms_consent: boolean; stripe_payment_intent: string | null;
+  recurring_plan_id: string | null; sms_consent: boolean; stripe_payment_intent: string | null; invoice_id: string | null;
 };
 
 type RetryResult = 'paid' | 'failed' | 'gave_up' | 'held' | 'skipped';
@@ -301,6 +302,7 @@ async function retryDunningPayment(admin: AdminClient, payment: SweptPayment): P
       const prior = await stripe.paymentIntents.retrieve(payment.stripe_payment_intent);
       if (prior.status === 'succeeded') {
         await admin.from('payments').update({ status: 'paid', paid_at: new Date().toISOString(), dunning_state: 'recovered', next_retry_at: null }).eq('id', payment.id);
+        if (payment.invoice_id) await markInvoicePaidForPayment(admin, payment.invoice_id);
         return 'paid';
       }
     } catch (err) {
@@ -358,6 +360,7 @@ async function retryDunningPayment(admin: AdminClient, payment: SweptPayment): P
         // do not treat this as a failure (that could schedule a re-charge).
         console.error(`Dunning: charge succeeded but paid-write failed for ${payment.id} (will reconcile via webhook):`, paidErr.message);
       } else {
+        if (payment.invoice_id) await markInvoicePaidForPayment(admin, payment.invoice_id);
         await createPaymentFeedEvent(admin, payment.id, 'payment_paid');
         if (payment.sms_consent) await sendPaymentSmsEvent(payment.id, 'payment_paid');
       }
@@ -389,7 +392,7 @@ export async function runDunningRetries(now: Date = new Date()): Promise<Dunning
   const admin = createAdminClient();
   const { data: dueRows, error } = await admin
     .from('payments')
-    .select('id, account_id, amount, platform_fee, dunning_attempts, charge_attempts, dunning_state, failed_at, recurring_plan_id, sms_consent, stripe_payment_intent')
+    .select('id, account_id, amount, platform_fee, dunning_attempts, charge_attempts, dunning_state, failed_at, recurring_plan_id, sms_consent, stripe_payment_intent, invoice_id')
     .eq('status', 'failed')
     .eq('dunning_state', 'scheduled')
     .lte('next_retry_at', now.toISOString())

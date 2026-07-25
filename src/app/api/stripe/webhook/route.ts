@@ -7,6 +7,7 @@ import { createPaymentFeedEvent, createDisputeFeedEvent } from '@/lib/job-feed';
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 import { storeSavedCardFromSetup } from '@/lib/card-on-file';
 import { rescheduleDunningAfterCardUpdate } from '@/lib/dunning';
+import { markInvoicePaidForPayment } from '@/lib/invoices';
 
 // Stripe webhooks require the raw request body for signature verification,
 // so this route must not be statically optimized or have its body parsed.
@@ -82,31 +83,10 @@ async function markPaymentPaid(admin: ReturnType<typeof createAdminClient>, paym
     return;
   }
 
-  // If payment is linked to an invoice, mark invoice as paid. Preserve a real
-  // e-signature's `signed_at`/`signer_name` (signInvoice) — only backfill
-  // `signed_at` here if the invoice was never actually signed by the client.
+  // If payment is linked to an invoice, mark invoice as paid (shared reconcile —
+  // preserves a real e-signature, idempotent, never revives a voided invoice).
   if (payment?.invoice_id) {
-    const { data: invoice, error: invoiceFetchError } = await admin
-      .from('invoices')
-      .select('signed_at')
-      .eq('id', payment.invoice_id)
-      .maybeSingle();
-
-    if (invoiceFetchError) {
-      console.error('Failed to fetch invoice before marking paid:', invoiceFetchError);
-    }
-
-    const { error: invoiceError } = await admin
-      .from('invoices')
-      .update({
-        status: 'paid',
-        ...(invoice?.signed_at ? {} : { signed_at: new Date().toISOString() }),
-      })
-      .eq('id', payment.invoice_id);
-
-    if (invoiceError) {
-      console.error('Failed to mark invoice paid:', invoiceError);
-    }
+    await markInvoicePaidForPayment(admin, payment.invoice_id);
   }
 
   await sendPaymentSmsEvent(paymentId, 'payment_paid');
@@ -250,9 +230,11 @@ export async function POST(request: Request) {
         .update({ status: 'paid', paid_at: new Date().toISOString(), stripe_payment_intent: paymentIntent.id, dunning_state: 'recovered', next_retry_at: null })
         .eq('id', paymentId)
         .in('status', ['requested', 'processing', 'failed'])
-        .select('id')
+        .select('id, invoice_id')
         .maybeSingle();
       if (transitioned) {
+        // Keep the visit invoice in lockstep with the settled off-session charge.
+        if (transitioned.invoice_id) await markInvoicePaidForPayment(admin, transitioned.invoice_id);
         await createPaymentFeedEvent(admin, paymentId, 'payment_paid');
         await sendPaymentSmsEvent(paymentId, 'payment_paid');
       }
