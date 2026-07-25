@@ -52,11 +52,10 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
   const blog = getPublishedBlog(site.content);
   const stickyCallBar = getPublishedStickyCallBar(site.content, site.phone);
 
-  // Forge, Guild and Vista render the Photo gallery natively, in their own
-  // built-in work band (see getWorkBand), so the shared section would show the
-  // same photos twice on those three.
-  const NATIVE_GALLERY_TEMPLATES = ['carbon', 'professional', 'modern'];
-  const showcase = NATIVE_GALLERY_TEMPLATES.includes(site.template) ? null : showcaseContent;
+  // The Photo gallery renders in-flow (and reorderable) on every template. It was
+  // once suppressed on Forge/Guild/Vista for a native work band those templates no
+  // longer have, so it just goes through the shared stack like the rest now.
+  const showcase = showcaseContent;
 
   // The Care template renders the Project showcase natively, inside its own dark
   // band, so the shared stack would duplicate it there. Every OTHER theme gets it

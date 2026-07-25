@@ -45,7 +45,7 @@ export default function ForgeTemplate({ site }: TemplateProps) {
             {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.brandBlock}>F</span>}
             <strong data-edit="identity">{site.company_name}</strong>
           </a>
-          <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#work', label: 'Work' }, { href: '#about', label: 'About' }]} />
+          <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#about', label: 'About' }]} />
           {site.phone && <a className={styles.headerPhone} data-edit="bizPhone" href={`tel:${site.phone}`}>{site.phone}</a>}
         </header>
         <HeroImageCycle images={getHeroImages(site.content, heroImage)} className={styles.heroImage} alt="Home construction work" />

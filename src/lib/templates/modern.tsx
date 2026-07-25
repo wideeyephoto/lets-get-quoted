@@ -39,7 +39,7 @@ export default function VistaTemplate({ site }: TemplateProps) {
       <Parallax />
       <header className={styles.vistaHeader}>
         <a className={styles.vistaBrand} href="#top" data-edit="identity">{site.logo_url ? <img className={styles.logo} src={site.logo_url} alt={site.company_name} data-edit="logo" /> : site.company_name}</a>
-        <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#studio', label: 'About' }, { href: '#work', label: 'Work' }]} />
+        <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#studio', label: 'About' }]} />
         <div className={styles.vistaActions}>
           {site.phone && <a className={styles.vistaPhone} data-edit="bizPhone" href={`tel:${site.phone}`}>{site.phone}</a>}
           <a className={styles.vistaMenu} data-edit="quoteForm" href="#contact">Get a quote <span aria-hidden="true">→</span></a>

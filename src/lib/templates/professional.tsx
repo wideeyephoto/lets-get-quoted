@@ -65,7 +65,7 @@ export default function GuildTemplate({ site }: TemplateProps) {
           {site.logo_url && <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" />}
           <span><strong data-edit="identity">{site.company_name}</strong><small data-edit="bizLicense">{site.license || 'Licensed contractor'}</small></span>
         </a>
-        <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: services ? '#our-services' : '#services', label: 'Services' }, { href: '#work', label: 'Projects' }]} />
+        <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: services ? '#our-services' : '#services', label: 'Services' }]} />
         <a className={styles.guildQuote} data-edit="quoteForm" href="#contact">{estimateLabel}</a>
       </header>
 

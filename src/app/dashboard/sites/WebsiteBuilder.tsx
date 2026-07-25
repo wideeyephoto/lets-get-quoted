@@ -1089,7 +1089,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   // gallery in place. They therefore get the "Intro section" and "Recent work
   // heading" cards, and skip the gallery layout picker + the Photo gallery drag
   // row, neither of which applies when the band owns the layout and position.
-  const hasBuiltInSections = site.template === 'carbon' || site.template === 'professional' || site.template === 'modern';
 
   // Themes migrated to the full color-scheme token system. For these the scheme
   // picker replaces the light/dark toggle (a scheme IS a light or dark palette).
@@ -1652,11 +1651,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.showcase.title} onChange={(event) => updateShowcase({ ...siteContent.showcase, title: event.target.value })} placeholder="Quality at Every Step" /></label>
                   <label className={styles.formField}><span>Intro</span><textarea rows={2} value={siteContent.showcase.intro} onChange={(event) => updateShowcase({ ...siteContent.showcase, intro: event.target.value })} placeholder="Whether it's a small job or big one, we've got you covered!" /></label>
                   <label className={styles.formField}><span>Menu link label</span><input value={siteContent.showcase.navLabel} maxLength={24} onChange={(event) => updateShowcase({ ...siteContent.showcase, navLabel: event.target.value })} placeholder="Showcase" /><small className={styles.fieldHint}>What this section is called in your header menu — e.g. &ldquo;Our work&rdquo;, &ldquo;Portfolio&rdquo;, &ldquo;Gallery&rdquo;.</small></label>
-                  {hasBuiltInSections ? (
-                    <p className={styles.emptyHelper}>These photos appear in your template&apos;s own work band, which sets its own layout — so there&apos;s no layout picker here. Click the band in the preview to change a photo.</p>
-                  ) : (
-                    <label className={styles.formField}><span>Gallery layout</span><select value={siteContent.showcase.layout} onChange={(event) => updateShowcase({ ...siteContent.showcase, layout: event.target.value as SiteShowcaseContent['layout'] })}><option value="featured">Featured — one big photo</option><option value="grid">Uniform grid — even tiles</option><option value="filmstrip">Filmstrip — swipeable row</option></select></label>
-                  )}
+                  <label className={styles.formField}><span>Gallery layout</span><select value={siteContent.showcase.layout} onChange={(event) => updateShowcase({ ...siteContent.showcase, layout: event.target.value as SiteShowcaseContent['layout'] })}><option value="featured">Featured — one big photo</option><option value="grid">Uniform grid — even tiles</option><option value="filmstrip">Filmstrip — swipeable row</option></select></label>
                   <div className={styles.contentSubhead}><strong>Gallery Images</strong><small>{siteContent.showcase.items.length}/9 · shown in this order</small></div>
                   {siteContent.showcase.items.length > 0 && (
                     <div className={styles.showcaseSelected} aria-label="Showcase images, in order">
