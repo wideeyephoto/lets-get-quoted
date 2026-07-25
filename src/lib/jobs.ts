@@ -13,6 +13,9 @@ export type QuoteItem = {
   amount: number;
   kind: QuoteItemKind;
   selected: boolean;
+  // Add-ons only: flags the upsell the contractor wants to nudge, shown to the
+  // client as a "Recommended" badge. Never affects the total.
+  recommended: boolean;
 };
 
 export type Job = {
@@ -330,6 +333,7 @@ export function parseQuoteItems(value: unknown): QuoteItem[] {
       kind,
       // Base items are always in the total; an add-on counts only when selected.
       selected: kind === 'base' ? true : record.selected === true,
+      recommended: kind === 'addon' && record.recommended === true,
     });
   }
   return items;

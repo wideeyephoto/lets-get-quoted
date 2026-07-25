@@ -32,7 +32,7 @@ export default function QuoteBuilder({
   }
 
   function addRow(kind: QuoteItemKind) {
-    setRows((current) => [...current, { id: nextId(), label: '', amount: 0, kind, selected: kind === 'base' }]);
+    setRows((current) => [...current, { id: nextId(), label: '', amount: 0, kind, selected: kind === 'base', recommended: false }]);
     setResult(null);
   }
 
@@ -97,14 +97,24 @@ export default function QuoteBuilder({
                   <option value="addon">Optional add-on</option>
                 </select>
                 {row.kind === 'addon' ? (
-                  <label className="quote-builder-preselect">
-                    <input
-                      type="checkbox"
-                      checked={row.selected}
-                      onChange={(event) => updateRow(row.id, { selected: event.target.checked })}
-                    />
-                    <span>Pre-checked</span>
-                  </label>
+                  <>
+                    <label className="quote-builder-preselect">
+                      <input
+                        type="checkbox"
+                        checked={row.selected}
+                        onChange={(event) => updateRow(row.id, { selected: event.target.checked })}
+                      />
+                      <span>Pre-checked</span>
+                    </label>
+                    <label className={`quote-builder-recommend${row.recommended ? ' is-on' : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={row.recommended}
+                        onChange={(event) => updateRow(row.id, { recommended: event.target.checked })}
+                      />
+                      <span>★ Recommend</span>
+                    </label>
+                  </>
                 ) : null}
                 <button type="button" className="quote-builder-remove" onClick={() => removeRow(row.id)} aria-label="Remove line item">×</button>
               </div>

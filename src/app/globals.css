@@ -2530,17 +2530,15 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 }
 
 /* Optional add-ons read as tappable upsell cards, not plain list rows. */
+.quote-doc-addons {
+  gap: 0.55rem;
+}
+
 .quote-doc-addon {
   border: 1px solid rgba(255, 138, 61, 0.3);
   border-radius: 12px;
-  padding: 0.75rem 0.85rem;
-  margin-bottom: 0.55rem;
   background: rgba(255, 138, 61, 0.05);
   transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-}
-
-.quote-doc-addon:last-child {
-  margin-bottom: 0;
 }
 
 .quote-doc-addon:hover {
@@ -2554,23 +2552,99 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   box-shadow: 0 0 0 1px rgba(255, 138, 61, 0.4), 0 14px 30px -18px rgba(255, 122, 33, 0.95);
 }
 
-.quote-doc-addon.is-selected .quote-doc-line-amount {
+.quote-doc-addon:focus-within {
+  border-color: #ff8a3d;
+  box-shadow: 0 0 0 2px rgba(255, 138, 61, 0.5);
+}
+
+.quote-doc-addon-hit {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  cursor: pointer;
+}
+
+/* The native checkbox stays in the form (name="addon") but the card + Add button
+   are the visible control. Kept accessible: focusable, drives :focus-within. */
+.quote-doc-addon-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.quote-doc-addon-name {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.quote-doc-addon-price {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--muted, #c8d0dc);
+}
+
+.quote-doc-addon.is-selected .quote-doc-addon-price {
   color: #ffb27a;
   font-weight: 700;
 }
 
-.quote-doc-addon-label {
+.quote-doc-addon-btn {
+  flex: 0 0 auto;
+  min-width: 4.6rem;
+  text-align: center;
+  padding: 0.4rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 1px solid rgba(255, 138, 61, 0.55);
+  color: #ff8a3d;
+  background: transparent;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.quote-doc-addon.is-selected .quote-doc-addon-btn {
+  border-color: transparent;
+  color: #1a0f04;
+  background: linear-gradient(135deg, #ff8a3d, #ffab5e);
+}
+
+.quote-doc-badge {
+  font-size: 0.66rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #ffd166;
+  background: rgba(255, 209, 102, 0.14);
+  border: 1px solid rgba(255, 209, 102, 0.3);
+  border-radius: 999px;
+  padding: 0.12rem 0.45rem;
+  white-space: nowrap;
+}
+
+/* Builder: "Recommend" toggle on add-on rows (gold, matches the client badge). */
+.quote-builder-recommend {
   display: inline-flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  color: rgba(247, 245, 239, 0.6);
+  white-space: nowrap;
   cursor: pointer;
 }
 
-.quote-doc-addon-label input {
-  width: 20px;
-  height: 20px;
-  accent-color: #ff8a3d;
-  cursor: pointer;
+.quote-builder-recommend input {
+  accent-color: #ffd166;
+}
+
+.quote-builder-recommend.is-on {
+  color: #ffd166;
 }
 
 .quote-doc-line-amount {
