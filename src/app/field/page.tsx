@@ -70,7 +70,7 @@ function RouteStop({ job, index }: { job: FieldJob; index: number }) {
 }
 
 export default async function FieldHomePage() {
-  const { supabase, accountId, crew } = await requireCrewContext();
+  const { supabase, accountId, crew, businessName } = await requireCrewContext();
 
   const jobIds = await listJobIdsForCrew(supabase, accountId, crew.id);
   let jobs: FieldJob[] = [];
@@ -82,12 +82,6 @@ export default async function FieldHomePage() {
       .in('id', jobIds);
     jobs = (data ?? []) as FieldJob[];
   }
-
-  const [{ data: account }, { data: site }] = await Promise.all([
-    supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
-    supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
-  ]);
-  const businessName = site?.company_name || account?.business_name || 'My crew';
 
   const today = new Date().toISOString().slice(0, 10);
   const open = jobs.filter((job) => job.status !== 'archived' && job.status !== 'complete');

@@ -65,8 +65,9 @@ export async function logFieldMaterialAction(jobId: string, formData: FormData) 
   const amount = Number(formData.get('amount'));
   if (!description || !Number.isFinite(amount) || amount < 0) redirect(`/field/jobs/${jobId}?logged=material-invalid`);
 
-  const cost = await createCost(supabase, accountId, jobId, { type: 'material', description, amount });
-  await supabase.from('costs').update({ crew_id: crew.id, crew_name: crew.name }).eq('account_id', accountId).eq('id', cost.id);
+  // Attribute to the crew member inline (createCost snapshots their name) — no
+  // follow-up update, so the row satisfies the crew "own rows only" cost RLS.
+  await createCost(supabase, accountId, jobId, { type: 'material', description, amount, crewId: crew.id });
 
   revalidatePath(`/field/jobs/${jobId}`);
   redirect(`/field/jobs/${jobId}?logged=material`);

@@ -108,6 +108,10 @@ export type CostInput =
       type: Exclude<CostType, 'labor'>;
       description: string;
       amount: number;
+      // Attribute a material/expense to the crew member who logged it. Set inline
+      // at insert time (not a follow-up update) so crew RLS — which lets a crew
+      // member insert/read only their OWN cost rows — accepts and returns it.
+      crewId?: string | null;
       supplier?: string | null;
       receiptUrl?: string | null;
     };
@@ -604,15 +608,18 @@ export async function createCost(
   }
 
   const category = COST_TYPE_CATEGORY[input.type];
-  const crewSnapshot =
-    input.type === 'labor' && input.crewId
-      ? await supabase
-          .from('crew')
-          .select('name, role_label')
-          .eq('account_id', accountId)
-          .eq('id', input.crewId)
-          .maybeSingle()
-      : null;
+  // Snapshot the crew member (name/role) for ANY cost type that's attributed to
+  // one — labor always, and materials logged from the field app. Doing it here
+  // (instead of a post-insert update on materials) means the crew_id is present
+  // on the very first insert, which the crew RLS insert/read policies require.
+  const crewSnapshot = input.crewId
+    ? await supabase
+        .from('crew')
+        .select('name, role_label')
+        .eq('account_id', accountId)
+        .eq('id', input.crewId)
+        .maybeSingle()
+    : null;
 
   if (crewSnapshot?.error) throw crewSnapshot.error;
 
@@ -641,6 +648,9 @@ export async function createCost(
           category,
           description: input.description,
           amount: input.amount,
+          crew_id: input.crewId ?? null,
+          crew_name: crewSnapshot?.data?.name ?? null,
+          crew_role_label: crewSnapshot?.data?.role_label ?? null,
           supplier: input.supplier ?? null,
           receipt_url: input.receiptUrl ?? null,
         };

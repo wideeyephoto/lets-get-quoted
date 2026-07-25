@@ -22,7 +22,7 @@ function formatTime(value: string): string {
 }
 
 export default async function FieldJobPage({ params, searchParams }: { params: { id: string }; searchParams: { logged?: string } }) {
-  const { supabase, accountId, crew } = await requireCrewContext();
+  const { supabase, accountId, crew, businessName } = await requireCrewContext();
 
   if (!(await isJobAssignedToCrew(supabase, accountId, params.id, crew.id))) {
     redirect('/field');
@@ -36,9 +36,7 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
     .maybeSingle();
   if (!job) redirect('/field');
 
-  const [{ data: account }, { data: site }, { data: feed }, { data: myCosts }] = await Promise.all([
-    supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
-    supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
+  const [{ data: feed }, { data: myCosts }] = await Promise.all([
     supabase
       .from('job_feed')
       .select('id, title, body, author, created_at')
@@ -56,7 +54,6 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
       .in('type', ['labor', 'material'])
       .order('created_at', { ascending: false }),
   ]);
-  const businessName = site?.company_name || account?.business_name || 'My crew';
 
   const loggedCosts = myCosts ?? [];
   const loggedHours = loggedCosts.filter((c) => c.type === 'labor').reduce((sum, c) => sum + (Number(c.hours) || 0), 0);

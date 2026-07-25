@@ -72,6 +72,7 @@ export type CrewContext = {
   userId: string;
   accountId: string;
   crew: CrewMember;
+  businessName: string;
 };
 
 // Guard for field-app pages/actions: requires a logged-in user who is linked to
@@ -88,7 +89,19 @@ export async function requireCrewContext(): Promise<CrewContext> {
   const crew = await getCrewByUserId(admin, user.id);
   if (!crew) redirect('/field/login?error=not-crew');
 
-  return { supabase, userId: user.id, accountId: crew.account_id, crew };
+  // Resolve branding via the admin client: crew RLS no longer grants read on the
+  // accounts/sites tables (they hold billing + website config), so the field app
+  // gets the business name here instead of reading those tables with the session
+  // client. business_name/company_name aren't sensitive.
+  const [{ data: site }, { data: account }] = await Promise.all([
+    // limit(1): a stray duplicate sites row must not hard-fail every field page
+    // (maybeSingle throws on >1) now that this read is on the crew-critical path.
+    admin.from('sites').select('company_name').eq('account_id', crew.account_id).limit(1).maybeSingle(),
+    admin.from('accounts').select('business_name').eq('id', crew.account_id).maybeSingle(),
+  ]);
+  const businessName = site?.company_name || account?.business_name || 'My crew';
+
+  return { supabase, userId: user.id, accountId: crew.account_id, crew, businessName };
 }
 
 function escapeHtml(value: string): string {

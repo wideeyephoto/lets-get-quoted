@@ -656,14 +656,18 @@ create table if not exists lead_blocklist (
 );
 alter table lead_blocklist enable row level security;
 drop policy if exists lead_blocklist_all on lead_blocklist;
-create policy lead_blocklist_all on lead_blocklist for all using ( is_member(account_id) );
+create policy lead_blocklist_all on lead_blocklist for all using ( is_owner(account_id) );
 create index if not exists lead_blocklist_account_idx on lead_blocklist (account_id, created_at desc);
 
 -- ----------------------------------------------------------------------------
 -- HELPFUL VIEW  — per-job margin, computed (never stored).
 -- ----------------------------------------------------------------------------
 drop view if exists job_margins;
-create view job_margins as
+-- security_invoker: the view runs with the QUERYING user's RLS, not the view
+-- owner's. Without this a crew member could read every job's margin straight
+-- from the view (bypassing the per-table crew policies); with it, they see only
+-- rows their own RLS allows (their assigned jobs), and owners still see all.
+create view job_margins with (security_invoker = true) as
 select
   j.id as job_id,
   j.account_id,
@@ -825,6 +829,11 @@ create unique index if not exists email_suppression_account_email_idx on email_s
 -- ============================================================================
 -- ROW-LEVEL SECURITY
 -- ============================================================================
+-- NOTE: is_member() is role-blind (owner OR crew). After the crew RLS tightening
+-- NO policy uses it — every policy gates on is_owner() or a crew helper below.
+-- It's retained only as a building block; do NOT reach for it in a new policy
+-- (that would silently re-open crew access to whatever table it gates). Use
+-- is_owner() for owner-only tables and the crew helpers for crew-scoped ones.
 create or replace function is_member(acc uuid)
 returns boolean language sql stable security definer set search_path = public as $$
   select exists (
@@ -841,6 +850,73 @@ returns boolean language sql stable security definer set search_path = public as
   );
 $$;
 
+-- Role-aware helpers for CREW scoping. Everything sensitive is gated on
+-- is_owner(); crew get a NARROW predicate: only their assigned jobs and their
+-- own rows. All are security definer so the
+-- lookups inside bypass RLS on memberships/crew/crew_assignments (no recursion).
+
+-- The current auth user is a crew member (not owner) of this account.
+create or replace function is_crew(acc uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from memberships m
+    where m.account_id = acc and m.user_id = auth.uid() and m.role = 'crew'
+  );
+$$;
+
+-- The current auth user is on the crew roster assigned to job j. This is how a
+-- crew member is scoped to "only my jobs" at the DB level (previously enforced
+-- only in application code).
+create or replace function crew_on_job(j uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1
+    from crew_assignments ca
+    join crew c on c.id = ca.crew_id
+    where ca.job_id = j and c.user_id = auth.uid()
+  );
+$$;
+
+-- A crew row (referenced by costs.crew_id / crew_assignments.crew_id) belongs to
+-- the current auth user. Lets crew see ONLY their own costs/assignments, not a
+-- coworker's pay rate or another crew's hours on a shared job.
+create or replace function crew_owns_crew_row(cid uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from crew c where c.id = cid and c.user_id = auth.uid()
+  );
+$$;
+
+-- The account a job belongs to, resolved bypassing RLS. Used in crew INSERT
+-- WITH CHECK clauses to PIN the new row's account_id to the job's real account,
+-- so a crew member can't insert a cost/feed/task carrying a foreign account_id
+-- (cross-tenant write / margin injection) while pointing job_id at their own job.
+create or replace function job_account_id(j uuid)
+returns uuid language sql stable security definer set search_path = public as $$
+  select account_id from jobs where id = j;
+$$;
+
+-- Column-level guard for crew job UPDATEs. RLS can't restrict which columns a
+-- policy lets through, and job_crew_update (needed so crew can flip status from
+-- the field app) would otherwise let a crew member rewrite account_id (a tenant
+-- move — the job vanishes from the real owner) or quoted_amount/quote_items
+-- (margin + invoicing basis). This trigger constrains ONLY crew writers to
+-- status-only updates; owners and the service-role/admin client (auth.uid() not
+-- a crew member) pass through untouched.
+create or replace function crew_jobs_update_guard()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if is_crew(old.account_id)
+     and (to_jsonb(new) - 'status') is distinct from (to_jsonb(old) - 'status') then
+    raise exception 'crew may only change job status';
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists crew_jobs_update_guard on jobs;
+create trigger crew_jobs_update_guard before update on jobs
+  for each row execute function crew_jobs_update_guard();
+
 do $$
 declare t text;
 begin
@@ -856,12 +932,32 @@ drop policy if exists acc_read on accounts;
 drop policy if exists acc_write on accounts;
 drop policy if exists mem_read on memberships;
 drop policy if exists mem_manage on memberships;
+-- crew: old single policy + new owner/self split
 drop policy if exists crew_all on crew;
+drop policy if exists crew_owner on crew;
+drop policy if exists crew_self_read on crew;
+-- sites: old single policy + new owner-only
 drop policy if exists site_all on sites;
+drop policy if exists site_owner on sites;
+-- jobs: old single policy + new owner/crew split
 drop policy if exists job_all on jobs;
+drop policy if exists job_owner on jobs;
+drop policy if exists job_crew_read on jobs;
+drop policy if exists job_crew_update on jobs;
+-- crew_assignments: old single policy + new owner/crew split
 drop policy if exists asg_all on crew_assignments;
+drop policy if exists asg_owner on crew_assignments;
+drop policy if exists asg_crew_read on crew_assignments;
+-- costs: old single policy + new owner/crew split
 drop policy if exists cost_all on costs;
+drop policy if exists cost_owner on costs;
+drop policy if exists cost_crew_read on costs;
+drop policy if exists cost_crew_insert on costs;
+-- job_feed: old single policy + new owner/crew split
 drop policy if exists feed_all on job_feed;
+drop policy if exists feed_owner on job_feed;
+drop policy if exists feed_crew_read on job_feed;
+drop policy if exists feed_crew_insert on job_feed;
 drop policy if exists client_access_all on client_job_access;
 drop policy if exists inv_all on invoices;
 drop policy if exists pay_all on payments;
@@ -876,39 +972,90 @@ drop policy if exists recurring_plans_all on recurring_plans;
 drop policy if exists services_all on services;
 drop policy if exists review_invites_all on review_invites;
 drop policy if exists message_templates_all on message_templates;
+-- job_tasks: old single policy + prior crew combined policy + new owner/crew split
 drop policy if exists job_tasks_all on job_tasks;
+drop policy if exists job_tasks_owner on job_tasks;
+drop policy if exists job_tasks_crew on job_tasks;
+drop policy if exists job_tasks_crew_read on job_tasks;
+drop policy if exists job_tasks_crew_insert on job_tasks;
+drop policy if exists job_tasks_crew_update on job_tasks;
 drop policy if exists job_schedule_request_all on job_schedule_requests;
 drop policy if exists email_suppression_all on email_suppression;
 drop policy if exists invitem_all on invoice_items;
 
-create policy acc_read   on accounts for select using ( is_member(id) );
+-- ACCOUNTS: owners read + write. Crew do NOT read accounts — it holds Stripe
+-- customer/connect ids, plan, subscription status, billing toggles. The field
+-- app gets its branding (business name) via the admin client in requireCrewContext,
+-- not by reading this table.
+create policy acc_read   on accounts for select using ( is_owner(id) );
 create policy acc_write  on accounts for update using ( is_owner(id) );
 
-create policy mem_read   on memberships for select using ( is_member(account_id) );
+-- MEMBERSHIPS: owner-only. Crew never enumerate the member roster (their own
+-- identity is resolved server-side via the admin client).
+create policy mem_read   on memberships for select using ( is_owner(account_id) );
 create policy mem_manage on memberships for all    using ( is_owner(account_id) );
 
-create policy crew_all   on crew             for all using ( is_member(account_id) );
-create policy site_all   on sites            for all using ( is_member(account_id) );
-create policy job_all    on jobs             for all using ( is_member(account_id) );
-create policy asg_all    on crew_assignments for all using ( is_member(account_id) );
-create policy cost_all   on costs            for all using ( is_member(account_id) );
-create policy feed_all   on job_feed         for all using ( is_member(account_id) );
+-- CREW roster: owners manage everyone; a crew member may read ONLY their own row
+-- (so createCost can snapshot their name/rate) — never a coworker's pay rate.
+create policy crew_owner     on crew for all    using ( is_owner(account_id) );
+create policy crew_self_read on crew for select using ( user_id = auth.uid() );
+
+-- SITES: owner-only. The published website config isn't something crew edit or
+-- need (branding comes from requireCrewContext).
+create policy site_owner on sites for all using ( is_owner(account_id) );
+
+-- JOBS: owners full access; crew may READ and UPDATE (status from the field) only
+-- the jobs they're assigned to. (RLS can't restrict columns, so a crew member can
+-- technically change non-status fields on THEIR assigned job — the field app only
+-- writes status; owners see all changes in the job feed.)
+create policy job_owner       on jobs for all    using ( is_owner(account_id) );
+create policy job_crew_read   on jobs for select using ( crew_on_job(id) );
+create policy job_crew_update on jobs for update using ( crew_on_job(id) ) with check ( crew_on_job(id) );
+
+-- CREW_ASSIGNMENTS: owners manage; crew read only their OWN assignment rows
+-- (this is the "my jobs" list). Crew never write assignments.
+create policy asg_owner     on crew_assignments for all    using ( is_owner(account_id) );
+create policy asg_crew_read on crew_assignments for select using ( crew_owns_crew_row(crew_id) );
+
+-- COSTS: owners full access. Crew may INSERT time/materials on an assigned job,
+-- attributed to themselves, and READ only their OWN cost rows — never a
+-- coworker's labor rate or the job's full cost ledger / margin.
+create policy cost_owner       on costs for all    using ( is_owner(account_id) );
+create policy cost_crew_read   on costs for select using ( crew_owns_crew_row(crew_id) );
+create policy cost_crew_insert on costs for insert with check ( crew_on_job(job_id) and crew_owns_crew_row(crew_id) and account_id = job_account_id(job_id) );
+
+-- JOB_FEED: owners full access. Crew may READ and POST feed events on an assigned
+-- job (status changes, field notes, client-shared updates) — nothing else.
+create policy feed_owner       on job_feed for all    using ( is_owner(account_id) );
+create policy feed_crew_read   on job_feed for select using ( crew_on_job(job_id) );
+create policy feed_crew_insert on job_feed for insert with check ( crew_on_job(job_id) and account_id = job_account_id(job_id) );
+
 create policy client_access_all on client_job_access for all using ( is_owner(account_id) );
-create policy inv_all    on invoices         for all using ( is_member(account_id) );
-create policy pay_all    on payments         for all using ( is_member(account_id) );
-create policy plan_all   on finance_plans    for all using ( is_member(account_id) );
-create policy lead_all   on leads            for all using ( is_member(account_id) );
-create policy sms_event_all on sms_events     for all using ( is_member(account_id) );
-create policy sms_consent_all on sms_consent  for all using ( is_member(account_id) );
-create policy sms_messages_all on sms_messages for all using ( is_member(account_id) );
-create policy clients_all on clients          for all using ( is_member(account_id) );
-create policy campaigns_all on campaigns      for all using ( is_member(account_id) );
-create policy recurring_plans_all on recurring_plans for all using ( is_member(account_id) );
-create policy services_all on services        for all using ( is_member(account_id) );
-create policy review_invites_all on review_invites for all using ( is_member(account_id) );
-create policy message_templates_all on message_templates for all using ( is_member(account_id) );
-create policy job_tasks_all on job_tasks      for all using ( is_member(account_id) );
-create policy job_schedule_request_all on job_schedule_requests for all using ( is_member(account_id) );
+
+-- Financials, CRM, comms, marketing config: OWNER-ONLY. Crew touch none of these.
+create policy inv_all    on invoices         for all using ( is_owner(account_id) );
+create policy pay_all    on payments         for all using ( is_owner(account_id) );
+create policy plan_all   on finance_plans    for all using ( is_owner(account_id) );
+create policy lead_all   on leads            for all using ( is_owner(account_id) );
+create policy sms_event_all on sms_events     for all using ( is_owner(account_id) );
+create policy sms_consent_all on sms_consent  for all using ( is_owner(account_id) );
+create policy sms_messages_all on sms_messages for all using ( is_owner(account_id) );
+create policy clients_all on clients          for all using ( is_owner(account_id) );
+create policy campaigns_all on campaigns      for all using ( is_owner(account_id) );
+create policy recurring_plans_all on recurring_plans for all using ( is_owner(account_id) );
+create policy services_all on services        for all using ( is_owner(account_id) );
+create policy review_invites_all on review_invites for all using ( is_owner(account_id) );
+create policy message_templates_all on message_templates for all using ( is_owner(account_id) );
+create policy job_schedule_request_all on job_schedule_requests for all using ( is_owner(account_id) );
+
+-- JOB_TASKS: owners full access; crew may READ, ADD, and TICK tasks on an
+-- assigned job — but NOT delete an owner's punch-list item (no crew DELETE
+-- policy), and inserts/updates are pinned to the job's account.
+create policy job_tasks_owner        on job_tasks for all    using ( is_owner(account_id) );
+create policy job_tasks_crew_read    on job_tasks for select using ( crew_on_job(job_id) );
+create policy job_tasks_crew_insert  on job_tasks for insert with check ( crew_on_job(job_id) and account_id = job_account_id(job_id) );
+create policy job_tasks_crew_update  on job_tasks for update using ( crew_on_job(job_id) ) with check ( crew_on_job(job_id) and account_id = job_account_id(job_id) );
+
 -- Owner-only: only owners send/manage marketing email, so only owners read/write
 -- the opt-out list. Public unsubscribe writes go through the service-role client
 -- (which bypasses RLS), so no anon policy is needed here.
@@ -916,7 +1063,7 @@ create policy email_suppression_all on email_suppression for all using ( is_owne
 
 alter table invoice_items enable row level security;
 create policy invitem_all on invoice_items for all using (
-  exists (select 1 from invoices i where i.id = invoice_id and is_member(i.account_id))
+  exists (select 1 from invoices i where i.id = invoice_id and is_owner(i.account_id))
 );
 
 -- ============================================================================
