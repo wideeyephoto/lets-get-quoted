@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { findOrCreateClientId } from '@/lib/clients';
 
 export type JobStatus = 'new_lead' | 'in_progress' | 'complete' | 'archived';
 export type CostType = 'material' | 'labor' | 'sub' | 'receipt' | 'other';
@@ -33,6 +34,7 @@ export type Job = {
   estimated_hours: number | null;
   quoted_amount: number;
   quote_items: QuoteItem[] | null;
+  client_id: string | null;
   photo_paths: string[];
   created_at: string;
 };
@@ -400,7 +402,26 @@ export async function createJob(supabase: SupabaseClient, accountId: string, inp
       .select('*')
       .single();
 
-    if (!error && data) return data as Job;
+    if (!error && data) {
+      const job = data as Job;
+      // Link (or create) the unified client profile. Best-effort: a failure here
+      // must never fail the job creation — the job just stays unlinked.
+      try {
+        const clientId = await findOrCreateClientId(supabase, accountId, {
+          name: input.clientName,
+          phone: input.clientPhone,
+          email: input.clientEmail,
+          address: input.address,
+        });
+        if (clientId) {
+          await supabase.from('jobs').update({ client_id: clientId }).eq('id', job.id);
+          job.client_id = clientId;
+        }
+      } catch (clientError) {
+        console.error(`Client link failed for job ${job.id}:`, clientError instanceof Error ? clientError.message : clientError);
+      }
+      return job;
+    }
     if (error?.code !== '23505') throw error ?? new Error('Unable to create job');
   }
 

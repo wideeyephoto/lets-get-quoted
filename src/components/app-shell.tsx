@@ -15,6 +15,7 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/dashboard/leads', label: 'Leads', hint: 'New & website leads' },
   { href: '/dashboard/jobs', label: 'Jobs', hint: 'Quotes · Invoices · Payments' },
+  { href: '/dashboard/clients', label: 'Clients', hint: 'Customer profiles & history' },
   { href: '/dashboard/schedule', label: 'Schedule', hint: 'Calendar & unscheduled work' },
   { href: '/dashboard/crew', label: 'Crew', hint: 'Your team & assignments' },
   { href: '/dashboard/messages', label: 'Messages', hint: 'Two-way customer texts' },

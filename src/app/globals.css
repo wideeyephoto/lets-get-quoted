@@ -2973,6 +2973,71 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   color: var(--muted, #c8d0dc);
 }
 
+/* ---- Clients (CRM) list ---- */
+.client-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.client-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  flex-wrap: wrap;
+}
+
+.client-row:hover {
+  border-color: rgba(255, 138, 61, 0.4);
+  background: rgba(255, 138, 61, 0.04);
+}
+
+.client-row-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.client-repeat-badge {
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #1a0f04;
+  background: linear-gradient(135deg, #ffd166, #f0b73e);
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+}
+
+.client-row-contact {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.82rem;
+  color: var(--muted, #c8d0dc);
+}
+
+.client-row-stats {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  font-size: 0.85rem;
+  color: var(--muted, #c8d0dc);
+  font-variant-numeric: tabular-nums;
+}
+
+.client-row-stats strong { color: var(--text, #f7f5ef); }
+
+.client-row-last { white-space: nowrap; }
+
+@media (max-width: 620px) {
+  .client-row-stats { gap: 0.8rem; width: 100%; }
+}
+
 .quote-doc-line-amount {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;

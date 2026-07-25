@@ -310,6 +310,9 @@ export default async function JobDetailPage({
             <Link href={`/dashboard/jobs/${job.id}?edit=client#job-details`} className="job-title-edit-link">
               (edit)
             </Link>
+            {job.client_id ? (
+              <Link href={`/dashboard/clients/${job.client_id}`} className="job-title-edit-link">Client profile ↗</Link>
+            ) : null}
           </div>
           <div className="workspace-inline-row">
             <span className={`status-badge status-${heroStatus.tone}`} title={heroStatus.title}>{heroStatus.label}</span>

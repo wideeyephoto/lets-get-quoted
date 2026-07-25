@@ -234,6 +234,31 @@ alter table jobs add column if not exists quote_items jsonb;
 alter table jobs add column if not exists client_email text;
 
 -- ----------------------------------------------------------------------------
+-- CLIENTS  — a first-class, deduped customer record. A job's client_name/phone/
+-- email are still the per-job snapshot; client_id links the job to the unified
+-- profile (repeat-customer history, notes). Created/matched on job creation and
+-- backfilled from existing jobs.
+-- ----------------------------------------------------------------------------
+create table if not exists clients (
+  id           uuid primary key default gen_random_uuid(),
+  account_id   uuid not null references accounts(id) on delete cascade,
+  name         text not null,
+  phone        text,
+  email        text,
+  address      text,
+  notes        text,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+create index if not exists clients_account_phone_idx on clients (account_id, phone);
+create index if not exists clients_account_email_idx on clients (account_id, email);
+
+-- Link jobs to their client profile (set on create + backfill). ON DELETE SET
+-- NULL: removing a client never cascades away the job history.
+alter table jobs add column if not exists client_id uuid references clients(id) on delete set null;
+create index if not exists jobs_client_id_idx on jobs (client_id);
+
+-- ----------------------------------------------------------------------------
 -- CREW_ASSIGNMENTS  — many-to-many jobs <-> crew.
 -- ----------------------------------------------------------------------------
 create table if not exists crew_assignments (
@@ -656,7 +681,7 @@ declare t text;
 begin
   foreach t in array array[
     'accounts','memberships','crew','sites','jobs','crew_assignments',
-    'costs','job_feed','client_job_access','invoices','payments','finance_plans','leads','sms_events','sms_consent','sms_messages','job_schedule_requests'
+    'costs','job_feed','client_job_access','invoices','payments','finance_plans','leads','sms_events','sms_consent','sms_messages','clients','job_schedule_requests'
   ] loop
     execute format('alter table %I enable row level security;', t);
   end loop;
@@ -680,6 +705,7 @@ drop policy if exists lead_all on leads;
 drop policy if exists sms_event_all on sms_events;
 drop policy if exists sms_consent_all on sms_consent;
 drop policy if exists sms_messages_all on sms_messages;
+drop policy if exists clients_all on clients;
 drop policy if exists job_schedule_request_all on job_schedule_requests;
 drop policy if exists invitem_all on invoice_items;
 
@@ -703,6 +729,7 @@ create policy lead_all   on leads            for all using ( is_member(account_i
 create policy sms_event_all on sms_events     for all using ( is_member(account_id) );
 create policy sms_consent_all on sms_consent  for all using ( is_member(account_id) );
 create policy sms_messages_all on sms_messages for all using ( is_member(account_id) );
+create policy clients_all on clients          for all using ( is_member(account_id) );
 create policy job_schedule_request_all on job_schedule_requests for all using ( is_member(account_id) );
 
 alter table invoice_items enable row level security;
