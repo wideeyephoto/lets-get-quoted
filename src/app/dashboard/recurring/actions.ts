@@ -8,6 +8,7 @@ import {
   getRecurringPlan,
   setRecurringPlanActive,
   deleteRecurringPlan,
+  runRecurringPlanNow,
   todayDateKey,
   type RecurringFrequency,
 } from '@/lib/recurring';
@@ -67,6 +68,13 @@ export async function createRecurringPlanAction(formData: FormData) {
 
   revalidatePath('/dashboard/recurring');
   redirect(`/dashboard/recurring?flash=${flash}`);
+}
+
+export async function runPlanNowAction(planId: string) {
+  const { accountId } = await requireOwnerContext();
+  const { outcome } = await runRecurringPlanNow(accountId, planId);
+  revalidatePath('/dashboard/recurring');
+  redirect(`/dashboard/recurring?flash=ran-${outcome}`);
 }
 
 export async function setPlanActiveAction(planId: string, active: boolean) {

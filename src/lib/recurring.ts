@@ -320,6 +320,20 @@ async function spawnPlanOccurrence(admin: ReturnType<typeof createAdminClient>, 
   return chargePlanVisit(admin, plan, job, dateKey);
 }
 
+// Owner-triggered "run this plan now" — spawns the next visit and charges it
+// immediately using the SAME code path the cron uses, instead of waiting for the
+// daily sweep. Used both as a real feature (bill an off-cycle visit) and to
+// verify the auto-charge path end-to-end through the webhook + DB.
+export async function runRecurringPlanNow(accountId: string, planId: string): Promise<{ outcome: ChargeOutcome }> {
+  const admin = createAdminClient();
+  const { data } = await admin.from('recurring_plans').select('*').eq('account_id', accountId).eq('id', planId).maybeSingle();
+  if (!data) throw new Error('Plan not found.');
+  const plan = data as RecurringPlan;
+  if (!plan.active) throw new Error('This plan is paused — resume it before running a visit.');
+  const outcome = await spawnPlanOccurrence(admin, plan);
+  return { outcome };
+}
+
 export type RecurringRunSummary = {
   due: number;
   spawned: number;

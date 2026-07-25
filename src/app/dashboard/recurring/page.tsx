@@ -2,7 +2,8 @@ import { requireOwnerContext } from '@/lib/auth';
 import { formatMoney } from '@/lib/jobs';
 import { listRecurringPlans, todayDateKey, FREQUENCY_LABEL } from '@/lib/recurring';
 import RecurringComposer from './RecurringComposer';
-import { setPlanActiveAction, deletePlanAction, resendCardLinkAction } from './actions';
+import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
+import { setPlanActiveAction, deletePlanAction, resendCardLinkAction, runPlanNowAction } from './actions';
 
 function formatDateKey(dateKey: string): string {
   const [year, month, day] = dateKey.split('-').map(Number);
@@ -20,6 +21,9 @@ const FLASH_MESSAGES: Record<string, { tone: 'success' | 'info' | 'warn'; text: 
   'card-sent': { tone: 'success', text: 'Plan saved and a secure card-setup link was sent to your customer.' },
   'card-failed': { tone: 'warn', text: 'Plan saved, but the card link couldn’t be sent. Add an email or opted-in phone, then resend it.' },
   deleted: { tone: 'info', text: 'Recurring plan cancelled. No more visits will be created.' },
+  'ran-paid': { tone: 'success', text: 'Visit created and the saved card was charged. Check the job and its payment to confirm.' },
+  'ran-skipped': { tone: 'info', text: 'Visit created and the schedule advanced. Nothing was charged (auto-charge off or no card on file).' },
+  'ran-failed': { tone: 'warn', text: 'Visit created, but the card charge didn’t go through — the customer was sent a pay link. See the job’s payment.' },
 };
 
 export default async function RecurringPage({ searchParams }: { searchParams: { flash?: string } }) {
@@ -96,6 +100,21 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
                   </div>
 
                   <div className="recurring-card-actions">
+                    {plan.active ? (
+                      <ConfirmActionButton
+                        action={runPlanNowAction.bind(null, plan.id)}
+                        confirmMessage={
+                          plan.auto_charge && plan.card_last4
+                            ? `Create the next visit now and charge the card on file (•••• ${plan.card_last4}) ${plan.amount > 0 ? formatMoney(plan.amount) : ''}? This bills the customer immediately and moves the schedule forward.`
+                            : 'Create the next scheduled visit now and move the schedule forward?'
+                        }
+                        className="btn secondary"
+                        pendingLabel="Running…"
+                        savedLabel="Done ✓"
+                      >
+                        Run next visit now
+                      </ConfirmActionButton>
+                    ) : null}
                     <form action={setPlanActiveAction.bind(null, plan.id, paused)}>
                       <button type="submit" className="btn secondary">{paused ? 'Resume' : 'Pause'}</button>
                     </form>
