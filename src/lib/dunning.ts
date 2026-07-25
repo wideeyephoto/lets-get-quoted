@@ -25,7 +25,7 @@ const LIFETIME_MAX_CHARGE_ATTEMPTS = 8;
 const MAX_RETRIES_PER_RUN = 200;
 
 type AdminClient = ReturnType<typeof createAdminClient>;
-type DunningState = 'scheduled' | 'needs_card' | 'exhausted' | 'recovered';
+export type DunningState = 'scheduled' | 'needs_card' | 'exhausted' | 'recovered';
 
 export type StripeDecline = { code: string | null; declineCode: string | null; message: string | null; intentId: string | null };
 
@@ -67,6 +67,28 @@ export function classifyDecline(code: string | null, declineCode: string | null)
   if (code && NEEDS_CARD.has(code)) return 'needs_card';
   if (declineCode && NEEDS_CARD.has(declineCode)) return 'needs_card';
   return 'retry';
+}
+
+export type DunningTransition = { state: DunningState; newAttempts: number; nextRetryAt: string | null };
+
+// The pure dunning decision: given the lifetime + per-cycle attempt counters, the
+// decline classification, and whether this is a retry, decide the next state and
+// (for a scheduled retry) when it's due. Extracted from recordRecurringChargeFailure
+// so the money-safety transition table is unit-testable; `now` is injectable so the
+// scheduled-retry timestamp is deterministic in tests.
+export function decideDunningTransition(
+  input: { chargeAttempts: number; dunningAttempts: number; classification: 'retry' | 'needs_card'; isRetry: boolean },
+  now: number = Date.now(),
+): DunningTransition {
+  const newAttempts = input.isRetry ? input.dunningAttempts + 1 : input.dunningAttempts;
+  // Hard lifetime cap wins over everything — stop regardless of the decline kind.
+  if (input.chargeAttempts >= LIFETIME_MAX_CHARGE_ATTEMPTS) return { state: 'exhausted', newAttempts, nextRetryAt: null };
+  // A card a blind retry can never fix — route to a card update, don't schedule.
+  if (input.classification === 'needs_card') return { state: 'needs_card', newAttempts, nextRetryAt: null };
+  // Out of automated retries for this cycle.
+  if (newAttempts >= MAX_DUNNING_ATTEMPTS) return { state: 'exhausted', newAttempts, nextRetryAt: null };
+  // Schedule the next retry at this cycle's backoff offset.
+  return { state: 'scheduled', newAttempts, nextRetryAt: new Date(now + RETRY_OFFSET_DAYS[newAttempts] * DAY_MS).toISOString() };
 }
 
 // A short, client-safe reason label for owner-facing messaging.
@@ -181,24 +203,12 @@ export async function recordRecurringChargeFailure(
   isRetry: boolean,
 ): Promise<DunningState> {
   const classification = classifyDecline(decline.code, decline.declineCode);
-  const newAttempts = isRetry ? payment.dunning_attempts + 1 : payment.dunning_attempts;
-
-  let state: DunningState;
-  let nextRetryAt: string | null;
-  if (payment.charge_attempts >= LIFETIME_MAX_CHARGE_ATTEMPTS) {
-    // Hard cap reached — stop retrying regardless of the decline kind.
-    state = 'exhausted';
-    nextRetryAt = null;
-  } else if (classification === 'needs_card') {
-    state = 'needs_card';
-    nextRetryAt = null;
-  } else if (newAttempts >= MAX_DUNNING_ATTEMPTS) {
-    state = 'exhausted';
-    nextRetryAt = null;
-  } else {
-    state = 'scheduled';
-    nextRetryAt = new Date(Date.now() + RETRY_OFFSET_DAYS[newAttempts] * DAY_MS).toISOString();
-  }
+  const { state, newAttempts, nextRetryAt } = decideDunningTransition({
+    chargeAttempts: payment.charge_attempts,
+    dunningAttempts: payment.dunning_attempts,
+    classification,
+    isRetry,
+  });
   const terminal = state === 'needs_card' || state === 'exhausted';
   const wasTerminal = payment.dunning_state === 'needs_card' || payment.dunning_state === 'exhausted';
 
