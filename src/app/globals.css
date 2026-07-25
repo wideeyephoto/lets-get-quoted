@@ -264,13 +264,28 @@ h3 {
   margin: 0 0 0.65rem;
 }
 
-.sidenav-nav { display: flex; flex-direction: column; gap: 0.1rem; }
+.sidenav-nav { display: flex; flex-direction: column; gap: 0; }
+
+/* A leading line icon on every nav row. Sits dimmer than the label at rest and
+   brightens with it on hover / active; on the accent Home pill it inverts to
+   the dark on-accent ink. */
+.sidenav-ic {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  color: rgba(200, 212, 228, 0.58);
+  transition: color 0.15s ease;
+}
 
 .sidenav-link {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.68rem;
   padding: 0.55rem 0.7rem;
   border-radius: 12px;
   color: rgba(247, 245, 239, 0.72);
@@ -279,37 +294,60 @@ h3 {
   transition: background 0.15s ease, color 0.15s ease;
 }
 .sidenav-link:hover { background: rgba(255, 255, 255, 0.06); color: var(--text); }
+.sidenav-link:hover .sidenav-ic { color: rgba(230, 238, 248, 0.9); }
 .sidenav-link.active {
   background: rgba(255, 255, 255, 0.10);
   color: var(--text);
   font-weight: 600;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
+.sidenav-link.active .sidenav-ic { color: var(--accent); }
 
 .sidenav-home {
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.7rem;
+  padding: 0.62rem 0.75rem;
   background: linear-gradient(180deg, var(--accent), #ff9440);
   color: #180c02;
   font-weight: 700;
+  box-shadow: 0 12px 26px -12px rgba(255, 122, 33, 0.6);
 }
 .sidenav-home:hover { background: linear-gradient(180deg, #ff8a3d, #ff9440); color: #180c02; }
+.sidenav-home:hover .sidenav-ic,
+.sidenav-home .sidenav-ic { color: #180c02; }
 .sidenav-home.active {
   background: linear-gradient(180deg, var(--accent), #ff9440);
   color: #180c02;
-  box-shadow: 0 8px 20px -9px rgba(255, 122, 33, 0.65);
+  box-shadow: 0 12px 26px -12px rgba(255, 122, 33, 0.6);
 }
 
-.sidenav-group { margin-top: 0.75rem; }
+/* Panel: each section is its own soft card so Work / Team / Money / Grow read
+   as distinct blocks rather than one long list. */
+.sidenav-group {
+  margin-top: 0.55rem;
+  padding: 0.4rem 0.4rem 0.45rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
 .sidenav-glabel {
-  margin: 0 0 0.15rem 0.72rem;
+  margin: 0.15rem 0 0.3rem 0.55rem;
   font-family: var(--font-display);
   font-size: 0.62rem;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: rgba(200, 208, 220, 0.45);
+  color: rgba(200, 208, 220, 0.5);
+}
+
+/* A single-item card for Account, matching the group cards above it. */
+.sidenav-fcard {
+  padding: 0.4rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .sidenav-count {
+  margin-left: auto;
   display: inline-grid;
   place-items: center;
   min-width: 1.25rem;
@@ -320,6 +358,7 @@ h3 {
   color: #180c02;
   font-size: 0.68rem;
   font-weight: 800;
+  box-shadow: 0 5px 12px -5px rgba(255, 122, 33, 0.75);
 }
 
 .sidenav-foot {
