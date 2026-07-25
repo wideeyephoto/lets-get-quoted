@@ -4896,6 +4896,44 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 }
 
 /* ---------------------------------------------------------------------------
+   PAYROLL — crew hours & pay
+   --------------------------------------------------------------------------- */
+.payroll-range { margin: 0.8rem 0 0.4rem; font-size: 0.85rem; color: rgba(255,255,255,0.55); }
+.payroll-note { margin: 0.8rem 0 0; font-size: 0.78rem; color: rgba(255,255,255,0.45); line-height: 1.45; }
+.payroll-table { display: flex; flex-direction: column; margin-top: 0.6rem; }
+.payroll-row {
+  display: grid;
+  grid-template-columns: 1fr 5rem 4rem 6rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 0.2rem;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.payroll-row.payroll-head {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.5);
+  border-bottom: 1px solid rgba(255,255,255,0.14);
+}
+.payroll-row strong { font-size: 0.96rem; }
+.payroll-role { display: block; font-size: 0.78rem; color: rgba(255,255,255,0.5); }
+.payroll-num { text-align: right; font-variant-numeric: tabular-nums; }
+.payroll-pay { font-weight: 700; color: #bef264; }
+.payroll-row.payroll-total {
+  border-bottom: none;
+  border-top: 1px solid rgba(255,255,255,0.14);
+  margin-top: 0.2rem;
+  font-weight: 700;
+}
+.payroll-row.payroll-total .payroll-pay { color: #bef264; }
+
+@media (max-width: 560px) {
+  .payroll-row { grid-template-columns: 1fr 3.5rem 5rem; }
+  .payroll-row .payroll-num:nth-child(3) { display: none; } /* hide Jobs column on narrow */
+}
+
+/* ---------------------------------------------------------------------------
    REBOOK — win back past customers
    --------------------------------------------------------------------------- */
 .rebook-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.6rem; }

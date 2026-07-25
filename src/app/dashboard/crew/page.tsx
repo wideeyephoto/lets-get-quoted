@@ -49,8 +49,11 @@ export default async function CrewPage({ searchParams }: { searchParams: { statu
     <main className="wide-shell workspace-shell">
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading">
-          <p className="eyebrow">Roster</p>
-          <h2>Crew members</h2>
+          <div>
+            <p className="eyebrow">Roster</p>
+            <h2>Crew members</h2>
+          </div>
+          <Link href="/dashboard/payroll" className="btn secondary">Payroll &amp; hours →</Link>
         </div>
         {crew.length === 0 ? (
           <p className="empty-state">No crew members yet. Add your first one below.</p>

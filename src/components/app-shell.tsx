@@ -20,6 +20,7 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard/recurring', label: 'Recurring', hint: 'Repeating jobs & auto-billing' },
   { href: '/dashboard/services', label: 'Price book', hint: 'Saved services & prices' },
   { href: '/dashboard/crew', label: 'Crew', hint: 'Your team & assignments' },
+  { href: '/dashboard/payroll', label: 'Payroll', hint: 'Crew hours & pay by period' },
   { href: '/dashboard/messages', label: 'Messages', hint: 'Two-way customer texts' },
   { href: '/dashboard/campaigns', label: 'Campaigns', hint: 'Email & text past customers' },
   { href: '/dashboard/rebook', label: 'Rebook', hint: 'Win back past customers' },
