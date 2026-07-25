@@ -1,7 +1,9 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
 import { normalizeUsPhone } from '@/lib/phone';
 import { formatJobSchedule } from '@/lib/jobs';
 import { createJobFeedEvent } from '@/lib/job-feed';
+import { resolveAccountForPhone } from '@/lib/messages';
 import { sendAppointmentReminderSms } from '@/lib/sms';
 import { sendAppointmentReminderEmail } from '@/lib/email';
 
@@ -132,4 +134,58 @@ export async function runAppointmentReminders(): Promise<ReminderRunSummary> {
   }
 
   return { candidates: (jobs ?? []).length, sent, skipped, failed };
+}
+
+export type ConfirmResult = {
+  confirmed: boolean;
+  job?: { ref: string; whenLabel: string; businessName: string; clientFirst: string };
+};
+
+// A client texted "C" (or "confirm"/"yes") — find their most imminent upcoming
+// scheduled job for the account that texted them and mark it confirmed. Returns
+// confirmed:false (a no-op) when there's nothing to confirm, so the caller just
+// treats the text as an ordinary inbound message.
+export async function confirmUpcomingAppointment(admin: SupabaseClient, phone: string): Promise<ConfirmResult> {
+  const accountId = await resolveAccountForPhone(admin, phone);
+  if (!accountId) return { confirmed: false };
+
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: jobs } = await admin
+    .from('jobs')
+    .select('id, ref, client_name, client_phone, scheduled_for, scheduled_time, appointment_confirmed_at')
+    .eq('account_id', accountId)
+    .gte('scheduled_for', today)
+    .in('status', ['new_lead', 'in_progress'])
+    .order('scheduled_for', { ascending: true })
+    .limit(50);
+
+  const match = (jobs ?? []).find(
+    (job) => job.client_phone && normalizeUsPhone(job.client_phone) === phone && !job.appointment_confirmed_at,
+  );
+  if (!match) return { confirmed: false };
+
+  await admin.from('jobs').update({ appointment_confirmed_at: new Date().toISOString() }).eq('id', match.id);
+
+  const [{ data: account }, { data: site }] = await Promise.all([
+    admin.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
+    admin.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
+  ]);
+  const businessName = site?.company_name || account?.business_name || "Let's Get Quoted contractor";
+  const whenLabel = formatJobSchedule(match.scheduled_for, match.scheduled_time);
+
+  try {
+    await createJobFeedEvent(admin, accountId, match.id as string, {
+      kind: 'appointment_confirmed',
+      title: 'Appointment confirmed by client',
+      body: `${match.client_name} confirmed their appointment ${whenLabel} by text.`,
+      visibility: 'internal',
+    });
+  } catch (error) {
+    console.error('Appointment confirmed feed event failed:', error instanceof Error ? error.message : error);
+  }
+
+  return {
+    confirmed: true,
+    job: { ref: match.ref as string, whenLabel, businessName, clientFirst: (match.client_name || '').trim().split(/\s+/)[0] || '' },
+  };
 }

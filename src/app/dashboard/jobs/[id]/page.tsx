@@ -79,6 +79,9 @@ const FEED_KIND_LABEL: Record<string, string> = {
   job_update: 'Update',
   job_scheduled: 'Schedule',
   job_completed: 'Completed',
+  appointment_reminder: 'Reminder',
+  appointment_confirmed: 'Confirmed',
+  review_feedback: 'Private feedback',
   cost_added: 'Cost',
   payment_requested: 'Payment request',
   payment_paid: 'Payment received',
@@ -253,6 +256,9 @@ export default async function JobDetailPage({
   const boundRequestReview = requestJobReviewAction.bind(null, job.id);
   const boundSaveQuoteItems = saveQuoteItemsAction.bind(null, job.id);
   const quoteItems = parseQuoteItems(job.quote_items);
+  // appointment_confirmed_at is selected via getJob's `*` but isn't on the Job
+  // type yet — read it off the row without widening the shared type.
+  const appointmentConfirmedAt = (job as { appointment_confirmed_at?: string | null }).appointment_confirmed_at ?? null;
   const priceBook = (await listServices(supabase, accountId, { activeOnly: true }))
     .map((service) => ({ id: service.id, name: service.name, unitPrice: Number(service.unit_price) || 0, unit: service.unit }));
   const reviewUrl = await resolveAccountReviewUrl(supabase, accountId);
@@ -358,6 +364,7 @@ export default async function JobDetailPage({
                   </Link>
                 </strong>{' '}
                 Date(s) of Service
+                {appointmentConfirmedAt ? <span className="appt-confirmed-badge" title="The client confirmed this appointment by text">✓ Confirmed by client</span> : null}
               </span>
             ) : null}
           </div>

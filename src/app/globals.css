@@ -4933,6 +4933,19 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   .payroll-row .payroll-num:nth-child(3) { display: none; } /* hide Jobs column on narrow */
 }
 
+.appt-confirmed-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  vertical-align: middle;
+  background: rgba(163,230,53,0.16);
+  color: #bef264;
+  white-space: nowrap;
+}
+
 /* ---------------------------------------------------------------------------
    REVIEW GATE — public "how'd we do?" page
    --------------------------------------------------------------------------- */

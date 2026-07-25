@@ -472,7 +472,7 @@ export async function sendAppointmentReminderSms(params: {
   accountId?: string;
 }) {
   const addressNote = params.address ? ` at ${params.address}` : '';
-  const message = `Let's Get Quoted: ${params.businessName} reminder — ${params.clientName}, your appointment is coming up ${params.whenLabel}${addressNote}. Reply STOP to opt out.`;
+  const message = `Let's Get Quoted: ${params.businessName} reminder — ${params.clientName}, your appointment is coming up ${params.whenLabel}${addressNote}. Reply C to confirm. Reply STOP to opt out.`;
   const providerId = await sendTwilioMessage(params.phone, message);
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;

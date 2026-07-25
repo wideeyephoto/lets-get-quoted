@@ -3,11 +3,14 @@ import { createAdminClient } from '@/lib/auth';
 import { normalizeUsPhone } from '@/lib/phone';
 import { validateTwilioSignature } from '@/lib/sms';
 import { logInboundMessage } from '@/lib/messages';
+import { confirmUpcomingAppointment } from '@/lib/reminders';
 
 export const runtime = 'nodejs';
 
 const OPT_OUT = new Set(['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT']);
 const OPT_IN = new Set(['START', 'UNSTOP']);
+// Reply keywords that confirm an upcoming appointment (from the reminder text).
+const CONFIRM = new Set(['C', 'CONFIRM', 'CONFIRMED', 'YES']);
 
 function twiml(message?: string) {
   const body = message ? `<Message>${message}</Message>` : '';
@@ -31,6 +34,21 @@ export async function POST(request: Request) {
       await logInboundMessage(createAdminClient(), { phone, body: rawBody, providerId: String(data.get('MessageSid') || '') || null });
     } catch (error) {
       console.error('Failed to log inbound SMS:', error instanceof Error ? error.message : error);
+    }
+  }
+
+  // Appointment confirmation: "C"/"confirm"/"yes" marks the client's upcoming
+  // scheduled job confirmed and replies. If there's nothing to confirm, fall
+  // through — the text was already logged as an ordinary inbound message.
+  if (phone && CONFIRM.has(keyword)) {
+    try {
+      const result = await confirmUpcomingAppointment(createAdminClient(), phone);
+      if (result.confirmed && result.job) {
+        const greeting = result.job.clientFirst ? `Thanks ${result.job.clientFirst}` : 'Thanks';
+        return twiml(`Let's Get Quoted: ${greeting} — your appointment ${result.job.whenLabel} with ${result.job.businessName} is confirmed. See you then!`);
+      }
+    } catch (error) {
+      console.error('Appointment confirmation failed:', error instanceof Error ? error.message : error);
     }
   }
 

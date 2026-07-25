@@ -269,6 +269,9 @@ alter table clients add column if not exists last_rebook_invite_at timestamptz;
 alter table jobs add column if not exists client_id uuid references clients(id) on delete set null;
 create index if not exists jobs_client_id_idx on jobs (client_id);
 
+-- Set when a client texts "C" back to an appointment reminder to confirm.
+alter table jobs add column if not exists appointment_confirmed_at timestamptz;
+
 -- ----------------------------------------------------------------------------
 -- CREW_ASSIGNMENTS  — many-to-many jobs <-> crew.
 -- ----------------------------------------------------------------------------
