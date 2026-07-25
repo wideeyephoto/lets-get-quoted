@@ -2374,7 +2374,23 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 }
 
 .quote-builder-row-addon {
-  border-left: 3px solid #ff8a3d;
+  border-color: rgba(255, 138, 61, 0.4);
+  border-left: 4px solid #ff8a3d;
+  background:
+    linear-gradient(90deg, rgba(255, 138, 61, 0.14), rgba(255, 138, 61, 0.02) 62%),
+    rgba(255, 255, 255, 0.03);
+  box-shadow: 0 12px 28px -22px rgba(255, 122, 33, 0.95);
+}
+
+.quote-builder-row-addon .quote-builder-controls select {
+  border-color: rgba(255, 138, 61, 0.5);
+  color: #ffb27a;
+  background: rgba(255, 138, 61, 0.09);
+}
+
+.quote-builder-row-addon .quote-builder-amount span {
+  color: #ff8a3d;
+  opacity: 1;
 }
 
 .quote-builder-row input[type='text'],
@@ -2513,17 +2529,48 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+/* Optional add-ons read as tappable upsell cards, not plain list rows. */
+.quote-doc-addon {
+  border: 1px solid rgba(255, 138, 61, 0.3);
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem;
+  margin-bottom: 0.55rem;
+  background: rgba(255, 138, 61, 0.05);
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.quote-doc-addon:last-child {
+  margin-bottom: 0;
+}
+
+.quote-doc-addon:hover {
+  border-color: rgba(255, 138, 61, 0.55);
+  transform: translateY(-1px);
+}
+
+.quote-doc-addon.is-selected {
+  border-color: #ff8a3d;
+  background: linear-gradient(90deg, rgba(255, 138, 61, 0.18), rgba(255, 138, 61, 0.05) 70%);
+  box-shadow: 0 0 0 1px rgba(255, 138, 61, 0.4), 0 14px 30px -18px rgba(255, 122, 33, 0.95);
+}
+
+.quote-doc-addon.is-selected .quote-doc-line-amount {
+  color: #ffb27a;
+  font-weight: 700;
+}
+
 .quote-doc-addon-label {
   display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
+  gap: 0.6rem;
   cursor: pointer;
 }
 
 .quote-doc-addon-label input {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   accent-color: #ff8a3d;
+  cursor: pointer;
 }
 
 .quote-doc-line-amount {

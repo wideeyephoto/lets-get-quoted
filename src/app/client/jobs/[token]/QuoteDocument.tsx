@@ -50,7 +50,7 @@ export default function QuoteDocument({
           <p className="quote-doc-group-label">Optional add-ons</p>
           <ul className="quote-doc-list">
             {addonItems.map((item) => (
-              <li className="quote-doc-line quote-doc-addon" key={item.id}>
+              <li className={`quote-doc-line quote-doc-addon${selected[item.id] ? ' is-selected' : ''}`} key={item.id}>
                 <label className="quote-doc-addon-label">
                   <input
                     type="checkbox"
