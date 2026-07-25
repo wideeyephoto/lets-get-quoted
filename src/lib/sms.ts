@@ -445,6 +445,21 @@ export async function sendQuoteFollowupSms(params: {
   return providerId;
 }
 
+// Sends a client the link to save a card for automatic billing on a recurring
+// plan. No charge happens at this step — it just collects the card + mandate.
+// Caller resolves consent; mirrored into the inbox like other customer texts.
+export async function sendCardSetupSms(params: {
+  phone: string;
+  businessName: string;
+  url: string;
+  accountId?: string;
+}) {
+  const message = `Let's Get Quoted: ${params.businessName} set up automatic billing for your recurring service. Save your card securely — no charge now: ${params.url}. Reply STOP to opt out.`;
+  const providerId = await sendTwilioMessage(params.phone, message);
+  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
+  return providerId;
+}
+
 // One-off broadcast to a past client (a seasonal offer, a "we're booking now"
 // note). Consent is enforced by the caller (opted-in ledger only); this prefixes
 // the sender so the shared-number recipient knows who it's from, appends the

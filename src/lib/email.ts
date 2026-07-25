@@ -251,6 +251,33 @@ export async function sendReviewRequestEmail(input: {
   console.log(`Review request email sent to ${input.recipientEmail}`);
 }
 
+// Invites a client to save a card for automatic billing on a recurring plan.
+// No charge at this step — the hosted page collects the card + mandate. Throws
+// on provider rejection so the caller can report the invite didn't send.
+export async function sendCardSetupEmail(input: {
+  recipientEmail: string;
+  businessName: string;
+  planTitle: string;
+  url: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('Email provider is not configured.');
+  }
+
+  const result = await resend.emails.send({
+    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    to: input.recipientEmail,
+    subject: `Save your card for ${input.businessName}`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#b45309;font-weight:700;letter-spacing:0.04em">AUTOMATIC BILLING</p><h1 style="font-size:24px;margin:0 0 12px">Save your card for ${escapeHtml(input.businessName)}</h1><p style="margin:0 0 12px;line-height:1.5">${escapeHtml(input.businessName)} set up automatic billing for your recurring service${input.planTitle ? ` (${escapeHtml(input.planTitle)})` : ''}. Save your card once and each visit is billed automatically — <strong>no charge happens now</strong>.</p><p><a href="${escapeHtml(input.url)}" style="display:inline-block;padding:12px 18px;background:#172033;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">Save my card securely</a></p><p style="margin-top:18px;color:#6b7280;font-size:13px;line-height:1.5">Your card is stored securely by Stripe. You can ask ${escapeHtml(input.businessName)} to stop automatic billing at any time.</p><p style="margin-top:24px;color:#6b7280;font-size:13px">${escapeHtml(input.businessName)} · Let's Get Quoted</p></div>`,
+    reply_to: 'hello@letsgetquoted.com',
+  });
+
+  if (result.error) {
+    console.error('Failed to send card setup email:', result.error);
+    throw new Error(result.error.message);
+  }
+}
+
 // One-off broadcast email to a past client. The owner writes plain text; we
 // render it into the same branded shell as the other transactional emails
 // (blank lines become paragraphs, single newlines become line breaks). Throws

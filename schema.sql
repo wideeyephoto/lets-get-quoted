@@ -683,6 +683,39 @@ create table if not exists campaigns (
 );
 create index if not exists campaigns_account_idx on campaigns (account_id, created_at desc);
 
+-- ----------------------------------------------------------------------------
+-- RECURRING_PLANS  — repeating service agreements (lawn care, cleaning, pool).
+-- Each due plan spawns a scheduled job on its cadence; when auto_charge is on
+-- and a card is saved, that visit is charged off-session. The card lives on a
+-- platform Stripe customer (destination-charge model), so charges transfer to
+-- the connected account exactly like the one-off pay flow.
+-- ----------------------------------------------------------------------------
+create table if not exists recurring_plans (
+  id                        uuid primary key default gen_random_uuid(),
+  account_id                uuid not null references accounts(id) on delete cascade,
+  client_id                 uuid references clients(id) on delete set null,
+  title                     text not null,
+  scope                     text,
+  client_name               text not null,
+  client_phone              text,
+  client_email              text,
+  address                   text,
+  amount                    numeric(12,2) not null default 0,
+  frequency                 text not null check (frequency in ('weekly','biweekly','monthly')),
+  next_run_date             date not null,
+  active                    boolean not null default true,
+  auto_charge               boolean not null default false,
+  stripe_customer_id        text,
+  stripe_payment_method_id  text,
+  card_brand                text,
+  card_last4                text,
+  last_job_id               uuid references jobs(id) on delete set null,
+  last_run_at               timestamptz,
+  created_at                timestamptz not null default now(),
+  updated_at                timestamptz not null default now()
+);
+create index if not exists recurring_plans_due_idx on recurring_plans (account_id, active, next_run_date);
+
 -- ============================================================================
 -- ROW-LEVEL SECURITY
 -- ============================================================================
@@ -707,7 +740,7 @@ declare t text;
 begin
   foreach t in array array[
     'accounts','memberships','crew','sites','jobs','crew_assignments',
-    'costs','job_feed','client_job_access','invoices','payments','finance_plans','leads','sms_events','sms_consent','sms_messages','clients','campaigns','job_schedule_requests'
+    'costs','job_feed','client_job_access','invoices','payments','finance_plans','leads','sms_events','sms_consent','sms_messages','clients','campaigns','recurring_plans','job_schedule_requests'
   ] loop
     execute format('alter table %I enable row level security;', t);
   end loop;
@@ -733,6 +766,7 @@ drop policy if exists sms_consent_all on sms_consent;
 drop policy if exists sms_messages_all on sms_messages;
 drop policy if exists clients_all on clients;
 drop policy if exists campaigns_all on campaigns;
+drop policy if exists recurring_plans_all on recurring_plans;
 drop policy if exists job_schedule_request_all on job_schedule_requests;
 drop policy if exists invitem_all on invoice_items;
 
@@ -758,6 +792,7 @@ create policy sms_consent_all on sms_consent  for all using ( is_member(account_
 create policy sms_messages_all on sms_messages for all using ( is_member(account_id) );
 create policy clients_all on clients          for all using ( is_member(account_id) );
 create policy campaigns_all on campaigns      for all using ( is_member(account_id) );
+create policy recurring_plans_all on recurring_plans for all using ( is_member(account_id) );
 create policy job_schedule_request_all on job_schedule_requests for all using ( is_member(account_id) );
 
 alter table invoice_items enable row level security;

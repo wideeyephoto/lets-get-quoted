@@ -5,6 +5,7 @@ import { getRecipientTransferStatus } from '@/lib/stripe-connect';
 import { sendPaymentSmsEvent } from '@/lib/sms';
 import { createPaymentFeedEvent, createDisputeFeedEvent } from '@/lib/job-feed';
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
+import { storeSavedCardFromSetup } from '@/lib/card-on-file';
 
 // Stripe webhooks require the raw request body for signature verification,
 // so this route must not be statically optimized or have its body parsed.
@@ -132,12 +133,17 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient();
 
-  // Checkout session completed — payment succeeded
+  // Checkout session completed — a one-off payment succeeded, OR a recurring
+  // plan's card-setup session finished (mode='setup', no charge).
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     const paymentId = session.metadata?.payment_id;
+    const recurringPlanId = session.metadata?.recurring_plan_id;
 
-    if (paymentId && session.payment_status === 'paid') {
+    if (session.mode === 'setup' && recurringPlanId) {
+      const setupIntentId = typeof session.setup_intent === 'string' ? session.setup_intent : session.setup_intent?.id ?? null;
+      if (setupIntentId) await storeSavedCardFromSetup(setupIntentId, recurringPlanId);
+    } else if (paymentId && session.payment_status === 'paid') {
       const stripePaymentIntent =
         typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id ?? null;
       await markPaymentPaid(admin, paymentId, stripePaymentIntent);
