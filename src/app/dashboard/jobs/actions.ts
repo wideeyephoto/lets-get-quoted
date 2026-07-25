@@ -30,6 +30,7 @@ import { createAndSendScheduleRequest, formatScheduleOption, type ScheduleOption
 import { isPhoneOptedOut, recordSmsConsent, sendClientJobDashboardSms, sendCrewAssignmentSms, sendCrewScheduleSelectedSms, sendJobUpdateSms, sendReviewRequestSms } from '@/lib/sms';
 import { sendReviewRequestEmail } from '@/lib/email';
 import { createReviewInvite } from '@/lib/reviews';
+import { createJobTask, setJobTaskDone, deleteJobTask } from '@/lib/job-tasks';
 import { getSiteContent } from '@/lib/site-content';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -759,4 +760,28 @@ export async function requestJobReviewAction(jobId: string): Promise<{ ok: boole
   const result = await deliverJobReviewRequest(supabase, accountId, job);
   if (result.ok) revalidatePath(`/dashboard/jobs/${jobId}`);
   return result;
+}
+
+// -- Job checklist / punch list (owner side) --------------------------------
+
+export async function addJobTaskAction(jobId: string, formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const title = (formData.get('title') ?? '').toString().trim();
+  if (!title) return;
+  const job = await getJob(supabase, accountId, jobId);
+  if (!job) throw new Error('Job not found for this account.');
+  await createJobTask(supabase, accountId, jobId, title);
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
+export async function setJobTaskDoneAction(jobId: string, taskId: string, done: boolean) {
+  const { supabase, accountId } = await requireOwnerContext();
+  await setJobTaskDone(supabase, accountId, taskId, done, 'Owner');
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
+export async function deleteJobTaskAction(jobId: string, taskId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  await deleteJobTask(supabase, accountId, taskId);
+  revalidatePath(`/dashboard/jobs/${jobId}`);
 }

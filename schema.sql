@@ -273,6 +273,23 @@ create index if not exists jobs_client_id_idx on jobs (client_id);
 alter table jobs add column if not exists appointment_confirmed_at timestamptz;
 
 -- ----------------------------------------------------------------------------
+-- JOB_TASKS  — per-job checklist / punch list. Owner sets the list; crew tick
+-- items off from the field app (done_by/done_at record who + when).
+-- ----------------------------------------------------------------------------
+create table if not exists job_tasks (
+  id          uuid primary key default gen_random_uuid(),
+  account_id  uuid not null references accounts(id) on delete cascade,
+  job_id      uuid not null references jobs(id) on delete cascade,
+  title       text not null,
+  done        boolean not null default false,
+  done_at     timestamptz,
+  done_by     text,
+  sort_order  integer not null default 0,
+  created_at  timestamptz not null default now()
+);
+create index if not exists job_tasks_job_idx on job_tasks (account_id, job_id, sort_order);
+
+-- ----------------------------------------------------------------------------
 -- CREW_ASSIGNMENTS  — many-to-many jobs <-> crew.
 -- ----------------------------------------------------------------------------
 create table if not exists crew_assignments (
@@ -807,7 +824,7 @@ declare t text;
 begin
   foreach t in array array[
     'accounts','memberships','crew','sites','jobs','crew_assignments',
-    'costs','job_feed','client_job_access','invoices','payments','finance_plans','leads','sms_events','sms_consent','sms_messages','clients','campaigns','recurring_plans','services','review_invites','message_templates','job_schedule_requests'
+    'costs','job_feed','client_job_access','invoices','payments','finance_plans','leads','sms_events','sms_consent','sms_messages','clients','campaigns','recurring_plans','services','review_invites','message_templates','job_tasks','job_schedule_requests'
   ] loop
     execute format('alter table %I enable row level security;', t);
   end loop;
@@ -837,6 +854,7 @@ drop policy if exists recurring_plans_all on recurring_plans;
 drop policy if exists services_all on services;
 drop policy if exists review_invites_all on review_invites;
 drop policy if exists message_templates_all on message_templates;
+drop policy if exists job_tasks_all on job_tasks;
 drop policy if exists job_schedule_request_all on job_schedule_requests;
 drop policy if exists invitem_all on invoice_items;
 
@@ -866,6 +884,7 @@ create policy recurring_plans_all on recurring_plans for all using ( is_member(a
 create policy services_all on services        for all using ( is_member(account_id) );
 create policy review_invites_all on review_invites for all using ( is_member(account_id) );
 create policy message_templates_all on message_templates for all using ( is_member(account_id) );
+create policy job_tasks_all on job_tasks      for all using ( is_member(account_id) );
 create policy job_schedule_request_all on job_schedule_requests for all using ( is_member(account_id) );
 
 alter table invoice_items enable row level security;

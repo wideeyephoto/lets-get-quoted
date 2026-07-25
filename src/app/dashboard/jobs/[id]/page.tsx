@@ -5,6 +5,7 @@ import AddressAutocomplete from '@/components/address-autocomplete';
 import { deriveJobListBadge, computeJobMilestones } from '@/lib/job-badges';
 import { getJob, listCosts, computeMargin, formatJobQuoteSummary, formatJobSchedule, formatMoney, formatPercent, parseQuoteItems, type Cost, type Job } from '@/lib/jobs';
 import { listServices } from '@/lib/services';
+import { listJobTasks, taskProgress } from '@/lib/job-tasks';
 import { createJobPhotoUrls } from '@/lib/job-photo-storage';
 import { listPayments, type Payment, type PaymentStatus } from '@/lib/payments';
 import { listInvoices, selectPrimaryInvoice, type Invoice, type InvoiceStatus } from '@/lib/invoices';
@@ -26,6 +27,9 @@ import {
   undoJobCompleteAction,
   updateJobAction,
   updateJobCrewAction,
+  addJobTaskAction,
+  setJobTaskDoneAction,
+  deleteJobTaskAction,
 } from '../actions';
 import { createDepositRequestAction, refundPaymentAction, markPaymentFailedAction, markPaymentPaidManuallyAction, retryPaymentAction, retryPaymentTextAction, cancelPaymentRequestAction } from '../payments-actions';
 import { cancelInvoiceAction, createInvoiceAction } from '../invoices-actions';
@@ -261,6 +265,8 @@ export default async function JobDetailPage({
   const appointmentConfirmedAt = (job as { appointment_confirmed_at?: string | null }).appointment_confirmed_at ?? null;
   const priceBook = (await listServices(supabase, accountId, { activeOnly: true }))
     .map((service) => ({ id: service.id, name: service.name, unitPrice: Number(service.unit_price) || 0, unit: service.unit }));
+  const jobTasks = await listJobTasks(supabase, accountId, job.id);
+  const taskStats = taskProgress(jobTasks);
   const reviewUrl = await resolveAccountReviewUrl(supabase, accountId);
   const lastReviewRequest = feed.find((event) => event.kind === 'review_requested');
   const boundSendScheduleOptions = sendClientScheduleOptionsAction.bind(null, job.id);
@@ -425,6 +431,45 @@ export default async function JobDetailPage({
           quote total updates automatically. Leave this empty to keep the single quoted amount.
         </p>
         <QuoteBuilder action={boundSaveQuoteItems} initialItems={quoteItems} services={priceBook} />
+      </section>
+
+      <section id="checklist" className="panel workspace-section-card">
+        <div className="section-heading workspace-section-heading compact-heading">
+          <p className="eyebrow">Checklist</p>
+          <h2>Punch list{taskStats.total > 0 ? ` · ${taskStats.done}/${taskStats.total} done` : ''}</h2>
+        </div>
+        <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+          Build the punch list for this job. Your crew can tick items off from the field app, and you&apos;ll see who did what.
+        </p>
+        {jobTasks.length > 0 ? (
+          <>
+            {taskStats.total > 0 ? (
+              <div className="task-progress" aria-hidden="true"><div className="task-progress-fill" style={{ width: `${taskStats.pct}%` }} /></div>
+            ) : null}
+            <div className="task-list">
+              {jobTasks.map((task) => (
+                <div className={`task-row${task.done ? ' is-done' : ''}`} key={task.id}>
+                  <form action={setJobTaskDoneAction.bind(null, job.id, task.id, !task.done)}>
+                    <button type="submit" className="task-check" aria-label={task.done ? 'Mark not done' : 'Mark done'}>{task.done ? '✓' : ''}</button>
+                  </form>
+                  <div className="task-row-main">
+                    <span className="task-title">{task.title}</span>
+                    {task.done && task.done_by ? <span className="task-done-by">Done by {task.done_by}</span> : null}
+                  </div>
+                  <form action={deleteJobTaskAction.bind(null, job.id, task.id)}>
+                    <button type="submit" className="task-delete" aria-label="Delete task">×</button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p className="empty-state">No checklist items yet. Add the first below.</p>
+        )}
+        <form action={addJobTaskAction.bind(null, job.id)} className="task-add-form">
+          <input name="title" placeholder="Add a task (e.g. Haul away debris)" required maxLength={120} aria-label="New task" />
+          <SaveButton className="btn secondary" pendingLabel="Adding…" savedLabel="Added ✓">Add</SaveButton>
+        </form>
       </section>
 
       <section id="job-feed" className="panel workspace-section-card job-feed-command-panel">

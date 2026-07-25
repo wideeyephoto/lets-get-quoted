@@ -7,6 +7,7 @@ import { requireCrewContext } from '@/lib/crew-auth';
 import { isJobAssignedToCrew } from '@/lib/crew';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { createCost } from '@/lib/jobs';
+import { createJobTask, setJobTaskDone } from '@/lib/job-tasks';
 
 async function assertAssigned(supabase: SupabaseClient, accountId: string, jobId: string, crewId: string) {
   if (!(await isJobAssignedToCrew(supabase, accountId, jobId, crewId))) {
@@ -69,6 +70,27 @@ export async function logFieldMaterialAction(jobId: string, formData: FormData) 
 
   revalidatePath(`/field/jobs/${jobId}`);
   redirect(`/field/jobs/${jobId}?logged=material`);
+}
+
+// Crew ticks a checklist item off (or back on) from the field; records their
+// name as who did it.
+export async function toggleFieldTaskAction(jobId: string, taskId: string, done: boolean) {
+  const { supabase, accountId, crew } = await requireCrewContext();
+  await assertAssigned(supabase, accountId, jobId, crew.id);
+  await setJobTaskDone(supabase, accountId, taskId, done, crew.name);
+  revalidatePath(`/field/jobs/${jobId}`);
+  redirect(`/field/jobs/${jobId}`);
+}
+
+// Crew adds a task they found on site (punch-list additions from the field).
+export async function addFieldTaskAction(jobId: string, formData: FormData) {
+  const { supabase, accountId, crew } = await requireCrewContext();
+  await assertAssigned(supabase, accountId, jobId, crew.id);
+  const title = String(formData.get('title') ?? '').trim();
+  if (!title) redirect(`/field/jobs/${jobId}`);
+  await createJobTask(supabase, accountId, jobId, title);
+  revalidatePath(`/field/jobs/${jobId}`);
+  redirect(`/field/jobs/${jobId}`);
 }
 
 export async function postFieldUpdateAction(jobId: string, formData: FormData) {

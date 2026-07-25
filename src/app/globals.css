@@ -4934,6 +4934,86 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 }
 
 /* ---------------------------------------------------------------------------
+   JOB CHECKLIST / PUNCH LIST — owner job page + field app
+   --------------------------------------------------------------------------- */
+.task-progress { height: 0.5rem; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; margin-bottom: 0.9rem; }
+.task-progress-fill { height: 100%; background: #bef264; border-radius: 999px; transition: width 0.3s ease; }
+
+.task-list { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
+.task-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.55rem 0.7rem; border-radius: 10px; border: 1px solid rgba(255,255,255,0.09); background: rgba(255,255,255,0.03); }
+.task-check {
+  flex-shrink: 0;
+  width: 1.6rem; height: 1.6rem;
+  border-radius: 6px;
+  border: 1.5px solid rgba(255,255,255,0.28);
+  background: transparent;
+  color: #06131f;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.task-row.is-done .task-check { background: #bef264; border-color: #bef264; }
+.task-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.1rem; }
+.task-title { font-size: 0.92rem; }
+.task-row.is-done .task-title { text-decoration: line-through; color: rgba(255,255,255,0.5); }
+.task-done-by { font-size: 0.74rem; color: rgba(255,255,255,0.45); }
+.task-delete { flex-shrink: 0; background: none; border: none; color: rgba(255,255,255,0.4); font-size: 1.3rem; line-height: 1; cursor: pointer; padding: 0 0.3rem; }
+.task-delete:hover { color: #ffb37a; }
+.task-add-form { display: flex; gap: 0.5rem; }
+.task-add-form input {
+  flex: 1;
+  padding: 0.6rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.05);
+  color: #f4f6f8;
+  font: inherit;
+}
+
+/* -- Field-app checklist (bigger tap targets) -- */
+.field-task-list { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.9rem; }
+.field-task { width: 100%; }
+.field-task-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+  color: #f4f6f8;
+  font: inherit;
+  font-size: 1rem;
+  text-align: left;
+  cursor: pointer;
+}
+.field-task-check {
+  flex-shrink: 0;
+  width: 1.8rem; height: 1.8rem;
+  border-radius: 7px;
+  border: 2px solid rgba(255,255,255,0.3);
+  color: #06131f;
+  font-weight: 800;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.field-task.is-done .field-task-check { background: #bef264; border-color: #bef264; }
+.field-task-title { flex: 1; }
+.field-task.is-done .field-task-title { text-decoration: line-through; color: rgba(255,255,255,0.5); }
+.field-task-by { font-size: 0.74rem; color: rgba(255,255,255,0.45); white-space: nowrap; }
+.field-task-add { display: flex; gap: 0.5rem; }
+.field-task-add input {
+  flex: 1;
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.05);
+  color: #f4f6f8;
+  font: inherit;
+  font-size: 1rem;
+}
+
+/* ---------------------------------------------------------------------------
    MESSAGE TEMPLATES — inbox saved replies
    --------------------------------------------------------------------------- */
 .inbox-reply-area { display: flex; flex-direction: column; gap: 0.5rem; }

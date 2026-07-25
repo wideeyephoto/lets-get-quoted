@@ -3,9 +3,10 @@ import { requireCrewContext } from '@/lib/crew-auth';
 import { isJobAssignedToCrew } from '@/lib/crew';
 import { formatJobSchedule, formatMoney } from '@/lib/jobs';
 import { formatPhoneDashes } from '@/lib/phone';
+import { listJobTasks, taskProgress } from '@/lib/job-tasks';
 import SaveButton from '@/components/save-button';
 import FieldHeader from '../../FieldHeader';
-import { setFieldJobStatusAction, postFieldUpdateAction, logFieldTimeAction, logFieldMaterialAction } from './actions';
+import { setFieldJobStatusAction, postFieldUpdateAction, logFieldTimeAction, logFieldMaterialAction, toggleFieldTaskAction, addFieldTaskAction } from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,6 +74,9 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
             : null;
   const loggedFlashError = searchParams.logged === 'time-invalid' || searchParams.logged === 'material-invalid';
 
+  const jobTasks = await listJobTasks(supabase, accountId, params.id);
+  const taskStats = taskProgress(jobTasks);
+
   const mapUrl = job.address ? `https://maps.google.com/?q=${encodeURIComponent(job.address)}` : null;
   const isComplete = job.status === 'complete';
 
@@ -132,6 +136,32 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
               <p className="field-complete-note">✓ This job is marked complete.</p>
             )}
           </div>
+        </section>
+
+        <section className="field-block">
+          <h2 className="field-block-title">Checklist{taskStats.total > 0 ? ` · ${taskStats.done}/${taskStats.total}` : ''}</h2>
+          {taskStats.total > 0 ? (
+            <div className="task-progress" aria-hidden="true"><div className="task-progress-fill" style={{ width: `${taskStats.pct}%` }} /></div>
+          ) : null}
+          {jobTasks.length > 0 ? (
+            <div className="field-task-list">
+              {jobTasks.map((task) => (
+                <form action={toggleFieldTaskAction.bind(null, job.id, task.id, !task.done)} key={task.id} className={`field-task${task.done ? ' is-done' : ''}`}>
+                  <button type="submit" className="field-task-btn">
+                    <span className="field-task-check">{task.done ? '✓' : ''}</span>
+                    <span className="field-task-title">{task.title}</span>
+                    {task.done && task.done_by ? <span className="field-task-by">{task.done_by}</span> : null}
+                  </button>
+                </form>
+              ))}
+            </div>
+          ) : (
+            <p className="field-empty">No checklist items for this job yet.</p>
+          )}
+          <form action={addFieldTaskAction.bind(null, job.id)} className="field-task-add">
+            <input name="title" placeholder="Add a task you found…" required />
+            <SaveButton className="btn secondary" pendingLabel="Adding…" savedLabel="Added ✓">Add</SaveButton>
+          </form>
         </section>
 
         <section className="field-block">
