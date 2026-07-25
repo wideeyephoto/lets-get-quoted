@@ -151,6 +151,7 @@ export async function createAndSendScheduleRequest(
     jobRef: job?.ref ?? 'job',
     clientName: job?.client_name ?? 'client',
     token,
+    accountId,
   });
 
   return request;

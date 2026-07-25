@@ -120,6 +120,7 @@ export async function scheduleLeadQuoteVisitAction(leadId: string, formData: For
       address: lead.address,
       scheduledFor,
       scheduledTime,
+      accountId,
     });
     confirmationTextSentAt = new Date().toISOString();
   }
@@ -167,6 +168,7 @@ export async function sendLeadQuoteVisitOptionsAction(leadId: string, formData: 
     leadName: lead.name || 'there',
     address: lead.address,
     options,
+    accountId,
   });
 
   if (lead.status === 'new') await updateLeadStatus(supabase, accountId, leadId, 'contacted');
@@ -237,6 +239,7 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
         jobRef: job.ref,
         token,
         includesScheduleOptions: quickBooking.hasInput,
+        accountId,
       });
       delivery = 'sms';
     } catch (err) {
@@ -348,6 +351,7 @@ export async function declineLeadAction(leadId: string, reasonKey: string) {
         businessName: site?.company_name || account?.business_name || "Let's Get Quoted contractor",
         leadName: lead.name || 'there',
         reason,
+        accountId,
       });
       texted = true;
     } catch (error) {

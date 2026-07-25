@@ -110,6 +110,7 @@ export async function createJobAction(formData: FormData) {
       businessName: account?.business_name || "Let's Get Quoted contractor",
       jobRef: job.ref,
       token,
+      accountId,
     });
   }
 
@@ -575,6 +576,7 @@ export async function createManualJobFeedAction(jobId: string, formData: FormDat
         jobRef: job.ref,
         title,
         body,
+        accountId,
       });
     }
   }
@@ -687,7 +689,7 @@ async function deliverJobReviewRequest(
   try {
     if (canText && normalizedPhone) {
       await recordSmsConsent(accountId, normalizedPhone, 'review_request');
-      await sendReviewRequestSms({ phone: normalizedPhone, businessName, clientName: clientFirstName, reviewUrl });
+      await sendReviewRequestSms({ phone: normalizedPhone, businessName, clientName: clientFirstName, reviewUrl, accountId });
       channel = 'sms';
       sentTo = normalizedPhone;
     } else if (job.client_email) {

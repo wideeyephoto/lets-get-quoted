@@ -74,6 +74,25 @@ async function sendTwilioMessage(to: string, body: string) {
   return result.sid;
 }
 
+// Mirror an outbound customer text into the two-way inbox so threads are
+// complete (system texts + their replies in one place). Best-effort and
+// account-scoped; crew/verification texts are intentionally NOT logged (not a
+// customer conversation). Callers pass accountId when the text is customer-facing.
+async function logOutboundToInbox(accountId: string, phone: string, body: string, providerId?: string | null): Promise<void> {
+  try {
+    const normalized = normalizeUsPhone(phone) ?? phone.trim();
+    await createAdminClient().from('sms_messages').insert({
+      account_id: accountId,
+      phone_number: normalized,
+      direction: 'outbound',
+      body,
+      provider_id: providerId ?? null,
+    });
+  } catch (error) {
+    console.error('Inbox outbound log failed:', error instanceof Error ? error.message : error);
+  }
+}
+
 export async function recordSmsConsent(accountId: string, phone: string, source = 'payment_request') {
   const admin = createAdminClient();
   const { data: existing, error: lookupError } = await admin
@@ -215,6 +234,7 @@ export async function sendPaymentSmsEvent(paymentId: string, eventType: PaymentS
   try {
     const providerId = await sendTwilioMessage(payment.homeowner_phone, body);
     await admin.from('sms_events').update({ status: 'sent', provider_id: providerId, sent_at: new Date().toISOString() }).eq('id', event.id);
+    await logOutboundToInbox(payment.account_id, payment.homeowner_phone, body, providerId);
     return { status: 'sent' as const };
   } catch (sendError) {
     const reason = sendError instanceof Error ? sendError.message : 'SMS delivery failed.';
@@ -304,10 +324,13 @@ export async function sendJobUpdateSms(params: {
   jobRef: string;
   title: string;
   body: string | null;
+  accountId?: string;
 }) {
   const updateBody = params.body ? ` ${params.body}` : '';
   const message = `Let's Get Quoted: ${params.businessName} posted an update for job ${params.jobRef}: ${params.title}.${updateBody} Reply STOP to opt out.`;
-  return sendTwilioMessage(params.phone, message);
+  const providerId = await sendTwilioMessage(params.phone, message);
+  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
+  return providerId;
 }
 
 export async function sendClientJobDashboardSms(params: {
@@ -316,11 +339,14 @@ export async function sendClientJobDashboardSms(params: {
   jobRef: string;
   token: string;
   includesScheduleOptions?: boolean;
+  accountId?: string;
 }) {
   const link = clientJobLink(params.token);
   const scheduleCopy = params.includesScheduleOptions ? ' Review your quote and choose a start date here:' : ' View updates, invoices, and payments here:';
   const message = `Let's Get Quoted: ${params.businessName} created your client dashboard for job ${params.jobRef}.${scheduleCopy} ${link}. Reply STOP to opt out.`;
-  return sendTwilioMessage(params.phone, message);
+  const providerId = await sendTwilioMessage(params.phone, message);
+  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
+  return providerId;
 }
 
 // Whether an SMS provider is configured — features that depend on texting
@@ -342,9 +368,12 @@ export async function sendLeadDeclineSms(params: {
   businessName: string;
   leadName: string;
   reason: string;
+  accountId?: string;
 }) {
   const message = `Let's Get Quoted: Hi ${params.leadName}, thanks for reaching out to ${params.businessName}. Unfortunately ${params.reason}, so we won't be able to take this one on. We appreciate you thinking of us! Reply STOP to opt out.`;
-  return sendTwilioMessage(params.phone, message);
+  const providerId = await sendTwilioMessage(params.phone, message);
+  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
+  return providerId;
 }
 
 export async function sendLeadQuoteVisitSms(params: {
@@ -354,10 +383,13 @@ export async function sendLeadQuoteVisitSms(params: {
   address: string | null;
   scheduledFor: string;
   scheduledTime: string;
+  accountId?: string;
 }) {
   const addressNote = params.address ? ` at ${params.address}` : '';
   const message = `Let's Get Quoted: ${params.businessName} scheduled your free in-person quote${addressNote} for ${formatJobSchedule(params.scheduledFor, params.scheduledTime)}. ${params.leadName}, reply STOP to opt out.`;
-  return sendTwilioMessage(params.phone, message);
+  const providerId = await sendTwilioMessage(params.phone, message);
+  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
+  return providerId;
 }
 
 export async function sendLeadQuoteVisitOptionsSms(params: {
@@ -366,11 +398,14 @@ export async function sendLeadQuoteVisitOptionsSms(params: {
   leadName: string;
   address: string | null;
   options: Array<{ date: string; time: string | null }>;
+  accountId?: string;
 }) {
   const addressNote = params.address ? ` for ${params.address}` : '';
   const optionText = params.options.map((option, index) => `${index + 1}) ${formatJobSchedule(option.date, option.time)}`).join(' ');
   const message = `Let's Get Quoted: ${params.businessName} has quote visit times available${addressNote}. ${params.leadName}, reply with 1, 2, or 3: ${optionText}. Reply STOP to opt out.`;
-  return sendTwilioMessage(params.phone, message);
+  const providerId = await sendTwilioMessage(params.phone, message);
+  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
+  return providerId;
 }
 
 export async function sendSchedulingOptionsSms(params: {
@@ -379,10 +414,13 @@ export async function sendSchedulingOptionsSms(params: {
   jobRef: string;
   clientName: string;
   token: string;
+  accountId?: string;
 }) {
   const link = scheduleLink(params.token);
   const message = `Let's Get Quoted: ${params.businessName} has 3 service times available for ${params.jobRef}. ${params.clientName}, choose one or request different times: ${link}. Reply STOP to opt out.`;
-  return sendTwilioMessage(params.phone, message);
+  const providerId = await sendTwilioMessage(params.phone, message);
+  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
+  return providerId;
 }
 
 // A free-form contractor reply from the two-way inbox. Prefixed with the
@@ -399,9 +437,12 @@ export async function sendQuoteFollowupSms(params: {
   businessName: string;
   clientName: string;
   url: string;
+  accountId?: string;
 }) {
   const message = `Let's Get Quoted: Hi ${params.clientName}, just checking in on your quote from ${params.businessName}. Ready to move forward? Review and approve it here: ${params.url}. Reply STOP to opt out.`;
-  return sendTwilioMessage(params.phone, message);
+  const providerId = await sendTwilioMessage(params.phone, message);
+  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
+  return providerId;
 }
 
 // Post-job ask for a Google review — the loop that turns a finished job back
@@ -413,7 +454,10 @@ export async function sendReviewRequestSms(params: {
   businessName: string;
   clientName: string;
   reviewUrl: string;
+  accountId?: string;
 }) {
   const message = `Let's Get Quoted: Hi ${params.clientName}, thanks for choosing ${params.businessName}! If we earned it, a quick review means the world to a small business: ${params.reviewUrl}. Reply STOP to opt out.`;
-  return sendTwilioMessage(params.phone, message);
+  const providerId = await sendTwilioMessage(params.phone, message);
+  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
+  return providerId;
 }

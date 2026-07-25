@@ -150,7 +150,7 @@ export async function runStalledQuoteFollowups(): Promise<FollowupRunSummary & {
 
       let channel: 'sms' | 'email';
       if (canText && normalizedPhone) {
-        await sendQuoteFollowupSms({ phone: normalizedPhone, businessName, clientName: firstName, url });
+        await sendQuoteFollowupSms({ phone: normalizedPhone, businessName, clientName: firstName, url, accountId: link.account_id });
         channel = 'sms';
       } else {
         await sendQuoteFollowupEmail({ recipientEmail: email as string, businessName, clientName: firstName, url });
