@@ -1,12 +1,14 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
-import { getInvoiceWithItems, formatMoney, type InvoiceStatus } from '@/lib/invoices';
+import { getInvoiceWithItems, computeInvoiceTotals, formatMoney, type InvoiceStatus } from '@/lib/invoices';
 import {
   addInvoiceItemAction,
   deleteInvoiceAction,
   deleteInvoiceItemAction,
+  updateInvoiceChargesAction,
   updateInvoiceStatusAction,
 } from '../../../invoices-actions';
+import SaveButton from '@/components/save-button';
 import DeleteInvoiceButton from './DeleteInvoiceButton';
 
 const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = {
@@ -42,10 +44,13 @@ export default async function InvoiceDetailPage({
   const { invoice, items } = result;
   const isLocked = invoice.status === 'signed' || invoice.status === 'paid' || invoice.status === 'void';
   const shareLink = `/invoice/${invoice.id}`;
+  const pdfLink = `/api/invoices/${invoice.id}/pdf`;
+  const totals = computeInvoiceTotals(items, Number(invoice.discount_percent) || 0, Number(invoice.tax_rate) || 0);
 
   const boundAddItem = addInvoiceItemAction.bind(null, params.id, invoice.id);
   const boundDeleteInvoice = deleteInvoiceAction.bind(null, params.id, invoice.id);
   const boundUpdateStatus = updateInvoiceStatusAction.bind(null, params.id, invoice.id);
+  const boundUpdateCharges = updateInvoiceChargesAction.bind(null, params.id, invoice.id);
 
   return (
     <main className="wide-shell workspace-shell">
@@ -63,6 +68,7 @@ export default async function InvoiceDetailPage({
             <Link href={`/dashboard/jobs/${params.id}?open=payment#request-payment`} className="btn secondary">
               Back to job
             </Link>
+            <a href={pdfLink} target="_blank" rel="noreferrer" className="btn secondary">Download PDF</a>
           </div>
         </div>
 
@@ -160,6 +166,39 @@ export default async function InvoiceDetailPage({
                 ))}
               </div>
             )}
+
+            <div className="invoice-summary">
+              {totals.discountAmount > 0 || totals.taxAmount > 0 ? (
+                <>
+                  <div className="invoice-summary-row"><span>Subtotal</span><span>{formatMoney(totals.subtotal)}</span></div>
+                  {totals.discountAmount > 0 ? (
+                    <div className="invoice-summary-row"><span>Discount ({totals.discountPercent}%)</span><span>-{formatMoney(totals.discountAmount)}</span></div>
+                  ) : null}
+                  {totals.taxAmount > 0 ? (
+                    <div className="invoice-summary-row"><span>Tax ({totals.taxRate}%)</span><span>{formatMoney(totals.taxAmount)}</span></div>
+                  ) : null}
+                </>
+              ) : null}
+              <div className="invoice-summary-row invoice-summary-total"><span>Total</span><span>{formatMoney(totals.total)}</span></div>
+            </div>
+
+            {!isLocked ? (
+              <form action={boundUpdateCharges} className="invoice-charges-form">
+                <div className="cost-form-row">
+                  <div className="field">
+                    <label htmlFor="discountPercent">Discount %</label>
+                    <input id="discountPercent" name="discountPercent" type="number" min="0" max="100" step="0.1" defaultValue={Number(invoice.discount_percent) || 0} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="taxRate">Tax %</label>
+                    <input id="taxRate" name="taxRate" type="number" min="0" max="100" step="0.1" defaultValue={Number(invoice.tax_rate) || 0} />
+                  </div>
+                </div>
+                <div style={{ marginTop: '0.6rem' }}>
+                  <SaveButton className="btn secondary" pendingLabel="Saving…" savedLabel="Saved ✓">Apply discount &amp; tax</SaveButton>
+                </div>
+              </form>
+            ) : null}
             </div>
           </div>
 

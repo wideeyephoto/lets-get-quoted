@@ -4,6 +4,11 @@ export function generateInvoiceHtml(params: {
   clientName: string;
   jobRef: string;
   total: number;
+  subtotal?: number;
+  discountPercent?: number;
+  discountAmount?: number;
+  taxRate?: number;
+  taxAmount?: number;
   items: Array<{
     description: string;
     amount: number;
@@ -11,6 +16,16 @@ export function generateInvoiceHtml(params: {
   invoiceLink: string;
 }): string {
   const formatMoney = (n: number) => '$' + Math.round(n).toLocaleString();
+  const subtotal = params.subtotal ?? params.total;
+  const discountAmount = params.discountAmount ?? 0;
+  const taxAmount = params.taxAmount ?? 0;
+  const summaryRow = (label: string, value: string, strong = false) =>
+    `<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:${strong ? '18px' : '14px'};color:${strong ? '#000' : '#555'};font-weight:${strong ? 'bold' : 'normal'};">${strong ? `<div style="font-weight:bold;font-size:15px;">${label}</div>` : `<div>${label}</div>`}<div>${value}</div></div>`;
+  const breakdownHtml = discountAmount > 0 || taxAmount > 0
+    ? summaryRow('Subtotal', formatMoney(subtotal)) +
+      (discountAmount > 0 ? summaryRow(`Discount (${params.discountPercent ?? 0}%)`, '-' + formatMoney(discountAmount)) : '') +
+      (taxAmount > 0 ? summaryRow(`Tax (${params.taxRate ?? 0}%)`, formatMoney(taxAmount)) : '')
+    : '';
 
   const itemsHtml = params.items
     .map(
@@ -60,9 +75,9 @@ export function generateInvoiceHtml(params: {
         </tbody>
       </table>
 
-      <div style="margin-top: 20px; display: flex; justify-content: space-between;">
-        <div style="font-weight: bold; font-size: 15px;">Total</div>
-        <div style="font-weight: bold; font-size: 18px; color: #000;">${formatMoney(params.total)}</div>
+      <div style="margin-top: 16px; border-top: 1px solid #eee; padding-top: 12px;">
+        ${breakdownHtml}
+        ${summaryRow('Total', formatMoney(params.total), true)}
       </div>
     </div>
 

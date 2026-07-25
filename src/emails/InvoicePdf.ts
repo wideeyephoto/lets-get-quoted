@@ -18,12 +18,20 @@ export function generateInvoicePdf(params: {
   clientName: string;
   jobRef: string;
   total: number;
+  subtotal?: number;
+  discountPercent?: number;
+  discountAmount?: number;
+  taxRate?: number;
+  taxAmount?: number;
   items: Array<{
     description: string;
     amount: number;
   }>;
 }): Promise<Buffer> {
   const formatMoney = (n: number) => '$' + Math.round(n).toLocaleString();
+  const subtotal = params.subtotal ?? params.total;
+  const discountAmount = params.discountAmount ?? 0;
+  const taxAmount = params.taxAmount ?? 0;
 
   return new Promise((resolve, reject) => {
     try {
@@ -73,9 +81,24 @@ export function generateInvoicePdf(params: {
       }
 
       y += 10;
-      doc.font('Helvetica-Bold').fontSize(13).fillColor('#000000');
-      doc.text('Total', descX, y, { width: DESC_COL_WIDTH });
-      doc.fontSize(15).text(formatMoney(params.total), amountX, y - 1, { width: AMOUNT_COL_WIDTH, align: 'right' });
+
+      const drawSummaryRow = (label: string, value: string, opts: { bold?: boolean; big?: boolean } = {}) => {
+        doc.font(opts.bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(opts.big ? 15 : 11).fillColor(opts.bold ? '#000000' : '#555555');
+        doc.text(label, descX, y, { width: DESC_COL_WIDTH });
+        doc.text(value, amountX, y - (opts.big ? 1 : 0), { width: AMOUNT_COL_WIDTH, align: 'right' });
+        y += opts.big ? 22 : 17;
+      };
+
+      // Only show the subtotal/discount/tax breakdown when a discount or tax
+      // applies — a plain invoice keeps its clean single Total.
+      if (discountAmount > 0 || taxAmount > 0) {
+        drawSummaryRow('Subtotal', formatMoney(subtotal));
+        if (discountAmount > 0) drawSummaryRow(`Discount (${params.discountPercent ?? 0}%)`, '-' + formatMoney(discountAmount));
+        if (taxAmount > 0) drawSummaryRow(`Tax (${params.taxRate ?? 0}%)`, formatMoney(taxAmount));
+        doc.moveTo(PAGE_MARGIN, y).lineTo(PAGE_MARGIN + CONTENT_WIDTH, y).strokeColor('#eeeeee').lineWidth(1).stroke();
+        y += 8;
+      }
+      drawSummaryRow('Total', formatMoney(params.total), { bold: true, big: true });
 
       // Footer
       doc

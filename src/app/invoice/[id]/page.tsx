@@ -1,4 +1,4 @@
-import { getPublicInvoice } from '@/lib/invoices';
+import { computeInvoiceTotals, getPublicInvoice } from '@/lib/invoices';
 import { signInvoiceAction } from './actions';
 
 // Always render fresh — this page's content changes once the client signs,
@@ -28,6 +28,8 @@ export default async function PublicInvoicePage({ params }: { params: { id: stri
 
   const { invoice, items } = record;
   const businessName = invoice.account?.business_name || 'Your contractor';
+  const totals = computeInvoiceTotals(items, Number(invoice.discount_percent) || 0, Number(invoice.tax_rate) || 0);
+  const hasBreakdown = totals.discountAmount > 0 || totals.taxAmount > 0;
   const isSigned = Boolean(invoice.signed_at);
   const isVoid = invoice.status === 'void';
   const boundSignInvoice = signInvoiceAction.bind(null, invoice.id);
@@ -68,6 +70,25 @@ export default async function PublicInvoicePage({ params }: { params: { id: stri
             ))}
           </div>
         )}
+
+        <div className="invoice-summary">
+          {hasBreakdown ? (
+            <>
+              <div className="invoice-summary-row"><span>Subtotal</span><span>{formatMoney(totals.subtotal)}</span></div>
+              {totals.discountAmount > 0 ? (
+                <div className="invoice-summary-row"><span>Discount ({totals.discountPercent}%)</span><span>-{formatMoney(totals.discountAmount)}</span></div>
+              ) : null}
+              {totals.taxAmount > 0 ? (
+                <div className="invoice-summary-row"><span>Tax ({totals.taxRate}%)</span><span>{formatMoney(totals.taxAmount)}</span></div>
+              ) : null}
+            </>
+          ) : null}
+          <div className="invoice-summary-row invoice-summary-total"><span>Total</span><span>{formatMoney(totals.total)}</span></div>
+        </div>
+
+        <p className="job-meta" style={{ marginTop: '0.9rem' }}>
+          <a href={`/api/invoices/${invoice.id}/pdf`} target="_blank" rel="noreferrer">Download PDF</a>
+        </p>
       </section>
 
       <section className="panel workspace-section-card">

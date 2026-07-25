@@ -2,7 +2,7 @@ import { Resend } from 'resend';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { generateInvoiceHtml } from '@/emails/InvoiceEmail';
 import { generateInvoicePdf } from '@/emails/InvoicePdf';
-import type { Invoice, InvoiceItem } from './invoices';
+import { computeInvoiceTotals, type Invoice, type InvoiceItem } from './invoices';
 import type { Lead } from './leads';
 import { formatMoney } from './jobs';
 
@@ -48,12 +48,19 @@ export async function sendInvoiceEmail(input: SendInvoiceEmailInput): Promise<vo
     // is the client, not a dashboard user (mirrors the /pay/[id] pattern).
     const invoiceLink = `${input.origin}/invoice/${input.invoice.id}`;
 
+    const totals = computeInvoiceTotals(input.items, Number(input.invoice.discount_percent) || 0, Number(input.invoice.tax_rate) || 0);
+
     const emailHtml = generateInvoiceHtml({
       businessName: input.businessName,
       invoiceRef: input.invoice.ref,
       clientName: input.clientName,
       jobRef: input.jobRef,
-      total: input.invoice.total,
+      total: totals.total,
+      subtotal: totals.subtotal,
+      discountPercent: totals.discountPercent,
+      discountAmount: totals.discountAmount,
+      taxRate: totals.taxRate,
+      taxAmount: totals.taxAmount,
       items: input.items,
       invoiceLink,
     });
@@ -67,7 +74,12 @@ export async function sendInvoiceEmail(input: SendInvoiceEmailInput): Promise<vo
         invoiceRef: input.invoice.ref,
         clientName: input.clientName,
         jobRef: input.jobRef,
-        total: input.invoice.total,
+        total: totals.total,
+        subtotal: totals.subtotal,
+        discountPercent: totals.discountPercent,
+        discountAmount: totals.discountAmount,
+        taxRate: totals.taxRate,
+        taxAmount: totals.taxAmount,
         items: input.items,
       });
     } catch (pdfErr) {

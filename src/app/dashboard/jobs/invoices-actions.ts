@@ -10,6 +10,7 @@ import {
   createInvoice,
   deleteInvoice,
   deleteInvoiceItem,
+  updateInvoiceCharges,
   updateInvoiceStatus,
   getInvoiceWithItems,
   type InvoiceStatus,
@@ -45,6 +46,20 @@ export async function addInvoiceItemAction(jobId: string, invoiceId: string, for
   const amount = Number(formData.get('amount'));
 
   await addInvoiceItem(supabase, accountId, invoiceId, { description, amount });
+
+  revalidatePath(`/dashboard/jobs/${jobId}/invoices/${invoiceId}`);
+}
+
+export async function updateInvoiceChargesAction(jobId: string, invoiceId: string, formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const discountPercent = Number(formData.get('discountPercent'));
+  const taxRate = Number(formData.get('taxRate'));
+
+  await updateInvoiceCharges(supabase, accountId, invoiceId, {
+    discountPercent: Number.isFinite(discountPercent) ? discountPercent : 0,
+    taxRate: Number.isFinite(taxRate) ? taxRate : 0,
+  });
 
   revalidatePath(`/dashboard/jobs/${jobId}/invoices/${invoiceId}`);
 }

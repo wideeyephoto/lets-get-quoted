@@ -368,6 +368,13 @@ create table if not exists invoice_items (
   sort_order    int not null default 0
 );
 
+-- Invoice polish: an optional discount (% of subtotal) and tax (% of the
+-- discounted subtotal). total is recomputed server-side as
+-- subtotal - discount + tax, so every reader stays correct. Default 0 = the
+-- legacy "total is just the sum of items" behavior.
+alter table invoices add column if not exists discount_percent numeric(5,2) not null default 0;
+alter table invoices add column if not exists tax_rate numeric(5,2) not null default 0;
+
 -- ----------------------------------------------------------------------------
 -- PAYMENTS  — deposits, stage payments, final, plan installments.
 -- ----------------------------------------------------------------------------

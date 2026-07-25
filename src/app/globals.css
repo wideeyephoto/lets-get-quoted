@@ -2647,6 +2647,42 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   color: #ffd166;
 }
 
+/* ---- Invoice totals breakdown (subtotal / discount / tax / total) ---- */
+.invoice-summary {
+  margin-top: 1rem;
+  margin-left: auto;
+  max-width: 22rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-top: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.invoice-summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.9rem;
+  color: var(--muted, #c8d0dc);
+  font-variant-numeric: tabular-nums;
+}
+
+.invoice-summary-total {
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+  padding-top: 0.5rem;
+  margin-top: 0.2rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text, #f7f5ef);
+}
+
+.invoice-charges-form {
+  margin-top: 1.1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 0.9rem;
+}
+
 .quote-doc-line-amount {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;

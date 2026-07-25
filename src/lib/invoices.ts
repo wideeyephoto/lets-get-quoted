@@ -11,10 +11,44 @@ export type Invoice = {
   ref: string;
   status: InvoiceStatus;
   total: number;
+  discount_percent: number;
+  tax_rate: number;
   signed_at: string | null;
   signer_name: string | null;
   created_at: string;
 };
+
+export type InvoiceTotals = {
+  subtotal: number;
+  discountPercent: number;
+  discountAmount: number;
+  taxRate: number;
+  taxAmount: number;
+  total: number;
+};
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+// The one place invoice math lives: subtotal (sum of items), a discount taken as
+// a % of subtotal, then tax as a % of the discounted subtotal. Every reader
+// (dashboard, public page, email, PDF) derives its breakdown from this so the
+// numbers can never disagree.
+export function computeInvoiceTotals(
+  items: Array<{ amount: number }>,
+  discountPercent: number,
+  taxRate: number,
+): InvoiceTotals {
+  const safeDiscount = Number.isFinite(discountPercent) ? Math.min(100, Math.max(0, discountPercent)) : 0;
+  const safeTax = Number.isFinite(taxRate) ? Math.max(0, taxRate) : 0;
+  const subtotal = round2(items.reduce((sum, item) => sum + Number(item.amount), 0));
+  const discountAmount = round2(subtotal * (safeDiscount / 100));
+  const taxable = round2(subtotal - discountAmount);
+  const taxAmount = round2(taxable * (safeTax / 100));
+  const total = round2(taxable + taxAmount);
+  return { subtotal, discountPercent: safeDiscount, discountAmount, taxRate: safeTax, taxAmount, total };
+}
 
 export type InvoiceItem = {
   id: string;
@@ -126,22 +160,48 @@ export async function createInvoice(
 }
 
 async function recalculateInvoiceTotal(supabase: SupabaseClient, invoiceId: string): Promise<void> {
-  const { data: items, error } = await supabase
-    .from('invoice_items')
-    .select('amount')
-    .eq('invoice_id', invoiceId);
+  const [{ data: items, error }, { data: invoice, error: invoiceError }] = await Promise.all([
+    supabase.from('invoice_items').select('amount').eq('invoice_id', invoiceId),
+    supabase.from('invoices').select('discount_percent, tax_rate').eq('id', invoiceId).maybeSingle(),
+  ]);
 
-  if (error) {
-    throw error;
-  }
+  if (error) throw error;
+  if (invoiceError) throw invoiceError;
 
-  const total = (items ?? []).reduce((sum, item) => sum + Number(item.amount), 0);
+  const { total } = computeInvoiceTotals(items ?? [], Number(invoice?.discount_percent) || 0, Number(invoice?.tax_rate) || 0);
 
   const { error: updateError } = await supabase.from('invoices').update({ total }).eq('id', invoiceId);
 
   if (updateError) {
     throw updateError;
   }
+}
+
+// Set the invoice's discount % and tax %, then recompute the stored total.
+// Clamps to sane ranges; refuses to touch a locked (signed/paid/void) invoice.
+export async function updateInvoiceCharges(
+  supabase: SupabaseClient,
+  accountId: string,
+  invoiceId: string,
+  input: { discountPercent: number; taxRate: number },
+): Promise<void> {
+  const existing = await getInvoiceWithItems(supabase, accountId, invoiceId);
+  if (!existing) throw new Error('Invoice not found for this account.');
+  if (existing.invoice.status === 'signed' || existing.invoice.status === 'paid' || existing.invoice.status === 'void') {
+    throw new Error('This invoice is locked and can no longer be edited.');
+  }
+
+  const discountPercent = Number.isFinite(input.discountPercent) ? Math.min(100, Math.max(0, round2(input.discountPercent))) : 0;
+  const taxRate = Number.isFinite(input.taxRate) ? Math.min(100, Math.max(0, round2(input.taxRate))) : 0;
+
+  const { error } = await supabase
+    .from('invoices')
+    .update({ discount_percent: discountPercent, tax_rate: taxRate })
+    .eq('account_id', accountId)
+    .eq('id', invoiceId);
+  if (error) throw error;
+
+  await recalculateInvoiceTotal(supabase, invoiceId);
 }
 
 export async function addInvoiceItem(
