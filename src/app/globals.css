@@ -249,8 +249,9 @@ h3 {
 .sidenav-brand {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.6rem;
-  padding: 0.1rem 0.35rem 0.55rem;
+  padding: 0.1rem 0.35rem 0.7rem;
 }
 .sidenav-brand .brand-logo-img { height: 27px; }
 
@@ -346,13 +347,17 @@ h3 {
   border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
+/* Count sits right beside its label (not pushed to the far edge) so the number
+   reads as belonging to that item. The margin-right:auto absorbs the leftover
+   space after it instead. */
 .sidenav-count {
-  margin-left: auto;
+  margin-left: -0.15rem;
+  margin-right: auto;
   display: inline-grid;
   place-items: center;
-  min-width: 1.25rem;
-  height: 1.25rem;
-  padding: 0 0.35rem;
+  min-width: 1.2rem;
+  height: 1.2rem;
+  padding: 0 0.34rem;
   border-radius: 999px;
   background: var(--accent);
   color: #180c02;
@@ -436,6 +441,72 @@ h3 {
   /* Below the sidebar breakpoint the slim mobile bar (~4.4rem) takes the top. */
   .app-main-sidenav .page-shell,
   .app-main-sidenav .wide-shell { min-height: calc(100vh - 4.4rem); }
+}
+
+/* ===== Settings tabbed sub-nav ("submenus") =====
+   A sticky segmented bar over the settings sections. Panels stay mounted and
+   toggle via the [hidden] attribute, so the server-action forms inside keep
+   working and switching is instant. */
+.settings-tabnav {
+  position: sticky;
+  top: 0.6rem;
+  z-index: 5;
+  display: flex;
+  gap: 0.4rem;
+  margin: 0 0 1.4rem;
+  padding: 0.35rem;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(9, 18, 30, 0.82);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.settings-tabnav::-webkit-scrollbar { display: none; }
+
+.settings-tab {
+  flex: 1 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.62rem 1rem;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(247, 245, 239, 0.66);
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.settings-tab:hover { background: rgba(255, 255, 255, 0.05); color: var(--text); }
+.settings-tab.active {
+  background: linear-gradient(180deg, var(--accent), #ff9440);
+  color: #180c02;
+  box-shadow: 0 10px 22px -12px rgba(255, 122, 33, 0.7);
+}
+.settings-tab-ic {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.settings-tabpanel { display: flex; flex-direction: column; gap: 1.25rem; }
+/* Class specificity would otherwise override the UA [hidden] display:none. */
+.settings-tabpanel[hidden] { display: none; }
+
+@media (max-width: 560px) {
+  .settings-tab { padding: 0.55rem 0.6rem; font-size: 0.86rem; }
+  .settings-tab-ic { width: 1rem; height: 1rem; }
 }
 
 .quote-request-alert {

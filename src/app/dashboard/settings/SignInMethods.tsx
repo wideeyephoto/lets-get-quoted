@@ -1,20 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useFormStatus } from 'react-dom';
-import { useRouter } from 'next/navigation';
 import type { FormEvent, ReactNode } from 'react';
 import type { UserIdentity } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-
-function ConnectStripeSubmitButton() {
-  const { pending } = useFormStatus();
-  return (
-    <button type="submit" className="btn secondary" disabled={pending} aria-busy={pending}>
-      {pending ? 'Connecting…' : 'Connect Stripe'}
-    </button>
-  );
-}
 
 // Supabase returns a terse "phone already registered" when the number belongs
 // to another auth user. Map that to a message that tells the owner what to do;
@@ -36,10 +25,6 @@ type Props = {
   email: string | null;
   phone: string | null;
   providers: string[];
-  stripeOnboarded: boolean;
-  connectStripeAction: () => Promise<void>;
-  disconnectStripeAction: () => Promise<void>;
-  pendingPaymentsCount: number;
 };
 
 type ProviderKey = 'phone' | 'email' | 'google' | 'azure';
@@ -51,7 +36,7 @@ const METHOD_LABEL: Record<ProviderKey, string> = {
   azure: 'Microsoft',
 };
 
-const METHOD_ICON: Record<ProviderKey | 'stripe', ReactNode> = {
+const METHOD_ICON: Record<ProviderKey, ReactNode> = {
   // Apple sign-in disabled for now; icon left out until it's re-enabled.
   phone: (
     <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
@@ -79,20 +64,13 @@ const METHOD_ICON: Record<ProviderKey | 'stripe', ReactNode> = {
       <rect x="13" y="13" width="9" height="9" fill="#FFBA08" />
     </svg>
   ),
-  stripe: (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="#635bff" aria-hidden="true">
-      <path d="M13.6 9.1c-1.4-.5-2.2-.9-2.2-1.5 0-.5.5-.8 1.3-.8 1.5 0 3.1.6 4.2 1.1l.6-3.8C16.7 3.3 15 2.8 13 2.8c-1.7 0-3.1.4-4.1 1.3-1 .8-1.6 2-1.6 3.4 0 2.6 1.6 3.7 4.1 4.6 1.6.6 2.2 1 2.2 1.6 0 .6-.5.9-1.4.9-1.2 0-3.1-.6-4.5-1.4l-.6 3.8c1.2.7 3 1.2 4.9 1.2 1.8 0 3.3-.4 4.3-1.3 1.1-.9 1.7-2.2 1.7-3.7 0-2.6-1.6-3.7-4.5-4.8z" />
-    </svg>
-  ),
 };
 
-export default function SignInMethods({ email, phone, providers, stripeOnboarded, connectStripeAction, disconnectStripeAction, pendingPaymentsCount }: Props) {
-  const router = useRouter();
+export default function SignInMethods({ email, phone, providers }: Props) {
   const [identities, setIdentities] = useState<UserIdentity[]>([]);
   const [loadingIdentities, setLoadingIdentities] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [busyProvider, setBusyProvider] = useState<ProviderKey | null>(null);
-  const [disconnectingStripe, setDisconnectingStripe] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const [phoneInput, setPhoneInput] = useState('');
   const [phoneOtpStep, setPhoneOtpStep] = useState(false);
@@ -194,31 +172,6 @@ export default function SignInMethods({ email, phone, providers, stripeOnboarded
     refreshIdentities();
   }
 
-  async function handleDisconnectStripe() {
-    const pendingWarning =
-      pendingPaymentsCount > 0
-        ? ` You have ${pendingPaymentsCount} pending payment${pendingPaymentsCount === 1 ? '' : 's'} awaiting completion — disconnecting won't cancel ${pendingPaymentsCount === 1 ? 'it' : 'them'}, but the homeowner won't be able to pay until you reconnect.`
-        : '';
-    if (
-      !window.confirm(
-        `Disconnect Stripe? Homeowners won't be able to pay you until you reconnect, and any in-progress payment links will stop working.${pendingWarning}`
-      )
-    ) {
-      return;
-    }
-    setMessage(null);
-    setDisconnectingStripe(true);
-    try {
-      await disconnectStripeAction();
-      setMessage({ type: 'success', text: 'Stripe disconnected.' });
-      router.refresh();
-    } catch (err) {
-      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to disconnect Stripe.' });
-    } finally {
-      setDisconnectingStripe(false);
-    }
-  }
-
   function renderRow(provider: ProviderKey, detail: string | null, onAdd?: () => void) {
     const linked = linkedProviders.has(provider);
     const canUnlink = linked && identities.some((i) => i.provider === provider) && identities.length > 1;
@@ -247,44 +200,6 @@ export default function SignInMethods({ email, phone, providers, stripeOnboarded
 
   return (
     <div className="settings-sections">
-      <div className="settings-section">
-        <div className="section-heading workspace-section-heading compact-heading">
-          <p className="eyebrow">Payments</p>
-          <h2>Payout account</h2>
-        </div>
-        <div className="sign-in-methods-list">
-          <div className="sign-in-method-row">
-            <div className="method-info">
-              <span className="method-icon method-icon-stripe">{METHOD_ICON.stripe}</span>
-              <div>
-                <span className="method-name">Stripe</span>
-                <span className="method-detail">{stripeOnboarded ? 'Payouts active' : 'Not connected'}</span>
-              </div>
-            </div>
-            <div className="actions">
-              {stripeOnboarded ? <span className="sign-in-method-badge linked">Connected</span> : null}
-              {stripeOnboarded ? (
-                <>
-                  <a href="https://dashboard.stripe.com" target="_blank" rel="noreferrer" className="btn secondary">Manage on Stripe</a>
-                  <button type="button" className="btn danger" disabled={disconnectingStripe} onClick={handleDisconnectStripe}>
-                    {disconnectingStripe ? 'Disconnecting…' : 'Disconnect'}
-                  </button>
-                </>
-              ) : (
-                <form action={connectStripeAction}>
-                  <ConnectStripeSubmitButton />
-                </form>
-              )}
-            </div>
-          </div>
-          {stripeOnboarded && pendingPaymentsCount > 0 ? (
-            <p className="workspace-card-copy" style={{ color: '#ffd166', marginTop: '-0.4rem' }} role="status">
-              ⚠️ {pendingPaymentsCount} pending payment{pendingPaymentsCount === 1 ? '' : 's'} awaiting completion. Disconnecting won&apos;t cancel {pendingPaymentsCount === 1 ? 'it' : 'them'}, but homeowners won&apos;t be able to pay until you reconnect.
-            </p>
-          ) : null}
-        </div>
-      </div>
-
       <div className="settings-section">
         <div className="section-heading workspace-section-heading compact-heading">
           <p className="eyebrow">Security</p>
