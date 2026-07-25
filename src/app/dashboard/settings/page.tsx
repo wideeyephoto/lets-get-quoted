@@ -5,7 +5,7 @@ import FinanceReports from './FinanceReports';
 import { getAvailableTaxYears, buildProfitAndLoss, buildScheduleCWorksheet, build1099PrepList } from '@/lib/tax-reports';
 import SaveButton from '@/components/save-button';
 import DeleteAccountButton from './DeleteAccountButton';
-import { updateScheduleDayHoursAction, updateReviewSettingsAction, updateDepositSettingsAction, deleteAccountAction } from './actions';
+import { updateScheduleDayHoursAction, updateReviewSettingsAction, updateDepositSettingsAction, updateFollowupSettingsAction, deleteAccountAction } from './actions';
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -52,6 +52,13 @@ export default async function SettingsPage({
     .maybeSingle();
   const depositOnApproval = Boolean(depositSettings?.deposit_on_approval);
   const depositPercent = Number(depositSettings?.deposit_percent) || 25;
+
+  const { data: followupSettings } = await supabase
+    .from('accounts')
+    .select('quote_followups_enabled')
+    .eq('id', accountId)
+    .maybeSingle();
+  const quoteFollowupsEnabled = Boolean(followupSettings?.quote_followups_enabled);
 
   const requestedYear = searchParams.year ? parseInt(searchParams.year, 10) : NaN;
   const selectedYear = availableYears.includes(requestedYear) ? requestedYear : availableYears[0];
@@ -148,6 +155,32 @@ export default async function SettingsPage({
           </label>
           <div className="form-actions">
             <SaveButton>Save review settings</SaveButton>
+          </div>
+        </form>
+      </section>
+
+      <section className="panel workspace-section-card" id="followups">
+        <div className="section-heading workspace-section-heading compact-heading">
+          <p className="eyebrow">Follow-ups</p>
+          <h2>Automatic quote follow-ups</h2>
+        </div>
+        <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+          When on, we gently nudge clients who were sent a quote but haven&apos;t approved it yet —
+          up to twice (around day 2 and day 5), texting them if they have a mobile on file and emailing
+          otherwise. Nudges stop as soon as the quote is approved, and respect text opt-outs.
+        </p>
+        <form action={updateFollowupSettingsAction} className="form-grid compact-form">
+          <label className="checkbox-row" htmlFor="quoteFollowups">
+            <input
+              id="quoteFollowups"
+              name="quoteFollowups"
+              type="checkbox"
+              defaultChecked={quoteFollowupsEnabled}
+            />
+            <span>Automatically follow up on quotes that haven&apos;t been approved</span>
+          </label>
+          <div className="form-actions">
+            <SaveButton>Save follow-up settings</SaveButton>
           </div>
         </form>
       </section>

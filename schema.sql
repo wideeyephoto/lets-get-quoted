@@ -110,6 +110,10 @@ alter table accounts add column if not exists auto_review_request boolean not nu
 -- has SMS consent). Opt-in, default off; percent defaults to 25%.
 alter table accounts add column if not exists deposit_on_approval boolean not null default false;
 alter table accounts add column if not exists deposit_percent numeric(5,2) not null default 25;
+-- When on, a daily cron nudges clients who were sent a quote but haven't approved
+-- it, up to twice (~day 2 and day 5), texting when they have SMS consent and
+-- emailing otherwise. Opt-in, default off.
+alter table accounts add column if not exists quote_followups_enabled boolean not null default false;
 
 -- ----------------------------------------------------------------------------
 -- MEMBERSHIPS  — links a person (auth.users) to an account with a role.

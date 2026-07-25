@@ -96,6 +96,7 @@ const FEED_KIND_LABEL: Record<string, string> = {
   client_link_created: 'Client link',
   client_link_revoked: 'Client link',
   review_requested: 'Review request',
+  quote_followup: 'Quote follow-up',
 };
 
 const FEED_KIND_ICON: Record<string, string> = {
@@ -121,6 +122,7 @@ const FEED_KIND_ICON: Record<string, string> = {
   client_link_created: '↗',
   client_link_revoked: '×',
   review_requested: '⭐',
+  quote_followup: '↻',
 };
 
 function marginTier(margin: number): 'margin-good' | 'margin-ok' | 'margin-bad' {

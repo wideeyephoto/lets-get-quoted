@@ -385,6 +385,18 @@ export async function sendSchedulingOptionsSms(params: {
   return sendTwilioMessage(params.phone, message);
 }
 
+// Gentle nudge on a quote the client hasn't approved yet. Sent by the follow-up
+// cron; the caller enforces consent (opted-in ledger) before this runs.
+export async function sendQuoteFollowupSms(params: {
+  phone: string;
+  businessName: string;
+  clientName: string;
+  url: string;
+}) {
+  const message = `Let's Get Quoted: Hi ${params.clientName}, just checking in on your quote from ${params.businessName}. Ready to move forward? Review and approve it here: ${params.url}. Reply STOP to opt out.`;
+  return sendTwilioMessage(params.phone, message);
+}
+
 // Post-job ask for a Google review — the loop that turns a finished job back
 // into the next lead. Sent one-tap from the job page after the work's done and
 // the client's happy. Job-context text (like job updates): consent is enforced

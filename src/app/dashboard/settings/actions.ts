@@ -56,6 +56,20 @@ export async function updateDepositSettingsAction(formData: FormData) {
   revalidatePath('/dashboard/settings');
 }
 
+export async function updateFollowupSettingsAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const quoteFollowups = formData.get('quoteFollowups') === 'on';
+
+  const { error } = await supabase
+    .from('accounts')
+    .update({ quote_followups_enabled: quoteFollowups })
+    .eq('id', accountId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/dashboard/settings');
+}
+
 // Permanently deletes the signed-in owner's account. Removes the account (which
 // cascades every child row — jobs, leads, crew, invoices, payments, sites,
 // memberships, …) AND the auth user, so the account's phone/email is freed to
