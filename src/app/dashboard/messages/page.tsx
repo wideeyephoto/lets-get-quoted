@@ -2,7 +2,9 @@ import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
 import { buildContactNameMap, getConversationMessages, listConversations } from '@/lib/messages';
-import { sendReplyAction } from './actions';
+import { listMessageTemplates } from '@/lib/message-templates';
+import { sendReplyAction, createTemplateAction, deleteTemplateAction } from './actions';
+import QuickReplies from './QuickReplies';
 import SaveButton from '@/components/save-button';
 
 function formatTime(value: string): string {
@@ -20,6 +22,7 @@ export default async function MessagesPage({ searchParams }: { searchParams: { t
     buildContactNameMap(supabase, accountId),
   ]);
   const activeName = activePhone ? nameMap.get(activePhone) ?? null : null;
+  const templates = await listMessageTemplates(supabase, accountId);
 
   return (
     <main className="wide-shell workspace-shell">
@@ -87,10 +90,13 @@ export default async function MessagesPage({ searchParams }: { searchParams: { t
                   )}
                 </div>
 
-                <form action={sendReplyAction.bind(null, activePhone)} className="inbox-reply">
-                  <textarea name="body" rows={2} placeholder="Type a reply…" required aria-label="Reply message" />
-                  <SaveButton className="btn primary" pendingLabel="Sending…" savedLabel="Sent ✓">Send</SaveButton>
-                </form>
+                <div className="inbox-reply-area">
+                  <QuickReplies templates={templates} targetId="reply-body" />
+                  <form action={sendReplyAction.bind(null, activePhone)} className="inbox-reply">
+                    <textarea id="reply-body" name="body" rows={2} placeholder="Type a reply…" required aria-label="Reply message" />
+                    <SaveButton className="btn primary" pendingLabel="Sending…" savedLabel="Sent ✓">Send</SaveButton>
+                  </form>
+                </div>
               </>
             ) : (
               <p className="empty-state">Pick a conversation to read and reply.</p>
@@ -98,6 +104,39 @@ export default async function MessagesPage({ searchParams }: { searchParams: { t
           </div>
         </section>
       )}
+
+      <section className="panel workspace-section-card">
+        <details className="workspace-details">
+          <summary className="workspace-details-summary">
+            <span className="btn secondary">Saved replies{templates.length > 0 ? ` · ${templates.length}` : ''}</span>
+            <span className="workspace-details-copy">Canned replies you can drop into a text in one tap.</span>
+          </summary>
+          <div className="template-manager">
+            {templates.length > 0 ? (
+              <div className="template-list">
+                {templates.map((template) => (
+                  <div className="template-row" key={template.id}>
+                    <div className="template-row-main">
+                      <strong>{template.title}</strong>
+                      <span>{template.body}</span>
+                    </div>
+                    <form action={deleteTemplateAction.bind(null, template.id)}>
+                      <button type="submit" className="linklike danger">Delete</button>
+                    </form>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="empty-state">No saved replies yet. Add one below — like &ldquo;On my way&rdquo; or &ldquo;Running about 20 min late.&rdquo;</p>
+            )}
+            <form action={createTemplateAction} className="template-add-form">
+              <input name="title" placeholder="Label (e.g. On my way)" required maxLength={40} aria-label="Reply label" />
+              <textarea name="body" rows={2} placeholder="Full reply text…" required aria-label="Reply text" />
+              <SaveButton pendingLabel="Saving…" savedLabel="Saved ✓">Add saved reply</SaveButton>
+            </form>
+          </div>
+        </details>
+      </section>
     </main>
   );
 }

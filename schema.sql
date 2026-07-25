@@ -676,6 +676,21 @@ create table if not exists sms_messages (
 create index if not exists sms_messages_thread_idx on sms_messages (account_id, phone_number, created_at desc);
 
 -- ----------------------------------------------------------------------------
+-- MESSAGE_TEMPLATES  — saved canned replies for the two-way inbox
+-- ("On my way", "Running late"), inserted into a reply with one tap.
+-- ----------------------------------------------------------------------------
+create table if not exists message_templates (
+  id          uuid primary key default gen_random_uuid(),
+  account_id  uuid not null references accounts(id) on delete cascade,
+  title       text not null,
+  body        text not null,
+  sort_order  integer not null default 0,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+create index if not exists message_templates_account_idx on message_templates (account_id, sort_order);
+
+-- ----------------------------------------------------------------------------
 -- CAMPAIGNS  — one-off email/SMS broadcasts to past clients. Stores the message
 -- plus per-channel outcome counts (no per-recipient rows: the two-way inbox
 -- already threads the SMS sends, and a contractor's list is small enough that
@@ -792,7 +807,7 @@ declare t text;
 begin
   foreach t in array array[
     'accounts','memberships','crew','sites','jobs','crew_assignments',
-    'costs','job_feed','client_job_access','invoices','payments','finance_plans','leads','sms_events','sms_consent','sms_messages','clients','campaigns','recurring_plans','services','review_invites','job_schedule_requests'
+    'costs','job_feed','client_job_access','invoices','payments','finance_plans','leads','sms_events','sms_consent','sms_messages','clients','campaigns','recurring_plans','services','review_invites','message_templates','job_schedule_requests'
   ] loop
     execute format('alter table %I enable row level security;', t);
   end loop;
@@ -821,6 +836,7 @@ drop policy if exists campaigns_all on campaigns;
 drop policy if exists recurring_plans_all on recurring_plans;
 drop policy if exists services_all on services;
 drop policy if exists review_invites_all on review_invites;
+drop policy if exists message_templates_all on message_templates;
 drop policy if exists job_schedule_request_all on job_schedule_requests;
 drop policy if exists invitem_all on invoice_items;
 
@@ -849,6 +865,7 @@ create policy campaigns_all on campaigns      for all using ( is_member(account_
 create policy recurring_plans_all on recurring_plans for all using ( is_member(account_id) );
 create policy services_all on services        for all using ( is_member(account_id) );
 create policy review_invites_all on review_invites for all using ( is_member(account_id) );
+create policy message_templates_all on message_templates for all using ( is_member(account_id) );
 create policy job_schedule_request_all on job_schedule_requests for all using ( is_member(account_id) );
 
 alter table invoice_items enable row level security;
