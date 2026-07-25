@@ -26,6 +26,7 @@ export default async function ClientsPage() {
           <div className="workspace-inline-row">
             <span className="status-badge status-in_progress">{clients.length} client{clients.length === 1 ? '' : 's'}</span>
             {repeatCount > 0 ? <span className="status-badge status-complete">{repeatCount} repeat</span> : null}
+            <Link href="/dashboard/clients/import" className="btn secondary">Import customers</Link>
           </div>
         </div>
       </section>
@@ -33,7 +34,8 @@ export default async function ClientsPage() {
       {clients.length === 0 ? (
         <section className="panel workspace-section-card">
           <p className="empty-state">
-            No clients yet. As you create jobs, each customer gets a profile here automatically.
+            No clients yet. As you create jobs, each customer gets a profile here automatically — or{' '}
+            <Link href="/dashboard/clients/import">import your existing customer list</Link>.
           </p>
         </section>
       ) : (

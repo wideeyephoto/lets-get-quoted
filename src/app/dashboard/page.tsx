@@ -39,12 +39,13 @@ export default async function DashboardPage() {
   const { supabase, accountId } = await requireOwnerContext();
   await expireStaleLeads(supabase, accountId);
 
-  const [{ data: account }, { data: identityData }, { data: site }, jobs, leads] = await Promise.all([
+  const [{ data: account }, { data: identityData }, { data: site }, jobs, leads, { count: clientCount }] = await Promise.all([
     supabase.from('accounts').select('connect_onboarded, connect_disabled_at, schedule_day_hours').eq('id', accountId).single(),
     supabase.auth.getUserIdentities(),
     supabase.from('sites').select('published, subdomain, custom_domain, custom_domain_verified_at').eq('account_id', accountId).maybeSingle(),
     listJobs(supabase, accountId),
     listLeads(supabase, accountId),
+    supabase.from('clients').select('id', { count: 'exact', head: true }).eq('account_id', accountId),
   ]);
 
   const onboarded = account?.connect_onboarded ?? false;
@@ -88,6 +89,22 @@ export default async function DashboardPage() {
       done: onboarded,
       href: '/dashboard/settings',
       cta: 'Connect Stripe',
+    },
+    {
+      key: 'clients',
+      label: 'Import your customers',
+      description: 'Bring your existing customer list over from a spreadsheet.',
+      done: (clientCount ?? 0) > 0,
+      href: '/dashboard/clients/import',
+      cta: 'Import customers',
+    },
+    {
+      key: 'first-job',
+      label: 'Create your first job',
+      description: 'Turn a lead into a quote and get the work on your calendar.',
+      done: jobs.length > 0,
+      href: '/dashboard/jobs',
+      cta: 'Create a job',
     },
   ];
   const completedStepCount = onboardingSteps.filter((step) => step.done).length;
