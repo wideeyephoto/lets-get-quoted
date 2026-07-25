@@ -23,6 +23,7 @@ export type CalendarJob = {
   scheduled_for: string;
   scheduled_time: string | null;
   crew_notified_at: string | null;
+  confirmed: boolean;
   badge_label: string;
   badge_tone: string;
   badge_title: string | null;
@@ -319,6 +320,7 @@ export default function ScheduleCalendar({
                             onClick={() => openJobActions(job.occurrence_key)}
                           >
                             <span className="calendar-job-chip-main">
+                              {job.confirmed ? <span className="calendar-confirm-tick" title="Confirmed by client" aria-label="Confirmed by client">✓</span> : null}
                               {formatJobTime(job.scheduled_time) ? `${formatJobTime(job.scheduled_time)} ` : ''}{job.client_name}
                             </span>
                             <span className={`calendar-job-band-badge status-${job.badge_tone}`} title={job.badge_title ?? undefined}>{job.badge_label}</span>
@@ -357,6 +359,7 @@ export default function ScheduleCalendar({
                 <p className="crew-assign-sub">
                   <span className={`status-badge status-${openJob.badge_tone}`} title={openJob.badge_title ?? undefined}>{openJob.badge_label}</span>
                   <span>{formatJobSchedule(openJob.scheduled_for, openJob.scheduled_time)}</span>
+                  {openJob.confirmed ? <span className="status-badge status-complete" title="The client confirmed this appointment by text">✓ Confirmed</span> : null}
                 </p>
               </div>
               <button type="button" className="crew-assign-close" onClick={closeJobActions} aria-label="Close">

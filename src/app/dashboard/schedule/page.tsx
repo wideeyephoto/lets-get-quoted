@@ -209,6 +209,13 @@ export default async function SchedulePage({
     if (!crewNotifiedAtByJob.has(jobId)) crewNotifiedAtByJob.set(jobId, event.created_at as string);
   }
 
+  // Jobs the client confirmed by text (appointment_confirmed_at set) — surfaced
+  // as a ✓ on the calendar. Defensive: a read error just yields no ticks.
+  const { data: confirmedRows } = scheduledJobIds.length > 0
+    ? await supabase.from('jobs').select('id').eq('account_id', accountId).in('id', scheduledJobIds).not('appointment_confirmed_at', 'is', null)
+    : { data: [] as Array<{ id: string }> };
+  const confirmedJobIds = new Set((confirmedRows ?? []).map((row) => row.id as string));
+
   const [{ data: invoiceRows, error: invoiceError }, { data: paymentRows, error: paymentError }, { data: clientAccessRows, error: clientAccessError }] =
     scheduledJobIds.length > 0
       ? await Promise.all([
@@ -258,6 +265,7 @@ export default async function SchedulePage({
       scheduled_for: job.scheduled_for,
       scheduled_time: job.scheduled_time,
       crew_notified_at: crewNotifiedAtByJob.get(job.id) ?? null,
+      confirmed: confirmedJobIds.has(job.id),
       badge_label: badge.label,
       badge_tone: badge.tone,
       badge_title: badge.title ?? null,

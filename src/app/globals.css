@@ -5012,6 +5012,13 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .review-feedback-meta a { color: #7dd3fc; }
 .review-feedback-body { margin: 0.5rem 0 0; line-height: 1.5; color: rgba(255,255,255,0.85); white-space: pre-wrap; }
 
+.calendar-confirm-tick {
+  display: inline-block;
+  margin-right: 0.2rem;
+  color: #bef264;
+  font-weight: 800;
+}
+
 .appt-confirmed-badge {
   display: inline-block;
   margin-left: 0.5rem;
