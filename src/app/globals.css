@@ -4895,6 +4895,53 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   .recurring-card-actions { justify-content: space-between; }
 }
 
+/* ---------------------------------------------------------------------------
+   PRICE BOOK — saved services
+   --------------------------------------------------------------------------- */
+.service-list { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 1.1rem; }
+.service-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  padding: 0.95rem 1.1rem;
+  border-radius: 13px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.03);
+}
+.service-row.is-archived { opacity: 0.6; }
+.service-row-main { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 0.25rem; }
+.service-row-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.6rem; }
+.service-row-head strong { font-size: 1.02rem; }
+.service-price {
+  font-weight: 700;
+  color: #bef264;
+  font-variant-numeric: tabular-nums;
+}
+.service-desc { margin: 0; font-size: 0.86rem; color: rgba(255,255,255,0.6); }
+.service-row-actions { display: flex; align-items: center; gap: 0.7rem; }
+.service-edit { flex-basis: 100%; margin-top: 0.2rem; }
+.service-form { display: flex; flex-direction: column; gap: 0.9rem; margin-top: 0.9rem; }
+.service-form-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 0.7rem; }
+
+.quote-book-picker {
+  min-height: 40px;
+  border-radius: 9px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.05);
+  color: #f7f5ef;
+  padding: 0 0.7rem;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.quote-book-picker option { background: #101c2b; color: #f7f5ef; }
+
+@media (max-width: 640px) {
+  .service-form-grid { grid-template-columns: 1fr; }
+  .service-row-actions { width: 100%; justify-content: space-between; }
+}
+
 .crew-field-linked { display: inline-flex; align-items: center; font-size: 0.82rem; font-weight: 600; color: #bef264; }
 .crew-field-hint { font-size: 0.8rem; color: rgba(255,255,255,0.5); }
 .auth-crew-link { margin-top: 0.5rem; text-align: center; font-size: 0.85rem; }

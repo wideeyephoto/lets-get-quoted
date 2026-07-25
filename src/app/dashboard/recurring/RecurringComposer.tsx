@@ -13,13 +13,42 @@ const FREQUENCY_OPTIONS = [
   { id: 'monthly', label: 'Monthly' },
 ] as const;
 
-export default function RecurringComposer({ today }: { today: string }) {
+type ServiceOption = { id: string; name: string; unitPrice: number };
+
+export default function RecurringComposer({ today, services = [] }: { today: string; services?: ServiceOption[] }) {
   const [autoCharge, setAutoCharge] = useState(false);
+
+  // Picking a saved service fills the plan name + price (both uncontrolled
+  // inputs live in the same form), so owners don't retype what they already saved.
+  function prefillFromService(event: React.ChangeEvent<HTMLSelectElement>) {
+    const service = services.find((item) => item.id === event.target.value);
+    const form = event.currentTarget.form;
+    if (service && form) {
+      const titleInput = form.elements.namedItem('title') as HTMLInputElement | null;
+      const amountInput = form.elements.namedItem('amount') as HTMLInputElement | null;
+      if (titleInput) titleInput.value = service.name;
+      if (amountInput) amountInput.value = String(service.unitPrice);
+    }
+    event.currentTarget.value = '';
+  }
 
   return (
     <details className="recurring-composer job-feed-composer">
       <summary className="btn primary">+ New recurring plan</summary>
       <form action={createRecurringPlanAction} className="recurring-form job-feed-composer-form">
+        {services.length > 0 ? (
+          <div className="field">
+            <label htmlFor="rp-fromservice">Start from a saved service (optional)</label>
+            <select id="rp-fromservice" defaultValue="" onChange={prefillFromService} aria-label="Fill from your price book">
+              <option value="">Pick from price book…</option>
+              {services.map((service) => (
+                <option key={service.id} value={service.id}>
+                  {service.name} — ${service.unitPrice.toLocaleString('en-US')}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
         <div className="field">
           <label htmlFor="rp-title">Plan name</label>
           <input id="rp-title" name="title" type="text" required maxLength={80} placeholder="Weekly lawn mowing" />

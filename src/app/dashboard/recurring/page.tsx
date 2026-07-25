@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { formatMoney } from '@/lib/jobs';
 import { listRecurringPlans, todayDateKey, FREQUENCY_LABEL } from '@/lib/recurring';
+import { listServices } from '@/lib/services';
 import RecurringComposer from './RecurringComposer';
 import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
 import { setPlanActiveAction, deletePlanAction, resendCardLinkAction, runPlanNowAction } from './actions';
@@ -31,6 +32,8 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
   const { supabase, accountId } = await requireOwnerContext();
 
   const plans = await listRecurringPlans(supabase, accountId);
+  const services = (await listServices(supabase, accountId, { activeOnly: true }))
+    .map((service) => ({ id: service.id, name: service.name, unitPrice: Number(service.unit_price) || 0 }));
   const today = todayDateKey();
   const flash = searchParams.flash ? FLASH_MESSAGES[searchParams.flash] : null;
   // "Run next visit now" passes the created job id so we can link straight to it.
@@ -64,7 +67,7 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
         <div className="section-heading workspace-section-heading compact-heading">
           <p className="eyebrow">Plans{activeCount > 0 ? ` · ${activeCount} active` : ''}</p>
         </div>
-        <RecurringComposer today={today} />
+        <RecurringComposer today={today} services={services} />
 
         {plans.length === 0 ? (
           <p className="empty-state">No recurring plans yet. Create one above and its visits will schedule themselves.</p>

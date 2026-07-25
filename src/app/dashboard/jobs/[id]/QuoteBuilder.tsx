@@ -5,6 +5,10 @@ import type { QuoteItem, QuoteItemKind } from '@/lib/jobs';
 
 type Row = QuoteItem;
 
+export type PriceBookItem = { id: string; name: string; unitPrice: number; unit: string };
+
+const UNIT_SUFFIX: Record<string, string> = { hour: '/hr', sqft: '/sqft', visit: '/visit', job: '/job' };
+
 function formatUsd(amount: number): string {
   return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 }
@@ -16,9 +20,11 @@ function formatUsd(amount: number): string {
 export default function QuoteBuilder({
   action,
   initialItems,
+  services = [],
 }: {
   action: (items: QuoteItem[]) => Promise<{ ok: boolean; total: number; message?: string }>;
   initialItems: QuoteItem[];
+  services?: PriceBookItem[];
 }) {
   const idCounter = useRef(0);
   const nextId = () => `qi-${Date.now().toString(36)}-${(idCounter.current += 1)}`;
@@ -33,6 +39,13 @@ export default function QuoteBuilder({
 
   function addRow(kind: QuoteItemKind) {
     setRows((current) => [...current, { id: nextId(), label: '', amount: 0, kind, selected: kind === 'base', recommended: false }]);
+    setResult(null);
+  }
+
+  function addFromService(serviceId: string) {
+    const service = services.find((item) => item.id === serviceId);
+    if (!service) return;
+    setRows((current) => [...current, { id: nextId(), label: service.name, amount: service.unitPrice, kind: 'base', selected: true, recommended: false }]);
     setResult(null);
   }
 
@@ -126,6 +139,25 @@ export default function QuoteBuilder({
       <div className="quote-builder-actions">
         <button type="button" className="btn secondary" onClick={() => addRow('base')} disabled={pending}>+ Included item</button>
         <button type="button" className="btn secondary" onClick={() => addRow('addon')} disabled={pending}>+ Optional add-on</button>
+        {services.length > 0 ? (
+          <select
+            className="quote-book-picker"
+            value=""
+            disabled={pending}
+            onChange={(event) => {
+              if (event.target.value) addFromService(event.target.value);
+              event.target.value = '';
+            }}
+            aria-label="Add a line item from your price book"
+          >
+            <option value="">+ From price book…</option>
+            {services.map((service) => (
+              <option key={service.id} value={service.id}>
+                {service.name} — {formatUsd(service.unitPrice)}{service.unit && service.unit !== 'each' ? ` ${UNIT_SUFFIX[service.unit] ?? service.unit}` : ''}
+              </option>
+            ))}
+          </select>
+        ) : null}
       </div>
 
       <div className="quote-builder-summary">

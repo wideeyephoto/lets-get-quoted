@@ -4,6 +4,7 @@ import PhotoGallery from '@/components/photo-gallery';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import { deriveJobListBadge, computeJobMilestones } from '@/lib/job-badges';
 import { getJob, listCosts, computeMargin, formatJobQuoteSummary, formatJobSchedule, formatMoney, formatPercent, parseQuoteItems, type Cost, type Job } from '@/lib/jobs';
+import { listServices } from '@/lib/services';
 import { createJobPhotoUrls } from '@/lib/job-photo-storage';
 import { listPayments, type Payment, type PaymentStatus } from '@/lib/payments';
 import { listInvoices, selectPrimaryInvoice, type Invoice, type InvoiceStatus } from '@/lib/invoices';
@@ -252,6 +253,8 @@ export default async function JobDetailPage({
   const boundRequestReview = requestJobReviewAction.bind(null, job.id);
   const boundSaveQuoteItems = saveQuoteItemsAction.bind(null, job.id);
   const quoteItems = parseQuoteItems(job.quote_items);
+  const priceBook = (await listServices(supabase, accountId, { activeOnly: true }))
+    .map((service) => ({ id: service.id, name: service.name, unitPrice: Number(service.unit_price) || 0, unit: service.unit }));
   const reviewUrl = await resolveAccountReviewUrl(supabase, accountId);
   const lastReviewRequest = feed.find((event) => event.kind === 'review_requested');
   const boundSendScheduleOptions = sendClientScheduleOptionsAction.bind(null, job.id);
@@ -414,7 +417,7 @@ export default async function JobDetailPage({
           Itemize the work and offer optional add-ons the client can accept on their quote page. The
           quote total updates automatically. Leave this empty to keep the single quoted amount.
         </p>
-        <QuoteBuilder action={boundSaveQuoteItems} initialItems={quoteItems} />
+        <QuoteBuilder action={boundSaveQuoteItems} initialItems={quoteItems} services={priceBook} />
       </section>
 
       <section id="job-feed" className="panel workspace-section-card job-feed-command-panel">

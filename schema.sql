@@ -723,6 +723,24 @@ create table if not exists recurring_plans (
 );
 create index if not exists recurring_plans_due_idx on recurring_plans (account_id, active, next_run_date);
 
+-- ----------------------------------------------------------------------------
+-- SERVICES  — the account's price book: reusable named services + prices that
+-- pre-fill quote line items and recurring plans, so owners stop retyping them.
+-- ----------------------------------------------------------------------------
+create table if not exists services (
+  id           uuid primary key default gen_random_uuid(),
+  account_id   uuid not null references accounts(id) on delete cascade,
+  name         text not null,
+  description  text,
+  unit_price   numeric(12,2) not null default 0,
+  unit         text not null default 'each',
+  active       boolean not null default true,
+  sort_order   integer not null default 0,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+create index if not exists services_account_idx on services (account_id, active, sort_order);
+
 -- ============================================================================
 -- ROW-LEVEL SECURITY
 -- ============================================================================
@@ -747,7 +765,7 @@ declare t text;
 begin
   foreach t in array array[
     'accounts','memberships','crew','sites','jobs','crew_assignments',
-    'costs','job_feed','client_job_access','invoices','payments','finance_plans','leads','sms_events','sms_consent','sms_messages','clients','campaigns','recurring_plans','job_schedule_requests'
+    'costs','job_feed','client_job_access','invoices','payments','finance_plans','leads','sms_events','sms_consent','sms_messages','clients','campaigns','recurring_plans','services','job_schedule_requests'
   ] loop
     execute format('alter table %I enable row level security;', t);
   end loop;
@@ -774,6 +792,7 @@ drop policy if exists sms_messages_all on sms_messages;
 drop policy if exists clients_all on clients;
 drop policy if exists campaigns_all on campaigns;
 drop policy if exists recurring_plans_all on recurring_plans;
+drop policy if exists services_all on services;
 drop policy if exists job_schedule_request_all on job_schedule_requests;
 drop policy if exists invitem_all on invoice_items;
 
@@ -800,6 +819,7 @@ create policy sms_messages_all on sms_messages for all using ( is_member(account
 create policy clients_all on clients          for all using ( is_member(account_id) );
 create policy campaigns_all on campaigns      for all using ( is_member(account_id) );
 create policy recurring_plans_all on recurring_plans for all using ( is_member(account_id) );
+create policy services_all on services        for all using ( is_member(account_id) );
 create policy job_schedule_request_all on job_schedule_requests for all using ( is_member(account_id) );
 
 alter table invoice_items enable row level security;
