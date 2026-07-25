@@ -114,6 +114,8 @@ alter table accounts add column if not exists deposit_percent numeric(5,2) not n
 -- it, up to twice (~day 2 and day 5), texting when they have SMS consent and
 -- emailing otherwise. Opt-in, default off.
 alter table accounts add column if not exists quote_followups_enabled boolean not null default false;
+-- Opt-in: automatically remind clients the day before a scheduled job (SMS/email).
+alter table accounts add column if not exists appointment_reminders_enabled boolean not null default false;
 
 -- ----------------------------------------------------------------------------
 -- MEMBERSHIPS  — links a person (auth.users) to an account with a role.

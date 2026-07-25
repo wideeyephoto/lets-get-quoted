@@ -351,6 +351,11 @@ export default async function DashboardPage() {
                 <p className="workspace-metric-note">Nudges sent on quotes awaiting approval.</p>
               </article>
               <article className="workspace-metric-card">
+                <span className="workspace-metric-label">Appointment reminders</span>
+                <strong className="workspace-metric-value">{automation.reminderCount}</strong>
+                <p className="workspace-metric-note">Day-before nudges to cut no-shows.</p>
+              </article>
+              <article className="workspace-metric-card">
                 <span className="workspace-metric-label">Deposits requested</span>
                 <strong className="workspace-metric-value">{automation.depositCount}</strong>
                 <p className="workspace-metric-note">
@@ -361,7 +366,7 @@ export default async function DashboardPage() {
             {automation.recent.length > 0 ? (
               <div className="cost-list" style={{ marginTop: '1rem' }}>
                 {automation.recent.map((item, index) => {
-                  const icon = item.kind === 'review_requested' ? '⭐' : item.kind === 'quote_followup' ? '↻' : '$';
+                  const icon = item.kind === 'review_requested' ? '⭐' : item.kind === 'quote_followup' ? '↻' : item.kind === 'appointment_reminder' ? '🔔' : '$';
                   const when = new Date(item.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                   const inner = (
                     <>

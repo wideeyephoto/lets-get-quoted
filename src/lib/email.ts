@@ -251,6 +251,39 @@ export async function sendReviewRequestEmail(input: {
   console.log(`Review request email sent to ${input.recipientEmail}`);
 }
 
+// Day-before reminder for a scheduled job, over email — the fallback channel
+// when the client has no textable mobile. Sent by the reminders cron. Throws on
+// provider rejection so the caller can count it as failed.
+export async function sendAppointmentReminderEmail(input: {
+  recipientEmail: string;
+  businessName: string;
+  clientName: string;
+  whenLabel: string;
+  address: string | null;
+  jobRef: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('Email provider is not configured.');
+  }
+
+  const addressLine = input.address
+    ? `<p style="margin:0 0 12px;line-height:1.5"><strong>Where:</strong> ${escapeHtml(input.address)}</p>`
+    : '';
+
+  const result = await resend.emails.send({
+    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    to: input.recipientEmail,
+    subject: `Reminder: your appointment with ${input.businessName}`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#b45309;font-weight:700;letter-spacing:0.04em">APPOINTMENT REMINDER</p><h1 style="font-size:24px;margin:0 0 12px">${escapeHtml(input.clientName)}, your appointment is coming up</h1><p style="margin:0 0 12px;line-height:1.5"><strong>When:</strong> ${escapeHtml(input.whenLabel)}</p>${addressLine}<p style="margin:0 0 20px;line-height:1.5">${escapeHtml(input.businessName)} is looking forward to seeing you. Need to reschedule? Just reply to this email or give us a call.</p><p style="margin-top:24px;color:#6b7280;font-size:13px">${escapeHtml(input.businessName)} · Let's Get Quoted</p></div>`,
+    reply_to: 'hello@letsgetquoted.com',
+  });
+
+  if (result.error) {
+    console.error('Failed to send appointment reminder email:', result.error);
+    throw new Error(result.error.message);
+  }
+}
+
 // Invites a client to save a card for automatic billing on a recurring plan.
 // No charge at this step — the hosted page collects the card + mandate. Throws
 // on provider rejection so the caller can report the invite didn't send.

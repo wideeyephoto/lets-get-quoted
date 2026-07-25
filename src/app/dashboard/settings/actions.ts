@@ -70,6 +70,20 @@ export async function updateFollowupSettingsAction(formData: FormData) {
   revalidatePath('/dashboard/settings');
 }
 
+export async function updateReminderSettingsAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const appointmentReminders = formData.get('appointmentReminders') === 'on';
+
+  const { error } = await supabase
+    .from('accounts')
+    .update({ appointment_reminders_enabled: appointmentReminders })
+    .eq('id', accountId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/dashboard/settings');
+}
+
 // Permanently deletes the signed-in owner's account. Removes the account (which
 // cascades every child row — jobs, leads, crew, invoices, payments, sites,
 // memberships, …) AND the auth user, so the account's phone/email is freed to

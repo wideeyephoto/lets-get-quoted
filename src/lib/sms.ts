@@ -445,6 +445,24 @@ export async function sendQuoteFollowupSms(params: {
   return providerId;
 }
 
+// Day-before reminder for a scheduled job — cuts no-shows. Sent by the reminders
+// cron; the caller enforces consent (opted-in ledger) before this runs. Mirrored
+// into the two-way inbox like other customer texts.
+export async function sendAppointmentReminderSms(params: {
+  phone: string;
+  businessName: string;
+  clientName: string;
+  whenLabel: string;
+  address: string | null;
+  accountId?: string;
+}) {
+  const addressNote = params.address ? ` at ${params.address}` : '';
+  const message = `Let's Get Quoted: ${params.businessName} reminder — ${params.clientName}, your appointment is coming up ${params.whenLabel}${addressNote}. Reply STOP to opt out.`;
+  const providerId = await sendTwilioMessage(params.phone, message);
+  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
+  return providerId;
+}
+
 // Sends a client the link to save a card for automatic billing on a recurring
 // plan. No charge happens at this step — it just collects the card + mandate.
 // Caller resolves consent; mirrored into the inbox like other customer texts.

@@ -5,7 +5,7 @@ import FinanceReports from './FinanceReports';
 import { getAvailableTaxYears, buildProfitAndLoss, buildScheduleCWorksheet, build1099PrepList } from '@/lib/tax-reports';
 import SaveButton from '@/components/save-button';
 import DeleteAccountButton from './DeleteAccountButton';
-import { updateScheduleDayHoursAction, updateReviewSettingsAction, updateDepositSettingsAction, updateFollowupSettingsAction, deleteAccountAction } from './actions';
+import { updateScheduleDayHoursAction, updateReviewSettingsAction, updateDepositSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, deleteAccountAction } from './actions';
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -59,6 +59,13 @@ export default async function SettingsPage({
     .eq('id', accountId)
     .maybeSingle();
   const quoteFollowupsEnabled = Boolean(followupSettings?.quote_followups_enabled);
+
+  const { data: reminderSettings } = await supabase
+    .from('accounts')
+    .select('appointment_reminders_enabled')
+    .eq('id', accountId)
+    .maybeSingle();
+  const appointmentRemindersEnabled = Boolean(reminderSettings?.appointment_reminders_enabled);
 
   const requestedYear = searchParams.year ? parseInt(searchParams.year, 10) : NaN;
   const selectedYear = availableYears.includes(requestedYear) ? requestedYear : availableYears[0];
@@ -181,6 +188,32 @@ export default async function SettingsPage({
           </label>
           <div className="form-actions">
             <SaveButton>Save follow-up settings</SaveButton>
+          </div>
+        </form>
+      </section>
+
+      <section className="panel workspace-section-card" id="reminders">
+        <div className="section-heading workspace-section-heading compact-heading">
+          <p className="eyebrow">Reminders</p>
+          <h2>Appointment reminders</h2>
+        </div>
+        <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+          When on, the day before a scheduled job we automatically remind the client — texting them if
+          they have a mobile on file that&apos;s opted in, and emailing otherwise. It runs once per
+          appointment and respects text opt-outs, so it cuts no-shows without you lifting a finger.
+        </p>
+        <form action={updateReminderSettingsAction} className="form-grid compact-form">
+          <label className="checkbox-row" htmlFor="appointmentReminders">
+            <input
+              id="appointmentReminders"
+              name="appointmentReminders"
+              type="checkbox"
+              defaultChecked={appointmentRemindersEnabled}
+            />
+            <span>Automatically remind clients the day before their appointment</span>
+          </label>
+          <div className="form-actions">
+            <SaveButton>Save reminder settings</SaveButton>
           </div>
         </form>
       </section>
