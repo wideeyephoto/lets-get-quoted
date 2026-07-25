@@ -22,40 +22,50 @@ export async function getCurrentMembership(userId: string): Promise<CurrentMembe
   // Use the admin client to bypass RLS.
   const supabase = createAdminClient();
 
-  // limit(1) + oldest-first so a user who ended up with duplicate memberships
-  // (e.g. from a past provisioning race) resolves deterministically instead of
-  // maybeSingle() erroring on multiple rows and bouncing them to /login.
+  // A user can belong to multiple accounts (own their business + be on another's
+  // crew). PREFER an 'owner' membership so a dual-role user always resolves to
+  // their owner account and isn't bounced off the owner dashboard by an older
+  // crew membership. Fall back to the oldest membership otherwise — crew-only
+  // users have no owner row, so they keep resolving to their crew account exactly
+  // as before. (Also resolves deterministically past any duplicate-membership
+  // race instead of maybeSingle() erroring on multiple rows.)
   const { data, error: membershipError } = await supabase
     .from('memberships')
     .select('account_id, role')
     .eq('user_id', userId)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .order('created_at', { ascending: true });
 
-  if (membershipError || !data) {
+  if (membershipError || !data || data.length === 0) {
     return { accountId: null, role: null };
   }
 
+  const chosen = data.find((m) => m.role === 'owner') ?? data[0];
   return {
-    accountId: data.account_id ?? null,
-    role: data.role ?? null,
+    accountId: chosen.account_id ?? null,
+    role: chosen.role ?? null,
   };
 }
 
 export async function ensureAccountMembership(userId: string) {
   const admin = createAdminClient();
 
-  const { data: existingMembership } = await admin
+  // Return an existing OWNER membership if the user already owns an account.
+  // Deliberately do NOT short-circuit on a crew-only membership: being on someone
+  // else's crew must not lock you out of owning your own account. This runs only
+  // on OWNER sign-in entry points (magic link, phone, OAuth callback) — never the
+  // crew callback — so a user with only crew memberships gets a fresh owner
+  // account provisioned here, exactly like any brand-new user hitting /dashboard.
+  const { data: ownerMembership } = await admin
     .from('memberships')
     .select('account_id, role')
     .eq('user_id', userId)
+    .eq('role', 'owner')
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle();
 
-  if (existingMembership) {
-    return existingMembership;
+  if (ownerMembership) {
+    return ownerMembership;
   }
 
   const { data: newAccount, error: createAccountError } = await admin
