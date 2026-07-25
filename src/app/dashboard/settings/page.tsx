@@ -45,6 +45,13 @@ export default async function SettingsPage({
     .maybeSingle();
   const autoReviewRequest = Boolean(reviewSettings?.auto_review_request);
 
+  const { data: gatingSettings } = await supabase
+    .from('accounts')
+    .select('review_gating_enabled')
+    .eq('id', accountId)
+    .maybeSingle();
+  const reviewGatingEnabled = Boolean(gatingSettings?.review_gating_enabled);
+
   const { data: depositSettings } = await supabase
     .from('accounts')
     .select('deposit_on_approval, deposit_percent')
@@ -159,6 +166,18 @@ export default async function SettingsPage({
               defaultChecked={autoReviewRequest}
             />
             <span>Ask for a review automatically when I mark a job complete</span>
+          </label>
+          <label className="checkbox-row" htmlFor="reviewGating">
+            <input
+              id="reviewGating"
+              name="reviewGating"
+              type="checkbox"
+              defaultChecked={reviewGatingEnabled}
+            />
+            <span>
+              Screen reviews first — clients tap a rating; 4–5★ go to Google, 1–3★ come back to you as private
+              feedback instead of a public review
+            </span>
           </label>
           <div className="form-actions">
             <SaveButton>Save review settings</SaveButton>

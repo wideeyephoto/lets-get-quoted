@@ -29,6 +29,7 @@ import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
 import { isPhoneOptedOut, recordSmsConsent, sendClientJobDashboardSms, sendCrewAssignmentSms, sendCrewScheduleSelectedSms, sendJobUpdateSms, sendReviewRequestSms } from '@/lib/sms';
 import { sendReviewRequestEmail } from '@/lib/email';
+import { createReviewInvite } from '@/lib/reviews';
 import { getSiteContent } from '@/lib/site-content';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -681,6 +682,20 @@ async function deliverJobReviewRequest(
   const businessName = account?.business_name || "Let's Get Quoted contractor";
   const clientFirstName = (job.client_name || 'there').trim().split(/\s+/)[0] || 'there';
 
+  // Optionally route the ask through the "how'd we do?" gate so 4-5★ go to
+  // Google and 1-3★ come back as private feedback. Falls back to the direct
+  // Google link if gating is off/unavailable or the invite can't be created.
+  let linkUrl = reviewUrl;
+  const { data: gate } = await supabase.from('accounts').select('review_gating_enabled').eq('id', accountId).maybeSingle();
+  if (gate?.review_gating_enabled) {
+    try {
+      const token = await createReviewInvite(supabase, accountId, job.id, job.client_name, reviewUrl);
+      linkUrl = `${(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '')}/review/${token}`;
+    } catch (error) {
+      console.error(`Review gate invite failed for job ${job.id}; sending direct link:`, error instanceof Error ? error.message : error);
+    }
+  }
+
   const normalizedPhone = job.client_phone ? normalizeUsPhone(job.client_phone) : null;
   const canText = normalizedPhone ? !(await isPhoneOptedOut(accountId, normalizedPhone)) : false;
 
@@ -689,11 +704,11 @@ async function deliverJobReviewRequest(
   try {
     if (canText && normalizedPhone) {
       await recordSmsConsent(accountId, normalizedPhone, 'review_request');
-      await sendReviewRequestSms({ phone: normalizedPhone, businessName, clientName: clientFirstName, reviewUrl, accountId });
+      await sendReviewRequestSms({ phone: normalizedPhone, businessName, clientName: clientFirstName, reviewUrl: linkUrl, accountId });
       channel = 'sms';
       sentTo = normalizedPhone;
     } else if (job.client_email) {
-      await sendReviewRequestEmail({ recipientEmail: job.client_email, businessName, clientName: clientFirstName, reviewUrl });
+      await sendReviewRequestEmail({ recipientEmail: job.client_email, businessName, clientName: clientFirstName, reviewUrl: linkUrl });
       channel = 'email';
       sentTo = job.client_email;
     } else {

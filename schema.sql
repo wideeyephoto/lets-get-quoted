@@ -116,6 +116,8 @@ alter table accounts add column if not exists deposit_percent numeric(5,2) not n
 alter table accounts add column if not exists quote_followups_enabled boolean not null default false;
 -- Opt-in: automatically remind clients the day before a scheduled job (SMS/email).
 alter table accounts add column if not exists appointment_reminders_enabled boolean not null default false;
+-- Opt-in: route review asks through a "how'd we do?" gate — 4-5★ to Google, 1-3★ to private feedback.
+alter table accounts add column if not exists review_gating_enabled boolean not null default false;
 
 -- ----------------------------------------------------------------------------
 -- MEMBERSHIPS  — links a person (auth.users) to an account with a role.
@@ -743,6 +745,26 @@ create table if not exists services (
 );
 create index if not exists services_account_idx on services (account_id, active, sort_order);
 
+-- ----------------------------------------------------------------------------
+-- REVIEW_INVITES  — one row per gated review ask. The public /review/[token]
+-- page reads by token; 4-5★ routes to google_url, 1-3★ captures private
+-- feedback for the owner (never posted publicly).
+-- ----------------------------------------------------------------------------
+create table if not exists review_invites (
+  id           uuid primary key default gen_random_uuid(),
+  account_id   uuid not null references accounts(id) on delete cascade,
+  job_id       uuid references jobs(id) on delete set null,
+  token        text not null unique,
+  client_name  text,
+  google_url   text,
+  rating       integer,
+  feedback     text,
+  routed_to    text,
+  created_at   timestamptz not null default now(),
+  responded_at timestamptz
+);
+create index if not exists review_invites_token_idx on review_invites (token);
+
 -- ============================================================================
 -- ROW-LEVEL SECURITY
 -- ============================================================================
@@ -767,7 +789,7 @@ declare t text;
 begin
   foreach t in array array[
     'accounts','memberships','crew','sites','jobs','crew_assignments',
-    'costs','job_feed','client_job_access','invoices','payments','finance_plans','leads','sms_events','sms_consent','sms_messages','clients','campaigns','recurring_plans','services','job_schedule_requests'
+    'costs','job_feed','client_job_access','invoices','payments','finance_plans','leads','sms_events','sms_consent','sms_messages','clients','campaigns','recurring_plans','services','review_invites','job_schedule_requests'
   ] loop
     execute format('alter table %I enable row level security;', t);
   end loop;
@@ -795,6 +817,7 @@ drop policy if exists clients_all on clients;
 drop policy if exists campaigns_all on campaigns;
 drop policy if exists recurring_plans_all on recurring_plans;
 drop policy if exists services_all on services;
+drop policy if exists review_invites_all on review_invites;
 drop policy if exists job_schedule_request_all on job_schedule_requests;
 drop policy if exists invitem_all on invoice_items;
 
@@ -822,6 +845,7 @@ create policy clients_all on clients          for all using ( is_member(account_
 create policy campaigns_all on campaigns      for all using ( is_member(account_id) );
 create policy recurring_plans_all on recurring_plans for all using ( is_member(account_id) );
 create policy services_all on services        for all using ( is_member(account_id) );
+create policy review_invites_all on review_invites for all using ( is_member(account_id) );
 create policy job_schedule_request_all on job_schedule_requests for all using ( is_member(account_id) );
 
 alter table invoice_items enable row level security;

@@ -4934,6 +4934,41 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 }
 
 /* ---------------------------------------------------------------------------
+   REVIEW GATE — public "how'd we do?" page
+   --------------------------------------------------------------------------- */
+.review-gate .review-stars {
+  display: flex;
+  gap: 0.4rem;
+  margin: 1.4rem 0 0.6rem;
+}
+.review-star {
+  background: none;
+  border: none;
+  padding: 0.1rem 0.2rem;
+  font-size: 2.9rem;
+  line-height: 1;
+  cursor: pointer;
+  color: rgba(255,255,255,0.22);
+  transition: color 0.12s ease, transform 0.12s ease;
+}
+.review-star:hover,
+.review-star.is-on { color: #fbbf24; }
+.review-star:hover { transform: scale(1.08); }
+.review-gate-fine { margin: 0.2rem 0 0; font-size: 0.8rem; color: rgba(255,255,255,0.45); }
+.review-feedback-form { display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1.2rem; max-width: 440px; }
+.review-feedback-form textarea {
+  width: 100%;
+  padding: 0.9rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.05);
+  color: #f4f6f8;
+  font: inherit;
+  font-size: 1rem;
+  resize: vertical;
+}
+
+/* ---------------------------------------------------------------------------
    REBOOK — win back past customers
    --------------------------------------------------------------------------- */
 .rebook-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.6rem; }

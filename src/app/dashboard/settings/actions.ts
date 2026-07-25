@@ -29,10 +29,11 @@ export async function updateScheduleDayHoursAction(formData: FormData) {
 export async function updateReviewSettingsAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
   const autoReviewRequest = formData.get('autoReviewRequest') === 'on';
+  const reviewGating = formData.get('reviewGating') === 'on';
 
   const { error } = await supabase
     .from('accounts')
-    .update({ auto_review_request: autoReviewRequest })
+    .update({ auto_review_request: autoReviewRequest, review_gating_enabled: reviewGating })
     .eq('id', accountId);
 
   if (error) throw new Error(error.message);
