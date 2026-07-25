@@ -9,17 +9,19 @@ export const dynamic = 'force-dynamic';
 // when a recipient taps the native "Unsubscribe" button — no page, no session.
 // Verifies the signed token and records the opt-out with the service-role client.
 export async function POST(request: Request) {
-  const token = new URL(request.url).searchParams.get('token');
-  const decoded = parseUnsubscribeToken(token);
-  // Always 200 for a well-formed one-click request even if the token is junk:
-  // mailbox providers treat a non-2xx as a failed unsubscribe and may badge the
-  // sender. A bad token simply means there's nothing to suppress.
-  if (!decoded) {
-    return new NextResponse(null, { status: 200 });
+  // Always 200: mailbox providers treat a non-2xx one-click response as a failed
+  // unsubscribe and may badge the sender. A bad token (or any unexpected error,
+  // e.g. missing service-role env) simply means there's nothing to suppress.
+  try {
+    const token = new URL(request.url).searchParams.get('token');
+    const decoded = parseUnsubscribeToken(token);
+    if (decoded) {
+      const admin = createAdminClient();
+      await suppressEmail(admin, decoded.accountId, decoded.email, 'one_click_unsubscribe');
+    }
+  } catch (err) {
+    console.error('One-click unsubscribe error (returning 200 anyway):', err);
   }
-
-  const admin = createAdminClient();
-  await suppressEmail(admin, decoded.accountId, decoded.email, 'one_click_unsubscribe');
   return new NextResponse(null, { status: 200 });
 }
 

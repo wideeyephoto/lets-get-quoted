@@ -714,6 +714,11 @@ async function deliverJobReviewRequest(
       channel = 'sms';
       sentTo = normalizedPhone;
     } else if (job.client_email) {
+      // A marketing email must carry a physical postal address (CAN-SPAM): if the
+      // only channel left is email but no mailing address is on file, don't send.
+      if (!mailingAddress) {
+        return { ok: false, message: 'Add your business mailing address in Settings to email review requests — it’s required by anti-spam law.' };
+      }
       // Honor a marketing unsubscribe: if the only channel left is an email that
       // opted out, don't send (and say why) rather than mail them anyway.
       if (await isEmailSuppressed(supabase, accountId, job.client_email)) {

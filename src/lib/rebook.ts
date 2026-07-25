@@ -116,11 +116,14 @@ async function deliverRebookInvite(
   if (canText && phone) {
     await sendRebookInviteSms({ phone, businessName, clientName: firstName(client.name), url: bookingUrl, accountId });
     channel = 'sms';
-  } else if (client.email && !(await isEmailSuppressed(supabase, accountId, client.email))) {
+  } else if (client.email && mailingAddress && !(await isEmailSuppressed(supabase, accountId, client.email))) {
+    // Requires a mailing address: a marketing email must carry a physical postal
+    // address (CAN-SPAM), so skip the email rather than send a non-compliant one.
     await sendRebookInviteEmail({ recipientEmail: client.email, businessName, clientName: firstName(client.name), url: bookingUrl, accountId, mailingAddress });
     channel = 'email';
   } else {
-    // No consented mobile, and either no email or the email has unsubscribed.
+    // No consented mobile, and either no email, the email unsubscribed, or no
+    // business mailing address on file to include in a marketing email.
     return 'skipped';
   }
 

@@ -85,11 +85,15 @@ export async function loadSuppressedEmails(supabase: SupabaseClient, accountId: 
 // never blocks a legitimate send.
 export async function isEmailSuppressed(supabase: SupabaseClient, accountId: string, email: string | null | undefined): Promise<boolean> {
   if (!email) return false;
+  // Exact match on the lowercased address (how suppressEmail stores it, and what
+  // the (account_id, lower(email)) unique index keys on). NOT ilike — the address
+  // would be treated as a LIKE pattern, so an '_' or '%' in a local-part would act
+  // as a wildcard and wrongly suppress look-alike addresses.
   const { data, error } = await supabase
     .from('email_suppression')
     .select('id')
     .eq('account_id', accountId)
-    .ilike('email', email.trim())
+    .eq('email', email.trim().toLowerCase())
     .limit(1)
     .maybeSingle();
   if (error) return false;
