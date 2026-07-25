@@ -251,6 +251,45 @@ export async function sendReviewRequestEmail(input: {
   console.log(`Review request email sent to ${input.recipientEmail}`);
 }
 
+// One-off broadcast email to a past client. The owner writes plain text; we
+// render it into the same branded shell as the other transactional emails
+// (blank lines become paragraphs, single newlines become line breaks). Throws
+// on provider rejection so the caller can count it as a failed send.
+export async function sendCampaignEmail(input: {
+  recipientEmail: string;
+  businessName: string;
+  subject: string;
+  body: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('Email provider is not configured.');
+  }
+
+  const paragraphs = input.body
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((block) => `<p style="margin:0 0 14px;line-height:1.6">${escapeHtml(block).replace(/\n/g, '<br/>')}</p>`)
+    .join('');
+
+  // Show the business as the sender name; the verified domain stays LGQ. Strip
+  // characters that would break the From header rather than risk a rejection.
+  const fromName = input.businessName.replace(/["<>,]/g, '').trim() || "Let's Get Quoted";
+
+  const result = await resend.emails.send({
+    from: `${fromName} <hello@letsgetquoted.com>`,
+    to: input.recipientEmail,
+    subject: input.subject,
+    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033">${paragraphs}<p style="margin-top:28px;color:#6b7280;font-size:13px">${escapeHtml(input.businessName)} · sent with Let's Get Quoted</p></div>`,
+    reply_to: 'hello@letsgetquoted.com',
+  });
+
+  if (result.error) {
+    console.error('Failed to send campaign email:', result.error);
+    throw new Error(result.error.message);
+  }
+}
+
 function escapeHtml(value: string | null) {
   return (value || '').replace(/[&<>'"]/g, (character) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;',

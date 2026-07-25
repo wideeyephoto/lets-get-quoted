@@ -4683,3 +4683,128 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   }
 }
 
+/* ---------------------------------------------------------------------------
+   CAMPAIGNS — email/SMS broadcasts to past clients
+   --------------------------------------------------------------------------- */
+.flash-banner p { margin: 0; }
+.flash-banner.flash-success {
+  border-color: rgba(163,230,53,0.35);
+  background: rgba(163,230,53,0.08);
+}
+.flash-banner.flash-success strong { color: #bef264; }
+.flash-banner.flash-info {
+  border-color: rgba(56,189,248,0.35);
+  background: rgba(56,189,248,0.08);
+}
+
+.campaign-form { display: flex; flex-direction: column; gap: 1.4rem; }
+
+.channel-toggle {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.channel-option {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.95rem;
+  border-radius: 7px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.6);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.channel-option input { position: absolute; opacity: 0; width: 0; height: 0; }
+.channel-option.is-active { background: #f59e0b; color: #172033; }
+.channel-option:hover:not(.is-active) { color: rgba(255,255,255,0.9); }
+
+.audience-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.7rem;
+}
+.audience-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 11px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.03);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.audience-card input { position: absolute; opacity: 0; width: 0; height: 0; }
+.audience-card:hover { border-color: rgba(255,255,255,0.24); }
+.audience-card.is-active {
+  border-color: #f59e0b;
+  background: rgba(245,158,11,0.08);
+}
+.audience-card-top { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.audience-card-top strong { font-size: 0.98rem; }
+.audience-count {
+  min-width: 1.9rem;
+  text-align: center;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.85);
+}
+.audience-card.is-active .audience-count { background: #f59e0b; color: #172033; }
+.audience-hint { font-size: 0.82rem; color: rgba(255,255,255,0.55); line-height: 1.35; }
+
+.field-note { margin: 0.15rem 0 0; font-size: 0.8rem; color: rgba(255,255,255,0.55); line-height: 1.45; }
+.field-note code {
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.08);
+  font-size: 0.78rem;
+}
+.field-note .warn { color: #ffb37a; }
+
+.campaign-reach {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.campaign-reach strong { font-size: 1.1rem; color: #f7f5ef; }
+.campaign-reach .muted { color: rgba(255,255,255,0.5); }
+.campaign-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+
+.campaign-history { display: flex; flex-direction: column; }
+.campaign-history-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.campaign-history-row:last-child { border-bottom: none; }
+.campaign-history-main { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.campaign-history-main strong { font-size: 0.95rem; }
+.campaign-history-meta { font-size: 0.8rem; color: rgba(255,255,255,0.5); }
+.campaign-history-stats { display: flex; flex-wrap: wrap; align-items: center; gap: 0.7rem; font-size: 0.83rem; }
+.campaign-history-stats .muted { color: rgba(255,255,255,0.45); }
+.campaign-stat strong { color: #bef264; }
+.campaign-stat-fail { color: #ffb37a; }
+
+@media (max-width: 640px) {
+  .channel-toggle { width: 100%; }
+  .channel-option { flex: 1; justify-content: center; }
+  .campaign-actions { width: 100%; }
+  .campaign-actions .btn { flex: 1; }
+}
+

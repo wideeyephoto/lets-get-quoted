@@ -661,6 +661,28 @@ create table if not exists sms_messages (
 );
 create index if not exists sms_messages_thread_idx on sms_messages (account_id, phone_number, created_at desc);
 
+-- ----------------------------------------------------------------------------
+-- CAMPAIGNS  — one-off email/SMS broadcasts to past clients. Stores the message
+-- plus per-channel outcome counts (no per-recipient rows: the two-way inbox
+-- already threads the SMS sends, and a contractor's list is small enough that
+-- aggregate stats are what the history view needs).
+-- ----------------------------------------------------------------------------
+create table if not exists campaigns (
+  id              uuid primary key default gen_random_uuid(),
+  account_id      uuid not null references accounts(id) on delete cascade,
+  channel         text not null check (channel in ('email','sms','both')),
+  audience        text not null,
+  subject         text,
+  body            text not null,
+  recipient_count integer not null default 0,
+  email_sent      integer not null default 0,
+  sms_sent        integer not null default 0,
+  failed_count    integer not null default 0,
+  skipped_count   integer not null default 0,
+  created_at      timestamptz not null default now()
+);
+create index if not exists campaigns_account_idx on campaigns (account_id, created_at desc);
+
 -- ============================================================================
 -- ROW-LEVEL SECURITY
 -- ============================================================================
@@ -685,7 +707,7 @@ declare t text;
 begin
   foreach t in array array[
     'accounts','memberships','crew','sites','jobs','crew_assignments',
-    'costs','job_feed','client_job_access','invoices','payments','finance_plans','leads','sms_events','sms_consent','sms_messages','clients','job_schedule_requests'
+    'costs','job_feed','client_job_access','invoices','payments','finance_plans','leads','sms_events','sms_consent','sms_messages','clients','campaigns','job_schedule_requests'
   ] loop
     execute format('alter table %I enable row level security;', t);
   end loop;
@@ -710,6 +732,7 @@ drop policy if exists sms_event_all on sms_events;
 drop policy if exists sms_consent_all on sms_consent;
 drop policy if exists sms_messages_all on sms_messages;
 drop policy if exists clients_all on clients;
+drop policy if exists campaigns_all on campaigns;
 drop policy if exists job_schedule_request_all on job_schedule_requests;
 drop policy if exists invitem_all on invoice_items;
 
@@ -734,6 +757,7 @@ create policy sms_event_all on sms_events     for all using ( is_member(account_
 create policy sms_consent_all on sms_consent  for all using ( is_member(account_id) );
 create policy sms_messages_all on sms_messages for all using ( is_member(account_id) );
 create policy clients_all on clients          for all using ( is_member(account_id) );
+create policy campaigns_all on campaigns      for all using ( is_member(account_id) );
 create policy job_schedule_request_all on job_schedule_requests for all using ( is_member(account_id) );
 
 alter table invoice_items enable row level security;

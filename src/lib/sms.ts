@@ -445,6 +445,23 @@ export async function sendQuoteFollowupSms(params: {
   return providerId;
 }
 
+// One-off broadcast to a past client (a seasonal offer, a "we're booking now"
+// note). Consent is enforced by the caller (opted-in ledger only); this prefixes
+// the sender so the shared-number recipient knows who it's from, appends the
+// required opt-out line, and mirrors into the two-way inbox like every other
+// customer text.
+export async function sendCampaignSms(params: {
+  phone: string;
+  businessName: string;
+  body: string;
+  accountId?: string;
+}) {
+  const message = `${params.businessName}: ${params.body} Reply STOP to opt out.`;
+  const providerId = await sendTwilioMessage(params.phone, message);
+  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
+  return providerId;
+}
+
 // Post-job ask for a Google review — the loop that turns a finished job back
 // into the next lead. Sent one-tap from the job page after the work's done and
 // the client's happy. Job-context text (like job updates): consent is enforced
