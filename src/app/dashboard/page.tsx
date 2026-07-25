@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { connectStripeAction } from './stripe-actions';
-import { expandScheduledJobs, formatJobTime, listJobs } from '@/lib/jobs';
+import { expandScheduledJobs, formatJobTime, formatMoney, listJobs } from '@/lib/jobs';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { expireStaleLeads, listLeads } from '@/lib/leads';
 import { listActiveScheduleRequests } from '@/lib/scheduling';
+import { getAutomationActivity } from '@/lib/automation-activity';
 
 function toDateKey(year: number, monthIndex: number, day: number): string {
   return `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -96,9 +97,10 @@ export default async function DashboardPage() {
   const openLeadCount = leads.filter((lead) => lead.status === 'new' || lead.status === 'contacted').length;
   const quotedLeadCount = leads.filter((lead) => lead.status === 'quoted').length;
   const wonLeadCount = leads.filter((lead) => lead.status === 'won').length;
-  const [crew, assignmentsByJob] = await Promise.all([
+  const [crew, assignmentsByJob, automation] = await Promise.all([
     listCrew(supabase, accountId, { activeOnly: true }),
     listCrewAssignmentsForJobs(supabase, accountId, scheduledJobs.map((job) => job.id)),
+    getAutomationActivity(supabase, accountId),
   ]);
   const jobsByDate = new Map<string, typeof scheduledJobOccurrences>();
   for (const job of scheduledJobOccurrences) {
@@ -323,6 +325,63 @@ export default async function DashboardPage() {
             </p>
           </article>
         </div>
+      </section>
+
+      <section className="panel workspace-section-card">
+        <div className="section-heading workspace-section-heading">
+          <p className="eyebrow">Automation at work</p>
+          <h2>Working for you · last 30 days</h2>
+        </div>
+        {automation.total === 0 ? (
+          <p className="workspace-card-copy">
+            Nothing automated yet. Flip on review requests, deposit-on-approval, and quote follow-ups in{' '}
+            <Link href="/dashboard/settings#reviews">Settings</Link> and this fills in as they run.
+          </p>
+        ) : (
+          <>
+            <div className="workspace-metric-grid">
+              <article className="workspace-metric-card accent">
+                <span className="workspace-metric-label">Review requests</span>
+                <strong className="workspace-metric-value">{automation.reviewCount}</strong>
+                <p className="workspace-metric-note">Google reviews asked for automatically.</p>
+              </article>
+              <article className="workspace-metric-card">
+                <span className="workspace-metric-label">Quote follow-ups</span>
+                <strong className="workspace-metric-value">{automation.followupCount}</strong>
+                <p className="workspace-metric-note">Nudges sent on quotes awaiting approval.</p>
+              </article>
+              <article className="workspace-metric-card">
+                <span className="workspace-metric-label">Deposits requested</span>
+                <strong className="workspace-metric-value">{automation.depositCount}</strong>
+                <p className="workspace-metric-note">
+                  {automation.depositTotal > 0 ? `${formatMoney(automation.depositTotal)} asked on approval.` : 'Auto-requested when a quote is approved.'}
+                </p>
+              </article>
+            </div>
+            {automation.recent.length > 0 ? (
+              <div className="cost-list" style={{ marginTop: '1rem' }}>
+                {automation.recent.map((item, index) => {
+                  const icon = item.kind === 'review_requested' ? '⭐' : item.kind === 'quote_followup' ? '↻' : '$';
+                  const when = new Date(item.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                  const inner = (
+                    <>
+                      <div className="cost-item-main">
+                        <span className="cost-item-desc">{icon} {item.label}</span>
+                        <span className="cost-item-sub">{when}</span>
+                      </div>
+                      {item.amount ? <span className="cost-item-amount">{formatMoney(item.amount)}</span> : null}
+                    </>
+                  );
+                  return item.jobId ? (
+                    <Link href={`/dashboard/jobs/${item.jobId}`} className="cost-item" key={`${item.kind}-${index}`}>{inner}</Link>
+                  ) : (
+                    <div className="cost-item" key={`${item.kind}-${index}`}>{inner}</div>
+                  );
+                })}
+              </div>
+            ) : null}
+          </>
+        )}
       </section>
 
       <section className="panel workspace-section-card">
