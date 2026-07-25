@@ -86,6 +86,107 @@ export async function listClientsWithStats(supabase: SupabaseClient, accountId: 
     });
 }
 
+export type StatementJob = {
+  id: string;
+  ref: string;
+  date: string;
+  status: string;
+  quoted: number;
+  paid: number;
+  balance: number;
+};
+
+export type StatementPayment = {
+  id: string;
+  jobRef: string;
+  label: string | null;
+  kind: string;
+  amount: number;
+  status: string;
+  at: string;
+};
+
+export type ClientStatement = {
+  totalQuoted: number;
+  totalPaid: number;
+  outstanding: number;
+  jobCount: number;
+  jobs: StatementJob[];
+  payments: StatementPayment[];
+};
+
+const round2 = (value: number) => Math.round(value * 100) / 100;
+
+// A per-client financial ledger: each job's agreed (quoted) amount vs. what's
+// actually been paid, plus the full payment history and lifetime totals. Powers
+// the printable client statement.
+export async function getClientStatement(supabase: SupabaseClient, accountId: string, clientId: string): Promise<ClientStatement> {
+  const { data: jobRows } = await supabase
+    .from('jobs')
+    .select('id, ref, status, quoted_amount, created_at')
+    .eq('account_id', accountId)
+    .eq('client_id', clientId)
+    .order('created_at', { ascending: false });
+  const jobs = jobRows ?? [];
+  const jobIds = jobs.map((job) => job.id as string);
+
+  let payments: Record<string, unknown>[] = [];
+  if (jobIds.length > 0) {
+    const { data } = await supabase
+      .from('payments')
+      .select('id, job_id, label, kind, amount, status, paid_at, requested_at')
+      .eq('account_id', accountId)
+      .in('job_id', jobIds)
+      .order('requested_at', { ascending: false });
+    payments = data ?? [];
+  }
+
+  const paidByJob = new Map<string, number>();
+  for (const payment of payments) {
+    if (payment.status === 'paid') {
+      const key = payment.job_id as string;
+      paidByJob.set(key, (paidByJob.get(key) ?? 0) + (Number(payment.amount) || 0));
+    }
+  }
+  const refById = new Map(jobs.map((job) => [job.id as string, job.ref as string]));
+
+  const statementJobs: StatementJob[] = jobs.map((job) => {
+    const quoted = Number(job.quoted_amount) || 0;
+    const paid = paidByJob.get(job.id as string) ?? 0;
+    return {
+      id: job.id as string,
+      ref: job.ref as string,
+      date: job.created_at as string,
+      status: job.status as string,
+      quoted: round2(quoted),
+      paid: round2(paid),
+      balance: round2(quoted - paid),
+    };
+  });
+
+  const totalQuoted = statementJobs.reduce((sum, job) => sum + job.quoted, 0);
+  const totalPaid = payments.filter((p) => p.status === 'paid').reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+  const statementPayments: StatementPayment[] = payments.map((payment) => ({
+    id: payment.id as string,
+    jobRef: refById.get(payment.job_id as string) ?? '—',
+    label: (payment.label as string | null) ?? null,
+    kind: payment.kind as string,
+    amount: round2(Number(payment.amount) || 0),
+    status: payment.status as string,
+    at: (payment.paid_at as string | null) || (payment.requested_at as string),
+  }));
+
+  return {
+    totalQuoted: round2(totalQuoted),
+    totalPaid: round2(totalPaid),
+    outstanding: round2(totalQuoted - totalPaid),
+    jobCount: jobs.length,
+    jobs: statementJobs,
+    payments: statementPayments,
+  };
+}
+
 export async function getClient(supabase: SupabaseClient, accountId: string, clientId: string): Promise<Client | null> {
   const { data } = await supabase.from('clients').select('*').eq('account_id', accountId).eq('id', clientId).maybeSingle();
   return (data as Client) ?? null;
