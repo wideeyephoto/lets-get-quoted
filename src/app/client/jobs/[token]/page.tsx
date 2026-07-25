@@ -167,6 +167,28 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
         </div>
       </section>
 
+      {dashboard.tasks.length > 0 ? (() => {
+        const doneCount = dashboard.tasks.filter((task) => task.done).length;
+        const pct = Math.round((doneCount / dashboard.tasks.length) * 100);
+        return (
+          <section className="panel workspace-section-card">
+            <div className="section-heading workspace-section-heading compact-heading">
+              <p className="eyebrow">Progress</p>
+              <h2>Work checklist · {doneCount}/{dashboard.tasks.length} done</h2>
+            </div>
+            <div className="task-progress" aria-hidden="true"><div className="task-progress-fill" style={{ width: `${pct}%` }} /></div>
+            <ul className="client-task-list">
+              {dashboard.tasks.map((task, index) => (
+                <li key={index} className={`client-task${task.done ? ' is-done' : ''}`}>
+                  <span className="client-task-check" aria-hidden="true">{task.done ? '✓' : '○'}</span>
+                  <span>{task.title}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })() : null}
+
       <section className="detail-grid workspace-grid-gap">
         <div>
           <div className="panel workspace-section-card">

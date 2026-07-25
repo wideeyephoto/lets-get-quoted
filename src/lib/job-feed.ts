@@ -48,6 +48,7 @@ export type ClientJobDashboard = {
   feed: JobFeedEvent[];
   payments: Payment[];
   invoices: Invoice[];
+  tasks: { title: string; done: boolean }[];
   scheduleRequest: {
     id: string;
     options: Array<{ date: string; time: string | null }>;
@@ -315,6 +316,17 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
     .maybeSingle();
   const quoteItems = parseQuoteItems(quoteRow?.quote_items);
 
+  // The job checklist, client-facing (read-only progress). Defensive: an
+  // un-migrated DB (no job_tasks table) shows no checklist rather than erroring.
+  const { data: taskRows, error: taskError } = await admin
+    .from('job_tasks')
+    .select('title, done')
+    .eq('account_id', access.account_id)
+    .eq('job_id', access.job_id)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true });
+  const tasks = taskError ? [] : (taskRows ?? []).map((task) => ({ title: task.title as string, done: Boolean(task.done) }));
+
   const feed = sortJobFeed([
     ...feedResult,
     ...createLinkedFeedItems(feedResult, (payments ?? []) as Payment[], (invoices ?? []) as Invoice[], access.account_id, access.job_id),
@@ -332,6 +344,7 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
     feed,
     payments: (payments ?? []) as Payment[],
     invoices: (invoices ?? []) as Invoice[],
+    tasks,
     scheduleRequest: scheduleRequest as ClientJobDashboard['scheduleRequest'],
     quoteApproved,
   };

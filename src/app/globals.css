@@ -4970,6 +4970,13 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   font: inherit;
 }
 
+/* -- Client-facing read-only checklist -- */
+.client-task-list { list-style: none; margin: 0.9rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.client-task { display: flex; align-items: center; gap: 0.6rem; font-size: 0.92rem; }
+.client-task-check { color: rgba(255,255,255,0.4); font-weight: 800; width: 1.2rem; text-align: center; }
+.client-task.is-done .client-task-check { color: #bef264; }
+.client-task.is-done span:last-child { color: rgba(255,255,255,0.55); text-decoration: line-through; }
+
 /* -- Field-app checklist (bigger tap targets) -- */
 .field-task-list { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.9rem; }
 .field-task { width: 100%; }
