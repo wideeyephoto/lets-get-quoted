@@ -4,8 +4,10 @@ import { createAdminClient } from '@/lib/auth';
 import { getJob, formatJobSchedule, formatMoney, parseQuoteItems, computeQuoteTotal, type QuoteItem } from '@/lib/jobs';
 import { getLeadByConvertedJob, updateLeadStatus } from '@/lib/leads';
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
-import type { Invoice } from '@/lib/invoices';
-import type { Payment } from '@/lib/payments';
+import { addInvoiceItem, createInvoice, listInvoices, selectPrimaryInvoice, type Invoice } from '@/lib/invoices';
+import { createDepositRequest, type Payment } from '@/lib/payments';
+import { sendPaymentSmsEvent } from '@/lib/sms';
+import { normalizeUsPhone } from '@/lib/phone';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
@@ -400,6 +402,66 @@ export async function approveClientJobQuote(clientToken: string, selectedAddonId
   // complete, or archived job.
   if (job.status === 'new_lead') {
     await admin.from('jobs').update({ status: 'in_progress' }).eq('account_id', accountId).eq('id', jobId);
+  }
+
+  // Deposit-on-approval: turn the approval straight into a deposit ask when the
+  // account opts in — a % of the just-finalized quote, created once and texted
+  // when the client has SMS consent (otherwise it simply shows on their
+  // dashboard). Best-effort: a deposit or SMS failure must never fail approval,
+  // and the settings read is defensive so an un-migrated DB just skips it.
+  try {
+    const { data: depositSettings } = await admin
+      .from('accounts')
+      .select('deposit_on_approval, deposit_percent')
+      .eq('id', accountId)
+      .maybeSingle();
+    const depositPercent = Number(depositSettings?.deposit_percent);
+    if (depositSettings?.deposit_on_approval && quotedAmount > 0 && Number.isFinite(depositPercent) && depositPercent > 0) {
+      // Never stack a second deposit on a job that already has one.
+      const { data: existingDeposit } = await admin
+        .from('payments')
+        .select('id')
+        .eq('account_id', accountId)
+        .eq('job_id', jobId)
+        .eq('kind', 'deposit')
+        .limit(1)
+        .maybeSingle();
+      const depositAmount = Math.round(quotedAmount * (depositPercent / 100) * 100) / 100;
+      if (!existingDeposit && depositAmount > 0) {
+        // Ensure a primary invoice (mirrors the manual deposit flow) so the
+        // deposit links to it and the balance math stays correct.
+        const invoices = await listInvoices(admin, accountId, jobId);
+        const invoice = selectPrimaryInvoice(invoices) ?? await createInvoice(admin, accountId, jobId, 'draft');
+        if (Number(invoice.total) <= 0) {
+          await addInvoiceItem(admin, accountId, invoice.id, { description: 'Quoted job total', amount: quotedAmount });
+        }
+
+        const normalizedPhone = job.client_phone ? normalizeUsPhone(job.client_phone) : null;
+        let smsConsent = false;
+        if (normalizedPhone) {
+          const { data: consent } = await admin
+            .from('sms_consent')
+            .select('status')
+            .eq('account_id', accountId)
+            .eq('phone_number', normalizedPhone)
+            .maybeSingle();
+          smsConsent = consent?.status === 'opted_in';
+        }
+
+        const deposit = await createDepositRequest(admin, accountId, jobId, {
+          label: `Deposit (${depositPercent}% of quote)`,
+          amount: depositAmount,
+          kind: 'deposit',
+          invoiceId: invoice.id,
+          homeownerPhone: normalizedPhone,
+          smsConsent,
+        });
+        await createPaymentFeedEvent(admin, deposit.id, 'payment_requested');
+        if (smsConsent) await sendPaymentSmsEvent(deposit.id, 'payment_requested');
+      }
+    }
+  } catch (error) {
+    console.error(`Deposit-on-approval failed for job ${jobId}:`, error instanceof Error ? error.message : error);
   }
 
   const lead = await getLeadByConvertedJob(admin, accountId, jobId);

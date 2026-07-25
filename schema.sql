@@ -105,6 +105,11 @@ alter table accounts add column if not exists connect_disabled_at timestamptz;
 -- Google review request. Opt-in, default off, so no client is texted by
 -- surprise. The one-tap button on the job page works regardless of this flag.
 alter table accounts add column if not exists auto_review_request boolean not null default false;
+-- When on, a client approving their quote auto-creates a deposit payment request
+-- for deposit_percent of the quote total (and texts the pay link when the client
+-- has SMS consent). Opt-in, default off; percent defaults to 25%.
+alter table accounts add column if not exists deposit_on_approval boolean not null default false;
+alter table accounts add column if not exists deposit_percent numeric(5,2) not null default 25;
 
 -- ----------------------------------------------------------------------------
 -- MEMBERSHIPS  — links a person (auth.users) to an account with a role.

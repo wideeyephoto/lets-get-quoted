@@ -5,7 +5,7 @@ import FinanceReports from './FinanceReports';
 import { getAvailableTaxYears, buildProfitAndLoss, buildScheduleCWorksheet, build1099PrepList } from '@/lib/tax-reports';
 import SaveButton from '@/components/save-button';
 import DeleteAccountButton from './DeleteAccountButton';
-import { updateScheduleDayHoursAction, updateReviewSettingsAction, deleteAccountAction } from './actions';
+import { updateScheduleDayHoursAction, updateReviewSettingsAction, updateDepositSettingsAction, deleteAccountAction } from './actions';
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -44,6 +44,14 @@ export default async function SettingsPage({
     .eq('id', accountId)
     .maybeSingle();
   const autoReviewRequest = Boolean(reviewSettings?.auto_review_request);
+
+  const { data: depositSettings } = await supabase
+    .from('accounts')
+    .select('deposit_on_approval, deposit_percent')
+    .eq('id', accountId)
+    .maybeSingle();
+  const depositOnApproval = Boolean(depositSettings?.deposit_on_approval);
+  const depositPercent = Number(depositSettings?.deposit_percent) || 25;
 
   const requestedYear = searchParams.year ? parseInt(searchParams.year, 10) : NaN;
   const selectedYear = availableYears.includes(requestedYear) ? requestedYear : availableYears[0];
@@ -140,6 +148,46 @@ export default async function SettingsPage({
           </label>
           <div className="form-actions">
             <SaveButton>Save review settings</SaveButton>
+          </div>
+        </form>
+      </section>
+
+      <section className="panel workspace-section-card" id="deposits">
+        <div className="section-heading workspace-section-heading compact-heading">
+          <p className="eyebrow">Deposits</p>
+          <h2>Deposit on approval</h2>
+        </div>
+        <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+          When on, the moment a client approves their quote we create a deposit request for the
+          percentage below and, if they have a mobile on file, text them the secure pay link — so you
+          collect money before the work starts. It runs once per job, and you can always request a
+          deposit by hand. Requires Stripe payouts to be connected.
+        </p>
+        <form action={updateDepositSettingsAction} className="form-grid compact-form">
+          <label className="checkbox-row" htmlFor="depositOnApproval">
+            <input
+              id="depositOnApproval"
+              name="depositOnApproval"
+              type="checkbox"
+              defaultChecked={depositOnApproval}
+            />
+            <span>Request a deposit automatically when a client approves a quote</span>
+          </label>
+          <div className="field">
+            <label htmlFor="depositPercent">Deposit percentage</label>
+            <input
+              id="depositPercent"
+              name="depositPercent"
+              type="number"
+              min="1"
+              max="100"
+              step="1"
+              defaultValue={depositPercent}
+              required
+            />
+          </div>
+          <div className="form-actions">
+            <SaveButton>Save deposit settings</SaveButton>
           </div>
         </form>
       </section>

@@ -40,6 +40,22 @@ export async function updateReviewSettingsAction(formData: FormData) {
   revalidatePath('/dashboard/settings');
 }
 
+export async function updateDepositSettingsAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const depositOnApproval = formData.get('depositOnApproval') === 'on';
+  const percentRaw = Number(formData.get('depositPercent'));
+  const depositPercent = Number.isFinite(percentRaw) ? Math.min(100, Math.max(1, Math.round(percentRaw * 100) / 100)) : 25;
+
+  const { error } = await supabase
+    .from('accounts')
+    .update({ deposit_on_approval: depositOnApproval, deposit_percent: depositPercent })
+    .eq('id', accountId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/dashboard/settings');
+}
+
 // Permanently deletes the signed-in owner's account. Removes the account (which
 // cascades every child row — jobs, leads, crew, invoices, payments, sites,
 // memberships, …) AND the auth user, so the account's phone/email is freed to
