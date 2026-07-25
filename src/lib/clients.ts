@@ -9,6 +9,7 @@ export type Client = {
   email: string | null;
   address: string | null;
   notes: string | null;
+  last_rebook_invite_at: string | null;
   created_at: string;
   updated_at: string;
 };

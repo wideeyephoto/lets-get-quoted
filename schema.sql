@@ -259,6 +259,8 @@ create table if not exists clients (
 );
 create index if not exists clients_account_phone_idx on clients (account_id, phone);
 create index if not exists clients_account_email_idx on clients (account_id, email);
+-- Last time we sent this client a "book again" re-engagement invite (repeat outreach).
+alter table clients add column if not exists last_rebook_invite_at timestamptz;
 
 -- Link jobs to their client profile (set on create + backfill). ON DELETE SET
 -- NULL: removing a client never cascades away the job history.

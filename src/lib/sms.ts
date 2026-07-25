@@ -445,6 +445,21 @@ export async function sendQuoteFollowupSms(params: {
   return providerId;
 }
 
+// "Book again" nudge to a past customer — turns a finished job into the next
+// one. Caller enforces consent (opted-in ledger). Mirrored into the inbox.
+export async function sendRebookInviteSms(params: {
+  phone: string;
+  businessName: string;
+  clientName: string;
+  url: string;
+  accountId?: string;
+}) {
+  const message = `Let's Get Quoted: Hi ${params.clientName}, it's ${params.businessName} — it's been a while! Ready to book us again? Grab a time here: ${params.url}. Reply STOP to opt out.`;
+  const providerId = await sendTwilioMessage(params.phone, message);
+  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
+  return providerId;
+}
+
 // Day-before reminder for a scheduled job — cuts no-shows. Sent by the reminders
 // cron; the caller enforces consent (opted-in ledger) before this runs. Mirrored
 // into the two-way inbox like other customer texts.

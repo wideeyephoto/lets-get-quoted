@@ -251,6 +251,33 @@ export async function sendReviewRequestEmail(input: {
   console.log(`Review request email sent to ${input.recipientEmail}`);
 }
 
+// "Book again" nudge to a past customer, over email — the fallback channel when
+// there's no opted-in mobile. Throws on provider rejection so the caller counts
+// it as failed.
+export async function sendRebookInviteEmail(input: {
+  recipientEmail: string;
+  businessName: string;
+  clientName: string;
+  url: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('Email provider is not configured.');
+  }
+
+  const result = await resend.emails.send({
+    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    to: input.recipientEmail,
+    subject: `Ready to book ${input.businessName} again?`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#b45309;font-weight:700;letter-spacing:0.04em">WE'D LOVE TO HELP AGAIN</p><h1 style="font-size:24px;margin:0 0 12px">${escapeHtml(input.clientName)}, it's been a while!</h1><p style="margin:0 0 20px;line-height:1.5">Thanks again for trusting ${escapeHtml(input.businessName)}. Whenever you're ready for your next project, you can grab a time online in a couple of taps — no phone tag.</p><p><a href="${escapeHtml(input.url)}" style="display:inline-block;padding:12px 18px;background:#172033;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">Book us again</a></p><p style="margin-top:28px;color:#6b7280;font-size:13px">${escapeHtml(input.businessName)} · Let's Get Quoted</p></div>`,
+    reply_to: 'hello@letsgetquoted.com',
+  });
+
+  if (result.error) {
+    console.error('Failed to send rebook invite email:', result.error);
+    throw new Error(result.error.message);
+  }
+}
+
 // Day-before reminder for a scheduled job, over email — the fallback channel
 // when the client has no textable mobile. Sent by the reminders cron. Throws on
 // provider rejection so the caller can count it as failed.
