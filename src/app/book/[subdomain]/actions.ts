@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/auth';
 import { getPublicSiteBySubdomain } from '@/lib/sites';
 import { normalizeUsPhone } from '@/lib/phone';
 import { createBooking } from '@/lib/booking';
+import { listServices } from '@/lib/services';
 
 function labelForDateKey(dateKey: string): string {
   const [year, month, day] = dateKey.split('-').map(Number);
@@ -36,12 +37,22 @@ export async function submitBookingAction(subdomain: string, formData: FormData)
     redirect(`/book/${subdomain}?error=incomplete`);
   }
 
+  // Resolve the optionally-chosen price-book service id → its name (server-side,
+  // so a tampered value can't inject arbitrary text). Empty / unknown → null.
+  const serviceId = (formData.get('service') ?? '').toString();
+  let serviceName: string | null = null;
+  if (serviceId) {
+    const services = await listServices(admin, site.account_id, { activeOnly: true });
+    serviceName = services.find((s) => s.id === serviceId)?.name ?? null;
+  }
+
   await createBooking(admin, site.account_id, {
     name,
     phone,
     email,
     address,
     description,
+    serviceName,
     dateKey,
     dateLabel: labelForDateKey(dateKey),
     time,

@@ -342,6 +342,42 @@ export async function sendAppointmentReminderEmail(input: {
   }
 }
 
+// Customer-facing confirmation that a self-serve online booking was received —
+// transactional (the customer just took an action), so no marketing footer. Sent
+// best-effort from createBooking; throws on provider rejection so the caller logs it.
+export async function sendBookingConfirmationEmail(input: {
+  recipientEmail: string;
+  businessName: string;
+  clientName: string;
+  whenLabel: string;
+  serviceName: string | null;
+  address: string | null;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('Email provider is not configured.');
+  }
+
+  const serviceLine = input.serviceName
+    ? `<p style="margin:0 0 12px;line-height:1.5"><strong>Service:</strong> ${escapeHtml(input.serviceName)}</p>`
+    : '';
+  const addressLine = input.address
+    ? `<p style="margin:0 0 12px;line-height:1.5"><strong>Where:</strong> ${escapeHtml(input.address)}</p>`
+    : '';
+
+  const result = await resend.emails.send({
+    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    to: input.recipientEmail,
+    subject: `We got your booking request — ${input.businessName}`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#0f766e;font-weight:700;letter-spacing:0.04em">BOOKING REQUESTED</p><h1 style="font-size:24px;margin:0 0 12px">${escapeHtml(input.clientName)}, we got your request 🎉</h1><p style="margin:0 0 12px;line-height:1.5"><strong>Requested time:</strong> ${escapeHtml(input.whenLabel)}</p>${serviceLine}${addressLine}<p style="margin:0 0 20px;line-height:1.5">${escapeHtml(input.businessName)} will reach out shortly to confirm. This time isn't locked in until they do — if anything changes, just reply to this email.</p><p style="margin-top:24px;color:#6b7280;font-size:13px">${escapeHtml(input.businessName)} · Let's Get Quoted</p></div>`,
+    reply_to: 'hello@letsgetquoted.com',
+  });
+
+  if (result.error) {
+    console.error('Failed to send booking confirmation email:', result.error);
+    throw new Error(result.error.message);
+  }
+}
+
 // Dunning: the client's saved card was declined on a recurring charge — ask them
 // to update it (same hosted setup flow, decline framing). Throws on provider
 // rejection so the caller can report it didn't send.

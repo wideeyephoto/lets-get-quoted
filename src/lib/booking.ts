@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createJob, expandScheduledJobs } from '@/lib/jobs';
 import { createLead, type Lead } from '@/lib/leads';
-import { getAccountOwnerEmail, sendLeadNotificationEmail } from '@/lib/email';
+import { getAccountOwnerEmail, sendLeadNotificationEmail, sendBookingConfirmationEmail } from '@/lib/email';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
@@ -76,6 +76,7 @@ export type BookingInput = {
   email: string | null;
   address: string | null;
   description: string | null;
+  serviceName: string | null;
   dateKey: string;
   dateLabel: string;
   time: string;
@@ -83,11 +84,13 @@ export type BookingInput = {
 };
 
 // A self-serve booking becomes a warm, pre-scheduled lead the owner confirms —
-// carrying the requested window so it lands ready to put on the calendar. The
-// owner is emailed like any website lead. Best-effort on the email.
+// carrying the requested window (and the chosen service, if any) so it lands
+// ready to put on the calendar. The owner is emailed like any website lead, and
+// the customer gets a confirmation. Best-effort on both emails.
 export async function createBooking(admin: SupabaseClient, accountId: string, input: BookingInput): Promise<Lead> {
   const requested = `${input.dateLabel} — ${input.timeLabel}`;
-  const message = `📅 Online booking request for ${requested}.${input.description ? `\n\n${input.description}` : ''}`;
+  const serviceLine = input.serviceName ? `Service: ${input.serviceName}.\n` : '';
+  const message = `📅 Online booking request for ${requested}.\n${serviceLine}${input.description ? `\n${input.description}` : ''}`.trimEnd();
 
   const lead = await createLead(admin, accountId, {
     source: 'website_form',
@@ -95,7 +98,7 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
     phone: input.phone,
     email: input.email,
     address: input.address,
-    projectType: 'Online booking',
+    projectType: input.serviceName || 'Online booking',
     message,
     sourcePage: '/book',
     triage: { score: 'warm', flags: [], timeline: requested, contactPreference: 'any' },
@@ -120,12 +123,13 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
       alreadyBooked = Boolean(dupe);
     }
     if (!alreadyBooked) {
+      const jobScope = [input.serviceName, input.description].filter(Boolean).join(' — ') || `Online booking — ${requested}`;
       const job = await createJob(admin, accountId, {
         clientName: input.name,
         clientPhone: input.phone,
         clientEmail: input.email,
         address: input.address,
-        scope: input.description || `Online booking — ${requested}`,
+        scope: jobScope,
         status: 'new_lead',
         scheduledFor: input.dateKey,
         scheduledTime: input.time,
@@ -137,21 +141,38 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
     console.error(`Booking job creation failed for account ${accountId}:`, error instanceof Error ? error.message : error);
   }
 
+  const { data: account } = await admin.from('accounts').select('business_name').eq('id', accountId).maybeSingle();
+  const businessName = account?.business_name || "Let's Get Quoted contractor";
+
+  // Owner: notified like any website lead.
   try {
-    const [ownerEmail, { data: account }] = await Promise.all([
-      getAccountOwnerEmail(admin, accountId),
-      admin.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
-    ]);
+    const ownerEmail = await getAccountOwnerEmail(admin, accountId);
     if (ownerEmail) {
       await sendLeadNotificationEmail({
         recipientEmail: ownerEmail,
-        businessName: account?.business_name || "Let's Get Quoted contractor",
+        businessName,
         lead,
         dashboardUrl: `${APP_ORIGIN}/dashboard/leads/${lead.id}`,
       });
     }
   } catch (error) {
     console.error(`Booking owner notification failed for account ${accountId}:`, error instanceof Error ? error.message : error);
+  }
+
+  // Customer: a confirmation that closes the loop (transactional). Best-effort.
+  if (input.email) {
+    try {
+      await sendBookingConfirmationEmail({
+        recipientEmail: input.email,
+        businessName,
+        clientName: input.name,
+        whenLabel: requested,
+        serviceName: input.serviceName,
+        address: input.address,
+      });
+    } catch (error) {
+      console.error(`Booking confirmation email failed for account ${accountId}:`, error instanceof Error ? error.message : error);
+    }
   }
 
   return lead;

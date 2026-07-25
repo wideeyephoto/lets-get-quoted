@@ -1,10 +1,14 @@
 import { createAdminClient } from '@/lib/auth';
 import { getPublicSiteBySubdomain } from '@/lib/sites';
 import { getAvailableBookingDays } from '@/lib/booking';
+import { listServices } from '@/lib/services';
+import { formatMoney } from '@/lib/jobs';
 import { submitBookingAction } from './actions';
 import SaveButton from '@/components/save-button';
 
 export const dynamic = 'force-dynamic';
+
+const UNIT_SUFFIX: Record<string, string> = { hour: ' / hr', sqft: ' / sq ft', visit: ' / visit' };
 
 export default async function BookingPage({
   params,
@@ -41,7 +45,7 @@ export default async function BookingPage({
             <h1 className="workspace-title">You&apos;re on the list 🎉</h1>
             <p className="workspace-lead">
               Thanks for booking with {businessName}. They&apos;ll reach out shortly to confirm your
-              requested time. Keep an eye on your phone or email.
+              requested time — check your email for a confirmation.
             </p>
           </div>
         </section>
@@ -51,7 +55,14 @@ export default async function BookingPage({
 
   const { data: account } = await admin.from('accounts').select('schedule_day_hours').eq('id', site.account_id).maybeSingle();
   const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
-  const days = await getAvailableBookingDays(admin, site.account_id, scheduleDayHours);
+  const [days, services] = await Promise.all([
+    getAvailableBookingDays(admin, site.account_id, scheduleDayHours),
+    listServices(admin, site.account_id, { activeOnly: true }),
+  ]);
+
+  const hasServices = services.length > 0;
+  // Step numbers shift when there's no price book to choose from.
+  const steps = hasServices ? { service: 1, window: 2, details: 3 } : { window: 1, details: 2 };
 
   return (
     <main className="wide-shell workspace-shell payment-shell">
@@ -77,24 +88,55 @@ export default async function BookingPage({
             </p>
           ) : null}
 
-          <div className="section-heading workspace-section-heading">
-            <p className="eyebrow">Step 1</p>
+          {hasServices ? (
+            <>
+              <div className="section-heading workspace-section-heading">
+                <p className="eyebrow">Step {steps.service}</p>
+                <h2>What do you need?</h2>
+              </div>
+              <div className="booking-slots">
+                {services.map((service) => (
+                  <label className="booking-slot" key={service.id}>
+                    <input type="radio" name="service" value={service.id} />
+                    <span className="booking-slot-day">{service.name}</span>
+                    <span className="booking-slot-time">
+                      {service.unit_price > 0
+                        ? `from ${formatMoney(service.unit_price)}${UNIT_SUFFIX[service.unit] ?? ''}`
+                        : service.description || 'Tap to select'}
+                    </span>
+                  </label>
+                ))}
+                <label className="booking-slot">
+                  <input type="radio" name="service" value="" defaultChecked />
+                  <span className="booking-slot-day">Not sure yet</span>
+                  <span className="booking-slot-time">We&apos;ll figure it out together</span>
+                </label>
+              </div>
+            </>
+          ) : null}
+
+          <div className="section-heading workspace-section-heading" style={hasServices ? { marginTop: '1.5rem' } : undefined}>
+            <p className="eyebrow">Step {steps.window}</p>
             <h2>Choose a window</h2>
           </div>
-          <div className="booking-slots">
-            {days.map((day) =>
-              day.slots.map((slot) => (
-                <label className="booking-slot" key={`${day.dateKey}|${slot.time}`}>
-                  <input type="radio" name="slot" value={`${day.dateKey}|${slot.time}`} required />
-                  <span className="booking-slot-day">{day.dayLabel}</span>
-                  <span className="booking-slot-time">{slot.label}</span>
-                </label>
-              )),
-            )}
+          <div className="booking-days">
+            {days.map((day) => (
+              <div className="booking-day-group" key={day.dateKey}>
+                <p className="booking-day-heading">{day.dayLabel}</p>
+                <div className="booking-slots">
+                  {day.slots.map((slot) => (
+                    <label className="booking-slot" key={`${day.dateKey}|${slot.time}`}>
+                      <input type="radio" name="slot" value={`${day.dateKey}|${slot.time}`} required />
+                      <span className="booking-slot-time">{slot.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
 
           <div className="section-heading workspace-section-heading" style={{ marginTop: '1.5rem' }}>
-            <p className="eyebrow">Step 2</p>
+            <p className="eyebrow">Step {steps.details}</p>
             <h2>Your details</h2>
           </div>
           <div className="form-grid">
@@ -115,7 +157,7 @@ export default async function BookingPage({
               <input id="address" name="address" placeholder="1418 Maplewood Ave, Royal Oak, MI" />
             </div>
             <div className="field full">
-              <label htmlFor="description">What do you need done?</label>
+              <label htmlFor="description">Anything else we should know?</label>
               <textarea id="description" name="description" rows={3} placeholder="Roof looks worn after the last storm — would like an estimate." />
             </div>
             <p className="job-meta" style={{ margin: 0 }}>Add a mobile or email so {businessName} can confirm.</p>
