@@ -2683,6 +2683,124 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   padding-top: 0.9rem;
 }
 
+/* ---- Insights: window tabs, funnel, revenue chart ---- */
+.insight-window-tabs {
+  display: inline-flex;
+  gap: 0.3rem;
+  margin-top: 1rem;
+  padding: 0.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  flex-wrap: wrap;
+}
+
+.insight-window-tab {
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted, #c8d0dc);
+}
+
+.insight-window-tab.is-active {
+  background: linear-gradient(135deg, var(--accent, #ff7a21), #ff9d4d);
+  color: #1a0f04;
+}
+
+.funnel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.funnel-stage-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.funnel-stage-label {
+  font-weight: 600;
+}
+
+.funnel-stage-count {
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.funnel-track {
+  height: 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.funnel-bar {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.funnel-bar-leads { background: linear-gradient(90deg, #8ba5d6, #6f8dc9); }
+.funnel-bar-quoted { background: linear-gradient(90deg, #ffd166, #f0b73e); }
+.funnel-bar-won { background: linear-gradient(90deg, var(--accent, #ff7a21), #ff9d4d); }
+
+.funnel-stage-rate {
+  display: inline-block;
+  margin-top: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--muted, #c8d0dc);
+}
+
+.revenue-chart {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0.6rem;
+  align-items: end;
+  min-height: 190px;
+}
+
+.revenue-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  height: 190px;
+  justify-content: flex-end;
+}
+
+.revenue-col-value {
+  font-size: 0.72rem;
+  color: var(--muted, #c8d0dc);
+  font-variant-numeric: tabular-nums;
+  min-height: 1em;
+  white-space: nowrap;
+}
+
+.revenue-col-track {
+  width: 100%;
+  max-width: 3.2rem;
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+}
+
+.revenue-col-bar {
+  width: 100%;
+  border-radius: 8px 8px 0 0;
+  background: linear-gradient(180deg, var(--accent, #ff7a21), rgba(255, 122, 33, 0.35));
+  transition: height 0.4s ease;
+}
+
+.revenue-col-label {
+  font-size: 0.78rem;
+  color: var(--muted, #c8d0dc);
+}
+
 .quote-doc-line-amount {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
