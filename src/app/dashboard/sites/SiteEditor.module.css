@@ -302,6 +302,22 @@
 .sectionOrderMove button:disabled { opacity: .35; cursor: default; }
 .sectionOrderMove button:not(:disabled):hover { background: rgba(255,122,33,.14); border-color: #ff7a21; }
 
+/* Inline drag-to-reorder — the Page-tab "Section Canvas". The reorderable cards
+   live in one flex group and sink to their live page position via CSS `order`,
+   so dragging a card in the builder reorders the actual page. */
+.sectionDragGroup { display: flex; flex-direction: column; gap: 1rem; }
+.sectionCardReorder { position: relative; }
+.sectionCardDragging { opacity: .55; outline: 2px dashed #ff7a21; outline-offset: -1px; }
+.sectionCardGrip { display: flex; align-items: center; gap: .35rem; padding: 0 .1rem 0 .6rem; }
+.sectionGrip { cursor: grab; color: #6b7688; font-size: 1.05rem; line-height: 1; -webkit-user-select: none; user-select: none; touch-action: none; }
+.sectionGrip:hover { color: #ffb27a; }
+.sectionGrip:active { cursor: grabbing; }
+.sectionGripArrows { display: inline-flex; flex-direction: column; gap: 2px; }
+.sectionGripArrows button { width: 20px; height: 15px; padding: 0; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.16); border-radius: 4px; background: rgba(255,255,255,.06); color: #f7f5ef; font-size: .6rem; line-height: 1; cursor: pointer; }
+.sectionGripArrows button:disabled { opacity: .3; cursor: default; }
+.sectionGripArrows button:not(:disabled):hover { background: rgba(255,122,33,.16); border-color: #ff7a21; }
+.sectionLock { padding: 0 .1rem 0 .6rem; font-size: .95rem; line-height: 1; opacity: .7; cursor: not-allowed; }
+
 .googleImport { display: grid; gap: .6rem; font-weight: 400; }
 .googleImportSearch { position: relative; }
 .googleImportSearch input { width: 100%; min-height: 43px; padding: .68rem .75rem; border: 1px solid rgba(255,255,255,.16); border-radius: 6px; background: rgba(255,255,255,.055); color: #f7f5ef; }
