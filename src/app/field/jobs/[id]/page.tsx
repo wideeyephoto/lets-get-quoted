@@ -1,11 +1,11 @@
 import { redirect } from 'next/navigation';
 import { requireCrewContext } from '@/lib/crew-auth';
 import { isJobAssignedToCrew } from '@/lib/crew';
-import { formatJobSchedule } from '@/lib/jobs';
+import { formatJobSchedule, formatMoney } from '@/lib/jobs';
 import { formatPhoneDashes } from '@/lib/phone';
 import SaveButton from '@/components/save-button';
 import FieldHeader from '../../FieldHeader';
-import { setFieldJobStatusAction, postFieldUpdateAction } from './actions';
+import { setFieldJobStatusAction, postFieldUpdateAction, logFieldTimeAction, logFieldMaterialAction } from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +20,7 @@ function formatTime(value: string): string {
   return new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-export default async function FieldJobPage({ params }: { params: { id: string } }) {
+export default async function FieldJobPage({ params, searchParams }: { params: { id: string }; searchParams: { logged?: string } }) {
   const { supabase, accountId, crew } = await requireCrewContext();
 
   if (!(await isJobAssignedToCrew(supabase, accountId, params.id, crew.id))) {
@@ -35,7 +35,7 @@ export default async function FieldJobPage({ params }: { params: { id: string } 
     .maybeSingle();
   if (!job) redirect('/field');
 
-  const [{ data: account }, { data: site }, { data: feed }] = await Promise.all([
+  const [{ data: account }, { data: site }, { data: feed }, { data: myCosts }] = await Promise.all([
     supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
     supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
     supabase
@@ -45,8 +45,33 @@ export default async function FieldJobPage({ params }: { params: { id: string } 
       .eq('job_id', params.id)
       .order('created_at', { ascending: false })
       .limit(8),
+    // The crew member's own logged time & materials on this job.
+    supabase
+      .from('costs')
+      .select('id, type, description, hours, amount, created_at')
+      .eq('account_id', accountId)
+      .eq('job_id', params.id)
+      .eq('crew_id', crew.id)
+      .in('type', ['labor', 'material'])
+      .order('created_at', { ascending: false }),
   ]);
   const businessName = site?.company_name || account?.business_name || 'My crew';
+
+  const loggedCosts = myCosts ?? [];
+  const loggedHours = loggedCosts.filter((c) => c.type === 'labor').reduce((sum, c) => sum + (Number(c.hours) || 0), 0);
+  const loggedMaterials = loggedCosts.filter((c) => c.type === 'material').reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+
+  const loggedFlash =
+    searchParams.logged === 'time'
+      ? 'Time logged ✓'
+      : searchParams.logged === 'material'
+        ? 'Material logged ✓'
+        : searchParams.logged === 'time-invalid'
+          ? 'Enter hours greater than 0.'
+          : searchParams.logged === 'material-invalid'
+            ? 'Add what it was and a valid amount.'
+            : null;
+  const loggedFlashError = searchParams.logged === 'time-invalid' || searchParams.logged === 'material-invalid';
 
   const mapUrl = job.address ? `https://maps.google.com/?q=${encodeURIComponent(job.address)}` : null;
   const isComplete = job.status === 'complete';
@@ -55,6 +80,7 @@ export default async function FieldJobPage({ params }: { params: { id: string } 
     <>
       <FieldHeader businessName={businessName} crewName={crew.name} backHref="/field" />
       <main className="field-main">
+        {loggedFlash ? <div className={`field-flash${loggedFlashError ? ' is-error' : ''}`}>{loggedFlash}</div> : null}
         <div className="field-detail-head">
           <h1>{job.client_name}</h1>
           <span className={`field-status field-status-${job.status}`}>{STATUS_LABEL[job.status] ?? job.status}</span>
@@ -106,6 +132,57 @@ export default async function FieldJobPage({ params }: { params: { id: string } 
               <p className="field-complete-note">✓ This job is marked complete.</p>
             )}
           </div>
+        </section>
+
+        <section className="field-block">
+          <h2 className="field-block-title">Log time &amp; materials</h2>
+          {loggedHours > 0 || loggedMaterials > 0 ? (
+            <p className="field-log-summary">
+              You&apos;ve logged {loggedHours > 0 ? `${loggedHours} hr${loggedHours === 1 ? '' : 's'}` : ''}
+              {loggedHours > 0 && loggedMaterials > 0 ? ' · ' : ''}
+              {loggedMaterials > 0 ? `${formatMoney(loggedMaterials)} materials` : ''} on this job.
+            </p>
+          ) : null}
+
+          <form action={logFieldTimeAction.bind(null, job.id)} className="field-log-form">
+            <div className="field-log-row">
+              <label>
+                <span>Hours</span>
+                <input name="hours" type="number" min="0" step="0.25" inputMode="decimal" placeholder="0" required />
+              </label>
+              <label>
+                <span>Rate ($/hr)</span>
+                <input name="rate" type="number" min="0" step="0.01" inputMode="decimal" defaultValue={Number(crew.hourly_rate) > 0 ? Number(crew.hourly_rate) : ''} placeholder="0" />
+              </label>
+            </div>
+            <input name="description" type="text" placeholder="What you worked on (optional)" />
+            <SaveButton className="btn secondary" pendingLabel="Saving…" savedLabel="Logged ✓">Log time</SaveButton>
+          </form>
+
+          <form action={logFieldMaterialAction.bind(null, job.id)} className="field-log-form">
+            <div className="field-log-row">
+              <label className="field-log-grow">
+                <span>Material / expense</span>
+                <input name="description" type="text" placeholder="e.g. 2 bundles shingles" required />
+              </label>
+              <label>
+                <span>Cost ($)</span>
+                <input name="amount" type="number" min="0" step="0.01" inputMode="decimal" placeholder="0" required />
+              </label>
+            </div>
+            <SaveButton className="btn secondary" pendingLabel="Saving…" savedLabel="Added ✓">Add material</SaveButton>
+          </form>
+
+          {loggedCosts.length > 0 ? (
+            <div className="field-log-list">
+              {loggedCosts.slice(0, 8).map((cost) => (
+                <div key={cost.id} className="field-log-item">
+                  <span>{cost.type === 'labor' ? '⏱' : '🧾'} {cost.description}</span>
+                  <span>{cost.type === 'labor' ? `${Number(cost.hours) || 0} hr` : formatMoney(Number(cost.amount) || 0)}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </section>
 
         <section className="field-block">

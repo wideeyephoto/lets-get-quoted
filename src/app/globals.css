@@ -5156,6 +5156,48 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .field-share { display: flex; align-items: center; gap: 0.55rem; font-size: 0.9rem; color: rgba(255,255,255,0.7); }
 .field-share input { width: 1.1rem; height: 1.1rem; }
 
+.field-flash {
+  margin-bottom: 1rem;
+  padding: 0.7rem 1rem;
+  border-radius: 11px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  background: rgba(163,230,53,0.12);
+  border: 1px solid rgba(163,230,53,0.32);
+  color: #bef264;
+}
+.field-flash.is-error { background: rgba(255,122,33,0.12); border-color: rgba(255,179,122,0.4); color: #ffb37a; }
+
+.field-log-summary { margin: 0 0 0.9rem; font-size: 0.88rem; color: rgba(255,255,255,0.7); }
+.field-log-form { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1rem; }
+.field-log-row { display: flex; gap: 0.6rem; }
+.field-log-row label { flex: 1; display: flex; flex-direction: column; gap: 0.25rem; }
+.field-log-row label.field-log-grow { flex: 2; }
+.field-log-row label span { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255,255,255,0.5); }
+.field-log-form input {
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  border-radius: 11px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.05);
+  color: #f4f6f8;
+  font-size: 1rem;
+  font-family: inherit;
+}
+.field-log-list { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.2rem; }
+.field-log-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 9px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  font-size: 0.88rem;
+}
+.field-log-item span:last-child { color: #bef264; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
 .field-feed { display: flex; flex-direction: column; gap: 0.6rem; }
 .field-feed-item { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 11px; padding: 0.75rem 0.9rem; }
 .field-feed-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; }
