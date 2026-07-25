@@ -1,8 +1,12 @@
 import Link from 'next/link';
 import { requireCrewContext } from '@/lib/crew-auth';
 import { listJobIdsForCrew } from '@/lib/crew';
-import { formatJobSchedule } from '@/lib/jobs';
+import { formatJobSchedule, formatJobTime } from '@/lib/jobs';
 import FieldHeader from './FieldHeader';
+
+function mapUrl(address: string): string {
+  return `https://maps.google.com/?q=${encodeURIComponent(address)}`;
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +45,27 @@ function JobCard({ job }: { job: FieldJob }) {
       {job.address ? <p className="field-job-addr">{job.address}</p> : null}
       {job.scope ? <p className="field-job-scope">{job.scope}</p> : null}
     </Link>
+  );
+}
+
+// A numbered stop in today's route: tap the body to open the job, tap Navigate
+// to launch turn-by-turn to the address.
+function RouteStop({ job, index }: { job: FieldJob; index: number }) {
+  return (
+    <div className="field-route-stop">
+      <span className="field-route-num">{index + 1}</span>
+      <Link href={`/field/jobs/${job.id}`} className="field-route-body">
+        <div className="field-route-top">
+          <strong>{job.client_name}</strong>
+          <span className="field-route-time">{formatJobTime(job.scheduled_time) || 'Anytime'}</span>
+        </div>
+        {job.address ? <p className="field-route-addr">{job.address}</p> : <p className="field-route-addr muted">No address on file</p>}
+        <span className={`field-status field-status-${job.status}`}>{STATUS_LABEL[job.status] ?? job.status}</span>
+      </Link>
+      {job.address ? (
+        <a className="field-route-nav" href={mapUrl(job.address)} target="_blank" rel="noopener noreferrer" aria-label={`Navigate to ${job.client_name}`}>🧭</a>
+      ) : null}
+    </div>
   );
 }
 
@@ -85,8 +110,10 @@ export default async function FieldHomePage() {
           <>
             {todayJobs.length > 0 ? (
               <section className="field-section">
-                <h2 className="field-section-title">Today</h2>
-                {todayJobs.map((job) => <JobCard key={job.id} job={job} />)}
+                <h2 className="field-section-title">Today&apos;s route · {todayJobs.length} stop{todayJobs.length === 1 ? '' : 's'}</h2>
+                <div className="field-route">
+                  {todayJobs.map((job, index) => <RouteStop key={job.id} job={job} index={index} />)}
+                </div>
               </section>
             ) : null}
 

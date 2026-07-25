@@ -5416,6 +5416,58 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   font-weight: 700;
   white-space: nowrap;
 }
+
+/* -- Today's route (numbered stops) -- */
+.field-route { display: flex; flex-direction: column; gap: 0.6rem; }
+.field-route-stop {
+  display: flex;
+  align-items: stretch;
+  gap: 0.7rem;
+}
+.field-route-num {
+  flex-shrink: 0;
+  width: 1.9rem;
+  min-height: 1.9rem;
+  border-radius: 999px;
+  background: #f59e0b;
+  color: #06131f;
+  font-weight: 800;
+  font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.2rem;
+}
+.field-route-body {
+  flex: 1;
+  min-width: 0;
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+}
+.field-route-body:active { background: rgba(255,255,255,0.07); }
+.field-route-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; }
+.field-route-top strong { font-size: 1.05rem; }
+.field-route-time { font-size: 0.9rem; color: #7dd3fc; font-weight: 600; white-space: nowrap; }
+.field-route-addr { margin: 0.3rem 0; font-size: 0.86rem; color: rgba(255,255,255,0.7); }
+.field-route-addr.muted { color: rgba(255,255,255,0.4); }
+.field-route-nav {
+  flex-shrink: 0;
+  width: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: rgba(56,189,248,0.14);
+  border: 1px solid rgba(56,189,248,0.3);
+  text-decoration: none;
+  font-size: 1.4rem;
+}
+.field-route-nav:active { background: rgba(56,189,248,0.25); }
 .field-status-new_lead { background: rgba(56,189,248,0.16); color: #7dd3fc; }
 .field-status-in_progress { background: rgba(251,191,36,0.16); color: #fcd34d; }
 .field-status-complete { background: rgba(163,230,53,0.16); color: #bef264; }
