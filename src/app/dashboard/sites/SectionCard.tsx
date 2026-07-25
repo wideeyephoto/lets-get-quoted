@@ -3,17 +3,19 @@
 import type { CSSProperties, ReactNode } from 'react';
 import styles from './SiteEditor.module.css';
 
-// Everything a card needs to be a drag-to-reorder row on the Page tab. When
-// present, the card renders a grip handle in its header and sinks into its page
-// position via CSS `order`. The GRIP (built by the parent) is the drag source —
-// the card itself is never draggable, so its inputs stay fully usable — and the
-// card is the drop target. Absent = an ordinary fixed card.
+// Everything a card needs to be a drag-to-reorder row on the Page tab. Dragging
+// is driven by Pointer Events on the GRIP (built by the parent) so mouse and
+// touch share one path; the card sinks into its page position via CSS `order`.
+// While a drag is live the picked-up card pops, the rest dim, and the current
+// drop target shows an insertion line. `data-section-key` lets the parent
+// hit-test which card the pointer is over. Absent = an ordinary fixed card.
 export type SectionReorder = {
   grip: ReactNode;
+  sectionKey: string;
   orderIndex: number;
-  active: boolean; // this card is the one currently being dragged
-  onDrop: () => void;
-  onDragEnd: () => void;
+  active: boolean; // being dragged → pops
+  dimmed: boolean; // a drag is happening on another card → grays out
+  over: boolean; // current drop target → insertion indicator
 };
 
 type SectionCardProps = {
@@ -49,16 +51,16 @@ type SectionCardProps = {
 export default function SectionCard({ title, description, evidence, enabled, onToggleEnabled, hint, hintTone, open, onToggleOpen, variant, reorder, children }: SectionCardProps) {
   const hasSwitch = typeof enabled === 'boolean' && Boolean(onToggleEnabled);
   const variantClass = variant === 'featured' ? ` ${styles.sectionCardFeatured}` : variant === 'linked' ? ` ${styles.sectionCardLinked}` : '';
-  const reorderClass = reorder ? ` ${styles.sectionCardReorder}${reorder.active ? ` ${styles.sectionCardDragging}` : ''}` : '';
+  const reorderClass = reorder
+    ? ` ${styles.sectionCardReorder}${reorder.active ? ` ${styles.sectionCardActive}` : ''}${reorder.dimmed ? ` ${styles.sectionCardDimmed}` : ''}${reorder.over ? ` ${styles.sectionCardOver}` : ''}`
+    : '';
   const rootStyle: CSSProperties | undefined = reorder ? { order: reorder.orderIndex } : undefined;
 
   return (
     <div
+      data-section-key={reorder?.sectionKey}
       className={`${styles.sectionCard}${open ? ` ${styles.sectionCardOpen}` : ''}${variantClass}${reorderClass}`}
       style={rootStyle}
-      onDragOver={reorder ? (event) => event.preventDefault() : undefined}
-      onDrop={reorder ? (event) => { event.preventDefault(); reorder.onDrop(); } : undefined}
-      onDragEnd={reorder ? reorder.onDragEnd : undefined}
     >
       <div className={styles.sectionCardHead}>
         {reorder && <div className={styles.sectionCardGrip}>{reorder.grip}</div>}

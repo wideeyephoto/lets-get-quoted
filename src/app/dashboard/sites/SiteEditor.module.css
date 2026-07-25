@@ -306,8 +306,15 @@
    live in one flex group and sink to their live page position via CSS `order`,
    so dragging a card in the builder reorders the actual page. */
 .sectionDragGroup { display: flex; flex-direction: column; gap: 1rem; }
-.sectionCardReorder { position: relative; }
-.sectionCardDragging { opacity: .55; outline: 2px dashed #ff7a21; outline-offset: -1px; }
+/* No text selection anywhere in the list while a drag is live. */
+.sectionDragGroupActive { -webkit-user-select: none; user-select: none; }
+.sectionCardReorder { position: relative; transition: transform .12s ease, opacity .12s ease, box-shadow .12s ease, filter .12s ease; }
+/* The picked-up card pops above the rest. */
+.sectionCardActive { opacity: 1; transform: scale(1.02); z-index: 3; border-color: #ff7a21; box-shadow: 0 16px 36px -12px rgba(0,0,0,.65), 0 0 0 1px #ff7a21; }
+/* Everything else recedes so the dragged one stands out. */
+.sectionCardDimmed { opacity: .4; filter: saturate(.4); }
+/* The card under the pointer shows a bright line where the section will land. */
+.sectionCardOver::before { content: ""; position: absolute; left: 0; right: 0; top: -8px; height: 3px; border-radius: 2px; background: #ff7a21; box-shadow: 0 0 10px rgba(255,122,33,.75); }
 .sectionCardGrip { display: flex; align-items: center; gap: .35rem; padding: 0 .1rem 0 .6rem; }
 .sectionGrip { cursor: grab; color: #6b7688; font-size: 1.05rem; line-height: 1; -webkit-user-select: none; user-select: none; touch-action: none; }
 .sectionGrip:hover { color: #ffb27a; }

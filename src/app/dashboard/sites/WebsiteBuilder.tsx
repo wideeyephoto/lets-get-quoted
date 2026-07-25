@@ -304,6 +304,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   >(null);
   // The section key currently being dragged in the "Page order" reorder list.
   const [dragKey, setDragKey] = useState<string | null>(null);
+  // The card the pointer is currently over — shows the "lands here" indicator.
+  const [overKey, setOverKey] = useState<string | null>(null);
+  const dragGroupRef = useRef<HTMLDivElement>(null);
+  const draggingRef = useRef(false);
   const [isPending, startTransition] = useTransition();
   const galleryImages = getSiteGallery(site.content);
   const siteContent = getSiteContent(site.content);
@@ -898,16 +902,32 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     updateSiteContent({ sectionOrder: order });
   }, [siteContent.sectionOrder, updateSiteContent]);
 
-  // A section is fixed (not drag-reorderable) when the current template renders
-  // it in its own built-in band: the Photo gallery on Forge/Guild/Vista, and the
-  // Project showcase on Care. Those cards still edit — they just show a 🔒.
-  const sectionLocked = (key: string) =>
-    (key === 'showcase' && hasBuiltInSections) || (key === 'projectShowcase' && site.template === 'handy');
+  // Project showcase is rendered natively by the Care template, so it can't be
+  // reordered there — it shows a 🔒 but still edits. (The Photo gallery is
+  // reorderable everywhere now.)
+  const sectionLocked = (key: string) => key === 'projectShowcase' && site.template === 'handy';
 
-  // The drag-to-reorder wiring for one Page-tab section card. The card sinks into
-  // its live page position via CSS `order`. The grip is the drag SOURCE (so the
-  // card's inputs are never draggable); the card is the drop target; ↑/↓ give a
-  // touch/keyboard-friendly fallback.
+  // Which reorderable card sits under a given viewport Y — used to resolve the
+  // drop target during a pointer drag. Reads visual position (getBoundingClientRect
+  // honors CSS `order`); skips any card not in sectionOrder (e.g. the pinned Hero).
+  const cardKeyAtY = (y: number): string | null => {
+    const container = dragGroupRef.current;
+    if (!container) return null;
+    const order = siteContent.sectionOrder;
+    for (const el of Array.from(container.querySelectorAll<HTMLElement>('[data-section-key]'))) {
+      const k = el.getAttribute('data-section-key');
+      if (!k || !order.includes(k)) continue;
+      const rect = el.getBoundingClientRect();
+      if (y >= rect.top && y <= rect.bottom) return k;
+    }
+    return null;
+  };
+
+  // The drag-to-reorder wiring for one Page-tab section card. Dragging runs on
+  // Pointer Events off the GRIP (one path for mouse + touch), so the card's own
+  // inputs are never draggable. While a drag is live the picked-up card pops, the
+  // rest dim, and the card under the pointer shows a "lands here" line. ↑/↓ are a
+  // keyboard/assistive fallback.
   const reorderProps = (key: string, label: string) => {
     const index = siteContent.sectionOrder.indexOf(key);
     const locked = sectionLocked(key);
@@ -917,11 +937,30 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       <>
         <span
           className={styles.sectionGrip}
-          draggable
-          onDragStart={(event) => { setDragKey(key); event.dataTransfer.effectAllowed = 'move'; }}
-          onDragEnd={() => setDragKey(null)}
           role="button"
           aria-label={`Drag to reorder ${label}`}
+          onPointerDown={(event) => {
+            event.preventDefault();
+            try { (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId); } catch {}
+            draggingRef.current = true;
+            setDragKey(key);
+            setOverKey(key);
+          }}
+          onPointerMove={(event) => {
+            if (!draggingRef.current) return;
+            const over = cardKeyAtY(event.clientY);
+            if (over) setOverKey(over);
+          }}
+          onPointerUp={(event) => {
+            if (!draggingRef.current) return;
+            draggingRef.current = false;
+            try { (event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId); } catch {}
+            const target = cardKeyAtY(event.clientY);
+            if (target && target !== key) reorderSections(key, target);
+            setDragKey(null);
+            setOverKey(null);
+          }}
+          onPointerCancel={() => { draggingRef.current = false; setDragKey(null); setOverKey(null); }}
         >⠿</span>
         <span className={styles.sectionGripArrows}>
           <button type="button" aria-label={`Move ${label} up`} disabled={index <= 0} onClick={() => moveSectionBy(key, -1)}>↑</button>
@@ -931,12 +970,25 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     );
     return {
       grip,
+      sectionKey: key,
       orderIndex: index < 0 ? 999 : index,
       active: dragKey === key,
-      onDrop: () => { if (dragKey) reorderSections(dragKey, key); setDragKey(null); },
-      onDragEnd: () => setDragKey(null),
+      dimmed: dragKey !== null && dragKey !== key,
+      over: overKey === key && dragKey !== null && dragKey !== key,
     };
   };
+
+  // The Hero is pinned to the very top of the section list — always the top of the
+  // page, so it's locked (no grip) and never a drop target. It only dims when a
+  // real drag is happening elsewhere.
+  const pinnedHeroReorder = () => ({
+    grip: <span className={styles.sectionLock} title="Your hero is always the top of your page" aria-label="Pinned to the top">🔒</span>,
+    sectionKey: 'hero',
+    orderIndex: -1,
+    active: false,
+    dimmed: dragKey !== null,
+    over: false,
+  });
 
   const updateShowcase = useCallback((showcase: SiteShowcaseContent) => {
     updateSiteContent({ showcase });
@@ -1470,10 +1522,52 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
             {activeTab === 'page' && (
               <div className={styles.formSection}>
-                <div className={styles.cardGroupLabel}>Your hero</div>
-                <p className={styles.cardGroupHint}>The top of your page — the headline, photo, and floating badges visitors see first, all in one place.</p>
+                <div className={styles.cardGroupLabel}>Get you leads</div>
+                <p className={styles.cardGroupHint}>Pick ONE way to capture a job — Smart Intake (recommended) or the classic quote form below. Running both means visitors fill out both and you get doubled-up requests.</p>
 
-                <SectionCard title="Hero" description="The whole top-of-page first impression — your headline, photo, and floating badges, in one place." hint={site.headline ? `“${site.headline.length > 46 ? `${site.headline.slice(0, 46).trimEnd()}…` : site.headline}”` : undefined} open={openSection === 'hero'} onToggleOpen={() => toggleSection('hero')}>
+                <div className={styles.aiSuite}>
+                <SectionCard variant="featured" title="Smart Intake with Instant Estimates via AI (Recommended)" description="Gives visitors an automatic ballpark price, no waiting — our AI asks a couple of questions to scope the job, then prices it for your trade and shows a realistic $ range. Every request still reaches you as a lead, with the shown range included." evidence="Instant online estimates capture 2–3× more leads than a plain contact form — most homeowners are price-shopping, and the ones who see a number stop searching. Answering while they're still on the page beats a next-day callback every time." enabled={siteContent.estimateRanges.enabled} onToggleEnabled={(value) => updateEstimateRanges({ ...siteContent.estimateRanges, enabled: value })} open={openSection === 'estimate'} onToggleOpen={() => toggleSection('estimate')}>
+                  <label className={styles.formField}><span>Email on the AI intake</span><select value={siteContent.estimateRanges.emailField} onChange={(event) => updateEstimateRanges({ ...siteContent.estimateRanges, emailField: event.target.value as SiteEstimateRangesContent['emailField'] })}><option value="optional">Optional — ask, but don&apos;t require it</option><option value="required">Required</option><option value="off">Don&apos;t ask for email</option></select><small>A phone number is always required here — the follow-up promised to visitors is a text or call.</small></label>
+                  <label className={styles.formField}><span>What visitors see it called</span><select value={siteContent.quoteForm.estimateLabel} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, estimateLabel: event.target.value as SiteQuoteFormContent['estimateLabel'] })}><option value="instant">&quot;Instant Estimate&quot;</option><option value="quick">&quot;Instant Quote&quot;</option></select><small>The heading + button on the AI intake card.</small></label>
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.phonePublic} onChange={(event) => updateSiteContent({ phonePublic: event.target.checked })} /><span><strong>Show my phone number on my website</strong><small>Off = no call buttons anywhere (including &quot;Call now to lock it in&quot;) — visitors reach you through the intake and forms. Same setting as on the Setup tab.</small></span></label>
+                </SectionCard>
+
+                <div className={styles.aiSuiteLink} aria-hidden="true"><span>⚡ Tuned by</span></div>
+
+                <SectionCard variant="linked" title="Lead quality filters" description="These filters tune the Smart Intake above — flag out-of-area and too-small jobs, catch work you don't do, and sort 'just researching' to the bottom, before anything reaches your phone. Flagged leads still come in — they're just marked and ranked low, never lost." open={openSection === 'leadFilters'} onToggleOpen={() => toggleSection('leadFilters')}>
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.leadFilters.askTimeline} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, askTimeline: event.target.checked })} /><span><strong>Ask &quot;when do you need this done?&quot;</strong><small>ASAP jobs rank Hot; &quot;just researching&quot; sinks to the bottom of your leads.</small></span></label>
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.leadFilters.serviceAreaGate} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, serviceAreaGate: event.target.checked })} /><span><strong>Check the visitor&apos;s service area</strong><small>Asks for their ZIP or town and flags leads outside your &quot;Cities you serve&quot; list.{siteContent.serviceAreas.cities.filter((city) => city.trim()).length === 0 ? ' Add cities to that section to activate this.' : ''}</small></span></label>
+                  <label className={styles.formField}><span>Minimum job size ($ — 0 for none)</span><input type="number" min={0} value={siteContent.leadFilters.minJobAmount} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, minJobAmount: Math.max(0, Math.round(Number(event.target.value) || 0)) })} /><small>Estimates that top out below this get flagged &quot;Below minimum&quot;.</small></label>
+                  <div className={styles.contentSubhead}><strong>Jobs you don&apos;t take on</strong><small>the AI flags matching requests</small></div>
+                  <div className={styles.badgeList}>
+                    {siteContent.leadFilters.exclusions.map((item, index) => (
+                      <div className={styles.badgeRow} key={index}>
+                        <input className={styles.badgeInput} value={item} maxLength={80} aria-label={`Exclusion ${index + 1}`} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, exclusions: siteContent.leadFilters.exclusions.map((other, otherIndex) => otherIndex === index ? event.target.value : other) })} placeholder="e.g. mobile homes, window AC units" />
+                        <button type="button" className={styles.badgeRemove} onClick={() => updateLeadFilters({ ...siteContent.leadFilters, exclusions: siteContent.leadFilters.exclusions.filter((_, otherIndex) => otherIndex !== index) })} aria-label={`Remove ${item || 'exclusion'}`}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                  {siteContent.leadFilters.exclusions.length < 10 && <button type="button" className={styles.secondaryAction} onClick={() => updateLeadFilters({ ...siteContent.leadFilters, exclusions: [...siteContent.leadFilters.exclusions, ''] })}>Add exclusion</button>}
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.leadFilters.fullyBooked.enabled} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, fullyBooked: { ...siteContent.leadFilters.fullyBooked, enabled: event.target.checked } })} /><span><strong>Fully booked mode</strong><small>Tells visitors up front that you&apos;re booked — leads still collect, expectations set.</small></span></label>
+                  {siteContent.leadFilters.fullyBooked.enabled && (
+                    <div className={styles.formColumns}>
+                      <label className={styles.formField}><span>Booked until (optional)</span><input type="date" value={siteContent.leadFilters.fullyBooked.until} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, fullyBooked: { ...siteContent.leadFilters.fullyBooked, until: event.target.value } })} /><small>The banner turns itself off after this date — no date means it runs until you switch it off.</small></label>
+                      <label className={styles.formField}><span>Message (optional)</span><input maxLength={140} value={siteContent.leadFilters.fullyBooked.message} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, fullyBooked: { ...siteContent.leadFilters.fullyBooked, message: event.target.value } })} placeholder="We're currently booked up — send your request and we'll reach out as soon as a spot opens." /></label>
+                    </div>
+                  )}
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.leadFilters.phoneVerification} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, phoneVerification: event.target.checked })} /><span><strong>Verify phone numbers with a text code</strong><small>The strongest junk filter — visitors confirm a 6-digit code before the AI intake submits. Verified leads get a green badge. Skipped automatically if texting isn&apos;t configured.</small></span></label>
+                </SectionCard>
+                </div>
+
+                <SectionCard title="Quote request form (old school)" description="The classic multi-field form where visitors type out their job details and wait for you to reply with a price. Recommended: run Smart Intake above OR this form — not both, or visitors will fill out both and you'll get doubled-up requests. When this is off, the smart-intake capture takes its place at #contact." enabled={siteContent.quoteForm.enabled} onToggleEnabled={(value) => updateQuoteForm({ ...siteContent.quoteForm, enabled: value })} open={openSection === 'quoteForm'} onToggleOpen={() => toggleSection('quoteForm')}>
+                  {siteContent.quoteForm.enabled && siteContent.estimateRanges.enabled && <p className={styles.emptyHelper}>Heads up: Smart Intake is also on — visitors may fill out both forms. Consider turning one off.</p>}
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.quoteForm.emailRequired} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, emailRequired: event.target.checked })} /><span><strong>Require email on quote form</strong><small>Ask homeowners for an email address on every request so future email campaigns have clean contact data.</small></span></label>
+                </SectionCard>
+
+                <div className={styles.cardGroupLabel}>Main sections</div>
+                <p className={styles.cardGroupHint}>Drag a section by its ⠿ handle to reorder it on your live page. Turned-off sections keep their spot but stay hidden until you switch them on.</p>
+                <div ref={dragGroupRef} className={`${styles.sectionDragGroup}${dragKey ? ` ${styles.sectionDragGroupActive}` : ''}`}>
+                <SectionCard reorder={pinnedHeroReorder()} title="Hero" description="The whole top-of-page first impression — your headline, photo, and floating badges, in one place." hint={site.headline ? `“${site.headline.length > 46 ? `${site.headline.slice(0, 46).trimEnd()}…` : site.headline}”` : undefined} open={openSection === 'hero'} onToggleOpen={() => toggleSection('hero')}>
                   <div className={styles.contentSubhead}><strong>Headline &amp; message</strong></div>
                   <label className={styles.formField}><span>Small line above headline</span><input id="bf-hero-eyebrow" value={siteContent.heroEyebrow} maxLength={50} onChange={(event) => updateSiteContent({ heroEyebrow: event.target.value })} placeholder={heroEyebrowPlaceholder} /><small className={styles.fieldHint}>{site.template === 'shine' ? 'Optional — Shine shows this only if you add one.' : 'Leave empty to keep your template’s own wording.'}</small></label>
                   <label className={styles.formField}><span>Headline</span><textarea id="bf-headline" rows={2} value={site.headline || ''} onChange={(event) => handleChange('headline', event.target.value || null)} placeholder="Built with purpose. Finished with care." /></label>
@@ -1539,51 +1633,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   </div>
                 </SectionCard>
 
-                <div className={styles.cardGroupLabel}>Get you leads</div>
-                <p className={styles.cardGroupHint}>Pick ONE way to capture a job — Smart Intake (recommended) or the classic quote form below. Running both means visitors fill out both and you get doubled-up requests.</p>
-
-                <div className={styles.aiSuite}>
-                <SectionCard variant="featured" title="Smart Intake with Instant Estimates via AI (Recommended)" description="Gives visitors an automatic ballpark price, no waiting — our AI asks a couple of questions to scope the job, then prices it for your trade and shows a realistic $ range. Every request still reaches you as a lead, with the shown range included." evidence="Instant online estimates capture 2–3× more leads than a plain contact form — most homeowners are price-shopping, and the ones who see a number stop searching. Answering while they're still on the page beats a next-day callback every time." enabled={siteContent.estimateRanges.enabled} onToggleEnabled={(value) => updateEstimateRanges({ ...siteContent.estimateRanges, enabled: value })} open={openSection === 'estimate'} onToggleOpen={() => toggleSection('estimate')}>
-                  <label className={styles.formField}><span>Email on the AI intake</span><select value={siteContent.estimateRanges.emailField} onChange={(event) => updateEstimateRanges({ ...siteContent.estimateRanges, emailField: event.target.value as SiteEstimateRangesContent['emailField'] })}><option value="optional">Optional — ask, but don&apos;t require it</option><option value="required">Required</option><option value="off">Don&apos;t ask for email</option></select><small>A phone number is always required here — the follow-up promised to visitors is a text or call.</small></label>
-                  <label className={styles.formField}><span>What visitors see it called</span><select value={siteContent.quoteForm.estimateLabel} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, estimateLabel: event.target.value as SiteQuoteFormContent['estimateLabel'] })}><option value="instant">&quot;Instant Estimate&quot;</option><option value="quick">&quot;Instant Quote&quot;</option></select><small>The heading + button on the AI intake card.</small></label>
-                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.phonePublic} onChange={(event) => updateSiteContent({ phonePublic: event.target.checked })} /><span><strong>Show my phone number on my website</strong><small>Off = no call buttons anywhere (including &quot;Call now to lock it in&quot;) — visitors reach you through the intake and forms. Same setting as on the Setup tab.</small></span></label>
-                </SectionCard>
-
-                <div className={styles.aiSuiteLink} aria-hidden="true"><span>⚡ Tuned by</span></div>
-
-                <SectionCard variant="linked" title="Lead quality filters" description="These filters tune the Smart Intake above — flag out-of-area and too-small jobs, catch work you don't do, and sort 'just researching' to the bottom, before anything reaches your phone. Flagged leads still come in — they're just marked and ranked low, never lost." open={openSection === 'leadFilters'} onToggleOpen={() => toggleSection('leadFilters')}>
-                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.leadFilters.askTimeline} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, askTimeline: event.target.checked })} /><span><strong>Ask &quot;when do you need this done?&quot;</strong><small>ASAP jobs rank Hot; &quot;just researching&quot; sinks to the bottom of your leads.</small></span></label>
-                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.leadFilters.serviceAreaGate} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, serviceAreaGate: event.target.checked })} /><span><strong>Check the visitor&apos;s service area</strong><small>Asks for their ZIP or town and flags leads outside your &quot;Cities you serve&quot; list.{siteContent.serviceAreas.cities.filter((city) => city.trim()).length === 0 ? ' Add cities to that section to activate this.' : ''}</small></span></label>
-                  <label className={styles.formField}><span>Minimum job size ($ — 0 for none)</span><input type="number" min={0} value={siteContent.leadFilters.minJobAmount} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, minJobAmount: Math.max(0, Math.round(Number(event.target.value) || 0)) })} /><small>Estimates that top out below this get flagged &quot;Below minimum&quot;.</small></label>
-                  <div className={styles.contentSubhead}><strong>Jobs you don&apos;t take on</strong><small>the AI flags matching requests</small></div>
-                  <div className={styles.badgeList}>
-                    {siteContent.leadFilters.exclusions.map((item, index) => (
-                      <div className={styles.badgeRow} key={index}>
-                        <input className={styles.badgeInput} value={item} maxLength={80} aria-label={`Exclusion ${index + 1}`} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, exclusions: siteContent.leadFilters.exclusions.map((other, otherIndex) => otherIndex === index ? event.target.value : other) })} placeholder="e.g. mobile homes, window AC units" />
-                        <button type="button" className={styles.badgeRemove} onClick={() => updateLeadFilters({ ...siteContent.leadFilters, exclusions: siteContent.leadFilters.exclusions.filter((_, otherIndex) => otherIndex !== index) })} aria-label={`Remove ${item || 'exclusion'}`}>×</button>
-                      </div>
-                    ))}
-                  </div>
-                  {siteContent.leadFilters.exclusions.length < 10 && <button type="button" className={styles.secondaryAction} onClick={() => updateLeadFilters({ ...siteContent.leadFilters, exclusions: [...siteContent.leadFilters.exclusions, ''] })}>Add exclusion</button>}
-                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.leadFilters.fullyBooked.enabled} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, fullyBooked: { ...siteContent.leadFilters.fullyBooked, enabled: event.target.checked } })} /><span><strong>Fully booked mode</strong><small>Tells visitors up front that you&apos;re booked — leads still collect, expectations set.</small></span></label>
-                  {siteContent.leadFilters.fullyBooked.enabled && (
-                    <div className={styles.formColumns}>
-                      <label className={styles.formField}><span>Booked until (optional)</span><input type="date" value={siteContent.leadFilters.fullyBooked.until} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, fullyBooked: { ...siteContent.leadFilters.fullyBooked, until: event.target.value } })} /><small>The banner turns itself off after this date — no date means it runs until you switch it off.</small></label>
-                      <label className={styles.formField}><span>Message (optional)</span><input maxLength={140} value={siteContent.leadFilters.fullyBooked.message} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, fullyBooked: { ...siteContent.leadFilters.fullyBooked, message: event.target.value } })} placeholder="We're currently booked up — send your request and we'll reach out as soon as a spot opens." /></label>
-                    </div>
-                  )}
-                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.leadFilters.phoneVerification} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, phoneVerification: event.target.checked })} /><span><strong>Verify phone numbers with a text code</strong><small>The strongest junk filter — visitors confirm a 6-digit code before the AI intake submits. Verified leads get a green badge. Skipped automatically if texting isn&apos;t configured.</small></span></label>
-                </SectionCard>
-                </div>
-
-                <SectionCard title="Quote request form (old school)" description="The classic multi-field form where visitors type out their job details and wait for you to reply with a price. Recommended: run Smart Intake above OR this form — not both, or visitors will fill out both and you'll get doubled-up requests. When this is off, the smart-intake capture takes its place at #contact." enabled={siteContent.quoteForm.enabled} onToggleEnabled={(value) => updateQuoteForm({ ...siteContent.quoteForm, enabled: value })} open={openSection === 'quoteForm'} onToggleOpen={() => toggleSection('quoteForm')}>
-                  {siteContent.quoteForm.enabled && siteContent.estimateRanges.enabled && <p className={styles.emptyHelper}>Heads up: Smart Intake is also on — visitors may fill out both forms. Consider turning one off.</p>}
-                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.quoteForm.emailRequired} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, emailRequired: event.target.checked })} /><span><strong>Require email on quote form</strong><small>Ask homeowners for an email address on every request so future email campaigns have clean contact data.</small></span></label>
-                </SectionCard>
-
-                <div className={styles.cardGroupLabel}>Main sections</div>
-                <p className={styles.cardGroupHint}>Drag a section by its ⠿ handle to reorder it on your live page. Turned-off sections keep their spot but stay hidden until you switch them on.</p>
-                <div className={styles.sectionDragGroup}>
                 <SectionCard reorder={reorderProps('services', 'Services')} title="Services" description="Icon cards for the work you do — the first thing most home-services visitors scan for. Add a few with an icon, name, and one-line description." evidence="A clear service grid lets a visitor confirm 'they do what I need' in seconds — the fastest way to hold a home-services visitor's attention." enabled={siteContent.services.enabled} onToggleEnabled={(value) => updateServices({ ...siteContent.services, enabled: value })} {...contentHint(siteContent.services.enabled, siteContent.services.items.filter((svc) => svc.title.trim()).length, 'service')} open={openSection === 'services'} onToggleOpen={() => toggleSection('services')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.services.title} onChange={(event) => updateServices({ ...siteContent.services, title: event.target.value })} /></label>
                   <label className={styles.formField}><span>Intro (optional)</span><input value={siteContent.services.intro} onChange={(event) => updateServices({ ...siteContent.services, intro: event.target.value })} /></label>
