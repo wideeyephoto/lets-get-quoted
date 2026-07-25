@@ -72,9 +72,9 @@ export async function createRecurringPlanAction(formData: FormData) {
 
 export async function runPlanNowAction(planId: string) {
   const { accountId } = await requireOwnerContext();
-  const { outcome } = await runRecurringPlanNow(accountId, planId);
+  const { outcome, jobId } = await runRecurringPlanNow(accountId, planId);
   revalidatePath('/dashboard/recurring');
-  redirect(`/dashboard/recurring?flash=ran-${outcome}`);
+  redirect(`/dashboard/recurring?flash=ran-${outcome}&job=${jobId}`);
 }
 
 export async function setPlanActiveAction(planId: string, active: boolean) {

@@ -287,7 +287,7 @@ async function chargePlanVisit(
 // Spawn the due visit for one plan: create the scheduled job, LOCK the cadence
 // forward (before charging, so a mid-run failure can never respawn this visit),
 // then attempt the auto-charge.
-async function spawnPlanOccurrence(admin: ReturnType<typeof createAdminClient>, plan: RecurringPlan): Promise<ChargeOutcome> {
+async function spawnPlanOccurrence(admin: ReturnType<typeof createAdminClient>, plan: RecurringPlan): Promise<{ outcome: ChargeOutcome; jobId: string }> {
   const dateKey = plan.next_run_date;
   const job = await createJob(admin, plan.account_id, {
     clientName: plan.client_name,
@@ -317,21 +317,21 @@ async function spawnPlanOccurrence(admin: ReturnType<typeof createAdminClient>, 
     visibility: 'internal',
   });
 
-  return chargePlanVisit(admin, plan, job, dateKey);
+  const outcome = await chargePlanVisit(admin, plan, job, dateKey);
+  return { outcome, jobId: job.id };
 }
 
 // Owner-triggered "run this plan now" — spawns the next visit and charges it
 // immediately using the SAME code path the cron uses, instead of waiting for the
 // daily sweep. Used both as a real feature (bill an off-cycle visit) and to
 // verify the auto-charge path end-to-end through the webhook + DB.
-export async function runRecurringPlanNow(accountId: string, planId: string): Promise<{ outcome: ChargeOutcome }> {
+export async function runRecurringPlanNow(accountId: string, planId: string): Promise<{ outcome: ChargeOutcome; jobId: string }> {
   const admin = createAdminClient();
   const { data } = await admin.from('recurring_plans').select('*').eq('account_id', accountId).eq('id', planId).maybeSingle();
   if (!data) throw new Error('Plan not found.');
   const plan = data as RecurringPlan;
   if (!plan.active) throw new Error('This plan is paused — resume it before running a visit.');
-  const outcome = await spawnPlanOccurrence(admin, plan);
-  return { outcome };
+  return spawnPlanOccurrence(admin, plan);
 }
 
 export type RecurringRunSummary = {
@@ -368,7 +368,7 @@ export async function runDueRecurringPlans(): Promise<RecurringRunSummary> {
 
   for (const plan of (plans ?? []) as RecurringPlan[]) {
     try {
-      const outcome = await spawnPlanOccurrence(admin, plan);
+      const { outcome } = await spawnPlanOccurrence(admin, plan);
       spawned++;
       if (outcome === 'paid') charged++;
       else if (outcome === 'failed') chargeFailed++;

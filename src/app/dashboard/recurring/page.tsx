@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { formatMoney } from '@/lib/jobs';
 import { listRecurringPlans, todayDateKey, FREQUENCY_LABEL } from '@/lib/recurring';
@@ -26,12 +27,14 @@ const FLASH_MESSAGES: Record<string, { tone: 'success' | 'info' | 'warn'; text: 
   'ran-failed': { tone: 'warn', text: 'Visit created, but the card charge didn’t go through — the customer was sent a pay link. See the job’s payment.' },
 };
 
-export default async function RecurringPage({ searchParams }: { searchParams: { flash?: string } }) {
+export default async function RecurringPage({ searchParams }: { searchParams: { flash?: string; job?: string } }) {
   const { supabase, accountId } = await requireOwnerContext();
 
   const plans = await listRecurringPlans(supabase, accountId);
   const today = todayDateKey();
   const flash = searchParams.flash ? FLASH_MESSAGES[searchParams.flash] : null;
+  // "Run next visit now" passes the created job id so we can link straight to it.
+  const flashJobId = flash && searchParams.flash?.startsWith('ran-') ? searchParams.job ?? null : null;
 
   const activeCount = plans.filter((plan) => plan.active).length;
 
@@ -50,7 +53,10 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
 
       {flash ? (
         <section className={`panel workspace-section-card flash-banner flash-${flash.tone === 'warn' ? 'warn' : flash.tone === 'info' ? 'info' : 'success'}`}>
-          <p>{flash.text}</p>
+          <p>
+            {flash.text}
+            {flashJobId ? <> <Link href={`/dashboard/jobs/${flashJobId}`}>View the visit →</Link></> : null}
+          </p>
         </section>
       ) : null}
 

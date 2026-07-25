@@ -4687,6 +4687,7 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
    CAMPAIGNS — email/SMS broadcasts to past clients
    --------------------------------------------------------------------------- */
 .flash-banner p { margin: 0; }
+.flash-banner a { color: #7dd3fc; font-weight: 600; text-decoration: underline; white-space: nowrap; }
 .flash-banner.flash-success {
   border-color: rgba(163,230,53,0.35);
   background: rgba(163,230,53,0.08);
