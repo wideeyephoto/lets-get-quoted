@@ -5,7 +5,7 @@ import FinanceReports from './FinanceReports';
 import { getAvailableTaxYears, buildProfitAndLoss, buildScheduleCWorksheet, build1099PrepList } from '@/lib/tax-reports';
 import SaveButton from '@/components/save-button';
 import DeleteAccountButton from './DeleteAccountButton';
-import { updateScheduleDayHoursAction, updateReviewSettingsAction, updateDepositSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, deleteAccountAction } from './actions';
+import { updateScheduleDayHoursAction, updateReviewSettingsAction, updateDepositSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, deleteAccountAction } from './actions';
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -73,6 +73,13 @@ export default async function SettingsPage({
     .eq('id', accountId)
     .maybeSingle();
   const appointmentRemindersEnabled = Boolean(reminderSettings?.appointment_reminders_enabled);
+
+  const { data: mailingSettings } = await supabase
+    .from('accounts')
+    .select('mailing_address')
+    .eq('id', accountId)
+    .maybeSingle();
+  const mailingAddress = (mailingSettings?.mailing_address as string | null) ?? '';
 
   const requestedYear = searchParams.year ? parseInt(searchParams.year, 10) : NaN;
   const selectedYear = availableYears.includes(requestedYear) ? requestedYear : availableYears[0];
@@ -233,6 +240,33 @@ export default async function SettingsPage({
           </label>
           <div className="form-actions">
             <SaveButton>Save reminder settings</SaveButton>
+          </div>
+        </form>
+      </section>
+
+      <section className="panel workspace-section-card" id="marketing-address">
+        <div className="section-heading workspace-section-heading compact-heading">
+          <p className="eyebrow">Marketing email</p>
+          <h2>Business mailing address</h2>
+        </div>
+        <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+          Anti-spam law (CAN-SPAM) requires a real physical postal address in the footer of promotional
+          emails — your campaign blasts, &ldquo;book again&rdquo; invites, and review requests. Add yours
+          here (a PO box is fine). Campaign emails won&apos;t send until this is set.
+        </p>
+        <form action={updateMailingAddressAction} className="form-grid compact-form">
+          <div className="field">
+            <label htmlFor="mailingAddress">Mailing address</label>
+            <textarea
+              id="mailingAddress"
+              name="mailingAddress"
+              rows={3}
+              placeholder={'123 Main St, Suite 4\nSpringfield, IL 62704'}
+              defaultValue={mailingAddress}
+            />
+          </div>
+          <div className="form-actions">
+            <SaveButton>Save mailing address</SaveButton>
           </div>
         </form>
       </section>

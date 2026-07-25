@@ -39,9 +39,9 @@ export default async function CampaignsPage({
         audience.id,
         {
           total: matched.length,
-          email: matched.filter((recipient) => Boolean(recipient.email)).length,
+          email: matched.filter((recipient) => recipient.emailReady).length,
           sms: matched.filter((recipient) => recipient.smsReady).length,
-          either: matched.filter((recipient) => Boolean(recipient.email) || recipient.smsReady).length,
+          either: matched.filter((recipient) => recipient.emailReady || recipient.smsReady).length,
         },
       ];
     }),

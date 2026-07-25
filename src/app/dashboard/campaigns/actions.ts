@@ -5,16 +5,28 @@ import { redirect } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
 import { sendCampaign, type CampaignAudience, type CampaignChannel } from '@/lib/campaigns';
 import { sendCampaignEmail } from '@/lib/email';
+import { resolveMarketingMailingAddress } from '@/lib/email-suppression';
 
 const CHANNELS: CampaignChannel[] = ['email', 'sms', 'both'];
 const AUDIENCES: CampaignAudience[] = ['all', 'past', 'repeat', 'lapsed'];
 
-async function resolveBusinessName(supabase: Awaited<ReturnType<typeof requireOwnerContext>>['supabase'], accountId: string): Promise<string> {
+// Resolve the sender identity shown in marketing email: the display name and the
+// CAN-SPAM physical mailing address (contractor's own, else platform fallback).
+async function resolveSenderIdentity(
+  supabase: Awaited<ReturnType<typeof requireOwnerContext>>['supabase'],
+  accountId: string,
+): Promise<{ businessName: string; mailingAddress: string | null }> {
   const [{ data: account }, { data: site }] = await Promise.all([
+    // Defensive select: mailing_address may not exist on an un-migrated DB, so
+    // read it in its own query that can degrade instead of failing the action.
     supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
     supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
   ]);
-  return site?.company_name || account?.business_name || "Let's Get Quoted contractor";
+  const { data: addressRow } = await supabase.from('accounts').select('mailing_address').eq('id', accountId).maybeSingle();
+  return {
+    businessName: site?.company_name || account?.business_name || "Let's Get Quoted contractor",
+    mailingAddress: resolveMarketingMailingAddress(addressRow?.mailing_address as string | null),
+  };
 }
 
 export async function sendCampaignAction(formData: FormData) {
@@ -32,8 +44,13 @@ export async function sendCampaignAction(formData: FormData) {
     throw new Error('Add a subject line for the email.');
   }
 
-  const businessName = await resolveBusinessName(supabase, accountId);
-  const result = await sendCampaign(supabase, accountId, { channel, audience, subject, body, businessName });
+  const { businessName, mailingAddress } = await resolveSenderIdentity(supabase, accountId);
+  // CAN-SPAM: a marketing email must carry a physical postal address. Block the
+  // email broadcast until one is on file (their own, or a platform fallback).
+  if ((channel === 'email' || channel === 'both') && !mailingAddress) {
+    throw new Error('Add your business mailing address in Settings before sending marketing emails — it’s required by anti-spam law.');
+  }
+  const result = await sendCampaign(supabase, accountId, { channel, audience, subject, body, businessName, mailingAddress });
 
   revalidatePath('/dashboard/campaigns');
   const params = new URLSearchParams({
@@ -58,8 +75,8 @@ export async function sendTestEmailAction(formData: FormData) {
   const to = userData.user?.email;
   if (!to) throw new Error('No email on file to send a test to.');
 
-  const businessName = await resolveBusinessName(supabase, accountId);
-  await sendCampaignEmail({ recipientEmail: to, businessName, subject: `[Test] ${subject}`, body });
+  const { businessName, mailingAddress } = await resolveSenderIdentity(supabase, accountId);
+  await sendCampaignEmail({ recipientEmail: to, businessName, subject: `[Test] ${subject}`, body, accountId, mailingAddress });
 
   revalidatePath('/dashboard/campaigns');
   redirect('/dashboard/campaigns?test=1');

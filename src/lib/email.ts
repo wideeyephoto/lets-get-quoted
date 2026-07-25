@@ -5,8 +5,28 @@ import { generateInvoicePdf } from '@/emails/InvoicePdf';
 import { computeInvoiceTotals, type Invoice, type InvoiceItem } from './invoices';
 import type { Lead } from './leads';
 import { formatMoney } from './jobs';
+import { buildUnsubscribePageUrl, buildUnsubscribeOneClickUrl } from './email-suppression';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+// CAN-SPAM footer for MARKETING email (campaign blasts, "book again", review
+// asks): the sender's physical postal address plus a working unsubscribe link.
+// Transactional email keeps its plain footer and never calls this.
+function marketingFooter(businessName: string, mailingAddress: string | null, unsubscribeUrl: string): string {
+  const addressLine = mailingAddress
+    ? `<br/><span style="color:#9099a6">${escapeHtml(mailingAddress)}</span>`
+    : '';
+  return `<p style="margin-top:28px;color:#6b7280;font-size:12px;line-height:1.6">${escapeHtml(businessName)} · sent with Let's Get Quoted${addressLine}<br/><a href="${escapeHtml(unsubscribeUrl)}" style="color:#6b7280;text-decoration:underline">Unsubscribe from these emails</a></p>`;
+}
+
+// RFC 8058 one-click unsubscribe headers, so Gmail/Yahoo bulk-sender rules are met
+// and the mail client can render its own native unsubscribe button.
+function listUnsubscribeHeaders(oneClickUrl: string): Record<string, string> {
+  return {
+    'List-Unsubscribe': `<${oneClickUrl}>`,
+    'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+  };
+}
 
 // Resolve the account owner's login email — the contractor — for out-of-band
 // alerts (payout paused, chargeback opened) that shouldn't rely on them having
@@ -231,17 +251,22 @@ export async function sendReviewRequestEmail(input: {
   businessName: string;
   clientName: string;
   reviewUrl: string;
+  accountId: string;
+  mailingAddress: string | null;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
   }
 
+  const unsubscribeUrl = buildUnsubscribePageUrl(input.accountId, input.recipientEmail);
+  const oneClickUrl = buildUnsubscribeOneClickUrl(input.accountId, input.recipientEmail);
   const result = await resend.emails.send({
     from: "Let's Get Quoted <hello@letsgetquoted.com>",
     to: input.recipientEmail,
     subject: `How did we do? A quick review for ${input.businessName}`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#b45309;font-weight:700;letter-spacing:0.04em">THANK YOU</p><h1 style="font-size:24px;margin:0 0 12px">${escapeHtml(input.clientName)}, thanks for choosing ${escapeHtml(input.businessName)}</h1><p style="margin:0 0 20px;line-height:1.5">If we earned it, would you take a moment to leave a quick review? For a small business, a few words from a happy customer makes all the difference.</p><p><a href="${escapeHtml(input.reviewUrl)}" style="display:inline-block;padding:12px 18px;background:#172033;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">Leave a review</a></p><p style="margin-top:28px;color:#6b7280;font-size:13px">${escapeHtml(input.businessName)} · Let's Get Quoted</p></div>`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#b45309;font-weight:700;letter-spacing:0.04em">THANK YOU</p><h1 style="font-size:24px;margin:0 0 12px">${escapeHtml(input.clientName)}, thanks for choosing ${escapeHtml(input.businessName)}</h1><p style="margin:0 0 20px;line-height:1.5">If we earned it, would you take a moment to leave a quick review? For a small business, a few words from a happy customer makes all the difference.</p><p><a href="${escapeHtml(input.reviewUrl)}" style="display:inline-block;padding:12px 18px;background:#172033;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">Leave a review</a></p>${marketingFooter(input.businessName, input.mailingAddress, unsubscribeUrl)}</div>`,
     reply_to: 'hello@letsgetquoted.com',
+    headers: listUnsubscribeHeaders(oneClickUrl),
   });
 
   if (result.error) {
@@ -259,17 +284,22 @@ export async function sendRebookInviteEmail(input: {
   businessName: string;
   clientName: string;
   url: string;
+  accountId: string;
+  mailingAddress: string | null;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
   }
 
+  const unsubscribeUrl = buildUnsubscribePageUrl(input.accountId, input.recipientEmail);
+  const oneClickUrl = buildUnsubscribeOneClickUrl(input.accountId, input.recipientEmail);
   const result = await resend.emails.send({
     from: "Let's Get Quoted <hello@letsgetquoted.com>",
     to: input.recipientEmail,
     subject: `Ready to book ${input.businessName} again?`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#b45309;font-weight:700;letter-spacing:0.04em">WE'D LOVE TO HELP AGAIN</p><h1 style="font-size:24px;margin:0 0 12px">${escapeHtml(input.clientName)}, it's been a while!</h1><p style="margin:0 0 20px;line-height:1.5">Thanks again for trusting ${escapeHtml(input.businessName)}. Whenever you're ready for your next project, you can grab a time online in a couple of taps — no phone tag.</p><p><a href="${escapeHtml(input.url)}" style="display:inline-block;padding:12px 18px;background:#172033;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">Book us again</a></p><p style="margin-top:28px;color:#6b7280;font-size:13px">${escapeHtml(input.businessName)} · Let's Get Quoted</p></div>`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#b45309;font-weight:700;letter-spacing:0.04em">WE'D LOVE TO HELP AGAIN</p><h1 style="font-size:24px;margin:0 0 12px">${escapeHtml(input.clientName)}, it's been a while!</h1><p style="margin:0 0 20px;line-height:1.5">Thanks again for trusting ${escapeHtml(input.businessName)}. Whenever you're ready for your next project, you can grab a time online in a couple of taps — no phone tag.</p><p><a href="${escapeHtml(input.url)}" style="display:inline-block;padding:12px 18px;background:#172033;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">Book us again</a></p>${marketingFooter(input.businessName, input.mailingAddress, unsubscribeUrl)}</div>`,
     reply_to: 'hello@letsgetquoted.com',
+    headers: listUnsubscribeHeaders(oneClickUrl),
   });
 
   if (result.error) {
@@ -347,6 +377,8 @@ export async function sendCampaignEmail(input: {
   businessName: string;
   subject: string;
   body: string;
+  accountId: string;
+  mailingAddress: string | null;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
@@ -359,16 +391,19 @@ export async function sendCampaignEmail(input: {
     .map((block) => `<p style="margin:0 0 14px;line-height:1.6">${escapeHtml(block).replace(/\n/g, '<br/>')}</p>`)
     .join('');
 
-  // Show the business as the sender name; the verified domain stays LGQ. Strip
-  // characters that would break the From header rather than risk a rejection.
+  // Show the business as the sender name; the verified domain stays letsgetquoted.com.
+  // Strip characters that would break the From header rather than risk a rejection.
   const fromName = input.businessName.replace(/["<>,]/g, '').trim() || "Let's Get Quoted";
 
+  const unsubscribeUrl = buildUnsubscribePageUrl(input.accountId, input.recipientEmail);
+  const oneClickUrl = buildUnsubscribeOneClickUrl(input.accountId, input.recipientEmail);
   const result = await resend.emails.send({
     from: `${fromName} <hello@letsgetquoted.com>`,
     to: input.recipientEmail,
     subject: input.subject,
-    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033">${paragraphs}<p style="margin-top:28px;color:#6b7280;font-size:13px">${escapeHtml(input.businessName)} · sent with Let's Get Quoted</p></div>`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033">${paragraphs}${marketingFooter(input.businessName, input.mailingAddress, unsubscribeUrl)}</div>`,
     reply_to: 'hello@letsgetquoted.com',
+    headers: listUnsubscribeHeaders(oneClickUrl),
   });
 
   if (result.error) {

@@ -3,6 +3,7 @@ import { normalizeUsPhone } from '@/lib/phone';
 import { listClientsWithStats } from '@/lib/clients';
 import { sendCampaignSms } from '@/lib/sms';
 import { sendCampaignEmail } from '@/lib/email';
+import { loadSuppressedEmails } from '@/lib/email-suppression';
 
 export type CampaignChannel = 'email' | 'sms' | 'both';
 export type CampaignAudience = 'all' | 'past' | 'repeat' | 'lapsed';
@@ -40,12 +41,15 @@ export const AUDIENCE_DEFS: { id: CampaignAudience; label: string; hint: string 
 ];
 
 // Slim, contact-free descriptor the composer uses for live reach counts, plus
-// the fields the send path needs. `smsReady` means an opted-in consent row.
+// the fields the send path needs. `smsReady` means an opted-in consent row;
+// `emailReady` means the client has an email that has NOT unsubscribed (marketing
+// opt-out), mirroring how SMS gates on consent.
 export type CampaignRecipient = {
   name: string | null;
   phone: string | null;
   email: string | null;
   smsReady: boolean;
+  emailReady: boolean;
   jobCount: number;
   lastJobAt: string | null;
 };
@@ -84,17 +88,20 @@ async function loadOptedInPhones(supabase: SupabaseClient, accountId: string): P
 }
 
 export async function loadRecipients(supabase: SupabaseClient, accountId: string): Promise<CampaignRecipient[]> {
-  const [clients, optedIn] = await Promise.all([
+  const [clients, optedIn, suppressed] = await Promise.all([
     listClientsWithStats(supabase, accountId),
     loadOptedInPhones(supabase, accountId),
+    loadSuppressedEmails(supabase, accountId),
   ]);
   return clients.map((client) => {
     const phone = client.phone ? normalizeUsPhone(client.phone) : null;
+    const email = client.email;
     return {
       name: client.name,
       phone,
-      email: client.email,
+      email,
       smsReady: Boolean(phone && optedIn.has(phone)),
+      emailReady: Boolean(email) && !suppressed.has((email as string).trim().toLowerCase()),
       jobCount: client.jobCount,
       lastJobAt: client.lastJobAt,
     };
@@ -126,7 +133,7 @@ export type CampaignSendResult = {
 export async function sendCampaign(
   supabase: SupabaseClient,
   accountId: string,
-  input: { channel: CampaignChannel; audience: CampaignAudience; subject: string; body: string; businessName: string },
+  input: { channel: CampaignChannel; audience: CampaignAudience; subject: string; body: string; businessName: string; mailingAddress: string | null },
 ): Promise<CampaignSendResult> {
   const now = Date.now();
   const wantEmail = input.channel === 'email' || input.channel === 'both';
@@ -144,7 +151,9 @@ export async function sendCampaign(
   for (const batch of chunk(targets, BATCH_SIZE)) {
     await Promise.all(
       batch.map(async (recipient) => {
-        const canEmail = wantEmail && Boolean(recipient.email);
+        // Email gating mirrors SMS: only reach addresses that haven't unsubscribed
+        // (emailReady already folds in "has an email" + "not suppressed").
+        const canEmail = wantEmail && recipient.emailReady;
         const canSms = wantSms && Boolean(recipient.phone) && recipient.smsReady;
         if (!canEmail && !canSms) {
           skipped++;
@@ -157,6 +166,8 @@ export async function sendCampaign(
               businessName: input.businessName,
               subject: personalize(input.subject, recipient),
               body: personalize(input.body, recipient),
+              accountId,
+              mailingAddress: input.mailingAddress,
             });
             emailSent++;
           } catch (error) {

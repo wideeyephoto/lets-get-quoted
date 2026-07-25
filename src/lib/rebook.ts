@@ -3,6 +3,7 @@ import { normalizeUsPhone } from '@/lib/phone';
 import { listClientsWithStats, getClient, type Client } from '@/lib/clients';
 import { sendRebookInviteSms } from '@/lib/sms';
 import { sendRebookInviteEmail } from '@/lib/email';
+import { isEmailSuppressed, loadSuppressedEmails, resolveMarketingMailingAddress } from '@/lib/email-suppression';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 const DAY = 24 * 60 * 60 * 1000;
@@ -43,24 +44,29 @@ async function loadOptedInPhones(supabase: SupabaseClient, accountId: string): P
   return new Set((data ?? []).map((row) => row.phone_number as string));
 }
 
-// The account's booking link + display name. bookingUrl is null when the site
-// isn't published (no page to send people to yet).
-export async function resolveRebookContext(supabase: SupabaseClient, accountId: string): Promise<{ bookingUrl: string | null; businessName: string }> {
+// The account's booking link + display name + CAN-SPAM mailing address.
+// bookingUrl is null when the site isn't published (no page to send people to).
+export async function resolveRebookContext(supabase: SupabaseClient, accountId: string): Promise<{ bookingUrl: string | null; businessName: string; mailingAddress: string | null }> {
   const [{ data: site }, { data: account }] = await Promise.all([
     supabase.from('sites').select('subdomain, published, company_name').eq('account_id', accountId).maybeSingle(),
     supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
   ]);
+  // Defensive: mailing_address may be absent on an un-migrated DB, so read it in
+  // its own query that degrades to null instead of failing the whole context.
+  const { data: addressRow } = await supabase.from('accounts').select('mailing_address').eq('id', accountId).maybeSingle();
   const businessName = site?.company_name || account?.business_name || "Let's Get Quoted contractor";
   const bookingUrl = site?.subdomain && site.published ? `${APP_ORIGIN}/book/${site.subdomain}` : null;
-  return { bookingUrl, businessName };
+  const mailingAddress = resolveMarketingMailingAddress(addressRow?.mailing_address as string | null);
+  return { bookingUrl, businessName, mailingAddress };
 }
 
 // Past customers whose most recent job is at least `minDays` old — the ones
 // worth nudging to book again. Most overdue first.
 export async function listRebookCandidates(supabase: SupabaseClient, accountId: string, minDays = DEFAULT_REBOOK_DAYS): Promise<RebookCandidate[]> {
-  const [clients, optedIn] = await Promise.all([
+  const [clients, optedIn, suppressed] = await Promise.all([
     listClientsWithStats(supabase, accountId),
     loadOptedInPhones(supabase, accountId),
+    loadSuppressedEmails(supabase, accountId),
   ]);
   const now = Date.now();
 
@@ -78,7 +84,8 @@ export async function listRebookCandidates(supabase: SupabaseClient, accountId: 
         lastJobAt: client.lastJobAt,
         daysSince: Math.floor((now - new Date(client.lastJobAt as string).getTime()) / DAY),
         smsReady: Boolean(phone && optedIn.has(phone)),
-        hasEmail: Boolean(client.email),
+        // "reachable by email" — has an address that hasn't unsubscribed.
+        hasEmail: Boolean(client.email) && !suppressed.has((client.email as string).trim().toLowerCase()),
         invitedAt: client.last_rebook_invite_at,
       };
     })
@@ -96,6 +103,7 @@ async function deliverRebookInvite(
   client: Pick<Client, 'id' | 'name' | 'phone' | 'email'>,
   bookingUrl: string,
   businessName: string,
+  mailingAddress: string | null,
 ): Promise<'sms' | 'email' | 'skipped'> {
   const phone = client.phone ? normalizeUsPhone(client.phone) : null;
   let canText = false;
@@ -108,10 +116,11 @@ async function deliverRebookInvite(
   if (canText && phone) {
     await sendRebookInviteSms({ phone, businessName, clientName: firstName(client.name), url: bookingUrl, accountId });
     channel = 'sms';
-  } else if (client.email) {
-    await sendRebookInviteEmail({ recipientEmail: client.email, businessName, clientName: firstName(client.name), url: bookingUrl });
+  } else if (client.email && !(await isEmailSuppressed(supabase, accountId, client.email))) {
+    await sendRebookInviteEmail({ recipientEmail: client.email, businessName, clientName: firstName(client.name), url: bookingUrl, accountId, mailingAddress });
     channel = 'email';
   } else {
+    // No consented mobile, and either no email or the email has unsubscribed.
     return 'skipped';
   }
 
@@ -124,10 +133,10 @@ async function deliverRebookInvite(
 export async function sendRebookInvite(supabase: SupabaseClient, accountId: string, clientId: string): Promise<'sms' | 'email'> {
   const client = await getClient(supabase, accountId, clientId);
   if (!client) throw new Error('Client not found.');
-  const { bookingUrl, businessName } = await resolveRebookContext(supabase, accountId);
+  const { bookingUrl, businessName, mailingAddress } = await resolveRebookContext(supabase, accountId);
   if (!bookingUrl) throw new Error('Publish your booking page first so the invite has a link to send.');
-  const channel = await deliverRebookInvite(supabase, accountId, client, bookingUrl, businessName);
-  if (channel === 'skipped') throw new Error('This client has no opted-in phone or email to reach.');
+  const channel = await deliverRebookInvite(supabase, accountId, client, bookingUrl, businessName, mailingAddress);
+  if (channel === 'skipped') throw new Error('This client has no opted-in phone or reachable email (they may have unsubscribed).');
   return channel;
 }
 
@@ -136,7 +145,7 @@ export type RebookBatchResult = { total: number; sent: number; skipped: number; 
 // Invite every due client who's reachable and not already nudged in the cooldown
 // window. Best-effort per client so one bad send never sinks the batch.
 export async function sendAllRebookInvites(supabase: SupabaseClient, accountId: string, minDays = DEFAULT_REBOOK_DAYS): Promise<RebookBatchResult> {
-  const { bookingUrl, businessName } = await resolveRebookContext(supabase, accountId);
+  const { bookingUrl, businessName, mailingAddress } = await resolveRebookContext(supabase, accountId);
   if (!bookingUrl) throw new Error('Publish your booking page first so invites have a link to send.');
 
   const now = Date.now();
@@ -154,7 +163,7 @@ export async function sendAllRebookInvites(supabase: SupabaseClient, accountId: 
     await Promise.all(
       batch.map(async (candidate) => {
         try {
-          const channel = await deliverRebookInvite(supabase, accountId, { id: candidate.id, name: candidate.name, phone: candidate.phone, email: candidate.email }, bookingUrl, businessName);
+          const channel = await deliverRebookInvite(supabase, accountId, { id: candidate.id, name: candidate.name, phone: candidate.phone, email: candidate.email }, bookingUrl, businessName, mailingAddress);
           if (channel === 'skipped') skipped++;
           else sent++;
         } catch (error) {

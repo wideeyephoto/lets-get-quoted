@@ -71,6 +71,24 @@ export async function updateFollowupSettingsAction(formData: FormData) {
   revalidatePath('/dashboard/settings');
 }
 
+// CAN-SPAM: the business's physical postal address, printed in the footer of
+// every marketing email. Stored as a single free-text block (street, city,
+// state, ZIP) so it renders exactly as the owner types it.
+export async function updateMailingAddressAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const mailingAddress = String(formData.get('mailingAddress') ?? '').trim() || null;
+
+  const { error } = await supabase
+    .from('accounts')
+    .update({ mailing_address: mailingAddress })
+    .eq('id', accountId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/campaigns');
+}
+
 export async function updateReminderSettingsAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
   const appointmentReminders = formData.get('appointmentReminders') === 'on';

@@ -29,6 +29,7 @@ import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
 import { isPhoneOptedOut, recordSmsConsent, sendClientJobDashboardSms, sendCrewAssignmentSms, sendCrewScheduleSelectedSms, sendJobUpdateSms, sendReviewRequestSms } from '@/lib/sms';
 import { sendReviewRequestEmail } from '@/lib/email';
+import { isEmailSuppressed, resolveMarketingMailingAddress } from '@/lib/email-suppression';
 import { createReviewInvite } from '@/lib/reviews';
 import { createJobTask, setJobTaskDone, deleteJobTask } from '@/lib/job-tasks';
 import { getSiteContent } from '@/lib/site-content';
@@ -681,6 +682,10 @@ async function deliverJobReviewRequest(
 
   const { data: account } = await supabase.from('accounts').select('business_name').eq('id', accountId).single();
   const businessName = account?.business_name || "Let's Get Quoted contractor";
+  // Defensive: mailing_address may be missing on an un-migrated DB, so read it in
+  // its own query that degrades to null rather than failing the review send.
+  const { data: addressRow } = await supabase.from('accounts').select('mailing_address').eq('id', accountId).maybeSingle();
+  const mailingAddress = resolveMarketingMailingAddress(addressRow?.mailing_address as string | null);
   const clientFirstName = (job.client_name || 'there').trim().split(/\s+/)[0] || 'there';
 
   // Optionally route the ask through the "how'd we do?" gate so 4-5★ go to
@@ -709,7 +714,12 @@ async function deliverJobReviewRequest(
       channel = 'sms';
       sentTo = normalizedPhone;
     } else if (job.client_email) {
-      await sendReviewRequestEmail({ recipientEmail: job.client_email, businessName, clientName: clientFirstName, reviewUrl: linkUrl });
+      // Honor a marketing unsubscribe: if the only channel left is an email that
+      // opted out, don't send (and say why) rather than mail them anyway.
+      if (await isEmailSuppressed(supabase, accountId, job.client_email)) {
+        return { ok: false, message: `${job.client_name} unsubscribed from emails and has no textable mobile on file, so the review ask can’t be sent.` };
+      }
+      await sendReviewRequestEmail({ recipientEmail: job.client_email, businessName, clientName: clientFirstName, reviewUrl: linkUrl, accountId, mailingAddress });
       channel = 'email';
       sentTo = job.client_email;
     } else {

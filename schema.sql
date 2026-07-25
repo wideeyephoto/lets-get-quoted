@@ -118,6 +118,11 @@ alter table accounts add column if not exists quote_followups_enabled boolean no
 alter table accounts add column if not exists appointment_reminders_enabled boolean not null default false;
 -- Opt-in: route review asks through a "how'd we do?" gate — 4-5★ to Google, 1-3★ to private feedback.
 alter table accounts add column if not exists review_gating_enabled boolean not null default false;
+-- CAN-SPAM: the business's physical postal address. Shown in the footer of every
+-- MARKETING email (campaign blasts, "book again", review asks). Required to send
+-- a campaign broadcast; the automated marketing sends fall back to a platform
+-- address (COMPANY_MAILING_ADDRESS) when a contractor hasn't set their own.
+alter table accounts add column if not exists mailing_address text;
 
 -- ----------------------------------------------------------------------------
 -- MEMBERSHIPS  — links a person (auth.users) to an account with a role.
@@ -800,6 +805,23 @@ create table if not exists review_invites (
 );
 create index if not exists review_invites_token_idx on review_invites (token);
 
+-- ----------------------------------------------------------------------------
+-- EMAIL_SUPPRESSION — email addresses that opted out of an account's MARKETING
+-- email (campaign blasts, "book again", review asks). CAN-SPAM: unsubscribes
+-- must be honored. Keyed by (account_id, lower(email)); both the unsubscribe
+-- link / one-click POST and the send paths go through here. TRANSACTIONAL email
+-- (receipts, quotes, invoices, reminders, card-setup) is exempt and never
+-- consults this table.
+-- ----------------------------------------------------------------------------
+create table if not exists email_suppression (
+  id           uuid primary key default gen_random_uuid(),
+  account_id   uuid not null references accounts(id) on delete cascade,
+  email        text not null,
+  reason       text,
+  created_at   timestamptz not null default now()
+);
+create unique index if not exists email_suppression_account_email_idx on email_suppression (account_id, lower(email));
+
 -- ============================================================================
 -- ROW-LEVEL SECURITY
 -- ============================================================================
@@ -824,7 +846,7 @@ declare t text;
 begin
   foreach t in array array[
     'accounts','memberships','crew','sites','jobs','crew_assignments',
-    'costs','job_feed','client_job_access','invoices','payments','finance_plans','leads','sms_events','sms_consent','sms_messages','clients','campaigns','recurring_plans','services','review_invites','message_templates','job_tasks','job_schedule_requests'
+    'costs','job_feed','client_job_access','invoices','payments','finance_plans','leads','sms_events','sms_consent','sms_messages','clients','campaigns','recurring_plans','services','review_invites','message_templates','job_tasks','job_schedule_requests','email_suppression'
   ] loop
     execute format('alter table %I enable row level security;', t);
   end loop;
@@ -856,6 +878,7 @@ drop policy if exists review_invites_all on review_invites;
 drop policy if exists message_templates_all on message_templates;
 drop policy if exists job_tasks_all on job_tasks;
 drop policy if exists job_schedule_request_all on job_schedule_requests;
+drop policy if exists email_suppression_all on email_suppression;
 drop policy if exists invitem_all on invoice_items;
 
 create policy acc_read   on accounts for select using ( is_member(id) );
@@ -886,6 +909,10 @@ create policy review_invites_all on review_invites for all using ( is_member(acc
 create policy message_templates_all on message_templates for all using ( is_member(account_id) );
 create policy job_tasks_all on job_tasks      for all using ( is_member(account_id) );
 create policy job_schedule_request_all on job_schedule_requests for all using ( is_member(account_id) );
+-- Owner-only: only owners send/manage marketing email, so only owners read/write
+-- the opt-out list. Public unsubscribe writes go through the service-role client
+-- (which bypasses RLS), so no anon policy is needed here.
+create policy email_suppression_all on email_suppression for all using ( is_owner(account_id) );
 
 alter table invoice_items enable row level security;
 create policy invitem_all on invoice_items for all using (
