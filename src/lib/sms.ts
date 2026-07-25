@@ -385,6 +385,13 @@ export async function sendSchedulingOptionsSms(params: {
   return sendTwilioMessage(params.phone, message);
 }
 
+// A free-form contractor reply from the two-way inbox. Prefixed with the
+// business name so the client knows who's texting from the shared number.
+// Returns the provider message id for the message log. Caller checks opt-out.
+export async function sendInboxReplySms(params: { phone: string; businessName: string; body: string }): Promise<string> {
+  return sendTwilioMessage(params.phone, `${params.businessName}: ${params.body}`);
+}
+
 // Gentle nudge on a quote the client hasn't approved yet. Sent by the follow-up
 // cron; the caller enforces consent (opted-in ledger) before this runs.
 export async function sendQuoteFollowupSms(params: {

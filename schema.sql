@@ -617,6 +617,21 @@ left join (
   where status in ('paid','signed','sent') group by job_id
 ) rev on rev.job_id = j.id;
 
+-- ----------------------------------------------------------------------------
+-- SMS MESSAGES  — the two-way threaded inbox. Every inbound customer text and
+-- every reply sent from the inbox is stored here, grouped by (account, phone).
+-- ----------------------------------------------------------------------------
+create table if not exists sms_messages (
+  id            uuid primary key default gen_random_uuid(),
+  account_id    uuid not null references accounts(id) on delete cascade,
+  phone_number  text not null,
+  direction     text not null check (direction in ('inbound','outbound')),
+  body          text not null,
+  provider_id   text,
+  created_at    timestamptz not null default now()
+);
+create index if not exists sms_messages_thread_idx on sms_messages (account_id, phone_number, created_at desc);
+
 -- ============================================================================
 -- ROW-LEVEL SECURITY
 -- ============================================================================
@@ -641,7 +656,7 @@ declare t text;
 begin
   foreach t in array array[
     'accounts','memberships','crew','sites','jobs','crew_assignments',
-    'costs','job_feed','client_job_access','invoices','payments','finance_plans','leads','sms_events','sms_consent','job_schedule_requests'
+    'costs','job_feed','client_job_access','invoices','payments','finance_plans','leads','sms_events','sms_consent','sms_messages','job_schedule_requests'
   ] loop
     execute format('alter table %I enable row level security;', t);
   end loop;
@@ -664,6 +679,7 @@ drop policy if exists plan_all on finance_plans;
 drop policy if exists lead_all on leads;
 drop policy if exists sms_event_all on sms_events;
 drop policy if exists sms_consent_all on sms_consent;
+drop policy if exists sms_messages_all on sms_messages;
 drop policy if exists job_schedule_request_all on job_schedule_requests;
 drop policy if exists invitem_all on invoice_items;
 
@@ -686,6 +702,7 @@ create policy plan_all   on finance_plans    for all using ( is_member(account_i
 create policy lead_all   on leads            for all using ( is_member(account_id) );
 create policy sms_event_all on sms_events     for all using ( is_member(account_id) );
 create policy sms_consent_all on sms_consent  for all using ( is_member(account_id) );
+create policy sms_messages_all on sms_messages for all using ( is_member(account_id) );
 create policy job_schedule_request_all on job_schedule_requests for all using ( is_member(account_id) );
 
 alter table invoice_items enable row level security;

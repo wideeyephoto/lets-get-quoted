@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
 import { normalizeUsPhone } from '@/lib/phone';
 import { validateTwilioSignature } from '@/lib/sms';
+import { logInboundMessage } from '@/lib/messages';
 
 export const runtime = 'nodejs';
 
@@ -18,8 +19,21 @@ export async function POST(request: Request) {
   const data = await request.formData();
   if (!validateTwilioSignature(request, data)) return NextResponse.json({ error: 'Invalid signature.' }, { status: 403 });
   const phone = normalizeUsPhone(String(data.get('From') || ''));
-  const keyword = String(data.get('Body') || '').trim().toUpperCase().split(/\s+/)[0];
+  const rawBody = String(data.get('Body') || '').trim();
+  const keyword = rawBody.toUpperCase().split(/\s+/)[0];
   const twilioOptOutType = String(data.get('OptOutType') || '').toUpperCase();
+
+  // Store every real inbound message (not the opt-out/opt-in keywords) into the
+  // two-way inbox. Best-effort: never let a logging failure break the webhook,
+  // or Twilio would retry and the customer could get a duplicate auto-reply.
+  if (phone && rawBody && !OPT_OUT.has(keyword) && !OPT_IN.has(keyword) && keyword !== 'HELP') {
+    try {
+      await logInboundMessage(createAdminClient(), { phone, body: rawBody, providerId: String(data.get('MessageSid') || '') || null });
+    } catch (error) {
+      console.error('Failed to log inbound SMS:', error instanceof Error ? error.message : error);
+    }
+  }
+
   if (phone && (OPT_OUT.has(keyword) || OPT_IN.has(keyword))) {
     const optedOut = OPT_OUT.has(keyword);
     await createAdminClient().from('sms_consent').update({
