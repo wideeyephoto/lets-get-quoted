@@ -227,6 +227,7 @@ export default function LoginPage() {
         {message ? <p className="auth-message" role="status">{message}</p> : null}
 
         <p className="auth-trust"><LockIcon /> Encrypted. We never store passwords.</p>
+        <p className="auth-crew-link"><a href="/field/login">On a crew? Open the field app →</a></p>
       </section>
     </main>
   );

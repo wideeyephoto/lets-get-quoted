@@ -80,6 +80,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     pathname.startsWith('/site/') ||
     pathname.startsWith('/site-domain/') ||
     pathname.startsWith('/themes/') ||
+    pathname.startsWith('/field') ||
     pathname === '/site-preview-frame' ||
     pathname === '/dashboard/sites/preview';
   // Signed-in contractors get the full app nav (minus "Home", which isn't

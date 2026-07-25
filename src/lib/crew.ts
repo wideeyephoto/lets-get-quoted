@@ -5,6 +5,7 @@ export type CrewMember = {
   account_id: string;
   name: string;
   phone: string;
+  email: string | null;
   role_label: string;
   hourly_rate: number;
   photo_path: string | null;
@@ -17,10 +18,16 @@ export type CrewMember = {
 export type CrewInput = {
   name: string;
   phone: string;
+  email?: string | null;
   roleLabel?: string;
   hourlyRate?: number;
   photoPath?: string | null;
 };
+
+function cleanEmail(email: string | null | undefined): string | null {
+  const value = (email ?? '').trim().toLowerCase();
+  return value || null;
+}
 
 export type CrewWorkHistoryItem = {
   cost_id: string;
@@ -73,6 +80,7 @@ export async function createCrewMember(
       account_id: accountId,
       name: input.name,
       phone: input.phone,
+      email: cleanEmail(input.email),
       role_label: input.roleLabel?.trim() || 'Laborer',
       hourly_rate: input.hourlyRate ?? 0,
       photo_path: input.photoPath ?? null,
@@ -95,6 +103,7 @@ export async function updateCrewMember(
     .update({
       name: input.name,
       phone: input.phone,
+      email: cleanEmail(input.email),
       role_label: input.roleLabel?.trim() || 'Laborer',
       hourly_rate: input.hourlyRate ?? 0,
     })
@@ -106,6 +115,44 @@ export async function updateCrewMember(
 
   if (error || !data) throw error ?? new Error('Unable to update crew member');
   return data as CrewMember;
+}
+
+// Resolve the crew member linked to a logged-in auth user (for the field app).
+// Admin-scoped so it works before any RLS-visible membership is in place, and
+// returns the first active, non-deleted match.
+export async function getCrewByUserId(admin: SupabaseClient, userId: string): Promise<CrewMember | null> {
+  const { data } = await admin
+    .from('crew')
+    .select('*')
+    .eq('user_id', userId)
+    .is('deleted_at', null)
+    .eq('active', true)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return (data as CrewMember) ?? null;
+}
+
+// Job ids currently assigned to a crew member — the field app's "my jobs" set.
+export async function listJobIdsForCrew(supabase: SupabaseClient, accountId: string, crewId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('crew_assignments')
+    .select('job_id')
+    .eq('account_id', accountId)
+    .eq('crew_id', crewId);
+  if (error) throw error;
+  return (data ?? []).map((row) => row.job_id as string);
+}
+
+export async function isJobAssignedToCrew(supabase: SupabaseClient, accountId: string, jobId: string, crewId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('crew_assignments')
+    .select('crew_id')
+    .eq('account_id', accountId)
+    .eq('job_id', jobId)
+    .eq('crew_id', crewId)
+    .maybeSingle();
+  return Boolean(data);
 }
 
 export async function updateCrewPhoto(

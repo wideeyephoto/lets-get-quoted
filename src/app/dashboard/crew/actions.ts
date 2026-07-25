@@ -16,6 +16,9 @@ import { deleteCrewPhotos, isCrewPhotoFile, uploadCrewPhoto, validateCrewPhotoFi
 import { getJob } from '@/lib/jobs';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { ensureSmsConsentBaseline, sendCrewAssignmentSms } from '@/lib/sms';
+import { sendCrewMagicLink } from '@/lib/crew-auth';
+
+const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
 function optionalText(value: FormDataEntryValue | null): string | undefined {
   const text = (value ?? '').toString().trim();
@@ -39,6 +42,7 @@ export async function createCrewAction(formData: FormData) {
   const member = await createCrewMember(supabase, accountId, {
     name,
     phone,
+    email: optionalText(formData.get('email')) ?? null,
     roleLabel: optionalText(formData.get('roleLabel')),
     hourlyRate: Number.isFinite(hourlyRateRaw) && hourlyRateRaw > 0 ? hourlyRateRaw : 0,
   });
@@ -70,6 +74,7 @@ export async function updateCrewAction(crewId: string, formData: FormData) {
   await updateCrewMember(supabase, accountId, crewId, {
     name,
     phone,
+    email: optionalText(formData.get('email')) ?? null,
     roleLabel: optionalText(formData.get('roleLabel')),
     hourlyRate: Number.isFinite(hourlyRateRaw) && hourlyRateRaw > 0 ? hourlyRateRaw : 0,
   });
@@ -120,6 +125,31 @@ export async function deleteArchivedCrewAction(crewId: string) {
   revalidatePath('/dashboard/crew');
   revalidatePath('/dashboard/jobs');
   revalidatePath('/dashboard/schedule');
+}
+
+// Emails a crew member a magic link into the mobile field app. Requires an email
+// on their record; the link ties their sign-in to this roster entry.
+export async function inviteCrewAction(crewId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const { data: member } = await supabase
+    .from('crew')
+    .select('email, name')
+    .eq('account_id', accountId)
+    .eq('id', crewId)
+    .is('deleted_at', null)
+    .maybeSingle();
+  if (!member) throw new Error('Crew member not found.');
+  if (!member.email) throw new Error('Add an email address for this crew member first, then send the invite.');
+
+  const [{ data: account }, { data: site }] = await Promise.all([
+    supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
+    supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
+  ]);
+  const businessName = site?.company_name || account?.business_name || "Let's Get Quoted contractor";
+
+  await sendCrewMagicLink(member.email as string, businessName, APP_ORIGIN);
+  revalidatePath('/dashboard/crew');
 }
 
 // `notify` is bound per submit button (Assign & text vs Assign without text),

@@ -8,7 +8,7 @@ import CrewWorkHistory from '@/components/crew-work-history';
 import SaveButton from '@/components/save-button';
 import CrewPhotoUpload from './CrewPhotoUpload';
 import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
-import { assignCrewToJobAction, createCrewAction, deleteArchivedCrewAction, setCrewActiveAction, updateCrewAction, updateCrewPhotoAction } from './actions';
+import { assignCrewToJobAction, createCrewAction, deleteArchivedCrewAction, inviteCrewAction, setCrewActiveAction, updateCrewAction, updateCrewPhotoAction } from './actions';
 
 function initialsFor(name: string) {
   return name
@@ -133,6 +133,17 @@ export default async function CrewPage({ searchParams }: { searchParams: { statu
                         </form>
                       )
                     ) : null}
+                    {member.active ? (
+                      member.user_id ? (
+                        <span className="crew-field-linked">✓ Field app linked</span>
+                      ) : member.email ? (
+                        <form action={inviteCrewAction.bind(null, member.id)}>
+                          <SaveButton className="btn secondary" pendingLabel="Sending…" savedLabel="Invite sent ✓">Invite to field app</SaveButton>
+                        </form>
+                      ) : (
+                        <span className="crew-field-hint">Add an email to invite to the field app</span>
+                      )
+                    ) : null}
                     <form action={setCrewActiveAction.bind(null, member.id, !member.active)}>
                       <button type="submit" className="btn secondary">
                         {member.active ? 'Archive' : 'Reactivate'}
@@ -164,6 +175,10 @@ export default async function CrewPage({ searchParams }: { searchParams: { statu
                       <div className="field">
                         <label htmlFor={`phone-${member.id}`}>Phone</label>
                         <input id={`phone-${member.id}`} name="phone" type="tel" required defaultValue={member.phone} />
+                      </div>
+                      <div className="field">
+                        <label htmlFor={`email-${member.id}`}>Email (for field app)</label>
+                        <input id={`email-${member.id}`} name="email" type="email" defaultValue={member.email ?? ''} placeholder="mike@email.com" />
                       </div>
                       <div className="field">
                         <label htmlFor={`roleLabel-${member.id}`}>Role</label>
@@ -221,6 +236,10 @@ export default async function CrewPage({ searchParams }: { searchParams: { statu
           <div className="field">
             <label htmlFor="phone">Phone</label>
             <input id="phone" name="phone" type="tel" required placeholder="(248) 555-0117" />
+          </div>
+          <div className="field">
+            <label htmlFor="email">Email (for field app)</label>
+            <input id="email" name="email" type="email" placeholder="mike@email.com" />
           </div>
           <div className="field">
             <label htmlFor="roleLabel">Role</label>

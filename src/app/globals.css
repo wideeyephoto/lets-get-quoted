@@ -4894,3 +4894,186 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   .recurring-card-actions { justify-content: space-between; }
 }
 
+.crew-field-linked { display: inline-flex; align-items: center; font-size: 0.82rem; font-weight: 600; color: #bef264; }
+.crew-field-hint { font-size: 0.8rem; color: rgba(255,255,255,0.5); }
+.auth-crew-link { margin-top: 0.5rem; text-align: center; font-size: 0.85rem; }
+.auth-crew-link a { color: #b45309; font-weight: 600; }
+
+/* ===========================================================================
+   FIELD APP — crew's mobile view (standalone, no dashboard chrome)
+   =========================================================================== */
+.field-app {
+  min-height: 100vh;
+  background: #06131f;
+  color: #f4f6f8;
+  font-family: var(--font-body, system-ui, sans-serif);
+}
+
+/* -- Crew login -- */
+.field-login {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+.field-login-card {
+  width: 100%;
+  max-width: 400px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 18px;
+  padding: 1.75rem 1.5rem;
+}
+.field-login-eyebrow { margin: 0; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #f59e0b; }
+.field-login-card h1 { margin: 0.4rem 0 0.6rem; font-size: 1.7rem; }
+.field-login-lead { margin: 0 0 1.4rem; color: rgba(255,255,255,0.6); line-height: 1.5; }
+.field-login-form { display: flex; flex-direction: column; gap: 0.7rem; }
+.field-login-form label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.55); }
+.field-login-form input {
+  padding: 0.9rem 1rem;
+  border-radius: 11px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.05);
+  color: #f4f6f8;
+  font-size: 1.05rem;
+}
+.field-login-form .btn { margin-top: 0.3rem; padding: 0.95rem; font-size: 1.02rem; }
+.field-login-message { margin: 0.3rem 0 0; font-size: 0.9rem; color: #ffd8a8; line-height: 1.45; }
+.field-login-foot { margin: 1.3rem 0 0; text-align: center; font-size: 0.85rem; color: rgba(255,255,255,0.5); }
+.field-login-foot a { color: #7dd3fc; }
+
+/* -- Header -- */
+.field-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1.1rem;
+  background: rgba(6,19,31,0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.field-header-id { display: flex; flex-direction: column; line-height: 1.25; }
+.field-brand { font-weight: 700; font-size: 1rem; }
+.field-crew { font-size: 0.8rem; color: rgba(255,255,255,0.55); }
+.field-back { color: #7dd3fc; font-weight: 600; text-decoration: none; font-size: 0.95rem; }
+.field-signout {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.16);
+  color: rgba(255,255,255,0.7);
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+/* -- My jobs -- */
+.field-main { max-width: 640px; margin: 0 auto; padding: 1.1rem 1.1rem 3rem; }
+.field-greeting { margin: 0.5rem 0 1.2rem; font-size: 1.5rem; }
+.field-empty { color: rgba(255,255,255,0.6); line-height: 1.55; padding: 1.5rem 0; }
+.field-section { margin-bottom: 1.6rem; }
+.field-section-title {
+  margin: 0 0 0.7rem;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(255,255,255,0.5);
+}
+.field-job-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+  margin-bottom: 0.7rem;
+}
+.field-job-card:active { background: rgba(255,255,255,0.07); }
+.field-job-top { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
+.field-job-top strong { font-size: 1.08rem; }
+.field-job-when { margin: 0.3rem 0 0; font-size: 0.88rem; color: #7dd3fc; }
+.field-job-addr { margin: 0.25rem 0 0; font-size: 0.86rem; color: rgba(255,255,255,0.6); }
+.field-job-scope {
+  margin: 0.45rem 0 0;
+  font-size: 0.86rem;
+  color: rgba(255,255,255,0.7);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.field-status {
+  flex-shrink: 0;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.field-status-new_lead { background: rgba(56,189,248,0.16); color: #7dd3fc; }
+.field-status-in_progress { background: rgba(251,191,36,0.16); color: #fcd34d; }
+.field-status-complete { background: rgba(163,230,53,0.16); color: #bef264; }
+.field-status-archived { background: rgba(161,161,170,0.16); color: #d4d4d8; }
+
+/* -- Job detail -- */
+.field-detail-head { display: flex; align-items: center; justify-content: space-between; gap: 0.7rem; margin-top: 0.4rem; }
+.field-detail-head h1 { margin: 0; font-size: 1.5rem; }
+.field-detail-ref { margin: 0.3rem 0 1.1rem; font-size: 0.9rem; color: rgba(255,255,255,0.55); }
+.field-actions-row { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.field-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.7rem 1.1rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.14);
+  color: #f4f6f8;
+  text-decoration: none;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+.field-chip:active { background: rgba(255,255,255,0.12); }
+.field-block { margin-top: 1.5rem; }
+.field-block-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(255,255,255,0.5);
+}
+.field-block p { margin: 0; line-height: 1.55; }
+.field-scope-body { white-space: pre-wrap; color: rgba(255,255,255,0.85); }
+.field-complete-note { color: #bef264; font-weight: 600; }
+
+.field-update-form { display: flex; flex-direction: column; gap: 0.7rem; }
+.field-update-form textarea {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.05);
+  color: #f4f6f8;
+  font-size: 1rem;
+  font-family: inherit;
+  resize: vertical;
+}
+.field-share { display: flex; align-items: center; gap: 0.55rem; font-size: 0.9rem; color: rgba(255,255,255,0.7); }
+.field-share input { width: 1.1rem; height: 1.1rem; }
+
+.field-feed { display: flex; flex-direction: column; gap: 0.6rem; }
+.field-feed-item { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 11px; padding: 0.75rem 0.9rem; }
+.field-feed-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; }
+.field-feed-top strong { font-size: 0.92rem; }
+.field-feed-top span { font-size: 0.76rem; color: rgba(255,255,255,0.45); white-space: nowrap; }
+.field-feed-item p { margin: 0.3rem 0 0; font-size: 0.9rem; color: rgba(255,255,255,0.75); line-height: 1.5; }
+
+.field-main .btn { width: 100%; }
+.field-actions-row form { flex: 1; min-width: 140px; }
+

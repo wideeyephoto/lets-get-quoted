@@ -149,6 +149,11 @@ create table if not exists crew (
 
 alter table crew add column if not exists photo_path text;
 alter table crew add column if not exists deleted_at timestamptz;
+-- Email is the crew member's login handle for the mobile field app (magic-link
+-- sign-in matches this to link their auth user). Optional: crew without an email
+-- simply can't be invited to the field app yet.
+alter table crew add column if not exists email text;
+create index if not exists crew_email_idx on crew (account_id, lower(email));
 
 -- ----------------------------------------------------------------------------
 -- SITES  — the published website config for an account.
