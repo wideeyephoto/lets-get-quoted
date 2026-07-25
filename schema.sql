@@ -1091,6 +1091,28 @@ create policy invitem_all on invoice_items for all using (
   exists (select 1 from invoices i where i.id = invoice_id and is_owner(i.account_id))
 );
 
+-- ----------------------------------------------------------------------------
+-- PUSH_SUBSCRIPTIONS — Web Push endpoints for the crew field app (PWA). One row
+-- per browser/device a crew member enables notifications on. Written and read
+-- through the service-role client (the field subscribe action + the sender), so
+-- the only RLS policy is owner visibility; crew never query this table directly.
+-- ----------------------------------------------------------------------------
+create table if not exists push_subscriptions (
+  id          uuid primary key default gen_random_uuid(),
+  account_id  uuid not null references accounts(id) on delete cascade,
+  crew_id     uuid references crew(id) on delete cascade,
+  endpoint    text not null,
+  p256dh      text not null,
+  auth        text not null,
+  user_agent  text,
+  created_at  timestamptz not null default now(),
+  unique (endpoint)
+);
+create index if not exists push_subscriptions_crew_idx on push_subscriptions (account_id, crew_id);
+alter table push_subscriptions enable row level security;
+drop policy if exists push_subscriptions_owner on push_subscriptions;
+create policy push_subscriptions_owner on push_subscriptions for all using ( is_owner(account_id) );
+
 -- ============================================================================
 -- INDEXES worth having from day one
 -- ============================================================================

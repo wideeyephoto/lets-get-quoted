@@ -3,6 +3,7 @@ import { requireCrewContext } from '@/lib/crew-auth';
 import { listJobIdsForCrew } from '@/lib/crew';
 import { formatJobSchedule, formatJobTime } from '@/lib/jobs';
 import FieldHeader from './FieldHeader';
+import FieldPwa from './FieldPwa';
 
 function mapUrl(address: string): string {
   return `https://maps.google.com/?q=${encodeURIComponent(address)}`;
@@ -97,6 +98,7 @@ export default async function FieldHomePage() {
       <FieldHeader businessName={businessName} crewName={crew.name} />
       <main className="field-main">
         <h1 className="field-greeting">Hi {firstName} 👋</h1>
+        <FieldPwa />
 
         {jobs.length === 0 ? (
           <p className="field-empty">You have no assigned jobs right now. When your manager assigns you to a job, it&apos;ll show up here.</p>

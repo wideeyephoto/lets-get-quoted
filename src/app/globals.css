@@ -5462,6 +5462,42 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 
 /* -- My jobs -- */
 .field-main { max-width: 640px; margin: 0 auto; padding: 1.1rem 1.1rem 3rem; }
+
+/* -- Field PWA: notifications toggle -- */
+.field-push { margin: 0 0 1.1rem; }
+.field-push-enable {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #ff7a21, #ff9d4d);
+  color: #1a0f04;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.field-push-enable:disabled { opacity: 0.7; cursor: default; }
+.field-push-status { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.field-push-on { font-size: 0.85rem; color: #7ee0a8; font-weight: 600; }
+.field-push-link {
+  background: none;
+  border: none;
+  color: #9fb0c3;
+  text-decoration: underline;
+  font-size: 0.82rem;
+  cursor: pointer;
+  padding: 0;
+}
+.field-push-note {
+  font-size: 0.82rem;
+  color: #9fb0c3;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 0.6rem 0.8rem;
+}
 .field-greeting { margin: 0.5rem 0 1.2rem; font-size: 1.5rem; }
 .field-empty { color: rgba(255,255,255,0.6); line-height: 1.55; padding: 1.5rem 0; }
 .field-section { margin-bottom: 1.6rem; }

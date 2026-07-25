@@ -29,6 +29,7 @@ import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
 import { isPhoneOptedOut, recordSmsConsent, sendClientJobDashboardSms, sendCrewAssignmentSms, sendCrewScheduleSelectedSms, sendJobUpdateSms, sendReviewRequestSms } from '@/lib/sms';
 import { sendReviewRequestEmail } from '@/lib/email';
+import { sendPushToCrew } from '@/lib/push';
 import { isEmailSuppressed, resolveMarketingMailingAddress } from '@/lib/email-suppression';
 import { createReviewInvite } from '@/lib/reviews';
 import { createJobTask, setJobTaskDone, deleteJobTask } from '@/lib/job-tasks';
@@ -347,6 +348,17 @@ export async function updateJobCrewAction(jobId: string, notify: boolean, formDa
       const businessName = account?.business_name || "Let's Get Quoted contractor";
       const newlyAssigned = crewMembers.filter((member) => added.includes(member.id));
 
+      // Push the field app (best-effort, never throws) alongside the SMS — the
+      // crew member gets a tappable alert that deep-links to the job.
+      for (const member of newlyAssigned) {
+        await sendPushToCrew(accountId, member.id, {
+          title: 'New job assigned',
+          body: `${job.client_name} · ${job.ref}`,
+          url: `/field/jobs/${jobId}`,
+          tag: `job-${jobId}`,
+        });
+      }
+
       let sentCount = 0;
       for (const member of newlyAssigned) {
         try {
@@ -403,6 +415,12 @@ export async function toggleJobCrewAction(jobId: string, crewId: string, notify 
 
     if (job && member) {
       const businessName = account?.business_name || "Let's Get Quoted contractor";
+      await sendPushToCrew(accountId, member.id, {
+        title: 'New job assigned',
+        body: `${job.client_name} · ${job.ref}`,
+        url: `/field/jobs/${jobId}`,
+        tag: `job-${jobId}`,
+      });
       try {
         const result = await sendCrewAssignmentSms({
           accountId,
