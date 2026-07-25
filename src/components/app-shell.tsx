@@ -37,6 +37,18 @@ const FLOW_CLASS: Record<string, string> = {
   '/dashboard/schedule': ' flow-link flow-end',
 };
 
+// Grouping used only by the signed-in dashboard's left sidebar. The flat
+// `baseNavItems` order still drives the marketing/top-bar render; here the same
+// items are bucketed so the rail reads as labeled sections instead of one long
+// list. Dashboard (home) sits above the groups; Website is promoted to its own
+// badge and Account drops to the sidebar footer, so neither appears here.
+const NAV_GROUPS: { label: string; hrefs: string[] }[] = [
+  { label: 'Work', hrefs: ['/dashboard/leads', '/dashboard/jobs', '/dashboard/schedule', '/dashboard/clients'] },
+  { label: 'Team', hrefs: ['/dashboard/crew', '/dashboard/payroll'] },
+  { label: 'Money', hrefs: ['/dashboard/recurring', '/dashboard/services', '/dashboard/insights'] },
+  { label: 'Grow', hrefs: ['/dashboard/messages', '/dashboard/campaigns', '/dashboard/rebook', '/dashboard/reviews'] },
+];
+
 type AccountStatus = {
   onboarded: boolean;
   sitePublished: boolean;
@@ -180,6 +192,123 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     if (!newestQuoteRequestId) return;
     window.localStorage.setItem(QUOTE_REQUEST_ALERT_DISMISSED_KEY, newestQuoteRequestId);
     setDismissedQuoteRequestId(newestQuoteRequestId);
+  }
+
+  // Signed-in dashboard pages get a grouped left sidebar instead of the top bar.
+  // The Website badge and Stripe pill move into the rail (top and footer), and
+  // the live counts ride along on Leads / Jobs / Schedule exactly as before.
+  if (isDashboard && isLoggedIn) {
+    const byHref = new Map(baseNavItems.map((item) => [item.href, item] as const));
+    const countByHref: Record<string, number> = {
+      '/dashboard/leads': newQuoteRequestCount,
+      '/dashboard/jobs': jobsNeedingAttentionCount,
+      '/dashboard/schedule': unscheduledJobCount,
+    };
+    const renderSideLink = (href: string, extraClass = '') => {
+      const item = byHref.get(href);
+      if (!item) return null;
+      // Dashboard home would otherwise match every /dashboard/* path, so it
+      // needs an exact check; the rest highlight on their subtree.
+      const active = href === '/dashboard' ? pathname === href : pathname.startsWith(href);
+      const count = countByHref[href] ?? 0;
+      return (
+        <Link
+          href={href}
+          key={href}
+          className={`sidenav-link${extraClass ? ` ${extraClass}` : ''}${active ? ' active' : ''}`}
+          title={item.hint}
+        >
+          <span>{item.label}</span>
+          {count > 0 ? <span className="sidenav-count">{count}</span> : null}
+        </Link>
+      );
+    };
+
+    return (
+      <div className="chrome-shell chrome-shell-sidenav">
+        <header className="sidenav-mobilebar">
+          <Link href={brandHref} className="brand-mark brand-mark-compact" aria-label="Let&apos;s Get Quoted home">
+            <Image src="/SITE-LOGO-1.png" alt="Let's Get Quoted" width={160} height={33} className="brand-logo-img" priority />
+            <strong className="brand-title">LET&apos;S GET QUOTED</strong>
+          </Link>
+          <button
+            type="button"
+            className="nav-toggle"
+            onClick={toggleNav}
+            aria-expanded={isNavOpen}
+            aria-controls="primary-nav"
+          >
+            Menu
+          </button>
+        </header>
+
+        {isNavOpen ? <div className="sidenav-scrim" onClick={closeNav} aria-hidden="true" /> : null}
+
+        <aside id="primary-nav" className={`sidenav${isNavOpen ? ' open' : ''}`} aria-label="Primary">
+          <Link href={brandHref} className="sidenav-brand" aria-label="Let&apos;s Get Quoted home">
+            <Image src="/SITE-LOGO-1.png" alt="Let's Get Quoted" width={160} height={33} className="brand-logo-img" priority />
+          </Link>
+
+          <Link
+            href="/dashboard/sites"
+            className={`website-nav-badge sidenav-website${sitePublished ? ' live' : ''}`}
+            title={sitePublished ? `Your website is live${siteHost ? ` at ${siteHost}` : ''} — manage it` : 'Build your free contractor website'}
+          >
+            {sitePublished ? (
+              <>
+                <span className="website-nav-signal" aria-hidden="true"><i /><i /><i /></span>
+                {siteHost ? (
+                  <span className="website-nav-live-text">
+                    <span className="website-nav-live-label">Website: Live</span>
+                    <span className="website-nav-live-host">{siteHost}</span>
+                  </span>
+                ) : (
+                  'Website: Live'
+                )}
+              </>
+            ) : (
+              <>
+                <span aria-hidden="true">✨</span> Build your Website
+              </>
+            )}
+          </Link>
+
+          <nav className="sidenav-nav" aria-label="Dashboard">
+            {renderSideLink('/dashboard', 'sidenav-home')}
+            {NAV_GROUPS.map((group) => (
+              <div className="sidenav-group" key={group.label}>
+                <p className="sidenav-glabel">{group.label}</p>
+                {group.hrefs.map((href) => renderSideLink(href))}
+              </div>
+            ))}
+          </nav>
+
+          <div className="sidenav-foot">
+            {renderSideLink('/dashboard/settings')}
+            <Link
+              href="/dashboard/settings"
+              className={`stripe-status-pill sidenav-stripe${stripeOnboarded === null ? ' checking' : stripeOnboarded ? ' connected' : ' warning'}`}
+              title={stripeOnboarded ? 'Stripe payouts connected' : 'Stripe payouts not connected — click to finish setup'}
+            >
+              <span className="stripe-status-tile" aria-hidden="true">$</span>
+              {stripeOnboarded === null ? 'Stripe: checking…' : stripeOnboarded ? 'Stripe connected' : 'Connect Stripe'}
+            </Link>
+          </div>
+        </aside>
+
+        {showQuoteRequestAlert ? (
+          <aside className="quote-request-alert" role="status" aria-live="polite">
+            <button type="button" className="quote-request-alert-close" onClick={dismissQuoteRequestAlert} aria-label="Dismiss lead alert">x</button>
+            <p>New lead needs a response</p>
+            <strong>{newQuoteRequestCount === 1 ? '1 website lead is waiting' : `${newQuoteRequestCount} website leads are waiting`}</strong>
+            {newestQuoteRequestAge ? <span>Newest lead received {newestQuoteRequestAge}h ago.</span> : null}
+            <Link href={`/dashboard/leads/${newestQuoteRequestId}`} className="btn primary">View lead</Link>
+          </aside>
+        ) : null}
+
+        <div className="app-main app-main-sidenav">{children}</div>
+      </div>
+    );
   }
 
   return (
