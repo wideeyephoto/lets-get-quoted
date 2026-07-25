@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useAppShell } from './app-shell-provider';
 import { supabase } from '@/lib/supabase';
 
@@ -102,6 +102,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [sitePublished, setSitePublished] = useState(false);
   const [siteUrl, setSiteUrl] = useState<string | null>(null);
   const [businessName, setBusinessName] = useState<string | null>(null);
+  const [newMenuOpen, setNewMenuOpen] = useState(false);
+  const newMenuRef = useRef<HTMLDivElement>(null);
   const [newQuoteRequestCount, setNewQuoteRequestCount] = useState(0);
   const [jobsNeedingAttentionCount, setJobsNeedingAttentionCount] = useState(0);
   const [unscheduledJobCount, setUnscheduledJobCount] = useState(0);
@@ -143,7 +145,36 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
 
   useEffect(() => {
     closeNav();
+    setNewMenuOpen(false);
   }, [pathname, closeNav]);
+
+  // Escape closes the mobile nav drawer (it already closes on scrim tap and on
+  // navigation) — the keyboard equivalent of tapping the scrim.
+  useEffect(() => {
+    if (!isNavOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeNav();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isNavOpen, closeNav]);
+
+  // The "+ New" menu closes on outside click or Escape.
+  useEffect(() => {
+    if (!newMenuOpen) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (newMenuRef.current && !newMenuRef.current.contains(event.target as Node)) setNewMenuOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setNewMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [newMenuOpen]);
 
   // Track sign-in state client-side so the logo can route logged-in
   // contractors straight to their dashboard from anywhere in the app
@@ -283,9 +314,30 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
 
           <div className="sidenav-lead">
             {businessName ? <p className="sidenav-bizname" title={businessName}>{businessName}</p> : null}
-            <Link href="/dashboard/jobs?new=1#new-job" className="sidenav-new">
-              <span className="sidenav-new-plus" aria-hidden="true">+</span> New job
-            </Link>
+            <div className="sidenav-new-wrap" ref={newMenuRef}>
+              <button
+                type="button"
+                className="sidenav-new"
+                aria-haspopup="menu"
+                aria-expanded={newMenuOpen}
+                onClick={() => setNewMenuOpen((open) => !open)}
+              >
+                <span className="sidenav-new-plus" aria-hidden="true">+</span> New
+                <span className={`sidenav-new-caret${newMenuOpen ? ' open' : ''}`} aria-hidden="true">▾</span>
+              </button>
+              {newMenuOpen ? (
+                <div className="sidenav-new-menu" role="menu">
+                  <Link href="/dashboard/jobs?new=1#new-job" role="menuitem" className="sidenav-new-item" onClick={() => setNewMenuOpen(false)}>
+                    <NavIcon href="/dashboard/jobs" />
+                    New job
+                  </Link>
+                  <Link href="/dashboard/leads?add=1#add-lead" role="menuitem" className="sidenav-new-item" onClick={() => setNewMenuOpen(false)}>
+                    <NavIcon href="/dashboard/leads" />
+                    New lead
+                  </Link>
+                </div>
+              ) : null}
+            </div>
           </div>
 
           <Link

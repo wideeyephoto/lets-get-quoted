@@ -239,7 +239,7 @@ h3 {
   display: flex;
   flex-direction: column;
   padding: 1.1rem 0.8rem 1rem;
-  overflow-y: auto;
+  overflow: hidden;
   border-right: 1px solid var(--line);
   background: rgba(7, 16, 28, 0.86);
   -webkit-backdrop-filter: blur(20px);
@@ -281,22 +281,57 @@ h3 {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.sidenav-new-wrap { position: relative; }
 .sidenav-new {
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
   padding: 0.6rem 0.75rem;
+  border: 0;
   border-radius: 12px;
   background: linear-gradient(180deg, var(--accent), #ff9440);
   color: #180c02;
+  font-family: inherit;
   font-size: 0.92rem;
   font-weight: 700;
+  cursor: pointer;
   box-shadow: 0 12px 26px -12px rgba(255, 122, 33, 0.6);
   transition: filter 0.15s ease;
 }
 .sidenav-new:hover { filter: brightness(1.05); }
 .sidenav-new-plus { font-size: 1.1rem; line-height: 0; font-weight: 800; }
+.sidenav-new-caret { font-size: 0.62rem; transition: transform 0.15s ease; }
+.sidenav-new-caret.open { transform: rotate(180deg); }
+
+.sidenav-new-menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  padding: 0.3rem;
+  border-radius: 12px;
+  background: #0e1c2e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 22px 46px -18px rgba(0, 0, 0, 0.72);
+}
+.sidenav-new-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 9px;
+  color: rgba(247, 245, 239, 0.82);
+  font-size: 0.9rem;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.sidenav-new-item:hover { background: rgba(255, 122, 33, 0.14); color: #fff; }
+.sidenav-new-item .sidenav-ic { width: 1.05rem; height: 1.05rem; color: rgba(200, 212, 228, 0.7); }
 
 /* The Website badge and Stripe pill are built for a horizontal top bar; in the
    rail they run full-width and left-aligned. `order` resets undo the top-bar's
@@ -308,7 +343,19 @@ h3 {
   margin: 0 0 0.65rem;
 }
 
-.sidenav-nav { display: flex; flex-direction: column; gap: 0; }
+/* Only the nav list scrolls; brand/identity above and the Account/Stripe footer
+   below stay pinned. min-height:0 lets the flex child actually scroll. */
+.sidenav-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin: 0 -0.2rem;
+  padding: 0 0.2rem;
+}
 
 /* A leading line icon on every nav row. Sits dimmer than the label at rest and
    brightens with it on hover / active; on the accent Home pill it inverts to
@@ -360,8 +407,8 @@ h3 {
   margin-top: 0.55rem;
   padding: 0.4rem 0.4rem 0.45rem;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 .sidenav-glabel {
   margin: 0.15rem 0 0.3rem 0.55rem;
@@ -399,8 +446,8 @@ h3 {
 .sidenav-fcard {
   padding: 0.4rem;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 /* Count sits right beside its label (not pushed to the far edge) so the number
@@ -423,8 +470,10 @@ h3 {
 }
 
 .sidenav-foot {
-  margin-top: auto;
+  flex: none;
+  margin-top: 0.5rem;
   padding-top: 0.8rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
@@ -434,6 +483,21 @@ h3 {
   width: 100%;
   margin-left: 0;
   justify-content: flex-start;
+}
+/* Palette: the footer Stripe pill is a quiet neutral row — state reads from the
+   coloured "$" tile alone, so green isn't a second full pill competing with the
+   Website: Live chip. */
+.stripe-status-pill.sidenav-stripe,
+.stripe-status-pill.sidenav-stripe.connected,
+.stripe-status-pill.sidenav-stripe.warning,
+.stripe-status-pill.sidenav-stripe.checking {
+  background: rgba(255, 255, 255, 0.035);
+  border-color: rgba(255, 255, 255, 0.07);
+  color: rgba(247, 245, 239, 0.72);
+}
+.stripe-status-pill.sidenav-stripe:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .sidenav-scrim { display: none; }

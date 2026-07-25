@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { resolveTabForHash } from '@/lib/nav-helpers';
 
 export type SettingsTab = {
   id: string;
@@ -39,11 +40,10 @@ export default function SettingsTabs({ tabs }: { tabs: SettingsTab[] }) {
     };
     const applyHash = () => {
       const hash = window.location.hash.replace(/^#/, '');
-      if (!hash) return;
-      const owner = tabs.find((t) => t.id === hash || t.anchors?.includes(hash));
-      if (!owner) return;
-      setActive(owner.id);
-      if (hash !== owner.id) scrollWhenReady(hash);
+      const ownerId = resolveTabForHash(tabs, hash);
+      if (!ownerId) return;
+      setActive(ownerId);
+      if (hash !== ownerId) scrollWhenReady(hash);
     };
     applyHash();
     window.addEventListener('hashchange', applyHash);

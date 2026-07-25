@@ -3,6 +3,7 @@ import { requireOwnerContext } from '@/lib/auth';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadSource, getAverageRequestResponseMs, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, listLeads, type Lead, type LeadStatus } from '@/lib/leads';
 import { archiveLeadAction, createLeadAction, unsnoozeLeadAction } from './actions';
+import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
 import SaveButton from '@/components/save-button';
 import styles from './leads.module.css';
 
@@ -146,7 +147,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
       </div>
 
       <section className="panel workspace-section-card">
-        <details id="add-lead" className="workspace-details" open={leads.length === 0 || searchParams.add === '1'}>
+        <details id="add-lead" className="workspace-details" open={shouldAutoOpenCreate(leads.length, searchParams.add)}>
           <summary className="workspace-details-summary">
             <span className="btn primary">+ Add manual lead</span>
             <span className="workspace-details-copy">Log a lead that came in by phone, in person, or referral.</span>

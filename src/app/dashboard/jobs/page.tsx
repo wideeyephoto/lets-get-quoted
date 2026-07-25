@@ -13,6 +13,7 @@ import { listLeads, type Lead } from '@/lib/leads';
 import type { Payment } from '@/lib/payments';
 import type { JobStatus } from '@/lib/jobs';
 import { createJobAction } from './actions';
+import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
 
 const STATUS_FILTERS: { value: JobStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -221,7 +222,7 @@ export default async function JobsPage({
         </div>
       </div>
 
-      <details id="new-job" className="panel workspace-section-card workspace-details" open={jobs.length === 0 || searchParams.new !== undefined}>
+      <details id="new-job" className="panel workspace-section-card workspace-details" open={shouldAutoOpenCreate(jobs.length, searchParams.new)}>
         <summary className="workspace-details-summary">
           <span className="btn primary">+ New job</span>
           <span className="workspace-details-copy">Capture the next signed opportunity.</span>
