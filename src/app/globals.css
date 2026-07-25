@@ -5103,6 +5103,9 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .statement-table tfoot td { border-top: 2px solid #1a2230; border-bottom: none; font-weight: 700; padding-top: 0.6rem; }
 .statement-table .muted-row td { color: #9ca3af; }
 .statement-foot { margin-top: 1.8rem; padding-top: 1rem; border-top: 1px solid #eceef1; font-size: 0.82rem; color: #6b7280; }
+.quote-scope { margin: 1.1rem 0; }
+.quote-scope p { margin: 0.15rem 0 0; line-height: 1.5; color: #374151; white-space: pre-wrap; }
+.quote-recommend { color: #b45309; font-size: 0.8rem; font-weight: 600; }
 
 @media print {
   header.topbar, .nav-panel, .no-print, .quote-request-alert { display: none !important; }

@@ -423,8 +423,11 @@ export default async function JobDetailPage({
 
       <section id="quote-breakdown" className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading">
-          <p className="eyebrow">Quote</p>
-          <h2>Quote breakdown</h2>
+          <div>
+            <p className="eyebrow">Quote</p>
+            <h2>Quote breakdown</h2>
+          </div>
+          <Link href={`/dashboard/jobs/${job.id}/quote`} className="btn secondary">Print estimate →</Link>
         </div>
         <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
           Itemize the work and offer optional add-ons the client can accept on their quote page. The
