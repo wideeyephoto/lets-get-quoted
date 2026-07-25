@@ -67,7 +67,7 @@ const NAV_ICON_PATHS: Record<string, string> = {
   '/dashboard/campaigns': '<path d="M3.5 10.5v3a1 1 0 0 0 1 1h2.2l5.3 3.6V6.4L6.7 9.5H4.5a1 1 0 0 0-1 1z"/><path d="M16 9a4 4 0 0 1 0 6"/>',
   '/dashboard/rebook': '<path d="M4 11.5a8 8 0 1 1 2.3 6.3"/><path d="M3.5 4.5v5h5"/>',
   '/dashboard/reviews': '<path d="M12 3.7l2.55 5.17 5.7.83-4.12 4.02.97 5.68L12 16.72l-5.1 2.68.97-5.68L3.75 9.7l5.7-.83z"/>',
-  '/dashboard/settings': '<circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.6M12 18.6v2.6M5.1 5.1l1.85 1.85M17.05 17.05l1.85 1.85M2.8 12h2.6M18.6 12h2.6M5.1 18.9l1.85-1.85M17.05 6.95l1.85-1.85"/>',
+  '/dashboard/settings': '<circle cx="12" cy="8.4" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/>',
 };
 
 function NavIcon({ href }: { href: string }) {
@@ -80,6 +80,7 @@ type AccountStatus = {
   onboarded: boolean;
   sitePublished: boolean;
   siteUrl: string | null;
+  businessName: string | null;
   newQuoteRequestCount: number;
   jobsNeedingAttentionCount: number;
   unscheduledJobCount: number;
@@ -100,6 +101,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [stripeOnboarded, setStripeOnboarded] = useState<boolean | null>(null);
   const [sitePublished, setSitePublished] = useState(false);
   const [siteUrl, setSiteUrl] = useState<string | null>(null);
+  const [businessName, setBusinessName] = useState<string | null>(null);
   const [newQuoteRequestCount, setNewQuoteRequestCount] = useState(0);
   const [jobsNeedingAttentionCount, setJobsNeedingAttentionCount] = useState(0);
   const [unscheduledJobCount, setUnscheduledJobCount] = useState(0);
@@ -167,6 +169,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       setNewestQuoteRequestId(null);
       setNewestQuoteRequestCreatedAt(null);
       setSiteUrl(null);
+      setBusinessName(null);
       return;
     }
     let cancelled = false;
@@ -178,6 +181,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             setStripeOnboarded(Boolean(data.onboarded));
             setSitePublished(Boolean(data.sitePublished));
             setSiteUrl(data.siteUrl ?? null);
+            setBusinessName(data.businessName ?? null);
             setNewQuoteRequestCount(Number(data.newQuoteRequestCount ?? 0));
             setJobsNeedingAttentionCount(Number(data.jobsNeedingAttentionCount ?? 0));
             setUnscheduledJobCount(Number(data.unscheduledJobCount ?? 0));
@@ -274,8 +278,15 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
 
         <aside id="primary-nav" className={`sidenav${isNavOpen ? ' open' : ''}`} aria-label="Primary">
           <Link href={brandHref} className="sidenav-brand" aria-label="Let&apos;s Get Quoted home">
-            <Image src="/SITE-LOGO-1.png" alt="Let's Get Quoted" width={160} height={33} className="brand-logo-img" priority />
+            <span className="sidenav-wordmark">Let&apos;s Get <span>Quoted</span></span>
           </Link>
+
+          <div className="sidenav-lead">
+            {businessName ? <p className="sidenav-bizname" title={businessName}>{businessName}</p> : null}
+            <Link href="/dashboard/jobs?new=1#new-job" className="sidenav-new">
+              <span className="sidenav-new-plus" aria-hidden="true">+</span> New job
+            </Link>
+          </div>
 
           <Link
             href="/dashboard/sites"
@@ -302,7 +313,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           </Link>
 
           <nav className="sidenav-nav" aria-label="Dashboard">
-            {renderSideLink('/dashboard', 'sidenav-home')}
+            {renderSideLink('/dashboard', 'sidenav-top')}
             {NAV_GROUPS.map((group) => (
               <div className="sidenav-group" key={group.label}>
                 <p className="sidenav-glabel">{group.label}</p>
@@ -312,7 +323,13 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           </nav>
 
           <div className="sidenav-foot">
-            <div className="sidenav-fcard">{renderSideLink('/dashboard/settings')}</div>
+            <div className="sidenav-fcard">
+              {renderSideLink('/dashboard/settings')}
+              <Link href="/dashboard/settings#automations" className="sidenav-sublink">
+                <span className="sidenav-subtick" aria-hidden="true" />
+                Automations
+              </Link>
+            </div>
             <Link
               href="/dashboard/settings"
               className={`stripe-status-pill sidenav-stripe${stripeOnboarded === null ? ' checking' : stripeOnboarded ? ' connected' : ' warning'}`}

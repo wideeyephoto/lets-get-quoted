@@ -106,7 +106,7 @@ function groupByJobId<T extends { job_id: string }>(rows: T[]): Record<string, T
 export default async function JobsPage({
   searchParams,
 }: {
-  searchParams: { status?: string };
+  searchParams: { status?: string; new?: string };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
 
@@ -221,7 +221,7 @@ export default async function JobsPage({
         </div>
       </div>
 
-      <details className="panel workspace-section-card workspace-details" open={jobs.length === 0}>
+      <details id="new-job" className="panel workspace-section-card workspace-details" open={jobs.length === 0 || searchParams.new !== undefined}>
         <summary className="workspace-details-summary">
           <span className="btn primary">+ New job</span>
           <span className="workspace-details-copy">Capture the next signed opportunity.</span>

@@ -14,22 +14,22 @@ export async function GET() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ loggedIn: false, onboarded: false, sitePublished: false, siteUrl: null, newQuoteRequestCount: 0, jobsNeedingAttentionCount: 0, unscheduledJobCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null });
+    return NextResponse.json({ loggedIn: false, onboarded: false, sitePublished: false, siteUrl: null, businessName: null, newQuoteRequestCount: 0, jobsNeedingAttentionCount: 0, unscheduledJobCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null });
   }
 
   const membership = await getCurrentMembership(user.id);
 
   if (!membership.accountId) {
-    return NextResponse.json({ loggedIn: true, onboarded: false, sitePublished: false, siteUrl: null, newQuoteRequestCount: 0, jobsNeedingAttentionCount: 0, unscheduledJobCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null });
+    return NextResponse.json({ loggedIn: true, onboarded: false, sitePublished: false, siteUrl: null, businessName: null, newQuoteRequestCount: 0, jobsNeedingAttentionCount: 0, unscheduledJobCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null });
   }
 
   const admin = createAdminClient();
   await expireStaleLeads(admin, membership.accountId);
   const [{ data: account }, { data: site }, { data: newQuoteRequests, count: newQuoteRequestCount }, jobs] = await Promise.all([
-    admin.from('accounts').select('connect_onboarded').eq('id', membership.accountId).maybeSingle(),
+    admin.from('accounts').select('connect_onboarded, business_name').eq('id', membership.accountId).maybeSingle(),
     admin
       .from('sites')
-      .select('published, subdomain, custom_domain, custom_domain_verified_at')
+      .select('published, subdomain, custom_domain, custom_domain_verified_at, company_name')
       .eq('account_id', membership.accountId)
       .maybeSingle(),
     admin
@@ -64,6 +64,7 @@ export async function GET() {
     onboarded: account?.connect_onboarded ?? false,
     sitePublished,
     siteUrl,
+    businessName: site?.company_name || account?.business_name || null,
     newQuoteRequestCount: newQuoteRequestCount ?? 0,
     jobsNeedingAttentionCount,
     unscheduledJobCount,
