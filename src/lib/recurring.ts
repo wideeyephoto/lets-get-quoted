@@ -7,6 +7,7 @@ import { normalizeUsPhone } from '@/lib/phone';
 import { findOrCreateClientId } from '@/lib/clients';
 import { createJobFeedEvent, createPaymentFeedEvent } from '@/lib/job-feed';
 import { sendPaymentSmsEvent } from '@/lib/sms';
+import { recordRecurringChargeFailure, extractStripeDecline } from '@/lib/dunning';
 
 export type RecurringFrequency = 'weekly' | 'biweekly' | 'monthly';
 
@@ -217,6 +218,7 @@ async function chargePlanVisit(
     .insert({
       account_id: plan.account_id,
       job_id: job.id,
+      recurring_plan_id: plan.id,
       kind: 'final',
       label,
       amount: plan.amount,
@@ -265,20 +267,29 @@ async function chargePlanVisit(
     }
 
     // Anything other than succeeded (e.g. requires_action on an off-session
-    // charge) can't complete unattended — fail it and let the client pay manually.
-    await admin.from('payments').update({ status: 'failed', stripe_payment_intent: intent.id }).eq('id', payment.id);
-    await createPaymentFeedEvent(admin, payment.id, 'payment_failed');
-    if (canText) await sendPaymentSmsEvent(payment.id, 'payment_failed');
+    // charge) needs the customer present — record it as an SCA/needs-card failure
+    // so dunning routes them to a card-update link instead of blind-retrying.
+    await recordRecurringChargeFailure(
+      admin,
+      plan,
+      { id: payment.id, amount: plan.amount, dunning_attempts: 0, dunning_state: null, failed_at: null },
+      { code: 'authentication_required', declineCode: null, message: null, intentId: intent.id },
+      canText,
+      false,
+    );
     return 'failed';
   } catch (error) {
-    const stripeError = error as { payment_intent?: { id?: string }; raw?: { payment_intent?: { id?: string } } };
-    const intentId = stripeError?.raw?.payment_intent?.id ?? stripeError?.payment_intent?.id ?? null;
-    await admin
-      .from('payments')
-      .update({ status: 'failed', ...(intentId ? { stripe_payment_intent: intentId } : {}) })
-      .eq('id', payment.id);
-    await createPaymentFeedEvent(admin, payment.id, 'payment_failed');
-    if (canText) await sendPaymentSmsEvent(payment.id, 'payment_failed');
+    // Capture the decline reason (thrown away before dunning existed) and hand
+    // off to the dunning recorder: schedule retries for transient declines, ask
+    // for a new card on unrecoverable ones, and alert the owner.
+    await recordRecurringChargeFailure(
+      admin,
+      plan,
+      { id: payment.id, amount: plan.amount, dunning_attempts: 0, dunning_state: null, failed_at: null },
+      extractStripeDecline(error),
+      canText,
+      false,
+    );
     console.error(`Recurring auto-charge failed for plan ${plan.id}:`, error instanceof Error ? error.message : error);
     return 'failed';
   }

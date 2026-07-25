@@ -484,6 +484,23 @@ alter table payments add column if not exists disputed_at timestamptz;
 alter table payments add column if not exists dispute_reason text;
 alter table payments add column if not exists dispute_status text;
 
+-- Recurring-charge DUNNING. When an off-session saved-card charge fails, capture
+-- the decline, then either schedule automated retries (transient declines like
+-- insufficient_funds) or route it to a client "update your card" link (expired
+-- card, SCA / authentication_required — a blind retry can never succeed).
+-- recurring_plan_id links a payment back to its plan so a retry can find the
+-- saved card (a plain payments row otherwise has no path to the plan).
+alter table payments add column if not exists recurring_plan_id uuid references recurring_plans(id) on delete set null;
+alter table payments add column if not exists failure_code text;      -- Stripe error code (card_declined, authentication_required, expired_card, …)
+alter table payments add column if not exists failure_message text;   -- decline_code / human message
+alter table payments add column if not exists failed_at timestamptz;  -- first failure time (preserved across retries)
+alter table payments add column if not exists dunning_attempts int not null default 0;  -- automated retries made
+alter table payments add column if not exists next_retry_at timestamptz;  -- next scheduled retry (null = none due)
+alter table payments add column if not exists dunning_state text;     -- 'scheduled' | 'needs_card' | 'exhausted' | 'recovered'
+-- The dunning sweep: failed recurring payments whose retry is due. Partial index
+-- keeps it tiny (only rows actively awaiting a retry).
+create index if not exists payments_dunning_due_idx on payments (next_retry_at) where dunning_state = 'scheduled';
+
 -- ----------------------------------------------------------------------------
 -- SMS EVENTS  — transactional delivery log and lifecycle idempotency.
 -- ----------------------------------------------------------------------------

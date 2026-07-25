@@ -342,6 +342,33 @@ export async function sendAppointmentReminderEmail(input: {
   }
 }
 
+// Dunning: the client's saved card was declined on a recurring charge — ask them
+// to update it (same hosted setup flow, decline framing). Throws on provider
+// rejection so the caller can report it didn't send.
+export async function sendCardUpdateEmail(input: {
+  recipientEmail: string;
+  businessName: string;
+  planTitle: string;
+  url: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('Email provider is not configured.');
+  }
+
+  const result = await resend.emails.send({
+    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    to: input.recipientEmail,
+    subject: `Action needed: update your card for ${input.businessName}`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#dc2626;font-weight:700;letter-spacing:0.04em">ACTION NEEDED</p><h1 style="font-size:24px;margin:0 0 12px">Your card was declined</h1><p style="margin:0 0 12px;line-height:1.5">We couldn't process your recurring payment${input.planTitle ? ` for ${escapeHtml(input.planTitle)}` : ''} to ${escapeHtml(input.businessName)} — your saved card was declined (it may have expired or been replaced). Update your card to keep your service going. <strong>No charge happens until you do.</strong></p><p><a href="${escapeHtml(input.url)}" style="display:inline-block;padding:12px 18px;background:#172033;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">Update my card securely</a></p><p style="margin-top:18px;color:#6b7280;font-size:13px;line-height:1.5">Your card is stored securely by Stripe. You can ask ${escapeHtml(input.businessName)} to stop automatic billing at any time.</p><p style="margin-top:24px;color:#6b7280;font-size:13px">${escapeHtml(input.businessName)} · Let's Get Quoted</p></div>`,
+    reply_to: 'hello@letsgetquoted.com',
+  });
+
+  if (result.error) {
+    console.error('Failed to send card update email:', result.error);
+    throw new Error(result.error.message);
+  }
+}
+
 // Invites a client to save a card for automatic billing on a recurring plan.
 // No charge at this step — the hosted page collects the card + mandate. Throws
 // on provider rejection so the caller can report the invite didn't send.

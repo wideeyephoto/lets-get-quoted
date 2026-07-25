@@ -6,6 +6,7 @@ import { sendPaymentSmsEvent } from '@/lib/sms';
 import { createPaymentFeedEvent, createDisputeFeedEvent } from '@/lib/job-feed';
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 import { storeSavedCardFromSetup } from '@/lib/card-on-file';
+import { rescheduleDunningAfterCardUpdate } from '@/lib/dunning';
 
 // Stripe webhooks require the raw request body for signature verification,
 // so this route must not be statically optimized or have its body parsed.
@@ -142,7 +143,12 @@ export async function POST(request: Request) {
 
     if (session.mode === 'setup' && recurringPlanId) {
       const setupIntentId = typeof session.setup_intent === 'string' ? session.setup_intent : session.setup_intent?.id ?? null;
-      if (setupIntentId) await storeSavedCardFromSetup(setupIntentId, recurringPlanId);
+      if (setupIntentId) {
+        await storeSavedCardFromSetup(setupIntentId, recurringPlanId);
+        // If any of this plan's charges stalled waiting for a good card, re-arm
+        // them so the next dunning run charges the freshly-saved card.
+        await rescheduleDunningAfterCardUpdate(admin, recurringPlanId);
+      }
     } else if (paymentId && session.payment_status === 'paid') {
       const stripePaymentIntent =
         typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id ?? null;

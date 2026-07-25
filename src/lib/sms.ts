@@ -493,6 +493,20 @@ export async function sendCardSetupSms(params: {
   return providerId;
 }
 
+// Dunning: the saved card was declined on a recurring charge. Ask the client to
+// update it (same hosted setup flow, different framing). Caller resolves consent.
+export async function sendCardUpdateSms(params: {
+  phone: string;
+  businessName: string;
+  url: string;
+  accountId?: string;
+}) {
+  const message = `Let's Get Quoted: your saved card for ${params.businessName} was declined, so your recurring payment didn't go through. Update your card here to keep your service going: ${params.url}. Reply STOP to opt out.`;
+  const providerId = await sendTwilioMessage(params.phone, message);
+  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
+  return providerId;
+}
+
 // One-off broadcast to a past client (a seasonal offer, a "we're booking now"
 // note). Consent is enforced by the caller (opted-in ledger only); this prefixes
 // the sender so the shared-number recipient knows who it's from, appends the
