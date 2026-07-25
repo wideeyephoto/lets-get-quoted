@@ -45,49 +45,54 @@ async function main() {
   const client = new Client({ connectionString });
   await client.connect();
 
-  const { rows: jobs } = await client.query(
-    `select id, account_id, client_name, client_phone, client_email, address
-     from jobs where client_id is null
-     order by account_id, created_at asc`,
-  );
+  const totals = { linked: 0, created: 0, skipped: 0 };
 
-  let linked = 0;
-  let created = 0;
-  let skipped = 0;
+  // Find-or-create the client for one contact, dedup by phone then email.
+  async function resolveClientId(accountId, name, rawPhone, rawEmail, rawAddress) {
+    const phone = normalizeUsPhone(rawPhone);
+    const email = (rawEmail || '').trim().toLowerCase() || null;
+    const cleanName = (name || '').trim();
+    if (!phone && !email && !cleanName) return null;
 
-  for (const job of jobs) {
-    const phone = normalizeUsPhone(job.client_phone);
-    const email = (job.client_email || '').trim().toLowerCase() || null;
-    const name = (job.client_name || '').trim();
-    if (!phone && !email && !name) {
-      skipped++;
-      continue;
-    }
-
-    let clientId = null;
     if (phone) {
-      const { rows } = await client.query('select id from clients where account_id=$1 and phone=$2 limit 1', [job.account_id, phone]);
-      if (rows[0]) clientId = rows[0].id;
+      const { rows } = await client.query('select id from clients where account_id=$1 and phone=$2 limit 1', [accountId, phone]);
+      if (rows[0]) return rows[0].id;
     }
-    if (!clientId && email) {
-      const { rows } = await client.query('select id from clients where account_id=$1 and email=$2 limit 1', [job.account_id, email]);
-      if (rows[0]) clientId = rows[0].id;
+    if (email) {
+      const { rows } = await client.query('select id from clients where account_id=$1 and email=$2 limit 1', [accountId, email]);
+      if (rows[0]) return rows[0].id;
     }
-
-    if (!clientId) {
-      const { rows } = await client.query(
-        'insert into clients (account_id, name, phone, email, address) values ($1,$2,$3,$4,$5) returning id',
-        [job.account_id, name || 'Client', phone, email, (job.address || '').trim() || null],
-      );
-      clientId = rows[0].id;
-      created++;
-    }
-
-    await client.query('update jobs set client_id=$1 where id=$2', [clientId, job.id]);
-    linked++;
+    const { rows } = await client.query(
+      'insert into clients (account_id, name, phone, email, address) values ($1,$2,$3,$4,$5) returning id',
+      [accountId, cleanName || 'Client', phone, email, (rawAddress || '').trim() || null],
+    );
+    totals.created++;
+    return rows[0].id;
   }
 
-  console.log(`Backfill complete. Jobs linked: ${linked}, clients created: ${created}, skipped: ${skipped}.`);
+  const { rows: jobs } = await client.query(
+    `select id, account_id, client_name, client_phone, client_email, address
+     from jobs where client_id is null order by account_id, created_at asc`,
+  );
+  for (const job of jobs) {
+    const clientId = await resolveClientId(job.account_id, job.client_name, job.client_phone, job.client_email, job.address);
+    if (!clientId) { totals.skipped++; continue; }
+    await client.query('update jobs set client_id=$1 where id=$2', [clientId, job.id]);
+    totals.linked++;
+  }
+
+  const { rows: leads } = await client.query(
+    `select id, account_id, name, phone, email, address
+     from leads where client_id is null order by account_id, created_at asc`,
+  );
+  for (const lead of leads) {
+    const clientId = await resolveClientId(lead.account_id, lead.name, lead.phone, lead.email, lead.address);
+    if (!clientId) { totals.skipped++; continue; }
+    await client.query('update leads set client_id=$1 where id=$2', [clientId, lead.id]);
+    totals.linked++;
+  }
+
+  console.log(`Backfill complete. Records linked: ${totals.linked}, clients created: ${totals.created}, skipped: ${totals.skipped}.`);
   await client.end();
 }
 

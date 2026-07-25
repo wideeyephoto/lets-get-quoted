@@ -32,13 +32,22 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
     );
   }
 
-  const { data: jobRows } = await supabase
-    .from('jobs')
-    .select('id, ref, status, quoted_amount, scheduled_for, created_at')
-    .eq('account_id', accountId)
-    .eq('client_id', client.id)
-    .order('created_at', { ascending: false });
+  const [{ data: jobRows }, { data: leadRows }] = await Promise.all([
+    supabase
+      .from('jobs')
+      .select('id, ref, status, quoted_amount, scheduled_for, created_at')
+      .eq('account_id', accountId)
+      .eq('client_id', client.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('leads')
+      .select('id, project_type, status, created_at')
+      .eq('account_id', accountId)
+      .eq('client_id', client.id)
+      .order('created_at', { ascending: false }),
+  ]);
   const jobs = jobRows ?? [];
+  const leads = leadRows ?? [];
   const totalValue = jobs.reduce((sum, job) => sum + (Number(job.quoted_amount) || 0), 0);
   const boundUpdate = updateClientAction.bind(null, client.id);
 
@@ -89,6 +98,26 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
                 ))}
               </div>
             )}
+
+            {leads.length > 0 ? (
+              <>
+                <div className="section-heading workspace-section-heading" style={{ marginTop: '1.5rem' }}>
+                  <p className="eyebrow">Leads</p>
+                  <h2>Requests</h2>
+                </div>
+                <div className="cost-list">
+                  {leads.map((lead) => (
+                    <Link href={`/dashboard/leads/${lead.id}`} className="cost-item" key={lead.id}>
+                      <div className="cost-item-main">
+                        <span className="cost-item-desc">{lead.project_type || 'Lead'}</span>
+                        <span className="cost-item-sub">{formatDate(lead.created_at)}</span>
+                      </div>
+                      <span className="cost-item-amount" style={{ textTransform: 'capitalize' }}>{String(lead.status).replace('_', ' ')}</span>
+                    </Link>
+                  ))}
+                </div>
+              </>
+            ) : null}
           </div>
         </div>
 

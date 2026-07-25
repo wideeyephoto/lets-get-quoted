@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createJob, deleteJob, type Job } from '@/lib/jobs';
+import { findOrCreateClientId } from '@/lib/clients';
 
 export type LeadSource = 'website_form' | 'missed_call' | 'manual' | 'referral';
 export type LeadStatus = 'new' | 'contacted' | 'quoted' | 'won' | 'lost';
@@ -92,6 +93,7 @@ export type Lead = {
   photo_paths: string[];
   source_page: string | null;
   converted_job: string | null;
+  client_id: string | null;
   triage: LeadTriage | null;
   updated_at: string;
   created_at: string;
@@ -180,7 +182,26 @@ export async function createLead(
     .single();
 
   if (error || !data) throw error ?? new Error('Unable to create lead.');
-  return data as Lead;
+  const lead = data as Lead;
+
+  // Link (or create) the unified client profile from intake. Best-effort — a
+  // failure must never fail lead creation; the lead just stays unlinked.
+  try {
+    const clientId = await findOrCreateClientId(supabase, accountId, {
+      name: lead.name,
+      phone: lead.phone,
+      email: lead.email,
+      address: lead.address,
+    });
+    if (clientId) {
+      await supabase.from('leads').update({ client_id: clientId }).eq('id', lead.id);
+      lead.client_id = clientId;
+    }
+  } catch (clientError) {
+    console.error(`Client link failed for lead ${lead.id}:`, clientError instanceof Error ? clientError.message : clientError);
+  }
+
+  return lead;
 }
 
 export async function listLeads(

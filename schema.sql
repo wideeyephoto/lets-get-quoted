@@ -603,6 +603,10 @@ alter table leads add column if not exists updated_at timestamptz not null defau
 -- { score: 'hot'|'warm'|'low', flags: string[], timeline, location,
 --   estimate: {min,max}|null, phoneVerified, snoozedUntil, archived, declinedReason }
 alter table leads add column if not exists triage jsonb;
+-- Link leads (incl. bookings) to the unified client profile from intake, so a
+-- customer's leads and jobs collapse into one timeline. ON DELETE SET NULL.
+alter table leads add column if not exists client_id uuid references clients(id) on delete set null;
+create index if not exists leads_client_id_idx on leads (client_id);
 
 -- Contacts an owner has blocked from submitting new website leads. Matching
 -- submissions are silently dropped (the visitor still sees success).
