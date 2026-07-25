@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { expandScheduledJobs } from '@/lib/jobs';
+import { createJob, expandScheduledJobs } from '@/lib/jobs';
 import { createLead, type Lead } from '@/lib/leads';
 import { getAccountOwnerEmail, sendLeadNotificationEmail } from '@/lib/email';
 
@@ -100,6 +100,42 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
     sourcePage: '/book',
     triage: { score: 'warm', flags: [], timeline: requested, contactPreference: 'any' },
   });
+
+  // Auto-calendar the requested window as a job — the self-serve promise. Abuse
+  // guard: skip if this contact already has a job on that date (blocks repeat/
+  // spam bookings of the same day). Best-effort: a failure leaves the lead as a
+  // plain request rather than failing the booking. createJob links the same
+  // client profile the lead just got (deduped by phone/email).
+  try {
+    let alreadyBooked = false;
+    if (input.phone) {
+      const { data: dupe } = await admin
+        .from('jobs')
+        .select('id')
+        .eq('account_id', accountId)
+        .eq('client_phone', input.phone)
+        .eq('scheduled_for', input.dateKey)
+        .limit(1)
+        .maybeSingle();
+      alreadyBooked = Boolean(dupe);
+    }
+    if (!alreadyBooked) {
+      const job = await createJob(admin, accountId, {
+        clientName: input.name,
+        clientPhone: input.phone,
+        clientEmail: input.email,
+        address: input.address,
+        scope: input.description || `Online booking — ${requested}`,
+        status: 'new_lead',
+        scheduledFor: input.dateKey,
+        scheduledTime: input.time,
+        quotedAmount: 0,
+      });
+      await admin.from('leads').update({ converted_job: job.id }).eq('id', lead.id);
+    }
+  } catch (error) {
+    console.error(`Booking job creation failed for account ${accountId}:`, error instanceof Error ? error.message : error);
+  }
 
   try {
     const [ownerEmail, { data: account }] = await Promise.all([
