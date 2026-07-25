@@ -5,7 +5,7 @@ import FinanceReports from './FinanceReports';
 import { getAvailableTaxYears, buildProfitAndLoss, buildScheduleCWorksheet, build1099PrepList } from '@/lib/tax-reports';
 import SaveButton from '@/components/save-button';
 import DeleteAccountButton from './DeleteAccountButton';
-import { updateScheduleDayHoursAction, deleteAccountAction } from './actions';
+import { updateScheduleDayHoursAction, updateReviewSettingsAction, deleteAccountAction } from './actions';
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -34,6 +34,16 @@ export default async function SettingsPage({
 
   const providers = (identityData?.identities ?? []).map((identity) => identity.provider);
   const businessName = site?.company_name || account?.business_name || 'My Business';
+
+  // Read the auto-review toggle separately and defensively: on a DB where the
+  // migration hasn't been applied yet the column is missing, so this degrades
+  // to "off" instead of 500-ing the whole settings page.
+  const { data: reviewSettings } = await supabase
+    .from('accounts')
+    .select('auto_review_request')
+    .eq('id', accountId)
+    .maybeSingle();
+  const autoReviewRequest = Boolean(reviewSettings?.auto_review_request);
 
   const requestedYear = searchParams.year ? parseInt(searchParams.year, 10) : NaN;
   const selectedYear = availableYears.includes(requestedYear) ? requestedYear : availableYears[0];
@@ -103,6 +113,33 @@ export default async function SettingsPage({
           </div>
           <div className="form-actions">
             <SaveButton>Save schedule settings</SaveButton>
+          </div>
+        </form>
+      </section>
+
+      <section className="panel workspace-section-card" id="reviews">
+        <div className="section-heading workspace-section-heading compact-heading">
+          <p className="eyebrow">Reviews</p>
+          <h2>Automatic review requests</h2>
+        </div>
+        <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+          When on, marking a job complete automatically asks the client for a Google review — texted if
+          they have a mobile on file, emailed otherwise. It only sends once per job, and you can always
+          send the request by hand from any completed job. Link your Google Business Profile in the
+          website builder so the review has somewhere to go.
+        </p>
+        <form action={updateReviewSettingsAction} className="form-grid compact-form">
+          <label className="checkbox-row" htmlFor="autoReviewRequest">
+            <input
+              id="autoReviewRequest"
+              name="autoReviewRequest"
+              type="checkbox"
+              defaultChecked={autoReviewRequest}
+            />
+            <span>Ask for a review automatically when I mark a job complete</span>
+          </label>
+          <div className="form-actions">
+            <SaveButton>Save review settings</SaveButton>
           </div>
         </form>
       </section>

@@ -2333,6 +2333,22 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   font-weight: 600;
 }
 
+.checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  cursor: pointer;
+  line-height: 1.4;
+}
+
+.checkbox-row input[type='checkbox'] {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin-top: 0.1rem;
+  accent-color: #ff8a3d;
+}
+
 .job-command-facts {
   display: flex;
   flex-wrap: wrap;

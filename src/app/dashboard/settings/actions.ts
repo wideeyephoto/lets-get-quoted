@@ -26,6 +26,20 @@ export async function updateScheduleDayHoursAction(formData: FormData) {
   revalidatePath('/dashboard/schedule');
 }
 
+export async function updateReviewSettingsAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const autoReviewRequest = formData.get('autoReviewRequest') === 'on';
+
+  const { error } = await supabase
+    .from('accounts')
+    .update({ auto_review_request: autoReviewRequest })
+    .eq('id', accountId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/dashboard/settings');
+}
+
 // Permanently deletes the signed-in owner's account. Removes the account (which
 // cascades every child row — jobs, leads, crew, invoices, payments, sites,
 // memberships, …) AND the auth user, so the account's phone/email is freed to

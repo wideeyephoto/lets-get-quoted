@@ -183,6 +183,23 @@ export async function markJobCompleteAction(jobId: string) {
       visibility: 'client',
       meta: { status: 'complete', previousStatus: job.status },
     });
+
+    // Opt-in auto review ask. Best-effort and idempotent: gated on the account
+    // toggle, only fires once per job, and never blocks completion if the text/
+    // email send fails. The toggle column may not exist on un-migrated DBs, so
+    // the read is defensive (treated as off on any error).
+    try {
+      const { data: settings } = await supabase
+        .from('accounts')
+        .select('auto_review_request')
+        .eq('id', accountId)
+        .maybeSingle();
+      if (settings?.auto_review_request && !(await reviewAlreadyRequested(supabase, accountId, jobId))) {
+        await deliverJobReviewRequest(supabase, accountId, job);
+      }
+    } catch (error) {
+      console.error(`Auto review request skipped for job ${jobId}:`, error instanceof Error ? error.message : error);
+    }
   }
 
   revalidatePath('/dashboard/jobs');
@@ -623,13 +640,16 @@ export async function resolveAccountReviewUrl(
   return url || null;
 }
 
-// One-tap post-job review ask. Texts a happy client a link to leave a Google
-// review (email fallback when there's no textable mobile). Returns a result
-// message instead of throwing so the button can report exactly what happened —
-// texted, emailed, or why it couldn't send.
-export async function requestJobReviewAction(jobId: string): Promise<{ ok: boolean; message: string }> {
-  const { supabase, accountId } = await requireOwnerContext();
-  const job = await getJob(supabase, accountId, jobId);
+// Core review-ask delivery, shared by the one-tap button and the auto-send-on-
+// complete path. Picks the channel (text if a consented mobile is on file, else
+// email), logs an internal feed event, and returns a result message instead of
+// throwing so callers can surface exactly what happened. Does NOT revalidate —
+// the caller owns that.
+async function deliverJobReviewRequest(
+  supabase: SupabaseClient,
+  accountId: string,
+  job: Awaited<ReturnType<typeof getJob>>,
+): Promise<{ ok: boolean; message: string }> {
   if (!job) return { ok: false, message: 'Job not found.' };
 
   const reviewUrl = await resolveAccountReviewUrl(supabase, accountId);
@@ -661,11 +681,11 @@ export async function requestJobReviewAction(jobId: string): Promise<{ ok: boole
     }
   } catch (error) {
     const reason = error instanceof Error ? error.message : 'The review request could not be sent.';
-    console.error(`Review request failed for job ${jobId}:`, reason);
+    console.error(`Review request failed for job ${job.id}:`, reason);
     return { ok: false, message: reason };
   }
 
-  await createJobFeedEvent(supabase, accountId, jobId, {
+  await createJobFeedEvent(supabase, accountId, job.id, {
     kind: 'review_requested',
     title: channel === 'sms' ? 'Review request texted' : 'Review request emailed',
     body: `Asked ${job.client_name} for a Google review.`,
@@ -673,9 +693,35 @@ export async function requestJobReviewAction(jobId: string): Promise<{ ok: boole
     meta: { review_request: true, channel, to: sentTo },
   });
 
-  revalidatePath(`/dashboard/jobs/${jobId}`);
   return {
     ok: true,
     message: channel === 'sms' ? `Texted ${job.client_name} a review link.` : `Emailed ${job.client_name} a review link.`,
   };
+}
+
+// True once a review has already been requested for this job — used to keep
+// auto-send idempotent so a client is never double-texted if a job flips back
+// to in-progress and gets re-completed.
+async function reviewAlreadyRequested(supabase: SupabaseClient, accountId: string, jobId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('job_feed')
+    .select('id')
+    .eq('account_id', accountId)
+    .eq('job_id', jobId)
+    .eq('kind', 'review_requested')
+    .limit(1)
+    .maybeSingle();
+  return Boolean(data);
+}
+
+// One-tap post-job review ask. Texts a happy client a link to leave a Google
+// review (email fallback when there's no textable mobile). Returns a result
+// message instead of throwing so the button can report exactly what happened —
+// texted, emailed, or why it couldn't send.
+export async function requestJobReviewAction(jobId: string): Promise<{ ok: boolean; message: string }> {
+  const { supabase, accountId } = await requireOwnerContext();
+  const job = await getJob(supabase, accountId, jobId);
+  const result = await deliverJobReviewRequest(supabase, accountId, job);
+  if (result.ok) revalidatePath(`/dashboard/jobs/${jobId}`);
+  return result;
 }
