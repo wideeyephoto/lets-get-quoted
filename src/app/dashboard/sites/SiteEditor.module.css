@@ -277,6 +277,9 @@
 .itemHeader .itemEditBtn { color: #c8d0dc; }
 .itemHeader .itemSaveBtn { border-color: rgba(74,222,128,.4); background: rgba(74,222,128,.12); color: #4ade80; }
 .secondaryAction { justify-self: start; }
+.blogAddActions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+.blogAddActions .btn { flex: 1 1 auto; }
+.blogAddActions .secondaryAction { flex: 0 0 auto; }
 .reviewImagePreview { overflow: hidden; width: min(180px, 100%); border: 1px solid rgba(255,255,255,.12); border-radius: 7px; background: rgba(255,255,255,.04); }
 .reviewImagePreview img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
 .integrationCard { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem; border: 1px dashed rgba(255,209,102,.32); border-radius: 8px; background: rgba(255,209,102,.055); }

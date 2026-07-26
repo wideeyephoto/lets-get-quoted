@@ -300,6 +300,9 @@ export type SiteBlogContent = {
   intro: string;
   // How posts are laid out on the public page. See BLOG_STYLES.
   layout: string;
+  // Dashboard reminder cadence in weeks (0 = off, else 2 / 4 / 8) — nudges the
+  // owner to publish a fresh post.
+  reminderWeeks: number;
   posts: SiteBlogPost[];
 };
 
@@ -1016,6 +1019,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       title: toString(blog.title, DEFAULT_BLOG_TITLE),
       intro: toString(blog.intro),
       layout: BLOG_LAYOUT_KEYS.has(toString(blog.layout)) ? toString(blog.layout) : 'grid',
+      reminderWeeks: [2, 4, 8].includes(Number(blog.reminderWeeks)) ? Number(blog.reminderWeeks) : 0,
       posts: parseBlogPosts(blog.posts),
     },
     heroBadge: {

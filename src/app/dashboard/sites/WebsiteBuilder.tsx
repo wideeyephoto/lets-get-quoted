@@ -2010,9 +2010,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                       </button>
                     ))}
                   </div>
-                  <label className={styles.formField}><span>What should the next post be about? (optional)</span><input value={blogTopic} maxLength={200} onChange={(event) => setBlogTopic(event.target.value)} placeholder="e.g. Fall gutter maintenance checklist — leave blank and AI picks a seasonal topic" /></label>
-                  <button type="button" className="btn secondary" onClick={handleGenerateBlogDraft} disabled={isGeneratingBlog}>{isGeneratingBlog ? 'Writing a draft…' : '✨ Generate a draft with AI'}</button>
-                  <p className={styles.fieldHint}>Drafts are saved unpublished — nothing goes live until you flip a post to Published.</p>
+                  <label className={styles.formField}><span>Publishing reminder</span><select value={siteContent.blog.reminderWeeks} onChange={(event) => updateBlog({ ...siteContent.blog, reminderWeeks: Number(event.target.value) })}><option value={0}>Off</option><option value={2}>Every 2 weeks</option><option value={4}>Every 4 weeks</option><option value={8}>Every 8 weeks</option></select><small className={styles.fieldHint}>We&apos;ll nudge you in your dashboard when it&apos;s time to publish a fresh post. Keeping a blog current is one of the best long-term SEO moves.</small></label>
+
+                  <div className={styles.contentSubhead}><strong>Your posts</strong><small>{siteContent.blog.posts.length === 0 ? 'none yet' : `${siteContent.blog.posts.length} total · drafts stay hidden until published`}</small></div>
+                  {siteContent.blog.posts.length === 0 && <p className={styles.emptyHelper}>No posts yet. Generate one with AI or add your own using the buttons below.</p>}
                   <div className={styles.stackList}>
                     {siteContent.blog.posts.map((post, index) => (
                       <StackItem key={post.id} title={post.title.trim() || `Post ${index + 1}`} meta={post.status === 'published' ? 'Live' : 'Draft'} editing={editingItemId === post.id} onEdit={() => setEditingItemId(post.id)} onSave={saveItem} onRemove={() => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.filter((p) => p.id !== post.id) })}>
@@ -2036,7 +2037,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                       </StackItem>
                     ))}
                   </div>
-                  <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('post'); updateBlog({ ...siteContent.blog, enabled: true, posts: [{ id, slug: '', title: '', excerpt: '', body: '', coverImage: '', status: 'draft', date: new Date().toISOString().slice(0, 10) }, ...siteContent.blog.posts] }); setEditingItemId(id); }}>Add post manually</button>
+                  <div className={styles.contentSubhead}><strong>Add a post</strong><small>Draft one with AI or write your own — it saves as a hidden draft until you publish it.</small></div>
+                  <label className={styles.formField}><span>What should it be about? (optional)</span><input value={blogTopic} maxLength={200} onChange={(event) => setBlogTopic(event.target.value)} placeholder="e.g. Fall gutter maintenance checklist — leave blank and AI picks a seasonal topic" /></label>
+                  <div className={styles.blogAddActions}>
+                    <button type="button" className="btn secondary" onClick={handleGenerateBlogDraft} disabled={isGeneratingBlog}>{isGeneratingBlog ? 'Writing a draft…' : '✨ Generate a draft with AI'}</button>
+                    <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('post'); updateBlog({ ...siteContent.blog, enabled: true, posts: [{ id, slug: '', title: '', excerpt: '', body: '', coverImage: '', status: 'draft', date: new Date().toISOString().slice(0, 10) }, ...siteContent.blog.posts] }); setEditingItemId(id); }}>✎ Write it myself</button>
+                  </div>
                 </SectionCard>
 
                 <SectionCard reorder={reorderProps('serviceAreas', 'Cities you serve')} title="Cities you serve" description={'List the towns and neighborhoods you cover. The names become on-page keywords that help you rank for "[trade] in [city]" searches — and reassure homeowners you serve their area.'} evidence={'Visitors decide "do they even serve me?" in ~3 seconds — naming their town reassures them and matches local search.'} enabled={siteContent.serviceAreas.enabled} onToggleEnabled={(value) => updateServiceAreas({ ...siteContent.serviceAreas, enabled: value })} {...contentHint(siteContent.serviceAreas.enabled, siteContent.serviceAreas.cities.filter((city) => city.trim()).length, 'city', 'cities')} open={openSection === 'serviceAreas'} onToggleOpen={() => toggleSection('serviceAreas')}>

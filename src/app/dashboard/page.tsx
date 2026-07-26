@@ -8,6 +8,8 @@ import { listActiveScheduleRequests } from '@/lib/scheduling';
 import { getAutomationActivity } from '@/lib/automation-activity';
 import { countRebookCandidates } from '@/lib/rebook';
 import { countRecentPrivateFeedback } from '@/lib/reviews';
+import { getSiteContent } from '@/lib/site-content';
+import BlogReminderBanner from './BlogReminderBanner';
 
 function toDateKey(year: number, monthIndex: number, day: number): string {
   return `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -42,7 +44,7 @@ export default async function DashboardPage() {
   const [{ data: account }, { data: identityData }, { data: site }, jobs, leads, { count: clientCount }] = await Promise.all([
     supabase.from('accounts').select('connect_onboarded, connect_disabled_at, schedule_day_hours').eq('id', accountId).single(),
     supabase.auth.getUserIdentities(),
-    supabase.from('sites').select('published, subdomain, custom_domain, custom_domain_verified_at').eq('account_id', accountId).maybeSingle(),
+    supabase.from('sites').select('published, subdomain, custom_domain, custom_domain_verified_at, content').eq('account_id', accountId).maybeSingle(),
     listJobs(supabase, accountId),
     listLeads(supabase, accountId),
     supabase.from('clients').select('id', { count: 'exact', head: true }).eq('account_id', accountId),
@@ -56,6 +58,12 @@ export default async function DashboardPage() {
   const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
   const linkedMethodCount = identityData?.identities?.length ?? 1;
   const sitePublished = site?.published ?? false;
+  // Blog publishing reminder (owner-set cadence in the builder's Blog section).
+  const blogContent = site?.content ? getSiteContent(site.content as Record<string, unknown>).blog : null;
+  const blogReminderWeeks = blogContent?.reminderWeeks ?? 0;
+  const lastPublishedBlogISO = blogContent
+    ? blogContent.posts.filter((post) => post.status === 'published' && post.date).map((post) => post.date).sort().slice(-1)[0] ?? null
+    : null;
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
   const siteUrl = sitePublished && site
     ? site.custom_domain && site.custom_domain_verified_at
@@ -243,6 +251,8 @@ export default async function DashboardPage() {
           </div>
         </section>
       ) : null}
+
+      <BlogReminderBanner reminderWeeks={blogReminderWeeks} lastPublishedISO={lastPublishedBlogISO} sitesHref="/dashboard/sites" />
 
       {!onboardingComplete ? (
         <section className="panel workspace-section-card onboarding-panel">
