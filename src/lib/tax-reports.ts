@@ -22,6 +22,19 @@ export type ProfitAndLoss = {
   monthly: { month: number; label: string; revenue: number; expenses: number; net: number }[];
 };
 
+// Currency aggregates land on tax forms, so round every total to whole cents —
+// summing numeric(12,2) values as JS floats can otherwise leave sub-cent artifacts
+// (0.1 + 0.2 = 0.30000000000000004).
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+// The rows buildProfitAndLoss fetches. Kept loose (numeric columns arrive as
+// strings from the driver) so the pure core can be exercised directly in tests.
+export type PaidPaymentRow = { amount: number | string; platform_fee: number | string | null; paid_at: string };
+export type CostRow = { type: string | null; amount: number | string | null; created_at: string };
+export type SubcontractorCostRow = { supplier: string | null; amount: number | string | null };
+
 function yearRange(year: number): { start: string; end: string } {
   return { start: `${year}-01-01T00:00:00.000Z`, end: `${year + 1}-01-01T00:00:00.000Z` };
 }
@@ -61,9 +74,18 @@ export async function buildProfitAndLoss(
   if (paymentsError) throw paymentsError;
   if (costsError) throw costsError;
 
+  return computeProfitAndLoss(year, (payments ?? []) as PaidPaymentRow[], (costs ?? []) as CostRow[]);
+}
+
+// The pure P&L aggregation over already-fetched rows. Month bucketing uses UTC
+// (getUTCMonth) to match the UTC year boundaries in yearRange — otherwise a
+// payment in the first hours of a month (UTC) would, on a non-UTC server, be
+// attributed to the previous month's row while still counting in this year's
+// total, so the monthly chart wouldn't reconcile with the annual figures.
+export function computeProfitAndLoss(year: number, payments: PaidPaymentRow[], costs: CostRow[]): ProfitAndLoss {
   const monthly = Array.from({ length: 12 }, (_, i) => ({
     month: i + 1,
-    label: new Date(year, i, 1).toLocaleDateString('en-US', { month: 'short' }),
+    label: new Date(Date.UTC(year, i, 1)).toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' }),
     revenue: 0,
     expenses: 0,
     net: 0,
@@ -71,19 +93,20 @@ export async function buildProfitAndLoss(
 
   let revenue = 0;
   let platformFees = 0;
-  for (const p of payments ?? []) {
+  for (const p of payments) {
     const amount = Number(p.amount) || 0;
+    const fee = Number(p.platform_fee) || 0;
     revenue += amount;
-    platformFees += Number(p.platform_fee) || 0;
-    const monthIndex = new Date(p.paid_at as string).getMonth();
+    platformFees += fee;
+    const monthIndex = new Date(p.paid_at).getUTCMonth();
     monthly[monthIndex].revenue += amount;
-    monthly[monthIndex].expenses += Number(p.platform_fee) || 0;
+    monthly[monthIndex].expenses += fee;
   }
 
-  const expensesByCategory = { materials: 0, labor: 0, subcontractors: 0, receipts: 0, other: 0, platformFees };
-  for (const c of costs ?? []) {
+  const expensesByCategory = { materials: 0, labor: 0, subcontractors: 0, receipts: 0, other: 0, platformFees: 0 };
+  for (const c of costs) {
     const amount = Number(c.amount) || 0;
-    const monthIndex = new Date(c.created_at as string).getMonth();
+    const monthIndex = new Date(c.created_at).getUTCMonth();
     monthly[monthIndex].expenses += amount;
 
     switch (c.type as CostType) {
@@ -103,13 +126,20 @@ export async function buildProfitAndLoss(
         expensesByCategory.other += amount;
     }
   }
+  expensesByCategory.platformFees = platformFees;
 
-  monthly.forEach((m) => {
-    m.net = m.revenue - m.expenses;
+  // Round each currency aggregate to whole cents.
+  (Object.keys(expensesByCategory) as (keyof typeof expensesByCategory)[]).forEach((k) => {
+    expensesByCategory[k] = round2(expensesByCategory[k]);
   });
-
-  const totalExpenses = Object.values(expensesByCategory).reduce((sum, v) => sum + v, 0);
-  const netProfit = revenue - totalExpenses;
+  revenue = round2(revenue);
+  const totalExpenses = round2(Object.values(expensesByCategory).reduce((sum, v) => sum + v, 0));
+  const netProfit = round2(revenue - totalExpenses);
+  monthly.forEach((m) => {
+    m.revenue = round2(m.revenue);
+    m.expenses = round2(m.expenses);
+    m.net = round2(m.revenue - m.expenses);
+  });
 
   return { year, revenue, expensesByCategory, totalExpenses, netProfit, monthly };
 }
@@ -161,14 +191,31 @@ export async function build1099PrepList(
 
   if (error) throw error;
 
+  return aggregateSubcontractorPayouts((data ?? []) as SubcontractorCostRow[]);
+}
+
+// The IRS 1099-NEC filing threshold: a 1099 is required for each nonemployee paid
+// $600 OR MORE in the year (>= 600, not > 600).
+export const IRS_1099_NEC_THRESHOLD = 600;
+
+// Pure aggregation for the 1099 prep list: sum by supplier name and flag anyone at
+// or above the threshold. Caveat (documented for the contractor): names are
+// free-text, so two spellings of the same sub are counted separately.
+export function aggregateSubcontractorPayouts(
+  rows: SubcontractorCostRow[],
+  threshold: number = IRS_1099_NEC_THRESHOLD
+): SubcontractorPayout[] {
   const totals = new Map<string, number>();
-  for (const row of data ?? []) {
-    const name = (row.supplier as string | null)?.trim() || 'Unnamed subcontractor';
+  for (const row of rows) {
+    const name = (row.supplier ?? '').trim() || 'Unnamed subcontractor';
     totals.set(name, (totals.get(name) ?? 0) + (Number(row.amount) || 0));
   }
 
   return Array.from(totals.entries())
-    .map(([supplier, total]) => ({ supplier, total, needs1099: total >= 600 }))
+    .map(([supplier, sum]) => {
+      const total = round2(sum);
+      return { supplier, total, needs1099: total >= threshold };
+    })
     .sort((a, b) => b.total - a.total);
 }
 
