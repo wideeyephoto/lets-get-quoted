@@ -48,45 +48,45 @@ async function emailContractorAlert(
 }
 
 async function markPaymentPaid(admin: ReturnType<typeof createAdminClient>, paymentId: string, stripePaymentIntent: string | null) {
-  const { data: payment, error: fetchError } = await admin
-    .from('payments')
-    .select('invoice_id, status')
-    .eq('id', paymentId)
-    .maybeSingle();
-
-  if (fetchError) {
-    console.error('Failed to fetch payment:', fetchError);
-    return;
-  }
-
-  // Stripe delivers webhooks at-least-once, so the same event can arrive more
-  // than once. Skip re-processing once already paid — otherwise a duplicate
-  // delivery would overwrite `paid_at` with a later timestamp and, worse,
-  // stomp a real e-signature `signed_at` (see signInvoice) with the payment
-  // time below.
-  if (payment?.status === 'paid') {
-    return;
-  }
-
-  // Update payment status to paid
-  const { error: paymentError } = await admin
+  // Stripe delivers webhooks at-least-once and can overlap a retry with a still-
+  // in-flight first delivery, so this must be an atomic compare-and-set, not a
+  // read-then-write: the conditional UPDATE both flips the row and tells us
+  // whether THIS delivery is the one that won. Only the winner runs the
+  // side-effects below, so duplicates never double-notify.
+  //
+  // The status filter does double duty: it makes a delivery for an already-paid
+  // payment a no-op (so a duplicate can't overwrite `paid_at` with a later
+  // timestamp, nor stomp a real e-signature `signed_at` downstream), and it
+  // refuses to resurrect a `refunded`/`disputed` payment back to `paid` on a
+  // late-arriving checkout.session.completed. Mirrors the payment_intent.succeeded
+  // handler and every other transition in this file.
+  const { data: transitioned, error: paymentError } = await admin
     .from('payments')
     .update({
       status: 'paid',
       paid_at: new Date().toISOString(),
       stripe_payment_intent: stripePaymentIntent,
     })
-    .eq('id', paymentId);
+    .eq('id', paymentId)
+    .in('status', ['requested', 'processing', 'failed'])
+    .select('invoice_id')
+    .maybeSingle();
 
   if (paymentError) {
     console.error('Failed to mark payment paid:', paymentError);
     return;
   }
 
+  // Already paid (or no longer in a payable state) — nothing transitioned, so
+  // don't re-run the reconcile or re-notify.
+  if (!transitioned) {
+    return;
+  }
+
   // If payment is linked to an invoice, mark invoice as paid (shared reconcile —
   // preserves a real e-signature, idempotent, never revives a voided invoice).
-  if (payment?.invoice_id) {
-    await markInvoicePaidForPayment(admin, payment.invoice_id);
+  if (transitioned.invoice_id) {
+    await markInvoicePaidForPayment(admin, transitioned.invoice_id);
   }
 
   await sendPaymentSmsEvent(paymentId, 'payment_paid');
