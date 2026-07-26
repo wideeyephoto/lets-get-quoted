@@ -557,6 +557,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   // the matching tab, open the matching section card, and focus the field.
   useEffect(() => {
     const SECTION_TARGETS: Record<string, string> = {
+      header: 'header',
       'our-services': 'services',
       'how-it-works': 'howItWorks',
       showcase: 'showcase',
@@ -599,7 +600,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       // open before focusField can find the input.
       if (target === 'hero') { setActiveTab('page'); setOpenSection('hero'); focusField('bf-headline'); return; }
       if (target === 'heroEyebrow') { setActiveTab('page'); setOpenSection('hero'); focusField('bf-hero-eyebrow'); return; }
-      if (target === 'identity') { setActiveTab('business'); setOpenSection('basics'); focusField('bf-company'); return; }
+      if (target === 'identity') { setActiveTab('page'); setOpenSection('header'); focusField('bf-name-style'); return; }
       if (target === 'bizTagline') { setActiveTab('page'); setOpenSection('hero'); focusField('bf-tagline'); return; }
       if (target === 'bizArea') { setActiveTab('business'); setOpenSection('whereWhen'); focusField('bf-service-area'); return; }
       if (target === 'bizHours') { setActiveTab('business'); setOpenSection('whereWhen'); focusField('bf-hours'); return; }
@@ -607,12 +608,11 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       if (target === 'bizLicense') { setActiveTab('business'); setOpenSection('contactInfo'); focusField('bf-license'); return; }
       if (target === 'legal') { setActiveTab('business'); setOpenSection('legal'); requestAnimationFrame(() => requestAnimationFrame(() => document.querySelector(`.${styles.sectionCardOpen}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }))); return; }
       if (target === 'heroBadge') { setActiveTab('page'); setOpenSection('hero'); flashCard('heroBadge', 'design-hero-badge'); return; }
-      // The auto trade-icon (no uploaded logo) jumps to the Brand tab's "Your
-      // logo" card, where the glyph picker, transparent toggle, and upload live.
-      if (target === 'brandIcon') { setActiveTab('design'); requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById('design-logo')?.scrollIntoView({ behavior: 'smooth', block: 'center' }))); return; }
+      // The logo + auto trade-icon jump to the Header section's "Your logo" card
+      // (Page tab), where the glyph picker, transparent toggle, and upload live.
+      if (target === 'brandIcon' || target === 'logo') { setActiveTab('page'); setOpenSection('header'); requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById('design-logo')?.scrollIntoView({ behavior: 'smooth', block: 'center' }))); return; }
       // Every photo opens the "Replace photo" popup, routed by what was clicked.
       if (target === 'heroImage') { setPicker({ label: 'the hero image', kind: 'hero' }); return; }
-      if (target === 'logo') { setPicker({ label: 'your logo', kind: 'logo' }); return; }
       if (target.startsWith('image-')) {
         const slot = target.slice('image-'.length);
         setPicker({ label: IMAGE_SLOT_LABELS[slot] || 'this photo', kind: 'slot', slot });
@@ -1633,7 +1633,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                       {HEADING_FONT_OPTIONS.map((font) => <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>{font.label}</option>)}
                     </select>
                   </label>
-                  <div className={styles.formField}>
+                  <div className={styles.formField} id="bf-name-style">
                     <span>Company name style</span>
                     {(() => {
                       const nm = site.company_name.trim() || 'Your Company';

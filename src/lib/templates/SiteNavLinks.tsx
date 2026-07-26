@@ -90,6 +90,7 @@ export default function SiteNavLinks({ site, links, className }: SiteNavLinksPro
       <button
         type="button"
         className={styles.mobileNavToggle}
+        data-edit="header"
         aria-expanded={open}
         aria-label={open ? 'Close menu' : 'Open menu'}
         onClick={() => setOpen((value) => !value)}

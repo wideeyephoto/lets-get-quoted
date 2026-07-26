@@ -26,7 +26,7 @@ function resolveEditable(el: Element): Editable | null {
   const header = el.closest('header');
   if (header) {
     const img = el.closest('img');
-    return img ? { key: 'logo', node: img, isImage: true } : { key: 'identity', node: header, isImage: false };
+    return img ? { key: 'logo', node: img, isImage: true } : { key: 'header', node: header, isImage: false };
   }
 
   const section = el.closest('section[id]') as HTMLElement | null;
@@ -50,6 +50,7 @@ const PENCIL = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stro
 
 function labelFor(match: Editable): string {
   if (match.key === 'logo') return `${CAMERA} Replace logo`;
+  if (match.key === 'header') return `${PENCIL} Edit header`;
   if (match.key === 'brandIcon') return `${PENCIL} Edit logo & icon`;
   if (match.isImage) return `${CAMERA} Replace photo`;
   return `${PENCIL} Click to edit`;
@@ -60,6 +61,7 @@ function labelFor(match: Editable): string {
 // so each key lists every id/marker it could be; the first that exists wins.
 // The reverse of the builder's SECTION_TARGETS/edit-request routing.
 const SECTION_SELECTORS: Record<string, string> = {
+  header: 'header',
   hero: '#top',
   basics: 'header, #top',
   contactInfo: '[data-edit="bizPhone"], #contact',
