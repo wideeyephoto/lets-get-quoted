@@ -9,6 +9,7 @@ import { getAutomationActivity } from '@/lib/automation-activity';
 import { countRebookCandidates } from '@/lib/rebook';
 import { countRecentPrivateFeedback } from '@/lib/reviews';
 import { getSiteContent } from '@/lib/site-content';
+import { recommendBlogTopic } from '@/lib/blog-topics';
 import BlogReminderBanner from './BlogReminderBanner';
 
 function toDateKey(year: number, monthIndex: number, day: number): string {
@@ -59,11 +60,14 @@ export default async function DashboardPage() {
   const linkedMethodCount = identityData?.identities?.length ?? 1;
   const sitePublished = site?.published ?? false;
   // Blog publishing reminder (owner-set cadence in the builder's Blog section).
-  const blogContent = site?.content ? getSiteContent(site.content as Record<string, unknown>).blog : null;
+  const siteContentForBlog = site?.content ? getSiteContent(site.content as Record<string, unknown>) : null;
+  const blogContent = siteContentForBlog?.blog ?? null;
   const blogReminderWeeks = blogContent?.reminderWeeks ?? 0;
+  const publishedBlogCount = blogContent ? blogContent.posts.filter((post) => post.status === 'published').length : 0;
   const lastPublishedBlogISO = blogContent
     ? blogContent.posts.filter((post) => post.status === 'published' && post.date).map((post) => post.date).sort().slice(-1)[0] ?? null
     : null;
+  const blogTopicSuggestion = recommendBlogTopic(siteContentForBlog?.trade, publishedBlogCount);
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
   const siteUrl = sitePublished && site
     ? site.custom_domain && site.custom_domain_verified_at
@@ -252,7 +256,7 @@ export default async function DashboardPage() {
         </section>
       ) : null}
 
-      <BlogReminderBanner reminderWeeks={blogReminderWeeks} lastPublishedISO={lastPublishedBlogISO} sitesHref="/dashboard/sites" />
+      <BlogReminderBanner reminderWeeks={blogReminderWeeks} lastPublishedISO={lastPublishedBlogISO} suggestedTopic={blogTopicSuggestion} />
 
       {!onboardingComplete ? (
         <section className="panel workspace-section-card onboarding-panel">

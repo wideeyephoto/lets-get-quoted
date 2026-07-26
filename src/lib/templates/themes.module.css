@@ -160,7 +160,7 @@
    conic angle animate (degrades to a static bright ring where unsupported). */
 @property --lgqBorderAngle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
 .heroQuickForm::before {
-  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 2px;
+  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 3px;
   background: conic-gradient(from var(--lgqBorderAngle), var(--theme-accent), #22d3ee, #34d399, var(--theme-accent));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude;
