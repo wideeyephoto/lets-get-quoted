@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/auth';
 import { getJob } from '@/lib/jobs';
-import { getStripeClient, computeFeeRate, toCents, fromCents } from '@/lib/stripe';
+import { getStripeClient, computeFeeRate, computePlatformFee, computePlatformFeeCents, toCents, fromCents } from '@/lib/stripe';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendPaymentSmsEvent } from '@/lib/sms';
 
@@ -63,7 +63,7 @@ export async function getTrailingVolume(accountId: string): Promise<number> {
 export async function getQuotedFee(accountId: string, amount: number): Promise<{ feeRate: number; platformFee: number }> {
   const trailingVolume = await getTrailingVolume(accountId);
   const feeRate = computeFeeRate(trailingVolume);
-  const platformFee = fromCents(Math.round(toCents(amount) * feeRate));
+  const platformFee = computePlatformFee(amount, feeRate);
   return { feeRate, platformFee };
 }
 
@@ -209,7 +209,7 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
 
   const trailingVolume = await getTrailingVolume(payment.account_id);
   const feeRate = computeFeeRate(trailingVolume);
-  const platformFee = fromCents(Math.round(toCents(payment.amount) * feeRate));
+  const platformFee = computePlatformFee(payment.amount, feeRate);
 
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
@@ -227,7 +227,8 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
       },
     ],
     payment_intent_data: {
-      application_fee_amount: toCents(platformFee),
+      // Bill the exact fee cents (not a dollar round-trip) — same value, no drift.
+      application_fee_amount: computePlatformFeeCents(payment.amount, feeRate),
       transfer_data: { destination: payment.account.stripe_connect_id },
     },
     metadata: { payment_id: payment.id },

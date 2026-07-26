@@ -41,8 +41,10 @@ export type TierInfo = {
 };
 
 export function getTierInfo(trailingVolume: number): TierInfo {
-  const currentIndex = [...FEE_TIERS].reverse().findIndex((t) => trailingVolume >= t.minVolume);
-  const current = FEE_TIERS[FEE_TIERS.length - 1 - currentIndex] ?? FEE_TIERS[0];
+  // Pick `current` exactly the way computeFeeRate does — the highest tier whose
+  // floor the volume has reached — so the two can never disagree. (Boundaries are
+  // half-open: at exactly 100k you are in tier 2, not tier 1.)
+  const current = [...FEE_TIERS].reverse().find((t) => trailingVolume >= t.minVolume) ?? FEE_TIERS[0];
   const next = FEE_TIERS[FEE_TIERS.indexOf(current) + 1] ?? null;
 
   return {
@@ -52,7 +54,7 @@ export function getTierInfo(trailingVolume: number): TierInfo {
     minVolume: current.minVolume,
     maxVolume: current.maxVolume,
     nextTier: next ? { tier: next.tier, rate: next.rate, minVolume: next.minVolume } : null,
-    progressToNext: next ? Math.min(1, (trailingVolume - current.minVolume) / (next.minVolume - current.minVolume)) : null,
+    progressToNext: next ? Math.max(0, Math.min(1, (trailingVolume - current.minVolume) / (next.minVolume - current.minVolume))) : null,
     amountToNextTier: next ? Math.max(0, next.minVolume - trailingVolume) : null,
   };
 }
@@ -64,4 +66,16 @@ export function toCents(dollars: number): number {
 
 export function fromCents(cents: number): number {
   return Math.round(cents) / 100;
+}
+
+// The platform fee for a charge, in integer cents — the single source of truth for
+// what we bill and hand to Stripe as application_fee_amount. Rounds exactly once,
+// at the cent, from the exact charge amount so the fee can never drift.
+export function computePlatformFeeCents(amount: number, feeRate: number): number {
+  return Math.round(toCents(amount) * feeRate);
+}
+
+// The same fee expressed in dollars, for storage (payments.platform_fee) and display.
+export function computePlatformFee(amount: number, feeRate: number): number {
+  return fromCents(computePlatformFeeCents(amount, feeRate));
 }
