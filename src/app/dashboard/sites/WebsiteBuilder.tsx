@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState, useTransition, type CSSProper
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, getTradeGlyphOptions, glyphForContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
+import { getSiteContent, getTradeGlyphOptions, glyphForContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES,
+  MENU_BUTTON_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
 import { generatePrivacyPolicy, generateTermsOfService } from '@/lib/legal/legal-copy';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
@@ -1602,6 +1603,18 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                       </button>
                     ))}
                   </div>
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.headerCta} onChange={(event) => updateSiteContent({ headerCta: event.target.checked })} /><span><strong>Show the button in the header</strong><small>The call-to-action at the top-right of every page. Off = just your logo and menu. (Always hidden on phones — the menu carries the action there.)</small></span></label>
+
+                  <hr className={styles.logoDivider} />
+                  <div className={styles.contentSubhead}><strong>Mobile menu button</strong><small>The hamburger shown on phones.</small></div>
+                  <div className={styles.footerPicker} role="group" aria-label="Mobile menu button style">
+                    {MENU_BUTTON_STYLES.map((m) => (
+                      <button type="button" key={m.key} className={`${styles.footerPickerBtn}${siteContent.menuButton === m.key ? ` ${styles.footerPickerBtnOn}` : ''}`} aria-pressed={siteContent.menuButton === m.key} onClick={() => updateSiteContent({ menuButton: m.key })}>
+                        <strong>{m.label}</strong><small>{m.desc}</small>
+                      </button>
+                    ))}
+                  </div>
+
                   <hr className={styles.logoDivider} />
                   <div className={styles.cardGroupLabel}>Type &amp; layout</div>
                   <div className={styles.formColumns}>

@@ -1768,6 +1768,32 @@
 }
 @media (min-width: 901px) { .mobileNavOverlay { display: none; } }
 @media (prefers-reduced-motion: reduce) { .mobileNavOverlay { animation: none; } .mobileNavToggle span { transition: none; } }
+
+/* Header CTA button hidden everywhere when the owner turns it off (data-header-cta). */
+.site[data-header-cta='off'] .guildHeader .guildQuote,
+.site[data-header-cta='off'] .coatHeader .coatHeaderCta,
+.site[data-header-cta='off'] .careHeader .careBtn,
+.site[data-header-cta='off'] .shineHeader .shineHeaderCta,
+.site[data-header-cta='off'] .fixitHeader .fixitHeaderCta,
+.site[data-header-cta='off'] .renoHeader .renoHeaderCta,
+.site[data-header-cta='off'] .forgeHeader .forgeHeaderCta,
+.site[data-header-cta='off'] .vistaHeader .vistaMenu { display: none; }
+
+/* Mobile hamburger-button styles (data-menu-btn on the root). Default = bars. */
+.site[data-menu-btn='thin'] .mobileNavToggle { gap: 5px; }
+.site[data-menu-btn='thin'] .mobileNavToggle span { width: 20px; height: 1.5px; }
+
+.site[data-menu-btn='pill'] .mobileNavToggle { background: var(--theme-accent); border-color: transparent; color: var(--theme-on-accent, #fff); }
+
+.site[data-menu-btn='dots'] .mobileNavToggle { gap: 3px; }
+.site[data-menu-btn='dots'] .mobileNavToggle span { width: 5px; height: 5px; border-radius: 50%; }
+.site[data-menu-btn='dots'] .mobileNavToggle[aria-expanded='true'] span { transform: none; opacity: 1; }
+.site[data-menu-btn='dots'] .mobileNavToggle[aria-expanded='true'] span:nth-child(2) { opacity: .3; }
+
+.site[data-menu-btn='labeled'] .mobileNavToggle { width: auto; height: 38px; padding: 0 .8rem; gap: 0; }
+.site[data-menu-btn='labeled'] .mobileNavToggle span { display: none; }
+.site[data-menu-btn='labeled'] .mobileNavToggle::before { content: 'Menu'; font-size: .78rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: inherit; }
+.site[data-menu-btn='labeled'] .mobileNavToggle[aria-expanded='true']::before { content: 'Close'; }
 /* Utility strip for the 'utility' header style — a slim accent bar above the
    header carrying phone / hours / licensed. Rendered by SiteHeaderUtilityBar in
    every template; shows on mobile too, so it lives outside the desktop block. */

@@ -340,6 +340,16 @@ export const HEADER_STYLES = [
   { key: 'cta', label: 'CTA edge block', desc: 'Accent action fused to the right edge.' },
 ] as const;
 
+// Mobile hamburger-button styles, applied via data-menu-btn on the root.
+export const MENU_BUTTON_STYLES = [
+  { key: 'bars', label: 'Bars', desc: 'The classic three lines.' },
+  { key: 'thin', label: 'Thin lines', desc: 'Lighter, wider-spaced lines.' },
+  { key: 'pill', label: 'Accent pill', desc: 'Lines in a filled accent button.' },
+  { key: 'dots', label: 'Dots', desc: 'Three stacked dots.' },
+  { key: 'labeled', label: 'Menu label', desc: 'A bordered "Menu" text button.' },
+] as const;
+const MENU_BUTTON_STYLE_KEYS = new Set<string>(MENU_BUTTON_STYLES.map((style) => style.key));
+
 // Display treatments for the company-name wordmark (header + footer), applied
 // via data-wordmark on the root. '' = the plain name. CSS-only, so they layer
 // on top of whatever brand font is chosen.
@@ -489,6 +499,10 @@ export type NormalizedSiteContent = {
   // Header layout: '' = the template's natural style, else one of
   // HEADER_STYLES ('balanced' | 'left' | 'cta'). Drives data-header on the root.
   headerStyle: string;
+  // Show the CTA button in the header (data-header-cta off = hidden everywhere).
+  headerCta: boolean;
+  // Mobile hamburger button style (data-menu-btn). See MENU_BUTTON_STYLES.
+  menuButton: string;
   // Full-page color scheme key ('' = the theme's own palette). See COLOR_SCHEMES.
   colorScheme: string;
   // Company-name wordmark display treatment ('' = plain). See WORDMARK_STYLES.
@@ -955,6 +969,8 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     heroEyebrow: toString(root.heroEyebrow).slice(0, 50),
     brandFont: toString(root.brandFont).slice(0, 120),
     headerStyle: HEADER_STYLES.some((style) => style.key === root.headerStyle) ? toString(root.headerStyle) : '',
+    headerCta: root.headerCta !== false,
+    menuButton: MENU_BUTTON_STYLE_KEYS.has(toString(root.menuButton)) ? toString(root.menuButton) : 'bars',
     colorScheme: COLOR_SCHEMES.some((scheme) => scheme.key === root.colorScheme) ? toString(root.colorScheme) : '',
     wordmarkStyle: WORDMARK_STYLES.some((style) => style.key === root.wordmarkStyle) ? toString(root.wordmarkStyle) : '',
     projectShowcase: {
