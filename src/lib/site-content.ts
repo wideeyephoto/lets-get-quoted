@@ -524,6 +524,9 @@ export type NormalizedSiteContent = {
   // The owner's trade / contractor type (e.g. "window cleaning", "roofing"),
   // used together with the business name to generate on-brand AI content.
   trade: string;
+  // Business ZIP code — seeds the AI so it can name the real primary city and
+  // nearby towns for the service area (not a generic guess).
+  zip: string;
   // The owner's chosen brand-mark glyph key (from the trade options). Empty falls
   // back to the trade default. Drives the header/footer logo mark, favicon, and
   // downloadable icon when no logo image is uploaded.
@@ -1004,6 +1007,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     logoSize: LOGO_SIZE_KEYS.has(toString(root.logoSize)) ? toString(root.logoSize) : 'medium',
     footerStyle: FOOTER_STYLE_KEYS.has(toString(root.footerStyle)) ? toString(root.footerStyle) : 'columns',
     trade: toString(root.trade).slice(0, 80),
+    zip: toString(root.zip).slice(0, 12),
     brandGlyph: SERVICE_ICON_GLYPHS[toString(root.brandGlyph)] ? toString(root.brandGlyph) : '',
     stockImages: parseStockImages(root.stockImages),
   };

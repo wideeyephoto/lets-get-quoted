@@ -735,7 +735,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     setMessage(null);
     startTransition(async () => {
       try {
-        const generated = await generateSiteTextAction({ trade: getSiteContent(site.content).trade, companyName: site.company_name, serviceArea: site.service_area ?? undefined });
+        const generated = await generateSiteTextAction({ trade: getSiteContent(site.content).trade, companyName: site.company_name, serviceArea: site.service_area ?? undefined, zip: getSiteContent(site.content).zip });
         setSite((current) => {
           const content = getSiteContent(current.content);
           const contentUpdates: Partial<NormalizedSiteContent> = {};
@@ -1024,7 +1024,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   // page, so it's locked (no grip) and never a drop target. It only dims when a
   // real drag is happening elsewhere.
   const pinnedHeroReorder = () => ({
-    grip: <span className={styles.sectionLock} title="Your hero is always the top of your page" aria-label="Pinned to the top">🔒</span>,
+    grip: null,
     sectionKey: 'hero',
     orderIndex: -1,
     active: false,
@@ -1037,7 +1037,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   // grip) and never a drop target. A lower order index than the Hero keeps it on
   // top.
   const pinnedHeaderReorder = () => ({
-    grip: <span className={styles.sectionLock} title="Your header is always the top of your page" aria-label="Pinned to the top">🔒</span>,
+    grip: null,
     sectionKey: 'header',
     orderIndex: -2,
     active: false,
@@ -1049,7 +1049,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   // order), so it's locked (no grip) and never a drop target — mirror of the
   // pinned Hero at the top.
   const pinnedFooterReorder = () => ({
-    grip: <span className={styles.sectionLock} title="Your footer is always the bottom of your page" aria-label="Pinned to the bottom">🔒</span>,
+    grip: null,
     sectionKey: 'footer',
     orderIndex: 900,
     active: false,
@@ -1441,12 +1441,13 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
                 <SectionCard title="Business basics" description="Your company name and trade power everything else — including the AI quick-start below." open={openSection === 'basics'} onToggleOpen={() => toggleSection('basics')}>
                   <div className={styles.drivers}>
-                    <p className={styles.driversKicker}>✦ These two power your whole site</p>
+                    <p className={styles.driversKicker}>✦ These power your whole site</p>
                     <div className={styles.formColumns}>
                       <label className={styles.formField}><span>Company name</span><input id="bf-company" value={site.company_name} onChange={(event) => handleChange('company_name', event.target.value)} /></label>
                       <label className={styles.formField}><span>Field of work / trade</span><input value={siteContent.trade} onChange={(event) => updateSiteContent({ trade: event.target.value })} placeholder="e.g. Window cleaning, roofing, HVAC" /></label>
                     </div>
-                    <p className={styles.driversCaption}>Your headline, services, FAQs, and Google listing are all generated from these two.</p>
+                    <label className={styles.formField}><span>ZIP code</span><input value={siteContent.zip} maxLength={12} inputMode="numeric" onChange={(event) => updateSiteContent({ zip: event.target.value })} placeholder="e.g. 48226" /><small className={styles.fieldHint}>Sets your service area — the AI names the real nearby cities and towns you serve.</small></label>
+                    <p className={styles.driversCaption}>Your headline, services, FAQs, service area, and Google listing are all generated from these.</p>
                   </div>
                   <button type="button" className={`btn primary ${styles.aiButton}`} onClick={handleGenerateText} disabled={isGeneratingText}>
                     {isGeneratingText ? 'Creating your tailored Website...' : '✨ Generate a full example site with AI'}

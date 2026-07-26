@@ -63,7 +63,7 @@ export default function SectionCard({ title, description, evidence, enabled, onT
       style={rootStyle}
     >
       <div className={styles.sectionCardHead}>
-        {reorder && <div className={styles.sectionCardGrip}>{reorder.grip}</div>}
+        {reorder && reorder.grip && <div className={styles.sectionCardGrip}>{reorder.grip}</div>}
         {hasSwitch && (
           <label className={styles.sectionCardSwitch}>
             <input type="checkbox" checked={enabled} onChange={(event) => onToggleEnabled!(event.target.checked)} />

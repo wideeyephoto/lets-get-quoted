@@ -188,7 +188,7 @@ function extractOutputText(payload: unknown): string {
 // anything — the caller applies the result to local state and the usual
 // Save button persists it.
 export async function generateSiteTextAction(
-  options?: { trade?: string; companyName?: string; serviceArea?: string },
+  options?: { trade?: string; companyName?: string; serviceArea?: string; zip?: string },
 ): Promise<GeneratedSiteText> {
   const { supabase, accountId } = await requireOwnerContext();
 
@@ -213,6 +213,7 @@ export async function generateSiteTextAction(
   // Save — including the SEO copy derived below.
   const companyName = (typeof options?.companyName === 'string' && options.companyName.trim()) || currentSite.company_name || 'this local business';
   const serviceArea = (typeof options?.serviceArea === 'string' && options.serviceArea.trim()) || currentSite.service_area || '';
+  const zip = typeof options?.zip === 'string' ? options.zip.trim().slice(0, 12) : '';
   const tradeInput = typeof options?.trade === 'string' ? options.trade.trim().slice(0, 80) : '';
   const styleSeed = COPY_STYLE_SEEDS[Math.floor(Math.random() * COPY_STYLE_SEEDS.length)];
 
@@ -222,7 +223,7 @@ export async function generateSiteTextAction(
       ? `The business is a ${tradeInput} — write every part of the site specifically for that trade. `
       : 'Infer their trade (HVAC, plumbing, landscaping, cleaning, roofing, electrical, remodeling, etc.) from the business name. ') +
     `Write in a ${styleSeed} tone. ` +
-    'Optimize for LOCAL search: when a service area is provided, identify its primary city or region and pair the trade with that location so a homeowner searching "[trade] in [city]" would match. If no service area is given, lead with the trade alone and never invent a location. ' +
+    'Optimize for LOCAL search: when a service area or ZIP code is provided, determine the primary city or region (resolve the ZIP to its real city and surrounding towns) and pair the trade with that location so a homeowner searching "[trade] in [city]" would match — fill service_area and cities with the REAL nearby city, town, and neighborhood names for that location. If neither a service area nor a ZIP is given, lead with the trade alone and never invent a location. ' +
     'Avoid generic filler like "quality you can trust" or "customer satisfaction is our priority" — be specific to the trade and mention concrete services or benefits a homeowner in that trade would care about. ' +
     'This is placeholder example text the contractor will personalize later, so make it feel like a real, distinct business rather than a generic template. ' +
     'Also produce example content to fill out the whole site: the real services this trade offers, common homeowner FAQs, typical business hours, the service area with nearby cities, a couple of example testimonials, and a few headline stats. ' +
@@ -244,7 +245,7 @@ export async function generateSiteTextAction(
     '}. Include 4 to 5 services, 5 faqs, 2 to 3 testimonials, and 3 to 4 stats.';
 
   const input =
-    `Business name: ${companyName}. ${tradeInput ? `Trade / field of work: ${tradeInput}. ` : ''}${serviceArea ? `Service area: ${serviceArea}. ` : ''}` +
+    `Business name: ${companyName}. ${tradeInput ? `Trade / field of work: ${tradeInput}. ` : ''}${serviceArea ? `Service area: ${serviceArea}. ` : ''}${zip ? `Business ZIP code: ${zip}. ` : ''}` +
     'Generate the example website text described above. Respond with json only.';
 
   try {
