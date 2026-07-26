@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition, type CSSProperties, type ReactNode } from 'react';
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
@@ -1372,26 +1372,47 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 </div>
 
                 <SectionCard title="Business basics" description="Your company name and trade power everything else — including the AI quick-start below." open={openSection === 'basics'} onToggleOpen={() => toggleSection('basics')}>
-                  <div className={styles.formColumns}>
-                    <label className={styles.formField}><span>Company name</span><input id="bf-company" value={site.company_name} onChange={(event) => handleChange('company_name', event.target.value)} /></label>
-                    <label className={styles.formField}><span>Field of work / trade</span><input value={siteContent.trade} onChange={(event) => updateSiteContent({ trade: event.target.value })} placeholder="e.g. Window cleaning, roofing, HVAC" /></label>
+                  <div className={styles.drivers}>
+                    <p className={styles.driversKicker}>✦ These two power your whole site</p>
+                    <div className={styles.formColumns}>
+                      <label className={styles.formField}><span>Company name</span><input id="bf-company" value={site.company_name} onChange={(event) => handleChange('company_name', event.target.value)} /></label>
+                      <label className={styles.formField}><span>Field of work / trade</span><input value={siteContent.trade} onChange={(event) => updateSiteContent({ trade: event.target.value })} placeholder="e.g. Window cleaning, roofing, HVAC" /></label>
+                    </div>
+                    <p className={styles.driversCaption}>Your headline, services, FAQs, and Google listing are all generated from these two.</p>
                   </div>
-                  <label className={styles.formField} id="bf-brand-font"><span>Company name font</span>
-                    <select value={siteContent.brandFont} onChange={(event) => updateSiteContent({ brandFont: event.target.value })} style={{ fontFamily: siteContent.brandFont && siteContent.brandFont !== 'var(--theme-display)' ? siteContent.brandFont : undefined }}>
-                      <option value="">Theme default</option>
-                      <option value="var(--theme-display)">Match heading font</option>
-                      {HEADING_FONT_OPTIONS.map((font) => <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>{font.label}</option>)}
-                    </select>
-                    <small className={styles.fieldHint}>Your business name in the header &amp; footer. Type it in any capitalization — it shows exactly as you type.</small>
-                  </label>
-                  <label className={styles.formField}><span>Company name style</span>
-                    <select value={siteContent.wordmarkStyle} onChange={(event) => updateSiteContent({ wordmarkStyle: event.target.value })}>
-                      <option value="">Standard</option>
-                      {WORDMARK_STYLES.map((style) => <option key={style.key} value={style.key}>{style.label}</option>)}
-                    </select>
-                    <small className={styles.fieldHint}>A display treatment layered on top of the font — accent initial, an underline, an outlined box, or wide caps.</small>
-                  </label>
-                  <button type="button" className="btn secondary" onClick={handleGenerateText} disabled={isGeneratingText}>
+                  <div className={styles.formColumns}>
+                    <label className={styles.formField} id="bf-brand-font"><span>Company name font</span>
+                      <select value={siteContent.brandFont} onChange={(event) => updateSiteContent({ brandFont: event.target.value })} style={{ fontFamily: siteContent.brandFont && siteContent.brandFont !== 'var(--theme-display)' ? siteContent.brandFont : undefined }}>
+                        <option value="">Theme default</option>
+                        <option value="var(--theme-display)">Match heading font</option>
+                        {HEADING_FONT_OPTIONS.map((font) => <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>{font.label}</option>)}
+                      </select>
+                    </label>
+                    <label className={styles.formField}><span>Company name style</span>
+                      <select value={siteContent.wordmarkStyle} onChange={(event) => updateSiteContent({ wordmarkStyle: event.target.value })}>
+                        <option value="">Standard</option>
+                        {WORDMARK_STYLES.map((style) => <option key={style.key} value={style.key}>{style.label}</option>)}
+                      </select>
+                    </label>
+                  </div>
+                  <small className={styles.fieldHint}>Your business name in the header &amp; footer — shown exactly as you type. The style layers a treatment on top: accent initial, underline, outlined box, or wide caps.</small>
+
+                  <div className={styles.namePreview} aria-live="polite">
+                    <span className={styles.namePreviewLabel}>Preview</span>
+                    <span
+                      className={styles.namePreviewMark}
+                      data-wm={siteContent.wordmarkStyle || 'plain'}
+                      style={{ fontFamily: siteContent.brandFont && siteContent.brandFont !== 'var(--theme-display)' ? siteContent.brandFont : undefined, '--wm-accent': site.accent_override || '#ff7a21' } as CSSProperties}
+                    >
+                      {site.company_name.trim()
+                        ? siteContent.wordmarkStyle === 'initial'
+                          ? (<><span className={styles.wmAccent}>{[...site.company_name.trim()][0]}</span>{[...site.company_name.trim()].slice(1).join('')}</>)
+                          : site.company_name
+                        : <span className={styles.namePreviewEmpty}>Your company name</span>}
+                    </span>
+                  </div>
+
+                  <button type="button" className={`btn primary ${styles.aiButton}`} onClick={handleGenerateText} disabled={isGeneratingText}>
                     {isGeneratingText ? 'Creating your tailored Website...' : '✨ Generate a full example site with AI'}
                   </button>
                   <small className={styles.fieldHint}>Fills in your whole site — headline, services, FAQs, Google listing, and more — from these two fields. Watch it appear in the preview. Testimonials and stats are generated too, but left off until you swap in your real ones.</small>

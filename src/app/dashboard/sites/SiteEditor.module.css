@@ -66,6 +66,33 @@
 .formField select option { background: #101c2b; }
 .formField small { color: #9ca8b8; font-weight: 400; line-height: 1.4; }
 .formColumns { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+
+/* Setup · Business basics — "spotlight" the two fields that drive the whole site
+   (company name + trade), then preview the name in the chosen font/style. */
+.drivers {
+  display: grid;
+  gap: .7rem;
+  padding: 1rem;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 122, 33, .4);
+  background: linear-gradient(180deg, rgba(255, 122, 33, .12), rgba(255, 122, 33, .035));
+  box-shadow: 0 0 0 4px rgba(255, 122, 33, .05), inset 0 1px 0 rgba(255, 255, 255, .05);
+}
+.driversKicker { margin: 0; font-size: .66rem; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; color: #ffb27a; }
+.drivers .formField > span { color: #fff; }
+.drivers .formField input { min-height: 48px; padding: .72rem .8rem; font-size: 1.02rem; font-weight: 600; background: rgba(6, 14, 24, .72); border-color: rgba(255, 122, 33, .45); }
+.driversCaption { margin: 0; font-size: .75rem; line-height: 1.45; color: rgba(255, 181, 122, .92); }
+
+.namePreview { display: flex; align-items: center; gap: .85rem; padding: .8rem 1rem; border-radius: 10px; border: 1px dashed rgba(255, 255, 255, .16); background: rgba(255, 255, 255, .03); overflow: hidden; }
+.namePreviewLabel { flex: none; font-size: .62rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #9ca8b8; }
+.namePreviewMark { min-width: 0; font-size: 1.5rem; font-weight: 800; line-height: 1.15; color: #f7f5ef; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.namePreviewMark[data-wm="caps"] { text-transform: uppercase; letter-spacing: .1em; }
+.namePreviewMark[data-wm="underline"] { border-bottom: 3px solid var(--wm-accent, #ff7a21); padding-bottom: .06em; }
+.namePreviewMark[data-wm="box"] { border: 2px solid rgba(255, 255, 255, .55); border-radius: 7px; padding: .06em .4em; }
+.wmAccent { color: var(--wm-accent, #ff7a21); }
+.namePreviewEmpty { font-size: 1.05rem; font-weight: 500; font-style: italic; color: #6f7d90; }
+
+.aiButton { width: 100%; justify-content: center; box-shadow: 0 14px 30px -14px rgba(255, 90, 31, .6); }
 .formSection .themeGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .contentCard { display: grid; gap: .9rem; padding: 1rem; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(255,255,255,.035); }
 
