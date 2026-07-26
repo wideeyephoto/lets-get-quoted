@@ -480,6 +480,10 @@
 .blogChromeMark svg { width: 20px; height: 20px; }
 .blogChromeCta { display: inline-flex; align-items: center; padding: .55rem 1.2rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #fff); font-weight: 800; font-size: .9rem; text-decoration: none; white-space: nowrap; transition: filter .15s; }
 .blogChromeCta:hover { filter: brightness(1.05); }
+.blogChromeNav { display: flex; align-items: center; gap: clamp(1rem, 3vw, 2rem); margin: 0 auto; font-weight: 700; font-size: .92rem; }
+.blogChromeNav a { color: var(--c-ink, inherit); text-decoration: none; opacity: .82; transition: opacity .15s ease, color .15s ease; }
+.blogChromeNav a:hover { opacity: 1; color: var(--theme-accent); }
+@media (max-width: 760px) { .blogChromeNav { display: none; } }
 /* Reading-progress bar — fixed over the top accent line, fills as you scroll. */
 .blogProgress { position: fixed; top: 0; left: 0; right: 0; height: 4px; z-index: 60; background: transparent; pointer-events: none; }
 .blogProgress span { display: block; height: 100%; width: 0; background: var(--theme-accent); transition: width .12s linear; }

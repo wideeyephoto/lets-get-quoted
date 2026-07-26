@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import type { Site } from '@/lib/sites';
-import { getColorScheme, getSiteContent, glyphForContent, type SiteBlogPost } from '@/lib/site-content';
+import { getColorScheme, getPublishedFaqs, getPublishedServices, getPublishedShowcase, getPublishedTestimonials, getSiteContent, glyphForContent, type SiteBlogPost } from '@/lib/site-content';
 import BlogReadingProgress from './BlogReadingProgress';
 import ServiceIcon from './ServiceIcon';
 import SiteFooter from './SiteFooter';
@@ -40,6 +40,17 @@ export default function SiteBlogArticle({ site, post }: { site: Site; post: Site
   const themeClass = THEME_CLASS[site.template] || 'forge';
   const date = formatBlogDate(post.date);
 
+  // The site's nav, pointing back to the homepage sections (and /blog), so a
+  // reader can jump into the rest of the site from a post.
+  const showcase = getPublishedShowcase(site.content);
+  const navLinks = [
+    ...(getPublishedServices(site.content) ? [{ href: '/#our-services', label: 'Services' }] : []),
+    ...(showcase ? [{ href: '/#showcase', label: showcase.navLabel.trim() || 'Gallery' }] : []),
+    ...(getPublishedTestimonials(site.content) ? [{ href: '/#reviews', label: 'Reviews' }] : []),
+    ...(getPublishedFaqs(site.content) ? [{ href: '/#faqs', label: 'FAQs' }] : []),
+    { href: '/blog', label: 'Blog' },
+  ];
+
   // BlogPosting schema so the post can qualify for article rich results. This is
   // legitimate content markup (not the disallowed self-serving review schema).
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
@@ -69,6 +80,9 @@ export default function SiteBlogArticle({ site, post }: { site: Site; post: Site
             : <span className={styles.blogChromeMark}><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}
           <strong>{site.company_name}</strong>
         </a>
+        <nav className={styles.blogChromeNav} aria-label="Site navigation">
+          {navLinks.map((link) => <a key={link.href} href={link.href}>{link.label}</a>)}
+        </nav>
         <a className={styles.blogChromeCta} href="/#contact">Get a free quote</a>
       </header>
       <div className={styles.blogArticleShell}>

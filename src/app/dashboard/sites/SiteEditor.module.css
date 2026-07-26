@@ -278,7 +278,7 @@
 .itemHeader .itemSaveBtn { border-color: rgba(74,222,128,.4); background: rgba(74,222,128,.12); color: #4ade80; }
 .secondaryAction { justify-self: start; }
 /* The AI generate button — deliberately loud so it's the obvious next step. */
-.blogGenerateBtn { width: 100%; min-height: 52px; margin: .2rem 0; padding: .9rem 1.4rem; border: 0; border-radius: 12px; background: linear-gradient(120deg, #ff7a21, #ff9d4d); color: #17140f; font-weight: 900; font-size: 1.02rem; cursor: pointer; box-shadow: 0 12px 28px -10px rgba(255,122,33,.6); transition: transform .18s ease, box-shadow .22s ease, filter .18s ease; }
+.blogGenerateBtn { box-sizing: border-box; width: 100%; min-height: 52px; margin: .2rem 0; padding: .9rem 1.4rem; border: 0; border-radius: 12px; background: linear-gradient(120deg, #ff7a21, #ff9d4d); color: #17140f; font-weight: 900; font-size: 1.02rem; cursor: pointer; box-shadow: 0 12px 28px -10px rgba(255,122,33,.6); transition: transform .18s ease, box-shadow .22s ease, filter .18s ease; }
 .blogGenerateBtn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 18px 38px -10px rgba(255,122,33,.72); filter: brightness(1.05); }
 .blogGenerateBtn:active:not(:disabled) { transform: translateY(0); }
 .blogGenerateBtn:disabled { opacity: .65; cursor: default; }
