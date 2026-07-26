@@ -169,6 +169,22 @@ const TRADE_GLYPH_NOUNS: Record<string, string> = {
   hardhat: 'hard hat',
   hammer: 'hammer',
   grid: 'tile grid',
+  faucet: 'faucet',
+  drip: 'water drip',
+  treestump: 'tree stump',
+  cactus: 'cactus',
+  bulldozer: 'bulldozer',
+  chainsaw: 'chainsaw',
+  toolscross: 'crossed tools',
+  palm: 'palm tree',
+  shrub: 'shrub',
+  leafyGreen: 'leafy plant',
+  pickaxe: 'pickaxe',
+  tractor: 'tractor',
+  fence: 'fence',
+  rat: 'rodent',
+  recycle: 'recycle',
+  thermometerSnow: 'thermometer',
 };
 
 // Apply auto-selected stock photos to the site, preserving the owner's uploads

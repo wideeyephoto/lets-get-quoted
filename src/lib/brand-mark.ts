@@ -23,8 +23,12 @@ function safeAccent(accent: string | null | undefined): string {
 //   'accent' — glyph alone in the accent color, transparent tile (transparent favicon)
 export function buildBrandMarkSvg(glyphKey: string, accent: string | null | undefined, variant: BrandMarkVariant = 'color'): string {
   const glyph = SERVICE_ICON_GLYPHS[glyphKey] ?? SERVICE_ICON_GLYPHS.wrench;
-  const stroke = variant === 'black' ? GLYPH_DARK : variant === 'accent' ? safeAccent(accent) : '#ffffff';
+  const paintColor = variant === 'black' ? GLYPH_DARK : variant === 'accent' ? safeAccent(accent) : '#ffffff';
   const tile = variant === 'color' ? `<rect width="64" height="64" rx="14" fill="${safeAccent(accent)}"/>` : '';
+  // Stroke glyphs (Lucide) paint via stroke; solid-fill raw glyphs via fill.
+  const paint = glyph.mode === 'fill'
+    ? `fill="${paintColor}" stroke="none"`
+    : `fill="none" stroke="${paintColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
   // Center the glyph at ~36px inside the 64×64 tile, whatever its native grid.
   const target = 36;
   const scale = round3(target / Math.max(glyph.width, glyph.height));
@@ -33,7 +37,7 @@ export function buildBrandMarkSvg(glyphKey: string, accent: string | null | unde
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">` +
     tile +
-    `<g transform="translate(${tx} ${ty}) scale(${scale})" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${glyph.body}</g>` +
+    `<g transform="translate(${tx} ${ty}) scale(${scale})" ${paint}>${glyph.body}</g>` +
     `</svg>`
   );
 }

@@ -54,6 +54,24 @@ describe('getTradeGlyphOptions', () => {
     expect(getTradeGlyphOptions('HVAC')).toContain('snowflake');
     expect(getTradeGlyphOptions('Roofing')).not.toContain('showerhead');
   });
+
+  it('surfaces the newly-added icons for their trades', () => {
+    expect(getTradeGlyphOptions('Tree Service')).toContain('chainsaw');
+    expect(getTradeGlyphOptions('Stump Removal')).toContain('treestump');
+    expect(getTradeGlyphOptions('Lawn Care & Landscaping')).toContain('tractor');
+    expect(getTradeGlyphOptions('Pressure Washing')).toContain('faucet');
+    expect(getTradeGlyphOptions('Pest Control')).toContain('rat');
+    expect(getTradeGlyphOptions('Junk Removal & Hauling')).toContain('recycle');
+    expect(getTradeGlyphOptions('Construction')).toContain('bulldozer');
+    expect(getTradeGlyphOptions('Remodeling & Renovations')).toContain('toolscross');
+  });
+
+  it('keeps every trade default (options[0]) a clean stroke Lucide glyph, never a fill icon', () => {
+    const fillKeys = new Set(['treestump', 'cactus', 'bulldozer', 'chainsaw', 'toolscross']);
+    for (const trade of TRADES) {
+      expect(fillKeys.has(getTradeGlyph(trade))).toBe(false);
+    }
+  });
 });
 
 describe('glyphForContent', () => {

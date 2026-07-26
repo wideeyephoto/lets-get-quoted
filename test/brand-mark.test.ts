@@ -25,6 +25,14 @@ describe('buildBrandMarkSvg', () => {
     expect(svg).toContain('stroke="#ffffff"');
   });
 
+  it('fill-mode glyph paints with fill, not stroke (raw solid icons)', () => {
+    // chainsaw is a baked-in raw icon with mode: 'fill'.
+    expect(SERVICE_ICON_GLYPHS.chainsaw.mode).toBe('fill');
+    const svg = buildBrandMarkSvg('chainsaw', '#123456', 'color');
+    expect(svg).toContain('fill="#ffffff" stroke="none"'); // glyph filled white on the tile
+    expect(svg).not.toContain('stroke="#ffffff"');
+  });
+
   it('accent variant: no tile, glyph in the accent color (transparent favicon)', () => {
     const svg = buildBrandMarkSvg('wrench', '#123456', 'accent');
     expect(svg).not.toContain('<rect');
