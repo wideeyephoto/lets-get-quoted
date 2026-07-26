@@ -7,7 +7,7 @@ import { SERVICE_ICON_GLYPHS } from '@/lib/templates/ServiceIcon';
 // downloadable logo files a contractor can reuse on trucks, invoices, and social.
 // Vector only, no fonts, no external refs, so it scales and rasterizes cleanly.
 
-export type BrandMarkVariant = 'color' | 'black' | 'white';
+export type BrandMarkVariant = 'color' | 'black' | 'white' | 'accent';
 
 export const DEFAULT_BRAND_ACCENT = '#ff7a21';
 const GLYPH_DARK = '#0e1622';
@@ -17,12 +17,13 @@ function safeAccent(accent: string | null | undefined): string {
 }
 
 // Build the mark for a given glyph key + accent.
-//   'color' — rounded accent tile with a white glyph (favicon + primary download)
-//   'black' — glyph alone in dark ink, transparent tile (one-color print on light)
-//   'white' — glyph alone in white, transparent tile (reversed, for dark surfaces)
+//   'color'  — rounded accent tile with a white glyph (favicon + primary download)
+//   'black'  — glyph alone in dark ink, transparent tile (one-color print on light)
+//   'white'  — glyph alone in white, transparent tile (reversed, for dark surfaces)
+//   'accent' — glyph alone in the accent color, transparent tile (transparent favicon)
 export function buildBrandMarkSvg(glyphKey: string, accent: string | null | undefined, variant: BrandMarkVariant = 'color'): string {
   const glyph = SERVICE_ICON_GLYPHS[glyphKey] ?? SERVICE_ICON_GLYPHS.wrench;
-  const stroke = variant === 'black' ? GLYPH_DARK : '#ffffff';
+  const stroke = variant === 'black' ? GLYPH_DARK : variant === 'accent' ? safeAccent(accent) : '#ffffff';
   const tile = variant === 'color' ? `<rect width="64" height="64" rx="14" fill="${safeAccent(accent)}"/>` : '';
   // Center the glyph at ~36px inside the 64×64 tile, whatever its native grid.
   const target = 36;
@@ -56,7 +57,10 @@ export function brandMarkDataUri(svg: string): string {
 // The `icons` block for a published site's generateMetadata — a per-site SVG
 // favicon so a contractor's tab shows their trade mark, not the platform's.
 export function siteIconsMetadata(site: BrandMarkSite): { icon: { url: string; type: string }[]; shortcut: { url: string; type: string }[] } {
-  const url = brandMarkDataUri(siteBrandMarkSvg(site, 'color'));
+  // Honor the owner's "Transparent background" choice: a tile-less, accent-
+  // colored mark instead of the white-on-accent tile.
+  const transparent = getSiteContent(site.content).logoStyle === 'transparent';
+  const url = brandMarkDataUri(siteBrandMarkSvg(site, transparent ? 'accent' : 'color'));
   const entry = [{ url, type: 'image/svg+xml' }];
   return { icon: entry, shortcut: entry };
 }

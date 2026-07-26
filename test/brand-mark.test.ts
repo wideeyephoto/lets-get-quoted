@@ -25,6 +25,13 @@ describe('buildBrandMarkSvg', () => {
     expect(svg).toContain('stroke="#ffffff"');
   });
 
+  it('accent variant: no tile, glyph in the accent color (transparent favicon)', () => {
+    const svg = buildBrandMarkSvg('wrench', '#123456', 'accent');
+    expect(svg).not.toContain('<rect');
+    expect(svg).toContain('stroke="#123456"');
+    expect(svg).toContain(SERVICE_ICON_GLYPHS.wrench.body);
+  });
+
   it('falls back to the wrench glyph for an unknown key', () => {
     expect(buildBrandMarkSvg('nope', '#123456', 'color')).toContain(SERVICE_ICON_GLYPHS.wrench.body);
   });
@@ -70,5 +77,17 @@ describe('brandMarkDataUri / siteIconsMetadata', () => {
     expect(icons.shortcut[0].url).toBe(icons.icon[0].url);
     // Electrician -> bolt glyph should be embedded in the encoded mark.
     expect(decodeURIComponent(icons.icon[0].url)).toContain(SERVICE_ICON_GLYPHS.bolt.body);
+  });
+
+  it('emits a tile-less, accent-colored favicon when logoStyle is transparent', () => {
+    const icons = siteIconsMetadata({ content: { trade: 'Electrician', logoStyle: 'transparent' }, accent_override: '#334455' });
+    const svg = decodeURIComponent(icons.icon[0].url);
+    expect(svg).not.toContain('<rect'); // no accent tile
+    expect(svg).toContain('stroke="#334455"'); // glyph tinted to the accent
+  });
+
+  it('keeps the accent-tile favicon for the default (non-transparent) style', () => {
+    const icons = siteIconsMetadata({ content: { trade: 'Electrician' }, accent_override: '#334455' });
+    expect(decodeURIComponent(icons.icon[0].url)).toContain('<rect width="64" height="64" rx="14" fill="#334455"/>');
   });
 });
