@@ -286,9 +286,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     return (
       <div className="chrome-shell chrome-shell-sidenav">
         <header className="sidenav-mobilebar">
-          <Link href={brandHref} className="brand-mark brand-mark-compact" aria-label="Let&apos;s Get Quoted home">
-            <Image src="/SITE-LOGO-1.png" alt="Let's Get Quoted" width={160} height={33} className="brand-logo-img" priority />
-            <strong className="brand-title">LET&apos;S GET QUOTED</strong>
+          <Link href={brandHref} className="sidenav-brand" aria-label="Let&apos;s Get Quoted home">
+            <span className="sidenav-wordmark">Let&apos;s Get <span>Quoted</span></span>
           </Link>
           <button
             type="button"
