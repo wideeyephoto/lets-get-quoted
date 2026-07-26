@@ -825,7 +825,7 @@
 .guildBadgePrimary > div { display: flex; flex-direction: column; min-width: 0; }
 /* Scoped to .guildBadge so it outranks `.guildBadge span` (0,1,1), which would
    otherwise shrink the icon and push it down with the subtitle's margin. */
-.guildBadge .guildBadgeIcon { flex: 0 0 auto; display: grid; place-items: center; width: 40px; height: 40px; margin-top: 0; border-radius: 10px; background: rgba(255,255,255,.22); font-size: 1.2rem; line-height: 1; opacity: 1; }
+.guildBadge .guildBadgeIcon { flex: 0 0 auto; display: grid; place-items: center; width: 40px; height: 40px; margin-top: 0; border-radius: 10px; background: rgba(255,255,255,.22); font-size: 1.5rem; line-height: 1; opacity: 1; }
 @keyframes guildBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 @media (prefers-reduced-motion: reduce) { .guildBadge { animation: none; } }
 .guildBadge strong { font-family: var(--theme-display); font-size: 1.15rem; font-weight: 600; }
@@ -1264,7 +1264,7 @@
 .coatPhotoSide img { display: block; width: 100%; aspect-ratio: 4 / 3.3; object-fit: cover; transition: transform .6s cubic-bezier(.22, .61, .36, 1); }
 .coatPhotoSide:hover img { transform: scale(1.07); }
 .coatHeroBadge { position: absolute; z-index: 3; left: -4%; top: 8%; display: flex; align-items: center; gap: .6rem; padding: .65rem 1rem; border-radius: 14px; background: var(--c-surface); color: var(--c-ink); box-shadow: 0 22px 44px -22px rgba(0,0,0,.5); animation: coatFloat 8s ease-in-out infinite .6s; }
-.coatHeroBadgeIcon { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 999px; background: color-mix(in srgb, var(--theme-accent) 16%, transparent); color: var(--theme-accent); }
+.coatHeroBadgeIcon { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 999px; background: color-mix(in srgb, var(--theme-accent) 16%, transparent); color: var(--theme-accent); font-size: 1.45rem; line-height: 1; }
 .coatHeroBadge strong { display: block; font-size: .9rem; }
 .coatHeroBadge small { font-size: .72rem; color: #6a6870; }
 .coatBtn { display: inline-flex; align-items: center; gap: .45rem; min-height: 50px; padding: .8rem 1.6rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #fff); font-weight: 700; font-size: .98rem; box-shadow: 0 16px 30px -14px color-mix(in srgb, var(--theme-accent) 70%, transparent); transition: transform .2s ease, filter .2s ease; }
@@ -1366,7 +1366,7 @@
 .fixitHeroShape { position: absolute; z-index: 0; top: 3%; right: 4%; width: 66%; height: 84%; background: var(--theme-accent); clip-path: polygon(18% 0, 100% 8%, 82% 100%, 0 92%); }
 .fixitHeroImg { position: relative; z-index: 1; display: block; width: min(400px, 84%); margin: 0 auto; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 6px; animation: fixitFloat 7s ease-in-out infinite; }
 .fixitHeroCard { position: absolute; z-index: 2; right: 0; top: 34%; display: flex; align-items: center; gap: .6rem; padding: .7rem 1rem; border-radius: 12px; background: var(--c-surface); border: 1px solid var(--c-line); box-shadow: 0 22px 44px -22px rgba(0,0,0,.32); }
-.fixitHeroCardIcon { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 999px; background: color-mix(in srgb, var(--theme-accent) 14%, transparent); color: var(--theme-accent); }
+.fixitHeroCardIcon { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 999px; background: color-mix(in srgb, var(--theme-accent) 14%, transparent); color: var(--theme-accent); font-size: 1.3rem; line-height: 1; }
 /* Surface + ink are a contrasting pair in every scheme, so the card reads on
    any ground. The subtitle is its own block so title/subtitle never run
    together, and the text column can shrink without the title wrapping mid-word. */
@@ -1571,8 +1571,8 @@
 .shineBadge { position: relative; z-index: 2; display: flex; align-items: center; gap: .6rem; padding: .9rem 1rem; border-radius: 16px; background: var(--c-surface); color: var(--c-ink); box-shadow: 0 22px 44px -22px rgba(0,0,0,.4); }
 .shineBadgeSupport { grid-area: b1; align-self: start; flex-direction: column; gap: .4rem; text-align: center; }
 .shineBadgeSupport strong { font-size: .9rem; }
-.shineBadgeIcon { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 999px; background: var(--sh-navy); color: var(--theme-accent); }
-.shineBadgeCustomers { grid-area: b2; align-self: end; }
+.shineBadgeIcon { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 999px; background: var(--sh-navy); color: var(--theme-accent); font-size: 1.65rem; line-height: 1; }
+.shineBadgeCustomers { grid-area: b2; align-self: stretch; align-items: center; padding: 1.35rem 1.15rem; }
 .shineBadgeCustomers strong { font-size: 1.15rem; }
 .shineBadgeCustomers small { display: block; font-size: .74rem; color: var(--c-muted); }
 
@@ -1644,14 +1644,14 @@
 .forgeBadge { position: absolute; z-index: 3; right: 6vw; top: clamp(6rem, 13vw, 10rem); display: flex; align-items: center; gap: .65rem; padding: .7rem .95rem; border-radius: 2px; background: #12161c; border: 1px solid color-mix(in srgb, var(--theme-accent) 35%, transparent); color: #f3efe6; box-shadow: 0 20px 40px -20px rgba(0,0,0,.7); }
 .forgeBadge strong { display: block; font-family: var(--theme-display); font-size: .95rem; letter-spacing: .02em; text-transform: uppercase; }
 .forgeBadge small { display: block; font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: #9aa2ae; }
-.forgeBadgeIcon { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 2px; background: var(--theme-accent); color: var(--theme-on-accent, #111); font-weight: 900; }
+.forgeBadgeIcon { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 2px; background: var(--theme-accent); color: var(--theme-on-accent, #111); font-weight: 900; font-size: 1.2rem; line-height: 1; }
 .forgeBadgeSecond { top: calc(clamp(6rem, 13vw, 10rem) + 4.6rem); }
 
 /* Vista — a clean white pill, the same language as its header CTA. */
 .vistaBadge { position: absolute; z-index: 3; right: clamp(1rem, 4vw, 3rem); top: clamp(6rem, 18vw, 10rem); display: flex; align-items: center; gap: .6rem; padding: .6rem .95rem; border-radius: 999px; background: var(--c-surface); color: var(--c-ink); box-shadow: 0 20px 44px -22px rgba(0,0,0,.45); }
 .vistaBadge strong { display: block; font-size: .88rem; font-weight: 700; }
 .vistaBadge small { display: block; font-size: .7rem; color: var(--c-muted); }
-.vistaBadgeIcon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #111); font-weight: 800; }
+.vistaBadgeIcon { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #111); font-weight: 800; font-size: 1.2rem; line-height: 1; }
 .vistaBadgeSecond { top: calc(clamp(6rem, 18vw, 10rem) + 4.4rem); }
 
 /* Reno — the hero's hexagon motif, promoted from decoration to a real badge. */
