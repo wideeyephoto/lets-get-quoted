@@ -388,23 +388,39 @@ export async function regenerateStockImagesAction(nonce: number): Promise<StockI
 
 // Draft one blog post for the owner's site. Returns raw fields; the builder
 // assembles the SiteBlogPost as a DRAFT so nothing publishes without approval.
-export async function generateBlogPostAction(topic?: string): Promise<GeneratedBlogPost> {
+// Pick a relevant landscape Pexels photo for a blog cover. Never throws — a
+// missing key or no results just means no auto-cover (the owner can add one).
+export async function pickBlogCover(query: string): Promise<string> {
+  try {
+    const trimmed = (query || '').trim().slice(0, 60);
+    if (!trimmed || !isPexelsConfigured()) return '';
+    const pool = await fetchStockPool([trimmed], 'landscape');
+    return pool[0]?.imageUrl || '';
+  } catch {
+    return '';
+  }
+}
+
+export async function generateBlogPostAction(topic?: string): Promise<GeneratedBlogPost & { coverImage: string }> {
   const { supabase, accountId } = await requireOwnerContext();
 
   const { data: sites } = await supabase
     .from('sites')
-    .select('company_name, service_area')
+    .select('company_name, service_area, content')
     .eq('account_id', accountId)
     .limit(1);
 
   if (!sites || sites.length === 0) throw new Error('No site found for your account');
 
+  const trade = getSiteContent(sites[0].content).trade;
   try {
-    return await draftBlogPost({
+    const draft = await draftBlogPost({
       companyName: sites[0].company_name || '',
       serviceArea: sites[0].service_area || '',
       topic: typeof topic === 'string' ? topic : '',
     });
+    const coverImage = await pickBlogCover(topic?.trim() || trade || draft.title);
+    return { ...draft, coverImage };
   } catch (error) {
     console.error('Blog post generation failed:', error);
     throw new Error('Could not generate a draft right now. Please try again.');

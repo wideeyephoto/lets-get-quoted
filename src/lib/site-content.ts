@@ -292,6 +292,9 @@ export type SiteBlogPost = {
   coverImage: string;
   status: 'draft' | 'published';
   date: string;
+  // Optional scheduled auto-publish date (YYYY-MM-DD). When set on a draft, the
+  // daily cron flips it to published once that date arrives.
+  publishAt: string;
 };
 
 export type SiteBlogContent = {
@@ -823,6 +826,7 @@ function parseBlogPosts(value: unknown): SiteBlogPost[] {
       coverImage: toString(item.coverImage),
       status: rawStatus === 'published' ? 'published' : 'draft',
       date: toString(item.date),
+      publishAt: /^\d{4}-\d{2}-\d{2}$/.test(toString(item.publishAt)) ? toString(item.publishAt) : '',
     };
   });
 }

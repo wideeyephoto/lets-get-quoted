@@ -711,9 +711,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
             title: draft.title,
             excerpt: draft.excerpt,
             body: draft.body,
-            coverImage: '',
+            coverImage: draft.coverImage || '',
             status: 'draft' as const,
             date: new Date().toISOString().slice(0, 10),
+            publishAt: '',
           };
           return { ...current, content: mergeSiteContent(current.content, { blog: { ...content.blog, enabled: true, posts: [post, ...content.blog.posts] } }) };
         });
@@ -2002,22 +2003,18 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 <SectionCard reorder={reorderProps('blog', 'Blog')} title="Blog" description="Helpful articles for homeowners — maintenance tips, seasonal advice, and what to know before hiring. AI can draft them; you review and publish." evidence="Fresh, useful posts give Google more local pages to rank and give past customers a reason to return — search visibility that compounds over time." enabled={siteContent.blog.enabled} onToggleEnabled={(value) => updateBlog({ ...siteContent.blog, enabled: value })} {...blogHint} open={openSection === 'blog'} onToggleOpen={() => toggleSection('blog')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.blog.title} onChange={(event) => updateBlog({ ...siteContent.blog, title: event.target.value })} /></label>
                   <label className={styles.formField}><span>Intro (optional)</span><input value={siteContent.blog.intro} onChange={(event) => updateBlog({ ...siteContent.blog, intro: event.target.value })} /></label>
-                  <div className={styles.contentSubhead}><strong>Layout</strong><small>How posts are arranged on your site.</small></div>
-                  <div className={styles.footerPicker} role="group" aria-label="Blog layout">
-                    {BLOG_STYLES.map((b) => (
-                      <button type="button" key={b.key} className={`${styles.footerPickerBtn}${siteContent.blog.layout === b.key ? ` ${styles.footerPickerBtnOn}` : ''}`} aria-pressed={siteContent.blog.layout === b.key} onClick={() => updateBlog({ ...siteContent.blog, layout: b.key })}>
-                        <strong>{b.label}</strong><small>{b.desc}</small>
-                      </button>
-                    ))}
-                  </div>
                   <label className={styles.formField}><span>Publishing reminder</span><select value={siteContent.blog.reminderWeeks} onChange={(event) => updateBlog({ ...siteContent.blog, reminderWeeks: Number(event.target.value) })}><option value={0}>Off</option><option value={2}>Every 2 weeks</option><option value={4}>Every 4 weeks</option><option value={8}>Every 8 weeks</option></select><small className={styles.fieldHint}>We&apos;ll nudge you in your dashboard when it&apos;s time to publish a fresh post. Keeping a blog current is one of the best long-term SEO moves.</small></label>
 
                   <div className={styles.contentSubhead}><strong>Your posts</strong><small>{siteContent.blog.posts.length === 0 ? 'none yet' : `${siteContent.blog.posts.length} total · drafts stay hidden until published`}</small></div>
                   {siteContent.blog.posts.length === 0 && <p className={styles.emptyHelper}>No posts yet. Generate one with AI or add your own using the buttons below.</p>}
                   <div className={styles.stackList}>
                     {siteContent.blog.posts.map((post, index) => (
-                      <StackItem key={post.id} title={post.title.trim() || `Post ${index + 1}`} meta={post.status === 'published' ? 'Live' : 'Draft'} editing={editingItemId === post.id} onEdit={() => setEditingItemId(post.id)} onSave={saveItem} onRemove={() => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.filter((p) => p.id !== post.id) })}>
-                        <label className={styles.toggleRow}><input type="checkbox" checked={post.status === 'published'} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, status: event.target.checked ? 'published' : 'draft' } : p) })} /><span><strong>Published</strong><small>{post.status === 'published' ? 'Live on your site.' : 'Draft — only you can see it until you publish.'}</small></span></label>
+                      <StackItem key={post.id} title={post.title.trim() || `Post ${index + 1}`} meta={post.status === 'published' ? 'Live' : post.publishAt ? 'Scheduled' : 'Draft'} editing={editingItemId === post.id} onEdit={() => setEditingItemId(post.id)} onSave={saveItem} onRemove={() => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.filter((p) => p.id !== post.id) })}>
+                        <div className={styles.blogPublishRow}>
+                          <button type="button" className={`${styles.blogPublishBtn}${post.status === 'published' ? ` ${styles.blogPublishBtnOn}` : ''}`} onClick={() => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, status: p.status === 'published' ? 'draft' : 'published', publishAt: '' } : p) })}>{post.status === 'published' ? '✓ Published — live' : 'Publish now'}</button>
+                          {post.status !== 'published' && <label className={styles.blogScheduleField}><span>or auto-publish on</span><input type="date" value={post.publishAt} min={new Date().toISOString().slice(0, 10)} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, publishAt: event.target.value } : p) })} /></label>}
+                        </div>
+                        {post.status !== 'published' && (post.publishAt ? <p className={styles.fieldHint}>📅 Scheduled — auto-publishes on {post.publishAt}.</p> : <p className={styles.fieldHint}>Draft — only you can see it. Publish now, or pick a date to schedule it.</p>)}
                         <label className={styles.formField}><span>Title</span><input value={post.title} maxLength={120} onChange={(event) => { const title = event.target.value; updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, title, slug: (!p.slug || /^post-\d+$/.test(p.slug)) ? slugifyBlogTitle(title) : p.slug } : p) }); }} placeholder="5 signs it’s time to reseal your deck" /></label>
                         <label className={styles.formField}><span>Excerpt</span><input value={post.excerpt} maxLength={200} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, excerpt: event.target.value } : p) })} placeholder="One sentence that makes someone want to read." /></label>
                         <div className={styles.formField}>
@@ -2039,9 +2036,15 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   </div>
                   <div className={styles.contentSubhead}><strong>Add a post</strong><small>Draft one with AI or write your own — it saves as a hidden draft until you publish it.</small></div>
                   <label className={styles.formField}><span>What should it be about? (optional)</span><input value={blogTopic} maxLength={200} onChange={(event) => setBlogTopic(event.target.value)} placeholder="e.g. Fall gutter maintenance checklist — leave blank and AI picks a seasonal topic" /></label>
-                  <div className={styles.blogAddActions}>
-                    <button type="button" className="btn secondary" onClick={handleGenerateBlogDraft} disabled={isGeneratingBlog}>{isGeneratingBlog ? 'Writing a draft…' : '✨ Generate a draft with AI'}</button>
-                    <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('post'); updateBlog({ ...siteContent.blog, enabled: true, posts: [{ id, slug: '', title: '', excerpt: '', body: '', coverImage: '', status: 'draft', date: new Date().toISOString().slice(0, 10) }, ...siteContent.blog.posts] }); setEditingItemId(id); }}>✎ Write it myself</button>
+                  <button type="button" className={styles.blogGenerateBtn} onClick={handleGenerateBlogDraft} disabled={isGeneratingBlog}>{isGeneratingBlog ? 'Writing your draft…' : '✨ Generate a draft with AI'}</button>
+
+                  <div className={styles.contentSubhead}><strong>Layout</strong><small>How posts are arranged on your site.</small></div>
+                  <div className={styles.footerPicker} role="group" aria-label="Blog layout">
+                    {BLOG_STYLES.map((b) => (
+                      <button type="button" key={b.key} className={`${styles.footerPickerBtn}${siteContent.blog.layout === b.key ? ` ${styles.footerPickerBtnOn}` : ''}`} aria-pressed={siteContent.blog.layout === b.key} onClick={() => updateBlog({ ...siteContent.blog, layout: b.key })}>
+                        <strong>{b.label}</strong><small>{b.desc}</small>
+                      </button>
+                    ))}
                   </div>
                 </SectionCard>
 

@@ -1,6 +1,6 @@
 {
   "crons": [
-    { "path": "/api/cron/blog", "schedule": "0 9 1,15 * *" },
+    { "path": "/api/cron/blog", "schedule": "0 9 * * *" },
     { "path": "/api/cron/quote-followups", "schedule": "0 16 * * *" },
     { "path": "/api/cron/recurring", "schedule": "0 13 * * *" },
     { "path": "/api/cron/appointment-reminders", "schedule": "0 22 * * *" },

@@ -277,9 +277,19 @@
 .itemHeader .itemEditBtn { color: #c8d0dc; }
 .itemHeader .itemSaveBtn { border-color: rgba(74,222,128,.4); background: rgba(74,222,128,.12); color: #4ade80; }
 .secondaryAction { justify-self: start; }
-.blogAddActions { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
-.blogAddActions .btn { flex: 1 1 auto; }
-.blogAddActions .secondaryAction { flex: 0 0 auto; }
+/* The AI generate button — deliberately loud so it's the obvious next step. */
+.blogGenerateBtn { width: 100%; min-height: 52px; margin: .2rem 0; padding: .9rem 1.4rem; border: 0; border-radius: 12px; background: linear-gradient(120deg, #ff7a21, #ff9d4d); color: #17140f; font-weight: 900; font-size: 1.02rem; cursor: pointer; box-shadow: 0 12px 28px -10px rgba(255,122,33,.6); transition: transform .18s ease, box-shadow .22s ease, filter .18s ease; }
+.blogGenerateBtn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 18px 38px -10px rgba(255,122,33,.72); filter: brightness(1.05); }
+.blogGenerateBtn:active:not(:disabled) { transform: translateY(0); }
+.blogGenerateBtn:disabled { opacity: .65; cursor: default; }
+
+/* Publish control — a proper button (accent for "publish", green when live). */
+.blogPublishRow { display: flex; flex-wrap: wrap; align-items: center; gap: .7rem; }
+.blogPublishBtn { min-height: 40px; padding: .55rem 1.3rem; border: 0; border-radius: 999px; background: linear-gradient(120deg, #ff7a21, #ff9d4d); color: #17140f; font-weight: 900; font-size: .92rem; cursor: pointer; box-shadow: 0 8px 18px -8px rgba(255,122,33,.6); transition: transform .15s ease, filter .15s ease, box-shadow .18s ease; }
+.blogPublishBtn:hover { transform: translateY(-1px); filter: brightness(1.05); }
+.blogPublishBtnOn { background: linear-gradient(120deg, #16a34a, #22c55e); color: #06210f; box-shadow: 0 8px 18px -8px rgba(22,163,74,.6); }
+.blogScheduleField { display: inline-flex; align-items: center; gap: .5rem; font-size: .82rem; color: #aeb5c0; }
+.blogScheduleField input { min-height: 38px; padding: .4rem .6rem; border: 1px solid rgba(255,255,255,.16); border-radius: 6px; background: rgba(255,255,255,.06); color: #f7f5ef; }
 .reviewImagePreview { overflow: hidden; width: min(180px, 100%); border: 1px solid rgba(255,255,255,.12); border-radius: 7px; background: rgba(255,255,255,.04); }
 .reviewImagePreview img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
 .integrationCard { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem; border: 1px dashed rgba(255,209,102,.32); border-radius: 8px; background: rgba(255,209,102,.055); }
