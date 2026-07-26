@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState, useTransition, type CSSProper
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, getTradeGlyphOptions, glyphForContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent } from '@/lib/site-content';
+import { getSiteContent, getTradeGlyphOptions, glyphForContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
+import { generatePrivacyPolicy, generateTermsOfService } from '@/lib/legal/legal-copy';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
@@ -604,6 +605,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       if (target === 'bizHours') { setActiveTab('business'); setOpenSection('whereWhen'); focusField('bf-hours'); return; }
       if (target === 'bizPhone') { setActiveTab('business'); setOpenSection('contactInfo'); focusField('bf-phone'); return; }
       if (target === 'bizLicense') { setActiveTab('business'); setOpenSection('contactInfo'); focusField('bf-license'); return; }
+      if (target === 'legal') { setActiveTab('business'); setOpenSection('legal'); requestAnimationFrame(() => requestAnimationFrame(() => document.querySelector(`.${styles.sectionCardOpen}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }))); return; }
       if (target === 'heroBadge') { setActiveTab('page'); setOpenSection('hero'); flashCard('heroBadge', 'design-hero-badge'); return; }
       // The auto trade-icon (no uploaded logo) jumps to the Brand tab's "Your
       // logo" card, where the glyph picker, transparent toggle, and upload live.
@@ -1142,6 +1144,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
   const updateWhyUs = useCallback((whyUs: SiteWhyUsContent) => {
     updateSiteContent({ whyUs });
+  }, [updateSiteContent]);
+
+  const updateLegal = useCallback((legal: SiteLegalContent) => {
+    updateSiteContent({ legal });
   }, [updateSiteContent]);
 
 
@@ -2221,6 +2227,34 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     <textarea id="bf-seo-description" rows={3} maxLength={SEO_DESC_LIMIT + 40} value={site.seo_description || ''} onChange={(event) => handleChange('seo_description', event.target.value || null)} placeholder={site.tagline || 'One sentence on what you do, where, and how customers book.'} />
                     <small className={(site.seo_description || '').length > SEO_DESC_LIMIT ? styles.counterOver : undefined}>{(site.seo_description || '').length}/{SEO_DESC_LIMIT} characters{(site.seo_description || '').length > SEO_DESC_LIMIT ? ' — a bit long; Google may trim it' : ''}</small>
                   </label>
+                </SectionCard>
+
+                <SectionCard title="Legal pages" description="Auto-written Privacy Policy and Terms, linked in your footer at /privacy and /terms." open={openSection === 'legal'} onToggleOpen={() => toggleSection('legal')}>
+                  {(() => {
+                    const legalInput = { companyName: site.company_name, location: site.service_area || '', phone: siteContent.phonePublic ? (site.phone || '') : '', updated: siteContent.legal.updated };
+                    return (
+                      <>
+                        <p className={styles.legalDisclaimer}>⚠️ These are starter templates tailored to your business — a helpful head start, <strong>not legal advice</strong>. Review them, and check with a lawyer for anything specific to how you operate, before publishing.</p>
+                        <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.legal.privacyEnabled} onChange={(event) => updateLegal({ ...siteContent.legal, privacyEnabled: event.target.checked })} /><span><strong>Show a Privacy Policy</strong><small>Recommended — often required when you collect contact info, and by the text-message and payment providers that power your site.</small></span></label>
+                        <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.legal.termsEnabled} onChange={(event) => updateLegal({ ...siteContent.legal, termsEnabled: event.target.checked })} /><span><strong>Show Terms of Service</strong><small>Sets expectations that quotes are estimates and covers basic use of your site.</small></span></label>
+                        <label className={styles.formField}><span>Effective date (optional)</span><input type="date" value={siteContent.legal.updated} onChange={(event) => updateLegal({ ...siteContent.legal, updated: event.target.value })} /><small className={styles.fieldHint}>Shown at the top of both pages. Leave blank to omit.</small></label>
+
+                        <div className={styles.contentSubhead}><strong>Privacy Policy text</strong><small>{siteContent.legal.privacyBody ? 'Custom' : 'Auto-written'}</small></div>
+                        <textarea className={styles.legalTextarea} rows={6} value={siteContent.legal.privacyBody} placeholder="Using the auto-written Privacy Policy. Click “Load the template to edit” to customize it." onChange={(event) => updateLegal({ ...siteContent.legal, privacyBody: event.target.value })} />
+                        <div className={styles.legalEditActions}>
+                          <button type="button" className={styles.secondaryAction} onClick={() => updateLegal({ ...siteContent.legal, privacyBody: generatePrivacyPolicy(legalInput) })}>Load the template to edit</button>
+                          {siteContent.legal.privacyBody && <button type="button" className={styles.secondaryAction} onClick={() => updateLegal({ ...siteContent.legal, privacyBody: '' })}>Reset to auto-written</button>}
+                        </div>
+
+                        <div className={styles.contentSubhead}><strong>Terms of Service text</strong><small>{siteContent.legal.termsBody ? 'Custom' : 'Auto-written'}</small></div>
+                        <textarea className={styles.legalTextarea} rows={6} value={siteContent.legal.termsBody} placeholder="Using the auto-written Terms of Service. Click “Load the template to edit” to customize it." onChange={(event) => updateLegal({ ...siteContent.legal, termsBody: event.target.value })} />
+                        <div className={styles.legalEditActions}>
+                          <button type="button" className={styles.secondaryAction} onClick={() => updateLegal({ ...siteContent.legal, termsBody: generateTermsOfService(legalInput) })}>Load the template to edit</button>
+                          {siteContent.legal.termsBody && <button type="button" className={styles.secondaryAction} onClick={() => updateLegal({ ...siteContent.legal, termsBody: '' })}>Reset to auto-written</button>}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </SectionCard>
               </div>
             )}

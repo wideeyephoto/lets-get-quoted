@@ -5,6 +5,7 @@ import {
   getPublishedServices, getPublishedShowcase, getPublishedTestimonials, getPublishedFaqs, getPublishedBlog,
 } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
+import { siteLegalLinks } from '@/lib/legal/site-legal';
 import styles from './themes.module.css';
 
 // One footer for every theme. The layout is the owner's choice (Brand → Footer
@@ -60,9 +61,16 @@ export default function SiteFooter({ site }: { site: Site }) {
     </>
   );
 
+  const legal = siteLegalLinks(site);
   const bar = (
     <div className={styles.sfBar}>
       <span>© {site.company_name}</span>
+      {(legal.privacy || legal.terms) && (
+        <nav className={styles.sfLegal} aria-label="Legal" data-edit="legal">
+          {legal.privacy && <a href="/privacy">Privacy Policy</a>}
+          {legal.terms && <a href="/terms">Terms of Service</a>}
+        </nav>
+      )}
       <small>Powered by Let&apos;s Get Quoted</small>
     </div>
   );
