@@ -5,6 +5,7 @@ import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import { deleteSiteImage, importJobPhotoAsSiteImage, uploadSiteImage } from '@/lib/site-image-storage';
 import { createJobPhotoUrls } from '@/lib/job-photo-storage';
 import type { Site } from '@/lib/sites';
+import { SERVICE_ICON_GLYPHS } from '@/lib/templates/service-icons.data';
 import { normalizeDomain, verifyDomain } from '@/lib/domains';
 import { draftBlogPost, type GeneratedBlogPost } from '@/lib/blog-generate';
 import { generateSeoCopy } from '@/lib/seo/seo-copy';
@@ -164,13 +165,13 @@ function asArray(value: unknown): unknown[] {
 function isObj(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
-// Must match ServiceIcon's key set (src/lib/templates/ServiceIcon.tsx). The AI
-// sometimes invents a key (e.g. 'roof'), so anything off-list falls back to a
-// generic mark rather than being stored and rendered as the wrong/empty icon.
-const SERVICE_ICON_KEYS = new Set(['spark', 'wrench', 'droplet', 'bolt', 'home', 'star', 'shield', 'clock', 'leaf', 'grid', 'truck', 'sparkles', 'roller']);
+// Derived from the generated icon set so it can never drift. The AI sometimes
+// invents a key (e.g. 'roof'), so anything off-list falls back to a generic mark
+// rather than being stored and rendered as the wrong/empty icon.
+const SERVICE_ICON_KEY_SET = new Set(Object.keys(SERVICE_ICON_GLYPHS));
 function normalizeIcon(value: unknown): string {
   const key = asString(value, 20);
-  return SERVICE_ICON_KEYS.has(key) ? key : 'spark';
+  return SERVICE_ICON_KEY_SET.has(key) ? key : 'spark';
 }
 
 function extractOutputText(payload: unknown): string {

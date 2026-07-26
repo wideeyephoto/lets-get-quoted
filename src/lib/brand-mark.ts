@@ -1,5 +1,5 @@
 import { getSiteContent, getTradeGlyph } from '@/lib/site-content';
-import { SERVICE_ICON_PATHS } from '@/lib/templates/ServiceIcon';
+import { SERVICE_ICON_GLYPHS } from '@/lib/templates/ServiceIcon';
 
 // Generates a contractor's square "brand mark" — a trade-appropriate glyph on a
 // rounded accent tile — as a standalone, self-contained SVG string. One source of
@@ -21,16 +21,24 @@ function safeAccent(accent: string | null | undefined): string {
 //   'black' — glyph alone in dark ink, transparent tile (one-color print on light)
 //   'white' — glyph alone in white, transparent tile (reversed, for dark surfaces)
 export function buildBrandMarkSvg(glyphKey: string, accent: string | null | undefined, variant: BrandMarkVariant = 'color'): string {
-  const inner = SERVICE_ICON_PATHS[glyphKey] ?? SERVICE_ICON_PATHS.wrench;
+  const glyph = SERVICE_ICON_GLYPHS[glyphKey] ?? SERVICE_ICON_GLYPHS.wrench;
   const stroke = variant === 'black' ? GLYPH_DARK : '#ffffff';
   const tile = variant === 'color' ? `<rect width="64" height="64" rx="14" fill="${safeAccent(accent)}"/>` : '';
-  // Glyphs are authored on a 24×24 grid; center at 1.5× (36px) inside 64×64.
+  // Center the glyph at ~36px inside the 64×64 tile, whatever its native grid.
+  const target = 36;
+  const scale = round3(target / Math.max(glyph.width, glyph.height));
+  const tx = round3((64 - glyph.width * scale) / 2);
+  const ty = round3((64 - glyph.height * scale) / 2);
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">` +
     tile +
-    `<g transform="translate(14 14) scale(1.5)" fill="none" stroke="${stroke}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${inner}</g>` +
+    `<g transform="translate(${tx} ${ty}) scale(${scale})" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${glyph.body}</g>` +
     `</svg>`
   );
+}
+
+function round3(n: number): number {
+  return Math.round(n * 1000) / 1000;
 }
 
 type BrandMarkSite = { content: Record<string, unknown> | null | undefined; accent_override: string | null };

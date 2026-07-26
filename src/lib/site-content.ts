@@ -1040,14 +1040,25 @@ export function getWorkBand(
 // unrecognized or blank trade.
 export function getTradeGlyph(trade: string | null | undefined): string {
   const t = (trade || '').toLowerCase();
+  // Ordered most-specific first so, e.g., "tree service" beats generic landscaping
+  // and "pressure washing" beats generic cleaning.
   if (/electric|electrician|wiring|generator|solar|lighting/.test(t)) return 'bolt';
-  if (/paint|drywall|stain|finish|\bcoat/.test(t)) return 'roller';
-  if (/clean|maid|janitor|pressure\s*wash|window\s*wash|carpet/.test(t)) return 'sparkles';
-  if (/landscap|lawn|garden|\btree|\byard|snow|irrigation|hardscape|mow/.test(t)) return 'leaf';
-  if (/haul|mov(?:e|ing)|junk|dumpster|delivery/.test(t)) return 'truck';
-  if (/pest|extermin|inspect|secur|alarm/.test(t)) return 'shield';
-  if (/plumb|drain|sewer|pipe|\bwater|leak|hvac|heat|cool|\bair\b|furnace|boiler|mechanic|appliance/.test(t)) return 'wrench';
-  if (/roof|gutter|siding|window|door|deck|fence|concrete|mason|remodel|renov|construct|carpen|floor|tile|handy|contractor|build|repair|stump|excavat/.test(t)) return 'home';
+  if (/pressure\s*wash|power\s*wash|soft\s*wash/.test(t)) return 'spray';
+  if (/paint|drywall|stain|\bcoat/.test(t)) return 'roller';
+  if (/window\s*clean|window\s*wash|\bclean|maid|janitor|carpet/.test(t)) return 'sparkles';
+  if (/pest|extermin|termite|rodent|mosquito/.test(t)) return 'bug';
+  if (/tree|arborist|stump|forestry/.test(t)) return 'tree';
+  if (/landscap|lawn|garden|\byard|sod|mow|irrigation|hardscape|snow/.test(t)) return 'leaf';
+  if (/haul|mov(?:e|ing)|junk|dumpster|delivery|demolition/.test(t)) return 'truck';
+  if (/hvac|heat|cool|\bair\b|furnace|boiler|duct|ventilat/.test(t)) return 'wind';
+  if (/plumb|drain|sewer|pipe|\bwater|leak|faucet/.test(t)) return 'droplet';
+  if (/roof|gutter|siding/.test(t)) return 'home';
+  if (/concrete|mason|foundation|paver|brick|asphalt/.test(t)) return 'hardhat';
+  if (/carpen|handy|remodel|renov|deck|fence|cabinet|framing|\btrim/.test(t)) return 'hammer';
+  if (/floor|tile|hardwood|laminate/.test(t)) return 'grid';
+  if (/appliance|garage\s*door|\block|\brepair/.test(t)) return 'wrench';
+  if (/construct|contractor|\bbuild|excavat/.test(t)) return 'hardhat';
+  if (/secur|alarm|camera|inspect/.test(t)) return 'shield';
   return 'home';
 }
 

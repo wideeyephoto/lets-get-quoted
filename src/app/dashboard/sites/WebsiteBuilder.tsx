@@ -158,10 +158,18 @@ const TRADE_GLYPH_NOUNS: Record<string, string> = {
   bolt: 'lightning bolt',
   roller: 'paint roller',
   sparkles: 'sparkle',
+  spray: 'spray can',
   leaf: 'leaf',
+  tree: 'tree',
   truck: 'truck',
   shield: 'shield',
   home: 'house',
+  droplet: 'water drop',
+  wind: 'fan',
+  bug: 'bug',
+  hardhat: 'hard hat',
+  hammer: 'hammer',
+  grid: 'tile grid',
 };
 
 function describeTradeGlyph(trade: string): { glyph: string; noun: string } {

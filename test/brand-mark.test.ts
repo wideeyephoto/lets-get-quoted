@@ -1,22 +1,22 @@
 import { describe, it, expect } from 'vitest';
 import { buildBrandMarkSvg, siteBrandMarkSvg, brandMarkDataUri, siteIconsMetadata, DEFAULT_BRAND_ACCENT } from '@/lib/brand-mark';
-import { SERVICE_ICON_PATHS } from '@/lib/templates/ServiceIcon';
+import { SERVICE_ICON_GLYPHS } from '@/lib/templates/ServiceIcon';
 
 describe('buildBrandMarkSvg', () => {
-  it('color variant: accent tile + white glyph + the glyph path', () => {
+  it('color variant: accent tile + white glyph + the glyph body', () => {
     const svg = buildBrandMarkSvg('wrench', '#123456', 'color');
     expect(svg.startsWith('<svg')).toBe(true);
     expect(svg).toContain('viewBox="0 0 64 64"');
     expect(svg).toContain('<rect width="64" height="64" rx="14" fill="#123456"/>');
     expect(svg).toContain('stroke="#ffffff"');
-    expect(svg).toContain(SERVICE_ICON_PATHS.wrench);
+    expect(svg).toContain(SERVICE_ICON_GLYPHS.wrench.body);
   });
 
   it('black variant: no tile, dark glyph (one-color print)', () => {
     const svg = buildBrandMarkSvg('bolt', '#123456', 'black');
     expect(svg).not.toContain('<rect');
     expect(svg).toContain('stroke="#0e1622"');
-    expect(svg).toContain(SERVICE_ICON_PATHS.bolt);
+    expect(svg).toContain(SERVICE_ICON_GLYPHS.bolt.body);
   });
 
   it('white variant: no tile, white glyph (reversed for dark surfaces)', () => {
@@ -26,7 +26,7 @@ describe('buildBrandMarkSvg', () => {
   });
 
   it('falls back to the wrench glyph for an unknown key', () => {
-    expect(buildBrandMarkSvg('nope', '#123456', 'color')).toContain(SERVICE_ICON_PATHS.wrench);
+    expect(buildBrandMarkSvg('nope', '#123456', 'color')).toContain(SERVICE_ICON_GLYPHS.wrench.body);
   });
 
   it('falls back to the default accent for a non-hex value (never emits junk into fill)', () => {
@@ -45,12 +45,12 @@ describe('siteBrandMarkSvg', () => {
   it('infers the glyph from the trade and uses the site accent', () => {
     const svg = siteBrandMarkSvg({ content: { trade: 'Plumbing & Drain' }, accent_override: '#00aa88' }, 'color');
     expect(svg).toContain('fill="#00aa88"');
-    expect(svg).toContain(SERVICE_ICON_PATHS.wrench); // plumbing -> wrench
+    expect(svg).toContain(SERVICE_ICON_GLYPHS.droplet.body); // plumbing -> droplet
   });
 
   it('falls back to the house glyph for an unknown/blank trade', () => {
     const svg = siteBrandMarkSvg({ content: {}, accent_override: null }, 'color');
-    expect(svg).toContain(SERVICE_ICON_PATHS.home);
+    expect(svg).toContain(SERVICE_ICON_GLYPHS.home.body);
     expect(svg).toContain(`fill="${DEFAULT_BRAND_ACCENT}"`);
   });
 });
@@ -69,6 +69,6 @@ describe('brandMarkDataUri / siteIconsMetadata', () => {
     expect(icons.icon[0].url.startsWith('data:image/svg+xml,')).toBe(true);
     expect(icons.shortcut[0].url).toBe(icons.icon[0].url);
     // Electrician -> bolt glyph should be embedded in the encoded mark.
-    expect(decodeURIComponent(icons.icon[0].url)).toContain(SERVICE_ICON_PATHS.bolt);
+    expect(decodeURIComponent(icons.icon[0].url)).toContain(SERVICE_ICON_GLYPHS.bolt.body);
   });
 });

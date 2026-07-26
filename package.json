@@ -26,6 +26,8 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@iconify-json/lucide": "^1.2.120",
+    "@iconify/utils": "^3.1.4",
     "@types/google.maps": "^3.65.2",
     "@types/node": "^22.10.1",
     "@types/pdfkit": "^0.17.6",
