@@ -11,7 +11,6 @@ import QuoteRequestForm from '@/components/quote-request-form';
 import SiteContentSections from './SiteContentSections';
 import SiteNavLinks from './SiteNavLinks';
 import SiteProofStrip from './SiteProofStrip';
-import SiteDesktopCta from './SiteDesktopCta';
 import SiteAnnouncementBar from './SiteAnnouncementBar';
 import SiteHeaderUtilityBar from './SiteHeaderUtilityBar';
 import ScrollReveal from './ScrollReveal';
@@ -121,7 +120,6 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
 
       <SiteFooter site={site} />
 
-      <SiteDesktopCta site={site} />
     </main>
   );
 }

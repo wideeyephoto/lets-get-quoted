@@ -11,7 +11,6 @@ import HeroQuickForm from './HeroQuickForm';
 import SiteContentSections from './SiteContentSections';
 import SiteNavLinks from './SiteNavLinks';
 import SiteProofStrip from './SiteProofStrip';
-import SiteDesktopCta from './SiteDesktopCta';
 import SiteAnnouncementBar from './SiteAnnouncementBar';
 import SiteHeaderUtilityBar from './SiteHeaderUtilityBar';
 import ScrollReveal from './ScrollReveal';
@@ -98,7 +97,6 @@ export default function ForgeTemplate({ site }: TemplateProps) {
         <QuoteRequestForm site={site} />
       </section>
 
-      <SiteDesktopCta site={site} />
       <SiteFooter site={site} />
     </main>
   );
