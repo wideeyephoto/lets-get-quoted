@@ -8,7 +8,7 @@ interface PaymentActionButtonsProps {
   jobId: string;
   paymentId: string;
   status: PaymentStatus;
-  onRefund: (jobId: string, paymentId: string) => Promise<void>;
+  onRefund: (jobId: string, paymentId: string, amount?: number) => Promise<void>;
   onMarkFailed: (jobId: string, paymentId: string) => Promise<void>;
   onRetry: (paymentId: string) => Promise<string>;
   onCancel: (jobId: string, paymentId: string) => Promise<void>;
@@ -16,9 +16,17 @@ interface PaymentActionButtonsProps {
   // Refunds go through Stripe, so only offer Refund on rows that were paid via
   // Stripe (they carry a payment intent). Cash/check rows can't be refunded here.
   canRefund?: boolean;
+  // The full payment amount and how much has already been refunded, so the refund
+  // field can default to (and cap at) the remaining balance.
+  amount?: number;
+  refundedAmount?: number;
 }
 
 const compactBtn = { fontSize: '0.75rem', padding: '0.25rem 0.5rem' } as const;
+
+function formatUsd(n: number): string {
+  return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
 export default function PaymentActionButtons({
   jobId,
@@ -30,11 +38,17 @@ export default function PaymentActionButtons({
   onCancel,
   onMarkPaidManually,
   canRefund = true,
+  amount = 0,
+  refundedAmount = 0,
 }: PaymentActionButtonsProps) {
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [method, setMethod] = useState('cash');
+  // Remaining refundable balance, rounded to whole cents to avoid float noise.
+  const remaining = Math.round((amount - refundedAmount) * 100) / 100;
+  const [refundOpen, setRefundOpen] = useState(false);
+  const [refundInput, setRefundInput] = useState('');
 
   const handleMarkPaid = async () => {
     if (!onMarkPaidManually) return;
@@ -52,13 +66,31 @@ export default function PaymentActionButtons({
     }
   };
 
+  const openRefund = () => {
+    setError(null);
+    setRefundInput(remaining > 0 ? remaining.toFixed(2) : '');
+    setRefundOpen(true);
+  };
+
   const handleRefund = async () => {
-    if (!window.confirm('Are you sure you want to refund this payment?')) return;
-    
+    const value = Number(refundInput);
+    if (!Number.isFinite(value) || value <= 0) {
+      setError('Enter a refund amount greater than zero.');
+      return;
+    }
+    if (Math.round(value * 100) > Math.round(remaining * 100)) {
+      setError(`You can refund at most ${formatUsd(remaining)}.`);
+      return;
+    }
+    // A full-balance refund passes undefined so the server refunds the exact
+    // remaining cents (avoids a rounding mismatch with Stripe).
+    const isFull = Math.round(value * 100) >= Math.round(remaining * 100);
+
     setLoading('refund');
     setError(null);
     try {
-      await onRefund(jobId, paymentId);
+      await onRefund(jobId, paymentId, isFull ? undefined : value);
+      setRefundOpen(false);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Refund failed');
@@ -155,16 +187,52 @@ export default function PaymentActionButtons({
           </button>
         </>
       )}
-      {status === 'paid' && canRefund && (
-        <button
-          onClick={handleRefund}
-          disabled={loading !== null}
-          className="btn secondary compact"
-          title="Refund this payment"
-          style={compactBtn}
-        >
-          {loading === 'refund' ? '⏳' : '↩️'} Refund
-        </button>
+      {status === 'paid' && canRefund && remaining > 0 && (
+        refundOpen ? (
+          <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--muted, #64748b)' }}>Refund $</span>
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              max={remaining}
+              value={refundInput}
+              onChange={(event) => setRefundInput(event.currentTarget.value)}
+              disabled={loading !== null}
+              aria-label={`Refund amount, up to ${formatUsd(remaining)}`}
+              autoFocus
+              style={{ width: '5rem', ...compactBtn }}
+            />
+            <button
+              onClick={handleRefund}
+              disabled={loading !== null}
+              className="btn secondary compact"
+              title={`Refund up to ${formatUsd(remaining)}`}
+              style={compactBtn}
+            >
+              {loading === 'refund' ? '⏳' : '↩️'} Refund
+            </button>
+            <button
+              onClick={() => { setRefundOpen(false); setError(null); }}
+              disabled={loading !== null}
+              className="btn secondary compact"
+              title="Cancel refund"
+              style={compactBtn}
+            >
+              ×
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={openRefund}
+            disabled={loading !== null}
+            className="btn secondary compact"
+            title={refundedAmount > 0 ? `Refund more (${formatUsd(remaining)} left)` : 'Refund this payment'}
+            style={compactBtn}
+          >
+            ↩️ Refund{refundedAmount > 0 ? ` (${formatUsd(remaining)} left)` : ''}
+          </button>
+        )
       )}
       {(status === 'processing' || status === 'failed') && (
         <>

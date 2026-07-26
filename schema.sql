@@ -469,7 +469,11 @@ create table if not exists payments (
   sms_consent              boolean not null default false,
   sms_consent_at           timestamptz,
   requested_at             timestamptz not null default now(),
-  paid_at                  timestamptz
+  paid_at                  timestamptz,
+
+  -- Running total refunded on this payment (partial refunds accumulate). The row
+  -- stays `paid` until this reaches `amount`, then flips to `refunded`.
+  refunded_amount          numeric(12,2) not null default 0
 );
 
 -- Safe to re-run: adds columns if this table already existed pre-migration.
@@ -483,6 +487,9 @@ alter table payments add column if not exists sms_consent_at timestamptz;
 alter table payments add column if not exists disputed_at timestamptz;
 alter table payments add column if not exists dispute_reason text;
 alter table payments add column if not exists dispute_status text;
+-- Partial-refund tracking. A payment stays `paid` while partially refunded and
+-- only becomes `refunded` once refunded_amount reaches amount.
+alter table payments add column if not exists refunded_amount numeric(12,2) not null default 0;
 
 -- Recurring-charge DUNNING. When an off-session saved-card charge fails, capture
 -- the decline, then either schedule automated retries (transient declines like

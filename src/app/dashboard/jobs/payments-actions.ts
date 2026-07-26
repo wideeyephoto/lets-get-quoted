@@ -50,10 +50,14 @@ export async function createDepositRequestAction(jobId: string, formData: FormDa
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }
 
-export async function refundPaymentAction(jobId: string, paymentId: string) {
+export async function refundPaymentAction(jobId: string, paymentId: string, amount?: number) {
   const { supabase, accountId } = await requireOwnerContext();
 
-  await refundPayment(supabase, accountId, paymentId);
+  await refundPayment(supabase, accountId, paymentId, amount);
+
+  // Log the refund on the job timeline. Deduped on (payments, id, payment_refunded),
+  // so the webhook's confirmation of the same refund won't add a second entry.
+  await createPaymentFeedEvent(supabase, paymentId, 'payment_refunded');
 
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }

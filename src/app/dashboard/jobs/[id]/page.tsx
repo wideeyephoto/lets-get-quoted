@@ -273,8 +273,6 @@ export default async function JobDetailPage({
   const boundCreateClientJobLink = createClientJobLinkAction.bind(null, job.id);
   const boundPostFeedUpdate = createManualJobFeedAction.bind(null, job.id);
   const boundCreateInvoice = createInvoiceAction.bind(null, job.id);
-  const boundRefundPayment = refundPaymentAction.bind(null, job.id);
-  const boundMarkPaymentFailed = markPaymentFailedAction.bind(null, job.id);
   const boundRetryPaymentText = retryPaymentTextAction.bind(null, job.id);
   const linkedFeedItems = createLinkedFeedItems(feed, payments, invoices, accountId, job.id);
   const hasActiveClientView = activeClientLinkCount > 0 || Boolean(searchParams.clientToken);
@@ -749,16 +747,23 @@ export default async function JobDetailPage({
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       <span className="cost-item-amount">{formatMoney(payment.amount)}</span>
+                      {Number(payment.refunded_amount) > 0 ? (
+                        <span style={{ fontSize: '0.75rem', color: 'var(--muted, #64748b)' }}>
+                          {formatMoney(Number(payment.refunded_amount))} refunded
+                        </span>
+                      ) : null}
                       <PaymentActionButtons
                         jobId={job.id}
                         paymentId={payment.id}
                         status={payment.status}
-                        onRefund={boundRefundPayment}
-                        onMarkFailed={boundMarkPaymentFailed}
+                        onRefund={refundPaymentAction}
+                        onMarkFailed={markPaymentFailedAction}
                         onRetry={retryPaymentAction}
                         onCancel={cancelPaymentRequestAction}
                         onMarkPaidManually={markPaymentPaidManuallyAction}
                         canRefund={Boolean(payment.stripe_payment_intent)}
+                        amount={Number(payment.amount)}
+                        refundedAmount={Number(payment.refunded_amount) || 0}
                       />
                       {payment.status === 'requested' || payment.status === 'processing' ? (
                         <CopyLinkButton url={`${quoteLinkOrigin}/pay/${payment.id}`} label="Copy pay link" />

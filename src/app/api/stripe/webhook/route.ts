@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getStripeClient } from '@/lib/stripe';
+import { getStripeClient, fromCents, toCents } from '@/lib/stripe';
 import { createAdminClient } from '@/lib/auth';
 import { getRecipientTransferStatus } from '@/lib/stripe-connect';
 import { sendPaymentSmsEvent } from '@/lib/sms';
@@ -174,22 +174,53 @@ export async function POST(request: Request) {
     }
   }
 
-  // Charge refunded — either via webhook or from our refundPayment() call
+  // Charge refunded — either from our own refundPayment() call or a refund issued
+  // directly in the Stripe Dashboard (which carries no metadata beyond what the
+  // charge already had). `amount_refunded` is CUMULATIVE cents across all refunds
+  // on this charge, so a $20-then-$30 sequence arrives as 20 then 50. Treat it as
+  // the source of truth: store the running dollar total and only mark the payment
+  // fully `refunded` once it reaches the charge total. A partial refund keeps it
+  // `paid` (still collectible/refundable) and leaves any linked invoice intact.
   if (event.type === 'charge.refunded') {
     const charge = event.data.object;
     const paymentId = charge.metadata?.payment_id;
 
     if (paymentId) {
-      console.log(`Charge refunded for payment ${paymentId}: ${charge.amount_refunded} cents`);
-      const { data: transitioned } = await admin
+      console.log(`Charge refunded for payment ${paymentId}: ${charge.amount_refunded}/${charge.amount} cents`);
+      const refundedTotal = fromCents(charge.amount_refunded);
+      const isFull = charge.amount_refunded >= charge.amount;
+
+      const { data: payment } = await admin
         .from('payments')
-        .update({ status: 'refunded' })
+        .select('id, invoice_id, status, refunded_amount')
         .eq('id', paymentId)
-        .eq('status', 'paid')
-        .select('id')
         .maybeSingle();
-      if (transitioned) await sendPaymentSmsEvent(paymentId, 'payment_refunded');
-      if (transitioned) await createPaymentFeedEvent(admin, paymentId, 'payment_refunded');
+
+      // Reconcile only a collected payment; never resurrect a disputed one, and
+      // never walk the refunded total backwards. Acting only on NEW progress makes
+      // at-least-once redelivery and the synchronous refundPayment() write no-ops.
+      if (
+        payment &&
+        (payment.status === 'paid' || payment.status === 'refunded') &&
+        toCents(refundedTotal) > toCents(Number(payment.refunded_amount) || 0)
+      ) {
+        const { data: transitioned } = await admin
+          .from('payments')
+          .update({ refunded_amount: refundedTotal, status: isFull ? 'refunded' : 'paid' })
+          .eq('id', payment.id)
+          .in('status', ['paid', 'refunded'])
+          .select('id, invoice_id')
+          .maybeSingle();
+        if (transitioned) {
+          // Only a full refund voids the linked invoice and texts the homeowner
+          // (the refund SMS states the full amount, so it's wrong for a partial).
+          if (isFull && transitioned.invoice_id) {
+            await admin.from('invoices').update({ status: 'void' }).eq('id', transitioned.invoice_id);
+          }
+          if (isFull) await sendPaymentSmsEvent(paymentId, 'payment_refunded');
+          await createPaymentFeedEvent(admin, paymentId, 'payment_refunded');
+        }
+      }
     }
   }
 

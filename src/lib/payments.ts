@@ -25,6 +25,7 @@ export type Payment = {
   sms_consent_at: string | null;
   requested_at: string;
   paid_at: string | null;
+  refunded_amount: number;
   disputed_at: string | null;
   dispute_reason: string | null;
   dispute_status: string | null;
@@ -275,14 +276,25 @@ export async function getPaymentDetails(supabase: SupabaseClient, accountId: str
   return data;
 }
 
-// Refund a paid payment via Stripe and mark as refunded in DB
-export async function refundPayment(supabase: SupabaseClient, accountId: string, paymentId: string): Promise<void> {
+// Refund a paid Stripe payment — the full remaining balance when `amountDollars`
+// is omitted, or a partial slice. Partial refunds accumulate in `refunded_amount`;
+// the payment stays `paid` (and refundable down to zero) until the whole charge
+// has been returned, at which point it flips to `refunded` and voids any linked
+// invoice. Returns what actually happened so callers can label the activity feed.
+export async function refundPayment(
+  supabase: SupabaseClient,
+  accountId: string,
+  paymentId: string,
+  amountDollars?: number,
+): Promise<{ amount: number; isFull: boolean; refundedTotal: number }> {
   const payment = await getPaymentDetails(supabase, accountId, paymentId);
 
   if (!payment) {
     throw new Error('Payment not found for this account.');
   }
 
+  // A partially-refunded payment is still `paid`, so this also covers "refund a
+  // bit more of an already partially-refunded payment".
   if (payment.status !== 'paid') {
     throw new Error('Only paid payments can be refunded.');
   }
@@ -291,37 +303,74 @@ export async function refundPayment(supabase: SupabaseClient, accountId: string,
     throw new Error('No Stripe payment intent found for this payment.');
   }
 
+  // Work in integer cents throughout so partial amounts never drift.
+  const totalCents = toCents(Number(payment.amount));
+  const alreadyCents = toCents(Number(payment.refunded_amount) || 0);
+  const remainingCents = totalCents - alreadyCents;
+  if (remainingCents <= 0) {
+    throw new Error('This payment has already been fully refunded.');
+  }
+
+  // Default to the full remaining balance; otherwise validate the requested slice.
+  const requestedCents = amountDollars == null ? remainingCents : toCents(amountDollars);
+  if (!Number.isFinite(requestedCents) || requestedCents <= 0) {
+    throw new Error('Enter a refund amount greater than zero.');
+  }
+  if (requestedCents > remainingCents) {
+    throw new Error(`You can refund at most ${formatMoneyCents(remainingCents)} on this payment.`);
+  }
+  const isFull = requestedCents >= remainingCents;
+
   const stripe = getStripeClient();
 
   try {
-    // Stripe will emit a charge.refunded webhook event automatically
+    // Stripe emits a charge.refunded webhook automatically; that handler reconciles
+    // the same numbers idempotently. Omitting `amount` refunds the full remaining
+    // balance; a partial refund sends the exact cents.
     const refund = await stripe.refunds.create({
       payment_intent: payment.stripe_payment_intent,
+      ...(isFull ? {} : { amount: requestedCents }),
       metadata: {
         payment_id: paymentId,
         reason: 'Refunded by contractor',
       },
     });
 
-    console.log(`Refund created: ${refund.id} for payment ${paymentId}`);
+    console.log(`Refund created: ${refund.id} for payment ${paymentId} (${isFull ? 'full' : 'partial'} ${formatMoneyCents(requestedCents)})`);
 
-    // Mark the payment as refunded (webhook will confirm, but do it immediately too)
-    const { error } = await supabase.from('payments').update({ status: 'refunded' }).eq('id', paymentId);
+    const refundedTotal = fromCents(alreadyCents + requestedCents);
+
+    // Reflect it immediately (the webhook will confirm the same value later).
+    const { error } = await supabase
+      .from('payments')
+      .update({ refunded_amount: refundedTotal, status: isFull ? 'refunded' : 'paid' })
+      .eq('id', paymentId);
 
     if (error) {
       throw error;
     }
 
-    // If there's a linked invoice, mark it as void
-    if (payment.invoice?.id) {
+    // Only a FULL refund voids the linked invoice — a partial refund leaves it standing.
+    if (isFull && payment.invoice?.id) {
       await supabase.from('invoices').update({ status: 'void' }).eq('id', payment.invoice.id);
     }
 
-    await sendPaymentSmsEvent(paymentId, 'payment_refunded');
+    // The homeowner refund text states the full payment amount, so only send it on
+    // a full refund. Partial refunds are recorded on the job timeline for the
+    // contractor but don't fire a (potentially misleading) "fully refunded" text.
+    if (isFull) {
+      await sendPaymentSmsEvent(paymentId, 'payment_refunded');
+    }
+
+    return { amount: fromCents(requestedCents), isFull, refundedTotal };
   } catch (err) {
     console.error('Refund failed:', err);
     throw new Error(err instanceof Error ? err.message : 'Refund failed');
   }
+}
+
+function formatMoneyCents(cents: number): string {
+  return `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 // Mark a payment as failed (e.g., for reconciliation/admin override)
