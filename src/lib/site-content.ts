@@ -234,7 +234,7 @@ export type SiteProjectShowcaseContent = {
   items: SiteShowcaseItem[];
 };
 
-export const DEFAULT_PROJECT_SHOWCASE_EYEBROW = 'Project showcase';
+export const DEFAULT_PROJECT_SHOWCASE_EYEBROW = 'Gallery';
 export const DEFAULT_PROJECT_SHOWCASE_TITLE = 'Our recent projects';
 export const PROJECT_SHOWCASE_STYLES: { key: SiteProjectShowcaseStyle; label: string }[] = [
   { key: 'slideshow', label: 'Slideshow — full cross-fade with captions' },
@@ -942,7 +942,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       enabled: projectShowcase.enabled !== false,
       eyebrow: toString(projectShowcase.eyebrow, DEFAULT_PROJECT_SHOWCASE_EYEBROW).slice(0, 40),
       title: toString(projectShowcase.title, DEFAULT_PROJECT_SHOWCASE_TITLE).slice(0, 80),
-      style: PROJECT_SHOWCASE_STYLE_KEYS.has(toString(projectShowcase.style)) ? (toString(projectShowcase.style) as SiteProjectShowcaseStyle) : 'slideshow',
+      style: PROJECT_SHOWCASE_STYLE_KEYS.has(toString(projectShowcase.style)) ? (toString(projectShowcase.style) as SiteProjectShowcaseStyle) : 'coverflow',
       items: parseShowcaseItems(projectShowcase.items).slice(0, MAX_PROJECT_SHOWCASE_ITEMS),
     },
     services: {
@@ -1321,7 +1321,7 @@ export const REORDERABLE_SECTIONS = [
   { key: 'services', label: 'Services' },
   { key: 'howItWorks', label: 'How it works' },
   { key: 'showcase', label: 'Showcase gallery' },
-  { key: 'projectShowcase', label: 'Project showcase' },
+  { key: 'projectShowcase', label: 'Additional image gallery' },
   { key: 'testimonials', label: 'Testimonials' },
   { key: 'faqs', label: 'FAQs' },
   { key: 'serviceAreas', label: 'Service areas' },

@@ -1246,7 +1246,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
         const image = await importJobPhotoToSiteImageAction(photo.path, photo.label);
         setSiteImages((current) => [image, ...current]);
         updateProjectShowcase({ ...siteContent.projectShowcase, enabled: true, items: [...projectBase(), { ...image, caption: image.alt }] });
-        setMessage({ type: 'success', text: 'Job photo imported into your project showcase.' });
+        setMessage({ type: 'success', text: 'Job photo imported into your image gallery.' });
       } catch (error) {
         setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to import this job photo.' });
       }
@@ -2015,8 +2015,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <button type="button" className={styles.secondaryAction} onClick={() => updateServiceAreas({ ...siteContent.serviceAreas, enabled: true, cities: [...siteContent.serviceAreas.cities, ''] })}>Add city</button>
                 </SectionCard>
 
-                <SectionCard reorder={reorderProps('projectShowcase', 'Project showcase')} title="Project showcase" description="An animated band of your best project photos — up to 10. Add your own here, or import them from completed jobs." enabled={siteContent.projectShowcase.enabled} onToggleEnabled={(value) => updateProjectShowcase({ ...siteContent.projectShowcase, enabled: value })} {...projectShowcaseHint} open={openSection === 'projectShowcase'} onToggleOpen={() => toggleSection('projectShowcase')}>
-                  <label className={styles.formField}><span>Small line above</span><input value={siteContent.projectShowcase.eyebrow} maxLength={40} onChange={(event) => updateProjectShowcase({ ...siteContent.projectShowcase, eyebrow: event.target.value })} placeholder="Project showcase" /></label>
+                <SectionCard reorder={reorderProps('projectShowcase', 'Additional image gallery')} title="Additional image gallery" description="An animated band of your best photos — up to 10. Add your own here, or import them from completed jobs." enabled={siteContent.projectShowcase.enabled} onToggleEnabled={(value) => updateProjectShowcase({ ...siteContent.projectShowcase, enabled: value })} {...projectShowcaseHint} open={openSection === 'projectShowcase'} onToggleOpen={() => toggleSection('projectShowcase')}>
+                  <label className={styles.formField}><span>Small line above</span><input value={siteContent.projectShowcase.eyebrow} maxLength={40} onChange={(event) => updateProjectShowcase({ ...siteContent.projectShowcase, eyebrow: event.target.value })} placeholder="Gallery" /></label>
                   <label className={styles.formField}><span>Heading</span><input value={siteContent.projectShowcase.title} maxLength={80} onChange={(event) => updateProjectShowcase({ ...siteContent.projectShowcase, title: event.target.value })} placeholder="Our recent projects" /></label>
                   <label className={styles.formField}><span>Showcase style</span><select value={siteContent.projectShowcase.style} onChange={(event) => updateProjectShowcase({ ...siteContent.projectShowcase, style: event.target.value as SiteProjectShowcaseContent['style'] })}>{PROJECT_SHOWCASE_STYLES.map((style) => <option key={style.key} value={style.key}>{style.label}</option>)}</select></label>
                   <div className={styles.contentSubhead}><strong>Project photos</strong><small>{projectPhotos.length}/{MAX_PROJECT_SHOWCASE_ITEMS} · shown in this order</small></div>
@@ -2050,7 +2050,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   </div>
                   {projectPhotos.length < MAX_PROJECT_SHOWCASE_ITEMS && <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: 'a project photo', kind: 'project', pjItemId: null })}>Add photo</button>}
                   <div className={styles.jobPhotoImport}>
-                    <div><strong>Completed job photos</strong><small>Import private job photos into your project showcase.</small></div>
+                    <div><strong>Completed job photos</strong><small>Import private job photos into your image gallery.</small></div>
                     <button type="button" onClick={loadJobPhotoOptions} disabled={isPending}>{jobPhotosLoaded ? 'Refresh job photos' : 'Load job photos'}</button>
                   </div>
                   {jobPhotosLoaded && (
