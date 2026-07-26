@@ -48,9 +48,7 @@ export default function StatCounters({ title, items, photo }: { title: string; i
           <div className={styles.statGrid}>
             {items.map((item) => (
               <div key={item.id} className={styles.statItem}>
-                <div className={styles.statValue}>
-                  {item.prefix}<StatNumber target={item.value} run={visible} />{item.suffix}
-                </div>
+                <div className={styles.statValue}><StatValue text={item.value} run={visible} /></div>
                 <div className={styles.statLabel}>{item.label}</div>
               </div>
             ))}
@@ -58,6 +56,22 @@ export default function StatCounters({ title, items, photo }: { title: string; i
         </div>
       </div>
     </section>
+  );
+}
+
+// The value is free text ("100+", "$2M", "24/7"). Animate the first run of
+// digits (commas allowed) and leave everything around it static; a value with no
+// digits just renders as-is.
+function StatValue({ text, run }: { text: string; run: boolean }) {
+  const match = text.match(/[\d,]+/);
+  const target = match ? Number(match[0].replace(/,/g, '')) : NaN;
+  if (!match || !Number.isFinite(target) || target <= 0) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, match.index)}
+      <StatNumber target={target} run={run} />
+      {text.slice(match.index! + match[0].length)}
+    </>
   );
 }
 

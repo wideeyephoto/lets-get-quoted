@@ -134,9 +134,9 @@ export type SiteCertificationsContent = {
 
 export type SiteStatItem = {
   id: string;
-  value: number;
-  prefix: string;
-  suffix: string;
+  // Free-text value the owner types verbatim — "100+", "$2M", "24/7", "4.9★".
+  // The stat band animates the first run of digits and leaves the rest static.
+  value: string;
   label: string;
 };
 
@@ -708,11 +708,21 @@ function parseStats(value: unknown): SiteStatItem[] {
 
   return value.filter(isRecord).map((item, index) => ({
     id: toString(item.id, `stat-${index + 1}`),
-    value: toPositiveNumber(item.value, 0),
-    prefix: toString(item.prefix),
-    suffix: toString(item.suffix),
+    value: normalizeStatValue(item),
     label: toString(item.label),
   }));
+}
+
+// New model: a single free-text value. Older stats stored a numeric value plus
+// separate prefix/suffix strings — fold those into one string ("$" + "100" + "+"
+// → "$100+") so existing sites keep the exact number they had.
+function normalizeStatValue(item: Record<string, unknown>): string {
+  if (typeof item.value === 'string') return item.value.slice(0, 24);
+  const prefix = toString(item.prefix);
+  const suffix = toString(item.suffix);
+  const num = toPositiveNumber(item.value, 0);
+  const core = num > 0 ? num.toLocaleString('en-US') : '';
+  return `${prefix}${core}${suffix}`.slice(0, 24);
 }
 
 function parseBeforeAfter(value: unknown): SiteBeforeAfterItem[] {

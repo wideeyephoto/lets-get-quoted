@@ -324,7 +324,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   const [reviewCountInput, setReviewCountInput] = useState(() => String(getSiteContent(initialSite.content).ratingBadge.reviewCount));
   // Same decimal/clear-clobber guard for the per-stat Value fields: keep the
   // raw string while a stat is being edited so clearing doesn't snap to 0.
-  const [statValueInputs, setStatValueInputs] = useState<Record<string, string>>({});
   const [uploadingTestimonialId, setUploadingTestimonialId] = useState<string | null>(null);
   // One list item is editable at a time; new items open for editing right away.
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -755,7 +754,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
             contentUpdates.testimonials = { ...content.testimonials, enabled: false, title: content.testimonials.title || 'What homeowners say', sourceMode: 'manual', items: generated.testimonials.map((t, i) => ({ id: `tst-${i + 1}`, author: t.author, text: t.text, rating: t.rating, label: t.label, imageUrl: '', imageAlt: '' })) };
           }
           if (generated.stats.length) {
-            contentUpdates.stats = { enabled: true, title: content.stats.title || 'By the numbers', items: generated.stats.map((s, i) => ({ id: `stat-${i + 1}`, value: s.value, prefix: '', suffix: s.suffix, label: s.label })) };
+            contentUpdates.stats = { enabled: true, title: content.stats.title || 'By the numbers', items: generated.stats.map((s, i) => ({ id: `stat-${i + 1}`, value: `${s.value.toLocaleString('en-US')}${s.suffix}`, label: s.label })) };
           }
           // Fold in auto-selected stock photos (hero, slots, gallery), preserving
           // any images the owner already set.
@@ -1955,17 +1954,15 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   </div>
                   <div className={styles.stackList}>
                     {siteContent.stats.items.map((item, index) => (
-                      <StackItem key={item.id} title={item.label.trim() || `Stat ${index + 1}`} meta={`${item.prefix}${item.value.toLocaleString('en-US')}${item.suffix}`} editing={editingItemId === item.id} onEdit={() => setEditingItemId(item.id)} onSave={saveItem} onRemove={() => updateStats({ ...siteContent.stats, items: siteContent.stats.items.filter((stat) => stat.id !== item.id) })}>
+                      <StackItem key={item.id} title={item.label.trim() || `Stat ${index + 1}`} meta={item.value} editing={editingItemId === item.id} onEdit={() => setEditingItemId(item.id)} onSave={saveItem} onRemove={() => updateStats({ ...siteContent.stats, items: siteContent.stats.items.filter((stat) => stat.id !== item.id) })}>
                         <div className={styles.formColumns}>
-                          <label className={styles.formField}><span>Prefix</span><input value={item.prefix} maxLength={4} onChange={(event) => updateStats({ ...siteContent.stats, items: siteContent.stats.items.map((stat) => stat.id === item.id ? { ...stat, prefix: event.target.value } : stat) })} placeholder="$" /></label>
-                          <label className={styles.formField}><span>Value</span><input type="number" min={0} value={statValueInputs[item.id] ?? String(item.value)} onChange={(event) => { const raw = event.target.value; setStatValueInputs((current) => ({ ...current, [item.id]: raw })); if (raw !== '') updateStats({ ...siteContent.stats, items: siteContent.stats.items.map((stat) => stat.id === item.id ? { ...stat, value: Number(raw) } : stat) }); }} onBlur={() => setStatValueInputs((current) => { const next = { ...current }; delete next[item.id]; return next; })} /></label>
-                          <label className={styles.formField}><span>Suffix</span><input value={item.suffix} maxLength={4} onChange={(event) => updateStats({ ...siteContent.stats, items: siteContent.stats.items.map((stat) => stat.id === item.id ? { ...stat, suffix: event.target.value } : stat) })} placeholder="+ / %" /></label>
+                          <label className={styles.formField}><span>Value</span><input value={item.value} maxLength={24} onChange={(event) => updateStats({ ...siteContent.stats, items: siteContent.stats.items.map((stat) => stat.id === item.id ? { ...stat, value: event.target.value } : stat) })} placeholder="100+" /><small className={styles.fieldHint}>Type it exactly as it should read — e.g. &ldquo;100+&rdquo;, &ldquo;$2M&rdquo;, &ldquo;24/7&rdquo;. Numbers count up on scroll.</small></label>
+                          <label className={styles.formField}><span>Label</span><input value={item.label} onChange={(event) => updateStats({ ...siteContent.stats, items: siteContent.stats.items.map((stat) => stat.id === item.id ? { ...stat, label: event.target.value } : stat) })} placeholder="Jobs completed" /></label>
                         </div>
-                        <label className={styles.formField}><span>Label</span><input value={item.label} onChange={(event) => updateStats({ ...siteContent.stats, items: siteContent.stats.items.map((stat) => stat.id === item.id ? { ...stat, label: event.target.value } : stat) })} placeholder="Jobs completed" /></label>
                       </StackItem>
                     ))}
                   </div>
-                  <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('stat'); updateStats({ ...siteContent.stats, enabled: true, items: [...siteContent.stats.items, { id, value: 0, prefix: '', suffix: '', label: '' }] }); setEditingItemId(id); }}>Add stat</button>
+                  <button type="button" className={styles.secondaryAction} onClick={() => { const id = createContentId('stat'); updateStats({ ...siteContent.stats, enabled: true, items: [...siteContent.stats.items, { id, value: '', label: '' }] }); setEditingItemId(id); }}>Add stat</button>
                 </SectionCard>
 
                 <SectionCard reorder={reorderProps('blog', 'Blog')} title="Blog" description="Helpful articles for homeowners — maintenance tips, seasonal advice, and what to know before hiring. AI can draft them; you review and publish." evidence="Fresh, useful posts give Google more local pages to rank and give past customers a reason to return — search visibility that compounds over time." enabled={siteContent.blog.enabled} onToggleEnabled={(value) => updateBlog({ ...siteContent.blog, enabled: value })} {...blogHint} open={openSection === 'blog'} onToggleOpen={() => toggleSection('blog')}>
