@@ -334,7 +334,6 @@ export const HEADER_STYLES = [
   { key: 'refined', label: 'Refined baseline', desc: 'Nav centered with an accent underline on hover.' },
   { key: 'glass', label: 'Floating glass bar', desc: 'A blurred capsule floating over the hero.' },
   { key: 'editorial', label: 'Editorial uppercase', desc: 'Tracked-out caps and a hairline bottom border.' },
-  { key: 'brandtab', label: 'Brand block tab', desc: 'Logo sits in a full-height accent block.' },
   { key: 'utility', label: 'Utility bar', desc: 'A slim accent strip with phone, hours & licensed.' },
   { key: 'stacked', label: 'Centered stack', desc: 'Logo centered up top, nav in a row beneath.' },
   { key: 'chips', label: 'Segmented chips', desc: 'Each nav link becomes a bordered chip.' },
