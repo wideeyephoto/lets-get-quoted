@@ -2046,7 +2046,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     ))}
                   </div>
                   <div className={styles.contentSubhead}><strong>Add a post</strong><small>Draft one with AI or write your own — it saves as a hidden draft until you publish it.</small></div>
-                  <label className={styles.formField}><span>What should it be about? (optional)</span><input id="bf-blog-topic" value={blogTopic} maxLength={200} onChange={(event) => setBlogTopic(event.target.value)} placeholder="e.g. Fall gutter maintenance checklist — leave blank and AI picks a seasonal topic" /></label>
+                  <label className={styles.formField}><span>What should it be about?</span><input id="bf-blog-topic" value={blogTopic} maxLength={200} onChange={(event) => setBlogTopic(event.target.value)} placeholder="e.g. Fall gutter maintenance checklist — leave blank and AI picks a seasonal topic" /></label>
                   <button type="button" className={styles.blogGenerateBtn} onClick={handleGenerateBlogDraft} disabled={isGeneratingBlog}>{isGeneratingBlog ? 'Writing your draft…' : '✨ Generate a draft with AI'}</button>
 
                   <div className={styles.contentSubhead}><strong>Layout</strong><small>How posts are arranged on your site.</small></div>
