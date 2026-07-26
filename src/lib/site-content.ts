@@ -83,6 +83,9 @@ export type SiteTestimonialsContent = {
 export type SiteStickyCallBarContent = {
   enabled: boolean;
   showQuote: boolean;
+  // Custom button labels for the sticky mobile button.
+  callLabel: string;
+  quoteLabel: string;
 };
 
 export type SiteRatingBadgeContent = {
@@ -876,6 +879,8 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     stickyCallBar: {
       enabled: stickyCallBar.enabled !== false,
       showQuote: stickyCallBar.showQuote !== false,
+      callLabel: toString(stickyCallBar.callLabel, 'Call now').slice(0, 30),
+      quoteLabel: toString(stickyCallBar.quoteLabel, 'Free quote').slice(0, 30),
     },
     ratingBadge: {
       enabled: toBoolean(ratingBadge.enabled),
