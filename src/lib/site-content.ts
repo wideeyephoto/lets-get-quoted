@@ -180,6 +180,17 @@ export type SiteWhyUsContent = {
   points: string[];
 };
 
+// Auto-generated, editable legal pages linked in the footer. Enabled by default
+// so every published site ships with a Privacy Policy + Terms; a blank body
+// means "use the generated template" (see resolveLegalDoc in lib/legal).
+export type SiteLegalContent = {
+  privacyEnabled: boolean;
+  termsEnabled: boolean;
+  privacyBody: string; // '' = use the generated template
+  termsBody: string; // '' = use the generated template
+  updated: string; // 'YYYY-MM-DD' effective date, '' to omit
+};
+
 export const DEFAULT_WHY_US_TITLE = 'Quality work, every single time';
 export const DEFAULT_WHY_US_POINTS = [
   'Verified, background-checked pros',
@@ -455,6 +466,7 @@ export type NormalizedSiteContent = {
   beforeAfter: SiteBeforeAfterContent;
   announcement: SiteAnnouncementContent;
   whyUs: SiteWhyUsContent;
+  legal: SiteLegalContent;
   workGallery: SiteWorkGalleryContent;
   introBlock: SiteIntroBlockContent;
   // The small label above the hero headline. Blank until the owner types one;
@@ -781,6 +793,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const beforeAfter = isRecord(root.beforeAfter) ? root.beforeAfter : {};
   const announcement = isRecord(root.announcement) ? root.announcement : {};
   const whyUs = isRecord(root.whyUs) ? root.whyUs : {};
+  const legal = isRecord(root.legal) ? root.legal : {};
   const workGallery = isRecord(root.workGallery) ? root.workGallery : {};
   const introBlock = isRecord(root.introBlock) ? root.introBlock : {};
   const projectShowcase = isRecord(root.projectShowcase) ? root.projectShowcase : {};
@@ -895,6 +908,13 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       enabled: whyUs.enabled !== false,
       title: toString(whyUs.title, DEFAULT_WHY_US_TITLE).slice(0, 80),
       points: whyUs.points === undefined ? [...DEFAULT_WHY_US_POINTS] : parseWhyPoints(whyUs.points),
+    },
+    legal: {
+      privacyEnabled: legal.privacyEnabled !== false,
+      termsEnabled: legal.termsEnabled !== false,
+      privacyBody: toString(legal.privacyBody).slice(0, 20000),
+      termsBody: toString(legal.termsBody).slice(0, 20000),
+      updated: /^\d{4}-\d{2}-\d{2}$/.test(toString(legal.updated)) ? toString(legal.updated) : '',
     },
     workGallery: {
       eyebrow: toString(workGallery.eyebrow).slice(0, 40),
