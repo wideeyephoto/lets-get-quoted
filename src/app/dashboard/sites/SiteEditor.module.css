@@ -304,6 +304,18 @@
 .imageSlotHead strong { font-size: .92rem; color: #f7f5ef; }
 .imageSlotHead small { color: #9ca8b8; font-size: .76rem; line-height: 1.4; }
 .imageSlotEmpty { display: grid; place-items: center; min-height: 88px; padding: 1rem; border: 1px dashed rgba(255,255,255,.2); border-radius: 8px; color: #8f9aaa; font-size: .8rem; text-align: center; line-height: 1.45; }
+/* Auto trade-icon fallback shown in place of "No logo yet" — mirrors the mark the
+   live site renders when no logo is uploaded. `color` is set inline to the brand
+   accent, so the glyph (stroke: currentColor) is tinted to match. */
+.autoLogo { display: flex; align-items: center; gap: .85rem; min-height: 88px; padding: .85rem 1rem; border: 1px dashed rgba(255,255,255,.2); border-radius: 8px; }
+.autoLogoChip { display: grid; place-items: center; width: 56px; height: 56px; flex: none; background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.28); }
+.autoLogoChip[data-logo-style='rounded'] { border-radius: 10px; }
+.autoLogoChip[data-logo-style='circle'] { border-radius: 999px; }
+.autoLogoChip[data-logo-style='framed'] { border: 1px solid color-mix(in srgb, currentColor 32%, transparent); background: color-mix(in srgb, #fff 90%, currentColor); }
+.autoLogoGlyph { width: 32px; height: 32px; }
+.autoLogoMeta { display: grid; gap: .2rem; }
+.autoLogoMeta strong { font-size: .9rem; color: #f7f5ef; }
+.autoLogoMeta small { color: #9ca8b8; font-size: .76rem; line-height: 1.45; }
 .heroSlotPreview { overflow: hidden; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; }
 .heroSlotPreview img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
 .imageSlotActions { margin-top: auto; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }

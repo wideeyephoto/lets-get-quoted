@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition, type CSSProper
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent } from '@/lib/site-content';
+import { getSiteContent, getTradeGlyph, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
@@ -148,6 +148,24 @@ function pexelsQueryFor(picker: { kind: string; slot?: string }, trade: string):
       return t;
     default: return `${t} home exterior`; // hero, heroExtra
   }
+}
+
+// Friendly nouns for the trade-glyph keys getTradeGlyph can return, so the logo
+// card can say exactly which mark was picked ("a paint roller icon").
+const TRADE_GLYPH_NOUNS: Record<string, string> = {
+  wrench: 'wrench',
+  bolt: 'lightning bolt',
+  roller: 'paint roller',
+  sparkles: 'sparkle',
+  leaf: 'leaf',
+  truck: 'truck',
+  shield: 'shield',
+  home: 'house',
+};
+
+function describeTradeGlyph(trade: string): { glyph: string; noun: string } {
+  const glyph = getTradeGlyph(trade);
+  return { glyph, noun: TRADE_GLYPH_NOUNS[glyph] ?? 'trade' };
 }
 
 // Apply auto-selected stock photos to the site, preserving the owner's uploads
@@ -1524,9 +1542,24 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <div className={styles.imageSlot}>
                     {site.logo_url
                       ? <div className={styles.logoPreviews}><div className={styles.logoPreview}><img src={site.logo_url} alt="Logo on a light header" data-logo-style={siteContent.logoStyle} /><em>Light</em></div><div className={styles.logoPreviewDark}><img src={site.logo_url} alt="Logo on a dark header" data-logo-style={siteContent.logoStyle} /><em>Dark</em></div></div>
-                      : <div className={styles.imageSlotEmpty}>No logo yet</div>}
+                      : (() => {
+                          const { glyph, noun } = describeTradeGlyph(siteContent.trade);
+                          const accent = site.accent_override || '#ff7a21';
+                          const tradeName = siteContent.trade.trim();
+                          return (
+                            <div className={styles.autoLogo}>
+                              <span className={styles.autoLogoChip} data-logo-style={siteContent.logoStyle} style={{ color: accent }}>
+                                <ServiceIcon name={glyph} className={styles.autoLogoGlyph} />
+                              </span>
+                              <div className={styles.autoLogoMeta}>
+                                <strong>Auto icon for your trade</strong>
+                                <small>{tradeName ? `We picked a ${noun} to match “${tradeName}.”` : `A ${noun} mark, until you set your field of work above.`} It shows in your header and footer until you add your own logo.</small>
+                              </div>
+                            </div>
+                          );
+                        })()}
                     <div className={styles.imageSlotActions}>
-                      <button type="button" className={styles.secondaryAction} onClick={() => openPicker('your logo', 'logo')}>{site.logo_url ? 'Replace photo' : 'Add a logo'}</button>
+                      <button type="button" className={styles.secondaryAction} onClick={() => openPicker('your logo', 'logo')}>{site.logo_url ? 'Replace photo' : 'Add your own logo'}</button>
                       {site.logo_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('logo_url', null)}>Remove</button>}
                     </div>
                     <div className={styles.formColumns}>
