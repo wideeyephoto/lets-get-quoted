@@ -234,8 +234,8 @@ export type SiteProjectShowcaseContent = {
   items: SiteShowcaseItem[];
 };
 
-export const DEFAULT_PROJECT_SHOWCASE_EYEBROW = 'Gallery';
-export const DEFAULT_PROJECT_SHOWCASE_TITLE = 'Our recent projects';
+export const DEFAULT_PROJECT_SHOWCASE_EYEBROW = 'Recent Jobs';
+export const DEFAULT_PROJECT_SHOWCASE_TITLE = 'See Our Work';
 export const PROJECT_SHOWCASE_STYLES: { key: SiteProjectShowcaseStyle; label: string }[] = [
   { key: 'slideshow', label: 'Slideshow — full cross-fade with captions' },
   { key: 'coverflow', label: 'Coverflow — 3D angled carousel' },
