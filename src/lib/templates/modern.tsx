@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, glyphForContent } from '@/lib/site-content';
+import { getColorScheme, getEstimateButtonLabel, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, glyphForContent } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
 import SiteFooter from './SiteFooter';
 import WordmarkName from './WordmarkName';
@@ -47,7 +47,7 @@ export default function VistaTemplate({ site }: TemplateProps) {
         <SiteNavLinks site={site} className={styles.navLinks} links={[]} />
         <div className={styles.vistaActions}>
           {site.phone && <a className={styles.vistaPhone} data-edit="bizPhone" href={`tel:${site.phone}`}>{site.phone}</a>}
-          <a className={styles.vistaMenu} data-edit="quoteForm" href="#contact">Get a quote <span aria-hidden="true">→</span></a>
+          <a className={styles.vistaMenu} data-edit="quoteForm" href="#contact">{getEstimateButtonLabel(content.quoteForm)} <span aria-hidden="true">→</span></a>
         </div>
       </header>
 

@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getPublishedTrustBadges, getPublishedWhyUs, getSiteContent, getSlotImage, glyphForContent } from '@/lib/site-content';
+import { getColorScheme, getEstimateButtonLabel, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getPublishedTrustBadges, getPublishedWhyUs, getSiteContent, getSlotImage, glyphForContent } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
 import SiteFooter from './SiteFooter';
 import WordmarkName from './WordmarkName';
@@ -74,7 +74,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
         <SiteNavLinks site={site} className={styles.navLinks} links={navLinks} />
         <div className={styles.careHeaderActions}>
           {site.phone && <a className={styles.careHeaderPhone} data-edit="bizPhone" href={`tel:${site.phone}`}>{site.phone}</a>}
-          <a className={styles.careBtn} data-edit="quoteForm" href="#contact">Contact us</a>
+          <a className={styles.careBtn} data-edit="quoteForm" href="#contact">{getEstimateButtonLabel(content.quoteForm)}</a>
         </div>
       </header>
 

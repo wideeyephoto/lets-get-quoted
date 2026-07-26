@@ -667,6 +667,9 @@
 .forge[data-mode='light'] .forgeHeader, .forge[data-mode='light'] .forgeHero { color: #f3f0e7; }
 .forge .kicker { font-family: var(--font-mono); font-size: .7rem; font-weight: 500; letter-spacing: .18em; }
 .forgeHeader { position: absolute; z-index: 3; inset: 0 0 auto; background: linear-gradient(180deg, rgba(10,10,9,.62), transparent); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 84px; padding: 0 4vw; border-bottom: 1px solid rgba(255,255,255,.16); }
+.forgeHeaderActions { display: inline-flex; align-items: center; gap: 1rem; justify-self: end; }
+.forgeHeaderCta { display: inline-flex; align-items: center; gap: .4rem; padding: .55rem 1.1rem; border-radius: var(--theme-radius, 8px); background: var(--theme-accent); color: var(--theme-on-accent, #111); font-weight: 700; font-size: .9rem; text-decoration: none; white-space: nowrap; transition: filter .18s; }
+.forgeHeaderCta:hover { filter: brightness(1.07); }
 /* Wordmark renders as the owner typed it (no forced case) in their chosen brand
    font, defaulting to Forge's body face. --brand-font is set on the root only
    when the owner picks one. */
