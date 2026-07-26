@@ -1159,9 +1159,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   // picker replaces the light/dark toggle (a scheme IS a light or dark palette).
   // Expands as the remaining themes are migrated; once all are, portal_mode's UI
   // can be retired entirely. Note: 'shine' is the template id for Lustre.
-  // All eight themes are now on the color-scheme token system, so the scheme
-  // picker fully replaces the light/dark toggle everywhere.
-  const hasColorSchemes = true;
 
   // The wording each template shows in its hero eyebrow when the owner leaves the
   // field blank — surfaced as the input placeholder so they see what they'd override.
