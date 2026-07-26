@@ -239,7 +239,9 @@ h3 {
   display: flex;
   flex-direction: column;
   padding: 1.1rem 0.8rem 1rem;
-  overflow: hidden;
+  /* visible (not hidden) so the "+ New" dropdown can overflow the rail; the nav
+     list owns its own scroll, so the footer still stays pinned. */
+  overflow: visible;
   border-right: 1px solid var(--line);
   background: rgba(7, 16, 28, 0.86);
   -webkit-backdrop-filter: blur(20px);
@@ -2051,8 +2053,6 @@ li + li { margin-top: 0.45rem; }
 
 .demo-banner-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
 
-.demo-nav-wrap { margin: 1.1rem auto 0; min-height: 0; }
-.demo-nav { margin-bottom: 0; }
 .demo-locked-card { border-style: dashed; }
 
 @media (max-width: 640px) {

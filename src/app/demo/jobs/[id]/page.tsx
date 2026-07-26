@@ -29,8 +29,7 @@ export default function DemoJobDetailPage({ params }: { params: { id: string } }
   const payments = getDemoPayments(job);
 
   return (
-    <>
-      <main className="wide-shell workspace-shell">
+    <main className="wide-shell workspace-shell">
         <section className="panel workspace-section-card">
           <div className="section-heading workspace-section-heading">
             <p className="eyebrow">{job.ref}</p>
@@ -140,7 +139,6 @@ export default function DemoJobDetailPage({ params }: { params: { id: string } }
             </Link>
           </div>
         </section>
-      </main>
-    </>
+    </main>
   );
 }

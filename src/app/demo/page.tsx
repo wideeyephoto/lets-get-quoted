@@ -79,8 +79,7 @@ export default function DemoDashboardPage() {
   });
 
   return (
-    <>
-      <main className="wide-shell workspace-shell">
+    <main className="wide-shell workspace-shell">
         <section className="panel workspace-section-card">
           <div className="section-heading workspace-section-heading">
             <p className="eyebrow">Snapshot</p>
@@ -203,7 +202,6 @@ export default function DemoDashboardPage() {
             )}
           </div>
         </section>
-      </main>
-    </>
+    </main>
   );
 }

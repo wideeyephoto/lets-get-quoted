@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { useAppShell } from './app-shell-provider';
 import { NavIcon } from './nav-icons';
 import { supabase } from '@/lib/supabase';
@@ -133,14 +133,19 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     return () => document.removeEventListener('keydown', onKey);
   }, [isNavOpen, closeNav]);
 
-  // The "+ New" menu closes on outside click or Escape.
+  // The "+ New" menu closes on outside click or Escape. On open, focus moves to
+  // the first item; on Escape it returns to the trigger.
   useEffect(() => {
     if (!newMenuOpen) return;
+    newMenuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
     const onPointerDown = (event: MouseEvent) => {
       if (newMenuRef.current && !newMenuRef.current.contains(event.target as Node)) setNewMenuOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setNewMenuOpen(false);
+      if (event.key === 'Escape') {
+        setNewMenuOpen(false);
+        newMenuRef.current?.querySelector<HTMLElement>('.sidenav-new')?.focus();
+      }
     };
     document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('keydown', onKey);
@@ -149,6 +154,17 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       document.removeEventListener('keydown', onKey);
     };
   }, [newMenuOpen]);
+
+  // Arrow keys move focus between "+ New" menu items (wrapping).
+  function onNewMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    const items = Array.from(newMenuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
+    if (!items.length) return;
+    event.preventDefault();
+    const idx = items.indexOf(document.activeElement as HTMLElement);
+    const nextIdx = event.key === 'ArrowDown' ? (idx + 1) % items.length : (idx - 1 + items.length) % items.length;
+    items[nextIdx].focus();
+  }
 
   // Track sign-in state client-side so the logo can route logged-in
   // contractors straight to their dashboard from anywhere in the app
@@ -300,13 +316,14 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                 className="sidenav-new"
                 aria-haspopup="menu"
                 aria-expanded={newMenuOpen}
+                aria-controls="sidenav-new-menu"
                 onClick={() => setNewMenuOpen((open) => !open)}
               >
                 <span className="sidenav-new-plus" aria-hidden="true">+</span> New
                 <span className={`sidenav-new-caret${newMenuOpen ? ' open' : ''}`} aria-hidden="true">▾</span>
               </button>
               {newMenuOpen ? (
-                <div className="sidenav-new-menu" role="menu">
+                <div className="sidenav-new-menu" id="sidenav-new-menu" role="menu" onKeyDown={onNewMenuKeyDown}>
                   <Link href="/dashboard/jobs?new=1#new-job" role="menuitem" className="sidenav-new-item" onClick={() => setNewMenuOpen(false)}>
                     <NavIcon href="/dashboard/jobs" />
                     New job

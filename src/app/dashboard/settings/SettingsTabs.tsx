@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { resolveTabForHash } from '@/lib/nav-helpers';
 
 export type SettingsTab = {
@@ -21,10 +21,12 @@ const TAB_ICONS: Record<string, string> = {
 
 // A tabbed sub-nav ("submenu") over the settings sections. All panels stay
 // mounted and just toggle `hidden`, so the server-action forms inside keep
-// working and switching tabs is instant.
+// working and switching tabs is instant. Implements the ARIA tabs pattern:
+// roving tabindex, arrow/Home/End navigation, and tab<->panel wiring.
 export default function SettingsTabs({ tabs }: { tabs: SettingsTab[] }) {
   const [active, setActive] = useState(tabs[0]?.id);
   const navRef = useRef<HTMLDivElement>(null);
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   useEffect(() => {
     // Scroll to an anchored section once its panel is actually visible — the
@@ -58,16 +60,37 @@ export default function SettingsTabs({ tabs }: { tabs: SettingsTab[] }) {
     navRef.current?.querySelector<HTMLElement>(`[data-tab="${id}"]`)?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
   }
 
+  function onTablistKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const idx = tabs.findIndex((tab) => tab.id === active);
+    if (idx === -1) return;
+    let nextIdx: number | null = null;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIdx = (idx + 1) % tabs.length;
+    else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIdx = (idx - 1 + tabs.length) % tabs.length;
+    else if (event.key === 'Home') nextIdx = 0;
+    else if (event.key === 'End') nextIdx = tabs.length - 1;
+    if (nextIdx === null) return;
+    event.preventDefault();
+    const nextId = tabs[nextIdx].id;
+    select(nextId);
+    tabRefs.current[nextId]?.focus();
+  }
+
   return (
     <>
-      <div className="settings-tabnav" role="tablist" aria-label="Settings sections" ref={navRef}>
+      <div className="settings-tabnav" role="tablist" aria-label="Settings sections" ref={navRef} onKeyDown={onTablistKeyDown}>
         {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
             role="tab"
+            id={`settings-tab-${t.id}`}
             data-tab={t.id}
             aria-selected={active === t.id}
+            aria-controls={`settings-panel-${t.id}`}
+            tabIndex={active === t.id ? 0 : -1}
+            ref={(el) => {
+              tabRefs.current[t.id] = el;
+            }}
             className={`settings-tab${active === t.id ? ' active' : ''}`}
             onClick={() => select(t.id)}
           >
@@ -78,7 +101,15 @@ export default function SettingsTabs({ tabs }: { tabs: SettingsTab[] }) {
       </div>
 
       {tabs.map((t) => (
-        <div key={t.id} role="tabpanel" hidden={active !== t.id} className="settings-tabpanel">
+        <div
+          key={t.id}
+          role="tabpanel"
+          id={`settings-panel-${t.id}`}
+          aria-labelledby={`settings-tab-${t.id}`}
+          tabIndex={0}
+          hidden={active !== t.id}
+          className="settings-tabpanel"
+        >
           {t.content}
         </div>
       ))}

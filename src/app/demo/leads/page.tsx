@@ -30,8 +30,7 @@ export default function DemoLeadsPage() {
   const averageResponse = formatDuration(getAverageRequestResponseMs(leads));
 
   return (
-    <>
-      <main className="wide-shell workspace-shell">
+    <main className="wide-shell workspace-shell">
         <section className="panel workspace-section-card">
           <div className="section-heading workspace-section-heading">
             <p className="eyebrow">Pipeline</p>
@@ -105,7 +104,6 @@ export default function DemoLeadsPage() {
             Create free account
           </Link>
         </section>
-      </main>
-    </>
+    </main>
   );
 }

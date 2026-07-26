@@ -77,8 +77,7 @@ export default function DemoSchedulePage({ searchParams }: { searchParams: { mon
   }));
 
   return (
-    <>
-      <main className="wide-shell workspace-shell">
+    <main className="wide-shell workspace-shell">
         <section className="workspace-hero panel">
           <div className="workspace-hero-copy">
             <p className="eyebrow">Schedule</p>
@@ -144,7 +143,6 @@ export default function DemoSchedulePage({ searchParams }: { searchParams: { mon
             </div>
           </section>
         ) : null}
-      </main>
-    </>
+    </main>
   );
 }

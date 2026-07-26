@@ -5,8 +5,7 @@ export const dynamic = 'force-dynamic';
 
 export default function DemoSettingsPage() {
   return (
-    <>
-      <main className="wide-shell workspace-shell">
+    <main className="wide-shell workspace-shell">
         <section className="workspace-hero workspace-hero-solo panel">
           <div className="workspace-hero-copy">
             <p className="eyebrow">Account</p>
@@ -48,7 +47,6 @@ export default function DemoSettingsPage() {
             Create free account
           </Link>
         </section>
-      </main>
-    </>
+    </main>
   );
 }

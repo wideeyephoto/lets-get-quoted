@@ -26,8 +26,7 @@ export default function DemoJobsPage({ searchParams }: { searchParams: { status?
   const activeJobs = jobs.filter((job) => job.status === 'in_progress').length;
 
   return (
-    <>
-      <main className="wide-shell workspace-shell">
+    <main className="wide-shell workspace-shell">
         <section className="panel workspace-section-card">
           <div className="section-heading workspace-section-heading">
             <p className="eyebrow">Pipeline</p>
@@ -95,7 +94,6 @@ export default function DemoJobsPage({ searchParams }: { searchParams: { status?
             Create free account
           </Link>
         </section>
-      </main>
-    </>
+    </main>
   );
 }
