@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, getSlotImage, glyphForContent } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
+import SiteFooter from './SiteFooter';
 import WordmarkName from './WordmarkName';
 import HeroImageCycle from './HeroImageCycle';
 import type { TemplateProps } from '@/lib/templates/types';
@@ -133,13 +134,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
         <QuoteRequestForm site={site} />
       </section>
 
-      <footer className={styles.shineFooter}>
-        <div className={styles.shineFooterBar}>
-          <a className={styles.shineFooterBrand} href="#top">{site.logo_url ? <img className={styles.footerLogo} src={site.logo_url} alt="" /> : <span className={styles.shineBrandMark} data-edit="brandIcon" aria-hidden="true"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}{site.company_name}</a>
-          {site.phone && <a className={styles.shineFooterCall} href={`tel:${site.phone}`}>Book a call — {site.phone}</a>}
-          <small>Powered by Let&apos;s Get Quoted</small>
-        </div>
-      </footer>
+      <SiteFooter site={site} />
 
       <SiteDesktopCta site={site} />
     </main>

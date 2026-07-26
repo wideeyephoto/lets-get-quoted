@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, glyphForContent } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
+import SiteFooter from './SiteFooter';
 import WordmarkName from './WordmarkName';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
@@ -84,7 +85,7 @@ export default function VistaTemplate({ site }: TemplateProps) {
         <QuoteRequestForm site={site} />
       </section>
 
-      <footer className={styles.vistaFooter}><strong data-edit="identity">{site.logo_url ? <img className={styles.footerLogo} src={site.logo_url} alt="" /> : <span className={styles.vistaBrandMark} data-edit="brandIcon" aria-hidden="true"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>} {site.company_name}</strong><span>{site.hours || 'By appointment'}</span><small>Powered by Let&apos;s Get Quoted</small></footer>
+      <SiteFooter site={site} />
     </main>
   );
 }

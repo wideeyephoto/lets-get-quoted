@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getEstimateButtonLabel, getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getSiteContent, getSlotImage, glyphForContent, getWorkBand } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
+import SiteFooter from './SiteFooter';
 import WordmarkName from './WordmarkName';
 import HeroImageCycle from './HeroImageCycle';
 import type { TemplateProps } from '@/lib/templates/types';
@@ -131,7 +132,7 @@ export default function GuildTemplate({ site }: TemplateProps) {
       </section>
 
       <SiteDesktopCta site={site} />
-      <footer className={styles.guildFooter}><strong data-edit="identity">{site.logo_url ? <img className={styles.footerLogo} src={site.logo_url} alt="" /> : <span className={styles.guildBrandMark} data-edit="brandIcon" aria-hidden="true"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>} {site.company_name}</strong><span>{site.license || 'Licensed & insured'}</span><small>Powered by Let&apos;s Get Quoted</small></footer>
+      <SiteFooter site={site} />
     </main>
   );
 }

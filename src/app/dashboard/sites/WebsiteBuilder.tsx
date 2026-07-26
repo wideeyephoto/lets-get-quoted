@@ -187,6 +187,15 @@ const TRADE_GLYPH_NOUNS: Record<string, string> = {
   thermometerSnow: 'thermometer',
 };
 
+// Footer layouts offered in Brand → Footer. Shared across every theme via
+// <SiteFooter>; the key is stored on content.footerStyle.
+const FOOTER_STYLES: { key: string; label: string; desc: string }[] = [
+  { key: 'columns', label: 'Columns', desc: 'Brand, links, and contact side by side.' },
+  { key: 'cta', label: 'Quote band', desc: 'A “get a quote” strip above the footer.' },
+  { key: 'centered', label: 'Centered', desc: 'Everything stacked down the middle.' },
+  { key: 'grid', label: 'Info grid', desc: 'Four labeled columns of details.' },
+];
+
 // Apply auto-selected stock photos to the site, preserving the owner's uploads
 // and any image they've already set (an existing image is only replaced if it's
 // currently a stock photo or empty). Returns the changed hero + a content
@@ -1615,6 +1624,24 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   </div>
                 </SectionCard>
                 </div>
+
+                <SectionCard title="Footer" description="How the bottom of every page is laid out. Applies to every theme." open={openSection === 'footer'} onToggleOpen={() => toggleSection('footer')}>
+                  <div className={styles.footerPicker} role="group" aria-label="Footer layout">
+                    {FOOTER_STYLES.map((f) => (
+                      <button
+                        type="button"
+                        key={f.key}
+                        className={`${styles.footerPickerBtn}${siteContent.footerStyle === f.key ? ` ${styles.footerPickerBtnOn}` : ''}`}
+                        aria-pressed={siteContent.footerStyle === f.key}
+                        onClick={() => updateSiteContent({ footerStyle: f.key })}
+                      >
+                        <strong>{f.label}</strong>
+                        <small>{f.desc}</small>
+                      </button>
+                    ))}
+                  </div>
+                  <small className={styles.fieldHint}>Your area, hours, license, and phone fill the footer — edit those on the Setup tab.</small>
+                </SectionCard>
 
               </div>
             )}

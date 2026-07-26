@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getPublishedTrustBadges, getPublishedWhyUs, getSiteContent, getSlotImage, glyphForContent, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
+import SiteFooter from './SiteFooter';
 import WordmarkName from './WordmarkName';
 import HeroImageCycle from './HeroImageCycle';
 import ProjectShowcase from './ProjectShowcase';
@@ -170,29 +171,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
         <QuoteRequestForm site={site} />
       </section>
 
-      <footer className={styles.careFooter}>
-        <div className={styles.careFooterMain}>
-          <div className={styles.careFooterBrand}>
-            <span className={styles.careFooterLogo} data-edit="identity">{site.logo_url ? <img className={styles.footerLogo} src={site.logo_url} alt="" /> : <span className={styles.careBrandMark} data-edit="brandIcon" aria-hidden="true"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>} {site.company_name}</span>
-            <p data-edit="bizTagline">{site.tagline || 'Trusted, friendly home services for your neighborhood.'}</p>
-          </div>
-          <div className={styles.careFooterCol}>
-            <h3>Company</h3>
-            {navLinks.map((link) => <a key={link.href} href={link.href}>{link.label}</a>)}
-          </div>
-          <div className={styles.careFooterCol}>
-            <h3>Get in touch</h3>
-            {site.phone && <a href={`tel:${site.phone}`} data-edit="bizPhone">{site.phone}</a>}
-            {site.service_area && <span data-edit="bizArea">{site.service_area}</span>}
-            {site.hours && <span data-edit="bizHours">{site.hours}</span>}
-            {site.license && <span data-edit="bizLicense">{site.license}</span>}
-          </div>
-        </div>
-        <div className={styles.careFooterBar}>
-          <span>© {site.company_name}</span>
-          <small>Powered by Let&apos;s Get Quoted</small>
-        </div>
-      </footer>
+      <SiteFooter site={site} />
     </main>
   );
 }

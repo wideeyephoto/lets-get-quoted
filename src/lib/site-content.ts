@@ -496,6 +496,9 @@ export type NormalizedSiteContent = {
   // Header/footer logo scale: 'small' | 'medium' | 'large'. Set on the template
   // root as data-logo-size; drives the shared .logo height.
   logoSize: string;
+  // Footer layout, shared across every theme via <SiteFooter>:
+  // 'columns' | 'cta' | 'centered' | 'grid'. Drives data-footer on the footer.
+  footerStyle: string;
   // The owner's trade / contractor type (e.g. "window cleaning", "roofing"),
   // used together with the business name to generate on-brand AI content.
   trade: string;
@@ -515,9 +518,14 @@ export const MAX_EXTRA_HERO_IMAGES = 2;
 
 const LOGO_STYLE_KEYS = new Set(['plain', 'transparent', 'rounded', 'squircle', 'framed', 'circle']);
 const LOGO_SIZE_KEYS = new Set(['small', 'medium', 'large']);
+export const FOOTER_STYLE_KEYS = new Set(['columns', 'cta', 'centered', 'grid']);
 
 export function getLogoStyle(content: Record<string, unknown> | null | undefined): string {
   return getSiteContent(content).logoStyle;
+}
+
+export function getFooterStyle(content: Record<string, unknown> | null | undefined): string {
+  return getSiteContent(content).footerStyle;
 }
 
 export function getLogoSize(content: Record<string, unknown> | null | undefined): string {
@@ -950,6 +958,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       : [],
     logoStyle: LOGO_STYLE_KEYS.has(toString(root.logoStyle)) ? toString(root.logoStyle) : 'plain',
     logoSize: LOGO_SIZE_KEYS.has(toString(root.logoSize)) ? toString(root.logoSize) : 'medium',
+    footerStyle: FOOTER_STYLE_KEYS.has(toString(root.footerStyle)) ? toString(root.footerStyle) : 'columns',
     trade: toString(root.trade).slice(0, 80),
     brandGlyph: SERVICE_ICON_GLYPHS[toString(root.brandGlyph)] ? toString(root.brandGlyph) : '',
     stockImages: parseStockImages(root.stockImages),

@@ -1746,3 +1746,72 @@
 /* Pexels stock-photo attribution (required credit line). */
 .pexelsCredit { margin: 0; padding: 1rem 1.25rem; text-align: center; font-size: .72rem; color: var(--muted, #8a8f98); opacity: .8; }
 .pexelsCredit a { color: inherit; text-decoration: underline; }
+
+/* ============================================================================
+   Shared footer (SiteFooter.tsx) — one markup, four owner-selectable layouts,
+   themed entirely through tokens so it looks native on every template.
+   ============================================================================ */
+.siteFooter {
+  background: var(--c-deep);
+  color: color-mix(in srgb, var(--c-on-deep) 70%, transparent);
+  font-family: var(--theme-body, inherit);
+}
+.sfPad { padding: clamp(2.25rem, 5vw, 3.5rem) clamp(1.25rem, 5vw, 4rem) 2rem; }
+
+/* atoms */
+.sfBrandRow { display: inline-flex; align-items: center; gap: .55rem; }
+.sfMark { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 38px; height: 38px; border-radius: 11px; background: var(--theme-accent); color: var(--theme-on-accent, #fff); }
+.sfName { font-family: var(--brand-font, var(--theme-display)); font-weight: 700; font-size: 1.3rem; letter-spacing: -.01em; color: var(--c-on-deep); }
+.sfTagline { margin: .75rem 0 0; max-width: 34ch; font-size: .9rem; line-height: 1.55; opacity: .9; }
+.sfBtn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; margin-top: 1.1rem; padding: .6rem 1.35rem; border-radius: var(--theme-radius, 10px); background: var(--theme-accent); color: var(--theme-on-accent, #fff); font-weight: 700; font-size: .9rem; box-shadow: 0 14px 30px -16px color-mix(in srgb, var(--theme-accent) 70%, transparent); }
+.sfBtn:hover { filter: brightness(1.05); }
+.sfPhone { font-size: 1.12rem; font-weight: 750; color: var(--c-on-deep); }
+.sfCol { display: grid; gap: .45rem; align-content: start; }
+.sfCol h3 { margin: 0 0 .35rem; font-size: .74rem; text-transform: uppercase; letter-spacing: .1em; color: var(--c-on-deep); font-weight: 800; }
+.sfCol a, .sfCol span { font-size: .9rem; opacity: .82; color: inherit; text-decoration: none; }
+.sfCol a:hover { opacity: 1; color: var(--theme-accent); }
+.sfLinks { display: grid; gap: .45rem; align-content: start; }
+.sfLinks a { font-size: .9rem; opacity: .82; color: inherit; text-decoration: none; }
+.sfLinks a:hover { opacity: 1; color: var(--theme-accent); }
+.sfBar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: 1.05rem clamp(1.25rem, 5vw, 4rem); border-top: 1px solid color-mix(in srgb, var(--c-on-deep) 12%, transparent); font-size: .77rem; opacity: .64; }
+
+/* columns (default) */
+.sfThree { display: grid; grid-template-columns: 1.7fr 1fr 1.3fr; gap: 2rem; }
+/* cta band */
+.sfCtaBand { display: flex; align-items: center; justify-content: space-between; gap: 1.25rem 2rem; flex-wrap: wrap; padding: clamp(1.5rem, 3.5vw, 2.4rem) clamp(1.25rem, 5vw, 4rem); background: var(--theme-accent); color: var(--theme-on-accent, #fff); }
+.sfCtaBand h2 { margin: 0; font-family: var(--theme-display); font-size: clamp(1.15rem, 2.6vw, 1.5rem); letter-spacing: -.01em; }
+.sfCtaBand p { margin: .25rem 0 0; opacity: .85; font-size: .9rem; }
+.sfCtaBand .sfBtn { margin-top: 0; background: color-mix(in srgb, var(--theme-on-accent, #fff) 92%, transparent); color: var(--theme-accent); box-shadow: 0 14px 30px -16px rgba(0,0,0,.5); }
+.sfTwo { display: grid; grid-template-columns: 1.4fr 1fr; gap: 2rem; }
+.sfBrandCol .sfLinks { display: flex; flex-wrap: wrap; gap: .5rem 1.2rem; margin-top: 1.1rem; }
+/* centered */
+.sfCenter { text-align: center; padding: clamp(2.25rem, 5vw, 3.25rem) 1.5rem 1.75rem; }
+.sfCenter .sfBrandRow { justify-content: center; }
+.sfCenter .sfTagline { margin-inline: auto; max-width: 48ch; }
+.sfChips { display: flex; justify-content: center; gap: .6rem; flex-wrap: wrap; margin: 1.35rem 0; }
+.sfChip { display: inline-flex; align-items: center; gap: .45rem; padding: .5rem .9rem; border: 1px solid color-mix(in srgb, var(--c-on-deep) 14%, transparent); border-radius: 999px; font-size: .84rem; opacity: .9; color: inherit; text-decoration: none; }
+.sfChip svg { color: var(--theme-accent); flex: none; }
+.sfChip:hover { opacity: 1; }
+.sfLinksRow { display: flex; justify-content: center; gap: 1.4rem; flex-wrap: wrap; }
+.sfLinksRow a, .sfLinksRow span { font-size: .88rem; font-weight: 600; opacity: .8; color: inherit; text-decoration: none; }
+.sfLinksRow a:hover { opacity: 1; color: var(--theme-accent); }
+.siteFooter[data-footer='centered'] .sfBar { justify-content: center; }
+/* grid */
+.sfTop { display: flex; align-items: flex-start; gap: 1.5rem; flex-wrap: wrap; padding-bottom: 1.6rem; margin-bottom: 1.6rem; border-bottom: 1px solid color-mix(in srgb, var(--c-on-deep) 12%, transparent); }
+.sfTop .sfTagline { margin-top: 0; flex: 1 1 320px; }
+.sfGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
+
+@media (max-width: 720px) {
+  .sfThree, .sfTwo { grid-template-columns: 1fr; }
+  .sfGrid { grid-template-columns: 1fr 1fr; }
+  .sfCtaBand { text-align: left; }
+}
+@media (max-width: 440px) { .sfGrid { grid-template-columns: 1fr; } }
+
+/* Footer mark honors Logo style, same as the header brand chips. */
+.site[data-logo-style='transparent'] .sfMark { background: none; border: none; box-shadow: none; color: var(--theme-accent); }
+.site[data-logo-style='transparent'] .sfMark .brandGlyph { width: 100%; height: 100%; }
+.site[data-logo-style='rounded'] .sfMark { border-radius: 8px; }
+.site[data-logo-style='squircle'] .sfMark { border-radius: 30%; }
+.site[data-logo-style='circle'] .sfMark { border-radius: 999px; }
+.site[data-logo-style='framed'] .sfMark { box-shadow: inset 0 0 0 2px color-mix(in srgb, currentColor 35%, transparent); }

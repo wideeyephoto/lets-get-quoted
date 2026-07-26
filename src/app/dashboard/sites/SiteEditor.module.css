@@ -330,6 +330,15 @@
 .autoLogoTransparent small { color: #9ca8b8; font-size: .74rem; line-height: 1.4; }
 /* Separates the auto-icon / logo preview from the "Add your own logo" action. */
 .logoDivider { width: 100%; height: 0; margin: .35rem 0; border: none; border-top: 1px solid rgba(255,255,255,.1); }
+
+/* Footer-layout picker (Brand → Footer). */
+.footerPicker { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin-bottom: .75rem; }
+.footerPickerBtn { display: grid; gap: .2rem; text-align: left; padding: .7rem .8rem; border: 1px solid rgba(255,255,255,.14); border-radius: 10px; background: rgba(255,255,255,.03); color: #c7d0dc; cursor: pointer; transition: border-color .12s ease, background .12s ease; }
+.footerPickerBtn:hover { border-color: rgba(255,255,255,.28); }
+.footerPickerBtn strong { font-size: .88rem; color: #f7f5ef; font-weight: 700; }
+.footerPickerBtn small { font-size: .74rem; color: #9ca8b8; line-height: 1.35; }
+.footerPickerBtnOn { border-color: #ff7a21; background: color-mix(in srgb, #ff7a21 12%, transparent); }
+.footerPickerBtnOn strong { color: #ff7a21; }
 /* Trade brand-icon options. `color` is set inline to the accent, so each glyph and
    the selected ring pick it up via currentColor. */
 .glyphPicker { display: flex; flex-wrap: wrap; gap: .4rem; }

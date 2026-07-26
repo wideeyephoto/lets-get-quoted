@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, glyphForContent } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
+import SiteFooter from './SiteFooter';
 import WordmarkName from './WordmarkName';
 import HeroImageCycle from './HeroImageCycle';
 import HeroQuickForm from './HeroQuickForm';
@@ -105,13 +106,7 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
         <QuoteRequestForm site={site} />
       </section>
 
-      <footer className={styles.fixitFooter}>
-        <div className={styles.fixitFooterBar}>
-          <a className={styles.fixitFooterBrand} href="#top">{site.logo_url ? <img className={styles.footerLogo} src={site.logo_url} alt="" /> : <span className={styles.fixitBrandMark} data-edit="brandIcon" aria-hidden="true"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}{site.company_name}</a>
-          {site.phone && <a className={styles.fixitFooterCall} href={`tel:${site.phone}`}><span aria-hidden="true">✆</span> Call us now — {site.phone}</a>}
-          <small>Powered by Let&apos;s Get Quoted</small>
-        </div>
-      </footer>
+      <SiteFooter site={site} />
 
       <SiteDesktopCta site={site} />
     </main>
