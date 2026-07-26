@@ -755,7 +755,12 @@ h3 {
   line-height: 1.2;
 }
 
+/* Label row keeps "Website: Live" and a small faded "(edit)" hint together, so
+   the host URL below gets the badge's full width and never gets cut off. */
+.website-nav-live-top { display: inline-flex; align-items: baseline; gap: 0.35rem; }
 .website-nav-live-label { font-size: 0.76rem; font-weight: 700; color: #34d399; }
+.website-nav-live-edit { font-size: 0.62rem; font-weight: 600; color: rgba(247, 245, 239, 0.4); }
+.website-nav-badge.live:hover .website-nav-live-edit { color: rgba(247, 245, 239, 0.7); }
 
 .website-nav-live-host {
   max-width: 24ch;

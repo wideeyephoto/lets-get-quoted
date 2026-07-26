@@ -346,7 +346,10 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                 <span className="website-nav-signal" aria-hidden="true"><i /><i /><i /></span>
                 {siteHost ? (
                   <span className="website-nav-live-text">
-                    <span className="website-nav-live-label">Website: Live</span>
+                    <span className="website-nav-live-top">
+                      <span className="website-nav-live-label">Website: Live</span>
+                      <span className="website-nav-live-edit">(edit)</span>
+                    </span>
                     <span className="website-nav-live-host">{siteHost}</span>
                   </span>
                 ) : (
@@ -428,7 +431,10 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                   <span className="website-nav-signal" aria-hidden="true"><i /><i /><i /></span>
                   {siteHost ? (
                     <span className="website-nav-live-text">
-                      <span className="website-nav-live-label">Website: Live</span>
+                      <span className="website-nav-live-top">
+                        <span className="website-nav-live-label">Website: Live</span>
+                        <span className="website-nav-live-edit">(edit)</span>
+                      </span>
                       <span className="website-nav-live-host">{siteHost}</span>
                     </span>
                   ) : (
