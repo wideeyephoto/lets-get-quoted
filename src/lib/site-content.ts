@@ -7,7 +7,7 @@ export type SiteSectionKey = 'showcase' | 'testimonials' | 'faqs';
 // Honest labels for a freshly generated site whose gallery holds representative
 // STOCK photos (not the contractor's real jobs). Swapped to "Our work" style
 // only once real project photos are uploaded.
-export const STOCK_SHOWCASE_TITLE = 'Quality at Every Step';
+export const STOCK_SHOWCASE_TITLE = 'Featured Projects';
 export const STOCK_SHOWCASE_INTRO = "Whether it's a small job or big one, we've got you covered!";
 
 export type SiteShowcaseItem = SiteImage & {
@@ -550,7 +550,7 @@ export function getLogoSize(content: Record<string, unknown> | null | undefined)
   return getSiteContent(content).logoSize;
 }
 
-export const DEFAULT_SHOWCASE_TITLE = 'Quality at Every Step';
+export const DEFAULT_SHOWCASE_TITLE = 'Featured Projects';
 export const DEFAULT_FAQ_TITLE = 'Frequently asked questions';
 export const DEFAULT_TESTIMONIALS_TITLE = 'What homeowners say';
 export const DEFAULT_RATING_SOURCE_LABEL = 'Verified reviews';

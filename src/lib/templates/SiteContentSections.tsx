@@ -117,7 +117,7 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
       return (
         <section className={styles.extraSection} id="showcase">
           <div className={styles.extraSectionHeader} data-reveal>
-            <p className={styles.kicker}>Showcase</p>
+            <p className={styles.kicker}>See the Results</p>
             <h2>{showcase.title}</h2>
             {showcase.intro && <p>{showcase.intro}</p>}
           </div>
