@@ -853,7 +853,11 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       sourceLabel: toString(ratingBadge.sourceLabel, DEFAULT_RATING_SOURCE_LABEL),
     },
     estimateRanges: {
-      enabled: estimateRanges.enabled !== false,
+      // Exactly one intake method is ever active: Smart Intake (this) or the
+      // classic quote form — never both, never neither. quoteForm.enabled is the
+      // single source of truth, so Smart Intake is simply "on when the quote form
+      // is off". A legacy site that had both off now resolves to Smart Intake.
+      enabled: quoteForm.enabled !== true,
       emailField: estimateRanges.emailField === 'off' || estimateRanges.emailField === 'required' ? estimateRanges.emailField : 'optional',
     },
     phonePublic: root.phonePublic !== false,
