@@ -415,7 +415,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
   const launchChecklist = [
     { label: 'Company name', done: Boolean(site.company_name.trim()), hint: 'Setup tab — Business basics', go: () => jumpTo('business', 'basics', 'bf-company') },
-    { label: 'Phone number', done: Boolean(site.phone), hint: 'Setup tab — powers the call buttons', go: () => jumpTo('business', 'contactInfo', 'bf-phone') },
+    { label: 'Phone number', done: Boolean(site.phone), hint: 'Page tab — powers the call buttons', go: () => jumpTo('page', 'estimate', 'bf-phone') },
     { label: 'Hero image', done: Boolean(site.hero_url), hint: 'Page tab — Your hero', go: () => jumpTo('page', 'hero') },
     { label: 'Web address', done: Boolean(site.subdomain) || Boolean(site.custom_domain && domainStatus === 'verified'), hint: 'Add a subdomain below, or verify a custom domain', go: () => jumpTo('publish', null, 'pub-subdomain') },
     { label: 'At least one content section', done: hasLiveSection, hint: 'Page tab — e.g. Services or FAQs', go: () => jumpTo('page', 'services') },
@@ -604,8 +604,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       if (target === 'bizTagline') { setActiveTab('page'); setOpenSection('hero'); focusField('bf-tagline'); return; }
       if (target === 'bizArea') { setActiveTab('page'); setOpenSection('serviceAreas'); focusField('bf-area-intro'); return; }
       if (target === 'bizHours') { setActiveTab('page'); setOpenSection('footer'); focusField('bf-hours'); return; }
-      if (target === 'bizPhone') { setActiveTab('business'); setOpenSection('contactInfo'); focusField('bf-phone'); return; }
-      if (target === 'bizLicense') { setActiveTab('business'); setOpenSection('contactInfo'); focusField('bf-license'); return; }
+      if (target === 'bizPhone') { setActiveTab('page'); setOpenSection('estimate'); focusField('bf-phone'); return; }
+      if (target === 'bizLicense') { setActiveTab('page'); setOpenSection('footer'); focusField('bf-license'); return; }
       if (target === 'legal') { setActiveTab('business'); setOpenSection('legal'); requestAnimationFrame(() => requestAnimationFrame(() => document.querySelector(`.${styles.sectionCardOpen}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }))); return; }
       if (target === 'heroBadge') { setActiveTab('page'); setOpenSection('hero'); flashCard('heroBadge', 'design-hero-badge'); return; }
       // The logo + auto trade-icon jump to the Header section's "Your logo" card
@@ -1456,14 +1456,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <small className={styles.fieldHint}>Fills in your whole site — headline, services, FAQs, Google listing, and more — from these two fields. Watch it appear in the preview. Reviews and stats are filled with examples — swap in your real ones before you publish.</small>
                 </SectionCard>
 
-                <SectionCard title="Contact & credentials" description="How homeowners reach you, and the license that backs your work." open={openSection === 'contactInfo'} onToggleOpen={() => toggleSection('contactInfo')}>
-                  <div className={styles.formColumns}>
-                    <label className={styles.formField}><span>Phone</span><input id="bf-phone" type="tel" value={site.phone || ''} onChange={(event) => handleChange('phone', event.target.value || null)} placeholder="(555) 123-4567" /></label>
-                    <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.phonePublic} onChange={(event) => updateSiteContent({ phonePublic: event.target.checked })} /><span><strong>Show my phone number on my website</strong><small>Off = your number stays private and every call button disappears — visitors reach you through the forms instead. Texting still works either way.</small></span></label>
-                    <label className={styles.formField}><span>License</span><input id="bf-license" value={site.license || ''} onChange={(event) => handleChange('license', event.target.value || null)} placeholder="LIC #123456" /></label>
-                  </div>
-                </SectionCard>
-
 
               </div>
             )}
@@ -1548,9 +1540,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
                 <div className={styles.aiSuite}>
                 <SectionCard variant="featured" title="Smart Intake with Instant Estimates via AI (Recommended)" description="Gives visitors an automatic ballpark price, no waiting — our AI asks a couple of questions to scope the job, then prices it for your trade and shows a realistic $ range. Every request still reaches you as a lead, with the shown range included." evidence="Instant online estimates capture 2–3× more leads than a plain contact form — most homeowners are price-shopping, and the ones who see a number stop searching. Answering while they're still on the page beats a next-day callback every time." enabled={!siteContent.quoteForm.enabled} onToggleEnabled={(value) => updateQuoteForm({ ...siteContent.quoteForm, enabled: !value })} open={openSection === 'estimate'} onToggleOpen={() => toggleSection('estimate')}>
+                  <label className={styles.formField}><span>Phone</span><input id="bf-phone" type="tel" value={site.phone || ''} onChange={(event) => handleChange('phone', event.target.value || null)} placeholder="(555) 123-4567" /><small className={styles.fieldHint}>Powers your call buttons and the text/call follow-up on leads.</small></label>
                   <label className={styles.formField}><span>Email on the AI intake</span><select value={siteContent.estimateRanges.emailField} onChange={(event) => updateEstimateRanges({ ...siteContent.estimateRanges, emailField: event.target.value as SiteEstimateRangesContent['emailField'] })}><option value="optional">Optional — ask, but don&apos;t require it</option><option value="required">Required</option><option value="off">Don&apos;t ask for email</option></select><small>A phone number is always required here — the follow-up promised to visitors is a text or call.</small></label>
                   <label className={styles.formField}><span>What visitors see it called</span><select value={siteContent.quoteForm.estimateLabel} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, estimateLabel: event.target.value as SiteQuoteFormContent['estimateLabel'] })}><option value="instant">&quot;Instant Estimate&quot;</option><option value="quick">&quot;Instant Quote&quot;</option></select><small>The heading + button on the AI intake card.</small></label>
-                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.phonePublic} onChange={(event) => updateSiteContent({ phonePublic: event.target.checked })} /><span><strong>Show my phone number on my website</strong><small>Off = no call buttons anywhere (including &quot;Call now to lock it in&quot;) — visitors reach you through the intake and forms. Same setting as on the Setup tab.</small></span></label>
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.phonePublic} onChange={(event) => updateSiteContent({ phonePublic: event.target.checked })} /><span><strong>Show my phone number on my website</strong><small>Off = no call buttons anywhere (including &quot;Call now to lock it in&quot;) — visitors reach you through the intake and forms. This applies across your whole site.</small></span></label>
                 </SectionCard>
 
                 <div className={styles.aiSuiteLink} aria-hidden="true"><span>⚡ Tuned by</span></div>
@@ -1581,6 +1574,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 </div>
 
                 <SectionCard title="Quote request form (old school)" description="The classic multi-field form where visitors type out their job details and wait for you to reply with a price. Turning this on switches Smart Intake off (only one intake runs at a time); turning it off brings Smart Intake back." enabled={siteContent.quoteForm.enabled} onToggleEnabled={(value) => updateQuoteForm({ ...siteContent.quoteForm, enabled: value })} open={openSection === 'quoteForm'} onToggleOpen={() => toggleSection('quoteForm')}>
+                  <label className={styles.formField}><span>Phone</span><input id="bf-phone-quote" type="tel" value={site.phone || ''} onChange={(event) => handleChange('phone', event.target.value || null)} placeholder="(555) 123-4567" /><small className={styles.fieldHint}>Powers your call buttons across the site.</small></label>
+                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.phonePublic} onChange={(event) => updateSiteContent({ phonePublic: event.target.checked })} /><span><strong>Show my phone number on my website</strong><small>Off = no call buttons anywhere — visitors reach you through the form instead. Texting still works either way. Site-wide setting.</small></span></label>
                   <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.quoteForm.emailRequired} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, emailRequired: event.target.checked })} /><span><strong>Require email on quote form</strong><small>Ask homeowners for an email address on every request so future email campaigns have clean contact data.</small></span></label>
                 </SectionCard>
 
@@ -2117,7 +2112,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     ))}
                   </div>
                   <label className={styles.formField}><span>Business hours (optional)</span><input id="bf-hours" value={site.hours || ''} onChange={(event) => handleChange('hours', event.target.value || null)} placeholder="Monday-Friday, 7am-5pm" /><small className={styles.fieldHint}>Shown in the footer. Leave blank to hide it.</small></label>
-                  <small className={styles.fieldHint}>Your service area (from Cities you serve), license, and phone also fill the footer — license &amp; phone live on the Setup tab.</small>
+                  <label className={styles.formField}><span>License (optional)</span><input id="bf-license" value={site.license || ''} onChange={(event) => handleChange('license', event.target.value || null)} placeholder="LIC #123456" /><small className={styles.fieldHint}>Shown in the footer to back your work. Leave blank to hide it.</small></label>
+                  <small className={styles.fieldHint}>Your service area (from Cities you serve) and phone also fill the footer.</small>
                 </SectionCard>
                 </div>
 
