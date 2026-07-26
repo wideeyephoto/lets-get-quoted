@@ -2215,7 +2215,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
           </div>
         </section>
 
-        <LivePreview site={site} />
+        <LivePreview site={site} openSection={openSection} />
       </div>
 
       {isDirty && (

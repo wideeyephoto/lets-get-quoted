@@ -54,6 +54,33 @@ function labelFor(match: Editable): string {
   return `${PENCIL} Click to edit`;
 }
 
+// Builder section-card key → candidate selectors for the matching region on
+// the rendered site. Templates vary (some use #services, some #our-services),
+// so each key lists every id/marker it could be; the first that exists wins.
+// The reverse of the builder's SECTION_TARGETS/edit-request routing.
+const SECTION_SELECTORS: Record<string, string> = {
+  hero: '#top',
+  basics: 'header, #top',
+  contactInfo: '[data-edit="bizPhone"], #contact',
+  whereWhen: '[data-edit="bizArea"], header',
+  services: '#our-services, #services',
+  showcase: '#showcase',
+  beforeAfter: '#before-after',
+  testimonials: '#reviews',
+  howItWorks: '#how-it-works',
+  faqs: '#faqs',
+  stats: '#stats',
+  blog: '#blog',
+  serviceAreas: '#areas',
+  projectShowcase: '#project-showcase, [data-edit="projectShowcase"]',
+  quoteForm: '[data-edit="quoteForm"], #contact',
+  estimate: '[data-edit="estimate"], #contact',
+  whyUs: '[data-edit="whyUs"], #why',
+  trustBadges: '[data-edit="trustBadges"]',
+  rating: '[data-edit="ratingBadge"], #reviews',
+  announcement: '[data-edit="announcement"]',
+};
+
 export default function PreviewEditBridge() {
   useEffect(() => {
     let hovered: Element | null = null;
@@ -98,17 +125,42 @@ export default function PreviewEditBridge() {
       if (match) window.parent.postMessage({ type: 'lgq:edit-request', target: match.key }, window.location.origin);
     };
 
+    // The builder posts which section card just opened; center that region so
+    // the owner sees their edits live. A just-enabled section renders a beat
+    // after the site-preview re-render, so retry a few times before giving up.
+    let scrollTries = 0;
+    let scrollTimer: ReturnType<typeof setTimeout> | undefined;
+    const onScrollRequest = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin || event.data?.type !== 'lgq:scroll-to-section') return;
+      const selector = SECTION_SELECTORS[String(event.data.section || '')];
+      if (!selector) return;
+      clearTimeout(scrollTimer);
+      scrollTries = 0;
+      const tryScroll = () => {
+        const target = document.querySelector(selector);
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+        if (scrollTries++ < 8) scrollTimer = setTimeout(tryScroll, 90);
+      };
+      tryScroll();
+    };
+
     document.addEventListener('mouseover', onMouseOver, true);
     document.addEventListener('mouseleave', clearHover, true);
     document.addEventListener('click', onClick, true);
     window.addEventListener('scroll', positionLabel, true);
     window.addEventListener('resize', positionLabel);
+    window.addEventListener('message', onScrollRequest);
     return () => {
       document.removeEventListener('mouseover', onMouseOver, true);
       document.removeEventListener('mouseleave', clearHover, true);
       document.removeEventListener('click', onClick, true);
       window.removeEventListener('scroll', positionLabel, true);
       window.removeEventListener('resize', positionLabel);
+      window.removeEventListener('message', onScrollRequest);
+      clearTimeout(scrollTimer);
       clearHover();
       label.remove();
     };

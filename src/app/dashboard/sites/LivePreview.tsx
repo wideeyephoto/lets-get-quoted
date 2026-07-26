@@ -6,9 +6,13 @@ import styles from './SiteEditor.module.css';
 
 type LivePreviewProps = {
   site: Site;
+  // The builder section card currently open. When it changes, we scroll the
+  // matching region of the live preview into the center of the frame so the
+  // owner sees the part they're editing without hunting for it.
+  openSection?: string | null;
 };
 
-export default function LivePreview({ site }: LivePreviewProps) {
+export default function LivePreview({ site, openSection }: LivePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [loaded, setLoaded] = useState(false);
@@ -36,6 +40,19 @@ export default function LivePreview({ site }: LivePreviewProps) {
     }, 150);
     return () => clearTimeout(timer);
   }, [loaded, site]);
+
+  // Center the open section in the preview. Wait out the 150ms site-preview
+  // debounce so a just-enabled section has rendered before we ask to scroll.
+  useEffect(() => {
+    if (!loaded || !openSection) return;
+    const timer = setTimeout(() => {
+      iframeRef.current?.contentWindow?.postMessage(
+        { type: 'lgq:scroll-to-section', section: openSection },
+        window.location.origin
+      );
+    }, 180);
+    return () => clearTimeout(timer);
+  }, [loaded, openSection]);
 
   function sendDraft() {
     setLoaded(true);
