@@ -173,6 +173,13 @@ function normalizeIcon(value: unknown): string {
   const key = asString(value, 20);
   return SERVICE_ICON_KEY_SET.has(key) ? key : 'spark';
 }
+// Stat decorators are symbols only — never unit words. The model sometimes drops
+// the unit ("years", "sq ft") into the suffix, which then gets mashed onto the
+// number and clipped mid-word ("10" + " Years" → "10 Yea"). Strip everything
+// except the handful of figure symbols so the unit lives in the label instead.
+function normalizeStatSuffix(value: unknown): string {
+  return asString(value, 8).replace(/[^+%★]/g, '').slice(0, 2);
+}
 
 function extractOutputText(payload: unknown): string {
   const record = payload as { output_text?: unknown; output?: unknown[] };
@@ -247,8 +254,8 @@ export async function generateSiteTextAction(
     `"services":[{"icon":"<pick the single closest match from EXACTLY this list and never invent another word: ${serviceIconKeys}>","title":"<a real service this trade offers, under 40 characters>","description":"<one concrete line under 130 characters>"}],` +
     '"faqs":[{"question":"<a real question a homeowner asks this trade>","answer":"<a concise, helpful answer under 300 characters>"}],' +
     '"testimonials":[{"author":"<a realistic first name and last initial>","text":"<a believable 1-2 sentence review of this trade>","rating":5,"label":"<a city or short role, optional>"}],' +
-    '"stats":[{"value":<a plausible whole number>,"suffix":"<a plus sign or empty>","label":"<e.g. Jobs completed, Years in business, 5-star reviews>"}]' +
-    '}. Include 10 to 15 services (each a distinct, real offering for this trade — no duplicates or near-duplicates), 5 faqs, 2 to 3 testimonials, and 3 to 4 stats.';
+    '"stats":[{"value":<a plausible whole number ONLY — digits, no words, units, or symbols>,"suffix":"<ONLY a plus sign, a percent sign, or empty — NEVER a word or unit>","label":"<the FULL descriptor including any unit or noun, e.g. Jobs completed, Years in business, 5-star reviews, Sq ft installed — this is where words like \'years\' belong, never in the value>"}]' +
+    '}. Include 10 to 15 services (each a distinct, real offering for this trade — no duplicates or near-duplicates), 5 faqs, 2 to 3 testimonials, and 3 to 4 stats. Each stat value must be a bare number (e.g. 250, 10, 100), with the unit or noun living entirely in its label.';
 
   const input =
     `Business name: ${companyName}. ${tradeInput ? `Trade / field of work: ${tradeInput}. ` : ''}${serviceArea ? `Service area: ${serviceArea}. ` : ''}${zip ? `Business ZIP code: ${zip}. ` : ''}` +
@@ -332,8 +339,8 @@ export async function generateSiteTextAction(
       stats: asArray(parsed.stats)
         .filter(isObj)
         .slice(0, 4)
-        .map((s) => ({ value: Math.max(0, Math.round(Number(s.value) || 0)), suffix: asString(s.suffix, 4), label: asString(s.label, 40) }))
-        .filter((s) => s.label),
+        .map((s) => ({ value: Math.max(0, Math.round(Number(s.value) || 0)), suffix: normalizeStatSuffix(s.suffix), label: asString(s.label, 40) }))
+        .filter((s) => s.label && s.value > 0),
     };
   } catch (error) {
     console.error('Site text generation failed:', error);

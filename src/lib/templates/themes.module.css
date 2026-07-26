@@ -566,8 +566,8 @@
 
 /* Animated stat counters (toggleable) */
 .statGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1.5rem 2rem; }
-.statItem { display: flex; flex-direction: column; gap: .35rem; }
-.statValue { font-family: var(--theme-display); font-size: clamp(2.4rem, 6vw, 4rem); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.statItem { display: flex; flex-direction: column; gap: .35rem; min-width: 0; }
+.statValue { font-family: var(--theme-display); font-size: clamp(2.4rem, 6vw, 4rem); font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .statLabel { font-size: .85rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: color-mix(in srgb, currentColor 70%, transparent); }
 /* Stats as a card floating over a static photo (Purely "about" style). The card
    lifts on hover and parallaxes over the photo where the template mounts
