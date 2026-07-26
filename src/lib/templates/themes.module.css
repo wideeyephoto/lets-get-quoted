@@ -758,7 +758,9 @@
 .guild .heroQuickForm { border: 1px solid rgba(0,0,0,.10); }
 .guildHeader { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 100px; padding: 0 5vw; border-bottom: 1px solid var(--c-line); }
 .guildBrand { display: flex; align-items: center; gap: .9rem; }
-.guildBrand span { display: flex; flex-direction: column; }
+/* Only the name/license wrapper stacks — NOT the per-word spans WordmarkName
+   emits inside it (a bare `span` selector stacked every word onto its own line). */
+.guildBrand > span:last-child { display: flex; flex-direction: column; }
 .guildBrand strong { font-family: var(--brand-font, var(--theme-display)); font-size: 1.35rem; font-weight: 600; letter-spacing: -.01em; }
 .guildBrand small { font-family: var(--font-mono); margin-top: .2rem; color: var(--c-muted); font-size: .64rem; letter-spacing: .1em; text-transform: uppercase; }
 .guildQuote { justify-self: end; padding-bottom: .35rem; border-bottom: 2px solid var(--theme-accent); font-weight: 700; letter-spacing: .02em; transition: color .2s ease; }
