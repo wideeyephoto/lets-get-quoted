@@ -13,6 +13,7 @@ import { listActiveScheduleRequests } from '@/lib/scheduling';
 import ScheduleCalendar from './schedule-calendar';
 import ClientScheduleOptionsCalendar from './client-schedule-options-calendar';
 import JobDragHandle from './JobDragHandle';
+import ScheduleDragProvider from './ScheduleDragProvider';
 
 const STATUS_LABEL: Record<Job['status'], string> = {
   new_lead: 'New request',
@@ -281,6 +282,7 @@ export default async function SchedulePage({
 
   return (
     <main className="wide-shell workspace-shell">
+      <ScheduleDragProvider>
       <section className="panel workspace-section-card schedule-calendar-panel">
         <div className="schedule-calendar-header">
           <div className="workspace-hero-copy schedule-calendar-copy">
@@ -511,6 +513,7 @@ export default async function SchedulePage({
           </div>
         </section>
       ) : null}
+      </ScheduleDragProvider>
     </main>
   );
 }

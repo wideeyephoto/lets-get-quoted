@@ -2224,19 +2224,37 @@ li + li { margin-top: 0.45rem; }
   padding: .45rem .7rem; border-radius: 8px;
   border: 1px dashed rgba(255,255,255,.22); background: rgba(255,255,255,.03);
   color: #b7c2d0; font-size: .8rem; font-weight: 700; white-space: nowrap;
-  cursor: grab; -webkit-user-select: none; user-select: none;
+  cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none;
 }
 .schedule-drag-handle:hover { border-color: rgba(255,122,33,.5); color: #f7f5ef; background: rgba(255,122,33,.08); }
 .schedule-drag-handle:active { cursor: grabbing; }
 .schedule-drag-grip { font-size: 1rem; line-height: 1; color: #ff9440; }
-/* The custom drag image (parked offscreen; the browser snapshots it on dragstart). */
-.schedule-drag-ghost {
-  position: fixed; top: -1000px; left: -1000px; z-index: -1;
+/* The floating preview that follows the pointer while dragging (touch + mouse).
+   pointer-events:none so elementFromPoint sees the calendar cell underneath. */
+.schedule-drag-floating {
+  position: fixed; top: 0; left: 0; z-index: 200; pointer-events: none;
   padding: .4rem .7rem; border-radius: 8px;
   background: linear-gradient(180deg,#ff7a21,#ff9440); color: #180c02;
   font-weight: 800; font-size: .82rem; white-space: nowrap;
-  box-shadow: 0 12px 26px -10px rgba(0,0,0,.6); pointer-events: none;
+  box-shadow: 0 16px 34px -10px rgba(0,0,0,.65);
 }
+/* Undo toast after a drop/reschedule. */
+.schedule-undo-toast {
+  position: fixed; left: 50%; bottom: 1.5rem; transform: translateX(-50%);
+  z-index: 210; display: flex; align-items: center; gap: 1rem;
+  padding: .65rem .7rem .65rem 1.1rem; border-radius: 999px;
+  background: rgba(12,20,32,.97); border: 1px solid rgba(255,255,255,.14);
+  box-shadow: 0 22px 44px -18px rgba(0,0,0,.7);
+  color: #f7f5ef; font-size: .85rem; font-weight: 600;
+  animation: schedule-undo-in .22s ease both;
+}
+@keyframes schedule-undo-in { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.schedule-undo-toast button {
+  padding: .4rem 1.05rem; border-radius: 999px; border: 0;
+  background: linear-gradient(180deg,#ff7a21,#ff9440); color: #180c02;
+  font: inherit; font-weight: 800; cursor: pointer;
+}
+.schedule-undo-toast button:disabled { opacity: .6; cursor: default; }
 
 .schedule-drop-panel { max-width: 430px; }
 .schedule-drop-body { display: grid; gap: 1rem; padding: 1rem 1.15rem 1.15rem; }
@@ -2262,6 +2280,11 @@ li + li { margin-top: 0.45rem; }
 .calendar-job-chip.status-new_lead { background: rgba(255,209,102,.16); color: #ffd166; }
 .calendar-job-chip.status-in_progress { background: rgba(255,138,61,.18); color: #ff8a3d; }
 .calendar-job-chip.status-complete { background: rgba(120,220,150,.16); color: #78dc96; }
+/* Calendar chips are draggable (tap opens the job, drag moves it to a new date).
+   touch-action:none keeps a touch-drag from scrolling the page instead. */
+.calendar-job-chip { touch-action: none; cursor: grab; -webkit-user-select: none; user-select: none; }
+.calendar-job-chip:active { cursor: grabbing; }
+.calendar-job-chip.dragging { opacity: .4; }
 .calendar-year-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; }
 .calendar-year-card { min-width: 0; min-height: 150px; padding: .85rem; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; background: rgba(255,255,255,.025); }
 .calendar-year-card-header { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; margin-bottom: .7rem; }

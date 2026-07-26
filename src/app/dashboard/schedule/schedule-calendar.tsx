@@ -1,36 +1,16 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition, type DragEvent as ReactDragEvent } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import SaveButton from '@/components/save-button';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
 import { removeJobScheduleAction, scheduleJobAction, textCrewJobDateAction, toggleJobCrewAction } from '../jobs/actions';
-import { JOB_DRAG_TYPE } from './JobDragHandle';
+import { useScheduleDrag } from './ScheduleDragProvider';
 import { formatJobSchedule, formatJobTime } from '@/lib/jobs';
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-// Forced start-time choices when a job is dropped onto a date. A time must be
-// picked before the drop can save (a scheduled job with no time reads as vague).
-const QUICK_DROP_TIMES = [
-  { label: '7 AM', value: '07:00' },
-  { label: '8 AM', value: '08:00' },
-  { label: '9 AM', value: '09:00' },
-  { label: '10 AM', value: '10:00' },
-  { label: '11 AM', value: '11:00' },
-  { label: '12 PM', value: '12:00' },
-  { label: '1 PM', value: '13:00' },
-  { label: '2 PM', value: '14:00' },
-  { label: '3 PM', value: '15:00' },
-  { label: '4 PM', value: '16:00' },
-  { label: '5 PM', value: '17:00' },
-];
-
-function formatDropDate(dateKey: string): string {
-  return new Date(`${dateKey}T00:00:00`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-}
 
 type CalendarView = 'month' | 'week' | 'year';
 
@@ -125,13 +105,9 @@ export default function ScheduleCalendar({
   // per session from the crew popover; only affects assigns (never unassigns).
   const [notifyCrew, setNotifyCrew] = useState(true);
   const [, startTransition] = useTransition();
-
-  // Drag-to-schedule: which date is currently under the dragged job, and the
-  // pending drop awaiting a forced time before it saves.
-  const [dragOverKey, setDragOverKey] = useState<string | null>(null);
-  const [pendingDrop, setPendingDrop] = useState<{ jobId: string; jobName: string; dateKey: string } | null>(null);
-  const [dropTime, setDropTime] = useState('');
-  const [isSchedulingDrop, startDropTransition] = useTransition();
+  // Drag-to-schedule is coordinated by the shared provider so the (server-
+  // rendered) unscheduled list and this calendar share one drag session.
+  const { beginDrag, overDateKey, draggingJobId } = useScheduleDrag();
 
   // Keep local optimistic state in sync once the server revalidates this
   // route's data (e.g. after a toggle round-trips, or on manual refresh).
@@ -266,57 +242,6 @@ export default function ScheduleCalendar({
     });
   }
 
-  // Only react to our own job drags; ignore anything else being dragged over the
-  // calendar. `types` is readable during dragover even though the data isn't.
-  function onCellDragOver(event: ReactDragEvent<HTMLDivElement>, dateKey: string) {
-    if (!Array.from(event.dataTransfer.types).includes(JOB_DRAG_TYPE)) return;
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-    if (dragOverKey !== dateKey) setDragOverKey(dateKey);
-  }
-
-  function onCellDragLeave(event: ReactDragEvent<HTMLDivElement>, dateKey: string) {
-    // Ignore leaving into a child of the same cell (jobs, day number, etc.).
-    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
-    setDragOverKey((current) => (current === dateKey ? null : current));
-  }
-
-  function onCellDrop(event: ReactDragEvent<HTMLDivElement>, dateKey: string) {
-    const raw = event.dataTransfer.getData(JOB_DRAG_TYPE);
-    if (!raw) return;
-    event.preventDefault();
-    setDragOverKey(null);
-    try {
-      const parsed = JSON.parse(raw) as { id: string; name: string };
-      setDropTime('');
-      setPendingDrop({ jobId: parsed.id, jobName: parsed.name, dateKey });
-    } catch {
-      // Ignore a malformed payload.
-    }
-  }
-
-  function cancelDrop() {
-    setPendingDrop(null);
-    setDropTime('');
-  }
-
-  function confirmDrop() {
-    if (!pendingDrop || !dropTime) return;
-    const formData = new FormData();
-    formData.set('scheduledFor', pendingDrop.dateKey);
-    formData.set('scheduledTime', dropTime);
-    startDropTransition(async () => {
-      try {
-        await scheduleJobAction(pendingDrop.jobId, formData);
-        setPendingDrop(null);
-        setDropTime('');
-        router.refresh();
-      } catch (error) {
-        console.error('Failed to schedule job from drop', error);
-      }
-    });
-  }
-
   return (
     <>
       <div className="calendar-toolbar">
@@ -370,12 +295,9 @@ export default function ScheduleCalendar({
               const nextDateKey = cellIndex < week.length - 1 ? addDaysToDateKey(cell.dateKey, 1) : null;
               return (
                 <div
-                  className={`calendar-cell${cell.dateKey === todayKey ? ' today' : ''}${dragOverKey === cell.dateKey ? ' drag-over' : ''}`}
+                  className={`calendar-cell${cell.dateKey === todayKey ? ' today' : ''}${overDateKey === cell.dateKey ? ' drag-over' : ''}`}
                   key={cell.dateKey}
-                  onDragEnter={(event) => onCellDragOver(event, cell.dateKey)}
-                  onDragOver={(event) => onCellDragOver(event, cell.dateKey)}
-                  onDragLeave={(event) => onCellDragLeave(event, cell.dateKey)}
-                  onDrop={(event) => onCellDrop(event, cell.dateKey)}
+                  data-date-key={cell.dateKey}
                 >
                   <span className="calendar-day-number">{cell.day}</span>
                   <div className="calendar-day-jobs">
@@ -399,18 +321,20 @@ export default function ScheduleCalendar({
                         .filter((member): member is CrewOption => Boolean(member));
                       return (
                         <div className={`calendar-job-item calendar-band ${bandClass} ${bandColorClass} status-${job.status}`} key={job.occurrence_key}>
-                          <button
-                            type="button"
-                            className={`calendar-job-chip status-${job.status}`}
-                            title={`${job.client_name} · ${job.badge_label}`}
-                            onClick={() => openJobActions(job.occurrence_key)}
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            className={`calendar-job-chip status-${job.status}${draggingJobId === job.id ? ' dragging' : ''}`}
+                            title={`${job.client_name} · ${job.badge_label} · drag to move`}
+                            onPointerDown={(event) => beginDrag({ jobId: job.id, jobName: job.client_name, time: job.scheduled_time ?? '', sourceDateKey: job.scheduled_for }, event, () => openJobActions(job.occurrence_key))}
+                            onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openJobActions(job.occurrence_key); } }}
                           >
                             <span className="calendar-job-chip-main">
                               {job.confirmed ? <span className="calendar-confirm-tick" title="Confirmed by client" aria-label="Confirmed by client">✓</span> : null}
                               {formatJobTime(job.scheduled_time) ? `${formatJobTime(job.scheduled_time)} ` : ''}{job.client_name}
                             </span>
                             <span className={`calendar-job-band-badge status-${job.badge_tone}`} title={job.badge_title ?? undefined}>{job.badge_label}</span>
-                          </button>
+                          </div>
                           <button
                             type="button"
                             className={`calendar-crew-toggle${assignedMembers.length > 0 ? ' has-crew' : ''}`}
@@ -548,45 +472,6 @@ export default function ScheduleCalendar({
                 ) : (
                   <button type="button" className="btn secondary schedule-remove-trigger" onClick={() => setIsConfirmingRemove(true)}>Remove from schedule</button>
                 )}
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {pendingDrop ? (
-        <div className="crew-assign-backdrop" onClick={cancelDrop}>
-          <div className="crew-assign-panel schedule-drop-panel" onClick={(event) => event.stopPropagation()}>
-            <div className="crew-assign-header">
-              <div>
-                <p className="crew-assign-title">Schedule {pendingDrop.jobName}</p>
-                <p className="crew-assign-sub"><span>{formatDropDate(pendingDrop.dateKey)}</span></p>
-              </div>
-              <button type="button" className="crew-assign-close" onClick={cancelDrop} aria-label="Cancel">×</button>
-            </div>
-            <div className="schedule-drop-body">
-              <p className="schedule-drop-prompt">Pick a start time to put this job on the calendar.</p>
-              <div className="schedule-drop-times" role="group" aria-label="Start time">
-                {QUICK_DROP_TIMES.map((slot) => (
-                  <button
-                    type="button"
-                    key={slot.value}
-                    className={dropTime === slot.value ? 'active' : undefined}
-                    onClick={() => setDropTime(slot.value)}
-                  >
-                    {slot.label}
-                  </button>
-                ))}
-              </div>
-              <label className="schedule-drop-custom">
-                <span>Other time</span>
-                <input type="time" value={dropTime} onChange={(event) => setDropTime(event.target.value)} />
-              </label>
-              <div className="schedule-drop-actions">
-                <button type="button" className="btn secondary" onClick={cancelDrop}>Cancel</button>
-                <button type="button" className="btn primary" onClick={confirmDrop} disabled={!dropTime || isSchedulingDrop}>
-                  {isSchedulingDrop ? 'Scheduling…' : 'Schedule job'}
-                </button>
               </div>
             </div>
           </div>
