@@ -111,7 +111,7 @@
 .contentCard { display: grid; gap: .9rem; padding: 1rem; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(255,255,255,.035); }
 
 /* Collapsible section (accordion) */
-.sectionCard { border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(255,255,255,.035); }
+.sectionCard { min-width: 0; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(255,255,255,.035); }
 .sectionCardOpen { border-color: rgba(255,255,255,.22); background: rgba(255,255,255,.05); }
 .sectionCardHead { display: flex; align-items: stretch; }
 .sectionCardSwitch { display: inline-flex; align-items: center; padding: 0 .1rem 0 .95rem; cursor: pointer; }
@@ -120,7 +120,7 @@
 .sectionCardTitle { display: inline-flex; align-items: center; gap: .55rem; min-width: 0; font-size: .95rem; font-weight: 700; }
 .sectionCardState { flex: none; font-size: .62rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 2px 7px; border-radius: 999px; background: rgba(255,255,255,.1); color: #9ca8b8; }
 .sectionCardStateOn { background: rgba(255,122,33,.18); color: #ffb27a; }
-.sectionCardHint { flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .68rem; font-weight: 600; color: #9ca8b8; }
+.sectionCardHint { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .68rem; font-weight: 600; color: #9ca8b8; }
 .sectionCardHintWarn { color: #f5b83d; }
 .cardGroupLabel { margin: .65rem 0 -.35rem; font-size: .7rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #9ca8b8; }
 /* One-line differentiator under a group label (e.g. form vs AI estimator). */
@@ -165,7 +165,7 @@
 .sectionCardChevron { flex: none; color: #9ca8b8; font-size: .8rem; transition: transform .18s ease; }
 .sectionCardOpen .sectionCardChevron { transform: rotate(180deg); }
 .sectionCardTrigger:focus-visible { outline: 2px solid #ff9b54; outline-offset: -2px; border-radius: 8px; }
-.sectionCardBody { display: grid; gap: .9rem; padding: .9rem 1rem 1rem; border-top: 1px solid rgba(255,255,255,.1); }
+.sectionCardBody { display: grid; grid-template-columns: minmax(0, 1fr); gap: .9rem; padding: .9rem 1rem 1rem; border-top: 1px solid rgba(255,255,255,.1); }
 .sectionCardDesc { margin: 0; color: #9ca8b8; font-size: .8rem; line-height: 1.45; }
 .sectionCardEvidence { margin: 0; padding: .5rem .7rem; border-left: 3px solid #4ea173; border-radius: 6px; background: rgba(78,161,115,.1); color: #a9bcb0; font-size: .76rem; line-height: 1.5; }
 .sectionCardEvidence strong { display: block; margin-bottom: .12rem; color: #6fcf9e; font-size: .64rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
