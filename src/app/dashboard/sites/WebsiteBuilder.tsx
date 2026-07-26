@@ -602,8 +602,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       if (target === 'heroEyebrow') { setActiveTab('page'); setOpenSection('hero'); focusField('bf-hero-eyebrow'); return; }
       if (target === 'identity') { setActiveTab('page'); setOpenSection('header'); focusField('bf-name-style'); return; }
       if (target === 'bizTagline') { setActiveTab('page'); setOpenSection('hero'); focusField('bf-tagline'); return; }
-      if (target === 'bizArea') { setActiveTab('business'); setOpenSection('whereWhen'); focusField('bf-service-area'); return; }
-      if (target === 'bizHours') { setActiveTab('business'); setOpenSection('whereWhen'); focusField('bf-hours'); return; }
+      if (target === 'bizArea') { setActiveTab('page'); setOpenSection('serviceAreas'); focusField('bf-area-intro'); return; }
+      if (target === 'bizHours') { setActiveTab('page'); setOpenSection('footer'); focusField('bf-hours'); return; }
       if (target === 'bizPhone') { setActiveTab('business'); setOpenSection('contactInfo'); focusField('bf-phone'); return; }
       if (target === 'bizLicense') { setActiveTab('business'); setOpenSection('contactInfo'); focusField('bf-license'); return; }
       if (target === 'legal') { setActiveTab('business'); setOpenSection('legal'); requestAnimationFrame(() => requestAnimationFrame(() => document.querySelector(`.${styles.sectionCardOpen}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }))); return; }
@@ -1464,10 +1464,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   </div>
                 </SectionCard>
 
-                <SectionCard title="Where & when" description="The area you cover and the hours you work." open={openSection === 'whereWhen'} onToggleOpen={() => toggleSection('whereWhen')}>
-                  <label className={styles.formField}><span>Service area</span><input id="bf-service-area" value={site.service_area || ''} onChange={(event) => handleChange('service_area', event.target.value || null)} placeholder="City and surrounding communities" /></label>
-                  <label className={styles.formField}><span>Business hours</span><input id="bf-hours" value={site.hours || ''} onChange={(event) => handleChange('hours', event.target.value || null)} placeholder="Monday-Friday, 7am-5pm" /></label>
-                </SectionCard>
 
               </div>
             )}
@@ -2041,7 +2037,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
                 <SectionCard reorder={reorderProps('serviceAreas', 'Cities you serve')} title="Cities you serve" description={'List the towns and neighborhoods you cover. The names become on-page keywords that help you rank for "[trade] in [city]" searches — and reassure homeowners you serve their area.'} evidence={'Visitors decide "do they even serve me?" in ~3 seconds — naming their town reassures them and matches local search.'} enabled={siteContent.serviceAreas.enabled} onToggleEnabled={(value) => updateServiceAreas({ ...siteContent.serviceAreas, enabled: value })} {...contentHint(siteContent.serviceAreas.enabled, siteContent.serviceAreas.cities.filter((city) => city.trim()).length, 'city', 'cities')} open={openSection === 'serviceAreas'} onToggleOpen={() => toggleSection('serviceAreas')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.serviceAreas.title} onChange={(event) => updateServiceAreas({ ...siteContent.serviceAreas, title: event.target.value })} /></label>
-                  <label className={styles.formField}><span>Intro</span><input value={siteContent.serviceAreas.intro} onChange={(event) => updateServiceAreas({ ...siteContent.serviceAreas, intro: event.target.value })} /></label>
+                  <label className={styles.formField}><span>Intro</span><input id="bf-area-intro" value={siteContent.serviceAreas.intro} onChange={(event) => updateServiceAreas({ ...siteContent.serviceAreas, intro: event.target.value })} /><small className={styles.fieldHint}>Also shown as your service area line in the footer.</small></label>
                   <div className={styles.badgeList}>
                     {siteContent.serviceAreas.cities.map((city, index) => (
                       <div className={styles.badgeRow} key={index}>
@@ -2120,7 +2116,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                       </button>
                     ))}
                   </div>
-                  <small className={styles.fieldHint}>Your area, hours, license, and phone fill the footer — edit those on the Setup tab.</small>
+                  <label className={styles.formField}><span>Business hours (optional)</span><input id="bf-hours" value={site.hours || ''} onChange={(event) => handleChange('hours', event.target.value || null)} placeholder="Monday-Friday, 7am-5pm" /><small className={styles.fieldHint}>Shown in the footer. Leave blank to hide it.</small></label>
+                  <small className={styles.fieldHint}>Your service area (from Cities you serve), license, and phone also fill the footer — license &amp; phone live on the Setup tab.</small>
                 </SectionCard>
                 </div>
 

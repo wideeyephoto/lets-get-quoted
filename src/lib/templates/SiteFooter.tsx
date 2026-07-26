@@ -43,6 +43,9 @@ export default function SiteFooter({ site }: { site: Site }) {
   const content = getSiteContent(site.content);
   const style = getFooterStyle(site.content);
   const links = footerLinks(site);
+  // The footer's service-area line now comes from the Cities-you-serve intro
+  // (edited in that section), falling back to the legacy service_area value.
+  const areaLine = content.serviceAreas.intro.trim() || site.service_area || '';
 
   const mark = site.logo_url
     ? <img className={styles.footerLogo} src={site.logo_url} alt="" />
@@ -55,7 +58,7 @@ export default function SiteFooter({ site }: { site: Site }) {
   const contactLines = (
     <>
       {site.phone && <a className={styles.sfPhone} href={`tel:${site.phone}`} data-edit="bizPhone">{site.phone}</a>}
-      {site.service_area && <span data-edit="bizArea">{site.service_area}</span>}
+      {areaLine && <span data-edit="bizArea">{areaLine}</span>}
       {site.hours && <span data-edit="bizHours">{site.hours}</span>}
       {site.license && <span data-edit="bizLicense">{site.license}</span>}
     </>
@@ -98,7 +101,7 @@ export default function SiteFooter({ site }: { site: Site }) {
         {brand}
         {tagline}
         <div className={styles.sfChips}>
-          {site.service_area && <span className={styles.sfChip} data-edit="bizArea">{PinIcon}{site.service_area}</span>}
+          {areaLine && <span className={styles.sfChip} data-edit="bizArea">{PinIcon}{areaLine}</span>}
           {site.hours && <span className={styles.sfChip} data-edit="bizHours">{ClockIcon}{site.hours}</span>}
           {site.phone && <a className={styles.sfChip} href={`tel:${site.phone}`} data-edit="bizPhone">{PhoneIcon}{site.phone}</a>}
         </div>
@@ -116,7 +119,7 @@ export default function SiteFooter({ site }: { site: Site }) {
         <div className={styles.sfTop}>{brand}{tagline}</div>
         <div className={styles.sfGrid}>
           {links.length > 0 && <div className={styles.sfCol}><h3>Explore</h3>{links.map((l) => <a key={l.href} href={l.href}>{l.label}</a>)}</div>}
-          {site.service_area && <div className={styles.sfCol}><h3>Areas served</h3><span data-edit="bizArea">{site.service_area}</span></div>}
+          {areaLine && <div className={styles.sfCol}><h3>Areas served</h3><span data-edit="bizArea">{areaLine}</span></div>}
           {site.hours && <div className={styles.sfCol}><h3>Hours</h3><span data-edit="bizHours">{site.hours}</span></div>}
           <div className={styles.sfCol}><h3>Contact</h3>{site.phone && <a href={`tel:${site.phone}`} data-edit="bizPhone">{site.phone}</a>}{site.license && <span data-edit="bizLicense">{site.license}</span>}</div>
         </div>
