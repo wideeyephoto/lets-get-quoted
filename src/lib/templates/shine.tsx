@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, getSlotImage, getTradeGlyph } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, getSlotImage, glyphForContent } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
 import WordmarkName from './WordmarkName';
 import HeroImageCycle from './HeroImageCycle';
@@ -64,7 +64,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
 
       <header className={styles.shineHeader}>
         <a className={styles.shineBrand} href="#top" aria-label={`${site.company_name} home`}>
-          {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.shineBrandMark}><ServiceIcon name={getTradeGlyph(content.trade)} className={styles.brandGlyph} /></span>}
+          {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.shineBrandMark}><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}
           <strong data-edit="identity"><WordmarkName name={site.company_name} /></strong>
         </a>
         <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#our-services', label: 'Services' }, { href: '#work', label: 'Work' }]} />
@@ -135,7 +135,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
 
       <footer className={styles.shineFooter}>
         <div className={styles.shineFooterBar}>
-          <a className={styles.shineFooterBrand} href="#top"><span className={styles.shineBrandMark} aria-hidden="true">◧</span>{site.company_name}</a>
+          <a className={styles.shineFooterBrand} href="#top">{site.logo_url ? <img className={styles.footerLogo} src={site.logo_url} alt="" /> : <span className={styles.shineBrandMark} aria-hidden="true"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}{site.company_name}</a>
           {site.phone && <a className={styles.shineFooterCall} href={`tel:${site.phone}`}>Book a call — {site.phone}</a>}
           <small>Powered by Let&apos;s Get Quoted</small>
         </div>

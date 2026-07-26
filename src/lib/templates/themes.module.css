@@ -519,6 +519,8 @@
 /* Trade-fit default logo mark: a ServiceIcon sized to sit inside any brand badge,
    stroked with the badge's currentColor. Shown only when no logo is uploaded. */
 .brandGlyph { width: 56%; height: 56%; display: block; }
+/* Uploaded logo shown in a footer (the glyph-mark case reuses each theme's brand chip). */
+.footerLogo { height: 30px; width: auto; max-width: 160px; display: inline-block; vertical-align: middle; }
 .guildBrandMark { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 9px; background: var(--theme-accent); color: var(--theme-on-accent, #fff); flex: none; }
 .vistaBrandMark { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 9px; background: var(--theme-accent); color: var(--theme-on-accent, #111); flex: none; }
 .headerPhone { justify-self: end; font-family: var(--font-mono); font-size: .82rem; font-weight: 500; letter-spacing: .04em; transition: color .2s ease; }

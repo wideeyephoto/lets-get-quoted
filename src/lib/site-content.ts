@@ -1,5 +1,6 @@
 import type { SiteImage } from '@/lib/site-images';
 import type { WebsiteImageAssignment } from '@/lib/stock/types';
+import { SERVICE_ICON_GLYPHS } from '@/lib/templates/service-icons.data';
 
 export type SiteSectionKey = 'showcase' | 'testimonials' | 'faqs';
 
@@ -498,6 +499,10 @@ export type NormalizedSiteContent = {
   // The owner's trade / contractor type (e.g. "window cleaning", "roofing"),
   // used together with the business name to generate on-brand AI content.
   trade: string;
+  // The owner's chosen brand-mark glyph key (from the trade options). Empty falls
+  // back to the trade default. Drives the header/footer logo mark, favicon, and
+  // downloadable icon when no logo image is uploaded.
+  brandGlyph: string;
   // Provenance + attribution for auto-selected stock photos (Pexels). The
   // render fields (hero_url, images, showcase.items) hold the URLs; this array
   // is the source of truth for who took each photo and which role it fills, so
@@ -946,6 +951,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     logoStyle: LOGO_STYLE_KEYS.has(toString(root.logoStyle)) ? toString(root.logoStyle) : 'plain',
     logoSize: LOGO_SIZE_KEYS.has(toString(root.logoSize)) ? toString(root.logoSize) : 'medium',
     trade: toString(root.trade).slice(0, 80),
+    brandGlyph: SERVICE_ICON_GLYPHS[toString(root.brandGlyph)] ? toString(root.brandGlyph) : '',
     stockImages: parseStockImages(root.stockImages),
   };
 }
@@ -1038,28 +1044,54 @@ export function getWorkBand(
 // been uploaded, so an AI-generated site opens with an icon that fits the trade
 // instead of a generic placeholder. Falls back to 'home' (a house) for any
 // unrecognized or blank trade.
-export function getTradeGlyph(trade: string | null | undefined): string {
+// Ordered most-specific first (e.g. "tree service" beats generic landscaping,
+// "pressure washing" beats generic cleaning). options[0] is the trade default;
+// the rest are on-brand alternatives offered in the logo picker (≥5 where the
+// icon set allows). All keys are validated against the icon set at read time.
+const TRADE_GLYPH_RULES: { test: RegExp; options: string[] }[] = [
+  { test: /electric|electrician|wiring|generator|solar|lighting/, options: ['bolt', 'plug', 'lightbulb', 'power', 'lamp', 'cable', 'sun', 'battery'] },
+  { test: /pressure\s*wash|power\s*wash|soft\s*wash/, options: ['spray', 'droplets', 'waves', 'sparkles', 'wind'] },
+  { test: /paint|drywall|stain|\bcoat/, options: ['roller', 'paintbrush', 'brush', 'palette', 'paintbucket'] },
+  { test: /window\s*clean|window\s*wash|\bclean|maid|janitor|carpet/, options: ['sparkles', 'spray', 'brush', 'wind', 'trash', 'droplets'] },
+  { test: /pest|extermin|termite|rodent|mosquito/, options: ['bug', 'shield', 'spray', 'clover', 'sparkles'] },
+  { test: /tree|arborist|stump|forestry/, options: ['tree', 'trees', 'pine', 'axe', 'scissors', 'leaf'] },
+  { test: /landscap|lawn|garden|\byard|sod|mow|irrigation|hardscape|snow/, options: ['leaf', 'sprout', 'trees', 'flower', 'flower2', 'shovel', 'scissors', 'clover', 'sun'] },
+  { test: /haul|mov(?:e|ing)|junk|dumpster|delivery|demolition/, options: ['truck', 'package', 'boxes', 'container', 'forklift', 'trash'] },
+  { test: /hvac|heat|cool|\bair\b|furnace|boiler|duct|ventilat/, options: ['wind', 'fan', 'thermometer', 'snowflake', 'flame', 'airvent', 'gauge'] },
+  { test: /plumb|drain|sewer|pipe|\bwater|leak|faucet/, options: ['droplet', 'droplets', 'showerhead', 'waves', 'gauge', 'wrench'] },
+  { test: /roof|gutter|siding/, options: ['home', 'hardhat', 'triangle', 'ruler', 'warehouse', 'building'] },
+  { test: /concrete|mason|foundation|paver|brick|asphalt/, options: ['hardhat', 'brickwall', 'layers', 'ruler', 'hammer', 'square'] },
+  { test: /carpen|handy|remodel|renov|deck|fence|cabinet|framing|\btrim/, options: ['hammer', 'wrench', 'drill', 'ruler', 'pencilRuler', 'hardhat'] },
+  { test: /floor|tile|hardwood|laminate/, options: ['grid', 'layers', 'square', 'ruler', 'brickwall'] },
+  { test: /appliance|garage\s*door|\brepair/, options: ['wrench', 'settings', 'cog', 'plug', 'washingmachine'] },
+  { test: /construct|contractor|\bbuild|excavat/, options: ['hardhat', 'building', 'crane', 'hammer', 'ruler', 'wrench', 'home'] },
+  { test: /secur|alarm|camera|inspect|\block|surveil/, options: ['shield', 'lock', 'camera', 'bell', 'key'] },
+];
+
+const DEFAULT_GLYPH_OPTIONS = ['home', 'star', 'hardhat', 'hammer', 'wrench', 'shield', 'building'];
+
+// All on-brand glyph keys for a trade (≥5 where the icon set allows), filtered to
+// keys that actually exist. options[0] is the default; the logo picker shows the rest.
+export function getTradeGlyphOptions(trade: string | null | undefined): string[] {
   const t = (trade || '').toLowerCase();
-  // Ordered most-specific first so, e.g., "tree service" beats generic landscaping
-  // and "pressure washing" beats generic cleaning.
-  if (/electric|electrician|wiring|generator|solar|lighting/.test(t)) return 'bolt';
-  if (/pressure\s*wash|power\s*wash|soft\s*wash/.test(t)) return 'spray';
-  if (/paint|drywall|stain|\bcoat/.test(t)) return 'roller';
-  if (/window\s*clean|window\s*wash|\bclean|maid|janitor|carpet/.test(t)) return 'sparkles';
-  if (/pest|extermin|termite|rodent|mosquito/.test(t)) return 'bug';
-  if (/tree|arborist|stump|forestry/.test(t)) return 'tree';
-  if (/landscap|lawn|garden|\byard|sod|mow|irrigation|hardscape|snow/.test(t)) return 'leaf';
-  if (/haul|mov(?:e|ing)|junk|dumpster|delivery|demolition/.test(t)) return 'truck';
-  if (/hvac|heat|cool|\bair\b|furnace|boiler|duct|ventilat/.test(t)) return 'wind';
-  if (/plumb|drain|sewer|pipe|\bwater|leak|faucet/.test(t)) return 'droplet';
-  if (/roof|gutter|siding/.test(t)) return 'home';
-  if (/concrete|mason|foundation|paver|brick|asphalt/.test(t)) return 'hardhat';
-  if (/carpen|handy|remodel|renov|deck|fence|cabinet|framing|\btrim/.test(t)) return 'hammer';
-  if (/floor|tile|hardwood|laminate/.test(t)) return 'grid';
-  if (/appliance|garage\s*door|\block|\brepair/.test(t)) return 'wrench';
-  if (/construct|contractor|\bbuild|excavat/.test(t)) return 'hardhat';
-  if (/secur|alarm|camera|inspect/.test(t)) return 'shield';
-  return 'home';
+  const rule = TRADE_GLYPH_RULES.find((r) => r.test.test(t));
+  const opts = (rule ? rule.options : DEFAULT_GLYPH_OPTIONS).filter((key) => SERVICE_ICON_GLYPHS[key]);
+  return opts.length ? opts : ['home'];
+}
+
+// The default trade mark (first option) — used as the fallback logo mark and the
+// favicon glyph when the owner hasn't picked one.
+export function getTradeGlyph(trade: string | null | undefined): string {
+  return getTradeGlyphOptions(trade)[0];
+}
+
+// The glyph a site actually renders: the owner's picked brandGlyph when set & valid,
+// otherwise the trade default. Use this everywhere the brand mark is drawn so the
+// header, footer, favicon, and downloadable icon always agree.
+export function glyphForContent(content: NormalizedSiteContent): string {
+  return content.brandGlyph && SERVICE_ICON_GLYPHS[content.brandGlyph]
+    ? content.brandGlyph
+    : getTradeGlyph(content.trade);
 }
 
 export function getPublishedShowcase(content: Record<string, unknown> | null | undefined): SiteShowcaseContent | null {

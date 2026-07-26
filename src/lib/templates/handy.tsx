@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getPublishedTrustBadges, getPublishedWhyUs, getSiteContent, getSlotImage, getTradeGlyph, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getPublishedTrustBadges, getPublishedWhyUs, getSiteContent, getSlotImage, glyphForContent, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
 import WordmarkName from './WordmarkName';
 import HeroImageCycle from './HeroImageCycle';
@@ -73,7 +73,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
 
       <header className={styles.careHeader}>
         <a className={styles.careBrand} href="#top" aria-label={`${site.company_name} home`}>
-          {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.careBrandMark}><ServiceIcon name={getTradeGlyph(content.trade)} className={styles.brandGlyph} /></span>}
+          {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.careBrandMark}><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}
           <strong data-edit="identity"><WordmarkName name={site.company_name} /></strong>
         </a>
         <SiteNavLinks site={site} className={styles.navLinks} links={navLinks} />
@@ -173,7 +173,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
       <footer className={styles.careFooter}>
         <div className={styles.careFooterMain}>
           <div className={styles.careFooterBrand}>
-            <span className={styles.careFooterLogo} data-edit="identity"><span aria-hidden="true">⌂</span> {site.company_name}</span>
+            <span className={styles.careFooterLogo} data-edit="identity">{site.logo_url ? <img className={styles.footerLogo} src={site.logo_url} alt="" /> : <span className={styles.careBrandMark} aria-hidden="true"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>} {site.company_name}</span>
             <p data-edit="bizTagline">{site.tagline || 'Trusted, friendly home services for your neighborhood.'}</p>
           </div>
           <div className={styles.careFooterCol}>

@@ -1,4 +1,4 @@
-import { getSiteContent, getTradeGlyph } from '@/lib/site-content';
+import { getSiteContent, glyphForContent } from '@/lib/site-content';
 import { SERVICE_ICON_GLYPHS } from '@/lib/templates/ServiceIcon';
 
 // Generates a contractor's square "brand mark" — a trade-appropriate glyph on a
@@ -43,10 +43,9 @@ function round3(n: number): number {
 
 type BrandMarkSite = { content: Record<string, unknown> | null | undefined; accent_override: string | null };
 
-// The mark for a site, inferring the glyph from its trade and using its accent.
+// The mark for a site: the owner's picked glyph (or the trade default) + its accent.
 export function siteBrandMarkSvg(site: BrandMarkSite, variant: BrandMarkVariant = 'color'): string {
-  const trade = getSiteContent(site.content).trade;
-  return buildBrandMarkSvg(getTradeGlyph(trade), site.accent_override, variant);
+  return buildBrandMarkSvg(glyphForContent(getSiteContent(site.content)), site.accent_override, variant);
 }
 
 // Inline SVG as a data URI (for a <link rel="icon"> / Next metadata icon).

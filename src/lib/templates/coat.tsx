@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, getSlotImage, getTradeGlyph } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, getSlotImage, glyphForContent } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
 import WordmarkName from './WordmarkName';
 import HeroImageCycle from './HeroImageCycle';
@@ -54,7 +54,7 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
 
       <header className={styles.coatHeader}>
         <a className={styles.coatBrand} href="#top" aria-label={`${site.company_name} home`}>
-          {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.coatBrandMark}><ServiceIcon name={getTradeGlyph(content.trade)} className={styles.brandGlyph} /></span>}
+          {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.coatBrandMark}><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}
           <strong data-edit="identity"><WordmarkName name={site.company_name} /></strong>
         </a>
         <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#our-services', label: 'Services' }, { href: '#work', label: 'Projects' }]} />
@@ -118,7 +118,7 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
 
       <footer className={styles.coatFooter}>
         <div className={styles.coatFooterBar}>
-          <a className={styles.coatFooterBrand} href="#top"><span className={styles.coatBrandMark} aria-hidden="true">◆</span>{site.company_name}</a>
+          <a className={styles.coatFooterBrand} href="#top">{site.logo_url ? <img className={styles.footerLogo} src={site.logo_url} alt="" /> : <span className={styles.coatBrandMark} aria-hidden="true"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}{site.company_name}</a>
           {site.phone && <a className={styles.coatFooterCall} href={`tel:${site.phone}`}><span aria-hidden="true">✆</span> Call us now — {site.phone}</a>}
           <small>Powered by Let&apos;s Get Quoted</small>
         </div>

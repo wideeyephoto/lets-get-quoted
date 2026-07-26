@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition, type CSSProper
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getSiteContent, getTradeGlyph, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent } from '@/lib/site-content';
+import { getSiteContent, getTradeGlyphOptions, glyphForContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { buildBrandMarkSvg } from '@/lib/brand-mark';
@@ -171,11 +171,6 @@ const TRADE_GLYPH_NOUNS: Record<string, string> = {
   hammer: 'hammer',
   grid: 'tile grid',
 };
-
-function describeTradeGlyph(trade: string): { glyph: string; noun: string } {
-  const glyph = getTradeGlyph(trade);
-  return { glyph, noun: TRADE_GLYPH_NOUNS[glyph] ?? 'trade' };
-}
 
 // -- Brand-icon downloads (client-side; no server rasterization dependency) --
 function logoFileSlug(name: string): string {
@@ -1508,10 +1503,9 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
               <div className={styles.formSection}>
                 <div className={styles.sectionIntro}>
                   <h2>Brand</h2>
-                  <p>Your site-wide look — theme, colors, fonts, and logo. Set once, applies everywhere.</p>
                 </div>
 
-                <SectionCard title="Theme &amp; colors" description="Your theme, palette, accent, and fonts — all in one place." open={openSection === 'theme'} onToggleOpen={() => toggleSection('theme')}>
+                <SectionCard title="Theme &amp; colors" open={openSection === 'theme'} onToggleOpen={() => toggleSection('theme')}>
                   <div className={styles.cardGroupLabel}>Theme</div>
                   <div className={styles.themeGrid}>
                     {AVAILABLE_TEMPLATES.map((template) => (
@@ -1553,7 +1547,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                         );
                       })}
                     </div>
-                    <small className={styles.fieldHint}>Repalettes the whole page — background, surfaces, and text. This is your light/dark control too: pick a light scheme (Porcelain, Slate) or a dark one (Midnight, Forest). &ldquo;Theme default&rdquo; keeps your theme&apos;s own colors.</small>
                   </div>
 
                   <div className={styles.formField}>
@@ -1576,7 +1569,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                         );
                       })}
                     </div>
-                    <small className={styles.fieldHint}>{hasColorSchemes ? 'Overrides the scheme’s accent. ' : ''}Button and badge text auto-adjusts to stay readable on any color.</small>
                   </div>
 
                   <div className={styles.cardGroupLabel}>Type &amp; layout</div>
@@ -1587,17 +1579,17 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     </select></label>
                     <label className={styles.formField}><span>Button style</span><select value={site.button_style || 'solid'} onChange={(event) => handleChange('button_style', event.target.value)}><option value="solid">Solid</option><option value="outline">Outline</option><option value="ghost">Minimal</option></select></label>
                   </div>
-                  <label className={styles.formField}><span>Header style</span><select value={siteContent.headerStyle} onChange={(event) => updateSiteContent({ headerStyle: event.target.value })}><option value="">Theme default</option>{HEADER_STYLES.map((style) => <option key={style.key} value={style.key}>{style.label}</option>)}</select><small className={styles.fieldHint}>How your logo, menu and call-to-action are arranged across the top.</small></label>
+                  <label className={styles.formField}><span>Header style</span><select value={siteContent.headerStyle} onChange={(event) => updateSiteContent({ headerStyle: event.target.value })}><option value="">Theme default</option>{HEADER_STYLES.map((style) => <option key={style.key} value={style.key}>{style.label}</option>)}</select></label>
                 </SectionCard>
 
-                <SectionCard title="Your logo" description="Shown small in your header and footer." open={openSection === 'logo'} onToggleOpen={() => toggleSection('logo')}>
+                <SectionCard title="Your logo" description="Shown small in your header and footer." open={true} onToggleOpen={() => {}}>
                   <div className={styles.imageSlot}>
                     {site.logo_url
                       ? <div className={styles.logoPreviews}><div className={styles.logoPreview}><img src={site.logo_url} alt="Logo on a light header" data-logo-style={siteContent.logoStyle} /><em>Light</em></div><div className={styles.logoPreviewDark}><img src={site.logo_url} alt="Logo on a dark header" data-logo-style={siteContent.logoStyle} /><em>Dark</em></div></div>
                       : (() => {
-                          const { glyph, noun } = describeTradeGlyph(siteContent.trade);
+                          const options = getTradeGlyphOptions(siteContent.trade);
+                          const glyph = glyphForContent(siteContent);
                           const accent = site.accent_override || '#ff7a21';
-                          const tradeName = siteContent.trade.trim();
                           const slug = logoFileSlug(site.company_name);
                           return (
                             <div className={styles.autoLogoWrap}>
@@ -1607,9 +1599,26 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                                 </span>
                                 <div className={styles.autoLogoMeta}>
                                   <strong>Auto icon for your trade</strong>
-                                  <small>{tradeName ? `We picked a ${noun} to match “${tradeName}.”` : `A ${noun} mark, until you set your field of work above.`} It’s also your site’s browser-tab icon, until you add your own logo.</small>
+                                  <small>Pick the mark that fits best — it’s your header, footer, and browser-tab icon until you add your own logo.</small>
                                 </div>
                               </div>
+                              {options.length > 1 && (
+                                <div className={styles.glyphPicker} role="group" aria-label="Choose your brand icon">
+                                  {options.map((key) => (
+                                    <button
+                                      type="button"
+                                      key={key}
+                                      className={`${styles.glyphPickerBtn}${glyph === key ? ` ${styles.glyphPickerBtnOn}` : ''}`}
+                                      style={{ color: accent }}
+                                      aria-pressed={glyph === key}
+                                      aria-label={`Use the ${TRADE_GLYPH_NOUNS[key] ?? key} icon`}
+                                      onClick={() => updateSiteContent({ brandGlyph: key })}
+                                    >
+                                      <ServiceIcon name={key} className={styles.glyphPickerGlyph} />
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
                               <div className={styles.autoLogoDownloads}>
                                 <span className={styles.autoLogoDownloadsLabel}>Download this icon</span>
                                 <div className={styles.autoLogoDownloadBtns}>
@@ -1628,8 +1637,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                       {site.logo_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('logo_url', null)}>Remove</button>}
                     </div>
                     <div className={styles.formColumns}>
-                      <label className={styles.formField}><span>Logo shape</span><select value={siteContent.logoStyle} onChange={(event) => updateSiteContent({ logoStyle: event.target.value })}><option value="plain">Plain (no frame)</option><option value="rounded">Rounded corners</option><option value="framed">Framed chip (padding + border)</option><option value="circle">Circle</option></select><small className={styles.fieldHint}>Add a rounded frame or chip so a boxy logo blends into the header.</small></label>
-                      <label className={styles.formField}><span>Logo size</span><select value={siteContent.logoSize} onChange={(event) => updateSiteContent({ logoSize: event.target.value })}><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select><small className={styles.fieldHint}>How tall the logo sits in the header and footer.</small></label>
+                      <label className={styles.formField}><span>Logo shape</span><select value={siteContent.logoStyle} onChange={(event) => updateSiteContent({ logoStyle: event.target.value })}><option value="plain">Plain (no frame)</option><option value="rounded">Rounded corners</option><option value="framed">Framed chip (padding + border)</option><option value="circle">Circle</option></select></label>
+                      <label className={styles.formField}><span>Logo size</span><select value={siteContent.logoSize} onChange={(event) => updateSiteContent({ logoSize: event.target.value })}><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select></label>
                     </div>
                     <small className={styles.fieldHint}>Best as a <strong>PNG or SVG with a transparent background</strong> — wide and simple. Aim for ~400×120px; it&apos;s shown up to 70px tall.</small>
                   </div>

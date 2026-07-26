@@ -323,6 +323,13 @@
 .autoLogoMonoBtn { font-size: .78rem; padding: .3rem .6rem; border-radius: 7px; border: 1px solid rgba(255,255,255,.16); background: transparent; color: #c7d0dc; cursor: pointer; }
 .autoLogoMonoBtn:hover { border-color: rgba(255,255,255,.3); color: #f7f5ef; }
 .autoLogoDownloads small { color: #9ca8b8; font-size: .74rem; line-height: 1.4; }
+/* Trade brand-icon options. `color` is set inline to the accent, so each glyph and
+   the selected ring pick it up via currentColor. */
+.glyphPicker { display: flex; flex-wrap: wrap; gap: .4rem; }
+.glyphPickerBtn { display: grid; place-items: center; width: 42px; height: 42px; padding: 0; border: 1px solid rgba(255,255,255,.16); border-radius: 9px; background: rgba(255,255,255,.04); cursor: pointer; transition: border-color .12s ease; }
+.glyphPickerBtn:hover { border-color: rgba(255,255,255,.34); }
+.glyphPickerBtnOn { border-color: currentColor; background: color-mix(in srgb, currentColor 12%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 40%, transparent); }
+.glyphPickerGlyph { width: 22px; height: 22px; }
 .heroSlotPreview { overflow: hidden; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; }
 .heroSlotPreview img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
 .imageSlotActions { margin-top: auto; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
