@@ -298,8 +298,18 @@ export type SiteBlogContent = {
   enabled: boolean;
   title: string;
   intro: string;
+  // How posts are laid out on the public page. See BLOG_STYLES.
+  layout: string;
   posts: SiteBlogPost[];
 };
+
+// Selectable blog-section layouts (data-blog-layout via the render).
+export const BLOG_STYLES = [
+  { key: 'grid', label: 'Card grid', desc: 'Even cover-photo cards — the scannable default.' },
+  { key: 'featured', label: 'Featured + list', desc: 'A big lead post with the rest in a list beside it.' },
+  { key: 'rows', label: 'List rows', desc: 'Horizontal thumbnail rows — editorial and compact.' },
+] as const;
+const BLOG_LAYOUT_KEYS = new Set<string>(BLOG_STYLES.map((style) => style.key));
 
 // Floating hero badge — the small trust chip shown on the hero of photo-badge
 // templates (Fixit today). Owners pick one of these presets or hide it; the
@@ -1005,6 +1015,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       enabled: blog.enabled !== false,
       title: toString(blog.title, DEFAULT_BLOG_TITLE),
       intro: toString(blog.intro),
+      layout: BLOG_LAYOUT_KEYS.has(toString(blog.layout)) ? toString(blog.layout) : 'grid',
       posts: parseBlogPosts(blog.posts),
     },
     heroBadge: {

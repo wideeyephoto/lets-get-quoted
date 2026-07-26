@@ -217,29 +217,66 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
     ),
     stats: stats && <StatCounters title={stats.title} items={stats.items} photo={getSlotImage(site.content, 'stats', site.hero_url || STOCK_SITE_IMAGES[2].url)} />,
     beforeAfter: beforeAfter && <BeforeAfterSlider title={beforeAfter.title} intro={beforeAfter.intro} items={beforeAfter.items} />,
-    blog: blog && (
-      <section className={styles.extraSection} id="blog">
-        <div className={styles.extraSectionHeader} data-reveal>
-          <p className={styles.kicker}>Blog</p>
-          <h2>{blog.title}</h2>
-          {blog.intro && <p>{blog.intro}</p>}
-        </div>
-        <div className={styles.blogGrid} data-stagger>
-          {blog.posts.slice(0, 6).map((post) => (
-            <a key={post.id} className={styles.blogCard} href={`/blog/${post.slug}`}>
-              {post.coverImage && <img className={styles.blogCardImg} src={post.coverImage} alt="" loading="lazy" decoding="async" />}
-              <div className={styles.blogCardBody}>
-                {formatBlogDate(post.date) && <time className={styles.blogCardDate} dateTime={post.date}>{formatBlogDate(post.date)}</time>}
-                <h3>{post.title}</h3>
-                {post.excerpt && <p>{post.excerpt}</p>}
-                <span className={styles.blogCardMore}>Read more <span aria-hidden="true">→</span></span>
+    blog: blog && (() => {
+      const posts = blog.posts.slice(0, 6);
+      const card = (post: (typeof posts)[number]) => (
+        <a key={post.id} className={styles.blogCard} href={`/blog/${post.slug}`}>
+          {post.coverImage && <img className={styles.blogCardImg} src={post.coverImage} alt="" loading="lazy" decoding="async" />}
+          <div className={styles.blogCardBody}>
+            {formatBlogDate(post.date) && <time className={styles.blogCardDate} dateTime={post.date}>{formatBlogDate(post.date)}</time>}
+            <h3>{post.title}</h3>
+            {post.excerpt && <p>{post.excerpt}</p>}
+            <span className={styles.blogCardMore}>Read more <span aria-hidden="true">→</span></span>
+          </div>
+        </a>
+      );
+      let body: ReactNode;
+      if (blog.layout === 'featured' && posts.length > 0) {
+        body = (
+          <div className={styles.blogFeatured} data-stagger>
+            {card(posts[0])}
+            {posts.length > 1 && (
+              <div className={styles.blogFeatureList}>
+                {posts.slice(1, 5).map((post) => (
+                  <a key={post.id} className={styles.blogListRow} href={`/blog/${post.slug}`}>
+                    {formatBlogDate(post.date) && <time className={styles.blogCardDate} dateTime={post.date}>{formatBlogDate(post.date)}</time>}
+                    <h3>{post.title}</h3>
+                  </a>
+                ))}
               </div>
-            </a>
-          ))}
-        </div>
-        <a className={styles.blogViewAll} href="/blog">View all posts <span aria-hidden="true">→</span></a>
-      </section>
-    ),
+            )}
+          </div>
+        );
+      } else if (blog.layout === 'rows') {
+        body = (
+          <div className={styles.blogRows} data-stagger>
+            {posts.map((post) => (
+              <a key={post.id} className={styles.blogRow} href={`/blog/${post.slug}`}>
+                {post.coverImage && <img className={styles.blogRowImg} src={post.coverImage} alt="" loading="lazy" decoding="async" />}
+                <div className={styles.blogCardBody}>
+                  {formatBlogDate(post.date) && <time className={styles.blogCardDate} dateTime={post.date}>{formatBlogDate(post.date)}</time>}
+                  <h3>{post.title}</h3>
+                  {post.excerpt && <p>{post.excerpt}</p>}
+                </div>
+              </a>
+            ))}
+          </div>
+        );
+      } else {
+        body = <div className={styles.blogGrid} data-stagger>{posts.map(card)}</div>;
+      }
+      return (
+        <section className={styles.extraSection} id="blog">
+          <div className={styles.extraSectionHeader} data-reveal>
+            <p className={styles.kicker}>Blog</p>
+            <h2>{blog.title}</h2>
+            {blog.intro && <p>{blog.intro}</p>}
+          </div>
+          {body}
+          <a className={styles.blogViewAll} href="/blog">View all posts <span aria-hidden="true">→</span></a>
+        </section>
+      );
+    })(),
   };
 
   return (

@@ -502,6 +502,25 @@
 @media (max-width: 900px) { .blogGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .blogGrid { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .blogCard { transition: none; } .blogCard:hover { transform: none; } .blogCardMore span { transition: none; } }
+
+/* Blog layout: Featured + list (blog.layout === 'featured'). */
+.blogFeatured { display: grid; grid-template-columns: 1.5fr 1fr; gap: 1.6rem; align-items: start; }
+.blogFeatured > .blogCard h3 { font-size: 1.5rem; }
+.blogFeatureList { display: grid; align-content: start; }
+.blogListRow { display: grid; gap: .35rem; padding: .95rem 0; border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent); color: inherit; text-decoration: none; }
+.blogListRow:first-child { padding-top: 0; }
+.blogListRow:last-child { border-bottom: 0; }
+.blogListRow h3 { margin: 0; font-family: var(--theme-display); font-size: 1.1rem; line-height: 1.25; transition: color .2s ease; }
+.blogListRow:hover h3 { color: var(--theme-accent); }
+@media (max-width: 720px) { .blogFeatured { grid-template-columns: 1fr; } }
+
+/* Blog layout: List rows (blog.layout === 'rows'). */
+.blogRow { display: grid; grid-template-columns: 190px 1fr; gap: 1.4rem; align-items: center; padding: 1.3rem 0; border-top: 1px solid color-mix(in srgb, currentColor 12%, transparent); color: inherit; text-decoration: none; }
+.blogRow:first-child { border-top: 0; }
+.blogRowImg { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: calc(var(--theme-radius, 6px) + 6px); }
+.blogRow h3 { margin: 0; font-family: var(--theme-display); font-size: 1.3rem; line-height: 1.2; transition: color .2s ease; }
+.blogRow:hover h3 { color: var(--theme-accent); }
+@media (max-width: 600px) { .blogRow { grid-template-columns: 110px 1fr; gap: 1rem; } .blogRow .blogCardBody p { display: none; } }
 .faqList { display: grid; gap: .75rem; max-width: 920px; }
 .faqItem { border: 1px solid color-mix(in srgb, currentColor 14%, transparent); border-radius: calc(var(--theme-radius, 6px) + 4px); background: color-mix(in srgb, currentColor 5%, transparent); transition: border-color .25s ease, box-shadow .25s ease; }
 .faqItem:hover { border-color: color-mix(in srgb, var(--theme-accent) 40%, transparent); }
