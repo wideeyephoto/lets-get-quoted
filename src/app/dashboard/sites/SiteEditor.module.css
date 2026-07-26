@@ -401,8 +401,12 @@
 /* The picked-up card pops above the rest. */
 .sectionCardActive { opacity: 1; transform: scale(1.02); z-index: 3; border-color: #ff7a21; box-shadow: 0 16px 36px -12px rgba(0,0,0,.65), 0 0 0 1px #ff7a21; }
 /* Everything else recedes so the dragged one stands out. */
-.sectionCardDimmed { opacity: .4; filter: saturate(.4); }
+.sectionCardDimmed { opacity: .62; filter: saturate(.6); }
 /* The card under the pointer shows a bright line where the section will land. */
+/* The card the pointer is over is the drop target: pull it back to full opacity
+   (it also carries .sectionCardDimmed) so it — and its insertion bar — never look
+   grayed out. Must come after .sectionCardDimmed to win. */
+.sectionCardOver { opacity: 1; filter: none; z-index: 2; }
 /* Drop-target insertion bar — high contrast so it's unmistakable while dragging:
    a bright, fully-rounded bar with a white outline ring that separates it from
    both the dark UI and the orange card borders, plus a strong glow. The white
