@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, glyphForContent } from '@/lib/site-content';
+import { getColorScheme, getEstimateButtonLabel, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, glyphForContent } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
 import SiteFooter from './SiteFooter';
 import WordmarkName from './WordmarkName';
@@ -62,7 +62,10 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
           <strong data-edit="identity"><WordmarkName name={site.company_name} /></strong>
         </a>
         <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#our-services', label: 'Services' }, { href: '#work', label: 'Works' }]} />
-        {site.phone && <a className={styles.fixitHeaderPhone} data-edit="bizPhone" href={`tel:${site.phone}`}><span className={styles.fixitPhoneIcon} aria-hidden="true">✆</span>{site.phone}</a>}
+        <div className={styles.fixitHeaderActions}>
+          {site.phone && <a className={styles.fixitHeaderPhone} data-edit="bizPhone" href={`tel:${site.phone}`}><span className={styles.fixitPhoneIcon} aria-hidden="true">✆</span>{site.phone}</a>}
+          <a className={styles.fixitHeaderCta} data-edit="quoteForm" href="#contact">{getEstimateButtonLabel(content.quoteForm)}</a>
+        </div>
       </header>
 
       <section className={styles.fixitHero} id="top">

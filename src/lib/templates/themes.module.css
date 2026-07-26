@@ -352,6 +352,9 @@
    wraps the name in .wm (words tagged .wmFirst/.wmMid/.wmLast), so every
    treatment targets one short selector and works the same across all themes.
    CSS-only, so they layer on top of whatever brand font is chosen. */
+/* The name never wraps in the header — a narrow brand column would otherwise
+   break "Stumps n Humps" onto three lines (seen on Guild + the brand-tab style). */
+.wm { white-space: nowrap; }
 .site[data-wordmark] .wm { display: inline-block; }
 .site[data-wordmark='caps'] .wm { text-transform: uppercase; letter-spacing: .12em; }
 .site[data-wordmark='initial'] .wmFirst { color: var(--theme-accent); }
@@ -1305,6 +1308,9 @@
 }
 .fixitHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1.5rem; padding: .85rem clamp(1.25rem, 4vw, 3.5rem); background: color-mix(in srgb, var(--c-bg) 95%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--c-line); }
 .fixitBrand { display: inline-flex; align-items: center; gap: .5rem; font-size: 1.15rem; color: var(--fx-ink); }
+.fixitHeaderActions { display: inline-flex; align-items: center; gap: 1rem; }
+.fixitHeaderCta { display: inline-flex; align-items: center; gap: .4rem; padding: .6rem 1.15rem; border-radius: var(--theme-radius, 8px); background: var(--theme-accent); color: var(--theme-on-accent, #fff); font-weight: 700; font-size: .92rem; text-decoration: none; white-space: nowrap; transition: filter .18s; }
+.fixitHeaderCta:hover { filter: brightness(1.07); }
 .fixitBrand strong { font-family: var(--brand-font, var(--theme-display)); font-weight: 800; letter-spacing: -.01em; }
 .fixitBrandMark { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 8px; background: color-mix(in srgb, var(--theme-accent) 14%, transparent); color: var(--theme-accent); font-size: .85rem; }
 .fixitHeader .navLinks { text-transform: none; letter-spacing: 0; font-size: .94rem; font-weight: 600; }
@@ -1394,6 +1400,9 @@
 }
 .renoHeader { position: sticky; top: 0; z-index: 30; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1.5rem; padding: .8rem clamp(1.25rem, 4vw, 3.5rem); background: color-mix(in srgb, var(--c-bg) 96%, transparent); backdrop-filter: blur(10px); border-bottom: 3px solid var(--theme-accent); }
 .renoBrand { display: inline-flex; align-items: center; gap: .55rem; font-size: 1.2rem; color: var(--rn-ink); }
+.renoHeaderActions { display: inline-flex; align-items: center; gap: 1rem; }
+.renoHeaderCta { display: inline-flex; align-items: center; gap: .4rem; padding: .6rem 1.15rem; border-radius: var(--theme-radius, 8px); background: var(--theme-accent); color: var(--theme-on-accent, #fff); font-weight: 700; font-size: .92rem; text-decoration: none; white-space: nowrap; transition: filter .18s; }
+.renoHeaderCta:hover { filter: brightness(1.07); }
 .renoBrand strong { font-family: var(--brand-font, var(--theme-display)); font-weight: 800; letter-spacing: -.01em; }
 .renoHex { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 34px; height: 34px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: var(--theme-accent); color: var(--rn-navy); font-size: .9rem; }
 .renoHeader .navLinks { text-transform: uppercase; letter-spacing: .04em; font-size: .82rem; font-weight: 700; }

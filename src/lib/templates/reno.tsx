@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, glyphForContent } from '@/lib/site-content';
+import { getColorScheme, getEstimateButtonLabel, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, glyphForContent } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
 import SiteFooter from './SiteFooter';
 import WordmarkName from './WordmarkName';
@@ -53,11 +53,14 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
           <strong data-edit="identity"><WordmarkName name={site.company_name} /></strong>
         </a>
         <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#our-services', label: 'Services' }, { href: '#work', label: 'Projects' }]} />
-        {site.phone && (
-          <a className={styles.renoHeaderPhone} data-edit="bizPhone" href={`tel:${site.phone}`}>
-            <span className={styles.renoHex} aria-hidden="true">✆</span>{site.phone}
-          </a>
-        )}
+        <div className={styles.renoHeaderActions}>
+          {site.phone && (
+            <a className={styles.renoHeaderPhone} data-edit="bizPhone" href={`tel:${site.phone}`}>
+              <span className={styles.renoHex} aria-hidden="true">✆</span>{site.phone}
+            </a>
+          )}
+          <a className={styles.renoHeaderCta} data-edit="quoteForm" href="#contact">{getEstimateButtonLabel(content.quoteForm)}</a>
+        </div>
       </header>
 
       <section className={styles.renoHero} id="top">
