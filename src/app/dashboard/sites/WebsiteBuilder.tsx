@@ -1406,7 +1406,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     >
                       {site.company_name.trim()
                         ? siteContent.wordmarkStyle === 'initial'
-                          ? (<><span className={styles.wmAccent}>{[...site.company_name.trim()][0]}</span>{[...site.company_name.trim()].slice(1).join('')}</>)
+                          ? (<><span className={styles.wmAccent}>{site.company_name.trim().split(' ')[0]}</span>{site.company_name.trim().slice(site.company_name.trim().split(' ')[0].length)}</>)
                           : site.company_name
                         : <span className={styles.namePreviewEmpty}>Your company name</span>}
                     </span>

@@ -218,10 +218,10 @@
 .site[data-wordmark='caps'] .renoBrand strong, .site[data-wordmark='caps'] .vistaBrand {
   text-transform: uppercase; letter-spacing: .12em;
 }
-.site[data-wordmark='initial'] .brand strong::first-letter, .site[data-wordmark='initial'] .guildBrand strong::first-letter,
-.site[data-wordmark='initial'] .careBrand strong::first-letter, .site[data-wordmark='initial'] .shineBrand strong::first-letter,
-.site[data-wordmark='initial'] .coatBrand strong::first-letter, .site[data-wordmark='initial'] .fixitBrand strong::first-letter,
-.site[data-wordmark='initial'] .renoBrand strong::first-letter, .site[data-wordmark='initial'] .vistaBrand::first-letter {
+/* "Accent first word" — the first word is wrapped in .wmFirst by WordmarkName so
+   it can be coloured (CSS ::first-letter can only reach a single letter). The
+   span is present under every style but only tinted here. */
+.site[data-wordmark='initial'] .wmFirst {
   color: var(--theme-accent);
 }
 .site[data-wordmark='underline'] .brand strong, .site[data-wordmark='underline'] .guildBrand strong,

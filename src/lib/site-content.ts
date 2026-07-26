@@ -329,7 +329,7 @@ export const HEADER_STYLES = [
 // on top of whatever brand font is chosen.
 export const WORDMARK_STYLES = [
   { key: 'caps', label: 'All caps — wide tracking' },
-  { key: 'initial', label: 'Accent first letter' },
+  { key: 'initial', label: 'Accent first word' },
   { key: 'underline', label: 'Accent underline' },
   { key: 'box', label: 'Boxed outline' },
 ] as const;
