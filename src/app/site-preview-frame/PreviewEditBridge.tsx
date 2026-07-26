@@ -76,6 +76,7 @@ const SECTION_SELECTORS: Record<string, string> = {
   projectShowcase: '#project-showcase, [data-edit="projectShowcase"]',
   quoteForm: '[data-edit="quoteForm"], #contact',
   estimate: '[data-edit="estimate"], #contact',
+  footer: 'footer',
   whyUs: '[data-edit="whyUs"], #why',
   trustBadges: '[data-edit="trustBadges"]',
   rating: '[data-edit="ratingBadge"], #reviews',
