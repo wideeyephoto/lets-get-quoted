@@ -55,7 +55,7 @@ export default async function CampaignsPage({
     <main className="wide-shell workspace-shell">
       <section className="workspace-hero panel">
         <div className="workspace-hero-copy">
-          <p className="eyebrow">Campaigns</p>
+          <p className="eyebrow">Marketing</p>
           <h1 className="workspace-title">Reach past customers</h1>
           <p className="workspace-lead">
             Send a one-off email or text to the customers you&apos;ve already worked with — a seasonal offer, a

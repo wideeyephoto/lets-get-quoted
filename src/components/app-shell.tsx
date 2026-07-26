@@ -23,7 +23,7 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard/crew', label: 'Crew', hint: 'Your team & assignments' },
   { href: '/dashboard/payroll', label: 'Payroll', hint: 'Crew hours & pay by period' },
   { href: '/dashboard/messages', label: 'Messages', hint: 'Two-way customer texts' },
-  { href: '/dashboard/campaigns', label: 'Campaigns', hint: 'Email & text past customers' },
+  { href: '/dashboard/campaigns', label: 'Marketing', hint: 'Email & text past customers' },
   { href: '/dashboard/rebook', label: 'Rebook', hint: 'Win back past customers' },
   { href: '/dashboard/insights', label: 'Insights', hint: 'Funnel & revenue trends' },
   { href: '/dashboard/reviews', label: 'Reviews', hint: 'Ratings & private feedback' },

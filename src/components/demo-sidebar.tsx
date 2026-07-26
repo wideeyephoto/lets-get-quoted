@@ -45,7 +45,7 @@ const GROUPS: { label: string; items: DemoItem[] }[] = [
     label: 'Grow',
     items: [
       { icon: '/dashboard/messages', label: 'Messages', href: '/login', preview: true },
-      { icon: '/dashboard/campaigns', label: 'Campaigns', href: '/login', preview: true },
+      { icon: '/dashboard/campaigns', label: 'Marketing', href: '/login', preview: true },
       { icon: '/dashboard/rebook', label: 'Rebook', href: '/login', preview: true },
       { icon: '/dashboard/reviews', label: 'Reviews', href: '/login', preview: true },
     ],
