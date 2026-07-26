@@ -22,7 +22,7 @@ function footerLinks(site: Site): FooterLink[] {
   const links: FooterLink[] = [];
   if (getPublishedServices(c)) links.push({ href: '#our-services', label: 'Services' });
   const showcase = getPublishedShowcase(c);
-  if (showcase) links.push({ href: '#showcase', label: showcase.navLabel.trim() || 'Showcase' });
+  if (showcase) links.push({ href: '#showcase', label: showcase.navLabel.trim() || 'Gallery' });
   if (getPublishedTestimonials(c)) links.push({ href: '#reviews', label: 'Reviews' });
   if (getPublishedFaqs(c)) links.push({ href: '#faqs', label: 'FAQs' });
   if (getPublishedBlog(c)) links.push({ href: '#blog', label: 'Blog' });

@@ -53,7 +53,7 @@ export default function SiteNavLinks({ site, links, className }: SiteNavLinksPro
 
   const dynamicLinks: SiteNavLink[] = [];
   const showcase = getPublishedShowcase(site.content);
-  if (showcase) dynamicLinks.push({ href: '#showcase', label: showcase.navLabel.trim() || 'Showcase' });
+  if (showcase) dynamicLinks.push({ href: '#showcase', label: showcase.navLabel.trim() || 'Gallery' });
   if (getPublishedTestimonials(site.content)) dynamicLinks.push({ href: '#reviews', label: 'Reviews' });
   if (getPublishedFaqs(site.content)) dynamicLinks.push({ href: '#faqs', label: 'FAQs' });
   if (getPublishedBlog(site.content)) dynamicLinks.push({ href: '#blog', label: 'Blog' });
