@@ -44,7 +44,7 @@ export default function ForgeTemplate({ site }: TemplateProps) {
             top (below the availability bar), not the page top. */}
         <header className={styles.forgeHeader}>
           <a className={styles.brand} href="#top" aria-label={`${site.company_name} home`}>
-            {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.brandBlock}><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}
+            {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.brandBlock} data-edit="brandIcon"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}
             <strong data-edit="identity"><WordmarkName name={site.company_name} /></strong>
           </a>
           <SiteNavLinks site={site} className={styles.navLinks} links={[]} />
@@ -93,7 +93,7 @@ export default function ForgeTemplate({ site }: TemplateProps) {
       </section>
 
       <SiteDesktopCta site={site} />
-      <footer className={styles.forgeFooter}><strong data-edit="identity">{site.logo_url ? <img className={styles.footerLogo} src={site.logo_url} alt="" /> : <span className={styles.brandBlock} aria-hidden="true"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>} {site.company_name}</strong><span data-edit="bizArea">{site.service_area || 'Proudly serving our local community'}</span><small>Powered by Let&apos;s Get Quoted</small></footer>
+      <footer className={styles.forgeFooter}><strong data-edit="identity">{site.logo_url ? <img className={styles.footerLogo} src={site.logo_url} alt="" /> : <span className={styles.brandBlock} data-edit="brandIcon" aria-hidden="true"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>} {site.company_name}</strong><span data-edit="bizArea">{site.service_area || 'Proudly serving our local community'}</span><small>Powered by Let&apos;s Get Quoted</small></footer>
     </main>
   );
 }

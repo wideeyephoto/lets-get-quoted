@@ -580,6 +580,9 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
       if (target === 'bizPhone') { setActiveTab('business'); setOpenSection('contactInfo'); focusField('bf-phone'); return; }
       if (target === 'bizLicense') { setActiveTab('business'); setOpenSection('contactInfo'); focusField('bf-license'); return; }
       if (target === 'heroBadge') { setActiveTab('page'); setOpenSection('hero'); flashCard('heroBadge', 'design-hero-badge'); return; }
+      // The auto trade-icon (no uploaded logo) jumps to the Brand tab's "Your
+      // logo" card, where the glyph picker, transparent toggle, and upload live.
+      if (target === 'brandIcon') { setActiveTab('design'); requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById('design-logo')?.scrollIntoView({ behavior: 'smooth', block: 'center' }))); return; }
       // Every photo opens the "Replace photo" popup, routed by what was clicked.
       if (target === 'heroImage') { setPicker({ label: 'the hero image', kind: 'hero' }); return; }
       if (target === 'logo') { setPicker({ label: 'your logo', kind: 'logo' }); return; }
@@ -1535,6 +1538,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <label className={styles.formField}><span>Header style</span><select value={siteContent.headerStyle} onChange={(event) => updateSiteContent({ headerStyle: event.target.value })}><option value="">Theme default</option>{HEADER_STYLES.map((style) => <option key={style.key} value={style.key}>{style.label}</option>)}</select></label>
                 </SectionCard>
 
+                <div id="design-logo">
                 <SectionCard title="Your logo" description="Shown small in your header and footer." open={true} onToggleOpen={() => {}}>
                   <div className={styles.imageSlot}>
                     {site.logo_url
@@ -1571,6 +1575,14 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                                   ))}
                                 </div>
                               )}
+                              <label className={styles.autoLogoTransparent}>
+                                <input
+                                  type="checkbox"
+                                  checked={siteContent.logoStyle === 'transparent'}
+                                  onChange={(event) => updateSiteContent({ logoStyle: event.target.checked ? 'transparent' : 'rounded' })}
+                                />
+                                <span><strong>Transparent background</strong><small>Show just the icon on your site — drop the tile behind it.</small></span>
+                              </label>
                             </div>
                           );
                         })()}
@@ -1586,6 +1598,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     <small className={styles.fieldHint}>Best as a <strong>PNG or SVG with a transparent background</strong> — wide and simple. Aim for ~400×120px; it&apos;s shown up to 70px tall.</small>
                   </div>
                 </SectionCard>
+                </div>
 
               </div>
             )}

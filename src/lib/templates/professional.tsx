@@ -64,7 +64,7 @@ export default function GuildTemplate({ site }: TemplateProps) {
       <Parallax />
       <header className={styles.guildHeader}>
         <a className={styles.guildBrand} href="#top">
-          {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.guildBrandMark} data-edit="logo"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}
+          {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.guildBrandMark} data-edit="brandIcon"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}
           <span><strong data-edit="identity"><WordmarkName name={site.company_name} /></strong><small data-edit="bizLicense">{site.license || 'Licensed contractor'}</small></span>
         </a>
         <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: services ? '#our-services' : '#services', label: 'Services' }]} />
@@ -131,7 +131,7 @@ export default function GuildTemplate({ site }: TemplateProps) {
       </section>
 
       <SiteDesktopCta site={site} />
-      <footer className={styles.guildFooter}><strong data-edit="identity">{site.logo_url ? <img className={styles.footerLogo} src={site.logo_url} alt="" /> : <span className={styles.guildBrandMark} aria-hidden="true"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>} {site.company_name}</strong><span>{site.license || 'Licensed & insured'}</span><small>Powered by Let&apos;s Get Quoted</small></footer>
+      <footer className={styles.guildFooter}><strong data-edit="identity">{site.logo_url ? <img className={styles.footerLogo} src={site.logo_url} alt="" /> : <span className={styles.guildBrandMark} data-edit="brandIcon" aria-hidden="true"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>} {site.company_name}</strong><span>{site.license || 'Licensed & insured'}</span><small>Powered by Let&apos;s Get Quoted</small></footer>
     </main>
   );
 }

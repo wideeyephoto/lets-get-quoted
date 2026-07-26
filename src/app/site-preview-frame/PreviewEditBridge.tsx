@@ -50,6 +50,7 @@ const PENCIL = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stro
 
 function labelFor(match: Editable): string {
   if (match.key === 'logo') return `${CAMERA} Replace logo`;
+  if (match.key === 'brandIcon') return `${PENCIL} Edit logo & icon`;
   if (match.isImage) return `${CAMERA} Replace photo`;
   return `${PENCIL} Click to edit`;
 }

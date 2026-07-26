@@ -64,7 +64,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
 
       <header className={styles.shineHeader}>
         <a className={styles.shineBrand} href="#top" aria-label={`${site.company_name} home`}>
-          {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.shineBrandMark}><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}
+          {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.shineBrandMark} data-edit="brandIcon"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}
           <strong data-edit="identity"><WordmarkName name={site.company_name} /></strong>
         </a>
         <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#our-services', label: 'Services' }, { href: '#work', label: 'Work' }]} />
@@ -135,7 +135,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
 
       <footer className={styles.shineFooter}>
         <div className={styles.shineFooterBar}>
-          <a className={styles.shineFooterBrand} href="#top">{site.logo_url ? <img className={styles.footerLogo} src={site.logo_url} alt="" /> : <span className={styles.shineBrandMark} aria-hidden="true"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}{site.company_name}</a>
+          <a className={styles.shineFooterBrand} href="#top">{site.logo_url ? <img className={styles.footerLogo} src={site.logo_url} alt="" /> : <span className={styles.shineBrandMark} data-edit="brandIcon" aria-hidden="true"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}{site.company_name}</a>
           {site.phone && <a className={styles.shineFooterCall} href={`tel:${site.phone}`}>Book a call — {site.phone}</a>}
           <small>Powered by Let&apos;s Get Quoted</small>
         </div>

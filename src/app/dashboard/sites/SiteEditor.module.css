@@ -321,6 +321,13 @@
 .autoLogoMeta strong { font-size: .9rem; color: #f7f5ef; }
 .autoLogoMeta small { color: #9ca8b8; font-size: .76rem; line-height: 1.45; }
 .autoLogoWrap { display: grid; gap: .7rem; }
+/* In-context transparency toggle for the auto icon — the discoverable way to
+   drop the tile, mirroring the "Transparent" value in the Logo style select. */
+.autoLogoTransparent { display: flex; align-items: flex-start; gap: .55rem; cursor: pointer; }
+.autoLogoTransparent input { margin-top: .18rem; flex: none; accent-color: #ff7a21; }
+.autoLogoTransparent span { display: grid; gap: .1rem; }
+.autoLogoTransparent strong { font-size: .84rem; color: #f7f5ef; font-weight: 700; }
+.autoLogoTransparent small { color: #9ca8b8; font-size: .74rem; line-height: 1.4; }
 /* Separates the auto-icon / logo preview from the "Add your own logo" action. */
 .logoDivider { width: 100%; height: 0; margin: .35rem 0; border: none; border-top: 1px solid rgba(255,255,255,.1); }
 /* Trade brand-icon options. `color` is set inline to the accent, so each glyph and
