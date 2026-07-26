@@ -1555,7 +1555,7 @@
 .site[data-badge-style='soft'] .shineBadge,
 .site[data-badge-style='soft'] .coatHeroBadge,
 .site[data-badge-style='soft'] .fixitHeroCard,
-.site[data-badge-style='soft'] .guildBadge { background: rgba(255,255,255,.16); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.34); color: #fff; }
+.site[data-badge-style='soft'] .guildBadge { background: rgba(255,255,255,.28); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.42); color: #fff; }
 .site[data-badge-style='outline'] .shineBadge strong, .site[data-badge-style='soft'] .shineBadge strong,
 .site[data-badge-style='outline'] .coatHeroBadge strong, .site[data-badge-style='soft'] .coatHeroBadge strong,
 .site[data-badge-style='outline'] .coatHeroBadge small, .site[data-badge-style='soft'] .coatHeroBadge small,
@@ -1566,6 +1566,11 @@
 .site[data-badge-style='outline'] .shineBadge small, .site[data-badge-style='soft'] .shineBadge small,
 .site[data-badge-style='outline'] .guildBadge strong, .site[data-badge-style='soft'] .guildBadge strong,
 .site[data-badge-style='outline'] .guildBadge span, .site[data-badge-style='soft'] .guildBadge span { color: #fff; }
+/* On the glass style the accent icon chips were washing out — give the color
+   icons and their circle more presence against the translucent panel. */
+.site[data-badge-style='soft'] .coatHeroBadgeIcon,
+.site[data-badge-style='soft'] .fixitHeroCardIcon { background: color-mix(in srgb, var(--theme-accent) 42%, transparent); color: #fff; }
+.site[data-badge-style='soft'] .guildBadge .guildBadgeIcon { background: rgba(255,255,255,.42); }
 
 /* Badge detailing — an accent rail down the leading edge, a haloed icon chip,
    and a response on hover, so the floating chips read as designed objects
@@ -1634,7 +1639,7 @@
 .site[data-badge-style='outline'] .renoBadge { background: transparent; border: 2px solid rgba(255,255,255,.82); box-shadow: none; color: #fff; }
 .site[data-badge-style='soft'] .forgeBadge,
 .site[data-badge-style='soft'] .vistaBadge,
-.site[data-badge-style='soft'] .renoBadge { background: rgba(255,255,255,.16); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.34); color: #fff; }
+.site[data-badge-style='soft'] .renoBadge { background: rgba(255,255,255,.28); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.42); color: #fff; }
 .site[data-badge-style='outline'] .forgeBadge small, .site[data-badge-style='soft'] .forgeBadge small,
 .site[data-badge-style='outline'] .vistaBadge strong, .site[data-badge-style='soft'] .vistaBadge strong,
 .site[data-badge-style='outline'] .vistaBadge small, .site[data-badge-style='soft'] .vistaBadge small,
