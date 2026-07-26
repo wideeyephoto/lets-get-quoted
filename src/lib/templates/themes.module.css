@@ -222,6 +222,46 @@
 }
 .site[data-logo-style='transparent'] .brandGlyph { width: 100%; height: 100%; }
 
+/* Logo style also shapes the AUTO-ICON chip on the live site — not just the
+   uploaded .logo. 'plain' is intentionally omitted so each theme keeps its
+   designed default chip (e.g. reno's hexagon); the explicit shapes override
+   it. clip-path:none lets reno's hex become the chosen shape. */
+.site[data-logo-style='rounded'] .brandBlock,
+.site[data-logo-style='rounded'] .guildBrandMark,
+.site[data-logo-style='rounded'] .vistaBrandMark,
+.site[data-logo-style='rounded'] .careBrandMark,
+.site[data-logo-style='rounded'] .coatBrandMark,
+.site[data-logo-style='rounded'] .fixitBrandMark,
+.site[data-logo-style='rounded'] .shineBrandMark,
+.site[data-logo-style='rounded'] .renoHex { border-radius: 8px; clip-path: none; }
+
+.site[data-logo-style='squircle'] .brandBlock,
+.site[data-logo-style='squircle'] .guildBrandMark,
+.site[data-logo-style='squircle'] .vistaBrandMark,
+.site[data-logo-style='squircle'] .careBrandMark,
+.site[data-logo-style='squircle'] .coatBrandMark,
+.site[data-logo-style='squircle'] .fixitBrandMark,
+.site[data-logo-style='squircle'] .shineBrandMark,
+.site[data-logo-style='squircle'] .renoHex { border-radius: 30%; clip-path: none; }
+
+.site[data-logo-style='circle'] .brandBlock,
+.site[data-logo-style='circle'] .guildBrandMark,
+.site[data-logo-style='circle'] .vistaBrandMark,
+.site[data-logo-style='circle'] .careBrandMark,
+.site[data-logo-style='circle'] .coatBrandMark,
+.site[data-logo-style='circle'] .fixitBrandMark,
+.site[data-logo-style='circle'] .shineBrandMark,
+.site[data-logo-style='circle'] .renoHex { border-radius: 999px; clip-path: none; }
+
+.site[data-logo-style='framed'] .brandBlock,
+.site[data-logo-style='framed'] .guildBrandMark,
+.site[data-logo-style='framed'] .vistaBrandMark,
+.site[data-logo-style='framed'] .careBrandMark,
+.site[data-logo-style='framed'] .coatBrandMark,
+.site[data-logo-style='framed'] .fixitBrandMark,
+.site[data-logo-style='framed'] .shineBrandMark,
+.site[data-logo-style='framed'] .renoHex { border-radius: 10px; clip-path: none; box-shadow: inset 0 0 0 2px color-mix(in srgb, currentColor 35%, transparent); }
+
 /* Company-name wordmark treatments (data-wordmark on the root). The name text
    lives in the brand <strong> for every header/footer except Vista, whose brand
    <a> holds the text directly — both are covered by the selector list. Each
