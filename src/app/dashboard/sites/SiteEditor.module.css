@@ -83,14 +83,28 @@
 .drivers .formField input { min-height: 48px; padding: .72rem .8rem; font-size: 1.02rem; font-weight: 600; background: rgba(6, 14, 24, .72); border-color: rgba(255, 122, 33, .45); }
 .driversCaption { margin: 0; font-size: .75rem; line-height: 1.45; color: rgba(255, 181, 122, .92); }
 
-.namePreview { display: flex; align-items: center; gap: .85rem; padding: .8rem 1rem; border-radius: 10px; border: 1px dashed rgba(255, 255, 255, .16); background: rgba(255, 255, 255, .03); overflow: hidden; }
-.namePreviewLabel { flex: none; font-size: .62rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #9ca8b8; }
-.namePreviewMark { min-width: 0; font-size: 1.5rem; font-weight: 800; line-height: 1.15; color: #f7f5ef; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.namePreviewMark[data-wm="caps"] { text-transform: uppercase; letter-spacing: .1em; }
-.namePreviewMark[data-wm="underline"] { border-bottom: 3px solid var(--wm-accent, #ff7a21); padding-bottom: .06em; }
-.namePreviewMark[data-wm="box"] { border: 2px solid rgba(255, 255, 255, .55); border-radius: 7px; padding: .06em .4em; }
-.wmAccent { color: var(--wm-accent, #ff7a21); }
-.namePreviewEmpty { font-size: 1.05rem; font-weight: 500; font-style: italic; color: #6f7d90; }
+/* Company-name style picker — a scrollable grid of live previews (each tile
+   renders the business name in that treatment), replacing the old dropdown. */
+.namePicker { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; max-height: 340px; overflow-y: auto; padding: .35rem; margin-top: .35rem; border: 1px solid rgba(255, 255, 255, .1); border-radius: 10px; background: rgba(255, 255, 255, .02); }
+.namePickerTile { display: grid; gap: .45rem; justify-items: start; align-content: center; min-height: 76px; padding: .7rem .85rem; border: 1px solid rgba(255, 255, 255, .12); border-radius: 9px; background: rgba(255, 255, 255, .03); cursor: pointer; overflow: hidden; transition: border-color .12s ease, background .12s ease; }
+.namePickerTile:hover { border-color: rgba(255, 255, 255, .3); }
+.namePickerTileOn { border-color: #ff7a21; background: color-mix(in srgb, #ff7a21 12%, transparent); }
+.namePickerTile > small { font-size: .68rem; font-weight: 700; color: #9ca8b8; }
+.namePickerTileOn > small { color: #ff7a21; }
+.namePickerMark { max-width: 100%; font-size: 1.15rem; font-weight: 800; line-height: 1.2; color: #f7f5ef; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.namePickerMark[data-wm="caps"] { text-transform: uppercase; letter-spacing: .1em; }
+.namePickerMark[data-wm="initial"] .wmPreviewFirst { color: var(--wm-accent, #ff7a21); }
+.namePickerMark[data-wm="middle"] .wmPreviewMid { color: var(--wm-accent, #ff7a21); }
+.namePickerMark[data-wm="last"] .wmPreviewLast { color: var(--wm-accent, #ff7a21); }
+.namePickerMark[data-wm="underline"] { background: linear-gradient(var(--wm-accent, #ff7a21), var(--wm-accent, #ff7a21)) 0 100% / 100% 3px no-repeat; padding-bottom: 3px; }
+.namePickerMark[data-wm="box"] { border: 2px solid var(--wm-accent, #ff7a21); border-radius: 6px; padding: .06em .34em; }
+.namePickerMark[data-wm="brackets"] { position: relative; padding: .16em .5em; }
+.namePickerMark[data-wm="brackets"]::before, .namePickerMark[data-wm="brackets"]::after { content: ''; position: absolute; width: .4em; height: .4em; }
+.namePickerMark[data-wm="brackets"]::before { left: 0; top: 0; border-left: 2px solid var(--wm-accent, #ff7a21); border-top: 2px solid var(--wm-accent, #ff7a21); }
+.namePickerMark[data-wm="brackets"]::after { right: 0; bottom: 0; border-right: 2px solid var(--wm-accent, #ff7a21); border-bottom: 2px solid var(--wm-accent, #ff7a21); }
+.namePickerMark[data-wm="pill"] { background: var(--wm-accent, #ff7a21); color: #fff; border-radius: 999px; padding: .14em .72em; }
+.namePickerMark[data-wm="stamp"] { text-transform: uppercase; letter-spacing: .14em; color: var(--wm-accent, #ff7a21); border: 2px solid var(--wm-accent, #ff7a21); border-radius: 4px; padding: .12em .48em; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--wm-accent, #ff7a21) 45%, transparent); }
+.namePickerMark[data-wm="plate"] { background: linear-gradient(rgba(255, 255, 255, .14), rgba(255, 255, 255, .04)); border: 1px solid rgba(255, 255, 255, .22); border-radius: 7px; padding: .14em .58em; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3), 0 2px 5px rgba(0, 0, 0, .3); }
 
 .aiButton { width: 100%; justify-content: center; box-shadow: 0 14px 30px -14px rgba(255, 90, 31, .6); }
 .formSection .themeGrid { grid-template-columns: repeat(4, minmax(0, 1fr)); }

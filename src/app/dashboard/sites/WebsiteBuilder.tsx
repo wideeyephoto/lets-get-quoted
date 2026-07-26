@@ -1438,37 +1438,39 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     </div>
                     <p className={styles.driversCaption}>Your headline, services, FAQs, and Google listing are all generated from these two.</p>
                   </div>
-                  <div className={styles.formColumns}>
-                    <label className={styles.formField} id="bf-brand-font"><span>Company name font</span>
-                      <select value={siteContent.brandFont} onChange={(event) => updateSiteContent({ brandFont: event.target.value })} style={{ fontFamily: siteContent.brandFont && siteContent.brandFont !== 'var(--theme-display)' ? siteContent.brandFont : undefined }}>
-                        <option value="">Theme default</option>
-                        <option value="var(--theme-display)">Match heading font</option>
-                        {HEADING_FONT_OPTIONS.map((font) => <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>{font.label}</option>)}
-                      </select>
-                    </label>
-                    <label className={styles.formField}><span>Company name style</span>
-                      <select value={siteContent.wordmarkStyle} onChange={(event) => updateSiteContent({ wordmarkStyle: event.target.value })}>
-                        <option value="">Standard</option>
-                        {WORDMARK_STYLES.map((style) => <option key={style.key} value={style.key}>{style.label}</option>)}
-                      </select>
-                    </label>
+                  <label className={styles.formField} id="bf-brand-font"><span>Company name font</span>
+                    <select value={siteContent.brandFont} onChange={(event) => updateSiteContent({ brandFont: event.target.value })} style={{ fontFamily: siteContent.brandFont && siteContent.brandFont !== 'var(--theme-display)' ? siteContent.brandFont : undefined }}>
+                      <option value="">Theme default</option>
+                      <option value="var(--theme-display)">Match heading font</option>
+                      {HEADING_FONT_OPTIONS.map((font) => <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>{font.label}</option>)}
+                    </select>
+                  </label>
+                  <div className={styles.formField}>
+                    <span>Company name style</span>
+                    {(() => {
+                      const nm = site.company_name.trim() || 'Your Company';
+                      const parts = nm.split(/\s+/);
+                      const renderName = () => parts.length <= 1
+                        ? <span className={`${styles.wmPreviewFirst} ${styles.wmPreviewLast}`}>{nm}</span>
+                        : parts.map((word, i) => <span key={i}>{i > 0 ? ' ' : ''}<span className={i === 0 ? styles.wmPreviewFirst : i === parts.length - 1 ? styles.wmPreviewLast : styles.wmPreviewMid}>{word}</span></span>);
+                      const previewFont = siteContent.brandFont && siteContent.brandFont !== 'var(--theme-display)' ? siteContent.brandFont : undefined;
+                      const options = [{ key: '', label: 'Standard' }, ...WORDMARK_STYLES];
+                      return (
+                        <div className={styles.namePicker} role="radiogroup" aria-label="Company name style" style={{ '--wm-accent': site.accent_override || '#ff7a21', fontFamily: previewFont } as CSSProperties}>
+                          {options.map((style) => {
+                            const selected = (siteContent.wordmarkStyle || '') === style.key;
+                            return (
+                              <button type="button" key={style.key || 'standard'} role="radio" aria-checked={selected} className={`${styles.namePickerTile}${selected ? ` ${styles.namePickerTileOn}` : ''}`} onClick={() => updateSiteContent({ wordmarkStyle: style.key })}>
+                                <span className={styles.namePickerMark} data-wm={style.key || 'plain'}>{renderName()}</span>
+                                <small>{style.label}</small>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
-                  <small className={styles.fieldHint}>Your business name in the header &amp; footer — shown exactly as you type. The style layers a treatment on top: accent initial, underline, outlined box, or wide caps.</small>
-
-                  <div className={styles.namePreview} aria-live="polite">
-                    <span className={styles.namePreviewLabel}>Preview</span>
-                    <span
-                      className={styles.namePreviewMark}
-                      data-wm={siteContent.wordmarkStyle || 'plain'}
-                      style={{ fontFamily: siteContent.brandFont && siteContent.brandFont !== 'var(--theme-display)' ? siteContent.brandFont : undefined, '--wm-accent': site.accent_override || '#ff7a21' } as CSSProperties}
-                    >
-                      {site.company_name.trim()
-                        ? siteContent.wordmarkStyle === 'initial'
-                          ? (<><span className={styles.wmAccent}>{site.company_name.trim().split(' ')[0]}</span>{site.company_name.trim().slice(site.company_name.trim().split(' ')[0].length)}</>)
-                          : site.company_name
-                        : <span className={styles.namePreviewEmpty}>Your company name</span>}
-                    </span>
-                  </div>
+                  <small className={styles.fieldHint}>Your business name in the header — shown exactly as you type. Tap a style to layer a treatment on top; the accent color follows your theme.</small>
 
                   <button type="button" className={`btn primary ${styles.aiButton}`} onClick={handleGenerateText} disabled={isGeneratingText}>
                     {isGeneratingText ? 'Creating your tailored Website...' : '✨ Generate a full example site with AI'}

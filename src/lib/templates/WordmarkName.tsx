@@ -1,19 +1,30 @@
 import styles from './themes.module.css';
 
-// Renders the company name with its first word wrapped in .wmFirst, so the
-// "Accent first word" wordmark treatment can colour it — CSS ::first-letter can
-// only reach a single letter. A single-word name is treated as one word (the
-// whole name accents). The span is inert under every other wordmark style.
+// Renders the company name wrapped in .wm (so every data-wordmark treatment
+// targets one short selector across all themes), with each word tagged so the
+// accent-word treatments can colour it: .wmFirst / .wmMid (any inner word) /
+// .wmLast. A single-word name carries both first + last so "accent first" and
+// "accent last" both light it up. The classes are inert under other styles.
 export default function WordmarkName({ name }: { name: string }) {
-  const value = name ?? '';
-  const spaceIndex = value.indexOf(' ');
-  if (spaceIndex === -1) {
-    return <span className={styles.wmFirst}>{value}</span>;
+  const value = (name ?? '').trim();
+  const words = value ? value.split(/\s+/) : [];
+
+  if (words.length <= 1) {
+    return <span className={styles.wm}><span className={`${styles.wmFirst} ${styles.wmLast}`}>{value}</span></span>;
   }
+
+  const lastIndex = words.length - 1;
   return (
-    <>
-      <span className={styles.wmFirst}>{value.slice(0, spaceIndex)}</span>
-      {value.slice(spaceIndex)}
-    </>
+    <span className={styles.wm}>
+      {words.map((word, index) => {
+        const cls = index === 0 ? styles.wmFirst : index === lastIndex ? styles.wmLast : styles.wmMid;
+        return (
+          <span key={index}>
+            {index > 0 ? ' ' : ''}
+            <span className={cls}>{word}</span>
+          </span>
+        );
+      })}
+    </span>
   );
 }

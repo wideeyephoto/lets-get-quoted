@@ -342,8 +342,14 @@ export const HEADER_STYLES = [
 export const WORDMARK_STYLES = [
   { key: 'caps', label: 'All caps — wide tracking' },
   { key: 'initial', label: 'Accent first word' },
+  { key: 'middle', label: 'Accent middle word' },
+  { key: 'last', label: 'Accent last word' },
   { key: 'underline', label: 'Accent underline' },
   { key: 'box', label: 'Boxed outline' },
+  { key: 'brackets', label: 'Corner brackets' },
+  { key: 'pill', label: 'Accent pill' },
+  { key: 'stamp', label: 'Stamp' },
+  { key: 'plate', label: 'Raised plate' },
 ] as const;
 
 export function getWordmarkStyle(content: Record<string, unknown> | null | undefined): string {

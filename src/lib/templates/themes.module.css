@@ -262,40 +262,47 @@
 .site[data-logo-style='framed'] .shineBrandMark,
 .site[data-logo-style='framed'] .renoHex { border-radius: 10px; clip-path: none; box-shadow: inset 0 0 0 2px color-mix(in srgb, currentColor 35%, transparent); }
 
-/* Company-name wordmark treatments (data-wordmark on the root). The name text
-   lives in the brand <strong> for every header/footer except Vista, whose brand
-   <a> holds the text directly — both are covered by the selector list. Each
-   treatment is CSS-only so it layers on top of the chosen brand font. */
-.site[data-wordmark] .brand strong, .site[data-wordmark] .guildBrand strong,
-.site[data-wordmark] .careBrand strong, .site[data-wordmark] .shineBrand strong,
-.site[data-wordmark] .coatBrand strong, .site[data-wordmark] .fixitBrand strong,
-.site[data-wordmark] .renoBrand strong, .site[data-wordmark] .vistaBrand {
-  display: inline-block;
-}
-.site[data-wordmark='caps'] .brand strong, .site[data-wordmark='caps'] .guildBrand strong,
-.site[data-wordmark='caps'] .careBrand strong, .site[data-wordmark='caps'] .shineBrand strong,
-.site[data-wordmark='caps'] .coatBrand strong, .site[data-wordmark='caps'] .fixitBrand strong,
-.site[data-wordmark='caps'] .renoBrand strong, .site[data-wordmark='caps'] .vistaBrand {
-  text-transform: uppercase; letter-spacing: .12em;
-}
-/* "Accent first word" — the first word is wrapped in .wmFirst by WordmarkName so
-   it can be coloured (CSS ::first-letter can only reach a single letter). The
-   span is present under every style but only tinted here. */
-.site[data-wordmark='initial'] .wmFirst {
-  color: var(--theme-accent);
-}
-.site[data-wordmark='underline'] .brand strong, .site[data-wordmark='underline'] .guildBrand strong,
-.site[data-wordmark='underline'] .careBrand strong, .site[data-wordmark='underline'] .shineBrand strong,
-.site[data-wordmark='underline'] .coatBrand strong, .site[data-wordmark='underline'] .fixitBrand strong,
-.site[data-wordmark='underline'] .renoBrand strong, .site[data-wordmark='underline'] .vistaBrand {
+/* Company-name wordmark treatments (data-wordmark on the root). WordmarkName
+   wraps the name in .wm (words tagged .wmFirst/.wmMid/.wmLast), so every
+   treatment targets one short selector and works the same across all themes.
+   CSS-only, so they layer on top of whatever brand font is chosen. */
+.site[data-wordmark] .wm { display: inline-block; }
+.site[data-wordmark='caps'] .wm { text-transform: uppercase; letter-spacing: .12em; }
+.site[data-wordmark='initial'] .wmFirst { color: var(--theme-accent); }
+.site[data-wordmark='middle'] .wmMid { color: var(--theme-accent); }
+.site[data-wordmark='last'] .wmLast { color: var(--theme-accent); }
+.site[data-wordmark='underline'] .wm {
   background: linear-gradient(var(--theme-accent), var(--theme-accent)) 0 100% / 100% 3px no-repeat;
   padding-bottom: 3px;
 }
-.site[data-wordmark='box'] .brand strong, .site[data-wordmark='box'] .guildBrand strong,
-.site[data-wordmark='box'] .careBrand strong, .site[data-wordmark='box'] .shineBrand strong,
-.site[data-wordmark='box'] .coatBrand strong, .site[data-wordmark='box'] .fixitBrand strong,
-.site[data-wordmark='box'] .renoBrand strong, .site[data-wordmark='box'] .vistaBrand {
+.site[data-wordmark='box'] .wm {
   border: 2px solid var(--theme-accent); border-radius: 6px; padding: .08em .34em; line-height: 1.15;
+}
+/* Corner brackets — accent L-marks at the top-left and bottom-right. */
+.site[data-wordmark='brackets'] .wm { position: relative; padding: .16em .5em; }
+.site[data-wordmark='brackets'] .wm::before, .site[data-wordmark='brackets'] .wm::after {
+  content: ''; position: absolute; width: .4em; height: .4em;
+}
+.site[data-wordmark='brackets'] .wm::before { left: 0; top: 0; border-left: 2px solid var(--theme-accent); border-top: 2px solid var(--theme-accent); }
+.site[data-wordmark='brackets'] .wm::after { right: 0; bottom: 0; border-right: 2px solid var(--theme-accent); border-bottom: 2px solid var(--theme-accent); }
+/* Accent pill — filled accent chip with readable on-accent text. */
+.site[data-wordmark='pill'] .wm {
+  background: var(--theme-accent); color: var(--theme-on-accent, #fff);
+  border-radius: 999px; padding: .14em .72em; line-height: 1.2;
+}
+/* Stamp — double-lined uppercase mark (distinct from the Let's Get Quoted logo:
+   no rotation, squared frame, accent ink). */
+.site[data-wordmark='stamp'] .wm {
+  text-transform: uppercase; letter-spacing: .14em; color: var(--theme-accent);
+  border: 2px solid var(--theme-accent); border-radius: 4px; padding: .12em .48em; line-height: 1.2;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-accent) 45%, transparent);
+}
+/* Raised plate — embossed nameplate that reads on light or dark headers. */
+.site[data-wordmark='plate'] .wm {
+  background: linear-gradient(color-mix(in srgb, currentColor 13%, transparent), color-mix(in srgb, currentColor 4%, transparent));
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent); border-radius: 7px;
+  padding: .14em .58em; line-height: 1.2;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 30%, transparent), 0 2px 5px rgba(0, 0, 0, .28);
 }
 
 /* The figure is the aspect box; the image is absolutely positioned to fill it,
