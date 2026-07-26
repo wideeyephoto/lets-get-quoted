@@ -403,7 +403,11 @@
 /* Everything else recedes so the dragged one stands out. */
 .sectionCardDimmed { opacity: .4; filter: saturate(.4); }
 /* The card under the pointer shows a bright line where the section will land. */
-.sectionCardOver::before { content: ""; position: absolute; left: 0; right: 0; top: -8px; height: 3px; border-radius: 2px; background: #ff7a21; box-shadow: 0 0 10px rgba(255,122,33,.75); }
+/* Drop-target insertion bar — high contrast so it's unmistakable while dragging:
+   a bright, fully-rounded bar with a white outline ring that separates it from
+   both the dark UI and the orange card borders, plus a strong glow. The white
+   ring is what makes it read against the accent-orange card outlines nearby. */
+.sectionCardOver::before { content: ""; position: absolute; left: -2px; right: -2px; top: -9px; height: 5px; border-radius: 999px; background: #ff8b34; box-shadow: 0 0 0 1.5px rgba(255,255,255,.92), 0 0 16px 3px rgba(255,122,33,.95); }
 .sectionCardGrip { display: flex; align-items: center; gap: .35rem; padding: 0 .1rem 0 .6rem; }
 .sectionGrip { cursor: grab; color: #6b7688; font-size: 1.05rem; line-height: 1; -webkit-user-select: none; user-select: none; touch-action: none; }
 .sectionGrip:hover { color: #ffb27a; }
