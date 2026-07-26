@@ -471,7 +471,15 @@
 .blogCard:hover .blogCardMore span { transform: translateX(4px); }
 /* Standalone article page — own full-bleed light shell (renders outside the
    template, and the SaaS body is dark, so it must set its own background). */
-.blogArticleShell { min-height: 100vh; background: #fff; color: #1c2230; font-family: var(--font-body), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; border-top: 4px solid var(--theme-accent); }
+.blogArticleShell { background: #fff; color: #1c2230; font-family: var(--font-body), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+/* Branded header + footer chrome so a blog post still feels like the site. */
+.blogChromeHeader { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .85rem clamp(1.25rem, 5vw, 3rem); background: var(--c-bg, #ffffff); color: var(--c-ink, #14202e); border-bottom: 1px solid var(--c-line, rgba(0,0,0,.1)); }
+.blogChromeBrand { display: inline-flex; align-items: center; gap: .6rem; text-decoration: none; color: inherit; font-weight: 800; font-size: 1.1rem; letter-spacing: -.01em; }
+.blogChromeLogo { height: 40px; width: auto; }
+.blogChromeMark { display: inline-grid; place-items: center; width: 36px; height: 36px; border-radius: 9px; background: var(--theme-accent); color: var(--theme-on-accent, #fff); }
+.blogChromeMark svg { width: 20px; height: 20px; }
+.blogChromeCta { display: inline-flex; align-items: center; padding: .55rem 1.2rem; border-radius: 999px; background: var(--theme-accent); color: var(--theme-on-accent, #fff); font-weight: 800; font-size: .9rem; text-decoration: none; white-space: nowrap; transition: filter .15s; }
+.blogChromeCta:hover { filter: brightness(1.05); }
 /* Reading-progress bar — fixed over the top accent line, fills as you scroll. */
 .blogProgress { position: fixed; top: 0; left: 0; right: 0; height: 4px; z-index: 60; background: transparent; pointer-events: none; }
 .blogProgress span { display: block; height: 100%; width: 0; background: var(--theme-accent); transition: width .12s linear; }

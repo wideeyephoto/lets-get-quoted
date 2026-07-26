@@ -1,8 +1,19 @@
 import type { CSSProperties } from 'react';
 import type { Site } from '@/lib/sites';
-import type { SiteBlogPost } from '@/lib/site-content';
+import { getColorScheme, getSiteContent, glyphForContent, type SiteBlogPost } from '@/lib/site-content';
 import BlogReadingProgress from './BlogReadingProgress';
+import ServiceIcon from './ServiceIcon';
+import SiteFooter from './SiteFooter';
+import { readableOnAccent } from './theme-color';
 import styles from './themes.module.css';
+
+// Maps the stored template id to its themes.module.css skin class, so the blog
+// article can borrow the same palette tokens (--c-deep etc.) the header and
+// footer need — keeping posts visually part of the site.
+const THEME_CLASS: Record<string, string> = {
+  carbon: 'forge', professional: 'guild', modern: 'vista', handy: 'handy',
+  coat: 'coat', fixit: 'fixit', reno: 'reno', shine: 'shine',
+};
 
 // Standalone article page for a single published post. Rendered outside the
 // template shell (its own route), so it carries its own readable layout and
@@ -17,7 +28,16 @@ function formatBlogDate(iso: string): string {
 
 export default function SiteBlogArticle({ site, post }: { site: Site; post: SiteBlogPost }) {
   const paragraphs = post.body.split(/\n{2,}/).map((block) => block.trim()).filter(Boolean);
-  const themeStyle = { '--theme-accent': site.accent_override || '#2563eb' } as CSSProperties;
+  const content = getSiteContent(site.content);
+  const scheme = getColorScheme(content.colorScheme);
+  const themeStyle = {
+    '--theme-accent': site.accent_override || scheme?.accent || '#2563eb',
+    '--theme-on-accent': site.accent_override ? readableOnAccent(site.accent_override) : (scheme?.onAccent || '#ffffff'),
+    ...(site.header_font ? { '--theme-display': site.header_font } : {}),
+    ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),
+    ...(scheme ? { '--c-bg': scheme.bg, '--c-surface': scheme.surface, '--c-ink': scheme.ink, '--c-muted': scheme.muted, '--c-line': scheme.line, '--c-deep': scheme.deep, '--c-on-deep': scheme.onDeep } : {}),
+  } as CSSProperties;
+  const themeClass = THEME_CLASS[site.template] || 'forge';
   const date = formatBlogDate(post.date);
 
   // BlogPosting schema so the post can qualify for article rich results. This is
@@ -39,29 +59,41 @@ export default function SiteBlogArticle({ site, post }: { site: Site; post: Site
   };
 
   return (
-    <main className={styles.blogArticleShell} style={themeStyle}>
+    <main className={`${styles.site} ${styles[themeClass] || ''}`} style={themeStyle} data-mode={scheme ? undefined : site.portal_mode} data-logo-style={content.logoStyle}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <BlogReadingProgress />
-      <div className={styles.blogArticle}>
-        <nav className={styles.blogCrumb} aria-label="Breadcrumb">
-          <a href="/">{site.company_name || 'Home'}</a>
-          <span aria-hidden="true">/</span>
-          <a href="/blog">Blog</a>
-        </nav>
-        <article>
-          <header className={styles.blogArticleHead}>
-            {date && <time className={styles.blogArticleDate} dateTime={post.date}>{date}</time>}
-            <h1>{post.title}</h1>
-          </header>
-          {post.coverImage && <img className={styles.blogArticleImg} src={post.coverImage} alt="" />}
-          <div className={styles.blogArticleBody}>
-            {paragraphs.map((block, index) => (
-              <p key={index}>{block}</p>
-            ))}
-          </div>
-        </article>
-        <a className={styles.blogBackBottom} href="/">← Back to {site.company_name || 'home'}</a>
+      <header className={styles.blogChromeHeader}>
+        <a className={styles.blogChromeBrand} href="/" aria-label={`${site.company_name} home`}>
+          {site.logo_url
+            ? <img className={styles.blogChromeLogo} src={site.logo_url} alt="" />
+            : <span className={styles.blogChromeMark}><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}
+          <strong>{site.company_name}</strong>
+        </a>
+        <a className={styles.blogChromeCta} href="/#contact">Get a free quote</a>
+      </header>
+      <div className={styles.blogArticleShell}>
+        <div className={styles.blogArticle}>
+          <nav className={styles.blogCrumb} aria-label="Breadcrumb">
+            <a href="/">{site.company_name || 'Home'}</a>
+            <span aria-hidden="true">/</span>
+            <a href="/blog">Blog</a>
+          </nav>
+          <article>
+            <header className={styles.blogArticleHead}>
+              {date && <time className={styles.blogArticleDate} dateTime={post.date}>{date}</time>}
+              <h1>{post.title}</h1>
+            </header>
+            {post.coverImage && <img className={styles.blogArticleImg} src={post.coverImage} alt="" />}
+            <div className={styles.blogArticleBody}>
+              {paragraphs.map((block, index) => (
+                <p key={index}>{block}</p>
+              ))}
+            </div>
+          </article>
+          <a className={styles.blogBackBottom} href="/">← Back to {site.company_name || 'home'}</a>
+        </div>
       </div>
+      <SiteFooter site={site} />
     </main>
   );
 }
