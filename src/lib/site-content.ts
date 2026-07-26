@@ -823,7 +823,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
 
   return {
     showcase: {
-      enabled: toBoolean(showcase.enabled),
+      enabled: showcase.enabled !== false,
       title: toString(showcase.title, DEFAULT_SHOWCASE_TITLE),
       intro: toString(showcase.intro, "Whether it's a small job or big one, we've got you covered!"),
       navLabel: toString(showcase.navLabel).slice(0, 24),
@@ -831,12 +831,12 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       items: parseShowcaseItems(showcase.items),
     },
     faqs: {
-      enabled: toBoolean(faqs.enabled),
+      enabled: faqs.enabled !== false,
       title: toString(faqs.title, DEFAULT_FAQ_TITLE),
       items: parseFaqItems(faqs.items),
     },
     testimonials: {
-      enabled: toBoolean(testimonials.enabled),
+      enabled: testimonials.enabled !== false,
       title: toString(testimonials.title, DEFAULT_TESTIMONIALS_TITLE),
       sourceMode: testimonials.sourceMode === 'google' || testimonials.sourceMode === 'mixed' ? testimonials.sourceMode : 'manual',
       displayStyle: testimonials.displayStyle === 'carousel' || testimonials.displayStyle === 'spotlight' ? testimonials.displayStyle : 'grid',
@@ -896,7 +896,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       applyUrl: toString(financing.applyUrl),
     },
     serviceAreas: {
-      enabled: toBoolean(serviceAreas.enabled),
+      enabled: serviceAreas.enabled !== false,
       title: toString(serviceAreas.title, DEFAULT_SERVICE_AREAS_TITLE),
       intro: toString(serviceAreas.intro, DEFAULT_SERVICE_AREAS_INTRO),
       cities: parseCities(serviceAreas.cities),
@@ -962,13 +962,13 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       items: parseShowcaseItems(projectShowcase.items).slice(0, MAX_PROJECT_SHOWCASE_ITEMS),
     },
     services: {
-      enabled: toBoolean(services.enabled),
+      enabled: services.enabled !== false,
       title: toString(services.title, DEFAULT_SERVICES_TITLE),
       intro: toString(services.intro),
       items: parseServices(services.items),
     },
     howItWorks: {
-      enabled: howItWorks.enabled !== false,
+      enabled: toBoolean(howItWorks.enabled),
       title: toString(howItWorks.title, DEFAULT_HOW_IT_WORKS_TITLE),
       intro: toString(howItWorks.intro),
       // Never-set (undefined) → starter steps; an explicit array (even empty, i.e.
@@ -976,7 +976,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       steps: howItWorks.steps === undefined ? DEFAULT_HOW_IT_WORKS_STEPS.map((step) => ({ ...step })) : parseProcessSteps(howItWorks.steps),
     },
     blog: {
-      enabled: toBoolean(blog.enabled),
+      enabled: blog.enabled !== false,
       title: toString(blog.title, DEFAULT_BLOG_TITLE),
       intro: toString(blog.intro),
       posts: parseBlogPosts(blog.posts),
@@ -1335,15 +1335,15 @@ export function getSlotImage(content: Record<string, unknown> | null | undefined
 // builder's "Page order" panel. Default array order = the default page order.
 export const REORDERABLE_SECTIONS = [
   { key: 'services', label: 'Services' },
-  { key: 'howItWorks', label: 'How it works' },
   { key: 'showcase', label: 'Showcase gallery' },
-  { key: 'projectShowcase', label: 'Additional image gallery' },
   { key: 'testimonials', label: 'Testimonials' },
-  { key: 'faqs', label: 'FAQs' },
-  { key: 'serviceAreas', label: 'Service areas' },
   { key: 'stats', label: 'Animated stats' },
+  { key: 'faqs', label: 'FAQs' },
   { key: 'beforeAfter', label: 'Before & after' },
+  { key: 'projectShowcase', label: 'Additional image gallery' },
+  { key: 'howItWorks', label: 'How it works' },
   { key: 'blog', label: 'Blog' },
+  { key: 'serviceAreas', label: 'Service areas' },
 ] as const;
 
 const DEFAULT_SECTION_ORDER = REORDERABLE_SECTIONS.map((section) => section.key);

@@ -728,7 +728,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
   const handleGenerateText = useCallback(() => {
     const hasExistingText = Boolean(site.headline || site.tagline || site.seo_title || site.seo_description);
-    if (hasExistingText && !window.confirm('This replaces your headline, tagline, SEO, hours, service area, and photo gallery heading, and fills the Services, FAQs, and Service-area sections with fresh AI examples. Testimonials and stats are generated too but left OFF until you replace them with real ones. Continue?')) {
+    if (hasExistingText && !window.confirm('This replaces your headline, tagline, SEO, hours, service area, and photo gallery heading, and fills the Services, FAQs, and Service-area sections with fresh AI examples. Example reviews and stats are generated too — replace them with your real ones before you publish. Continue?')) {
       return;
     }
     setIsGeneratingText(true);
@@ -748,10 +748,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
           if (generated.cities.length) {
             contentUpdates.serviceAreas = { enabled: true, title: content.serviceAreas.title || 'Areas we serve', intro: content.serviceAreas.intro, cities: generated.cities };
           }
-          // Testimonials + stats seeded but left OFF — no fabricated review/number
-          // publishes until the contractor swaps in real ones and enables them.
+          // Testimonials seeded ON as editable examples — the owner is expected to
+          // swap these for real reviews before (or soon after) publishing.
           if (generated.testimonials.length) {
-            contentUpdates.testimonials = { ...content.testimonials, enabled: false, title: content.testimonials.title || 'What homeowners say', sourceMode: 'manual', items: generated.testimonials.map((t, i) => ({ id: `tst-${i + 1}`, author: t.author, text: t.text, rating: t.rating, label: t.label, imageUrl: '', imageAlt: '' })) };
+            contentUpdates.testimonials = { ...content.testimonials, enabled: true, title: content.testimonials.title || 'What homeowners say', sourceMode: 'manual', items: generated.testimonials.map((t, i) => ({ id: `tst-${i + 1}`, author: t.author, text: t.text, rating: t.rating, label: t.label, imageUrl: '', imageAlt: '' })) };
           }
           if (generated.stats.length) {
             contentUpdates.stats = { enabled: true, title: content.stats.title || 'By the numbers', items: generated.stats.map((s, i) => ({ id: `stat-${i + 1}`, value: `${s.value.toLocaleString('en-US')}${s.suffix}`, label: s.label })) };
@@ -789,7 +789,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
           : generated.images.configured
             ? ' We couldn’t load stock photos right now — add your own, or use “Regenerate stock images” to retry.'
             : '';
-        setMessage({ type: 'success', text: `Full example site generated — headline, services, FAQs, and your Google listing (SEO) are all filled in.${imagesNote} Testimonials & stats stay off until you add real ones. Then publish!` });
+        setMessage({ type: 'success', text: `Full example site generated — headline, services, FAQs, and your Google listing (SEO) are all filled in.${imagesNote} The reviews & stats are examples — swap in your real ones, then publish!` });
       } catch (error) {
         setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to generate example content.' });
       } finally {
@@ -1451,7 +1451,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <button type="button" className={`btn primary ${styles.aiButton}`} onClick={handleGenerateText} disabled={isGeneratingText}>
                     {isGeneratingText ? 'Creating your tailored Website...' : '✨ Generate a full example site with AI'}
                   </button>
-                  <small className={styles.fieldHint}>Fills in your whole site — headline, services, FAQs, Google listing, and more — from these two fields. Watch it appear in the preview. Testimonials and stats are generated too, but left off until you swap in your real ones.</small>
+                  <small className={styles.fieldHint}>Fills in your whole site — headline, services, FAQs, Google listing, and more — from these two fields. Watch it appear in the preview. Reviews and stats are filled with examples — swap in your real ones before you publish.</small>
                 </SectionCard>
 
                 <SectionCard title="Contact & credentials" description="How homeowners reach you, and the license that backs your work." open={openSection === 'contactInfo'} onToggleOpen={() => toggleSection('contactInfo')}>
