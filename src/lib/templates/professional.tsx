@@ -85,10 +85,10 @@ export default function GuildTemplate({ site }: TemplateProps) {
           <div className={styles.guildHeroFrame}>
             <HeroImageCycle images={getHeroImages(site.content, heroImage)} alt="" />
           </div>
-          <figure className={styles.guildHeroInset} data-parallax="0.12" data-edit="image-heroSecondary">
+          <figure className={styles.guildHeroInset} data-edit="image-heroSecondary">
             <img src={secondImage} alt="Close-up detail of service work" loading="lazy" decoding="async" />
           </figure>
-          <figure className={styles.guildHeroInsetTop} data-parallax="0.2" data-edit="image-heroTertiary">
+          <figure className={styles.guildHeroInsetTop} data-edit="image-heroTertiary">
             <img src={thirdImage} alt="Additional service work" loading="lazy" decoding="async" />
           </figure>
           {heroBadge && (

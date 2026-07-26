@@ -216,6 +216,12 @@ export async function generateSiteTextAction(
   const zip = typeof options?.zip === 'string' ? options.zip.trim().slice(0, 12) : '';
   const tradeInput = typeof options?.trade === 'string' ? options.trade.trim().slice(0, 80) : '';
   const styleSeed = COPY_STYLE_SEEDS[Math.floor(Math.random() * COPY_STYLE_SEEDS.length)];
+  // Offer the model the ENTIRE baked icon set (Lucide + curated Iconify glyphs)
+  // rather than a hand-picked handful, so each generated service can pick the
+  // icon that actually matches it (a faucet for "leak repair", a flame for
+  // "furnace tune-up", a bug for "pest control"). Anything off-list still falls
+  // back to a generic mark via normalizeIcon.
+  const serviceIconKeys = Object.keys(SERVICE_ICON_GLYPHS).join(', ');
 
   const instructions =
     "You write short example marketing copy for a local home-services contractor's website. " +
@@ -238,11 +244,11 @@ export async function generateSiteTextAction(
     '"cities":["<12 nearby city, town, or neighborhood names for the service area, casting a wide radius; empty array if the area is unknown>"],' +
     '"showcase_title":"<a photo-gallery heading under 50 characters naming the KIND of work this trade shows off, e.g. \'The roofing work we handle\'; NEVER claim the photos are this business\'s own finished jobs>",' +
     '"showcase_intro":"<under 180 characters; say what a homeowner is looking at for this trade, then state plainly that these are representative photos the business will swap for their own project photos>",' +
-    '"services":[{"icon":"<pick the single closest match from EXACTLY this list and never invent another word: wrench, droplet, bolt, roller, sparkles, home, shield, leaf, grid, truck, clock, star, spark>","title":"<a real service this trade offers, under 40 characters>","description":"<one concrete line under 130 characters>"}],' +
+    `"services":[{"icon":"<pick the single closest match from EXACTLY this list and never invent another word: ${serviceIconKeys}>","title":"<a real service this trade offers, under 40 characters>","description":"<one concrete line under 130 characters>"}],` +
     '"faqs":[{"question":"<a real question a homeowner asks this trade>","answer":"<a concise, helpful answer under 300 characters>"}],' +
     '"testimonials":[{"author":"<a realistic first name and last initial>","text":"<a believable 1-2 sentence review of this trade>","rating":5,"label":"<a city or short role, optional>"}],' +
     '"stats":[{"value":<a plausible whole number>,"suffix":"<a plus sign or empty>","label":"<e.g. Jobs completed, Years in business, 5-star reviews>"}]' +
-    '}. Include 4 to 5 services, 5 faqs, 2 to 3 testimonials, and 3 to 4 stats.';
+    '}. Include 10 to 15 services (each a distinct, real offering for this trade — no duplicates or near-duplicates), 5 faqs, 2 to 3 testimonials, and 3 to 4 stats.';
 
   const input =
     `Business name: ${companyName}. ${tradeInput ? `Trade / field of work: ${tradeInput}. ` : ''}${serviceArea ? `Service area: ${serviceArea}. ` : ''}${zip ? `Business ZIP code: ${zip}. ` : ''}` +
@@ -270,7 +276,7 @@ export async function generateSiteTextAction(
 
     const services = asArray(parsed.services)
       .filter(isObj)
-      .slice(0, 5)
+      .slice(0, 15)
       .map((s) => ({ icon: normalizeIcon(s.icon), title: asString(s.title, 60), description: asString(s.description, 140) }))
       .filter((s) => s.title);
     const cities = asArray(parsed.cities)

@@ -781,7 +781,7 @@ function parseBeforeAfter(value: unknown): SiteBeforeAfterItem[] {
 function parseServices(value: unknown): SiteServiceItem[] {
   if (!Array.isArray(value)) return [];
 
-  return value.filter(isRecord).slice(0, 8).map((item, index) => ({
+  return value.filter(isRecord).slice(0, 15).map((item, index) => ({
     id: toString(item.id, `svc-${index + 1}`),
     icon: toString(item.icon, 'spark'),
     title: toString(item.title),
