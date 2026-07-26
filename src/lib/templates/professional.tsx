@@ -105,13 +105,8 @@ export default function GuildTemplate({ site }: TemplateProps) {
         </div>
       </section>
 
-      <section className={styles.guildIntro} data-reveal id="services">
-        <div><p className={styles.kicker}>One team, start to finish</p><h2>Experience that makes the process easier.</h2></div>
-        <p>We pair hands-on trade experience with straightforward, no-surprises service, so every job feels considered and under control.</p>
-      </section>
-
       {!services && (
-        <section className={styles.guildServices} data-reveal aria-label="Services">
+        <section className={styles.guildServices} data-reveal id="services" aria-label="Services">
           {[
             { title: 'Repairs & tune-ups', body: 'Fast, reliable service when something needs fixing.' },
             { title: 'Installs & upgrades', body: 'Quality work when it is time to replace or upgrade.' },

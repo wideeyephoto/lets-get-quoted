@@ -47,7 +47,7 @@ export default function ForgeTemplate({ site }: TemplateProps) {
             {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.brandBlock}><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}
             <strong data-edit="identity"><WordmarkName name={site.company_name} /></strong>
           </a>
-          <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#about', label: 'About' }]} />
+          <SiteNavLinks site={site} className={styles.navLinks} links={[]} />
           {site.phone && <a className={styles.headerPhone} data-edit="bizPhone" href={`tel:${site.phone}`}>{site.phone}</a>}
         </header>
         <HeroImageCycle images={getHeroImages(site.content, heroImage)} className={styles.heroImage} alt="Home construction work" />
@@ -79,13 +79,6 @@ export default function ForgeTemplate({ site }: TemplateProps) {
         <div data-edit="bizHours"><span>Availability</span><strong>{site.hours || 'Weekdays, 7-5'}</strong></div>
         <div data-edit="bizLicense"><span>Credentials</span><strong>{site.license || 'Licensed & insured'}</strong></div>
       </section>
-
-      <section className={styles.forgeAbout} data-reveal id="about">
-        <p className={styles.sectionNumber} data-parallax="0.14">02</p>
-        <div><p className={styles.kicker}>What we bring</p><h2>Clear plans. Skilled hands. No surprises.</h2></div>
-        <p>From the first walkthrough to the final clean-up, we keep the work organized, the communication direct, and the standards high.</p>
-      </section>
-
 
       <SiteContentSections site={site} />
 

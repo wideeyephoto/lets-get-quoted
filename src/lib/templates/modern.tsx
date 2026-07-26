@@ -41,7 +41,7 @@ export default function VistaTemplate({ site }: TemplateProps) {
       <Parallax />
       <header className={styles.vistaHeader}>
         <a className={styles.vistaBrand} href="#top" data-edit="identity">{site.logo_url ? <img className={styles.logo} src={site.logo_url} alt={site.company_name} data-edit="logo" /> : <><span className={styles.vistaBrandMark} data-edit="logo"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span><WordmarkName name={site.company_name} /></>}</a>
-        <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#studio', label: 'About' }]} />
+        <SiteNavLinks site={site} className={styles.navLinks} links={[]} />
         <div className={styles.vistaActions}>
           {site.phone && <a className={styles.vistaPhone} data-edit="bizPhone" href={`tel:${site.phone}`}>{site.phone}</a>}
           <a className={styles.vistaMenu} data-edit="quoteForm" href="#contact">Get a quote <span aria-hidden="true">→</span></a>
@@ -70,15 +70,8 @@ export default function VistaTemplate({ site }: TemplateProps) {
             <div><strong>{secondBadge.badge.title}</strong>{secondBadge.badge.subtitle && <small>{secondBadge.badge.subtitle}</small>}</div>
           </div>
         )}
-        <a className={styles.vistaScroll} href="#studio" aria-label="Skip to about section">Explore <span aria-hidden="true">↓</span></a>
+        <a className={styles.vistaScroll} href="#contact" aria-label="Skip to contact section">Explore <span aria-hidden="true">↓</span></a>
       </section>
-
-      <section className={styles.vistaStatement} data-reveal id="studio">
-        <p>We are {site.company_name}.</p>
-        <h2>Part problem-solver, part perfectionist, always focused on getting it right.</h2>
-        <div><span data-edit="bizArea">{site.service_area || 'Local projects'}</span><span data-edit="bizLicense">{site.license || 'Licensed & insured'}</span></div>
-      </section>
-
 
       <SiteContentSections site={site} />
 
