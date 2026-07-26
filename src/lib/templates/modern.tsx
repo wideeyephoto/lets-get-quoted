@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getEstimateButtonLabel, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, glyphForContent } from '@/lib/site-content';
+import { getColorScheme, getEstimateButtonLabel, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getSiteContent, glyphForContent } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
 import SiteFooter from './SiteFooter';
 import WordmarkName from './WordmarkName';
@@ -44,7 +44,7 @@ export default function VistaTemplate({ site }: TemplateProps) {
       <Parallax />
       <header className={styles.vistaHeader}>
         <a className={styles.vistaBrand} href="#top" data-edit="identity">{site.logo_url ? <img className={styles.logo} src={site.logo_url} alt={site.company_name} data-edit="logo" /> : <><span className={styles.vistaBrandMark} data-edit="brandIcon"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span><WordmarkName name={site.company_name} /></>}</a>
-        <SiteNavLinks site={site} className={styles.navLinks} links={[]} />
+        <SiteNavLinks site={site} className={styles.navLinks} links={getPublishedServices(site.content) ? [{ href: '#our-services', label: 'Services' }] : []} />
         <div className={styles.vistaActions}>
           {site.phone && <a className={styles.vistaPhone} data-edit="bizPhone" href={`tel:${site.phone}`}>{site.phone}</a>}
           <a className={styles.vistaMenu} data-edit="quoteForm" href="#contact">{getEstimateButtonLabel(content.quoteForm)} <span aria-hidden="true">→</span></a>

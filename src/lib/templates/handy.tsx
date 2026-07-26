@@ -150,6 +150,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
           <h2>Tell us about your project</h2>
           <p>{site.hours ? `We’re available ${site.hours}.` : 'We reply within about an hour.'} Free, no-obligation estimates.</p>
           {site.phone && <a className={styles.careBtn} href={`tel:${site.phone}`}>Call {site.phone}</a>}
+          <SiteProofStrip site={site} />
         </div>
         <QuoteRequestForm site={site} />
       </section>

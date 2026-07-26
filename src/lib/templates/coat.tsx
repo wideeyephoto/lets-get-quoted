@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getEstimateButtonLabel, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, getSlotImage, glyphForContent } from '@/lib/site-content';
+import { getColorScheme, getEstimateButtonLabel, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getSiteContent, getSlotImage, glyphForContent } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
 import SiteFooter from './SiteFooter';
 import WordmarkName from './WordmarkName';
@@ -60,7 +60,7 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
           {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.coatBrandMark} data-edit="brandIcon"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}
           <strong data-edit="identity"><WordmarkName name={site.company_name} /></strong>
         </a>
-        <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: '#our-services', label: 'Services' }, { href: '#work', label: 'Projects' }]} />
+        <SiteNavLinks site={site} className={styles.navLinks} links={getPublishedServices(site.content) ? [{ href: '#our-services', label: 'Services' }] : []} />
         <a className={styles.coatHeaderCta} data-edit="quoteForm" href="#contact">{getEstimateButtonLabel(content.quoteForm)} <span aria-hidden="true">↗</span></a>
       </header>
 

@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getEstimateButtonLabel, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getSiteContent, glyphForContent } from '@/lib/site-content';
+import { getColorScheme, getEstimateButtonLabel, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getSiteContent, glyphForContent } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
 import SiteFooter from './SiteFooter';
 import WordmarkName from './WordmarkName';
@@ -50,7 +50,7 @@ export default function ForgeTemplate({ site }: TemplateProps) {
             {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.brandBlock} data-edit="brandIcon"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}
             <strong data-edit="identity"><WordmarkName name={site.company_name} /></strong>
           </a>
-          <SiteNavLinks site={site} className={styles.navLinks} links={[]} />
+          <SiteNavLinks site={site} className={styles.navLinks} links={getPublishedServices(site.content) ? [{ href: '#our-services', label: 'Services' }] : []} />
           <div className={styles.forgeHeaderActions}>
             {site.phone && <a className={styles.headerPhone} data-edit="bizPhone" href={`tel:${site.phone}`}>{site.phone}</a>}
             <a className={styles.forgeHeaderCta} data-edit="quoteForm" href="#contact">{getEstimateButtonLabel(content.quoteForm)}</a>
