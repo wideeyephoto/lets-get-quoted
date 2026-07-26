@@ -13,6 +13,7 @@ import SiteNavLinks from './SiteNavLinks';
 import SiteProofStrip from './SiteProofStrip';
 import SiteDesktopCta from './SiteDesktopCta';
 import SiteAnnouncementBar from './SiteAnnouncementBar';
+import SiteHeaderUtilityBar from './SiteHeaderUtilityBar';
 import ScrollReveal from './ScrollReveal';
 import Parallax from './Parallax';
 import { readableOnAccent } from './theme-color';
@@ -61,6 +62,7 @@ export default function GuildTemplate({ site }: TemplateProps) {
   return (
     <main className={`${styles.site} ${styles.guild}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-logo-size={getLogoSize(site.content)} data-header={getHeaderStyle(site.template, site.content)} data-wordmark={getWordmarkStyle(site.content)}>
       <SiteAnnouncementBar site={site} />
+      <SiteHeaderUtilityBar site={site} />
       <ScrollReveal />
       <Parallax />
       <header className={styles.guildHeader}>
