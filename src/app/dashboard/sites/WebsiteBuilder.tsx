@@ -1039,6 +1039,18 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     over: false,
   });
 
+  // The Footer is pinned to the very bottom of the section list (a high CSS
+  // order), so it's locked (no grip) and never a drop target — mirror of the
+  // pinned Hero at the top.
+  const pinnedFooterReorder = () => ({
+    grip: <span className={styles.sectionLock} title="Your footer is always the bottom of your page" aria-label="Pinned to the bottom">🔒</span>,
+    sectionKey: 'footer',
+    orderIndex: 900,
+    active: false,
+    dimmed: dragKey !== null,
+    over: false,
+  });
+
   const updateShowcase = useCallback((showcase: SiteShowcaseContent) => {
     updateSiteContent({ showcase });
   }, [updateSiteContent]);
@@ -2054,6 +2066,24 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     ) : <p className={styles.emptyHelper}>Completed jobs with photos will appear here.</p>
                   )}
                 </SectionCard>
+
+                <SectionCard reorder={pinnedFooterReorder()} title="Footer" description="How the bottom of every page is laid out. Applies to every theme." open={openSection === 'footer'} onToggleOpen={() => toggleSection('footer')}>
+                  <div className={styles.footerPicker} role="group" aria-label="Footer layout">
+                    {FOOTER_STYLES.map((f) => (
+                      <button
+                        type="button"
+                        key={f.key}
+                        className={`${styles.footerPickerBtn}${siteContent.footerStyle === f.key ? ` ${styles.footerPickerBtnOn}` : ''}`}
+                        aria-pressed={siteContent.footerStyle === f.key}
+                        onClick={() => updateSiteContent({ footerStyle: f.key })}
+                      >
+                        <strong>{f.label}</strong>
+                        <small>{f.desc}</small>
+                      </button>
+                    ))}
+                  </div>
+                  <small className={styles.fieldHint}>Your area, hours, license, and phone fill the footer — edit those on the Setup tab.</small>
+                </SectionCard>
                 </div>
 
                 <div className={styles.cardGroupLabel}>Trust boosters</div>
@@ -2114,25 +2144,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     </SectionCard>
                   </>
                 )}
-
-                <div className={styles.cardGroupLabel}>Footer</div>
-                <SectionCard title="Footer" description="How the bottom of every page is laid out. Applies to every theme." open={openSection === 'footer'} onToggleOpen={() => toggleSection('footer')}>
-                  <div className={styles.footerPicker} role="group" aria-label="Footer layout">
-                    {FOOTER_STYLES.map((f) => (
-                      <button
-                        type="button"
-                        key={f.key}
-                        className={`${styles.footerPickerBtn}${siteContent.footerStyle === f.key ? ` ${styles.footerPickerBtnOn}` : ''}`}
-                        aria-pressed={siteContent.footerStyle === f.key}
-                        onClick={() => updateSiteContent({ footerStyle: f.key })}
-                      >
-                        <strong>{f.label}</strong>
-                        <small>{f.desc}</small>
-                      </button>
-                    ))}
-                  </div>
-                  <small className={styles.fieldHint}>Your area, hours, license, and phone fill the footer — edit those on the Setup tab.</small>
-                </SectionCard>
 
               </div>
             )}
