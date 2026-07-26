@@ -608,6 +608,9 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
             ].filter(Boolean);
             return notes.length ? <p className={styles.heroFormFitNote}>Heads up: {notes.join('; ')} — send your request and we&apos;ll confirm when we reach out.</p> : null;
           })()}
+          <small className={styles.heroFormConsent}>
+            By submitting, you agree to be contacted by phone, text, or email about your request. Message &amp; data rates may apply.{siteContent.legal.privacyEnabled && <> See our <a href="/privacy">Privacy Policy</a>.</>}
+          </small>
           <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Sending...' : wizardEnabled && estimate ? 'See My Free Estimate' : 'Get My Free Estimate'}</button>
           {site.phone && <a className={styles.heroFormOrCall} href={`tel:${site.phone}`}>or call <strong>{site.phone}</strong> — free quote</a>}
           {wizardEnabled && <button type="button" className={styles.heroFormRestart} onClick={restartWizard}>← Start over</button>}

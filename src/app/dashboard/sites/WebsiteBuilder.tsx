@@ -953,11 +953,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     updateSiteContent({ sectionOrder: order });
   }, [siteContent.sectionOrder, updateSiteContent]);
 
-  // Project showcase is rendered natively by the Care template, so it can't be
-  // reordered there — it shows a 🔒 but still edits. (The Photo gallery is
-  // reorderable everywhere now.)
-  const sectionLocked = (key: string) => key === 'projectShowcase' && site.template === 'handy';
-
   // Which reorderable card sits under a given viewport Y — used to resolve the
   // drop target during a pointer drag. Reads visual position (getBoundingClientRect
   // honors CSS `order`); skips any card not in sectionOrder (e.g. the pinned Hero).
@@ -981,10 +976,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   // keyboard/assistive fallback.
   const reorderProps = (key: string, label: string) => {
     const index = siteContent.sectionOrder.indexOf(key);
-    const locked = sectionLocked(key);
-    const grip = locked ? (
-      <span className={styles.sectionLock} title="This section is fixed on your current template" aria-label="Fixed on this template">🔒</span>
-    ) : (
+    const grip = (
       <>
         <span
           className={styles.sectionGrip}

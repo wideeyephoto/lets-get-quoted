@@ -1,11 +1,10 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getPublishedTrustBadges, getPublishedWhyUs, getSiteContent, getSlotImage, glyphForContent, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS } from '@/lib/site-content';
+import { getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getPublishedTrustBadges, getPublishedWhyUs, getSiteContent, getSlotImage, glyphForContent } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
 import SiteFooter from './SiteFooter';
 import WordmarkName from './WordmarkName';
 import HeroImageCycle from './HeroImageCycle';
-import ProjectShowcase from './ProjectShowcase';
 import type { TemplateProps } from '@/lib/templates/types';
 import QuoteRequestForm from '@/components/quote-request-form';
 import HeroQuickForm from './HeroQuickForm';
@@ -51,13 +50,6 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
   const whyUs = getPublishedWhyUs(site.content);
   const trustBadges = getPublishedTrustBadges(site.content);
   const heroEyebrow = content.heroEyebrow;
-  const projectShowcase = getSiteContent(site.content).projectShowcase;
-  const ownShowcase = projectShowcase.items.filter((item) => item.url && item.alt);
-  // The owner's own project photos once they've added any (up to 10); otherwise
-  // 5 placeholders from the shared gallery so the band is never empty.
-  const showcaseItems = ownShowcase.length > 0
-    ? ownShowcase.map((item) => ({ id: item.id, url: item.url, alt: item.alt, caption: item.caption }))
-    : gallery.slice(0, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS).map((item) => ({ id: item.id, url: item.url, alt: item.alt }));
   const heroBadge = getHeroBadge(site.content);
   const secondBadge = getHeroSecondBadge(site.content);
 
@@ -127,7 +119,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
         </div>
       )}
 
-      <SiteContentSections site={site} />
+      <SiteContentSections site={site} galleryImages={gallery} />
 
       {whyUs && (
         <section className={styles.careWhy} id="why">
@@ -147,17 +139,6 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
               ))}
             </ul>
           </div>
-        </section>
-      )}
-
-      {projectShowcase.enabled && (
-        <section className={styles.careWorks} aria-label="Project showcase">
-          <ProjectShowcase
-            eyebrow={projectShowcase.eyebrow}
-            title={projectShowcase.title}
-            style={projectShowcase.style}
-            items={showcaseItems}
-          />
         </section>
       )}
 

@@ -1,8 +1,9 @@
 import { Fragment, type ReactNode } from 'react';
 import SafeImage from './SafeImage';
-import { STOCK_SITE_IMAGES } from '@/lib/site-images';
+import { STOCK_SITE_IMAGES, type SiteImage } from '@/lib/site-images';
 import type { Site } from '@/lib/sites';
 import {
+  DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS,
   getHeroBandImages,
   getSectionOrder,
   getPublishedBeforeAfter,
@@ -29,6 +30,9 @@ import styles from './themes.module.css';
 
 type SiteContentSectionsProps = {
   site: Site;
+  // Only Haven passes this — its Project showcase falls back to gallery
+  // placeholders when the owner hasn't added their own photos yet.
+  galleryImages?: SiteImage[];
 };
 
 // Format a stored 'YYYY-MM-DD' blog date. Parse as local midnight so the day
@@ -40,7 +44,7 @@ function formatBlogDate(iso: string): string {
   return parsed.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-export default function SiteContentSections({ site }: SiteContentSectionsProps) {
+export default function SiteContentSections({ site, galleryImages = [] }: SiteContentSectionsProps) {
   const services = getPublishedServices(site.content);
   const howItWorks = getPublishedHowItWorks(site.content);
   const showcaseContent = getPublishedShowcase(site.content);
@@ -57,15 +61,24 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
   // longer have, so it just goes through the shared stack like the rest now.
   const showcase = showcaseContent;
 
-  // The Care template renders the Project showcase natively, inside its own dark
-  // band, so the shared stack would duplicate it there. Every OTHER theme gets it
-  // here — but only once the owner has added their own project photos. Care's
-  // fallback-to-gallery behaviour stays Care-only, so no existing site on another
-  // theme suddenly grows a section it never had.
+  // The Project showcase now renders in this reorderable stack on EVERY theme,
+  // Haven (handy) included, so the owner can move it like any other section.
+  // Haven keeps its two behaviours: its own band styling (.careWorks, below) and
+  // a fallback to gallery placeholders so the band is never empty. Every other
+  // theme shows the section only once real project photos exist, so placeholder
+  // photos never go live where they aren't expected.
+  const isHaven = site.template === 'handy';
   const projectContent = getSiteContent(site.content).projectShowcase;
-  const projectItems = projectContent.items.filter((item) => item.url && item.alt);
+  const projectOwnItems = projectContent.items.filter((item) => item.url && item.alt);
   const projectShowcase =
-    site.template !== 'handy' && projectContent.enabled && projectItems.length > 0 ? projectContent : null;
+    projectContent.enabled && (isHaven || projectOwnItems.length > 0) ? projectContent : null;
+  const projectItems = projectOwnItems.length > 0
+    ? projectOwnItems.map((item) => ({ id: item.id, url: item.url, alt: item.alt, caption: item.caption }))
+    : isHaven
+      ? (galleryImages.length > 0 ? galleryImages : STOCK_SITE_IMAGES)
+          .slice(0, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS)
+          .map((item) => ({ id: item.id, url: item.url, alt: item.alt }))
+      : [];
 
   const hasInFlowSections = Boolean(services || howItWorks || showcase || testimonials || faqs || serviceAreas || stats || beforeAfter || blog || projectShowcase);
 
@@ -82,12 +95,12 @@ export default function SiteContentSections({ site }: SiteContentSectionsProps) 
   const sectionBlocks: Record<string, ReactNode> = {
     services: services && <SiteServices title={services.title} intro={services.intro} items={services.items} />,
     projectShowcase: projectShowcase && (
-      <section className={styles.projectBand} id="project-showcase" aria-label="Project showcase">
+      <section className={isHaven ? styles.careWorks : styles.projectBand} id="project-showcase" aria-label="Project showcase">
         <ProjectShowcase
           eyebrow={projectShowcase.eyebrow}
           title={projectShowcase.title}
           style={projectShowcase.style}
-          items={projectItems.map((item) => ({ id: item.id, url: item.url, alt: item.alt, caption: item.caption }))}
+          items={projectItems}
         />
       </section>
     ),

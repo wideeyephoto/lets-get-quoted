@@ -85,6 +85,8 @@
 .heroFormFitNote { margin: 0; padding: .45rem .65rem; border-radius: 8px; background: #fdf6e3; border: 1px solid #ecd9a0; color: #7a5f17; font-size: .76rem; line-height: 1.45; }
 /* Trust microcopy + earned response-time badge on the intake. */
 .heroFormPrivacy { color: #6b7280; font-size: .72rem; line-height: 1.4; }
+.heroFormConsent { color: #7b8494; font-size: .68rem; line-height: 1.4; }
+.heroFormConsent a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .heroFormReplyChip { display: inline-flex; align-items: center; gap: .3rem; justify-self: start; align-self: start; padding: .22rem .6rem; border-radius: 999px; background: #eef7ee; border: 1px solid #bfe3c0; color: #1e6b2d; font-size: .72rem; font-weight: 700; }
 .heroFormQaMeta { margin: -.2rem 0 0; color: #55606f; font-size: .72rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
 .heroFormQaMeta span { font-weight: 600; letter-spacing: .02em; text-transform: none; color: #6b7686; }

@@ -408,7 +408,10 @@
 .sectionGrip { cursor: grab; color: #6b7688; font-size: 1.05rem; line-height: 1; -webkit-user-select: none; user-select: none; touch-action: none; }
 .sectionGrip:hover { color: #ffb27a; }
 .sectionGrip:active { cursor: grabbing; }
-.sectionGripArrows { display: inline-flex; flex-direction: column; gap: 2px; }
+/* The ↑/↓ nudge buttons only appear once a card is opened — keeps the closed
+   Page list tidy (just the drag dots), so arrows show for the section in focus. */
+.sectionGripArrows { display: none; flex-direction: column; gap: 2px; }
+.sectionCardOpen .sectionGripArrows { display: inline-flex; }
 .sectionGripArrows button { width: 20px; height: 15px; padding: 0; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.16); border-radius: 4px; background: rgba(255,255,255,.06); color: #f7f5ef; font-size: .6rem; line-height: 1; cursor: pointer; }
 .sectionGripArrows button:disabled { opacity: .3; cursor: default; }
 .sectionGripArrows button:not(:disabled):hover { background: rgba(255,122,33,.16); border-color: #ff7a21; }
