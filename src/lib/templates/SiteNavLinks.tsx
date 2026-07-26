@@ -102,6 +102,8 @@ export default function SiteNavLinks({ site, links, className }: SiteNavLinksPro
       {mounted && createPortal(
         <div style={portalStyle}>
           {open && (
+            <>
+            <div className={styles.mobileNavBackdrop} aria-hidden="true" onClick={() => setOpen(false)} />
             <div className={styles.mobileNavOverlay} role="dialog" aria-modal="true" aria-label="Menu">
               <button type="button" className={styles.mobileNavClose} onClick={() => setOpen(false)} aria-label="Close menu">✕</button>
               <p className={styles.mobileNavBrand}>{site.company_name}</p>
@@ -116,6 +118,7 @@ export default function SiteNavLinks({ site, links, className }: SiteNavLinksPro
                 </a>
               )}
             </div>
+            </>
           )}
         </div>,
         document.body,
