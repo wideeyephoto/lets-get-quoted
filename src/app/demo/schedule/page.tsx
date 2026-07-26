@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import DemoNav from '@/components/demo-nav';
 import { expandScheduledJobs, type Job } from '@/lib/jobs';
 import { DEMO_CREW, DEMO_JOBS } from '@/lib/demo-data';
 import DemoScheduleCalendar from './demo-schedule-calendar';
@@ -79,7 +78,6 @@ export default function DemoSchedulePage({ searchParams }: { searchParams: { mon
 
   return (
     <>
-      <DemoNav active="/demo/schedule" />
       <main className="wide-shell workspace-shell">
         <section className="workspace-hero panel">
           <div className="workspace-hero-copy">

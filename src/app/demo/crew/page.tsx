@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import DemoNav from '@/components/demo-nav';
 import { formatMoney } from '@/lib/jobs';
 import { DEMO_CREW } from '@/lib/demo-data';
 
@@ -11,7 +10,6 @@ export default function DemoCrewPage() {
 
   return (
     <>
-      <DemoNav active="/demo/crew" />
       <main className="wide-shell workspace-shell">
         <section className="panel workspace-section-card">
           <div className="section-heading workspace-section-heading">

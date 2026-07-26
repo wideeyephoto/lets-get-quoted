@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import DemoNav from '@/components/demo-nav';
 import { formatMoney, sortJobsByStatus, type JobStatus } from '@/lib/jobs';
 import { DEMO_JOBS } from '@/lib/demo-data';
 
@@ -28,7 +27,6 @@ export default function DemoJobsPage({ searchParams }: { searchParams: { status?
 
   return (
     <>
-      <DemoNav active="/demo/jobs" />
       <main className="wide-shell workspace-shell">
         <section className="panel workspace-section-card">
           <div className="section-heading workspace-section-heading">

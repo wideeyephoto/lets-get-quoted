@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import DemoNav from '@/components/demo-nav';
 import { formatJobSchedule, formatMoney, formatPercent, type JobStatus } from '@/lib/jobs';
 import { DEMO_JOBS, getDemoCosts, getDemoMargin, getDemoPayments } from '@/lib/demo-data';
 
@@ -31,7 +30,6 @@ export default function DemoJobDetailPage({ params }: { params: { id: string } }
 
   return (
     <>
-      <DemoNav active="/demo/jobs" />
       <main className="wide-shell workspace-shell">
         <section className="panel workspace-section-card">
           <div className="section-heading workspace-section-heading">

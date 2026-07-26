@@ -401,6 +401,24 @@ h3 {
 /* Dashboard is now an ordinary row (just a little breathing room below it). */
 .sidenav-top { margin-bottom: 0.5rem; }
 
+/* Demo rail: "preview" rows are features without a demo page — dimmed, with a
+   small lock, and they link to sign-up rather than dead-ending. */
+.sidenav-link.preview { color: rgba(247, 245, 239, 0.4); }
+.sidenav-link.preview .sidenav-ic { color: rgba(200, 212, 228, 0.32); }
+.sidenav-link.preview:hover { background: rgba(255, 255, 255, 0.04); color: rgba(247, 245, 239, 0.72); }
+.sidenav-lock {
+  width: 0.82rem;
+  height: 0.82rem;
+  flex: none;
+  margin-left: auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.5;
+}
+
 /* Panel: each section is its own soft card so Work / Team / Money / Grow read
    as distinct blocks rather than one long list. */
 .sidenav-group {

@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import DemoNav from '@/components/demo-nav';
 import { getTierInfo } from '@/lib/stripe';
 import { expandScheduledJobs, formatJobTime, formatMoney, JOB_STATUS_ORDER } from '@/lib/jobs';
 import { DEMO_COMPANY_NAME, DEMO_CREW, DEMO_JOBS, DEMO_TRAILING_VOLUME } from '@/lib/demo-data';
@@ -81,7 +80,6 @@ export default function DemoDashboardPage() {
 
   return (
     <>
-      <DemoNav active="/demo" />
       <main className="wide-shell workspace-shell">
         <section className="panel workspace-section-card">
           <div className="section-heading workspace-section-heading">

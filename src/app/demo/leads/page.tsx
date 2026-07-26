@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import DemoNav from '@/components/demo-nav';
 import { formatDuration, formatElapsedTime, formatLeadSource, getAverageRequestResponseMs, type Lead, type LeadStatus } from '@/lib/leads';
 import { DEMO_LEADS } from '@/lib/demo-data';
 import styles from '../../dashboard/leads/leads.module.css';
@@ -32,7 +31,6 @@ export default function DemoLeadsPage() {
 
   return (
     <>
-      <DemoNav active="/demo/leads" />
       <main className="wide-shell workspace-shell">
         <section className="panel workspace-section-card">
           <div className="section-heading workspace-section-heading">

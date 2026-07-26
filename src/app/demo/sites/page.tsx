@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import DemoNav from '@/components/demo-nav';
 import { DEMO_COMPANY_NAME } from '@/lib/demo-data';
 
 export const dynamic = 'force-dynamic';
@@ -7,7 +6,6 @@ export const dynamic = 'force-dynamic';
 export default function DemoSitesPage() {
   return (
     <>
-      <DemoNav active="/demo/sites" />
       <main className="wide-shell workspace-shell">
         <section className="workspace-hero workspace-hero-solo panel">
           <div className="workspace-hero-copy">
