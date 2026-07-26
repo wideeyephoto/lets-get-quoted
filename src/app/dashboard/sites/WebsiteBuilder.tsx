@@ -7,6 +7,7 @@ import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getSiteContent, getTradeGlyph, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
+import { buildBrandMarkSvg } from '@/lib/brand-mark';
 import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
 import { SEO_TITLE_MAX as SEO_TITLE_LIMIT, SEO_DESC_MAX as SEO_DESC_LIMIT } from '@/lib/seo/seo-copy';
 import type { PexelsPickPhoto, StockImageResult, WebsiteImageAssignment } from '@/lib/stock/types';
@@ -166,6 +167,49 @@ const TRADE_GLYPH_NOUNS: Record<string, string> = {
 function describeTradeGlyph(trade: string): { glyph: string; noun: string } {
   const glyph = getTradeGlyph(trade);
   return { glyph, noun: TRADE_GLYPH_NOUNS[glyph] ?? 'trade' };
+}
+
+// -- Brand-icon downloads (client-side; no server rasterization dependency) --
+function logoFileSlug(name: string): string {
+  return (name || 'logo').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'logo';
+}
+
+function triggerDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function downloadBrandSvg(svg: string, filename: string) {
+  triggerDownload(new Blob([svg], { type: 'image/svg+xml' }), filename);
+}
+
+// Rasterize the (self-contained, font-free) SVG mark to a PNG via a canvas.
+async function downloadBrandPng(svg: string, size: number, filename: string) {
+  const svgUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+  try {
+    const img = new Image();
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error('Could not render the icon.'));
+      img.src = svgUrl;
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas is unavailable in this browser.');
+    ctx.drawImage(img, 0, 0, size, size);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (blob) triggerDownload(blob, filename);
+  } finally {
+    URL.revokeObjectURL(svgUrl);
+  }
 }
 
 // Apply auto-selected stock photos to the site, preserving the owner's uploads
@@ -1546,14 +1590,27 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                           const { glyph, noun } = describeTradeGlyph(siteContent.trade);
                           const accent = site.accent_override || '#ff7a21';
                           const tradeName = siteContent.trade.trim();
+                          const slug = logoFileSlug(site.company_name);
                           return (
-                            <div className={styles.autoLogo}>
-                              <span className={styles.autoLogoChip} data-logo-style={siteContent.logoStyle} style={{ color: accent }}>
-                                <ServiceIcon name={glyph} className={styles.autoLogoGlyph} />
-                              </span>
-                              <div className={styles.autoLogoMeta}>
-                                <strong>Auto icon for your trade</strong>
-                                <small>{tradeName ? `We picked a ${noun} to match “${tradeName}.”` : `A ${noun} mark, until you set your field of work above.`} It shows in your header and footer until you add your own logo.</small>
+                            <div className={styles.autoLogoWrap}>
+                              <div className={styles.autoLogo}>
+                                <span className={styles.autoLogoChip} data-logo-style={siteContent.logoStyle} style={{ color: accent }}>
+                                  <ServiceIcon name={glyph} className={styles.autoLogoGlyph} />
+                                </span>
+                                <div className={styles.autoLogoMeta}>
+                                  <strong>Auto icon for your trade</strong>
+                                  <small>{tradeName ? `We picked a ${noun} to match “${tradeName}.”` : `A ${noun} mark, until you set your field of work above.`} It’s also your site’s browser-tab icon, until you add your own logo.</small>
+                                </div>
+                              </div>
+                              <div className={styles.autoLogoDownloads}>
+                                <span className={styles.autoLogoDownloadsLabel}>Download this icon</span>
+                                <div className={styles.autoLogoDownloadBtns}>
+                                  <button type="button" className={styles.secondaryAction} onClick={() => downloadBrandSvg(buildBrandMarkSvg(glyph, accent, 'color'), `${slug}-icon.svg`)}>SVG</button>
+                                  <button type="button" className={styles.secondaryAction} onClick={() => downloadBrandPng(buildBrandMarkSvg(glyph, accent, 'color'), 512, `${slug}-icon.png`)}>PNG</button>
+                                  <button type="button" className={styles.autoLogoMonoBtn} onClick={() => downloadBrandSvg(buildBrandMarkSvg(glyph, accent, 'black'), `${slug}-icon-black.svg`)}>Black</button>
+                                  <button type="button" className={styles.autoLogoMonoBtn} onClick={() => downloadBrandSvg(buildBrandMarkSvg(glyph, accent, 'white'), `${slug}-icon-white.svg`)}>White</button>
+                                </div>
+                                <small>SVG for signage &amp; trucks, PNG for invoices &amp; social. Black/white are one-color versions for printing.</small>
                               </div>
                             </div>
                           );

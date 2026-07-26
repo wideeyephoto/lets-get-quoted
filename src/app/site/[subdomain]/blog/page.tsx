@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/auth';
 import { getPublicSiteBySubdomain } from '@/lib/sites';
 import { getPublishedBlog } from '@/lib/site-content';
+import { siteIconsMetadata } from '@/lib/brand-mark';
 import SiteBlogIndex from '@/lib/templates/SiteBlogIndex';
 
 export const dynamic = 'force-dynamic';
@@ -26,5 +27,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: { absolute: title },
     description: blog.intro || `News and tips from ${site.company_name}.`,
+    icons: siteIconsMetadata(site),
   };
 }

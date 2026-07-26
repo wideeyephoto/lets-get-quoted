@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { createAdminClient } from '@/lib/auth';
 import { getPublicSiteBySubdomain } from '@/lib/sites';
 import { getPublishedBlogPost } from '@/lib/site-content';
+import { siteIconsMetadata } from '@/lib/brand-mark';
 import SiteBlogArticle from '@/lib/templates/SiteBlogArticle';
 
 export const dynamic = 'force-dynamic';
@@ -35,6 +36,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: { absolute: title },
     description: post.excerpt || undefined,
     alternates: { canonical: `${base}/blog/${post.slug}` },
+    icons: siteIconsMetadata(site),
     openGraph: { title: post.title, description: post.excerpt, type: 'article', url: `${base}/blog/${post.slug}`, images },
   };
 }

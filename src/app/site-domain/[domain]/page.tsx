@@ -6,6 +6,7 @@ import { getPublicSiteByCustomDomain } from '@/lib/sites';
 import { getTemplate } from '@/lib/templates';
 import SiteStructuredData from '@/lib/templates/SiteStructuredData';
 import { resolveSiteSeo, isSiteSeoReady } from '@/lib/seo/site-seo';
+import { siteIconsMetadata } from '@/lib/brand-mark';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +42,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: title ? { absolute: title } : undefined,
     description,
     alternates: { canonical },
+    icons: siteIconsMetadata(site),
     robots: isSiteSeoReady(site) ? undefined : { index: false, follow: true },
     openGraph: { title, description, type: 'website', url: canonical, images: site.hero_url ? [{ url: site.hero_url }] : [] },
   };

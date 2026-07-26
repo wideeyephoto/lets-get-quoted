@@ -6,6 +6,7 @@ import { getPublicSiteBySubdomain } from '@/lib/sites';
 import { getTemplate } from '@/lib/templates';
 import SiteStructuredData from '@/lib/templates/SiteStructuredData';
 import { resolveSiteSeo, siteCanonicalUrl, isSiteSeoReady } from '@/lib/seo/site-seo';
+import { siteIconsMetadata } from '@/lib/brand-mark';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,6 +45,9 @@ export async function generateMetadata({ params }: PublicSitePageProps): Promise
     title: title ? { absolute: title } : undefined,
     description,
     alternates: { canonical },
+    // A per-site favicon (the trade mark) so the tab carries the contractor's
+    // brand, not the platform's — matters most on their own custom domain.
+    icons: siteIconsMetadata(site),
     // Keep thin/incomplete sites out of the index until they carry real content.
     robots: isSiteSeoReady(site) ? undefined : { index: false, follow: true },
     openGraph: {
