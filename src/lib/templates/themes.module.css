@@ -199,8 +199,28 @@
 /* Logo framing (data-logo-style on the template root) so a boxy logo blends
    into the header. currentColor-based frame adapts to light or dark headers. */
 .site[data-logo-style='rounded'] .logo { border-radius: 8px; }
+.site[data-logo-style='squircle'] .logo { border-radius: 22%; }
 .site[data-logo-style='framed'] .logo { border-radius: 10px; padding: 5px 9px; background: color-mix(in srgb, currentColor 8%, transparent); border: 1px solid color-mix(in srgb, currentColor 22%, transparent); }
 .site[data-logo-style='circle'] .logo { border-radius: 999px; aspect-ratio: 1; object-fit: cover; }
+
+/* Transparent auto-icon: strip each theme's brand-chip tile so only the glyph
+   shows, tinted to the accent, and let the glyph fill the chip footprint. Only
+   affects the auto icon (the brand-mark chips), never an uploaded .logo. */
+.site[data-logo-style='transparent'] .brandBlock,
+.site[data-logo-style='transparent'] .guildBrandMark,
+.site[data-logo-style='transparent'] .vistaBrandMark,
+.site[data-logo-style='transparent'] .careBrandMark,
+.site[data-logo-style='transparent'] .coatBrandMark,
+.site[data-logo-style='transparent'] .fixitBrandMark,
+.site[data-logo-style='transparent'] .shineBrandMark,
+.site[data-logo-style='transparent'] .renoHex {
+  background: none;
+  border: none;
+  box-shadow: none;
+  clip-path: none;
+  color: var(--theme-accent);
+}
+.site[data-logo-style='transparent'] .brandGlyph { width: 100%; height: 100%; }
 
 /* Company-name wordmark treatments (data-wordmark on the root). The name text
    lives in the brand <strong> for every header/footer except Vista, whose brand

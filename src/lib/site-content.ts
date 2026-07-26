@@ -513,7 +513,7 @@ export type NormalizedSiteContent = {
 
 export const MAX_EXTRA_HERO_IMAGES = 2;
 
-const LOGO_STYLE_KEYS = new Set(['plain', 'rounded', 'framed', 'circle']);
+const LOGO_STYLE_KEYS = new Set(['plain', 'transparent', 'rounded', 'squircle', 'framed', 'circle']);
 const LOGO_SIZE_KEYS = new Set(['small', 'medium', 'large']);
 
 export function getLogoStyle(content: Record<string, unknown> | null | undefined): string {

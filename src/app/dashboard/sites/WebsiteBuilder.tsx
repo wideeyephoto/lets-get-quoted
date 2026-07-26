@@ -7,7 +7,6 @@ import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getSiteContent, getTradeGlyphOptions, glyphForContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent } from '@/lib/site-content';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
-import { buildBrandMarkSvg } from '@/lib/brand-mark';
 import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
 import { SEO_TITLE_MAX as SEO_TITLE_LIMIT, SEO_DESC_MAX as SEO_DESC_LIMIT } from '@/lib/seo/seo-copy';
 import type { PexelsPickPhoto, StockImageResult, WebsiteImageAssignment } from '@/lib/stock/types';
@@ -171,49 +170,6 @@ const TRADE_GLYPH_NOUNS: Record<string, string> = {
   hammer: 'hammer',
   grid: 'tile grid',
 };
-
-// -- Brand-icon downloads (client-side; no server rasterization dependency) --
-function logoFileSlug(name: string): string {
-  return (name || 'logo').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'logo';
-}
-
-function triggerDownload(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function downloadBrandSvg(svg: string, filename: string) {
-  triggerDownload(new Blob([svg], { type: 'image/svg+xml' }), filename);
-}
-
-// Rasterize the (self-contained, font-free) SVG mark to a PNG via a canvas.
-async function downloadBrandPng(svg: string, size: number, filename: string) {
-  const svgUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
-  try {
-    const img = new Image();
-    await new Promise<void>((resolve, reject) => {
-      img.onload = () => resolve();
-      img.onerror = () => reject(new Error('Could not render the icon.'));
-      img.src = svgUrl;
-    });
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Canvas is unavailable in this browser.');
-    ctx.drawImage(img, 0, 0, size, size);
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-    if (blob) triggerDownload(blob, filename);
-  } finally {
-    URL.revokeObjectURL(svgUrl);
-  }
-}
 
 // Apply auto-selected stock photos to the site, preserving the owner's uploads
 // and any image they've already set (an existing image is only replaced if it's
@@ -1587,7 +1543,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                           const options = getTradeGlyphOptions(siteContent.trade);
                           const glyph = glyphForContent(siteContent);
                           const accent = site.accent_override || '#ff7a21';
-                          const slug = logoFileSlug(site.company_name);
                           return (
                             <div className={styles.autoLogoWrap}>
                               <div className={styles.autoLogo}>
@@ -1616,25 +1571,16 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                                   ))}
                                 </div>
                               )}
-                              <div className={styles.autoLogoDownloads}>
-                                <span className={styles.autoLogoDownloadsLabel}>Download this icon</span>
-                                <div className={styles.autoLogoDownloadBtns}>
-                                  <button type="button" className={styles.secondaryAction} onClick={() => downloadBrandSvg(buildBrandMarkSvg(glyph, accent, 'color'), `${slug}-icon.svg`)}>SVG</button>
-                                  <button type="button" className={styles.secondaryAction} onClick={() => downloadBrandPng(buildBrandMarkSvg(glyph, accent, 'color'), 512, `${slug}-icon.png`)}>PNG</button>
-                                  <button type="button" className={styles.autoLogoMonoBtn} onClick={() => downloadBrandSvg(buildBrandMarkSvg(glyph, accent, 'black'), `${slug}-icon-black.svg`)}>Black</button>
-                                  <button type="button" className={styles.autoLogoMonoBtn} onClick={() => downloadBrandSvg(buildBrandMarkSvg(glyph, accent, 'white'), `${slug}-icon-white.svg`)}>White</button>
-                                </div>
-                                <small>SVG for signage &amp; trucks, PNG for invoices &amp; social. Black/white are one-color versions for printing.</small>
-                              </div>
                             </div>
                           );
                         })()}
+                    <hr className={styles.logoDivider} />
                     <div className={styles.imageSlotActions}>
                       <button type="button" className={styles.secondaryAction} onClick={() => openPicker('your logo', 'logo')}>{site.logo_url ? 'Replace photo' : 'Add your own logo'}</button>
                       {site.logo_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('logo_url', null)}>Remove</button>}
                     </div>
                     <div className={styles.formColumns}>
-                      <label className={styles.formField}><span>Logo shape</span><select value={siteContent.logoStyle} onChange={(event) => updateSiteContent({ logoStyle: event.target.value })}><option value="plain">Plain (no frame)</option><option value="rounded">Rounded corners</option><option value="framed">Framed chip (padding + border)</option><option value="circle">Circle</option></select></label>
+                      <label className={styles.formField}><span>Logo style</span><select value={siteContent.logoStyle} onChange={(event) => updateSiteContent({ logoStyle: event.target.value })}><option value="plain">Plain (no frame)</option><option value="transparent">Transparent (no background)</option><option value="rounded">Rounded corners</option><option value="squircle">Squircle</option><option value="circle">Circle</option><option value="framed">Framed chip (padding + border)</option></select></label>
                       <label className={styles.formField}><span>Logo size</span><select value={siteContent.logoSize} onChange={(event) => updateSiteContent({ logoSize: event.target.value })}><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select></label>
                     </div>
                     <small className={styles.fieldHint}>Best as a <strong>PNG or SVG with a transparent background</strong> — wide and simple. Aim for ~400×120px; it&apos;s shown up to 70px tall.</small>
@@ -2215,7 +2161,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
           </div>
         </section>
 
-        <LivePreview site={site} openSection={openSection} />
+        <LivePreview site={site} openSection={activeTab === 'page' ? openSection : null} />
       </div>
 
       {isDirty && (
