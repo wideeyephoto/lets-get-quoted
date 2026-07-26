@@ -1742,12 +1742,144 @@
     align-self: center; margin-right: clamp(.7rem, 2vw, 1.15rem);
   }
 
+  /* — REFINED (#1): balanced bones, accent underline sweeps in under nav links — */
+  .forge[data-header='refined'] .forgeHeader, .guild[data-header='refined'] .guildHeader,
+  .vista[data-header='refined'] .vistaHeader, .handy[data-header='refined'] .careHeader,
+  .coat[data-header='refined'] .coatHeader, .fixit[data-header='refined'] .fixitHeader,
+  .reno[data-header='refined'] .renoHeader, .shine[data-header='refined'] .shineHeader {
+    grid-template-columns: 1fr auto 1fr; align-items: center;
+  }
+  .forge[data-header='refined'] .navLinks, .guild[data-header='refined'] .navLinks,
+  .vista[data-header='refined'] .navLinks, .handy[data-header='refined'] .navLinks,
+  .coat[data-header='refined'] .navLinks, .fixit[data-header='refined'] .navLinks,
+  .reno[data-header='refined'] .navLinks, .shine[data-header='refined'] .navLinks {
+    justify-self: center; margin-left: 0;
+  }
+  .forge[data-header='refined'] .headerPhone, .guild[data-header='refined'] .guildQuote,
+  .vista[data-header='refined'] .vistaActions, .handy[data-header='refined'] .careHeaderActions,
+  .coat[data-header='refined'] .coatHeaderCta, .fixit[data-header='refined'] .fixitHeaderPhone,
+  .reno[data-header='refined'] .renoHeaderPhone, .shine[data-header='refined'] .shineHeaderCta {
+    justify-self: end;
+  }
+  .forge[data-header='refined'] .navLinks a, .guild[data-header='refined'] .navLinks a,
+  .vista[data-header='refined'] .navLinks a, .handy[data-header='refined'] .navLinks a,
+  .coat[data-header='refined'] .navLinks a, .fixit[data-header='refined'] .navLinks a,
+  .reno[data-header='refined'] .navLinks a, .shine[data-header='refined'] .navLinks a { position: relative; }
+  .forge[data-header='refined'] .navLinks a::after, .guild[data-header='refined'] .navLinks a::after,
+  .vista[data-header='refined'] .navLinks a::after, .handy[data-header='refined'] .navLinks a::after,
+  .coat[data-header='refined'] .navLinks a::after, .fixit[data-header='refined'] .navLinks a::after,
+  .reno[data-header='refined'] .navLinks a::after, .shine[data-header='refined'] .navLinks a::after {
+    content: ''; position: absolute; left: 0; right: 100%; bottom: -3px; height: 2px; background: var(--theme-accent); transition: right .2s;
+  }
+  .forge[data-header='refined'] .navLinks a:hover::after, .guild[data-header='refined'] .navLinks a:hover::after,
+  .vista[data-header='refined'] .navLinks a:hover::after, .handy[data-header='refined'] .navLinks a:hover::after,
+  .coat[data-header='refined'] .navLinks a:hover::after, .fixit[data-header='refined'] .navLinks a:hover::after,
+  .reno[data-header='refined'] .navLinks a:hover::after, .shine[data-header='refined'] .navLinks a:hover::after { right: 0; }
+
+  /* — EDITORIAL (#5): tracked-out uppercase nav, hairline border, accent underline — */
+  .forge[data-header='editorial'] .forgeHeader, .guild[data-header='editorial'] .guildHeader,
+  .vista[data-header='editorial'] .vistaHeader, .handy[data-header='editorial'] .careHeader,
+  .coat[data-header='editorial'] .coatHeader, .fixit[data-header='editorial'] .fixitHeader,
+  .reno[data-header='editorial'] .renoHeader, .shine[data-header='editorial'] .shineHeader {
+    grid-template-columns: 1fr auto 1fr; align-items: center; border-bottom: 1px solid color-mix(in srgb, currentColor 16%, transparent);
+  }
+  .forge[data-header='editorial'] .navLinks, .guild[data-header='editorial'] .navLinks,
+  .vista[data-header='editorial'] .navLinks, .handy[data-header='editorial'] .navLinks,
+  .coat[data-header='editorial'] .navLinks, .fixit[data-header='editorial'] .navLinks,
+  .reno[data-header='editorial'] .navLinks, .shine[data-header='editorial'] .navLinks {
+    justify-self: center; margin-left: 0;
+  }
+  .forge[data-header='editorial'] .headerPhone, .guild[data-header='editorial'] .guildQuote,
+  .vista[data-header='editorial'] .vistaActions, .handy[data-header='editorial'] .careHeaderActions,
+  .coat[data-header='editorial'] .coatHeaderCta, .fixit[data-header='editorial'] .fixitHeaderPhone,
+  .reno[data-header='editorial'] .renoHeaderPhone, .shine[data-header='editorial'] .shineHeaderCta {
+    justify-self: end;
+  }
+  .forge[data-header='editorial'] .navLinks a, .guild[data-header='editorial'] .navLinks a,
+  .vista[data-header='editorial'] .navLinks a, .handy[data-header='editorial'] .navLinks a,
+  .coat[data-header='editorial'] .navLinks a, .fixit[data-header='editorial'] .navLinks a,
+  .reno[data-header='editorial'] .navLinks a, .shine[data-header='editorial'] .navLinks a {
+    position: relative; text-transform: uppercase; letter-spacing: .13em; font-size: .78rem; font-weight: 700;
+  }
+  .forge[data-header='editorial'] .navLinks a::after, .guild[data-header='editorial'] .navLinks a::after,
+  .vista[data-header='editorial'] .navLinks a::after, .handy[data-header='editorial'] .navLinks a::after,
+  .coat[data-header='editorial'] .navLinks a::after, .fixit[data-header='editorial'] .navLinks a::after,
+  .reno[data-header='editorial'] .navLinks a::after, .shine[data-header='editorial'] .navLinks a::after {
+    content: ''; position: absolute; left: 0; right: 100%; bottom: -3px; height: 2px; background: var(--theme-accent); transition: right .2s;
+  }
+  .forge[data-header='editorial'] .navLinks a:hover::after, .guild[data-header='editorial'] .navLinks a:hover::after,
+  .vista[data-header='editorial'] .navLinks a:hover::after, .handy[data-header='editorial'] .navLinks a:hover::after,
+  .coat[data-header='editorial'] .navLinks a:hover::after, .fixit[data-header='editorial'] .navLinks a:hover::after,
+  .reno[data-header='editorial'] .navLinks a:hover::after, .shine[data-header='editorial'] .navLinks a:hover::after { right: 0; }
+
+  /* — CHIPS (#9): each nav link is a bordered chip; hover lights it up in accent — */
+  .forge[data-header='chips'] .forgeHeader, .guild[data-header='chips'] .guildHeader,
+  .vista[data-header='chips'] .vistaHeader, .handy[data-header='chips'] .careHeader,
+  .coat[data-header='chips'] .coatHeader, .fixit[data-header='chips'] .fixitHeader,
+  .reno[data-header='chips'] .renoHeader, .shine[data-header='chips'] .shineHeader {
+    grid-template-columns: 1fr auto 1fr; align-items: center;
+  }
+  .forge[data-header='chips'] .navLinks, .guild[data-header='chips'] .navLinks,
+  .vista[data-header='chips'] .navLinks, .handy[data-header='chips'] .navLinks,
+  .coat[data-header='chips'] .navLinks, .fixit[data-header='chips'] .navLinks,
+  .reno[data-header='chips'] .navLinks, .shine[data-header='chips'] .navLinks {
+    justify-self: center; margin-left: 0; gap: .4rem;
+  }
+  .forge[data-header='chips'] .headerPhone, .guild[data-header='chips'] .guildQuote,
+  .vista[data-header='chips'] .vistaActions, .handy[data-header='chips'] .careHeaderActions,
+  .coat[data-header='chips'] .coatHeaderCta, .fixit[data-header='chips'] .fixitHeaderPhone,
+  .reno[data-header='chips'] .renoHeaderPhone, .shine[data-header='chips'] .shineHeaderCta {
+    justify-self: end;
+  }
+  .forge[data-header='chips'] .navLinks a, .guild[data-header='chips'] .navLinks a,
+  .vista[data-header='chips'] .navLinks a, .handy[data-header='chips'] .navLinks a,
+  .coat[data-header='chips'] .navLinks a, .fixit[data-header='chips'] .navLinks a,
+  .reno[data-header='chips'] .navLinks a, .shine[data-header='chips'] .navLinks a {
+    padding: .4rem .85rem; border-radius: 9px; border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  }
+  .forge[data-header='chips'] .navLinks a:hover, .guild[data-header='chips'] .navLinks a:hover,
+  .vista[data-header='chips'] .navLinks a:hover, .handy[data-header='chips'] .navLinks a:hover,
+  .coat[data-header='chips'] .navLinks a:hover, .fixit[data-header='chips'] .navLinks a:hover,
+  .reno[data-header='chips'] .navLinks a:hover, .shine[data-header='chips'] .navLinks a:hover {
+    border-color: var(--theme-accent); color: var(--theme-accent);
+  }
+
+  /* — BRAND TAB (#6): the logo sits in a full-height accent block on the left edge — */
+  .forge[data-header='brandtab'] .forgeHeader, .guild[data-header='brandtab'] .guildHeader,
+  .vista[data-header='brandtab'] .vistaHeader, .handy[data-header='brandtab'] .careHeader,
+  .coat[data-header='brandtab'] .coatHeader, .fixit[data-header='brandtab'] .fixitHeader,
+  .reno[data-header='brandtab'] .renoHeader, .shine[data-header='brandtab'] .shineHeader {
+    grid-template-columns: auto 1fr auto; align-items: stretch; padding-top: 0; padding-bottom: 0; padding-left: 0;
+  }
+  .forge[data-header='brandtab'] .navLinks, .guild[data-header='brandtab'] .navLinks,
+  .vista[data-header='brandtab'] .navLinks, .handy[data-header='brandtab'] .navLinks,
+  .coat[data-header='brandtab'] .navLinks, .fixit[data-header='brandtab'] .navLinks,
+  .reno[data-header='brandtab'] .navLinks, .shine[data-header='brandtab'] .navLinks {
+    align-self: center; justify-self: center; margin-left: 0;
+  }
+  .forge[data-header='brandtab'] .headerPhone, .guild[data-header='brandtab'] .guildQuote,
+  .vista[data-header='brandtab'] .vistaActions, .handy[data-header='brandtab'] .careHeaderActions,
+  .coat[data-header='brandtab'] .coatHeaderCta, .fixit[data-header='brandtab'] .fixitHeaderPhone,
+  .reno[data-header='brandtab'] .renoHeaderPhone, .shine[data-header='brandtab'] .shineHeaderCta {
+    align-self: center; justify-self: end;
+  }
+  .forge[data-header='brandtab'] .brand, .guild[data-header='brandtab'] .guildBrand,
+  .vista[data-header='brandtab'] .vistaBrand, .handy[data-header='brandtab'] .careBrand,
+  .coat[data-header='brandtab'] .coatBrand, .fixit[data-header='brandtab'] .fixitBrand,
+  .reno[data-header='brandtab'] .renoBrand, .shine[data-header='brandtab'] .shineBrand {
+    align-self: stretch; display: inline-flex; align-items: center; gap: .55rem;
+    padding: .75rem clamp(1rem, 2.2vw, 1.5rem); background: var(--theme-accent); color: var(--theme-on-accent, #111);
+  }
+
   /* Shine's built-in header IS the CTA-block style, so switching it to balanced
      or left has to undo the edge block: re-pad the header and restore the pill. */
-  .shine[data-header='balanced'] .shineHeader, .shine[data-header='left'] .shineHeader {
+  .shine[data-header='balanced'] .shineHeader, .shine[data-header='left'] .shineHeader,
+  .shine[data-header='refined'] .shineHeader, .shine[data-header='editorial'] .shineHeader, .shine[data-header='chips'] .shineHeader {
     align-items: center; padding: 0 clamp(1.25rem, 4vw, 3.5rem);
   }
-  .shine[data-header='balanced'] .shineHeaderCta, .shine[data-header='left'] .shineHeaderCta {
+  .shine[data-header='editorial'] .shineHeader { padding-bottom: 0; }
+  .shine[data-header='balanced'] .shineHeaderCta, .shine[data-header='left'] .shineHeaderCta,
+  .shine[data-header='refined'] .shineHeaderCta, .shine[data-header='editorial'] .shineHeaderCta, .shine[data-header='chips'] .shineHeaderCta {
     align-self: center; min-height: 44px; border-radius: 999px; padding: .6rem 1.3rem; font-weight: 800;
   }
 }

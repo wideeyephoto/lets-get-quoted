@@ -1032,6 +1032,19 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     over: false,
   });
 
+  // The Header is pinned to the very top of the section list (above the Hero) —
+  // it's the nav bar, always the first thing on the page, so it's locked (no
+  // grip) and never a drop target. A lower order index than the Hero keeps it on
+  // top.
+  const pinnedHeaderReorder = () => ({
+    grip: <span className={styles.sectionLock} title="Your header is always the top of your page" aria-label="Pinned to the top">🔒</span>,
+    sectionKey: 'header',
+    orderIndex: -2,
+    active: false,
+    dimmed: dragKey !== null,
+    over: false,
+  });
+
   // The Footer is pinned to the very bottom of the section list (a high CSS
   // order), so it's locked (no grip) and never a drop target — mirror of the
   // pinned Hero at the top.
@@ -1435,40 +1448,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     </div>
                     <p className={styles.driversCaption}>Your headline, services, FAQs, and Google listing are all generated from these two.</p>
                   </div>
-                  <label className={styles.formField} id="bf-brand-font"><span>Company name font</span>
-                    <select value={siteContent.brandFont} onChange={(event) => updateSiteContent({ brandFont: event.target.value })} style={{ fontFamily: siteContent.brandFont && siteContent.brandFont !== 'var(--theme-display)' ? siteContent.brandFont : undefined }}>
-                      <option value="">Theme default</option>
-                      <option value="var(--theme-display)">Match heading font</option>
-                      {HEADING_FONT_OPTIONS.map((font) => <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>{font.label}</option>)}
-                    </select>
-                  </label>
-                  <div className={styles.formField}>
-                    <span>Company name style</span>
-                    {(() => {
-                      const nm = site.company_name.trim() || 'Your Company';
-                      const parts = nm.split(/\s+/);
-                      const renderName = () => parts.length <= 1
-                        ? <span className={`${styles.wmPreviewFirst} ${styles.wmPreviewLast}`}>{nm}</span>
-                        : parts.map((word, i) => <span key={i}>{i > 0 ? ' ' : ''}<span className={i === 0 ? styles.wmPreviewFirst : i === parts.length - 1 ? styles.wmPreviewLast : styles.wmPreviewMid}>{word}</span></span>);
-                      const previewFont = siteContent.brandFont && siteContent.brandFont !== 'var(--theme-display)' ? siteContent.brandFont : undefined;
-                      const options = [{ key: '', label: 'Standard' }, ...WORDMARK_STYLES];
-                      return (
-                        <div className={styles.namePicker} role="radiogroup" aria-label="Company name style" style={{ '--wm-accent': site.accent_override || '#ff7a21', fontFamily: previewFont } as CSSProperties}>
-                          {options.map((style) => {
-                            const selected = (siteContent.wordmarkStyle || '') === style.key;
-                            return (
-                              <button type="button" key={style.key || 'standard'} role="radio" aria-checked={selected} className={`${styles.namePickerTile}${selected ? ` ${styles.namePickerTileOn}` : ''}`} onClick={() => updateSiteContent({ wordmarkStyle: style.key })}>
-                                <span className={styles.namePickerMark} data-wm={style.key || 'plain'}>{renderName()}</span>
-                                <small>{style.label}</small>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                  <small className={styles.fieldHint}>Your business name in the header — shown exactly as you type. Tap a style to layer a treatment on top; the accent color follows your theme.</small>
-
                   <button type="button" className={`btn primary ${styles.aiButton}`} onClick={handleGenerateText} disabled={isGeneratingText}>
                     {isGeneratingText ? 'Creating your tailored Website...' : '✨ Generate a full example site with AI'}
                   </button>
@@ -1565,72 +1544,9 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                       <option value="">Theme default</option>
                       {HEADING_FONT_OPTIONS.map((font) => <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>{font.label}</option>)}
                     </select></label>
-                    <label className={styles.formField}><span>Button style</span><select value={site.button_style || 'solid'} onChange={(event) => handleChange('button_style', event.target.value)}><option value="solid">Solid</option><option value="outline">Outline</option><option value="ghost">Minimal</option></select></label>
-                  </div>
-                  <label className={styles.formField}><span>Header style</span><select value={siteContent.headerStyle} onChange={(event) => updateSiteContent({ headerStyle: event.target.value })}><option value="">Theme default</option>{HEADER_STYLES.map((style) => <option key={style.key} value={style.key}>{style.label}</option>)}</select></label>
-                </SectionCard>
-
-                <div id="design-logo">
-                <SectionCard title="Your logo" description="Shown small in your header and footer." open={true} onToggleOpen={() => {}}>
-                  <div className={styles.imageSlot}>
-                    {site.logo_url
-                      ? <div className={styles.logoPreviews}><div className={styles.logoPreview}><img src={site.logo_url} alt="Logo on a light header" data-logo-style={siteContent.logoStyle} /><em>Light</em></div><div className={styles.logoPreviewDark}><img src={site.logo_url} alt="Logo on a dark header" data-logo-style={siteContent.logoStyle} /><em>Dark</em></div></div>
-                      : (() => {
-                          const options = getTradeGlyphOptions(siteContent.trade);
-                          const glyph = glyphForContent(siteContent);
-                          const accent = site.accent_override || '#ff7a21';
-                          return (
-                            <div className={styles.autoLogoWrap}>
-                              <div className={styles.autoLogo}>
-                                <span className={styles.autoLogoChip} data-logo-style={siteContent.logoStyle} style={{ color: accent }}>
-                                  <ServiceIcon name={glyph} className={styles.autoLogoGlyph} />
-                                </span>
-                                <div className={styles.autoLogoMeta}>
-                                  <strong>Auto icon for your trade</strong>
-                                  <small>Pick the mark that fits best — it’s your header, footer, and browser-tab icon until you add your own logo.</small>
-                                </div>
-                              </div>
-                              {options.length > 1 && (
-                                <div className={styles.glyphPicker} role="group" aria-label="Choose your brand icon">
-                                  {options.map((key) => (
-                                    <button
-                                      type="button"
-                                      key={key}
-                                      className={`${styles.glyphPickerBtn}${glyph === key ? ` ${styles.glyphPickerBtnOn}` : ''}`}
-                                      style={{ color: accent }}
-                                      aria-pressed={glyph === key}
-                                      aria-label={`Use the ${TRADE_GLYPH_NOUNS[key] ?? key} icon`}
-                                      onClick={() => updateSiteContent({ brandGlyph: key })}
-                                    >
-                                      <ServiceIcon name={key} className={styles.glyphPickerGlyph} />
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                              <label className={styles.autoLogoTransparent}>
-                                <input
-                                  type="checkbox"
-                                  checked={siteContent.logoStyle === 'transparent'}
-                                  onChange={(event) => updateSiteContent({ logoStyle: event.target.checked ? 'transparent' : 'rounded' })}
-                                />
-                                <span><strong>Transparent background</strong><small>Show just the icon on your site — drop the tile behind it.</small></span>
-                              </label>
-                            </div>
-                          );
-                        })()}
-                    <hr className={styles.logoDivider} />
-                    <div className={styles.imageSlotActions}>
-                      <button type="button" className={styles.secondaryAction} onClick={() => openPicker('your logo', 'logo')}>{site.logo_url ? 'Replace photo' : 'Add your own logo'}</button>
-                      {site.logo_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('logo_url', null)}>Remove</button>}
-                    </div>
-                    <div className={styles.formColumns}>
-                      <label className={styles.formField}><span>Logo style</span><select value={siteContent.logoStyle} onChange={(event) => updateSiteContent({ logoStyle: event.target.value })}><option value="plain">Plain (no frame)</option><option value="transparent">Transparent (no background)</option><option value="rounded">Rounded corners</option><option value="squircle">Squircle</option><option value="circle">Circle</option><option value="framed">Framed chip (padding + border)</option></select></label>
-                      <label className={styles.formField}><span>Logo size</span><select value={siteContent.logoSize} onChange={(event) => updateSiteContent({ logoSize: event.target.value })}><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select></label>
-                    </div>
-                    <small className={styles.fieldHint}>Best as a <strong>PNG or SVG with a transparent background</strong> — wide and simple. Aim for ~400×120px; it&apos;s shown up to 70px tall.</small>
+                    <label className={styles.formField}><span>Button style</span><select value={site.button_style === 'ghost' ? 'solid' : (site.button_style || 'solid')} onChange={(event) => handleChange('button_style', event.target.value)}><option value="solid">Solid</option><option value="outline">Outline</option></select></label>
                   </div>
                 </SectionCard>
-                </div>
 
               </div>
             )}
@@ -1681,6 +1597,118 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                 <div className={styles.cardGroupLabel}>Main sections</div>
                 <p className={styles.cardGroupHint}>Drag a section by its ⠿ handle to reorder it on your live page. Turned-off sections keep their spot but stay hidden until you switch them on.</p>
                 <div ref={dragGroupRef} className={`${styles.sectionDragGroup}${dragKey ? ` ${styles.sectionDragGroupActive}` : ''}`}>
+                <SectionCard reorder={pinnedHeaderReorder()} title="Header" description="Your navigation bar — the logo, business name, and menu at the very top of every page." open={openSection === 'header'} onToggleOpen={() => toggleSection('header')}>
+                  <div className={styles.contentSubhead}><strong>Header style</strong><small>Adapts to your theme and accent color.</small></div>
+                  <div className={styles.footerPicker} role="group" aria-label="Header style">
+                    <button type="button" className={`${styles.footerPickerBtn}${siteContent.headerStyle === '' ? ` ${styles.footerPickerBtnOn}` : ''}`} aria-pressed={siteContent.headerStyle === ''} onClick={() => updateSiteContent({ headerStyle: '' })}>
+                      <strong>Theme default</strong><small>Each theme&apos;s own built-in header.</small>
+                    </button>
+                    {HEADER_STYLES.map((h) => (
+                      <button type="button" key={h.key} className={`${styles.footerPickerBtn}${siteContent.headerStyle === h.key ? ` ${styles.footerPickerBtnOn}` : ''}`} aria-pressed={siteContent.headerStyle === h.key} onClick={() => updateSiteContent({ headerStyle: h.key })}>
+                        <strong>{h.label}</strong><small>{h.desc}</small>
+                      </button>
+                    ))}
+                  </div>
+                  <small className={styles.fieldHint}>More header styles — a floating glass bar, a utility strip, and a centered stack — are on the way.</small>
+
+                  <hr className={styles.logoDivider} />
+                  <label className={styles.formField} id="bf-brand-font"><span>Company name font</span>
+                    <select value={siteContent.brandFont} onChange={(event) => updateSiteContent({ brandFont: event.target.value })} style={{ fontFamily: siteContent.brandFont && siteContent.brandFont !== 'var(--theme-display)' ? siteContent.brandFont : undefined }}>
+                      <option value="">Theme default</option>
+                      <option value="var(--theme-display)">Match heading font</option>
+                      {HEADING_FONT_OPTIONS.map((font) => <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>{font.label}</option>)}
+                    </select>
+                  </label>
+                  <div className={styles.formField}>
+                    <span>Company name style</span>
+                    {(() => {
+                      const nm = site.company_name.trim() || 'Your Company';
+                      const parts = nm.split(/\s+/);
+                      const renderName = () => parts.length <= 1
+                        ? <span className={`${styles.wmPreviewFirst} ${styles.wmPreviewLast}`}>{nm}</span>
+                        : parts.map((word, i) => <span key={i}>{i > 0 ? ' ' : ''}<span className={i === 0 ? styles.wmPreviewFirst : i === parts.length - 1 ? styles.wmPreviewLast : styles.wmPreviewMid}>{word}</span></span>);
+                      const previewFont = siteContent.brandFont && siteContent.brandFont !== 'var(--theme-display)' ? siteContent.brandFont : undefined;
+                      const options = [{ key: '', label: 'Standard' }, ...WORDMARK_STYLES];
+                      return (
+                        <div className={styles.namePicker} role="radiogroup" aria-label="Company name style" style={{ '--wm-accent': site.accent_override || '#ff7a21', fontFamily: previewFont } as CSSProperties}>
+                          {options.map((style) => {
+                            const selected = (siteContent.wordmarkStyle || '') === style.key;
+                            return (
+                              <button type="button" key={style.key || 'standard'} role="radio" aria-checked={selected} className={`${styles.namePickerTile}${selected ? ` ${styles.namePickerTileOn}` : ''}`} onClick={() => updateSiteContent({ wordmarkStyle: style.key })}>
+                                <span className={styles.namePickerMark} data-wm={style.key || 'plain'}>{renderName()}</span>
+                                <small>{style.label}</small>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  <small className={styles.fieldHint}>Your business name in the header — shown exactly as you type. Tap a style to layer a treatment on top; the accent color follows your theme.</small>
+
+                  <hr className={styles.logoDivider} />
+                  <div id="design-logo">
+                    <div className={styles.contentSubhead}><strong>Your logo</strong><small>Shown small in your header and footer.</small></div>
+                    <div className={styles.imageSlot}>
+                    {site.logo_url
+                      ? <div className={styles.logoPreviews}><div className={styles.logoPreview}><img src={site.logo_url} alt="Logo on a light header" data-logo-style={siteContent.logoStyle} /><em>Light</em></div><div className={styles.logoPreviewDark}><img src={site.logo_url} alt="Logo on a dark header" data-logo-style={siteContent.logoStyle} /><em>Dark</em></div></div>
+                      : (() => {
+                          const glyphOptions = getTradeGlyphOptions(siteContent.trade);
+                          const glyph = glyphForContent(siteContent);
+                          const accent = site.accent_override || '#ff7a21';
+                          return (
+                            <div className={styles.autoLogoWrap}>
+                              <div className={styles.autoLogo}>
+                                <span className={styles.autoLogoChip} data-logo-style={siteContent.logoStyle} style={{ color: accent }}>
+                                  <ServiceIcon name={glyph} className={styles.autoLogoGlyph} />
+                                </span>
+                                <div className={styles.autoLogoMeta}>
+                                  <strong>Auto icon for your trade</strong>
+                                  <small>Pick the mark that fits best — it’s your header, footer, and browser-tab icon until you add your own logo.</small>
+                                </div>
+                              </div>
+                              {glyphOptions.length > 1 && (
+                                <div className={styles.glyphPicker} role="group" aria-label="Choose your brand icon">
+                                  {glyphOptions.map((key) => (
+                                    <button
+                                      type="button"
+                                      key={key}
+                                      className={`${styles.glyphPickerBtn}${glyph === key ? ` ${styles.glyphPickerBtnOn}` : ''}`}
+                                      style={{ color: accent }}
+                                      aria-pressed={glyph === key}
+                                      aria-label={`Use the ${TRADE_GLYPH_NOUNS[key] ?? key} icon`}
+                                      onClick={() => updateSiteContent({ brandGlyph: key })}
+                                    >
+                                      <ServiceIcon name={key} className={styles.glyphPickerGlyph} />
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                              <label className={styles.autoLogoTransparent}>
+                                <input
+                                  type="checkbox"
+                                  checked={siteContent.logoStyle === 'transparent'}
+                                  onChange={(event) => updateSiteContent({ logoStyle: event.target.checked ? 'transparent' : 'rounded' })}
+                                />
+                                <span><strong>Transparent background</strong><small>Show just the icon on your site — drop the tile behind it.</small></span>
+                              </label>
+                            </div>
+                          );
+                        })()}
+                    <hr className={styles.logoDivider} />
+                    <div className={styles.imageSlotActions}>
+                      <button type="button" className={styles.secondaryAction} onClick={() => openPicker('your logo', 'logo')}>{site.logo_url ? 'Replace photo' : 'Add your own logo'}</button>
+                      {site.logo_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('logo_url', null)}>Remove</button>}
+                    </div>
+                    <div className={styles.formColumns}>
+                      <label className={styles.formField}><span>Logo style</span><select value={siteContent.logoStyle} onChange={(event) => updateSiteContent({ logoStyle: event.target.value })}><option value="plain">Plain (no frame)</option><option value="transparent">Transparent (no background)</option><option value="rounded">Rounded corners</option><option value="squircle">Squircle</option><option value="circle">Circle</option><option value="framed">Framed chip (padding + border)</option></select></label>
+                      <label className={styles.formField}><span>Logo size</span><select value={siteContent.logoSize} onChange={(event) => updateSiteContent({ logoSize: event.target.value })}><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select></label>
+                    </div>
+                    <small className={styles.fieldHint}>Best as a <strong>PNG or SVG with a transparent background</strong> — wide and simple. Aim for ~400×120px; it&apos;s shown up to 70px tall.</small>
+                    </div>
+                  </div>
+                </SectionCard>
+
                 <SectionCard reorder={pinnedHeroReorder()} title="Hero" description="The whole top-of-page first impression — your headline, photo, and floating badges, in one place." hint={site.headline ? `“${site.headline.length > 46 ? `${site.headline.slice(0, 46).trimEnd()}…` : site.headline}”` : undefined} open={openSection === 'hero'} onToggleOpen={() => toggleSection('hero')}>
                   <div className={styles.contentSubhead}><strong>Headline &amp; message</strong></div>
                   <label className={styles.formField}><span>Small line above headline</span><input id="bf-hero-eyebrow" value={siteContent.heroEyebrow} maxLength={50} onChange={(event) => updateSiteContent({ heroEyebrow: event.target.value })} placeholder={heroEyebrowPlaceholder} /><small className={styles.fieldHint}>{site.template === 'shine' ? 'Optional — Shine shows this only if you add one.' : 'Leave empty to keep your template’s own wording.'}</small></label>

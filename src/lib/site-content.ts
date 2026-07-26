@@ -326,14 +326,16 @@ export const HERO_BADGE_STYLES = [
 
 const HERO_BADGE_STYLE_KEYS = new Set<string>(HERO_BADGE_STYLES.map((style) => style.key));
 
-// The three selectable header layouts, each rendered in the template's own skin
-// via data-header on the root. 'balanced' = logo left / nav centered / CTA right;
-// 'left' = logo + nav grouped left, CTA far right; 'cta' = a full-height accent
-// CTA block flush to the right edge.
+// Selectable header styles, each rendered in the template's own skin via
+// data-header on the root. '' = the theme's built-in header (untouched). More
+// styles (floating glass, utility bar, centered stack) are planned as a next
+// pass — see the header CSS block in themes.module.css.
 export const HEADER_STYLES = [
-  { key: 'balanced', label: 'Balanced — nav centered' },
-  { key: 'left', label: 'Left-aligned — nav beside logo' },
-  { key: 'cta', label: 'Bold CTA block' },
+  { key: 'refined', label: 'Refined baseline', desc: 'Nav centered with an accent underline on hover.' },
+  { key: 'editorial', label: 'Editorial uppercase', desc: 'Tracked-out caps and a hairline bottom border.' },
+  { key: 'brandtab', label: 'Brand block tab', desc: 'Logo sits in a full-height accent block.' },
+  { key: 'chips', label: 'Segmented chips', desc: 'Each nav link becomes a bordered chip.' },
+  { key: 'cta', label: 'CTA edge block', desc: 'Accent action fused to the right edge.' },
 ] as const;
 
 // Display treatments for the company-name wordmark (header + footer), applied
