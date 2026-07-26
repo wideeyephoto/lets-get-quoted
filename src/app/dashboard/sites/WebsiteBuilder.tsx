@@ -1538,14 +1538,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                     </div>
                   </div>
 
-                  <div className={styles.cardGroupLabel}>Type &amp; layout</div>
-                  <div className={styles.formColumns}>
-                    <label className={styles.formField}><span>Heading font</span><select value={site.header_font || ''} onChange={(event) => handleChange('header_font', event.target.value || null)}>
-                      <option value="">Theme default</option>
-                      {HEADING_FONT_OPTIONS.map((font) => <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>{font.label}</option>)}
-                    </select></label>
-                    <label className={styles.formField}><span>Button style</span><select value={site.button_style === 'ghost' ? 'solid' : (site.button_style || 'solid')} onChange={(event) => handleChange('button_style', event.target.value)}><option value="solid">Solid</option><option value="outline">Outline</option><option value="glow">Glow</option><option value="double">Double border</option><option value="gloss">Gloss</option><option value="ring">Ring</option><option value="sweep">Fill sweep</option></select></label>
-                  </div>
                 </SectionCard>
 
               </div>
@@ -1609,7 +1601,15 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                       </button>
                     ))}
                   </div>
-                  <small className={styles.fieldHint}>More header styles — a floating glass bar, a utility strip, and a centered stack — are on the way.</small>
+                  <hr className={styles.logoDivider} />
+                  <div className={styles.cardGroupLabel}>Type &amp; layout</div>
+                  <div className={styles.formColumns}>
+                    <label className={styles.formField}><span>Heading font</span><select value={site.header_font || ''} onChange={(event) => handleChange('header_font', event.target.value || null)}>
+                      <option value="">Theme default</option>
+                      {HEADING_FONT_OPTIONS.map((font) => <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>{font.label}</option>)}
+                    </select></label>
+                    <label className={styles.formField}><span>Button style</span><select value={site.button_style === 'ghost' ? 'solid' : (site.button_style || 'solid')} onChange={(event) => handleChange('button_style', event.target.value)}><option value="solid">Solid</option><option value="outline">Outline</option><option value="glow">Glow</option><option value="double">Double border</option><option value="gloss">Gloss</option><option value="ring">Ring</option><option value="sweep">Fill sweep</option></select></label>
+                  </div>
 
                   <hr className={styles.logoDivider} />
                   <label className={styles.formField} id="bf-brand-font"><span>Company name font</span>
