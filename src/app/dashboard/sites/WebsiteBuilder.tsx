@@ -1482,10 +1482,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
             {activeTab === 'design' && (
               <div className={styles.formSection}>
-                <div className={styles.sectionIntro}>
-                  <h2>Brand</h2>
-                </div>
-
                 <SectionCard title="Theme &amp; colors" open={openSection === 'theme'} onToggleOpen={() => toggleSection('theme')}>
                   <div className={styles.cardGroupLabel}>Theme</div>
                   <div className={styles.themeGrid}>
