@@ -12,6 +12,7 @@ import { updateCrewAction } from '../crew/actions';
 import { listActiveScheduleRequests } from '@/lib/scheduling';
 import ScheduleCalendar from './schedule-calendar';
 import ClientScheduleOptionsCalendar from './client-schedule-options-calendar';
+import JobDragHandle from './JobDragHandle';
 
 const STATUS_LABEL: Record<Job['status'], string> = {
   new_lead: 'New request',
@@ -346,6 +347,7 @@ export default async function SchedulePage({
           <div className="section-heading workspace-section-heading">
             <p className="eyebrow">Needs a date</p>
             <h2>Unscheduled jobs</h2>
+            <p className="schedule-drag-hint">Drag a job onto a calendar date above to schedule it — you&apos;ll pick a start time when you drop it. Or use the buttons.</p>
           </div>
           <div className="sign-in-methods-list">
             {unscheduledJobs.map((job) => {
@@ -457,6 +459,7 @@ export default async function SchedulePage({
                     </div>
                   </div>
                   <div className="schedule-action-buttons">
+                    <JobDragHandle jobId={job.id} jobName={job.client_name} />
                     <details className="schedule-popover" name={`schedule-popover-${job.id}`}>
                       <summary className="btn secondary">Add Start Date</summary>
                       <div className="schedule-popover-panel schedule-start-panel">
