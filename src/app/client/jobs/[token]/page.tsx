@@ -3,7 +3,7 @@ import SaveButton from '@/components/save-button';
 import { getClientJobDashboard } from '@/lib/job-feed';
 import { formatMoney } from '@/lib/jobs';
 import { formatScheduleOption } from '@/lib/scheduling';
-import { approveClientJobQuoteAction, requestDifferentClientJobScheduleOptionsAction, selectClientJobScheduleOptionAction } from './actions';
+import { approveClientJobQuoteAction, requestDifferentClientJobScheduleOptionsAction, selectClientJobScheduleOptionAction, startSubscriptionAction } from './actions';
 import QuoteDocument from './QuoteDocument';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -50,6 +50,8 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
 
   const openPayments = dashboard.payments.filter((payment) => payment.status === 'requested' || payment.status === 'processing');
   const depositPayment = openPayments.find((payment) => payment.kind === 'deposit');
+  const pendingSubscriptions = dashboard.job.quote_items.filter((item) => item.kind === 'subscription' && !item.signedUp);
+  const FREQ_LABEL: Record<string, string> = { weekly: '/wk', biweekly: '/2wk', monthly: '/mo' };
   const selectedScheduleOption = dashboard.scheduleRequest?.selected_index == null ? null : dashboard.scheduleRequest.options[dashboard.scheduleRequest.selected_index];
 
   return (
@@ -154,6 +156,46 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
             <h2>You&apos;re all set</h2>
           </div>
           <p className="workspace-card-copy">Thanks! Your contractor has been notified and will be in touch about next steps.</p>
+        </section>
+      ) : null}
+
+      {dashboard.quoteApproved && pendingSubscriptions.length > 0 ? (
+        <section className="panel workspace-section-card client-attention-card">
+          <div className="section-heading workspace-section-heading">
+            <p className="eyebrow">Set up your plan</p>
+            <h2>Choose how to pay for your {pendingSubscriptions.length === 1 ? 'plan' : 'plans'}</h2>
+          </div>
+          <p className="workspace-card-copy">You approved a recurring plan. Pick how you&apos;d like to pay — it only takes a moment.</p>
+          <div className="cost-list">
+            {pendingSubscriptions.map((item) => {
+              const term = item.termCycles && item.termCycles > 0 ? item.termCycles : 0;
+              const discount = item.prepayDiscountPercent ?? 0;
+              const prepaidTotal = term > 0 ? Math.round(item.amount * term * (1 - discount / 100) * 100) / 100 : 0;
+              const freq = FREQ_LABEL[item.frequency ?? 'monthly'];
+              return (
+                <div className="cost-item client-sub-signup" key={item.id}>
+                  <div className="cost-item-main">
+                    <span className="cost-item-desc">{item.label}</span>
+                    <span className="cost-item-sub">{formatMoney(item.amount)}{freq}{term > 0 ? ` · ${term} payments` : ''}</span>
+                  </div>
+                  <div className="client-sub-signup-actions">
+                    <form action={startSubscriptionAction.bind(null, params.token)}>
+                      <input type="hidden" name="itemId" value={item.id} />
+                      <input type="hidden" name="mode" value="cycle" />
+                      <SaveButton className="btn secondary" pendingLabel="Starting...">Pay {formatMoney(item.amount)}{freq}</SaveButton>
+                    </form>
+                    {term > 0 ? (
+                      <form action={startSubscriptionAction.bind(null, params.token)}>
+                        <input type="hidden" name="itemId" value={item.id} />
+                        <input type="hidden" name="mode" value="prepay" />
+                        <SaveButton className="btn primary" pendingLabel="Starting...">Pay {formatMoney(prepaidTotal)} up front{discount > 0 ? ` · save ${discount}%` : ''}</SaveButton>
+                      </form>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </section>
       ) : null}
 

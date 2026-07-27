@@ -2949,6 +2949,8 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .quote-builder-sub-note { color: #7fe0ef !important; }
 .quote-doc-sub-note { margin: 0.4rem 0 0; font-size: 0.8rem; opacity: 0.6; }
 .quote-doc-subline { display: block; margin-top: 2px; font-size: 0.8rem; font-weight: 400; opacity: 0.62; }
+.client-sub-signup { align-items: center; }
+.client-sub-signup-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
 @media (max-width: 560px) { .quote-builder-subpop-row { grid-template-columns: 1fr; } }
 
 .quote-builder-row input[type='text'],

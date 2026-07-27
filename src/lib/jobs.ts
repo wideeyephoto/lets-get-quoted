@@ -27,6 +27,9 @@ export type QuoteItem = {
   // Optional: with a term set, the client may prepay the whole term up front
   // for this % discount (e.g. 10). 0/undefined = no pay-in-full offer.
   prepayDiscountPercent?: number;
+  // Subscriptions only: true once the client has signed up (per-cycle or
+  // prepaid) so the signup prompt stops offering it.
+  signedUp?: boolean;
 };
 
 export type Job = {
@@ -360,7 +363,7 @@ export function parseQuoteItems(value: unknown): QuoteItem[] {
       // Base + subscription rows are always "on"; an add-on counts only when selected.
       selected: kind === 'addon' ? record.selected === true : true,
       recommended: kind === 'addon' && record.recommended === true,
-      ...(kind === 'subscription' ? { frequency, termCycles, prepayDiscountPercent } : {}),
+      ...(kind === 'subscription' ? { frequency, termCycles, prepayDiscountPercent, signedUp: record.signedUp === true } : {}),
     });
   }
   return items;

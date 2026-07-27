@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requestDifferentClientJobScheduleOptions, selectClientJobScheduleOption } from '@/lib/scheduling';
 import { approveClientJobQuote } from '@/lib/job-feed';
+import { startSubscriptionSignup, type SubscriptionSignupMode } from '@/lib/subscription-signup';
 
 function optionalText(value: FormDataEntryValue | null): string | null {
   const text = (value ?? '').toString().trim();
@@ -23,6 +24,15 @@ export async function requestDifferentClientJobScheduleOptionsAction(token: stri
   await requestDifferentClientJobScheduleOptions(token, optionalText(formData.get('notes')));
   revalidatePath(`/client/jobs/${token}`);
   redirect(`/client/jobs/${token}?schedule-requested=1`);
+}
+
+export async function startSubscriptionAction(token: string, formData: FormData) {
+  const itemId = (formData.get('itemId') ?? '').toString();
+  if (!itemId) throw new Error('Missing plan.');
+  const mode: SubscriptionSignupMode = formData.get('mode') === 'prepay' ? 'prepay' : 'cycle';
+  const { redirectUrl } = await startSubscriptionSignup(token, itemId, mode);
+  revalidatePath(`/client/jobs/${token}`);
+  redirect(redirectUrl);
 }
 
 export async function approveClientJobQuoteAction(token: string, formData: FormData) {
