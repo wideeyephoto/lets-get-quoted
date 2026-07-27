@@ -66,7 +66,7 @@ const THEME_DEMOS: Record<string, ThemeDemo> = {
   },
   // professional = Guild (refined) → lawn care & landscaping
   professional: {
-    company: 'Emerald Edge Lawn & Landscape',
+    company: 'Emerald Edge Landscape',
     city: 'Oakdale',
     accent: '#2f9e5c',
     eyebrow: 'Lawn & landscape',
