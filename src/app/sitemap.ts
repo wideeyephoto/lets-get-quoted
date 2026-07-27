@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next';
 import { createAdminClient } from '@/lib/auth';
 import type { Site } from '@/lib/sites';
 import { isSiteSeoReady } from '@/lib/seo/site-seo';
+import { TRADES } from '@/lib/trades';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +16,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticPages: MetadataRoute.Sitemap = [
     { url: appUrl, changeFrequency: 'monthly', priority: 1 },
+    { url: `${appUrl}/features`, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${appUrl}/pricing`, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${appUrl}/faq`, changeFrequency: 'monthly', priority: 0.6 },
+    ...TRADES.map((trade) => ({
+      url: `${appUrl}/for/${trade.slug}`,
+      changeFrequency: 'monthly' as const,
+      priority: 0.7,
+    })),
     { url: `${appUrl}/privacy`, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${appUrl}/sms-terms`, changeFrequency: 'yearly', priority: 0.3 },
   ];

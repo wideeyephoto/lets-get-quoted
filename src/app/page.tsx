@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import { FAVORITE_FEATURES, FEATURE_COUNT } from '@/lib/features';
+import { TRADES } from '@/lib/trades';
 import TemplateSlider from '@/components/template-slider';
 
 // Homepage showcases a curated set of 3 flagship templates in a slider —
@@ -479,7 +480,7 @@ export default function HomePage() {
         <p className="pricing-footnote">Platform fee only. Standard Stripe processing (about 2.9% + 30&cent; per card charge) applies separately.</p>
         <div className="mid-cta">
           <Link href="/login" className="btn primary">Create Free Account</Link>
-          <Link href="/demo" className="btn secondary">See your fee tier in the live demo</Link>
+          <Link href="/pricing" className="btn secondary">See full pricing &amp; fee calculator &rarr;</Link>
         </div>
       </section>
 
@@ -494,6 +495,15 @@ export default function HomePage() {
               <span className="trust-badge-icon">{badge.icon}</span>
               <span>{badge.label}</span>
             </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="trade-links" aria-label="Built for your trade">
+        <p className="trade-links-head">Built for your trade</p>
+        <div className="trade-links-row">
+          {TRADES.map((trade) => (
+            <Link key={trade.slug} href={`/for/${trade.slug}`}>{trade.name}</Link>
           ))}
         </div>
       </section>
@@ -513,7 +523,7 @@ export default function HomePage() {
 
       <footer className="marketing-footer">
         <span>© 2026 Let&apos;s Get Quoted</span>
-        <nav aria-label="Legal"><Link href="/features">Features</Link><Link href="/privacy">Privacy Policy</Link><Link href="/sms-terms">SMS Terms</Link></nav>
+        <nav aria-label="Legal"><Link href="/features">Features</Link><Link href="/pricing">Pricing</Link><Link href="/faq">FAQ</Link><Link href="/privacy">Privacy Policy</Link><Link href="/sms-terms">SMS Terms</Link></nav>
       </footer>
     </main>
   );

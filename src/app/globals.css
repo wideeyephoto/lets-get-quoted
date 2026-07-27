@@ -1668,6 +1668,135 @@ li + li { margin-top: 0.45rem; }
 .feat-copy span { display: block; font-size: 0.85rem; color: var(--muted); margin-top: 0.05rem; }
 
 /* ---------------------------------------------------------------- */
+/* Trade landing pages (/for/[trade]) + FAQ (/faq)                  */
+/* ---------------------------------------------------------------- */
+.trade-hero { max-width: 60rem; }
+.trade-services {
+  list-style: none; margin: 1.4rem 0 0; padding: 0;
+  display: flex; flex-wrap: wrap; gap: 0.5rem;
+}
+.trade-services li {
+  margin: 0;
+  font-size: 0.83rem; font-weight: 600; color: var(--text);
+  padding: 0.38rem 0.78rem; border-radius: 999px;
+  border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03);
+}
+
+/* Homepage internal-linking strip to the trade pages. */
+.trade-links {
+  margin-top: 1.25rem; padding: 1.3rem 1.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.trade-links-head { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase; color: var(--accent-2); margin: 0 0 0.9rem; }
+.trade-links-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.trade-links-row a {
+  font-size: 0.86rem; font-weight: 600; color: var(--muted);
+  padding: 0.42rem 0.85rem; border-radius: 999px;
+  border: 1px solid var(--line); background: rgba(255, 255, 255, 0.02);
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.trade-links-row a:hover { color: var(--text); border-color: rgba(255, 122, 33, 0.4); }
+
+/* FAQ accordion. */
+.faq-list { display: grid; gap: 0.6rem; margin-top: 0.4rem; }
+.faq-item {
+  border: 1px solid var(--line); border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.15rem 1.1rem;
+}
+.faq-item summary {
+  cursor: pointer; list-style: none;
+  padding: 0.95rem 1.6rem 0.95rem 0;
+  font-size: 1.02rem; font-weight: 700; color: var(--text);
+  position: relative;
+}
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary::after {
+  content: "+"; position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+  font-size: 1.3rem; font-weight: 700; color: var(--accent); line-height: 1;
+}
+.faq-item[open] summary::after { content: "\2013"; }
+.faq-item p { margin: 0 0 1rem; color: var(--muted); max-width: 70ch; }
+
+/* ---------------------------------------------------------------- */
+/* /pricing: fee calculator + included list                         */
+/* ---------------------------------------------------------------- */
+.calc {
+  margin-top: 1.4rem; padding: 1.5rem;
+  border: 1px solid var(--line); border-radius: 24px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.calc-field { display: grid; gap: 0.35rem; }
+.calc-label { font-size: 0.95rem; font-weight: 600; color: var(--text); }
+.calc-value {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 2rem; font-weight: 800; color: var(--accent-2); letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.calc-field input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 8px; margin: 0.5rem 0 0.2rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  cursor: pointer;
+}
+.calc-field input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: #fff; border: 3px solid var(--accent);
+  box-shadow: 0 4px 12px rgba(255, 122, 33, 0.5);
+}
+.calc-field input[type="range"]::-moz-range-thumb {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: #fff; border: 3px solid var(--accent);
+  box-shadow: 0 4px 12px rgba(255, 122, 33, 0.5);
+}
+.calc-range-ends { display: flex; justify-content: space-between; font-size: 0.76rem; color: var(--faint, rgba(200,208,220,0.55)); }
+
+.calc-readout {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.8rem;
+  margin: 1.4rem 0;
+}
+.calc-stat {
+  display: flex; flex-direction: column; gap: 0.15rem;
+  padding: 1rem 1.1rem; border-radius: 16px;
+  border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03);
+}
+.calc-stat.accent { border-color: rgba(255, 122, 33, 0.42); background: rgba(255, 122, 33, 0.08); }
+.calc-stat-label { font-size: 0.8rem; color: rgba(200, 208, 220, 0.7); font-weight: 600; }
+.calc-stat strong {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 1.7rem; font-weight: 800; letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.calc-stat.accent strong { color: var(--accent); }
+.calc-stat-note { font-size: 0.76rem; color: rgba(200, 208, 220, 0.55); }
+
+.calc-compare { border-top: 1px solid var(--line); padding-top: 1.2rem; }
+.calc-compare-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem; }
+.calc-inline { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.5rem; font-size: 0.92rem; color: var(--text); }
+.calc-inline-input {
+  display: inline-flex; align-items: center; gap: 0.15rem;
+  border: 1px solid var(--line); border-radius: 10px; padding: 0.3rem 0.6rem;
+  background: rgba(255, 255, 255, 0.03); font-weight: 700;
+}
+.calc-inline-input input {
+  width: 4.5rem; border: 0; background: transparent; color: inherit;
+  font-size: 1rem; font-weight: 800; padding: 0;
+}
+.calc-inline-input input:focus-visible { outline: none; }
+.calc-compare-out { font-size: 0.92rem; color: var(--muted); }
+.calc-compare-out strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.calc-honest { margin: 0.9rem 0 0; font-size: 0.83rem; color: rgba(200, 208, 220, 0.62); max-width: 74ch; line-height: 1.6; }
+
+.pricing-included {
+  list-style: none; margin: 1.4rem 0 0; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.7rem 1.4rem;
+}
+.pricing-included li { display: grid; grid-template-columns: 1.3rem 1fr; gap: 0.55rem; align-items: start; font-size: 0.95rem; color: var(--text); }
+
+/* ---------------------------------------------------------------- */
 /* Homepage: trust badges                                            */
 /* ---------------------------------------------------------------- */
 .trust-badge-row { display: flex; flex-wrap: wrap; gap: 0.85rem; margin-top: 1.6rem; }
