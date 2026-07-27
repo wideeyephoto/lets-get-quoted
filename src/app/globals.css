@@ -282,6 +282,37 @@ h3 {
    full-width dashboard rail controls. */
 .sidenav-marketing-cta { width: 100%; justify-content: center; text-align: center; }
 
+/* Marketing rail: openly-accessible "try it" entries sit above the locked app
+   nav — accented so they read as the clear, unlocked way in. */
+.sidenav-try { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.7rem; }
+.sidenav-try-link {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 122, 33, 0.38);
+  background: rgba(255, 122, 33, 0.09);
+  color: rgba(247, 245, 239, 0.95);
+  font-weight: 700;
+  font-size: 0.88rem;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.sidenav-try-link:hover { background: rgba(255, 122, 33, 0.16); border-color: rgba(255, 122, 33, 0.55); }
+.sidenav-try-link.active { background: rgba(255, 122, 33, 0.2); }
+.sidenav-try-ic { flex: none; width: 1.05rem; text-align: center; color: var(--accent); font-size: 0.85rem; }
+.sidenav-locknote { margin: 0 0 0.1rem; padding: 0 0.15rem; font-size: 0.72rem; line-height: 1.35; color: rgba(200, 210, 224, 0.6); }
+
+/* Locked (logged-out) marketing rail: make "gated" unmistakable — an accent
+   padlock on every row, a brighter lock header, and rows that read as disabled
+   without hiding what's on offer. */
+.sidenav-lockhdr { display: flex; align-items: center; gap: 0.35rem; color: rgba(255, 122, 33, 0.9) !important; }
+.marketing-locked .sidenav-link.preview { color: rgba(247, 245, 239, 0.5); cursor: pointer; }
+.marketing-locked .sidenav-link.preview .sidenav-ic { color: rgba(200, 212, 228, 0.34); }
+.marketing-locked .sidenav-link.preview .sidenav-lock { opacity: 0.95; stroke: var(--accent); width: 0.95rem; height: 0.95rem; }
+.marketing-locked .sidenav-link.preview:hover { background: rgba(255, 122, 33, 0.08); color: rgba(247, 245, 239, 0.82); }
+.marketing-locked .sidenav-link.preview:hover .sidenav-lock { opacity: 1; }
+
 /* Business identity + primary "New job" action, directly under the wordmark. */
 .sidenav-lead { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.8rem; }
 .sidenav-bizname {

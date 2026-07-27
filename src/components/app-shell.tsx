@@ -410,25 +410,46 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   }
 
   // Marketing / public site (homepage, legal, login) — same VERTICAL left rail
-  // as the backend so the brand reads consistently, but with public content:
-  // the orange-boxed wordmark up top, a short marketing nav, and a "Create Free
-  // Account" CTA pinned at the foot (a signed-in visitor gets a Dashboard link
-  // instead of the full app nav). Homeowner transactional pages keep the top bar.
+  // as the backend so the brand reads consistently. Two things are openly
+  // accessible up top (Explore the demo, View templates); below them the FULL app
+  // nav is shown but LOCKED — dimmed with a padlock, linking to sign-up — so a
+  // prospect can see everything the app offers and that it's gated behind a free
+  // account. A signed-in visitor sees the same nav unlocked (real dashboard
+  // links). Homeowner transactional pages keep the minimal top bar.
   if (!isTransactional) {
-    const marketingLinks = isLoggedIn
-      ? [{ href: '/dashboard', label: 'Dashboard' }]
-      : [
-          { href: '/', label: 'Home' },
-          { href: '/demo', label: 'Explore the demo' },
-          { href: '/login', label: 'Sign in' },
-        ];
+    const byHref = new Map(baseNavItems.map((item) => [item.href, item] as const));
+    // A row of the full app nav: a real dashboard link when signed in, otherwise
+    // a dimmed, padlocked teaser that routes to sign-up.
+    const renderAppLink = (href: string, extraClass = '') => {
+      const item = byHref.get(href);
+      if (!item) return null;
+      const cls = `sidenav-link${extraClass ? ` ${extraClass}` : ''}`;
+      if (isLoggedIn) {
+        const active = href === '/dashboard' ? pathname === href : pathname.startsWith(href);
+        return (
+          <Link href={href} key={href} className={`${cls}${active ? ' active' : ''}`} title={item.hint}>
+            <NavIcon href={href} />
+            <span>{item.label}</span>
+          </Link>
+        );
+      }
+      return (
+        <Link href="/login" key={href} className={`${cls} preview`} title="Create a free account to unlock this">
+          <NavIcon href={href} />
+          <span>{item.label}</span>
+          <svg className="sidenav-lock" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="4.8" y="10.5" width="14.4" height="9" rx="2" />
+            <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
+          </svg>
+        </Link>
+      );
+    };
+    const brand = <span className="sidenav-wordmark">Let&apos;s Get <span>Quoted</span></span>;
 
     return (
       <div className="chrome-shell chrome-shell-sidenav">
         <header className="sidenav-mobilebar">
-          <Link href={brandHref} className="sidenav-brand" aria-label="Let&apos;s Get Quoted home">
-            <span className="sidenav-wordmark">Let&apos;s Get <span>Quoted</span></span>
-          </Link>
+          <Link href={brandHref} className="sidenav-brand" aria-label="Let&apos;s Get Quoted home">{brand}</Link>
           <button
             type="button"
             className="nav-toggle"
@@ -442,29 +463,55 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
 
         {isNavOpen ? <div className="sidenav-scrim" onClick={closeNav} aria-hidden="true" /> : null}
 
-        <aside id="primary-nav" className={`sidenav${isNavOpen ? ' open' : ''}`} aria-label="Primary">
-          <Link href={brandHref} className="sidenav-brand" aria-label="Let&apos;s Get Quoted home">
-            <span className="sidenav-wordmark">Let&apos;s Get <span>Quoted</span></span>
-          </Link>
+        <aside id="primary-nav" className={`sidenav${isNavOpen ? ' open' : ''}${!isLoggedIn ? ' marketing-locked' : ''}`} aria-label="Primary">
+          <Link href={brandHref} className="sidenav-brand" aria-label="Let&apos;s Get Quoted home">{brand}</Link>
 
-          <nav className="sidenav-nav" aria-label="Site">
-            {marketingLinks.map((item) => {
-              const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
-              return (
-                <Link href={item.href} key={item.href} className={`sidenav-link${active ? ' active' : ''}`}>
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
+          {/* Openly accessible — try before you sign up. */}
+          <div className="sidenav-try">
+            <Link href="/demo" className={`sidenav-try-link${pathname.startsWith('/demo') ? ' active' : ''}`}>
+              <span className="sidenav-try-ic" aria-hidden="true">▶</span>
+              <span>Explore the demo</span>
+            </Link>
+            <Link href="/demo/sites" className="sidenav-try-link">
+              <span className="sidenav-try-ic" aria-hidden="true">✦</span>
+              <span>View templates</span>
+            </Link>
+          </div>
+
+          {/* The full app — grouped exactly like the backend rail (Work / Team /
+              Money / Grow), locked with a padlock until sign-in. */}
+          <nav className="sidenav-nav" aria-label={isLoggedIn ? 'Your workspace' : 'The full app'}>
+            {isLoggedIn ? (
+              <p className="sidenav-glabel">Your workspace</p>
+            ) : (
+              <p className="sidenav-glabel sidenav-lockhdr"><span aria-hidden="true">🔒</span> Locked — sign in to unlock</p>
+            )}
+            {renderAppLink('/dashboard', 'sidenav-top')}
+            {NAV_GROUPS.map((group) => (
+              <div className="sidenav-group" key={group.label}>
+                <p className="sidenav-glabel">{group.label}</p>
+                {group.hrefs.map((href) => renderAppLink(href))}
+              </div>
+            ))}
+            <div className="sidenav-group">
+              <p className="sidenav-glabel">Site</p>
+              {renderAppLink('/dashboard/sites')}
+            </div>
           </nav>
 
-          {!isLoggedIn && !pathname.startsWith('/login') ? (
-            <div className="sidenav-foot">
-              <Link href={primaryAction.href} className="btn primary sidenav-marketing-cta">
-                {primaryAction.label}
-              </Link>
-            </div>
-          ) : null}
+          <div className="sidenav-foot">
+            <div className="sidenav-fcard">{renderAppLink('/dashboard/settings')}</div>
+            {!isLoggedIn ? (
+              <>
+                <p className="sidenav-locknote"><span aria-hidden="true">🔒</span> Free to unlock — no card required.</p>
+                {!pathname.startsWith('/login') ? (
+                  <Link href={primaryAction.href} className="btn primary sidenav-marketing-cta">
+                    {primaryAction.label}
+                  </Link>
+                ) : null}
+              </>
+            ) : null}
+          </div>
         </aside>
 
         <div className="app-main app-main-sidenav">{children}</div>
