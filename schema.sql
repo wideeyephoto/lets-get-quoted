@@ -805,6 +805,9 @@ create table if not exists recurring_plans (
   updated_at                timestamptz not null default now()
 );
 create index if not exists recurring_plans_due_idx on recurring_plans (account_id, active, next_run_date);
+-- Optional fixed term: the plan stops after this many visits (decremented on
+-- each spawn; deactivated at 0). Null = ongoing.
+alter table recurring_plans add column if not exists remaining_cycles int;
 
 -- ----------------------------------------------------------------------------
 -- SERVICES  — the account's price book: reusable named services + prices that

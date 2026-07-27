@@ -27,6 +27,8 @@ export type RecurringPlan = {
   next_run_date: string;
   active: boolean;
   auto_charge: boolean;
+  // Remaining visits before the plan ends; null = ongoing (no term).
+  remaining_cycles: number | null;
   stripe_customer_id: string | null;
   stripe_payment_method_id: string | null;
   card_brand: string | null;
@@ -102,6 +104,8 @@ export type RecurringPlanInput = {
   frequency: RecurringFrequency;
   firstVisitDate: string;
   autoCharge: boolean;
+  // Optional term: the plan stops after this many visits. Omit/0 = ongoing.
+  termCycles?: number | null;
 };
 
 export async function createRecurringPlan(
@@ -132,6 +136,7 @@ export async function createRecurringPlan(
       frequency: input.frequency,
       next_run_date: input.firstVisitDate,
       auto_charge: input.autoCharge,
+      remaining_cycles: input.termCycles && input.termCycles > 0 ? Math.floor(input.termCycles) : null,
     })
     .select('*')
     .single();
@@ -325,9 +330,15 @@ async function spawnPlanOccurrence(admin: ReturnType<typeof createAdminClient>, 
   // payment rows for the same visit (the Stripe idempotency key dedupes the
   // charge, but not the DB rows / revenue counting).
   const nowIso = new Date().toISOString();
+  // Honor a fixed term: this spawn consumes one cycle. When it's the last one,
+  // deactivate in the same atomic claim so no further visits are generated.
+  const termLeft = plan.remaining_cycles;
+  const termFields = typeof termLeft === 'number'
+    ? { remaining_cycles: Math.max(0, termLeft - 1), active: termLeft - 1 > 0 }
+    : {};
   const { data: claimed } = await admin
     .from('recurring_plans')
-    .update({ next_run_date: advanceDate(dateKey, plan.frequency), last_run_at: nowIso, updated_at: nowIso })
+    .update({ next_run_date: advanceDate(dateKey, plan.frequency), last_run_at: nowIso, updated_at: nowIso, ...termFields })
     .eq('id', plan.id)
     .eq('next_run_date', dateKey)
     .select('id')
