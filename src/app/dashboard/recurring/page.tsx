@@ -39,7 +39,13 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
   // "Run next visit now" passes the created job id so we can link straight to it.
   const flashJobId = flash && searchParams.flash?.startsWith('ran-') ? searchParams.job ?? null : null;
 
-  const activeCount = plans.filter((plan) => plan.active).length;
+  const activePlans = plans.filter((plan) => plan.active);
+  const activeCount = activePlans.length;
+  // Normalize every active plan to a monthly figure so the owner sees the real
+  // recurring revenue this book of plans throws off — weekly counts ~4.33×/mo.
+  const MONTHLY_MULTIPLIER: Record<string, number> = { weekly: 52 / 12, biweekly: 26 / 12, monthly: 1 };
+  const monthlyRecurring = activePlans.reduce((sum, plan) => sum + plan.amount * (MONTHLY_MULTIPLIER[plan.frequency] ?? 1), 0);
+  const autoBilledCount = activePlans.filter((plan) => plan.auto_charge && plan.card_last4).length;
 
   return (
     <main className="wide-shell workspace-shell">
@@ -52,6 +58,23 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
             automatically. Add a saved card and every visit is charged for you, hands-off.
           </p>
         </div>
+        {plans.length > 0 ? (
+          <div className="workspace-metric-grid">
+            <article className="workspace-metric-card accent">
+              <span className="workspace-metric-label">Est. monthly recurring</span>
+              <strong className="workspace-metric-value">{formatMoney(monthlyRecurring)}</strong>
+              <p className="workspace-metric-note">Across {activeCount} active plan{activeCount === 1 ? '' : 's'}, normalized to a month.</p>
+            </article>
+            <article className="workspace-metric-card">
+              <span className="workspace-metric-label">Active plans</span>
+              <strong className="workspace-metric-value">{activeCount}</strong>
+            </article>
+            <article className="workspace-metric-card">
+              <span className="workspace-metric-label">Auto-billed</span>
+              <strong className="workspace-metric-value">{autoBilledCount}</strong>
+            </article>
+          </div>
+        ) : null}
       </section>
 
       {flash ? (
@@ -87,6 +110,7 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
                       {plan.client_name}
                       {plan.amount > 0 ? ` · ${formatMoney(plan.amount)}/visit` : ''}
                       {plan.active ? ` · Next ${formatDateKey(plan.next_run_date)}` : ''}
+                      {plan.active && plan.remaining_cycles != null ? ` · ${plan.remaining_cycles} visit${plan.remaining_cycles === 1 ? '' : 's'} left` : ''}
                     </p>
                     <div className="recurring-billing">
                       {plan.auto_charge ? (

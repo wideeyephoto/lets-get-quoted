@@ -3767,6 +3767,71 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 }
 
 /* ---- Clients (CRM) list ---- */
+.client-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+
+.client-search-bar input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  font-size: 0.95rem;
+}
+
+.client-search-bar input::placeholder { color: rgba(247, 245, 239, 0.42); }
+
+.client-search-bar input:focus-visible {
+  outline: none;
+  border-color: rgba(255, 138, 61, 0.5);
+  background: rgba(255, 138, 61, 0.05);
+}
+
+.client-search-count {
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(247, 245, 239, 0.6);
+  white-space: nowrap;
+}
+
+.booking-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.booking-link-url {
+  flex: 1 1 260px;
+  min-width: 0;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.booking-link-url:focus-visible {
+  outline: none;
+  border-color: rgba(255, 138, 61, 0.5);
+  background: rgba(255, 138, 61, 0.05);
+}
+
+.booking-link-note {
+  margin: 0.75rem 0 0;
+  font-size: 0.85rem;
+  color: rgba(247, 245, 239, 0.6);
+}
+
 .client-list {
   display: flex;
   flex-direction: column;

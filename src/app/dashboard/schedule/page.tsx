@@ -10,7 +10,9 @@ import TimeSlotSelect from '@/components/time-slot-select';
 import { scheduleJobAction, sendClientScheduleOptionsAction, updateJobCrewAction } from '../jobs/actions';
 import { updateCrewAction } from '../crew/actions';
 import { listActiveScheduleRequests } from '@/lib/scheduling';
+import { getAvailableBookingDays } from '@/lib/booking';
 import ScheduleCalendar from './schedule-calendar';
+import BookingLinkCard from './BookingLinkCard';
 import ClientScheduleOptionsCalendar from './client-schedule-options-calendar';
 import JobDragHandle from './JobDragHandle';
 import ScheduleDragProvider from './ScheduleDragProvider';
@@ -105,11 +107,20 @@ export default async function SchedulePage({
   searchParams: { month?: string };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
-  const [{ data: account }, jobs] = await Promise.all([
+  const [{ data: account }, jobs, { data: site }] = await Promise.all([
     supabase.from('accounts').select('schedule_day_hours').eq('id', accountId).single(),
     listJobs(supabase, accountId),
+    supabase.from('sites').select('published, subdomain').eq('account_id', accountId).maybeSingle(),
   ]);
   const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
+
+  // Self-serve booking link — the same public page customers use, built from the
+  // site's subdomain. Only offered when the site is live with a subdomain.
+  const appOrigin = (process.env.NEXT_PUBLIC_APP_URL || `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'}`).replace(/\/$/, '');
+  const bookingSubdomain = site?.published ? site?.subdomain ?? null : null;
+  const bookingUrl = bookingSubdomain ? `${appOrigin}/book/${bookingSubdomain}` : null;
+  const bookingDays = bookingUrl ? await getAvailableBookingDays(supabase, accountId, scheduleDayHours) : [];
+  const openWindowCount = bookingDays.reduce((sum, day) => sum + day.slots.length, 0);
 
   const activeJobs = jobs.filter((job) => job.status !== 'archived');
   const scheduledJobs = activeJobs.filter((job) => job.scheduled_for);
@@ -343,6 +354,13 @@ export default async function SchedulePage({
           assignmentsByJob={assignmentsByJob}
         />
       </section>
+
+      <BookingLinkCard
+        bookingUrl={bookingUrl}
+        sitePublished={site?.published ?? false}
+        openWindowCount={openWindowCount}
+        openDayCount={bookingDays.length}
+      />
 
       {unscheduledJobs.length > 0 ? (
         <section className="panel workspace-section-card" id="unscheduled-jobs">

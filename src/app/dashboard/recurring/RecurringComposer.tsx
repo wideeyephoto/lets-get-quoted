@@ -43,7 +43,8 @@ export default function RecurringComposer({ today, services = [] }: { today: str
               <option value="">Pick from price book…</option>
               {services.map((service) => (
                 <option key={service.id} value={service.id}>
-                  {service.name} — ${service.unitPrice.toLocaleString('en-US')}
+                  {service.name}
+                  {service.unitPrice > 0 ? ` — $${Math.round(service.unitPrice).toLocaleString('en-US')}` : ''}
                 </option>
               ))}
             </select>
@@ -70,6 +71,7 @@ export default function RecurringComposer({ today, services = [] }: { today: str
           <div className="field">
             <label htmlFor="rp-amount">Price per visit</label>
             <div className="currency-input">
+              <span aria-hidden="true">$</span>
               <input id="rp-amount" name="amount" type="number" min="0" step="0.01" inputMode="decimal" placeholder="0.00" />
             </div>
           </div>

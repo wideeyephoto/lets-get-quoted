@@ -3,6 +3,7 @@ import { requireOwnerContext } from '@/lib/auth';
 import { listClientsWithStats } from '@/lib/clients';
 import { formatMoney } from '@/lib/jobs';
 import { formatPhoneDashes } from '@/lib/phone';
+import ClientsSearchList, { type ClientSearchRow } from './ClientsSearchList';
 
 function formatDate(value: string | null): string {
   if (!value) return '—';
@@ -13,6 +14,17 @@ export default async function ClientsPage() {
   const { supabase, accountId } = await requireOwnerContext();
   const clients = await listClientsWithStats(supabase, accountId);
   const repeatCount = clients.filter((client) => client.jobCount > 1).length;
+
+  const searchRows: ClientSearchRow[] = clients.map((client) => ({
+    id: client.id,
+    name: client.name,
+    isRepeat: client.jobCount > 1,
+    contactLine: [client.phone ? formatPhoneDashes(client.phone) : null, client.email].filter(Boolean).join(' · ') || 'No contact on file',
+    jobsLabel: `${client.jobCount} job${client.jobCount === 1 ? '' : 's'}`,
+    totalLabel: formatMoney(client.totalValue),
+    lastLabel: formatDate(client.lastJobAt),
+    search: [client.name, client.phone, client.email, client.address].filter(Boolean).join(' ').toLowerCase(),
+  }));
 
   return (
     <main className="wide-shell workspace-shell">
@@ -40,26 +52,7 @@ export default async function ClientsPage() {
         </section>
       ) : (
         <section className="panel workspace-section-card">
-          <div className="client-list">
-            {clients.map((client) => (
-              <Link href={`/dashboard/clients/${client.id}`} className="client-row" key={client.id}>
-                <div className="client-row-main">
-                  <div className="client-row-name">
-                    <strong>{client.name}</strong>
-                    {client.jobCount > 1 ? <span className="client-repeat-badge">Repeat</span> : null}
-                  </div>
-                  <span className="client-row-contact">
-                    {[client.phone ? formatPhoneDashes(client.phone) : null, client.email].filter(Boolean).join(' · ') || 'No contact on file'}
-                  </span>
-                </div>
-                <div className="client-row-stats">
-                  <span><strong>{client.jobCount}</strong> job{client.jobCount === 1 ? '' : 's'}</span>
-                  <span><strong>{formatMoney(client.totalValue)}</strong> total</span>
-                  <span className="client-row-last">Last: {formatDate(client.lastJobAt)}</span>
-                </div>
-              </Link>
-            ))}
-          </div>
+          <ClientsSearchList clients={searchRows} />
         </section>
       )}
     </main>
