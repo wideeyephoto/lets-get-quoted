@@ -1,15 +1,34 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import styles from '../leads.module.css';
 
 type PreviewFrequency = 'weekly' | 'biweekly' | 'monthly';
 type PreviewItem = { id: string; label: string; amount: number; kind: 'base' | 'addon' | 'subscription'; selected: boolean; recommended: boolean; frequency: PreviewFrequency; termCycles: number; prepayDiscountPercent: number };
+type PreviewSchedule = { date: string; time: string | null };
+type PreviewDeposit =
+  | { terms: 'deposit'; value: number; unit: 'percent' | 'fixed'; timing: 'before_schedule' | 'before_work' }
+  | { terms: 'plan'; pct: number; count: number; freq: PreviewFrequency };
+type PreviewHours = { show: boolean; value: number };
 
 const FREQ_SUFFIX: Record<PreviewFrequency, string> = { weekly: '/wk', biweekly: '/2wk', monthly: '/mo' };
+const FREQ_WORD: Record<PreviewFrequency, string> = { weekly: 'weekly', biweekly: 'every 2 weeks', monthly: 'monthly' };
 
 function formatUsd(amount: number): string {
   return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+}
+
+function fmtDate(dateKey: string): string {
+  return new Date(`${dateKey}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+function fmtTime(time: string | null): string {
+  if (!time) return 'Flexible time';
+  const [h, m] = time.split(':').map(Number);
+  if (!Number.isFinite(h)) return 'Flexible time';
+  const d = new Date();
+  d.setHours(h, m || 0, 0, 0);
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
 // The term + pay-in-full line shown under a subscription, as the client sees it.
@@ -49,8 +68,58 @@ function readItems(): PreviewItem[] {
   }
 }
 
+// The three optional start-date options the contractor set (hidden inputs the
+// QuoteStartDateCalendar writes). Scoped to the send-quote form so it never
+// picks up a stray field elsewhere on the page.
+function readSchedule(scope: ParentNode): PreviewSchedule[] {
+  const out: PreviewSchedule[] = [];
+  for (let i = 1; i <= 3; i++) {
+    const date = (scope.querySelector(`input[name="quoteScheduleDate${i}"]`) as HTMLInputElement | null)?.value?.trim();
+    const time = (scope.querySelector(`input[name="quoteScheduleTime${i}"]`) as HTMLInputElement | null)?.value?.trim();
+    if (date) out.push({ date, time: time || null });
+  }
+  return out;
+}
+
+function readDeposit(scope: ParentNode): PreviewDeposit | null {
+  const terms = (scope.querySelector('input[name="paymentTerms"]:checked') as HTMLInputElement | null)?.value ?? 'full';
+  if (terms === 'deposit') {
+    const value = Number((scope.querySelector('input[name="depositValue"]') as HTMLInputElement | null)?.value) || 0;
+    if (value <= 0) return null;
+    const unit = (scope.querySelector('select[name="depositUnit"]') as HTMLSelectElement | null)?.value === 'fixed' ? 'fixed' : 'percent';
+    const timing = (scope.querySelector('select[name="depositTiming"]') as HTMLSelectElement | null)?.value === 'before_work' ? 'before_work' : 'before_schedule';
+    return { terms: 'deposit', value, unit, timing };
+  }
+  if (terms === 'plan') {
+    const pct = Math.min(99, Math.max(1, Number((scope.querySelector('input[name="planDepositPercent"]') as HTMLInputElement | null)?.value) || 50));
+    const count = Math.max(1, Number((scope.querySelector('input[name="planInstallments"]') as HTMLInputElement | null)?.value) || 4);
+    const raw = (scope.querySelector('select[name="planFrequency"]') as HTMLSelectElement | null)?.value;
+    const freq: PreviewFrequency = raw === 'weekly' || raw === 'biweekly' ? raw : 'monthly';
+    return { terms: 'plan', pct, count, freq };
+  }
+  return null;
+}
+
+function readHours(scope: ParentNode): PreviewHours {
+  const show = Boolean((scope.querySelector('input[name="showHoursToClient"]') as HTMLInputElement | null)?.checked);
+  const value = Number((scope.querySelector('input[name="estimatedHours"]') as HTMLInputElement | null)?.value) || 0;
+  return { show, value };
+}
+
+// A plain-language line for the payment terms, as the client will read it.
+function describeDeposit(deposit: PreviewDeposit, total: number): string {
+  if (deposit.terms === 'deposit') {
+    const amount = Math.min(deposit.unit === 'percent' ? (total * deposit.value) / 100 : deposit.value, total);
+    const when = deposit.timing === 'before_work' ? 'before work starts' : 'before scheduling';
+    return `Deposit of ${formatUsd(amount)} due ${when}; the balance is billed after.`;
+  }
+  const depositAmount = (total * deposit.pct) / 100;
+  return `Payment plan: ${formatUsd(depositAmount)} (${deposit.pct}%) deposit now, then ${deposit.count} ${FREQ_WORD[deposit.freq]} payment${deposit.count === 1 ? '' : 's'} for the balance. 0% interest.`;
+}
+
 // Shows the contractor exactly what their client sees when the quote lands — the
-// branded approval screen with base line items and optional upsells — reusing
+// branded approval screen with line items, optional upsells, ongoing plans, the
+// payment terms, estimated time (when shown), and the start-date options — reusing
 // the real client quote-document markup/styles so the preview matches production.
 export default function QuotePreviewButton({
   businessName,
@@ -64,11 +133,21 @@ export default function QuotePreviewButton({
   // Live add-on selection so the preview toggles exactly like the client's
   // screen — showing the contractor that clients can add or remove upsells.
   const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [schedule, setSchedule] = useState<PreviewSchedule[]>([]);
+  const [deposit, setDeposit] = useState<PreviewDeposit | null>(null);
+  const [hours, setHours] = useState<PreviewHours>({ show: false, value: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   function openPreview() {
+    // Scope the non-#quoteItems reads to the send-quote form so a duplicate field
+    // name elsewhere on the page (e.g. the edit modal's hours input) can't leak in.
+    const scope: ParentNode = btnRef.current?.closest('form') ?? document;
     const next = readItems();
     setItems(next);
     setSelected(Object.fromEntries(next.filter((item) => item.kind === 'addon').map((item) => [item.id, item.selected])));
+    setSchedule(readSchedule(scope));
+    setDeposit(readDeposit(scope));
+    setHours(readHours(scope));
     setOpen(true);
   }
 
@@ -88,7 +167,7 @@ export default function QuotePreviewButton({
 
   return (
     <>
-      <button type="button" className={`btn ghost ${styles.previewQuoteBtn}`} onClick={openPreview}>
+      <button ref={btnRef} type="button" className={`btn ghost ${styles.previewQuoteBtn}`} onClick={openPreview}>
         <span aria-hidden="true">👁</span> Preview
       </button>
       {open ? (
@@ -120,6 +199,9 @@ export default function QuotePreviewButton({
                           </li>
                         ))}
                       </ul>
+                      {hours.show && hours.value > 0 ? (
+                        <p className="quote-doc-sub-note">Estimated time: {hours.value} {hours.value === 1 ? 'hour' : 'hours'}.</p>
+                      ) : null}
                     </div>
                   ) : null}
                   {addonItems.length > 0 ? (
@@ -167,13 +249,32 @@ export default function QuotePreviewButton({
                     <span>Your total{subscriptionItems.length > 0 ? ' today' : ''}</span>
                     <strong>{formatUsd(total)}</strong>
                   </div>
+                  {deposit ? (
+                    <p className="quote-doc-sub-note quote-doc-deposit-note">{describeDeposit(deposit, total)}</p>
+                  ) : null}
                   <button type="button" className="btn primary" disabled>Approve quote</button>
+                  {schedule.length > 0 ? (
+                    <div className="quote-doc-group quote-doc-schedule">
+                      <p className="quote-doc-group-label">Choose your start date</p>
+                      <ul className="quote-doc-list">
+                        {schedule.map((option, index) => (
+                          <li className="quote-doc-line" key={`${option.date}-${index}`}>
+                            <span className="quote-doc-line-label">Option {index + 1} — {fmtDate(option.date)}</span>
+                            <span className="quote-doc-line-amount">{fmtTime(option.time)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                 </div>
                 {addonItems.length > 0 ? (
                   <p className={styles.quotePreviewNote}>Add-ons are interactive here, exactly like your client sees — toggle one to watch the total update.</p>
                 ) : null}
                 {subscriptionItems.length > 0 ? (
                   <p className={styles.quotePreviewNote}>Recurring plans bill separately on their own schedule — the client signs up when they approve.</p>
+                ) : null}
+                {schedule.length > 0 ? (
+                  <p className={styles.quotePreviewNote}>The client taps a start date to approve and book in one step.</p>
                 ) : null}
                 </>
               )}

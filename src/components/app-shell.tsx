@@ -85,6 +85,9 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [newestQuoteRequestCreatedAt, setNewestQuoteRequestCreatedAt] = useState<string | null>(null);
   const [dismissedQuoteRequestId, setDismissedQuoteRequestId] = useState<string | null>(null);
   const isDashboard = pathname.startsWith('/dashboard');
+  // Homeowner-facing transactional pages (paying, approving a quote, an invoice)
+  // stay on the minimal top bar — a big marketing rail there would be off-key.
+  const isTransactional = pathname.startsWith('/pay') || pathname.startsWith('/client') || pathname.startsWith('/invoice');
   const primaryAction = getPrimaryAction();
   // The bare host for the live badge — "yoursite.letsgetquoted.com", no scheme.
   const siteHost = siteUrl ? siteUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '') : null;
@@ -104,15 +107,14 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     pathname.startsWith('/field') ||
     pathname === '/site-preview-frame' ||
     pathname === '/dashboard/sites/preview';
-  // Signed-in contractors get the full app nav (minus "Home", which isn't
-  // relevant once inside the app, and "Website", which is promoted to
-  // its own always-visible badge below instead of a plain link). Logged-out
-  // visitors — homeowners paying an invoice, or a prospect on the marketing
-  // site — have no use for internal app links like Dashboard/Leads/Jobs that
-  // just dead-end at a login wall, so they see just a "Create account" CTA
-  // (the same magic-link flow handles both sign-in and account creation).
-  const navItems = isLoggedIn
-    ? baseNavItems.filter((item) => item.href !== '/' && item.href !== '/dashboard/sites')
+  // The signed-in app nav lives in the dashboard's left sidebar (rendered
+  // below), so it never belongs in this top bar. On marketing pages the top bar
+  // stays clean: a signed-in visitor gets a single "Dashboard" link back into
+  // the app, and a logged-out prospect (or a homeowner paying an invoice) gets
+  // just a "Sign in" link — never the internal Leads/Jobs/Clients/… links,
+  // which would only dead-end at a login wall and clutter the landing page.
+  const navItems: { href: string; label: string; hint?: string }[] = isLoggedIn
+    ? [{ href: '/dashboard', label: 'Dashboard' }]
     : isStandaloneSite || pathname.startsWith('/demo')
       ? []
       : [{ href: '/login', label: 'Sign in' }];
@@ -407,6 +409,69 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     );
   }
 
+  // Marketing / public site (homepage, legal, login) — same VERTICAL left rail
+  // as the backend so the brand reads consistently, but with public content:
+  // the orange-boxed wordmark up top, a short marketing nav, and a "Create Free
+  // Account" CTA pinned at the foot (a signed-in visitor gets a Dashboard link
+  // instead of the full app nav). Homeowner transactional pages keep the top bar.
+  if (!isTransactional) {
+    const marketingLinks = isLoggedIn
+      ? [{ href: '/dashboard', label: 'Dashboard' }]
+      : [
+          { href: '/', label: 'Home' },
+          { href: '/demo', label: 'Explore the demo' },
+          { href: '/login', label: 'Sign in' },
+        ];
+
+    return (
+      <div className="chrome-shell chrome-shell-sidenav">
+        <header className="sidenav-mobilebar">
+          <Link href={brandHref} className="sidenav-brand" aria-label="Let&apos;s Get Quoted home">
+            <span className="sidenav-wordmark">Let&apos;s Get <span>Quoted</span></span>
+          </Link>
+          <button
+            type="button"
+            className="nav-toggle"
+            onClick={toggleNav}
+            aria-expanded={isNavOpen}
+            aria-controls="primary-nav"
+          >
+            Menu
+          </button>
+        </header>
+
+        {isNavOpen ? <div className="sidenav-scrim" onClick={closeNav} aria-hidden="true" /> : null}
+
+        <aside id="primary-nav" className={`sidenav${isNavOpen ? ' open' : ''}`} aria-label="Primary">
+          <Link href={brandHref} className="sidenav-brand" aria-label="Let&apos;s Get Quoted home">
+            <span className="sidenav-wordmark">Let&apos;s Get <span>Quoted</span></span>
+          </Link>
+
+          <nav className="sidenav-nav" aria-label="Site">
+            {marketingLinks.map((item) => {
+              const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+              return (
+                <Link href={item.href} key={item.href} className={`sidenav-link${active ? ' active' : ''}`}>
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          {!isLoggedIn && !pathname.startsWith('/login') ? (
+            <div className="sidenav-foot">
+              <Link href={primaryAction.href} className="btn primary sidenav-marketing-cta">
+                {primaryAction.label}
+              </Link>
+            </div>
+          ) : null}
+        </aside>
+
+        <div className="app-main app-main-sidenav">{children}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="chrome-shell">
       <header className="topbar">
@@ -495,7 +560,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               })}
             </nav>
 
-            {!isDashboard && !pathname.startsWith('/login') ? (
+            {!isDashboard && !pathname.startsWith('/login') && !isLoggedIn ? (
               <Link href={primaryAction.href} className="btn primary topbar-cta">
                 {primaryAction.label}
               </Link>

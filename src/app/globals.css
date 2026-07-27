@@ -278,6 +278,10 @@ h3 {
 }
 .sidenav-wordmark span { color: var(--accent); }
 
+/* Marketing rail: the "Create Free Account" CTA fills the foot, matching the
+   full-width dashboard rail controls. */
+.sidenav-marketing-cta { width: 100%; justify-content: center; text-align: center; }
+
 /* Business identity + primary "New job" action, directly under the wordmark. */
 .sidenav-lead { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.8rem; }
 .sidenav-bizname {
@@ -2948,6 +2952,8 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .quote-builder-subcaption { grid-column: 1 / -1; margin: 0.15rem 0 0; font-size: 0.72rem; font-weight: 600; color: #7fe0ef; }
 .quote-builder-sub-note { color: #7fe0ef !important; }
 .quote-doc-sub-note { margin: 0.4rem 0 0; font-size: 0.8rem; opacity: 0.6; }
+.quote-doc-deposit-note { text-align: right; opacity: 0.72; }
+.quote-doc-schedule { margin-top: 0.9rem; padding-top: 0.9rem; border-top: 1px solid rgba(255, 255, 255, 0.08); }
 .quote-doc-subline { display: block; margin-top: 2px; font-size: 0.8rem; font-weight: 400; opacity: 0.62; }
 .client-sub-signup { align-items: center; }
 .client-sub-signup-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }

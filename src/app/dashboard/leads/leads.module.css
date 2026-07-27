@@ -255,9 +255,12 @@
 .depositCheck { border-color: rgba(255,209,102,.24); background: rgba(255,209,102,.06); }
 .depositCheck strong { display: block; color: #f7f5ef; font-size: .88rem; }
 .depositCheck small { color: rgba(255,255,255,.5); }
-.depositRow { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
+.depositRow { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: .55rem; }
 .depositAmount { display: flex; gap: .4rem; }
-.depositAmount input { flex: 1; min-width: 0; }
+/* The amount input was getting crushed to ~2 chars next to the unit select —
+   give it a real minimum width so "100" always fits. */
+.depositAmount input { flex: 1 1 4.5rem; min-width: 4rem; }
+.depositAmount select { flex: 0 1 auto; min-width: 0; }
 @media (max-width: 560px) { .depositRow { grid-template-columns: 1fr; } }
 
 /* Payment terms selector (Pay in full / Deposit / Payment Plan) */
