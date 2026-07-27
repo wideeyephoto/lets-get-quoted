@@ -2467,6 +2467,17 @@ li + li { margin-top: 0.45rem; }
 
 /* Demo /sites — live template gallery (picker + framed iframe of /themes/[id]) */
 .demo-template-picker { display: flex; flex-direction: column; gap: 1rem; }
+
+/* Compact the reused builder theme cards on the demo only (the builder keeps its
+   full-size cards) — shorter banner tiles so the live preview is reached faster.
+   Structural selectors target the builder's ThemeIcon markup without its hashed
+   module class names. */
+.demo-template-picker .demo-theme-grid { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 0.5rem; }
+.demo-template-picker .demo-theme-grid > button > span:first-child { aspect-ratio: auto; height: 44px; }
+.demo-template-picker .demo-theme-grid > button > span:first-child > span { font-size: 1.25rem; }
+.demo-template-picker .demo-theme-grid > button > span:last-child { padding: 0.3rem 0.3rem 0.38rem; }
+.demo-template-picker .demo-theme-grid > button strong { font-size: 0.74rem; }
+
 .template-chip-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .template-chip {
   --chip-accent: var(--accent);

@@ -69,7 +69,7 @@ export default function DemoSitesPage() {
 
       <section className="panel workspace-section-card demo-template-picker">
         <div className={themeStyles.cardGroupLabel}>Theme</div>
-        <div className={themeStyles.themeGrid} role="tablist" aria-label="Website templates">
+        <div className={`${themeStyles.themeGrid} demo-theme-grid`} role="tablist" aria-label="Website templates">
           {templates.map((template) => (
             <button
               key={template.id}
