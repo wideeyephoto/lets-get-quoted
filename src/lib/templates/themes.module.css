@@ -855,8 +855,10 @@
 .guildBrand { display: flex; align-items: center; gap: .9rem; min-width: 0; }
 /* Only the name/license wrapper stacks — NOT the per-word spans WordmarkName
    emits inside it (a bare `span` selector stacked every word onto its own line). */
-.guildBrand > span:last-child { display: flex; flex-direction: column; }
-.guildBrand strong { font-family: var(--brand-font, var(--theme-display)); font-size: 1.35rem; font-weight: 600; letter-spacing: -.01em; }
+.guildBrand > span:last-child { display: flex; flex-direction: column; min-width: 0; }
+/* Clip the brand name inside its column so a long name never overflows into the
+   centered nav (it truncates with an ellipsis instead of overlapping). */
+.guildBrand strong { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--brand-font, var(--theme-display)); font-size: 1.35rem; font-weight: 600; letter-spacing: -.01em; }
 .guildBrand small { font-family: var(--font-mono); margin-top: .2rem; color: var(--c-muted); font-size: .64rem; letter-spacing: .1em; text-transform: uppercase; }
 .guildQuote { justify-self: end; white-space: nowrap; padding-bottom: .35rem; border-bottom: 2px solid var(--theme-accent); font-weight: 700; letter-spacing: .02em; transition: color .2s ease; }
 .guildQuote:hover { color: var(--theme-accent); }
