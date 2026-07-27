@@ -103,18 +103,12 @@ export default function TemplateSlider({ templates }: Props) {
           const slot = slotFor(index);
           return (
             <Link
-              href={`/themes/${template.id}`}
+              href="/demo/sites"
               key={template.id}
               className={`template-deck-card template-deck-${slot}`}
-              aria-label={slot === 'center' ? `View the ${template.name} template live demo` : `Bring the ${template.name} template to the front`}
+              aria-label={`Browse the ${template.name} template in the live demo`}
               aria-hidden={slot === 'hidden'}
               tabIndex={slot === 'hidden' ? -1 : 0}
-              onClick={(event) => {
-                if (slot !== 'center') {
-                  event.preventDefault();
-                  goTo(index);
-                }
-              }}
             >
               <BrowserFrame template={template} />
             </Link>
@@ -129,11 +123,11 @@ export default function TemplateSlider({ templates }: Props) {
         </button>
       </div>
 
-      <Link href={`/themes/${current.id}`} className="template-deck-info">
+      <Link href="/demo/sites" className="template-deck-info">
         <strong>{current.name}</strong>
         <span className="template-card-desc">{current.description}</span>
         <span className="template-card-cta">
-          Preview this website <ArrowRightIcon />
+          Browse all templates <ArrowRightIcon />
         </span>
       </Link>
 
