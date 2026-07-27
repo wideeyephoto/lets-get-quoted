@@ -8,6 +8,7 @@ import { createClientJobAccessToken, createJobFeedEvent, createPaymentFeedEvent 
 import { addInvoiceItem, createInvoice, listInvoices, selectPrimaryInvoice } from '@/lib/invoices';
 import { computeQuoteTotal, formatJobQuoteSummary, parseQuoteItems, saveQuoteItems, type QuoteItem } from '@/lib/jobs';
 import { createDepositRequest } from '@/lib/payments';
+import { createPaymentPlan } from '@/lib/payment-plans';
 import { clearLeadQuoteVisit, convertLeadToJob, createLead, getLead, getLeadTriage, LEAD_DECLINE_REASONS, LEAD_LAYOUT_COOKIE, scheduleLeadQuoteVisit, unconvertLeadFromJob, updateLeadDetails, updateLeadStatus, type LeadStatus, type LeadTriage } from '@/lib/leads';
 import { uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
@@ -200,15 +201,19 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
   const showHoursToClient = formData.get('showHoursToClient') === 'on';
   const sendClientText = formData.get('sendClientText') === 'on';
 
-  // Optional deposit the client can pay up front. "Collect now" — we create the
-  // payment request so it's ready to pay; the timing (before scheduling / before
-  // work) is recorded in the label and enforced later.
-  const requireDeposit = formData.get('requireDeposit') === 'on';
+  // Payment terms: 'full' (no deposit), 'deposit' (deposit + remaining balance),
+  // or 'plan' (deposit + fixed installments that split the SAME total). Legacy
+  // forms that only send requireDeposit map to 'deposit'.
+  const paymentTerms = ((formData.get('paymentTerms') as string) || (formData.get('requireDeposit') === 'on' ? 'deposit' : 'full')) as 'full' | 'deposit' | 'plan';
+
+  // 'deposit' terms — "Collect now": we create the payment request so it's ready
+  // to pay; the timing (before scheduling / before work) is recorded in the label
+  // and enforced later.
   const depositUnit = formData.get('depositUnit') === 'fixed' ? 'fixed' : 'percent';
   const depositTiming = formData.get('depositTiming') === 'before_work' ? 'before_work' : 'before_schedule';
   const depositValueRaw = Number(formData.get('depositValue'));
   let depositAmount = 0;
-  if (requireDeposit && Number.isFinite(depositValueRaw) && depositValueRaw > 0) {
+  if (paymentTerms === 'deposit' && Number.isFinite(depositValueRaw) && depositValueRaw > 0) {
     depositAmount = depositUnit === 'percent'
       ? Math.round(quotedAmount * Math.min(100, depositValueRaw)) / 100
       : depositValueRaw;
@@ -235,9 +240,43 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
     await saveQuoteItems(supabase, accountId, job.id, quoteItems);
   }
 
-  // Create the deposit request now so the client can pay it the moment they open
-  // the quote. Reuses the same invoice + payment path as the job-page deposit UI.
-  if (depositAmount > 0) {
+  // Payment Plan: create the plan header + its deposit request. The deposit is a
+  // normal Stripe Connect payment (so scheduling gates on it); paying it saves
+  // the card that drives the installments, which are scheduled once the webhook
+  // confirms the deposit paid. Splits the SAME quote total — never more.
+  if (paymentTerms === 'plan') {
+    const planDepositPercent = Math.min(99, Math.max(1, Math.round(Number(formData.get('planDepositPercent')) || 50)));
+    const planInstallments = Math.min(24, Math.max(1, Math.floor(Number(formData.get('planInstallments')) || 4)));
+    const planFrequency = ((): 'weekly' | 'biweekly' | 'monthly' => {
+      const raw = formData.get('planFrequency');
+      return raw === 'weekly' || raw === 'biweekly' ? raw : 'monthly';
+    })();
+    const rawFirst = (formData.get('planFirstDate') ?? '').toString();
+    const firstInstallmentDate = /^\d{4}-\d{2}-\d{2}$/.test(rawFirst)
+      ? rawFirst
+      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+    const invoices = await listInvoices(supabase, accountId, job.id);
+    const invoice = selectPrimaryInvoice(invoices) ?? (await createInvoice(supabase, accountId, job.id, 'draft'));
+    if (Number(invoice.total) <= 0 && quotedAmount > 0) {
+      await addInvoiceItem(supabase, accountId, invoice.id, { description: 'Quoted job total', amount: quotedAmount });
+    }
+    const { depositPaymentId } = await createPaymentPlan(supabase, accountId, job.id, {
+      totalCents: Math.round(quotedAmount * 100),
+      depositPercent: planDepositPercent,
+      installmentCount: planInstallments,
+      frequency: planFrequency,
+      firstInstallmentDate,
+      clientPhone,
+      smsConsent: Boolean(sendClientText && clientPhone),
+      invoiceId: invoice.id,
+    });
+    await createPaymentFeedEvent(supabase, depositPaymentId, 'payment_requested');
+    // A plan deposit always gates scheduling until it's paid.
+    await supabase.from('jobs').update({ deposit_gate: 'before_schedule' }).eq('account_id', accountId).eq('id', job.id);
+  } else if (depositAmount > 0) {
+    // Create the deposit request now so the client can pay it the moment they open
+    // the quote. Reuses the same invoice + payment path as the job-page deposit UI.
     const invoices = await listInvoices(supabase, accountId, job.id);
     const invoice = selectPrimaryInvoice(invoices) ?? (await createInvoice(supabase, accountId, job.id, 'draft'));
     if (Number(invoice.total) <= 0 && quotedAmount > 0) {

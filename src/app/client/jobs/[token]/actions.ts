@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { requestDifferentClientJobScheduleOptions, selectClientJobScheduleOption } from '@/lib/scheduling';
 import { approveClientJobQuote } from '@/lib/job-feed';
 import { startSubscriptionSignup, type SubscriptionSignupMode } from '@/lib/subscription-signup';
+import { authorizePlanAndGetDepositUrl, startPlanPayoff } from '@/lib/payment-plans';
 
 function optionalText(value: FormDataEntryValue | null): string | null {
   const text = (value ?? '').toString().trim();
@@ -31,6 +32,24 @@ export async function startSubscriptionAction(token: string, formData: FormData)
   if (!itemId) throw new Error('Missing plan.');
   const mode: SubscriptionSignupMode = formData.get('mode') === 'prepay' ? 'prepay' : 'cycle';
   const { redirectUrl } = await startSubscriptionSignup(token, itemId, mode);
+  revalidatePath(`/client/jobs/${token}`);
+  redirect(redirectUrl);
+}
+
+export async function authorizePaymentPlanAction(token: string, formData: FormData) {
+  const planId = (formData.get('planId') ?? '').toString();
+  if (!planId) throw new Error('Missing plan.');
+  const signerName = (formData.get('signerName') ?? '').toString().trim();
+  if (!signerName) throw new Error('Type your full name to authorize the plan.');
+  const { redirectUrl } = await authorizePlanAndGetDepositUrl(token, planId, signerName);
+  revalidatePath(`/client/jobs/${token}`);
+  redirect(redirectUrl);
+}
+
+export async function payPlanBalanceAction(token: string, formData: FormData) {
+  const planId = (formData.get('planId') ?? '').toString();
+  if (!planId) throw new Error('Missing plan.');
+  const { redirectUrl } = await startPlanPayoff(token, planId);
   revalidatePath(`/client/jobs/${token}`);
   redirect(redirectUrl);
 }

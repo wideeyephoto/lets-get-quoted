@@ -2951,6 +2951,24 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .quote-doc-subline { display: block; margin-top: 2px; font-size: 0.8rem; font-weight: 400; opacity: 0.62; }
 .client-sub-signup { align-items: center; }
 .client-sub-signup-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
+
+/* Payment Plan card (client dashboard) */
+.client-plan-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin: 0.25rem 0 0.9rem; }
+.client-plan-stats > div { display: grid; gap: 0.2rem; padding: 0.7rem 0.85rem; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; background: rgba(255, 255, 255, 0.03); }
+.client-plan-stats span { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; opacity: 0.6; }
+.client-plan-stats strong { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.client-plan-schedule { display: grid; gap: 0.35rem; margin: 0.35rem 0 0.9rem; }
+.client-plan-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 0.75rem; padding: 0.55rem 0.75rem; border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 10px; background: rgba(255, 255, 255, 0.025); font-size: 0.86rem; }
+.client-plan-row > span:first-child { min-width: 0; }
+.client-plan-row strong { font-variant-numeric: tabular-nums; }
+.client-plan-status { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.03em; text-transform: uppercase; opacity: 0.7; }
+.client-plan-row.is-failed { border-color: rgba(255, 107, 107, 0.4); }
+.client-plan-row.is-failed .client-plan-status { color: #ff8f8f; opacity: 1; }
+.client-plan-authorize { display: grid; gap: 0.5rem; }
+.client-plan-authorize label { font-size: 0.82rem; font-weight: 700; }
+.client-plan-fineprint { margin: 0; font-size: 0.74rem; line-height: 1.45; opacity: 0.62; }
+.client-plan-cta { justify-self: start; }
+@media (max-width: 560px) { .client-plan-stats { grid-template-columns: 1fr; } .client-plan-row { grid-template-columns: 1fr auto; } .client-plan-status { grid-column: 1 / -1; } }
 @media (max-width: 560px) { .quote-builder-subpop-row { grid-template-columns: 1fr; } }
 
 .quote-builder-row input[type='text'],

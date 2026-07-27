@@ -259,6 +259,25 @@
 .depositAmount { display: flex; gap: .4rem; }
 .depositAmount input { flex: 1; min-width: 0; }
 @media (max-width: 560px) { .depositRow { grid-template-columns: 1fr; } }
+
+/* Payment terms selector (Pay in full / Deposit / Payment Plan) */
+.termsHeading { margin: 0; color: rgba(255,255,255,.62); font-size: .68rem; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; }
+.termsOptions { display: grid; gap: .4rem; }
+.termsOption { display: flex; align-items: flex-start; gap: .55rem; padding: .6rem .7rem; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; background: rgba(255,255,255,.03); cursor: pointer; transition: border-color .15s, background .15s; }
+.termsOption input { margin-top: .18rem; accent-color: #ffd166; }
+.termsOption strong { display: block; color: #f7f5ef; font-size: .86rem; }
+.termsOption small { display: block; margin-top: .12rem; color: rgba(255,255,255,.52); font-size: .76rem; line-height: 1.35; }
+.termsOptionOn { border-color: rgba(255,209,102,.5); background: rgba(255,209,102,.08); }
+.planFields { display: grid; gap: .55rem; padding: .75rem; border: 1px solid rgba(255,209,102,.24); border-radius: 12px; background: rgba(255,209,102,.05); }
+.planRow { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
+.planRow label { display: grid; gap: .28rem; }
+.planRow label > span:first-child { color: rgba(255,255,255,.6); font-size: .72rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.planRow input, .planRow select { width: 100%; min-width: 0; }
+.planInline { display: flex; align-items: center; gap: .4rem; }
+.planInline input { width: 4.5rem; }
+.planInline em { color: rgba(255,255,255,.62); font-style: normal; font-size: .82rem; }
+.planHint { margin: 0; color: rgba(255,255,255,.6); font-size: .76rem; line-height: 1.45; }
+@media (max-width: 560px) { .planRow { grid-template-columns: 1fr; } }
 .quoteTextCheck { border-color: rgba(25,214,174,.24); background: rgba(25,214,174,.07); }
 .quoteTextCheck strong { display: block; color: #f7f5ef; font-size: .88rem; }
 .quoteTextCheck small { display: block; margin-top: .15rem; color: rgba(255,255,255,.56); font-size: .76rem; line-height: 1.35; }

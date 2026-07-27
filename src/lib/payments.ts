@@ -29,6 +29,10 @@ export type Payment = {
   disputed_at: string | null;
   dispute_reason: string | null;
   dispute_status: string | null;
+  // Payment-plan linkage (deposit / installments / payoff). Absent on one-offs.
+  payment_plan_id?: string | null;
+  due_date?: string | null;
+  installment_seq?: number | null;
   sms_events?: { event_type: string; status: string; sent_at: string | null }[];
 };
 
@@ -158,6 +162,27 @@ export async function getPublicPayment(paymentId: string): Promise<PublicPayment
   };
 }
 
+// Get-or-create the platform Stripe customer for a payment plan (kept here, not
+// in payment-plans.ts, to avoid a circular import). The customer lives on the
+// platform account; installments later transfer to the connected account via
+// destination charges, exactly like the recurring path.
+async function ensurePlanDepositCustomer(planId: string, accountId: string, clientName: string | null): Promise<string> {
+  const admin = createAdminClient();
+  const { data: plan } = await admin.from('payment_plans').select('stripe_customer_id').eq('id', planId).maybeSingle();
+  if (plan?.stripe_customer_id) return plan.stripe_customer_id as string;
+
+  const stripe = getStripeClient();
+  const customer = await stripe.customers.create({
+    name: clientName || undefined,
+    metadata: { account_id: accountId, payment_plan_id: planId },
+  });
+  await admin
+    .from('payment_plans')
+    .update({ stripe_customer_id: customer.id, updated_at: new Date().toISOString() })
+    .eq('id', planId);
+  return customer.id;
+}
+
 export async function createCheckoutSessionForPayment(paymentId: string, origin: string): Promise<string> {
   const payment = await getPublicPayment(paymentId);
 
@@ -211,8 +236,18 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
   const feeRate = computeFeeRate(trailingVolume);
   const platformFee = computePlatformFee(payment.amount, feeRate);
 
+  // A payment-plan DEPOSIT must also SAVE the card for the later off-session
+  // installment charges. Attach a platform customer and set setup_future_usage
+  // so Stripe stores the mandate at deposit time; the deposit's confirmed
+  // payment then activates the plan (reading the saved card off the intent).
+  const isPlanDeposit = Boolean(payment.payment_plan_id) && payment.kind === 'deposit';
+  const planCustomerId = isPlanDeposit
+    ? await ensurePlanDepositCustomer(payment.payment_plan_id as string, payment.account_id, payment.job?.client_name ?? null)
+    : undefined;
+
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
+    ...(planCustomerId ? { customer: planCustomerId } : {}),
     line_items: [
       {
         price_data: {
@@ -230,8 +265,12 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
       // Bill the exact fee cents (not a dollar round-trip) — same value, no drift.
       application_fee_amount: computePlatformFeeCents(payment.amount, feeRate),
       transfer_data: { destination: payment.account.stripe_connect_id },
+      ...(isPlanDeposit ? { setup_future_usage: 'off_session' as const } : {}),
     },
-    metadata: { payment_id: payment.id },
+    metadata: {
+      payment_id: payment.id,
+      ...(payment.payment_plan_id ? { payment_plan_id: payment.payment_plan_id } : {}),
+    },
     success_url: `${origin}/pay/${payment.id}?status=success`,
     cancel_url: `${origin}/pay/${payment.id}?status=cancelled`,
   });

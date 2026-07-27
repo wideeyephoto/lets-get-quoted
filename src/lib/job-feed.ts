@@ -6,6 +6,7 @@ import { getLeadByConvertedJob, updateLeadStatus } from '@/lib/leads';
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 import { addInvoiceItem, createInvoice, listInvoices, selectPrimaryInvoice, type Invoice } from '@/lib/invoices';
 import { createDepositRequest, type Payment } from '@/lib/payments';
+import { planSchedulePreview } from '@/lib/payment-plan-math';
 import { sendPaymentSmsEvent } from '@/lib/sms';
 import { normalizeUsPhone } from '@/lib/phone';
 
@@ -58,6 +59,27 @@ export type ClientJobDashboard = {
   } | null;
   quoteApproved: boolean;
   depositBlocksScheduling: boolean;
+  // Present when the job was quoted on Payment Plan terms. All money in dollars
+  // except the *Cents fields; balances derive only from webhook-confirmed paid
+  // rows.
+  paymentPlan: {
+    id: string;
+    status: 'pending_deposit' | 'active' | 'paid_off' | 'canceled';
+    totalCents: number;
+    depositCents: number;
+    paidCents: number;
+    remainingCents: number;
+    authorized: boolean;
+    frequency: string;
+    card: { brand: string | null; last4: string | null } | null;
+    deposit: { paymentId: string; amount: number; status: string } | null;
+    // The planned schedule (amounts + dates), shown before signing.
+    schedule: Array<{ seq: number; amount: number; dueDate: string; label: string }>;
+    // The actual installment rows once the plan is active (carry live statuses).
+    installments: Array<{ id: string; seq: number; amount: number; dueDate: string | null; status: string }>;
+    nextInstallment: { seq: number; amount: number; dueDate: string | null } | null;
+    payoffInFlight: boolean;
+  } | null;
 };
 
 function hasFeedAction(feed: JobFeedEvent[], sourceTable: string, sourceId: string, actionUrl: string): boolean {
@@ -339,6 +361,56 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
 
   const quoteApproved = feed.some((event) => event.kind === 'quote_approved') || job.status !== 'new_lead';
 
+  // Payment plan (if this job was quoted on installment terms). Defensive: an
+  // un-migrated DB (no payment_plans table) simply shows no plan.
+  let paymentPlan: ClientJobDashboard['paymentPlan'] = null;
+  const { data: planRow } = await admin
+    .from('payment_plans')
+    .select('*')
+    .eq('account_id', access.account_id)
+    .eq('job_id', access.job_id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (planRow) {
+    const { data: planPaymentRows } = await admin
+      .from('payments')
+      .select('id, kind, amount, status, due_date, installment_seq')
+      .eq('payment_plan_id', planRow.id);
+    const rows = (planPaymentRows ?? []) as Payment[];
+    const toC = (dollars: number) => Math.round(Number(dollars) * 100);
+    const paidCents = rows.filter((row) => row.status === 'paid').reduce((sum, row) => sum + toC(row.amount), 0);
+    const installments = rows
+      .filter((row) => row.kind === 'plan_installment')
+      .map((row) => ({ id: row.id, seq: row.installment_seq ?? 0, amount: Number(row.amount), dueDate: row.due_date ?? null, status: row.status }))
+      .sort((a, b) => a.seq - b.seq);
+    const depositRow = rows.find((row) => row.kind === 'deposit') ?? null;
+    const nextInstallment = installments.find((row) => row.status === 'requested' || row.status === 'failed') ?? null;
+    const schedule = planSchedulePreview({
+      total_cents: planRow.total_cents as number,
+      deposit_cents: planRow.deposit_cents as number,
+      installment_count: planRow.installment_count as number,
+      frequency: planRow.frequency as 'weekly' | 'biweekly' | 'monthly',
+      first_installment_date: planRow.first_installment_date as string,
+    }).map((entry) => ({ seq: entry.seq, amount: entry.amountCents / 100, dueDate: entry.dueDate, label: entry.label }));
+    paymentPlan = {
+      id: planRow.id as string,
+      status: planRow.status as NonNullable<ClientJobDashboard['paymentPlan']>['status'],
+      totalCents: planRow.total_cents as number,
+      depositCents: planRow.deposit_cents as number,
+      paidCents,
+      remainingCents: Math.max(0, (planRow.total_cents as number) - paidCents),
+      authorized: Boolean(planRow.authorized_at),
+      frequency: planRow.frequency as string,
+      card: planRow.card_last4 ? { brand: planRow.card_brand as string | null, last4: planRow.card_last4 as string } : null,
+      deposit: depositRow ? { paymentId: depositRow.id, amount: Number(depositRow.amount), status: depositRow.status } : null,
+      schedule,
+      installments,
+      nextInstallment: nextInstallment ? { seq: nextInstallment.seq, amount: nextInstallment.amount, dueDate: nextInstallment.dueDate } : null,
+      payoffInFlight: Boolean(planRow.payoff_locked_at),
+    };
+  }
+
   return {
     businessName: site?.company_name || account?.business_name || "Let's Get Quoted contractor",
     job: {
@@ -353,6 +425,7 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
     scheduleRequest: scheduleRequest as ClientJobDashboard['scheduleRequest'],
     quoteApproved,
     depositBlocksScheduling,
+    paymentPlan,
   };
 }
 

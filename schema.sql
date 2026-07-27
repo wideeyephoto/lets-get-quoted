@@ -810,6 +810,66 @@ create index if not exists recurring_plans_due_idx on recurring_plans (account_i
 alter table recurring_plans add column if not exists remaining_cycles int;
 
 -- ----------------------------------------------------------------------------
+-- PAYMENT PLANS — split an existing quote total into a deposit + fixed,
+-- 0%-interest installments. This is NOT lending/financing: no interest, no
+-- fees, no credit check, no contractor advance. The plan only ALLOCATES the
+-- quote total across scheduled charges; it never increases it. Reuses the same
+-- Stripe Connect destination-charge rails as one-off payments — each
+-- installment is a `payments` row (kind='plan_installment') charged off-session
+-- against the card saved when the deposit was collected.
+-- ----------------------------------------------------------------------------
+create table if not exists payment_plans (
+  id                        uuid primary key default gen_random_uuid(),
+  account_id                uuid not null references accounts(id) on delete cascade,
+  job_id                    uuid not null references jobs(id) on delete cascade,
+
+  -- All money in integer cents so allocation never drifts: the deposit + every
+  -- installment sum to EXACTLY total_cents (rounding lands in the final one).
+  total_cents               int  not null,
+  deposit_cents             int  not null,
+  installment_count         int  not null,   -- installments AFTER the deposit
+  frequency                 text not null default 'monthly'
+    check (frequency in ('weekly','biweekly','monthly')),
+  first_installment_date    date not null,
+
+  -- pending_deposit → active (deposit webhook-confirmed) → paid_off | canceled.
+  status                    text not null default 'pending_deposit'
+    check (status in ('pending_deposit','active','paid_off','canceled')),
+
+  -- Card saved off-session when the deposit was paid (platform customer, like
+  -- recurring_plans; installments then transfer to the connected account).
+  stripe_customer_id        text,
+  stripe_payment_method_id  text,
+  card_brand                text,
+  card_last4                text,
+
+  -- The client's typed-name authorization for automatic installment charges.
+  authorized_at             timestamptz,
+  authorized_name           text,
+
+  -- Set atomically while an early payoff is in flight so the installment cron
+  -- pauses collections on this plan; cleared if the payoff is abandoned.
+  payoff_locked_at          timestamptz,
+
+  deposit_payment_id        uuid references payments(id) on delete set null,
+
+  created_at                timestamptz not null default now(),
+  updated_at                timestamptz not null default now()
+);
+create index if not exists payment_plans_job_idx on payment_plans (job_id);
+
+-- Link installment (+ deposit / payoff) payment rows back to their plan, plus
+-- the installment's scheduled due date and order. Added here — after
+-- payment_plans exists — so the FK resolves on a fresh deploy.
+alter table payments add column if not exists payment_plan_id uuid references payment_plans(id) on delete set null;
+alter table payments add column if not exists due_date date;         -- installment due date (null for deposit/payoff/one-offs)
+alter table payments add column if not exists installment_seq int;   -- 1..N ordering within the plan
+-- The installment sweep: due plan installments (requested = scheduled, or a
+-- failed one awaiting retry). Partial index keeps it to just those rows.
+create index if not exists payments_installment_due_idx on payments (due_date)
+  where kind = 'plan_installment' and payment_plan_id is not null;
+
+-- ----------------------------------------------------------------------------
 -- SERVICES  — the account's price book: reusable named services + prices that
 -- pre-fill quote line items and recurring plans, so owners stop retyping them.
 -- ----------------------------------------------------------------------------
@@ -960,7 +1020,7 @@ declare t text;
 begin
   foreach t in array array[
     'accounts','memberships','crew','sites','jobs','crew_assignments',
-    'costs','job_feed','client_job_access','invoices','payments','finance_plans','leads','sms_events','sms_consent','sms_messages','clients','campaigns','recurring_plans','services','review_invites','message_templates','job_tasks','job_schedule_requests','email_suppression'
+    'costs','job_feed','client_job_access','invoices','payments','finance_plans','payment_plans','leads','sms_events','sms_consent','sms_messages','clients','campaigns','recurring_plans','services','review_invites','message_templates','job_tasks','job_schedule_requests','email_suppression'
   ] loop
     execute format('alter table %I enable row level security;', t);
   end loop;
@@ -1007,6 +1067,7 @@ drop policy if exists sms_messages_all on sms_messages;
 drop policy if exists clients_all on clients;
 drop policy if exists campaigns_all on campaigns;
 drop policy if exists recurring_plans_all on recurring_plans;
+drop policy if exists payment_plans_all on payment_plans;
 drop policy if exists services_all on services;
 drop policy if exists review_invites_all on review_invites;
 drop policy if exists message_templates_all on message_templates;
@@ -1081,6 +1142,7 @@ create policy sms_messages_all on sms_messages for all using ( is_owner(account_
 create policy clients_all on clients          for all using ( is_owner(account_id) );
 create policy campaigns_all on campaigns      for all using ( is_owner(account_id) );
 create policy recurring_plans_all on recurring_plans for all using ( is_owner(account_id) );
+create policy payment_plans_all on payment_plans for all using ( is_owner(account_id) );
 create policy services_all on services        for all using ( is_owner(account_id) );
 create policy review_invites_all on review_invites for all using ( is_owner(account_id) );
 create policy message_templates_all on message_templates for all using ( is_owner(account_id) );

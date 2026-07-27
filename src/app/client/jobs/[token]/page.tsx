@@ -3,7 +3,7 @@ import SaveButton from '@/components/save-button';
 import { getClientJobDashboard } from '@/lib/job-feed';
 import { formatMoney } from '@/lib/jobs';
 import { formatScheduleOption } from '@/lib/scheduling';
-import { approveClientJobQuoteAction, requestDifferentClientJobScheduleOptionsAction, selectClientJobScheduleOptionAction, startSubscriptionAction } from './actions';
+import { approveClientJobQuoteAction, requestDifferentClientJobScheduleOptionsAction, selectClientJobScheduleOptionAction, startSubscriptionAction, authorizePaymentPlanAction, payPlanBalanceAction } from './actions';
 import QuoteDocument from './QuoteDocument';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -48,8 +48,15 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
     );
   }
 
-  const openPayments = dashboard.payments.filter((payment) => payment.status === 'requested' || payment.status === 'processing');
+  // Plan-linked payments (deposit / installments / payoff) are surfaced in the
+  // Payment Plan card below, not the generic "Payment requests" list.
+  const openPayments = dashboard.payments.filter(
+    (payment) => (payment.status === 'requested' || payment.status === 'processing') && !payment.payment_plan_id,
+  );
   const depositPayment = openPayments.find((payment) => payment.kind === 'deposit');
+  const plan = dashboard.paymentPlan;
+  const PLAN_INST_STATUS: Record<string, string> = { paid: 'Paid', processing: 'Processing', requested: 'Scheduled', failed: 'Payment failed — retrying', refunded: 'Refunded' };
+  const formatPlanDay = (value: string | null) => (value ? new Date(`${value}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '');
   const pendingSubscriptions = dashboard.job.quote_items.filter((item) => item.kind === 'subscription' && !item.signedUp);
   const FREQ_LABEL: Record<string, string> = { weekly: '/wk', biweekly: '/2wk', monthly: '/mo' };
   const selectedScheduleOption = dashboard.scheduleRequest?.selected_index == null ? null : dashboard.scheduleRequest.options[dashboard.scheduleRequest.selected_index];
@@ -80,7 +87,97 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
         </section>
       ) : null}
 
-      {dashboard.scheduleRequest?.status === 'open' && dashboard.depositBlocksScheduling ? (
+      {plan ? (
+        <section className={`panel workspace-section-card client-attention-card${plan.status === 'paid_off' ? ' success' : ''}`}>
+          <div className="section-heading workspace-section-heading">
+            <p className="eyebrow">Payment plan</p>
+            <h2>
+              {plan.status === 'paid_off' ? 'Paid in full' : plan.status === 'active' ? 'Your payment plan' : 'Set up your payment plan'}
+            </h2>
+          </div>
+
+          <div className="client-plan-stats">
+            <div><span>Original total</span><strong>{formatMoney(plan.totalCents / 100)}</strong></div>
+            <div><span>Paid so far</span><strong>{formatMoney(plan.paidCents / 100)}</strong></div>
+            <div><span>Remaining balance</span><strong>{formatMoney(plan.remainingCents / 100)}</strong></div>
+          </div>
+
+          {plan.status === 'pending_deposit' ? (
+            <>
+              <p className="workspace-card-copy">
+                You pay a {formatMoney(plan.depositCents / 100)} deposit now, then {plan.schedule.length} installment{plan.schedule.length === 1 ? '' : 's'}. 0% interest,
+                no fees — this splits the same total, nothing more.
+              </p>
+              <div className="client-plan-schedule">
+                <div className="client-plan-row"><span>Deposit (today)</span><strong>{formatMoney(plan.depositCents / 100)}</strong></div>
+                {plan.schedule.map((entry) => (
+                  <div className="client-plan-row" key={entry.seq}>
+                    <span>Installment {entry.seq} · {entry.label}</span>
+                    <strong>{formatMoney(entry.amount)}</strong>
+                  </div>
+                ))}
+              </div>
+              {plan.authorized ? (
+                plan.deposit ? (
+                  <Link href={`/pay/${plan.deposit.paymentId}`} className="btn primary client-plan-cta">Pay {formatMoney(plan.deposit.amount)} deposit</Link>
+                ) : null
+              ) : (
+                <form action={authorizePaymentPlanAction.bind(null, params.token)} className="client-plan-authorize">
+                  <input type="hidden" name="planId" value={plan.id} />
+                  <label htmlFor="plan-signer">Type your full name to authorize automatic installment payments</label>
+                  <input id="plan-signer" name="signerName" type="text" placeholder="Your full name" autoComplete="name" required />
+                  <p className="client-plan-fineprint">
+                    By typing your name you authorize {dashboard.businessName} to charge your saved card for each installment shown above on its
+                    due date. You can pay the remaining balance in full at any time with no penalty.
+                  </p>
+                  <SaveButton pendingLabel="Starting...">Authorize &amp; pay {formatMoney(plan.depositCents / 100)} deposit</SaveButton>
+                </form>
+              )}
+            </>
+          ) : plan.status === 'active' ? (
+            <>
+              {plan.nextInstallment ? (
+                <p className="workspace-card-copy">
+                  Next payment: <strong>{formatMoney(plan.nextInstallment.amount)}</strong> on {formatPlanDay(plan.nextInstallment.dueDate)}
+                  {plan.card ? ` · ${plan.card.brand ?? 'card'} ••${plan.card.last4}` : ''}.
+                </p>
+              ) : (
+                <p className="workspace-card-copy">Every installment is settled.</p>
+              )}
+              <div className="client-plan-schedule">
+                {plan.deposit ? (
+                  <div className="client-plan-row">
+                    <span>Deposit</span>
+                    <span className="client-plan-status">{PLAN_INST_STATUS[plan.deposit.status] ?? plan.deposit.status}</span>
+                    <strong>{formatMoney(plan.deposit.amount)}</strong>
+                  </div>
+                ) : null}
+                {plan.installments.map((inst) => (
+                  <div className={`client-plan-row${inst.status === 'failed' ? ' is-failed' : ''}`} key={inst.id}>
+                    <span>Installment {inst.seq} · {formatPlanDay(inst.dueDate)}</span>
+                    <span className="client-plan-status">{PLAN_INST_STATUS[inst.status] ?? inst.status}</span>
+                    <strong>{formatMoney(inst.amount)}</strong>
+                  </div>
+                ))}
+              </div>
+              {plan.remainingCents > 0 ? (
+                plan.payoffInFlight ? (
+                  <p className="client-plan-fineprint">A payoff payment is being processed…</p>
+                ) : (
+                  <form action={payPlanBalanceAction.bind(null, params.token)} className="client-plan-payoff">
+                    <input type="hidden" name="planId" value={plan.id} />
+                    <SaveButton className="btn secondary" pendingLabel="Starting...">Pay remaining balance · {formatMoney(plan.remainingCents / 100)}</SaveButton>
+                  </form>
+                )
+              ) : null}
+            </>
+          ) : (
+            <p className="workspace-card-copy">This plan is paid in full — thank you! No further payments will be charged.</p>
+          )}
+        </section>
+      ) : null}
+
+      {plan?.status === 'pending_deposit' ? null : dashboard.scheduleRequest?.status === 'open' && dashboard.depositBlocksScheduling ? (
         <section className="panel workspace-section-card client-attention-card">
           <div className="section-heading workspace-section-heading">
             <p className="eyebrow">One step first</p>

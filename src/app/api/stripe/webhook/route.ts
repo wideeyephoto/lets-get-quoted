@@ -8,6 +8,7 @@ import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 import { storeSavedCardFromSetup } from '@/lib/card-on-file';
 import { rescheduleDunningAfterCardUpdate } from '@/lib/dunning';
 import { markInvoicePaidForPayment } from '@/lib/invoices';
+import { handlePlanPaymentSettled, handlePlanPaymentFailed } from '@/lib/payment-plans';
 
 // Stripe webhooks require the raw request body for signature verification,
 // so this route must not be statically optimized or have its body parsed.
@@ -91,6 +92,11 @@ async function markPaymentPaid(admin: ReturnType<typeof createAdminClient>, paym
 
   await sendPaymentSmsEvent(paymentId, 'payment_paid');
   await createPaymentFeedEvent(admin, paymentId, 'payment_paid');
+
+  // If this payment belongs to a payment plan, advance the plan: a deposit
+  // activates + schedules the installments, a payoff closes the plan, an
+  // installment checks for completion. No-ops for one-off payments.
+  await handlePlanPaymentSettled(admin, paymentId);
 }
 
 export async function POST(request: Request) {
@@ -152,6 +158,9 @@ export async function POST(request: Request) {
         .maybeSingle();
       if (transitioned) await sendPaymentSmsEvent(paymentId, 'payment_failed');
       if (transitioned) await createPaymentFeedEvent(admin, paymentId, 'payment_failed');
+      // A payment-plan payoff was abandoned — release its lock so the plan
+      // resumes its normal installment schedule.
+      await handlePlanPaymentFailed(admin, paymentId);
     }
   }
 
@@ -171,6 +180,8 @@ export async function POST(request: Request) {
         .maybeSingle();
       if (transitioned) await sendPaymentSmsEvent(paymentId, 'payment_failed');
       if (transitioned) await createPaymentFeedEvent(admin, paymentId, 'payment_failed');
+      // Release a held payoff lock if this failed charge was a plan payoff.
+      await handlePlanPaymentFailed(admin, paymentId);
     }
   }
 
@@ -229,11 +240,12 @@ export async function POST(request: Request) {
     const paymentIntent = event.data.object;
     const paymentId = paymentIntent.metadata?.payment_id;
     const recurringPlanId = paymentIntent.metadata?.recurring_plan_id;
+    const paymentPlanId = paymentIntent.metadata?.payment_plan_id;
 
-    // Recurring charges are owned by the dunning path (which captures the decline,
-    // schedules retries, and notifies). Skip them here so we don't double-notify
-    // or clobber dunning_state on a webhook-first race.
-    if (paymentId && !recurringPlanId) {
+    // Recurring charges are owned by the dunning path, and payment-plan
+    // installments are recorded + notified synchronously by chargePlanInstallment
+    // (which also records the decline). Skip both here so we don't double-notify.
+    if (paymentId && !recurringPlanId && !paymentPlanId) {
       console.log(`Payment intent failed for payment ${paymentId}:`, paymentIntent.last_payment_error);
       const { data: transitioned } = await admin
         .from('payments')
@@ -268,6 +280,9 @@ export async function POST(request: Request) {
         if (transitioned.invoice_id) await markInvoicePaidForPayment(admin, transitioned.invoice_id);
         await createPaymentFeedEvent(admin, paymentId, 'payment_paid');
         await sendPaymentSmsEvent(paymentId, 'payment_paid');
+        // Out-of-band safety net for a plan installment/payoff whose synchronous
+        // write was lost — advance the plan idempotently.
+        await handlePlanPaymentSettled(admin, paymentId);
       }
     }
   }
