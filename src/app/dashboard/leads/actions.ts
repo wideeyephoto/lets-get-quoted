@@ -1,11 +1,12 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
 import { createClientJobAccessToken, createJobFeedEvent } from '@/lib/job-feed';
-import { formatJobQuoteSummary } from '@/lib/jobs';
-import { clearLeadQuoteVisit, convertLeadToJob, createLead, getLead, getLeadTriage, LEAD_DECLINE_REASONS, scheduleLeadQuoteVisit, unconvertLeadFromJob, updateLeadDetails, updateLeadStatus, type LeadStatus, type LeadTriage } from '@/lib/leads';
+import { computeQuoteTotal, formatJobQuoteSummary, parseQuoteItems, saveQuoteItems, type QuoteItem } from '@/lib/jobs';
+import { clearLeadQuoteVisit, convertLeadToJob, createLead, getLead, getLeadTriage, LEAD_DECLINE_REASONS, LEAD_LAYOUT_COOKIE, scheduleLeadQuoteVisit, unconvertLeadFromJob, updateLeadDetails, updateLeadStatus, type LeadStatus, type LeadTriage } from '@/lib/leads';
 import { uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, createScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
@@ -177,12 +178,24 @@ export async function sendLeadQuoteVisitOptionsAction(leadId: string, formData: 
 }
 
 export async function convertLeadAction(leadId: string, formData: FormData) {
-  const amount = Number(formData.get('quotedAmount'));
+  // The lead form sends an itemized quote (base line items + optional upsells)
+  // as JSON. Fall back to the legacy single quotedAmount if none were provided.
+  const rawItems = formData.get('quoteItems');
+  let quoteItems: QuoteItem[] = [];
+  if (typeof rawItems === 'string' && rawItems.trim()) {
+    try {
+      quoteItems = parseQuoteItems(JSON.parse(rawItems));
+    } catch {
+      quoteItems = [];
+    }
+  }
+  const amount = quoteItems.length ? computeQuoteTotal(quoteItems) : Number(formData.get('quotedAmount'));
   if (!Number.isFinite(amount) || amount < 1) {
-    throw new Error('Enter a quoted amount of at least $1 before sending the quote.');
+    throw new Error('Add at least one line item totaling $1 or more before sending the quote.');
   }
   const quotedAmount = amount;
   const estimatedHours = optionalAmount(formData.get('estimatedHours'));
+  const showHoursToClient = formData.get('showHoursToClient') === 'on';
   const sendClientText = formData.get('sendClientText') === 'on';
   const { supabase, accountId } = await requireOwnerContext();
   const lead = await getLead(supabase, accountId, leadId);
@@ -191,10 +204,15 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
   const clientEmail = sendClientText ? (lead.email?.trim() || null) : null;
 
   const job = await convertLeadToJob(supabase, accountId, leadId, quotedAmount, estimatedHours);
+  // Persist the itemized quote (and let it recompute quoted_amount) now that the
+  // job exists — convertLeadToJob/createJob can't carry items.
+  if (quoteItems.length) {
+    await saveQuoteItems(supabase, accountId, job.id, quoteItems);
+  }
   await createJobFeedEvent(supabase, accountId, job.id, {
     kind: 'job_created',
     title: `${job.ref} created`,
-    body: formatJobQuoteSummary(job),
+    body: formatJobQuoteSummary(job, { includeHours: showHoursToClient }),
     visibility: 'client',
     sourceTable: 'jobs',
     sourceId: job.id,
@@ -314,6 +332,18 @@ async function patchLeadTriage(leadId: string, patch: Partial<LeadTriage>) {
   revalidatePath('/dashboard/leads');
 }
 
+// Remember the user's chosen Lead Details action layout so every lead opens
+// in the same one. Stored in a year-long cookie (per browser) rather than a
+// DB column — no migration, and it survives sessions.
+export async function setLeadLayoutAction(layout: 'guided' | 'primary') {
+  await requireOwnerContext();
+  cookies().set(LEAD_LAYOUT_COOKIE, layout === 'primary' ? 'primary' : 'guided', {
+    path: '/',
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: 'lax',
+  });
+}
+
 // Log a touchpoint with the homeowner (spoke / texted / left VM…) plus an
 // optional note. Appends to triage.contactLog and, for a brand-new lead,
 // advances it to 'contacted' so logging first contact still moves the stage.
@@ -354,10 +384,11 @@ export async function archiveLeadAction(leadId: string, archived: boolean) {
   await patchLeadTriage(leadId, { archived });
 }
 
-// One-tap decline: mark the lead lost + archived, and (when they left a
-// phone that hasn't opted out) text a polite templated close-out so the
-// homeowner isn't ghosted. SMS failure never blocks the decline.
-export async function declineLeadAction(leadId: string, reasonKey: string) {
+// Decline: mark the lead lost + archived. When notify is true and the lead
+// left a phone that hasn't opted out, text a polite templated close-out so the
+// homeowner isn't ghosted. notify is chosen by the owner in the decline popup;
+// SMS failure never blocks the decline.
+export async function declineLeadAction(leadId: string, reasonKey: string, notify: boolean = true) {
   const { supabase, accountId } = await requireOwnerContext();
   const lead = await getLead(supabase, accountId, leadId);
   if (!lead) throw new Error('Lead not found.');
@@ -366,7 +397,7 @@ export async function declineLeadAction(leadId: string, reasonKey: string) {
 
   let texted = false;
   const clientPhone = normalizeUsPhone(lead.phone ?? '');
-  if (clientPhone && !(await isPhoneOptedOut(accountId, clientPhone))) {
+  if (notify && clientPhone && !(await isPhoneOptedOut(accountId, clientPhone))) {
     try {
       const [{ data: account }, { data: site }] = await Promise.all([
         supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),

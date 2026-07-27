@@ -155,11 +155,17 @@ export function formatMoney(n: number): string {
   return '$' + Math.round(n).toLocaleString();
 }
 
-export function formatJobQuoteSummary(job: Pick<Job, 'client_name' | 'address' | 'scope' | 'estimated_hours' | 'quoted_amount'>): string {
+export function formatJobQuoteSummary(
+  job: Pick<Job, 'client_name' | 'address' | 'scope' | 'estimated_hours' | 'quoted_amount'>,
+  options?: { includeHours?: boolean },
+): string {
+  // This summary is the body of the client-visible job_created feed event, so
+  // the contractor can choose to keep estimated hours off the client's copy.
+  const includeHours = options?.includeHours !== false;
   const details = [
     `Job was added for ${job.client_name}.`,
     `Quoted amount: ${formatMoney(Number(job.quoted_amount) || 0)}.`,
-    job.estimated_hours ? `Estimated hours: ${job.estimated_hours}.` : 'Estimated hours: not set.',
+    includeHours ? (job.estimated_hours ? `Estimated hours: ${job.estimated_hours}.` : 'Estimated hours: not set.') : null,
     job.address ? `Address: ${job.address}.` : null,
     job.scope ? `Job description: ${job.scope}` : null,
   ].filter(Boolean);

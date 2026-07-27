@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import type { QuoteItem, QuoteItemKind } from '@/lib/jobs';
 
 type Row = QuoteItem;
@@ -21,16 +21,28 @@ export default function QuoteBuilder({
   action,
   initialItems,
   services = [],
+  onItemsChange,
 }: {
-  action: (items: QuoteItem[]) => Promise<{ ok: boolean; total: number; message?: string }>;
+  // Job page: persists on its own Save button. Lead form: omit action and pass
+  // onItemsChange to feed a parent <form> (the form's submit does the saving).
+  action?: (items: QuoteItem[]) => Promise<{ ok: boolean; total: number; message?: string }>;
   initialItems: QuoteItem[];
   services?: PriceBookItem[];
+  onItemsChange?: (items: QuoteItem[]) => void;
 }) {
   const idCounter = useRef(0);
   const nextId = () => `qi-${Date.now().toString(36)}-${(idCounter.current += 1)}`;
   const [rows, setRows] = useState<Row[]>(initialItems);
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  // Report every edit up to a parent in live mode, without re-firing when the
+  // parent hands us a new callback identity.
+  const onItemsChangeRef = useRef(onItemsChange);
+  onItemsChangeRef.current = onItemsChange;
+  useEffect(() => {
+    onItemsChangeRef.current?.(rows);
+  }, [rows]);
 
   function updateRow(id: string, patch: Partial<Row>) {
     setRows((current) => current.map((row) => (row.id === id ? { ...row, ...patch } : row)));
@@ -60,6 +72,7 @@ export default function QuoteBuilder({
     .reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
 
   function save() {
+    if (!action) return;
     const clean = rows
       .map((row) => ({ ...row, label: row.label.trim(), amount: Math.max(0, Number(row.amount) || 0) }))
       .filter((row) => row.label.length > 0);
@@ -170,14 +183,16 @@ export default function QuoteBuilder({
         ) : null}
       </div>
 
-      <div className="quote-builder-save">
-        <button type="button" className="btn primary" onClick={save} disabled={pending}>
-          {pending ? 'Saving…' : 'Save quote'}
-        </button>
-        {result ? (
-          <small className={`review-request-hint ${result.ok ? 'is-ok' : 'is-error'}`}>{result.message}</small>
-        ) : null}
-      </div>
+      {action ? (
+        <div className="quote-builder-save">
+          <button type="button" className="btn primary" onClick={save} disabled={pending}>
+            {pending ? 'Saving…' : 'Save quote'}
+          </button>
+          {result ? (
+            <small className={`review-request-hint ${result.ok ? 'is-ok' : 'is-error'}`}>{result.message}</small>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

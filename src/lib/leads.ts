@@ -35,6 +35,9 @@ export type LeadTriage = {
 
 export const LEAD_PRUNE_FLAGS = new Set(['out_of_area', 'excluded_work', 'below_minimum', 'just_researching']);
 
+// Cookie that remembers each user's chosen Lead Details action layout.
+export const LEAD_LAYOUT_COOKIE = 'lgq_lead_layout';
+
 // One-tap decline templates — the key is stored on triage.declinedReason and
 // the value is woven into the polite close-out text.
 export const LEAD_DECLINE_REASONS: Record<string, string> = {

@@ -42,7 +42,7 @@
 .contactHint { overflow: hidden; color: rgba(255,255,255,.42); font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
 .empty { margin: .5rem 0; color: rgba(255,255,255,.36); font-size: .78rem; }
 .leadCommandShell { max-width: 1480px; }
-.leadHero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); gap: 1.25rem; align-items: stretch; }
+.leadHero { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.25rem; align-items: stretch; }
 .leadHeroMain { min-width: 0; }
 .leadTitleRow { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
 .leadTitleRow h1 { margin-right: 0; }
@@ -129,6 +129,72 @@
 .modalCloseButton { display: inline-grid; flex: 0 0 auto; place-items: center; width: 34px; height: 34px; border: 1px solid rgba(255,255,255,.12); border-radius: 999px; background: rgba(255,255,255,.05); color: #ffd166; font-weight: 900; text-decoration: none; }
 .modalCloseButton:hover, .modalCloseButton:focus-visible { border-color: rgba(255,209,102,.42); background: rgba(255,209,102,.1); outline: none; }
 .editModalActions { display: flex !important; justify-content: flex-end; gap: .55rem; }
+/* ---- Send the quote: the hero form on the page ---- */
+.sendQuoteSection { position: relative; overflow: hidden; border: 1px solid rgba(255,122,33,.42) !important; background: linear-gradient(180deg, rgba(255,122,33,.10), rgba(255,255,255,.015) 42%), #0e1520 !important; box-shadow: 0 30px 70px -34px rgba(255,122,33,.55), inset 0 1px 0 rgba(255,209,102,.12) !important; }
+.sendQuoteSection::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #ff5a1f, #ffd166 50%, #ff5a1f); background-size: 200% 100%; animation: sendQuoteBar 6s linear infinite; }
+@keyframes sendQuoteBar { to { background-position: 200% 0; } }
+@media (prefers-reduced-motion: reduce) { .sendQuoteSection::before { animation: none; } }
+.sendQuoteSection h2 { font-size: 1.75rem; letter-spacing: -.01em; }
+.sendQuoteSection .quoteAmountField { border-color: rgba(255,209,102,.5); box-shadow: 0 18px 44px -20px rgba(255,122,33,.4); }
+.sendQuoteSection .quoteAmountField:focus-within { border-color: #ffd166; box-shadow: 0 0 0 3px rgba(255,209,102,.18), 0 18px 44px -18px rgba(255,122,33,.5); }
+.sendQuoteActions { display: flex; gap: .6rem; align-items: stretch; margin-top: .35rem; }
+.sendQuoteActions button[type="submit"] { flex: 1; }
+.previewQuoteBtn { flex: 0 0 auto; display: inline-flex; align-items: center; gap: .4rem; font-weight: 800; }
+.quoteItemsField { display: grid; gap: .55rem; padding: .85rem; border: 1px solid rgba(255,209,102,.3); border-radius: 14px; background: radial-gradient(circle at top right, rgba(255,209,102,.14), transparent 46%), rgba(255,255,255,.03); }
+.quoteItemsField > label { color: #ffd166; font-size: .86rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.quoteItemsField > small { color: rgba(255,255,255,.5); font-size: .78rem; }
+
+/* Quote preview popup — a faithful mock of the client approval screen */
+.quotePreviewCard { width: min(460px, 100%); max-height: min(88vh, 760px); overflow: auto; border: 1px solid rgba(255,255,255,.14); border-radius: 16px; background: #0c1119; box-shadow: 0 30px 80px rgba(0,0,0,.6); }
+.quotePreviewBar { position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .7rem .9rem; border-bottom: 1px solid rgba(255,255,255,.08); font-size: .72rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: rgba(255,255,255,.55); background: #0c1119; }
+.quotePreviewStage { padding: 1.15rem 1.2rem 1.35rem; display: grid; gap: .95rem; background: radial-gradient(120% 55% at 50% 0, rgba(255,122,33,.09), transparent 62%); }
+.quotePreviewHero { display: grid; gap: .15rem; padding-bottom: .2rem; }
+.quotePreviewHero h3 { margin: 0; font-size: 1.5rem; font-weight: 800; color: #fff; letter-spacing: -.01em; }
+.quotePreviewHeading { margin: 0; font-size: .95rem; font-weight: 700; color: rgba(255,255,255,.82); }
+.quotePreviewNote { margin: 0; font-size: .78rem; color: rgba(255,255,255,.5); text-align: center; }
+
+/* ---- Lead action deck: switchable layout + gear ---- */
+.actionDeck { position: relative; display: grid; gap: .85rem; padding: 1rem 1rem .95rem; border: 1px solid rgba(255,255,255,.08); border-radius: 14px; background: rgba(255,255,255,.02); }
+.deckGear { position: absolute; top: .7rem; right: .7rem; z-index: 5; }
+.deckGearBtn { width: 34px; height: 34px; border-radius: 9px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.05); color: rgba(255,255,255,.7); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.deckGearBtn svg { width: 17px; height: 17px; }
+.deckGearBtn:hover { color: #fff; border-color: rgba(255,122,33,.5); }
+.deckGearBtn[aria-expanded="true"] { color: var(--accent); border-color: rgba(255,122,33,.55); background: rgba(255,122,33,.1); }
+.deckGearPop { position: absolute; top: 42px; right: 0; width: 250px; z-index: 45; display: grid; gap: 2px; padding: 6px; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; background: #101824; box-shadow: 0 24px 60px rgba(0,0,0,.5); }
+.deckGearPop > p { margin: 0; padding: 8px 10px 4px; font-size: .66rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.45); }
+.deckGearOpt { display: flex; align-items: center; gap: .5rem; width: 100%; text-align: left; font: inherit; font-size: .85rem; font-weight: 600; color: #dbe4ef; background: transparent; border: 1px solid transparent; border-radius: 8px; padding: .55rem .6rem; cursor: pointer; }
+.deckGearOpt:hover { background: rgba(255,255,255,.05); }
+.deckGearOpt[aria-checked="true"] { background: rgba(255,122,33,.12); border-color: rgba(255,122,33,.4); }
+.deckGearOpt small { margin-left: auto; font-size: .58rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--accent); border: 1px solid rgba(255,122,33,.4); border-radius: 5px; padding: 1px 5px; }
+.deckGuided, .deckPrimary { display: grid; gap: .8rem; padding-right: 2.4rem; }
+.nba { display: flex; align-items: center; gap: .8rem; padding: .85rem; border: 1px solid rgba(255,122,33,.4); border-radius: 12px; background: rgba(255,122,33,.1); flex-wrap: wrap; }
+.nbaIcon { width: 40px; height: 40px; flex: 0 0 auto; border-radius: 11px; background: linear-gradient(135deg, #ff5a1f, #ff8a3d); display: flex; align-items: center; justify-content: center; font-size: 19px; }
+.nbaText { flex: 1; min-width: 140px; display: grid; gap: 2px; }
+.nbaText strong { color: #fff; font-size: .95rem; }
+.nbaText span { color: rgba(255,255,255,.65); font-size: .8rem; }
+.nba[data-tone="muted"] { border-color: rgba(255,255,255,.12); background: rgba(255,255,255,.03); }
+.nba[data-tone="muted"] .nbaIcon { background: rgba(255,255,255,.12); }
+.nba[data-tone="win"] { border-color: rgba(63,191,139,.45); background: rgba(63,191,139,.1); }
+.nba[data-tone="win"] .nbaIcon { background: linear-gradient(135deg, #2f9e5c, #46c08d); }
+.guidedAlt { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.guidedAlt > span { font-size: .78rem; color: rgba(255,255,255,.4); }
+.moreActions { border: 1px solid rgba(255,255,255,.08); border-radius: 11px; }
+.moreActions > summary { list-style: none; cursor: pointer; padding: .7rem .85rem; font-size: .82rem; font-weight: 600; color: rgba(255,255,255,.7); background: rgba(255,255,255,.02); border-radius: 11px; }
+.moreActions > summary::-webkit-details-marker { display: none; }
+.moreActions > summary::before { content: "▸ "; color: rgba(255,255,255,.4); }
+.moreActions[open] > summary::before { content: "▾ "; }
+.moreActions[open] > summary { border-bottom: 1px solid rgba(255,255,255,.08); border-radius: 11px 11px 0 0; }
+.moreActionsBody { display: grid; gap: .85rem; padding: .85rem; }
+.deckPrimaryRow { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; }
+.deckStatusRow { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.deckLabel { font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: rgba(255,255,255,.45); margin-right: .15rem; }
+.btnSkip { position: relative; isolation: isolate; overflow: hidden; display: inline-flex; align-items: center; gap: .35rem; font: inherit; font-size: .85rem; font-weight: 800; text-decoration: none; color: var(--accent); padding: .58rem .95rem; border-radius: 9px; border: 1px solid rgba(255,122,33,.55); background: rgba(255,122,33,.12); }
+.btnSkip:hover { background: rgba(255,122,33,.2); box-shadow: 0 6px 18px -8px var(--accent); }
+.zap { filter: drop-shadow(0 0 4px rgba(255,122,33,.7)); }
+.btnSkip::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(115deg, transparent 32%, rgba(255,150,80,.45) 50%, transparent 68%); transform: translateX(-130%); animation: leadSkipSheen 3.6s ease-in-out infinite; }
+@keyframes leadSkipSheen { 0%, 55% { transform: translateX(-130%); } 78%, 100% { transform: translateX(130%); } }
+@media (prefers-reduced-motion: reduce) { .btnSkip::after { animation: none; opacity: 0; } }
+
 .logContact { position: relative; display: inline-block; }
 .logContactPop { position: absolute; top: calc(100% + 8px); left: 0; z-index: 40; width: min(330px, 88vw); display: grid; gap: .55rem; padding: .85rem; border: 1px solid rgba(255,209,102,.24); border-radius: 12px; background: #101824; box-shadow: 0 24px 60px rgba(0,0,0,.5); }
 .logContactTitle { margin: 0; font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: rgba(255,255,255,.55); }
@@ -142,7 +208,27 @@
 .logSnippet { font: inherit; font-size: .76rem; font-weight: 600; color: rgba(255,255,255,.7); background: transparent; border: 1px dashed rgba(255,255,255,.22); border-radius: 999px; padding: .3rem .6rem; cursor: pointer; }
 .logSnippet:hover { color: #ffd166; border-color: rgba(255,209,102,.5); }
 .logContactActions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: .15rem; }
+
+/* ---- Decline job popup ---- */
+.declinePop { display: grid; gap: .7rem; margin-top: .3rem; padding: .85rem; border: 1px solid rgba(255,122,33,.28); border-radius: 12px; background: rgba(255,122,33,.05); }
+.declineTitle { margin: 0; font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: rgba(255,255,255,.55); }
+.declineReasons { display: flex; flex-wrap: wrap; gap: .4rem; }
+.declineChip { font: inherit; font-size: .8rem; font-weight: 600; color: #dbe4ef; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.14); border-radius: 999px; padding: .38rem .8rem; cursor: pointer; }
+.declineChip:hover { border-color: rgba(255,122,33,.45); }
+.declineChipActive { color: #ffb27a; background: rgba(255,122,33,.16); border-color: rgba(255,122,33,.6); }
+.declineNotify { display: grid; grid-template-columns: 18px 1fr; gap: .55rem; align-items: start; cursor: pointer; padding: .2rem 0; }
+.declineNotify input { width: 18px; height: 18px; margin-top: .1rem; }
+.declineNotify strong { display: block; color: #f7f5ef; font-size: .84rem; }
+.declineNotify small { color: rgba(255,255,255,.5); font-size: .76rem; }
+.declineNoPhone { margin: 0; font-size: .78rem; color: rgba(255,255,255,.55); }
+.declinePreview { padding: .6rem .7rem; border-radius: 9px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1); }
+.declinePreview > span { font-size: .64rem; text-transform: uppercase; letter-spacing: .08em; color: rgba(255,255,255,.42); font-weight: 800; }
+.declinePreview p { margin: .3rem 0 0; font-size: .82rem; line-height: 1.5; color: rgba(247,245,239,.85); }
+.declineActions { display: flex; justify-content: flex-end; gap: .5rem; }
 .editPhotosSection { display: grid; gap: .75rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,.08); }
+.editActivitySection { display: grid; gap: .75rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,.08); }
+.editActivityLink { font-size: .5em; font-weight: 600; color: var(--accent); text-decoration: none; margin-left: .45rem; vertical-align: middle; white-space: nowrap; }
+.editActivityLink:hover { text-decoration: underline; }
 .editPhotosTitle { display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; margin: .15rem 0 0; color: #fff; }
 .editPhotosHint { font-size: .72rem; font-weight: 600; letter-spacing: .02em; text-transform: none; color: rgba(255,255,255,.5); }
 .actionPanel { position: static; order: -1; display: grid; gap: 1rem; align-content: start; min-width: 0; }
@@ -160,6 +246,9 @@
 .quoteAmountInput { border-color: rgba(255,209,102,.52); border-radius: 12px; }
 .quoteAmountInput span { min-width: 3rem; font-size: 1.3rem; }
 .actionForm .quoteAmountInput input { min-height: 4.25rem; border: 0; border-radius: 0; background: transparent; color: #ffd166; box-shadow: none; font-size: 1.75rem; font-weight: 900; letter-spacing: 0; }
+.quoteHoursCheck { border-color: rgba(255,255,255,.12); background: rgba(255,255,255,.03); }
+.quoteHoursCheck strong { display: block; color: #f7f5ef; font-size: .88rem; }
+.quoteHoursCheck small { color: rgba(255,255,255,.5); }
 .quoteTextCheck { border-color: rgba(25,214,174,.24); background: rgba(25,214,174,.07); }
 .quoteTextCheck strong { display: block; color: #f7f5ef; font-size: .88rem; }
 .quoteTextCheck small { display: block; margin-top: .15rem; color: rgba(255,255,255,.56); font-size: .76rem; line-height: 1.35; }

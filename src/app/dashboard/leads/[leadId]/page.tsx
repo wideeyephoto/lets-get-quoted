@@ -1,18 +1,19 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
 import PhotoGallery from '@/components/photo-gallery';
 import LeadRadiusMap from '@/components/lead-radius-map';
 import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
-import { expireStaleLeads, formatElapsedTime, formatLeadSource, getLead, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, listLeads, type Lead, type LeadQuoteVisit } from '@/lib/leads';
-import { expandScheduledJobs, formatJobSchedule, formatJobTime, listJobs, type Job, type ScheduledJobOccurrence } from '@/lib/jobs';
+import { expireStaleLeads, formatElapsedTime, formatLeadSource, getLead, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, LEAD_LAYOUT_COOKIE, listLeads, type Lead, type LeadQuoteVisit } from '@/lib/leads';
+import { expandScheduledJobs, formatJobSchedule, formatJobTime, listJobs, type Job, type QuoteItem, type ScheduledJobOccurrence } from '@/lib/jobs';
 import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
-import { clearLeadQuoteVisitAction, convertLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, undoConvertLeadAction, updateLeadDetailsAction, updateLeadStatusAction } from '../actions';
+import { clearLeadQuoteVisitAction, convertLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, setLeadLayoutAction, undoConvertLeadAction, updateLeadDetailsAction, updateLeadStatusAction } from '../actions';
+import LeadActionDeck from './LeadActionDeck';
+import LeadQuoteFields from './LeadQuoteFields';
+import QuotePreviewButton from './QuotePreviewButton';
 import LeadAvailabilityScheduler from './LeadAvailabilityScheduler';
-import LeadTriageActions from './LeadTriageActions';
-import LogContactControl from './LogContactControl';
 import QuoteStartDateCalendar from './QuoteStartDateCalendar';
-import UndoQuoteButton from './UndoQuoteButton';
 import SaveButton, { ScrollTopOnSaveProvider } from '@/components/save-button';
 import QuickFillButtons from '@/components/quick-fill-buttons';
 import styles from '../leads.module.css';
@@ -106,13 +107,17 @@ function nextScheduledJobLabel(jobs: ScheduledJobOccurrence<Job>[]) {
 export default async function LeadDetailPage({ params, searchParams }: { params: { leadId: string }; searchParams: { edit?: string; details?: string; availabilityStart?: string; quoteStartStart?: string } }) {
   const { supabase, accountId } = await requireOwnerContext();
   await expireStaleLeads(supabase, accountId);
-  const [lead, jobs, leads, { data: account }] = await Promise.all([
+  const [lead, jobs, leads, { data: account }, { data: site }] = await Promise.all([
     getLead(supabase, accountId, params.leadId),
     listJobs(supabase, accountId, undefined, { includeLeadQuotes: true }),
     listLeads(supabase, accountId),
-    supabase.from('accounts').select('schedule_day_hours').eq('id', accountId).maybeSingle(),
+    supabase.from('accounts').select('schedule_day_hours, business_name').eq('id', accountId).maybeSingle(),
+    supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
   ]);
   if (!lead) notFound();
+
+  const quoteBusinessName = site?.company_name || account?.business_name || 'Your company';
+  const quoteSeedItems: QuoteItem[] = [{ id: 'seed-base', label: lead.project_type || '', amount: 0, kind: 'base', selected: true, recommended: false }];
 
   const photoUrls = await createLeadPhotoUrls(accountId, lead.photo_paths || []);
   const photos = (lead.photo_paths || []).map((path, index) => ({ path, url: photoUrls[index] })).filter((photo) => photo.url);
@@ -127,6 +132,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const markLeadContacted = updateLeadStatusAction.bind(null, lead.id, 'contacted');
   const markLeadWon = updateLeadStatusAction.bind(null, lead.id, 'won');
   const markLeadLost = updateLeadStatusAction.bind(null, lead.id, 'lost');
+  const leadLayout = cookies().get(LEAD_LAYOUT_COOKIE)?.value === 'primary' ? 'primary' : 'guided';
   const convertedJobLabel = lead.status === 'won' ? 'Open job' : 'Open quote';
   const visitLabel = formatVisit(lead.quote_visit);
   // Mirror convertLeadAction's channel logic exactly (normalizable phone -> text,
@@ -199,46 +205,6 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const closeEditHref = `/dashboard/leads/${lead.id}#availability-snapshot`;
   const photoGalleryHref = `/dashboard/leads/${lead.id}?details=photos#lead-photos-modal`;
   const closePhotoGalleryHref = `/dashboard/leads/${lead.id}#availability-snapshot`;
-  const leadPathSteps = workflowState === 'converted' ? [
-    {
-      label: convertedJobLabel,
-      href: `/dashboard/jobs/${lead.converted_job}`,
-      current: true,
-      complete: true,
-    },
-  ] : workflowState === 'estimateScheduled' ? [
-    {
-      label: 'Schedule estimate',
-      href: '#availability-snapshot',
-      current: false,
-      complete: true,
-    },
-    {
-      label: 'Send the quote',
-      href: '#lead-estimate',
-      current: true,
-      complete: false,
-    },
-    {
-      label: 'Schedule start date',
-      href: '#lead-estimate',
-      current: false,
-      complete: false,
-    },
-  ] : [
-    {
-      label: 'Schedule estimate',
-      href: '#availability-snapshot',
-      current: true,
-      complete: false,
-    },
-    {
-      label: 'Send the quote',
-      href: '#lead-estimate',
-      current: false,
-      complete: false,
-    },
-  ];
   return (
     <ScrollTopOnSaveProvider>
     <main className={`wide-shell workspace-shell ${styles.leadCommandShell}`}>
@@ -263,29 +229,24 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
             {isLeadSnoozed(triage) && <span className={styles.flagChip}>Snoozed</span>}
             {triage.archived && <span className={styles.flagChip}>Archived</span>}
           </div>
-          <div className={styles.leadStatusActions}>
-            <span className={styles.leadStatusActionsLabel}>Update status</span>
-            {lead.status === 'new' ? (
-              <LogContactControl leadId={lead.id} isFirst />
-            ) : lead.status === 'contacted' || lead.status === 'quoted' ? (
-              <LogContactControl leadId={lead.id} />
-            ) : null}
-            {lead.status !== 'won' ? (
-              <form action={markLeadWon}><SaveButton className="btn ghost">Mark won</SaveButton></form>
-            ) : null}
-            {lead.status !== 'lost' ? (
-              <form action={markLeadLost}><SaveButton className="btn ghost">Mark lost</SaveButton></form>
-            ) : null}
-            {lead.status === 'won' || lead.status === 'lost' ? (
-              <form action={markLeadContacted}><SaveButton className="btn ghost">Reopen</SaveButton></form>
-            ) : null}
-          </div>
-          <LeadTriageActions
+          <LeadActionDeck
+            initialLayout={leadLayout}
             leadId={lead.id}
+            status={lead.status}
+            workflowState={workflowState}
+            convertedJobId={lead.converted_job}
+            convertedJobLabel={convertedJobLabel}
             hasPhone={Boolean(normalizeUsPhone(lead.phone ?? ''))}
             snoozed={isLeadSnoozed(triage)}
             archived={triage.archived === true}
             declinedReason={triage.declinedReason ?? null}
+            leadName={lead.name ?? ''}
+            businessName={quoteBusinessName}
+            markWon={markLeadWon}
+            markLost={markLeadLost}
+            markContacted={markLeadContacted}
+            undoConvert={undoConvertLead}
+            setLayoutAction={setLeadLayoutAction}
           />
           <div className={styles.heroContactSummary}>
             <div className={styles.heroContactItem}>
@@ -347,32 +308,6 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
               <Link className="btn ghost" href={editLeadHref}>Edit details</Link>
             </div>
           </div>
-          <div className={styles.leadQuickActions}>
-            {workflowState === 'newLead' ? <Link className="btn primary" href="#availability-snapshot">Schedule estimate</Link> : null}
-            {workflowState === 'newLead' ? <Link className="btn secondary" href="#lead-estimate">Skip to quote</Link> : null}
-            {workflowState === 'estimateScheduled' ? <Link className="btn primary" href="#lead-estimate">Send the quote</Link> : null}
-            {workflowState === 'estimateScheduled' ? <Link className="btn secondary" href="#availability-snapshot">Review scheduled estimate</Link> : null}
-            {workflowState === 'converted' ? <Link className="btn primary" href={`/dashboard/jobs/${lead.converted_job}`}>{convertedJobLabel}</Link> : null}
-            {workflowState === 'converted' ? <UndoQuoteButton action={undoConvertLead} /> : null}
-          </div>
-        </div>
-        <div className={styles.leadHeroSide}>
-          <div className={styles.leadStageCard}>
-            <strong>Lead path</strong>
-            {leadPathSteps.map((step) => (
-              <Link
-                key={step.label}
-                href={step.href}
-                className={[
-                  step.complete ? styles.stageComplete : '',
-                  step.current ? styles.currentStatusButton : '',
-                ].filter(Boolean).join(' ')}
-                aria-current={step.current ? 'step' : undefined}
-              >
-                {step.label}
-              </Link>
-            ))}
-          </div>
         </div>
       </section>
 
@@ -408,7 +343,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
             <div className={styles.editModalHeader}>
               <div>
                 <p className="eyebrow">Edit lead</p>
-                <h2 id="leadEditTitle">Client &amp; request details</h2>
+                <h2 id="leadEditTitle">Client &amp; request details <a href="#lead-activity" className={styles.editActivityLink}>(lead activity)</a></h2>
               </div>
               <Link href={closeEditHref} className={styles.modalCloseButton} aria-label="Close edit details">x</Link>
             </div>
@@ -464,21 +399,11 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                 reorderEnabled
               />
             </div>
-          </section>
-        </div>
-      ) : null}
-
-      <div className={styles.detailGrid}>
-        <section className={styles.leadContextStack}>
-          <section className={`panel workspace-section-card ${styles.detailSection}`}>
-            <details className={styles.timelineDetails}>
-              <summary className={styles.timelineSummary}>
-                <div className="section-heading workspace-section-heading">
-                  <p className="eyebrow">Activity</p>
-                  <h2>Lead timeline</h2>
-                </div>
-                <span>{lead.quote_visit || lead.converted_job || photos.length > 0 || (triage.contactLog?.length ?? 0) > 0 ? 'Show activity' : 'View details'}</span>
-              </summary>
+            <div id="lead-activity" className={styles.editActivitySection}>
+              <div className="section-heading">
+                <p className="eyebrow">Activity</p>
+                <h3 className={styles.editPhotosTitle}>Lead timeline</h3>
+              </div>
               <div className={styles.timelineList}>
                 <div><span /> <p><strong>Website request received</strong><small>{new Date(lead.created_at).toLocaleString()}</small></p></div>
                 {(triage.contactLog ?? []).map((entry, index) => (
@@ -488,10 +413,12 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                 {lead.quote_visit ? <div><span /> <p><strong>Quote visit scheduled</strong><small>{visitLabel}{lead.quote_visit.confirmationTextSentAt ? ' - confirmation text sent' : ''}</small></p></div> : null}
                 {lead.converted_job ? <div><span /> <p><strong>Converted to job</strong><small>Opened as an active quote/job.</small></p></div> : null}
               </div>
-            </details>
+            </div>
           </section>
-        </section>
+        </div>
+      ) : null}
 
+      <div className={styles.detailGrid}>
         <aside className={styles.actionPanel}>
           {!lead.converted_job && !hasScheduledEstimate ? (
             <LeadAvailabilityScheduler
@@ -512,21 +439,25 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           ) : null}
 
           {!lead.converted_job ? (
-            <section id="lead-estimate" className={`panel workspace-section-card ${hasScheduledEstimate ? styles.primaryActionCard : ''}`}>
+            <section id="lead-estimate" className={`panel workspace-section-card ${styles.sendQuoteSection} ${hasScheduledEstimate ? styles.primaryActionCard : ''}`}>
               <div className="section-heading workspace-section-heading"><p className="eyebrow">Step 2</p><h2>Send the quote</h2></div>
               <p>Enter the amount and text the client their quote. Job start options can stay tucked away until you need them.</p>
               <form action={convertLead} className={styles.actionForm}>
-                <div className={styles.quoteAmountField}>
-                  <label htmlFor="quotedAmount">Quoted amount</label>
-                  <div className={`currency-input ${styles.quoteAmountInput}`}>
-                    <span aria-hidden="true">$</span>
-                    <input id="quotedAmount" name="quotedAmount" type="number" min="1" step="0.01" inputMode="decimal" placeholder="0.00" required />
-                  </div>
-                  <small>Enter at least $1 before sending the quote.</small>
+                <div className={styles.quoteItemsField}>
+                  <label>Quote line items</label>
+                  <LeadQuoteFields initialItems={quoteSeedItems} />
+                  <small>List what’s included, then add optional upsells the client can accept — the total updates live.</small>
                 </div>
                 <label htmlFor="estimatedHours">Estimated hours</label>
                 <input id="estimatedHours" name="estimatedHours" type="number" min="0" step="0.25" defaultValue={lead.estimated_hours ?? ''} placeholder="16" />
                 <QuickFillButtons label="Quick add:" targetId="estimatedHours" values={[{ label: '4 hrs', value: '4' }, { label: '8 hrs', value: '8' }, { label: '16 hrs', value: '16' }, { label: '24 hrs', value: '24' }, { label: '40 hrs', value: '40' }]} />
+                <label className={`sms-consent-check ${styles.quoteHoursCheck}`}>
+                  <input id="showHoursToClient" name="showHoursToClient" type="checkbox" />
+                  <span>
+                    <strong>Show estimated hours on the client&apos;s quote</strong>
+                    <small>Off by default — hours stay on your job for planning and aren&apos;t shown to the client.</small>
+                  </span>
+                </label>
                 <label className={`sms-consent-check ${styles.quoteTextCheck}`}>
                   <input id="sendClientTextCheckbox" name="sendClientText" type="checkbox" defaultChecked />
                   <span>
@@ -555,7 +486,13 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                     canViewPrevious={canViewPreviousQuoteStart}
                   />
                 </details>
-                <SaveButton>Send quote</SaveButton>
+                <div className={styles.sendQuoteActions}>
+                  <QuotePreviewButton
+                    businessName={quoteBusinessName}
+                    clientName={lead.name ?? ''}
+                  />
+                  <SaveButton>Send quote</SaveButton>
+                </div>
               </form>
             </section>
           ) : null}
