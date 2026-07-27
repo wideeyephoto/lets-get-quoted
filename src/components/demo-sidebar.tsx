@@ -100,6 +100,11 @@ export default function DemoSidebar() {
       <aside id="demo-nav" className={`sidenav demo-sidenav${isNavOpen ? ' open' : ''}`} aria-label="Demo dashboard">
         <Link href="/demo" className="sidenav-brand" aria-label="Demo dashboard home">{brand}</Link>
 
+        {/* Always-visible way out of the demo, back to the marketing site. */}
+        <Link href="/" className="demo-exit">
+          <span aria-hidden="true">←</span> Exit the LIVE Demo
+        </Link>
+
         <div className="sidenav-lead">
           <p className="sidenav-bizname">Northline Builders</p>
           <Link href="/login" className="sidenav-new" title="Create a free account to add work">

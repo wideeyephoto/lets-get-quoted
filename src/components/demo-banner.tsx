@@ -16,6 +16,9 @@ export default function DemoBanner() {
           </span>
         </div>
         <div className="demo-banner-actions">
+          <Link href="/" className="demo-banner-back">
+            <span aria-hidden="true">←</span> Exit the LIVE Demo
+          </Link>
           <Link href="/login" className="btn secondary">
             Log in
           </Link>
