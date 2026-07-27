@@ -49,6 +49,7 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
   }
 
   const openPayments = dashboard.payments.filter((payment) => payment.status === 'requested' || payment.status === 'processing');
+  const depositPayment = openPayments.find((payment) => payment.kind === 'deposit');
   const selectedScheduleOption = dashboard.scheduleRequest?.selected_index == null ? null : dashboard.scheduleRequest.options[dashboard.scheduleRequest.selected_index];
 
   return (
@@ -77,7 +78,29 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
         </section>
       ) : null}
 
-      {dashboard.scheduleRequest?.status === 'open' ? (
+      {dashboard.scheduleRequest?.status === 'open' && dashboard.depositBlocksScheduling ? (
+        <section className="panel workspace-section-card client-attention-card">
+          <div className="section-heading workspace-section-heading">
+            <p className="eyebrow">One step first</p>
+            <h2>Pay your deposit to unlock scheduling</h2>
+          </div>
+          <p className="workspace-card-copy">Your contractor requires a deposit before you can choose a start date. Once it&apos;s paid, your scheduling options appear here.</p>
+          {depositPayment ? (
+            <div className="cost-list">
+              <Link href={`/pay/${depositPayment.id}`} className="cost-item client-attention-link">
+                <div className="cost-item-main">
+                  <span className="cost-item-desc">{depositPayment.label || 'Deposit'}</span>
+                  <span className="cost-item-sub">Required before scheduling</span>
+                </div>
+                <span className="client-attention-pay-block">
+                  <span className="cost-item-amount">{formatMoney(Number(depositPayment.amount))}</span>
+                  <span className="client-attention-action">Pay deposit</span>
+                </span>
+              </Link>
+            </div>
+          ) : null}
+        </section>
+      ) : dashboard.scheduleRequest?.status === 'open' ? (
         <section className="panel workspace-section-card client-attention-card">
           <div className="section-heading workspace-section-heading">
             <p className="eyebrow">Choose your start date</p>

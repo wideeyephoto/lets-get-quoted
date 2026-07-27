@@ -237,6 +237,25 @@ async function applyScheduleSelection(request: PublicScheduleRequest, optionInde
   const admin = createAdminClient();
   const respondedAt = new Date().toISOString();
 
+  // Deposit gate: a job flagged 'before_schedule' can't be scheduled until its
+  // deposit is paid. Backstop for the client-page gate (which hides the picker).
+  const { data: gateJob } = await admin
+    .from('jobs')
+    .select('deposit_gate')
+    .eq('account_id', request.account_id)
+    .eq('id', request.job_id)
+    .maybeSingle();
+  if (gateJob?.deposit_gate === 'before_schedule') {
+    const { count } = await admin
+      .from('payments')
+      .select('id', { count: 'exact', head: true })
+      .eq('account_id', request.account_id)
+      .eq('job_id', request.job_id)
+      .eq('kind', 'deposit')
+      .eq('status', 'paid');
+    if ((count ?? 0) === 0) throw new Error('Please pay your deposit before choosing a start date.');
+  }
+
   const { error: requestError } = await admin
     .from('job_schedule_requests')
     .update({

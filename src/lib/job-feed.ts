@@ -57,6 +57,7 @@ export type ClientJobDashboard = {
     client_notes: string | null;
   } | null;
   quoteApproved: boolean;
+  depositBlocksScheduling: boolean;
 };
 
 function hasFeedAction(feed: JobFeedEvent[], sourceTable: string, sourceId: string, actionUrl: string): boolean {
@@ -310,11 +311,15 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
   // items instead of blanking every client job link.
   const { data: quoteRow } = await admin
     .from('jobs')
-    .select('quote_items')
+    .select('quote_items, deposit_gate')
     .eq('account_id', access.account_id)
     .eq('id', access.job_id)
     .maybeSingle();
   const quoteItems = parseQuoteItems(quoteRow?.quote_items);
+  // A 'before_schedule' deposit blocks scheduling until it's paid. Derived from
+  // the already-loaded payments — no extra query.
+  const depositPaid = ((payments ?? []) as Payment[]).some((payment) => payment.kind === 'deposit' && payment.status === 'paid');
+  const depositBlocksScheduling = quoteRow?.deposit_gate === 'before_schedule' && !depositPaid;
 
   // The job checklist, client-facing (read-only progress). Defensive: an
   // un-migrated DB (no job_tasks table) shows no checklist rather than erroring.
@@ -347,6 +352,7 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
     tasks,
     scheduleRequest: scheduleRequest as ClientJobDashboard['scheduleRequest'],
     quoteApproved,
+    depositBlocksScheduling,
   };
 }
 

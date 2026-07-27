@@ -254,6 +254,8 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
       smsConsent: Boolean(sendClientText && clientPhone),
     });
     await createPaymentFeedEvent(supabase, depositPayment.id, 'payment_requested');
+    // Record the gate on the job so scheduling can enforce a before-schedule deposit.
+    await supabase.from('jobs').update({ deposit_gate: depositTiming }).eq('account_id', accountId).eq('id', job.id);
   }
 
   await createJobFeedEvent(supabase, accountId, job.id, {

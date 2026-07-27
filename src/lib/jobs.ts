@@ -43,6 +43,7 @@ export type Job = {
   scheduled_time: string | null;
   estimated_hours: number | null;
   quoted_amount: number;
+  deposit_gate: 'before_schedule' | 'before_work' | null;
   quote_items: QuoteItem[] | null;
   client_id: string | null;
   photo_paths: string[];

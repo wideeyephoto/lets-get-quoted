@@ -253,6 +253,9 @@ alter table jobs add column if not exists estimated_hours numeric(8,2);
 -- quote, still fully supported.
 alter table jobs add column if not exists quote_items jsonb;
 alter table jobs add column if not exists client_email text;
+-- Deposit gate: 'before_schedule' blocks the client from picking a start date
+-- until a deposit payment is paid; 'before_work' is a reminder only. Null = none.
+alter table jobs add column if not exists deposit_gate text;
 
 -- ----------------------------------------------------------------------------
 -- CLIENTS  — a first-class, deduped customer record. A job's client_name/phone/
