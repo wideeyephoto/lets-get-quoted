@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { FEATURE_CATEGORIES, FAVORITE_FEATURES, FEATURE_COUNT } from '@/lib/features';
+import SiteFooter from '@/components/site-footer';
 
 export const metadata: Metadata = {
   title: "Features — Let's Get Quoted",
@@ -95,10 +96,7 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      <footer className="marketing-footer">
-        <span>© 2026 Let&apos;s Get Quoted</span>
-        <nav aria-label="Legal"><Link href="/">Home</Link><Link href="/privacy">Privacy Policy</Link><Link href="/sms-terms">SMS Terms</Link></nav>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

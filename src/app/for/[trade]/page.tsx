@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { TRADES, getTrade } from '@/lib/trades';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import { FAVORITE_FEATURES, FEATURE_COUNT } from '@/lib/features';
+import SiteFooter from '@/components/site-footer';
 
 export function generateStaticParams() {
   return TRADES.map((trade) => ({ trade: trade.slug }));
@@ -120,10 +121,7 @@ export default function TradePage({ params }: { params: { trade: string } }) {
         </div>
       </section>
 
-      <footer className="marketing-footer">
-        <span>© 2026 Let&apos;s Get Quoted</span>
-        <nav aria-label="Site"><Link href="/">Home</Link><Link href="/features">Features</Link><Link href="/faq">FAQ</Link><Link href="/privacy">Privacy Policy</Link></nav>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

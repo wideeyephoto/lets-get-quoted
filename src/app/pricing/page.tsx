@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import { FEATURE_COUNT } from '@/lib/features';
 import PricingCalculator from './PricingCalculator';
+import SiteFooter from '@/components/site-footer';
 
 export const metadata: Metadata = {
   title: 'Pricing — Let’s Get Quoted',
@@ -147,10 +148,7 @@ export default function PricingPage() {
         </div>
       </section>
 
-      <footer className="marketing-footer">
-        <span>© 2026 Let&apos;s Get Quoted</span>
-        <nav aria-label="Site"><Link href="/">Home</Link><Link href="/features">Features</Link><Link href="/faq">FAQ</Link><Link href="/privacy">Privacy Policy</Link></nav>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

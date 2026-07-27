@@ -96,12 +96,14 @@ export const metadata: Metadata = {
     title: 'The website, CRM & payments platform built for contractors',
     description:
       'Win leads with an AI estimator, send quotes and e-signatures, schedule the work, and collect card or bank payments — one tool built for contractors. No subscription; you only pay when you get paid.',
+    images: [{ url: '/template-previews/professional.jpg', width: 1900, height: 881, alt: 'A contractor website built with Let’s Get Quoted' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'The website, CRM & payments platform built for contractors',
     description:
       'Capture leads, quote, e-sign, schedule, and get paid — one tool built for contractors. No subscription; pay only when you get paid.',
+    images: ['/template-previews/professional.jpg'],
   },
 };
 

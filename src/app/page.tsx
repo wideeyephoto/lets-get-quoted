@@ -4,6 +4,7 @@ import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import { FAVORITE_FEATURES, FEATURE_COUNT } from '@/lib/features';
 import { TRADES } from '@/lib/trades';
 import TemplateSlider from '@/components/template-slider';
+import SiteFooter from '@/components/site-footer';
 
 // Homepage showcases a curated set of 3 flagship templates in a slider —
 // the full catalog (17 and growing) lives behind "See a live demo" / the
@@ -277,8 +278,8 @@ const feeTiers = [
 ];
 
 const trustBadges = [
-  { label: 'Card payments run on Stripe — we never see card numbers', icon: <ShieldIcon /> },
-  { label: 'Card & bank payments run on Stripe and pay out to your account', icon: <BankIcon /> },
+  { label: 'Card & bank payments run on Stripe — we never touch card numbers', icon: <ShieldIcon /> },
+  { label: 'Money pays out straight to your own bank account', icon: <BankIcon /> },
   { label: 'Encrypted in transit, every request', icon: <LockIcon /> },
   { label: "Your data is walled off from every other contractor's", icon: <LayersIcon /> },
 ];
@@ -319,15 +320,6 @@ export default function HomePage() {
 
       <section className="hero-grid">
         <div className="hero-copy">
-          <div className="hero-flow-strip" aria-hidden="true">
-            <span>Quote</span>
-            <span className="flow-strip-arrow">&rarr;</span>
-            <span>Signed</span>
-            <span className="flow-strip-arrow">&rarr;</span>
-            <span>Paid</span>
-            <span className="flow-strip-arrow">&rarr;</span>
-            <span className="flow-strip-highlight">Banked</span>
-          </div>
           <h1>Quote it. Sign it. Get paid. <span className="gradient-text">Straight to your bank.</span></h1>
           <p className="hero-text">
             One tool to win the lead, quote the job, and get paid &mdash; a contractor website with an AI estimator that
@@ -521,10 +513,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className="marketing-footer">
-        <span>© 2026 Let&apos;s Get Quoted</span>
-        <nav aria-label="Legal"><Link href="/features">Features</Link><Link href="/pricing">Pricing</Link><Link href="/faq">FAQ</Link><Link href="/privacy">Privacy Policy</Link><Link href="/sms-terms">SMS Terms</Link></nav>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

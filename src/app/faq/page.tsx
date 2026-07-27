@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import SiteFooter from '@/components/site-footer';
 
 export const metadata: Metadata = {
   title: 'FAQ — Let’s Get Quoted',
@@ -155,10 +156,7 @@ export default function FaqPage() {
         </div>
       </section>
 
-      <footer className="marketing-footer">
-        <span>© 2026 Let&apos;s Get Quoted</span>
-        <nav aria-label="Site"><Link href="/">Home</Link><Link href="/features">Features</Link><Link href="/privacy">Privacy Policy</Link><Link href="/sms-terms">SMS Terms</Link></nav>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }

@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/auth';
 import type { Site } from '@/lib/sites';
 import { isSiteSeoReady } from '@/lib/seo/site-seo';
 import { TRADES } from '@/lib/trades';
+import { ARTICLES } from '@/lib/resources';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,10 +20,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${appUrl}/features`, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${appUrl}/pricing`, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${appUrl}/faq`, changeFrequency: 'monthly', priority: 0.6 },
+    { url: `${appUrl}/security`, changeFrequency: 'yearly', priority: 0.5 },
+    { url: `${appUrl}/resources`, changeFrequency: 'weekly', priority: 0.6 },
     ...TRADES.map((trade) => ({
       url: `${appUrl}/for/${trade.slug}`,
       changeFrequency: 'monthly' as const,
       priority: 0.7,
+    })),
+    ...ARTICLES.map((article) => ({
+      url: `${appUrl}/resources/${article.slug}`,
+      lastModified: article.datePublished,
+      changeFrequency: 'yearly' as const,
+      priority: 0.5,
     })),
     { url: `${appUrl}/privacy`, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${appUrl}/sms-terms`, changeFrequency: 'yearly', priority: 0.3 },
