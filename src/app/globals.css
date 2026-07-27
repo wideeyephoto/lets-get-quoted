@@ -2451,7 +2451,7 @@ li + li { margin-top: 0.45rem; }
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  margin: 0 0.35rem 0.6rem;
+  margin: 2px 0.35rem 0.6rem;
   padding: 0.4rem 0.55rem;
   border-radius: 8px;
   border: 1px solid rgba(255, 122, 33, 0.35);
