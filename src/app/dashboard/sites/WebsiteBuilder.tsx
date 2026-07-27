@@ -6,7 +6,7 @@ import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getSiteContent, getTradeGlyphOptions, glyphForContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES,
   MENU_BUTTON_STYLES,
-  BLOG_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
+  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
 import { generatePrivacyPolicy, generateTermsOfService } from '@/lib/legal/legal-copy';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
@@ -1624,12 +1624,13 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
 
                   <hr className={styles.logoDivider} />
                   <div className={styles.cardGroupLabel}>Type &amp; layout</div>
+                  <label className={styles.formField}><span>Heading font</span><select value={site.header_font || ''} onChange={(event) => handleChange('header_font', event.target.value || null)}>
+                    <option value="">Theme default</option>
+                    {HEADING_FONT_OPTIONS.map((font) => <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>{font.label}</option>)}
+                  </select></label>
                   <div className={styles.formColumns}>
-                    <label className={styles.formField}><span>Heading font</span><select value={site.header_font || ''} onChange={(event) => handleChange('header_font', event.target.value || null)}>
-                      <option value="">Theme default</option>
-                      {HEADING_FONT_OPTIONS.map((font) => <option key={font.value} value={font.value} style={{ fontFamily: font.value }}>{font.label}</option>)}
-                    </select></label>
-                    <label className={styles.formField}><span>Button style</span><select value={site.button_style === 'ghost' ? 'solid' : (site.button_style || 'solid')} onChange={(event) => handleChange('button_style', event.target.value)}><option value="solid">Solid</option><option value="outline">Outline</option><option value="glow">Glow</option><option value="double">Double border</option><option value="gloss">Gloss</option><option value="ring">Ring</option><option value="sweep">Fill sweep</option></select></label>
+                    <label className={styles.formField}><span>Page buttons</span><select value={site.button_style === 'ghost' ? 'solid' : (site.button_style || 'solid')} onChange={(event) => handleChange('button_style', event.target.value)}>{BUTTON_STYLES.map((b) => <option key={b.key} value={b.key}>{b.label}</option>)}</select><small className={styles.fieldHint}>Hero, contact &amp; footer call-to-action buttons.</small></label>
+                    <label className={styles.formField}><span>Header button</span><select value={siteContent.headerButtonStyle} onChange={(event) => updateSiteContent({ headerButtonStyle: event.target.value })}><option value="">Match page buttons</option>{HEADER_BUTTON_STYLES.map((b) => <option key={b.key} value={b.key}>{b.label}</option>)}</select><small className={styles.fieldHint}>The &ldquo;Instant Estimate&rdquo; button in your header.</small></label>
                   </div>
 
                   <hr className={styles.logoDivider} />

@@ -369,6 +369,31 @@ export const MENU_BUTTON_STYLES = [
 ] as const;
 const MENU_BUTTON_STYLE_KEYS = new Set<string>(MENU_BUTTON_STYLES.map((style) => style.key));
 
+// Button treatments for the primary CTAs. PAGE buttons (hero/contact/footer) are
+// driven by site.button_style → data-button; the HEADER CTA is driven separately
+// by content.headerButtonStyle → data-header-button, so the two can differ.
+export const BUTTON_STYLES = [
+  { key: 'solid', label: 'Solid' },
+  { key: 'outline', label: 'Outline' },
+  { key: 'glow', label: 'Glow' },
+  { key: 'double', label: 'Double border' },
+  { key: 'gloss', label: 'Gloss' },
+  { key: 'ring', label: 'Ring' },
+  { key: 'sweep', label: 'Fill sweep' },
+] as const;
+// The header dropdown adds "Match page buttons" ('') and drops "Solid" (which is
+// just what "match" gives when the page is solid — a standalone solid header
+// override would have to unpick each theme's base CTA, so it isn't offered).
+export const HEADER_BUTTON_STYLES = [
+  { key: 'outline', label: 'Outline' },
+  { key: 'glow', label: 'Glow' },
+  { key: 'double', label: 'Double border' },
+  { key: 'gloss', label: 'Gloss' },
+  { key: 'ring', label: 'Ring' },
+  { key: 'sweep', label: 'Fill sweep' },
+] as const;
+const HEADER_BUTTON_STYLE_KEYS = new Set<string>(HEADER_BUTTON_STYLES.map((style) => style.key));
+
 // Display treatments for the company-name wordmark (header + footer), applied
 // via data-wordmark on the root. '' = the plain name. CSS-only, so they layer
 // on top of whatever brand font is chosen.
@@ -428,6 +453,13 @@ export function getColorScheme(key: string | null | undefined): ColorScheme | nu
 // per-template default could be introduced without touching call sites.
 export function getHeaderStyle(_template: string, content: Record<string, unknown> | null | undefined): string {
   return getSiteContent(content).headerStyle;
+}
+
+// Header CTA button style for data-header-button. '' (unset) resolves to 'match'
+// — no override CSS block matches 'match', so the header CTA simply follows the
+// page button style (data-button), which is how every existing site behaves.
+export function getHeaderButtonStyle(content: Record<string, unknown> | null | undefined): string {
+  return getSiteContent(content).headerButtonStyle || 'match';
 }
 
 export type SiteQuoteFormContent = {
@@ -522,6 +554,10 @@ export type NormalizedSiteContent = {
   headerCta: boolean;
   // Mobile hamburger button style (data-menu-btn). See MENU_BUTTON_STYLES.
   menuButton: string;
+  // Header CTA button style (data-header-button). '' = match the page button
+  // style (site.button_style); otherwise one of HEADER_BUTTON_STYLES so the
+  // header "Instant Estimate" can differ from the hero/page buttons.
+  headerButtonStyle: string;
   // Full-page color scheme key ('' = the theme's own palette). See COLOR_SCHEMES.
   colorScheme: string;
   // Company-name wordmark display treatment ('' = plain). See WORDMARK_STYLES.
@@ -993,6 +1029,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     headerStyle: HEADER_STYLES.some((style) => style.key === root.headerStyle) ? toString(root.headerStyle) : '',
     headerCta: root.headerCta !== false,
     menuButton: MENU_BUTTON_STYLE_KEYS.has(toString(root.menuButton)) ? toString(root.menuButton) : 'bars',
+    headerButtonStyle: HEADER_BUTTON_STYLE_KEYS.has(toString(root.headerButtonStyle)) ? toString(root.headerButtonStyle) : '',
     colorScheme: COLOR_SCHEMES.some((scheme) => scheme.key === root.colorScheme) ? toString(root.colorScheme) : '',
     wordmarkStyle: WORDMARK_STYLES.some((style) => style.key === root.wordmarkStyle) ? toString(root.wordmarkStyle) : '',
     projectShowcase: {
