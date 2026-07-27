@@ -337,13 +337,19 @@ export const HERO_BADGE_PRESETS = [
 export type HeroBadgePreset = { key: string; icon: string; title: string; subtitle: string; label: string };
 
 // The three visual treatments for the floating hero badge.
+// Hero badge treatments (data-badge-style). Two light-background + two
+// dark-background looks. 'solid'/'soft' are the original light styles (kept so
+// existing sites are unchanged); 'dark'/'darkglass' are their dark counterparts.
 export const HERO_BADGE_STYLES = [
-  { key: 'solid', label: 'Solid' },
-  { key: 'outline', label: 'Outlined' },
-  { key: 'soft', label: 'Soft glass' },
+  { key: 'solid', label: 'Light' },
+  { key: 'soft', label: 'Light glass' },
+  { key: 'dark', label: 'Dark' },
+  { key: 'darkglass', label: 'Dark glass' },
 ] as const;
 
-const HERO_BADGE_STYLE_KEYS = new Set<string>(HERO_BADGE_STYLES.map((style) => style.key));
+// 'outline' is a legacy style kept valid (so older sites keep it) but no longer
+// offered in the picker.
+const HERO_BADGE_STYLE_KEYS = new Set<string>([...HERO_BADGE_STYLES.map((style) => style.key), 'outline']);
 
 // Selectable header styles, each rendered in the template's own skin via
 // data-header on the root. '' = the theme's built-in header (untouched). More

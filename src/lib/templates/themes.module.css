@@ -1757,6 +1757,48 @@
 .site[data-badge-style='outline'] .vistaBadge small, .site[data-badge-style='soft'] .vistaBadge small,
 .site[data-badge-style='outline'] .renoBadge small, .site[data-badge-style='soft'] .renoBadge small { color: #fff; }
 
+/* Dark hero-badge styles — the two dark-background counterparts to Light (solid)
+   and Light glass (soft). Cover every theme's hero badge (the same set the light
+   styles restyle). A neutral dark navy reads cleanly over any hero photo. */
+.site[data-badge-style='dark'] .shineBadge,
+.site[data-badge-style='dark'] .coatHeroBadge,
+.site[data-badge-style='dark'] .fixitHeroCard,
+.site[data-badge-style='dark'] .guildBadge,
+.site[data-badge-style='dark'] .forgeBadge,
+.site[data-badge-style='dark'] .vistaBadge,
+.site[data-badge-style='dark'] .renoBadge {
+  background: color-mix(in srgb, #0c141f 90%, transparent); border: 1px solid rgba(255,255,255,.14); box-shadow: 0 22px 46px -22px rgba(0,0,0,.6); color: #fff; -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+.site[data-badge-style='darkglass'] .shineBadge,
+.site[data-badge-style='darkglass'] .coatHeroBadge,
+.site[data-badge-style='darkglass'] .fixitHeroCard,
+.site[data-badge-style='darkglass'] .guildBadge,
+.site[data-badge-style='darkglass'] .forgeBadge,
+.site[data-badge-style='darkglass'] .vistaBadge,
+.site[data-badge-style='darkglass'] .renoBadge {
+  background: color-mix(in srgb, #0c141f 48%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.2); box-shadow: 0 22px 46px -22px rgba(0,0,0,.5); color: #fff;
+}
+/* White text on both dark styles (same targets as outline/soft above). */
+.site[data-badge-style='dark'] .shineBadge strong, .site[data-badge-style='darkglass'] .shineBadge strong,
+.site[data-badge-style='dark'] .shineBadge small, .site[data-badge-style='darkglass'] .shineBadge small,
+.site[data-badge-style='dark'] .shineBadgeCustomers strong, .site[data-badge-style='darkglass'] .shineBadgeCustomers strong,
+.site[data-badge-style='dark'] .shineBadgeCustomers small, .site[data-badge-style='darkglass'] .shineBadgeCustomers small,
+.site[data-badge-style='dark'] .coatHeroBadge strong, .site[data-badge-style='darkglass'] .coatHeroBadge strong,
+.site[data-badge-style='dark'] .coatHeroBadge small, .site[data-badge-style='darkglass'] .coatHeroBadge small,
+.site[data-badge-style='dark'] .fixitHeroCard strong, .site[data-badge-style='darkglass'] .fixitHeroCard strong,
+.site[data-badge-style='dark'] .fixitHeroCard small, .site[data-badge-style='darkglass'] .fixitHeroCard small,
+.site[data-badge-style='dark'] .guildBadge strong, .site[data-badge-style='darkglass'] .guildBadge strong,
+.site[data-badge-style='dark'] .guildBadge span, .site[data-badge-style='darkglass'] .guildBadge span,
+.site[data-badge-style='dark'] .forgeBadge small, .site[data-badge-style='darkglass'] .forgeBadge small,
+.site[data-badge-style='dark'] .vistaBadge strong, .site[data-badge-style='darkglass'] .vistaBadge strong,
+.site[data-badge-style='dark'] .vistaBadge small, .site[data-badge-style='darkglass'] .vistaBadge small,
+.site[data-badge-style='dark'] .renoBadge small, .site[data-badge-style='darkglass'] .renoBadge small { color: #fff; }
+/* Accent icon chips on dark (matches the soft treatment; the other themes'
+   badges already carry an accent circle by default). */
+.site[data-badge-style='dark'] .coatHeroBadgeIcon, .site[data-badge-style='darkglass'] .coatHeroBadgeIcon,
+.site[data-badge-style='dark'] .fixitHeroCardIcon, .site[data-badge-style='darkglass'] .fixitHeroCardIcon,
+.site[data-badge-style='dark'] .guildBadge .guildBadgeIcon, .site[data-badge-style='darkglass'] .guildBadge .guildBadgeIcon { background: color-mix(in srgb, var(--theme-accent) 46%, transparent); color: #fff; }
+
 /* Same detailing as the other themes' badges: accent rail + haloed icon. */
 .forgeBadge, .vistaBadge, .renoBadge { overflow: hidden; transition: box-shadow .3s ease; }
 .forgeBadge::before, .vistaBadge::before, .renoBadge::before {
