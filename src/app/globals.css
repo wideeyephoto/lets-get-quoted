@@ -284,7 +284,7 @@ h3 {
 
 /* Marketing rail: openly-accessible "try it" entries sit above the locked app
    nav — accented so they read as the clear, unlocked way in. */
-.sidenav-try { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.7rem; }
+.sidenav-try { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.7rem; margin-bottom: 0.7rem; }
 .sidenav-try-link {
   display: flex;
   align-items: center;
