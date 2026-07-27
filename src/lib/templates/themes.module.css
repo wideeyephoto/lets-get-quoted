@@ -1627,8 +1627,12 @@
 /* On the glass style the accent icon chips were washing out — give the color
    icons and their circle more presence against the translucent panel. */
 .site[data-badge-style='soft'] .coatHeroBadgeIcon,
-.site[data-badge-style='soft'] .fixitHeroCardIcon { background: color-mix(in srgb, var(--theme-accent) 42%, transparent); color: #fff; }
-.site[data-badge-style='soft'] .guildBadge .guildBadgeIcon { background: rgba(255,255,255,.42); }
+.site[data-badge-style='soft'] .fixitHeroCardIcon,
+.site[data-badge-style='soft'] .guildBadge .guildBadgeIcon { background: color-mix(in srgb, var(--theme-accent) 42%, transparent); color: #fff; }
+/* Guild's soft badge was a flat white-frost panel with no accent anywhere. Tint
+   the glass (and its border) toward the theme accent so the whole badge carries
+   color, matching its now-accented icon, while staying translucent over the photo. */
+.site[data-badge-style='soft'] .guildBadge { background: color-mix(in srgb, var(--theme-accent) 32%, rgba(255,255,255,.24)); border-color: color-mix(in srgb, var(--theme-accent) 42%, rgba(255,255,255,.5)); }
 
 /* Badge detailing — an accent rail down the leading edge, a haloed icon chip,
    and a response on hover, so the floating chips read as designed objects
