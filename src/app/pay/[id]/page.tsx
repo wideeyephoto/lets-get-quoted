@@ -1,4 +1,4 @@
-import { getPublicPayment, getQuotedFee, type PaymentStatus } from '@/lib/payments';
+import { getPublicPayment, getQuotedFee, ACH_MIN_AMOUNT, type PaymentStatus } from '@/lib/payments';
 import { startCheckoutAction } from './actions';
 
 // Always render fresh from the database — this page's content changes based
@@ -63,12 +63,17 @@ export default async function PublicPaymentPage({
 
   const statusMessage: Record<PaymentStatus, string> = {
     requested: '',
-    processing: '',
+    processing: 'This payment is processing. Bank transfers (ACH) can take a few business days to clear — you’ll be confirmed once it settles.',
     paid: 'This payment has already been completed. Thank you!',
     failed: 'The last payment attempt failed. You can try again below.',
     refunded: 'This payment has been refunded.',
     disputed: 'This payment is under dispute with your bank and cannot be paid here.',
   };
+
+  // ACH is offered on large one-off payments (not on a plan deposit, which stays
+  // card-only for the installment engine). Mirrors createCheckoutSessionForPayment.
+  const isPlanDeposit = Boolean(payment.payment_plan_id) && payment.kind === 'deposit';
+  const offerAch = payment.amount >= ACH_MIN_AMOUNT && !isPlanDeposit;
 
   const alreadyPaid = payment.status === 'paid';
   const cancelledJustNow = searchParams.status === 'cancelled';
@@ -139,11 +144,19 @@ export default async function PublicPaymentPage({
                 <p>This contractor hasn&apos;t finished setting up payments yet. Please check back soon.</p>
               </div>
             ) : (
-              <form action={startCheckoutAction.bind(null, payment.id)} className="actions workspace-actions">
-                <button type="submit" className="btn primary">
-                  Pay {formatMoney(payment.amount)}
-                </button>
-              </form>
+              <>
+                <form action={startCheckoutAction.bind(null, payment.id)} className="actions workspace-actions">
+                  <button type="submit" className="btn primary">
+                    Pay {formatMoney(payment.amount)}
+                  </button>
+                </form>
+                {offerAch ? (
+                  <p className="payment-fee-note" style={{ fontSize: '0.875rem', color: '#666', marginTop: '0.5rem' }}>
+                    Pay by <strong>card</strong> or <strong>bank transfer (ACH)</strong> at checkout. Card is instant; a bank
+                    transfer takes a few business days to clear, and you’ll be confirmed once it settles.
+                  </p>
+                ) : null}
+              </>
             )
           ) : null}
         </div>

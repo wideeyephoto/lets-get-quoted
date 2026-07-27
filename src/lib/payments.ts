@@ -2,7 +2,14 @@ import { createAdminClient } from '@/lib/auth';
 import { getJob } from '@/lib/jobs';
 import { getStripeClient, computeFeeRate, computePlatformFee, computePlatformFeeCents, toCents, fromCents } from '@/lib/stripe';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type Stripe from 'stripe';
 import { sendPaymentSmsEvent } from '@/lib/sms';
+
+// Offer ACH bank debit on one-off payments at or above this amount. ACH's flat,
+// capped fee ($5 at Stripe) beats the card percentage badly on large payments,
+// so a big deposit / final balance / invoice is far cheaper by bank transfer.
+// Small payments stay card-only (ACH's multi-day settlement isn't worth it).
+export const ACH_MIN_AMOUNT = 1000;
 
 export type PaymentKind = 'deposit' | 'stage' | 'final' | 'plan_installment';
 export type PaymentStatus = 'requested' | 'processing' | 'paid' | 'failed' | 'refunded' | 'disputed';
@@ -245,9 +252,15 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
     ? await ensurePlanDepositCustomer(payment.payment_plan_id as string, payment.account_id, payment.job?.client_name ?? null)
     : undefined;
 
-  const session = await stripe.checkout.sessions.create({
+  // Offer ACH on large one-off payments — but NOT on a plan deposit, whose saved
+  // payment method drives the card-only installment engine (ACH-saved bank debit
+  // isn't wired into that path yet). Card is always offered alongside ACH.
+  const offerAch = payment.amount >= ACH_MIN_AMOUNT && !isPlanDeposit;
+
+  const params: Stripe.Checkout.SessionCreateParams = {
     mode: 'payment',
     ...(planCustomerId ? { customer: planCustomerId } : {}),
+    ...(offerAch ? { payment_method_types: ['card', 'us_bank_account'] } : {}),
     line_items: [
       {
         price_data: {
@@ -273,7 +286,21 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
     },
     success_url: `${origin}/pay/${payment.id}?status=success`,
     cancel_url: `${origin}/pay/${payment.id}?status=cancelled`,
-  });
+  };
+
+  let session: Stripe.Response<Stripe.Checkout.Session>;
+  try {
+    session = await stripe.checkout.sessions.create(params);
+  } catch (err) {
+    // If ACH isn't activated/eligible on this account, fall back to card-only so
+    // a large payment is never left un-payable.
+    if (offerAch && err instanceof Error && /us_bank_account/i.test(err.message)) {
+      console.warn(`ACH unavailable for account ${payment.account_id}; falling back to card-only: ${err.message}`);
+      session = await stripe.checkout.sessions.create({ ...params, payment_method_types: ['card'] });
+    } else {
+      throw err;
+    }
+  }
 
   const { error } = await admin
     .from('payments')

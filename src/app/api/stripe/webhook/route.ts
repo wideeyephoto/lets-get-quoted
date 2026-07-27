@@ -142,6 +142,38 @@ export async function POST(request: Request) {
     }
   }
 
+  // ACH (and other delayed methods) settle asynchronously: the Checkout session
+  // completes with the payment still 'processing', then Stripe fires one of these
+  // when the bank debit clears or bounces, often days later. "Paid" is set only
+  // here (or via payment_intent.succeeded), never from the completion redirect.
+  if (event.type === 'checkout.session.async_payment_succeeded') {
+    const session = event.data.object;
+    const paymentId = session.metadata?.payment_id;
+    if (paymentId) {
+      const stripePaymentIntent =
+        typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id ?? null;
+      await markPaymentPaid(admin, paymentId, stripePaymentIntent);
+    }
+  }
+
+  if (event.type === 'checkout.session.async_payment_failed') {
+    const session = event.data.object;
+    const paymentId = session.metadata?.payment_id;
+    if (paymentId) {
+      const { data: transitioned } = await admin
+        .from('payments')
+        .update({ status: 'failed' })
+        .eq('id', paymentId)
+        .in('status', ['requested', 'processing'])
+        .select('id')
+        .maybeSingle();
+      if (transitioned) await sendPaymentSmsEvent(paymentId, 'payment_failed');
+      if (transitioned) await createPaymentFeedEvent(admin, paymentId, 'payment_failed');
+      // Release a held payoff lock if a large ACH payoff bounced.
+      await handlePlanPaymentFailed(admin, paymentId);
+    }
+  }
+
   // Checkout session expired — payment abandoned
   if (event.type === 'checkout.session.expired') {
     const session = event.data.object;
