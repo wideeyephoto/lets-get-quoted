@@ -12,6 +12,21 @@ function formatUsdRounded(amount: number): string {
   return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 }
 
+const FREQ_SUFFIX: Record<'weekly' | 'biweekly' | 'monthly', string> = { weekly: '/wk', biweekly: '/2wk', monthly: '/mo' };
+
+// Term + pay-in-full line under a subscription.
+function subCaption(item: QuoteItem): string {
+  const parts: string[] = [];
+  const term = item.termCycles ?? 0;
+  const discount = item.prepayDiscountPercent ?? 0;
+  if (term > 0) parts.push(`${term} payments`);
+  if (term > 0 && discount > 0) {
+    const full = item.amount * term * (1 - discount / 100);
+    parts.push(`or ${formatUsd(full)} up front — save ${discount}%`);
+  }
+  return parts.join(' · ');
+}
+
 // Client-facing itemized quote. Base items are shown as included; optional
 // add-ons are Add/Added toggles that update the running total live (with a short
 // count-up). Submitting posts the accepted add-on ids to the approval action.
@@ -24,6 +39,7 @@ export default function QuoteDocument({
 }) {
   const baseItems = items.filter((item) => item.kind === 'base');
   const addonItems = items.filter((item) => item.kind === 'addon');
+  const subscriptionItems = items.filter((item) => item.kind === 'subscription');
 
   const [selected, setSelected] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(addonItems.map((item) => [item.id, item.selected])),
@@ -108,8 +124,23 @@ export default function QuoteDocument({
         </div>
       ) : null}
 
+      {subscriptionItems.length > 0 ? (
+        <div className="quote-doc-group">
+          <p className="quote-doc-group-label">Ongoing plans</p>
+          <ul className="quote-doc-list">
+            {subscriptionItems.map((item) => (
+              <li className="quote-doc-line" key={item.id}>
+                <span className="quote-doc-line-label">{item.label}{subCaption(item) ? <small className="quote-doc-subline">{subCaption(item)}</small> : null}</span>
+                <span className="quote-doc-line-amount">{formatUsd(item.amount)}{FREQ_SUFFIX[item.frequency ?? 'monthly']}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="quote-doc-sub-note">Billed separately on approval — you’ll set up a card for these.</p>
+        </div>
+      ) : null}
+
       <div className="quote-doc-total">
-        <span>Your total</span>
+        <span>Your total{subscriptionItems.length > 0 ? ' today' : ''}</span>
         <strong>{totalLabel}</strong>
       </div>
 

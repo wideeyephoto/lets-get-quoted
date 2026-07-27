@@ -2916,6 +2916,41 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   opacity: 1;
 }
 
+/* Subscription (recurring) line items — teal, distinct from orange upsells */
+.quote-builder-row-subscription {
+  border-color: rgba(45, 190, 210, 0.4);
+  border-left: 4px solid #2dbed2;
+  background:
+    linear-gradient(90deg, rgba(45, 190, 210, 0.12), rgba(45, 190, 210, 0.02) 62%),
+    rgba(255, 255, 255, 0.03);
+}
+.quote-builder-subtag {
+  display: inline-flex; align-items: center; padding: 0.16rem 0.5rem; border-radius: 999px;
+  font-size: 0.6rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
+  color: #7fe0ef; background: rgba(45, 190, 210, 0.16); border: 1px solid rgba(45, 190, 210, 0.5); white-space: nowrap;
+}
+.quote-builder-add-sub { color: #9fe8f4; border-color: rgba(45, 190, 210, 0.4); }
+.quote-builder-subpop {
+  display: grid; gap: 0.6rem; padding: 0.85rem; margin-top: 0.2rem;
+  border: 1px solid rgba(45, 190, 210, 0.35); border-radius: 12px; background: rgba(45, 190, 210, 0.06);
+}
+.quote-builder-subpop-title { margin: 0; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255, 255, 255, 0.6); }
+.quote-builder-subpop-row { display: grid; grid-template-columns: 8rem 1fr; gap: 0.6rem; }
+.quote-builder-subpop-actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
+.quote-builder-subpop input[type='text'],
+.quote-builder-subpop input[type='number'],
+.quote-builder-subpop select {
+  width: 100%; padding: 0.55rem 0.6rem; min-height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2); color: inherit; font: inherit;
+}
+.quote-builder-subpop-row.two { grid-template-columns: 1fr 1fr; }
+.quote-builder-subcaption { grid-column: 1 / -1; margin: 0.15rem 0 0; font-size: 0.72rem; font-weight: 600; color: #7fe0ef; }
+.quote-builder-sub-note { color: #7fe0ef !important; }
+.quote-doc-sub-note { margin: 0.4rem 0 0; font-size: 0.8rem; opacity: 0.6; }
+.quote-doc-subline { display: block; margin-top: 2px; font-size: 0.8rem; font-weight: 400; opacity: 0.62; }
+@media (max-width: 560px) { .quote-builder-subpop-row { grid-template-columns: 1fr; } }
+
 .quote-builder-row input[type='text'],
 .quote-builder-row input[type='number'] {
   width: 100%;

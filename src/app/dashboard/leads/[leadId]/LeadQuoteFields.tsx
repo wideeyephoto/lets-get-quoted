@@ -4,10 +4,11 @@ import { useState } from 'react';
 import type { QuoteItem } from '@/lib/jobs';
 import QuoteBuilder from '../../jobs/[id]/QuoteBuilder';
 
-// base rows + pre-checked add-ons count toward the running total; unchecked
-// add-ons don't (mirrors computeQuoteTotal on the server).
+// base rows + pre-checked add-ons count toward the one-off total; unchecked
+// add-ons and subscriptions (recurring, billed separately) don't (mirrors
+// computeQuoteTotal on the server).
 function liveTotal(items: QuoteItem[]): number {
-  return items.reduce((sum, item) => (item.kind === 'base' || item.selected ? sum + (Number(item.amount) || 0) : sum), 0);
+  return items.reduce((sum, item) => (item.kind === 'subscription' ? sum : item.kind === 'base' || item.selected ? sum + (Number(item.amount) || 0) : sum), 0);
 }
 
 // Wraps the shared QuoteBuilder for the lead "Send the quote" form. The builder

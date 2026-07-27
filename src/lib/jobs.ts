@@ -7,7 +7,8 @@ export type CostType = 'material' | 'labor' | 'sub' | 'receipt' | 'other';
 // A single line on an itemized quote. `base` items are always included; `addon`
 // items are optional upsells the client can accept (`selected`). The quote total
 // is base + selected add-ons — see computeQuoteTotal.
-export type QuoteItemKind = 'base' | 'addon';
+export type QuoteSubscriptionFrequency = 'weekly' | 'biweekly' | 'monthly';
+export type QuoteItemKind = 'base' | 'addon' | 'subscription';
 export type QuoteItem = {
   id: string;
   label: string;
@@ -17,6 +18,15 @@ export type QuoteItem = {
   // Add-ons only: flags the upsell the contractor wants to nudge, shown to the
   // client as a "Recommended" badge. Never affects the total.
   recommended: boolean;
+  // Subscriptions only: the recurring cadence the client signs up for on
+  // approval. Excluded from the one-off quote total (it's a separate charge).
+  frequency?: QuoteSubscriptionFrequency;
+  // Optional expiration — number of billing cycles before the plan ends
+  // (e.g. 12 monthly = a 1-year plan). 0/undefined = ongoing, no expiration.
+  termCycles?: number;
+  // Optional: with a term set, the client may prepay the whole term up front
+  // for this % discount (e.g. 10). 0/undefined = no pay-in-full offer.
+  prepayDiscountPercent?: number;
 };
 
 export type Job = {
@@ -337,23 +347,29 @@ export function parseQuoteItems(value: unknown): QuoteItem[] {
     const label = typeof record.label === 'string' ? record.label.trim() : '';
     const amount = Number(record.amount);
     if (!label || !Number.isFinite(amount)) continue;
-    const kind: QuoteItemKind = record.kind === 'addon' ? 'addon' : 'base';
+    const kind: QuoteItemKind = record.kind === 'addon' ? 'addon' : record.kind === 'subscription' ? 'subscription' : 'base';
+    const frequency: QuoteSubscriptionFrequency = record.frequency === 'weekly' ? 'weekly' : record.frequency === 'biweekly' ? 'biweekly' : 'monthly';
+    const termCycles = Math.max(0, Math.floor(Number(record.termCycles) || 0));
+    const prepayDiscountPercent = Math.min(100, Math.max(0, Number(record.prepayDiscountPercent) || 0));
     items.push({
       id: typeof record.id === 'string' && record.id ? record.id : `qi-${items.length + 1}`,
       label,
       amount: Math.max(0, Math.round(amount * 100) / 100),
       kind,
-      // Base items are always in the total; an add-on counts only when selected.
-      selected: kind === 'base' ? true : record.selected === true,
+      // Base + subscription rows are always "on"; an add-on counts only when selected.
+      selected: kind === 'addon' ? record.selected === true : true,
       recommended: kind === 'addon' && record.recommended === true,
+      ...(kind === 'subscription' ? { frequency, termCycles, prepayDiscountPercent } : {}),
     });
   }
   return items;
 }
 
-// The quote total: every base item plus each selected add-on.
+// The one-off quote total: every base item plus each selected add-on.
+// Subscriptions are recurring charges, so they never count toward this total.
 export function computeQuoteTotal(items: QuoteItem[]): number {
   const total = items.reduce((sum, item) => {
+    if (item.kind === 'subscription') return sum;
     if (item.kind === 'base' || item.selected) return sum + item.amount;
     return sum;
   }, 0);
