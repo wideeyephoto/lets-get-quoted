@@ -255,7 +255,7 @@ export async function generateSiteTextAction(
     '"faqs":[{"question":"<a real question a homeowner asks this trade>","answer":"<a concise, helpful answer under 300 characters>"}],' +
     '"testimonials":[{"author":"<a realistic first name and last initial>","text":"<a believable 1-2 sentence review of this trade>","rating":5,"label":"<a city or short role, optional>"}],' +
     '"stats":[{"value":<a plausible whole number ONLY — digits, no words, units, or symbols>,"suffix":"<ONLY a plus sign, a percent sign, or empty — NEVER a word or unit>","label":"<the FULL descriptor including any unit or noun, e.g. Jobs completed, Years in business, 5-star reviews, Sq ft installed — this is where words like \'years\' belong, never in the value>"}]' +
-    '}. Include 10 to 15 services (each a distinct, real offering for this trade — no duplicates or near-duplicates), 5 faqs, 2 to 3 testimonials, and 3 to 4 stats. Each stat value must be a bare number (e.g. 250, 10, 100), with the unit or noun living entirely in its label.';
+    '}. Include 10 to 15 services (each a distinct, real offering for this trade — no duplicates or near-duplicates), 5 faqs, exactly 6 testimonials (distinct customers, varied projects and wording), and 3 to 4 stats. Each stat value must be a bare number (e.g. 250, 10, 100), with the unit or noun living entirely in its label.';
 
   const input =
     `Business name: ${companyName}. ${tradeInput ? `Trade / field of work: ${tradeInput}. ` : ''}${serviceArea ? `Service area: ${serviceArea}. ` : ''}${zip ? `Business ZIP code: ${zip}. ` : ''}` +
@@ -333,7 +333,7 @@ export async function generateSiteTextAction(
         .filter((f) => f.question && f.answer),
       testimonials: asArray(parsed.testimonials)
         .filter(isObj)
-        .slice(0, 3)
+        .slice(0, 6)
         .map((t) => ({ author: asString(t.author, 60), text: asString(t.text, 300), rating: Math.min(5, Math.max(1, Math.round(Number(t.rating) || 5))), label: asString(t.label, 60) }))
         .filter((t) => t.text),
       stats: asArray(parsed.stats)

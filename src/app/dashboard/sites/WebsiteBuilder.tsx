@@ -1904,9 +1904,18 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                       {siteContent.testimonials.sourceMode === 'manual' && <button type="button" className={styles.secondaryAction} onClick={() => updateTestimonials({ ...siteContent.testimonials, sourceMode: 'mixed' })}>Connect Google reviews</button>}
                     </div>
                   )}
-                  <div className={styles.formColumns}>
-                    <label className={styles.formField}><span>Source mode</span><select value={siteContent.testimonials.sourceMode} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, sourceMode: event.target.value as SiteTestimonialsContent['sourceMode'] })}><option value="manual">Manual testimonials</option><option value="mixed">Manual + Google</option><option value="google">Google reviews only</option></select></label>
-                    <label className={styles.formField}><span>Display style</span><select value={siteContent.testimonials.displayStyle} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, displayStyle: event.target.value as SiteTestimonialsContent['displayStyle'] })}><option value="grid">Grid — static cards</option><option value="carousel">Carousel — auto-sliding</option><option value="spotlight">Spotlight — one at a time</option></select></label>
+                  <label className={styles.formField}><span>Source mode</span><select value={siteContent.testimonials.sourceMode} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, sourceMode: event.target.value as SiteTestimonialsContent['sourceMode'] })}><option value="manual">Manual testimonials</option><option value="mixed">Manual + Google</option><option value="google">Google reviews only</option></select></label>
+                  <div className={styles.contentSubhead}><strong>Display style</strong><small>How your reviews are laid out on the page.</small></div>
+                  <div className={styles.footerPicker} role="group" aria-label="Review display style">
+                    {([
+                      { key: 'grid', label: 'Grid', desc: 'Static cards in a tidy grid.' },
+                      { key: 'carousel', label: 'Carousel', desc: 'Cards auto-slide in a loop.' },
+                      { key: 'spotlight', label: 'Spotlight', desc: 'One review at a time, cross-fading.' },
+                    ] as const).map((s) => (
+                      <button type="button" key={s.key} className={`${styles.footerPickerBtn}${siteContent.testimonials.displayStyle === s.key ? ` ${styles.footerPickerBtnOn}` : ''}`} aria-pressed={siteContent.testimonials.displayStyle === s.key} onClick={() => updateTestimonials({ ...siteContent.testimonials, displayStyle: s.key })}>
+                        <strong>{s.label}</strong><small>{s.desc}</small>
+                      </button>
+                    ))}
                   </div>
                   {siteContent.testimonials.sourceMode !== 'manual' && (
                     <div className={styles.formField}>
