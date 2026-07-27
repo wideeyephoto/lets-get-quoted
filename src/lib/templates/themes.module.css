@@ -783,7 +783,7 @@
 @media (prefers-reduced-motion: reduce) { .heroImage, .guildHeroFrame > img { animation: none; } }
 .forgeScrim { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(10,10,9,.94) 0%, rgba(10,10,9,.55) 50%, rgba(10,10,9,.1) 100%), linear-gradient(0deg, rgba(10,10,9,.55), transparent 50%), repeating-linear-gradient(90deg, rgba(243,240,231,.045) 0 1px, transparent 1px 88px); }
 .forgeHeroCopy { position: relative; z-index: 1; width: min(830px, 82vw); }
-.forgeHeroCopy h1 { max-width: 11ch; margin-bottom: 1.25rem; font-family: var(--theme-display); font-size: clamp(3.35rem, 9vw, 7.5rem); font-weight: 900; line-height: .84; letter-spacing: -.01em; text-transform: uppercase; }
+.forgeHeroCopy h1 { max-width: 11ch; margin-bottom: 1.25rem; font-family: var(--theme-display); font-size: clamp(3.35rem, 9vw, 7.5rem); font-weight: 900; line-height: .95; letter-spacing: -.01em; text-transform: uppercase; }
 .heroText { max-width: 36rem; margin-bottom: 2rem; color: rgba(255,255,255,.82); font-size: 1.25rem; line-height: 1.55; }
 .forgeIndex { position: absolute; z-index: 1; right: 4vw; bottom: 5vh; font-family: var(--font-mono); font-size: .78rem; font-weight: 500; letter-spacing: .1em; color: rgba(255,255,255,.6); }
 .forgeTrust { display: grid; grid-template-columns: repeat(3, 1fr); padding: 0 4vw; border-block: 1px solid var(--c-line); }
