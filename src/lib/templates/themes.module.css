@@ -1106,13 +1106,16 @@
      marks, service icons) sits on white / light surfaces, so it must clear AA —
      a light cyan accent at 74% failed. Weight the blend toward the deep teal so
      it reads clearly while staying on-brand. */
-  --care-text-teal: color-mix(in srgb, var(--theme-accent) 48%, #04333b);
+  --care-text-teal: color-mix(in srgb, var(--theme-accent) 34%, #04333b);
   --care-band: linear-gradient(rgba(3,28,31,.52), rgba(3,28,31,.52)), linear-gradient(120deg, var(--theme-accent), color-mix(in srgb, var(--theme-accent) 55%, #7ef0c0));
   background: var(--c-bg); color: var(--c-ink); font-family: var(--font-care), "Segoe UI", system-ui, sans-serif;
 }
 .careEyebrow, .handy .kicker { margin: 0 0 .6rem; font-size: .8rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--care-text-teal); }
 .careEyebrowLight { margin: 0 0 .5rem; font-size: .8rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--c-on-deep); opacity: .92; }
 .careAccentText { color: var(--care-text-teal); }
+/* Dark mode needs a BRIGHT teal on the dark ground — keep the light-mode
+   darkening (above) from washing out accent text when Haven is in dark mode. */
+.handy[data-mode='dark'] { --care-text-teal: color-mix(in srgb, var(--theme-accent) 66%, #cffaf0); }
 .careBtn { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: .7rem 1.5rem; border-radius: 9px; background: var(--theme-accent); color: var(--theme-on-accent, #062b2e); font-weight: 700; font-size: .95rem; box-shadow: 0 14px 28px -16px color-mix(in srgb, var(--theme-accent) 65%, transparent); transition: transform .2s ease, filter .2s ease; }
 .careBtn:hover { transform: translateY(-2px); filter: brightness(1.04); }
 .careBtnGhost { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: .7rem 1.3rem; border-radius: 9px; border: 2px solid color-mix(in srgb, var(--care-text-teal) 45%, transparent); color: var(--care-text-teal); font-weight: 700; font-size: .95rem; }
@@ -1729,7 +1732,7 @@
 .forgeBadge { position: absolute; z-index: 3; right: 6vw; top: clamp(6rem, 13vw, 10rem); display: flex; align-items: center; gap: .65rem; padding: .7rem .95rem; border-radius: 2px; background: #12161c; border: 1px solid color-mix(in srgb, var(--theme-accent) 35%, transparent); color: #f3efe6; box-shadow: 0 20px 40px -20px rgba(0,0,0,.7); }
 .forgeBadge strong { display: block; font-family: var(--theme-display); font-size: .95rem; letter-spacing: .02em; text-transform: uppercase; }
 .forgeBadge small { display: block; font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: #9aa2ae; }
-.forgeBadgeIcon { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 2px; background: var(--theme-accent); color: var(--theme-on-accent, #111); font-weight: 900; font-size: 1.2rem; line-height: 1; }
+.forgeBadgeIcon { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 9px; border: 2px solid #000; background: var(--theme-accent); color: var(--theme-on-accent, #111); font-weight: 900; font-size: 1.2rem; line-height: 1; }
 .forgeBadgeSecond { top: calc(clamp(6rem, 13vw, 10rem) + 4.6rem); }
 
 /* Vista — a clean white pill, the same language as its header CTA. */

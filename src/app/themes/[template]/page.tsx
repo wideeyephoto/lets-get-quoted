@@ -46,7 +46,7 @@ const THEME_DEMOS: Record<string, ThemeDemo> = {
     city: 'Riverton',
     accent: '#5aa469',
     eyebrow: 'Tree & land services',
-    headline: 'Big trees down safely. Yard left cleaner than we found it.',
+    headline: 'Big trees down safely.',
     tagline: 'Licensed arborists for removals, trimming, and storm cleanup — with every branch hauled away.',
     servicesTitle: 'What we do',
     services: [
