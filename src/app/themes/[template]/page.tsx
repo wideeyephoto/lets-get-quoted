@@ -370,23 +370,30 @@ const DEMO_SITE: Site = {
 
 type ThemeDemoPageProps = {
   params: { template: string };
+  // The /demo/sites customizer drives these so a prospect can recolor the live
+  // preview: accent = a hex; scheme = a COLOR_SCHEMES key ('' = theme default).
+  searchParams: { accent?: string; scheme?: string };
 };
 
-export default function ThemeDemoPage({ params }: ThemeDemoPageProps) {
+export default function ThemeDemoPage({ params, searchParams }: ThemeDemoPageProps) {
   const Template = getTemplate(params.template);
   if (!Template) notFound();
 
   const demo = THEME_DEMOS[params.template] ?? THEME_DEMOS.carbon;
+  const accent = /^#[0-9a-fA-F]{6}$/.test(searchParams.accent ?? '') ? searchParams.accent! : demo.accent;
+  const scheme = typeof searchParams.scheme === 'string' ? searchParams.scheme : '';
   const site: Site = {
     ...DEMO_SITE,
     template: params.template as TemplateType,
     company_name: demo.company,
     headline: demo.headline,
     tagline: demo.tagline,
-    accent_override: demo.accent,
+    accent_override: accent,
     service_area: `${demo.city} and surrounding communities`,
     hero_url: demo.photos[0].url,
-    content: buildContent(demo),
+    // getSiteContent (inside the template) validates the scheme key, so an unknown
+    // value just falls back to the theme's own palette.
+    content: { ...buildContent(demo), colorScheme: scheme },
   };
   return <Template site={site} galleryImages={demo.photos} />;
 }
