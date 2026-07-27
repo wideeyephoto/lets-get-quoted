@@ -4,12 +4,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAppShell } from './app-shell-provider';
 import { NavIcon } from './nav-icons';
+import { DEMO_COMPANY_NAME, DEMO_SITE_HOST } from '@/lib/demo-data';
 
-const DEMO_HOST = 'northlinebuilders.letsgetquoted.com';
+const DEMO_HOST = DEMO_SITE_HOST;
 
 type DemoItem = {
   // `icon` is the /dashboard/* key into the shared icon set; `href` is where the
-  // row actually links. Preview rows (no demo page) nudge to sign up.
+  // row actually links. Every row now has a real demo page — the whole app is
+  // explorable, nothing gated.
   icon: string;
   label: string;
   href: string;
@@ -23,31 +25,31 @@ const GROUPS: { label: string; items: DemoItem[] }[] = [
       { icon: '/dashboard/leads', label: 'Leads', href: '/demo/leads' },
       { icon: '/dashboard/jobs', label: 'Jobs', href: '/demo/jobs' },
       { icon: '/dashboard/schedule', label: 'Schedule', href: '/demo/schedule' },
-      { icon: '/dashboard/clients', label: 'Clients', href: '/login', preview: true },
+      { icon: '/dashboard/clients', label: 'Clients', href: '/demo/clients' },
     ],
   },
   {
     label: 'Team',
     items: [
       { icon: '/dashboard/crew', label: 'Crew', href: '/demo/crew' },
-      { icon: '/dashboard/payroll', label: 'Payroll', href: '/login', preview: true },
+      { icon: '/dashboard/payroll', label: 'Payroll', href: '/demo/payroll' },
     ],
   },
   {
     label: 'Money',
     items: [
-      { icon: '/dashboard/recurring', label: 'Recurring', href: '/login', preview: true },
-      { icon: '/dashboard/services', label: 'Price book', href: '/login', preview: true },
-      { icon: '/dashboard/insights', label: 'Insights', href: '/login', preview: true },
+      { icon: '/dashboard/recurring', label: 'Recurring', href: '/demo/recurring' },
+      { icon: '/dashboard/services', label: 'Price book', href: '/demo/services' },
+      { icon: '/dashboard/insights', label: 'Insights', href: '/demo/insights' },
     ],
   },
   {
     label: 'Grow',
     items: [
-      { icon: '/dashboard/messages', label: 'Messages', href: '/login', preview: true },
-      { icon: '/dashboard/campaigns', label: 'Marketing', href: '/login', preview: true },
-      { icon: '/dashboard/rebook', label: 'Rebook', href: '/login', preview: true },
-      { icon: '/dashboard/reviews', label: 'Reviews', href: '/login', preview: true },
+      { icon: '/dashboard/messages', label: 'Messages', href: '/demo/messages' },
+      { icon: '/dashboard/campaigns', label: 'Marketing', href: '/demo/campaigns' },
+      { icon: '/dashboard/rebook', label: 'Rebook', href: '/demo/rebook' },
+      { icon: '/dashboard/reviews', label: 'Reviews', href: '/demo/reviews' },
     ],
   },
 ];
@@ -106,7 +108,7 @@ export default function DemoSidebar() {
         </Link>
 
         <div className="sidenav-lead">
-          <p className="sidenav-bizname">Northline Builders</p>
+          <p className="sidenav-bizname">{DEMO_COMPANY_NAME}</p>
           <Link href="/login" className="sidenav-new" title="Create a free account to add work">
             <span className="sidenav-new-plus" aria-hidden="true">+</span> New
           </Link>
