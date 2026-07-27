@@ -131,10 +131,6 @@ export default function FeaturesPage() {
             <dt>$0</dt>
             <dd>per month</dd>
           </div>
-          <div className="fx-stat">
-            <dt>1</dt>
-            <dd>login for all of it</dd>
-          </div>
         </dl>
 
         <div className="actions">
