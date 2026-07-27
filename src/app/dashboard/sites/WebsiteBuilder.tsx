@@ -320,6 +320,9 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
   const [isGeneratingBlog, setIsGeneratingBlog] = useState(false);
   const [uploadingCoverId, setUploadingCoverId] = useState<string | null>(null);
   const [blogTopic, setBlogTopic] = useState('');
+  // Mini search for the brand-icon picker: empty = the trade-suggested marks,
+  // typed = filter the whole baked icon set by key or friendly noun.
+  const [iconSearch, setIconSearch] = useState('');
   // Local string state for the free-numeric rating fields so decimal typing
   // (e.g. "4.9") isn't clobbered by re-normalization on every keystroke.
   const [ratingInput, setRatingInput] = useState(() => String(getSiteContent(initialSite.content).ratingBadge.rating));
@@ -1674,6 +1677,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                           const glyphOptions = getTradeGlyphOptions(siteContent.trade);
                           const glyph = glyphForContent(siteContent);
                           const accent = site.accent_override || '#ff7a21';
+                          // Empty search shows the trade-suggested marks; a query
+                          // filters the whole baked set by key OR friendly noun.
+                          const query = iconSearch.trim().toLowerCase();
+                          const shownGlyphs = query
+                            ? SERVICE_ICON_KEYS.filter((key) => key.toLowerCase().includes(query) || (TRADE_GLYPH_NOUNS[key] ?? '').toLowerCase().includes(query))
+                            : glyphOptions;
                           return (
                             <div className={styles.autoLogoWrap}>
                               <div className={styles.autoLogo}>
@@ -1685,9 +1694,17 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                                   <small>Pick the mark that fits best — it’s your header, footer, and browser-tab icon until you add your own logo.</small>
                                 </div>
                               </div>
-                              {glyphOptions.length > 1 && (
+                              <input
+                                type="search"
+                                className={styles.glyphSearch}
+                                value={iconSearch}
+                                onChange={(event) => setIconSearch(event.target.value)}
+                                placeholder="Search all icons — e.g. wrench, leaf, truck, drill"
+                                aria-label="Search brand icons"
+                              />
+                              {shownGlyphs.length > 0 ? (
                                 <div className={styles.glyphPicker} role="group" aria-label="Choose your brand icon">
-                                  {glyphOptions.map((key) => (
+                                  {shownGlyphs.map((key) => (
                                     <button
                                       type="button"
                                       key={key}
@@ -1701,6 +1718,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                                     </button>
                                   ))}
                                 </div>
+                              ) : (
+                                <p className={styles.glyphSearchEmpty}>No icons match “{iconSearch.trim()}”. Try another word.</p>
                               )}
                               <label className={styles.autoLogoTransparent}>
                                 <input

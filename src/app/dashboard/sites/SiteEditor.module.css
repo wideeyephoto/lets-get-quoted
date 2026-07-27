@@ -374,7 +374,13 @@
 .footerPickerBtnOn strong { color: #ff7a21; }
 /* Trade brand-icon options. `color` is set inline to the accent, so each glyph and
    the selected ring pick it up via currentColor. */
-.glyphPicker { display: flex; flex-wrap: wrap; gap: .4rem; }
+.glyphSearch { width: 100%; margin: .1rem 0 .55rem; padding: .5rem .7rem; border: 1px solid rgba(255,255,255,.16); border-radius: 8px; background: rgba(255,255,255,.04); color: inherit; font-size: .85rem; }
+.glyphSearch::placeholder { color: rgba(255,255,255,.4); }
+.glyphSearch:focus-visible { outline: 2px solid rgba(255,255,255,.4); outline-offset: 1px; }
+.glyphSearchEmpty { margin: .1rem 0 .5rem; font-size: .82rem; color: rgba(255,255,255,.55); }
+/* max-height keeps a large search result set scrolling inside the card rather
+   than pushing everything below it; the curated ~7 marks never reach it. */
+.glyphPicker { display: flex; flex-wrap: wrap; gap: .4rem; max-height: 190px; overflow-y: auto; }
 .glyphPickerBtn { display: grid; place-items: center; width: 42px; height: 42px; padding: 0; border: 1px solid rgba(255,255,255,.16); border-radius: 9px; background: rgba(255,255,255,.04); cursor: pointer; transition: border-color .12s ease; }
 .glyphPickerBtn:hover { border-color: rgba(255,255,255,.34); }
 .glyphPickerBtnOn { border-color: currentColor; background: color-mix(in srgb, currentColor 12%, transparent); box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 40%, transparent); }
