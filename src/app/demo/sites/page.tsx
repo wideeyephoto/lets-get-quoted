@@ -67,100 +67,103 @@ export default function DemoSitesPage() {
         </div>
       </section>
 
-      <section className="panel workspace-section-card demo-template-picker">
-        <div className={themeStyles.cardGroupLabel}>Theme</div>
-        <div className={`${themeStyles.themeGrid} demo-theme-grid`} role="tablist" aria-label="Website templates">
-          {templates.map((template) => (
-            <button
-              key={template.id}
-              type="button"
-              role="tab"
-              aria-selected={template.id === selectedId}
-              className={`${themeStyles.themeOption}${template.id === selectedId ? ` ${themeStyles.selectedTheme}` : ''}`}
-              onClick={() => pickTheme(template.id)}
-            >
-              <ThemeIcon name={template.name} accent={template.accent} fontVar={template.fontVar} abbr={template.abbr} />
-              <span className={themeStyles.themeOptionInfo}><strong>{template.name}</strong></span>
-            </button>
-          ))}
-        </div>
-
-        <div className={themeStyles.cardGroupLabel}>Color scheme</div>
-        <div className={themeStyles.schemeSwatches} role="group" aria-label="Full color schemes">
-          <button
-            type="button"
-            className={`${themeStyles.schemeSwatch}${!scheme ? ` ${themeStyles.schemeSwatchActive}` : ''}`}
-            onClick={() => setScheme('')}
-            aria-pressed={!scheme}
-          >
-            <span className={themeStyles.schemeChip} style={{ background: 'linear-gradient(135deg, #3b4250 0 50%, #e9ebef 50% 100%)' }} />
-            <small>Theme default</small>
-          </button>
-          {COLOR_SCHEMES.map((s) => {
-            const selected = scheme === s.key;
-            return (
+      <section className="panel workspace-section-card demo-builder">
+        <div className="demo-builder-controls">
+          <div className={themeStyles.cardGroupLabel}>Theme</div>
+          <div className={`${themeStyles.themeGrid} demo-theme-grid`} role="tablist" aria-label="Website templates">
+            {templates.map((template) => (
               <button
-                key={s.key}
+                key={template.id}
                 type="button"
-                className={`${themeStyles.schemeSwatch}${selected ? ` ${themeStyles.schemeSwatchActive}` : ''}`}
-                onClick={() => setScheme(s.key)}
-                title={s.label}
-                aria-label={`${s.label}${selected ? ' (selected)' : ''}`}
-                aria-pressed={selected}
+                role="tab"
+                aria-selected={template.id === selectedId}
+                className={`${themeStyles.themeOption}${template.id === selectedId ? ` ${themeStyles.selectedTheme}` : ''}`}
+                onClick={() => pickTheme(template.id)}
               >
-                <span className={themeStyles.schemeChip} style={{ background: `linear-gradient(135deg, ${s.bg} 0 38%, ${s.deep} 38% 66%, ${s.accent} 66% 100%)` }} />
-                <small>{s.label.split(' — ')[0]}</small>
+                <ThemeIcon name={template.name} accent={template.accent} fontVar={template.fontVar} abbr={template.abbr} />
+                <span className={themeStyles.themeOptionInfo}><strong>{template.name}</strong></span>
               </button>
-            );
-          })}
-        </div>
-
-        <div className={themeStyles.cardGroupLabel}>Accent color</div>
-        <div className={themeStyles.colorControl}>
-          <input type="color" value={HEX.test(accent) ? accent : '#000000'} onChange={(event) => setAccent(event.target.value)} aria-label="Accent color picker" />
-          <input value={accent} onChange={(event) => setAccent(event.target.value)} aria-label="Accent color hex" />
-        </div>
-        <div className={themeStyles.accentSwatches} role="group" aria-label="Preset accent colors">
-          {ACCENT_PRESETS.map((hex) => {
-            const selected = accent.toLowerCase() === hex.toLowerCase();
-            return (
-              <button
-                key={hex}
-                type="button"
-                className={`${themeStyles.accentSwatch}${selected ? ` ${themeStyles.accentSwatchActive}` : ''}`}
-                style={{ background: hex }}
-                onClick={() => pickAccent(hex)}
-                title={hex}
-                aria-label={`Accent ${hex}${selected ? ' (selected)' : ''}`}
-                aria-pressed={selected}
-              />
-            );
-          })}
-        </div>
-
-        {current ? (
-          <p className="template-preview-caption">
-            <strong>{current.name}</strong> — {current.description}.
-          </p>
-        ) : null}
-
-        <div className="template-preview-frame">
-          <div className="template-preview-bar">
-            <span className="template-preview-dots" aria-hidden="true"><i /><i /><i /></span>
-            <span className="template-preview-url">{previewHost}</span>
+            ))}
           </div>
-          <iframe
-            key={`${selectedId}-${scheme}-${appliedAccent}`}
-            src={previewSrc}
-            title={`${current?.name ?? 'Template'} live preview`}
-            className="template-preview-iframe"
-            loading="lazy"
-          />
+
+          <div className={themeStyles.cardGroupLabel}>Color scheme</div>
+          <div className={themeStyles.schemeSwatches} role="group" aria-label="Full color schemes">
+            <button
+              type="button"
+              className={`${themeStyles.schemeSwatch}${!scheme ? ` ${themeStyles.schemeSwatchActive}` : ''}`}
+              onClick={() => setScheme('')}
+              aria-pressed={!scheme}
+            >
+              <span className={themeStyles.schemeChip} style={{ background: 'linear-gradient(135deg, #3b4250 0 50%, #e9ebef 50% 100%)' }} />
+              <small>Theme default</small>
+            </button>
+            {COLOR_SCHEMES.map((s) => {
+              const selected = scheme === s.key;
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  className={`${themeStyles.schemeSwatch}${selected ? ` ${themeStyles.schemeSwatchActive}` : ''}`}
+                  onClick={() => setScheme(s.key)}
+                  title={s.label}
+                  aria-label={`${s.label}${selected ? ' (selected)' : ''}`}
+                  aria-pressed={selected}
+                >
+                  <span className={themeStyles.schemeChip} style={{ background: `linear-gradient(135deg, ${s.bg} 0 38%, ${s.deep} 38% 66%, ${s.accent} 66% 100%)` }} />
+                  <small>{s.label.split(' — ')[0]}</small>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className={themeStyles.cardGroupLabel}>Accent color</div>
+          <div className={themeStyles.colorControl}>
+            <input type="color" value={HEX.test(accent) ? accent : '#000000'} onChange={(event) => setAccent(event.target.value)} aria-label="Accent color picker" />
+            <input value={accent} onChange={(event) => setAccent(event.target.value)} aria-label="Accent color hex" />
+          </div>
+          <div className={themeStyles.accentSwatches} role="group" aria-label="Preset accent colors">
+            {ACCENT_PRESETS.map((hex) => {
+              const selected = accent.toLowerCase() === hex.toLowerCase();
+              return (
+                <button
+                  key={hex}
+                  type="button"
+                  className={`${themeStyles.accentSwatch}${selected ? ` ${themeStyles.accentSwatchActive}` : ''}`}
+                  style={{ background: hex }}
+                  onClick={() => pickAccent(hex)}
+                  title={hex}
+                  aria-label={`Accent ${hex}${selected ? ' (selected)' : ''}`}
+                  aria-pressed={selected}
+                />
+              );
+            })}
+          </div>
+
+          <div className="template-preview-cta demo-builder-cta">
+            <p>Changed it in seconds? That&apos;s the builder. Create a free account to make it your own and publish.</p>
+            <Link href="/login" className="btn primary">Create free account</Link>
+          </div>
         </div>
 
-        <div className="template-preview-cta">
-          <p>Changed it in seconds? That&apos;s the builder. Create a free account to make it your own and publish.</p>
-          <Link href="/login" className="btn primary">Create free account</Link>
+        <div className="demo-builder-preview">
+          <div className="template-preview-frame demo-builder-frame">
+            <div className="template-preview-bar">
+              <span className="template-preview-dots" aria-hidden="true"><i /><i /><i /></span>
+              <span className="template-preview-url">{previewHost}</span>
+            </div>
+            <iframe
+              key={`${selectedId}-${scheme}-${appliedAccent}`}
+              src={previewSrc}
+              title={`${current?.name ?? 'Template'} live preview`}
+              className="template-preview-iframe"
+              loading="lazy"
+            />
+          </div>
+          {current ? (
+            <p className="template-preview-caption">
+              <strong>{current.name}</strong> — {current.description}.
+            </p>
+          ) : null}
         </div>
       </section>
     </main>

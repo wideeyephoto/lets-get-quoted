@@ -2468,17 +2468,29 @@ li + li { margin-top: 0.45rem; }
 /* Demo /sites — live template gallery (picker + framed iframe of /themes/[id]) */
 .demo-template-picker { display: flex; flex-direction: column; gap: 1rem; }
 
+/* Two-pane customizer, laid out like the website builder: controls on the left,
+   the live framed preview on the right. Collapses to one column on narrow. */
+.demo-builder { display: grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+.demo-builder-controls { display: flex; flex-direction: column; gap: 0.9rem; min-width: 0; }
+.demo-builder-preview { position: sticky; top: 1rem; display: flex; flex-direction: column; gap: 0.6rem; min-width: 0; }
+.demo-builder-cta { margin-top: 0.3rem; }
+/* Framed preview fills the right pane; the iframe stretches to the frame height. */
+.demo-builder-frame { height: min(76vh, 720px); display: flex; flex-direction: column; }
+.demo-builder-frame .template-preview-iframe { flex: 1 1 auto; height: auto; min-height: 0; }
+@media (max-width: 900px) {
+  .demo-builder { grid-template-columns: 1fr; }
+  .demo-builder-preview { position: static; }
+  .demo-builder-frame { height: 64vh; }
+}
+
 /* Compact the reused builder theme cards on the demo only (the builder keeps its
-   full-size cards) — shorter banner tiles so the live preview is reached faster.
-   Structural selectors target the builder's ThemeIcon markup without its hashed
-   module class names. */
-/* Always a 4×2 grid (8 themes); cap the width so it stays a compact block on
-   wide panels rather than stretching the cards. */
-.demo-template-picker .demo-theme-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem; max-width: 640px; }
-.demo-template-picker .demo-theme-grid > button > span:first-child { aspect-ratio: auto; height: 44px; }
-.demo-template-picker .demo-theme-grid > button > span:first-child > span { font-size: 1.25rem; }
-.demo-template-picker .demo-theme-grid > button > span:last-child { padding: 0.3rem 0.3rem 0.38rem; }
-.demo-template-picker .demo-theme-grid > button strong { font-size: 0.74rem; }
+   full-size cards): a fixed 4×2 grid of short banner tiles. Structural selectors
+   target the builder's ThemeIcon markup without its hashed module class names. */
+.demo-builder .demo-theme-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem; }
+.demo-builder .demo-theme-grid > button > span:first-child { aspect-ratio: auto; height: 42px; }
+.demo-builder .demo-theme-grid > button > span:first-child > span { font-size: 1.15rem; }
+.demo-builder .demo-theme-grid > button > span:last-child { padding: 0.28rem 0.3rem 0.36rem; }
+.demo-builder .demo-theme-grid > button strong { font-size: 0.72rem; }
 
 .template-chip-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .template-chip {
