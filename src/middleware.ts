@@ -72,6 +72,14 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // A signed-in contractor who lands on the marketing homepage wants their
+  // workspace, not the sales page — send them straight to the dashboard so the
+  // nav, live Leads/Jobs counts and website status are all there immediately,
+  // instead of relying on a client-side rail swap on a statically-served page.
+  if (user && request.nextUrl.pathname === '/') {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
+
   if (request.nextUrl.pathname.startsWith('/dashboard')) {
     if (!user) {
       return NextResponse.redirect(new URL('/login', request.url));

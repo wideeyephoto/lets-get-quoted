@@ -477,6 +477,10 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               <span className="sidenav-try-ic" aria-hidden="true">▶</span>
               <span>Explore the demo</span>
             </Link>
+            <Link href="/demo/sites" className="sidenav-try-link">
+              <span className="sidenav-try-ic" aria-hidden="true">✦</span>
+              <span>View site templates</span>
+            </Link>
           </div>
 
           {/* The full app — grouped exactly like the backend rail (Work / Team /
