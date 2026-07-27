@@ -116,7 +116,9 @@ const THEME_DEMOS: Record<string, ThemeDemo> = {
   handy: {
     company: 'Neighborly Home Repair',
     city: 'Millbrook',
-    accent: '#e8892b',
+    // Haven's whole palette (text, gradients, bands) is teal-derived — an orange
+    // accent runs muddy through it, so the demo uses Haven's native teal.
+    accent: '#10b0b8',
     eyebrow: 'Handyman services',
     headline: 'Your whole to-do list, handled by one trusted pro.',
     tagline: 'From mounting to minor repairs — the odd jobs you never get to, done in one visit.',
