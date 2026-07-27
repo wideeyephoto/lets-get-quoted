@@ -443,6 +443,24 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                 <SaveButton>Save lead details</SaveButton>
               </div>
             </form>
+            <div className={styles.editPhotosSection}>
+              <div className="section-heading">
+                <p className="eyebrow">Photos</p>
+                <h3 className={styles.editPhotosTitle}>Project photos <span className={styles.editPhotosHint}>saved automatically</span></h3>
+              </div>
+              <PhotoGallery
+                entityId={lead.id}
+                entityField="leadId"
+                uploadUrl="/api/lead-photos"
+                initialPhotos={photos}
+                emptyLabel="No photos yet. Add photos of the project so you can quote it faster."
+                deleteConfirmMessage="Remove this photo from the lead? This cannot be undone."
+                uploadLabel="+ Add photos"
+                helperText="Attach photos from the request or the visit. Drag a photo into the first position to make it the lead's cover image."
+                coverMode
+                reorderEnabled
+              />
+            </div>
           </section>
         </div>
       ) : null}
