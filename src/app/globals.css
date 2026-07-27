@@ -2472,7 +2472,9 @@ li + li { margin-top: 0.45rem; }
    full-size cards) — shorter banner tiles so the live preview is reached faster.
    Structural selectors target the builder's ThemeIcon markup without its hashed
    module class names. */
-.demo-template-picker .demo-theme-grid { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 0.5rem; }
+/* Always a 4×2 grid (8 themes); cap the width so it stays a compact block on
+   wide panels rather than stretching the cards. */
+.demo-template-picker .demo-theme-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.5rem; max-width: 640px; }
 .demo-template-picker .demo-theme-grid > button > span:first-child { aspect-ratio: auto; height: 44px; }
 .demo-template-picker .demo-theme-grid > button > span:first-child > span { font-size: 1.25rem; }
 .demo-template-picker .demo-theme-grid > button > span:last-child { padding: 0.3rem 0.3rem 0.38rem; }
