@@ -1732,7 +1732,7 @@
 .forgeBadge { position: absolute; z-index: 3; right: 6vw; top: clamp(6rem, 13vw, 10rem); display: flex; align-items: center; gap: .65rem; padding: .7rem .95rem; border-radius: 2px; background: #12161c; border: 1px solid color-mix(in srgb, var(--theme-accent) 35%, transparent); color: #f3efe6; box-shadow: 0 20px 40px -20px rgba(0,0,0,.7); }
 .forgeBadge strong { display: block; font-family: var(--theme-display); font-size: .95rem; letter-spacing: .02em; text-transform: uppercase; }
 .forgeBadge small { display: block; font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: #9aa2ae; }
-.forgeBadgeIcon { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 9px; border: 2px solid #000; background: var(--theme-accent); color: var(--theme-on-accent, #111); font-weight: 900; font-size: 1.2rem; line-height: 1; }
+.forgeBadgeIcon { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 9px; background: var(--theme-accent); color: var(--theme-on-accent, #111); font-weight: 900; font-size: 1.2rem; line-height: 1; }
 .forgeBadgeSecond { top: calc(clamp(6rem, 13vw, 10rem) + 4.6rem); }
 
 /* Vista — a clean white pill, the same language as its header CTA. */
