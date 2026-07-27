@@ -200,14 +200,15 @@
 
 /* Hero quick-capture form — kept compact so it renders above the fold */
 .heroQuickForm { position: relative; z-index: 2; display: grid; gap: .6rem; width: min(400px, 100%); margin-top: 1.5rem; padding: 1.1rem 1.2rem 1.25rem; border-radius: var(--theme-radius, 8px); background: rgba(255,255,255,.97); color: #17140f; box-shadow: 0 20px 45px -18px rgba(0,0,0,.5); }
-/* Live, animated gradient border on the intake card — a thin rotating ring of
-   the accent + bright cyan/green so the "Instant Estimate" box feels active.
-   The mask cuts out the centre so only the ~2px ring shows; @property lets the
-   conic angle animate (degrades to a static bright ring where unsupported). */
+/* Live, animated gradient border on the intake card — a thin rotating ring that
+   shimmers in the site's OWN accent (accent → light → accent), so the "Instant
+   Estimate" box feels active without a hardcoded cyan clashing on non-teal
+   themes. The mask cuts out the centre so only the ~2px ring shows; @property
+   lets the conic angle animate (degrades to a static ring where unsupported). */
 @property --lgqBorderAngle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
 .heroQuickForm::before {
   content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 3px;
-  background: conic-gradient(from var(--lgqBorderAngle), var(--theme-accent), #22d3ee, #34d399, var(--theme-accent));
+  background: conic-gradient(from var(--lgqBorderAngle), var(--theme-accent), color-mix(in srgb, var(--theme-accent) 35%, #fff), var(--theme-accent), color-mix(in srgb, var(--theme-accent) 65%, #fff), var(--theme-accent));
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); mask-composite: exclude;
   animation: lgqBorderSpin 4s linear infinite; pointer-events: none;
