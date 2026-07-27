@@ -88,6 +88,10 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   // Homeowner-facing transactional pages (paying, approving a quote, an invoice)
   // stay on the minimal top bar — a big marketing rail there would be off-key.
   const isTransactional = pathname.startsWith('/pay') || pathname.startsWith('/client') || pathname.startsWith('/invoice');
+  // A signed-in contractor gets the FULL dashboard rail on every app/marketing
+  // page (incl. the homepage) — same live counts, Website badge, New button and
+  // Stripe pill as inside /dashboard — never the logged-out marketing teaser.
+  const showAppRail = isLoggedIn && !isTransactional;
   const primaryAction = getPrimaryAction();
   // The bare host for the live badge — "yoursite.letsgetquoted.com", no scheme.
   const siteHost = siteUrl ? siteUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '') : null;
@@ -185,7 +189,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   // status. Re-checked on every dashboard navigation (e.g. right after
   // returning from Stripe's hosted onboarding flow).
   useEffect(() => {
-    if (!isDashboard || !isLoggedIn) {
+    if (!showAppRail) {
       setNewQuoteRequestCount(0);
       setJobsNeedingAttentionCount(0);
       setUnscheduledJobCount(0);
@@ -225,7 +229,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       window.clearInterval(interval);
       window.removeEventListener('focus', onFocus);
     };
-  }, [isDashboard, isLoggedIn, pathname]);
+  }, [showAppRail, pathname]);
 
   useEffect(() => {
     if (!isDashboard || !isLoggedIn) return;
@@ -254,10 +258,11 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     setDismissedQuoteRequestId(newestQuoteRequestId);
   }
 
-  // Signed-in dashboard pages get a grouped left sidebar instead of the top bar.
-  // The Website badge and Stripe pill move into the rail (top and footer), and
-  // the live counts ride along on Leads / Jobs / Schedule exactly as before.
-  if (isDashboard && isLoggedIn) {
+  // Signed-in contractors get the grouped left sidebar on every app/marketing
+  // page (incl. the homepage) — the Website badge, Stripe pill, New button and
+  // the live Leads / Jobs / Schedule counts ride along everywhere, so the nav
+  // "functions as logged in" no matter where they land.
+  if (showAppRail) {
     const byHref = new Map(baseNavItems.map((item) => [item.href, item] as const));
     const countByHref: Record<string, number> = {
       '/dashboard/leads': newQuoteRequestCount,
