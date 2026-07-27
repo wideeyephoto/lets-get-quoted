@@ -228,10 +228,10 @@ const THEME_DEMOS: Record<string, ThemeDemo> = {
       { id: 'svc-6', icon: 'sun', title: 'Fleet & commercial', description: 'Scheduled exterior cleaning that keeps your property sharp.' },
     ],
     photos: [
-      img('1592365559101-19adfefdf294', 'Pressure washing a concrete surface clean', 'exterior', 'Driveways & concrete'),
-      img('1605146768851-eda79da39897', 'Power washer spraying a hard surface', 'exterior', 'Decks & patios'),
-      img('1586501599751-58c582c907d7', 'Exterior surface being cleaned', 'exterior', 'House & siding'),
-      img('1663832871970-ce04419ea2ee', 'Pressure washer removing grime', 'craft', 'Like-new results'),
+      img('1718152470408-cfeebeb6b9fc', 'Worker surface-cleaning a storefront sidewalk with a pressure washer', 'exterior', 'Driveways & concrete'),
+      img('1718152421680-d1580e843cc9', 'Pressure washing a tiled walkway with a rotary surface cleaner', 'exterior', 'Decks & patios'),
+      img('1593260654732-df52bea15d63', 'Pressure washing a commercial property at night', 'exterior', 'Commercial cleaning'),
+      img('1677956787377-a0f32c0974af', 'Worker pressure washing a city street back to clean', 'craft', 'Like-new results'),
     ],
   },
 };
