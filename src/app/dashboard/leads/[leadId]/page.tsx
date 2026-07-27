@@ -10,6 +10,7 @@ import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
 import { clearLeadQuoteVisitAction, convertLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, undoConvertLeadAction, updateLeadDetailsAction, updateLeadStatusAction } from '../actions';
 import LeadAvailabilityScheduler from './LeadAvailabilityScheduler';
 import LeadTriageActions from './LeadTriageActions';
+import LogContactControl from './LogContactControl';
 import QuoteStartDateCalendar from './QuoteStartDateCalendar';
 import UndoQuoteButton from './UndoQuoteButton';
 import SaveButton, { ScrollTopOnSaveProvider } from '@/components/save-button';
@@ -265,7 +266,9 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           <div className={styles.leadStatusActions}>
             <span className={styles.leadStatusActionsLabel}>Update status</span>
             {lead.status === 'new' ? (
-              <form action={markLeadContacted}><SaveButton className="btn secondary">Log first contact</SaveButton></form>
+              <LogContactControl leadId={lead.id} isFirst />
+            ) : lead.status === 'contacted' || lead.status === 'quoted' ? (
+              <LogContactControl leadId={lead.id} />
             ) : null}
             {lead.status !== 'won' ? (
               <form action={markLeadWon}><SaveButton className="btn ghost">Mark won</SaveButton></form>
@@ -474,10 +477,13 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                   <p className="eyebrow">Activity</p>
                   <h2>Lead timeline</h2>
                 </div>
-                <span>{lead.quote_visit || lead.converted_job || photos.length > 0 ? 'Show activity' : 'View details'}</span>
+                <span>{lead.quote_visit || lead.converted_job || photos.length > 0 || (triage.contactLog?.length ?? 0) > 0 ? 'Show activity' : 'View details'}</span>
               </summary>
               <div className={styles.timelineList}>
                 <div><span /> <p><strong>Website request received</strong><small>{new Date(lead.created_at).toLocaleString()}</small></p></div>
+                {(triage.contactLog ?? []).map((entry, index) => (
+                  <div key={`${entry.at}-${index}`}><span /> <p><strong>{entry.label}</strong><small>{new Date(entry.at).toLocaleString()}{entry.note ? ` — ${entry.note}` : ''}</small></p></div>
+                ))}
                 {photos.length > 0 ? <div><span /> <p><strong>{photos.length} project photo{photos.length === 1 ? '' : 's'} attached</strong><small>Use these to qualify the visit or quote faster.</small></p></div> : null}
                 {lead.quote_visit ? <div><span /> <p><strong>Quote visit scheduled</strong><small>{visitLabel}{lead.quote_visit.confirmationTextSentAt ? ' - confirmation text sent' : ''}</small></p></div> : null}
                 {lead.converted_job ? <div><span /> <p><strong>Converted to job</strong><small>Opened as an active quote/job.</small></p></div> : null}

@@ -129,6 +129,19 @@
 .modalCloseButton { display: inline-grid; flex: 0 0 auto; place-items: center; width: 34px; height: 34px; border: 1px solid rgba(255,255,255,.12); border-radius: 999px; background: rgba(255,255,255,.05); color: #ffd166; font-weight: 900; text-decoration: none; }
 .modalCloseButton:hover, .modalCloseButton:focus-visible { border-color: rgba(255,209,102,.42); background: rgba(255,209,102,.1); outline: none; }
 .editModalActions { display: flex !important; justify-content: flex-end; gap: .55rem; }
+.logContact { position: relative; display: inline-block; }
+.logContactPop { position: absolute; top: calc(100% + 8px); left: 0; z-index: 40; width: min(330px, 88vw); display: grid; gap: .55rem; padding: .85rem; border: 1px solid rgba(255,209,102,.24); border-radius: 12px; background: #101824; box-shadow: 0 24px 60px rgba(0,0,0,.5); }
+.logContactTitle { margin: 0; font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: rgba(255,255,255,.55); }
+.logContactChips { display: flex; flex-wrap: wrap; gap: .4rem; }
+.logChip { display: inline-flex; align-items: center; gap: .32rem; font: inherit; font-size: .8rem; font-weight: 600; color: #dbe4ef; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.14); border-radius: 999px; padding: .38rem .7rem; cursor: pointer; }
+.logChip:hover { border-color: rgba(255,209,102,.4); }
+.logChipActive { color: #ffd166; background: rgba(255,209,102,.14); border-color: rgba(255,209,102,.55); }
+.logContactNoteLabel { margin-top: .1rem; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: rgba(255,255,255,.55); }
+.logContactNoteLabel span { text-transform: none; font-weight: 500; color: rgba(255,255,255,.4); }
+.logContactNote { width: 100%; resize: vertical; min-height: 44px; padding: .55rem .65rem; font: inherit; color: #fff; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.15); border-radius: 8px; }
+.logSnippet { font: inherit; font-size: .76rem; font-weight: 600; color: rgba(255,255,255,.7); background: transparent; border: 1px dashed rgba(255,255,255,.22); border-radius: 999px; padding: .3rem .6rem; cursor: pointer; }
+.logSnippet:hover { color: #ffd166; border-color: rgba(255,209,102,.5); }
+.logContactActions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: .15rem; }
 .editPhotosSection { display: grid; gap: .75rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,.08); }
 .editPhotosTitle { display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; margin: .15rem 0 0; color: #fff; }
 .editPhotosHint { font-size: .72rem; font-weight: 600; letter-spacing: .02em; text-transform: none; color: rgba(255,255,255,.5); }

@@ -9,6 +9,14 @@ export type LeadScore = 'hot' | 'warm' | 'low';
 
 // Lead-quality record written at intake (flags + score) and edited by the
 // owner's triage actions (snooze / archive / decline). Stored in leads.triage.
+// A single logged touchpoint with the homeowner (call, text, voicemail…),
+// with an optional freeform note. Appended to triage.contactLog.
+export type LeadContactEntry = {
+  at: string;
+  label: string;
+  note?: string;
+};
+
 export type LeadTriage = {
   score: LeadScore;
   // 'out_of_area' | 'excluded_work' | 'below_minimum' | 'just_researching'
@@ -22,6 +30,7 @@ export type LeadTriage = {
   snoozedUntil?: string | null;
   archived?: boolean;
   declinedReason?: string | null;
+  contactLog?: LeadContactEntry[];
 };
 
 export const LEAD_PRUNE_FLAGS = new Set(['out_of_area', 'excluded_work', 'below_minimum', 'just_researching']);
@@ -58,6 +67,11 @@ export function getLeadTriage(lead: Pick<Lead, 'triage'>): LeadTriage {
     snoozedUntil: typeof triage.snoozedUntil === 'string' ? triage.snoozedUntil : null,
     archived: triage.archived === true,
     declinedReason: typeof triage.declinedReason === 'string' ? triage.declinedReason : null,
+    contactLog: Array.isArray(triage.contactLog)
+      ? triage.contactLog
+          .filter((entry): entry is LeadContactEntry => Boolean(entry) && typeof entry === 'object' && typeof entry.at === 'string' && typeof entry.label === 'string')
+          .map((entry) => ({ at: entry.at, label: entry.label, ...(typeof entry.note === 'string' && entry.note ? { note: entry.note } : {}) }))
+      : undefined,
   };
 }
 

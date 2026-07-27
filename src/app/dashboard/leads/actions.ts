@@ -314,6 +314,33 @@ async function patchLeadTriage(leadId: string, patch: Partial<LeadTriage>) {
   revalidatePath('/dashboard/leads');
 }
 
+// Log a touchpoint with the homeowner (spoke / texted / left VM…) plus an
+// optional note. Appends to triage.contactLog and, for a brand-new lead,
+// advances it to 'contacted' so logging first contact still moves the stage.
+export async function logLeadContactAction(leadId: string, label: string, note?: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const lead = await getLead(supabase, accountId, leadId);
+  if (!lead) throw new Error('Lead not found.');
+
+  const cleanLabel = label.trim();
+  if (!cleanLabel) throw new Error('Pick what happened.');
+  const cleanNote = note?.trim();
+
+  const triage = getLeadTriage(lead);
+  const entry = { at: new Date().toISOString(), label: cleanLabel, ...(cleanNote ? { note: cleanNote } : {}) };
+  const contactLog = [...(triage.contactLog ?? []), entry];
+  const nextStatus: LeadStatus = lead.status === 'new' ? 'contacted' : lead.status;
+
+  const { error } = await supabase
+    .from('leads')
+    .update({ triage: { ...triage, contactLog }, status: nextStatus, updated_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('id', leadId);
+  if (error) throw error;
+  revalidatePath(`/dashboard/leads/${leadId}`);
+  revalidatePath('/dashboard/leads');
+}
+
 export async function snoozeLeadAction(leadId: string, days: number) {
   const clamped = Math.min(30, Math.max(1, Math.round(days) || 3));
   await patchLeadTriage(leadId, { snoozedUntil: new Date(Date.now() + clamped * 24 * 60 * 60 * 1000).toISOString() });
