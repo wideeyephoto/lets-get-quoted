@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
+import { FAVORITE_FEATURES, FEATURE_COUNT } from '@/lib/features';
 import TemplateSlider from '@/components/template-slider';
 
 // Homepage showcases a curated set of 3 flagship templates in a slider —
@@ -91,11 +93,27 @@ function LayersIcon() {
   );
 }
 
-function ExportIcon() {
+function CalendarIcon() {
   return (
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      <path d="M12 3v11.5M8 11l4 4 4-4" />
-      <path d="M4.5 16v3a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-3" />
+      <rect x="3.5" y="5" width="17" height="15" rx="2" />
+      <path d="M3.5 9.5h17M8 3v4M16 3v4M7.5 13h3M13.5 13h3M7.5 16.5h3" />
+    </svg>
+  );
+}
+
+function StarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      <path d="M12 3.5l2.6 5.3 5.9.9-4.25 4.15 1 5.85L12 17.9 6.75 20.6l1-5.85L3.5 9.7l5.9-.9L12 3.5z" />
+    </svg>
+  );
+}
+
+function RepeatIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      <path d="M4 9a6 6 0 0 1 6-6h5l-2.5-2.5M20 15a6 6 0 0 1-6 6H9l2.5 2.5" />
     </svg>
   );
 }
@@ -132,38 +150,123 @@ const moneyFlow = [
   },
 ];
 
-const featureGrid = [
+// The homepage headline grid is the "favorites" set from the shared feature
+// catalog (src/lib/features.ts), so it can never drift from the /features page.
+// Icons are mapped here by feature id — the copy itself lives in the catalog.
+const FEATURE_ICONS: Record<string, ReactNode> = {
+  'hosted-website': <GlobeIcon />,
+  'ai-smart-intake': <MessageIcon />,
+  'client-esignature': <SignatureIcon />,
+  'stripe-payments': <CardIcon />,
+  'payment-plans': <BankIcon />,
+  'online-booking': <CalendarIcon />,
+  'recurring-plans': <RepeatIcon />,
+  'review-routing': <StarIcon />,
+};
+
+// Category-based comparison (no named brands) so the claims stay defensible:
+// the "usual" alternatives a contractor weighs us against.
+const compareColumns = [
+  { key: 'lgq', label: "Let’s Get Quoted", tag: 'One tool', highlight: true },
+  { key: 'wb', label: 'Website builders', tag: 'Wix / Squarespace-type', highlight: false },
+  { key: 'fs', label: 'Field-service software', tag: 'Monthly CRM suites', highlight: false },
+];
+
+type CompareCell = { tone: 'good' | 'mid' | 'bad'; text: string };
+type CompareRow = { label: string; cells: [CompareCell, CompareCell, CompareCell] };
+
+const compareRows: CompareRow[] = [
   {
-    title: 'Premium websites, live in minutes',
-    body: 'Three professionally designed templates. Add your photos and go — no page builder, no developer.',
-    icon: <GlobeIcon />,
+    label: 'Monthly subscription',
+    cells: [
+      { tone: 'good', text: 'None — free to start' },
+      { tone: 'bad', text: 'Flat monthly, even at $0 booked' },
+      { tone: 'bad', text: 'Flat monthly, per seat' },
+    ],
   },
   {
-    title: 'Job costing that shows real margin',
-    body: 'Track labor and materials against every job so profit is visible before the invoice goes out.',
-    icon: <LayersIcon />,
+    label: 'When you actually pay',
+    cells: [
+      { tone: 'good', text: 'Only when a homeowner pays you' },
+      { tone: 'mid', text: 'Every month, work or not' },
+      { tone: 'mid', text: 'Every month, work or not' },
+    ],
   },
   {
-    title: 'E-signatures, built in',
-    body: 'Homeowners sign from their phone. Every signature is timestamped and locked to the record.',
-    icon: <SignatureIcon />,
+    label: 'Platform fee as you grow',
+    cells: [
+      { tone: 'good', text: 'Drops to 0.65% automatically' },
+      { tone: 'bad', text: 'Flat — never rewards volume' },
+      { tone: 'bad', text: 'Rises with seats & tiers' },
+    ],
   },
   {
-    title: 'Stripe-powered payments',
-    body: 'Card and bank payments processed through Stripe, with your fee tier tracked automatically.',
-    icon: <CardIcon />,
+    label: 'Contractor website on your domain',
+    cells: [
+      { tone: 'good', text: 'Premium templates, live in minutes' },
+      { tone: 'good', text: 'Yes — you build & maintain it' },
+      { tone: 'bad', text: 'Rare or costly bolt-on' },
+    ],
   },
   {
-    title: 'Automatic SMS updates',
-    body: 'You and your homeowner both get a text the moment a quote is signed or a payment lands.',
-    icon: <MessageIcon />,
+    label: 'Quote → e-signature → payment, one flow',
+    cells: [
+      { tone: 'good', text: 'Built in, unbroken' },
+      { tone: 'bad', text: 'Not offered' },
+      { tone: 'mid', text: 'Add-ons, often disconnected' },
+    ],
   },
   {
-    title: 'Clean accounting export',
-    body: 'Push a ready-to-import CSV to QuickBooks instead of rebuilding the same report every month.',
-    icon: <ExportIcon />,
+    label: 'Instant AI estimate on your site',
+    cells: [
+      { tone: 'good', text: 'Yes — qualifies leads 24/7' },
+      { tone: 'bad', text: 'Not offered' },
+      { tone: 'bad', text: 'Not offered' },
+    ],
+  },
+  {
+    label: 'Deposits, payment plans & ACH',
+    cells: [
+      { tone: 'good', text: 'Built in on Stripe' },
+      { tone: 'bad', text: 'Basic payment button at best' },
+      { tone: 'mid', text: 'Some, with extra fees' },
+    ],
+  },
+  {
+    label: 'Online booking & client self-scheduling',
+    cells: [
+      { tone: 'good', text: 'Built in' },
+      { tone: 'bad', text: 'Not offered' },
+      { tone: 'good', text: 'Usually included' },
+    ],
+  },
+  {
+    label: 'Reviews: Google import + smart routing',
+    cells: [
+      { tone: 'good', text: 'Built in' },
+      { tone: 'bad', text: 'Not offered' },
+      { tone: 'mid', text: 'Sometimes' },
+    ],
+  },
+  {
+    label: 'Recurring visits & auto-billing',
+    cells: [
+      { tone: 'good', text: 'Built in' },
+      { tone: 'bad', text: 'Not offered' },
+      { tone: 'mid', text: 'Higher tiers only' },
+    ],
+  },
+  {
+    label: 'Time to get started',
+    cells: [
+      { tone: 'good', text: 'Minutes, no developer' },
+      { tone: 'mid', text: 'Hours to days' },
+      { tone: 'bad', text: 'Sales call & onboarding' },
+    ],
   },
 ];
+
+const TONE_MARK: Record<CompareCell['tone'], string> = { good: '✓', mid: '~', bad: '✕' };
 
 const feeTiers = [
   { tier: 1, rate: '1.25%', range: '$0\u2013$100k', barHeight: 180 },
@@ -194,7 +297,7 @@ const jsonLd = {
       applicationCategory: 'BusinessApplication',
       operatingSystem: 'Web',
       description:
-        'A premium contractor website plus Stripe-powered payments — send a branded quote, get it e-signed, and get paid straight to your bank.',
+        'An all-in-one platform for contractors: a marketing website with an AI lead estimator, quotes and e-signatures, scheduling, recurring billing, reviews, and Stripe payments that pay out to your bank. No subscription — you only pay when a homeowner pays you.',
       offers: {
         '@type': 'Offer',
         price: '0',
@@ -226,8 +329,9 @@ export default function HomePage() {
           </div>
           <h1>Quote it. Sign it. Get paid. <span className="gradient-text">Straight to your bank.</span></h1>
           <p className="hero-text">
-            One tool for your website, quotes, e-signatures, and getting paid &mdash; so a signed quote becomes a
-            bank deposit without the web guy, the paper contract, or chasing a single check. Payments run on Stripe.
+            One tool to win the lead, quote the job, and get paid &mdash; a contractor website with an AI estimator that
+            qualifies homeowners 24/7, plus e-signatures, scheduling, and Stripe payments that land straight in your
+            bank. No web guy, no paper contract, no chasing checks.
           </p>
           <div className="actions">
             <Link href="/login" className="btn primary">
@@ -239,9 +343,9 @@ export default function HomePage() {
           </div>
           <p className="hero-reassure">Free to start &middot; No credit card &middot; You only pay when a homeowner pays you.</p>
           <ul className="hero-trust-row">
-            <li><ShieldIcon /><span>Paid straight to your bank, on Stripe</span></li>
-            <li><SignatureIcon /><span>E-signatures built in</span></li>
-            <li><TrendDownIcon /><span>Fees drop to 0.65% as you grow</span></li>
+            <li><MessageIcon /><span>AI intake qualifies leads 24/7</span></li>
+            <li><SignatureIcon /><span>Quote, e-sign &amp; get paid on Stripe</span></li>
+            <li><TrendDownIcon /><span>No subscription &mdash; fees drop to 0.65%</span></li>
           </ul>
         </div>
 
@@ -282,15 +386,72 @@ export default function HomePage() {
         <div className="section-heading">
           <p className="eyebrow">Built for the whole handoff</p>
           <h2>Not just a website. Not just a payment link. The whole operating loop.</h2>
+          <p>The features owners lean on every day &mdash; a slice of the {FEATURE_COUNT}+ that come standard.</p>
         </div>
         <div className="feature-grid">
-          {featureGrid.map((item) => (
-            <article key={item.title} className="feature-card">
-              <span className="feature-card-icon">{item.icon}</span>
-              <h3>{item.title}</h3>
-              <p>{item.body}</p>
+          {FAVORITE_FEATURES.map((item) => (
+            <article key={item.id} className="feature-card">
+              <span className="feature-card-icon">{FEATURE_ICONS[item.id]}</span>
+              <h3>{item.name}</h3>
+              <p>{item.desc}</p>
             </article>
           ))}
+        </div>
+        <div className="mid-cta">
+          <Link href="/features" className="btn secondary">See all {FEATURE_COUNT}+ features &rarr;</Link>
+        </div>
+      </section>
+
+      <section className="section-block compare-band">
+        <div className="section-heading">
+          <p className="eyebrow">Why contractors switch</p>
+          <h2>One tool doing the work of five &mdash; and you only pay when you get paid.</h2>
+          <p>
+            A website builder gives you a page. Field-service software rents you a login by the month. Let&apos;s Get
+            Quoted is the whole operating loop &mdash; site, quotes, e-signatures, scheduling, and payments &mdash; with
+            no subscription standing between you and your next job.
+          </p>
+        </div>
+        <div className="compare-scroll">
+          <table className="compare-table">
+            <thead>
+              <tr>
+                <th scope="col" className="compare-corner"><span className="compare-corner-label">How it stacks up</span></th>
+                {compareColumns.map((col) => (
+                  <th scope="col" key={col.key} className={col.highlight ? 'compare-col-head is-us' : 'compare-col-head'}>
+                    {col.highlight ? <span className="compare-head-badge">Best value</span> : null}
+                    <strong>{col.label}</strong>
+                    <span className="compare-head-tag">{col.tag}</span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {compareRows.map((row) => (
+                <tr key={row.label}>
+                  <th scope="row" className="compare-row-label">{row.label}</th>
+                  {row.cells.map((cell, index) => (
+                    <td
+                      key={compareColumns[index].key}
+                      className={`compare-cell tone-${cell.tone}${compareColumns[index].highlight ? ' is-us' : ''}`}
+                    >
+                      <span className="compare-mark" aria-hidden="true">{TONE_MARK[cell.tone]}</span>
+                      <span className="compare-cell-text">{cell.text}</span>
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="compare-legend">
+          <span><span className="compare-mark tone-good" aria-hidden="true">✓</span> Built in</span>
+          <span><span className="compare-mark tone-mid" aria-hidden="true">~</span> Partial or extra cost</span>
+          <span><span className="compare-mark tone-bad" aria-hidden="true">✕</span> Not offered</span>
+        </p>
+        <div className="mid-cta">
+          <Link href="/login" className="btn primary">Create Free Account</Link>
+          <Link href="/demo" className="btn secondary">Explore the demo &mdash; no signup</Link>
         </div>
       </section>
 
@@ -352,7 +513,7 @@ export default function HomePage() {
 
       <footer className="marketing-footer">
         <span>© 2026 Let&apos;s Get Quoted</span>
-        <nav aria-label="Legal"><Link href="/privacy">Privacy Policy</Link><Link href="/sms-terms">SMS Terms</Link></nav>
+        <nav aria-label="Legal"><Link href="/features">Features</Link><Link href="/privacy">Privacy Policy</Link><Link href="/sms-terms">SMS Terms</Link></nav>
       </footer>
     </main>
   );

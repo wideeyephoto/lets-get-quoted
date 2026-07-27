@@ -1502,6 +1502,172 @@ li + li { margin-top: 0.45rem; }
 .mid-cta { display: flex; flex-wrap: wrap; gap: 0.7rem; justify-content: center; margin-top: 1.8rem; }
 
 /* ---------------------------------------------------------------- */
+/* Homepage: "how it stacks up" comparison table                    */
+/* ---------------------------------------------------------------- */
+.compare-band { overflow: hidden; }
+/* The table can be wider than the phone — let it scroll on its own,
+   never the page body. */
+.compare-scroll {
+  margin-top: 1.6rem;
+  overflow-x: auto;
+  border-radius: 20px;
+}
+.compare-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.compare-table th,
+.compare-table td {
+  padding: 0.85rem 1rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.compare-corner { width: 22%; background: transparent; }
+.compare-corner-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgba(200, 208, 220, 0.55);
+}
+.compare-col-head {
+  width: 26%;
+  display: table-cell;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+.compare-col-head strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  color: var(--text);
+  line-height: 1.2;
+}
+.compare-head-tag {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.74rem;
+  color: rgba(200, 208, 220, 0.55);
+}
+.compare-head-badge {
+  display: inline-block;
+  margin-bottom: 0.4rem;
+  padding: 0.16rem 0.55rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #180c02;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+/* The "us" column gets a lifted, accent-tinted spine top to bottom. */
+.compare-col-head.is-us,
+.compare-cell.is-us {
+  background: linear-gradient(180deg, rgba(255, 122, 33, 0.14), rgba(255, 122, 33, 0.05));
+  border-left: 1px solid rgba(255, 122, 33, 0.32);
+  border-right: 1px solid rgba(255, 122, 33, 0.32);
+}
+.compare-col-head.is-us { border-top: 1px solid rgba(255, 122, 33, 0.45); border-radius: 16px 16px 0 0; }
+.compare-table tbody tr:last-child .compare-cell.is-us { border-bottom: 1px solid rgba(255, 122, 33, 0.45); border-radius: 0 0 16px 16px; }
+.compare-row-label {
+  font-weight: 600;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+.compare-cell { font-size: 0.88rem; }
+.compare-cell-text { color: var(--muted); }
+.compare-cell.is-us .compare-cell-text { color: var(--text); font-weight: 600; }
+.compare-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  margin-right: 0.5rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  vertical-align: middle;
+}
+.compare-mark.tone-good,
+.compare-cell.tone-good .compare-mark { background: rgba(74, 222, 128, 0.16); color: #4ade80; }
+.compare-mark.tone-mid,
+.compare-cell.tone-mid .compare-mark { background: rgba(255, 209, 102, 0.16); color: var(--accent-2); }
+.compare-mark.tone-bad,
+.compare-cell.tone-bad .compare-mark { background: rgba(255, 255, 255, 0.06); color: rgba(200, 208, 220, 0.5); }
+.compare-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.1rem;
+  margin-top: 1rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+.compare-legend span { display: inline-flex; align-items: center; }
+.compare-legend .compare-mark { width: 1.15rem; height: 1.15rem; margin-right: 0.35rem; font-size: 0.72rem; }
+@media (max-width: 720px) {
+  .compare-scroll { border: 1px solid rgba(255, 255, 255, 0.08); }
+}
+
+/* ---------------------------------------------------------------- */
+/* /features page: stats, favorites cards, and the full catalog     */
+/* ---------------------------------------------------------------- */
+.features-hero .actions { margin-bottom: 0; }
+.features-stats { display: flex; flex-wrap: wrap; gap: 0.7rem; margin: 1.5rem 0 0.4rem; }
+.features-stat {
+  display: flex; flex-direction: column; gap: 0.1rem;
+  padding: 0.7rem 1.05rem; border: 1px solid var(--line); border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03); min-width: 116px;
+}
+.features-stat strong { font-size: 1.35rem; font-weight: 800; letter-spacing: -0.01em; }
+.features-stat span { font-size: 0.75rem; color: rgba(200, 208, 220, 0.6); font-weight: 600; }
+.features-stat.hot { border-color: rgba(255, 122, 33, 0.42); background: rgba(255, 122, 33, 0.08); }
+.features-stat.hot strong { color: var(--accent); }
+
+/* Favorites band — reuses .feature-card but leads with a category tag. */
+.fav-card { display: flex; flex-direction: column; gap: 0.3rem; }
+.fav-card-tag {
+  align-self: flex-start;
+  font-size: 0.66rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--accent-2);
+  padding: 0.2rem 0.55rem; border-radius: 999px;
+  background: rgba(255, 209, 102, 0.12); border: 1px solid rgba(255, 209, 102, 0.24);
+  margin-bottom: 0.35rem;
+}
+.fav-card h3 { font-size: 1.1rem; }
+
+/* The full catalog: one block per lifecycle stage. */
+.feature-catalog { display: grid; gap: 1rem; margin-top: 1.4rem; }
+.feature-cat {
+  padding: 1.35rem 1.4rem;
+  border: 1px solid var(--line); border-radius: 20px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.feature-cat-head { display: flex; gap: 0.85rem; align-items: baseline; margin-bottom: 1rem; }
+.feature-cat-num {
+  font-size: 0.9rem; font-weight: 800; color: var(--accent);
+  font-variant-numeric: tabular-nums; flex: none;
+}
+.feature-cat-head h3 { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.01em; margin: 0; }
+.feature-cat-intro { margin: 0.25rem 0 0; font-size: 0.9rem; color: var(--muted); }
+.feat-checklist {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0.75rem 1.4rem;
+}
+.feat-checklist li { display: grid; grid-template-columns: 1.3rem 1fr; gap: 0.55rem; align-items: start; }
+.feat-mark {
+  margin-top: 0.15rem; width: 1.3rem; height: 1.3rem; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 999px; background: rgba(74, 222, 128, 0.16); color: #4ade80;
+  font-size: 0.78rem; font-weight: 800;
+}
+.feat-copy b { display: block; font-size: 0.94rem; font-weight: 700; color: var(--text); }
+.feat-copy span { display: block; font-size: 0.85rem; color: var(--muted); margin-top: 0.05rem; }
+
+/* ---------------------------------------------------------------- */
 /* Homepage: trust badges                                            */
 /* ---------------------------------------------------------------- */
 .trust-badge-row { display: flex; flex-wrap: wrap; gap: 0.85rem; margin-top: 1.6rem; }

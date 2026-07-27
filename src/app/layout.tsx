@@ -86,22 +86,22 @@ export const metadata: Metadata = {
     template: "%s · Let's Get Quoted",
   },
   description:
-    'A premium contractor website plus Stripe-powered payments. Send a branded quote, get it e-signed, and the money lands straight in your bank. No subscription — you only pay when you get paid.',
+    'The all-in-one platform for contractors: a website with an AI estimator that qualifies leads 24/7, quotes and e-signatures, scheduling, and Stripe payments straight to your bank. No subscription — you only pay when you get paid.',
   applicationName: "Let's Get Quoted",
   alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
     url: SITE_URL,
     siteName: "Let's Get Quoted",
-    title: 'Contractor websites that get you paid — straight to your bank',
+    title: 'The website, CRM & payments platform built for contractors',
     description:
-      'Send a branded quote, get it e-signed, and collect card or bank payments — one tool built for contractors. No subscription; you only pay when you get paid.',
+      'Win leads with an AI estimator, send quotes and e-signatures, schedule the work, and collect card or bank payments — one tool built for contractors. No subscription; you only pay when you get paid.',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Contractor websites that get you paid — straight to your bank',
+    title: 'The website, CRM & payments platform built for contractors',
     description:
-      'Quote, e-sign, and get paid to your bank — one tool built for contractors. No subscription; pay only when you get paid.',
+      'Capture leads, quote, e-sign, schedule, and get paid — one tool built for contractors. No subscription; pay only when you get paid.',
   },
 };
 
