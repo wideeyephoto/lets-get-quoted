@@ -752,7 +752,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
     setMessage(null);
     startTransition(async () => {
       try {
-        const generated = await generateSiteTextAction({ trade: getSiteContent(site.content).trade, companyName: site.company_name, serviceArea: site.service_area ?? undefined, zip: getSiteContent(site.content).zip });
+        // A ZIP is the source of truth for location, so don't also send the saved
+        // service_area (an earlier AI guess) — it would override the ZIP server-side.
+        const genZip = getSiteContent(site.content).zip;
+        const generated = await generateSiteTextAction({ trade: getSiteContent(site.content).trade, companyName: site.company_name, serviceArea: genZip ? undefined : (site.service_area ?? undefined), zip: genZip });
         setSite((current) => {
           const content = getSiteContent(current.content);
           const contentUpdates: Partial<NormalizedSiteContent> = {};

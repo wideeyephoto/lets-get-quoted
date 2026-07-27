@@ -219,8 +219,13 @@ export async function generateSiteTextAction(
   // over the persisted row, so one click of "Generate" works without a prior
   // Save — including the SEO copy derived below.
   const companyName = (typeof options?.companyName === 'string' && options.companyName.trim()) || currentSite.company_name || 'this local business';
-  const serviceArea = (typeof options?.serviceArea === 'string' && options.serviceArea.trim()) || currentSite.service_area || '';
   const zip = typeof options?.zip === 'string' ? options.zip.trim().slice(0, 12) : '';
+  // A ZIP is the authoritative location source. When one is provided, ignore any
+  // previously-saved service_area — that value is itself AI-generated, so it can
+  // be stale or from an older ZIP (e.g. "Metro Detroit" lingering under a Missouri
+  // ZIP) and would otherwise override the new ZIP. The ZIP then fully drives the
+  // resolved city + service area.
+  const serviceArea = (typeof options?.serviceArea === 'string' && options.serviceArea.trim()) || (zip ? '' : currentSite.service_area) || '';
   const tradeInput = typeof options?.trade === 'string' ? options.trade.trim().slice(0, 80) : '';
   const styleSeed = COPY_STYLE_SEEDS[Math.floor(Math.random() * COPY_STYLE_SEEDS.length)];
   // Offer the model the ENTIRE baked icon set (Lucide + curated Iconify glyphs)
@@ -236,7 +241,7 @@ export async function generateSiteTextAction(
       ? `The business is a ${tradeInput} — write every part of the site specifically for that trade. `
       : 'Infer their trade (HVAC, plumbing, landscaping, cleaning, roofing, electrical, remodeling, etc.) from the business name. ') +
     `Write in a ${styleSeed} tone. ` +
-    'Optimize for LOCAL search: when a service area or ZIP code is provided, determine the primary city or region (resolve the ZIP to its real city and surrounding towns) and pair the trade with that location so a homeowner searching "[trade] in [city]" would match — fill service_area and cities with the REAL nearby city, town, and neighborhood names for that location. If neither a service area nor a ZIP is given, lead with the trade alone and never invent a location. ' +
+    'Optimize for LOCAL search: when a service area or ZIP code is provided, determine the primary city or region and pair the trade with that location so a homeowner searching "[trade] in [city]" would match — fill service_area and cities with the REAL nearby city, town, and neighborhood names for that location. A ZIP code is AUTHORITATIVE: resolve it to the actual U.S. city/town it belongs to (e.g. 64002 → Lee\'s Summit, Missouri) and base service_area and cities entirely on that ZIP\'s real location and its neighbors. If a service area is also given but names a different place than the ZIP, IGNORE the service area and trust the ZIP. If neither a service area nor a ZIP is given, lead with the trade alone and never invent a location. ' +
     'Avoid generic filler like "quality you can trust" or "customer satisfaction is our priority" — be specific to the trade and mention concrete services or benefits a homeowner in that trade would care about. ' +
     'This is placeholder example text the contractor will personalize later, so make it feel like a real, distinct business rather than a generic template. ' +
     'Also produce example content to fill out the whole site: the real services this trade offers, common homeowner FAQs, typical business hours, the service area with nearby cities, a couple of example testimonials, and a few headline stats. ' +
