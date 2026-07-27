@@ -38,6 +38,14 @@ export const LEAD_PRUNE_FLAGS = new Set(['out_of_area', 'excluded_work', 'below_
 // Cookie that remembers each user's chosen Lead Details action layout.
 export const LEAD_LAYOUT_COOKIE = 'lgq_lead_layout';
 
+// Cookie that remembers the Leads board view (board / inbox / table / split).
+export const LEADS_VIEW_COOKIE = 'lgq_leads_view';
+export type LeadsView = 'board' | 'inbox' | 'table' | 'split';
+export const LEADS_VIEWS: LeadsView[] = ['board', 'inbox', 'table', 'split'];
+export function normalizeLeadsView(value: unknown): LeadsView {
+  return LEADS_VIEWS.includes(value as LeadsView) ? (value as LeadsView) : 'board';
+}
+
 // One-tap decline templates — the key is stored on triage.declinedReason and
 // the value is woven into the polite close-out text.
 export const LEAD_DECLINE_REASONS: Record<string, string> = {

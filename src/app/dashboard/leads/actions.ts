@@ -9,7 +9,7 @@ import { addInvoiceItem, createInvoice, listInvoices, selectPrimaryInvoice } fro
 import { computeQuoteTotal, formatJobQuoteSummary, parseQuoteItems, saveQuoteItems, type QuoteItem } from '@/lib/jobs';
 import { createDepositRequest } from '@/lib/payments';
 import { createPaymentPlan } from '@/lib/payment-plans';
-import { clearLeadQuoteVisit, convertLeadToJob, createLead, getLead, getLeadTriage, LEAD_DECLINE_REASONS, LEAD_LAYOUT_COOKIE, scheduleLeadQuoteVisit, unconvertLeadFromJob, updateLeadDetails, updateLeadStatus, type LeadStatus, type LeadTriage } from '@/lib/leads';
+import { clearLeadQuoteVisit, convertLeadToJob, createLead, getLead, getLeadTriage, LEAD_DECLINE_REASONS, LEAD_LAYOUT_COOKIE, LEADS_VIEW_COOKIE, normalizeLeadsView, scheduleLeadQuoteVisit, unconvertLeadFromJob, updateLeadDetails, updateLeadStatus, type LeadsView, type LeadStatus, type LeadTriage } from '@/lib/leads';
 import { uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, createScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
@@ -426,6 +426,17 @@ async function patchLeadTriage(leadId: string, patch: Partial<LeadTriage>) {
 export async function setLeadLayoutAction(layout: 'guided' | 'primary') {
   await requireOwnerContext();
   cookies().set(LEAD_LAYOUT_COOKIE, layout === 'primary' ? 'primary' : 'guided', {
+    path: '/',
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: 'lax',
+  });
+}
+
+// Remember which Leads board view (board / inbox / table / split) the owner
+// last used, so the page opens in it next time. Cookie, not a DB column.
+export async function setLeadsViewAction(view: LeadsView) {
+  await requireOwnerContext();
+  cookies().set(LEADS_VIEW_COOKIE, normalizeLeadsView(view), {
     path: '/',
     maxAge: 60 * 60 * 24 * 365,
     sameSite: 'lax',

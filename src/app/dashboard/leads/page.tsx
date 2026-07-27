@@ -1,19 +1,13 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import AddressAutocomplete from '@/components/address-autocomplete';
-import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadSource, getAverageRequestResponseMs, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, listLeads, type Lead, type LeadStatus } from '@/lib/leads';
+import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadSource, getAverageRequestResponseMs, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, LEADS_VIEW_COOKIE, listLeads, normalizeLeadsView, type Lead } from '@/lib/leads';
 import { archiveLeadAction, createLeadAction, unsnoozeLeadAction } from './actions';
 import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
 import SaveButton from '@/components/save-button';
+import LeadsWorkspace, { type LeadViewItem } from './LeadsWorkspace';
 import styles from './leads.module.css';
-
-const COLUMNS: { status: LeadStatus; label: string }[] = [
-  { status: 'new', label: 'New request' },
-  { status: 'contacted', label: 'Contacted' },
-  { status: 'quoted', label: 'Quote sent' },
-  { status: 'won', label: 'Won' },
-  { status: 'lost', label: 'Lost' },
-];
 
 function responseLabel(lead: Lead) {
   if (lead.status === 'new' && lead.source === 'website_form') return 'Needs response';
@@ -45,6 +39,41 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
   const needsResponse = leads.filter((lead) => lead.status === 'new' && lead.source === 'website_form').length;
   const averageResponse = formatDuration(getAverageRequestResponseMs(allLeads));
 
+  // Serialize the active leads into a display-ready shape for the client view
+  // switcher (Board / Priority inbox / Table / Split), so it never has to import
+  // the server-only leads module.
+  const initialView = normalizeLeadsView(cookies().get(LEADS_VIEW_COOKIE)?.value);
+  const viewLeads: LeadViewItem[] = leads.map((lead) => {
+    const triage = getLeadTriage(lead);
+    const estimate = triage.estimate ?? null;
+    return {
+      id: lead.id,
+      name: lead.name || 'Unnamed request',
+      status: lead.status,
+      statusLabel: responseLabel(lead),
+      sourceLabel: formatLeadSource(lead.source),
+      phone: lead.phone,
+      email: lead.email,
+      address: lead.address,
+      detail: lead.project_type || lead.message || 'Project details not provided',
+      estimatedHours: lead.estimated_hours,
+      createdAt: lead.created_at,
+      ageLabel: formatElapsedTime(lead.created_at),
+      convertedJob: lead.converted_job,
+      score: triage.score,
+      hasTriage: Boolean(lead.triage),
+      scoreLabel: triage.score === 'hot' ? '🔥 Hot' : triage.score === 'low' ? 'Low' : 'Warm',
+      flags: triage.flags.filter((flag) => flag !== 'phone_verified').map((key) => ({ key, label: LEAD_FLAG_LABELS[key] || key })),
+      textOnly: triage.contactPreference === 'text_only',
+      estimate,
+      estimateLabel: estimate ? `$${estimate.min.toLocaleString('en-US')}–$${estimate.max.toLocaleString('en-US')}` : null,
+      timeline: triage.timeline ?? null,
+      location: triage.location ?? null,
+      contactLog: triage.contactLog ?? [],
+      isUrgent: lead.status === 'new' && lead.source === 'website_form',
+    };
+  });
+
   return (
     <main className="wide-shell workspace-shell">
       <section className="panel workspace-section-card">
@@ -53,46 +82,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
           <Link href="/dashboard/leads?add=1#add-lead" className="btn primary">+ Add lead</Link>
         </div>
         {leads.length === 0 ? <p className="empty-state">No leads yet. Website requests will appear here — or <Link href="/dashboard/leads?add=1#add-lead">add a lead manually</Link>.</p> : (
-          <div className={styles.board}>
-            {COLUMNS.map((column) => {
-              const columnLeads = leads.filter((lead) => lead.status === column.status);
-              return <section className={`${styles.column} ${styles[`col_${column.status}`]}`} key={column.status}><header className={styles.columnHeader}><h2>{column.status === 'new' ? 'Needs response' : column.label}</h2><span>{columnLeads.length}</span></header><div className={styles.cards}>{columnLeads.map((lead) => {
-                const isUrgent = lead.status === 'new' && lead.source === 'website_form';
-                return (
-                  <div className={styles.leadCardWrap} key={lead.id}>
-                    <Link className={`${styles.leadCard}${isUrgent ? ` ${styles.urgentCard}` : ''}`} href={`/dashboard/leads/${lead.id}`}>
-                      <div className={styles.cardTopline}><strong>{lead.name || 'Unnamed request'}</strong><span className={isUrgent ? styles.needsBadge : styles.statusBadge}>{responseLabel(lead)}</span></div>
-                      {(() => {
-                        const triage = getLeadTriage(lead);
-                        const flagChips = triage.flags.filter((flag) => flag !== 'phone_verified').slice(0, 2);
-                        if (!lead.triage && flagChips.length === 0) return null;
-                        return (
-                          <div className={styles.cardChips}>
-                            {lead.triage && <span className={styles.scoreChip} data-score={triage.score}>{triage.score === 'hot' ? '🔥 Hot' : triage.score === 'low' ? 'Low' : 'Warm'}</span>}
-                            {triage.contactPreference === 'text_only' && <span className={styles.textOnlyChip}>💬 Text only</span>}
-                            {flagChips.map((flag) => <span className={styles.flagChip} key={flag}>{LEAD_FLAG_LABELS[flag] || flag}</span>)}
-                          </div>
-                        );
-                      })()}
-                      <p>{lead.project_type || lead.message || 'Project details not provided'}</p>
-                      <div className={styles.cardMetaGrid}>
-                        <span>{formatLeadSource(lead.source)}</span>
-                        <span>Estimated hours: {lead.estimated_hours ? `${lead.estimated_hours} hrs` : 'Not set'}</span>
-                        <time dateTime={lead.created_at}>Received {formatElapsedTime(lead.created_at)} ago</time>
-                      </div>
-                      {(lead.phone || lead.email) && <div className={styles.contactHint}>{lead.phone || lead.email}</div>}
-                    </Link>
-                    {lead.phone || lead.converted_job ? (
-                      <div className={styles.cardActions}>
-                        {lead.phone ? <a className={styles.callLink} href={`tel:${lead.phone}`} aria-label={`Call ${lead.name || 'lead'}`}>📞 Call</a> : null}
-                        {lead.converted_job ? <Link className={styles.openJobLink} href={`/dashboard/jobs/${lead.converted_job}`}>Open job →</Link> : null}
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}{columnLeads.length === 0 && <p className={styles.empty}>No leads here.</p>}</div></section>;
-            })}
-          </div>
+          <LeadsWorkspace leads={viewLeads} initialView={initialView} />
         )}
       </section>
 

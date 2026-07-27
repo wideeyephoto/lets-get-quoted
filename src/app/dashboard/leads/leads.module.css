@@ -449,3 +449,67 @@
 .setAsideRow { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; padding: .5rem .75rem; border: 1px solid rgba(255,255,255,.09); border-radius: 8px; background: rgba(255,255,255,.03); }
 .setAsideName { font-weight: 700; color: inherit; }
 .setAsideWhy { color: #9ca8b8; font-size: .8rem; flex: 1; }
+
+/* --- View switcher (Board / Priority inbox / Table / Split) --- */
+.viewSwitch { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; }
+.viewBtn { padding: .5rem .9rem; border-radius: 999px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.03); color: #c7d2df; font-size: .84rem; font-weight: 700; cursor: pointer; transition: color .15s, border-color .15s, background .15s; }
+.viewBtn:hover { color: #f7f5ef; border-color: rgba(255,122,33,.45); }
+.viewBtnOn { color: #180c02; background: linear-gradient(135deg, #ff7a21, #ffd166); border-color: transparent; }
+.workspaceBusy { opacity: .6; pointer-events: none; transition: opacity .15s; }
+
+/* Shared heat dot */
+.heatDot { width: .62rem; height: .62rem; border-radius: 50%; flex: 0 0 auto; background: #93a1b3; }
+.heatDot[data-score='hot'] { background: #ff8a3d; box-shadow: 0 0 8px rgba(255,122,33,.8); }
+.heatDot[data-score='warm'] { background: #ffd166; }
+.heatDot[data-score='low'] { background: #5f6c7d; }
+
+/* --- Priority inbox --- */
+.inbox { display: flex; flex-direction: column; gap: .45rem; }
+.inboxRow { display: flex; align-items: center; gap: .8rem; padding: .7rem .9rem; border: 1px solid rgba(255,255,255,.09); border-radius: 12px; background: rgba(255,255,255,.02); }
+.inboxRow:hover { border-color: rgba(255,122,33,.35); background: rgba(255,122,33,.04); }
+.inboxUrgent { border-color: rgba(255,122,33,.45); box-shadow: inset 3px 0 0 #ff7a21; }
+.inboxBody { flex: 1 1 auto; min-width: 0; display: grid; gap: .2rem; color: inherit; }
+.inboxTop { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
+.inboxName { font-size: .98rem; font-weight: 700; }
+.inboxVal { font-weight: 800; color: #ffd591; font-variant-numeric: tabular-nums; }
+.inboxAge { margin-left: auto; font-size: .76rem; color: #9ca8b8; font-variant-numeric: tabular-nums; }
+.inboxSnip { font-size: .82rem; color: #9ca8b8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inboxActions { display: flex; gap: .35rem; flex: 0 0 auto; }
+.iconBtn { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 8px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.03); color: #c7d2df; font-size: .9rem; cursor: pointer; text-decoration: none; }
+.iconBtn:hover { color: #f7f5ef; border-color: rgba(255,122,33,.45); background: rgba(255,122,33,.08); }
+
+/* --- Command table --- */
+.tableWrap { overflow-x: auto; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; }
+.leadTable { width: 100%; min-width: 720px; border-collapse: collapse; font-size: .86rem; }
+.leadTable th { text-align: left; padding: .7rem .8rem; border-bottom: 1px solid rgba(255,255,255,.12); white-space: nowrap; }
+.leadTable th button { background: none; border: 0; color: #9ca8b8; font: inherit; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; font-size: .68rem; cursor: pointer; }
+.leadTable th button:hover { color: #f7f5ef; }
+.leadTable td { padding: .7rem .8rem; border-bottom: 1px solid rgba(255,255,255,.06); vertical-align: middle; }
+.leadTable tr:hover td { background: rgba(255,255,255,.02); }
+.numCol { text-align: right; font-variant-numeric: tabular-nums; }
+.tName { font-weight: 700; color: #f7f5ef; }
+.tMuted { color: #9ca8b8; }
+.tOpen { color: #ffb27d; font-weight: 700; white-space: nowrap; }
+
+/* --- Split view (list + detail) --- */
+.splitWrap { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 1rem; align-items: start; }
+.splitList { display: flex; flex-direction: column; max-height: 640px; overflow-y: auto; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; }
+.splitRow { display: flex; align-items: center; gap: .6rem; text-align: left; padding: .65rem .8rem; border: 0; border-bottom: 1px solid rgba(255,255,255,.06); background: none; color: inherit; cursor: pointer; }
+.splitRow:hover { background: rgba(255,255,255,.03); }
+.splitRowOn { background: rgba(255,122,33,.08); box-shadow: inset 3px 0 0 #ff7a21; }
+.splitRowBody { display: grid; gap: .1rem; min-width: 0; }
+.splitRowBody strong { font-size: .9rem; }
+.splitRowBody span { font-size: .76rem; color: #9ca8b8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.splitDetail { border: 1px solid rgba(255,255,255,.09); border-radius: 14px; padding: 1.2rem 1.3rem; background: rgba(255,255,255,.02); display: grid; gap: 1rem; }
+.sdHead { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: .8rem; }
+.sdName { font-size: 1.35rem; font-weight: 800; margin: .1rem 0 0; }
+.sdBadges { display: flex; flex-wrap: wrap; gap: .35rem; }
+.sdGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .7rem; }
+.sdBox { display: grid; gap: .15rem; padding: .7rem .8rem; border: 1px solid rgba(255,255,255,.08); border-radius: 10px; background: rgba(255,255,255,.02); font-size: .88rem; }
+.sdBox a { color: #ffb27d; }
+.sdLabel { font-size: .66rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #7f8b9a; }
+.sdActivity { display: grid; gap: .35rem; }
+.sdActivity ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .3rem; }
+.sdActivity li { font-size: .82rem; color: #c7d2df; }
+.sdActions { display: flex; flex-wrap: wrap; gap: .5rem; }
+@media (max-width: 720px) { .splitWrap { grid-template-columns: 1fr; } .splitList { max-height: 300px; } .sdGrid { grid-template-columns: 1fr; } }
