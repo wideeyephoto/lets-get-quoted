@@ -74,6 +74,29 @@ async function sendTwilioMessage(to: string, body: string) {
   return result.sid;
 }
 
+// Urgent alert texted to the OWNER's own mobile when a high-value lead lands.
+// This is a self-alert (the owner opted in by entering their number in settings),
+// so it is NOT logged to the customer inbox and skips consent tracking. Best-
+// effort: never throws — a texting hiccup must not sink lead capture.
+export async function sendOwnerHighValueLeadSms(input: {
+  alertPhone: string;
+  businessName: string;
+  leadName: string;
+  estimate: { min: number; max: number } | null;
+  dashboardUrl: string;
+}): Promise<void> {
+  try {
+    if (!twilioConfiguration()) return;
+    const to = normalizeUsPhone(input.alertPhone);
+    if (!to) return;
+    const range = input.estimate ? ` ($${input.estimate.min.toLocaleString()}-$${input.estimate.max.toLocaleString()})` : '';
+    const body = `🔥 High-value lead for ${input.businessName}: ${input.leadName || 'New request'}${range}. Respond fast: ${input.dashboardUrl} — Reply STOP to opt out.`;
+    await sendTwilioMessage(to, body);
+  } catch (error) {
+    console.error('Owner high-value lead SMS failed:', error instanceof Error ? error.message : error);
+  }
+}
+
 // Mirror an outbound customer text into the two-way inbox so threads are
 // complete (system texts + their replies in one place). Best-effort and
 // account-scoped; crew/verification texts are intentionally NOT logged (not a

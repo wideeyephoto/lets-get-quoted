@@ -7,7 +7,7 @@ import { deleteLeadPhotos, uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { isLeadVerificationValid } from '@/lib/lead-verification';
 import { normalizeUsPhone } from '@/lib/phone';
 import { getSiteContent, isFullyBookedActive } from '@/lib/site-content';
-import { isSmsConfigured } from '@/lib/sms';
+import { isSmsConfigured, sendOwnerHighValueLeadSms } from '@/lib/sms';
 
 export const runtime = 'nodejs';
 
@@ -17,26 +17,53 @@ function text(data: FormData, key: string, maxLength: number) {
   return String(data.get(key) ?? '').trim().slice(0, maxLength);
 }
 
-// Best-effort owner email for a new or repeat lead — never throws.
+type LeadAlertOptions = { highValue: boolean; muteLow: boolean; smsEnabled: boolean; alertPhone: string | null };
+
+// Best-effort owner alert for a new or repeat lead — never throws. Escalates
+// high-value leads (louder email + optional urgent owner SMS) and, when muting
+// is on, stays silent for low-quality ones (they still land on the board).
 async function notifyOwner(
   admin: SupabaseClient,
   site: { account_id: string; company_name: string },
   lead: Lead,
   request: NextRequest,
+  alert: LeadAlertOptions,
 ) {
   try {
+    // Don't interrupt for low-quality leads when muting is on — no email, no
+    // text; the lead is still captured and visible in the board.
+    if (alert.muteLow && lead.triage?.score === 'low') return;
+
+    const estimate = lead.triage?.estimate ?? null;
+    const dashboardUrl = `${request.nextUrl.origin}/dashboard/leads/${lead.id}`;
+
     const { data: owner } = await admin.from('memberships').select('user_id').eq('account_id', site.account_id).eq('role', 'owner').limit(1).maybeSingle();
-    if (!owner?.user_id) return;
-    const { data: ownerUser } = await admin.auth.admin.getUserById(owner.user_id);
-    if (!ownerUser.user?.email) return;
-    await sendLeadNotificationEmail({
-      recipientEmail: ownerUser.user.email,
-      businessName: site.company_name,
-      lead,
-      dashboardUrl: `${request.nextUrl.origin}/dashboard/leads/${lead.id}`,
-    });
+    if (owner?.user_id) {
+      const { data: ownerUser } = await admin.auth.admin.getUserById(owner.user_id);
+      if (ownerUser.user?.email) {
+        await sendLeadNotificationEmail({
+          recipientEmail: ownerUser.user.email,
+          businessName: site.company_name,
+          lead,
+          dashboardUrl,
+          highValue: alert.highValue,
+          estimate,
+        });
+      }
+    }
+
+    // Urgent text to the owner's own mobile — high-value leads only, opt-in.
+    if (alert.highValue && alert.smsEnabled && alert.alertPhone) {
+      await sendOwnerHighValueLeadSms({
+        alertPhone: alert.alertPhone,
+        businessName: site.company_name,
+        leadName: lead.name ?? '',
+        estimate,
+        dashboardUrl,
+      });
+    }
   } catch (error) {
-    console.error('Lead notification email failed:', error);
+    console.error('Lead notification failed:', error);
   }
 }
 
@@ -77,6 +104,18 @@ export async function POST(request: NextRequest) {
   if (!site) return NextResponse.json({ error: 'This website is not accepting requests.' }, { status: 404 });
 
   const siteContent = getSiteContent(site.content);
+  // Account-level intake tuning: the high-value threshold + how alerts behave.
+  // Defensive reads so a pre-migration DB degrades to sensible defaults.
+  const { data: accountSettings } = await admin
+    .from('accounts')
+    .select('high_value_lead_amount, mute_low_quality_leads, high_value_sms_enabled, alert_phone')
+    .eq('id', site.account_id)
+    .maybeSingle();
+  const highValueThreshold = Number(accountSettings?.high_value_lead_amount) || 0;
+  const muteLow = accountSettings?.mute_low_quality_leads !== false; // default: mute
+  const smsEnabled = Boolean(accountSettings?.high_value_sms_enabled);
+  const alertPhone = (accountSettings?.alert_phone as string | null) || null;
+
   const quoteForm = siteContent.quoteForm;
   if (quoteForm.emailRequired && !email) {
     return NextResponse.json({ error: 'Add your email address so the contractor can follow up.' }, { status: 400 });
@@ -137,8 +176,13 @@ export async function POST(request: NextRequest) {
   }
 
   const hasPruneFlag = flags.some((flag) => LEAD_PRUNE_FLAGS.has(flag));
+  // High-value = the cream of "hot": not pruned, and the AI estimate could reach
+  // the owner's threshold. It rides on the existing hot/warm/low score (never a
+  // parallel tier) and drives escalated alerts.
+  const isHighValue = !hasPruneFlag && estimate != null && highValueThreshold > 0 && estimate.max >= highValueThreshold;
+  if (isHighValue) flags.push('high_value');
   const triage: LeadTriage = {
-    score: hasPruneFlag ? 'low' : normalizedPhone && estimate ? 'hot' : 'warm',
+    score: hasPruneFlag ? 'low' : isHighValue || (normalizedPhone && estimate) ? 'hot' : 'warm',
     flags,
     ...(timeline ? { timeline } : {}),
     ...(location ? { location } : {}),
@@ -175,8 +219,14 @@ export async function POST(request: NextRequest) {
           updated_at: new Date().toISOString(),
         })
         .eq('id', duplicate.id);
-      // Still notify the owner — a homeowner asking twice is hotter, not spam.
-      await notifyOwner(admin, site, { ...(duplicate as Lead), message: mergedMessage, triage: mergedTriage }, request);
+      // Still notify the owner — a homeowner asking twice is hotter, not spam,
+      // so this bypasses the low-quality mute.
+      await notifyOwner(admin, site, { ...(duplicate as Lead), message: mergedMessage, triage: mergedTriage }, request, {
+        highValue: mergedTriage.flags.includes('high_value'),
+        muteLow: false,
+        smsEnabled,
+        alertPhone,
+      });
       return NextResponse.json({ ok: true, leadId: duplicate.id });
     }
   }
@@ -197,7 +247,7 @@ export async function POST(request: NextRequest) {
       triage,
     });
 
-    await notifyOwner(admin, site, lead, request);
+    await notifyOwner(admin, site, lead, request, { highValue: isHighValue, muteLow, smsEnabled, alertPhone });
 
     return NextResponse.json({ ok: true, leadId: lead.id }, { status: 201 });
   } catch (error) {

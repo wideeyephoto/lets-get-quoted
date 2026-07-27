@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
 import { getSiteContent } from '@/lib/site-content';
+import { estimatePostureBias } from '@/lib/estimate-posture';
 
 export const runtime = 'nodejs';
 
@@ -67,10 +68,16 @@ export async function POST(request: NextRequest) {
   // Only run for real, published sites — keeps this endpoint from being a
   // free-standing OpenAI proxy for anyone who finds the URL.
   const admin = createAdminClient();
-  const { data: site } = await admin.from('sites').select('id, content, service_area').eq('id', siteId).eq('published', true).maybeSingle();
+  const { data: site } = await admin.from('sites').select('id, account_id, content, service_area').eq('id', siteId).eq('published', true).maybeSingle();
   if (!site) {
     return NextResponse.json({ error: 'Site not found.' }, { status: 404 });
   }
+
+  // The owner's pricing posture biases the estimate lower/higher (see
+  // estimate-posture.ts). Defensive: a missing column degrades to the default
+  // 'lean' bias — the estimator never breaks over a settings read.
+  const { data: postureRow } = await admin.from('accounts').select('estimate_posture').eq('id', site.account_id).maybeSingle();
+  const postureBias = estimatePostureBias(postureRow?.estimate_posture);
 
   // Lead-quality context from the owner's settings: served towns and excluded
   // work, so the model can flag out-of-area or won't-do jobs alongside the
@@ -117,7 +124,7 @@ export async function POST(request: NextRequest) {
     'in_area: false ONLY when the visitor\'s stated location is clearly outside the served areas listed; true when it clearly matches or neighbors them; null when no location was given or you are unsure. ' +
     'excluded: true ONLY when the described work clearly matches something the business does NOT take on; otherwise false. Never refuse to estimate — always include min/max regardless of these two fields. ' +
     'Price the described job itself, not a generic project category: cleaning one 150 sq ft room is a low-cost routine service call, not a renovation. ' +
-    'Keep the range honest but LEAN TOWARD THE AFFORDABLE SIDE, with a tight believable spread (max no more than roughly 2-2.5x min) — a scary high top number loses the customer before the business ever gets to quote in person. ' +
+    postureBias + ' ' +
     'Round to natural amounts (e.g. 120-220, 850-1500, 4000-7500). ' +
     (questionsRemaining > 0
       ? 'If the homeowner is unsure whether they need a repair or a full replacement, ask a clarifying question (e.g. age/condition of the item) before estimating, and if still unsure, price the smaller/cheaper outcome rather than assuming the most expensive one.'

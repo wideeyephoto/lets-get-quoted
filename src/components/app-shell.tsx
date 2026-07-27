@@ -60,6 +60,7 @@ type AccountStatus = {
   unscheduledJobCount: number;
   newestQuoteRequestId: string | null;
   newestQuoteRequestCreatedAt: string | null;
+  newestQuoteRequestHighValue: boolean;
 };
 
 const QUOTE_REQUEST_ALERT_DISMISSED_KEY = 'lgq-dismissed-quote-request-alert';
@@ -83,6 +84,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [unscheduledJobCount, setUnscheduledJobCount] = useState(0);
   const [newestQuoteRequestId, setNewestQuoteRequestId] = useState<string | null>(null);
   const [newestQuoteRequestCreatedAt, setNewestQuoteRequestCreatedAt] = useState<string | null>(null);
+  const [newestLeadHighValue, setNewestLeadHighValue] = useState(false);
   const [dismissedQuoteRequestId, setDismissedQuoteRequestId] = useState<string | null>(null);
   const isDashboard = pathname.startsWith('/dashboard');
   // Homeowner-facing transactional pages (paying, approving a quote, an invoice)
@@ -195,6 +197,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       setUnscheduledJobCount(0);
       setNewestQuoteRequestId(null);
       setNewestQuoteRequestCreatedAt(null);
+      setNewestLeadHighValue(false);
       setSiteUrl(null);
       setBusinessName(null);
       return;
@@ -214,6 +217,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             setUnscheduledJobCount(Number(data.unscheduledJobCount ?? 0));
             setNewestQuoteRequestId(data.newestQuoteRequestId ?? null);
             setNewestQuoteRequestCreatedAt(data.newestQuoteRequestCreatedAt ?? null);
+            setNewestLeadHighValue(Boolean(data.newestQuoteRequestHighValue));
           }
         })
         .catch(() => {});
@@ -627,12 +631,12 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       </header>
 
       {showQuoteRequestAlert ? (
-        <aside className="quote-request-alert" role="status" aria-live="polite">
+        <aside className={`quote-request-alert${newestLeadHighValue ? ' high-value' : ''}`} role="status" aria-live="polite">
           <button type="button" className="quote-request-alert-close" onClick={dismissQuoteRequestAlert} aria-label="Dismiss lead alert">x</button>
-          <p>New lead needs a response</p>
+          <p>{newestLeadHighValue ? '🔥 High-value lead — respond now' : 'New lead needs a response'}</p>
           <strong>{newQuoteRequestCount === 1 ? '1 website lead is waiting' : `${newQuoteRequestCount} website leads are waiting`}</strong>
           {newestQuoteRequestAge ? <span>Newest lead received {newestQuoteRequestAge}h ago.</span> : null}
-          <Link href={`/dashboard/leads/${newestQuoteRequestId}`} className="btn primary">View lead</Link>
+          <Link href={`/dashboard/leads/${newestQuoteRequestId}`} className="btn primary">{newestLeadHighValue ? 'Respond now' : 'View lead'}</Link>
         </aside>
       ) : null}
 

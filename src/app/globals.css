@@ -731,6 +731,13 @@ h3 {
   box-shadow: 0 22px 60px rgba(0, 0, 0, 0.38), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
   backdrop-filter: blur(18px);
 }
+/* High-value lead: hotter accent + a glow so the biggest jobs read as urgent. */
+.quote-request-alert.high-value {
+  border-color: rgba(251, 122, 60, 0.85);
+  background: linear-gradient(145deg, rgba(251, 122, 60, 0.4), rgba(7, 16, 28, 0.94) 46%);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(251, 122, 60, 0.35) inset, 0 0 34px rgba(251, 122, 60, 0.35);
+}
+.quote-request-alert.high-value p { color: #ffb37a; }
 
 .quote-request-alert p {
   margin: 0;

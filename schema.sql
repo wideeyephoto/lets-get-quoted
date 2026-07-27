@@ -131,6 +131,24 @@ alter table accounts add column if not exists daily_digest_enabled boolean not n
 -- no-op (account-level idempotency; the daily cron is the only writer).
 alter table accounts add column if not exists last_digest_date date;
 
+-- Intake AI tuning + lead priority (see src/lib/estimate-posture.ts).
+-- estimate_posture: biases the AI instant-estimate lower/higher — one of
+-- 'budget' | 'lean' | 'balanced' | 'premium' | 'high' (default 'lean', the prior
+-- hardcoded behavior).
+alter table accounts add column if not exists estimate_posture text not null default 'lean';
+-- A lead whose AI estimate could reach this dollar amount is treated as
+-- HIGH-VALUE: escalated alerts + top-priority. 0/null = feature off.
+alter table accounts add column if not exists high_value_lead_amount numeric(12,2);
+-- Stop low-quality leads (out-of-area, excluded work, below-minimum, just-
+-- researching) from firing owner alerts / the dashboard nag. They still land in
+-- the leads board, just quietly.
+alter table accounts add column if not exists mute_low_quality_leads boolean not null default true;
+-- Also text the owner's own mobile the moment a high-value lead comes in.
+alter table accounts add column if not exists high_value_sms_enabled boolean not null default false;
+-- The owner's mobile for those urgent high-value alert texts (their own number;
+-- entering it is the consent to be texted their own leads).
+alter table accounts add column if not exists alert_phone text;
+
 -- ----------------------------------------------------------------------------
 -- MEMBERSHIPS  — links a person (auth.users) to an account with a role.
 -- This IS the Owner/Crew split, enforced in data instead of UI.

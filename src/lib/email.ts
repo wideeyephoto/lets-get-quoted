@@ -570,6 +570,10 @@ export async function sendLeadNotificationEmail(input: {
   businessName: string;
   lead: Lead;
   dashboardUrl: string;
+  // High-value leads (AI estimate clears the owner's threshold) get an escalated
+  // subject + a banner so the biggest jobs jump the inbox.
+  highValue?: boolean;
+  estimate?: { min: number; max: number } | null;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     console.warn('RESEND_API_KEY not configured; quote request notification skipped');
@@ -577,11 +581,19 @@ export async function sendLeadNotificationEmail(input: {
   }
 
   const contact = [input.lead.phone, input.lead.email].filter(Boolean).map(escapeHtml).join(' &middot; ');
+  const range = input.estimate ? `$${input.estimate.min.toLocaleString()}–$${input.estimate.max.toLocaleString()}` : '';
+  const subject = input.highValue
+    ? `🔥 High-value lead: ${input.lead.name || 'Project request'}${range ? ` (${range})` : ''} — respond fast`
+    : `New website quote request: ${input.lead.name || 'Project request'}`;
+  const banner = input.highValue
+    ? `<div style="padding:14px 18px;margin-bottom:16px;background:#fff1e6;border:1px solid #fb7a3c;border-radius:10px;color:#9a3412;font-weight:700">🔥 HIGH-VALUE LEAD${range ? ` — estimated ${escapeHtml(range)}` : ''}. Get to this one first — fast response wins the big jobs.</div>`
+    : '';
+  const eyebrow = input.highValue ? 'HIGH-VALUE WEBSITE LEAD' : 'NEW WEBSITE QUOTE REQUEST';
   const result = await resend.emails.send({
     from: 'Let\'s Get Quoted <hello@letsgetquoted.com>',
     to: input.recipientEmail,
-    subject: `New website quote request: ${input.lead.name || 'Project request'}`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#b45309;font-weight:700">NEW WEBSITE QUOTE REQUEST</p><h1 style="font-size:26px">${escapeHtml(input.lead.name)} requested a quote</h1><p>${contact}</p><p><strong>Project:</strong> ${escapeHtml(input.lead.project_type) || 'Not specified'}</p><p><strong>Address:</strong> ${escapeHtml(input.lead.address) || 'Not specified'}</p><div style="padding:18px;background:#f4f5f7;border-left:4px solid #f59e0b">${escapeHtml(input.lead.message)}</div><p style="margin-top:24px"><a href="${escapeHtml(input.dashboardUrl)}" style="display:inline-block;padding:12px 18px;background:#172033;color:white;text-decoration:none;font-weight:700">Open quote request in ${escapeHtml(input.businessName)}</a></p></div>`,
+    subject,
+    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033">${banner}<p style="color:#b45309;font-weight:700">${eyebrow}</p><h1 style="font-size:26px">${escapeHtml(input.lead.name)} requested a quote</h1><p>${contact}</p><p><strong>Project:</strong> ${escapeHtml(input.lead.project_type) || 'Not specified'}</p><p><strong>Address:</strong> ${escapeHtml(input.lead.address) || 'Not specified'}</p><div style="padding:18px;background:#f4f5f7;border-left:4px solid #f59e0b">${escapeHtml(input.lead.message)}</div><p style="margin-top:24px"><a href="${escapeHtml(input.dashboardUrl)}" style="display:inline-block;padding:12px 18px;background:#172033;color:white;text-decoration:none;font-weight:700">Open quote request in ${escapeHtml(input.businessName)}</a></p></div>`,
     reply_to: input.lead.email || 'hello@letsgetquoted.com',
   });
   if (result.error) throw new Error(result.error.message);

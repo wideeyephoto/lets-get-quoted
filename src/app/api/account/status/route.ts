@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { createAdminClient, getCurrentMembership } from '@/lib/auth';
-import { expireStaleLeads } from '@/lib/leads';
+import { expireStaleLeads, getLeadTriage } from '@/lib/leads';
 import { listJobs } from '@/lib/jobs';
 
 // Lightweight status check used by the app shell to show persistent dashboard
@@ -25,8 +25,8 @@ export async function GET() {
 
   const admin = createAdminClient();
   await expireStaleLeads(admin, membership.accountId);
-  const [{ data: account }, { data: site }, { data: newQuoteRequests, count: newQuoteRequestCount }, jobs] = await Promise.all([
-    admin.from('accounts').select('connect_onboarded, business_name').eq('id', membership.accountId).maybeSingle(),
+  const [{ data: account }, { data: site }, { data: newLeadRows }, jobs] = await Promise.all([
+    admin.from('accounts').select('connect_onboarded, business_name, mute_low_quality_leads').eq('id', membership.accountId).maybeSingle(),
     admin
       .from('sites')
       .select('published, subdomain, custom_domain, custom_domain_verified_at, company_name')
@@ -34,12 +34,12 @@ export async function GET() {
       .maybeSingle(),
     admin
       .from('leads')
-      .select('id, created_at', { count: 'exact' })
+      .select('id, created_at, triage')
       .eq('account_id', membership.accountId)
       .eq('source', 'website_form')
       .eq('status', 'new')
       .order('created_at', { ascending: false })
-      .limit(1),
+      .limit(50),
       listJobs(admin, membership.accountId),
   ]);
       // Badges mean "needs YOUR attention", not inventory. Jobs = quotes still
@@ -48,6 +48,16 @@ export async function GET() {
       // lights up both badges.
       const jobsNeedingAttentionCount = jobs.filter((job) => job.status === 'new_lead').length;
       const unscheduledJobCount = jobs.filter((job) => job.status === 'in_progress' && !job.scheduled_for).length;
+
+      // Muting low-quality leads (default on) keeps them off the dashboard nag —
+      // the badge/banner only counts leads that actually deserve a response.
+      const muteLowLeads = account?.mute_low_quality_leads !== false;
+      const attentionLeads = (newLeadRows ?? [])
+        .map((row) => ({ id: row.id as string, created_at: row.created_at as string, triage: getLeadTriage({ triage: (row as { triage: unknown }).triage as never }) }))
+        .filter((row) => !muteLowLeads || row.triage.score !== 'low');
+      const newQuoteRequestCount = attentionLeads.length;
+      const newestLead = attentionLeads[0] ?? null;
+      const newestQuoteRequestHighValue = newestLead ? newestLead.triage.flags.includes('high_value') : false;
 
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
   const sitePublished = site?.published ?? false;
@@ -65,10 +75,11 @@ export async function GET() {
     sitePublished,
     siteUrl,
     businessName: site?.company_name || account?.business_name || null,
-    newQuoteRequestCount: newQuoteRequestCount ?? 0,
+    newQuoteRequestCount,
     jobsNeedingAttentionCount,
     unscheduledJobCount,
-    newestQuoteRequestId: newQuoteRequests?.[0]?.id ?? null,
-    newestQuoteRequestCreatedAt: newQuoteRequests?.[0]?.created_at ?? null,
+    newestQuoteRequestId: newestLead?.id ?? null,
+    newestQuoteRequestCreatedAt: newestLead?.created_at ?? null,
+    newestQuoteRequestHighValue,
   });
 }

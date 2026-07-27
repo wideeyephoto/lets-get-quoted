@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import { sendTestDigest } from '@/lib/daily-digest';
+import { normalizeEstimatePosture } from '@/lib/estimate-posture';
+import { normalizeUsPhone } from '@/lib/phone';
 
 function parseScheduleDayHours(value: FormDataEntryValue | null): number {
   const n = Number(value);
@@ -35,6 +37,37 @@ export async function updateReviewSettingsAction(formData: FormData) {
   const { error } = await supabase
     .from('accounts')
     .update({ auto_review_request: autoReviewRequest, review_gating_enabled: reviewGating })
+    .eq('id', accountId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/dashboard/settings');
+}
+
+export async function updateIntakeSettingsAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const estimatePosture = normalizeEstimatePosture(formData.get('estimatePosture'));
+  const thresholdRaw = Number(formData.get('highValueLeadAmount'));
+  const highValueLeadAmount = Number.isFinite(thresholdRaw) && thresholdRaw > 0 ? Math.round(thresholdRaw) : null;
+  const muteLowQualityLeads = formData.get('muteLowQualityLeads') === 'on';
+  const highValueSmsEnabled = formData.get('highValueSmsEnabled') === 'on';
+  const rawPhone = String(formData.get('alertPhone') ?? '').trim();
+  const alertPhone = rawPhone ? normalizeUsPhone(rawPhone) ?? rawPhone : null;
+
+  // Guard the obvious footgun: SMS alerts on with no number to text.
+  if (highValueSmsEnabled && !alertPhone) {
+    throw new Error('Add your mobile number to get high-value lead texts.');
+  }
+
+  const { error } = await supabase
+    .from('accounts')
+    .update({
+      estimate_posture: estimatePosture,
+      high_value_lead_amount: highValueLeadAmount,
+      mute_low_quality_leads: muteLowQualityLeads,
+      high_value_sms_enabled: highValueSmsEnabled,
+      alert_phone: alertPhone,
+    })
     .eq('id', accountId);
 
   if (error) throw new Error(error.message);
