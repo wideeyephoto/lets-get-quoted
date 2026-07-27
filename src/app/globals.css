@@ -6931,6 +6931,83 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 .fx-tile--big .fx-tile-name { font-size: 1.4rem; }
 .fx-tile--big .fx-tile-desc { font-size: 0.98rem; }
 
+/* ---- Screenshot-backed tiles (button) + click-to-enlarge lightbox ---- */
+.fx-tile--shot {
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  background-size: cover;
+  background-position: center top;
+  min-height: 208px;
+  justify-content: flex-end;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+/* Readability veil over the photo — content sits above it. */
+.fx-tile--shot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(180deg, rgba(6, 19, 31, 0.28) 0%, rgba(6, 19, 31, 0.52) 42%, rgba(6, 19, 31, 0.93) 100%);
+}
+.fx-tile--shot > * { position: relative; z-index: 1; }
+.fx-tile--shot .fx-tile-ic { margin-bottom: auto; background: rgba(6, 19, 31, 0.55); border: 1px solid rgba(255, 255, 255, 0.14); }
+.fx-tile--shot:hover, .fx-tile--shot:focus-visible { transform: translateY(-4px); border-color: rgba(255, 122, 33, 0.5); box-shadow: 0 24px 50px -22px rgba(0, 0, 0, 0.7); outline: none; }
+.fx-tile-expand {
+  position: absolute;
+  top: 1rem; right: 1rem;
+  z-index: 1;
+  display: inline-flex;
+  width: 2rem; height: 2rem;
+  align-items: center; justify-content: center;
+  border-radius: 9px;
+  color: var(--text);
+  background: rgba(6, 19, 31, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.fx-tile-expand svg { width: 1rem; height: 1rem; }
+.fx-tile--shot:hover .fx-tile-expand, .fx-tile--shot:focus-visible .fx-tile-expand { opacity: 1; }
+
+.fx-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1rem, 4vw, 3rem);
+  background: rgba(3, 10, 18, 0.86);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  animation: fxFade 0.2s ease;
+}
+.fx-lightbox-inner { width: min(1120px, 100%); max-height: 92vh; display: flex; flex-direction: column; gap: 0.9rem; }
+.fx-lightbox-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.fx-lightbox-tag { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-2); }
+.fx-lightbox-title { margin: 0.15rem 0 0; font-size: 1.4rem; font-weight: 800; letter-spacing: -0.01em; color: var(--text); }
+.fx-lightbox-close {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.4rem; height: 2.4rem;
+  border-radius: 999px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.fx-lightbox-close:hover { background: rgba(255, 122, 33, 0.16); border-color: rgba(255, 122, 33, 0.5); }
+.fx-lightbox-close svg { width: 1.2rem; height: 1.2rem; }
+.fx-lightbox-img { width: 100%; max-height: 72vh; object-fit: contain; border-radius: 14px; border: 1px solid var(--line); background: #0b1220; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6); }
+.fx-lightbox-foot { display: flex; align-items: center; justify-content: space-between; gap: 1rem 1.5rem; flex-wrap: wrap; }
+.fx-lightbox-foot p { margin: 0; color: var(--muted); max-width: 62ch; font-size: 0.92rem; }
+@keyframes fxFade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .fx-lightbox { animation: none; } .fx-tile--shot { transition: none; } .fx-tile--shot:hover, .fx-tile--shot:focus-visible { transform: none; } }
+
 /* ---- Concept A: the lifecycle pipeline ---------------------------- */
 .fx-pipeline { position: relative; margin-top: 1.6rem; }
 
