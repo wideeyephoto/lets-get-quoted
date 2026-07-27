@@ -1,6 +1,6 @@
 .site {
   --theme-accent: #f0b429;
-  --theme-display: Impact, sans-serif;
+  --theme-display: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   min-height: 100vh;
   overflow: hidden;
   letter-spacing: 0;
@@ -792,7 +792,7 @@
    overrides stay (they resolve to the same token values) — harmless. */
 .guild {
   --c-bg: #f5f1e8; --c-surface: #ffffff; --c-ink: #24271f; --c-muted: var(--c-muted); --c-line: var(--c-line); --c-deep: #2a332a; --c-on-deep: #f1ede2;
-  background: var(--c-bg); color: var(--c-ink); font-family: var(--font-guild-body), 'Trebuchet MS', sans-serif; --theme-radius: 12px;
+  background: var(--c-bg); color: var(--c-ink); font-family: var(--font-guild-body), system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; --theme-radius: 12px;
 }
 .guild[data-mode='dark'] { --c-bg: #1c221d; --c-surface: #232a24; --c-ink: #f1ede2; --c-muted: #bdc4b9; --c-line: #454e46; --c-deep: #222922; --c-on-deep: #f1ede2; }
 .guild[data-mode='dark'] .guildHeader, .guild[data-mode='dark'] .guildIntro, .guild[data-mode='dark'] .guildServices article, .guild[data-mode='dark'] .guildFooter { border-color: #454e46; }
