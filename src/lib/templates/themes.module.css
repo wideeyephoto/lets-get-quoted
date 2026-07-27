@@ -975,9 +975,13 @@
 .vistaActions { justify-self: end; display: inline-flex; align-items: center; gap: clamp(.7rem, 2vw, 1.15rem); }
 .vistaPhone { display: inline-flex; align-items: center; min-height: 44px; padding: 0 .25rem; font-family: var(--theme-display); font-size: .95rem; font-weight: 700; letter-spacing: -.01em; white-space: nowrap; transition: color .2s ease; }
 .vistaPhone:hover { color: var(--theme-accent); }
-.vistaHero { position: relative; min-height: min(860px, calc(100svh - 88px)); margin: 1vw 1.5vw 0; border-radius: 14px; overflow: hidden; background: color-mix(in srgb, var(--c-deep) 88%, #ffffff 7%); color: var(--c-on-deep); }
+/* min-height (not a fixed height) + flex-end lets the card GROW to fit its copy
+   on short viewports instead of clipping the top of the headline. The copy is in
+   normal flow (padding, not absolute top/bottom %), so a tall headline + intake
+   form pushes the card taller rather than overflowing under the sticky header. */
+.vistaHero { position: relative; min-height: min(860px, calc(100svh - 88px)); margin: 1vw 1.5vw 0; border-radius: 14px; overflow: hidden; background: color-mix(in srgb, var(--c-deep) 88%, #ffffff 7%); color: var(--c-on-deep); display: flex; flex-direction: column; justify-content: flex-end; }
 .vistaHero::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(8,10,8,.12) 0%, transparent 32%, rgba(8,10,8,.72) 100%), linear-gradient(90deg, rgba(8,10,8,.5), transparent 62%); }
-.vistaHeroCopy { position: absolute; z-index: 1; left: clamp(1.5rem, 4vw, 4rem); right: 4vw; top: 8%; bottom: 8%; max-width: 840px; display: flex; flex-direction: column; justify-content: flex-end; }
+.vistaHeroCopy { position: relative; z-index: 1; width: 100%; max-width: 840px; padding: clamp(2rem, 5vh, 3.5rem) 4vw clamp(2rem, 5vh, 4rem) clamp(1.5rem, 4vw, 4rem); display: flex; flex-direction: column; }
 .vistaHeroCopy .kicker { align-self: flex-start; margin-bottom: 1.4rem; padding: .42rem .85rem; border: 1px solid color-mix(in srgb, var(--c-on-deep) 40%, transparent); border-radius: 999px; color: var(--c-on-deep); }
 .vistaHeroCopy h1 { margin-bottom: 1.35rem; font-family: var(--theme-display); font-size: clamp(2.9rem, 7.6vw, 7rem); line-height: .92; letter-spacing: -.02em; text-transform: uppercase; }
 .vistaHeroCopy > p:last-child { max-width: 34rem; font-size: 1.12rem; line-height: 1.55; color: color-mix(in srgb, var(--c-on-deep) 86%, transparent); }
@@ -1059,7 +1063,7 @@
   .guildIntro h2, .guildWork h2, .guildContact h2 { font-size: 2.75rem; }
   .guildGallery img { aspect-ratio: 4 / 3; }
   .vistaHero { margin: 0; min-height: 75svh; }
-  .vistaHeroCopy { left: 1.25rem; right: 1.25rem; top: 1.5rem; bottom: 4rem; }
+  .vistaHeroCopy { max-width: 100%; padding: 2.5rem 1.25rem 3rem; }
   .vistaHeroCopy h1 { font-size: 3.25rem; line-height: .9; overflow-wrap: normal; }
   .vistaScroll { display: none; }
   .vistaStatement { padding-inline: 1.25rem; }
