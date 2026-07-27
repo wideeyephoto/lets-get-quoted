@@ -2104,6 +2104,14 @@
   .vista[data-header='glass'] .vistaBrand, .handy[data-header='glass'] .careBrand,
   .coat[data-header='glass'] .coatBrand, .fixit[data-header='glass'] .fixitBrand,
   .reno[data-header='glass'] .renoBrand, .shine[data-header='glass'] .shineBrand { color: #f4f7fc; }
+  /* The glass header floats OVER the hero (position:absolute), so a hero whose top
+     padding is shorter than the ~70px capsule has its eyebrow / first line clipped.
+     Reserve headroom for the themes that pad short. (Forge pads 7rem+ and Guild
+     pads via its copy column, so both already clear it.) */
+  .handy[data-header='glass'] .careHero,
+  .coat[data-header='glass'] .coatHero,
+  .fixit[data-header='glass'] .fixitHero,
+  .shine[data-header='glass'] .shineHero { padding-top: clamp(88px, 8vw, 124px); }
 
   /* — CENTERED STACK (#8): brand centered up top, nav in a row beneath — */
   .forge[data-header='stacked'] .forgeHeader, .guild[data-header='stacked'] .guildHeader,
