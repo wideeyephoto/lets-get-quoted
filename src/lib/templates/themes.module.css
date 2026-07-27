@@ -1100,7 +1100,7 @@
    Haven's hand-built dark mode is left as-is for the light/dark toggle — a
    scheme drops data-mode, so the tokenized base rules + scheme vars apply. */
 .handy {
-  --c-bg: #fff; --c-surface: var(--c-surface); --c-ink: var(--c-ink); --c-muted: var(--c-muted); --c-line: var(--c-line); --c-deep: #14253a; --c-on-deep: #fff;
+  --c-bg: #fff; --c-surface: #f4f8f8; --c-ink: #17272e; --c-muted: #5b6b73; --c-line: #e4eaec; --c-deep: #14253a; --c-on-deep: #fff;
   --care-grad: linear-gradient(120deg, var(--theme-accent), color-mix(in srgb, var(--theme-accent) 55%, #7ef0c0));
   /* Accent-derived text (eyebrows, accent headline word, ghost buttons, check
      marks, service icons) sits on white / light surfaces, so it must clear AA —
