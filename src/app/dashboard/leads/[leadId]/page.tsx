@@ -9,6 +9,7 @@ import { expireStaleLeads, formatElapsedTime, formatLeadSource, getLead, getLead
 import { expandScheduledJobs, formatJobSchedule, formatJobTime, listJobs, type Job, type QuoteItem, type ScheduledJobOccurrence } from '@/lib/jobs';
 import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
 import { clearLeadQuoteVisitAction, convertLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, setLeadLayoutAction, undoConvertLeadAction, updateLeadDetailsAction, updateLeadStatusAction } from '../actions';
+import DepositField from './DepositField';
 import LeadActionDeck from './LeadActionDeck';
 import LeadQuoteFields from './LeadQuoteFields';
 import QuotePreviewButton from './QuotePreviewButton';
@@ -111,12 +112,15 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
     getLead(supabase, accountId, params.leadId),
     listJobs(supabase, accountId, undefined, { includeLeadQuotes: true }),
     listLeads(supabase, accountId),
-    supabase.from('accounts').select('schedule_day_hours, business_name').eq('id', accountId).maybeSingle(),
+    supabase.from('accounts').select('schedule_day_hours, business_name, stripe_connect_id, connect_onboarded').eq('id', accountId).maybeSingle(),
     supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
   ]);
   if (!lead) notFound();
 
   const quoteBusinessName = site?.company_name || account?.business_name || 'Your company';
+  // Quotes collect payment through Stripe, so sending is gated on a finished
+  // Stripe Connect onboarding (server enforces this too, in convertLeadAction).
+  const stripeConnected = Boolean(account?.stripe_connect_id && account?.connect_onboarded);
   const quoteSeedItems: QuoteItem[] = [{ id: 'seed-base', label: lead.project_type || '', amount: 0, kind: 'base', selected: true, recommended: false }];
 
   const photoUrls = await createLeadPhotoUrls(accountId, lead.photo_paths || []);
@@ -458,6 +462,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                     <small>Off by default — hours stay on your job for planning and aren&apos;t shown to the client.</small>
                   </span>
                 </label>
+                <DepositField />
                 <label className={`sms-consent-check ${styles.quoteTextCheck}`}>
                   <input id="sendClientTextCheckbox" name="sendClientText" type="checkbox" defaultChecked />
                   <span>
@@ -491,8 +496,15 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                     businessName={quoteBusinessName}
                     clientName={lead.name ?? ''}
                   />
-                  <SaveButton>Send quote</SaveButton>
+                  {stripeConnected ? (
+                    <SaveButton>Send quote</SaveButton>
+                  ) : (
+                    <Link className="btn primary" href="/dashboard/settings">🔒 Connect Stripe to send</Link>
+                  )}
                 </div>
+                {!stripeConnected ? (
+                  <p className={styles.stripeGateNote}>Quotes collect payment through Stripe — connect it first so clients can pay and deposits work.</p>
+                ) : null}
               </form>
             </section>
           ) : null}

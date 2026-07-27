@@ -4,8 +4,10 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
-import { createClientJobAccessToken, createJobFeedEvent } from '@/lib/job-feed';
+import { createClientJobAccessToken, createJobFeedEvent, createPaymentFeedEvent } from '@/lib/job-feed';
+import { addInvoiceItem, createInvoice, listInvoices, selectPrimaryInvoice } from '@/lib/invoices';
 import { computeQuoteTotal, formatJobQuoteSummary, parseQuoteItems, saveQuoteItems, type QuoteItem } from '@/lib/jobs';
+import { createDepositRequest } from '@/lib/payments';
 import { clearLeadQuoteVisit, convertLeadToJob, createLead, getLead, getLeadTriage, LEAD_DECLINE_REASONS, LEAD_LAYOUT_COOKIE, scheduleLeadQuoteVisit, unconvertLeadFromJob, updateLeadDetails, updateLeadStatus, type LeadStatus, type LeadTriage } from '@/lib/leads';
 import { uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
@@ -197,9 +199,32 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
   const estimatedHours = optionalAmount(formData.get('estimatedHours'));
   const showHoursToClient = formData.get('showHoursToClient') === 'on';
   const sendClientText = formData.get('sendClientText') === 'on';
+
+  // Optional deposit the client can pay up front. "Collect now" — we create the
+  // payment request so it's ready to pay; the timing (before scheduling / before
+  // work) is recorded in the label and enforced later.
+  const requireDeposit = formData.get('requireDeposit') === 'on';
+  const depositUnit = formData.get('depositUnit') === 'fixed' ? 'fixed' : 'percent';
+  const depositTiming = formData.get('depositTiming') === 'before_work' ? 'before_work' : 'before_schedule';
+  const depositValueRaw = Number(formData.get('depositValue'));
+  let depositAmount = 0;
+  if (requireDeposit && Number.isFinite(depositValueRaw) && depositValueRaw > 0) {
+    depositAmount = depositUnit === 'percent'
+      ? Math.round(quotedAmount * Math.min(100, depositValueRaw)) / 100
+      : depositValueRaw;
+    depositAmount = Math.round(Math.min(depositAmount, quotedAmount) * 100) / 100;
+  }
   const { supabase, accountId } = await requireOwnerContext();
   const lead = await getLead(supabase, accountId, leadId);
   if (!lead) throw new Error('Lead not found.');
+
+  // Quotes collect payment through Stripe — never send one before onboarding is
+  // finished, or the client would get a quote they can't pay.
+  const { data: stripeAccount } = await supabase.from('accounts').select('stripe_connect_id, connect_onboarded').eq('id', accountId).single();
+  if (!stripeAccount?.stripe_connect_id || !stripeAccount.connect_onboarded) {
+    throw new Error('Connect Stripe before sending a quote so you can collect payment.');
+  }
+
   const clientPhone = sendClientText ? normalizeUsPhone(lead.phone ?? '') : null;
   const clientEmail = sendClientText ? (lead.email?.trim() || null) : null;
 
@@ -209,6 +234,28 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
   if (quoteItems.length) {
     await saveQuoteItems(supabase, accountId, job.id, quoteItems);
   }
+
+  // Create the deposit request now so the client can pay it the moment they open
+  // the quote. Reuses the same invoice + payment path as the job-page deposit UI.
+  if (depositAmount > 0) {
+    const invoices = await listInvoices(supabase, accountId, job.id);
+    const invoice = selectPrimaryInvoice(invoices) ?? (await createInvoice(supabase, accountId, job.id, 'draft'));
+    if (Number(invoice.total) <= 0 && quotedAmount > 0) {
+      await addInvoiceItem(supabase, accountId, invoice.id, { description: 'Quoted job total', amount: quotedAmount });
+    }
+    const timingLabel = depositTiming === 'before_work' ? 'due before work starts' : 'due before scheduling';
+    const depositLabel = depositUnit === 'percent' ? `${depositValueRaw}% deposit — ${timingLabel}` : `Deposit — ${timingLabel}`;
+    const depositPayment = await createDepositRequest(supabase, accountId, job.id, {
+      label: depositLabel,
+      amount: depositAmount,
+      kind: 'deposit',
+      invoiceId: invoice.id,
+      homeownerPhone: clientPhone,
+      smsConsent: Boolean(sendClientText && clientPhone),
+    });
+    await createPaymentFeedEvent(supabase, depositPayment.id, 'payment_requested');
+  }
+
   await createJobFeedEvent(supabase, accountId, job.id, {
     kind: 'job_created',
     title: `${job.ref} created`,

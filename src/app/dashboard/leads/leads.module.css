@@ -139,6 +139,8 @@
 .sendQuoteSection .quoteAmountField:focus-within { border-color: #ffd166; box-shadow: 0 0 0 3px rgba(255,209,102,.18), 0 18px 44px -18px rgba(255,122,33,.5); }
 .sendQuoteActions { display: flex; gap: .6rem; align-items: stretch; margin-top: .35rem; }
 .sendQuoteActions button[type="submit"] { flex: 1; }
+.sendQuoteActions :global(a.btn.primary) { flex: 1; }
+.stripeGateNote { margin: .35rem 0 0; font-size: .8rem; font-weight: 600; color: #ffb27a; }
 .previewQuoteBtn { flex: 0 0 auto; display: inline-flex; align-items: center; gap: .4rem; font-weight: 800; }
 .quoteItemsField { display: grid; gap: .55rem; padding: .85rem; border: 1px solid rgba(255,209,102,.3); border-radius: 14px; background: radial-gradient(circle at top right, rgba(255,209,102,.14), transparent 46%), rgba(255,255,255,.03); }
 .quoteItemsField > label { color: #ffd166; font-size: .86rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
@@ -249,6 +251,14 @@
 .quoteHoursCheck { border-color: rgba(255,255,255,.12); background: rgba(255,255,255,.03); }
 .quoteHoursCheck strong { display: block; color: #f7f5ef; font-size: .88rem; }
 .quoteHoursCheck small { color: rgba(255,255,255,.5); }
+.depositField { display: grid; gap: .55rem; }
+.depositCheck { border-color: rgba(255,209,102,.24); background: rgba(255,209,102,.06); }
+.depositCheck strong { display: block; color: #f7f5ef; font-size: .88rem; }
+.depositCheck small { color: rgba(255,255,255,.5); }
+.depositRow { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
+.depositAmount { display: flex; gap: .4rem; }
+.depositAmount input { flex: 1; min-width: 0; }
+@media (max-width: 560px) { .depositRow { grid-template-columns: 1fr; } }
 .quoteTextCheck { border-color: rgba(25,214,174,.24); background: rgba(25,214,174,.07); }
 .quoteTextCheck strong { display: block; color: #f7f5ef; font-size: .88rem; }
 .quoteTextCheck small { display: block; margin-top: .15rem; color: rgba(255,255,255,.56); font-size: .76rem; line-height: 1.35; }
