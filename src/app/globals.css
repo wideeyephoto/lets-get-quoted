@@ -281,6 +281,10 @@ h3 {
 /* Marketing rail: the "Create Free Account" CTA fills the foot, matching the
    full-width dashboard rail controls. */
 .sidenav-marketing-cta { width: 100%; justify-content: center; text-align: center; }
+/* Secondary "Log in" for returning users, under the Create-account CTA. */
+.sidenav-marketing-login { display: block; margin-top: 0.15rem; text-align: center; font-size: 0.76rem; color: rgba(200, 210, 224, 0.7); }
+.sidenav-marketing-login strong { color: var(--accent); font-weight: 800; }
+.sidenav-marketing-login:hover strong { text-decoration: underline; }
 
 /* Marketing rail: openly-accessible "try it" entries sit above the locked app
    nav — accented so they read as the clear, unlocked way in. */

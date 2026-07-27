@@ -1102,7 +1102,11 @@
 .handy {
   --c-bg: #fff; --c-surface: var(--c-surface); --c-ink: var(--c-ink); --c-muted: var(--c-muted); --c-line: var(--c-line); --c-deep: #14253a; --c-on-deep: #fff;
   --care-grad: linear-gradient(120deg, var(--theme-accent), color-mix(in srgb, var(--theme-accent) 55%, #7ef0c0));
-  --care-text-teal: color-mix(in srgb, var(--theme-accent) 74%, #04333b);
+  /* Accent-derived text (eyebrows, accent headline word, ghost buttons, check
+     marks, service icons) sits on white / light surfaces, so it must clear AA —
+     a light cyan accent at 74% failed. Weight the blend toward the deep teal so
+     it reads clearly while staying on-brand. */
+  --care-text-teal: color-mix(in srgb, var(--theme-accent) 48%, #04333b);
   --care-band: linear-gradient(rgba(3,28,31,.52), rgba(3,28,31,.52)), linear-gradient(120deg, var(--theme-accent), color-mix(in srgb, var(--theme-accent) 55%, #7ef0c0));
   background: var(--c-bg); color: var(--c-ink); font-family: var(--font-care), "Segoe UI", system-ui, sans-serif;
 }

@@ -510,9 +510,14 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               <>
                 <p className="sidenav-locknote"><span aria-hidden="true">🔒</span> Free to unlock — no card required.</p>
                 {!pathname.startsWith('/login') ? (
-                  <Link href={primaryAction.href} className="btn primary sidenav-marketing-cta">
-                    {primaryAction.label}
-                  </Link>
+                  <>
+                    <Link href={primaryAction.href} className="btn primary sidenav-marketing-cta">
+                      {primaryAction.label}
+                    </Link>
+                    <Link href="/login" className="sidenav-marketing-login">
+                      Already have an account? <strong>Log in</strong>
+                    </Link>
+                  </>
                 ) : null}
               </>
             ) : null}
