@@ -119,7 +119,7 @@ export default async function SchedulePage({
   const appOrigin = (process.env.NEXT_PUBLIC_APP_URL || `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'}`).replace(/\/$/, '');
   const bookingSubdomain = site?.published ? site?.subdomain ?? null : null;
   const bookingUrl = bookingSubdomain ? `${appOrigin}/book/${bookingSubdomain}` : null;
-  const bookingDays = bookingUrl ? await getAvailableBookingDays(supabase, accountId, scheduleDayHours) : [];
+  const bookingDays = bookingUrl ? await getAvailableBookingDays(supabase, accountId) : [];
   const openWindowCount = bookingDays.reduce((sum, day) => sum + day.slots.length, 0);
 
   const activeJobs = jobs.filter((job) => job.status !== 'archived');

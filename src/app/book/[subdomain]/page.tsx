@@ -53,10 +53,8 @@ export default async function BookingPage({
     );
   }
 
-  const { data: account } = await admin.from('accounts').select('schedule_day_hours').eq('id', site.account_id).maybeSingle();
-  const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
   const [days, services] = await Promise.all([
-    getAvailableBookingDays(admin, site.account_id, scheduleDayHours),
+    getAvailableBookingDays(admin, site.account_id),
     listServices(admin, site.account_id, { activeOnly: true }),
   ]);
 

@@ -8,8 +8,9 @@ import FinanceReports from './FinanceReports';
 import { getAvailableTaxYears, buildProfitAndLoss, buildScheduleCWorksheet, build1099PrepList } from '@/lib/tax-reports';
 import SaveButton from '@/components/save-button';
 import DeleteAccountButton from './DeleteAccountButton';
-import { updateScheduleDayHoursAction, updateReviewSettingsAction, updateDepositSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, sendTestDigestAction, deleteAccountAction } from './actions';
+import { updateScheduleDayHoursAction, updateReviewSettingsAction, updateDepositSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBookingAvailabilityAction, sendTestDigestAction, deleteAccountAction } from './actions';
 import { ESTIMATE_POSTURES, normalizeEstimatePosture } from '@/lib/estimate-posture';
+import { WEEKDAY_LABELS, BOOKING_WINDOW_PRESETS, TIMEZONE_OPTIONS, bookingAvailabilityFromAccount } from '@/lib/booking-availability';
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -61,6 +62,15 @@ export default async function SettingsPage({
   const muteLowQualityLeads = intakeSettings?.mute_low_quality_leads !== false; // default on
   const highValueSmsEnabled = Boolean(intakeSettings?.high_value_sms_enabled);
   const alertPhone = (intakeSettings?.alert_phone as string | null) || '';
+
+  // Online-booking availability — read defensively so a pre-migration DB degrades
+  // to the old-behavior defaults instead of 500-ing the page.
+  const { data: bookingSettings } = await supabase
+    .from('accounts')
+    .select('timezone, booking_weekdays, booking_windows, booking_max_per_day, booking_lead_days')
+    .eq('id', accountId)
+    .maybeSingle();
+  const booking = bookingAvailabilityFromAccount(bookingSettings);
 
   const { data: gatingSettings } = await supabase
     .from('accounts')
@@ -241,7 +251,7 @@ export default async function SettingsPage({
           {
             id: 'automations',
             label: 'Automations',
-            anchors: ['intake-ai', 'reviews', 'followups', 'reminders', 'daily-digest'],
+            anchors: ['intake-ai', 'booking-availability', 'reviews', 'followups', 'reminders', 'daily-digest'],
             content: (
               <>
                 <section className="panel workspace-section-card" id="intake-ai">
@@ -291,6 +301,76 @@ export default async function SettingsPage({
 
                     <div className="form-actions">
                       <SaveButton>Save intake settings</SaveButton>
+                    </div>
+                  </form>
+                </section>
+
+                <section className="panel workspace-section-card" id="booking-availability">
+                  <div className="section-heading workspace-section-heading compact-heading">
+                    <p className="eyebrow">Instant booking</p>
+                    <h2>Your online booking availability</h2>
+                  </div>
+                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                    This controls the times customers can grab on your public <strong>Book a time</strong> page. Pick
+                    the days you take work, the arrival windows you offer, and how many bookings a day is enough. A
+                    booking still lands as a request for you to confirm &mdash; this just decides what&apos;s offered.
+                  </p>
+                  <form action={updateBookingAvailabilityAction} className="form-grid compact-form">
+                    <div className="field full">
+                      <label htmlFor="timezone">Your timezone</label>
+                      <select id="timezone" name="timezone" defaultValue={booking.timezone}>
+                        {TIMEZONE_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                      </select>
+                      <small className="field-hint">So booking days line up with your local calendar &mdash; not the server&apos;s.</small>
+                    </div>
+
+                    <div className="field full">
+                      <label>Days you accept bookings</label>
+                      <div className="checkbox-grid">
+                        {WEEKDAY_LABELS.map((label, day) => (
+                          <label className="checkbox-chip" key={day}>
+                            <input type="checkbox" name="bookingWeekday" value={day} defaultChecked={booking.weekdays.includes(day)} />
+                            <span>{label}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <small className="field-hint">Uncheck a day to take it off the public calendar. Clear them all to pause online booking.</small>
+                    </div>
+
+                    <div className="field full">
+                      <label>Arrival windows you offer</label>
+                      <div className="checkbox-grid">
+                        {BOOKING_WINDOW_PRESETS.map((window) => (
+                          <label className="checkbox-chip" key={window.time}>
+                            <input type="checkbox" name="bookingWindow" value={window.time} defaultChecked={booking.windowTimes.includes(window.time)} />
+                            <span>{window.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <small className="field-hint">Coarse on purpose &mdash; a customer picks a part of the day, and you set the exact time when you confirm.</small>
+                    </div>
+
+                    <div className="field">
+                      <label htmlFor="bookingMaxPerDay">Max bookings per day</label>
+                      <input id="bookingMaxPerDay" name="bookingMaxPerDay" type="number" min="1" max="50" step="1" inputMode="numeric" defaultValue={booking.maxPerDay} />
+                      <small className="field-hint">Once a day hits this many jobs, it stops offering slots.</small>
+                    </div>
+                    <div className="field">
+                      <label htmlFor="bookingLeadDays">Soonest a customer can book</label>
+                      <select id="bookingLeadDays" name="bookingLeadDays" defaultValue={String(booking.leadDays)}>
+                        <option value={0}>Same day</option>
+                        <option value={1}>From tomorrow</option>
+                        <option value={2}>2 days out</option>
+                        <option value={3}>3 days out</option>
+                        <option value={7}>A week out</option>
+                      </select>
+                      <small className="field-hint">Gives you lead time to plan your route.</small>
+                    </div>
+
+                    <div className="form-actions">
+                      <SaveButton>Save booking availability</SaveButton>
                     </div>
                   </form>
                 </section>

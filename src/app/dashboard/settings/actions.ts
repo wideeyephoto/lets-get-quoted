@@ -5,6 +5,13 @@ import { redirect } from 'next/navigation';
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import { sendTestDigest } from '@/lib/daily-digest';
 import { normalizeEstimatePosture } from '@/lib/estimate-posture';
+import {
+  normalizeTimezone,
+  normalizeBookingWeekdays,
+  normalizeBookingWindowTimes,
+  normalizeMaxPerDay,
+  normalizeLeadDays,
+} from '@/lib/booking-availability';
 import { normalizeUsPhone } from '@/lib/phone';
 
 function parseScheduleDayHours(value: FormDataEntryValue | null): number {
@@ -73,6 +80,31 @@ export async function updateIntakeSettingsAction(formData: FormData) {
   if (error) throw new Error(error.message);
 
   revalidatePath('/dashboard/settings');
+}
+
+export async function updateBookingAvailabilityAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const timezone = normalizeTimezone(formData.get('timezone'));
+  const weekdays = normalizeBookingWeekdays(formData.getAll('bookingWeekday').map(String));
+  const windowTimes = normalizeBookingWindowTimes(formData.getAll('bookingWindow').map(String));
+  const maxPerDay = normalizeMaxPerDay(formData.get('bookingMaxPerDay'));
+  const leadDays = normalizeLeadDays(formData.get('bookingLeadDays'));
+
+  const { error } = await supabase
+    .from('accounts')
+    .update({
+      timezone,
+      booking_weekdays: weekdays.join(','),
+      booking_windows: windowTimes,
+      booking_max_per_day: maxPerDay,
+      booking_lead_days: leadDays,
+    })
+    .eq('id', accountId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/schedule');
 }
 
 export async function updateDepositSettingsAction(formData: FormData) {

@@ -3333,6 +3333,45 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   accent-color: #ff8a3d;
 }
 
+/* ---- Chip-style checkbox group (e.g. booking availability days/windows) ---- */
+.checkbox-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.checkbox-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  font-size: 0.88rem;
+  line-height: 1;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.checkbox-chip:hover {
+  border-color: rgba(255, 138, 61, 0.5);
+}
+
+.checkbox-chip input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: #ff8a3d;
+  cursor: pointer;
+}
+
+.checkbox-chip:has(input:checked) {
+  border-color: rgba(255, 122, 33, 0.6);
+  background: rgba(255, 122, 33, 0.12);
+  color: #fff;
+}
+
 /* ---- Quote builder (owner, job page) ---- */
 .quote-builder {
   display: flex;

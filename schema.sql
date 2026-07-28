@@ -149,6 +149,24 @@ alter table accounts add column if not exists high_value_sms_enabled boolean not
 -- entering it is the consent to be texted their own leads).
 alter table accounts add column if not exists alert_phone text;
 
+-- Public online-booking availability (the /book self-serve page). Replaces the
+-- previously hardcoded Mon–Fri, 08:00/13:00, 4-jobs/day constants with per-owner
+-- config. Defaults reproduce the old behavior exactly, so nothing changes until
+-- an owner edits them (see src/lib/booking-availability.ts).
+-- IANA timezone the owner operates in — used to compute bookable calendar days
+-- correctly (the old server-local math offered the WRONG day after ~7pm on a UTC
+-- host). Default US-Eastern; owners pick their own in Settings.
+alter table accounts add column if not exists timezone text not null default 'America/New_York';
+-- Bookable weekdays as a CSV of day numbers (0=Sun … 6=Sat). Default Mon–Fri.
+alter table accounts add column if not exists booking_weekdays text not null default '1,2,3,4,5';
+-- Offered arrival windows as a JSON array of start-time strings (subset of the
+-- presets in booking-availability.ts; labels are derived there). Default morning+afternoon.
+alter table accounts add column if not exists booking_windows jsonb not null default '["08:00","13:00"]'::jsonb;
+-- A day already carrying this many scheduled jobs is treated as full (was DAY_CAPACITY).
+alter table accounts add column if not exists booking_max_per_day integer not null default 4;
+-- Soonest a customer may self-book, in days ahead (1 = from tomorrow, the old behavior).
+alter table accounts add column if not exists booking_lead_days integer not null default 1;
+
 -- ----------------------------------------------------------------------------
 -- MEMBERSHIPS  — links a person (auth.users) to an account with a role.
 -- This IS the Owner/Crew split, enforced in data instead of UI.

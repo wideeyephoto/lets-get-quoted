@@ -31,13 +31,7 @@ export async function submitBookingAction(subdomain: string, formData: FormData)
   // shrinks the window where two people grab the same slot. The matched day/slot
   // carry the server's own labels, so a client-supplied time can never be echoed
   // into the booking record.
-  const { data: account } = await admin
-    .from('accounts')
-    .select('schedule_day_hours')
-    .eq('id', site.account_id)
-    .maybeSingle();
-  const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
-  const availableDays = await getAvailableBookingDays(admin, site.account_id, scheduleDayHours);
+  const availableDays = await getAvailableBookingDays(admin, site.account_id);
   const offered = findOfferedSlot(availableDays, dateKey, time);
   if (!offered) {
     redirect(`/book/${subdomain}?error=slot_taken`);
