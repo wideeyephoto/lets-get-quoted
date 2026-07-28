@@ -32,6 +32,19 @@ export default function RecurringComposer({ today, services = [] }: { today: str
     event.currentTarget.value = '';
   }
 
+  // Money field: keep it to cents. step="0.01" only validates on submit, so it
+  // doesn't stop someone typing 450.2266565 — strip non-numerics and cap the
+  // decimals at 2 as they type.
+  function limitCents(event: React.FormEvent<HTMLInputElement>) {
+    const el = event.currentTarget;
+    let v = el.value.replace(/[^\d.]/g, '');
+    const dot = v.indexOf('.');
+    if (dot !== -1) {
+      v = v.slice(0, dot + 1) + v.slice(dot + 1).replace(/\./g, '').slice(0, 2);
+    }
+    if (v !== el.value) el.value = v;
+  }
+
   return (
     <details className="recurring-composer job-feed-composer">
       <summary className="btn primary">+ New recurring plan</summary>
@@ -72,7 +85,7 @@ export default function RecurringComposer({ today, services = [] }: { today: str
             <label htmlFor="rp-amount">Price per visit</label>
             <div className="currency-input">
               <span aria-hidden="true">$</span>
-              <input id="rp-amount" name="amount" type="number" min="0" step="0.01" inputMode="decimal" placeholder="0.00" />
+              <input id="rp-amount" name="amount" type="text" inputMode="decimal" placeholder="0.00" autoComplete="off" onInput={limitCents} />
             </div>
           </div>
         </div>

@@ -28,7 +28,9 @@ export async function createRecurringPlanAction(formData: FormData) {
   const clientPhone = String(formData.get('clientPhone') ?? '').trim();
   const clientEmail = String(formData.get('clientEmail') ?? '').trim();
   const address = String(formData.get('address') ?? '').trim();
-  const amount = Number(formData.get('amount') ?? 0);
+  // Round to cents so a bypassed client (or a pasted long decimal) can't store
+  // sub-cent precision the numeric(12,2) column would silently round anyway.
+  const amount = Math.round(Number(formData.get('amount') ?? 0) * 100) / 100;
   const frequency = String(formData.get('frequency') ?? '') as RecurringFrequency;
   const firstVisitDate = String(formData.get('firstVisitDate') ?? '').trim();
   const autoCharge = formData.get('autoCharge') === 'on';
