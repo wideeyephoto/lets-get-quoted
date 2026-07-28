@@ -5,21 +5,13 @@ import { FAVORITE_FEATURES, FEATURE_COUNT } from '@/lib/features';
 import { TRADES } from '@/lib/trades';
 import TemplateSlider from '@/components/template-slider';
 import SiteFooter from '@/components/site-footer';
+import HeroDashboard from '@/components/hero-dashboard';
 
 // Homepage showcases a curated set of 3 flagship templates in a slider —
 // the full catalog (17 and growing) lives behind "See a live demo" / the
 // in-app theme picker, not stacked on the landing page.
 const FEATURED_TEMPLATE_IDS = ['carbon', 'modern', 'professional'];
 const featuredTemplates = FEATURED_TEMPLATE_IDS.map((id) => AVAILABLE_TEMPLATES.find((template) => template.id === id)).filter((template): template is NonNullable<typeof template> => Boolean(template));
-
-function QuoteIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      <path d="M4 5.5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H8l-4 3v-3H3a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1z" transform="translate(0.5 0)" />
-      <path d="M6.5 9.5h11M6.5 13h6.5" />
-    </svg>
-  );
-}
 
 function SignatureIcon() {
   return (
@@ -128,29 +120,6 @@ function LockIcon() {
     </svg>
   );
 }
-
-const moneyFlow = [
-  {
-    title: 'Quote sent',
-    body: 'A branded quote goes out from your new site in minutes — not a PDF stapled to an email.',
-    icon: <QuoteIcon />,
-  },
-  {
-    title: 'Signed off',
-    body: 'Homeowner signs from their phone. Timestamped, no printer required.',
-    icon: <SignatureIcon />,
-  },
-  {
-    title: 'Payment collected',
-    body: 'Card or bank payment, processed securely through Stripe.',
-    icon: <CardIcon />,
-  },
-  {
-    title: 'In your bank',
-    body: 'Funds route straight to your account — no invoicing software, no chasing checks.',
-    icon: <BankIcon />,
-  },
-];
 
 // The homepage headline grid is the "favorites" set from the shared feature
 // catalog (src/lib/features.ts), so it can never drift from the /features page.
@@ -342,25 +311,7 @@ export default function HomePage() {
           </ul>
         </div>
 
-        <aside className="hero-panel flow-panel">
-          <p className="flow-panel-eyebrow">Quote to bank, automatically</p>
-          <div className="flow-pipeline">
-            {moneyFlow.map((step, index) => {
-              const isLast = index === moneyFlow.length - 1;
-              return (
-                <div className={`flow-step${isLast ? ' flow-step-final' : ''}`} key={step.title}>
-                  <span className="flow-step-node">
-                    <span className="flow-step-icon">{step.icon}</span>
-                  </span>
-                  <span className="flow-step-copy">
-                    <strong>{step.title}</strong>
-                    <span>{step.body}</span>
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </aside>
+        <HeroDashboard />
       </section>
 
       <section className="section-block">
