@@ -51,6 +51,9 @@ export type Job = {
   quote_items: QuoteItem[] | null;
   client_id: string | null;
   photo_paths: string[];
+  lat?: number | null;
+  lng?: number | null;
+  geocoded_at?: string | null;
   created_at: string;
 };
 
@@ -450,6 +453,22 @@ export async function createJob(supabase: SupabaseClient, accountId: string, inp
         }
       } catch (clientError) {
         console.error(`Client link failed for job ${job.id}:`, clientError instanceof Error ? clientError.message : clientError);
+      }
+      // Geocode the address for route-density anchoring. Best-effort + precise-
+      // only (see geocode.ts); a failure/imprecise result leaves coords null. The
+      // geocoder is dynamically imported so the server-only module never lands in
+      // a client bundle that pulls a util (e.g. formatMoney) from this file.
+      try {
+        const { geocodeColumns } = await import('@/lib/geocode');
+        const geo = await geocodeColumns(input.address);
+        if (geo) {
+          await supabase.from('jobs').update(geo).eq('id', job.id);
+          job.lat = geo.lat;
+          job.lng = geo.lng;
+          job.geocoded_at = geo.geocoded_at;
+        }
+      } catch (geoError) {
+        console.error(`Geocode failed for job ${job.id}:`, geoError instanceof Error ? geoError.message : geoError);
       }
       return job;
     }

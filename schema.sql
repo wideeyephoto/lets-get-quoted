@@ -175,6 +175,19 @@ alter table accounts add column if not exists booking_lead_days integer not null
 alter table accounts add column if not exists instant_book_enabled boolean not null default false;
 -- Minimum estimated job value ($) to self-book a premium slot. 0 = no floor.
 alter table accounts add column if not exists instant_book_min_amount numeric(12,2) not null default 0;
+-- Geocoded coordinates of the business mailing_address — the service-area center
+-- and a cold-start "home base" anchor for route-density batching. Populated
+-- best-effort when the mailing address is saved (see src/lib/geocode.ts). Null
+-- until geocoded / when geocoding is unavailable.
+alter table accounts add column if not exists service_center_lat numeric;
+alter table accounts add column if not exists service_center_lng numeric;
+-- Batch/service radius (miles) for instant-booking route-density: how near an
+-- existing stop counts as "already in the area". Doubles as the geo service-area
+-- radius. Default 15.
+alter table accounts add column if not exists instant_book_radius_miles numeric not null default 15;
+-- Route-density mode: 'prefer' (nearby days first, others still bookable) or
+-- 'restrict' (only days near an existing stop are premium-bookable).
+alter table accounts add column if not exists instant_book_geo_mode text not null default 'prefer';
 
 -- ----------------------------------------------------------------------------
 -- MEMBERSHIPS  — links a person (auth.users) to an account with a role.
@@ -301,6 +314,14 @@ alter table jobs add column if not exists client_email text;
 -- Deposit gate: 'before_schedule' blocks the client from picking a start date
 -- until a deposit payment is paid; 'before_work' is a reminder only. Null = none.
 alter table jobs add column if not exists deposit_gate text;
+-- Geocoded coordinates of the job address — the anchors for instant-booking
+-- route-density ("we'll already be near you that day"). Populated best-effort at
+-- job create (see src/lib/geocode.ts); only precise (rooftop/interpolated)
+-- results are stored, so a city-centroid never fakes proximity. Null when
+-- geocoding is unavailable or imprecise. geocoded_at caches the attempt.
+alter table jobs add column if not exists lat numeric;
+alter table jobs add column if not exists lng numeric;
+alter table jobs add column if not exists geocoded_at timestamptz;
 
 -- ----------------------------------------------------------------------------
 -- CLIENTS  — a first-class, deduped customer record. A job's client_name/phone/

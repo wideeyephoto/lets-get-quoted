@@ -13,6 +13,7 @@ import {
   normalizeLeadDays,
 } from '@/lib/booking-availability';
 import { normalizeInstantBookMinAmount } from '@/lib/instant-booking';
+import { geocodeAddress } from '@/lib/geocode';
 import { normalizeUsPhone } from '@/lib/phone';
 
 function parseScheduleDayHours(value: FormDataEntryValue | null): number {
@@ -149,9 +150,15 @@ export async function updateMailingAddressAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
   const mailingAddress = String(formData.get('mailingAddress') ?? '').trim() || null;
 
+  // Geocode the business address into the service-area center / cold-start anchor
+  // for route-density. Best-effort + precise-only; clears the center if the
+  // address was removed or can't be resolved.
+  const geo = mailingAddress ? await geocodeAddress(mailingAddress) : null;
+  const center = geo?.precise ? { service_center_lat: geo.lat, service_center_lng: geo.lng } : { service_center_lat: null, service_center_lng: null };
+
   const { error } = await supabase
     .from('accounts')
-    .update({ mailing_address: mailingAddress })
+    .update({ mailing_address: mailingAddress, ...center })
     .eq('id', accountId);
 
   if (error) throw new Error(error.message);
