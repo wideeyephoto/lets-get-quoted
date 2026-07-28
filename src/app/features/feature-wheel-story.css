@@ -309,23 +309,36 @@
   .cc-head p{margin:0;color:var(--muted);font-size:clamp(14.5px,1.5vw,17px);max-width:60ch}
 
   /* scroll-revealed cards (no tabs) */
-  .cc-deck{display:flex;flex-direction:column;gap:clamp(18px,2.6vw,30px);perspective:1500px;perspective-origin:50% 30%}
-  .cc-card{position:relative;border:1px solid var(--line-2);border-radius:20px;overflow:hidden;padding:clamp(18px,2.6vw,30px);
-    background:linear-gradient(180deg,var(--panel),var(--rail));
-    box-shadow:0 40px 100px -60px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.04);
+  .cc-deck{display:flex;flex-direction:column;gap:clamp(26px,3.6vw,48px);perspective:1500px;perspective-origin:50% 30%}
+  .cc-card{--cc:var(--gold);--cc-glow:100% 0%;position:relative;border:1px solid color-mix(in srgb,var(--cc) 26%,var(--line-2));border-radius:20px;overflow:hidden;padding:clamp(20px,2.8vw,32px);
+    background:
+      radial-gradient(120% 82% at var(--cc-glow),color-mix(in srgb,var(--cc) 11%,transparent),transparent 56%),
+      linear-gradient(180deg,var(--panel),var(--rail));
+    box-shadow:0 40px 100px -60px rgba(0,0,0,.9),0 0 0 1px color-mix(in srgb,var(--cc) 13%,transparent),0 26px 60px -46px color-mix(in srgb,var(--cc) 42%,transparent),inset 0 1px 0 rgba(255,255,255,.05);
     transform-origin:50% 120%;will-change:transform,opacity;
     transition:opacity .85s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1)}
   /* modern parallax scroll-into-frame: cards lift + tilt up into place */
   .fw-scope.cc-anim .cc-card{opacity:0;transform:translateY(80px) rotateX(8deg) scale(.94)}
   .fw-scope.cc-anim .cc-card.in{opacity:1;transform:none}
-  .cc-card::before{content:"";position:absolute;left:0;top:0;right:0;height:3px;background:linear-gradient(90deg,var(--gold),var(--lime),transparent 78%)}
+  .cc-card::before{content:"";position:absolute;left:0;top:0;right:0;height:3px;background:linear-gradient(90deg,var(--cc),color-mix(in srgb,var(--cc) 32%,transparent) 55%,transparent 82%)}
   .cc-card-head{display:flex;align-items:flex-start;gap:13px;margin-bottom:16px;will-change:transform}
-  .cc-card-ic{width:42px;height:42px;flex:0 0 auto;border-radius:11px;display:grid;place-items:center;border:1px solid color-mix(in srgb,var(--gold) 30%,var(--line));background:color-mix(in srgb,var(--gold) 12%,transparent);color:var(--gold)}
+  .cc-card-ic{width:42px;height:42px;flex:0 0 auto;border-radius:11px;display:grid;place-items:center;border:1px solid color-mix(in srgb,var(--cc) 34%,var(--line));background:color-mix(in srgb,var(--cc) 15%,transparent);color:var(--cc)}
   .cc-card-ic svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
   .cc-card-eye{margin:0;font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-2)}
   .cc-card-t{margin:3px 0 0;font-size:clamp(17px,2vw,21px);font-weight:640;letter-spacing:-.01em;line-height:1.15}
   .cc-card-d{margin:5px 0 0;font-size:13px;color:var(--muted);line-height:1.5;max-width:62ch}
   .cc-screen{will-change:transform}
+  /* Each card owns an accent so neighbours read as distinct cards, not one
+     long slab. Colours echo the wheel's chapter palette. */
+  .cc-card:nth-child(1){--cc:#ff7a21}
+  .cc-card:nth-child(2){--cc:#ffd166}
+  .cc-card:nth-child(3){--cc:#bef264}
+  .cc-card:nth-child(4){--cc:#7dd3fc}
+  .cc-card:nth-child(5){--cc:#c4a5ff}
+  .cc-card:nth-child(6){--cc:#2dbed2}
+  /* mirror the corner glow every other card for a bit of rhythm */
+  .cc-card:nth-child(even){--cc-glow:0% 0%}
+  .cc-card-eye{color:color-mix(in srgb,var(--cc) 62%,var(--muted-2))}
 
   /* shared bits */
   .cc-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
