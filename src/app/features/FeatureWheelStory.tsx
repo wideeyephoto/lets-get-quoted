@@ -164,5 +164,13 @@ export default function FeatureWheelStory() {
     return () => cleanups.forEach((fn) => fn());
   }, []);
 
-  return <div ref={rootRef} dangerouslySetInnerHTML={{ __html: FEATURE_WHEEL_MARKUP }} />;
+  // scrollMarginTop keeps the #wheel anchor clear of the fixed mobile top bar.
+  return (
+    <div
+      id="wheel"
+      ref={rootRef}
+      style={{ scrollMarginTop: '5rem' }}
+      dangerouslySetInnerHTML={{ __html: FEATURE_WHEEL_MARKUP }}
+    />
+  );
 }

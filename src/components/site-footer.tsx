@@ -9,7 +9,7 @@ export default function SiteFooter() {
       <span>© {year} Let&apos;s Get Quoted</span>
       <nav aria-label="Site">
         <Link href="/">Home</Link>
-        <Link href="/features">Features</Link>
+        <Link href="/#wheel">Features</Link>
         <Link href="/pricing">Pricing</Link>
         <Link href="/resources">Resources</Link>
         <Link href="/faq">FAQ</Link>
