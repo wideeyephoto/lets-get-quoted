@@ -188,6 +188,11 @@ alter table accounts add column if not exists instant_book_radius_miles numeric 
 -- Route-density mode: 'prefer' (nearby days first, others still bookable) or
 -- 'restrict' (only days near an existing stop are premium-bookable).
 alter table accounts add column if not exists instant_book_geo_mode text not null default 'prefer';
+-- When on, rank "nearby" by REAL driving distance/time (Google Distance Matrix)
+-- instead of straight-line miles. Costs a Distance Matrix call per eligible
+-- booking and needs that API enabled on the key; falls back to haversine if not.
+-- Off by default.
+alter table accounts add column if not exists instant_book_drive_time boolean not null default false;
 
 -- ----------------------------------------------------------------------------
 -- MEMBERSHIPS  — links a person (auth.users) to an account with a role.

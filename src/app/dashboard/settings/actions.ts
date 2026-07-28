@@ -95,6 +95,7 @@ export async function updateBookingAvailabilityAction(formData: FormData) {
   const instantBookMinAmount = normalizeInstantBookMinAmount(formData.get('instantBookMinAmount'));
   const instantBookRadiusMiles = normalizeInstantBookRadiusMiles(formData.get('instantBookRadius'));
   const instantBookGeoMode = normalizeGeoMode(formData.get('instantBookGeoMode'));
+  const instantBookDriveTime = formData.get('instantBookDriveTime') === 'on';
 
   const { error } = await supabase
     .from('accounts')
@@ -108,6 +109,7 @@ export async function updateBookingAvailabilityAction(formData: FormData) {
       instant_book_min_amount: instantBookMinAmount,
       instant_book_radius_miles: instantBookRadiusMiles,
       instant_book_geo_mode: instantBookGeoMode,
+      instant_book_drive_time: instantBookDriveTime,
     })
     .eq('id', accountId);
 

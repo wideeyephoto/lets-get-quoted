@@ -15,7 +15,8 @@ import {
 } from '@/lib/booking';
 import { expandScheduledJobs } from '@/lib/jobs';
 import { geocodeAddress } from '@/lib/geocode';
-import { coordOf } from '@/lib/distance';
+import { coordOf, nearestMiles, type LatLng } from '@/lib/distance';
+import { driveDistances } from '@/lib/drive-time';
 import { rankByProximity, type RankedBookingDay } from '@/lib/route-density';
 import { evaluateBookingEligibility, bookingFallbackMessage, normalizeGeoMode, type BookingVerdict } from '@/lib/instant-booking';
 import { listServices } from '@/lib/services';
@@ -43,7 +44,7 @@ export async function evaluateBookingAction(
 
   const { data: account } = await admin
     .from('accounts')
-    .select('instant_book_enabled, instant_book_min_amount, instant_book_radius_miles, instant_book_geo_mode, schedule_day_hours')
+    .select('instant_book_enabled, instant_book_min_amount, instant_book_radius_miles, instant_book_geo_mode, instant_book_drive_time, schedule_day_hours')
     .eq('id', site.account_id)
     .maybeSingle();
   const leadFilters = getSiteContent(site.content as Record<string, unknown>).leadFilters;
@@ -64,6 +65,7 @@ export async function evaluateBookingAction(
       radiusMiles: Number(account?.instant_book_radius_miles) || 15,
       mode: normalizeGeoMode(account?.instant_book_geo_mode),
       scheduleDayHours: Number(account?.schedule_day_hours) || 8,
+      driveTime: Boolean(account?.instant_book_drive_time),
     });
   }
   return { verdict, businessName, days, fallback: bookingFallbackMessage(verdict.tier, businessName) };
@@ -78,7 +80,7 @@ async function rankNearby(
   accountId: string,
   days: BookingDay[],
   address: string | null,
-  opts: { radiusMiles: number; mode: 'prefer' | 'restrict'; scheduleDayHours: number },
+  opts: { radiusMiles: number; mode: 'prefer' | 'restrict'; scheduleDayHours: number; driveTime: boolean },
 ): Promise<RankedBookingDay[]> {
   if (days.length === 0) return [];
   const geo = await geocodeAddress(address);
@@ -93,7 +95,7 @@ async function rankNearby(
     .neq('status', 'archived')
     .not('lat', 'is', null);
 
-  const anchorsByDate = new Map<string, { lat: number; lng: number }[]>();
+  const anchorsByDate = new Map<string, LatLng[]>();
   for (const occ of expandScheduledJobs(anchorJobs ?? [], opts.scheduleDayHours)) {
     const coord = coordOf(occ);
     if (!coord) continue;
@@ -102,7 +104,57 @@ async function rankNearby(
     anchorsByDate.set(occ.scheduled_for, list);
   }
 
-  return rankByProximity({ days, leadCoord, anchorsByDate, radiusMiles: opts.radiusMiles, mode: opts.mode });
+  // Optional drive-time refinement: one batched Distance Matrix call over the
+  // unique anchor points. Null on any failure ⇒ we simply keep haversine.
+  const key = (c: LatLng) => `${c.lat},${c.lng}`;
+  let driveByPoint: Map<string, { miles: number; minutes: number }> | null = null;
+  if (opts.driveTime) {
+    const unique = new Map<string, LatLng>();
+    for (const list of anchorsByDate.values()) for (const c of list) unique.set(key(c), c);
+    const points = [...unique.values()];
+    const results = await driveDistances(leadCoord, points);
+    if (results) {
+      driveByPoint = new Map();
+      points.forEach((point, index) => {
+        const r = results[index];
+        if (r) driveByPoint!.set(key(point), r);
+      });
+    }
+  }
+
+  const nearestByDate = new Map<string, number>();
+  const minutesByDate = new Map<string, number>();
+  for (const [dateKey, anchors] of anchorsByDate) {
+    if (anchors.length === 0) continue;
+    // Prefer drive distance when we have it for this day's anchors.
+    if (driveByPoint) {
+      let bestMiles: number | null = null;
+      let bestMinutes = 0;
+      for (const c of anchors) {
+        const r = driveByPoint.get(key(c));
+        if (r && (bestMiles === null || r.miles < bestMiles)) {
+          bestMiles = r.miles;
+          bestMinutes = r.minutes;
+        }
+      }
+      if (bestMiles !== null) {
+        nearestByDate.set(dateKey, bestMiles);
+        minutesByDate.set(dateKey, bestMinutes);
+        continue;
+      }
+    }
+    const straight = nearestMiles(leadCoord, anchors);
+    if (straight !== null) nearestByDate.set(dateKey, straight);
+  }
+
+  return rankByProximity({
+    days,
+    hasLocation: true,
+    nearestByDate,
+    minutesByDate,
+    radiusMiles: opts.radiusMiles,
+    mode: opts.mode,
+  });
 }
 
 function readContact(formData: FormData) {

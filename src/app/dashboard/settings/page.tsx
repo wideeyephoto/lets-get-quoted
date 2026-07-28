@@ -67,7 +67,7 @@ export default async function SettingsPage({
   // to the old-behavior defaults instead of 500-ing the page.
   const { data: bookingSettings } = await supabase
     .from('accounts')
-    .select('timezone, booking_weekdays, booking_windows, booking_max_per_day, booking_lead_days, instant_book_enabled, instant_book_min_amount, instant_book_radius_miles, instant_book_geo_mode')
+    .select('timezone, booking_weekdays, booking_windows, booking_max_per_day, booking_lead_days, instant_book_enabled, instant_book_min_amount, instant_book_radius_miles, instant_book_geo_mode, instant_book_drive_time')
     .eq('id', accountId)
     .maybeSingle();
   const booking = bookingAvailabilityFromAccount(bookingSettings);
@@ -75,6 +75,7 @@ export default async function SettingsPage({
   const instantBookMinAmount = bookingSettings?.instant_book_min_amount ? Number(bookingSettings.instant_book_min_amount) : 0;
   const instantBookRadius = bookingSettings?.instant_book_radius_miles ? Number(bookingSettings.instant_book_radius_miles) : 15;
   const instantBookGeoMode = bookingSettings?.instant_book_geo_mode === 'restrict' ? 'restrict' : 'prefer';
+  const instantBookDriveTime = Boolean(bookingSettings?.instant_book_drive_time);
 
   const { data: gatingSettings } = await supabase
     .from('accounts')
@@ -401,6 +402,10 @@ export default async function SettingsPage({
                       </select>
                       <small className="field-hint">Restrict keeps routes tight; a customer with no nearby day is offered a callback instead. Needs your business address (below) geocoded — set it under Business &rarr; mailing address. Only applies when the gate above is on.</small>
                     </div>
+                    <label className="checkbox-row" htmlFor="instantBookDriveTime">
+                      <input id="instantBookDriveTime" name="instantBookDriveTime" type="checkbox" defaultChecked={instantBookDriveTime} />
+                      <span>Use real <strong>driving distance &amp; time</strong> for &ldquo;nearby&rdquo; (more accurate than straight-line, and shows &ldquo;~X min away&rdquo;). Uses your Google key and needs the <em>Distance Matrix API</em> enabled &mdash; it falls back to straight-line if not.</span>
+                    </label>
 
                     <div className="form-actions">
                       <SaveButton>Save booking availability</SaveButton>

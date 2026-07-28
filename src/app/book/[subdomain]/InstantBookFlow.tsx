@@ -265,7 +265,11 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
           <div className={`booking-day-group${day.nearby ? ' is-nearby' : ''}`} key={day.dateKey}>
             <p className="booking-day-heading">
               {day.dayLabel}
-              {day.nearby ? <span className="booking-nearby">◆ We&apos;ll already be in your area</span> : null}
+              {day.nearby ? (
+                <span className="booking-nearby">
+                  ◆ We&apos;ll already be in your area{day.driveMinutes ? ` · ~${day.driveMinutes} min away` : ''}
+                </span>
+              ) : null}
             </p>
             <div className="booking-slots">
               {day.slots.map((slot) => (
