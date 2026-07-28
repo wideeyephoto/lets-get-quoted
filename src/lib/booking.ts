@@ -119,6 +119,37 @@ export function findOfferedSlot(days: BookingDay[], dateKey: string, time: strin
   return slot ? { day, slot } : null;
 }
 
+// Claim a short-lived exclusive hold on a slot to close the race where two
+// DIFFERENT visitors both pass the availability re-check and both create a job
+// for the same window. Returns false when a live hold already exists (unique-
+// index 23505) — the caller then bounces to ?error=slot_taken. The hold self-
+// expires; once the winner's job exists the window is unavailable regardless.
+export async function claimBookingHold(
+  admin: SupabaseClient,
+  accountId: string,
+  dateKey: string,
+  time: string,
+  ttlMs = 60_000,
+): Promise<boolean> {
+  const nowIso = new Date().toISOString();
+  // Clear an expired hold on THIS exact slot so a genuinely-free slot can be
+  // re-claimed (the unique index would otherwise block on the stale row).
+  await admin
+    .from('booking_holds')
+    .delete()
+    .eq('account_id', accountId)
+    .eq('scheduled_for', dateKey)
+    .eq('scheduled_time', time)
+    .lt('expires_at', nowIso);
+  const { error } = await admin.from('booking_holds').insert({
+    account_id: accountId,
+    scheduled_for: dateKey,
+    scheduled_time: time,
+    expires_at: new Date(Date.now() + ttlMs).toISOString(),
+  });
+  return !error;
+}
+
 export type BookingInput = {
   name: string;
   phone: string | null;

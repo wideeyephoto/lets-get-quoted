@@ -1087,12 +1087,27 @@ drop trigger if exists crew_jobs_update_guard on jobs;
 create trigger crew_jobs_update_guard before update on jobs
   for each row execute function crew_jobs_update_guard();
 
+-- Short-lived soft holds for self-serve booking: closes the window where two
+-- DIFFERENT visitors grab the same slot between the availability check and the
+-- job insert. The unique index means only one live hold can exist per slot, so a
+-- loser's insert raises 23505 and is bounced to ?error=slot_taken. Holds self-
+-- expire (~1 min TTL); once the job is booked the window is unavailable anyway.
+create table if not exists booking_holds (
+  id             uuid primary key default gen_random_uuid(),
+  account_id     uuid not null references accounts(id) on delete cascade,
+  scheduled_for  date not null,
+  scheduled_time text not null,
+  expires_at     timestamptz not null,
+  created_at     timestamptz not null default now()
+);
+create unique index if not exists booking_holds_slot_unique on booking_holds (account_id, scheduled_for, scheduled_time);
+
 do $$
 declare t text;
 begin
   foreach t in array array[
     'accounts','memberships','crew','sites','jobs','crew_assignments',
-    'costs','job_feed','client_job_access','invoices','payments','finance_plans','payment_plans','leads','sms_events','sms_consent','sms_messages','clients','campaigns','recurring_plans','services','review_invites','message_templates','job_tasks','job_schedule_requests','email_suppression'
+    'costs','job_feed','client_job_access','invoices','payments','finance_plans','payment_plans','leads','sms_events','sms_consent','sms_messages','clients','campaigns','recurring_plans','services','review_invites','message_templates','job_tasks','job_schedule_requests','email_suppression','booking_holds'
   ] loop
     execute format('alter table %I enable row level security;', t);
   end loop;
@@ -1153,6 +1168,7 @@ drop policy if exists job_tasks_crew_update on job_tasks;
 drop policy if exists job_schedule_request_all on job_schedule_requests;
 drop policy if exists email_suppression_all on email_suppression;
 drop policy if exists invitem_all on invoice_items;
+drop policy if exists booking_holds_all on booking_holds;
 
 -- ACCOUNTS: owners read + write. Crew do NOT read accounts — it holds Stripe
 -- customer/connect ids, plan, subscription status, billing toggles. The field
@@ -1207,6 +1223,9 @@ create policy client_access_all on client_job_access for all using ( is_owner(ac
 create policy inv_all    on invoices         for all using ( is_owner(account_id) );
 create policy pay_all    on payments         for all using ( is_owner(account_id) );
 create policy plan_all   on finance_plans    for all using ( is_owner(account_id) );
+-- Booking holds are written only by the admin client on the public booking path;
+-- the owner policy just lets an owner read/manage their own rows.
+create policy booking_holds_all on booking_holds for all using ( is_owner(account_id) );
 create policy lead_all   on leads            for all using ( is_owner(account_id) );
 create policy sms_event_all on sms_events     for all using ( is_owner(account_id) );
 create policy sms_consent_all on sms_consent  for all using ( is_owner(account_id) );

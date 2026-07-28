@@ -10,6 +10,7 @@ import {
   createBookingRequestLead,
   getAvailableBookingDays,
   findOfferedSlot,
+  claimBookingHold,
   type BookingDay,
 } from '@/lib/booking';
 import { expandScheduledJobs } from '@/lib/jobs';
@@ -152,6 +153,13 @@ export async function submitBookingAction(subdomain: string, formData: FormData)
   const availableDays = await getAvailableBookingDays(admin, site.account_id);
   const offered = findOfferedSlot(availableDays, dateKey, time);
   if (!offered) {
+    redirect(`/book/${subdomain}?error=slot_taken`);
+  }
+
+  // Race guard: claim an exclusive short hold so two simultaneous visitors can't
+  // both pass the check above and double-book the same window.
+  const held = await claimBookingHold(admin, site.account_id, dateKey, time);
+  if (!held) {
     redirect(`/book/${subdomain}?error=slot_taken`);
   }
 
