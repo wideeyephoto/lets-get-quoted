@@ -2,8 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { FEATURE_CATEGORIES, FEATURE_COUNT } from '@/lib/features';
 import SiteFooter from '@/components/site-footer';
-import FeaturesPipeline from './FeaturesPipeline';
-import FeatureBento from './FeatureBento';
+import FeatureWheelStory from './FeatureWheelStory';
 
 export const metadata: Metadata = {
   title: "Features — Let's Get Quoted",
@@ -13,20 +12,6 @@ export const metadata: Metadata = {
 };
 
 export default function FeaturesPage() {
-  // Hand the pipeline a plain, serializable slice of the catalog.
-  const stations = FEATURE_CATEGORIES.map((category) => ({
-    num: category.num,
-    slug: category.slug,
-    title: category.title,
-    intro: category.intro,
-    features: category.features.map((feature) => ({
-      id: feature.id,
-      name: feature.name,
-      desc: feature.desc,
-      favorite: feature.favorite ?? false,
-    })),
-  }));
-
   return (
     <main className="marketing-shell">
       <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
@@ -69,33 +54,8 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      {/* Concept B — Bento command center of the favorites */}
-      <section className="fx-bento-section" aria-labelledby="fx-bento-title">
-        <div className="fx-section-head">
-          <p className="eyebrow">Contractor favorites</p>
-          <h2 id="fx-bento-title">One command center for the whole job.</h2>
-          <p className="fx-section-sub">
-            The features owners lean on every day &mdash; the ones that win the job, get you paid faster, and keep
-            customers coming back.
-          </p>
-        </div>
-
-        <FeatureBento />
-      </section>
-
-      {/* Concept A — The Pipeline: every stage, every feature */}
-      <section className="fx-pipeline-section" aria-labelledby="fx-pipeline-title">
-        <div className="fx-section-head">
-          <p className="eyebrow">The full toolkit</p>
-          <h2 id="fx-pipeline-title">Every feature, in the order a job flows.</h2>
-          <p className="fx-section-sub">
-            Twelve stages, from first click on your website to clean books at tax time. Follow the line &mdash; nothing
-            in the job is left to another app.
-          </p>
-        </div>
-
-        <FeaturesPipeline stations={stations} />
-      </section>
+      {/* The lifecycle wheel + everyday command center */}
+      <FeatureWheelStory />
 
       {/* Closing CTA */}
       <section className="cta-band">
