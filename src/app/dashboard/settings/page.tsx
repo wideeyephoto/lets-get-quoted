@@ -145,23 +145,6 @@ export default async function SettingsPage({
             content: (
               <>
                 <section className="panel workspace-section-card">
-                  <div className="section-heading workspace-section-heading compact-heading">
-                    <p className="eyebrow">Get set up</p>
-                    <h2>Import &amp; migrate</h2>
-                  </div>
-                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-                    Moving in from another CRM? Drop in everything you exported — customers, price list, jobs,
-                    invoices — in any format (CSV, Excel, or phone contacts). We figure out what each file is,
-                    match the columns for you, and import them in the right order. Nothing is written until you
-                    confirm.
-                  </p>
-                  <div className="workspace-inline-row">
-                    <Link href="/dashboard/import" className="btn primary">Migrate from another CRM</Link>
-                    <Link href="/dashboard/clients/import" className="btn secondary">Import customers</Link>
-                  </div>
-                </section>
-
-                <section className="panel workspace-section-card">
                   <SignInMethods
                     email={userData.user?.email ?? null}
                     phone={userData.user?.phone ?? null}
@@ -439,9 +422,26 @@ export default async function SettingsPage({
           {
             id: 'business',
             label: 'Business',
-            anchors: ['marketing-address', 'finances'],
+            anchors: ['import', 'marketing-address', 'finances'],
             content: (
               <>
+                <section className="panel workspace-section-card" id="import">
+                  <div className="section-heading workspace-section-heading compact-heading">
+                    <p className="eyebrow">Get set up</p>
+                    <h2>Import &amp; migrate</h2>
+                  </div>
+                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                    Moving in from another CRM? Drop in everything you exported — customers, price list, jobs,
+                    invoices — in any format (CSV, Excel, or phone contacts). We figure out what each file is,
+                    match the columns for you, and import them in the right order. Nothing is written until you
+                    confirm.
+                  </p>
+                  <div className="workspace-inline-row">
+                    <Link href="/dashboard/import" className="btn primary">Migrate from another CRM</Link>
+                    <Link href="/dashboard/clients/import" className="btn secondary">Import customers</Link>
+                  </div>
+                </section>
+
                 <section className="panel workspace-section-card">
                   <div className="section-heading workspace-section-heading compact-heading">
                     <p className="eyebrow">Scheduling</p>
