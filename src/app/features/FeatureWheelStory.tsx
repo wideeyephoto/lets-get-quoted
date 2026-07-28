@@ -126,17 +126,21 @@ export default function FeatureWheelStory() {
       );
       cards.forEach((c) => io.observe(c));
 
+      // layered parallax: the mockup and the copy drift at different rates as
+      // each card passes through the viewport, for depth.
       const screens = cards.map((c) => c.querySelector<HTMLElement>('.cc-screen'));
+      const heads = cards.map((c) => c.querySelector<HTMLElement>('.cc-card-head'));
       let ticking = false;
       const frame = () => {
         const vh = window.innerHeight;
         cards.forEach((c, i) => {
-          const s = screens[i];
-          if (!s) return;
           const r = c.getBoundingClientRect();
-          if (r.bottom < -60 || r.top > vh + 60) return;
-          const f = (r.top + r.height / 2 - vh / 2) / vh;
-          s.style.transform = `translateY(${(f * -14).toFixed(1)}px)`;
+          if (r.bottom < -90 || r.top > vh + 90) return;
+          const f = (r.top + r.height / 2 - vh / 2) / vh; // ~ -1 (below) .. 1 (above)
+          const s = screens[i];
+          if (s) s.style.transform = `translateY(${(f * -28).toFixed(1)}px)`;
+          const h = heads[i];
+          if (h) h.style.transform = `translateY(${(f * 12).toFixed(1)}px)`;
         });
         ticking = false;
       };
