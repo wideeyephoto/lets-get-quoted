@@ -391,10 +391,6 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                 <span className="sidenav-subtick" aria-hidden="true" />
                 Automations
               </Link>
-              <Link href="/dashboard/import" className="sidenav-sublink">
-                <span className="sidenav-subtick" aria-hidden="true" />
-                Import &amp; migrate
-              </Link>
             </div>
             <Link
               href="/dashboard/settings"
