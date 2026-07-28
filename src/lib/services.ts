@@ -98,3 +98,62 @@ export async function deleteService(supabase: SupabaseClient, accountId: string,
   const { error } = await supabase.from('services').delete().eq('account_id', accountId).eq('id', serviceId);
   if (error) throw error;
 }
+
+export type ServiceImportRow = { name: string | null; description: string | null; unitPrice: number; unit: string | null };
+
+// Bulk-import price-book services, deduped by name (case-insensitive) against
+// existing services AND within the file, so a re-import is safe. New rows sort
+// after the current book. A row with no name can't be keyed, so it's skipped.
+export async function importServices(
+  supabase: SupabaseClient,
+  accountId: string,
+  rows: ServiceImportRow[],
+): Promise<{ imported: number; duplicates: number; skipped: number }> {
+  const { data: existing } = await supabase.from('services').select('name, sort_order').eq('account_id', accountId);
+  const seen = new Set<string>();
+  let maxSort = 0;
+  for (const s of existing ?? []) {
+    if (s.name) seen.add(String(s.name).trim().toLowerCase());
+    maxSort = Math.max(maxSort, Number(s.sort_order) || 0);
+  }
+
+  const toInsert: Array<{ account_id: string; name: string; description: string | null; unit_price: number; unit: string; sort_order: number }> = [];
+  let duplicates = 0;
+  let skipped = 0;
+
+  for (const row of rows) {
+    const name = (row.name ?? '').trim();
+    if (!name) {
+      skipped += 1;
+      continue;
+    }
+    const key = name.toLowerCase();
+    if (seen.has(key)) {
+      duplicates += 1;
+      continue;
+    }
+    seen.add(key);
+    toInsert.push({
+      account_id: accountId,
+      name,
+      description: row.description?.trim() || null,
+      unit_price: Math.max(0, Math.round((Number(row.unitPrice) || 0) * 100) / 100),
+      unit: cleanUnit(row.unit),
+      sort_order: (maxSort += 1),
+    });
+  }
+
+  let imported = 0;
+  for (let i = 0; i < toInsert.length; i += 500) {
+    const chunk = toInsert.slice(i, i + 500);
+    const { data, error } = await supabase.from('services').insert(chunk).select('id');
+    if (error) {
+      console.error('Service import chunk failed:', error.message);
+      skipped += chunk.length;
+    } else {
+      imported += (data ?? []).length;
+    }
+  }
+
+  return { imported, duplicates, skipped };
+}

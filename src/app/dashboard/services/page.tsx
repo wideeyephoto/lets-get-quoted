@@ -30,6 +30,9 @@ export default async function ServicesPage({ searchParams }: { searchParams: { s
             Save the services you sell once, and drop them into quotes and recurring plans with a tap — no more
             retyping prices. You can always tweak the amount per job.
           </p>
+          <div className="workspace-inline-row">
+            <Link href="/dashboard/services/import" className="btn secondary">Import services</Link>
+          </div>
         </div>
       </section>
 
