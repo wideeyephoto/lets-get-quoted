@@ -3,21 +3,11 @@
 import { revalidatePath } from 'next/cache';
 import { requireOwnerContext } from '@/lib/auth';
 import { runAnalyze, runApply } from '@/lib/smart-import-run';
-import { type ImportField, type FieldSources, type SmartImportPreview, type CommitResult } from '@/lib/smart-import';
+import { type FieldSources, type SmartImportPreview, type CommitResult } from '@/lib/smart-import';
+import { INVOICE_FIELDS } from '@/lib/import-fields';
 import { importInvoices } from '@/lib/invoice-import';
 
 const MAX_IMPORT_ROWS = 2000;
-
-const INVOICE_FIELDS: ImportField[] = [
-  { key: 'clientName', label: 'Customer', keywords: ['client', 'customer', 'name', 'contact', 'bill to'], hint: "the customer's name", required: true, compose: 'space' },
-  { key: 'clientPhone', label: 'Phone', keywords: ['phone', 'mobile', 'cell', 'tel'], hint: "the customer's phone number" },
-  { key: 'clientEmail', label: 'Email', keywords: ['email', 'e-mail', 'mail'], hint: "the customer's email" },
-  { key: 'address', label: 'Address', keywords: ['address', 'street', 'city', 'location', 'zip', 'postal'], hint: 'the customer / service address', compose: 'comma' },
-  { key: 'description', label: 'Description', keywords: ['description', 'item', 'service', 'work', 'scope', 'memo', 'details', 'line'], hint: 'what the invoice is for' },
-  { key: 'date', label: 'Date', keywords: ['date', 'invoice date', 'issued', 'created'], hint: 'the invoice date' },
-  { key: 'total', label: 'Total', keywords: ['total', 'amount', 'balance', 'grand total', 'invoice total', 'price'], hint: 'the invoice total in US dollars' },
-  { key: 'status', label: 'Status', keywords: ['status', 'stage', 'state'], hint: 'the invoice status — paid, sent, draft, or void' },
-];
 
 export async function analyzeInvoicesImport(text: string): Promise<SmartImportPreview> {
   await requireOwnerContext();

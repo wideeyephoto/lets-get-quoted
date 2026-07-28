@@ -168,6 +168,7 @@ export default async function JobsPage({
           <h2>Current jobs</h2>
         </div>
         <div className="workspace-inline-row" style={{ marginBottom: '0.75rem' }}>
+          <Link href="/dashboard/import" className="btn secondary">Migrate from another CRM</Link>
           <Link href="/dashboard/jobs/import" className="btn secondary">Import jobs</Link>
           <Link href="/dashboard/jobs/import-invoices" className="btn secondary">Import invoices</Link>
         </div>

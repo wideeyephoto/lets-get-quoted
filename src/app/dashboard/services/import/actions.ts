@@ -3,19 +3,11 @@
 import { revalidatePath } from 'next/cache';
 import { requireOwnerContext } from '@/lib/auth';
 import { runAnalyze, runApply } from '@/lib/smart-import-run';
-import { parseMoney, type ImportField, type FieldSources, type SmartImportPreview, type CommitResult } from '@/lib/smart-import';
+import { parseMoney, type FieldSources, type SmartImportPreview, type CommitResult } from '@/lib/smart-import';
+import { SERVICE_FIELDS } from '@/lib/import-fields';
 import { importServices } from '@/lib/services';
 
 const MAX_IMPORT_ROWS = 2000;
-
-// Order matters for the rule-based match: unit_price is listed before unit so a
-// "unit price" header maps to price, not unit.
-const SERVICE_FIELDS: ImportField[] = [
-  { key: 'name', label: 'Name', keywords: ['name', 'service', 'item', 'product', 'title'], hint: 'the service or product name', required: true },
-  { key: 'unit_price', label: 'Price', keywords: ['unit price', 'price', 'rate', 'amount', 'cost', 'fee', 'charge'], hint: 'the price per unit in US dollars' },
-  { key: 'unit', label: 'Unit', keywords: ['unit', 'uom', 'per', 'measure'], hint: 'the unit sold in — one of each, hour, sqft, visit, job' },
-  { key: 'description', label: 'Description', keywords: ['description', 'desc', 'details', 'notes'], hint: 'a longer description of the service' },
-];
 
 export async function analyzeServicesImport(text: string): Promise<SmartImportPreview> {
   await requireOwnerContext();
