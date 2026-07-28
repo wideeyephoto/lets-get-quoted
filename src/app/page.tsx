@@ -1,17 +1,8 @@
 import Link from 'next/link';
-import type { ReactNode } from 'react';
-import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
-import { FAVORITE_FEATURES, FEATURE_COUNT } from '@/lib/features';
 import { TRADES } from '@/lib/trades';
-import TemplateSlider from '@/components/template-slider';
 import SiteFooter from '@/components/site-footer';
 import HeroDashboard from '@/components/hero-dashboard';
-
-// Homepage showcases a curated set of 3 flagship templates in a slider —
-// the full catalog (17 and growing) lives behind "See a live demo" / the
-// in-app theme picker, not stacked on the landing page.
-const FEATURED_TEMPLATE_IDS = ['carbon', 'modern', 'professional'];
-const featuredTemplates = FEATURED_TEMPLATE_IDS.map((id) => AVAILABLE_TEMPLATES.find((template) => template.id === id)).filter((template): template is NonNullable<typeof template> => Boolean(template));
+import FeatureWheelStory from './features/FeatureWheelStory';
 
 function QuoteIcon() {
   return (
@@ -78,45 +69,11 @@ function TrendDownIcon() {
   );
 }
 
-function GlobeIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M3 12h18M12 3c2.5 2.6 4 6 4 9s-1.5 6.4-4 9c-2.5-2.6-4-6-4-9s1.5-6.4 4-9z" />
-    </svg>
-  );
-}
-
 function LayersIcon() {
   return (
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
       <path d="M12 3 21 8l-9 5-9-5 9-5z" />
       <path d="M3 12l9 5 9-5M3 16l9 5 9-5" />
-    </svg>
-  );
-}
-
-function CalendarIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      <rect x="3.5" y="5" width="17" height="15" rx="2" />
-      <path d="M3.5 9.5h17M8 3v4M16 3v4M7.5 13h3M13.5 13h3M7.5 16.5h3" />
-    </svg>
-  );
-}
-
-function StarIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      <path d="M12 3.5l2.6 5.3 5.9.9-4.25 4.15 1 5.85L12 17.9 6.75 20.6l1-5.85L3.5 9.7l5.9-.9L12 3.5z" />
-    </svg>
-  );
-}
-
-function RepeatIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      <path d="M4 9a6 6 0 0 1 6-6h5l-2.5-2.5M20 15a6 6 0 0 1-6 6H9l2.5 2.5" />
     </svg>
   );
 }
@@ -129,20 +86,6 @@ function LockIcon() {
     </svg>
   );
 }
-
-// The homepage headline grid is the "favorites" set from the shared feature
-// catalog (src/lib/features.ts), so it can never drift from the /features page.
-// Icons are mapped here by feature id — the copy itself lives in the catalog.
-const FEATURE_ICONS: Record<string, ReactNode> = {
-  'hosted-website': <GlobeIcon />,
-  'ai-smart-intake': <MessageIcon />,
-  'client-esignature': <SignatureIcon />,
-  'stripe-payments': <CardIcon />,
-  'payment-plans': <BankIcon />,
-  'online-booking': <CalendarIcon />,
-  'recurring-plans': <RepeatIcon />,
-  'review-routing': <StarIcon />,
-};
 
 // The "quote to bank" flow, shown as its own homepage section. The dashed
 // connector between the icons flows (see .flow-step-node::after /
@@ -317,11 +260,12 @@ const jsonLd = {
 
 export default function HomePage() {
   return (
-    <main className="marketing-shell">
+    <main className="fx-page">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
       <div className="ambient-glow ambient-glow-b" aria-hidden="true" />
 
+      <div className="marketing-shell">
       <section className="hero-grid">
         <div className="hero-copy">
           <h1>Quote it. Sign it. Get paid. <span className="gradient-text">Straight to your bank.</span></h1>
@@ -348,6 +292,12 @@ export default function HomePage() {
 
         <HeroDashboard />
       </section>
+      </div>
+
+      {/* The lifecycle wheel + everyday command center — full content width */}
+      <FeatureWheelStory />
+
+      <div className="marketing-shell">
 
       <section className="section-block">
         <div className="flow-band-grid">
@@ -377,38 +327,6 @@ export default function HomePage() {
               })}
             </div>
           </aside>
-        </div>
-      </section>
-
-      <section className="section-block">
-        <div className="section-heading">
-          <p className="eyebrow">Your storefront</p>
-          <h2>Powerful website templates made for contractors.</h2>
-          <p>
-            Fully customizable and designed to convert, so every visitor sees a site that impresses clients
-            from the first click. Pick a look, drop in your photos, and publish to your own domain.
-          </p>
-        </div>
-        <TemplateSlider templates={featuredTemplates} />
-      </section>
-
-      <section className="section-block">
-        <div className="section-heading">
-          <p className="eyebrow">Built for the whole handoff</p>
-          <h2>Not just a website. Not just a payment link. The whole operating loop.</h2>
-          <p>The features owners lean on every day &mdash; a slice of the {FEATURE_COUNT}+ that come standard.</p>
-        </div>
-        <div className="feature-grid">
-          {FAVORITE_FEATURES.map((item) => (
-            <article key={item.id} className="feature-card">
-              <span className="feature-card-icon">{FEATURE_ICONS[item.id]}</span>
-              <h3>{item.name}</h3>
-              <p>{item.desc}</p>
-            </article>
-          ))}
-        </div>
-        <div className="mid-cta">
-          <Link href="/features" className="btn secondary">See all {FEATURE_COUNT}+ features &rarr;</Link>
         </div>
       </section>
 
@@ -531,6 +449,7 @@ export default function HomePage() {
       </section>
 
       <SiteFooter />
+      </div>
     </main>
   );
 }
