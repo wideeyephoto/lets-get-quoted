@@ -213,3 +213,18 @@ export const DEMO_LEADS: Lead[] = LEAD_SEEDS.map((seed) => ({
   updated_at: leadUpdatedAt(seed),
   created_at: leadCreatedAt(seed),
 }));
+
+// --- Sidebar attention badges -------------------------------------------------
+// The live dashboard rail shows a small count beside Leads / Jobs / Schedule for
+// what needs the owner's attention (see app-shell.tsx + /api/account/status).
+// The demo mirrors that, computed from the same seed data these pages render so a
+// badge always matches the number on the page it links to:
+//   Leads    → new website leads awaiting a first response
+//   Jobs     → quote requests still in the approval stage (new_lead)
+//   Schedule → active jobs that still need a date (matches the schedule page's
+//              "Needs a date" metric)
+export const DEMO_NAV_COUNTS = {
+  leads: DEMO_LEADS.filter((lead) => lead.source === 'website_form' && lead.status === 'new').length,
+  jobs: DEMO_JOBS.filter((job) => job.status === 'new_lead').length,
+  schedule: DEMO_JOBS.filter((job) => job.status !== 'archived' && !job.scheduled_for).length,
+} as const;

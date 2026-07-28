@@ -4,9 +4,16 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAppShell } from './app-shell-provider';
 import { NavIcon } from './nav-icons';
-import { DEMO_COMPANY_NAME, DEMO_SITE_HOST } from '@/lib/demo-data';
+import { DEMO_COMPANY_NAME, DEMO_SITE_HOST, DEMO_NAV_COUNTS } from '@/lib/demo-data';
 
 const DEMO_HOST = DEMO_SITE_HOST;
+
+// Attention-count badges beside the pipeline links, same as the live rail.
+const COUNT_BY_HREF: Record<string, number> = {
+  '/demo/leads': DEMO_NAV_COUNTS.leads,
+  '/demo/jobs': DEMO_NAV_COUNTS.jobs,
+  '/demo/schedule': DEMO_NAV_COUNTS.schedule,
+};
 
 type DemoItem = {
   // `icon` is the /dashboard/* key into the shared icon set; `href` is where the
@@ -78,6 +85,7 @@ export default function DemoSidebar() {
     >
       <NavIcon href={item.icon} />
       <span>{item.label}</span>
+      {COUNT_BY_HREF[item.href] ? <span className="sidenav-count">{COUNT_BY_HREF[item.href]}</span> : null}
       {item.preview ? <LockGlyph /> : null}
     </Link>
   );
