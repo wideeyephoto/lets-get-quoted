@@ -167,6 +167,15 @@ alter table accounts add column if not exists booking_max_per_day integer not nu
 -- Soonest a customer may self-book, in days ahead (1 = from tomorrow, the old behavior).
 alter table accounts add column if not exists booking_lead_days integer not null default 1;
 
+-- Value gate for instant booking. When ON, the /book page asks a couple of quick
+-- questions for an instant AI estimate first, and only jobs at/above the floor
+-- (and in-area / work-you-take) can grab a slot; everyone else is routed to a
+-- graceful "request a callback" instead of a hard no. OFF by default = booking
+-- stays open to everyone exactly as before.
+alter table accounts add column if not exists instant_book_enabled boolean not null default false;
+-- Minimum estimated job value ($) to self-book a premium slot. 0 = no floor.
+alter table accounts add column if not exists instant_book_min_amount numeric(12,2) not null default 0;
+
 -- ----------------------------------------------------------------------------
 -- MEMBERSHIPS  — links a person (auth.users) to an account with a role.
 -- This IS the Owner/Crew split, enforced in data instead of UI.
