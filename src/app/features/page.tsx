@@ -13,10 +13,11 @@ export const metadata: Metadata = {
 
 export default function FeaturesPage() {
   return (
-    <main className="marketing-shell">
+    <main className="fx-page">
       <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
       <div className="ambient-glow ambient-glow-b" aria-hidden="true" />
 
+      <div className="marketing-shell">
       {/* Hero */}
       <section className="fx-hero" aria-labelledby="fx-hero-title">
         <p className="eyebrow">The complete platform</p>
@@ -53,10 +54,12 @@ export default function FeaturesPage() {
           </Link>
         </div>
       </section>
+      </div>
 
-      {/* The lifecycle wheel + everyday command center */}
+      {/* The lifecycle wheel + everyday command center — full content width */}
       <FeatureWheelStory />
 
+      <div className="marketing-shell">
       {/* Closing CTA */}
       <section className="cta-band">
         <div className="cta-band-inner">
@@ -72,6 +75,7 @@ export default function FeaturesPage() {
       </section>
 
       <SiteFooter />
+      </div>
     </main>
   );
 }

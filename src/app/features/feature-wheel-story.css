@@ -14,6 +14,9 @@
     background:transparent;
     color:var(--ink);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased;
     overflow-x:clip;position:relative;transition:--ck .55s ease;
+    /* responsive to the actual section width (not the viewport) — the app
+       sidebar makes the content area much narrower than the window */
+    container:fw / inline-size;
   }
   .fw-scope .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
   /* ambient aurora */
@@ -27,7 +30,7 @@
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
 
   /* ---------- intro header ---------- */
-  .fw-head{max-width:1180px;margin:0 auto;padding:clamp(32px,6vw,72px) clamp(16px,4vw,48px) 0;position:relative;z-index:1}
+  .fw-head{max-width:1280px;margin:0 auto;padding:clamp(32px,6vw,72px) clamp(16px,4vw,48px) 0;position:relative;z-index:1}
   .fw-kick{display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-2);border:1px solid var(--line);background:rgba(255,255,255,.02);border-radius:999px;padding:7px 13px;margin:0 0 16px}
   .fw-kick .dotp{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px rgba(74,222,128,.14);flex:0 0 auto}
   @media (prefers-reduced-motion:no-preference){.fw-kick .dotp{animation:fw-pulse 2.4s ease-in-out infinite}}
@@ -43,7 +46,7 @@
   /* ---------- story scaffold ---------- */
   .fw-story{position:relative;z-index:1;height:620vh}
   .fw-sticky{position:sticky;top:0;height:100vh;display:flex;align-items:center;overflow:hidden}
-  .fw-stage{width:100%;max-width:1180px;margin:0 auto;padding:0 clamp(16px,4vw,48px);display:grid;grid-template-columns:40% 60%;align-items:center;gap:clamp(16px,3vw,40px)}
+  .fw-stage{width:100%;max-width:1280px;margin:0 auto;padding:0 clamp(16px,4vw,48px);display:grid;grid-template-columns:40% 60%;align-items:center;gap:clamp(16px,3vw,40px)}
 
   /* ---------- left: the wheel ---------- */
   .fw-left{position:relative;min-height:64vh;display:flex;flex-direction:column;justify-content:center}
@@ -97,7 +100,7 @@
     transition:opacity .5s cubic-bezier(.2,.7,.2,1),transform .5s cubic-bezier(.2,.7,.2,1),box-shadow .55s ease;
     display:flex;flex-direction:column;gap:14px;justify-content:center;
     border:1px solid var(--line-2);border-radius:20px;padding:clamp(24px,3vw,40px);overflow:hidden;
-    background:linear-gradient(180deg,rgba(13,24,37,.92),rgba(9,17,27,.88));
+    background:linear-gradient(180deg,#0d1a28,#091320);
     box-shadow:0 50px 120px -60px rgba(0,0,0,.9),0 0 0 1px color-mix(in srgb,var(--ck) 10%,transparent),inset 0 1px 0 rgba(255,255,255,.04)}
   .fw-copy.is-active{opacity:1;transform:none;pointer-events:auto;z-index:1}
   .fw-copy::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,var(--ck),transparent 72%)}
@@ -120,7 +123,7 @@
       var(--panel)}
   .fw-mock-inner{width:100%;max-width:420px}
   .fw-copy-body{display:flex;flex-direction:column;gap:12px;min-width:0}
-  @media (min-width:1100px){
+  @container fw (min-width:1100px){
     .fw-copy{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.06fr);align-items:center;gap:clamp(16px,1.8vw,26px)}
   }
   .fw-scope .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
@@ -250,14 +253,14 @@
 
   /* progress hairline */
 
-  /* ---------- tablet ---------- */
-  @media (max-width:1080px){
+  /* ---------- tablet (by section width) ---------- */
+  @container fw (max-width:1080px){
     .fw-wheel-inner{--dia:600px;--hubx:-300px}
     .fw-stage{grid-template-columns:42% 58%;gap:20px}
   }
 
-  /* ---------- mobile: spinning wheel pinned across the top (Orionix-style) ---------- */
-  @media (max-width:860px){
+  /* ---------- narrow: spinning wheel pinned across the top (Orionix-style) ---------- */
+  @container fw (max-width:940px){
     .fw-story{height:500vh}
     .fw-sticky{align-items:stretch}
     .fw-stage{grid-template-columns:1fr;gap:10px;align-content:start;padding-top:4px;padding-bottom:16px}
@@ -285,7 +288,7 @@
   /* ============================================================
      COMMAND CENTER — tabbed dashboard after the wheel
      ============================================================ */
-  .cc{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:clamp(28px,5vw,72px) clamp(16px,4vw,48px) clamp(60px,9vw,120px)}
+  .cc{position:relative;z-index:1;max-width:1280px;margin:0 auto;padding:clamp(28px,5vw,72px) clamp(16px,4vw,48px) clamp(60px,9vw,120px)}
   .cc-head{max-width:660px;margin:0 0 clamp(20px,3.4vw,38px)}
   .cc-eyebrow{margin:0;font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,var(--gold),var(--lime));-webkit-background-clip:text;background-clip:text;color:transparent}
   .cc-eyebrow::before{content:"";width:22px;height:2px;border-radius:2px;background:linear-gradient(135deg,var(--gold),var(--lime))}
@@ -299,7 +302,7 @@
     box-shadow:0 40px 100px -60px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.04);
     transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
   .fw-scope.cc-anim .cc-card{opacity:0;transform:translateY(46px)}
-  .cc-card.in{opacity:1;transform:none}
+  .fw-scope.cc-anim .cc-card.in{opacity:1;transform:none}
   .cc-card::before{content:"";position:absolute;left:0;top:0;right:0;height:3px;background:linear-gradient(90deg,var(--gold),var(--lime),transparent 78%)}
   .cc-card-head{display:flex;align-items:flex-start;gap:13px;margin-bottom:16px}
   .cc-card-ic{width:42px;height:42px;flex:0 0 auto;border-radius:11px;display:grid;place-items:center;border:1px solid color-mix(in srgb,var(--gold) 30%,var(--line));background:color-mix(in srgb,var(--gold) 12%,transparent);color:var(--gold)}
@@ -442,7 +445,7 @@
   .cc-bars span.on{background:linear-gradient(180deg,var(--gold),var(--lime))}
   .cc-bars-x{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-top:7px;font-family:var(--mono);font-size:9px;color:var(--muted-2);text-align:center}
 
-  @media(max-width:720px){
+  @container fw (max-width:720px){
     .cc-stats{grid-template-columns:1fr 1fr}
     .cc-cols{grid-template-columns:1fr}
     .cc-week{display:flex;overflow-x:auto;scrollbar-width:none}
