@@ -422,7 +422,7 @@ export default async function SettingsPage({
           {
             id: 'business',
             label: 'Business',
-            anchors: ['import', 'marketing-address', 'finances'],
+            anchors: ['import', 'export', 'marketing-address', 'finances'],
             content: (
               <>
                 <section className="panel workspace-section-card" id="import">
@@ -439,6 +439,23 @@ export default async function SettingsPage({
                   <div className="workspace-inline-row">
                     <Link href="/dashboard/import" className="btn primary">Migrate from another CRM</Link>
                     <Link href="/dashboard/clients/import" className="btn secondary">Import customers</Link>
+                  </div>
+                </section>
+
+                <section className="panel workspace-section-card" id="export">
+                  <div className="section-heading workspace-section-heading compact-heading">
+                    <p className="eyebrow">Take it with you</p>
+                    <h2>Export my data</h2>
+                  </div>
+                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                    Download your records as CSV — one file per list. The columns match what the importer
+                    accepts, so anything you export here can be re-imported as-is. It&apos;s your data; no lock-in.
+                  </p>
+                  <div className="workspace-inline-row">
+                    <a href="/api/export/clients" className="btn secondary">⬇ Customers (CSV)</a>
+                    <a href="/api/export/services" className="btn secondary">⬇ Price book (CSV)</a>
+                    <a href="/api/export/jobs" className="btn secondary">⬇ Jobs (CSV)</a>
+                    <a href="/api/export/invoices" className="btn secondary">⬇ Invoices (CSV)</a>
                   </div>
                 </section>
 
