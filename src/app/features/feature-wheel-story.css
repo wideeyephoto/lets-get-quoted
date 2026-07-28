@@ -22,7 +22,7 @@
   /* ambient aurora */
   .fw-scope::before{content:"";position:absolute;left:50%;top:-6vh;z-index:0;pointer-events:none;width:min(1200px,124vw);height:72vh;transform:translateX(-50%);
     background:radial-gradient(44% 60% at 34% 28%,color-mix(in srgb,var(--ck) 16%,transparent),transparent 70%),radial-gradient(40% 55% at 72% 18%,rgba(255,209,102,.10),transparent 72%),radial-gradient(36% 50% at 56% 64%,rgba(74,222,128,.05),transparent 72%);
-    filter:blur(36px);opacity:.8;transition:background .55s ease}
+    filter:blur(36px);opacity:.5;transition:background .55s ease}
   @media (prefers-reduced-motion:no-preference){.fw-scope::before{animation:fw-aurora 17s ease-in-out infinite alternate}}
   @keyframes fw-aurora{0%{transform:translateX(-53%) translateY(-2%) scale(1)}100%{transform:translateX(-45%) translateY(4%) scale(1.14)}}
   /* film grain */
@@ -51,10 +51,12 @@
   /* ---------- left: the wheel ---------- */
   .fw-left{position:relative;min-height:64vh;display:flex;flex-direction:column;justify-content:center}
   .fw-wheel{position:absolute;inset:0;overflow:visible;z-index:0}
-  .fw-wheel-inner{position:absolute;left:var(--hubx,-340px);top:50%;width:var(--dia,760px);height:var(--dia,760px);margin-top:calc(var(--dia,760px) / -2)}
+  /* big circle, hub pushed well off the left edge so only a slim arc shows and
+     the badges become the focus (not the circle body) */
+  .fw-wheel-inner{--dia:1000px;--hubx:-660px;position:absolute;left:var(--hubx);top:50%;width:var(--dia);height:var(--dia);margin-top:calc(var(--dia) / -2)}
   .fw-rotor{position:absolute;inset:0;transform:rotate(var(--rot,0deg));will-change:transform}
   .fw-ring{position:absolute;border-radius:50%}
-  .fw-ring.outer{inset:0;border:1px solid rgba(255,255,255,.06);box-shadow:0 0 60px -36px color-mix(in srgb,var(--ck) 22%,transparent) inset;transition:box-shadow .55s ease}
+  .fw-ring.outer{inset:0;border:1px solid rgba(255,255,255,.05);box-shadow:0 0 44px -44px color-mix(in srgb,var(--ck) 12%,transparent) inset;transition:box-shadow .55s ease}
   .fw-ring.ticks{inset:0;background:repeating-conic-gradient(from 0deg,var(--line-2) 0 .35deg,transparent .35deg 6deg);opacity:.16;
     -webkit-mask:radial-gradient(circle,transparent calc(50% - 6px),#000 calc(50% - 6px) 50%,transparent 50%);
     mask:radial-gradient(circle,transparent calc(50% - 6px),#000 calc(50% - 6px) 50%,transparent 50%)}
@@ -73,8 +75,9 @@
     position:absolute;right:0;top:50%;
     transform:translate(50%,-50%) rotate(calc(-1 * (var(--rot,0deg) + var(--base))));
     appearance:none;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;
-    min-height:42px;padding:8px 13px;border-radius:12px;border:1px solid transparent;background:transparent;
-    color:color-mix(in srgb,var(--muted-2) 58%,transparent);box-shadow:none;
+    min-height:42px;padding:8px 13px;border-radius:12px;border:1px solid var(--line-2);
+    background:linear-gradient(180deg,rgba(18,30,45,.82),rgba(10,20,32,.82));
+    color:var(--muted);box-shadow:0 12px 30px -18px rgba(0,0,0,.85);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);
     transition:color .3s ease,border-color .3s ease,box-shadow .3s ease,transform .3s ease,background .3s ease;
   }
   .fw-node b{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:14px;font-weight:700;letter-spacing:.02em}
@@ -255,7 +258,7 @@
 
   /* ---------- tablet (by section width) ---------- */
   @container fw (max-width:1080px){
-    .fw-wheel-inner{--dia:600px;--hubx:-300px}
+    .fw-wheel-inner{--dia:820px;--hubx:-540px}
     .fw-stage{grid-template-columns:42% 58%;gap:20px}
   }
 

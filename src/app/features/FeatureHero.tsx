@@ -4,9 +4,10 @@ import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import './feature-hero.css';
 
-// Features hero: "Quote it. Sign it. Get paid." with a unified dashboard panel
-// (the paid figure + the favorite tools). Copy + CTAs are the real content; the
-// panel is decorative. Count-up + staggered reveal run once on mount.
+// Features hero: "Quote it. Sign it. Get paid." with a growth-dashboard panel —
+// a "deposited to your bank" figure trending up (count-up + sparkline) over the
+// favorite tools. Copy + CTAs are the real content; the panel is decorative.
+// Effects run once on mount and respect prefers-reduced-motion.
 export default function FeatureHero() {
   const ref = useRef<HTMLElement>(null);
 
@@ -24,7 +25,7 @@ export default function FeatureHero() {
         return;
       }
       const t0 = performance.now();
-      const dur = 900;
+      const dur = 950;
       const step = (now: number) => {
         const p = Math.min(1, (now - t0) / dur);
         const e = 1 - Math.pow(1 - p, 3);
@@ -65,53 +66,72 @@ export default function FeatureHero() {
           <i />
           <i />
           <span className="u">letsgetquoted.com &middot; dashboard</span>
+          <span className="fh-live">
+            <b />
+            Live
+          </span>
         </div>
         <div className="fh-body">
           <div className="fh-paid">
             <div>
-              <div className="l">Paid &middot; deposited to your bank</div>
+              <div className="l">Deposited to your bank</div>
               <div className="amt" data-count="4250">$4,250</div>
+              <div className="fh-trend">
+                <span className="up">▲ 18%</span> this month &middot; <span className="ago">just now</span>
+              </div>
             </div>
-            <span className="fh-badge">
-              <span className="ck">✓</span> Get paid
-            </span>
+            <svg className="fh-spark" width="132" height="58" viewBox="0 0 132 58">
+              <defs>
+                <linearGradient id="fhg" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor="#bef264" stopOpacity="0.35" />
+                  <stop offset="1" stopColor="#bef264" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <path className="area" d="M0 46 L18 42 L36 44 L54 32 L72 34 L90 22 L110 18 L132 6 L132 58 L0 58 Z" />
+              <path className="line" d="M0 46 L18 42 L36 44 L54 32 L72 34 L90 22 L110 18 L132 6" />
+              <circle className="dot" cx="132" cy="6" r="3.5" />
+            </svg>
           </div>
           <div className="fh-grid">
             <div className="fh-cell pri">
               <span className="ic">
                 <svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z" /><path d="M8 10h8M8 13h5" /></svg>
               </span>
-              <div>
+              <div className="m">
                 <b>AI Smart Intake <span className="star">★</span></b>
-                <small>Prices leads 24/7</small>
+                <small>Prices leads instantly</small>
               </div>
+              <span className="fh-tag">24/7</span>
             </div>
             <div className="fh-cell">
               <span className="ic">
                 <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3c2.6 2.7 2.6 15.3 0 18M12 3c-2.6 2.7-2.6 15.3 0 18" /></svg>
               </span>
-              <div>
+              <div className="m">
                 <b>Website</b>
                 <small>Your own domain</small>
               </div>
+              <span className="fh-tag">Live</span>
             </div>
             <div className="fh-cell">
               <span className="ic">
                 <svg viewBox="0 0 24 24"><path d="M4 20l4-1L18 8a2 2 0 0 0-3-3L5 15z" /><path d="M14 6l3 3" /></svg>
               </span>
-              <div>
+              <div className="m">
                 <b>Quotes &amp; e-sign</b>
                 <small>Signed on a phone</small>
               </div>
+              <span className="fh-tag">✓</span>
             </div>
             <div className="fh-cell">
               <span className="ic">
                 <svg viewBox="0 0 24 24"><path d="M12 3l2.6 5.6 6 .8-4.4 4.2 1.1 6-5.3-3-5.3 3 1.1-6L3.4 9.4l6-.8z" /></svg>
               </span>
-              <div>
+              <div className="m">
                 <b>Reviews &rarr; Google</b>
                 <small>Auto-requested</small>
               </div>
+              <span className="fh-tag">4.9★</span>
             </div>
           </div>
         </div>
