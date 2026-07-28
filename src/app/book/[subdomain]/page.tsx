@@ -4,6 +4,7 @@ import { getAvailableBookingDays } from '@/lib/booking';
 import { listServices } from '@/lib/services';
 import { formatMoney } from '@/lib/jobs';
 import { submitBookingAction } from './actions';
+import InstantBookFlow from './InstantBookFlow';
 import SaveButton from '@/components/save-button';
 
 export const dynamic = 'force-dynamic';
@@ -15,7 +16,7 @@ export default async function BookingPage({
   searchParams,
 }: {
   params: { subdomain: string };
-  searchParams: { booked?: string; error?: string };
+  searchParams: { booked?: string; requested?: string; error?: string };
 }) {
   const admin = createAdminClient();
   const site = await getPublicSiteBySubdomain(admin, params.subdomain);
@@ -49,6 +50,46 @@ export default async function BookingPage({
             </p>
           </div>
         </section>
+      </main>
+    );
+  }
+
+  if (searchParams.requested === '1') {
+    return (
+      <main className="wide-shell workspace-shell payment-shell">
+        <section className="workspace-hero panel payment-hero">
+          <div className="workspace-hero-copy">
+            <p className="eyebrow">{businessName}</p>
+            <h1 className="workspace-title">Request received 👍</h1>
+            <p className="workspace-lead">
+              Thanks — {businessName} has your details and will reach out to get you scheduled.
+            </p>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  // When the owner has turned on instant-booking gating, the public page becomes
+  // the estimate-first flow: describe the job → instant AI estimate → qualified
+  // jobs pick a slot, everyone else leaves a callback request. Read the flag
+  // defensively so a pre-migration DB just serves the classic form.
+  const { data: gate } = await admin
+    .from('accounts')
+    .select('instant_book_enabled')
+    .eq('id', site.account_id)
+    .maybeSingle();
+  if (gate?.instant_book_enabled) {
+    return (
+      <main className="wide-shell workspace-shell payment-shell">
+        <section className="workspace-hero panel payment-hero">
+          <div className="workspace-hero-copy">
+            <p className="eyebrow">{businessName}</p>
+            <h1 className="workspace-title">Book a time</h1>
+            <p className="workspace-lead">Tell us about the job for an instant estimate, then grab a time — no phone tag.</p>
+          </div>
+        </section>
+        <InstantBookFlow subdomain={params.subdomain} siteId={site.id} businessName={businessName} serviceArea={site.service_area ?? ''} />
       </main>
     );
   }

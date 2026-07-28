@@ -67,10 +67,12 @@ export default async function SettingsPage({
   // to the old-behavior defaults instead of 500-ing the page.
   const { data: bookingSettings } = await supabase
     .from('accounts')
-    .select('timezone, booking_weekdays, booking_windows, booking_max_per_day, booking_lead_days')
+    .select('timezone, booking_weekdays, booking_windows, booking_max_per_day, booking_lead_days, instant_book_enabled, instant_book_min_amount')
     .eq('id', accountId)
     .maybeSingle();
   const booking = bookingAvailabilityFromAccount(bookingSettings);
+  const instantBookEnabled = Boolean(bookingSettings?.instant_book_enabled);
+  const instantBookMinAmount = bookingSettings?.instant_book_min_amount ? Number(bookingSettings.instant_book_min_amount) : 0;
 
   const { data: gatingSettings } = await supabase
     .from('accounts')
@@ -316,6 +318,21 @@ export default async function SettingsPage({
                     booking still lands as a request for you to confirm &mdash; this just decides what&apos;s offered.
                   </p>
                   <form action={updateBookingAvailabilityAction} className="form-grid compact-form">
+                    <label className="checkbox-row" htmlFor="instantBookEnabled">
+                      <input id="instantBookEnabled" name="instantBookEnabled" type="checkbox" defaultChecked={instantBookEnabled} />
+                      <span>
+                        <strong>Only let qualified jobs book instantly.</strong> When on, the Book page asks a
+                        couple of quick questions for an instant AI estimate first &mdash; small, out-of-area, or
+                        work-you-don&apos;t-take jobs are routed to &ldquo;request a callback&rdquo; instead of grabbing a
+                        slot. Off = booking is open to everyone.
+                      </span>
+                    </label>
+                    <div className="field full">
+                      <label htmlFor="instantBookMinAmount">Minimum estimated job value to book instantly ($)</label>
+                      <input id="instantBookMinAmount" name="instantBookMinAmount" type="number" min="0" step="100" inputMode="numeric" placeholder="e.g. 500" defaultValue={instantBookMinAmount || ''} />
+                      <small className="field-hint">A job whose instant estimate tops out below this is sent to request-a-callback instead of taking a premium slot. Leave blank/0 for no floor. Only applies when the toggle above is on.</small>
+                    </div>
+
                     <div className="field full">
                       <label htmlFor="timezone">Your timezone</label>
                       <select id="timezone" name="timezone" defaultValue={booking.timezone}>

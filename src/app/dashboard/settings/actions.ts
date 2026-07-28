@@ -12,6 +12,7 @@ import {
   normalizeMaxPerDay,
   normalizeLeadDays,
 } from '@/lib/booking-availability';
+import { normalizeInstantBookMinAmount } from '@/lib/instant-booking';
 import { normalizeUsPhone } from '@/lib/phone';
 
 function parseScheduleDayHours(value: FormDataEntryValue | null): number {
@@ -89,6 +90,8 @@ export async function updateBookingAvailabilityAction(formData: FormData) {
   const windowTimes = normalizeBookingWindowTimes(formData.getAll('bookingWindow').map(String));
   const maxPerDay = normalizeMaxPerDay(formData.get('bookingMaxPerDay'));
   const leadDays = normalizeLeadDays(formData.get('bookingLeadDays'));
+  const instantBookEnabled = formData.get('instantBookEnabled') === 'on';
+  const instantBookMinAmount = normalizeInstantBookMinAmount(formData.get('instantBookMinAmount'));
 
   const { error } = await supabase
     .from('accounts')
@@ -98,6 +101,8 @@ export async function updateBookingAvailabilityAction(formData: FormData) {
       booking_windows: windowTimes,
       booking_max_per_day: maxPerDay,
       booking_lead_days: leadDays,
+      instant_book_enabled: instantBookEnabled,
+      instant_book_min_amount: instantBookMinAmount,
     })
     .eq('id', accountId);
 

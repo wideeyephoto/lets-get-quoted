@@ -226,3 +226,43 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
 
   return lead;
 }
+
+// A "request a callback" — the visitor wasn't eligible for a self-serve slot
+// (too small / out of area / booked / work-not-taken), so we still capture a warm
+// lead for the owner to schedule by hand rather than turning them away. No job is
+// auto-calendared; it lands on the leads board like any website request.
+export async function createBookingRequestLead(
+  admin: SupabaseClient,
+  accountId: string,
+  input: { name: string; phone: string | null; email: string | null; address: string | null; description: string | null },
+): Promise<Lead> {
+  const message = `📋 Booking request — needs scheduling.${input.description ? `\n${input.description}` : ''}`;
+  const lead = await createLead(admin, accountId, {
+    source: 'website_form',
+    name: input.name,
+    phone: input.phone,
+    email: input.email,
+    address: input.address,
+    projectType: 'Booking request',
+    message,
+    sourcePage: '/book',
+    triage: { score: 'warm', flags: [], contactPreference: 'any' },
+  });
+
+  try {
+    const ownerEmail = await getAccountOwnerEmail(admin, accountId);
+    if (ownerEmail) {
+      const { data: account } = await admin.from('accounts').select('business_name').eq('id', accountId).maybeSingle();
+      await sendLeadNotificationEmail({
+        recipientEmail: ownerEmail,
+        businessName: account?.business_name || "Let's Get Quoted contractor",
+        lead,
+        dashboardUrl: `${APP_ORIGIN}/dashboard/leads/${lead.id}`,
+      });
+    }
+  } catch (error) {
+    console.error(`Booking request owner notification failed for account ${accountId}:`, error instanceof Error ? error.message : error);
+  }
+
+  return lead;
+}
