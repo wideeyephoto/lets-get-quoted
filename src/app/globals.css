@@ -1226,6 +1226,12 @@ li + li { margin-top: 0.45rem; }
 /* ---------------------------------------------------------------- */
 .flow-panel { justify-content: center; }
 
+/* Homepage "quote to bank" flow band — the stepper as its own section beside
+   its heading (the hero now carries the interactive dashboard panel instead). */
+.flow-band-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(300px, 0.92fr); gap: 1.75rem; align-items: center; }
+.flow-band-grid .section-heading { margin: 0; }
+@media (max-width: 860px) { .flow-band-grid { grid-template-columns: 1fr; } }
+
 .flow-panel-eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.14em;
