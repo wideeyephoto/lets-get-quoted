@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { findOrCreateClientId } from '@/lib/clients';
+import { normalizeUsPhone } from '@/lib/phone';
 
 export type JobStatus = 'new_lead' | 'in_progress' | 'complete' | 'archived';
 export type CostType = 'material' | 'labor' | 'sub' | 'receipt' | 'other';
@@ -456,6 +457,158 @@ export async function createJob(supabase: SupabaseClient, accountId: string, inp
   }
 
   throw new Error('Unable to create job: could not allocate a unique job number. Please try again.');
+}
+
+// -- Bulk job import (CRM migration) -----------------------------------------
+// Maps a spreadsheet of historical/active jobs onto the schema: links each to a
+// client (match/create by phone->email), continues the J-#### ref sequence, and
+// normalizes free-text status/date/amount. Deduped by a
+// name+scope+date+amount signature so a re-import is safe.
+
+export type JobImportRow = {
+  clientName: string | null;
+  clientPhone: string | null;
+  clientEmail: string | null;
+  address: string | null;
+  scope: string | null;
+  status: string | null;
+  scheduledFor: string | null;
+  estimatedHours: string | null;
+  quotedAmount: string | null;
+};
+
+// Free-text status from another tool -> our enum. Unknown/blank defaults to
+// 'complete' (a migration is mostly historical work).
+export function mapImportedJobStatus(raw: string | null): JobStatus {
+  const s = (raw ?? '').trim().toLowerCase();
+  if (!s) return 'complete';
+  if (/(complete|done|finish|paid|closed|won|invoiced)/.test(s)) return 'complete';
+  if (/(progress|active|schedul|open|working|ongoing|current|start|book)/.test(s)) return 'in_progress';
+  if (/(lead|new|estimat|quote|pending|proposal|bid|request)/.test(s)) return 'new_lead';
+  if (/(archiv|cancel|lost|void|dead|declin|inactive)/.test(s)) return 'archived';
+  return 'complete';
+}
+
+// Accept YYYY-MM-DD (ISO / Excel) or M/D/Y(Y) -> a YYYY-MM-DD date key, else null.
+export function parseImportedDate(raw: string | null): string | null {
+  const s = (raw ?? '').trim();
+  if (!s) return null;
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+  const us = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/.exec(s);
+  if (us) {
+    const mm = us[1].padStart(2, '0');
+    const dd = us[2].padStart(2, '0');
+    const yyyy = us[3].length === 2 ? `20${us[3]}` : us[3];
+    if (Number(mm) >= 1 && Number(mm) <= 12 && Number(dd) >= 1 && Number(dd) <= 31) return `${yyyy}-${mm}-${dd}`;
+  }
+  return null;
+}
+
+function parseImportedHours(raw: string | null): number | null {
+  if (!raw) return null;
+  const n = Number(String(raw).replace(/[^0-9.]/g, ''));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function parseImportedMoney(raw: string | null): number {
+  if (!raw) return 0;
+  const n = Number(String(raw).replace(/[^0-9.\-]/g, ''));
+  return Number.isFinite(n) ? Math.max(0, Math.round(n * 100) / 100) : 0;
+}
+
+export async function importJobs(
+  supabase: SupabaseClient,
+  accountId: string,
+  rows: JobImportRow[],
+): Promise<{ imported: number; duplicates: number; skipped: number }> {
+  // Existing jobs: the highest numeric ref (to continue J-#### past it) + a set
+  // of dedupe signatures.
+  const { data: existingJobs } = await supabase
+    .from('jobs')
+    .select('ref, client_name, scope, scheduled_for, quoted_amount')
+    .eq('account_id', accountId);
+
+  const sig = (name: string, scope: string, date: string | null, amount: number) =>
+    `${name.trim().toLowerCase()}|${scope.trim().toLowerCase()}|${date ?? ''}|${amount}`;
+
+  let maxRef = 1000;
+  const signatures = new Set<string>();
+  for (const j of existingJobs ?? []) {
+    const m = /^J-(\d+)$/.exec((j as { ref?: string }).ref ?? '');
+    if (m) maxRef = Math.max(maxRef, parseInt(m[1], 10));
+    signatures.add(
+      sig(String(j.client_name ?? ''), String(j.scope ?? ''), (j.scheduled_for as string | null) ?? null, Number(j.quoted_amount) || 0),
+    );
+  }
+
+  // Resolve (and cache) the client profile per unique contact, so repeat
+  // customers across the file link to one client instead of many.
+  const clientCache = new Map<string, string | null>();
+  async function resolveClientId(name: string, phone: string | null, email: string | null, address: string | null): Promise<string | null> {
+    const np = phone ? normalizeUsPhone(phone) : null;
+    const ne = email ? email.trim().toLowerCase() : null;
+    const key = np ? `p:${np}` : ne ? `e:${ne}` : null;
+    if (!key) return null; // nothing to key a client on -> leave the job unlinked
+    const cached = clientCache.get(key);
+    if (cached !== undefined) return cached;
+    const id = await findOrCreateClientId(supabase, accountId, { name, phone, email, address });
+    clientCache.set(key, id);
+    return id;
+  }
+
+  const toInsert: Array<Record<string, unknown>> = [];
+  let duplicates = 0;
+  let skipped = 0;
+
+  for (const row of rows) {
+    const name = (row.clientName ?? '').trim();
+    if (!name) {
+      skipped += 1; // a job with no customer name can't be keyed/linked
+      continue;
+    }
+    const scope = (row.scope ?? '').trim();
+    const scheduledFor = parseImportedDate(row.scheduledFor);
+    const quotedAmount = parseImportedMoney(row.quotedAmount);
+    const signature = sig(name, scope, scheduledFor, quotedAmount);
+    if (signatures.has(signature)) {
+      duplicates += 1;
+      continue;
+    }
+    signatures.add(signature);
+
+    const clientId = await resolveClientId(name, row.clientPhone, row.clientEmail, row.address);
+    maxRef += 1;
+    toInsert.push({
+      account_id: accountId,
+      ref: `J-${maxRef}`,
+      client_name: name,
+      client_phone: row.clientPhone?.trim() || null,
+      client_email: row.clientEmail?.trim() || null,
+      address: row.address?.trim() || null,
+      scope: scope || null,
+      status: mapImportedJobStatus(row.status),
+      scheduled_for: scheduledFor,
+      estimated_hours: parseImportedHours(row.estimatedHours),
+      quoted_amount: quotedAmount,
+      client_id: clientId,
+      photo_paths: [],
+    });
+  }
+
+  let imported = 0;
+  for (let i = 0; i < toInsert.length; i += 500) {
+    const chunk = toInsert.slice(i, i + 500);
+    const { data, error } = await supabase.from('jobs').insert(chunk).select('id');
+    if (error) {
+      console.error('Job import chunk failed:', error.message);
+      skipped += chunk.length;
+    } else {
+      imported += (data ?? []).length;
+    }
+  }
+
+  return { imported, duplicates, skipped };
 }
 
 export async function updateJob(

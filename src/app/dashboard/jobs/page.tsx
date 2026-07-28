@@ -167,6 +167,9 @@ export default async function JobsPage({
           <p className="eyebrow">Pipeline</p>
           <h2>Current jobs</h2>
         </div>
+        <div className="workspace-inline-row" style={{ marginBottom: '0.75rem' }}>
+          <Link href="/dashboard/jobs/import" className="btn secondary">Import jobs</Link>
+        </div>
         <div className="status-tabs workspace-status-tabs">
           {STATUS_FILTERS.map((filter) => {
             const isActive = (filter.value === 'all' && !statusParam) || filter.value === statusParam;
