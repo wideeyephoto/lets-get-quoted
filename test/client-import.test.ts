@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { parseCsv, parseClientCsv } from '@/lib/client-import';
+import {
+  parseCsv,
+  parseClientCsv,
+  parseTable,
+  applyMapping,
+  deterministicMapping,
+  positionalMapping,
+  columnLabels,
+  type ColumnMapping,
+} from '@/lib/client-import';
 
 describe('parseCsv', () => {
   it('parses simple rows', () => {
@@ -66,5 +75,105 @@ describe('parseClientCsv — header detection', () => {
   it('returns nothing for empty input', () => {
     expect(parseClientCsv('').rows).toEqual([]);
     expect(parseClientCsv('   \n  ').rows).toEqual([]);
+  });
+});
+
+describe('parseTable — delimiter detection', () => {
+  it('parses tab-separated data (an Excel/Sheets paste)', () => {
+    expect(parseTable('name\tphone\nJane\t2485550199')).toEqual([
+      ['name', 'phone'],
+      ['Jane', '2485550199'],
+    ]);
+  });
+
+  it('parses semicolon-separated data', () => {
+    expect(parseTable('name;email\nJane;jane@x.com')).toEqual([
+      ['name', 'email'],
+      ['Jane', 'jane@x.com'],
+    ]);
+  });
+
+  it('still parses commas, and keeps commas inside quotes', () => {
+    expect(parseTable('name,address\nJane,"1 Maple, Royal Oak MI"')).toEqual([
+      ['name', 'address'],
+      ['Jane', '1 Maple, Royal Oak MI'],
+    ]);
+  });
+});
+
+describe('applyMapping — composing fields from columns', () => {
+  it('joins split First + Last into name and street/city/state/zip into address', () => {
+    // Columns: 0 First, 1 Last, 2 Phone, 3 Street, 4 City, 5 State, 6 Zip
+    const grid = [
+      ['First', 'Last', 'Phone', 'Street', 'City', 'State', 'Zip'],
+      ['Jane', 'Homeowner', '248-555-0199', '1418 Maplewood Ave', 'Royal Oak', 'MI', '48067'],
+    ];
+    const mapping: ColumnMapping = {
+      hasHeader: true,
+      sources: { name: [0, 1], phone: [2], email: [], address: [3, 4, 5, 6] },
+    };
+    expect(applyMapping(grid, mapping)).toEqual([
+      { name: 'Jane Homeowner', phone: '248-555-0199', email: null, address: '1418 Maplewood Ave, Royal Oak, MI, 48067' },
+    ]);
+  });
+
+  it('takes the first non-empty phone when several phone columns are mapped', () => {
+    const grid = [
+      ['Name', 'Home', 'Cell'],
+      ['Mike Ross', '', '313-555-0142'],
+    ];
+    const mapping: ColumnMapping = {
+      hasHeader: true,
+      sources: { name: [0], phone: [1, 2], email: [], address: [] },
+    };
+    expect(applyMapping(grid, mapping)[0]).toEqual({ name: 'Mike Ross', phone: '313-555-0142', email: null, address: null });
+  });
+
+  it('drops rows with no name, phone, or email', () => {
+    const grid = [
+      ['Jane', '248-555-0199', ''],
+      ['', '', ''],
+    ];
+    const mapping: ColumnMapping = {
+      hasHeader: false,
+      sources: { name: [0], phone: [1], email: [2], address: [] },
+    };
+    expect(applyMapping(grid, mapping)).toHaveLength(1);
+  });
+});
+
+describe('deterministicMapping — confident header only', () => {
+  it('maps a clear header with a name and a contact column', () => {
+    const grid = [['Full Name', 'Phone Number', 'Email'], ['Jane', '248-555-0199', 'jane@x.com']];
+    expect(deterministicMapping(grid)).toEqual({
+      hasHeader: true,
+      sources: { name: [0], phone: [1], email: [2], address: [] },
+    });
+  });
+
+  it('returns null when the header has no recognizable contact column (escalate to AI)', () => {
+    const grid = [['Client', 'Notes'], ['Jane', 'nice yard']];
+    expect(deterministicMapping(grid)).toBeNull();
+  });
+
+  it('returns null when the first row is data, not a header', () => {
+    const grid = [['Bob Vila', '5175550000', 'bob@x.com']];
+    expect(deterministicMapping(grid)).toBeNull();
+  });
+});
+
+describe('positionalMapping + columnLabels', () => {
+  it('reads columns positionally as name, phone, email, address', () => {
+    const grid = [['Jane', '248-555-0199', 'jane@x.com', '1 Maple']];
+    expect(positionalMapping(grid)).toEqual({
+      hasHeader: false,
+      sources: { name: [0], phone: [1], email: [2], address: [3] },
+    });
+  });
+
+  it('labels columns by header title, falling back to "Column N"', () => {
+    const grid = [['Full Name', '', 'Email'], ['Jane', 'x', 'jane@x.com']];
+    expect(columnLabels(grid, true)).toEqual(['Full Name', 'Column 2', 'Email']);
+    expect(columnLabels(grid, false)).toEqual(['Column 1', 'Column 2', 'Column 3']);
   });
 });

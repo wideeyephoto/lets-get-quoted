@@ -1,33 +1,116 @@
 'use server';
 
-import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { requireOwnerContext } from '@/lib/auth';
 import { updateClient } from '@/lib/clients';
-import { parseClientCsv, importClients } from '@/lib/client-import';
+import {
+  parseTable,
+  applyMapping,
+  deterministicMapping,
+  positionalMapping,
+  columnLabels,
+  importClients,
+  type ColumnSources,
+  type ColumnMapping,
+  type ParsedClientRow,
+} from '@/lib/client-import';
+import { aiDetectColumns } from '@/lib/client-import-ai';
 
 // Bound one import so a giant paste can't run away.
 const MAX_IMPORT_ROWS = 2000;
+const FIELDS: (keyof ColumnSources)[] = ['name', 'phone', 'email', 'address'];
 
-export async function importClientsAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+export type ClientImportPreview =
+  | { ok: false; error: 'empty' | 'norows' }
+  | {
+      ok: true;
+      usedAi: boolean;
+      hasHeader: boolean;
+      sources: ColumnSources;
+      columnLabels: string[];
+      sampleRows: ParsedClientRow[];
+      totalRows: number;
+    };
 
-  // Prefer an uploaded file; fall back to pasted text.
-  let text = (formData.get('csv') ?? '').toString();
-  const file = formData.get('file');
-  if (file && typeof file === 'object' && 'text' in file && (file as File).size > 0) {
-    text = await (file as File).text();
+// Keep only valid, in-range column indices — the confirm step sends back a
+// user-editable mapping, so never trust it blind.
+function sanitizeSources(raw: unknown, width: number): ColumnSources {
+  const out: ColumnSources = { name: [], phone: [], email: [], address: [] };
+  const obj = (raw ?? {}) as Record<string, unknown>;
+  for (const field of FIELDS) {
+    const arr = obj[field];
+    if (Array.isArray(arr)) {
+      out[field] = Array.from(
+        new Set(arr.map((v) => Number(v)).filter((n) => Number.isInteger(n) && n >= 0 && n < width)),
+      );
+    }
   }
+  return out;
+}
 
-  if (!text.trim()) redirect('/dashboard/clients/import?error=empty');
+// Step 1: parse the upload and work out the column mapping. Tries the free
+// rule-based match first, then AI, then a positional fallback — and always
+// returns a preview so the owner can confirm before anything is written.
+export async function analyzeClientImport(text: string): Promise<ClientImportPreview> {
+  await requireOwnerContext();
+  const trimmed = (text ?? '').trim();
+  if (!trimmed) return { ok: false, error: 'empty' };
 
-  const { rows } = parseClientCsv(text);
-  if (rows.length === 0) redirect('/dashboard/clients/import?error=norows');
+  const grid = parseTable(trimmed);
+  if (grid.length === 0) return { ok: false, error: 'norows' };
 
-  const result = await importClients(supabase, accountId, rows.slice(0, MAX_IMPORT_ROWS));
+  let usedAi = false;
+  let mapping: ColumnMapping | null = deterministicMapping(grid);
+  if (!mapping) {
+    mapping = await aiDetectColumns(grid);
+    if (mapping) usedAi = true;
+  }
+  if (!mapping) mapping = positionalMapping(grid);
 
+  const rows = applyMapping(grid, mapping);
+  if (rows.length === 0) return { ok: false, error: 'norows' };
+
+  return {
+    ok: true,
+    usedAi,
+    hasHeader: mapping.hasHeader,
+    sources: mapping.sources,
+    columnLabels: columnLabels(grid, mapping.hasHeader),
+    sampleRows: rows.slice(0, 6),
+    totalRows: rows.length,
+  };
+}
+
+// Re-apply an (optionally user-edited) mapping without any AI — powers the live
+// preview when the owner reassigns a column in the confirm step.
+export async function previewClientImport(
+  text: string,
+  sources: ColumnSources,
+  hasHeader: boolean,
+): Promise<{ sampleRows: ParsedClientRow[]; totalRows: number }> {
+  await requireOwnerContext();
+  const grid = parseTable((text ?? '').trim());
+  const width = grid.reduce((max, r) => Math.max(max, r.length), 0);
+  const rows = applyMapping(grid, { hasHeader, sources: sanitizeSources(sources, width) });
+  return { sampleRows: rows.slice(0, 6), totalRows: rows.length };
+}
+
+// Step 2: import with the confirmed mapping. Dedupe against existing clients
+// (phone then email) still happens inside importClients, so re-importing is safe.
+export async function commitClientImport(
+  text: string,
+  sources: ColumnSources,
+  hasHeader: boolean,
+): Promise<{ imported: number; duplicates: number; skipped: number; error?: 'norows' }> {
+  const { supabase, accountId } = await requireOwnerContext();
+  const grid = parseTable((text ?? '').trim());
+  const width = grid.reduce((max, r) => Math.max(max, r.length), 0);
+  const rows = applyMapping(grid, { hasHeader, sources: sanitizeSources(sources, width) }).slice(0, MAX_IMPORT_ROWS);
+  if (rows.length === 0) return { imported: 0, duplicates: 0, skipped: 0, error: 'norows' };
+
+  const result = await importClients(supabase, accountId, rows);
   revalidatePath('/dashboard/clients');
-  redirect(`/dashboard/clients/import?imported=${result.imported}&duplicates=${result.duplicates}&skipped=${result.skipped}`);
+  return result;
 }
 
 function optionalText(value: FormDataEntryValue | null): string | null {

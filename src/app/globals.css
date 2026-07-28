@@ -7224,3 +7224,17 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
   .fx-spine-fill { transform: scaleY(1) !important; }
 }
 
+/* ---- Client import preview table ----------------------------------- */
+.workspace-preview-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.workspace-preview-table th {
+  text-align: left; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55); font-weight: 700; padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+.workspace-preview-table td {
+  padding: 0.55rem 0.75rem; border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: #e7ecf3; vertical-align: top; white-space: nowrap;
+}
+.workspace-preview-table tr:last-child td { border-bottom: 0; }
+.workspace-preview-table .muted { color: rgba(255, 255, 255, 0.32); }
+
