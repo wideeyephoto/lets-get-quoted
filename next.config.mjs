@@ -20,6 +20,11 @@ function supabaseImageHost() {
 
 const nextConfig = {
   reactStrictMode: true,
+  // /features folded into the homepage — keep the old URL alive for inbound
+  // links, the footer, and any indexed pages.
+  async redirects() {
+    return [{ source: '/features', destination: '/', permanent: true }];
+  },
   images: {
     formats: ['image/avif', 'image/webp'],
     remotePatterns: [
