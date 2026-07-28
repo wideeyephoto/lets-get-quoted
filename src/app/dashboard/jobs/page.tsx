@@ -169,6 +169,7 @@ export default async function JobsPage({
         </div>
         <div className="workspace-inline-row" style={{ marginBottom: '0.75rem' }}>
           <Link href="/dashboard/jobs/import" className="btn secondary">Import jobs</Link>
+          <Link href="/dashboard/jobs/import-invoices" className="btn secondary">Import invoices</Link>
         </div>
         <div className="status-tabs workspace-status-tabs">
           {STATUS_FILTERS.map((filter) => {

@@ -50,18 +50,31 @@ export async function getTrailingVolume(accountId: string): Promise<number> {
   const admin = createAdminClient();
   const since = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
 
+  // Exclude imported historical payments — they're real records but not new
+  // processed volume, so they must never bump the fee bracket. Defensive: if the
+  // `imported` column hasn't been migrated yet, fall back to counting all paid
+  // (there are no imported rows to exclude in that state anyway).
   const { data, error } = await admin
     .from('payments')
-    .select('amount')
+    .select('amount, imported')
     .eq('account_id', accountId)
     .eq('status', 'paid')
     .gte('paid_at', since);
 
   if (error) {
-    throw error;
+    const fallback = await admin
+      .from('payments')
+      .select('amount')
+      .eq('account_id', accountId)
+      .eq('status', 'paid')
+      .gte('paid_at', since);
+    if (fallback.error) throw fallback.error;
+    return (fallback.data ?? []).reduce((sum, row) => sum + Number(row.amount), 0);
   }
 
-  return (data ?? []).reduce((sum, row) => sum + Number(row.amount), 0);
+  return (data ?? [])
+    .filter((row) => !(row as { imported?: boolean }).imported)
+    .reduce((sum, row) => sum + Number(row.amount), 0);
 }
 
 // Quote the fee rate/amount that would apply if this payment were completed

@@ -512,6 +512,12 @@ alter table payments add column if not exists dispute_status text;
 -- only becomes `refunded` once refunded_amount reaches amount.
 alter table payments add column if not exists refunded_amount numeric(12,2) not null default 0;
 
+-- Historical payments brought in via the CRM import (migrated from another
+-- tool). They're real history but NOT new processed volume, so they're excluded
+-- from the trailing-12mo platform-fee bracket (see getTrailingVolume) and never
+-- touch Stripe/payouts/SMS.
+alter table payments add column if not exists imported boolean not null default false;
+
 -- Recurring-charge DUNNING. When an off-session saved-card charge fails, capture
 -- the decline, then either schedule automated retries (transient declines like
 -- insufficient_funds) or route it to a client "update your card" link (expired
