@@ -70,6 +70,20 @@ export async function getAvailableBookingDays(admin: SupabaseClient, accountId: 
   return days;
 }
 
+// Re-validate a client-submitted slot against freshly-derived availability. The
+// booking submit must NEVER trust the posted `dateKey|time` string — only a day +
+// window that is actually on offer right now is bookable. This rejects tampered or
+// arbitrary dates/times (past days, weekends, full days, off-template times) and
+// returns the authoritative day/slot carrying the server's OWN labels, so we never
+// echo an attacker-supplied value back into the booking record. Returns null when
+// the chosen slot isn't offered.
+export function findOfferedSlot(days: BookingDay[], dateKey: string, time: string): { day: BookingDay; slot: BookingSlot } | null {
+  const day = days.find((candidate) => candidate.dateKey === dateKey);
+  if (!day) return null;
+  const slot = day.slots.find((candidate) => candidate.time === time);
+  return slot ? { day, slot } : null;
+}
+
 export type BookingInput = {
   name: string;
   phone: string | null;

@@ -87,6 +87,11 @@ export default async function BookingPage({
               Please pick a time and give us your name plus a phone or email.
             </p>
           ) : null}
+          {searchParams.error === 'slot_taken' ? (
+            <p className="payment-banner warning" style={{ marginBottom: '1rem' }}>
+              That window was just taken — please pick another below.
+            </p>
+          ) : null}
 
           {hasServices ? (
             <>

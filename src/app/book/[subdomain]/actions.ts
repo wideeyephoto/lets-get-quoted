@@ -4,20 +4,8 @@ import { redirect } from 'next/navigation';
 import { createAdminClient } from '@/lib/auth';
 import { getPublicSiteBySubdomain } from '@/lib/sites';
 import { normalizeUsPhone } from '@/lib/phone';
-import { createBooking } from '@/lib/booking';
+import { createBooking, getAvailableBookingDays, findOfferedSlot } from '@/lib/booking';
 import { listServices } from '@/lib/services';
-
-function labelForDateKey(dateKey: string): string {
-  const [year, month, day] = dateKey.split('-').map(Number);
-  if (!year || !month || !day) return dateKey;
-  return new Date(year, month - 1, day).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-}
-
-function labelForTime(time: string): string {
-  if (time === '08:00') return 'Morning · 8:00 AM';
-  if (time === '13:00') return 'Afternoon · 1:00 PM';
-  return time;
-}
 
 export async function submitBookingAction(subdomain: string, formData: FormData) {
   const admin = createAdminClient();
@@ -37,6 +25,24 @@ export async function submitBookingAction(subdomain: string, formData: FormData)
     redirect(`/book/${subdomain}?error=incomplete`);
   }
 
+  // Never trust the posted slot. Re-derive current availability and confirm the
+  // chosen day + window is genuinely on offer — this rejects tampered/arbitrary
+  // dates and times (past days, weekends, full days, off-template times) and
+  // shrinks the window where two people grab the same slot. The matched day/slot
+  // carry the server's own labels, so a client-supplied time can never be echoed
+  // into the booking record.
+  const { data: account } = await admin
+    .from('accounts')
+    .select('schedule_day_hours')
+    .eq('id', site.account_id)
+    .maybeSingle();
+  const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
+  const availableDays = await getAvailableBookingDays(admin, site.account_id, scheduleDayHours);
+  const offered = findOfferedSlot(availableDays, dateKey, time);
+  if (!offered) {
+    redirect(`/book/${subdomain}?error=slot_taken`);
+  }
+
   // Resolve the optionally-chosen price-book service id → its name (server-side,
   // so a tampered value can't inject arbitrary text). Empty / unknown → null.
   const serviceId = (formData.get('service') ?? '').toString();
@@ -54,9 +60,9 @@ export async function submitBookingAction(subdomain: string, formData: FormData)
     description,
     serviceName,
     dateKey,
-    dateLabel: labelForDateKey(dateKey),
+    dateLabel: offered.day.dayLabel,
     time,
-    timeLabel: labelForTime(time),
+    timeLabel: offered.slot.label,
   });
 
   redirect(`/book/${subdomain}?booked=1`);
