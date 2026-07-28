@@ -284,7 +284,10 @@
      wheel so its title clears the bar instead of hiding behind it. (Viewport
      media query — this tracks the bar, which is window-based, not section-based.) */
   @media (max-width:900px){
-    .fw-sticky{top:4.4rem;height:calc(100vh - 4.4rem)}
+    /* pin below the bar AND top-align the stage — otherwise a taller card
+       (e.g. Quotes) vertically centres the stage and pushes the wheel band's
+       top up behind the bar. */
+    .fw-sticky{top:4.4rem;height:calc(100vh - 4.4rem);align-items:flex-start}
   }
 
   /* ---------- reduced motion ---------- */
