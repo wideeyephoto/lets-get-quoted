@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRef, useState, type ChangeEvent } from 'react';
 import { analyzeClientImport, previewClientImport, commitClientImport, type ClientImportPreview } from '../actions';
 import type { ColumnSources } from '@/lib/client-import';
+import { readImportFile } from '@/lib/read-import-file';
 
 type Ready = Extract<ClientImportPreview, { ok: true }>;
 type Row = Ready['sampleRows'][number];
@@ -39,8 +40,19 @@ export default function ClientImport() {
       setFileName('');
       return;
     }
+    setError(null);
     setFileName(file.name);
-    setFileText(await file.text());
+    setBusy(true);
+    try {
+      setFileText(await readImportFile(file));
+    } catch {
+      setError("We couldn't read that file. Try a CSV, Excel (.xlsx), or vCard (.vcf).");
+      setFileText('');
+      setFileName('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function analyze() {
@@ -232,8 +244,8 @@ export default function ClientImport() {
 
       <div className="form-grid">
         <div className="field full">
-          <label htmlFor="file">CSV file</label>
-          <input id="file" ref={fileInputRef} type="file" accept=".csv,text/csv,text/plain" onChange={onFile} />
+          <label htmlFor="file">Upload a file <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 400 }}>— CSV, Excel (.xlsx), or vCard (.vcf)</span></label>
+          <input id="file" ref={fileInputRef} type="file" accept=".csv,.tsv,.txt,.xlsx,.xls,.vcf,text/csv,text/plain,text/vcard" onChange={onFile} />
           {fileName ? <p className="workspace-card-copy" style={{ margin: '0.4rem 0 0' }}>Selected: {fileName}</p> : null}
         </div>
         <div className="field full">

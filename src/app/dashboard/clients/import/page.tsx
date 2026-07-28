@@ -33,7 +33,7 @@ export default async function ImportClientsPage() {
           <h2>What we read</h2>
         </div>
         <ul className="workspace-card-copy" style={{ margin: 0, paddingLeft: '1.1rem', lineHeight: 1.7 }}>
-          <li>Upload a <strong>.csv</strong> or paste rows straight from Excel, Google Sheets, QuickBooks, Jobber, or your phone contacts — commas, tabs, and semicolons all work.</li>
+          <li>Upload a <strong>.csv</strong>, an <strong>Excel</strong> file (<strong>.xlsx</strong>), or a <strong>.vcf</strong> contact export from QuickBooks, Jobber, Google Sheets, or your phone &mdash; or paste rows — commas, tabs, and semicolons all work.</li>
           <li>Columns can be in any order with any headings, in any language. We match <strong>name</strong>, <strong>phone</strong>, <strong>email</strong>, and <strong>address</strong> automatically — even split <em>First</em>/<em>Last</em> name or <em>street/city/state/ZIP</em> address columns.</li>
           <li>You&apos;ll see exactly how each column was matched and can reassign any before importing.</li>
           <li>Each customer needs a phone or an email — rows with neither are skipped.</li>
