@@ -91,3 +91,14 @@ export function normalizeInstantBookMinAmount(value: unknown): number {
   const n = Math.round(Number(value));
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
+
+// "Nearby" radius (miles) for route-density; clamp 1–100, default 15.
+export function normalizeInstantBookRadiusMiles(value: unknown): number {
+  const n = Math.round(Number(value));
+  return Number.isFinite(n) ? Math.min(100, Math.max(1, n)) : 15;
+}
+
+// Route-density mode: 'prefer' (default) or 'restrict'.
+export function normalizeGeoMode(value: unknown): 'prefer' | 'restrict' {
+  return value === 'restrict' ? 'restrict' : 'prefer';
+}

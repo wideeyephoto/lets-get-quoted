@@ -67,12 +67,14 @@ export default async function SettingsPage({
   // to the old-behavior defaults instead of 500-ing the page.
   const { data: bookingSettings } = await supabase
     .from('accounts')
-    .select('timezone, booking_weekdays, booking_windows, booking_max_per_day, booking_lead_days, instant_book_enabled, instant_book_min_amount')
+    .select('timezone, booking_weekdays, booking_windows, booking_max_per_day, booking_lead_days, instant_book_enabled, instant_book_min_amount, instant_book_radius_miles, instant_book_geo_mode')
     .eq('id', accountId)
     .maybeSingle();
   const booking = bookingAvailabilityFromAccount(bookingSettings);
   const instantBookEnabled = Boolean(bookingSettings?.instant_book_enabled);
   const instantBookMinAmount = bookingSettings?.instant_book_min_amount ? Number(bookingSettings.instant_book_min_amount) : 0;
+  const instantBookRadius = bookingSettings?.instant_book_radius_miles ? Number(bookingSettings.instant_book_radius_miles) : 15;
+  const instantBookGeoMode = bookingSettings?.instant_book_geo_mode === 'restrict' ? 'restrict' : 'prefer';
 
   const { data: gatingSettings } = await supabase
     .from('accounts')
@@ -384,6 +386,20 @@ export default async function SettingsPage({
                         <option value={7}>A week out</option>
                       </select>
                       <small className="field-hint">Gives you lead time to plan your route.</small>
+                    </div>
+
+                    <div className="field">
+                      <label htmlFor="instantBookRadius">&ldquo;Nearby&rdquo; radius (miles)</label>
+                      <input id="instantBookRadius" name="instantBookRadius" type="number" min="1" max="100" step="1" inputMode="numeric" defaultValue={instantBookRadius} />
+                      <small className="field-hint">How close one of your existing jobs counts as &ldquo;we&apos;ll already be in your area&rdquo; that day.</small>
+                    </div>
+                    <div className="field">
+                      <label htmlFor="instantBookGeoMode">Days near your existing jobs</label>
+                      <select id="instantBookGeoMode" name="instantBookGeoMode" defaultValue={instantBookGeoMode}>
+                        <option value="prefer">Prefer &mdash; show nearby days first</option>
+                        <option value="restrict">Restrict &mdash; only offer nearby days</option>
+                      </select>
+                      <small className="field-hint">Restrict keeps routes tight; a customer with no nearby day is offered a callback instead. Needs your business address (below) geocoded — set it under Business &rarr; mailing address. Only applies when the gate above is on.</small>
                     </div>
 
                     <div className="form-actions">

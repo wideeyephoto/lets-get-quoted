@@ -12,7 +12,7 @@ import {
   normalizeMaxPerDay,
   normalizeLeadDays,
 } from '@/lib/booking-availability';
-import { normalizeInstantBookMinAmount } from '@/lib/instant-booking';
+import { normalizeInstantBookMinAmount, normalizeInstantBookRadiusMiles, normalizeGeoMode } from '@/lib/instant-booking';
 import { geocodeAddress } from '@/lib/geocode';
 import { normalizeUsPhone } from '@/lib/phone';
 
@@ -93,6 +93,8 @@ export async function updateBookingAvailabilityAction(formData: FormData) {
   const leadDays = normalizeLeadDays(formData.get('bookingLeadDays'));
   const instantBookEnabled = formData.get('instantBookEnabled') === 'on';
   const instantBookMinAmount = normalizeInstantBookMinAmount(formData.get('instantBookMinAmount'));
+  const instantBookRadiusMiles = normalizeInstantBookRadiusMiles(formData.get('instantBookRadius'));
+  const instantBookGeoMode = normalizeGeoMode(formData.get('instantBookGeoMode'));
 
   const { error } = await supabase
     .from('accounts')
@@ -104,6 +106,8 @@ export async function updateBookingAvailabilityAction(formData: FormData) {
       booking_lead_days: leadDays,
       instant_book_enabled: instantBookEnabled,
       instant_book_min_amount: instantBookMinAmount,
+      instant_book_radius_miles: instantBookRadiusMiles,
+      instant_book_geo_mode: instantBookGeoMode,
     })
     .eq('id', accountId);
 

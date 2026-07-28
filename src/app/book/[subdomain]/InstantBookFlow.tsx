@@ -47,7 +47,7 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
 
   async function evaluate(estimateMax: number | null, inArea: boolean | null, excluded: boolean) {
     setPhase('thinking');
-    const result = await evaluateBookingAction(subdomain, { estimateMax, inArea, excluded });
+    const result = await evaluateBookingAction(subdomain, { estimateMax, inArea, excluded, address });
     setEvaluation(result);
     setPhase('result');
   }
@@ -262,8 +262,11 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
 
       <div className="booking-days" style={{ marginTop: '1rem' }}>
         {evaluation.days.map((day) => (
-          <div className="booking-day-group" key={day.dateKey}>
-            <p className="booking-day-heading">{day.dayLabel}</p>
+          <div className={`booking-day-group${day.nearby ? ' is-nearby' : ''}`} key={day.dateKey}>
+            <p className="booking-day-heading">
+              {day.dayLabel}
+              {day.nearby ? <span className="booking-nearby">◆ We&apos;ll already be in your area</span> : null}
+            </p>
             <div className="booking-slots">
               {day.slots.map((slot) => (
                 <label className="booking-slot" key={`${day.dateKey}|${slot.time}`}>

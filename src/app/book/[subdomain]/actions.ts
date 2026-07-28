@@ -12,13 +12,17 @@ import {
   findOfferedSlot,
   type BookingDay,
 } from '@/lib/booking';
-import { evaluateBookingEligibility, bookingFallbackMessage, type BookingVerdict } from '@/lib/instant-booking';
+import { expandScheduledJobs } from '@/lib/jobs';
+import { geocodeAddress } from '@/lib/geocode';
+import { coordOf } from '@/lib/distance';
+import { rankByProximity, type RankedBookingDay } from '@/lib/route-density';
+import { evaluateBookingEligibility, bookingFallbackMessage, normalizeGeoMode, type BookingVerdict } from '@/lib/instant-booking';
 import { listServices } from '@/lib/services';
 
 export type BookingEvaluation = {
   verdict: BookingVerdict;
   businessName: string;
-  days: BookingDay[]; // populated only when eligible
+  days: RankedBookingDay[]; // populated only when eligible; `nearby` from route-density
   fallback: { heading: string; body: string };
 };
 
@@ -29,7 +33,7 @@ export type BookingEvaluation = {
 // round-trip; otherwise the days list is empty and the client shows the fallback.
 export async function evaluateBookingAction(
   subdomain: string,
-  input: { estimateMax: number | null; inArea: boolean | null; excluded: boolean },
+  input: { estimateMax: number | null; inArea: boolean | null; excluded: boolean; address: string | null },
 ): Promise<BookingEvaluation | null> {
   const admin = createAdminClient();
   const site = await getPublicSiteBySubdomain(admin, subdomain);
@@ -38,7 +42,7 @@ export async function evaluateBookingAction(
 
   const { data: account } = await admin
     .from('accounts')
-    .select('instant_book_enabled, instant_book_min_amount')
+    .select('instant_book_enabled, instant_book_min_amount, instant_book_radius_miles, instant_book_geo_mode, schedule_day_hours')
     .eq('id', site.account_id)
     .maybeSingle();
   const leadFilters = getSiteContent(site.content as Record<string, unknown>).leadFilters;
@@ -52,8 +56,52 @@ export async function evaluateBookingAction(
     excluded: input.excluded,
   });
 
-  const days = verdict.eligible ? await getAvailableBookingDays(admin, site.account_id) : [];
+  let days: RankedBookingDay[] = [];
+  if (verdict.eligible) {
+    const plain = await getAvailableBookingDays(admin, site.account_id);
+    days = await rankNearby(admin, site.account_id, plain, input.address, {
+      radiusMiles: Number(account?.instant_book_radius_miles) || 15,
+      mode: normalizeGeoMode(account?.instant_book_geo_mode),
+      scheduleDayHours: Number(account?.schedule_day_hours) || 8,
+    });
+  }
   return { verdict, businessName, days, fallback: bookingFallbackMessage(verdict.tier, businessName) };
+}
+
+// Rank/annotate the open days by proximity to the contractor's existing same-day
+// stops (route-density). Geocodes the lead address (precise-only) and gathers
+// anchor jobs; when either is missing it degrades to plain availability with no
+// proximity claim (cold start), so a customer is never stranded.
+async function rankNearby(
+  admin: ReturnType<typeof createAdminClient>,
+  accountId: string,
+  days: BookingDay[],
+  address: string | null,
+  opts: { radiusMiles: number; mode: 'prefer' | 'restrict'; scheduleDayHours: number },
+): Promise<RankedBookingDay[]> {
+  if (days.length === 0) return [];
+  const geo = await geocodeAddress(address);
+  const leadCoord = geo?.precise ? { lat: geo.lat, lng: geo.lng } : null;
+  if (!leadCoord) return days.map((day) => ({ ...day, nearby: false }));
+
+  const { data: anchorJobs } = await admin
+    .from('jobs')
+    .select('scheduled_for, estimated_hours, status, lat, lng')
+    .eq('account_id', accountId)
+    .not('scheduled_for', 'is', null)
+    .neq('status', 'archived')
+    .not('lat', 'is', null);
+
+  const anchorsByDate = new Map<string, { lat: number; lng: number }[]>();
+  for (const occ of expandScheduledJobs(anchorJobs ?? [], opts.scheduleDayHours)) {
+    const coord = coordOf(occ);
+    if (!coord) continue;
+    const list = anchorsByDate.get(occ.scheduled_for) ?? [];
+    list.push(coord);
+    anchorsByDate.set(occ.scheduled_for, list);
+  }
+
+  return rankByProximity({ days, leadCoord, anchorsByDate, radiusMiles: opts.radiusMiles, mode: opts.mode });
 }
 
 function readContact(formData: FormData) {

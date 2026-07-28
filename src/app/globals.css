@@ -4187,6 +4187,20 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
   }
 }
 
+.booking-day-group.is-nearby {
+  border-left: 3px solid #bef264;
+  padding-left: 0.85rem;
+}
+.booking-nearby {
+  display: inline-block;
+  margin-left: 0.6rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #bef264;
+  vertical-align: middle;
+}
+
 .booking-days {
   display: flex;
   flex-direction: column;
