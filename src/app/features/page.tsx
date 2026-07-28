@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { FEATURE_CATEGORIES, FEATURE_COUNT } from '@/lib/features';
 import SiteFooter from '@/components/site-footer';
+import FeatureHero from './FeatureHero';
 import FeatureWheelStory from './FeatureWheelStory';
 
 export const metadata: Metadata = {
@@ -18,42 +18,7 @@ export default function FeaturesPage() {
       <div className="ambient-glow ambient-glow-b" aria-hidden="true" />
 
       <div className="marketing-shell">
-      {/* Hero */}
-      <section className="fx-hero" aria-labelledby="fx-hero-title">
-        <p className="eyebrow">The complete platform</p>
-        <h1 id="fx-hero-title" className="fx-hero-title">
-          The whole contractor toolkit, in one place.
-        </h1>
-        <p className="fx-hero-lede">
-          Website, AI lead intake, quotes, e-signatures, payments, scheduling, crew, and getting paid — the entire
-          operating loop of a job, with no monthly subscription. One command center, organized the way work actually
-          flows.
-        </p>
-
-        <dl className="fx-stat-strip" aria-label="Key numbers">
-          <div className="fx-stat fx-stat--hot">
-            <dt>{FEATURE_COUNT}+</dt>
-            <dd>features</dd>
-          </div>
-          <div className="fx-stat">
-            <dt>{FEATURE_CATEGORIES.length}</dt>
-            <dd>lifecycle stages</dd>
-          </div>
-          <div className="fx-stat fx-stat--good">
-            <dt>$0</dt>
-            <dd>per month</dd>
-          </div>
-        </dl>
-
-        <div className="actions">
-          <Link href="/login" className="btn primary">
-            Create Free Account
-          </Link>
-          <Link href="/demo" className="btn secondary">
-            Explore the demo &mdash; no signup
-          </Link>
-        </div>
-      </section>
+        <FeatureHero />
       </div>
 
       {/* The lifecycle wheel + everyday command center — full content width */}

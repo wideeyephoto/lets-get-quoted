@@ -1,0 +1,55 @@
+/* Features hero — "Quote it. Sign it. Get paid." with a unified dashboard panel.
+   Prefixed .fh-* so nothing leaks into the rest of the app. */
+.fh-hero{
+  --fh-panel:#0c2032; --fh-panel2:#0e2537;
+  --fh-line:rgba(255,255,255,.12); --fh-line2:rgba(255,255,255,.22);
+  --fh-ink:#f7f5ef; --fh-muted:#c8d0dc; --fh-muted2:#8595a6;
+  --fh-orange:#ff7a21; --fh-gold:#ffd166; --fh-lime:#bef264;
+  --fh-acc:linear-gradient(135deg,#ff7a21,#ffd166);
+  --fh-mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  display:grid;grid-template-columns:1.05fr .95fr;align-items:center;gap:clamp(24px,4vw,56px);
+  padding:clamp(6px,2vw,26px) 0;
+}
+@media (max-width:860px){ .fh-hero{ grid-template-columns:1fr; gap:28px } }
+
+.fh-copy{min-width:0}
+.fh-title{margin:.32em 0 .42em;font-size:clamp(30px,4.8vw,54px);line-height:1.03;letter-spacing:-.03em;font-weight:720;color:var(--fh-ink);text-wrap:balance}
+.fh-grad{background:var(--fh-acc);-webkit-background-clip:text;background-clip:text;color:transparent}
+.fh-sub{margin:0;color:var(--fh-muted);font-size:clamp(15px,1.6vw,17px);line-height:1.55;max-width:48ch}
+
+/* dashboard panel */
+.fh-win{border:1px solid var(--fh-line2);border-radius:16px;overflow:hidden;background:var(--fh-panel2);
+  box-shadow:0 40px 90px -50px rgba(0,0,0,.85),0 0 0 1px rgba(255,122,33,.05)}
+.fh-bar{display:flex;align-items:center;gap:7px;padding:10px 13px;background:#0d1521;border-bottom:1px solid var(--fh-line)}
+.fh-bar i{width:9px;height:9px;border-radius:50%;background:var(--fh-line2)}
+.fh-bar i:nth-child(1){background:#ff5f57}.fh-bar i:nth-child(2){background:#febc2e}.fh-bar i:nth-child(3){background:#28c840}
+.fh-bar .u{margin-left:8px;font-family:var(--fh-mono);font-size:11px;color:var(--fh-muted)}
+.fh-body{padding:15px}
+.fh-paid{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid rgba(190,242,100,.4);
+  background:linear-gradient(150deg,rgba(190,242,100,.14),transparent);border-radius:13px;padding:14px;margin-bottom:12px}
+.fh-paid .l{font-family:var(--fh-mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--fh-muted2)}
+.fh-paid .amt{font-size:clamp(24px,3vw,30px);font-weight:800;font-variant-numeric:tabular-nums;color:var(--fh-lime);line-height:1;margin-top:4px}
+.fh-badge{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:var(--fh-lime);
+  border:1px solid rgba(190,242,100,.32);background:rgba(190,242,100,.1);border-radius:12px;padding:9px 12px;white-space:nowrap}
+.fh-badge .ck{width:18px;height:18px;border-radius:50%;background:var(--fh-lime);color:#0c1a08;display:grid;place-items:center;font-weight:900;font-size:11px}
+@media (prefers-reduced-motion:no-preference){ .fh-badge{ animation:fh-pulse 2.6s ease-in-out infinite } }
+@keyframes fh-pulse{0%,100%{box-shadow:0 0 0 0 rgba(190,242,100,0)}50%{box-shadow:0 0 0 5px rgba(190,242,100,.09)}}
+.fh-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fh-cell{border:1px solid var(--fh-line);border-radius:11px;background:rgba(255,255,255,.02);padding:11px;display:flex;align-items:center;gap:10px}
+.fh-cell .ic{width:32px;height:32px;flex:0 0 auto;border-radius:8px;display:grid;place-items:center;border:1px solid var(--fh-line);color:var(--fh-muted2)}
+.fh-cell .ic svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.fh-cell b{font-size:12.5px;font-weight:600;color:var(--fh-ink)}
+.fh-cell small{font-family:var(--fh-mono);font-size:10px;color:var(--fh-muted2);display:block;margin-top:2px}
+.fh-cell .star{color:var(--fh-gold)}
+.fh-cell.pri{border-color:rgba(255,122,33,.42);background:linear-gradient(160deg,rgba(255,122,33,.13),transparent)}
+.fh-cell.pri .ic{color:var(--fh-orange);border-color:rgba(255,122,33,.5)}
+@media (max-width:480px){ .fh-grid{ grid-template-columns:1fr } }
+
+/* JS-gated staggered reveal — cells stay visible without JS / reduced motion */
+@media (prefers-reduced-motion:no-preference){
+  .fh-win.fh-play .fh-cell{opacity:0;animation:fh-pop .55s cubic-bezier(.2,.7,.2,1) both}
+  .fh-win.fh-play .fh-cell:nth-child(2){animation-delay:80ms}
+  .fh-win.fh-play .fh-cell:nth-child(3){animation-delay:150ms}
+  .fh-win.fh-play .fh-cell:nth-child(4){animation-delay:220ms}
+}
+@keyframes fh-pop{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
