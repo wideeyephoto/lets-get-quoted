@@ -21,6 +21,7 @@ const STRIPE_ICON = (
 
 type Props = {
   stripeOnboarded: boolean;
+  payoutsPaused?: boolean;
   connectStripeAction: () => Promise<void>;
   disconnectStripeAction: () => Promise<void>;
   pendingPaymentsCount: number;
@@ -28,7 +29,7 @@ type Props = {
 
 // The Stripe payout account — split out of SignInMethods so it can live under
 // the Payments tab (where owners look for it) instead of alongside sign-in.
-export default function PayoutAccount({ stripeOnboarded, connectStripeAction, disconnectStripeAction, pendingPaymentsCount }: Props) {
+export default function PayoutAccount({ stripeOnboarded, payoutsPaused = false, connectStripeAction, disconnectStripeAction, pendingPaymentsCount }: Props) {
   const router = useRouter();
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [disconnectingStripe, setDisconnectingStripe] = useState(false);
@@ -75,12 +76,16 @@ export default function PayoutAccount({ stripeOnboarded, connectStripeAction, di
               <span className="method-icon method-icon-stripe">{STRIPE_ICON}</span>
               <div>
                 <span className="method-name">Stripe</span>
-                <span className="method-detail">{stripeOnboarded ? 'Payouts active' : 'Not connected'}</span>
+                <span className="method-detail">{payoutsPaused ? 'Payouts paused — action needed' : stripeOnboarded ? 'Payouts active' : 'Not connected'}</span>
               </div>
             </div>
             <div className="actions">
-              {stripeOnboarded ? <span className="sign-in-method-badge linked">Connected</span> : null}
-              {stripeOnboarded ? (
+              {payoutsPaused ? (
+                <span className="sign-in-method-badge" style={{ color: '#ffb27a', borderColor: 'rgba(255,122,33,.45)' }}>Paused</span>
+              ) : stripeOnboarded ? (
+                <span className="sign-in-method-badge linked">Connected</span>
+              ) : null}
+              {stripeOnboarded || payoutsPaused ? (
                 <>
                   <a href="https://dashboard.stripe.com" target="_blank" rel="noreferrer" className="btn secondary">Manage on Stripe</a>
                   <button type="button" className="btn danger" disabled={disconnectingStripe} onClick={handleDisconnectStripe}>
@@ -94,7 +99,12 @@ export default function PayoutAccount({ stripeOnboarded, connectStripeAction, di
               )}
             </div>
           </div>
-          {stripeOnboarded && pendingPaymentsCount > 0 ? (
+          {payoutsPaused ? (
+            <p className="workspace-card-copy" style={{ color: '#ffd166', marginTop: '-0.4rem' }} role="alert">
+              ⚠️ Stripe paused your payouts — homeowners can&apos;t pay you until it&apos;s resolved. Open <strong>Manage on Stripe</strong>, finish any verification Stripe is asking for, and payouts reactivate automatically.
+            </p>
+          ) : null}
+          {stripeOnboarded && !payoutsPaused && pendingPaymentsCount > 0 ? (
             <p className="workspace-card-copy" style={{ color: '#ffd166', marginTop: '-0.4rem' }} role="status">
               ⚠️ {pendingPaymentsCount} pending payment{pendingPaymentsCount === 1 ? '' : 's'} awaiting completion. Disconnecting won&apos;t cancel {pendingPaymentsCount === 1 ? 'it' : 'them'}, but homeowners won&apos;t be able to pay until you reconnect.
             </p>

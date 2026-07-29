@@ -56,7 +56,7 @@ export default async function SettingsPage({
     await Promise.all([
       supabase.auth.getUser(),
       supabase.auth.getUserIdentities(),
-      supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded, schedule_day_hours').eq('id', accountId).single(),
+      supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded, connect_disabled_at, schedule_day_hours').eq('id', accountId).single(),
       supabase.from('sites').select('id, company_name, content').eq('account_id', accountId).maybeSingle(),
       getAvailableTaxYears(supabase, accountId),
       supabase
@@ -192,7 +192,7 @@ export default async function SettingsPage({
         tabs={[
           {
             id: 'account',
-            label: 'Account',
+            label: 'Login & security',
             content: (
               <>
                 <section className="panel workspace-section-card">
@@ -201,21 +201,12 @@ export default async function SettingsPage({
                     phone={userData.user?.phone ?? null}
                     providers={providers}
                   />
-                </section>
-
-                <section className="panel workspace-section-card">
-                  <div className="section-heading workspace-section-heading compact-heading">
-                    <p className="eyebrow">Session</p>
-                    <h2>Log out</h2>
+                  <div className="signout-row">
+                    <span className="field-hint" style={{ margin: 0 }}>Signed in on this device — you&apos;ll need to sign back in after logging out.</span>
+                    <form action="/auth/signout" method="post">
+                      <button type="submit" className="btn secondary">Log out</button>
+                    </form>
                   </div>
-                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-                    Sign out of this device. You&apos;ll need to sign back in to access your dashboard.
-                  </p>
-                  <form action="/auth/signout" method="post">
-                    <button type="submit" className="btn danger">
-                      Log out
-                    </button>
-                  </form>
                 </section>
 
                 <section className="panel workspace-section-card danger-zone">
@@ -241,6 +232,7 @@ export default async function SettingsPage({
                 <section className="panel workspace-section-card">
                   <PayoutAccount
                     stripeOnboarded={account?.connect_onboarded ?? false}
+                    payoutsPaused={Boolean(account?.connect_disabled_at)}
                     connectStripeAction={connectStripeAction}
                     disconnectStripeAction={disconnectStripeAction}
                     pendingPaymentsCount={pendingPaymentsCount ?? 0}
@@ -556,6 +548,7 @@ export default async function SettingsPage({
             anchors: ['business-basics', 'import', 'export', 'marketing-address', 'finances'],
             content: (
               <>
+                <p className="automation-group">Business info</p>
                 <section className="panel workspace-section-card" id="business-basics">
                   <div className="section-heading workspace-section-heading compact-heading">
                     <p className="eyebrow">Business basics</p>
@@ -584,40 +577,6 @@ export default async function SettingsPage({
                       <SaveButton>Save business basics</SaveButton>
                     </div>
                   </form>
-                </section>
-
-                <section className="panel workspace-section-card" id="import">
-                  <div className="section-heading workspace-section-heading compact-heading">
-                    <p className="eyebrow">Get set up</p>
-                    <h2>Import &amp; migrate</h2>
-                  </div>
-                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-                    Moving in from another CRM? Drop in everything you exported — customers, price list, jobs,
-                    invoices — in any format (CSV, Excel, or phone contacts). We figure out what each file is,
-                    match the columns for you, and import them in the right order. Nothing is written until you
-                    confirm.
-                  </p>
-                  <div className="workspace-inline-row">
-                    <Link href="/dashboard/import" className="btn primary">Migrate from another CRM</Link>
-                    <Link href="/dashboard/clients/import" className="btn secondary">Import customers</Link>
-                  </div>
-                </section>
-
-                <section className="panel workspace-section-card" id="export">
-                  <div className="section-heading workspace-section-heading compact-heading">
-                    <p className="eyebrow">Take it with you</p>
-                    <h2>Export my data</h2>
-                  </div>
-                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-                    Download your records as CSV — one file per list. The columns match what the importer
-                    accepts, so anything you export here can be re-imported as-is. It&apos;s your data; no lock-in.
-                  </p>
-                  <div className="workspace-inline-row">
-                    <a href="/api/export/clients" className="btn secondary">⬇ Customers (CSV)</a>
-                    <a href="/api/export/services" className="btn secondary">⬇ Price book (CSV)</a>
-                    <a href="/api/export/jobs" className="btn secondary">⬇ Jobs (CSV)</a>
-                    <a href="/api/export/invoices" className="btn secondary">⬇ Invoices (CSV)</a>
-                  </div>
                 </section>
 
                 <section className="panel workspace-section-card">
@@ -673,6 +632,41 @@ export default async function SettingsPage({
                       <SaveButton>Save mailing address</SaveButton>
                     </div>
                   </form>
+                </section>
+
+                <p className="automation-group">Your data &amp; taxes</p>
+                <section className="panel workspace-section-card" id="import">
+                  <div className="section-heading workspace-section-heading compact-heading">
+                    <p className="eyebrow">Get set up</p>
+                    <h2>Import &amp; migrate</h2>
+                  </div>
+                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                    Moving in from another CRM? Drop in everything you exported — customers, price list, jobs,
+                    invoices — in any format (CSV, Excel, or phone contacts). We figure out what each file is,
+                    match the columns for you, and import them in the right order. Nothing is written until you
+                    confirm.
+                  </p>
+                  <div className="workspace-inline-row">
+                    <Link href="/dashboard/import" className="btn primary">Migrate from another CRM</Link>
+                    <Link href="/dashboard/clients/import" className="btn secondary">Import customers</Link>
+                  </div>
+                </section>
+
+                <section className="panel workspace-section-card" id="export">
+                  <div className="section-heading workspace-section-heading compact-heading">
+                    <p className="eyebrow">Take it with you</p>
+                    <h2>Export my data</h2>
+                  </div>
+                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                    Download your records as CSV — one file per list. The columns match what the importer
+                    accepts, so anything you export here can be re-imported as-is. It&apos;s your data; no lock-in.
+                  </p>
+                  <div className="workspace-inline-row">
+                    <a href="/api/export/clients" className="btn secondary">⬇ Customers (CSV)</a>
+                    <a href="/api/export/services" className="btn secondary">⬇ Price book (CSV)</a>
+                    <a href="/api/export/jobs" className="btn secondary">⬇ Jobs (CSV)</a>
+                    <a href="/api/export/invoices" className="btn secondary">⬇ Invoices (CSV)</a>
+                  </div>
                 </section>
 
                 <section className="panel workspace-section-card" id="finances">
