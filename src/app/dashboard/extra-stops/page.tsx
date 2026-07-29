@@ -65,19 +65,35 @@ export default async function ExtraStopsPage() {
           <div style={{ marginTop: '.6rem' }}>
             <AutomationLink id="extra-stop" label="Extra Stop settings" on />
           </div>
-        ) : (
-          <p className="payment-banner muted" style={{ marginTop: '.5rem' }}>
-            Extra Stop is currently off. Turn it on in <Link href="/dashboard/settings#extra-stop">Settings → Automations → Extra Stop</Link> to start receiving requests.
-          </p>
-        )}
+        ) : null}
 
-        {active.length === 0 ? (
-          <p className="empty-state" style={{ marginTop: '1rem' }}>No active Extra Stop requests right now.</p>
-        ) : (
+        {active.length > 0 ? (
           <div style={{ marginTop: '1rem' }}>
             {activeCards.map(({ r, route, photoUrls }) => (
               <ExtraStopRequestCard key={r.id} request={r as unknown as CardRequest} route={route} photoUrls={photoUrls} defaults={defaults} />
             ))}
+          </div>
+        ) : !settings.enabled && !settings.locked ? (
+          <div className="extra-stop-empty">
+            <span className="extra-stop-empty-mark" aria-hidden="true">📍</span>
+            <h3>Turn on Extra Stop to fill gaps in today&apos;s route</h3>
+            <p>
+              When it&apos;s on, nearby customers can ask to be squeezed onto the end of your route today. You review
+              each request, propose an arrival window, and set a one-off fee &mdash; and they only pay once they
+              approve the time and price. It runs alongside normal booking with its own daily limit, and skips your
+              usual minimum-value and soonest-booking rules.
+            </p>
+            <Link href="/dashboard/settings#extra-stop" className="btn primary">Turn on Extra Stop &rarr;</Link>
+          </div>
+        ) : (
+          <div className="extra-stop-empty">
+            <span className="extra-stop-empty-mark" aria-hidden="true">📍</span>
+            <h3>{settings.locked ? 'No active requests while locked' : "You're all set — waiting on requests"}</h3>
+            <p>
+              {settings.locked
+                ? 'New Extra Stop requests are paused until the lock lifts. Anything already in progress will still appear here.'
+                : 'When a customer requests an Extra Stop from your Book page, it lands here and we text and email you right away.'}
+            </p>
           </div>
         )}
       </section>
