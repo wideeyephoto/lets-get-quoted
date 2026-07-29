@@ -38,7 +38,6 @@ export default async function ClientsPage() {
           <div className="workspace-inline-row">
             <span className="status-badge status-in_progress">{clients.length} client{clients.length === 1 ? '' : 's'}</span>
             {repeatCount > 0 ? <span className="status-badge status-complete">{repeatCount} repeat</span> : null}
-            <Link href="/dashboard/clients/import" className="btn secondary">Import customers</Link>
           </div>
         </div>
       </section>
@@ -55,6 +54,10 @@ export default async function ClientsPage() {
           <ClientsSearchList clients={searchRows} />
         </section>
       )}
+
+      <div className="actions" style={{ marginTop: '1.25rem' }}>
+        <Link href="/dashboard/clients/import" className="btn secondary">Import customers</Link>
+      </div>
     </main>
   );
 }
