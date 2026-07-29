@@ -105,7 +105,7 @@
     border:1px solid var(--line-2);border-radius:20px;padding:clamp(24px,3vw,40px);overflow:hidden;
     background:linear-gradient(180deg,#0d1a28,#091320);
     box-shadow:0 50px 120px -60px rgba(0,0,0,.9),0 0 0 1px color-mix(in srgb,var(--ck) 10%,transparent),inset 0 1px 0 rgba(255,255,255,.04)}
-  .fw-copy.is-active{opacity:1;transform:none;pointer-events:auto;z-index:1}
+  .fw-copy.is-active{opacity:1;transform:none;pointer-events:auto;z-index:1;box-shadow:0 50px 120px -60px rgba(0,0,0,.9),0 0 0 1px color-mix(in srgb,var(--ck) 30%,transparent),0 0 46px -10px color-mix(in srgb,var(--ck) 42%,transparent),inset 0 1px 0 rgba(255,255,255,.05)}
   .fw-copy::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,var(--ck),transparent 72%)}
   .fw-copy-top{display:flex;align-items:center;gap:12px}
   .fw-copy-ic{flex:0 0 auto;width:42px;height:42px;border-radius:11px;display:grid;place-items:center;border:1px solid color-mix(in srgb,var(--ck) 30%,var(--line));background:color-mix(in srgb,var(--ck) 12%,transparent);color:var(--ck)}
@@ -329,10 +329,13 @@
       linear-gradient(180deg,var(--panel),var(--rail));
     box-shadow:0 40px 100px -60px rgba(0,0,0,.9),0 0 0 1px color-mix(in srgb,var(--cc) 13%,transparent),0 26px 60px -46px color-mix(in srgb,var(--cc) 42%,transparent),inset 0 1px 0 rgba(255,255,255,.05);
     transform-origin:50% 120%;will-change:transform,opacity;
-    transition:opacity .85s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1)}
+    transition:opacity .85s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1),box-shadow .45s ease,border-color .45s ease}
   /* modern parallax scroll-into-frame: cards lift + tilt up into place */
   .fw-scope.cc-anim .cc-card{opacity:0;transform:translateY(80px) rotateX(8deg) scale(.94)}
   .fw-scope.cc-anim .cc-card.in{opacity:1;transform:none}
+  /* the card you're scrolled onto lights up its accent border (see cc-live in FeatureWheelStory.tsx) */
+  .cc-card.cc-live{border-color:color-mix(in srgb,var(--cc) 55%,var(--line-2));
+    box-shadow:0 40px 100px -60px rgba(0,0,0,.9),0 0 0 1px color-mix(in srgb,var(--cc) 42%,transparent),0 0 42px -6px color-mix(in srgb,var(--cc) 50%,transparent),inset 0 1px 0 rgba(255,255,255,.06)}
   .cc-card::before{content:"";position:absolute;left:0;top:0;right:0;height:3px;background:linear-gradient(90deg,var(--cc),color-mix(in srgb,var(--cc) 32%,transparent) 55%,transparent 82%)}
   .cc-card-head{display:flex;align-items:flex-start;gap:13px;margin-bottom:16px;will-change:transform}
   .cc-card-ic{width:42px;height:42px;flex:0 0 auto;border-radius:11px;display:grid;place-items:center;border:1px solid color-mix(in srgb,var(--cc) 34%,var(--line));background:color-mix(in srgb,var(--cc) 15%,transparent);color:var(--cc)}

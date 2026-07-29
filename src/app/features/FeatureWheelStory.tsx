@@ -140,6 +140,8 @@ export default function FeatureWheelStory() {
       let ticking = false;
       const frame = () => {
         const vh = window.innerHeight;
+        let live = -1;
+        let liveDist = Infinity;
         cards.forEach((c, i) => {
           const r = c.getBoundingClientRect();
           if (r.bottom < -90 || r.top > vh + 90) return;
@@ -148,7 +150,15 @@ export default function FeatureWheelStory() {
           if (s) s.style.transform = `translateY(${(f * -28).toFixed(1)}px)`;
           const h = heads[i];
           if (h) h.style.transform = `translateY(${(f * 12).toFixed(1)}px)`;
+          // the card nearest the viewport centre becomes "live" and lights up
+          const centre = r.top + r.height / 2;
+          const dist = Math.abs(centre - vh / 2);
+          if (centre > vh * 0.12 && centre < vh * 0.88 && dist < liveDist) {
+            liveDist = dist;
+            live = i;
+          }
         });
+        cards.forEach((c, i) => c.classList.toggle('cc-live', i === live));
         ticking = false;
       };
       const onScroll = () => {
