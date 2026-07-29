@@ -2,7 +2,14 @@ import type { ReactNode } from 'react';
 import { createAdminClient } from '@/lib/auth';
 import { getExtraStopRequestById } from '@/lib/extra-stop-requests';
 import { EXTRA_STOP_STATUS_LABEL, centsToDollars, type ExtraStopStatus } from '@/lib/extra-stop';
-import { customerCancelExtraStopAction, reportNoShowExtraStopAction } from './actions';
+import {
+  customerCancelExtraStopAction,
+  reportNoShowExtraStopAction,
+  acceptRevisedWindowExtraStopAction,
+  declineRevisedWindowExtraStopAction,
+  approveDiagnosticConversionAction,
+  declineDiagnosticConversionAction,
+} from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -68,8 +75,45 @@ export default async function ExtraStopStatusPage({
 
       {searchParams.done === 'canceled' ? <section className="panel workspace-section-card"><p className="payment-banner success">Your Extra Stop was canceled. Any refund due has been issued.</p></section> : null}
       {searchParams.done === 'no_show' ? <section className="panel workspace-section-card"><p className="payment-banner success">Thanks — we’ve recorded the no-show and issued a full refund.</p></section> : null}
+      {searchParams.done === 'window_accepted' ? <section className="panel workspace-section-card"><p className="payment-banner success">New arrival window confirmed.</p></section> : null}
+      {searchParams.done === 'window_declined' ? <section className="panel workspace-section-card"><p className="payment-banner muted">No problem — your original arrival window still stands.</p></section> : null}
+      {searchParams.done === 'diag_approved' ? <section className="panel workspace-section-card"><p className="payment-banner success">Diagnostic visit approved. If there’s an additional charge, we’ve texted you a payment link.</p></section> : null}
+      {searchParams.done === 'diag_declined' ? <section className="panel workspace-section-card"><p className="payment-banner muted">Understood — your Extra Stop continues as booked.</p></section> : null}
       {searchParams.error === 'state' ? <section className="panel workspace-section-card"><p className="payment-banner warning">That action isn’t available for this Extra Stop anymore.</p></section> : null}
       {searchParams.error === 'late' ? <section className="panel workspace-section-card"><p className="payment-banner warning">The 2-hour window to report a no-show has passed. Please contact your card issuer or Stripe for help.</p></section> : null}
+
+      {req.proposed_arrival_date && ['confirmed', 'en_route'].includes(status) ? (
+        <section className="panel workspace-section-card" style={{ borderColor: 'rgba(255,209,102,.4)' }}>
+          <div className="section-heading workspace-section-heading compact-heading">
+            <p className="eyebrow">Action needed</p>
+            <h2>New arrival window proposed</h2>
+          </div>
+          <p className="workspace-details-copy" style={{ marginTop: '.5rem' }}>
+            {businessName} would like to move your arrival window to <strong>{req.proposed_arrival_date}, {fmtTime(req.proposed_arrival_start)}–{fmtTime(req.proposed_arrival_end)}</strong>. Your original window stays in place unless you accept.
+          </p>
+          <div style={{ display: 'flex', gap: '.5rem', marginTop: '1rem' }}>
+            <form action={acceptRevisedWindowExtraStopAction.bind(null, req.id)}><button type="submit" className="btn primary">Accept new window</button></form>
+            <form action={declineRevisedWindowExtraStopAction.bind(null, req.id)}><button type="submit" className="btn secondary">Keep original</button></form>
+          </div>
+        </section>
+      ) : null}
+
+      {req.diagnostic_conversion === 'proposed' ? (
+        <section className="panel workspace-section-card" style={{ borderColor: 'rgba(255,209,102,.4)' }}>
+          <div className="section-heading workspace-section-heading compact-heading">
+            <p className="eyebrow">Action needed</p>
+            <h2>Diagnostic visit suggested</h2>
+          </div>
+          <p className="workspace-details-copy" style={{ marginTop: '.5rem' }}>
+            {businessName} recommends turning this into a diagnostic visit{req.diagnostic_proposed_cents ? <> for <strong>{money(req.diagnostic_proposed_cents)}</strong> total</> : null}. Your Extra Stop fee{req.fee_cents ? <> of {money(req.fee_cents)}</> : null} applies as a deposit — you’d only pay the difference.
+          </p>
+          {req.diagnostic_note ? <p className="job-meta" style={{ marginTop: '.5rem' }}>“{req.diagnostic_note}”</p> : null}
+          <div style={{ display: 'flex', gap: '.5rem', marginTop: '1rem' }}>
+            <form action={approveDiagnosticConversionAction.bind(null, req.id)}><button type="submit" className="btn primary">Approve diagnostic</button></form>
+            <form action={declineDiagnosticConversionAction.bind(null, req.id)}><button type="submit" className="btn secondary">No thanks</button></form>
+          </div>
+        </section>
+      ) : null}
 
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading compact-heading">

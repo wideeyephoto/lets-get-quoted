@@ -1446,3 +1446,25 @@ drop policy if exists extra_stop_events_owner on extra_stop_events;
 -- RLS — the same pattern used by booking_holds / leads.
 create policy extra_stop_requests_owner on extra_stop_requests for all using ( is_owner(account_id) );
 create policy extra_stop_events_owner on extra_stop_events for all using ( is_owner(account_id) );
+
+-- Extra Stop Phase 2: editable refund tiers, revised-window negotiation, and
+-- on-site diagnostic conversion. All additive/nullable — nothing changes until
+-- a contractor uses these paths.
+-- Per-account refund-tier overrides (percent + grace minutes) as JSON; null =
+-- the built-in defaults (see src/lib/extra-stop-refunds.ts).
+alter table accounts add column if not exists extra_stop_refund_tiers jsonb;
+-- Revised arrival window a contractor proposes AFTER confirmation. The customer
+-- must explicitly accept before it replaces the live window; otherwise the
+-- original stands (no silent extension).
+alter table extra_stop_requests add column if not exists proposed_arrival_date date;
+alter table extra_stop_requests add column if not exists proposed_arrival_start time;
+alter table extra_stop_requests add column if not exists proposed_arrival_end time;
+alter table extra_stop_requests add column if not exists proposed_window_at timestamptz;
+-- On-site diagnostic conversion: contractor proposes turning the visit into a
+-- diagnostic appointment; the customer must approve applying the Extra Stop fee
+-- as a deposit + any extra diagnostic charge before it takes effect.
+alter table extra_stop_requests add column if not exists diagnostic_conversion text; -- null | proposed | approved | declined
+alter table extra_stop_requests add column if not exists diagnostic_proposed_cents integer;
+alter table extra_stop_requests add column if not exists diagnostic_note text;
+alter table extra_stop_requests add column if not exists diagnostic_payment_id uuid references payments(id) on delete set null;
+alter table extra_stop_requests add column if not exists diagnostic_decided_at timestamptz;

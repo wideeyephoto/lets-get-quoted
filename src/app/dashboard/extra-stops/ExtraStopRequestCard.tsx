@@ -11,6 +11,8 @@ import {
   markArrivedExtraStopAction,
   completeExtraStopAction,
   cancelExtraStopByContractorAction,
+  proposeRevisedWindowExtraStopAction,
+  proposeDiagnosticConversionAction,
 } from './actions';
 
 export type CardRequest = {
@@ -32,6 +34,11 @@ export type CardRequest = {
   arrival_start: string | null;
   arrival_end: string | null;
   response_deadline_at: string | null;
+  proposed_arrival_date: string | null;
+  proposed_arrival_start: string | null;
+  proposed_arrival_end: string | null;
+  diagnostic_conversion: 'proposed' | 'approved' | 'declined' | null;
+  diagnostic_proposed_cents: number | null;
   created_at: string;
 };
 
@@ -72,7 +79,7 @@ export default function ExtraStopRequestCard({ request, photoUrls, route, defaul
   route: CardRoute | null;
   defaults: CardDefaults;
 }) {
-  const [mode, setMode] = useState<'idle' | 'offer' | 'decline' | 'info' | 'cancel'>('idle');
+  const [mode, setMode] = useState<'idle' | 'offer' | 'decline' | 'info' | 'cancel' | 'window' | 'diag'>('idle');
   const [arriving, setArriving] = useState(false);
   const router = useRouter();
   const countdown = useCountdown(request.status === 'awaiting_contractor' ? request.response_deadline_at : null);
@@ -160,6 +167,10 @@ export default function ExtraStopRequestCard({ request, photoUrls, route, defaul
               ) : null}
               <form action={completeExtraStopAction.bind(null, request.id)}><button type="submit" className="btn secondary">Mark complete</button></form>
               {request.status === 'confirmed' || request.status === 'en_route' ? (
+                <button type="button" className="btn secondary" onClick={() => setMode('window')}>Propose new window</button>
+              ) : null}
+              <button type="button" className="btn secondary" onClick={() => setMode('diag')}>Convert to diagnostic</button>
+              {request.status === 'confirmed' || request.status === 'en_route' ? (
                 mode === 'cancel' ? (
                   <form action={cancelExtraStopByContractorAction.bind(null, request.id)} style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
                     <input name="reason" placeholder="Reason (optional)" />
@@ -171,6 +182,42 @@ export default function ExtraStopRequestCard({ request, photoUrls, route, defaul
                 )
               ) : null}
             </div>
+          ) : null}
+
+          {isLive && request.proposed_arrival_date ? (
+            <p className="payment-banner muted" style={{ marginTop: '.75rem' }}>Proposed new window {request.proposed_arrival_date}, {request.proposed_arrival_start}–{request.proposed_arrival_end} — awaiting the customer.</p>
+          ) : null}
+          {isLive && request.diagnostic_conversion === 'proposed' ? (
+            <p className="payment-banner muted" style={{ marginTop: '.75rem' }}>Diagnostic conversion proposed ({money(request.diagnostic_proposed_cents)}) — awaiting the customer.</p>
+          ) : null}
+          {request.diagnostic_conversion === 'approved' ? (
+            <p className="payment-banner success" style={{ marginTop: '.75rem' }}>Diagnostic conversion approved{request.diagnostic_proposed_cents ? ` (${money(request.diagnostic_proposed_cents)} total)` : ''}.</p>
+          ) : null}
+          {request.diagnostic_conversion === 'declined' ? (
+            <p className="payment-banner muted" style={{ marginTop: '.75rem' }}>The customer declined the diagnostic conversion.</p>
+          ) : null}
+
+          {isLive && mode === 'window' ? (
+            <form action={proposeRevisedWindowExtraStopAction.bind(null, request.id)} className="form-grid" style={{ marginTop: '1rem' }}>
+              <div className="field"><label htmlFor={`pd-${request.id}`}>New date</label><input id={`pd-${request.id}`} name="proposedDate" type="date" defaultValue={request.arrival_date || todayKey()} required /></div>
+              <div className="field"><label htmlFor={`ps-${request.id}`}>Start</label><input id={`ps-${request.id}`} name="proposedStart" type="time" defaultValue={request.arrival_start ?? '08:00'} required /></div>
+              <div className="field"><label htmlFor={`pe-${request.id}`}>End</label><input id={`pe-${request.id}`} name="proposedEnd" type="time" defaultValue={request.arrival_end ?? '20:00'} required /></div>
+              <div className="field full" style={{ display: 'flex', gap: '.5rem' }}>
+                <button type="submit" className="btn primary">Propose window (customer must accept)</button>
+                <button type="button" className="btn secondary" onClick={() => setMode('idle')}>Cancel</button>
+              </div>
+            </form>
+          ) : null}
+
+          {isLive && mode === 'diag' ? (
+            <form action={proposeDiagnosticConversionAction.bind(null, request.id)} className="form-grid" style={{ marginTop: '1rem' }}>
+              <div className="field"><label htmlFor={`dt-${request.id}`}>Diagnostic total ($)</label><input id={`dt-${request.id}`} name="diagnosticTotal" type="number" min="1" step="5" required /><small className="field-hint">The Extra Stop fee already paid applies as a deposit; the customer is billed only the difference.</small></div>
+              <div className="field full"><label htmlFor={`dn-${request.id}`}>Note (optional)</label><textarea id={`dn-${request.id}`} name="note" rows={2} placeholder="Found the leak is behind the wall — needs a proper diagnostic." /></div>
+              <div className="field full" style={{ display: 'flex', gap: '.5rem' }}>
+                <button type="submit" className="btn primary">Propose conversion (customer must approve)</button>
+                <button type="button" className="btn secondary" onClick={() => setMode('idle')}>Cancel</button>
+              </div>
+            </form>
           ) : null}
         </>
       ) : (

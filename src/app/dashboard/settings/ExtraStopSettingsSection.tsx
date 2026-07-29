@@ -8,9 +8,11 @@ import SaveButton from '@/components/save-button';
 // BookingAvailabilitySection) so the caller just passes the row. Fees are stored
 // in cents; shown/entered here in dollars and converted in the action.
 export type ExtraStopSettingsRow = Parameters<typeof extraStopSettingsFromAccount>[0];
+export type RefundTierValues = { withinGraceMinutes: number; grace: number; beforeEnRoute: number; afterEnRoute: number; afterArrived: number };
 
-export default function ExtraStopSettingsSection({ extraStop }: { extraStop: ExtraStopSettingsRow }) {
+export default function ExtraStopSettingsSection({ extraStop, refundTiers }: { extraStop: ExtraStopSettingsRow; refundTiers: RefundTierValues }) {
   const s = extraStopSettingsFromAccount(extraStop);
+  const t = refundTiers;
 
   return (
     <section className="panel workspace-section-card" id="extra-stop">
@@ -122,6 +124,32 @@ export default function ExtraStopSettingsSection({ extraStop }: { extraStop: Ext
           <input id="extraStopRequireAiApproval" name="extraStopRequireAiApproval" type="checkbox" defaultChecked={s.requireAiApproval} />
           <span>Require the AI eligibility check to pass before Extra Stop is offered (recommended &mdash; keeps out complex, unsafe, or out-of-scope jobs).</span>
         </label>
+
+        <div className="field full" style={{ marginTop: '.5rem', paddingTop: '.75rem', borderTop: '1px solid rgba(255,255,255,.1)' }}>
+          <label>Cancellation refund policy</label>
+          <small className="field-hint">If a customer cancels, how much of the Extra Stop fee they get back, by how far along the visit is. Contractor cancellations and verified no-shows are always refunded in full.</small>
+        </div>
+        <div className="field">
+          <label htmlFor="refundGraceMinutes">Free-cancel window (minutes)</label>
+          <input id="refundGraceMinutes" name="refundGraceMinutes" type="number" min="0" max="120" step="1" defaultValue={t.withinGraceMinutes} />
+          <small className="field-hint">Full refund if canceled within this long after paying.</small>
+        </div>
+        <div className="field">
+          <label htmlFor="refundGrace">Within window (%)</label>
+          <input id="refundGrace" name="refundGrace" type="number" min="0" max="100" step="5" defaultValue={t.grace} />
+        </div>
+        <div className="field">
+          <label htmlFor="refundBeforeEnRoute">Before en route (%)</label>
+          <input id="refundBeforeEnRoute" name="refundBeforeEnRoute" type="number" min="0" max="100" step="5" defaultValue={t.beforeEnRoute} />
+        </div>
+        <div className="field">
+          <label htmlFor="refundAfterEnRoute">After en route (%)</label>
+          <input id="refundAfterEnRoute" name="refundAfterEnRoute" type="number" min="0" max="100" step="5" defaultValue={t.afterEnRoute} />
+        </div>
+        <div className="field">
+          <label htmlFor="refundAfterArrived">After arrival (%)</label>
+          <input id="refundAfterArrived" name="refundAfterArrived" type="number" min="0" max="100" step="5" defaultValue={t.afterArrived} />
+        </div>
 
         <div className="form-actions">
           <SaveButton>Save Extra Stop settings</SaveButton>

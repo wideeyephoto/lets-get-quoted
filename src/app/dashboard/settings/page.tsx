@@ -13,6 +13,7 @@ import { ESTIMATE_POSTURES, normalizeEstimatePosture } from '@/lib/estimate-post
 import { getSiteContent } from '@/lib/site-content';
 import { WEEKDAY_LABELS, BOOKING_WINDOW_PRESETS, TIMEZONE_OPTIONS, bookingAvailabilityFromAccount } from '@/lib/booking-availability';
 import { EXTRA_STOP_SETTINGS_COLUMNS } from '@/lib/extra-stop';
+import { loadRefundTiers } from '@/lib/extra-stop-refunds';
 import ExtraStopSettingsSection from './ExtraStopSettingsSection';
 
 function formatDate(value: string): string {
@@ -81,6 +82,7 @@ export default async function SettingsPage({
     .select(EXTRA_STOP_SETTINGS_COLUMNS)
     .eq('id', accountId)
     .single();
+  const extraStopRefundTiers = await loadRefundTiers(supabase, accountId);
   const instantBookEnabled = Boolean(bookingSettings?.instant_book_enabled);
   const instantBookMinAmount = bookingSettings?.instant_book_min_amount ? Number(bookingSettings.instant_book_min_amount) : 0;
   const instantBookRadius = bookingSettings?.instant_book_radius_miles ? Number(bookingSettings.instant_book_radius_miles) : 15;
@@ -423,7 +425,7 @@ export default async function SettingsPage({
                   </form>
                 </section>
 
-                <ExtraStopSettingsSection extraStop={extraStopSettings as Parameters<typeof ExtraStopSettingsSection>[0]['extraStop']} />
+                <ExtraStopSettingsSection extraStop={extraStopSettings as Parameters<typeof ExtraStopSettingsSection>[0]['extraStop']} refundTiers={extraStopRefundTiers} />
 
                 <section className="panel workspace-section-card" id="reviews">
                   <div className="section-heading workspace-section-heading compact-heading">

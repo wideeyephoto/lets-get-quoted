@@ -269,3 +269,73 @@ export async function cancelExtraStopByContractorAction(requestId: string, formD
   revalidatePath('/dashboard/extra-stops');
   revalidatePath('/dashboard/schedule');
 }
+
+// ---------------------------------------------------------------------------
+// Phase 2: revised-window negotiation + diagnostic conversion (owner side).
+// ---------------------------------------------------------------------------
+
+const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
+
+// Contractor proposes a NEW arrival window on a confirmed Extra Stop. It only
+// takes effect once the customer accepts (no silent extension). Validated the
+// same way as the original offer window.
+export async function proposeRevisedWindowExtraStopAction(requestId: string, formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const req = await getExtraStopRequest(supabase, accountId, requestId);
+  if (!req) throw new Error('Request not found.');
+  if (!['confirmed', 'en_route'].includes(req.status)) throw new Error('You can only propose a new window on a confirmed Extra Stop.');
+
+  const { data: accountRow } = await supabase.from('accounts').select(EXTRA_STOP_SETTINGS_COLUMNS).eq('id', accountId).single();
+  const settings = extraStopSettingsFromAccount(accountRow as Parameters<typeof extraStopSettingsFromAccount>[0]);
+
+  const d = (formData.get('proposedDate') ?? '').toString().trim();
+  const st = (formData.get('proposedStart') ?? '').toString().trim();
+  const en = (formData.get('proposedEnd') ?? '').toString().trim();
+  if (!d || !st || !en) throw new Error('Set a date and a start/end window.');
+  if (st >= en) throw new Error('The window end must be after its start.');
+  const dow = new Date(`${d}T12:00:00`).getDay();
+  if (settings.weekdays.length && !settings.weekdays.includes(dow)) throw new Error('That day isn’t in your Extra Stop schedule.');
+  if (st < settings.earliestTime) throw new Error(`Arrival can’t start before ${settings.earliestTime}.`);
+  if (en > settings.latestEnd) throw new Error(`The window can’t end after ${settings.latestEnd}.`);
+
+  const nowIso = new Date().toISOString();
+  await supabase
+    .from('extra_stop_requests')
+    .update({ proposed_arrival_date: d, proposed_arrival_start: st, proposed_arrival_end: en, proposed_window_at: nowIso, updated_at: nowIso })
+    .eq('account_id', accountId)
+    .eq('id', requestId)
+    .in('status', ['confirmed', 'en_route']);
+  await logExtraStopEvent(supabase, accountId, requestId, { actor: 'contractor', meta: { proposedWindow: { d, st, en } } });
+  if (req.client_phone) {
+    await sendExtraStopStatusSms({ accountId, toPhone: req.client_phone, message: `Your contractor proposed a new arrival window: ${d}, ${st}–${en}. Accept or decline here: ${APP_ORIGIN}/extra-stop/${requestId}.` });
+  }
+  revalidatePath('/dashboard/extra-stops');
+}
+
+// Contractor proposes converting the visit into a diagnostic appointment. The
+// customer must approve applying the Extra Stop fee as a deposit + any extra
+// charge before it takes effect (the contractor can't convert unilaterally).
+export async function proposeDiagnosticConversionAction(requestId: string, formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const req = await getExtraStopRequest(supabase, accountId, requestId);
+  if (!req) throw new Error('Request not found.');
+  if (!['confirmed', 'en_route', 'arrived'].includes(req.status)) throw new Error('You can only convert a live Extra Stop.');
+
+  const totalCents = dollarsToCents(formData.get('diagnosticTotal'));
+  const note = (formData.get('note') ?? '').toString().trim() || null;
+  if (totalCents <= 0) throw new Error('Enter the diagnostic total.');
+
+  const nowIso = new Date().toISOString();
+  await supabase
+    .from('extra_stop_requests')
+    .update({ diagnostic_conversion: 'proposed', diagnostic_proposed_cents: totalCents, diagnostic_note: note, diagnostic_decided_at: null, updated_at: nowIso })
+    .eq('account_id', accountId)
+    .eq('id', requestId)
+    .in('status', ['confirmed', 'en_route', 'arrived']);
+  await logExtraStopEvent(supabase, accountId, requestId, { actor: 'contractor', meta: { diagnosticProposedCents: totalCents } });
+  if (req.client_phone) {
+    const totalLabel = `$${(totalCents / 100).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+    await sendExtraStopStatusSms({ accountId, toPhone: req.client_phone, message: `Your contractor suggests a diagnostic visit (${totalLabel} total; your Extra Stop fee applies as a deposit). Review & approve here: ${APP_ORIGIN}/extra-stop/${requestId}.` });
+  }
+  revalidatePath('/dashboard/extra-stops');
+}

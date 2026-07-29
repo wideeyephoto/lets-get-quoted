@@ -54,6 +54,17 @@ export type ExtraStopRequest = {
   cancel_reason: string | null;
   no_show_reported_at: string | null;
   no_show_confirmed_at: string | null;
+  // Phase 2: revised-window negotiation
+  proposed_arrival_date: string | null;
+  proposed_arrival_start: string | null;
+  proposed_arrival_end: string | null;
+  proposed_window_at: string | null;
+  // Phase 2: on-site diagnostic conversion
+  diagnostic_conversion: 'proposed' | 'approved' | 'declined' | null;
+  diagnostic_proposed_cents: number | null;
+  diagnostic_note: string | null;
+  diagnostic_payment_id: string | null;
+  diagnostic_decided_at: string | null;
   created_at: string;
   updated_at: string;
 };

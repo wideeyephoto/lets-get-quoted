@@ -16,6 +16,7 @@ import {
 } from '@/lib/booking-availability';
 import { normalizeInstantBookMinAmount, normalizeInstantBookRadiusMiles, normalizeGeoMode } from '@/lib/instant-booking';
 import { extraStopSettingsFromAccount, dollarsToCents } from '@/lib/extra-stop';
+import { mergeRefundTiers } from '@/lib/extra-stop-refunds';
 import { geocodeAddress } from '@/lib/geocode';
 import { normalizeUsPhone } from '@/lib/phone';
 
@@ -200,6 +201,18 @@ export async function updateExtraStopSettingsAction(formData: FormData) {
     .eq('id', accountId);
 
   if (error) throw new Error(error.message);
+
+  // Refund tiers live in their own jsonb column; write them separately and
+  // tolerate a missing column (pre-migration) so the main save never breaks.
+  const tiers = mergeRefundTiers({
+    withinGraceMinutes: formData.get('refundGraceMinutes'),
+    grace: formData.get('refundGrace'),
+    beforeEnRoute: formData.get('refundBeforeEnRoute'),
+    afterEnRoute: formData.get('refundAfterEnRoute'),
+    afterArrived: formData.get('refundAfterArrived'),
+  });
+  const { error: tierError } = await supabase.from('accounts').update({ extra_stop_refund_tiers: tiers }).eq('id', accountId);
+  if (tierError) console.error('Extra Stop refund tiers save skipped:', tierError.message);
 
   revalidatePath('/dashboard/settings');
   revalidatePath('/dashboard/schedule');
