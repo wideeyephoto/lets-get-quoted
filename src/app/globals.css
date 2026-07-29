@@ -1530,6 +1530,77 @@ li + li { margin-top: 0.45rem; }
 .pricing-takehome-note { margin: 0.85rem 0 0; font-size: 0.82rem; line-height: 1.5; color: rgba(247, 245, 239, 0.66); }
 .pricing-takehome-note strong { color: var(--accent-2); }
 
+/* ============================================================
+   Skimmer fast-path strip under the hero (B5)
+   ============================================================ */
+.fastpath { margin-top: 1.4rem; }
+.fastpath-row { list-style: none; margin: 0; padding: 0; display: flex; align-items: stretch;
+  border: 1px solid var(--line); border-radius: 14px; background: rgba(255, 255, 255, 0.02); overflow: hidden; }
+.fastpath-step { flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.55rem;
+  padding: 0.85rem 0.6rem; position: relative; font-weight: 600; font-size: 0.95rem; color: var(--text); }
+.fastpath-step + .fastpath-step::before { content: ""; position: absolute; left: 0; top: 22%; bottom: 22%; width: 1px; background: var(--line); }
+.fastpath-ic { display: grid; place-items: center; width: 30px; height: 30px; flex: 0 0 auto; border-radius: 9px;
+  color: var(--accent); border: 1px solid rgba(255, 122, 33, 0.28); background: rgba(255, 122, 33, 0.10); }
+.fastpath-ic svg { width: 17px; height: 17px; }
+.fastpath-t { white-space: nowrap; }
+.fastpath-step:last-child { color: var(--accent-2); }
+.fastpath-step:last-child .fastpath-ic { color: var(--accent-2); border-color: rgba(255, 209, 102, 0.32); background: rgba(255, 209, 102, 0.10); }
+@media (max-width: 560px) {
+  .fastpath-row { display: grid; grid-template-columns: 1fr 1fr; }
+  .fastpath-step { padding: 0.8rem 0.5rem; }
+  .fastpath-step::before { display: none; }
+  .fastpath-step:nth-child(1), .fastpath-step:nth-child(2) { border-bottom: 1px solid var(--line); }
+  .fastpath-step:nth-child(odd) { border-right: 1px solid var(--line); }
+}
+
+/* ============================================================
+   Inline fee calculator (B3) — one input, honest yearly number
+   ============================================================ */
+.hcalc { max-width: 34rem; margin: 1.9rem auto 0; border: 1px solid var(--line); border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015)); padding: 1.3rem 1.4rem; text-align: left; }
+.hcalc-eyebrow { margin: 0 0 0.35rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(247, 245, 239, 0.55); }
+.hcalc-vol { margin: 0 0 1rem; font-size: 1.05rem; color: var(--text); }
+.hcalc-vol strong { color: var(--accent-2); font-variant-numeric: tabular-nums; }
+.hcalc-slider { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; border-radius: 999px; outline: none; cursor: pointer;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-2) var(--pct, 20%), rgba(255, 255, 255, 0.10) var(--pct, 20%)); }
+.hcalc-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 22px; height: 22px; border-radius: 50%;
+  background: #fff; border: 3px solid var(--accent); box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5); cursor: grab; }
+.hcalc-slider::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 3px solid var(--accent); cursor: grab; }
+.hcalc-slider:focus-visible { box-shadow: 0 0 0 3px rgba(255, 209, 102, 0.35); }
+.hcalc-presets { display: flex; gap: 0.5rem; margin-top: 0.85rem; }
+.hcalc-chip { flex: 0 0 auto; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.8rem; font-weight: 600;
+  padding: 0.35rem 0.7rem; border-radius: 999px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03); color: var(--muted);
+  cursor: pointer; transition: color 0.15s, border-color 0.15s, background 0.15s; }
+.hcalc-chip:hover { color: var(--text); }
+.hcalc-chip.is-on { color: #160a02; border-color: transparent; background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.hcalc-result { margin-top: 1.3rem; display: flex; flex-direction: column; align-items: center; text-align: center;
+  border: 1px solid rgba(255, 209, 102, 0.28); border-radius: 14px;
+  background: radial-gradient(120% 100% at 50% 0, rgba(255, 209, 102, 0.10), transparent 60%); padding: 1.1rem 1rem; }
+.hcalc-result-l { font-size: 0.82rem; color: var(--muted); }
+.hcalc-result-v { font-size: clamp(2.1rem, 7vw, 2.9rem); font-weight: 750; letter-spacing: -0.02em; line-height: 1.05;
+  font-variant-numeric: tabular-nums; color: var(--accent-2); margin: 0.15rem 0 0.25rem; }
+.hcalc-result-s { font-size: 0.82rem; color: rgba(247, 245, 239, 0.7); }
+.hcalc-result-s strong { color: var(--text); }
+.hcalc-compare { margin: 1rem 0 0; font-size: 0.86rem; line-height: 1.5; color: rgba(247, 245, 239, 0.72); text-align: center; }
+.hcalc-compare strong { color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hcalc-kicker { margin: 0.7rem 0 0; font-size: 0.86rem; line-height: 1.5; color: rgba(247, 245, 239, 0.62); text-align: center; }
+.hcalc-kicker strong { color: var(--accent-2); }
+
+/* ============================================================
+   "No strings" reassurance band (missing-items risk reversal)
+   ============================================================ */
+.reassure-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1.6rem; }
+.reassure-card { border: 1px solid var(--line); border-radius: 16px; background: rgba(255, 255, 255, 0.02); padding: 1.25rem 1.3rem; }
+.reassure-ic { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 11px; color: var(--accent);
+  border: 1px solid rgba(255, 122, 33, 0.26); background: rgba(255, 122, 33, 0.10); margin-bottom: 0.8rem; }
+.reassure-ic svg { width: 20px; height: 20px; }
+.reassure-card h3 { margin: 0 0 0.4rem; font-size: 1.02rem; font-weight: 680; letter-spacing: -0.01em; }
+.reassure-card p { margin: 0; font-size: 0.9rem; line-height: 1.55; color: rgba(247, 245, 239, 0.72); }
+.reassure-card p strong { color: var(--text); }
+.reassure-card a { color: var(--accent-2); font-weight: 600; word-break: break-word; }
+@media (max-width: 780px) { .reassure-row { grid-template-columns: 1fr; } }
+
 /* Sign-in / sign-up toggle link on the auth card. */
 .auth-toggle { margin: 0.9rem 0 0; text-align: center; font-size: 0.85rem; color: rgba(247, 245, 239, 0.7); }
 .auth-toggle a { color: var(--accent-2); font-weight: 600; }

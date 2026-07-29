@@ -3,6 +3,7 @@ import { TRADES } from '@/lib/trades';
 import SiteFooter from '@/components/site-footer';
 import HeroDashboard from '@/components/hero-dashboard';
 import StickyCta from '@/components/sticky-cta';
+import HomeFeeCalculator from '@/components/home-fee-calculator';
 import FeatureWheelStory from './features/FeatureWheelStory';
 
 function QuoteIcon() {
@@ -88,30 +89,33 @@ function LockIcon() {
   );
 }
 
-// The "quote to bank" flow, shown as its own homepage section. The dashed
-// connector between the icons flows (see .flow-step-node::after /
-// @keyframes flow-line-travel in globals.css).
-const moneyFlow = [
-  {
-    title: 'Quote sent',
-    body: 'A branded quote goes out from your new site in minutes — not a PDF stapled to an email.',
-    icon: <QuoteIcon />,
-  },
-  {
-    title: 'Signed off',
-    body: 'Homeowner signs from their phone. Timestamped, no printer required.',
-    icon: <SignatureIcon />,
-  },
-  {
-    title: 'Payment collected',
-    body: 'Card or bank payment, processed securely through Stripe.',
-    icon: <CardIcon />,
-  },
-  {
-    title: 'In your bank',
-    body: 'Funds route straight to your account — no invoicing software, no chasing checks.',
-    icon: <BankIcon />,
-  },
+function ClockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7.5V12l3 2" />
+    </svg>
+  );
+}
+
+function ExportIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      <path d="M12 3v12" />
+      <path d="M8 7l4-4 4 4" />
+      <path d="M5 14v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5" />
+    </svg>
+  );
+}
+
+// The skimmer's fast path — the whole quote-to-bank story in four beats, shown
+// as a compact strip right under the hero so the linear promise survives a fast
+// scroll (the wheel + command center tell the long version below).
+const fastPath = [
+  { title: 'Quote sent', icon: <QuoteIcon /> },
+  { title: 'Signed', icon: <SignatureIcon /> },
+  { title: 'Paid', icon: <CardIcon /> },
+  { title: 'In your bank', icon: <BankIcon /> },
 ];
 
 // Category-based comparison (no named brands) so the claims stay defensible:
@@ -341,6 +345,19 @@ export default function HomePage() {
 
         <HeroDashboard />
       </section>
+
+      {/* Skimmer's fast path — the linear quote→bank promise in one glance,
+          before the long-form wheel below. */}
+      <section className="fastpath" aria-label="From quote to cash, in four steps">
+        <ol className="fastpath-row">
+          {fastPath.map((step) => (
+            <li className="fastpath-step" key={step.title}>
+              <span className="fastpath-ic">{step.icon}</span>
+              <span className="fastpath-t">{step.title}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
       </div>
 
       {/* The lifecycle wheel + everyday command center — full content width */}
@@ -351,42 +368,6 @@ export default function HomePage() {
       {/* Peak-intent CTA right after the command center, so the desire built
           across the wheel has a button in reach before the comparison. */}
       <div className="mid-cta mid-cta-lead">
-        <Link href="/login?intent=signup" className="btn primary">Create Free Account</Link>
-        <Link href="/demo" className="btn secondary">Explore the demo &mdash; no signup</Link>
-      </div>
-
-      <section className="section-block">
-        <div className="flow-band-grid">
-          <div className="section-heading">
-            <p className="eyebrow">Quote to bank, automatically</p>
-            <h2>From first quote to money in your bank &mdash; one unbroken flow.</h2>
-            <p>
-              The whole trip from quote to deposit happens in one place &mdash; no paperwork, no software to juggle, no
-              waiting on the mail. Four steps turn a lead into a deposit.
-            </p>
-          </div>
-          <aside className="hero-panel flow-panel">
-            <div className="flow-pipeline">
-              {moneyFlow.map((step, index) => {
-                const isLast = index === moneyFlow.length - 1;
-                return (
-                  <div className={`flow-step${isLast ? ' flow-step-final' : ''}`} key={step.title}>
-                    <span className="flow-step-node">
-                      <span className="flow-step-icon">{step.icon}</span>
-                    </span>
-                    <span className="flow-step-copy">
-                      <strong>{step.title}</strong>
-                      <span>{step.body}</span>
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </aside>
-        </div>
-      </section>
-
-      <div className="mid-cta">
         <Link href="/login?intent=signup" className="btn primary">Create Free Account</Link>
         <Link href="/demo" className="btn secondary">Explore the demo &mdash; no signup</Link>
       </div>
@@ -482,6 +463,7 @@ export default function HomePage() {
             <strong> $0</strong> &mdash; while a monthly CRM still bills you $200+.
           </p>
         </div>
+        <HomeFeeCalculator />
         <div className="mid-cta">
           <Link href="/login?intent=signup" className="btn primary">Create Free Account</Link>
           <Link href="/pricing" className="btn secondary">See full pricing &amp; fee calculator &rarr;</Link>
@@ -500,6 +482,30 @@ export default function HomePage() {
               <span>{badge.label}</span>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="section-block reassure-band">
+        <div className="section-heading">
+          <p className="eyebrow">No strings</p>
+          <h2>The things you&rsquo;d ask before trusting us with your money.</h2>
+        </div>
+        <div className="reassure-row">
+          <div className="reassure-card">
+            <span className="reassure-ic"><ClockIcon /></span>
+            <h3>Paid in 1&ndash;2 business days</h3>
+            <p>Card and bank payments land in your <strong>own</strong> bank account through Stripe &mdash; typically within a couple of business days of a homeowner paying. We never hold your money.</p>
+          </div>
+          <div className="reassure-card">
+            <span className="reassure-ic"><ExportIcon /></span>
+            <h3>Never locked in</h3>
+            <p>No contract, cancel anytime. Export your clients, jobs and invoices to a spreadsheet whenever you like &mdash; your data leaves with you, and any domain you connect stays yours.</p>
+          </div>
+          <div className="reassure-card">
+            <span className="reassure-ic"><MessageIcon /></span>
+            <h3>A real person, not a ticket bot</h3>
+            <p>Email <a href="mailto:hello@letsgetquoted.com">hello@letsgetquoted.com</a> and an actual human answers &mdash; no phone tree, no outsourced queue when money&rsquo;s on the line.</p>
+          </div>
         </div>
       </section>
 
