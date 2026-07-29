@@ -13,6 +13,10 @@ export type AdminAccountRow = {
   id: string;
   account_number: number | null;
   business_name: string | null;
+  // The public-facing name the owner set in their site settings. Preferred for
+  // display — accounts.business_name defaults to the placeholder 'My Business'
+  // and many owners only ever set company_name.
+  company_name: string | null;
   plan: string | null;
   connect_onboarded: boolean | null;
   connect_disabled_at: string | null;
@@ -23,26 +27,66 @@ export type AdminAccountRow = {
 const ACCOUNT_LIST_COLUMNS =
   'id, account_number, business_name, plan, connect_onboarded, connect_disabled_at, suspended_at, created_at';
 
-// Search accounts by business name or account number. Owner email isn't stored
-// in our tables (it lives in auth.users), so it's resolved on the detail page,
-// not here — keeping the list a single cheap query.
+// The name to show for an account: the site's company_name wins, then the
+// account's business_name (unless it's the signup placeholder), then a fallback.
+export function accountDisplayName(row: { company_name?: string | null; business_name?: string | null }): string {
+  const company = row.company_name?.trim();
+  if (company) return company;
+  const biz = row.business_name?.trim();
+  if (biz && biz.toLowerCase() !== 'my business') return biz;
+  return biz || 'Untitled business';
+}
+
+// Search accounts by business name, site company name, or account number. Owner
+// email isn't stored in our tables (it lives in auth.users), so it's resolved on
+// the detail page, not here.
 export async function listAccountsForAdmin(
   admin: SupabaseClient,
   opts: { query?: string; limit?: number } = {},
 ): Promise<AdminAccountRow[]> {
-  let q = admin.from('accounts').select(ACCOUNT_LIST_COLUMNS).order('created_at', { ascending: false }).limit(opts.limit ?? 50);
+  const limit = opts.limit ?? 50;
   const term = opts.query?.trim();
+  let rows: AdminAccountRow[] = [];
+
   if (term) {
-    const asNumber = Number(term.replace(/[^0-9]/g, ''));
-    if (/^\d+$/.test(term.replace(/[^0-9]/g, '')) && Number.isFinite(asNumber) && asNumber > 0) {
-      q = q.eq('account_number', asNumber);
+    const digits = term.replace(/[^0-9]/g, '');
+    if (/^\d+$/.test(digits) && Number(digits) > 0) {
+      const { data } = await admin.from('accounts').select(ACCOUNT_LIST_COLUMNS).eq('account_number', Number(digits)).limit(limit);
+      rows = (data ?? []) as AdminAccountRow[];
     } else {
-      q = q.ilike('business_name', `%${term}%`);
+      // Match either the account's business_name OR the site's company_name.
+      const [byBiz, bySite] = await Promise.all([
+        admin.from('accounts').select(ACCOUNT_LIST_COLUMNS).ilike('business_name', `%${term}%`).limit(limit),
+        admin.from('sites').select('account_id').ilike('company_name', `%${term}%`).limit(limit),
+      ]);
+      const base = (byBiz.data ?? []) as AdminAccountRow[];
+      const haveIds = new Set(base.map((r) => r.id));
+      const siteIds = (bySite.data ?? []).map((s) => (s as { account_id: string }).account_id).filter((id) => id && !haveIds.has(id));
+      if (siteIds.length) {
+        const { data: extra } = await admin.from('accounts').select(ACCOUNT_LIST_COLUMNS).in('id', siteIds).limit(limit);
+        rows = [...base, ...((extra ?? []) as AdminAccountRow[])];
+      } else {
+        rows = base;
+      }
+    }
+  } else {
+    const { data } = await admin.from('accounts').select(ACCOUNT_LIST_COLUMNS).order('created_at', { ascending: false }).limit(limit);
+    rows = (data ?? []) as AdminAccountRow[];
+  }
+
+  // Stitch each account's site company_name in, then order newest-first.
+  const ids = rows.map((r) => r.id);
+  const nameMap = new Map<string, string | null>();
+  if (ids.length) {
+    const { data } = await admin.from('sites').select('account_id, company_name').in('account_id', ids);
+    for (const s of data ?? []) {
+      const row = s as { account_id: string; company_name: string | null };
+      nameMap.set(row.account_id, row.company_name);
     }
   }
-  const { data, error } = await q;
-  if (error || !data) return [];
-  return data as AdminAccountRow[];
+  return rows
+    .map((r) => ({ ...r, company_name: nameMap.get(r.id) ?? null }))
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 }
 
 export type AdminActivity = {

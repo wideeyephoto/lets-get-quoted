@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
-import { getAccountAdminDetail } from '@/lib/admin-accounts';
+import { getAccountAdminDetail, accountDisplayName } from '@/lib/admin-accounts';
 import { listAdminActions } from '@/lib/admin';
 import styles from '../../admin.module.css';
 import AccountActions from './AccountActions';
@@ -45,6 +45,7 @@ export default async function AdminAccountDetailPage({
   if (!detail || !detail.account) notFound();
 
   const a = detail.account as Record<string, unknown>;
+  const displayName = accountDisplayName({ company_name: detail.site?.company_name ?? null, business_name: (a.business_name as string | null) ?? null });
   const actions = await listAdminActions(admin, { accountId: params.id, limit: 12 });
 
   const suspended = Boolean(a.suspended_at);
@@ -58,7 +59,7 @@ export default async function AdminAccountDetailPage({
 
       <header className={styles.pageHead}>
         <p className={styles.eyebrow}>Account #{String(a.account_number ?? '—')}</p>
-        <h1 className={styles.title}>{String(a.business_name || detail.site?.company_name || 'Untitled business')}</h1>
+        <h1 className={styles.title}>{displayName}</h1>
         <p className={styles.lead}>
           {detail.ownerEmail ? <>Owner: <strong>{detail.ownerEmail}</strong> · </> : null}
           Joined {fmtDate(a.created_at)}
@@ -155,7 +156,7 @@ export default async function AdminAccountDetailPage({
             accountId={params.id}
             suspended={suspended}
             extraStopLockedUntil={lockedUntil}
-            businessName={String(a.business_name || 'this account')}
+            businessName={displayName}
           />
 
           <section className={styles.panel}>

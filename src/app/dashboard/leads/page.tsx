@@ -6,7 +6,6 @@ import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadSource, 
 import { archiveLeadAction, createLeadAction, unsnoozeLeadAction } from './actions';
 import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
 import SaveButton from '@/components/save-button';
-import PinMap from '@/components/pin-map';
 import { getMapPins } from '@/lib/map-pins';
 import { MAP_THEME_COOKIE, mapViewCookie, normalizeMapTheme, normalizeMapView } from '@/lib/dashboard-views';
 import LeadsWorkspace, { type LeadViewItem } from './LeadsWorkspace';
@@ -84,17 +83,9 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
     <main className="wide-shell workspace-shell">
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading"><p className="eyebrow">Pipeline</p><h2>Current leads</h2></div>
-        {mapView === 'large' && (
-          <div className="workspace-embedded-map">
-            <PinMap pins={mapPins} theme={mapTheme} />
-          </div>
-        )}
         {leads.length === 0 ? <p className="empty-state">No leads yet. Website requests will appear here — or <Link href="/dashboard/leads?add=1#add-lead">add a lead manually</Link>.</p> : (
-          <LeadsWorkspace leads={viewLeads} initialView={initialView} mapView={mapView} mapTheme={mapTheme} />
+          <LeadsWorkspace leads={viewLeads} initialView={initialView} mapView={mapView} mapTheme={mapTheme} mapPins={mapPins} />
         )}
-        <div className="actions" style={{ marginTop: '1.25rem' }}>
-          <Link href="/dashboard/leads?add=1#add-lead" className="btn primary">+ Add lead</Link>
-        </div>
       </section>
 
 

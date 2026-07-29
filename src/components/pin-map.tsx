@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 // A pin on the dashboard map. `kind` drives the marker colour + legend.
 export type MapPinKind = 'lead' | 'unscheduled' | 'scheduled';
@@ -105,7 +105,7 @@ function makeIcon(g: typeof google.maps, color: string, active: boolean, mini = 
   };
 }
 
-export default function PinMap({ pins, variant = 'large', theme = 'dark' }: { pins: MapPin[]; variant?: 'large' | 'mini'; theme?: 'dark' | 'light' }) {
+export default function PinMap({ pins, variant = 'large', theme = 'dark', legendAccessory }: { pins: MapPin[]; variant?: 'large' | 'mini'; theme?: 'dark' | 'light'; legendAccessory?: ReactNode }) {
   const mini = variant === 'mini';
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<{ id: string; marker: google.maps.Marker }[]>([]);
@@ -260,6 +260,7 @@ export default function PinMap({ pins, variant = 'large', theme = 'dark' }: { pi
             {KIND_LABEL[kind]}
           </span>
         ))}
+        {legendAccessory ? <span className="pin-map-legend-accessory">{legendAccessory}</span> : null}
       </div>
     </div>
   );

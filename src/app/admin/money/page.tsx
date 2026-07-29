@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
+import { accountDisplayName } from '@/lib/admin-accounts';
 import styles from '../admin.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -27,18 +28,27 @@ export default async function AdminMoneyPage() {
   const refunds30 = (refundRows.data ?? []).reduce((s, r) => s + (Number((r as { refunded_amount: number }).refunded_amount) || 0), 0);
   const disputes = disputeRows.data ?? [];
 
-  // Stitch account names onto the dispute rows.
-  const acctIds = [...new Set(disputes.map((d) => (d as { account_id: string }).account_id).filter(Boolean))];
-  const nameMap = new Map<string, { business_name: string | null; account_number: number | null }>();
+  const pausedRows = (paused.data ?? []) as { id: string; business_name: string | null; account_number: number | null; connect_disabled_at: string | null }[];
+
+  // Stitch display names (site company_name preferred) onto the dispute + paused
+  // rows in one pass.
+  const acctIds = [...new Set([...disputes.map((d) => (d as { account_id: string }).account_id), ...pausedRows.map((p) => p.id)].filter(Boolean))];
+  const nameMap = new Map<string, { business_name: string | null; company_name: string | null; account_number: number | null }>();
   if (acctIds.length) {
-    const { data } = await admin.from('accounts').select('id, business_name, account_number').in('id', acctIds);
-    for (const a of data ?? []) {
+    const [acctsRes, sitesRes] = await Promise.all([
+      admin.from('accounts').select('id, business_name, account_number').in('id', acctIds),
+      admin.from('sites').select('account_id, company_name').in('account_id', acctIds),
+    ]);
+    const siteNames = new Map<string, string | null>();
+    for (const s of sitesRes.data ?? []) {
+      const site = s as { account_id: string; company_name: string | null };
+      siteNames.set(site.account_id, site.company_name);
+    }
+    for (const a of acctsRes.data ?? []) {
       const row = a as { id: string; business_name: string | null; account_number: number | null };
-      nameMap.set(row.id, { business_name: row.business_name, account_number: row.account_number });
+      nameMap.set(row.id, { business_name: row.business_name, company_name: siteNames.get(row.id) ?? null, account_number: row.account_number });
     }
   }
-
-  const pausedRows = paused.data ?? [];
 
   return (
     <>
@@ -86,7 +96,7 @@ export default async function AdminMoneyPage() {
                   return (
                     <tr key={row.id}>
                       <td className={styles.muted}>{fmtDate(row.disputed_at)}</td>
-                      <td><Link href={`/admin/accounts/${row.account_id}`} className={styles.rowLink}>{acct?.business_name || 'Account'}</Link>{acct?.account_number ? <span className={styles.muted}> · #{acct.account_number}</span> : null}</td>
+                      <td><Link href={`/admin/accounts/${row.account_id}`} className={styles.rowLink}>{acct ? accountDisplayName(acct) : 'Account'}</Link>{acct?.account_number ? <span className={styles.muted}> · #{acct.account_number}</span> : null}</td>
                       <td>{row.label || '—'}</td>
                       <td className="num" style={{ textAlign: 'right' }}>{usd(Number(row.amount) || 0)}</td>
                       <td className={styles.muted}>{row.dispute_reason || row.dispute_status || '—'}</td>
@@ -108,11 +118,10 @@ export default async function AdminMoneyPage() {
             <table className={styles.table}>
               <thead><tr><th>Account</th><th>#</th><th>Paused since</th></tr></thead>
               <tbody>
-                {pausedRows.map((p) => {
-                  const row = p as { id: string; business_name: string | null; account_number: number | null; connect_disabled_at: string | null };
+                {pausedRows.map((row) => {
                   return (
                     <tr key={row.id}>
-                      <td><Link href={`/admin/accounts/${row.id}`} className={styles.rowLink}>{row.business_name || 'Account'}</Link></td>
+                      <td><Link href={`/admin/accounts/${row.id}`} className={styles.rowLink}>{accountDisplayName(nameMap.get(row.id) ?? row)}</Link></td>
                       <td className={styles.muted}>{row.account_number ?? '—'}</td>
                       <td className={styles.muted}>{fmtDate(row.connect_disabled_at)}</td>
                     </tr>

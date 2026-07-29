@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
 import { getExtraStopAdminDetail } from '@/lib/admin-extra-stops';
+import { accountDisplayName } from '@/lib/admin-accounts';
 import { EXTRA_STOP_STATUS_LABEL, centsToDollars, type ExtraStopStatus } from '@/lib/extra-stop';
 import styles from '../../admin.module.css';
 import ExtraStopAdminActions from './ExtraStopAdminActions';
@@ -60,7 +61,7 @@ export default async function AdminExtraStopDetailPage({
         <p className={styles.eyebrow}>Extra Stop</p>
         <h1 className={styles.title}>{r.client_name || 'Customer'}</h1>
         <p className={styles.lead}>
-          <Link href={`/admin/accounts/${r.account_id}`} className={styles.rowLink}>{detail.business_name || 'Account'}</Link>
+          <Link href={`/admin/accounts/${r.account_id}`} className={styles.rowLink}>{accountDisplayName({ company_name: detail.company_name, business_name: detail.business_name })}</Link>
           {detail.account_number ? ` · #${detail.account_number}` : ''} · created {fmtDateTime(r.created_at)}
         </p>
         <div className={styles.actionRow} style={{ marginTop: '.6rem' }}>

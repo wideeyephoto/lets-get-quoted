@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
-import { listAccountsForAdmin } from '@/lib/admin-accounts';
+import { listAccountsForAdmin, accountDisplayName } from '@/lib/admin-accounts';
 import styles from '../admin.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -51,7 +51,7 @@ export default async function AdminAccountsPage({ searchParams }: { searchParams
                   <tr key={r.id}>
                     <td>
                       <Link href={`/admin/accounts/${r.id}`} className={styles.rowLink}>
-                        {r.business_name || 'Untitled business'}
+                        {accountDisplayName(r)}
                       </Link>
                     </td>
                     <td className={styles.muted}>{r.account_number ?? '—'}</td>

@@ -1936,7 +1936,8 @@ li + li { margin-top: 0.45rem; }
   .pin-map-mini { width: 128px; height: 128px; }
 }
 .pin-map-empty { margin-top: 0.7rem; padding: 0.9rem 1rem; border: 1px dashed var(--line); border-radius: 12px; color: rgba(247, 245, 239, 0.6); font-size: 0.88rem; text-align: center; }
-.pin-map-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1.1rem; margin-top: 0.85rem; }
+.pin-map-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1.1rem; margin-top: 0.85rem; }
+.pin-map-legend-accessory { margin-left: auto; }
 .pin-map-legend-item { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.82rem; color: rgba(247, 245, 239, 0.72); }
 .pin-map-dot { width: 0.7rem; height: 0.7rem; border-radius: 50%; border: 1.5px solid rgba(11, 18, 32, 0.9); flex: 0 0 auto; }
 /* "See all N trades" pill — accent-filled so it reads as the way to the full list. */

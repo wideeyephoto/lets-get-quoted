@@ -35,6 +35,7 @@ export default function ViewGear<T extends string>({
   onSetMapView,
   mapTheme,
   onSetMapTheme,
+  label,
 }: {
   views: ViewOption<T>[];
   activeView: T;
@@ -43,6 +44,7 @@ export default function ViewGear<T extends string>({
   onSetMapView?: (next: MapView) => void;
   mapTheme?: MapTheme;
   onSetMapTheme?: (next: MapTheme) => void;
+  label?: string; // fixed button label; defaults to the active view's name
 }) {
   const [open, setOpen] = useState(false);
   const [openUp, setOpenUp] = useState(false);
@@ -77,7 +79,7 @@ export default function ViewGear<T extends string>({
     <div className={styles.gear} ref={ref}>
       <button type="button" className={styles.gearBtn} aria-haspopup="menu" aria-expanded={open} onClick={toggle} title="View settings">
         <GearIcon />
-        <span>{current.label}</span>
+        <span>{label ?? current.label}</span>
       </button>
       {open && (
         <div className={`${styles.pop}${openUp ? ` ${styles.popUp}` : ''}`} role="menu">

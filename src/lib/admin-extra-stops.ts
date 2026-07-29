@@ -7,6 +7,7 @@ import { getExtraStopRequestById, type ExtraStopRequest } from '@/lib/extra-stop
 
 export type AdminExtraStopRow = ExtraStopRequest & {
   business_name: string | null;
+  company_name: string | null;
   account_number: number | null;
 };
 
@@ -24,15 +25,23 @@ export async function listExtraStopRequestsForAdmin(
 
   const rows = data as unknown as ExtraStopRequest[];
   const accountIds = [...new Set(rows.map((r) => r.account_id).filter(Boolean))];
-  const names = new Map<string, { business_name: string | null; account_number: number | null }>();
+  const names = new Map<string, { business_name: string | null; company_name: string | null; account_number: number | null }>();
   if (accountIds.length) {
-    const { data: accts } = await admin.from('accounts').select('id, business_name, account_number').in('id', accountIds);
-    for (const acc of accts ?? []) {
+    const [acctsRes, sitesRes] = await Promise.all([
+      admin.from('accounts').select('id, business_name, account_number').in('id', accountIds),
+      admin.from('sites').select('account_id, company_name').in('account_id', accountIds),
+    ]);
+    const siteNames = new Map<string, string | null>();
+    for (const s of sitesRes.data ?? []) {
+      const site = s as { account_id: string; company_name: string | null };
+      siteNames.set(site.account_id, site.company_name);
+    }
+    for (const acc of acctsRes.data ?? []) {
       const a = acc as { id: string; business_name: string | null; account_number: number | null };
-      names.set(a.id, { business_name: a.business_name, account_number: a.account_number });
+      names.set(a.id, { business_name: a.business_name, company_name: siteNames.get(a.id) ?? null, account_number: a.account_number });
     }
   }
-  return rows.map((r) => ({ ...r, ...(names.get(r.account_id) ?? { business_name: null, account_number: null }) }));
+  return rows.map((r) => ({ ...r, ...(names.get(r.account_id) ?? { business_name: null, company_name: null, account_number: null }) }));
 }
 
 export type ExtraStopEventRow = {
@@ -47,6 +56,7 @@ export type ExtraStopEventRow = {
 export type AdminExtraStopDetail = {
   request: ExtraStopRequest;
   business_name: string | null;
+  company_name: string | null;
   account_number: number | null;
   events: ExtraStopEventRow[];
   payment: { id: string; amount: number | null; status: string | null; refunded_amount: number | null } | null;
@@ -56,8 +66,9 @@ export async function getExtraStopAdminDetail(admin: SupabaseClient, id: string)
   const request = await getExtraStopRequestById(admin, id);
   if (!request) return null;
 
-  const [acctRes, eventsRes, paymentRes] = await Promise.all([
+  const [acctRes, siteRes, eventsRes, paymentRes] = await Promise.all([
     admin.from('accounts').select('business_name, account_number').eq('id', request.account_id).maybeSingle(),
+    admin.from('sites').select('company_name').eq('account_id', request.account_id).maybeSingle(),
     admin.from('extra_stop_events').select('id, actor, from_status, to_status, meta, created_at').eq('request_id', id).order('created_at', { ascending: true }),
     request.payment_id
       ? admin.from('payments').select('id, amount, status, refunded_amount').eq('id', request.payment_id).maybeSingle()
@@ -65,9 +76,11 @@ export async function getExtraStopAdminDetail(admin: SupabaseClient, id: string)
   ]);
 
   const acct = acctRes.data as { business_name: string | null; account_number: number | null } | null;
+  const site = siteRes.data as { company_name: string | null } | null;
   return {
     request,
     business_name: acct?.business_name ?? null,
+    company_name: site?.company_name ?? null,
     account_number: acct?.account_number ?? null,
     events: (eventsRes.data ?? []) as ExtraStopEventRow[],
     payment: (paymentRes.data as AdminExtraStopDetail['payment']) ?? null,

@@ -8,6 +8,7 @@ import { archiveLeadAction, declineLeadAction, snoozeLeadAction, updateLeadStatu
 import { setMapThemeAction, setMapViewAction } from '@/app/dashboard/view-actions';
 import type { MapTheme, MapView } from '@/lib/dashboard-views';
 import ViewGear from '@/components/view-gear';
+import PinMap, { type MapPin } from '@/components/pin-map';
 import styles from './leads.module.css';
 
 // Display-ready lead shape, built server-side in page.tsx so this client
@@ -95,7 +96,7 @@ function ScoreLegend() {
 
 const VIEW_OPTIONS = VIEWS.map((v) => ({ id: v.id, label: v.label, hint: v.hint }));
 
-export default function LeadsWorkspace({ leads, initialView, mapView, mapTheme }: { leads: LeadViewItem[]; initialView: LeadsView; mapView: MapView; mapTheme: MapTheme }) {
+export default function LeadsWorkspace({ leads, initialView, mapView, mapTheme, mapPins }: { leads: LeadViewItem[]; initialView: LeadsView; mapView: MapView; mapTheme: MapTheme; mapPins: MapPin[] }) {
   const [view, setView] = useState<LeadsView>(initialView);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
@@ -132,16 +133,26 @@ export default function LeadsWorkspace({ leads, initialView, mapView, mapTheme }
     });
   }
 
+  // The view/map settings gear. Lives on the map's legend row when the map is
+  // shown; falls back to a small bar when the map is off, so it's always reachable.
+  const gear = (
+    <ViewGear views={VIEW_OPTIONS} activeView={view} onPickView={pickView} mapView={mapView} onSetMapView={setMap} mapTheme={mapTheme} onSetMapTheme={setTheme} label="View" />
+  );
+
   return (
     <div className={pending ? styles.workspaceBusy : undefined}>
+      {mapView !== 'off' ? (
+        <div className="workspace-embedded-map">
+          <PinMap pins={mapPins} theme={mapTheme} legendAccessory={gear} />
+        </div>
+      ) : (
+        <div className={styles.viewBar}>{gear}</div>
+      )}
+
       {view === 'board' && <BoardView leads={leads} run={run} />}
       {view === 'inbox' && <InboxView leads={leads} run={run} />}
       {view === 'table' && <TableView leads={leads} />}
       {view === 'split' && <SplitView leads={leads} run={run} />}
-
-      <div className={styles.viewBar}>
-        <ViewGear views={VIEW_OPTIONS} activeView={view} onPickView={pickView} mapView={mapView} onSetMapView={setMap} mapTheme={mapTheme} onSetMapTheme={setTheme} />
-      </div>
 
       <ScoreLegend />
     </div>

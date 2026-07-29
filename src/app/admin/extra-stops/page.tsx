@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { listExtraStopRequestsForAdmin } from '@/lib/admin-extra-stops';
+import { accountDisplayName } from '@/lib/admin-accounts';
 import { EXTRA_STOP_STATUS_LABEL, centsToDollars, type ExtraStopStatus } from '@/lib/extra-stop';
 import styles from '../admin.module.css';
 
@@ -70,7 +71,7 @@ export default async function AdminExtraStopsPage({ searchParams }: { searchPara
                   <tr key={r.id}>
                     <td className={styles.muted}>{new Date(r.created_at).toLocaleDateString('en-US', { dateStyle: 'short' })}</td>
                     <td>
-                      <Link href={`/admin/extra-stops/${r.id}`} className={styles.rowLink}>{r.business_name || 'Account'}</Link>
+                      <Link href={`/admin/extra-stops/${r.id}`} className={styles.rowLink}>{accountDisplayName(r)}</Link>
                       {r.account_number ? <span className={styles.muted}> · #{r.account_number}</span> : null}
                     </td>
                     <td>{r.client_name || <span className={styles.muted}>—</span>}</td>
