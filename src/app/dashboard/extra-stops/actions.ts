@@ -11,6 +11,7 @@ import {
 } from '@/lib/extra-stop';
 import { getExtraStopRequest, logExtraStopEvent } from '@/lib/extra-stop-requests';
 import { computeExtraStopRoute } from '@/lib/extra-stop-route';
+import { sendExtraStopOffer } from '@/lib/extra-stop-payments';
 
 const OFFERABLE = ['awaiting_contractor', 'more_information_requested'];
 // Statuses that still occupy a slot on a given arrival day (for the daily cap).
@@ -71,11 +72,18 @@ export async function createExtraStopOfferAction(requestId: string, formData: Fo
 
   const { data: accountRow } = await supabase
     .from('accounts')
-    .select(`${EXTRA_STOP_SETTINGS_COLUMNS}, timezone, instant_book_drive_time`)
+    .select(`${EXTRA_STOP_SETTINGS_COLUMNS}, timezone, instant_book_drive_time, connect_onboarded, stripe_connect_id`)
     .eq('id', accountId)
     .single();
   const settings = extraStopSettingsFromAccount(accountRow as Parameters<typeof extraStopSettingsFromAccount>[0]);
   const timezone = (accountRow as { timezone?: string } | null)?.timezone || 'America/New_York';
+
+  // Fail early (before creating a placeholder job) if payouts aren't set up —
+  // the customer wouldn't be able to pay, so the offer can't stand.
+  const connect = accountRow as { connect_onboarded?: boolean; stripe_connect_id?: string | null } | null;
+  if (!connect?.connect_onboarded || !connect?.stripe_connect_id) {
+    throw new Error('Finish your Stripe payout setup (Settings → Payouts) before sending Extra Stop offers.');
+  }
 
   const arrivalDate = (formData.get('arrivalDate') ?? '').toString().trim();
   const arrivalStart = (formData.get('arrivalStart') ?? '').toString().trim();
@@ -167,6 +175,10 @@ export async function createExtraStopOfferAction(requestId: string, formData: Fo
     to: 'contractor_offer_sent',
     meta: { feeCents, arrivalDate, arrivalStart, arrivalEnd },
   });
+
+  // Create the payment request, start the 15-minute clock, and text the customer
+  // the pay link — moves the request to awaiting_customer_payment.
+  await sendExtraStopOffer(supabase, accountId, requestId);
 
   revalidatePath('/dashboard/extra-stops');
   revalidatePath('/dashboard/schedule');

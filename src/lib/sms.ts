@@ -97,6 +97,68 @@ export async function sendOwnerHighValueLeadSms(input: {
   }
 }
 
+// Extra Stop offer → customer: the pay link + arrival window + fee + the
+// hard 15-minute reservation deadline. Transactional (the customer gave their
+// number to request this), account-scoped, mirrored to the inbox. Best-effort.
+export async function sendExtraStopOfferSms(input: {
+  accountId: string;
+  toPhone: string;
+  businessName: string;
+  whenLabel: string;
+  feeLabel: string;
+  payUrl: string;
+  minutes: number;
+}): Promise<void> {
+  try {
+    if (!twilioConfiguration()) return;
+    const to = normalizeUsPhone(input.toPhone);
+    if (!to || (await isPhoneOptedOut(input.accountId, to))) return;
+    const body = `Your Extra Stop Offer from ${input.businessName}: arrive ${input.whenLabel} for ${input.feeLabel}. Complete payment within ${input.minutes} min to reserve this window: ${input.payUrl}. Reply STOP to opt out.`;
+    const sid = await sendTwilioMessage(to, body);
+    await logOutboundToInbox(input.accountId, to, body, sid);
+  } catch (error) {
+    console.error('Extra Stop offer SMS failed:', error instanceof Error ? error.message : error);
+  }
+}
+
+// Extra Stop confirmed (payment cleared) → customer.
+export async function sendExtraStopConfirmedSms(input: {
+  accountId: string;
+  toPhone: string;
+  businessName: string;
+  whenLabel: string;
+}): Promise<void> {
+  try {
+    if (!twilioConfiguration()) return;
+    const to = normalizeUsPhone(input.toPhone);
+    if (!to || (await isPhoneOptedOut(input.accountId, to))) return;
+    const body = `You're confirmed! ${input.businessName} will arrive ${input.whenLabel}. We'll text updates on the way. Reply STOP to opt out.`;
+    const sid = await sendTwilioMessage(to, body);
+    await logOutboundToInbox(input.accountId, to, body, sid);
+  } catch (error) {
+    console.error('Extra Stop confirmed SMS failed:', error instanceof Error ? error.message : error);
+  }
+}
+
+// Generic Extra Stop status text → customer (en route / arrived / canceled /
+// refunded). One helper keeps the M6 lifecycle texts consistent.
+export async function sendExtraStopStatusSms(input: {
+  accountId: string;
+  toPhone: string;
+  message: string;
+}): Promise<void> {
+  try {
+    if (!twilioConfiguration()) return;
+    const to = normalizeUsPhone(input.toPhone);
+    if (!to || (await isPhoneOptedOut(input.accountId, to))) return;
+    const body = `${input.message} Reply STOP to opt out.`;
+    const sid = await sendTwilioMessage(to, body);
+    await logOutboundToInbox(input.accountId, to, body, sid);
+  } catch (error) {
+    console.error('Extra Stop status SMS failed:', error instanceof Error ? error.message : error);
+  }
+}
+
 // Mirror an outbound customer text into the two-way inbox so threads are
 // complete (system texts + their replies in one place). Best-effort and
 // account-scoped; crew/verification texts are intentionally NOT logged (not a

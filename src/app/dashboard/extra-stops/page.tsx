@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOwnerContext, createAdminClient } from '@/lib/auth';
 import { listExtraStopRequests } from '@/lib/extra-stop-requests';
+import { sweepExtraStopOffers } from '@/lib/extra-stop-sweep';
 import { extraStopSettingsFromAccount, EXTRA_STOP_SETTINGS_COLUMNS } from '@/lib/extra-stop';
 import { computeExtraStopRoute } from '@/lib/extra-stop-route';
 import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
@@ -10,6 +11,10 @@ export const dynamic = 'force-dynamic';
 
 export default async function ExtraStopsPage() {
   const { supabase, accountId } = await requireOwnerContext();
+
+  // Lazy expiry so the queue is current even between cron runs (releases lapsed
+  // payment holds, closes unanswered requests). Best-effort — never blocks render.
+  await sweepExtraStopOffers(createAdminClient(), accountId).catch(() => undefined);
 
   const [{ data: accountRow }, requests] = await Promise.all([
     supabase.from('accounts').select(`${EXTRA_STOP_SETTINGS_COLUMNS}, timezone, instant_book_drive_time`).eq('id', accountId).single(),

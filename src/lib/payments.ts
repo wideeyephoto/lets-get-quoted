@@ -217,6 +217,25 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
     throw new Error('This payment request is no longer available.');
   }
 
+  // Extra Stop payments carry a hard app-side reservation window (Stripe Checkout's
+  // own minimum expiry is 30 min, so 15 min can't be enforced by the session). If
+  // this payment belongs to an Extra Stop offer that has lapsed or is no longer
+  // awaiting payment, refuse checkout so a released hold can't be paid for late.
+  {
+    const guardAdmin = createAdminClient();
+    const { data: es } = await guardAdmin
+      .from('extra_stop_requests')
+      .select('status, payment_deadline_at')
+      .eq('payment_id', paymentId)
+      .maybeSingle();
+    if (es) {
+      const lapsed = es.payment_deadline_at != null && new Date(es.payment_deadline_at as string).getTime() < Date.now();
+      if (es.status !== 'awaiting_customer_payment' || lapsed) {
+        throw new Error('This Extra Stop offer has expired.');
+      }
+    }
+  }
+
   if (!payment.account?.stripe_connect_id || !payment.account.connect_onboarded) {
     throw new Error('This contractor has not finished setting up payments yet.');
   }

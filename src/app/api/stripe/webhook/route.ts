@@ -9,6 +9,7 @@ import { storeSavedCardFromSetup } from '@/lib/card-on-file';
 import { rescheduleDunningAfterCardUpdate } from '@/lib/dunning';
 import { markInvoicePaidForPayment } from '@/lib/invoices';
 import { handlePlanPaymentSettled, handlePlanPaymentFailed } from '@/lib/payment-plans';
+import { confirmExtraStopPayment } from '@/lib/extra-stop-payments';
 
 // Stripe webhooks require the raw request body for signature verification,
 // so this route must not be statically optimized or have its body parsed.
@@ -139,6 +140,9 @@ export async function POST(request: Request) {
       const stripePaymentIntent =
         typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id ?? null;
       await markPaymentPaid(admin, paymentId, stripePaymentIntent);
+      // If this payment is a live Extra Stop offer, confirm the appointment
+      // (idempotent compare-and-set; a no-op for every other payment).
+      await confirmExtraStopPayment(admin, paymentId);
     }
   }
 
