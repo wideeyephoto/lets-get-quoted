@@ -27,6 +27,9 @@ type BuilderTab = 'business' | 'page' | 'design' | 'publish';
 type WebsiteBuilderProps = {
   site: Site;
   uploadedImages: SiteImage[];
+  // Account-level Intake AI tuning form (rendered server-side, mirrors
+  // Settings → Automations → Intake AI). Shown in the AI-intake section.
+  intakeSlot?: React.ReactNode;
 };
 
 // Heading font choices. The webfont options reuse faces the app already loads
@@ -296,7 +299,7 @@ function siteUpdates(site: Site) {
   };
 }
 
-export default function WebsiteBuilder({ site: initialSite, uploadedImages }: WebsiteBuilderProps) {
+export default function WebsiteBuilder({ site: initialSite, uploadedImages, intakeSlot }: WebsiteBuilderProps) {
   const [site, setSite] = useState(initialSite);
   const [siteImages, setSiteImages] = useState(uploadedImages);
   const [jobPhotoOptions, setJobPhotoOptions] = useState<JobPhotoImportOption[]>([]);
@@ -1591,6 +1594,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages }: We
                   <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.leadFilters.phoneVerification} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, phoneVerification: event.target.checked })} /><span><strong>Verify phone numbers with a text code</strong><small>The strongest junk filter — visitors confirm a 6-digit code before the AI intake submits. Verified leads get a green badge. Skipped automatically if texting isn&apos;t configured.</small></span></label>
                 </SectionCard>
                 </div>
+
+                {intakeSlot}
 
                 <SectionCard title="Quote request form (old school)" description="The classic multi-field form where visitors type out their job details and wait for you to reply with a price. Turning this on switches Smart Intake off (only one intake runs at a time); turning it off brings Smart Intake back." enabled={siteContent.quoteForm.enabled} onToggleEnabled={(value) => updateQuoteForm({ ...siteContent.quoteForm, enabled: value })} open={openSection === 'quoteForm'} onToggleOpen={() => toggleSection('quoteForm')}>
                   <label className={styles.formField}><span>Phone</span><input id="bf-phone-quote" type="tel" value={site.phone || ''} onChange={(event) => handleChange('phone', event.target.value || null)} placeholder="(555) 123-4567" /><small className={styles.fieldHint}>Powers your call buttons across the site.</small></label>
