@@ -504,7 +504,7 @@ export default function HomePage() {
           <div className="reassure-card">
             <span className="reassure-ic"><MessageIcon /></span>
             <h3>A real person, not a ticket bot</h3>
-            <p>Email <a href="mailto:hello@letsgetquoted.com">hello@letsgetquoted.com</a> and an actual human answers &mdash; no phone tree, no outsourced queue when money&rsquo;s on the line.</p>
+            <p>When money&rsquo;s on the line you reach an actual human on our team &mdash; no phone tree, no outsourced queue, no bouncing around a help desk.</p>
           </div>
         </div>
       </section>
@@ -524,7 +524,7 @@ export default function HomePage() {
             <p className="eyebrow">Straight answers</p>
             <h2 id="hfaq-title">The catch? <span className="gradient-text">There isn&rsquo;t one.</span></h2>
             <p>The honest answers to what every contractor asks before trusting a new tool with their name &mdash; and their money.</p>
-            <p className="hfaq-ask">Still wondering something? <a href="mailto:hello@letsgetquoted.com">Email a real human &rarr;</a></p>
+            <p className="hfaq-ask">Still wondering something? <Link href="/demo">See it live in the demo &rarr;</Link></p>
           </div>
           <div className="hfaq-list">
             {homeFaqs.map((faq, index) => (
