@@ -84,9 +84,6 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
     <main className="wide-shell workspace-shell">
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading"><p className="eyebrow">Pipeline</p><h2>Current leads</h2></div>
-        <div className="actions" style={{ marginBottom: '1rem' }}>
-          <Link href="/dashboard/leads?add=1#add-lead" className="btn primary">+ Add lead</Link>
-        </div>
         {mapView === 'large' && (
           <div className="workspace-embedded-map">
             <PinMap pins={mapPins} theme={mapTheme} />
@@ -95,6 +92,9 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
         {leads.length === 0 ? <p className="empty-state">No leads yet. Website requests will appear here — or <Link href="/dashboard/leads?add=1#add-lead">add a lead manually</Link>.</p> : (
           <LeadsWorkspace leads={viewLeads} initialView={initialView} mapView={mapView} mapTheme={mapTheme} />
         )}
+        <div className="actions" style={{ marginTop: '1.25rem' }}>
+          <Link href="/dashboard/leads?add=1#add-lead" className="btn primary">+ Add lead</Link>
+        </div>
       </section>
 
 
