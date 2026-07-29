@@ -8,7 +8,7 @@ import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
 import { expireStaleLeads, formatElapsedTime, formatLeadSource, getLead, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, LEAD_LAYOUT_COOKIE, listLeads, type Lead, type LeadQuoteVisit } from '@/lib/leads';
 import { expandScheduledJobs, formatJobSchedule, formatJobTime, listJobs, type Job, type QuoteItem, type ScheduledJobOccurrence } from '@/lib/jobs';
 import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
-import { clearLeadQuoteVisitAction, convertLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, setLeadLayoutAction, undoConvertLeadAction, updateLeadDetailsAction, updateLeadStatusAction } from '../actions';
+import { clearLeadQuoteVisitAction, convertLeadAction, reopenLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, setLeadLayoutAction, undoConvertLeadAction, updateLeadDetailsAction, updateLeadStatusAction } from '../actions';
 import DepositField from './DepositField';
 import LeadActionDeck from './LeadActionDeck';
 import LeadQuoteFields from './LeadQuoteFields';
@@ -133,7 +133,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const scheduleVisit = scheduleLeadQuoteVisitAction.bind(null, lead.id);
   const sendQuoteVisitOptions = sendLeadQuoteVisitOptionsAction.bind(null, lead.id);
   const triage = getLeadTriage(lead);
-  const markLeadContacted = updateLeadStatusAction.bind(null, lead.id, 'contacted');
+  const markLeadContacted = reopenLeadAction.bind(null, lead.id);
   const markLeadWon = updateLeadStatusAction.bind(null, lead.id, 'won');
   const markLeadLost = updateLeadStatusAction.bind(null, lead.id, 'lost');
   const leadLayout = cookies().get(LEAD_LAYOUT_COOKIE)?.value === 'primary' ? 'primary' : 'guided';

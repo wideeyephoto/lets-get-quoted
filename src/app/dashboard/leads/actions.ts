@@ -84,6 +84,25 @@ export async function updateLeadStatusAction(leadId: string, status: LeadStatus)
   revalidatePath('/dashboard/leads');
 }
 
+// Reopen a lost/declined lead: set it back to 'contacted' AND clear the
+// set-aside flags (archived / snoozed / declined). Without clearing archived, a
+// declined lead (which decline marks archived) would drop into "Set aside"
+// instead of returning to the active board — so it looks lost.
+export async function reopenLeadAction(leadId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const lead = await getLead(supabase, accountId, leadId);
+  if (!lead) throw new Error('Lead not found.');
+  const triage = { ...getLeadTriage(lead), archived: false, snoozedUntil: null, declinedReason: null };
+  const { error } = await supabase
+    .from('leads')
+    .update({ status: 'contacted', triage, updated_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('id', leadId);
+  if (error) throw error;
+  revalidatePath(`/dashboard/leads/${leadId}`);
+  revalidatePath('/dashboard/leads');
+}
+
 export async function updateLeadDetailsAction(leadId: string, formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
   await updateLeadDetails(supabase, accountId, leadId, {
