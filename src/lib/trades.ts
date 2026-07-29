@@ -469,6 +469,150 @@ export const TRADES: Trade[] = [
     metaDescription:
       'A masonry-contractor website with instant estimates, itemized quotes, deposits, project galleries, and Stripe payments. No subscription — pay only when you get paid.',
   },
+  {
+    slug: 'drywall',
+    name: 'Drywall Contractors',
+    work: 'drywall',
+    headline: 'Drywall websites that quote the hang, tape, and finish in one shot.',
+    subhead:
+      'Quote by the board or the room, book the job online, and get paid to your bank when the last coat is sanded — no chasing the builder for a check.',
+    pains: [
+      { title: 'Quote by the board or room', body: 'Save your hang, tape, and finish pricing to a price book and send a branded, itemized quote from the site in minutes.' },
+      { title: 'Book around the trades', body: 'Online booking and a shared schedule slot your crew in as soon as the framing and rough-ins clear.' },
+      { title: 'Get paid on completion', body: 'Send a pay link or take card and bank payment the moment the walls are sanded and ready for paint.' },
+    ],
+    services: ['Hang & finish', 'Tape & mud', 'Texture & popcorn removal', 'Patch & repair', 'Ceilings', 'Commercial'],
+    templateIds: ['fixit', 'modern'],
+    metaTitle: 'Website & Software for Drywall Contractors',
+    metaDescription:
+      'A drywall-contractor website with instant estimates, itemized quotes, online booking, and Stripe payments to your bank. No subscription — pay only when you get paid.',
+  },
+  {
+    slug: 'insulation',
+    name: 'Insulation Contractors',
+    work: 'insulation',
+    headline: 'Insulation websites that turn an energy-bill complaint into a booked job.',
+    subhead:
+      'Quote spray foam, blown-in, and batt work with clear line items, capture rebate-driven leads 24/7, and offer payment plans on whole-home jobs.',
+    pains: [
+      { title: 'Catch the rebate lead', body: 'An AI estimator captures and qualifies energy-upgrade inquiries 24/7 so the homeowner chasing a rebate books with you first.' },
+      { title: 'Quote the whole home', body: 'Itemized quotes lay out attic, wall, and crawlspace work by area so a homeowner sees exactly what they’re paying for — then e-signs.' },
+      { title: 'Finance the upgrade', body: '0%-interest payment plans make a whole-home insulation job an easy yes at the worst time for the homeowner’s wallet.' },
+    ],
+    services: ['Spray foam', 'Blown-in', 'Batt & roll', 'Attic & crawlspace', 'Air sealing', 'Removal & replace'],
+    templateIds: ['professional', 'handy'],
+    metaTitle: 'Website & Software for Insulation Contractors',
+    metaDescription:
+      'An insulation-contractor website with 24/7 lead capture, itemized quotes, payment plans, and Stripe payments. No subscription — pay only when you get paid.',
+  },
+  {
+    slug: 'window-cleaning',
+    name: 'Window Cleaning Services',
+    work: 'window cleaning',
+    headline: 'Window-cleaning websites that fill the recurring route.',
+    subhead:
+      'Turn one clean into a quarterly plan that books and bills itself, take online bookings without the phone tag, and keep every home and storefront on schedule.',
+    pains: [
+      { title: 'Recurring on rails', body: 'Quarterly and monthly plans auto-create each visit and charge the card on file — you clean, the invoicing runs itself.' },
+      { title: 'Book without the calls', body: 'Online booking lets homeowners and shops grab an open window while you’re up a ladder on the last job.' },
+      { title: 'More 5-star reviews', body: 'Automatic review requests after each clean send happy customers straight to Google.' },
+    ],
+    services: ['Residential windows', 'Storefront & commercial', 'Screens & tracks', 'Skylights', 'Post-construction', 'Hard-to-reach'],
+    templateIds: ['shine', 'handy'],
+    metaTitle: 'Website & Software for Window Cleaning Businesses',
+    metaDescription:
+      'A window-cleaning website with online booking, recurring auto-billing, cards on file, automatic reviews, and Stripe payments. No subscription — pay only when you get paid.',
+  },
+  {
+    slug: 'movers',
+    name: 'Moving Companies',
+    work: 'moving',
+    headline: 'Moving-company websites that quote the move and lock the date.',
+    subhead:
+      'Give instant ballpark quotes, take a deposit to hold the moving date, and get the balance paid at the truck — no paper contracts, no chasing checks.',
+    pains: [
+      { title: 'Quote the move fast', body: 'Instant estimates by home size and distance give a mover a ballpark up front, so the job’s half-sold before the survey.' },
+      { title: 'Lock the date with a deposit', body: 'A deposit holds the moving date so a booked job doesn’t vanish the week before to a cheaper quote.' },
+      { title: 'Get paid at the door', body: 'Take card or bank payment the moment the last box is off the truck — e-signed inventory and all.' },
+    ],
+    services: ['Local moves', 'Long-distance', 'Packing & unpacking', 'Loading & labor', 'Storage', 'Commercial & office'],
+    templateIds: ['professional', 'modern'],
+    metaTitle: 'Website & Software for Moving Companies',
+    metaDescription:
+      'A moving-company website with instant estimates, deposits to hold the date, online booking, and Stripe payments. No subscription — pay only when a customer pays you.',
+  },
+  {
+    slug: 'paving',
+    name: 'Paving & Asphalt Contractors',
+    work: 'paving & asphalt',
+    headline: 'Paving websites that quote the driveway and take the deposit.',
+    subhead:
+      'Quote driveways and lots by the square foot, take a deposit before you order material, and get paid to your bank the day the asphalt cools.',
+    pains: [
+      { title: 'Quote by the square foot', body: 'Save paving, sealcoating, and repair pricing to a price book and send a branded, itemized quote from the driveway in minutes.' },
+      { title: 'Deposit before you order', body: 'Collect a deposit that covers the asphalt and equipment before you schedule the crew — never front a load.' },
+      { title: 'Turn one job into upkeep', body: 'Sealcoating reminders and rebook invites bring the driveway back every few years on autopilot.' },
+    ],
+    services: ['Driveways', 'Parking lots', 'Sealcoating', 'Crack & pothole repair', 'Resurfacing', 'Striping'],
+    templateIds: ['carbon', 'reno'],
+    metaTitle: 'Website & Software for Paving & Asphalt Contractors',
+    metaDescription:
+      'A paving-contractor website with instant estimates, itemized quotes, deposits, and Stripe payments to your bank. No subscription — pay only when you get paid.',
+  },
+  {
+    slug: 'chimney-sweep',
+    name: 'Chimney Sweeps',
+    work: 'chimney sweep & repair',
+    headline: 'Chimney websites that fill the fall booking rush.',
+    subhead:
+      'Pack your busy season with online booking, quote repairs and liners on-site, and keep every home on a yearly inspection plan.',
+    pains: [
+      { title: 'Fill the fall calendar', body: 'Online booking packs your pre-winter inspection and cleaning route before the first cold snap.' },
+      { title: 'Quote repairs on-site', body: 'Send a branded quote for a liner, cap, or masonry repair from the roof and get it e-signed before you climb down.' },
+      { title: 'Keep them on a yearly plan', body: 'Rebook reminders and recurring inspections bring every chimney back each fall — safe and on schedule.' },
+    ],
+    services: ['Sweeping & cleaning', 'Inspections', 'Liners', 'Caps & dampers', 'Masonry repair', 'Waterproofing'],
+    templateIds: ['fixit', 'professional'],
+    metaTitle: 'Website & Software for Chimney Sweeps',
+    metaDescription:
+      'A chimney-sweep website with online booking, instant estimates, recurring inspection plans, and Stripe payments. No subscription — pay only when a homeowner pays you.',
+  },
+  {
+    slug: 'epoxy-flooring',
+    name: 'Epoxy Floor Coating Companies',
+    work: 'epoxy & floor coatings',
+    headline: 'Epoxy-coating websites where the glossy finish sells the job.',
+    subhead:
+      'Quote garage and shop floors by the square foot with finish options, take a deposit before you order material, and let the before/after close the sale.',
+    pains: [
+      { title: 'Let the finish sell', body: 'A photo-first gallery of flake, metallic, and high-gloss floors turns your best jobs into your best salesperson.' },
+      { title: 'Quote by the square foot', body: 'Itemized quotes with finish and flake options let a homeowner pick their look and watch the price update — then sign.' },
+      { title: 'Deposit on the material', body: 'Collect a deposit that covers the coating and prep before you schedule — never front the material.' },
+    ],
+    services: ['Garage floors', 'Basements', 'Shop & warehouse', 'Patios & pool decks', 'Flake & metallic', 'Concrete prep & repair'],
+    templateIds: ['reno', 'carbon'],
+    metaTitle: 'Website & Software for Epoxy Floor Coating Companies',
+    metaDescription:
+      'An epoxy-flooring website with itemized quotes, finish options, deposits, before/after galleries, and Stripe payments. No subscription — pay only when you get paid.',
+  },
+  {
+    slug: 'locksmiths',
+    name: 'Locksmiths',
+    work: 'locksmith work',
+    headline: 'Locksmith websites that book the lockout before the next call.',
+    subhead:
+      'Capture the “I’m locked out” call 24/7, book on-site jobs online, and take card or tap-to-pay the moment the door’s open.',
+    pains: [
+      { title: 'Win the emergency call', body: 'AI intake and online booking take the lockout or rekey lead any hour and route it to the nearest open window.' },
+      { title: 'Quote on the spot', body: 'A saved price book turns a rekey, lock change, or smart-lock install into an e-signable quote in under a minute.' },
+      { title: 'Get paid at the door', body: 'Take card or tap-to-pay the second the job’s done — no invoice, no chasing a check.' },
+    ],
+    services: ['Lockouts', 'Rekeying', 'Lock installs', 'Smart locks', 'Safes', 'Commercial & master key'],
+    templateIds: ['fixit', 'carbon'],
+    metaTitle: 'Website & Software for Locksmiths',
+    metaDescription:
+      'A locksmith website with 24/7 instant estimates, online booking, on-site card & tap-to-pay, and no subscription. Pay only when a customer pays you.',
+  },
 ];
 
 export function getTrade(slug: string): Trade | undefined {
