@@ -42,7 +42,7 @@ export default function SmsTermsPage() {
 
         <section>
           <h2>Opt-out and help</h2>
-          <p>Reply <strong>STOP</strong> to opt out of transactional payment texts. After opting out, you will receive no additional payment texts unless you reply <strong>START</strong> to resume. Reply <strong>HELP</strong> for help, or contact <a href="mailto:hello@letsgetquoted.com">hello@letsgetquoted.com</a>.</p>
+          <p>Reply <strong>STOP</strong> to opt out of transactional payment texts. After opting out, you will receive no additional payment texts unless you reply <strong>START</strong> to resume. Reply <strong>HELP</strong> for help, or reach us through our <Link href="/contact">contact page</Link>.</p>
           <p>Authentication passcodes are sent only when requested. If you do not want authentication texts, do not request another code and use email sign-in instead.</p>
         </section>
 
@@ -63,7 +63,7 @@ export default function SmsTermsPage() {
 
         <section>
           <h2>Contact</h2>
-          <p>For SMS support or questions about these terms, email <a href="mailto:hello@letsgetquoted.com">hello@letsgetquoted.com</a>.</p>
+          <p>For SMS support or questions about these terms, reach us through our <Link href="/contact">contact page</Link>.</p>
         </section>
       </div>
 

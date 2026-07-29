@@ -598,3 +598,29 @@ export async function sendLeadNotificationEmail(input: {
   });
   if (result.error) throw new Error(result.error.message);
 }
+
+// Inbound "contact us" message from the public /contact form, routed to our own
+// support inbox (never displayed on the site). reply_to is the sender so we can
+// just hit reply. Throws on provider rejection so the form shows an honest error.
+export async function sendContactMessageEmail(input: {
+  fromName: string;
+  fromEmail: string;
+  subject?: string;
+  message: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('Email provider is not configured.');
+  }
+  const subjectLine = input.subject?.trim() || 'New message';
+  const result = await resend.emails.send({
+    from: "Let's Get Quoted Contact <hello@letsgetquoted.com>",
+    to: 'hello@letsgetquoted.com',
+    subject: `[Contact] ${subjectLine} — ${input.fromName}`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#b45309;font-weight:700;letter-spacing:0.04em">CONTACT FORM</p><h1 style="font-size:22px;margin:0 0 12px">${escapeHtml(input.fromName)} sent a message</h1><p style="margin:0 0 6px"><strong>Email:</strong> ${escapeHtml(input.fromEmail)}</p>${input.subject ? `<p style="margin:0 0 6px"><strong>Subject:</strong> ${escapeHtml(input.subject)}</p>` : ''}<div style="padding:16px;margin-top:12px;background:#f4f5f7;border-left:4px solid #f59e0b;line-height:1.6">${escapeHtml(input.message).replace(/\n/g, '<br/>')}</div></div>`,
+    reply_to: input.fromEmail,
+  });
+  if (result.error) {
+    console.error('Failed to send contact message email:', result.error);
+    throw new Error(result.error.message);
+  }
+}

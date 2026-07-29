@@ -66,7 +66,7 @@ export default function PrivacyPolicyPage() {
 
         <section>
           <h2>Contact us</h2>
-          <p>Questions or privacy requests can be sent to <a href="mailto:hello@letsgetquoted.com">hello@letsgetquoted.com</a>.</p>
+          <p>Questions or privacy requests can be sent through our <Link href="/contact">contact page</Link>.</p>
         </section>
       </div>
 

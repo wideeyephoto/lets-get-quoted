@@ -14,6 +14,7 @@ export default function SiteFooter() {
         <Link href="/resources">Resources</Link>
         <Link href="/faq">FAQ</Link>
         <Link href="/security">Security</Link>
+        <Link href="/contact">Contact</Link>
         <Link href="/privacy">Privacy Policy</Link>
         <Link href="/sms-terms">SMS Terms</Link>
       </nav>

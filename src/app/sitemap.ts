@@ -32,6 +32,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'yearly' as const,
       priority: 0.5,
     })),
+    { url: `${appUrl}/contact`, changeFrequency: 'yearly', priority: 0.4 },
     { url: `${appUrl}/privacy`, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${appUrl}/sms-terms`, changeFrequency: 'yearly', priority: 0.3 },
   ];
