@@ -8,8 +8,9 @@ import FinanceReports from './FinanceReports';
 import { getAvailableTaxYears, buildProfitAndLoss, buildScheduleCWorksheet, build1099PrepList } from '@/lib/tax-reports';
 import SaveButton from '@/components/save-button';
 import DeleteAccountButton from './DeleteAccountButton';
-import { updateScheduleDayHoursAction, updateReviewSettingsAction, updateDepositSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBookingAvailabilityAction, sendTestDigestAction, deleteAccountAction } from './actions';
+import { updateScheduleDayHoursAction, updateReviewSettingsAction, updateDepositSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBookingAvailabilityAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction } from './actions';
 import { ESTIMATE_POSTURES, normalizeEstimatePosture } from '@/lib/estimate-posture';
+import { getSiteContent } from '@/lib/site-content';
 import { WEEKDAY_LABELS, BOOKING_WINDOW_PRESETS, TIMEZONE_OPTIONS, bookingAvailabilityFromAccount } from '@/lib/booking-availability';
 
 function formatDate(value: string): string {
@@ -28,7 +29,7 @@ export default async function SettingsPage({
       supabase.auth.getUser(),
       supabase.auth.getUserIdentities(),
       supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded, schedule_day_hours').eq('id', accountId).single(),
-      supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
+      supabase.from('sites').select('id, company_name, content').eq('account_id', accountId).maybeSingle(),
       getAvailableTaxYears(supabase, accountId),
       supabase
         .from('payments')
@@ -57,6 +58,7 @@ export default async function SettingsPage({
     .select('estimate_posture, high_value_lead_amount, mute_low_quality_leads, high_value_sms_enabled, alert_phone')
     .eq('id', accountId)
     .maybeSingle();
+  const businessBasics = getSiteContent((site?.content as Record<string, unknown> | null | undefined) ?? null);
   const estimatePosture = normalizeEstimatePosture(intakeSettings?.estimate_posture);
   const highValueLeadAmount = intakeSettings?.high_value_lead_amount ? Number(intakeSettings.high_value_lead_amount) : null;
   const muteLowQualityLeads = intakeSettings?.mute_low_quality_leads !== false; // default on
@@ -540,9 +542,39 @@ export default async function SettingsPage({
           {
             id: 'business',
             label: 'Business',
-            anchors: ['import', 'export', 'marketing-address', 'finances'],
+            anchors: ['business-basics', 'import', 'export', 'marketing-address', 'finances'],
             content: (
               <>
+                <section className="panel workspace-section-card" id="business-basics">
+                  <div className="section-heading workspace-section-heading compact-heading">
+                    <p className="eyebrow">Business basics</p>
+                    <h2>Company name, trade &amp; service area</h2>
+                  </div>
+                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                    These power your whole website &mdash; your headline, services, service area, and Google listing all
+                    build from them. You can also edit them in the <Link href="/dashboard/sites">Website builder</Link>;
+                    both stay in sync.
+                  </p>
+                  <form action={updateBusinessBasicsAction} className="form-grid compact-form">
+                    <div className="field full">
+                      <label htmlFor="companyName">Company name</label>
+                      <input id="companyName" name="companyName" defaultValue={site?.company_name ?? ''} placeholder="Lawn &amp; Order Landscaping" />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="trade">Field of work / trade</label>
+                      <input id="trade" name="trade" defaultValue={businessBasics.trade} placeholder="landscaping and lawn care" />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="zip">ZIP code</label>
+                      <input id="zip" name="zip" defaultValue={businessBasics.zip} placeholder="64002" />
+                      <small className="field-hint">Sets your service area &mdash; the AI names the real nearby cities and towns you serve.</small>
+                    </div>
+                    <div className="form-actions">
+                      <SaveButton>Save business basics</SaveButton>
+                    </div>
+                  </form>
+                </section>
+
                 <section className="panel workspace-section-card" id="import">
                   <div className="section-heading workspace-section-heading compact-heading">
                     <p className="eyebrow">Get set up</p>

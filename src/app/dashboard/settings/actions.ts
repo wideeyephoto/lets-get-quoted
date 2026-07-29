@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { updateSite } from '@/lib/sites';
+import { mergeSiteContent } from '@/lib/site-content';
 import { sendTestDigest } from '@/lib/daily-digest';
 import { normalizeEstimatePosture } from '@/lib/estimate-posture';
 import {
@@ -20,6 +22,32 @@ function parseScheduleDayHours(value: FormDataEntryValue | null): number {
   const n = Number(value);
   if (!Number.isFinite(n)) return 8;
   return Math.min(24, Math.max(1, n));
+}
+
+// Business basics (company name / trade / ZIP) live on the sites row — the same
+// fields the Website Builder Setup tab edits — so this and the builder always
+// mirror. Company name is a column; trade + ZIP live in the content JSON.
+export async function updateBusinessBasicsAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const { data: site } = await supabase
+    .from('sites')
+    .select('id, company_name, content')
+    .eq('account_id', accountId)
+    .maybeSingle();
+  if (!site) throw new Error('Create your website first to set your business basics.');
+
+  const companyName = (formData.get('companyName') ?? '').toString().trim();
+  const trade = (formData.get('trade') ?? '').toString().trim();
+  const zip = (formData.get('zip') ?? '').toString().trim();
+
+  const content = mergeSiteContent((site.content as Record<string, unknown>) ?? {}, { trade, zip });
+  await updateSite(supabase, accountId, site.id as string, {
+    company_name: companyName || (site.company_name as string) || 'My Business',
+    content,
+  });
+
+  revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/sites');
 }
 
 export async function updateScheduleDayHoursAction(formData: FormData) {
