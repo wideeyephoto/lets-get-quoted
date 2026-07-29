@@ -271,7 +271,7 @@
 .termsHeading { margin: 0; color: rgba(255,255,255,.62); font-size: .68rem; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; }
 .termsOptions { display: grid; gap: .4rem; }
 .termsOption { display: flex; align-items: flex-start; gap: .55rem; padding: .6rem .7rem; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; background: rgba(255,255,255,.03); cursor: pointer; transition: border-color .15s, background .15s; }
-.termsOption input { margin-top: .18rem; accent-color: #ffd166; }
+.termsOption input { flex: 0 0 auto; width: 16px; min-height: 0; height: 16px; margin-top: .18rem; padding: 0; border: 0; border-radius: 0; background: none; accent-color: #ffd166; }
 .termsOption strong { display: block; color: #f7f5ef; font-size: .86rem; }
 .termsOption small { display: block; margin-top: .12rem; color: rgba(255,255,255,.52); font-size: .76rem; line-height: 1.35; }
 .termsOptionOn { border-color: rgba(255,209,102,.5); background: rgba(255,209,102,.08); }
