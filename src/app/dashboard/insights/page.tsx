@@ -59,6 +59,9 @@ export default async function InsightsPage({ searchParams }: { searchParams: { w
               </Link>
             ))}
           </div>
+          <p style={{ marginTop: '0.85rem' }}>
+            <Link href="/dashboard/settings#finances" className="btn secondary">Tax &amp; finance reports →</Link>
+          </p>
         </div>
       </section>
 

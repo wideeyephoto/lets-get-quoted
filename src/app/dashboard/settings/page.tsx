@@ -16,6 +16,9 @@ import { WEEKDAY_LABELS, BOOKING_WINDOW_PRESETS, TIMEZONE_OPTIONS, bookingAvaila
 import { EXTRA_STOP_SETTINGS_COLUMNS } from '@/lib/extra-stop';
 import { loadRefundTiers } from '@/lib/extra-stop-refunds';
 import ExtraStopSettingsSection from './ExtraStopSettingsSection';
+import { getTrailingVolume } from '@/lib/payments';
+import { getTierInfo } from '@/lib/stripe';
+import { formatMoney } from '@/lib/jobs';
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -105,6 +108,10 @@ export default async function SettingsPage({
     .eq('id', accountId)
     .single();
   const extraStopRefundTiers = await loadRefundTiers(supabase, accountId);
+  // Platform fee tier, shown on the Payments tab so a contractor can see the rate
+  // they're on and what it takes to reach the next (lower) one.
+  const trailingVolume = await getTrailingVolume(accountId);
+  const feeTier = getTierInfo(trailingVolume);
   // At-a-glance status for the Automations accordion cards.
   const extraStopEnabled = Boolean((extraStopSettings as { extra_stop_enabled?: boolean } | null)?.extra_stop_enabled);
   const bookingActive = booking.weekdays.length > 0;
@@ -172,8 +179,8 @@ export default async function SettingsPage({
           </div>
           <h1 className="workspace-title">Account settings</h1>
           <p className="workspace-lead">
-            Manage how you get paid and how you sign in, so you&apos;re never locked out of your
-            business or stuck waiting on a payout.
+            Your login and payouts, the automations working in the background, and your business
+            details, data, and taxes — all in one place.
           </p>
           {account?.created_at ? (
             <p className="account-created-note">Account created {formatDate(account.created_at)}</p>
@@ -238,6 +245,40 @@ export default async function SettingsPage({
                     disconnectStripeAction={disconnectStripeAction}
                     pendingPaymentsCount={pendingPaymentsCount ?? 0}
                   />
+                </section>
+
+                <section className="panel workspace-section-card">
+                  <div className="section-heading workspace-section-heading compact-heading">
+                    <p className="eyebrow">Platform fee</p>
+                    <h2>Your current tier</h2>
+                  </div>
+                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                    letsgetquoted.com takes a small platform fee on each payment you collect, and it drops
+                    as your trailing 12-month volume grows. The rate is locked in on every payment when it&apos;s
+                    made — this never re-rates what you&apos;ve already been charged.
+                  </p>
+                  <div className="fee-tier-card">
+                    <div className="fee-tier-head">
+                      <span className="fee-tier-rate">{(feeTier.rate * 100).toFixed(2)}%</span>
+                      <span className="fee-tier-meta">
+                        <strong>Tier {feeTier.tier}</strong>
+                        <span>{formatMoney(trailingVolume)} trailing 12-mo volume</span>
+                      </span>
+                    </div>
+                    {feeTier.nextTier ? (
+                      <>
+                        <div className="fee-tier-bar" role="presentation">
+                          <span style={{ width: `${Math.round((feeTier.progressToNext ?? 0) * 100)}%` }} />
+                        </div>
+                        <p className="field-hint">
+                          {formatMoney(feeTier.amountToNextTier ?? 0)} more in the next 12 months moves you to{' '}
+                          <strong>{(feeTier.nextTier.rate * 100).toFixed(2)}%</strong> (Tier {feeTier.nextTier.tier}).
+                        </p>
+                      </>
+                    ) : (
+                      <p className="field-hint">You&apos;re on the lowest platform fee we offer. 🎉</p>
+                    )}
+                  </div>
                 </section>
               </>
             ),

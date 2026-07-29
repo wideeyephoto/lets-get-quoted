@@ -106,7 +106,7 @@ export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme }: 
         ) : (
           <span />
         )}
-        <ViewGear views={VIEWS} activeView={view} onPickView={pickView} mapView={mapView} onSetMapView={setMap} mapTheme={mapTheme} onSetMapTheme={setTheme} />
+        <ViewGear views={VIEWS} activeView={view} onPickView={pickView} mapView={mapView} onSetMapView={setMap} mapTheme={mapTheme} onSetMapTheme={setTheme} label="View" />
       </div>
     </div>
   );
