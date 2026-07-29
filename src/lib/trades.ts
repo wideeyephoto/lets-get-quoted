@@ -325,6 +325,150 @@ export const TRADES: Trade[] = [
     metaDescription:
       'A garage-door website with 24/7 instant estimates, online booking, on-site card & bank payments, and no subscription. Pay only when a homeowner pays you.',
   },
+  {
+    slug: 'gutters',
+    name: 'Gutter Companies',
+    work: 'gutter install & cleaning',
+    headline: 'Gutter websites that book seamless installs and seasonal cleanings.',
+    subhead:
+      'Quote seamless gutters and guards by the linear foot, fill your fall cleaning route with online booking, and get paid the day the job’s done.',
+    pains: [
+      { title: 'Quote runs and guards fast', body: 'Save per-foot pricing for seamless gutter, downspouts, and guards to a price book and send a branded quote from the ladder in minutes.' },
+      { title: 'Fill the seasonal calendar', body: 'Online booking packs your spring and fall cleaning routes before the leaves even drop.' },
+      { title: 'Turn cleanings into repeats', body: 'Recurring plans and rebook reminders bring every fall cleaning back on autopilot.' },
+    ],
+    services: ['Seamless gutters', 'Gutter guards', 'Cleaning', 'Downspouts', 'Repairs', 'Fascia & soffit'],
+    templateIds: ['handy', 'fixit'],
+    metaTitle: 'Website & Software for Gutter Companies',
+    metaDescription:
+      'A gutter-company website with instant estimates, online booking, recurring cleaning plans, and Stripe payments. No subscription — pay only when a homeowner pays you.',
+  },
+  {
+    slug: 'siding',
+    name: 'Siding Contractors',
+    work: 'siding',
+    headline: 'Siding websites that sell the whole-home transformation.',
+    subhead:
+      'Quote vinyl, fiber-cement, and repairs with material options and photos, take a deposit before you order, and offer payment plans on the big wraps.',
+    pains: [
+      { title: 'Let them choose the look', body: 'Itemized quotes with material and color options let a homeowner compare vinyl and fiber-cement and watch the price update — then sign.' },
+      { title: 'Finance the whole wrap', body: '0%-interest payment plans make a full re-side an easy yes instead of a financing headache.' },
+      { title: 'Show the before/after', body: 'A photo-first gallery of finished exteriors turns your past jobs into your strongest close.' },
+    ],
+    services: ['Vinyl siding', 'Fiber-cement', 'Wood & cedar', 'Repairs', 'Trim & soffit', 'Insulated siding'],
+    templateIds: ['reno', 'professional'],
+    metaTitle: 'Website & Software for Siding Contractors',
+    metaDescription:
+      'A siding-contractor website with itemized quotes, material options, deposits, payment plans, and Stripe payments. No subscription — pay only when you get paid.',
+  },
+  {
+    slug: 'deck-builders',
+    name: 'Deck Builders',
+    work: 'deck building',
+    headline: 'Deck-builder websites that turn a backyard dream into a booked build.',
+    subhead:
+      'Quote decks by material and square foot with add-ons the homeowner can pick, take a staged deposit before you order lumber, and get paid at each phase.',
+    pains: [
+      { title: 'Build the quote with them', body: 'Itemized quotes with optional railings, lighting, and composite upgrades let a homeowner design their deck and see the price move.' },
+      { title: 'Stage the payments', body: 'Collect a deposit on the material, then progress payments as the build hits each phase — all on one job.' },
+      { title: 'Sell with the portfolio', body: 'A photo-first gallery of finished decks and before/afters is the pitch that closes the weekend shopper.' },
+    ],
+    services: ['Wood decks', 'Composite decks', 'Railings', 'Pergolas', 'Repairs & staining', 'Porches'],
+    templateIds: ['reno', 'modern'],
+    metaTitle: 'Website & Software for Deck Builders',
+    metaDescription:
+      'A deck-builder website with itemized quotes, add-on options, staged deposits, project galleries, and Stripe payments. No subscription — pay only when you get paid.',
+  },
+  {
+    slug: 'junk-removal',
+    name: 'Junk Removal Services',
+    work: 'junk removal & hauling',
+    headline: 'Junk-removal websites that book the haul while they’re staring at the pile.',
+    subhead:
+      'Give instant ballpark pricing, let homeowners book a pickup window online, and take tap-to-pay the moment the truck is loaded.',
+    pains: [
+      { title: 'Price it before you roll', body: 'Instant estimates give a homeowner a ballpark by load size, so the job’s half-sold before you arrive.' },
+      { title: 'Book the window online', body: 'Online booking fills your route with pickup windows without a single phone call.' },
+      { title: 'Get paid at the curb', body: 'Take card or tap-to-pay the second the truck’s loaded — no invoice, no chasing a check.' },
+    ],
+    services: ['Furniture & appliances', 'Estate & cleanouts', 'Construction debris', 'Garage & basement', 'Yard waste', 'Commercial hauling'],
+    templateIds: ['handy', 'fixit'],
+    metaTitle: 'Website & Software for Junk Removal Businesses',
+    metaDescription:
+      'A junk-removal website with instant estimates, online booking, tap-to-pay, and no subscription. Pay only when a customer pays you.',
+  },
+  {
+    slug: 'window-installers',
+    name: 'Window & Door Installers',
+    work: 'window & door installation',
+    headline: 'Window and door websites that quote the whole house and finance it.',
+    subhead:
+      'Quote replacement windows and doors by the opening with options, take a deposit before you order, and offer payment plans on a full-home replacement.',
+    pains: [
+      { title: 'Quote by the opening', body: 'Save window and door pricing to a price book and build a full-home quote with options in minutes, not a week.' },
+      { title: 'Deposit on the order', body: 'Collect a deposit that covers the special-order units before you place the order with the manufacturer.' },
+      { title: 'Finance the full job', body: 'Payment plans turn a whole-home window replacement into monthly installments that auto-charge.' },
+    ],
+    services: ['Replacement windows', 'Entry doors', 'Patio & sliding doors', 'Storm doors', 'Bay & bow', 'Repairs'],
+    templateIds: ['professional', 'modern'],
+    metaTitle: 'Website & Software for Window & Door Installers',
+    metaDescription:
+      'A window-and-door-installer website with itemized quotes, deposits, payment plans, and Stripe payments. No subscription — pay only when a homeowner pays you.',
+  },
+  {
+    slug: 'appliance-repair',
+    name: 'Appliance Repair Services',
+    work: 'appliance repair',
+    headline: 'Appliance-repair websites that book the service call first.',
+    subhead:
+      'Capture the “fridge is out” call 24/7, book a diagnostic window online, and take card or bank payment before you leave the kitchen.',
+    pains: [
+      { title: 'Catch the call any hour', body: 'AI intake and online booking take the broken-appliance lead at any hour and slot a diagnostic window while you’re on another job.' },
+      { title: 'Quote the repair on-site', body: 'A saved price book turns a diagnosis into an e-signable repair quote in under a minute.' },
+      { title: 'Get paid on completion', body: 'Send a pay link or take card and bank payment the moment the appliance is running again.' },
+    ],
+    services: ['Refrigerators', 'Washers & dryers', 'Ovens & ranges', 'Dishwashers', 'Microwaves', 'Diagnostics'],
+    templateIds: ['fixit', 'handy'],
+    metaTitle: 'Website & Software for Appliance Repair Businesses',
+    metaDescription:
+      'An appliance-repair website with 24/7 instant estimates, online booking, on-site card & bank payments, and no subscription. Pay only when a customer pays you.',
+  },
+  {
+    slug: 'solar',
+    name: 'Solar Installers',
+    work: 'solar installation',
+    headline: 'Solar websites that turn a curious homeowner into a signed install.',
+    subhead:
+      'Capture and qualify high-value solar leads 24/7, quote systems with clear line items, and stage deposits and payments across a long install.',
+    pains: [
+      { title: 'Qualify the big lead first', body: 'An AI estimator captures and qualifies solar inquiries 24/7 and flags the high-value ones so you respond before the next installer.' },
+      { title: 'Quote the system clearly', body: 'Itemized quotes lay out panels, inverter, and labor so a homeowner sees exactly what they’re buying — then e-signs.' },
+      { title: 'Stage a long install', body: 'Collect a deposit, then progress payments across permitting, install, and inspection — all on one job.' },
+    ],
+    services: ['Rooftop solar', 'Battery storage', 'EV chargers', 'System design', 'Permitting', 'Monitoring & service'],
+    templateIds: ['carbon', 'professional'],
+    metaTitle: 'Website & Software for Solar Installers',
+    metaDescription:
+      'A solar-installer website with 24/7 lead capture, high-value alerts, itemized quotes, staged payments, and Stripe. No subscription — pay only when you get paid.',
+  },
+  {
+    slug: 'masonry',
+    name: 'Masonry Contractors',
+    work: 'masonry',
+    headline: 'Masonry websites that let the stonework close the job.',
+    subhead:
+      'Quote brick, block, and stone by the job with photos, take a deposit before you order material, and get paid to your bank when the last course is set.',
+    pains: [
+      { title: 'Let the craft sell', body: 'A photo-first gallery of brickwork, stone veneer, and hardscape turns your best jobs into your best salesperson.' },
+      { title: 'Deposit on the material', body: 'Collect a deposit to cover brick, block, and stone before you order — never front a pallet of material.' },
+      { title: 'Quote varied work fast', body: 'Save your common jobs — repointing, chimneys, walls — to a price book and send a branded quote from the site in minutes.' },
+    ],
+    services: ['Brick & block', 'Stone veneer', 'Chimneys', 'Repointing & repair', 'Retaining walls', 'Patios & hardscape'],
+    templateIds: ['carbon', 'reno'],
+    metaTitle: 'Website & Software for Masonry Contractors',
+    metaDescription:
+      'A masonry-contractor website with instant estimates, itemized quotes, deposits, project galleries, and Stripe payments. No subscription — pay only when you get paid.',
+  },
 ];
 
 export function getTrade(slug: string): Trade | undefined {
