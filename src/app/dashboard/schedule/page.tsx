@@ -298,6 +298,7 @@ export default async function SchedulePage({
   return (
     <main className="wide-shell workspace-shell">
       <ScheduleDragProvider>
+      <MapSection pins={mapPins} title="Map — plan your routes" subtitle="Green pins are scheduled; gold need a date; orange are open leads. Batch the ones that cluster." />
       <section className="panel workspace-section-card schedule-calendar-panel">
         <div className="schedule-calendar-header">
           <div className="workspace-hero-copy schedule-calendar-copy">
@@ -365,8 +366,6 @@ export default async function SchedulePage({
         openWindowCount={openWindowCount}
         openDayCount={bookingDays.length}
       />
-
-      <MapSection pins={mapPins} title="Map — plan your routes" subtitle="Green pins are scheduled; gold need a date; orange are open leads. Batch the ones that cluster." />
 
       {unscheduledJobs.length > 0 ? (
         <section className="panel workspace-section-card" id="unscheduled-jobs">

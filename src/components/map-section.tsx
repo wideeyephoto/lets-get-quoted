@@ -10,12 +10,18 @@ export default function MapSection({
   pins,
   title = 'Jobs & leads map',
   subtitle = 'See where your work is so you can batch nearby estimates and jobs.',
+  alwaysOpen = false,
 }: {
   pins: MapPin[];
   title?: string;
   subtitle?: string;
+  // alwaysOpen: no self-toggle, map is always shown (visibility is controlled
+  // elsewhere — e.g. the view gear on Leads/Jobs). Default false keeps the
+  // built-in Show/Hide button (used on Schedule, which has no gear).
+  alwaysOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(alwaysOpen);
+  const shown = alwaysOpen || open;
   return (
     <section className="panel workspace-section-card">
       <div className="map-section-head">
@@ -23,11 +29,13 @@ export default function MapSection({
           <p className="eyebrow">Map</p>
           <h2>{title}</h2>
         </div>
-        <button type="button" className="btn secondary" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-          {open ? 'Hide map' : `Show map (${pins.length})`}
-        </button>
+        {alwaysOpen ? null : (
+          <button type="button" className="btn secondary" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+            {open ? 'Hide map' : `Show map (${pins.length})`}
+          </button>
+        )}
       </div>
-      {open ? (
+      {shown ? (
         <>
           <p className="map-section-sub">{subtitle}</p>
           <PinMap pins={pins} />

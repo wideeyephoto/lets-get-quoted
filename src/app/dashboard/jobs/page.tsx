@@ -11,19 +11,22 @@ import type { Invoice } from '@/lib/invoices';
 import { listJobs, formatMoney, type Job } from '@/lib/jobs';
 import { listLeads, type Lead } from '@/lib/leads';
 import type { Payment } from '@/lib/payments';
-import type { JobStatus } from '@/lib/jobs';
+import { cookies } from 'next/headers';
 import { createJobAction } from './actions';
 import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
 import MapSection from '@/components/map-section';
 import { getMapPins } from '@/lib/map-pins';
+import { JOBS_VIEW_COOKIE, MAP_VIEW_COOKIE, normalizeJobsView, normalizeMapView } from '@/lib/dashboard-views';
+import JobsWorkspace, { type JobViewItem } from './JobsWorkspace';
 
-const STATUS_FILTERS: { value: JobStatus | 'all'; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'new_lead', label: 'New request' },
-  { value: 'in_progress', label: 'In progress' },
-  { value: 'complete', label: 'Complete' },
-  { value: 'archived', label: 'Archived' },
-];
+// Compact "Aug 3" / "Aug 3 · 9:00 AM" label for a job's scheduled date, parsed
+// off the date parts so a date-only value never shifts a day by timezone.
+function formatScheduledLabel(dateIso: string, time: string | null): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateIso);
+  const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(dateIso);
+  const label = Number.isNaN(d.getTime()) ? dateIso : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return time ? `${label} · ${time}` : label;
+}
 
 function normalizeKey(value: string | null | undefined): string | null {
   const normalized = value?.trim().toLowerCase();
@@ -113,35 +116,18 @@ export default async function JobsPage({
 }) {
   const { supabase, accountId } = await requireOwnerContext();
 
-  const statusParam = searchParams.status as JobStatus | undefined;
-  const [jobs, allJobs, leads] = await Promise.all([
-    listJobs(supabase, accountId, statusParam),
+  const [allJobs, leads] = await Promise.all([
     listJobs(supabase, accountId),
     listLeads(supabase, accountId),
   ]);
   const pastClients = buildPastClients(allJobs, leads);
-  const visibleJobIds = jobs.map((job) => job.id);
+  const jobIds = allJobs.map((job) => job.id);
   const [{ data: invoiceRows, error: invoiceError }, { data: paymentRows, error: paymentError }, { data: clientAccessRows, error: clientAccessError }] =
-    visibleJobIds.length > 0
+    jobIds.length > 0
       ? await Promise.all([
-          supabase
-            .from('invoices')
-            .select('*')
-            .eq('account_id', accountId)
-            .in('job_id', visibleJobIds)
-            .order('created_at', { ascending: false }),
-          supabase
-            .from('payments')
-            .select('*')
-            .eq('account_id', accountId)
-            .in('job_id', visibleJobIds)
-            .order('requested_at', { ascending: false }),
-          supabase
-            .from('client_job_access')
-            .select('job_id')
-            .eq('account_id', accountId)
-            .in('job_id', visibleJobIds)
-            .is('revoked_at', null),
+          supabase.from('invoices').select('*').eq('account_id', accountId).in('job_id', jobIds).order('created_at', { ascending: false }),
+          supabase.from('payments').select('*').eq('account_id', accountId).in('job_id', jobIds).order('requested_at', { ascending: false }),
+          supabase.from('client_job_access').select('job_id').eq('account_id', accountId).in('job_id', jobIds).is('revoked_at', null),
         ])
       : [
           { data: [] as Invoice[] | null, error: null },
@@ -159,63 +145,55 @@ export default async function JobsPage({
     counts[row.job_id] = (counts[row.job_id] ?? 0) + 1;
     return counts;
   }, {});
-  const totalQuoted = jobs.reduce((sum, job) => sum + job.quoted_amount, 0);
-  const activeJobs = jobs.filter((job) => job.status === 'in_progress').length;
-  const mapPins = await getMapPins(supabase, accountId);
+
+  // Serialize every job (with its live badge) for the client view switcher.
+  const jobItems: JobViewItem[] = allJobs.map((job) => {
+    const badge = deriveJobListBadge(job, paymentsByJob[job.id] ?? [], invoicesByJob[job.id] ?? [], clientAccessCountByJob[job.id] ?? 0);
+    return {
+      id: job.id,
+      ref: job.ref,
+      clientName: job.client_name,
+      address: job.address,
+      status: job.status,
+      badgeLabel: badge.label,
+      badgeTone: badge.tone,
+      badgeTitle: badge.title ?? '',
+      scheduledLabel: job.scheduled_for ? formatScheduledLabel(job.scheduled_for, job.scheduled_time) : null,
+      quotedAmount: job.quoted_amount,
+      quotedLabel: formatMoney(job.quoted_amount),
+      estimatedHours: job.estimated_hours,
+      createdAt: job.created_at,
+    };
+  });
+
+  const totalQuoted = allJobs.reduce((sum, job) => sum + job.quoted_amount, 0);
+  const activeJobs = allJobs.filter((job) => job.status === 'in_progress').length;
+  const mapOn = normalizeMapView(cookies().get(MAP_VIEW_COOKIE)?.value) === 'on';
+  const jobsView = normalizeJobsView(cookies().get(JOBS_VIEW_COOKIE)?.value);
+  const mapPins = mapOn ? await getMapPins(supabase, accountId) : [];
 
   return (
     <main className="wide-shell workspace-shell">
+      {mapOn && (
+        <MapSection pins={mapPins} alwaysOpen subtitle="Green pins are scheduled; gold are quotes awaiting a date; orange are open leads." />
+      )}
+
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading">
           <p className="eyebrow">Pipeline</p>
           <h2>Current jobs</h2>
         </div>
-        <div className="status-tabs workspace-status-tabs">
-          {STATUS_FILTERS.map((filter) => {
-            const isActive = (filter.value === 'all' && !statusParam) || filter.value === statusParam;
-            const href = filter.value === 'all' ? '/dashboard/jobs' : `/dashboard/jobs?status=${filter.value}`;
-            return (
-              <Link key={filter.value} href={href} className={`status-tab${isActive ? ' active' : ''}`}>
-                {filter.label}
-              </Link>
-            );
-          })}
-        </div>
-        {jobs.length === 0 ? (
+        {allJobs.length === 0 ? (
           <p className="empty-state">No jobs yet. Create your first job below.</p>
         ) : (
-          <div className="job-list">
-            {jobs.map((job) => {
-              const badge = deriveJobListBadge(job, paymentsByJob[job.id] ?? [], invoicesByJob[job.id] ?? [], clientAccessCountByJob[job.id] ?? 0);
-              return (
-                <Link key={job.id} href={`/dashboard/jobs/${job.id}`} className="job-row">
-                  <div className="job-row-header">
-                    <span className="job-ref">{job.ref}</span>
-                    <span className={`status-badge status-${badge.tone}`} title={badge.title}>{badge.label}</span>
-                  </div>
-                  <div className="job-client">{job.client_name}</div>
-                  <div className="job-row-header" style={{ marginTop: '0.4rem' }}>
-                    <span className="job-meta">
-                      {job.address || 'No address on file'}
-                      {' · '}Estimated hours: {job.estimated_hours ? `${job.estimated_hours} hrs` : 'Not set'}
-                    </span>
-                    {job.quoted_amount > 0 ? (
-                      <span className="job-quoted">{formatMoney(job.quoted_amount)}</span>
-                    ) : null}
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
+          <JobsWorkspace jobs={jobItems} initialView={jobsView} mapOn={mapOn} />
         )}
       </section>
 
-      <MapSection pins={mapPins} subtitle="Green pins are scheduled; gold are quotes awaiting a date; orange are open leads." />
-
       <div className="stat-ticker panel">
         <div className="stat-ticker-item">
-          <span className="stat-ticker-value">{jobs.length}</span>
-          <span className="stat-ticker-label">Visible jobs</span>
+          <span className="stat-ticker-value">{allJobs.length}</span>
+          <span className="stat-ticker-label">Total jobs</span>
         </div>
         <div className="stat-ticker-item">
           <span className="stat-ticker-value">{activeJobs}</span>
@@ -227,7 +205,7 @@ export default async function JobsPage({
         </div>
       </div>
 
-      <details id="new-job" className="panel workspace-section-card workspace-details" open={shouldAutoOpenCreate(jobs.length, searchParams.new)}>
+      <details id="new-job" className="panel workspace-section-card workspace-details" open={shouldAutoOpenCreate(allJobs.length, searchParams.new)}>
         <summary className="workspace-details-summary">
           <span className="btn primary">+ New job</span>
           <span className="workspace-details-copy">Capture the next signed opportunity.</span>

@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { LeadStatus, LeadScore, LeadsView } from '@/lib/leads';
 import { archiveLeadAction, declineLeadAction, snoozeLeadAction, updateLeadStatusAction, setLeadsViewAction } from './actions';
+import { setMapViewAction } from '@/app/dashboard/view-actions';
+import ViewGear from '@/components/view-gear';
 import styles from './leads.module.css';
 
 // Display-ready lead shape, built server-side in page.tsx so this client
@@ -67,60 +69,6 @@ const DECLINE_REASONS: { key: string; label: string }[] = [
   { key: 'fully_booked', label: 'Fully booked' },
 ];
 
-function GearIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-    </svg>
-  );
-}
-
-// View picker collapsed into a gear menu so the four layouts don't crowd the
-// top of the board. Closes on outside-click / Escape.
-function ViewGear({ view, onPick }: { view: LeadsView; onPick: (next: LeadsView) => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
-  }, [open]);
-
-  const current = VIEWS.find((v) => v.id === view) ?? VIEWS[0];
-  return (
-    <div className={styles.viewGear} ref={ref}>
-      <button type="button" className={styles.viewGearBtn} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)} title="Change view">
-        <GearIcon />
-        <span>{current.label}</span>
-      </button>
-      {open && (
-        <div className={styles.viewGearPop} role="menu">
-          <p>View</p>
-          {VIEWS.map((v) => (
-            <button
-              key={v.id}
-              type="button"
-              role="menuitemradio"
-              aria-checked={view === v.id}
-              className={styles.viewGearOpt}
-              onClick={() => { onPick(v.id); setOpen(false); }}
-            >
-              <strong>{v.label}</strong>
-              {view === v.id && <span className={styles.viewGearCheck} aria-hidden="true">✓</span>}
-              <small>{v.hint}</small>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // Bottom-of-section explainer: what Hot / Warm / Low actually mean, mirroring
 // the chips shown on every card.
 function ScoreLegend() {
@@ -144,7 +92,9 @@ function ScoreLegend() {
   );
 }
 
-export default function LeadsWorkspace({ leads, initialView }: { leads: LeadViewItem[]; initialView: LeadsView }) {
+const VIEW_OPTIONS = VIEWS.map((v) => ({ id: v.id, label: v.label, hint: v.hint }));
+
+export default function LeadsWorkspace({ leads, initialView, mapOn }: { leads: LeadViewItem[]; initialView: LeadsView; mapOn: boolean }) {
   const [view, setView] = useState<LeadsView>(initialView);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
@@ -166,10 +116,19 @@ export default function LeadsWorkspace({ leads, initialView }: { leads: LeadView
     startTransition(() => setLeadsViewAction(next).catch(() => {}));
   }
 
+  // Map lives at the top of the page (server-rendered from the cookie); toggling
+  // persists then refreshes so the section appears/disappears.
+  function toggleMap(next: boolean) {
+    startTransition(async () => {
+      await setMapViewAction(next ? 'on' : 'off');
+      router.refresh();
+    });
+  }
+
   return (
     <div className={pending ? styles.workspaceBusy : undefined}>
       <div className={styles.viewBar}>
-        <ViewGear view={view} onPick={pickView} />
+        <ViewGear views={VIEW_OPTIONS} activeView={view} onPickView={pickView} mapOn={mapOn} onToggleMap={toggleMap} />
       </div>
 
       {view === 'board' && <BoardView leads={leads} run={run} />}
