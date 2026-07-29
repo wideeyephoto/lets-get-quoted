@@ -267,7 +267,7 @@
     /* shorter pin so the wheel doesn't scroll-jack for ~5 swipes on a phone */
     .fw-story{height:340vh}
     .fw-sticky{align-items:stretch}
-    .fw-stage{grid-template-columns:1fr;gap:10px;align-content:start;padding-top:4px;padding-bottom:16px}
+    .fw-stage{grid-template-columns:minmax(0,1fr);gap:10px;align-content:start;padding-top:4px;padding-bottom:16px}
     .fw-left{min-height:0;order:-1;justify-content:flex-start}
     /* wheel becomes a clipped band at the top; the frame is rotated 90° so the
        reading position sits at top-centre and the hub falls off-screen below */
@@ -288,9 +288,9 @@
     .fw-navbtn .t{font-weight:600}
     .fw-navbtn[aria-current="true"]{color:#140a02;border-color:transparent;background:linear-gradient(135deg,var(--ck),color-mix(in srgb,var(--ck) 55%,#fff))}
     .fw-navbtn[aria-current="true"] .n{opacity:.9}
-    .fw-right{order:1}
-    .fw-copies{min-height:0}
-    .fw-copy{position:relative;opacity:1;transform:none;pointer-events:auto;display:none}
+    .fw-right{order:1;min-width:0}
+    .fw-copies{min-height:0;grid-template-columns:minmax(0,1fr)}
+    .fw-copy{position:relative;min-width:0;max-width:100%;opacity:1;transform:none;pointer-events:auto;display:none}
     .fw-copy.is-active{display:flex}
   }
 
