@@ -20,6 +20,14 @@ import { driveDistances } from '@/lib/drive-time';
 import { rankByProximity, type RankedBookingDay } from '@/lib/route-density';
 import { evaluateBookingEligibility, bookingFallbackMessage, normalizeGeoMode, type BookingVerdict } from '@/lib/instant-booking';
 import { listServices } from '@/lib/services';
+import { extraStopSettingsFromAccount, EXTRA_STOP_SETTINGS_COLUMNS } from '@/lib/extra-stop';
+import { qualifyExtraStop, qualifyOptionsFromSettings } from '@/lib/extra-stop-qualify';
+import { createExtraStopRequest, hasActiveExtraStopRequest } from '@/lib/extra-stop-requests';
+import { uploadLeadPhoto } from '@/lib/lead-photo-storage';
+
+export type ExtraStopSubmitResult =
+  | { ok: true }
+  | { ok: false; unsafe?: boolean; safety?: string | null; error: string };
 
 export type BookingEvaluation = {
   verdict: BookingVerdict;
@@ -238,6 +246,89 @@ export async function submitBookingAction(subdomain: string, formData: FormData)
   });
 
   redirect(`/book/${subdomain}?booked=1`);
+}
+
+// Create an Extra Stop request from the public Book flow. Called with JS (not a
+// form redirect) so the client can render the verdict inline. ALWAYS re-runs the
+// qualification server-side — the client verdict is advisory and never trusted:
+// an unsafe or ineligible job cannot be forced through by a tampered request.
+// Returns a small serializable result; never throws to the caller.
+export async function submitExtraStopRequestAction(formData: FormData): Promise<ExtraStopSubmitResult> {
+  try {
+    const admin = createAdminClient();
+    const subdomain = (formData.get('subdomain') ?? '').toString();
+    const site = await getPublicSiteBySubdomain(admin, subdomain);
+    if (!site) return { ok: false, error: 'This booking link is unavailable.' };
+
+    const { data: accountRow } = await admin
+      .from('accounts')
+      .select(`${EXTRA_STOP_SETTINGS_COLUMNS}, business_name`)
+      .eq('id', site.account_id)
+      .maybeSingle();
+    const settings = extraStopSettingsFromAccount(accountRow as Parameters<typeof extraStopSettingsFromAccount>[0]);
+    if (!settings.enabled) return { ok: false, error: 'Extra Stop isn’t available right now.' };
+
+    const name = (formData.get('name') ?? '').toString().trim();
+    const phone = normalizeUsPhone((formData.get('phone') ?? '').toString());
+    const email = (formData.get('email') ?? '').toString().trim().toLowerCase() || null;
+    const address = (formData.get('address') ?? '').toString().trim() || null;
+    const issue = (formData.get('issue') ?? '').toString().trim();
+    const startedWhen = (formData.get('startedWhen') ?? '').toString().trim() || null;
+    const worsening = (formData.get('worsening') ?? '').toString().trim() || null;
+    const propertyType = (formData.get('propertyType') ?? '').toString().trim() || null;
+    const availability = (formData.get('availability') ?? '').toString().trim() || null;
+
+    if (!name || (!phone && !email)) return { ok: false, error: 'Add your name and a phone or email so we can reach you.' };
+    if (!issue) return { ok: false, error: 'Describe the issue first.' };
+
+    // Photos are validated by type/size inside uploadLeadPhoto; count is gated here.
+    const files = formData.getAll('photos').filter((f): f is File => f instanceof File && f.size > 0);
+    if (settings.requiredPhotos > 0 && files.length < settings.requiredPhotos) {
+      return { ok: false, error: `Please attach at least ${settings.requiredPhotos} photo${settings.requiredPhotos === 1 ? '' : 's'} of the issue.` };
+    }
+
+    // Duplicate guard before doing any real work.
+    if (await hasActiveExtraStopRequest(admin, site.account_id, phone, email)) {
+      return { ok: false, error: 'You already have an Extra Stop request in progress with this contractor.' };
+    }
+
+    // Server-authoritative qualification. Unsafe ⇒ safety copy, never a booking.
+    const qualification = await qualifyExtraStop(
+      { issue, startedWhen: startedWhen ?? '', worsening: worsening ?? '', propertyType: propertyType ?? '', availability: availability ?? '', businessName: site.company_name || '', serviceArea: site.service_area ?? '' },
+      qualifyOptionsFromSettings(settings),
+    );
+    if (qualification.unsafe) return { ok: false, unsafe: true, safety: qualification.safety, error: 'This needs urgent attention, not an online booking.' };
+    if (!qualification.eligible) return { ok: false, error: qualification.reason || 'This job isn’t a fit for an Extra Stop. You can request a regular booking instead.' };
+
+    // Upload photos (best-effort per file) and geocode the address (precise-only).
+    const photoPaths: string[] = [];
+    for (const file of files.slice(0, 6)) {
+      try {
+        photoPaths.push(await uploadLeadPhoto(site.account_id, file));
+      } catch (error) {
+        console.error('Extra Stop photo upload failed:', error instanceof Error ? error.message : error);
+      }
+    }
+    const geo = await geocodeAddress(address);
+
+    await createExtraStopRequest(
+      admin,
+      site.account_id,
+      { name, phone, email, address, issue, startedWhen, worsening, propertyType, availability, photoPaths },
+      qualification,
+      {
+        responseDeadlineMins: settings.responseDeadlineMins,
+        lat: geo?.precise ? geo.lat : null,
+        lng: geo?.precise ? geo.lng : null,
+        businessName: (accountRow as { business_name?: string } | null)?.business_name || site.company_name || 'your contractor',
+      },
+    );
+
+    return { ok: true };
+  } catch (error) {
+    console.error('submitExtraStopRequestAction failed:', error instanceof Error ? error.message : error);
+    return { ok: false, error: 'Something went wrong creating your request. Please try again.' };
+  }
 }
 
 // The graceful fallback: a visitor who isn't eligible for a self-serve slot still

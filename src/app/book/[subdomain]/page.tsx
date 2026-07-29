@@ -5,6 +5,7 @@ import { listServices } from '@/lib/services';
 import { formatMoney } from '@/lib/jobs';
 import { submitBookingAction } from './actions';
 import InstantBookFlow from './InstantBookFlow';
+import ExtraStopFlow from './ExtraStopFlow';
 import SaveButton from '@/components/save-button';
 
 export const dynamic = 'force-dynamic';
@@ -76,9 +77,10 @@ export default async function BookingPage({
   // defensively so a pre-migration DB just serves the classic form.
   const { data: gate } = await admin
     .from('accounts')
-    .select('instant_book_enabled')
+    .select('instant_book_enabled, extra_stop_enabled')
     .eq('id', site.account_id)
     .maybeSingle();
+  const extraStopEnabled = Boolean(gate?.extra_stop_enabled);
   if (gate?.instant_book_enabled) {
     return (
       <main className="wide-shell workspace-shell payment-shell">
@@ -90,6 +92,7 @@ export default async function BookingPage({
           </div>
         </section>
         <InstantBookFlow subdomain={params.subdomain} siteId={site.id} businessName={businessName} serviceArea={site.service_area ?? ''} />
+        {extraStopEnabled ? <ExtraStopFlow subdomain={params.subdomain} siteId={site.id} businessName={businessName} /> : null}
       </main>
     );
   }
@@ -211,6 +214,7 @@ export default async function BookingPage({
           </div>
         </form>
       )}
+      {extraStopEnabled ? <ExtraStopFlow subdomain={params.subdomain} siteId={site.id} businessName={businessName} /> : null}
     </main>
   );
 }
