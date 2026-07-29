@@ -757,8 +757,164 @@ export const TRADES: Trade[] = [
     metaDescription:
       'An auto-detailing website with online booking, tap-to-pay, recurring plans, and Stripe payments. No subscription — pay only when a customer pays you.',
   },
+  {
+    slug: 'snow-removal',
+    name: 'Snow Removal Services',
+    work: 'snow removal & plowing',
+    headline: 'Snow-removal websites that lock in seasonal contracts before the first flake.',
+    subhead:
+      'Sign per-season and per-push contracts online, take deposits and cards on file, and bill every storm automatically — no invoicing at 4am.',
+    pains: [
+      { title: 'Lock in the season', body: 'Sell per-season contracts with a card on file so your route is booked and prepaid before winter hits.' },
+      { title: 'Bill every push automatically', body: 'Per-push plans charge the saved card after each storm — you plow, the invoicing runs itself.' },
+      { title: 'Sign it online', body: 'E-signed contracts and online booking lock in driveways and lots without a single kitchen-table meeting.' },
+    ],
+    services: ['Residential plowing', 'Commercial lots', 'Sidewalk clearing', 'Salting & de-icing', 'Per-season contracts', 'Per-push service'],
+    templateIds: ['carbon', 'handy'],
+    metaTitle: 'Website & Software for Snow Removal Businesses',
+    metaDescription:
+      'A snow-removal website with online contracts, deposits, cards on file, per-storm auto-billing, and Stripe payments. No subscription — pay only when a customer pays you.',
+  },
+  {
+    slug: 'home-inspectors',
+    name: 'Home Inspectors',
+    work: 'home inspection',
+    headline: 'Home-inspection websites that book the inspection and collect up front.',
+    subhead:
+      'Let buyers and agents book an inspection online, collect payment before you arrive, and keep your calendar full without the back-and-forth.',
+    pains: [
+      { title: 'Book without the phone tag', body: 'Online booking lets agents and buyers grab an inspection slot 24/7 — no missed calls while you’re in a crawlspace.' },
+      { title: 'Collect before you arrive', body: 'Take payment or a deposit at booking so you’re never chasing a check after the report goes out.' },
+      { title: 'Win repeat agent business', body: 'A clean site, reviews, and easy rebooking make you the inspector agents send every client to.' },
+    ],
+    services: ['Buyer inspections', 'Seller pre-listing', 'New construction', 'Radon & mold', 'Sewer scope', 'Re-inspections'],
+    templateIds: ['professional', 'modern'],
+    metaTitle: 'Website & Software for Home Inspectors',
+    metaDescription:
+      'A home-inspection website with online booking, pay-at-booking, reviews, and Stripe payments. No subscription — pay only when a client pays you.',
+  },
+  {
+    slug: 'excavation',
+    name: 'Excavation Contractors',
+    work: 'excavation & grading',
+    headline: 'Excavation websites that quote the site work and lock the schedule.',
+    subhead:
+      'Quote grading, digging, and hauling by the job with photos, take a deposit before the equipment rolls, and get paid to your bank as the phases wrap.',
+    pains: [
+      { title: 'Quote the scope clearly', body: 'Itemized quotes lay out grading, excavation, and haul-off so a builder or homeowner sees exactly what they’re paying for — then e-signs.' },
+      { title: 'Deposit before the dig', body: 'Collect a deposit that covers mobilization and equipment before you schedule the crew and the machines.' },
+      { title: 'Stage the payments', body: 'Collect progress payments as the site work hits each phase — all tracked on one job.' },
+    ],
+    services: ['Site prep & grading', 'Foundation digs', 'Trenching', 'Land clearing', 'Drainage & ponds', 'Demolition & haul-off'],
+    templateIds: ['carbon', 'professional'],
+    metaTitle: 'Website & Software for Excavation Contractors',
+    metaDescription:
+      'An excavation-contractor website with itemized quotes, deposits, staged payments, and Stripe payments to your bank. No subscription — pay only when you get paid.',
+  },
+  {
+    slug: 'stucco',
+    name: 'Stucco Contractors',
+    work: 'stucco & plastering',
+    headline: 'Stucco websites that quote the wall and show the finish.',
+    subhead:
+      'Quote new stucco, repairs, and re-coats by the square foot, take a deposit before you order material, and let a photo-first gallery close the job.',
+    pains: [
+      { title: 'Quote by the square foot', body: 'Save your stucco, EIFS, and repair pricing to a price book and send a branded, itemized quote from the site in minutes.' },
+      { title: 'Deposit on the material', body: 'Collect a deposit that covers material and scaffolding before you schedule — never front the job yourself.' },
+      { title: 'Let the finish sell', body: 'A photo-first gallery of smooth, textured, and color-coat finishes turns your best walls into your best salesperson.' },
+    ],
+    services: ['New stucco', 'Repairs & patching', 'Re-coat & color', 'EIFS', 'Plastering', 'Waterproofing'],
+    templateIds: ['coat', 'reno'],
+    metaTitle: 'Website & Software for Stucco Contractors',
+    metaDescription:
+      'A stucco-contractor website with itemized quotes, deposits, project galleries, and Stripe payments. No subscription — pay only when you get paid.',
+  },
+  {
+    slug: 'cabinetry',
+    name: 'Cabinet Makers',
+    work: 'cabinetry & millwork',
+    headline: 'Cabinetry websites that turn a kitchen idea into a signed build.',
+    subhead:
+      'Quote custom cabinets and built-ins with options and photos, take a deposit before you order material, and stage payments across the build.',
+    pains: [
+      { title: 'Quote the custom build', body: 'Itemized quotes with wood, finish, and hardware options let a homeowner design their kitchen and watch the price update — then sign.' },
+      { title: 'Deposit before you order', body: 'Collect a deposit that covers material and shop time before you start — never float a custom order.' },
+      { title: 'Sell with the portfolio', body: 'A photo-first gallery of finished kitchens, built-ins, and millwork is the pitch that closes the high-end job.' },
+    ],
+    services: ['Custom cabinets', 'Kitchen & bath', 'Built-ins', 'Refacing', 'Millwork & trim', 'Closets & storage'],
+    templateIds: ['reno', 'modern'],
+    metaTitle: 'Website & Software for Cabinet Makers',
+    metaDescription:
+      'A cabinetry website with itemized quotes, material options, deposits, staged payments, project galleries, and Stripe. No subscription — pay only when you get paid.',
+  },
+  {
+    slug: 'window-treatments',
+    name: 'Window Treatment Companies',
+    work: 'blinds, shades & window treatments',
+    headline: 'Window-treatment websites that quote every window and book the install.',
+    subhead:
+      'Quote blinds, shades, and shutters by the window with material options, take a deposit before you order, and book the measure and install online.',
+    pains: [
+      { title: 'Quote window by window', body: 'Itemized quotes with fabric and style options let a homeowner outfit the whole house and see the price update — then sign.' },
+      { title: 'Deposit on the order', body: 'Collect a deposit that covers the custom order before it goes to the manufacturer — never front a special order.' },
+      { title: 'Book measure and install', body: 'Online booking slots the measure and install without the phone tag, and rebook invites bring the next room back.' },
+    ],
+    services: ['Blinds', 'Shades', 'Shutters', 'Drapery', 'Motorized', 'Commercial'],
+    templateIds: ['modern', 'coat'],
+    metaTitle: 'Website & Software for Window Treatment Companies',
+    metaDescription:
+      'A window-treatment website with itemized quotes, material options, deposits, online booking, and Stripe payments. No subscription — pay only when a homeowner pays you.',
+  },
+  {
+    slug: 'well-water',
+    name: 'Well & Water Treatment Companies',
+    work: 'well & water treatment',
+    headline: 'Water-treatment websites that book the test and quote the system.',
+    subhead:
+      'Capture the “my water’s bad” call, quote softeners and filtration on-site, and keep every system on a recurring service and filter-change plan.',
+    pains: [
+      { title: 'Catch the water-quality call', body: 'AI intake and online booking take the “rusty water” or “no pressure” lead any hour and slot a test window.' },
+      { title: 'Quote the system on-site', body: 'Send a branded quote for a softener, filter, or well pump from the basement and get it e-signed before you leave.' },
+      { title: 'Recurring service on rails', body: 'Filter-change and service plans schedule and auto-charge themselves, keeping every system — and customer — on the books.' },
+    ],
+    services: ['Water softeners', 'Filtration & RO', 'Well pumps', 'Water testing', 'Iron & sulfur', 'Service plans'],
+    templateIds: ['handy', 'professional'],
+    metaTitle: 'Website & Software for Well & Water Treatment Companies',
+    metaDescription:
+      'A water-treatment website with online booking, instant estimates, recurring service plans, and Stripe payments. No subscription — pay only when a homeowner pays you.',
+  },
+  {
+    slug: 'generators',
+    name: 'Generator Installers',
+    work: 'standby generator install',
+    headline: 'Generator websites that book the install before the next outage.',
+    subhead:
+      'Capture and qualify standby-generator leads 24/7, quote the unit and install with clear line items, and offer payment plans on the whole job.',
+    pains: [
+      { title: 'Catch the outage-driven lead', body: 'An AI estimator captures and qualifies generator inquiries 24/7 — right when a storm has homeowners ready to buy.' },
+      { title: 'Quote unit and install', body: 'Itemized quotes lay out the generator, transfer switch, and labor so a homeowner sees exactly what they’re getting — then e-signs.' },
+      { title: 'Finance the whole job', body: '0%-interest payment plans turn a whole-home standby system into an easy monthly yes.' },
+    ],
+    services: ['Standby generators', 'Transfer switches', 'Portable hookups', 'Load calculations', 'Maintenance plans', 'Repairs'],
+    templateIds: ['carbon', 'fixit'],
+    metaTitle: 'Website & Software for Generator Installers',
+    metaDescription:
+      'A generator-installer website with 24/7 lead capture, itemized quotes, payment plans, maintenance plans, and Stripe payments. No subscription — pay only when you get paid.',
+  },
 ];
 
 export function getTrade(slug: string): Trade | undefined {
   return TRADES.find((trade) => trade.slug === slug);
 }
+
+// The flagship dozen shown on the homepage "Built for your trade" row (in this
+// order); the full list lives on the /for index. Keep every slug valid — a typo
+// would silently drop a trade from the homepage.
+export const FEATURED_TRADE_SLUGS = [
+  'roofers', 'plumbers', 'electricians', 'hvac', 'landscapers', 'painters',
+  'remodelers', 'handyman', 'cleaning-services', 'concrete', 'fencing', 'flooring',
+];
+
+export const FEATURED_TRADES: Trade[] = FEATURED_TRADE_SLUGS
+  .map(getTrade)
+  .filter((trade): trade is Trade => Boolean(trade));

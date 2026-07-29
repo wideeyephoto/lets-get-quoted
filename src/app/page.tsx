@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { TRADES } from '@/lib/trades';
+import { TRADES, FEATURED_TRADES } from '@/lib/trades';
 import SiteFooter from '@/components/site-footer';
 import HeroDashboard from '@/components/hero-dashboard';
 import StickyCta from '@/components/sticky-cta';
@@ -512,9 +512,10 @@ export default function HomePage() {
       <section className="trade-links" aria-label="Built for your trade">
         <p className="trade-links-head">Built for your trade</p>
         <div className="trade-links-row">
-          {TRADES.map((trade) => (
+          {FEATURED_TRADES.map((trade) => (
             <Link key={trade.slug} href={`/for/${trade.slug}`}>{trade.name}</Link>
           ))}
+          <Link href="/for" className="trade-links-all">See all {TRADES.length} trades &rarr;</Link>
         </div>
       </section>
 
