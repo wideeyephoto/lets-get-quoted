@@ -18,6 +18,7 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard/jobs', label: 'Jobs', hint: 'Quotes · Invoices · Payments' },
   { href: '/dashboard/clients', label: 'Clients', hint: 'Customer profiles & history' },
   { href: '/dashboard/schedule', label: 'Schedule', hint: 'Calendar & unscheduled work' },
+  { href: '/dashboard/extra-stops', label: 'Extra Stops', hint: 'Same-day route add-ons' },
   { href: '/dashboard/recurring', label: 'Recurring', hint: 'Repeating jobs & auto-billing' },
   { href: '/dashboard/services', label: 'Price book', hint: 'Saved services & prices' },
   { href: '/dashboard/crew', label: 'Crew', hint: 'Your team & assignments' },
@@ -44,7 +45,7 @@ const FLOW_CLASS: Record<string, string> = {
 // list. Dashboard (home) sits above the groups; Website is promoted to its own
 // badge and Account drops to the sidebar footer, so neither appears here.
 const NAV_GROUPS: { label: string; hrefs: string[] }[] = [
-  { label: 'Work', hrefs: ['/dashboard/leads', '/dashboard/jobs', '/dashboard/schedule', '/dashboard/clients'] },
+  { label: 'Work', hrefs: ['/dashboard/leads', '/dashboard/jobs', '/dashboard/schedule', '/dashboard/extra-stops', '/dashboard/clients'] },
   { label: 'Team', hrefs: ['/dashboard/crew', '/dashboard/payroll'] },
   { label: 'Money', hrefs: ['/dashboard/recurring', '/dashboard/services', '/dashboard/insights'] },
   { label: 'Grow', hrefs: ['/dashboard/messages', '/dashboard/campaigns', '/dashboard/rebook', '/dashboard/reviews'] },
