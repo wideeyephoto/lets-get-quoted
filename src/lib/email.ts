@@ -565,6 +565,56 @@ export async function sendDailyDigestEmail(input: {
   }
 }
 
+// The fee breakdown a prospect asked for from the homepage calculator, sent to
+// their own inbox, plus a best-effort internal lead alert (the nurture channel
+// the "maybe later" segment seeds). Throws on provider rejection for the
+// prospect email so the caller can show an honest fallback.
+export async function sendFeeEstimateEmails(input: {
+  recipientEmail: string;
+  volume: number;
+  platformFee: number;
+  effectiveRatePct: number;
+  marginalRate: string;
+  origin: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('Email provider is not configured.');
+  }
+  const money = (n: number) => '$' + Math.round(n).toLocaleString('en-US');
+  const signupUrl = `${input.origin}/login?intent=signup`;
+  const vol = money(input.volume);
+  const fee = money(input.platformFee);
+  const blended = input.effectiveRatePct.toFixed(2);
+
+  // 1) The breakdown the prospect asked for — their own address, so it reads as
+  //    the transactional response it is.
+  const prospect = await resend.emails.send({
+    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    to: input.recipientEmail,
+    subject: `Your numbers: about ${fee}/yr on ${vol} collected`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#b45309;font-weight:700;letter-spacing:0.04em">YOUR NUMBERS</p><h1 style="font-size:24px;margin:0 0 14px">Here&rsquo;s what Let&rsquo;s Get Quoted would cost you</h1><table style="width:100%;border-collapse:collapse;font-size:15px"><tr><td style="padding:8px 0;color:#4b5563">Collected through the platform / year</td><td style="padding:8px 0;text-align:right;font-weight:700">${vol}</td></tr><tr><td style="padding:8px 0;color:#4b5563">Your platform fee (${escapeHtml(blended)}% blended)</td><td style="padding:8px 0;text-align:right;font-weight:700">${fee}/yr</td></tr><tr><td style="padding:8px 0;color:#4b5563">Rate on your next dollar</td><td style="padding:8px 0;text-align:right;font-weight:700">${escapeHtml(input.marginalRate)}</td></tr></table><p style="margin:16px 0;line-height:1.6">No subscription, no setup fee &mdash; that fee only comes out when a homeowner actually pays you. In a month you book nothing, you pay <strong>$0</strong>. Standard Stripe processing (about 2.9% + 30&cent; per card charge) applies separately, and drops toward zero on bank/ACH deposits.</p><p style="margin:20px 0"><a href="${escapeHtml(signupUrl)}" style="display:inline-block;padding:12px 18px;background:#172033;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">Create your free account</a></p><p style="margin-top:26px;color:#9ca3af;font-size:12px;line-height:1.6">You&rsquo;re getting this because you asked for your numbers at letsgetquoted.com. Not you? You can safely ignore this email.</p></div>`,
+    reply_to: 'hello@letsgetquoted.com',
+  });
+  if (prospect.error) {
+    console.error('Failed to send fee-estimate email:', prospect.error);
+    throw new Error(prospect.error.message);
+  }
+
+  // 2) Best-effort internal lead alert — never block the prospect's confirmation
+  //    on this side channel.
+  try {
+    await resend.emails.send({
+      from: "LGQ Site <hello@letsgetquoted.com>",
+      to: 'hello@letsgetquoted.com',
+      subject: `Fee-calculator lead: ${input.recipientEmail} (${vol} / ${fee}/yr)`,
+      html: `<div style="font-family:Arial,sans-serif;color:#172033"><p><strong>New homepage fee-calculator lead</strong></p><p>Email: ${escapeHtml(input.recipientEmail)}</p><p>Collected/yr: ${vol}</p><p>Platform fee/yr: ${fee} (${escapeHtml(blended)}% blended, ${escapeHtml(input.marginalRate)} marginal)</p></div>`,
+      reply_to: input.recipientEmail,
+    });
+  } catch (err) {
+    console.error('Fee-estimate lead notification failed:', err);
+  }
+}
+
 export async function sendLeadNotificationEmail(input: {
   recipientEmail: string;
   businessName: string;

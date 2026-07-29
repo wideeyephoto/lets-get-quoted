@@ -3,6 +3,7 @@ import { TRADES } from '@/lib/trades';
 import SiteFooter from '@/components/site-footer';
 import HeroDashboard from '@/components/hero-dashboard';
 import StickyCta from '@/components/sticky-cta';
+import HomeFeeCalculator from '@/components/home-fee-calculator';
 import FeatureWheelStory from './features/FeatureWheelStory';
 
 function QuoteIcon() {
@@ -232,6 +233,39 @@ const trustBadges = [
   { label: "Your data is walled off from every other contractor's", icon: <LayersIcon /> },
 ];
 
+// On-page answers to the "what's the catch" objections — also emitted as
+// FAQPage structured data below (only questions answered in visible text).
+const homeFaqs = [
+  {
+    q: 'So what’s the catch?',
+    a: 'There isn’t one. No subscription, no setup fee, no contract. You build your site, send quotes, and run jobs for free — we only take a small platform fee (1.25%, dropping to 0.65% as you grow) when a homeowner actually pays you. In a month you book nothing, you pay nothing.',
+  },
+  {
+    q: 'Do you hold my money?',
+    a: 'Never. Payments run on Stripe and land straight in your own bank account — we never touch your card numbers or park your cash. Our fee comes out of the payment automatically, the moment it clears.',
+  },
+  {
+    q: 'How fast do I actually get paid?',
+    a: 'Card and bank payments settle to your account on Stripe’s standard payout schedule — typically a couple of business days after a homeowner pays. You watch every payment land in your dashboard in real time.',
+  },
+  {
+    q: 'Am I locked in? Do I keep my clients and my domain?',
+    a: 'You’re never locked in — there’s no contract and you can leave whenever you like. Your clients and job history stay yours, and any custom domain you connect is yours to keep.',
+  },
+  {
+    q: 'Do I need my own website already?',
+    a: 'No — building it is the first thing the platform does. Pick a template made for contractors, drop in your photos, and you’re live on your own domain in minutes. No web guy, no monthly hosting bill.',
+  },
+  {
+    q: 'Will this get me more leads, or just organize the ones I have?',
+    a: 'Both — and here’s the honest line between them. Your new site plus the 24/7 AI Estimator captures and qualifies every visitor who lands on it, day or night, so far more of the traffic you already earn turns into booked jobs and not one lead slips through the cracks. It isn’t a lead-gen ad service — it makes the leads you’re already getting actually convert.',
+  },
+  {
+    q: 'Is the AI going to talk to my customers without me?',
+    a: 'Only the way you tell it to. You set your prices and the rules; the AI answers and prices jobs around the clock and alerts you the moment a real lead comes in. You stay the face of your business — nothing reaches a homeowner without your say.',
+  },
+];
+
 const jsonLd = {
   '@context': 'https://schema.org',
   '@graph': [
@@ -255,6 +289,14 @@ const jsonLd = {
         description:
           'Free to start. No subscription or setup fee — a platform fee of 0.65%–1.25% applies only when a homeowner pays you.',
       },
+    },
+    {
+      '@type': 'FAQPage',
+      mainEntity: homeFaqs.map((faq) => ({
+        '@type': 'Question',
+        name: faq.q,
+        acceptedAnswer: { '@type': 'Answer', text: faq.a },
+      })),
     },
   ],
 };
@@ -429,6 +471,10 @@ export default function HomePage() {
             <strong> $0</strong> &mdash; while a monthly CRM still bills you $200+.
           </p>
         </div>
+        <div className="hcalc-wrap">
+          <p className="hcalc-h"><span className="hcalc-h-kick">Run your own numbers</span>Type your volume &mdash; see what you&rsquo;d actually pay.</p>
+          <HomeFeeCalculator />
+        </div>
         <div className="mid-cta">
           <Link href="/login?intent=signup" className="btn primary">Create Free Account</Link>
           <Link href="/pricing" className="btn secondary">See full pricing &amp; fee calculator &rarr;</Link>
@@ -456,6 +502,28 @@ export default function HomePage() {
           {TRADES.map((trade) => (
             <Link key={trade.slug} href={`/for/${trade.slug}`}>{trade.name}</Link>
           ))}
+        </div>
+      </section>
+
+      <section className="section-block hfaq-band" aria-labelledby="hfaq-title">
+        <div className="hfaq-grid">
+          <div className="hfaq-intro">
+            <p className="eyebrow">Straight answers</p>
+            <h2 id="hfaq-title">The catch? <span className="gradient-text">There isn&rsquo;t one.</span></h2>
+            <p>The honest answers to what every contractor asks before trusting a new tool with their name &mdash; and their money.</p>
+            <p className="hfaq-ask">Still wondering something? <a href="mailto:hello@letsgetquoted.com">Email a real human &rarr;</a></p>
+          </div>
+          <div className="hfaq-list">
+            {homeFaqs.map((faq, index) => (
+              <details className="hfaq-item" key={faq.q} open={index === 0}>
+                <summary>
+                  <span className="hfaq-q">{faq.q}</span>
+                  <span className="hfaq-mark" aria-hidden="true" />
+                </summary>
+                <div className="hfaq-a"><p>{faq.a}</p></div>
+              </details>
+            ))}
+          </div>
         </div>
       </section>
 
