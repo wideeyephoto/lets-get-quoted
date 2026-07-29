@@ -297,7 +297,7 @@
     .fw-copy-top{gap:10px}
     /* the mockups are the biggest block — cap + softly fade them so the copy
        below always clears the fold (they're decorative sample data anyway) */
-    .fw-mock{min-height:0;max-height:clamp(168px,31vh,284px);place-items:start center;
+    .fw-mock{min-height:0;max-height:clamp(158px,27vh,262px);place-items:start center;
       -webkit-mask:linear-gradient(180deg,#000 80%,transparent);mask:linear-gradient(180deg,#000 80%,transparent)}
   }
 
@@ -315,7 +315,11 @@
      the viewport; shrink the pinned wheel so its cards clip cleanly ABOVE the
      bar instead of disappearing behind it. */
   @media (max-width:860px){
+    /* vh fallback, then dvh (dynamic viewport) so the pin tracks the *visible*
+       area on mobile Safari — plain vh is the toolbar-hidden height, which
+       both leaves a dead gap and clips the card's last line. */
     .fw-sticky{height:calc(100vh - 4.4rem - 5.1rem - env(safe-area-inset-bottom,0px))}
+    .fw-sticky{height:calc(100dvh - 4.4rem - 5.1rem - env(safe-area-inset-bottom,0px))}
   }
 
   /* ---------- reduced motion ---------- */
