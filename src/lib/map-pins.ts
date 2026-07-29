@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { listJobs } from '@/lib/jobs';
+import { backfillJobCoordinates, listJobs } from '@/lib/jobs';
 import { backfillLeadCoordinates, getLeadTriage, isLeadSnoozed, listLeads } from '@/lib/leads';
 import type { MapPin } from '@/components/pin-map';
 
@@ -9,10 +9,13 @@ import type { MapPin } from '@/components/pin-map';
 //   unscheduled → a job/quote with no date yet (gold)
 //   scheduled   → a job with a date on the calendar (green)
 export async function getMapPins(supabase: SupabaseClient, accountId: string): Promise<MapPin[]> {
-  // Self-healing: geocode a small batch of any leads still missing coords
+  // Self-healing: geocode a small batch of any leads/jobs still missing coords
   // (created before geocoding existed, or a prior imprecise attempt). Awaited so
-  // freshly geocoded leads appear this render; a no-op once every lead is done.
-  await backfillLeadCoordinates(supabase, accountId, 12);
+  // freshly geocoded rows appear this render; a no-op once everything is mapped.
+  await Promise.all([
+    backfillLeadCoordinates(supabase, accountId, 12),
+    backfillJobCoordinates(supabase, accountId, 12),
+  ]);
 
   const [leads, jobs] = await Promise.all([listLeads(supabase, accountId), listJobs(supabase, accountId)]);
 

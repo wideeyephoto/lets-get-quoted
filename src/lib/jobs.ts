@@ -280,6 +280,42 @@ async function generateJobRef(supabase: SupabaseClient, accountId: string): Prom
 }
 
 // -- Jobs CRUD (uses a session-scoped client so RLS enforces isolation) ---
+// Backfill coordinates for jobs created before geocoding existed (or where an
+// earlier attempt was imprecise and never cached). Best-effort, precise-only,
+// and safe to call on each map load — it only touches never-geocoded rows and
+// caches the attempt so it won't retry forever. Returns the count mapped. Never
+// throws (the map must not depend on the geocoder).
+export async function backfillJobCoordinates(
+  supabase: SupabaseClient,
+  accountId: string,
+  limit = 12
+): Promise<number> {
+  try {
+    const { data } = await supabase
+      .from('jobs')
+      .select('id, address')
+      .eq('account_id', accountId)
+      .is('geocoded_at', null)
+      .not('address', 'is', null)
+      .limit(limit);
+    const rows = (data ?? []) as { id: string; address: string | null }[];
+    if (rows.length === 0) return 0;
+
+    const { geocodeColumns } = await import('@/lib/geocode');
+    let updated = 0;
+    for (const row of rows) {
+      const geo = await geocodeColumns(row.address);
+      if (!geo) continue; // geocoder unavailable — don't cache a null attempt this pass
+      await supabase.from('jobs').update({ lat: geo.lat, lng: geo.lng, geocoded_at: geo.geocoded_at }).eq('id', row.id);
+      if (geo.lat != null && geo.lng != null) updated += 1;
+    }
+    return updated;
+  } catch (error) {
+    console.error('Job coordinate backfill failed:', error instanceof Error ? error.message : error);
+    return 0;
+  }
+}
+
 export async function listJobs(
   supabase: SupabaseClient,
   accountId: string,
