@@ -138,15 +138,26 @@ export default function PinMap({ pins }: { pins: MapPin[] }) {
           });
         }
 
-        map.fitBounds(bounds, 56);
-        if (pins.length === 1) {
-          map.setCenter({ lat: pins[0].lat, lng: pins[0].lng });
-          map.setZoom(13);
-        }
+        // Fit to the pins, but never zoom in past a neighborhood — a single pin
+        // or a tight cluster would otherwise slam to max zoom (street level).
+        const MAX_ZOOM = 14;
+        const fit = () => {
+          if (pins.length === 1) {
+            map.setCenter({ lat: pins[0].lat, lng: pins[0].lng });
+            map.setZoom(11);
+            return;
+          }
+          map.fitBounds(bounds, 56);
+          g.event.addListenerOnce(map, 'idle', () => {
+            const z = map.getZoom();
+            if (typeof z === 'number' && z > MAX_ZOOM) map.setZoom(MAX_ZOOM);
+          });
+        };
+        fit();
         // A map created inside a just-opened container can mount at 0×0; refit
         // once it has real size.
         const ro = new ResizeObserver(() => {
-          if (container.clientWidth > 0) map.fitBounds(bounds, 56);
+          if (container.clientWidth > 0) fit();
         });
         ro.observe(container);
         if (!cancelled) setStatus('ready');
