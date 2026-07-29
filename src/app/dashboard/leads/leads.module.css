@@ -26,7 +26,11 @@
 .columnHeader { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: 0 .2rem .75rem; }
 .columnHeader h2 { margin: 0; font-size: .86rem; letter-spacing: .04em; text-transform: uppercase; }
 .columnHeader span { display: grid; min-width: 24px; height: 24px; place-items: center; border-radius: 50%; background: rgba(255,255,255,.08); color: rgba(255,255,255,.7); font-size: .72rem; }
-.cards { display: grid; gap: .65rem; }
+/* Cap the column height so a stack of leads scrolls inside the column instead
+   of stretching the whole page tall. */
+.cards { display: grid; gap: .65rem; max-height: min(58vh, 560px); overflow-y: auto; padding-right: .2rem; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.22) transparent; }
+.cards::-webkit-scrollbar { width: 8px; }
+.cards::-webkit-scrollbar-thumb { background: rgba(255,255,255,.18); border-radius: 999px; }
 .leadCard { display: grid; gap: .55rem; padding: .85rem; border: 1px solid rgba(255,255,255,.11); border-radius: 7px; background: #111c2a; color: #fff; transition: border-color .15s ease, transform .15s ease; }
 .leadCard:hover { border-color: rgba(255,138,61,.55); transform: translateY(-1px); }
 .urgentCard { border-color: rgba(255, 122, 33, .52); background: linear-gradient(145deg, rgba(255, 122, 33, .16), #111c2a 56%); box-shadow: inset 3px 0 0 #ff7a21, 0 12px 34px rgba(255, 122, 33, .1); }
