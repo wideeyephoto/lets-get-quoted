@@ -394,7 +394,7 @@ export default function HomePage() {
       <section className="section-block compare-band">
         <div className="section-heading">
           <p className="eyebrow">Why contractors switch</p>
-          <h2>One tool doing the work of five &mdash; and you only pay when you get paid.</h2>
+          <h2>One tool doing the work of five &mdash; and <span className="gradient-text">you only pay when you get paid.</span></h2>
           <p>
             A website builder gives you a page. Field-service software rents you a login by the month. Let&apos;s Get
             Quoted runs the whole job &mdash; your website, quotes, signatures, scheduling, and payments &mdash; with no

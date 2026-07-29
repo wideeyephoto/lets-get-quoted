@@ -1702,6 +1702,40 @@ li + li { margin-top: 0.45rem; }
   .compare-scroll { border: 1px solid rgba(255, 255, 255, 0.08); }
 }
 
+/* ------- "Why contractors switch": extra pop on the winning column ------- */
+.compare-col-head.is-us,
+.compare-cell.is-us {
+  background: linear-gradient(180deg, rgba(255, 122, 33, 0.22), rgba(255, 122, 33, 0.06));
+  border-left-color: rgba(255, 122, 33, 0.6);
+  border-right-color: rgba(255, 122, 33, 0.6);
+}
+.compare-col-head.is-us { border-top-color: rgba(255, 122, 33, 0.75); }
+.compare-table tbody tr:last-child .compare-cell.is-us { border-bottom-color: rgba(255, 122, 33, 0.6); }
+
+/* "No monthly fee" badge — soft glow + a slow shine sweep. */
+.compare-head-badge { position: relative; overflow: hidden; box-shadow: 0 6px 18px -6px rgba(255, 122, 33, 0.8); }
+.compare-head-badge::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(115deg, transparent 34%, rgba(255, 255, 255, 0.85) 50%, transparent 66%);
+  transform: translateX(-130%);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .compare-head-badge::after { animation: compare-shine 3.8s ease-in-out infinite; }
+}
+@keyframes compare-shine { 0%, 60% { transform: translateX(-130%); } 82%, 100% { transform: translateX(130%); } }
+
+/* Green checks brighter; the winning column's checks glow hardest. */
+.compare-cell.tone-good .compare-mark { background: rgba(74, 222, 128, 0.18); color: #5cf08a; }
+.compare-cell.is-us .compare-mark {
+  background: rgba(74, 222, 128, 0.26); color: #7bffa6;
+  box-shadow: 0 0 13px -2px rgba(74, 222, 128, 0.55), inset 0 0 0 1px rgba(74, 222, 128, 0.4);
+}
+
+/* Rows come alive on hover. */
+.compare-table tbody tr { transition: background 0.18s ease; }
+.compare-table tbody tr:hover .compare-cell:not(.is-us) { background: rgba(255, 255, 255, 0.035); }
+.compare-table tbody tr:hover .compare-cell.is-us { background: linear-gradient(180deg, rgba(255, 122, 33, 0.3), rgba(255, 122, 33, 0.1)); }
+
 /* ---------------------------------------------------------------- */
 /* /features page: stats, favorites cards, and the full catalog     */
 /* ---------------------------------------------------------------- */
