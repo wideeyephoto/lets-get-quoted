@@ -43,7 +43,7 @@ export default function ResourcesPage() {
           <p>Start free — you only pay when a homeowner pays you.</p>
           <div className="actions">
             <Link href="/login" className="btn primary">Create Free Account</Link>
-            <Link href="/features" className="btn secondary">Browse all features</Link>
+            <Link href="/#wheel" className="btn secondary">Browse all features</Link>
           </div>
         </div>
       </section>
