@@ -4,10 +4,12 @@ import { useEffect, useRef, useState } from 'react';
 import { submitContactMessage, type ContactState } from './actions';
 import styles from './contact.module.css';
 
-// Cloudflare Turnstile. When the site key isn't configured the widget is simply
-// omitted and the form falls back to the honeypot — so it keeps working before
-// the keys are set. The server only *enforces* the check when its secret is set.
-const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+// Cloudflare Turnstile. The site key is public (safe in client source); an env
+// override is honored if present. The server only *enforces* verification when
+// TURNSTILE_SECRET is set, so local/dev without the secret still works.
+const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '0x4AAAAAAEA3fh-yPeyQKTP3';
+// Analytics attribution marker (see the data-action on the widget host below).
+const TURNSTILE_ACTION = 'turnstile-spin-v2';
 const SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
 
 type TurnstileApi = {
@@ -59,6 +61,7 @@ export default function ContactForm() {
         if (!active || !widgetHost.current || widgetId.current) return;
         widgetId.current = ts.render(widgetHost.current, {
           sitekey: SITE_KEY,
+          action: TURNSTILE_ACTION,
           theme: 'auto',
           callback: (t: string) => setToken(t),
           'expired-callback': () => setToken(''),
@@ -141,7 +144,9 @@ export default function ContactForm() {
         <textarea id="cf-message" name="message" rows={6} required />
       </div>
 
-      {SITE_KEY ? <div ref={widgetHost} className={styles.turnstile} /> : null}
+      {SITE_KEY ? (
+        <div ref={widgetHost} className={`cf-turnstile ${styles.turnstile}`} data-action={TURNSTILE_ACTION} />
+      ) : null}
 
       {state?.error ? <p className={styles.err} role="alert">{state.error}</p> : null}
 

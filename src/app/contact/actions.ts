@@ -1,27 +1,32 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { sendContactMessageEmail } from '@/lib/email';
 
 export type ContactState = { ok: boolean; error?: string };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Verify a Cloudflare Turnstile token. Only enforced when the secret is set, so
-// the form keeps working before the keys are configured; once set, a missing or
-// invalid token is rejected.
-async function passesTurnstile(token: string): Promise<boolean> {
-  const secret = process.env.TURNSTILE_SECRET_KEY;
+// Canonical Cloudflare Turnstile siteverify. Only enforced when TURNSTILE_SECRET
+// is set, so the form keeps working before the secret is configured; once set, a
+// missing or invalid token is rejected. Fails closed on any network/parse error.
+async function passesTurnstile(token: string, remoteip: string | undefined): Promise<boolean> {
+  const secret = process.env.TURNSTILE_SECRET;
   if (!secret) return true; // not configured yet — skip
   if (!token) return false;
   try {
-    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+    const body = new URLSearchParams({ secret, response: token });
+    if (remoteip) body.set('remoteip', remoteip);
+    const r = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ secret, response: token }),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
     });
-    const data = (await res.json()) as { success?: boolean };
-    return Boolean(data.success);
+    if (!r.ok) throw new Error(`siteverify ${r.status}`);
+    const result = (await r.json()) as { success?: boolean };
+    return result.success === true;
   } catch (err) {
+    // Network error, non-2xx, or non-JSON body from siteverify — fail closed.
     console.error('Turnstile verification error:', err);
     return false;
   }
@@ -50,7 +55,9 @@ export async function submitContactMessage(formData: FormData): Promise<ContactS
   }
 
   const captchaToken = ((formData.get('cf-turnstile-response') as string | null) ?? '').trim();
-  if (!(await passesTurnstile(captchaToken))) {
+  const h = await headers();
+  const clientIp = (h.get('x-forwarded-for')?.split(',')[0] ?? h.get('x-real-ip') ?? '').trim() || undefined;
+  if (!(await passesTurnstile(captchaToken, clientIp))) {
     return { ok: false, error: 'Please complete the “I’m human” check and try again.' };
   }
 
