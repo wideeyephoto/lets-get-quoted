@@ -181,6 +181,150 @@ export const TRADES: Trade[] = [
     metaDescription:
       'A handyman website with instant estimates, online booking, tap-to-pay, and rebook reminders. No subscription — pay only when a homeowner pays you.',
   },
+  {
+    slug: 'concrete',
+    name: 'Concrete Contractors',
+    work: 'concrete',
+    headline: 'Concrete websites that turn a pour into a signed, deposited job.',
+    subhead:
+      'Quote driveways, patios, and slabs with clear line items, take a deposit before you order the mix, and get paid to your bank the day the job wraps.',
+    pains: [
+      { title: 'Quote by the square foot', body: 'Save your slab, driveway, and patio pricing to a price book and send an itemized, branded quote from the job site in minutes.' },
+      { title: 'Deposit before you pour', body: 'Collect a deposit to cover materials before the truck rolls, then the balance the day it cures — never front the concrete yourself.' },
+      { title: 'Let the finish sell', body: 'A photo-first gallery of stamped, stained, and exposed-aggregate work turns your best pours into your best salesperson.' },
+    ],
+    services: ['Driveways', 'Patios & walkways', 'Slabs & foundations', 'Stamped concrete', 'Retaining walls', 'Repairs & resurfacing'],
+    templateIds: ['carbon', 'reno'],
+    metaTitle: 'Website & Software for Concrete Contractors',
+    metaDescription:
+      'A concrete-contractor website with instant estimates, itemized quotes, deposits, and Stripe payments straight to your bank. No subscription — pay only when you get paid.',
+  },
+  {
+    slug: 'fencing',
+    name: 'Fencing Contractors',
+    work: 'fencing',
+    headline: 'Fencing websites that quote the whole run on the spot.',
+    subhead:
+      'Price wood, vinyl, and chain-link by the linear foot, send a branded quote before you leave the driveway, and take a deposit to lock the install date.',
+    pains: [
+      { title: 'Price by the linear foot', body: 'Save per-foot pricing for each fence type and gate to a price book so a full quote takes a minute, not an evening at the kitchen table.' },
+      { title: 'Lock the install date', body: 'A deposit holds the slot and covers the lumber, so a booked job doesn’t evaporate before your crew shows up.' },
+      { title: 'Book the spring backlog', body: 'Online booking and instant estimates capture demand while you’re still finishing last week’s run.' },
+    ],
+    services: ['Wood fencing', 'Vinyl fencing', 'Chain-link', 'Aluminum & ornamental', 'Gates & repairs', 'Commercial fencing'],
+    templateIds: ['handy', 'modern'],
+    metaTitle: 'Website & Software for Fencing Contractors',
+    metaDescription:
+      'A fencing-contractor website with instant estimates, per-foot quotes, deposits, online booking, and Stripe payments. No subscription — pay only when a homeowner pays you.',
+  },
+  {
+    slug: 'flooring',
+    name: 'Flooring Contractors',
+    work: 'flooring',
+    headline: 'Flooring websites that turn a room measurement into a signed job.',
+    subhead:
+      'Quote hardwood, tile, and LVP by the square foot with material options the homeowner can choose, take a deposit on the order, and get paid when it’s laid.',
+    pains: [
+      { title: 'Let them pick the material', body: 'Itemized quotes with optional upgrades let a homeowner compare oak, LVP, and tile and watch the price update — then sign.' },
+      { title: 'Deposit on the order', body: 'Collect a deposit that covers the flooring order up front, then the balance on completion — never float a special-order box.' },
+      { title: 'Sell with the room shots', body: 'A photo-first gallery of finished floors and before/afters closes the homeowner who’s still shopping around.' },
+    ],
+    services: ['Hardwood', 'Luxury vinyl (LVP)', 'Tile', 'Laminate', 'Refinishing', 'Subfloor repair'],
+    templateIds: ['reno', 'modern'],
+    metaTitle: 'Website & Software for Flooring Contractors',
+    metaDescription:
+      'A flooring-contractor website with itemized quotes, material options, deposits, project galleries, and Stripe payments. No subscription — pay only when you get paid.',
+  },
+  {
+    slug: 'pressure-washing',
+    name: 'Pressure Washing Services',
+    work: 'pressure washing',
+    headline: 'Pressure-washing websites where the before/after does the selling.',
+    subhead:
+      'Quote houses, driveways, and decks by the job, book online, take tap-to-pay on the spot, and turn one clean into a recurring seasonal plan.',
+    pains: [
+      { title: 'Before/after that closes', body: 'A photo-first gallery of grimy-to-gleaming shots is the whole pitch — lead with it and let the results book the job.' },
+      { title: 'Book while you spray', body: 'Online booking lets homeowners grab an open window without a call, so jobs stack up back-to-back all season.' },
+      { title: 'Turn one wash into many', body: 'Recurring plans and rebook reminders bring the annual house-wash and quarterly driveway back on autopilot.' },
+    ],
+    services: ['House washing', 'Driveways & concrete', 'Decks & patios', 'Roof soft-wash', 'Gutter cleaning', 'Commercial & fleet'],
+    templateIds: ['shine', 'handy'],
+    metaTitle: 'Website & Software for Pressure Washing Businesses',
+    metaDescription:
+      'A pressure-washing website with instant estimates, online booking, tap-to-pay, before/after galleries, and recurring plans. No subscription — pay only when you get paid.',
+  },
+  {
+    slug: 'tree-services',
+    name: 'Tree Services',
+    work: 'tree care & removal',
+    headline: 'Tree-service websites that book the removal before the next storm.',
+    subhead:
+      'Quote removals and trims with photos and clear scope, take a deposit on big takedowns, and win the storm call the moment a limb comes down.',
+    pains: [
+      { title: 'Answer the storm call first', body: 'An AI estimator takes the details and photos 24/7 and flags the urgent, high-value takedowns so you respond before the competition.' },
+      { title: 'Deposit on the big takedown', body: 'Collect a deposit on large removals and crane jobs before you schedule the crew and the equipment.' },
+      { title: 'Show it’s done right', body: 'Photos on every job and quote — plus your license and insurance up front — tell a homeowner you’re the safe call.' },
+    ],
+    services: ['Tree removal', 'Trimming & pruning', 'Stump grinding', 'Storm & emergency', 'Lot clearing', 'Health & treatment'],
+    templateIds: ['carbon', 'fixit'],
+    metaTitle: 'Website & Software for Tree Service Companies',
+    metaDescription:
+      'A tree-service website with 24/7 instant estimates, high-value lead alerts, deposits, and Stripe payments to your bank. No subscription — pay only when you get paid.',
+  },
+  {
+    slug: 'pest-control',
+    name: 'Pest Control Companies',
+    work: 'pest control',
+    headline: 'Pest-control websites that fill the recurring route.',
+    subhead:
+      'Turn one treatment into a quarterly plan that books and bills itself, catch the “bugs now” call 24/7, and keep every home on schedule with cards on file.',
+    pains: [
+      { title: 'Recurring on rails', body: 'Quarterly and monthly plans auto-create each visit and charge the card on file — you run the route, not the invoicing.' },
+      { title: 'Catch the urgent call', body: 'AI intake and online booking take the “there’s a wasp nest now” lead any hour and slot it into the next open window.' },
+      { title: 'Keep the home on plan', body: 'Cards on file and automatic per-visit invoices turn a one-time treatment into a standing customer for years.' },
+    ],
+    services: ['General pest', 'Termites', 'Rodents', 'Mosquito & tick', 'Bed bugs', 'Wildlife removal'],
+    templateIds: ['professional', 'handy'],
+    metaTitle: 'Website & Software for Pest Control Companies',
+    metaDescription:
+      'A pest-control website with online booking, recurring auto-billing, cards on file, and Stripe payments. No subscription — pay only when a homeowner pays you.',
+  },
+  {
+    slug: 'pool-services',
+    name: 'Pool Service Companies',
+    work: 'pool service',
+    headline: 'Pool-service websites that keep the weekly route billed and full.',
+    subhead:
+      'Book weekly maintenance that charges the card on file, quote repairs and openings on-site, and keep every pool on schedule from open to close.',
+    pains: [
+      { title: 'Weekly service that bills itself', body: 'Recurring maintenance plans create each visit and charge the saved card automatically — no chasing a monthly check.' },
+      { title: 'Quote repairs on-site', body: 'Send a branded quote for a pump, heater, or liner from the pool deck and get it e-signed before you leave.' },
+      { title: 'Open and close on time', body: 'Online booking fills your seasonal opening and closing calendar before the rush every spring and fall.' },
+    ],
+    services: ['Weekly maintenance', 'Openings & closings', 'Equipment repair', 'Green-to-clean', 'Liner & leak', 'Inspections'],
+    templateIds: ['shine', 'handy'],
+    metaTitle: 'Website & Software for Pool Service Companies',
+    metaDescription:
+      'A pool-service website with online booking, recurring auto-billing, on-site quotes, and Stripe payments. No subscription — pay only when a homeowner pays you.',
+  },
+  {
+    slug: 'garage-doors',
+    name: 'Garage Door Services',
+    work: 'garage door repair & install',
+    headline: 'Garage-door websites that book the broken-spring call first.',
+    subhead:
+      'Capture the “door won’t open” emergency 24/7, quote openers and new doors with photos, and take card or bank payment before you pack up the truck.',
+    pains: [
+      { title: 'Win the emergency call', body: 'AI intake and online booking take the broken-spring or off-track lead any hour and slot it into the next window while you’re on another job.' },
+      { title: 'Quote the upgrade on-site', body: 'A saved price book turns a new opener or full door replacement into a branded, e-signable quote in under a minute.' },
+      { title: 'Get paid before you leave', body: 'Send a pay link or take card and bank payment the moment the door’s running smooth again.' },
+    ],
+    services: ['Spring & cable repair', 'Opener install', 'New doors', 'Off-track & rollers', 'Tune-ups', 'Commercial doors'],
+    templateIds: ['fixit', 'professional'],
+    metaTitle: 'Website & Software for Garage Door Companies',
+    metaDescription:
+      'A garage-door website with 24/7 instant estimates, online booking, on-site card & bank payments, and no subscription. Pay only when a homeowner pays you.',
+  },
 ];
 
 export function getTrade(slug: string): Trade | undefined {
