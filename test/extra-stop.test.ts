@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   extraStopSettingsFromAccount,
+  extraStopNoShowLock,
   clampFeeCents,
   dollarsToCents,
   centsToDollars,
@@ -11,6 +12,39 @@ import {
   EXTRA_STOP_TRANSITIONS,
   type ExtraStopStatus,
 } from '@/lib/extra-stop';
+
+describe('extraStopNoShowLock — escalation ladder', () => {
+  const now = new Date('2026-07-01T12:00:00Z');
+  const daysAgo = (n: number) => new Date(now.getTime() - n * 86_400_000);
+
+  it('first no-show (no priors) → 10-day lock, tier 1', () => {
+    const lock = extraStopNoShowLock([], now);
+    expect(lock.tier).toBe(1);
+    expect(new Date(lock.untilIso).getTime()).toBe(now.getTime() + 10 * 86_400_000);
+  });
+
+  it('second within 90 days → 30-day lock, tier 2', () => {
+    const lock = extraStopNoShowLock([daysAgo(30)], now);
+    expect(lock.tier).toBe(2);
+    expect(new Date(lock.untilIso).getTime()).toBe(now.getTime() + 30 * 86_400_000);
+  });
+
+  it('third within 180 days → disabled pending review, tier 3', () => {
+    const lock = extraStopNoShowLock([daysAgo(20), daysAgo(120)], now);
+    expect(lock.tier).toBe(3);
+    expect(new Date(lock.untilIso).getTime()).toBeGreaterThan(now.getTime() + 365 * 86_400_000);
+  });
+
+  it('old priors outside the windows fall back to tier 1', () => {
+    const lock = extraStopNoShowLock([daysAgo(200), daysAgo(400)], now);
+    expect(lock.tier).toBe(1);
+  });
+
+  it('a prior between 90 and 180 days counts toward tier 3 only with a second, else tier 1', () => {
+    expect(extraStopNoShowLock([daysAgo(120)], now).tier).toBe(1); // one old-ish prior, not within 90 → still first-level
+    expect(extraStopNoShowLock([daysAgo(120), daysAgo(150)], now).tier).toBe(3); // two within 180
+  });
+});
 
 describe('extraStopSettingsFromAccount — safe defaults on a bare row', () => {
   it('degrades an empty/pre-migration row to coherent defaults, feature off', () => {

@@ -1528,3 +1528,9 @@ alter table accounts add column if not exists extra_stop_lock_reason text;
 alter table accounts add column if not exists suspended_at timestamptz;
 alter table accounts add column if not exists suspended_reason text;
 alter table accounts add column if not exists suspended_by text;
+
+-- Dispute tracking for the admin console. The webhook already flips a disputed
+-- payment's status; these let staff jump straight to Stripe's dispute-response UI
+-- and see the evidence deadline. dispute_due_by is Stripe's evidence_details.due_by.
+alter table payments add column if not exists stripe_dispute_id text;
+alter table payments add column if not exists dispute_due_by timestamptz;

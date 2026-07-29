@@ -414,6 +414,8 @@ export async function POST(request: Request) {
             disputed_at: new Date().toISOString(),
             dispute_reason: dispute.reason ?? null,
             dispute_status: dispute.status ?? null,
+            stripe_dispute_id: dispute.id ?? null,
+            dispute_due_by: dispute.evidence_details?.due_by ? new Date(dispute.evidence_details.due_by * 1000).toISOString() : null,
           })
           .eq('id', payment.id)
           .eq('status', 'paid')

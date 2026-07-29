@@ -161,6 +161,12 @@ export type ExtraStopSettings = {
   categories: string[]; // lowercased tags; empty = all allowed
   requiredPhotos: number;
   requireAiApproval: boolean;
+  // Staff/auto lock (no-show escalation). lockedUntil is an ISO end time; locked
+  // is whether that's still in the future; available is the real gate the /book
+  // path should use — enabled AND not locked.
+  lockedUntil: string | null;
+  locked: boolean;
+  available: boolean;
 };
 
 // Round to a clamped integer with a default fallback.
@@ -232,6 +238,7 @@ type AccountExtraStopRow =
       extra_stop_categories?: unknown;
       extra_stop_required_photos?: unknown;
       extra_stop_require_ai_approval?: unknown;
+      extra_stop_locked_until?: unknown;
     }
   | null
   | undefined;
@@ -240,8 +247,14 @@ type AccountExtraStopRow =
 // degrading to safe defaults for any missing/invalid field (so a pre-migration
 // row — every column absent — still yields a coherent, feature-off config).
 export function extraStopSettingsFromAccount(row: AccountExtraStopRow): ExtraStopSettings {
+  const enabled = row?.extra_stop_enabled === true;
+  const lockedUntil = typeof row?.extra_stop_locked_until === 'string' ? row.extra_stop_locked_until : null;
+  const locked = lockedUntil ? new Date(lockedUntil).getTime() > Date.now() : false;
   return {
-    enabled: row?.extra_stop_enabled === true,
+    enabled,
+    lockedUntil,
+    locked,
+    available: enabled && !locked,
     weekdays: normalizeBookingWeekdays(row?.extra_stop_weekdays),
     earliestTime: normalizeHHMM(row?.extra_stop_earliest_time, DEFAULT_EXTRA_STOP_EARLIEST),
     latestEnd: normalizeHHMM(row?.extra_stop_latest_end, DEFAULT_EXTRA_STOP_LATEST_END),
@@ -267,4 +280,19 @@ export const EXTRA_STOP_SETTINGS_COLUMNS =
   'extra_stop_max_per_day, extra_stop_max_visit_minutes, extra_stop_max_detour_miles, ' +
   'extra_stop_max_detour_minutes, extra_stop_min_fee_cents, extra_stop_max_fee_cents, ' +
   'extra_stop_allow_after_capacity, extra_stop_response_deadline_mins, extra_stop_payment_deadline_mins, ' +
-  'extra_stop_categories, extra_stop_required_photos, extra_stop_require_ai_approval';
+  'extra_stop_categories, extra_stop_required_photos, extra_stop_require_ai_approval, extra_stop_locked_until';
+
+// No-show escalation ladder. Given the account's PRIOR verified no-show dates,
+// decide how long to lock Extra Stop after a fresh one:
+//   1st (or none recently) → 10 days · 2nd within 90 days → 30 days ·
+//   3rd within 180 days → effectively indefinite ("disabled pending staff review").
+// Returns the lock end (ISO), a human reason, and the tier for logging.
+export type NoShowLockTier = 1 | 2 | 3;
+export function extraStopNoShowLock(priorNoShowDates: Date[], now: Date = new Date()): { untilIso: string; reason: string; tier: NoShowLockTier } {
+  const nowMs = now.getTime();
+  const within = (days: number) => priorNoShowDates.filter((d) => nowMs - d.getTime() <= days * 86_400_000).length;
+  const endIn = (days: number) => new Date(nowMs + days * 86_400_000).toISOString();
+  if (within(180) >= 2) return { untilIso: endIn(3650), reason: 'Third no-show within 180 days — Extra Stop disabled pending staff review.', tier: 3 };
+  if (within(90) >= 1) return { untilIso: endIn(30), reason: 'Second no-show within 90 days — Extra Stop locked for 30 days.', tier: 2 };
+  return { untilIso: endIn(10), reason: 'No-show reported — Extra Stop locked for 10 days.', tier: 1 };
+}

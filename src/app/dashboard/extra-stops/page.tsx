@@ -18,10 +18,11 @@ export default async function ExtraStopsPage() {
   await sweepExtraStopOffers(createAdminClient(), accountId).catch(() => undefined);
 
   const [{ data: accountRow }, requests] = await Promise.all([
-    supabase.from('accounts').select(`${EXTRA_STOP_SETTINGS_COLUMNS}, timezone, instant_book_drive_time`).eq('id', accountId).single(),
+    supabase.from('accounts').select(`${EXTRA_STOP_SETTINGS_COLUMNS}, extra_stop_lock_reason, timezone, instant_book_drive_time`).eq('id', accountId).single(),
     listExtraStopRequests(supabase, accountId, { limit: 100 }),
   ]);
   const settings = extraStopSettingsFromAccount(accountRow as Parameters<typeof extraStopSettingsFromAccount>[0]);
+  const lockReason = (accountRow as { extra_stop_lock_reason?: string } | null)?.extra_stop_lock_reason || '';
   const timezone = (accountRow as { timezone?: string } | null)?.timezone || 'America/New_York';
   const driveTime = Boolean((accountRow as { instant_book_drive_time?: boolean } | null)?.instant_book_drive_time);
 
@@ -55,7 +56,12 @@ export default async function ExtraStopsPage() {
           <p className="eyebrow">Extra Stop</p>
           <h2>Same-day route requests</h2>
         </div>
-        {settings.enabled ? (
+        {settings.locked ? (
+          <p className="payment-banner warning" style={{ marginTop: '.5rem' }}>
+            Extra Stop is temporarily locked{settings.lockedUntil ? ` until ${new Date(settings.lockedUntil).toLocaleDateString('en-US', { dateStyle: 'medium' })}` : ''}
+            {lockReason ? ` — ${lockReason}` : ' after a reported no-show.'} It&apos;ll reopen automatically; contact support if you think this is a mistake.
+          </p>
+        ) : settings.enabled ? (
           <div style={{ marginTop: '.6rem' }}>
             <AutomationLink id="extra-stop" label="Extra Stop settings" on />
           </div>

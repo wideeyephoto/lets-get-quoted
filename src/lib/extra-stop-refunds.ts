@@ -3,7 +3,8 @@ import { refundPayment } from '@/lib/payments';
 import { getExtraStopRequest, logExtraStopEvent, type ExtraStopRequest } from '@/lib/extra-stop-requests';
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 import { sendExtraStopStatusSms } from '@/lib/sms';
-import { centsToDollars } from '@/lib/extra-stop';
+import { centsToDollars, extraStopNoShowLock } from '@/lib/extra-stop';
+import { logAdminAction } from '@/lib/admin';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
@@ -125,6 +126,31 @@ export async function resolveExtraStopCancellation(
     .select('id')
     .maybeSingle();
   if (!claimed) return { pct: refundPct, refundCents }; // already resolved by a concurrent path
+
+  // No-show escalation: auto-lock Extra Stop on a verified no-show, escalating by
+  // how many the account has had recently (10-day → 30-day → disabled pending
+  // review). Staff can clear it from the admin console. Logged as a 'system' action.
+  if (opts.kind === 'no_show') {
+    const { data: priors } = await admin
+      .from('extra_stop_requests')
+      .select('no_show_confirmed_at')
+      .eq('account_id', accountId)
+      .eq('status', 'no_show_confirmed')
+      .neq('id', requestId)
+      .not('no_show_confirmed_at', 'is', null);
+    const priorDates = (priors ?? [])
+      .map((r) => new Date(String((r as { no_show_confirmed_at: string }).no_show_confirmed_at)))
+      .filter((d) => !Number.isNaN(d.getTime()));
+    const lock = extraStopNoShowLock(priorDates);
+    await admin.from('accounts').update({ extra_stop_locked_until: lock.untilIso, extra_stop_lock_reason: lock.reason }).eq('id', accountId);
+    await logAdminAction(admin, 'system', {
+      action: 'extra_stop_auto_lock',
+      accountId,
+      targetType: 'account',
+      targetId: accountId,
+      meta: { tier: lock.tier, until: lock.untilIso, reason: lock.reason, requestId, priorNoShows: priorDates.length },
+    });
+  }
 
   // Drop the placeholder / appointment from the active calendar.
   if (req.job_id) {

@@ -19,7 +19,7 @@ export default async function AdminMoneyPage() {
   const [feeRows, refundRows, disputeRows, paused, notOnboarded] = await Promise.all([
     admin.from('payments').select('platform_fee').eq('status', 'paid').gte('paid_at', since30),
     admin.from('payments').select('refunded_amount, paid_at').gt('refunded_amount', 0).gte('paid_at', since30),
-    admin.from('payments').select('id, account_id, amount, label, disputed_at, dispute_reason, dispute_status').eq('status', 'disputed').order('disputed_at', { ascending: false }).limit(50),
+    admin.from('payments').select('id, account_id, amount, label, disputed_at, dispute_reason, dispute_status, stripe_dispute_id, dispute_due_by').eq('status', 'disputed').order('disputed_at', { ascending: false }).limit(50),
     admin.from('accounts').select('id, business_name, account_number, connect_disabled_at').not('connect_disabled_at', 'is', null).order('connect_disabled_at', { ascending: false }).limit(50),
     admin.from('accounts').select('id', { count: 'exact', head: true }).eq('connect_onboarded', false),
   ]);
@@ -88,11 +88,13 @@ export default async function AdminMoneyPage() {
         ) : (
           <div className={styles.tableWrap}>
             <table className={styles.table}>
-              <thead><tr><th>Opened</th><th>Account</th><th>Charge</th><th className="num">Amount</th><th>Reason</th></tr></thead>
+              <thead><tr><th>Opened</th><th>Account</th><th>Charge</th><th className="num">Amount</th><th>Reason</th><th>Respond by</th><th /></tr></thead>
               <tbody>
                 {disputes.map((d) => {
-                  const row = d as { id: string; account_id: string; amount: number | null; label: string | null; disputed_at: string | null; dispute_reason: string | null; dispute_status: string | null };
+                  const row = d as { id: string; account_id: string; amount: number | null; label: string | null; disputed_at: string | null; dispute_reason: string | null; dispute_status: string | null; stripe_dispute_id: string | null; dispute_due_by: string | null };
                   const acct = nameMap.get(row.account_id);
+                  const dueMs = row.dispute_due_by ? new Date(row.dispute_due_by).getTime() : NaN;
+                  const overdue = Number.isFinite(dueMs) && dueMs < Date.now();
                   return (
                     <tr key={row.id}>
                       <td className={styles.muted}>{fmtDate(row.disputed_at)}</td>
@@ -100,6 +102,14 @@ export default async function AdminMoneyPage() {
                       <td>{row.label || '—'}</td>
                       <td className="num" style={{ textAlign: 'right' }}>{usd(Number(row.amount) || 0)}</td>
                       <td className={styles.muted}>{row.dispute_reason || row.dispute_status || '—'}</td>
+                      <td>{row.dispute_due_by ? <span className={`${styles.pill} ${overdue ? styles.bad : styles.warn}`}>{fmtDate(row.dispute_due_by)}</span> : <span className={styles.muted}>—</span>}</td>
+                      <td>
+                        {row.stripe_dispute_id ? (
+                          <a href={`https://dashboard.stripe.com/disputes/${row.stripe_dispute_id}`} target="_blank" rel="noreferrer" className={styles.rowLink}>Respond on Stripe →</a>
+                        ) : (
+                          <span className={styles.muted}>—</span>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}

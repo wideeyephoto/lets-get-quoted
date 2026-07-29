@@ -266,7 +266,7 @@ export async function submitExtraStopRequestAction(formData: FormData): Promise<
       .eq('id', site.account_id)
       .maybeSingle();
     const settings = extraStopSettingsFromAccount(accountRow as Parameters<typeof extraStopSettingsFromAccount>[0]);
-    if (!settings.enabled) return { ok: false, error: 'Extra Stop isn’t available right now.' };
+    if (!settings.available) return { ok: false, error: 'Extra Stop isn’t available right now.' };
 
     const name = (formData.get('name') ?? '').toString().trim();
     const phone = normalizeUsPhone((formData.get('phone') ?? '').toString());

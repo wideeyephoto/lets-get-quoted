@@ -77,10 +77,13 @@ export default async function BookingPage({
   // defensively so a pre-migration DB just serves the classic form.
   const { data: gate } = await admin
     .from('accounts')
-    .select('instant_book_enabled, extra_stop_enabled')
+    .select('instant_book_enabled, extra_stop_enabled, extra_stop_locked_until')
     .eq('id', site.account_id)
     .maybeSingle();
-  const extraStopEnabled = Boolean(gate?.extra_stop_enabled);
+  // Extra Stop is only offered when enabled AND not locked (no-show escalation).
+  const extraStopLockedUntil = typeof gate?.extra_stop_locked_until === 'string' ? gate.extra_stop_locked_until : null;
+  const extraStopLocked = extraStopLockedUntil ? new Date(extraStopLockedUntil).getTime() > Date.now() : false;
+  const extraStopEnabled = Boolean(gate?.extra_stop_enabled) && !extraStopLocked;
   if (gate?.instant_book_enabled) {
     return (
       <main className="wide-shell workspace-shell payment-shell">
