@@ -18,6 +18,7 @@ import PinMap from '@/components/pin-map';
 import { getMapPins } from '@/lib/map-pins';
 import { JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeJobsView, normalizeMapTheme, normalizeMapView } from '@/lib/dashboard-views';
 import JobsWorkspace, { type JobViewItem } from './JobsWorkspace';
+import AutomationLink from '@/components/automation-link';
 
 // Compact "Aug 3" / "Aug 3 · 9:00 AM" label for a job's scheduled date, parsed
 // off the date parts so a date-only value never shifts a day by timezone.
@@ -172,6 +173,8 @@ export default async function JobsPage({
   const mapTheme = normalizeMapTheme(cookies().get(MAP_THEME_COOKIE)?.value);
   const jobsView = normalizeJobsView(cookies().get(JOBS_VIEW_COOKIE)?.value);
   const mapPins = mapView !== 'off' ? await getMapPins(supabase, accountId) : [];
+  const { data: jobsAcct } = await supabase.from('accounts').select('quote_followups_enabled').eq('id', accountId).maybeSingle();
+  const followupsOn = Boolean(jobsAcct?.quote_followups_enabled);
 
   return (
     <main className="wide-shell workspace-shell">
@@ -179,6 +182,9 @@ export default async function JobsPage({
         <div className="section-heading workspace-section-heading">
           <p className="eyebrow">Pipeline</p>
           <h2>Current jobs</h2>
+        </div>
+        <div style={{ marginTop: '0.5rem' }}>
+          <AutomationLink id="followups" label="Quote follow-ups" on={followupsOn} />
         </div>
         {mapView === 'large' && (
           <div className="workspace-embedded-map">

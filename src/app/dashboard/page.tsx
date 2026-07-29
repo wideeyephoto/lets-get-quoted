@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
+import AutomationLink from '@/components/automation-link';
 import { connectStripeAction } from './stripe-actions';
 import { expandScheduledJobs, formatJobTime, formatMoney, listJobs } from '@/lib/jobs';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
@@ -43,7 +44,7 @@ export default async function DashboardPage() {
   await expireStaleLeads(supabase, accountId);
 
   const [{ data: account }, { data: identityData }, { data: site }, jobs, leads, { count: clientCount }] = await Promise.all([
-    supabase.from('accounts').select('connect_onboarded, connect_disabled_at, schedule_day_hours').eq('id', accountId).single(),
+    supabase.from('accounts').select('connect_onboarded, connect_disabled_at, schedule_day_hours, daily_digest_enabled').eq('id', accountId).single(),
     supabase.auth.getUserIdentities(),
     supabase.from('sites').select('published, subdomain, custom_domain, custom_domain_verified_at, content').eq('account_id', accountId).maybeSingle(),
     listJobs(supabase, accountId),
@@ -57,6 +58,7 @@ export default async function DashboardPage() {
   // they resolve it. This warrants a prominent alert, not the generic nudge.
   const connectDisabledAt = account?.connect_disabled_at ?? null;
   const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
+  const dailyDigestOn = Boolean((account as { daily_digest_enabled?: boolean } | null)?.daily_digest_enabled);
   const linkedMethodCount = identityData?.identities?.length ?? 1;
   const sitePublished = site?.published ?? false;
   // Blog publishing reminder (owner-set cadence in the builder's Blog section).
@@ -382,6 +384,9 @@ export default async function DashboardPage() {
         <div className="section-heading workspace-section-heading">
           <p className="eyebrow">Automation at work</p>
           <h2>Working for you · last 30 days</h2>
+        </div>
+        <div style={{ marginTop: '0.5rem' }}>
+          <AutomationLink id="daily-digest" label="Daily digest" on={dailyDigestOn} />
         </div>
         {automation.total === 0 ? (
           <p className="workspace-card-copy">

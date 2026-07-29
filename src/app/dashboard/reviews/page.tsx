@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { getReviewsSummary } from '@/lib/reviews';
+import AutomationLink from '@/components/automation-link';
 
 function formatDate(value: string | null): string {
   if (!value) return '';
@@ -15,6 +16,8 @@ function stars(rating: number | null): string {
 export default async function ReviewsPage() {
   const { supabase, accountId } = await requireOwnerContext();
   const summary = await getReviewsSummary(supabase, accountId);
+  const { data: reviewAcct } = await supabase.from('accounts').select('auto_review_request').eq('id', accountId).maybeSingle();
+  const reviewsOn = Boolean(reviewAcct?.auto_review_request);
 
   const maxStar = Math.max(1, ...([5, 4, 3, 2, 1] as const).map((n) => summary.starCounts[n]));
   const pct = (n: number) => `${Math.round((n / (summary.totalInvites || 1)) * 100)}%`;
@@ -27,9 +30,11 @@ export default async function ReviewsPage() {
           <h1 className="workspace-title">Reputation &amp; feedback</h1>
           <p className="workspace-lead">
             Every gated review ask in one place — the happy customers you sent to Google, and the private feedback
-            that came back to you instead of a public 1-star. Turn review-gating on in{' '}
-            <Link href="/dashboard/settings#reviews">Settings</Link>.
+            that came back to you instead of a public 1-star.
           </p>
+          <div style={{ marginTop: '0.75rem' }}>
+            <AutomationLink id="reviews" label="Auto review requests" on={reviewsOn} />
+          </div>
         </div>
       </section>
 
