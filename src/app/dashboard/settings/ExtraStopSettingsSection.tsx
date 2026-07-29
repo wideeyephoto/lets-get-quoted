@@ -10,17 +10,16 @@ import SaveButton from '@/components/save-button';
 export type ExtraStopSettingsRow = Parameters<typeof extraStopSettingsFromAccount>[0];
 export type RefundTierValues = { withinGraceMinutes: number; grace: number; beforeEnRoute: number; afterEnRoute: number; afterArrived: number };
 
-export default function ExtraStopSettingsSection({ extraStop, refundTiers }: { extraStop: ExtraStopSettingsRow; refundTiers: RefundTierValues }) {
+// `headless` drops the outer panel + heading so the section can live inside the
+// Automations accordion card (which supplies its own summary/header). Default
+// keeps the standalone panel for any other caller.
+export default function ExtraStopSettingsSection({ extraStop, refundTiers, headless }: { extraStop: ExtraStopSettingsRow; refundTiers: RefundTierValues; headless?: boolean }) {
   const s = extraStopSettingsFromAccount(extraStop);
   const t = refundTiers;
 
-  return (
-    <section className="panel workspace-section-card" id="extra-stop">
-      <div className="section-heading workspace-section-heading compact-heading">
-        <p className="eyebrow">Extra Stop</p>
-        <h2>Same-day &ldquo;add me to your route&rdquo; requests</h2>
-      </div>
-      <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+  const body = (
+    <>
+      <p className="workspace-details-copy" style={{ marginTop: headless ? 0 : '0.5rem', marginBottom: '1rem' }}>
         Extra Stop is a separate, faster path that runs alongside normal booking. A customer asks to be
         squeezed onto the end of your route today; you review the job, propose an arrival window, and set a
         one-off Extra Stop fee. They pay only after approving the time and price &mdash; nothing is booked
@@ -155,6 +154,17 @@ export default function ExtraStopSettingsSection({ extraStop, refundTiers }: { e
           <SaveButton>Save Extra Stop settings</SaveButton>
         </div>
       </form>
+    </>
+  );
+
+  if (headless) return body;
+  return (
+    <section className="panel workspace-section-card" id="extra-stop">
+      <div className="section-heading workspace-section-heading compact-heading">
+        <p className="eyebrow">Extra Stop</p>
+        <h2>Same-day &ldquo;add me to your route&rdquo; requests</h2>
+      </div>
+      {body}
     </section>
   );
 }

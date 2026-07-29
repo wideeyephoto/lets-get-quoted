@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { connectStripeAction, disconnectStripeAction } from '../stripe-actions';
@@ -18,6 +19,27 @@ import ExtraStopSettingsSection from './ExtraStopSettingsSection';
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+// One automation in the grouped, collapsible Automations tab. Collapsed by
+// default so the whole tab reads as a scannable index (title + one-liner +
+// on/off pill); expand to reveal the section's form. The `id` stays on the
+// <details> so deep links (#reviews, #daily-digest, …) still resolve and open it.
+type AutomationStatus = { label: string; tone: 'on' | 'off' | 'neutral' };
+function AutomationCard({ id, title, subtitle, status, children }: { id: string; title: string; subtitle: string; status: AutomationStatus; children: ReactNode }) {
+  return (
+    <details className="automation-card" id={id}>
+      <summary className="automation-summary">
+        <span className="automation-heads">
+          <strong>{title}</strong>
+          <span className="automation-sub">{subtitle}</span>
+        </span>
+        <span className={`automation-status ${status.tone}`}>{status.label}</span>
+        <svg className="automation-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+      </summary>
+      <div className="automation-body">{children}</div>
+    </details>
+  );
 }
 
 export default async function SettingsPage({
@@ -83,6 +105,9 @@ export default async function SettingsPage({
     .eq('id', accountId)
     .single();
   const extraStopRefundTiers = await loadRefundTiers(supabase, accountId);
+  // At-a-glance status for the Automations accordion cards.
+  const extraStopEnabled = Boolean((extraStopSettings as { extra_stop_enabled?: boolean } | null)?.extra_stop_enabled);
+  const bookingActive = booking.weekdays.length > 0;
   const instantBookEnabled = Boolean(bookingSettings?.instant_book_enabled);
   const instantBookMinAmount = bookingSettings?.instant_book_min_amount ? Number(bookingSettings.instant_book_min_amount) : 0;
   const instantBookRadius = bookingSettings?.instant_book_radius_miles ? Number(bookingSettings.instant_book_radius_miles) : 15;
@@ -222,13 +247,10 @@ export default async function SettingsPage({
             label: 'Automations',
             anchors: ['intake-ai', 'booking-availability', 'extra-stop', 'reviews', 'followups', 'reminders', 'daily-digest'],
             content: (
-              <>
-                <section className="panel workspace-section-card" id="intake-ai">
-                  <div className="section-heading workspace-section-heading compact-heading">
-                    <p className="eyebrow">Intake AI</p>
-                    <h2>Tune your instant estimates &amp; lead priority</h2>
-                  </div>
-                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+              <div className="automation-list">
+                <p className="automation-group">Booking &amp; intake</p>
+                <AutomationCard id="intake-ai" title="Intake AI" subtitle="Instant estimates & lead priority" status={{ label: 'Always on', tone: 'neutral' }}>
+                  <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     Your website&apos;s AI intake opens the relationship for you: it asks a homeowner{' '}
                     <strong>2&ndash;8 short questions</strong>, gives them a instant ballpark, and captures the
                     details &mdash; building trust in the first 30 seconds, then handing that warm, qualified lead
@@ -272,14 +294,10 @@ export default async function SettingsPage({
                       <SaveButton>Save intake settings</SaveButton>
                     </div>
                   </form>
-                </section>
+                </AutomationCard>
 
-                <section className="panel workspace-section-card" id="booking-availability">
-                  <div className="section-heading workspace-section-heading compact-heading">
-                    <p className="eyebrow">Instant booking</p>
-                    <h2>Your online booking availability</h2>
-                  </div>
-                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                <AutomationCard id="booking-availability" title="Online booking" subtitle="Days & windows customers can grab" status={{ label: bookingActive ? 'On' : 'Paused', tone: bookingActive ? 'on' : 'off' }}>
+                  <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     This controls the times customers can grab on your public <strong>Book a time</strong> page. Pick
                     the days you take work, the arrival windows you offer, and how many bookings a day is enough. A
                     booking still lands as a request for you to confirm &mdash; this just decides what&apos;s offered.
@@ -375,16 +393,15 @@ export default async function SettingsPage({
                       <SaveButton>Save booking availability</SaveButton>
                     </div>
                   </form>
-                </section>
+                </AutomationCard>
 
-                <ExtraStopSettingsSection extraStop={extraStopSettings as Parameters<typeof ExtraStopSettingsSection>[0]['extraStop']} refundTiers={extraStopRefundTiers} />
+                <AutomationCard id="extra-stop" title="Extra Stop" subtitle="Same-day &ldquo;add me to your route&rdquo;" status={{ label: extraStopEnabled ? 'On' : 'Off', tone: extraStopEnabled ? 'on' : 'off' }}>
+                  <ExtraStopSettingsSection headless extraStop={extraStopSettings as Parameters<typeof ExtraStopSettingsSection>[0]['extraStop']} refundTiers={extraStopRefundTiers} />
+                </AutomationCard>
 
-                <section className="panel workspace-section-card" id="reviews">
-                  <div className="section-heading workspace-section-heading compact-heading">
-                    <p className="eyebrow">Reviews</p>
-                    <h2>Automatic review requests</h2>
-                  </div>
-                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                <p className="automation-group">Customer follow-through</p>
+                <AutomationCard id="reviews" title="Review requests" subtitle="Auto-ask after a completed job" status={{ label: autoReviewRequest ? 'On' : 'Off', tone: autoReviewRequest ? 'on' : 'off' }}>
+                  <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     When on, marking a job complete automatically asks the client for a Google review — texted if
                     they have a mobile on file, emailed otherwise. It only sends once per job, and you can always
                     send the request by hand from any completed job. Link your Google Business Profile in the
@@ -416,14 +433,10 @@ export default async function SettingsPage({
                       <SaveButton>Save review settings</SaveButton>
                     </div>
                   </form>
-                </section>
+                </AutomationCard>
 
-                <section className="panel workspace-section-card" id="followups">
-                  <div className="section-heading workspace-section-heading compact-heading">
-                    <p className="eyebrow">Follow-ups</p>
-                    <h2>Automatic quote follow-ups</h2>
-                  </div>
-                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                <AutomationCard id="followups" title="Quote follow-ups" subtitle="Nudge unapproved quotes" status={{ label: quoteFollowupsEnabled ? 'On' : 'Off', tone: quoteFollowupsEnabled ? 'on' : 'off' }}>
+                  <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     When on, we gently nudge clients who were sent a quote but haven&apos;t approved it yet —
                     up to twice (around day 2 and day 5), texting them if they have a mobile on file and emailing
                     otherwise. Nudges stop as soon as the quote is approved, and respect text opt-outs.
@@ -442,14 +455,10 @@ export default async function SettingsPage({
                       <SaveButton>Save follow-up settings</SaveButton>
                     </div>
                   </form>
-                </section>
+                </AutomationCard>
 
-                <section className="panel workspace-section-card" id="reminders">
-                  <div className="section-heading workspace-section-heading compact-heading">
-                    <p className="eyebrow">Reminders</p>
-                    <h2>Appointment reminders</h2>
-                  </div>
-                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                <AutomationCard id="reminders" title="Appointment reminders" subtitle="Day-before text or email" status={{ label: appointmentRemindersEnabled ? 'On' : 'Off', tone: appointmentRemindersEnabled ? 'on' : 'off' }}>
+                  <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     When on, the day before a scheduled job we automatically remind the client — texting them if
                     they have a mobile on file that&apos;s opted in, and emailing otherwise. It runs once per
                     appointment and respects text opt-outs, so it cuts no-shows without you lifting a finger.
@@ -468,14 +477,11 @@ export default async function SettingsPage({
                       <SaveButton>Save reminder settings</SaveButton>
                     </div>
                   </form>
-                </section>
+                </AutomationCard>
 
-                <section className="panel workspace-section-card" id="daily-digest">
-                  <div className="section-heading workspace-section-heading compact-heading">
-                    <p className="eyebrow">Daily digest</p>
-                    <h2>Your business, once a day</h2>
-                  </div>
-                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                <p className="automation-group">Your briefing</p>
+                <AutomationCard id="daily-digest" title="Daily digest" subtitle="Your business each morning" status={{ label: dailyDigestEnabled ? 'On' : 'Off', tone: dailyDigestEnabled ? 'on' : 'off' }}>
+                  <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     When on, each morning we email you a short digest of your business — money received,
                     new leads, quotes approved, today&apos;s schedule, appointment confirmations, new reviews,
                     and clients due to rebook. It only sends on days with something to report.
@@ -499,8 +505,8 @@ export default async function SettingsPage({
                       Send me a test digest
                     </SaveButton>
                   </form>
-                </section>
-              </>
+                </AutomationCard>
+              </div>
             ),
           },
           {

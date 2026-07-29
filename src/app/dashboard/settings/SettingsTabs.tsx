@@ -35,6 +35,9 @@ export default function SettingsTabs({ tabs }: { tabs: SettingsTab[] }) {
     const scrollWhenReady = (id: string, tries = 0) => {
       const el = document.getElementById(id);
       if (el && el.offsetParent !== null) {
+        // A deep-linked automation card is a collapsed <details> — open it so the
+        // linked section is actually visible, not just scrolled to a closed header.
+        if (el instanceof HTMLDetailsElement) el.open = true;
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         return;
       }

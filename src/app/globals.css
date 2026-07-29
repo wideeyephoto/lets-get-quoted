@@ -695,6 +695,39 @@ h3 {
   .settings-tab-ic { width: 1rem; height: 1rem; }
 }
 
+/* Automations tab — grouped, collapsible cards. The tab reads as a scannable
+   index (title + one-liner + on/off pill); expand a card to reveal its form. */
+.automation-list { display: flex; flex-direction: column; }
+.automation-group {
+  font-size: 0.7rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(200, 210, 224, 0.6); margin: 1.5rem 0 0.55rem; padding: 0 0.15rem;
+}
+.automation-group:first-child { margin-top: 0.15rem; }
+.automation-card {
+  border: 1px solid rgba(255, 255, 255, 0.09); border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.025); margin-bottom: 0.55rem;
+}
+.automation-card[open] { border-color: rgba(255, 122, 33, 0.35); background: rgba(255, 122, 33, 0.04); }
+.automation-summary {
+  display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1.05rem;
+  cursor: pointer; list-style: none; -webkit-user-select: none; user-select: none;
+}
+.automation-summary::-webkit-details-marker { display: none; }
+.automation-summary:hover { background: rgba(255, 255, 255, 0.02); border-radius: 0.85rem; }
+.automation-heads { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; flex: 1; }
+.automation-heads strong { font-size: 0.95rem; color: var(--text); }
+.automation-sub { font-size: 0.8rem; color: rgba(200, 210, 224, 0.7); }
+.automation-status {
+  font-size: 0.68rem; font-weight: 700; padding: 0.16rem 0.5rem; border-radius: 999px;
+  border: 1px solid transparent; white-space: nowrap; flex: none;
+}
+.automation-status.on { background: rgba(52, 211, 153, 0.14); color: #6ee7b7; border-color: rgba(52, 211, 153, 0.3); }
+.automation-status.off { background: rgba(255, 255, 255, 0.06); color: rgba(200, 210, 224, 0.75); border-color: rgba(255, 255, 255, 0.12); }
+.automation-status.neutral { background: rgba(255, 209, 102, 0.12); color: #ffd166; border-color: rgba(255, 209, 102, 0.28); }
+.automation-caret { width: 1rem; height: 1rem; color: rgba(200, 210, 224, 0.55); flex: none; transition: transform 0.15s ease; }
+.automation-card[open] .automation-caret { transform: rotate(90deg); }
+.automation-body { padding: 0.1rem 1.05rem 1.15rem; }
+
 /* Screen-reader-only text (visually hidden, still announced). */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
