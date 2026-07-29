@@ -3,7 +3,6 @@ import { TRADES } from '@/lib/trades';
 import SiteFooter from '@/components/site-footer';
 import HeroDashboard from '@/components/hero-dashboard';
 import StickyCta from '@/components/sticky-cta';
-import HomeFeeCalculator from '@/components/home-fee-calculator';
 import FeatureWheelStory from './features/FeatureWheelStory';
 
 function QuoteIcon() {
@@ -482,10 +481,6 @@ export default function HomePage() {
             Take the deposit by bank/ACH and Stripe&rsquo;s cut nearly disappears. Slow month with no jobs?
             <strong> $0</strong> &mdash; while a monthly CRM still bills you $200+.
           </p>
-        </div>
-        <div className="hcalc-wrap">
-          <p className="hcalc-h"><span className="hcalc-h-kick">Run your own numbers</span>Type your volume &mdash; see what you&rsquo;d actually pay.</p>
-          <HomeFeeCalculator />
         </div>
         <div className="mid-cta">
           <Link href="/login?intent=signup" className="btn primary">Create Free Account</Link>
