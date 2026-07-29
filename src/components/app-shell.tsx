@@ -251,6 +251,12 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     return <>{children}</>;
   }
 
+  // The internal /admin console renders its own chrome (see admin/layout.tsx)
+  // and is not an owner-account surface, so keep the owner/marketing shell off it.
+  if (pathname.startsWith('/admin')) {
+    return <>{children}</>;
+  }
+
   const brandHref = isLoggedIn ? '/dashboard' : '/';
   const showQuoteRequestAlert = isDashboard && isLoggedIn && newQuoteRequestCount > 0 && newestQuoteRequestId && dismissedQuoteRequestId !== newestQuoteRequestId;
   const newestQuoteRequestAge = newestQuoteRequestCreatedAt

@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { normalizeSupabaseUrl } from '@/lib/supabase-url';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 
@@ -117,5 +117,53 @@ export async function requireOwnerContext() {
     redirect('/login');
   }
 
+  // Staff-suspended accounts are blocked from the owner surface until lifted.
+  // Defensive: a missing column (pre-migration) or read error is treated as
+  // "not suspended" so this never breaks the dashboard before it's deployed.
+  const { data: acct } = await supabase.from('accounts').select('suspended_at').eq('id', membership.accountId).maybeSingle();
+  if (acct && (acct as { suspended_at?: string | null }).suspended_at) {
+    redirect('/account-suspended');
+  }
+
   return { supabase, userId: user.id, accountId: membership.accountId };
+}
+
+// --- Internal staff console (/admin) -----------------------------------------
+// Staff identity lives in env, NOT in customer data: there is no DB admin role.
+// ADMIN_EMAILS is a comma-separated allowlist of letsgetquoted.com staff emails
+// allowed into the console. This keeps "who works here" out of the accounts a
+// contractor could ever see, and makes granting/revoking access a config change.
+function adminAllowlist(): string[] {
+  return (process.env.ADMIN_EMAILS ?? '')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+export function isAdminEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return adminAllowlist().includes(email.trim().toLowerCase());
+}
+
+export type AdminContext = {
+  admin: ReturnType<typeof createAdminClient>;
+  adminEmail: string;
+  userId: string;
+};
+
+// Guard for every /admin route. Requires a logged-in user whose email is on the
+// staff allowlist; ANYONE else — logged out or a normal contractor — gets a 404
+// so the console never reveals it exists. Returns the service-role client (the
+// console works across all accounts) plus who is acting, for the audit trail.
+export async function requireAdmin(): Promise<AdminContext> {
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user || !isAdminEmail(user.email)) {
+    notFound();
+  }
+
+  return { admin: createAdminClient(), adminEmail: user.email!.toLowerCase(), userId: user.id };
 }

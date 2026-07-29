@@ -1,0 +1,128 @@
+import Link from 'next/link';
+import { requireAdmin } from '@/lib/auth';
+import styles from '../admin.module.css';
+
+export const dynamic = 'force-dynamic';
+
+function usd(dollars: number): string {
+  return `$${dollars.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+}
+function fmtDate(v: string | null | undefined): string {
+  return v ? new Date(v).toLocaleDateString('en-US', { dateStyle: 'medium' }) : '—';
+}
+
+export default async function AdminMoneyPage() {
+  const { admin } = await requireAdmin();
+  const since30 = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+
+  const [feeRows, refundRows, disputeRows, paused, notOnboarded] = await Promise.all([
+    admin.from('payments').select('platform_fee').eq('status', 'paid').gte('paid_at', since30),
+    admin.from('payments').select('refunded_amount, paid_at').gt('refunded_amount', 0).gte('paid_at', since30),
+    admin.from('payments').select('id, account_id, amount, label, disputed_at, dispute_reason, dispute_status').eq('status', 'disputed').order('disputed_at', { ascending: false }).limit(50),
+    admin.from('accounts').select('id, business_name, account_number, connect_disabled_at').not('connect_disabled_at', 'is', null).order('connect_disabled_at', { ascending: false }).limit(50),
+    admin.from('accounts').select('id', { count: 'exact', head: true }).eq('connect_onboarded', false),
+  ]);
+
+  const fees30 = (feeRows.data ?? []).reduce((s, r) => s + (Number((r as { platform_fee: number }).platform_fee) || 0), 0);
+  const refunds30 = (refundRows.data ?? []).reduce((s, r) => s + (Number((r as { refunded_amount: number }).refunded_amount) || 0), 0);
+  const disputes = disputeRows.data ?? [];
+
+  // Stitch account names onto the dispute rows.
+  const acctIds = [...new Set(disputes.map((d) => (d as { account_id: string }).account_id).filter(Boolean))];
+  const nameMap = new Map<string, { business_name: string | null; account_number: number | null }>();
+  if (acctIds.length) {
+    const { data } = await admin.from('accounts').select('id, business_name, account_number').in('id', acctIds);
+    for (const a of data ?? []) {
+      const row = a as { id: string; business_name: string | null; account_number: number | null };
+      nameMap.set(row.id, { business_name: row.business_name, account_number: row.account_number });
+    }
+  }
+
+  const pausedRows = paused.data ?? [];
+
+  return (
+    <>
+      <header className={styles.pageHead}>
+        <p className={styles.eyebrow}>Oversight</p>
+        <h1 className={styles.title}>Money</h1>
+        <p className={styles.lead}>Platform fees, refunds, disputes, and payout health. You&rsquo;re the merchant of record on Connect — this is the liability side of the ledger.</p>
+      </header>
+
+      <section className={styles.cardGrid} style={{ marginBottom: '1.4rem' }}>
+        <div className={`${styles.panel} ${styles.statCard}`}>
+          <span className={styles.statValue}>{usd(fees30)}</span>
+          <span className={styles.statLabel}>Platform fees (30 days)</span>
+        </div>
+        <div className={`${styles.panel} ${styles.statCard}`}>
+          <span className={styles.statValue} style={refunds30 > 0 ? { color: '#ffd166' } : undefined}>{usd(refunds30)}</span>
+          <span className={styles.statLabel}>Refunds issued (30 days)</span>
+        </div>
+        <div className={`${styles.panel} ${styles.statCard}`}>
+          <span className={styles.statValue} style={disputes.length > 0 ? { color: '#fca5a5' } : undefined}>{disputes.length}</span>
+          <span className={styles.statLabel}>Open disputes</span>
+        </div>
+        <div className={`${styles.panel} ${styles.statCard}`}>
+          <span className={styles.statValue} style={pausedRows.length > 0 ? { color: '#ffd166' } : undefined}>{pausedRows.length}</span>
+          <span className={styles.statLabel}>Payouts paused</span>
+        </div>
+        <div className={`${styles.panel} ${styles.statCard}`}>
+          <span className={styles.statValue}>{notOnboarded.count ?? 0}</span>
+          <span className={styles.statLabel}>Not onboarded</span>
+        </div>
+      </section>
+
+      <section className={styles.panel}>
+        <p className={styles.panelTitle}>Open disputes / chargebacks</p>
+        {disputes.length === 0 ? (
+          <p className={styles.emptyState}>No open disputes. 🎉</p>
+        ) : (
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead><tr><th>Opened</th><th>Account</th><th>Charge</th><th className="num">Amount</th><th>Reason</th></tr></thead>
+              <tbody>
+                {disputes.map((d) => {
+                  const row = d as { id: string; account_id: string; amount: number | null; label: string | null; disputed_at: string | null; dispute_reason: string | null; dispute_status: string | null };
+                  const acct = nameMap.get(row.account_id);
+                  return (
+                    <tr key={row.id}>
+                      <td className={styles.muted}>{fmtDate(row.disputed_at)}</td>
+                      <td><Link href={`/admin/accounts/${row.account_id}`} className={styles.rowLink}>{acct?.business_name || 'Account'}</Link>{acct?.account_number ? <span className={styles.muted}> · #{acct.account_number}</span> : null}</td>
+                      <td>{row.label || '—'}</td>
+                      <td className="num" style={{ textAlign: 'right' }}>{usd(Number(row.amount) || 0)}</td>
+                      <td className={styles.muted}>{row.dispute_reason || row.dispute_status || '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className={styles.panel}>
+        <p className={styles.panelTitle}>Payouts paused</p>
+        {pausedRows.length === 0 ? (
+          <p className={styles.emptyState}>No accounts with paused payouts.</p>
+        ) : (
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead><tr><th>Account</th><th>#</th><th>Paused since</th></tr></thead>
+              <tbody>
+                {pausedRows.map((p) => {
+                  const row = p as { id: string; business_name: string | null; account_number: number | null; connect_disabled_at: string | null };
+                  return (
+                    <tr key={row.id}>
+                      <td><Link href={`/admin/accounts/${row.id}`} className={styles.rowLink}>{row.business_name || 'Account'}</Link></td>
+                      <td className={styles.muted}>{row.account_number ?? '—'}</td>
+                      <td className={styles.muted}>{fmtDate(row.connect_disabled_at)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </>
+  );
+}

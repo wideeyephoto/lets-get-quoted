@@ -1468,3 +1468,63 @@ alter table extra_stop_requests add column if not exists diagnostic_proposed_cen
 alter table extra_stop_requests add column if not exists diagnostic_note text;
 alter table extra_stop_requests add column if not exists diagnostic_payment_id uuid references payments(id) on delete set null;
 alter table extra_stop_requests add column if not exists diagnostic_decided_at timestamptz;
+
+-- ============================================================================
+-- ADMIN CONSOLE (/admin) — internal staff surface
+-- ============================================================================
+-- Append-only audit trail of every MUTATING action a staff member takes in the
+-- internal console (refund, no-show lockout, account credit, suspend, resolve a
+-- dispute). Written BEFORE any write feature is built on top of it, so nothing
+-- touches customer money without a record of who did it. Staff identity is the
+-- env allowlist (ADMIN_EMAILS), not a DB role — admin_email is that address.
+create table if not exists admin_actions (
+  id           uuid primary key default gen_random_uuid(),
+  admin_email  text not null,
+  action       text not null,           -- e.g. 'extra_stop_refund', 'account_suspend'
+  account_id   uuid references accounts(id) on delete set null,
+  target_type  text,                    -- 'extra_stop_request' | 'payment' | 'account' | ...
+  target_id    text,
+  meta         jsonb not null default '{}'::jsonb,
+  created_at   timestamptz not null default now()
+);
+create index if not exists admin_actions_created_idx on admin_actions (created_at desc);
+create index if not exists admin_actions_account_idx on admin_actions (account_id, created_at desc);
+-- RLS on with NO policy: unreachable via the anon/authed keys. Only the
+-- service-role client (used inside requireAdmin's context) can read/write it.
+alter table admin_actions enable row level security;
+
+-- Platform-issued account credits (e.g. the goodwill credit on a verified Extra
+-- Stop no-show). A ledger, not a mutable balance: the current balance is the sum
+-- of amount_cents for an account. Positive = credit granted, negative = credit
+-- consumed/reversed. Issued only from the admin console; never contractor-writable.
+create table if not exists account_credits (
+  id           uuid primary key default gen_random_uuid(),
+  account_id   uuid not null references accounts(id) on delete cascade,
+  amount_cents integer not null,        -- signed; grant > 0, reversal < 0
+  reason       text not null,
+  source       text not null default 'admin',  -- 'admin' | 'extra_stop_no_show' | ...
+  created_by   text,                    -- admin_email when staff-issued
+  meta         jsonb not null default '{}'::jsonb,
+  created_at   timestamptz not null default now()
+);
+create index if not exists account_credits_account_idx on account_credits (account_id, created_at desc);
+-- Owners may READ their own credit ledger (to show a balance); only the
+-- service-role admin path writes it.
+alter table account_credits enable row level security;
+drop policy if exists account_credits_owner_read on account_credits;
+create policy account_credits_owner_read on account_credits for select using ( is_owner(account_id) );
+
+-- Extra Stop no-show governance (admin-driven). A verified no-show can escalate
+-- to a temporary lock on the contractor's Extra Stop feature; the console sets
+-- these and can clear them (override). Null lock = not locked. Distinct from the
+-- owner's own extra_stop_enabled toggle so staff action is never silently undone.
+alter table accounts add column if not exists extra_stop_locked_until timestamptz;
+alter table accounts add column if not exists extra_stop_lock_reason text;
+
+-- Account suspension (admin-driven, Trust & Safety). A suspended account is
+-- blocked from the owner dashboard (see requireOwnerContext) until staff lift it.
+-- Distinct from the 'suspended' plan_tier so suspending never clobbers the real
+-- billing plan. Null = active.
+alter table accounts add column if not exists suspended_at timestamptz;
+alter table accounts add column if not exists suspended_reason text;
+alter table accounts add column if not exists suspended_by text;
