@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import AutomationLink from '@/components/automation-link';
-import { connectStripeAction } from './stripe-actions';
 import { expandScheduledJobs, formatJobTime, formatMoney, listJobs } from '@/lib/jobs';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { expireStaleLeads, listLeads } from '@/lib/leads';
@@ -129,10 +128,8 @@ export default async function DashboardPage() {
 
   const scheduledJobs = jobs.filter((job) => job.status !== 'archived' && job.scheduled_for);
   const scheduledJobOccurrences = expandScheduledJobs(scheduledJobs, scheduleDayHours);
-  const activeJobs = jobs.filter((job) => job.status === 'in_progress').length;
   const openLeadCount = leads.filter((lead) => lead.status === 'new' || lead.status === 'contacted').length;
   const quotedLeadCount = leads.filter((lead) => lead.status === 'quoted').length;
-  const wonLeadCount = leads.filter((lead) => lead.status === 'won').length;
   const [crew, assignmentsByJob, automation, rebookDue, privateFeedback] = await Promise.all([
     listCrew(supabase, accountId, { activeOnly: true }),
     listCrewAssignmentsForJobs(supabase, accountId, scheduledJobs.map((job) => job.id)),
@@ -261,8 +258,6 @@ export default async function DashboardPage() {
         </section>
       ) : null}
 
-      <BlogReminderBanner reminderWeeks={blogReminderWeeks} lastPublishedISO={lastPublishedBlogISO} suggestedTopic={blogTopicSuggestion} />
-
       {!onboardingComplete ? (
         <section className="panel workspace-section-card onboarding-panel">
           <div className="section-heading workspace-section-heading">
@@ -323,14 +318,46 @@ export default async function DashboardPage() {
 
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading">
+          <p className="eyebrow">Week at a glance</p>
+          <h2>Next 7 days</h2>
+        </div>
+        <div className="week-glance-grid">
+          {next7Days.map((day) => (
+            <div className={`week-glance-day${day.dateKey === todayKey ? ' today' : ''}`} key={day.dateKey}>
+              <span className="week-glance-date">{day.label}</span>
+              <div className="week-glance-jobs">
+                {day.jobs.length === 0 ? (
+                  <p className="week-glance-empty">No jobs</p>
+                ) : (
+                  day.jobs.map((job) => {
+                    const assignedMembers = (assignmentsByJob[job.id] ?? [])
+                      .map((id) => crew.find((member) => member.id === id))
+                      .filter((member): member is NonNullable<typeof member> => Boolean(member));
+                    return (
+                      <Link key={`${job.id}:${job.scheduled_for}`} href={`/dashboard/jobs/${job.id}`} className="week-glance-job">
+                        <span className="week-glance-job-top">
+                          <strong>{job.client_name}</strong>
+                          {assignedMembers.length > 0 ? (
+                            <span className="week-glance-crew" title={`Assigned: ${assignedMembers.map((member) => member.name).join(', ')}`}>
+                              {assignedMembers.slice(0, 2).map((member) => initials(member.name)).join(' ')}
+                            </span>
+                          ) : null}
+                        </span>
+                        <span>{[formatJobTime(job.scheduled_time), extractCity(job.address)].filter(Boolean).join(' - ')}</span>
+                      </Link>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="panel workspace-section-card">
+        <div className="section-heading workspace-section-heading">
           <p className="eyebrow">Snapshot</p>
           <h2>Account overview</h2>
-        </div>
-
-        <div className="actions" style={{ marginBottom: '1.1rem' }}>
-          <Link href="/dashboard/sites" className="btn secondary">Website builder</Link>
-          <Link href="/dashboard/settings#intake-ai" className="btn secondary">AI intake tuning</Link>
-          <Link href="/dashboard/settings#booking-availability" className="btn secondary">Booking availability</Link>
         </div>
 
         {siteUrl ? (
@@ -358,15 +385,6 @@ export default async function DashboardPage() {
 
         <div className="workspace-metric-grid">
           <article className="workspace-metric-card accent">
-            <span className="workspace-metric-label">Payments setup</span>
-            <strong className="workspace-metric-value">{onboarded ? 'Connected' : 'Needs action'}</strong>
-            <p className="workspace-metric-note">
-              {onboarded
-                ? 'Payout routing is active for homeowner deposit and stage payments.'
-                : 'Finish Stripe onboarding to activate direct contractor payouts.'}
-            </p>
-          </article>
-          <article className="workspace-metric-card">
             <span className="workspace-metric-label">Leads waiting</span>
             <strong className="workspace-metric-value">{openLeadCount}</strong>
             <p className="workspace-metric-note">
@@ -451,92 +469,7 @@ export default async function DashboardPage() {
         )}
       </section>
 
-      <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading">
-          <p className="eyebrow">Week at a glance</p>
-          <h2>Next 7 days</h2>
-        </div>
-        <div className="week-glance-grid">
-          {next7Days.map((day) => (
-            <div className={`week-glance-day${day.dateKey === todayKey ? ' today' : ''}`} key={day.dateKey}>
-              <span className="week-glance-date">{day.label}</span>
-              <div className="week-glance-jobs">
-                {day.jobs.length === 0 ? (
-                  <p className="week-glance-empty">No jobs</p>
-                ) : (
-                  day.jobs.map((job) => {
-                    const assignedMembers = (assignmentsByJob[job.id] ?? [])
-                      .map((id) => crew.find((member) => member.id === id))
-                      .filter((member): member is NonNullable<typeof member> => Boolean(member));
-                    return (
-                      <Link key={`${job.id}:${job.scheduled_for}`} href={`/dashboard/jobs/${job.id}`} className="week-glance-job">
-                        <span className="week-glance-job-top">
-                          <strong>{job.client_name}</strong>
-                          {assignedMembers.length > 0 ? (
-                            <span className="week-glance-crew" title={`Assigned: ${assignedMembers.map((member) => member.name).join(', ')}`}>
-                              {assignedMembers.slice(0, 2).map((member) => initials(member.name)).join(' ')}
-                            </span>
-                          ) : null}
-                        </span>
-                        <span>{[formatJobTime(job.scheduled_time), extractCity(job.address)].filter(Boolean).join(' - ')}</span>
-                      </Link>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="workspace-grid two-up">
-        <div className="panel workspace-section-card">
-          <div className="section-heading workspace-section-heading">
-            <p className="eyebrow">Payments</p>
-            <h2>Stripe readiness</h2>
-          </div>
-          {onboarded ? (
-            <p className="workspace-card-copy">
-              Stripe payouts are connected. Homeowner deposit requests will route funds to your
-              account as payments move through the workflow.
-            </p>
-          ) : (
-            <>
-              <p className="workspace-card-copy">
-                Connect a Stripe account so homeowner deposits and stage payments can be routed
-                directly to you.
-              </p>
-              <form action={connectStripeAction}>
-                <button type="submit" className="btn primary">
-                  Connect with Stripe
-                </button>
-              </form>
-            </>
-          )}
-        </div>
-
-        <div className="panel workspace-section-card">
-          <div className="section-heading workspace-section-heading">
-            <p className="eyebrow">Pipeline focus</p>
-            <h2>Lead momentum</h2>
-          </div>
-          <div className="tier-card">
-            <div className="tier-row">
-              <span>Quoted leads awaiting homeowner approval</span>
-              <span>{quotedLeadCount}</span>
-            </div>
-            <div className="tier-row bold">
-              <span>Active jobs</span>
-              <span>{activeJobs}</span>
-            </div>
-            <div className="tier-row">
-              <span>Won leads</span>
-              <span>{wonLeadCount}</span>
-            </div>
-            <p className="tier-note">Keep quotes moving from approval into scheduled work.</p>
-          </div>
-        </div>
-      </section>
+      <BlogReminderBanner reminderWeeks={blogReminderWeeks} lastPublishedISO={lastPublishedBlogISO} suggestedTopic={blogTopicSuggestion} />
     </main>
   );
 }
