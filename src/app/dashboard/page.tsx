@@ -322,6 +322,12 @@ export default async function DashboardPage() {
           <h2>Account overview</h2>
         </div>
 
+        <div className="actions" style={{ marginBottom: '1.1rem' }}>
+          <Link href="/dashboard/sites" className="btn secondary">Website builder</Link>
+          <Link href="/dashboard/settings#intake-ai" className="btn secondary">AI intake tuning</Link>
+          <Link href="/dashboard/settings#booking-availability" className="btn secondary">Booking availability</Link>
+        </div>
+
         {siteUrl ? (
           <div className="actions" style={{ marginBottom: '1.1rem' }}>
             <a href={siteUrl} target="_blank" rel="noopener noreferrer" className="btn fun">

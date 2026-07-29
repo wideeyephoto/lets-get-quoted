@@ -551,3 +551,4 @@
 .scoreLegendRow { display: grid; grid-template-columns: max-content 1fr; gap: .65rem; align-items: start; font-size: .82rem; color: rgba(255,255,255,.72); line-height: 1.45; }
 .scoreLegendRow .scoreChip { white-space: nowrap; }
 .scoreLegendNote { margin: .15rem 0 0; font-size: .76rem; color: rgba(255,255,255,.45); }
+.scoreLegendNote a { color: #ffb27d; font-weight: 700; }

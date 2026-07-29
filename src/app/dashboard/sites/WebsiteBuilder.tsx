@@ -1470,6 +1470,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
                       <label className={styles.formField}><span>Field of work / trade</span><input value={siteContent.trade} onChange={(event) => updateSiteContent({ trade: event.target.value })} placeholder="e.g. Window cleaning, roofing, HVAC" /></label>
                     </div>
                     <label className={styles.formField}><span>ZIP code</span><input value={siteContent.zip} maxLength={12} inputMode="numeric" onChange={(event) => updateSiteContent({ zip: event.target.value })} placeholder="e.g. 48226" /><small className={styles.fieldHint}>Sets your service area — the AI names the real nearby cities and towns you serve.</small></label>
+                    <p className={styles.fieldHint} style={{ marginTop: '0.4rem' }}>Also editable under <a href="/dashboard/settings#business-basics">Settings &rarr; Business</a> — both stay in sync.</p>
                     <p className={styles.driversCaption}>Your headline, services, FAQs, service area, and Google listing are all generated from these.</p>
                   </div>
                   <button type="button" className={`btn primary ${styles.aiButton}`} onClick={handleGenerateText} disabled={isGeneratingText}>
