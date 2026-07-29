@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import PinMap from '@/components/pin-map';
+import BookingAvailabilitySection from '../settings/BookingAvailabilitySection';
 import { getMapPins } from '@/lib/map-pins';
 import { MAP_THEME_COOKIE, mapViewCookie, normalizeMapTheme, normalizeMapView } from '@/lib/dashboard-views';
 import { expandScheduledJobs, formatJobTime, formatMoney, listJobs, type Job } from '@/lib/jobs';
@@ -299,6 +300,12 @@ export default async function SchedulePage({
   const mapTheme = normalizeMapTheme(cookies().get(MAP_THEME_COOKIE)?.value);
   const mapPins = mapView !== 'off' ? await getMapPins(supabase, accountId) : [];
 
+  const { data: bookingSettings } = await supabase
+    .from('accounts')
+    .select('timezone, booking_weekdays, booking_windows, booking_max_per_day, booking_lead_days, instant_book_enabled, instant_book_min_amount, instant_book_radius_miles, instant_book_geo_mode, instant_book_drive_time')
+    .eq('id', accountId)
+    .maybeSingle();
+
   return (
     <main className="wide-shell workspace-shell">
       <ScheduleDragProvider>
@@ -315,6 +322,9 @@ export default async function SchedulePage({
             <p className="workspace-lead">
               See what&apos;s on the books this month and get unscheduled jobs onto a date.
             </p>
+            <a href="#booking-availability" className="btn secondary" style={{ marginTop: '0.75rem' }}>
+              Set booking availability &darr;
+            </a>
           </div>
           <div className="workspace-metric-grid calendar-heading-metrics">
             <Link className="workspace-metric-card accent schedule-summary-card metric-card-link" href="/dashboard/jobs" aria-label="Open jobs page">
@@ -544,6 +554,8 @@ export default async function SchedulePage({
           </div>
         </section>
       ) : null}
+
+      <BookingAvailabilitySection bookingSettings={bookingSettings} />
       </ScheduleDragProvider>
     </main>
   );
