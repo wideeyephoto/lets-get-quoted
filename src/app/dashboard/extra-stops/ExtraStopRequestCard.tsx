@@ -1,8 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { EXTRA_STOP_STATUS_LABEL, type ExtraStopStatus } from '@/lib/extra-stop';
-import { createExtraStopOfferAction, declineExtraStopAction, requestMoreInfoExtraStopAction } from './actions';
+import {
+  createExtraStopOfferAction,
+  declineExtraStopAction,
+  requestMoreInfoExtraStopAction,
+  markEnRouteExtraStopAction,
+  markArrivedExtraStopAction,
+  completeExtraStopAction,
+  cancelExtraStopByContractorAction,
+} from './actions';
 
 export type CardRequest = {
   id: string;
@@ -63,10 +72,37 @@ export default function ExtraStopRequestCard({ request, photoUrls, route, defaul
   route: CardRoute | null;
   defaults: CardDefaults;
 }) {
-  const [mode, setMode] = useState<'idle' | 'offer' | 'decline' | 'info'>('idle');
+  const [mode, setMode] = useState<'idle' | 'offer' | 'decline' | 'info' | 'cancel'>('idle');
+  const [arriving, setArriving] = useState(false);
+  const router = useRouter();
   const countdown = useCountdown(request.status === 'awaiting_contractor' ? request.response_deadline_at : null);
   const isOpen = request.status === 'awaiting_contractor' || request.status === 'more_information_requested';
+  const isLive = request.status === 'confirmed' || request.status === 'en_route' || request.status === 'arrived';
   const availabilityText = request.availability.map((a) => String(a)).filter(Boolean).join(' · ');
+
+  // "I've Arrived" captures the browser location when granted, then records it.
+  async function handleArrived() {
+    setArriving(true);
+    const fd = new FormData();
+    await new Promise<void>((resolve) => {
+      if (typeof navigator === 'undefined' || !navigator.geolocation) return resolve();
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          fd.set('lat', String(pos.coords.latitude));
+          fd.set('lng', String(pos.coords.longitude));
+          resolve();
+        },
+        () => resolve(),
+        { timeout: 8000, enableHighAccuracy: true },
+      );
+    });
+    try {
+      await markArrivedExtraStopAction(request.id, fd);
+      router.refresh();
+    } finally {
+      setArriving(false);
+    }
+  }
 
   return (
     <section className="panel workspace-section-card" style={{ marginBottom: '1rem' }}>
@@ -108,11 +144,35 @@ export default function ExtraStopRequestCard({ request, photoUrls, route, defaul
         </div>
       ) : null}
 
-      {/* Sent/confirmed states: show the offer read-only. */}
+      {/* Sent / confirmed / live states. */}
       {!isOpen ? (
-        <p className="payment-banner muted" style={{ marginTop: '1rem' }}>
-          {request.arrival_date ? `Offered ${request.arrival_date}, ${request.arrival_start}–${request.arrival_end} · fee ${money(request.fee_cents)}${request.diagnostic_fee_cents ? ` + ${money(request.diagnostic_fee_cents)} diagnostic` : ''}.` : 'No live actions for this request.'}
-        </p>
+        <>
+          <p className="payment-banner muted" style={{ marginTop: '1rem' }}>
+            {request.arrival_date ? `Offered ${request.arrival_date}, ${request.arrival_start}–${request.arrival_end} · fee ${money(request.fee_cents)}${request.diagnostic_fee_cents ? ` + ${money(request.diagnostic_fee_cents)} diagnostic` : ''}.` : 'No live actions for this request.'}
+          </p>
+          {isLive ? (
+            <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '1rem' }}>
+              {request.status === 'confirmed' ? (
+                <form action={markEnRouteExtraStopAction.bind(null, request.id)}><button type="submit" className="btn secondary">Mark en route</button></form>
+              ) : null}
+              {request.status === 'confirmed' || request.status === 'en_route' ? (
+                <button type="button" className="btn primary" onClick={handleArrived} disabled={arriving}>{arriving ? 'Recording…' : "I've Arrived"}</button>
+              ) : null}
+              <form action={completeExtraStopAction.bind(null, request.id)}><button type="submit" className="btn secondary">Mark complete</button></form>
+              {request.status === 'confirmed' || request.status === 'en_route' ? (
+                mode === 'cancel' ? (
+                  <form action={cancelExtraStopByContractorAction.bind(null, request.id)} style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+                    <input name="reason" placeholder="Reason (optional)" />
+                    <button type="submit" className="btn secondary">Confirm cancel (full refund)</button>
+                    <button type="button" className="btn secondary" onClick={() => setMode('idle')}>Back</button>
+                  </form>
+                ) : (
+                  <button type="button" className="btn secondary" onClick={() => setMode('cancel')}>Cancel &amp; refund</button>
+                )
+              ) : null}
+            </div>
+          ) : null}
+        </>
       ) : (
         <>
           {mode === 'idle' ? (

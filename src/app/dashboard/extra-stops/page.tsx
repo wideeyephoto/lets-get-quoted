@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { requireOwnerContext, createAdminClient } from '@/lib/auth';
 import { listExtraStopRequests } from '@/lib/extra-stop-requests';
 import { sweepExtraStopOffers } from '@/lib/extra-stop-sweep';
-import { extraStopSettingsFromAccount, EXTRA_STOP_SETTINGS_COLUMNS } from '@/lib/extra-stop';
+import { extraStopSettingsFromAccount, EXTRA_STOP_SETTINGS_COLUMNS, EXTRA_STOP_TERMINAL_STATUSES } from '@/lib/extra-stop';
 import { computeExtraStopRoute } from '@/lib/extra-stop-route';
 import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
 import ExtraStopRequestCard, { type CardRequest } from './ExtraStopRequestCard';
@@ -24,14 +24,17 @@ export default async function ExtraStopsPage() {
   const timezone = (accountRow as { timezone?: string } | null)?.timezone || 'America/New_York';
   const driveTime = Boolean((accountRow as { instant_book_drive_time?: boolean } | null)?.instant_book_drive_time);
 
-  const open = requests.filter((r) => r.status === 'awaiting_contractor' || r.status === 'more_information_requested');
-  const rest = requests.filter((r) => r.status !== 'awaiting_contractor' && r.status !== 'more_information_requested');
+  const terminal = new Set<string>([...EXTRA_STOP_TERMINAL_STATUSES, 'disputed']);
+  const active = requests.filter((r) => !terminal.has(r.status));
+  const history = requests.filter((r) => terminal.has(r.status));
 
-  // Route + photos for the open queue only (a handful of live requests).
-  const openCards = await Promise.all(
-    open.map(async (r) => {
+  // For active requests: route only where an offer is still being decided; photos
+  // for all so the contractor can see the job. (A handful of live requests.)
+  const activeCards = await Promise.all(
+    active.map(async (r) => {
+      const offerable = r.status === 'awaiting_contractor' || r.status === 'more_information_requested';
       const target = r.lat != null && r.lng != null ? { lat: Number(r.lat), lng: Number(r.lng) } : null;
-      const route = await computeExtraStopRoute(supabase, accountId, target, { arrivalDate: null, visitMinutes: r.ai_visit_minutes, driveTime, timezone });
+      const route = offerable ? await computeExtraStopRoute(supabase, accountId, target, { arrivalDate: null, visitMinutes: r.ai_visit_minutes, driveTime, timezone }) : null;
       const photoUrls = r.photo_paths?.length ? await createLeadPhotoUrls(accountId, r.photo_paths).catch(() => []) : [];
       return { r, route, photoUrls };
     }),
@@ -57,25 +60,25 @@ export default async function ExtraStopsPage() {
           </p>
         ) : null}
 
-        {open.length === 0 ? (
-          <p className="empty-state" style={{ marginTop: '1rem' }}>No Extra Stop requests need your response right now.</p>
+        {active.length === 0 ? (
+          <p className="empty-state" style={{ marginTop: '1rem' }}>No active Extra Stop requests right now.</p>
         ) : (
           <div style={{ marginTop: '1rem' }}>
-            {openCards.map(({ r, route, photoUrls }) => (
+            {activeCards.map(({ r, route, photoUrls }) => (
               <ExtraStopRequestCard key={r.id} request={r as unknown as CardRequest} route={route} photoUrls={photoUrls} defaults={defaults} />
             ))}
           </div>
         )}
       </section>
 
-      {rest.length ? (
+      {history.length ? (
         <section className="panel workspace-section-card">
           <div className="section-heading workspace-section-heading compact-heading">
             <p className="eyebrow">History</p>
-            <h2>Offered, confirmed &amp; closed</h2>
+            <h2>Closed &amp; completed</h2>
           </div>
           <div style={{ marginTop: '1rem' }}>
-            {rest.map((r) => (
+            {history.map((r) => (
               <ExtraStopRequestCard key={r.id} request={r as unknown as CardRequest} route={null} photoUrls={[]} defaults={defaults} />
             ))}
           </div>

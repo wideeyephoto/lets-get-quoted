@@ -1,8 +1,10 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOwnerContext, createAdminClient } from '@/lib/auth';
 import { createJob } from '@/lib/jobs';
+import { sendExtraStopStatusSms } from '@/lib/sms';
+import { resolveExtraStopCancellation } from '@/lib/extra-stop-refunds';
 import {
   EXTRA_STOP_SETTINGS_COLUMNS,
   extraStopSettingsFromAccount,
@@ -180,6 +182,90 @@ export async function createExtraStopOfferAction(requestId: string, formData: Fo
   // the pay link — moves the request to awaiting_customer_payment.
   await sendExtraStopOffer(supabase, accountId, requestId);
 
+  revalidatePath('/dashboard/extra-stops');
+  revalidatePath('/dashboard/schedule');
+}
+
+// ---------------------------------------------------------------------------
+// Confirmed-appointment lifecycle (owner side).
+// ---------------------------------------------------------------------------
+
+// Contractor is heading over. Notifies the customer.
+export async function markEnRouteExtraStopAction(requestId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const req = await getExtraStopRequest(supabase, accountId, requestId);
+  if (!req) throw new Error('Request not found.');
+  const nowIso = new Date().toISOString();
+  const { data: claimed } = await supabase
+    .from('extra_stop_requests')
+    .update({ status: 'en_route', en_route_at: nowIso, updated_at: nowIso })
+    .eq('account_id', accountId)
+    .eq('id', requestId)
+    .eq('status', 'confirmed')
+    .select('id')
+    .maybeSingle();
+  if (!claimed) throw new Error('You can only start “en route” from a confirmed Extra Stop.');
+  await logExtraStopEvent(supabase, accountId, requestId, { actor: 'contractor', from: 'confirmed', to: 'en_route' });
+  if (req.client_phone) await sendExtraStopStatusSms({ accountId, toPhone: req.client_phone, message: 'Your Extra Stop technician is on the way.' });
+  revalidatePath('/dashboard/extra-stops');
+}
+
+// "I've Arrived" — records the timestamp and (when the browser grants it) the
+// location. Notifies the customer. The window can't be silently extended: this
+// is the honest arrival marker used by the no-show logic.
+export async function markArrivedExtraStopAction(requestId: string, formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const req = await getExtraStopRequest(supabase, accountId, requestId);
+  if (!req) throw new Error('Request not found.');
+  const lat = Number(formData.get('lat'));
+  const lng = Number(formData.get('lng'));
+  const nowIso = new Date().toISOString();
+  const { data: claimed } = await supabase
+    .from('extra_stop_requests')
+    .update({
+      status: 'arrived',
+      arrived_at: nowIso,
+      arrival_lat: Number.isFinite(lat) ? lat : null,
+      arrival_lng: Number.isFinite(lng) ? lng : null,
+      updated_at: nowIso,
+    })
+    .eq('account_id', accountId)
+    .eq('id', requestId)
+    .in('status', ['confirmed', 'en_route'])
+    .select('id')
+    .maybeSingle();
+  if (!claimed) throw new Error('This Extra Stop can’t be marked arrived.');
+  await logExtraStopEvent(supabase, accountId, requestId, { actor: 'contractor', from: req.status, to: 'arrived', meta: { lat: Number.isFinite(lat) ? lat : null, lng: Number.isFinite(lng) ? lng : null } });
+  if (req.client_phone) await sendExtraStopStatusSms({ accountId, toPhone: req.client_phone, message: 'Your technician has arrived.' });
+  revalidatePath('/dashboard/extra-stops');
+}
+
+// Visit done → completes the Extra Stop and its job.
+export async function completeExtraStopAction(requestId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const req = await getExtraStopRequest(supabase, accountId, requestId);
+  if (!req) throw new Error('Request not found.');
+  const nowIso = new Date().toISOString();
+  const { data: claimed } = await supabase
+    .from('extra_stop_requests')
+    .update({ status: 'completed', completed_at: nowIso, updated_at: nowIso })
+    .eq('account_id', accountId)
+    .eq('id', requestId)
+    .in('status', ['arrived', 'en_route', 'confirmed'])
+    .select('id')
+    .maybeSingle();
+  if (!claimed) throw new Error('This Extra Stop can’t be completed.');
+  if (req.job_id) await supabase.from('jobs').update({ status: 'complete' }).eq('id', req.job_id).eq('account_id', accountId);
+  await logExtraStopEvent(supabase, accountId, requestId, { actor: 'contractor', from: req.status, to: 'completed' });
+  revalidatePath('/dashboard/extra-stops');
+  revalidatePath('/dashboard/schedule');
+}
+
+// Contractor cancels a confirmed Extra Stop → full refund to the customer.
+export async function cancelExtraStopByContractorAction(requestId: string, formData: FormData) {
+  const { accountId } = await requireOwnerContext();
+  const reason = (formData.get('reason') ?? '').toString().trim() || null;
+  await resolveExtraStopCancellation(createAdminClient(), accountId, requestId, { kind: 'contractor_cancel', reason });
   revalidatePath('/dashboard/extra-stops');
   revalidatePath('/dashboard/schedule');
 }

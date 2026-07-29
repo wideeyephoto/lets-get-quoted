@@ -135,7 +135,13 @@ export async function confirmExtraStopPayment(admin: SupabaseClient, paymentId: 
   const when = whenLabel(confirmed.arrival_date, confirmed.arrival_start, confirmed.arrival_end);
 
   if (confirmed.client_phone) {
-    await sendExtraStopConfirmedSms({ accountId, toPhone: confirmed.client_phone as string, businessName, whenLabel: when });
+    await sendExtraStopConfirmedSms({
+      accountId,
+      toPhone: confirmed.client_phone as string,
+      businessName,
+      whenLabel: when,
+      statusUrl: `${APP_ORIGIN}/extra-stop/${confirmed.id}`,
+    });
   }
 
   // Owner receipt/notification.

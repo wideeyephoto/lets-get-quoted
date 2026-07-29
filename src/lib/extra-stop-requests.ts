@@ -228,3 +228,10 @@ export async function getExtraStopRequest(
     .maybeSingle();
   return (data as ExtraStopRequest) ?? null;
 }
+
+// Public loader by id alone (the request id is an unguessable uuid, used as the
+// customer's capability token on the /extra-stop status page). Admin client.
+export async function getExtraStopRequestById(admin: SupabaseClient, requestId: string): Promise<ExtraStopRequest | null> {
+  const { data } = await admin.from('extra_stop_requests').select('*').eq('id', requestId).maybeSingle();
+  return (data as ExtraStopRequest) ?? null;
+}

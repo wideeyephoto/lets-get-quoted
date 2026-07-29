@@ -127,12 +127,14 @@ export async function sendExtraStopConfirmedSms(input: {
   toPhone: string;
   businessName: string;
   whenLabel: string;
+  statusUrl?: string;
 }): Promise<void> {
   try {
     if (!twilioConfiguration()) return;
     const to = normalizeUsPhone(input.toPhone);
     if (!to || (await isPhoneOptedOut(input.accountId, to))) return;
-    const body = `You're confirmed! ${input.businessName} will arrive ${input.whenLabel}. We'll text updates on the way. Reply STOP to opt out.`;
+    const manage = input.statusUrl ? ` Manage or cancel: ${input.statusUrl}.` : '';
+    const body = `You're confirmed! ${input.businessName} will arrive ${input.whenLabel}. We'll text updates on the way.${manage} Reply STOP to opt out.`;
     const sid = await sendTwilioMessage(to, body);
     await logOutboundToInbox(input.accountId, to, body, sid);
   } catch (error) {

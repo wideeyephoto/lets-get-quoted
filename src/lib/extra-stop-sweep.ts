@@ -4,7 +4,9 @@ import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
-export type SweepSummary = { paymentExpired: number; responseExpired: number };
+export type SweepSummary = { paymentExpired: number; responseExpired: number; autoCompleted: number };
+
+const AUTO_COMPLETE_GRACE_MS = 2 * 60 * 60 * 1000; // assume done 2h after the window
 
 // Expire stale Extra Stop offers. The hard money-guard lives in
 // createCheckoutSessionForPayment (a late payment is rejected regardless of this
@@ -14,7 +16,7 @@ export type SweepSummary = { paymentExpired: number; responseExpired: number };
 // always current even if the cron cadence is coarse.
 export async function sweepExtraStopOffers(admin: SupabaseClient, accountId?: string): Promise<SweepSummary> {
   const nowIso = new Date().toISOString();
-  const summary: SweepSummary = { paymentExpired: 0, responseExpired: 0 };
+  const summary: SweepSummary = { paymentExpired: 0, responseExpired: 0, autoCompleted: 0 };
 
   // 1) Payment window elapsed with no payment → expire, drop the hold, fail the
   //    pending payment, tell the contractor.
@@ -95,6 +97,37 @@ export async function sweepExtraStopOffers(admin: SupabaseClient, accountId?: st
     if (!claimed) continue;
     await logExtraStopEvent(admin, row.account_id, row.id, { actor: 'system', to: 'offer_expired', meta: { reason: 'response_window_elapsed' } });
     summary.responseExpired += 1;
+  }
+
+  // 3) Arrival window elapsed (+2h) with no no-show reported → assume the tech
+  //    made it and auto-complete (per spec: give the customer 2 hours to report,
+  //    otherwise treat the visit as done). Candidate rows first, then filter by
+  //    the bare date+time in JS.
+  const todayKey = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  let doneQuery = admin
+    .from('extra_stop_requests')
+    .select('id, account_id, job_id, arrival_date, arrival_end, no_show_reported_at')
+    .in('status', ['confirmed', 'en_route', 'arrived'])
+    .lte('arrival_date', todayKey);
+  if (accountId) doneQuery = doneQuery.eq('account_id', accountId);
+  const { data: maybeDone } = await doneQuery;
+
+  for (const row of (maybeDone ?? []) as { id: string; account_id: string; job_id: string | null; arrival_date: string | null; arrival_end: string | null; no_show_reported_at: string | null }[]) {
+    if (row.no_show_reported_at) continue; // a report is in play — leave it for resolution
+    const endMs = row.arrival_date && row.arrival_end ? new Date(`${row.arrival_date}T${row.arrival_end}`).getTime() : NaN;
+    if (!Number.isFinite(endMs) || Date.now() < endMs + AUTO_COMPLETE_GRACE_MS) continue;
+
+    const { data: claimed } = await admin
+      .from('extra_stop_requests')
+      .update({ status: 'completed', completed_at: nowIso, updated_at: nowIso })
+      .eq('id', row.id)
+      .in('status', ['confirmed', 'en_route', 'arrived'])
+      .select('id')
+      .maybeSingle();
+    if (!claimed) continue;
+    if (row.job_id) await admin.from('jobs').update({ status: 'complete' }).eq('id', row.job_id).eq('account_id', row.account_id);
+    await logExtraStopEvent(admin, row.account_id, row.id, { actor: 'system', to: 'completed', meta: { reason: 'auto_complete_after_window' } });
+    summary.autoCompleted += 1;
   }
 
   return summary;
