@@ -8,8 +8,7 @@ export type ViewOption<T extends string> = { id: T; label: string; hint: string 
 
 const MAP_OPTIONS: { id: MapView; label: string; hint: string }[] = [
   { id: 'off', label: 'None', hint: 'Hide the map' },
-  { id: 'large', label: 'Large map', hint: 'Full map in the header' },
-  { id: 'mini', label: 'Mini map', hint: 'A small circle by the header' },
+  { id: 'large', label: 'Map', hint: 'Show it under the header' },
 ];
 
 const MAP_THEME_OPTIONS: { id: MapTheme; label: string; hint: string }[] = [

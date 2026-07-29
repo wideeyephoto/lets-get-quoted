@@ -1,5 +1,5 @@
 .busy { opacity: .6; pointer-events: none; transition: opacity .15s; }
-.bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; }
 
 /* status filter pills (list + table views) */
 .tabs { display: flex; flex-wrap: wrap; gap: .4rem; }

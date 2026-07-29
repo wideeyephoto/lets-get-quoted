@@ -1901,8 +1901,12 @@ li + li { margin-top: 0.45rem; }
 .pin-map { width: 100%; height: clamp(320px, 46vh, 520px); border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.02); }
 
 /* Theme-styled detail card that replaces Google's InfoWindow. */
-.pin-card { position: absolute; top: 12px; left: 12px; z-index: 5; width: min(268px, calc(100% - 24px)); display: grid; gap: 0.28rem;
+.pin-card { position: absolute; top: 12px; left: 12px; z-index: 5; width: min(300px, calc(100% - 24px)); max-height: calc(100% - 24px); overflow-y: auto; display: grid; gap: 0.28rem;
   padding: 0.85rem 0.95rem; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 12px; background: #101824; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55); }
+.pin-card-rows { margin: 0.4rem 0 0.15rem; padding: 0.5rem 0 0.1rem; border-top: 1px solid rgba(255, 255, 255, 0.1); display: grid; gap: 0.32rem; }
+.pin-card-row { display: grid; grid-template-columns: 5.2rem 1fr; gap: 0.6rem; align-items: baseline; }
+.pin-card-row dt { margin: 0; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(247, 245, 239, 0.5); }
+.pin-card-row dd { margin: 0; font-size: 0.8rem; color: rgba(247, 245, 239, 0.84); line-height: 1.35; }
 .pin-card-close { position: absolute; top: 6px; right: 6px; display: grid; place-items: center; width: 26px; height: 26px; padding: 0;
   border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 8px; background: rgba(255, 255, 255, 0.05); color: #c7d2df; font-size: 1.15rem; line-height: 1; cursor: pointer; }
 .pin-card-close:hover { color: #fff; border-color: rgba(255, 122, 33, 0.5); background: rgba(255, 122, 33, 0.12); }

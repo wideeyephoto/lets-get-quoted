@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 // A pin on the dashboard map. `kind` drives the marker colour + legend.
 export type MapPinKind = 'lead' | 'unscheduled' | 'scheduled';
+export type MapPinRow = { label: string; value: string };
 export type MapPin = {
   id: string;
   lat: number;
@@ -12,6 +13,7 @@ export type MapPin = {
   label: string;
   sublabel?: string;
   href: string;
+  rows?: MapPinRow[];
 };
 
 const PIN_COLORS: Record<MapPinKind, string> = {
@@ -233,6 +235,16 @@ export default function PinMap({ pins, variant = 'large', theme = 'dark' }: { pi
             <span className="pin-card-kind" data-kind={selected.kind}>{KIND_LABEL[selected.kind]}</span>
             <strong className="pin-card-name">{selected.label}</strong>
             {selected.sublabel ? <span className="pin-card-sub">{selected.sublabel}</span> : null}
+            {selected.rows && selected.rows.length > 0 ? (
+              <dl className="pin-card-rows">
+                {selected.rows.map((row) => (
+                  <div className="pin-card-row" key={row.label}>
+                    <dt>{row.label}</dt>
+                    <dd>{row.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
             <a className="pin-card-open" href={selected.href}>Open &rarr;</a>
           </div>
         ) : null}

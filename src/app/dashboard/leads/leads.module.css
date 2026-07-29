@@ -515,7 +515,7 @@
 @media (max-width: 720px) { .splitWrap { grid-template-columns: 1fr; } .splitList { max-height: 300px; } .sdGrid { grid-template-columns: 1fr; } }
 
 /* --- View gear (collapsed view picker) --- */
-.viewBar { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
+.viewBar { display: flex; justify-content: flex-end; margin-top: 1rem; }
 .viewGear { position: relative; }
 .viewGearBtn { display: inline-flex; align-items: center; gap: .45rem; padding: .5rem .85rem; border-radius: 999px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.03); color: #c7d2df; font: inherit; font-size: .84rem; font-weight: 700; cursor: pointer; transition: color .15s, border-color .15s, background .15s; }
 .viewGearBtn svg { width: 16px; height: 16px; }

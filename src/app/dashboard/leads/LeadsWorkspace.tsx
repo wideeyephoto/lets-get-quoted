@@ -134,14 +134,14 @@ export default function LeadsWorkspace({ leads, initialView, mapView, mapTheme }
 
   return (
     <div className={pending ? styles.workspaceBusy : undefined}>
-      <div className={styles.viewBar}>
-        <ViewGear views={VIEW_OPTIONS} activeView={view} onPickView={pickView} mapView={mapView} onSetMapView={setMap} mapTheme={mapTheme} onSetMapTheme={setTheme} />
-      </div>
-
       {view === 'board' && <BoardView leads={leads} run={run} />}
       {view === 'inbox' && <InboxView leads={leads} run={run} />}
       {view === 'table' && <TableView leads={leads} />}
       {view === 'split' && <SplitView leads={leads} run={run} />}
+
+      <div className={styles.viewBar}>
+        <ViewGear views={VIEW_OPTIONS} activeView={view} onPickView={pickView} mapView={mapView} onSetMapView={setMap} mapTheme={mapTheme} onSetMapTheme={setTheme} />
+      </div>
 
       <ScoreLegend />
     </div>

@@ -176,20 +176,15 @@ export default async function JobsPage({
   return (
     <main className="wide-shell workspace-shell">
       <section className="panel workspace-section-card">
+        <div className="section-heading workspace-section-heading">
+          <p className="eyebrow">Pipeline</p>
+          <h2>Current jobs</h2>
+        </div>
         {mapView === 'large' && (
           <div className="workspace-embedded-map">
             <PinMap pins={mapPins} theme={mapTheme} />
           </div>
         )}
-        <div className="workspace-top">
-          <div className="workspace-top-main">
-            <div className="section-heading workspace-section-heading">
-              <p className="eyebrow">Pipeline</p>
-              <h2>Current jobs</h2>
-            </div>
-          </div>
-          {mapView === 'mini' && <PinMap pins={mapPins} variant="mini" theme={mapTheme} />}
-        </div>
         {allJobs.length === 0 ? (
           <p className="empty-state">No jobs yet. Create your first job below.</p>
         ) : (

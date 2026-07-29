@@ -2,13 +2,12 @@
 // and they survive sessions). Client-safe: names + normalizers only, no server
 // imports, so both server pages and client components can share them.
 
-// How the jobs/leads map shows on Leads/Jobs: off, a large section at the top,
-// or a small circle beside the section header. Defaults to large (also maps the
-// legacy 'on' value forward).
+// Whether the jobs/leads map shows under the section header. Defaults on (maps
+// legacy 'on'/'mini' values forward to 'large').
 export const MAP_VIEW_COOKIE = 'lgq_map_view';
-export type MapView = 'off' | 'large' | 'mini';
+export type MapView = 'off' | 'large';
 export function normalizeMapView(value: unknown): MapView {
-  return value === 'off' ? 'off' : value === 'mini' ? 'mini' : 'large';
+  return value === 'off' ? 'off' : 'large';
 }
 
 // Map colour scheme (the app is dark, so the map defaults dark too).

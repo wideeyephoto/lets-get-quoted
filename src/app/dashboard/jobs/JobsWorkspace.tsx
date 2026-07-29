@@ -83,6 +83,10 @@ export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme }: 
 
   return (
     <div className={pending ? styles.busy : undefined}>
+      {view === 'list' && <ListView jobs={filtered} />}
+      {view === 'board' && <BoardView jobs={jobs} />}
+      {view === 'table' && <TableView jobs={filtered} />}
+
       <div className={styles.bar}>
         {view !== 'board' ? (
           <div className={styles.tabs} role="tablist" aria-label="Filter jobs by status">
@@ -104,10 +108,6 @@ export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme }: 
         )}
         <ViewGear views={VIEWS} activeView={view} onPickView={pickView} mapView={mapView} onSetMapView={setMap} mapTheme={mapTheme} onSetMapTheme={setTheme} />
       </div>
-
-      {view === 'list' && <ListView jobs={filtered} />}
-      {view === 'board' && <BoardView jobs={jobs} />}
-      {view === 'table' && <TableView jobs={filtered} />}
     </div>
   );
 }
