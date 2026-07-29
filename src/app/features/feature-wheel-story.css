@@ -278,9 +278,10 @@
     .fw-node b{display:none}
     .fw-node em{font-size:13px}
     .fw-spoke.is-active .fw-node{transform:translate(50%,-50%) rotate(calc(90deg - (var(--rot,0deg) + var(--base)))) scale(1.05)}
-    /* tappable chapter chips under the wheel band — jump to any chapter / skip
-       ahead (buttons are already wired to scroll in FeatureWheelStory.tsx) */
-    .fw-nav{display:flex;gap:6px;overflow-x:auto;padding:2px 2px 4px;margin:2px -4px 0;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+    /* The chapter chips duplicated the wheel's own titled nodes right above
+       them (which are already tappable to jump chapters), so they're hidden —
+       this also hands the card back that row of vertical space. */
+    .fw-nav{display:none;gap:6px;overflow-x:auto;padding:2px 2px 4px;margin:2px -4px 0;scrollbar-width:none;-webkit-overflow-scrolling:touch}
     .fw-nav::-webkit-scrollbar{display:none}
     .fw-navbtn{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:5px 11px;border-radius:999px;
       border:1px solid var(--line-2);background:rgba(255,255,255,.03);color:var(--muted-2);font-family:var(--mono);font-size:12px;
