@@ -613,6 +613,150 @@ export const TRADES: Trade[] = [
     metaDescription:
       'A locksmith website with 24/7 instant estimates, online booking, on-site card & tap-to-pay, and no subscription. Pay only when a customer pays you.',
   },
+  {
+    slug: 'septic',
+    name: 'Septic Services',
+    work: 'septic',
+    headline: 'Septic websites that book the pump-out and quote the install.',
+    subhead:
+      'Fill your pumping route with online booking, quote repairs and new systems on-site, and keep every tank on a recurring service schedule.',
+    pains: [
+      { title: 'Book the pump-out online', body: 'Online booking fills your route with pumping and inspection windows without a single phone call.' },
+      { title: 'Quote big work on-site', body: 'Send a branded quote for a new system, drain field, or repair from the truck and get it e-signed before you leave.' },
+      { title: 'Keep tanks on schedule', body: 'Recurring plans and rebook reminders bring every tank back for its regular pump-out on autopilot.' },
+    ],
+    services: ['Tank pumping', 'Inspections', 'New systems', 'Drain fields', 'Repairs', 'Emergency service'],
+    templateIds: ['handy', 'fixit'],
+    metaTitle: 'Website & Software for Septic Companies',
+    metaDescription:
+      'A septic-service website with online booking, instant estimates, recurring pumping plans, and Stripe payments. No subscription — pay only when a customer pays you.',
+  },
+  {
+    slug: 'foundation-repair',
+    name: 'Foundation Repair Contractors',
+    work: 'foundation repair',
+    headline: 'Foundation-repair websites that quote the fix and finance it.',
+    subhead:
+      'Capture and qualify high-value repair leads 24/7, quote piering and waterproofing with clear scope, and offer payment plans on the jobs that scare homeowners.',
+    pains: [
+      { title: 'Qualify the big lead first', body: 'An AI estimator captures and qualifies foundation inquiries 24/7 and flags the high-value ones so you respond before the competition.' },
+      { title: 'Quote the fix clearly', body: 'Itemized quotes lay out piering, wall anchors, and waterproofing so a worried homeowner sees exactly what they’re buying — then e-signs.' },
+      { title: 'Finance the repair', body: '0%-interest payment plans turn a five-figure foundation fix into monthly payments a homeowner can actually say yes to.' },
+    ],
+    services: ['Foundation piering', 'Wall anchors & bracing', 'Crawlspace repair', 'Basement waterproofing', 'Slab lifting', 'Drainage'],
+    templateIds: ['carbon', 'professional'],
+    metaTitle: 'Website & Software for Foundation Repair Contractors',
+    metaDescription:
+      'A foundation-repair website with 24/7 lead capture, high-value alerts, itemized quotes, payment plans, and Stripe payments. No subscription — pay only when you get paid.',
+  },
+  {
+    slug: 'water-damage-restoration',
+    name: 'Water Damage Restoration Companies',
+    work: 'water damage & restoration',
+    headline: 'Restoration websites that answer the flood call the second it happens.',
+    subhead:
+      'Capture the emergency 24/7, document every room with photos for the claim, and keep cash moving on a big job with quotes, deposits, and card or bank payment.',
+    pains: [
+      { title: 'Answer the emergency first', body: 'AI intake takes the flood or leak call any hour and flags the urgent job so you dispatch before the water spreads — and before the next company answers.' },
+      { title: 'Document for the claim', body: 'Photos attach to every job and quote, so the scope you send the homeowner is the same record the adjuster needs.' },
+      { title: 'Get paid on a big job', body: 'Itemized quotes, deposits, and card or bank payment keep cash moving across a multi-day mitigation.' },
+    ],
+    services: ['Water extraction', 'Structural drying', 'Mold remediation', 'Fire & smoke', 'Sewage cleanup', 'Reconstruction'],
+    templateIds: ['professional', 'carbon'],
+    metaTitle: 'Website & Software for Water Damage Restoration Companies',
+    metaDescription:
+      'A restoration-company website with 24/7 emergency lead capture, photo documentation, itemized quotes, and Stripe payments. No subscription — pay only when you get paid.',
+  },
+  {
+    slug: 'carpet-cleaning',
+    name: 'Carpet Cleaning Services',
+    work: 'carpet & upholstery cleaning',
+    headline: 'Carpet-cleaning websites that book by the room and rebook by the season.',
+    subhead:
+      'Give instant per-room pricing, let homeowners book a window online, take tap-to-pay on the spot, and turn one clean into a standing appointment.',
+    pains: [
+      { title: 'Price by the room', body: 'Instant estimates by room count give a homeowner a price up front, so the job’s booked before you load the van.' },
+      { title: 'Book without the calls', body: 'Online booking fills your day with cleaning windows while you’re on the wand at the last job.' },
+      { title: 'Turn one clean into many', body: 'Rebook reminders and recurring plans bring the seasonal deep-clean back on autopilot.' },
+    ],
+    services: ['Carpet cleaning', 'Upholstery', 'Area rugs', 'Tile & grout', 'Pet stains & odor', 'Commercial'],
+    templateIds: ['shine', 'handy'],
+    metaTitle: 'Website & Software for Carpet Cleaning Businesses',
+    metaDescription:
+      'A carpet-cleaning website with instant per-room estimates, online booking, tap-to-pay, recurring plans, and Stripe payments. No subscription — pay only when you get paid.',
+  },
+  {
+    slug: 'countertops',
+    name: 'Countertop Installers',
+    work: 'countertop fabrication & install',
+    headline: 'Countertop websites that turn a kitchen dream into a signed slab.',
+    subhead:
+      'Quote granite, quartz, and marble by the square foot with material options, take a deposit before you order the slab, and let the gallery close the sale.',
+    pains: [
+      { title: 'Let them pick the stone', body: 'Itemized quotes with material and edge options let a homeowner compare quartz and granite and watch the price update — then sign.' },
+      { title: 'Deposit before you order', body: 'Collect a deposit that covers the slab before you order from the yard — never front a special-order stone.' },
+      { title: 'Sell with the gallery', body: 'A photo-first gallery of finished kitchens and baths turns your best installs into your best salesperson.' },
+    ],
+    services: ['Quartz', 'Granite', 'Marble & quartzite', 'Kitchen counters', 'Bathroom vanities', 'Repairs & resealing'],
+    templateIds: ['reno', 'modern'],
+    metaTitle: 'Website & Software for Countertop Installers',
+    metaDescription:
+      'A countertop-installer website with itemized quotes, material options, deposits, project galleries, and Stripe payments. No subscription — pay only when you get paid.',
+  },
+  {
+    slug: 'tile',
+    name: 'Tile Contractors',
+    work: 'tile installation',
+    headline: 'Tile websites where the finished work does the selling.',
+    subhead:
+      'Quote backsplashes, floors, and showers by the square foot with material options, take a deposit before you order tile, and get paid when the grout sets.',
+    pains: [
+      { title: 'Quote by the square foot', body: 'Save your tile and labor pricing to a price book and send a branded, itemized quote with material options from the job in minutes.' },
+      { title: 'Deposit on the tile', body: 'Collect a deposit that covers the tile order before you place it — never front a pallet of special-order material.' },
+      { title: 'Sell with the detail shots', body: 'A photo-first gallery of showers, backsplashes, and floors turns your craftsmanship into your close.' },
+    ],
+    services: ['Backsplashes', 'Showers & tubs', 'Floors', 'Mosaics & accents', 'Repairs & regrout', 'Natural stone'],
+    templateIds: ['reno', 'coat'],
+    metaTitle: 'Website & Software for Tile Contractors',
+    metaDescription:
+      'A tile-contractor website with itemized quotes, material options, deposits, project galleries, and Stripe payments. No subscription — pay only when you get paid.',
+  },
+  {
+    slug: 'irrigation',
+    name: 'Irrigation & Sprinkler Companies',
+    work: 'irrigation & sprinklers',
+    headline: 'Sprinkler websites that book installs and every seasonal start-up.',
+    subhead:
+      'Quote new systems on-site, fill your spring start-up and fall blow-out calendar with online booking, and keep every yard on a recurring service plan.',
+    pains: [
+      { title: 'Quote the install on-site', body: 'Send a branded quote for a new system or zone add from the yard and get it e-signed before you leave.' },
+      { title: 'Fill the seasonal calendar', body: 'Online booking packs your spring start-up and fall winterization routes before the phones start ringing.' },
+      { title: 'Recurring service on rails', body: 'Seasonal plans schedule and auto-charge start-ups, blow-outs, and mid-summer checks all year.' },
+    ],
+    services: ['System installs', 'Spring start-up', 'Winterization', 'Repairs & leaks', 'Zone & head add-ons', 'Backflow testing'],
+    templateIds: ['handy', 'modern'],
+    metaTitle: 'Website & Software for Irrigation & Sprinkler Companies',
+    metaDescription:
+      'An irrigation-company website with instant estimates, online booking, recurring seasonal service, and Stripe payments. No subscription — pay only when a homeowner pays you.',
+  },
+  {
+    slug: 'auto-detailing',
+    name: 'Auto Detailing Services',
+    work: 'auto detailing',
+    headline: 'Detailing websites that book the package and take tap-to-pay.',
+    subhead:
+      'Show your packages, let customers book a mobile or shop appointment online, take payment on the spot, and turn one detail into a monthly regular.',
+    pains: [
+      { title: 'Book the package online', body: 'Online booking lets customers pick a package and grab a window without a call — mobile or in the shop.' },
+      { title: 'Get paid at the car', body: 'Take card or tap-to-pay the moment the detail’s done — no invoice, no waiting on a check.' },
+      { title: 'Turn one detail into many', body: 'Recurring plans and rebook reminders bring the monthly maintenance wash back on autopilot.' },
+    ],
+    services: ['Interior detail', 'Exterior & wash', 'Paint correction', 'Ceramic coating', 'Headlight restoration', 'Fleet & dealer'],
+    templateIds: ['carbon', 'shine'],
+    metaTitle: 'Website & Software for Auto Detailing Businesses',
+    metaDescription:
+      'An auto-detailing website with online booking, tap-to-pay, recurring plans, and Stripe payments. No subscription — pay only when a customer pays you.',
+  },
 ];
 
 export function getTrade(slug: string): Trade | undefined {
