@@ -8,7 +8,7 @@ import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
 import SaveButton from '@/components/save-button';
 import PinMap from '@/components/pin-map';
 import { getMapPins } from '@/lib/map-pins';
-import { MAP_THEME_COOKIE, MAP_VIEW_COOKIE, normalizeMapTheme, normalizeMapView } from '@/lib/dashboard-views';
+import { MAP_THEME_COOKIE, mapViewCookie, normalizeMapTheme, normalizeMapView } from '@/lib/dashboard-views';
 import LeadsWorkspace, { type LeadViewItem } from './LeadsWorkspace';
 import styles from './leads.module.css';
 
@@ -41,7 +41,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
   const openRequests = allLeads.filter((lead) => !['won', 'lost'].includes(lead.status)).length;
   const needsResponse = leads.filter((lead) => lead.status === 'new' && lead.source === 'website_form').length;
   const averageResponse = formatDuration(getAverageRequestResponseMs(allLeads));
-  const mapView = normalizeMapView(cookies().get(MAP_VIEW_COOKIE)?.value);
+  const mapView = normalizeMapView(cookies().get(mapViewCookie('leads'))?.value);
   const mapTheme = normalizeMapTheme(cookies().get(MAP_THEME_COOKIE)?.value);
   const mapPins = mapView !== 'off' ? await getMapPins(supabase, accountId) : [];
 

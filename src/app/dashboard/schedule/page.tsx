@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import PinMap from '@/components/pin-map';
 import { getMapPins } from '@/lib/map-pins';
-import { MAP_THEME_COOKIE, MAP_VIEW_COOKIE, normalizeMapTheme, normalizeMapView } from '@/lib/dashboard-views';
+import { MAP_THEME_COOKIE, mapViewCookie, normalizeMapTheme, normalizeMapView } from '@/lib/dashboard-views';
 import { expandScheduledJobs, formatJobTime, formatMoney, listJobs, type Job } from '@/lib/jobs';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { deriveJobListBadge } from '@/lib/job-badges';
@@ -295,7 +295,7 @@ export default async function SchedulePage({
     role_label: member.role_label,
   }));
 
-  const mapView = normalizeMapView(cookies().get(MAP_VIEW_COOKIE)?.value);
+  const mapView = normalizeMapView(cookies().get(mapViewCookie('schedule'))?.value);
   const mapTheme = normalizeMapTheme(cookies().get(MAP_THEME_COOKIE)?.value);
   const mapPins = mapView !== 'off' ? await getMapPins(supabase, accountId) : [];
 

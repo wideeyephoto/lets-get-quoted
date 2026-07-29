@@ -2,10 +2,15 @@
 // and they survive sessions). Client-safe: names + normalizers only, no server
 // imports, so both server pages and client components can share them.
 
-// Whether the jobs/leads map shows under the section header. Defaults on (maps
-// legacy 'on'/'mini' values forward to 'large').
+// Whether the map shows under a section header. Defaults on. The on/off state is
+// PER PAGE (each surface gets its own cookie) so turning it off on one page
+// doesn't hide it on the others.
 export const MAP_VIEW_COOKIE = 'lgq_map_view';
 export type MapView = 'off' | 'large';
+export type MapSurface = 'leads' | 'jobs' | 'schedule';
+export function mapViewCookie(surface: MapSurface): string {
+  return `${MAP_VIEW_COOKIE}_${surface}`;
+}
 export function normalizeMapView(value: unknown): MapView {
   return value === 'off' ? 'off' : 'large';
 }

@@ -68,7 +68,7 @@ export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme }: 
   }
   function setMap(next: MapView) {
     startTransition(async () => {
-      await setMapViewAction(next);
+      await setMapViewAction(next, 'jobs');
       router.refresh();
     });
   }

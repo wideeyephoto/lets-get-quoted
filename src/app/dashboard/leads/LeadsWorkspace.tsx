@@ -121,7 +121,7 @@ export default function LeadsWorkspace({ leads, initialView, mapView, mapTheme }
   // changing it persists then refreshes so the page re-renders in place.
   function setMap(next: MapView) {
     startTransition(async () => {
-      await setMapViewAction(next);
+      await setMapViewAction(next, 'leads');
       router.refresh();
     });
   }
