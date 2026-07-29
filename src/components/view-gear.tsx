@@ -1,9 +1,16 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import type { MapView } from '@/lib/dashboard-views';
 import styles from './view-gear.module.css';
 
 export type ViewOption<T extends string> = { id: T; label: string; hint: string };
+
+const MAP_OPTIONS: { id: MapView; label: string; hint: string }[] = [
+  { id: 'off', label: 'None', hint: 'Hide the map' },
+  { id: 'large', label: 'Large map', hint: 'Full map at the top' },
+  { id: 'mini', label: 'Mini map', hint: 'A small circle by the header' },
+];
 
 function GearIcon() {
   return (
@@ -20,14 +27,14 @@ export default function ViewGear<T extends string>({
   views,
   activeView,
   onPickView,
-  mapOn,
-  onToggleMap,
+  mapView,
+  onSetMapView,
 }: {
   views: ViewOption<T>[];
   activeView: T;
   onPickView: (next: T) => void;
-  mapOn?: boolean; // omit to hide the map toggle
-  onToggleMap?: (next: boolean) => void;
+  mapView?: MapView; // omit to hide the map options
+  onSetMapView?: (next: MapView) => void;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -42,7 +49,7 @@ export default function ViewGear<T extends string>({
   }, [open]);
 
   const current = views.find((v) => v.id === activeView) ?? views[0];
-  const showMapToggle = typeof mapOn === 'boolean' && Boolean(onToggleMap);
+  const showMapOptions = typeof mapView === 'string' && Boolean(onSetMapView);
 
   return (
     <div className={styles.gear} ref={ref}>
@@ -67,20 +74,24 @@ export default function ViewGear<T extends string>({
               <small>{v.hint}</small>
             </button>
           ))}
-          {showMapToggle && (
+          {showMapOptions && (
             <>
               <div className={styles.sep} />
-              <button
-                type="button"
-                role="menuitemcheckbox"
-                aria-checked={mapOn}
-                className={styles.opt}
-                onClick={() => { onToggleMap?.(!mapOn); setOpen(false); }}
-              >
-                <strong>Show map</strong>
-                {mapOn && <span className={styles.check} aria-hidden="true">✓</span>}
-                <small>Pins for leads &amp; jobs at the top</small>
-              </button>
+              <p>Map</p>
+              {MAP_OPTIONS.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={mapView === m.id}
+                  className={styles.opt}
+                  onClick={() => { onSetMapView?.(m.id); setOpen(false); }}
+                >
+                  <strong>{m.label}</strong>
+                  {mapView === m.id && <span className={styles.check} aria-hidden="true">✓</span>}
+                  <small>{m.hint}</small>
+                </button>
+              ))}
             </>
           )}
         </div>

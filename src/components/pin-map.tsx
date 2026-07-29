@@ -20,11 +20,13 @@ const PIN_COLORS: Record<MapPinKind, string> = {
   scheduled: '#4ade80', // has a date
 };
 
-const LEGEND: { kind: MapPinKind; label: string }[] = [
-  { kind: 'lead', label: 'Lead — needs response' },
-  { kind: 'unscheduled', label: 'Quote out — needs scheduling' },
-  { kind: 'scheduled', label: 'Scheduled job' },
-];
+const KIND_LABEL: Record<MapPinKind, string> = {
+  lead: 'Lead — needs response',
+  unscheduled: 'Quote out — needs scheduling',
+  scheduled: 'Scheduled job',
+};
+
+const LEGEND: MapPinKind[] = ['lead', 'unscheduled', 'scheduled'];
 
 declare global {
   interface Window {
@@ -68,13 +70,29 @@ function loadGoogleMaps(apiKey: string): Promise<void> {
   return mapsScriptPromise;
 }
 
-function esc(value: string) {
-  return value.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] || c);
+// A Material-style teardrop pin (24×27, tip at 12,27) — far more visible on a
+// light map than a small circle, with a dark ring so even the gold pins pop.
+const PIN_PATH = 'M12 0C7.03 0 3 4.03 3 9c0 6.75 9 18 9 18s9-11.25 9-18c0-4.97-4.03-9-9-9z';
+
+function makeIcon(g: typeof google.maps, color: string, active: boolean, mini = false): google.maps.Symbol {
+  return {
+    path: PIN_PATH,
+    fillColor: color,
+    fillOpacity: 1,
+    strokeColor: active ? '#f7f5ef' : '#0b1220',
+    strokeWeight: active ? 2.4 : 1.5,
+    scale: (active ? 1.85 : 1.35) * (mini ? 0.72 : 1),
+    anchor: new g.Point(12, 27),
+  };
 }
 
-export default function PinMap({ pins }: { pins: MapPin[] }) {
+export default function PinMap({ pins, variant = 'large' }: { pins: MapPin[]; variant?: 'large' | 'mini' }) {
+  const mini = variant === 'mini';
   const containerRef = useRef<HTMLDivElement>(null);
+  const markersRef = useRef<{ id: string; marker: google.maps.Marker }[]>([]);
+  const gRef = useRef<typeof google.maps | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [selected, setSelected] = useState<MapPin | null>(null);
 
   // Re-init only when the actual pin set changes (parent passes a fresh array each render).
   const sig = useMemo(() => pins.map((p) => `${p.id}:${p.lat},${p.lng}:${p.kind}`).join('|'), [pins]);
@@ -89,6 +107,7 @@ export default function PinMap({ pins }: { pins: MapPin[] }) {
 
     let cancelled = false;
     setStatus('loading');
+    setSelected(null);
 
     loadGoogleMaps(apiKey)
       .then(async () => {
@@ -99,17 +118,17 @@ export default function PinMap({ pins }: { pins: MapPin[] }) {
           g.importLibrary('marker') as Promise<google.maps.MarkerLibrary>,
         ]);
         if (cancelled) return;
+        gRef.current = g;
 
-        const map = new mapsLibrary.Map(container, {
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: false,
-          zoomControl: true,
-          gestureHandling: 'cooperative',
-        });
+        const map = new mapsLibrary.Map(
+          container,
+          mini
+            ? { disableDefaultUI: true, gestureHandling: 'none', keyboardShortcuts: false, clickableIcons: false, zoomControl: false }
+            : { mapTypeControl: false, streetViewControl: false, fullscreenControl: false, zoomControl: true, gestureHandling: 'cooperative', clickableIcons: false },
+        );
 
         const bounds = new g.LatLngBounds();
-        const info = new mapsLibrary.InfoWindow();
+        markersRef.current = [];
         for (const pin of pins) {
           const position = { lat: pin.lat, lng: pin.lng };
           bounds.extend(position);
@@ -117,29 +136,20 @@ export default function PinMap({ pins }: { pins: MapPin[] }) {
             map,
             position,
             title: pin.label,
-            icon: {
-              path: g.SymbolPath.CIRCLE,
-              scale: 8,
-              fillColor: PIN_COLORS[pin.kind],
-              fillOpacity: 1,
-              strokeColor: '#0b1220',
-              strokeWeight: 1.5,
-            },
+            icon: makeIcon(g, PIN_COLORS[pin.kind], false, mini),
           });
+          // Mini map: a click jumps straight to the record (no room for a card).
           marker.addListener('click', () => {
-            info.setContent(
-              `<div style="min-width:150px;color:#141413;font-family:system-ui,sans-serif">` +
-                `<strong style="font-size:13px">${esc(pin.label)}</strong>` +
-                (pin.sublabel ? `<div style="color:#555;font-size:12px;margin:2px 0 4px">${esc(pin.sublabel)}</div>` : '<div style="height:4px"></div>') +
-                `<a href="${esc(pin.href)}" style="color:#c2410c;font-weight:700;font-size:12px;text-decoration:none">Open &rarr;</a>` +
-                `</div>`,
-            );
-            info.open({ map, anchor: marker });
+            if (mini) window.location.href = pin.href;
+            else setSelected(pin);
           });
+          markersRef.current.push({ id: pin.id, marker });
         }
+        // Large map only: clicking empty map closes the detail card.
+        if (!mini) map.addListener('click', () => setSelected(null));
 
-        // Fit to the pins, but never zoom in past a neighborhood — a single pin
-        // or a tight cluster would otherwise slam to max zoom (street level).
+        // Fit to the pins, but never zoom past a neighborhood — a single pin or a
+        // tight cluster would otherwise slam to street level.
         const MAX_ZOOM = 14;
         const fit = () => {
           if (pins.length === 1) {
@@ -154,8 +164,6 @@ export default function PinMap({ pins }: { pins: MapPin[] }) {
           });
         };
         fit();
-        // A map created inside a just-opened container can mount at 0×0; refit
-        // once it has real size.
         const ro = new ResizeObserver(() => {
           if (container.clientWidth > 0) fit();
         });
@@ -172,18 +180,54 @@ export default function PinMap({ pins }: { pins: MapPin[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sig]);
 
+  // Emphasize the selected marker + wire Escape-to-close (large map only).
+  useEffect(() => {
+    if (mini) return;
+    const g = gRef.current;
+    if (g) {
+      for (const { id, marker } of markersRef.current) {
+        const pin = pins.find((p) => p.id === id);
+        if (pin) marker.setIcon(makeIcon(g, PIN_COLORS[pin.kind], id === selected?.id));
+      }
+    }
+    if (!selected) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setSelected(null); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, sig]);
+
+  if (mini) {
+    return (
+      <div className="pin-map-mini" aria-label={`Map — ${pins.length} location${pins.length === 1 ? '' : 's'}`} title="Leads &amp; jobs map">
+        <div ref={containerRef} className="pin-map-mini-canvas" />
+      </div>
+    );
+  }
+
   return (
     <div className="pin-map-shell">
-      <div ref={containerRef} className="pin-map" aria-label="Map of leads and jobs" />
+      <div className="pin-map-wrap">
+        <div ref={containerRef} className="pin-map" aria-label="Map of leads and jobs" />
+        {selected ? (
+          <div className="pin-card" role="dialog" aria-label={`${selected.label} details`}>
+            <button type="button" className="pin-card-close" onClick={() => setSelected(null)} aria-label="Close details">×</button>
+            <span className="pin-card-kind" data-kind={selected.kind}>{KIND_LABEL[selected.kind]}</span>
+            <strong className="pin-card-name">{selected.label}</strong>
+            {selected.sublabel ? <span className="pin-card-sub">{selected.sublabel}</span> : null}
+            <a className="pin-card-open" href={selected.href}>Open &rarr;</a>
+          </div>
+        ) : null}
+      </div>
       {pins.length === 0 ? (
         <div className="pin-map-empty">No mapped locations yet — addresses are geocoded as leads and jobs come in.</div>
       ) : null}
       {status === 'error' ? <div className="pin-map-empty">Map unavailable.</div> : null}
       <div className="pin-map-legend">
-        {LEGEND.map((item) => (
-          <span key={item.kind} className="pin-map-legend-item">
-            <span className="pin-map-dot" style={{ background: PIN_COLORS[item.kind] }} aria-hidden="true" />
-            {item.label}
+        {LEGEND.map((kind) => (
+          <span key={kind} className="pin-map-legend-item">
+            <span className="pin-map-dot" style={{ background: PIN_COLORS[kind] }} aria-hidden="true" />
+            {KIND_LABEL[kind]}
           </span>
         ))}
       </div>

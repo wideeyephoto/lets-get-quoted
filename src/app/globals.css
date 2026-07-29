@@ -1897,7 +1897,30 @@ li + li { margin-top: 0.45rem; }
 .map-section-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .map-section-sub { margin: 0.7rem 0 0; color: rgba(247, 245, 239, 0.62); font-size: 0.9rem; }
 .pin-map-shell { margin-top: 1rem; }
+.pin-map-wrap { position: relative; }
 .pin-map { width: 100%; height: clamp(320px, 46vh, 520px); border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.02); }
+
+/* Theme-styled detail card that replaces Google's InfoWindow. */
+.pin-card { position: absolute; top: 12px; left: 12px; z-index: 5; width: min(268px, calc(100% - 24px)); display: grid; gap: 0.28rem;
+  padding: 0.85rem 0.95rem; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 12px; background: #101824; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55); }
+.pin-card-close { position: absolute; top: 6px; right: 6px; display: grid; place-items: center; width: 26px; height: 26px; padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 8px; background: rgba(255, 255, 255, 0.05); color: #c7d2df; font-size: 1.15rem; line-height: 1; cursor: pointer; }
+.pin-card-close:hover { color: #fff; border-color: rgba(255, 122, 33, 0.5); background: rgba(255, 122, 33, 0.12); }
+.pin-card-kind { display: inline-flex; align-items: center; gap: 0.4rem; padding-right: 26px; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(247, 245, 239, 0.6); }
+.pin-card-kind::before { content: ""; width: 0.6rem; height: 0.6rem; border-radius: 50%; border: 1.5px solid rgba(11, 18, 32, 0.9); flex: 0 0 auto; }
+.pin-card-kind[data-kind="lead"]::before { background: #ff7a21; }
+.pin-card-kind[data-kind="unscheduled"]::before { background: #ffd166; }
+.pin-card-kind[data-kind="scheduled"]::before { background: #4ade80; }
+.pin-card-name { color: #f7f5ef; font-size: 0.98rem; font-weight: 800; }
+.pin-card-sub { color: rgba(247, 245, 239, 0.66); font-size: 0.82rem; line-height: 1.4; }
+.pin-card-open { margin-top: 0.25rem; color: var(--accent-2); font-size: 0.84rem; font-weight: 800; text-decoration: none; }
+.pin-card-open:hover { text-decoration: underline; }
+
+/* Mini circular map — sits beside a section header (Leads / Jobs). */
+.workspace-head-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.pin-map-mini { position: relative; flex: 0 0 auto; width: clamp(88px, 11vw, 128px); aspect-ratio: 1 / 1; border-radius: 50%; overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.16); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4); background: rgba(255, 255, 255, 0.03); }
+.pin-map-mini-canvas { width: 100%; height: 100%; }
 .pin-map-empty { margin-top: 0.7rem; padding: 0.9rem 1rem; border: 1px dashed var(--line); border-radius: 12px; color: rgba(247, 245, 239, 0.6); font-size: 0.88rem; text-align: center; }
 .pin-map-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1.1rem; margin-top: 0.85rem; }
 .pin-map-legend-item { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.82rem; color: rgba(247, 245, 239, 0.72); }

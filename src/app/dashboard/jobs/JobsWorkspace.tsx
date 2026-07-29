@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { JobStatus } from '@/lib/jobs';
 import { setJobsViewAction, setMapViewAction } from '@/app/dashboard/view-actions';
-import type { JobsView } from '@/lib/dashboard-views';
+import type { JobsView, MapView } from '@/lib/dashboard-views';
 import ViewGear from '@/components/view-gear';
 import styles from './jobs.module.css';
 
@@ -56,7 +56,7 @@ function StatusBadge({ job }: { job: JobViewItem }) {
   );
 }
 
-export default function JobsWorkspace({ jobs, initialView, mapOn }: { jobs: JobViewItem[]; initialView: JobsView; mapOn: boolean }) {
+export default function JobsWorkspace({ jobs, initialView, mapView }: { jobs: JobViewItem[]; initialView: JobsView; mapView: MapView }) {
   const [view, setView] = useState<JobsView>(initialView);
   const [status, setStatus] = useState<JobStatus | 'all'>('all');
   const [pending, startTransition] = useTransition();
@@ -66,9 +66,9 @@ export default function JobsWorkspace({ jobs, initialView, mapOn }: { jobs: JobV
     setView(next);
     startTransition(() => setJobsViewAction(next).catch(() => {}));
   }
-  function toggleMap(next: boolean) {
+  function setMap(next: MapView) {
     startTransition(async () => {
-      await setMapViewAction(next ? 'on' : 'off');
+      await setMapViewAction(next);
       router.refresh();
     });
   }
@@ -96,7 +96,7 @@ export default function JobsWorkspace({ jobs, initialView, mapOn }: { jobs: JobV
         ) : (
           <span />
         )}
-        <ViewGear views={VIEWS} activeView={view} onPickView={pickView} mapOn={mapOn} onToggleMap={toggleMap} />
+        <ViewGear views={VIEWS} activeView={view} onPickView={pickView} mapView={mapView} onSetMapView={setMap} />
       </div>
 
       {view === 'list' && <ListView jobs={filtered} />}

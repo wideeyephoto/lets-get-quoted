@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import type { LeadStatus, LeadScore, LeadsView } from '@/lib/leads';
 import { archiveLeadAction, declineLeadAction, snoozeLeadAction, updateLeadStatusAction, setLeadsViewAction } from './actions';
 import { setMapViewAction } from '@/app/dashboard/view-actions';
+import type { MapView } from '@/lib/dashboard-views';
 import ViewGear from '@/components/view-gear';
 import styles from './leads.module.css';
 
@@ -94,7 +95,7 @@ function ScoreLegend() {
 
 const VIEW_OPTIONS = VIEWS.map((v) => ({ id: v.id, label: v.label, hint: v.hint }));
 
-export default function LeadsWorkspace({ leads, initialView, mapOn }: { leads: LeadViewItem[]; initialView: LeadsView; mapOn: boolean }) {
+export default function LeadsWorkspace({ leads, initialView, mapView }: { leads: LeadViewItem[]; initialView: LeadsView; mapView: MapView }) {
   const [view, setView] = useState<LeadsView>(initialView);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
@@ -116,11 +117,11 @@ export default function LeadsWorkspace({ leads, initialView, mapOn }: { leads: L
     startTransition(() => setLeadsViewAction(next).catch(() => {}));
   }
 
-  // Map lives at the top of the page (server-rendered from the cookie); toggling
-  // persists then refreshes so the section appears/disappears.
-  function toggleMap(next: boolean) {
+  // Map placement (off / large / mini) is server-rendered from the cookie;
+  // changing it persists then refreshes so the page re-renders in place.
+  function setMap(next: MapView) {
     startTransition(async () => {
-      await setMapViewAction(next ? 'on' : 'off');
+      await setMapViewAction(next);
       router.refresh();
     });
   }
@@ -128,7 +129,7 @@ export default function LeadsWorkspace({ leads, initialView, mapOn }: { leads: L
   return (
     <div className={pending ? styles.workspaceBusy : undefined}>
       <div className={styles.viewBar}>
-        <ViewGear views={VIEW_OPTIONS} activeView={view} onPickView={pickView} mapOn={mapOn} onToggleMap={toggleMap} />
+        <ViewGear views={VIEW_OPTIONS} activeView={view} onPickView={pickView} mapView={mapView} onSetMapView={setMap} />
       </div>
 
       {view === 'board' && <BoardView leads={leads} run={run} />}
