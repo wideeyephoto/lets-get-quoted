@@ -755,6 +755,13 @@ alter table leads add column if not exists triage jsonb;
 -- customer's leads and jobs collapse into one timeline. ON DELETE SET NULL.
 alter table leads add column if not exists client_id uuid references clients(id) on delete set null;
 create index if not exists leads_client_id_idx on leads (client_id);
+-- Geocoded coordinates of the lead address (2026-07-29): pins on the dashboard
+-- map across leads, jobs & schedule so nearby estimates and jobs can be batched.
+-- Populated best-effort at intake (see src/lib/geocode.ts), precise-only, same as
+-- jobs; null when geocoding is unavailable or imprecise. geocoded_at caches the attempt.
+alter table leads add column if not exists lat numeric;
+alter table leads add column if not exists lng numeric;
+alter table leads add column if not exists geocoded_at timestamptz;
 
 -- Contacts an owner has blocked from submitting new website leads. Matching
 -- submissions are silently dropped (the visitor still sees success).

@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
+import MapSection from '@/components/map-section';
+import { getMapPins } from '@/lib/map-pins';
 import { expandScheduledJobs, formatJobTime, formatMoney, listJobs, type Job } from '@/lib/jobs';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { deriveJobListBadge } from '@/lib/job-badges';
@@ -291,6 +293,8 @@ export default async function SchedulePage({
     role_label: member.role_label,
   }));
 
+  const mapPins = await getMapPins(supabase, accountId);
+
   return (
     <main className="wide-shell workspace-shell">
       <ScheduleDragProvider>
@@ -361,6 +365,8 @@ export default async function SchedulePage({
         openWindowCount={openWindowCount}
         openDayCount={bookingDays.length}
       />
+
+      <MapSection pins={mapPins} title="Map — plan your routes" subtitle="Green pins are scheduled; gold need a date; orange are open leads. Batch the ones that cluster." />
 
       {unscheduledJobs.length > 0 ? (
         <section className="panel workspace-section-card" id="unscheduled-jobs">

@@ -120,6 +120,9 @@ export type Lead = {
   converted_job: string | null;
   client_id: string | null;
   triage: LeadTriage | null;
+  lat: number | null;
+  lng: number | null;
+  geocoded_at: string | null;
   updated_at: string;
   created_at: string;
 };
@@ -226,7 +229,63 @@ export async function createLead(
     console.error(`Client link failed for lead ${lead.id}:`, clientError instanceof Error ? clientError.message : clientError);
   }
 
+  // Geocode the address for the dashboard map (leads/jobs/schedule pins) and
+  // route-density anchoring. Best-effort + precise-only (see geocode.ts); an
+  // imprecise or failed result leaves coords null. Dynamically imported so the
+  // server-only geocoder never lands in a client bundle. Never fails the lead.
+  if (lead.address) {
+    try {
+      const { geocodeColumns } = await import('@/lib/geocode');
+      const geo = await geocodeColumns(lead.address);
+      if (geo && geo.lat != null && geo.lng != null) {
+        await supabase.from('leads').update({ lat: geo.lat, lng: geo.lng, geocoded_at: geo.geocoded_at }).eq('id', lead.id);
+        lead.lat = geo.lat;
+        lead.lng = geo.lng;
+        lead.geocoded_at = geo.geocoded_at;
+      }
+    } catch (geoError) {
+      console.error(`Geocode failed for lead ${lead.id}:`, geoError instanceof Error ? geoError.message : geoError);
+    }
+  }
+
   return lead;
+}
+
+// Backfill coordinates for existing leads that have an address but no lat/lng
+// (created before geocoding, or where an earlier attempt was imprecise and
+// never cached). Best-effort and precise-only; safe to call on each map load —
+// it only touches rows that were never successfully geocoded. Returns the count
+// of leads updated. Never throws (map render must not depend on the geocoder).
+export async function backfillLeadCoordinates(
+  supabase: SupabaseClient,
+  accountId: string,
+  limit = 25
+): Promise<number> {
+  try {
+    const { data } = await supabase
+      .from('leads')
+      .select('id, address')
+      .eq('account_id', accountId)
+      .is('geocoded_at', null)
+      .not('address', 'is', null)
+      .limit(limit);
+    const rows = (data ?? []) as { id: string; address: string | null }[];
+    if (rows.length === 0) return 0;
+
+    const { geocodeColumns } = await import('@/lib/geocode');
+    let updated = 0;
+    for (const row of rows) {
+      const geo = await geocodeColumns(row.address);
+      if (!geo) continue; // geocoder unavailable — stop caching attempts this pass
+      // Cache the attempt even when imprecise (lat/lng null) so we don't retry it forever.
+      await supabase.from('leads').update({ lat: geo.lat, lng: geo.lng, geocoded_at: geo.geocoded_at }).eq('id', row.id);
+      if (geo.lat != null && geo.lng != null) updated += 1;
+    }
+    return updated;
+  } catch (error) {
+    console.error('Lead coordinate backfill failed:', error instanceof Error ? error.message : error);
+    return 0;
+  }
 }
 
 export async function listLeads(

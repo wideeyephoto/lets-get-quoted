@@ -14,6 +14,8 @@ import type { Payment } from '@/lib/payments';
 import type { JobStatus } from '@/lib/jobs';
 import { createJobAction } from './actions';
 import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
+import MapSection from '@/components/map-section';
+import { getMapPins } from '@/lib/map-pins';
 
 const STATUS_FILTERS: { value: JobStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -159,6 +161,7 @@ export default async function JobsPage({
   }, {});
   const totalQuoted = jobs.reduce((sum, job) => sum + job.quoted_amount, 0);
   const activeJobs = jobs.filter((job) => job.status === 'in_progress').length;
+  const mapPins = await getMapPins(supabase, accountId);
 
   return (
     <main className="wide-shell workspace-shell">
@@ -206,6 +209,8 @@ export default async function JobsPage({
           </div>
         )}
       </section>
+
+      <MapSection pins={mapPins} subtitle="Green pins are scheduled; gold are quotes awaiting a date; orange are open leads." />
 
       <div className="stat-ticker panel">
         <div className="stat-ticker-item">

@@ -6,6 +6,8 @@ import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadSource, 
 import { archiveLeadAction, createLeadAction, unsnoozeLeadAction } from './actions';
 import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
 import SaveButton from '@/components/save-button';
+import MapSection from '@/components/map-section';
+import { getMapPins } from '@/lib/map-pins';
 import LeadsWorkspace, { type LeadViewItem } from './LeadsWorkspace';
 import styles from './leads.module.css';
 
@@ -38,6 +40,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
   const openRequests = allLeads.filter((lead) => !['won', 'lost'].includes(lead.status)).length;
   const needsResponse = leads.filter((lead) => lead.status === 'new' && lead.source === 'website_form').length;
   const averageResponse = formatDuration(getAverageRequestResponseMs(allLeads));
+  const mapPins = await getMapPins(supabase, accountId);
 
   // Serialize the active leads into a display-ready shape for the client view
   // switcher (Board / Priority inbox / Table / Split), so it never has to import
@@ -85,6 +88,9 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
           <LeadsWorkspace leads={viewLeads} initialView={initialView} />
         )}
       </section>
+
+      <MapSection pins={mapPins} subtitle="Orange pins need a response; gold need scheduling; green are already on the calendar." />
+
 
       {setAside.length > 0 && (
         <section className="panel workspace-section-card">

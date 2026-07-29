@@ -210,6 +210,9 @@ export const DEMO_LEADS: Lead[] = LEAD_SEEDS.map((seed) => ({
   converted_job: seed.convertedJob ?? null,
   client_id: null,
   triage: null,
+  lat: null,
+  lng: null,
+  geocoded_at: null,
   updated_at: leadUpdatedAt(seed),
   created_at: leadCreatedAt(seed),
 }));

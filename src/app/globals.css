@@ -1892,6 +1892,16 @@ li + li { margin-top: 0.45rem; }
   transition: color 0.15s ease, border-color 0.15s ease;
 }
 .trade-links-row a:hover { color: var(--text); border-color: rgba(255, 122, 33, 0.4); }
+
+/* Dashboard jobs/leads map (shared MapSection + PinMap). */
+.map-section-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.map-section-sub { margin: 0.7rem 0 0; color: rgba(247, 245, 239, 0.62); font-size: 0.9rem; }
+.pin-map-shell { margin-top: 1rem; }
+.pin-map { width: 100%; height: clamp(320px, 46vh, 520px); border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.02); }
+.pin-map-empty { margin-top: 0.7rem; padding: 0.9rem 1rem; border: 1px dashed var(--line); border-radius: 12px; color: rgba(247, 245, 239, 0.6); font-size: 0.88rem; text-align: center; }
+.pin-map-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1.1rem; margin-top: 0.85rem; }
+.pin-map-legend-item { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.82rem; color: rgba(247, 245, 239, 0.72); }
+.pin-map-dot { width: 0.7rem; height: 0.7rem; border-radius: 50%; border: 1.5px solid rgba(11, 18, 32, 0.9); flex: 0 0 auto; }
 /* "See all N trades" pill — accent-filled so it reads as the way to the full list. */
 .trade-links-row a.trade-links-all { color: #160a02; font-weight: 700; border-color: transparent;
   background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
