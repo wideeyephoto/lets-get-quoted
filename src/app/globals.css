@@ -728,6 +728,25 @@ h3 {
 .automation-card[open] .automation-caret { transform: rotate(90deg); }
 .automation-body { padding: 0.1rem 1.05rem 1.15rem; }
 
+/* Contextual entry point to an automation's settings, dropped onto the page that
+   automation affects (Extra Stops, Schedule, …). Live on/off pill + deep link. */
+.automation-link {
+  display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 999px;
+  font-size: 0.82rem; font-weight: 600; color: rgba(247, 245, 239, 0.9);
+  background: rgba(255, 255, 255, 0.03); transition: border-color 0.12s ease, background 0.12s ease;
+}
+.automation-link:hover { border-color: rgba(255, 122, 33, 0.5); background: rgba(255, 122, 33, 0.08); color: #fff; }
+.automation-link-pill {
+  font-size: 0.64rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 0.12rem 0.42rem; border-radius: 999px;
+}
+.automation-link-pill.on { background: rgba(52, 211, 153, 0.16); color: #6ee7b7; }
+.automation-link-pill.off { background: rgba(255, 255, 255, 0.08); color: rgba(200, 210, 224, 0.8); }
+.automation-link-arrow { color: rgba(200, 210, 224, 0.6); }
+.automation-link:hover .automation-link-arrow { color: #ffb27a; }
+.schedule-automation-row { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.75rem; }
+
 /* Screen-reader-only text (visually hidden, still announced). */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 

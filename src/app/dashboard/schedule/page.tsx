@@ -21,6 +21,7 @@ import BookingLinkCard from './BookingLinkCard';
 import ClientScheduleOptionsCalendar from './client-schedule-options-calendar';
 import JobDragHandle from './JobDragHandle';
 import ScheduleDragProvider from './ScheduleDragProvider';
+import AutomationLink from '@/components/automation-link';
 
 const STATUS_LABEL: Record<Job['status'], string> = {
   new_lead: 'New request',
@@ -113,11 +114,12 @@ export default async function SchedulePage({
 }) {
   const { supabase, accountId } = await requireOwnerContext();
   const [{ data: account }, jobs, { data: site }] = await Promise.all([
-    supabase.from('accounts').select('schedule_day_hours').eq('id', accountId).single(),
+    supabase.from('accounts').select('schedule_day_hours, appointment_reminders_enabled').eq('id', accountId).single(),
     listJobs(supabase, accountId),
     supabase.from('sites').select('published, subdomain').eq('account_id', accountId).maybeSingle(),
   ]);
   const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
+  const remindersOn = Boolean((account as { appointment_reminders_enabled?: boolean } | null)?.appointment_reminders_enabled);
 
   // Self-serve booking link — the same public page customers use, built from the
   // site's subdomain. Only offered when the site is live with a subdomain.
@@ -322,9 +324,12 @@ export default async function SchedulePage({
             <p className="workspace-lead">
               See what&apos;s on the books this month and get unscheduled jobs onto a date.
             </p>
-            <a href="#booking-availability" className="btn secondary" style={{ marginTop: '0.75rem' }}>
-              Set booking availability &darr;
-            </a>
+            <div className="schedule-automation-row">
+              <a href="#booking-availability" className="btn secondary">
+                Set booking availability &darr;
+              </a>
+              <AutomationLink id="reminders" label="Appointment reminders" on={remindersOn} />
+            </div>
           </div>
           <div className="workspace-metric-grid calendar-heading-metrics">
             <Link className="workspace-metric-card accent schedule-summary-card metric-card-link" href="/dashboard/jobs" aria-label="Open jobs page">

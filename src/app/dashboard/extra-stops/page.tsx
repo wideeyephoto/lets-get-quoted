@@ -6,6 +6,7 @@ import { extraStopSettingsFromAccount, EXTRA_STOP_SETTINGS_COLUMNS, EXTRA_STOP_T
 import { computeExtraStopRoute } from '@/lib/extra-stop-route';
 import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
 import ExtraStopRequestCard, { type CardRequest } from './ExtraStopRequestCard';
+import AutomationLink from '@/components/automation-link';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,11 +55,15 @@ export default async function ExtraStopsPage() {
           <p className="eyebrow">Extra Stop</p>
           <h2>Same-day route requests</h2>
         </div>
-        {!settings.enabled ? (
+        {settings.enabled ? (
+          <div style={{ marginTop: '.6rem' }}>
+            <AutomationLink id="extra-stop" label="Extra Stop settings" on />
+          </div>
+        ) : (
           <p className="payment-banner muted" style={{ marginTop: '.5rem' }}>
             Extra Stop is currently off. Turn it on in <Link href="/dashboard/settings#extra-stop">Settings → Automations → Extra Stop</Link> to start receiving requests.
           </p>
-        ) : null}
+        )}
 
         {active.length === 0 ? (
           <p className="empty-state" style={{ marginTop: '1rem' }}>No active Extra Stop requests right now.</p>
