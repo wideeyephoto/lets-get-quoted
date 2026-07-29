@@ -292,6 +292,13 @@
     .fw-copies{min-height:0;grid-template-columns:minmax(0,1fr)}
     .fw-copy{position:relative;min-width:0;max-width:100%;opacity:1;transform:none;pointer-events:auto;display:none}
     .fw-copy.is-active{display:flex}
+    /* tighten the pinned card so the whole thing fits one phone screen */
+    .fw-copy{padding:clamp(15px,3.2vw,22px);gap:10px}
+    .fw-copy-top{gap:10px}
+    /* the mockups are the biggest block — cap + softly fade them so the copy
+       below always clears the fold (they're decorative sample data anyway) */
+    .fw-mock{min-height:0;max-height:clamp(168px,31vh,284px);place-items:start center;
+      -webkit-mask:linear-gradient(180deg,#000 80%,transparent);mask:linear-gradient(180deg,#000 80%,transparent)}
   }
 
   /* Below 900px the app shows a fixed ~4.4rem mobile top bar; offset the pinned
@@ -302,6 +309,13 @@
        (e.g. Quotes) vertically centres the stage and pushes the wheel band's
        top up behind the bar. */
     .fw-sticky{top:4.4rem;height:calc(100vh - 4.4rem);align-items:flex-start}
+  }
+
+  /* At <=860px the fixed "Create Free Account" bar floats over the bottom of
+     the viewport; shrink the pinned wheel so its cards clip cleanly ABOVE the
+     bar instead of disappearing behind it. */
+  @media (max-width:860px){
+    .fw-sticky{height:calc(100vh - 4.4rem - 5.1rem - env(safe-area-inset-bottom,0px))}
   }
 
   /* ---------- reduced motion ---------- */
