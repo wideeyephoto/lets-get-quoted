@@ -148,7 +148,7 @@ const compareRows: CompareRow[] = [
     cells: [
       { tone: 'good', text: 'Drops to 0.65% automatically' },
       { tone: 'bad', text: 'Flat — never rewards volume' },
-      { tone: 'bad', text: 'Rises with seats & tiers' },
+      { tone: 'bad', text: 'Often rises with seats & tiers' },
     ],
   },
   {
@@ -205,6 +205,14 @@ const compareRows: CompareRow[] = [
       { tone: 'good', text: 'Built in' },
       { tone: 'bad', text: 'Not offered' },
       { tone: 'mid', text: 'Higher tiers only' },
+    ],
+  },
+  {
+    label: 'Move your clients & jobs over',
+    cells: [
+      { tone: 'good', text: 'Import clients, jobs & invoices in minutes' },
+      { tone: 'bad', text: 'Not a CRM — nothing to import' },
+      { tone: 'mid', text: 'Manual export or paid onboarding' },
     ],
   },
   {
@@ -354,8 +362,8 @@ export default function HomePage() {
             <p className="eyebrow">Quote to bank, automatically</p>
             <h2>From first quote to money in your bank &mdash; one unbroken flow.</h2>
             <p>
-              No PDF stapled to an email, no printer, no invoicing software, no chasing checks. Four steps turn a lead
-              into a deposit.
+              The whole trip from quote to deposit happens in one place &mdash; no paperwork, no software to juggle, no
+              waiting on the mail. Four steps turn a lead into a deposit.
             </p>
           </div>
           <aside className="hero-panel flow-panel">
@@ -390,8 +398,8 @@ export default function HomePage() {
           <h2>One tool doing the work of five &mdash; and you only pay when you get paid.</h2>
           <p>
             A website builder gives you a page. Field-service software rents you a login by the month. Let&apos;s Get
-            Quoted is the whole operating loop &mdash; site, quotes, e-signatures, scheduling, and payments &mdash; with
-            no subscription standing between you and your next job.
+            Quoted runs the whole job &mdash; your website, quotes, signatures, scheduling, and payments &mdash; with no
+            monthly subscription standing between you and your next job.
           </p>
         </div>
         <div className="compare-scroll">
@@ -401,7 +409,7 @@ export default function HomePage() {
                 <th scope="col" className="compare-corner"><span className="compare-corner-label">How it stacks up</span></th>
                 {compareColumns.map((col) => (
                   <th scope="col" key={col.key} className={col.highlight ? 'compare-col-head is-us' : 'compare-col-head'}>
-                    {col.highlight ? <span className="compare-head-badge">Best value</span> : null}
+                    {col.highlight ? <span className="compare-head-badge">No monthly fee</span> : null}
                     <strong>{col.label}</strong>
                     <span className="compare-head-tag">{col.tag}</span>
                   </th>
@@ -430,6 +438,10 @@ export default function HomePage() {
           <span><span className="compare-mark tone-good" aria-hidden="true">✓</span> Built in</span>
           <span><span className="compare-mark tone-mid" aria-hidden="true">~</span> Partial or extra cost</span>
           <span><span className="compare-mark tone-bad" aria-hidden="true">✕</span> Not offered</span>
+        </p>
+        <p className="compare-source">
+          Category comparison vs. typical published plans as of 2026 &mdash; field-service CRMs commonly run
+          $50&ndash;$300+/mo per seat and website builders $16&ndash;$49/mo, billed whether or not you book work.
         </p>
         <div className="mid-cta">
           <Link href="/login?intent=signup" className="btn primary">Create Free Account</Link>
@@ -531,12 +543,19 @@ export default function HomePage() {
         <div className="cta-band-inner">
           <p className="eyebrow">Ready when you are</p>
           <h2>Your next quote could be the fastest payday you&apos;ve had yet.</h2>
-          <p>No subscription. No setup fee. You only pay our platform fee when a homeowner actually pays you.</p>
+          <p>You&apos;ve read this far and we still haven&apos;t asked for a card &mdash; and we won&apos;t until a homeowner pays you. No subscription, no setup fee, no contract, cancel anytime, and your site and clients stay yours.</p>
           <div className="actions">
             <Link href="/login?intent=signup" className="btn primary">
               Create Free Account
             </Link>
+            <Link href="/demo" className="btn secondary">
+              Explore the demo &mdash; no signup
+            </Link>
           </div>
+          <p className="cta-recap">
+            Free to start includes your website, the 24/7 AI Estimator, e-sign, scheduling, payments &amp; reviews &mdash; all of it.
+          </p>
+          <p className="cta-nudge">Set it up tonight &mdash; your first quote can go out in the morning.</p>
         </div>
       </section>
 

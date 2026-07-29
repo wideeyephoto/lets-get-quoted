@@ -43,6 +43,8 @@ export default function HeroDashboard() {
     const cells = Array.from(win.querySelectorAll<HTMLElement>('.fh-cell[data-view]'));
     let idx = 0;
     let timer: number | null = null;
+    let pinned = false; // a tap holds a view open (hover does nothing on a phone)
+    let visible = true; // pause the loop while the panel is off-screen
 
     const show = (key: string) => {
       views.forEach((v) => v.classList.toggle('is-on', v.getAttribute('data-view') === key));
@@ -57,36 +59,68 @@ export default function HeroDashboard() {
       }
     };
     const play = () => {
-      if (REDUCE) return;
+      if (REDUCE || pinned || !visible) return;
       stop();
       timer = window.setInterval(() => {
         idx = (idx + 1) % order.length;
         show(order[idx]);
-      }, 1400);
+      }, 3600);
     };
 
-    const handlers: Array<[HTMLElement, () => void, () => void]> = [];
+    const cleanupFns: Array<() => void> = [];
     cells.forEach((c) => {
       const key = c.getAttribute('data-view') || 'paid';
       const enter = () => {
-        stop();
-        show(key);
+        if (!pinned) {
+          stop();
+          show(key);
+        }
       };
-      const leave = () => play();
+      const leave = () => {
+        if (!pinned) play();
+      };
+      // Tap-to-pin: a tap holds the view (mobile has no hover); tapping the
+      // pinned tile again releases it and resumes the loop.
+      const click = () => {
+        if (pinned && c.classList.contains('active')) {
+          pinned = false;
+          play();
+        } else {
+          pinned = true;
+          stop();
+          show(key);
+        }
+      };
       c.addEventListener('mouseenter', enter);
       c.addEventListener('mouseleave', leave);
-      handlers.push([c, enter, leave]);
+      c.addEventListener('click', click);
+      cleanupFns.push(() => {
+        c.removeEventListener('mouseenter', enter);
+        c.removeEventListener('mouseleave', leave);
+        c.removeEventListener('click', click);
+      });
     });
+
+    // Pause the auto-advance while the panel isn't on screen (battery + jank).
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver(
+        (entries) => {
+          visible = entries[0]?.isIntersecting ?? true;
+          if (visible) play();
+          else stop();
+        },
+        { threshold: 0.2 },
+      );
+      io.observe(win);
+      cleanupFns.push(() => io.disconnect());
+    }
 
     show('paid');
     play();
 
     return () => {
       stop();
-      handlers.forEach(([c, enter, leave]) => {
-        c.removeEventListener('mouseenter', enter);
-        c.removeEventListener('mouseleave', leave);
-      });
+      cleanupFns.forEach((fn) => fn());
     };
   }, []);
 

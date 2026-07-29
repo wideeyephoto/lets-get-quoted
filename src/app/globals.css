@@ -1632,6 +1632,18 @@ li + li { margin-top: 0.45rem; }
 @media (prefers-reduced-motion: reduce) { .hfaq-item[open] .hfaq-a { animation: none; } .hfaq-mark::before, .hfaq-mark::after { transition: none; } }
 @media (max-width: 820px) { .hfaq-grid { grid-template-columns: 1fr; } .hfaq-intro { position: static; } }
 
+/* ------- Section-by-section polish (audit 05) ------- */
+/* Comparison: dated sourcing line, and a frozen label column so the row names
+   don't scroll away on a phone (the table is min-width 720px and scrolls). */
+.compare-source { margin: 0.9rem 0 0; font-size: 0.76rem; line-height: 1.5; color: rgba(200, 208, 220, 0.5); max-width: 70ch; }
+.compare-corner, .compare-row-label { position: sticky; left: 0; z-index: 2; background: var(--bg); }
+.compare-row-label { box-shadow: 8px 0 12px -10px rgba(0, 0, 0, 0.7); }
+
+/* Final CTA: a crescendo headline, a "what's free" recap, and a time nudge. */
+.cta-band-inner h2 { max-width: 20ch; font-size: clamp(1.9rem, 4.5vw, 3rem); line-height: 1.05; }
+.cta-recap { margin: 1.1rem 0 0; max-width: 44ch; font-size: 0.92rem; color: rgba(247, 245, 239, 0.72); }
+.cta-nudge { margin: 0.5rem 0 0; font-size: 0.85rem; font-weight: 600; color: var(--accent-2); }
+
 /* ---------------------------------------------------------------- */
 /* Homepage: "how it stacks up" comparison table                    */
 /* ---------------------------------------------------------------- */
