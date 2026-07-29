@@ -31,9 +31,11 @@ export function computeCustomerRefundPercent(req: ExtraStopRequest, now = Date.n
     const endMs = new Date(`${req.arrival_date}T${req.arrival_end}`).getTime();
     if (Number.isFinite(endMs) && now > endMs) return t.contractorMissedWindow;
   }
+  // Check arrival BEFORE en-route: a tech can mark "arrived" straight from
+  // confirmed (skipping en_route), and an arrived visit is always the 0% tier.
+  if (req.arrived_at) return t.afterArrived;
   if (!req.en_route_at) return t.beforeEnRoute;
-  if (!req.arrived_at) return t.afterEnRoute;
-  return t.afterArrived;
+  return t.afterEnRoute;
 }
 
 export type CancellationKind = 'customer_cancel' | 'contractor_cancel' | 'no_show';

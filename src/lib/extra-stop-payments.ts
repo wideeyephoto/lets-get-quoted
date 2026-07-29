@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
-import { createDepositRequest } from '@/lib/payments';
+import { createDepositRequest, refundPayment } from '@/lib/payments';
 import { getExtraStopRequest, logExtraStopEvent } from '@/lib/extra-stop-requests';
 import { centsToDollars } from '@/lib/extra-stop';
 import { sendExtraStopOfferSms, sendExtraStopConfirmedSms } from '@/lib/sms';
@@ -115,7 +115,35 @@ export async function confirmExtraStopPayment(admin: SupabaseClient, paymentId: 
     .eq('status', 'awaiting_customer_payment')
     .select('*')
     .maybeSingle();
-  if (!confirmed) return; // not an Extra Stop payment, or already handled
+  if (!confirmed) {
+    // Money-safety race: the sweep expired this offer (failing the pending
+    // payment) but the charge still landed a moment later. Never keep money
+    // without an appointment — refund it in full and mark it refunded.
+    const { data: stale } = await admin
+      .from('extra_stop_requests')
+      .select('id, account_id, status, fee_cents, refund_cents')
+      .eq('payment_id', paymentId)
+      .maybeSingle();
+    if (stale && stale.status === 'offer_expired' && !stale.refund_cents) {
+      try {
+        await refundPayment(admin, stale.account_id as string, paymentId);
+        await admin
+          .from('extra_stop_requests')
+          .update({ status: 'refunded', refund_cents: stale.fee_cents ?? 0, updated_at: nowIso })
+          .eq('id', stale.id)
+          .eq('status', 'offer_expired');
+        await logExtraStopEvent(admin, stale.account_id as string, stale.id as string, {
+          actor: 'system',
+          from: 'offer_expired',
+          to: 'refunded',
+          meta: { reason: 'late_payment_after_expiry', paymentId },
+        });
+      } catch (error) {
+        console.error('Extra Stop late-payment refund failed:', error instanceof Error ? error.message : error);
+      }
+    }
+    return; // not a live Extra Stop payment (or handled above)
+  }
 
   const accountId = confirmed.account_id as string;
 

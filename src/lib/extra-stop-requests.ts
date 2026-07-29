@@ -105,17 +105,20 @@ export async function hasActiveExtraStopRequest(
   const normEmail = email ? email.trim().toLowerCase() : null;
   if (!normPhone && !normEmail) return false;
 
-  let query = admin
-    .from('extra_stop_requests')
-    .select('id, client_phone, client_email')
-    .eq('account_id', accountId)
-    .in('status', EXTRA_STOP_ACTIVE_STATUSES);
-  if (normPhone && normEmail) query = query.or(`client_phone.eq.${normPhone},client_email.eq.${normEmail}`);
-  else if (normPhone) query = query.eq('client_phone', normPhone);
-  else if (normEmail) query = query.eq('client_email', normEmail);
+  // Separate equality queries (not a string-built .or()) so a customer-supplied
+  // email can never distort the filter.
+  const base = () =>
+    admin.from('extra_stop_requests').select('id').eq('account_id', accountId).in('status', EXTRA_STOP_ACTIVE_STATUSES).limit(1);
 
-  const { data } = await query.limit(1);
-  return Boolean(data && data.length > 0);
+  if (normPhone) {
+    const { data } = await base().eq('client_phone', normPhone);
+    if (data && data.length > 0) return true;
+  }
+  if (normEmail) {
+    const { data } = await base().eq('client_email', normEmail);
+    if (data && data.length > 0) return true;
+  }
+  return false;
 }
 
 // Create the request row (status awaiting_contractor), link a client profile,
