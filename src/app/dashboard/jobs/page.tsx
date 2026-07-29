@@ -14,10 +14,9 @@ import type { Payment } from '@/lib/payments';
 import { cookies } from 'next/headers';
 import { createJobAction } from './actions';
 import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
-import MapSection from '@/components/map-section';
 import PinMap from '@/components/pin-map';
 import { getMapPins } from '@/lib/map-pins';
-import { JOBS_VIEW_COOKIE, MAP_VIEW_COOKIE, normalizeJobsView, normalizeMapView } from '@/lib/dashboard-views';
+import { JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, MAP_VIEW_COOKIE, normalizeJobsView, normalizeMapTheme, normalizeMapView } from '@/lib/dashboard-views';
 import JobsWorkspace, { type JobViewItem } from './JobsWorkspace';
 
 // Compact "Aug 3" / "Aug 3 · 9:00 AM" label for a job's scheduled date, parsed
@@ -170,27 +169,31 @@ export default async function JobsPage({
   const totalQuoted = allJobs.reduce((sum, job) => sum + job.quoted_amount, 0);
   const activeJobs = allJobs.filter((job) => job.status === 'in_progress').length;
   const mapView = normalizeMapView(cookies().get(MAP_VIEW_COOKIE)?.value);
+  const mapTheme = normalizeMapTheme(cookies().get(MAP_THEME_COOKIE)?.value);
   const jobsView = normalizeJobsView(cookies().get(JOBS_VIEW_COOKIE)?.value);
   const mapPins = mapView !== 'off' ? await getMapPins(supabase, accountId) : [];
 
   return (
     <main className="wide-shell workspace-shell">
-      {mapView === 'large' && (
-        <MapSection pins={mapPins} alwaysOpen subtitle="Green pins are scheduled; gold are quotes awaiting a date; orange are open leads." />
-      )}
-
       <section className="panel workspace-section-card">
-        <div className="workspace-head-row">
-          <div className="section-heading workspace-section-heading">
-            <p className="eyebrow">Pipeline</p>
-            <h2>Current jobs</h2>
+        {mapView === 'large' && (
+          <div className="workspace-embedded-map">
+            <PinMap pins={mapPins} theme={mapTheme} />
           </div>
-          {mapView === 'mini' && <PinMap pins={mapPins} variant="mini" />}
+        )}
+        <div className="workspace-top">
+          <div className="workspace-top-main">
+            <div className="section-heading workspace-section-heading">
+              <p className="eyebrow">Pipeline</p>
+              <h2>Current jobs</h2>
+            </div>
+          </div>
+          {mapView === 'mini' && <PinMap pins={mapPins} variant="mini" theme={mapTheme} />}
         </div>
         {allJobs.length === 0 ? (
           <p className="empty-state">No jobs yet. Create your first job below.</p>
         ) : (
-          <JobsWorkspace jobs={jobItems} initialView={jobsView} mapView={mapView} />
+          <JobsWorkspace jobs={jobItems} initialView={jobsView} mapView={mapView} mapTheme={mapTheme} />
         )}
       </section>
 

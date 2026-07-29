@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { LeadStatus, LeadScore, LeadsView } from '@/lib/leads';
 import { archiveLeadAction, declineLeadAction, snoozeLeadAction, updateLeadStatusAction, setLeadsViewAction } from './actions';
-import { setMapViewAction } from '@/app/dashboard/view-actions';
-import type { MapView } from '@/lib/dashboard-views';
+import { setMapThemeAction, setMapViewAction } from '@/app/dashboard/view-actions';
+import type { MapTheme, MapView } from '@/lib/dashboard-views';
 import ViewGear from '@/components/view-gear';
 import styles from './leads.module.css';
 
@@ -95,7 +95,7 @@ function ScoreLegend() {
 
 const VIEW_OPTIONS = VIEWS.map((v) => ({ id: v.id, label: v.label, hint: v.hint }));
 
-export default function LeadsWorkspace({ leads, initialView, mapView }: { leads: LeadViewItem[]; initialView: LeadsView; mapView: MapView }) {
+export default function LeadsWorkspace({ leads, initialView, mapView, mapTheme }: { leads: LeadViewItem[]; initialView: LeadsView; mapView: MapView; mapTheme: MapTheme }) {
   const [view, setView] = useState<LeadsView>(initialView);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
@@ -125,11 +125,17 @@ export default function LeadsWorkspace({ leads, initialView, mapView }: { leads:
       router.refresh();
     });
   }
+  function setTheme(next: MapTheme) {
+    startTransition(async () => {
+      await setMapThemeAction(next);
+      router.refresh();
+    });
+  }
 
   return (
     <div className={pending ? styles.workspaceBusy : undefined}>
       <div className={styles.viewBar}>
-        <ViewGear views={VIEW_OPTIONS} activeView={view} onPickView={pickView} mapView={mapView} onSetMapView={setMap} />
+        <ViewGear views={VIEW_OPTIONS} activeView={view} onPickView={pickView} mapView={mapView} onSetMapView={setMap} mapTheme={mapTheme} onSetMapTheme={setTheme} />
       </div>
 
       {view === 'board' && <BoardView leads={leads} run={run} />}

@@ -1,15 +1,20 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { MapView } from '@/lib/dashboard-views';
+import type { MapTheme, MapView } from '@/lib/dashboard-views';
 import styles from './view-gear.module.css';
 
 export type ViewOption<T extends string> = { id: T; label: string; hint: string };
 
 const MAP_OPTIONS: { id: MapView; label: string; hint: string }[] = [
   { id: 'off', label: 'None', hint: 'Hide the map' },
-  { id: 'large', label: 'Large map', hint: 'Full map at the top' },
+  { id: 'large', label: 'Large map', hint: 'Full map in the header' },
   { id: 'mini', label: 'Mini map', hint: 'A small circle by the header' },
+];
+
+const MAP_THEME_OPTIONS: { id: MapTheme; label: string; hint: string }[] = [
+  { id: 'dark', label: 'Dark', hint: 'Matches the dashboard' },
+  { id: 'light', label: 'Light', hint: 'Standard Google map' },
 ];
 
 function GearIcon() {
@@ -29,14 +34,19 @@ export default function ViewGear<T extends string>({
   onPickView,
   mapView,
   onSetMapView,
+  mapTheme,
+  onSetMapTheme,
 }: {
   views: ViewOption<T>[];
   activeView: T;
   onPickView: (next: T) => void;
   mapView?: MapView; // omit to hide the map options
   onSetMapView?: (next: MapView) => void;
+  mapTheme?: MapTheme;
+  onSetMapTheme?: (next: MapTheme) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [openUp, setOpenUp] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -50,15 +60,28 @@ export default function ViewGear<T extends string>({
 
   const current = views.find((v) => v.id === activeView) ?? views[0];
   const showMapOptions = typeof mapView === 'string' && Boolean(onSetMapView);
+  const showMapTheme = showMapOptions && mapView !== 'off' && typeof mapTheme === 'string' && Boolean(onSetMapTheme);
+
+  // Open the menu upward when there isn't room below, so it's never cut off.
+  function toggle() {
+    setOpen((o) => {
+      const next = !o;
+      if (next && ref.current) {
+        const r = ref.current.getBoundingClientRect();
+        setOpenUp(window.innerHeight - r.bottom < 380);
+      }
+      return next;
+    });
+  }
 
   return (
     <div className={styles.gear} ref={ref}>
-      <button type="button" className={styles.gearBtn} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)} title="View settings">
+      <button type="button" className={styles.gearBtn} aria-haspopup="menu" aria-expanded={open} onClick={toggle} title="View settings">
         <GearIcon />
         <span>{current.label}</span>
       </button>
       {open && (
-        <div className={styles.pop} role="menu">
+        <div className={`${styles.pop}${openUp ? ` ${styles.popUp}` : ''}`} role="menu">
           <p>View</p>
           {views.map((v) => (
             <button
@@ -90,6 +113,26 @@ export default function ViewGear<T extends string>({
                   <strong>{m.label}</strong>
                   {mapView === m.id && <span className={styles.check} aria-hidden="true">✓</span>}
                   <small>{m.hint}</small>
+                </button>
+              ))}
+            </>
+          )}
+          {showMapTheme && (
+            <>
+              <div className={styles.sep} />
+              <p>Map theme</p>
+              {MAP_THEME_OPTIONS.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={mapTheme === t.id}
+                  className={styles.opt}
+                  onClick={() => { onSetMapTheme?.(t.id); setOpen(false); }}
+                >
+                  <strong>{t.label}</strong>
+                  {mapTheme === t.id && <span className={styles.check} aria-hidden="true">✓</span>}
+                  <small>{t.hint}</small>
                 </button>
               ))}
             </>

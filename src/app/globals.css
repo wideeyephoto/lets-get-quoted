@@ -1916,11 +1916,19 @@ li + li { margin-top: 0.45rem; }
 .pin-card-open { margin-top: 0.25rem; color: var(--accent-2); font-size: 0.84rem; font-weight: 800; text-decoration: none; }
 .pin-card-open:hover { text-decoration: underline; }
 
-/* Mini circular map — sits beside a section header (Leads / Jobs). */
-.workspace-head-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
-.pin-map-mini { position: relative; flex: 0 0 auto; width: clamp(88px, 11vw, 128px); aspect-ratio: 1 / 1; border-radius: 50%; overflow: hidden;
-  border: 2px solid rgba(255, 255, 255, 0.16); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4); background: rgba(255, 255, 255, 0.03); }
+/* Section header: a content-width column on the left; the mini map sits right
+   after it (close to the heading) and stretches to the column's height — so it
+   fills the header vertically without pushing anything down. */
+.workspace-top { display: flex; align-items: stretch; gap: 1.25rem; }
+.workspace-top-main { flex: 0 1 auto; min-width: 0; }
+.workspace-embedded-map { margin-bottom: 1.35rem; }
+.pin-map-mini { position: relative; flex: 0 0 auto; align-self: stretch; width: auto; height: auto; min-height: 92px; aspect-ratio: 1 / 1;
+  border-radius: 50%; overflow: hidden; border: 2px solid rgba(255, 255, 255, 0.16); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4); background: rgba(255, 255, 255, 0.03); }
 .pin-map-mini-canvas { width: 100%; height: 100%; }
+@media (max-width: 640px) {
+  .workspace-top { flex-wrap: wrap; }
+  .pin-map-mini { align-self: flex-start; width: 96px; height: 96px; min-height: 0; aspect-ratio: auto; }
+}
 .pin-map-empty { margin-top: 0.7rem; padding: 0.9rem 1rem; border: 1px dashed var(--line); border-radius: 12px; color: rgba(247, 245, 239, 0.6); font-size: 0.88rem; text-align: center; }
 .pin-map-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1.1rem; margin-top: 0.85rem; }
 .pin-map-legend-item { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.82rem; color: rgba(247, 245, 239, 0.72); }

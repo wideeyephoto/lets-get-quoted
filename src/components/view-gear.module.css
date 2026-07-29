@@ -3,7 +3,9 @@
 .gearBtn svg { width: 16px; height: 16px; }
 .gearBtn:hover { color: #f7f5ef; border-color: rgba(255,122,33,.45); }
 .gearBtn[aria-expanded="true"] { color: var(--accent); border-color: rgba(255,122,33,.55); background: rgba(255,122,33,.1); }
-.pop { position: absolute; top: calc(100% + 6px); right: 0; z-index: 45; width: 250px; display: grid; gap: 2px; padding: 6px; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; background: #101824; box-shadow: 0 24px 60px rgba(0,0,0,.5); }
+.pop { position: absolute; top: calc(100% + 6px); right: 0; z-index: 45; width: 250px; display: grid; gap: 2px; padding: 6px; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; background: #101824; box-shadow: 0 24px 60px rgba(0,0,0,.5); max-height: calc(100vh - 24px); overflow-y: auto; }
+/* Open upward when there isn't room below the trigger (set by the component). */
+.popUp { top: auto; bottom: calc(100% + 6px); }
 .pop > p { margin: 0; padding: 8px 10px 4px; font-size: .66rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.45); }
 .opt { display: grid; grid-template-columns: 1fr auto; gap: .05rem .5rem; width: 100%; text-align: left; font: inherit; color: #dbe4ef; background: transparent; border: 1px solid transparent; border-radius: 8px; padding: .5rem .6rem; cursor: pointer; }
 .opt strong { font-size: .85rem; font-weight: 700; }

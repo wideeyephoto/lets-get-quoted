@@ -1,7 +1,9 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
-import MapSection from '@/components/map-section';
+import PinMap from '@/components/pin-map';
 import { getMapPins } from '@/lib/map-pins';
+import { MAP_THEME_COOKIE, MAP_VIEW_COOKIE, normalizeMapTheme, normalizeMapView } from '@/lib/dashboard-views';
 import { expandScheduledJobs, formatJobTime, formatMoney, listJobs, type Job } from '@/lib/jobs';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { deriveJobListBadge } from '@/lib/job-badges';
@@ -293,13 +295,19 @@ export default async function SchedulePage({
     role_label: member.role_label,
   }));
 
-  const mapPins = await getMapPins(supabase, accountId);
+  const mapView = normalizeMapView(cookies().get(MAP_VIEW_COOKIE)?.value);
+  const mapTheme = normalizeMapTheme(cookies().get(MAP_THEME_COOKIE)?.value);
+  const mapPins = mapView !== 'off' ? await getMapPins(supabase, accountId) : [];
 
   return (
     <main className="wide-shell workspace-shell">
       <ScheduleDragProvider>
-      <MapSection pins={mapPins} title="Map — plan your routes" subtitle="Green pins are scheduled; gold need a date; orange are open leads. Batch the ones that cluster." />
       <section className="panel workspace-section-card schedule-calendar-panel">
+        {mapView !== 'off' && (
+          <div className="workspace-embedded-map">
+            <PinMap pins={mapPins} theme={mapTheme} />
+          </div>
+        )}
         <div className="schedule-calendar-header">
           <div className="workspace-hero-copy schedule-calendar-copy">
             <p className="eyebrow">Schedule</p>

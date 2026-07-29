@@ -4,8 +4,8 @@ import { useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { JobStatus } from '@/lib/jobs';
-import { setJobsViewAction, setMapViewAction } from '@/app/dashboard/view-actions';
-import type { JobsView, MapView } from '@/lib/dashboard-views';
+import { setJobsViewAction, setMapThemeAction, setMapViewAction } from '@/app/dashboard/view-actions';
+import type { JobsView, MapTheme, MapView } from '@/lib/dashboard-views';
 import ViewGear from '@/components/view-gear';
 import styles from './jobs.module.css';
 
@@ -56,7 +56,7 @@ function StatusBadge({ job }: { job: JobViewItem }) {
   );
 }
 
-export default function JobsWorkspace({ jobs, initialView, mapView }: { jobs: JobViewItem[]; initialView: JobsView; mapView: MapView }) {
+export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme }: { jobs: JobViewItem[]; initialView: JobsView; mapView: MapView; mapTheme: MapTheme }) {
   const [view, setView] = useState<JobsView>(initialView);
   const [status, setStatus] = useState<JobStatus | 'all'>('all');
   const [pending, startTransition] = useTransition();
@@ -69,6 +69,12 @@ export default function JobsWorkspace({ jobs, initialView, mapView }: { jobs: Jo
   function setMap(next: MapView) {
     startTransition(async () => {
       await setMapViewAction(next);
+      router.refresh();
+    });
+  }
+  function setTheme(next: MapTheme) {
+    startTransition(async () => {
+      await setMapThemeAction(next);
       router.refresh();
     });
   }
@@ -96,7 +102,7 @@ export default function JobsWorkspace({ jobs, initialView, mapView }: { jobs: Jo
         ) : (
           <span />
         )}
-        <ViewGear views={VIEWS} activeView={view} onPickView={pickView} mapView={mapView} onSetMapView={setMap} />
+        <ViewGear views={VIEWS} activeView={view} onPickView={pickView} mapView={mapView} onSetMapView={setMap} mapTheme={mapTheme} onSetMapTheme={setTheme} />
       </div>
 
       {view === 'list' && <ListView jobs={filtered} />}

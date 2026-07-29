@@ -6,10 +6,9 @@ import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadSource, 
 import { archiveLeadAction, createLeadAction, unsnoozeLeadAction } from './actions';
 import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
 import SaveButton from '@/components/save-button';
-import MapSection from '@/components/map-section';
 import PinMap from '@/components/pin-map';
 import { getMapPins } from '@/lib/map-pins';
-import { MAP_VIEW_COOKIE, normalizeMapView } from '@/lib/dashboard-views';
+import { MAP_THEME_COOKIE, MAP_VIEW_COOKIE, normalizeMapTheme, normalizeMapView } from '@/lib/dashboard-views';
 import LeadsWorkspace, { type LeadViewItem } from './LeadsWorkspace';
 import styles from './leads.module.css';
 
@@ -43,6 +42,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
   const needsResponse = leads.filter((lead) => lead.status === 'new' && lead.source === 'website_form').length;
   const averageResponse = formatDuration(getAverageRequestResponseMs(allLeads));
   const mapView = normalizeMapView(cookies().get(MAP_VIEW_COOKIE)?.value);
+  const mapTheme = normalizeMapTheme(cookies().get(MAP_THEME_COOKIE)?.value);
   const mapPins = mapView !== 'off' ? await getMapPins(supabase, accountId) : [];
 
   // Serialize the active leads into a display-ready shape for the client view
@@ -82,20 +82,23 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
 
   return (
     <main className="wide-shell workspace-shell">
-      {mapView === 'large' && (
-        <MapSection pins={mapPins} alwaysOpen subtitle="Orange pins need a response; gold need scheduling; green are already on the calendar." />
-      )}
-
       <section className="panel workspace-section-card">
-        <div className="workspace-head-row">
-          <div className="section-heading workspace-section-heading"><p className="eyebrow">Pipeline</p><h2>Current leads</h2></div>
-          {mapView === 'mini' && <PinMap pins={mapPins} variant="mini" />}
-        </div>
-        <div className="actions" style={{ marginBottom: '1rem' }}>
-          <Link href="/dashboard/leads?add=1#add-lead" className="btn primary">+ Add lead</Link>
+        {mapView === 'large' && (
+          <div className="workspace-embedded-map">
+            <PinMap pins={mapPins} theme={mapTheme} />
+          </div>
+        )}
+        <div className="workspace-top">
+          <div className="workspace-top-main">
+            <div className="section-heading workspace-section-heading"><p className="eyebrow">Pipeline</p><h2>Current leads</h2></div>
+            <div className="actions" style={{ marginBottom: '1rem' }}>
+              <Link href="/dashboard/leads?add=1#add-lead" className="btn primary">+ Add lead</Link>
+            </div>
+          </div>
+          {mapView === 'mini' && <PinMap pins={mapPins} variant="mini" theme={mapTheme} />}
         </div>
         {leads.length === 0 ? <p className="empty-state">No leads yet. Website requests will appear here — or <Link href="/dashboard/leads?add=1#add-lead">add a lead manually</Link>.</p> : (
-          <LeadsWorkspace leads={viewLeads} initialView={initialView} mapView={mapView} />
+          <LeadsWorkspace leads={viewLeads} initialView={initialView} mapView={mapView} mapTheme={mapTheme} />
         )}
       </section>
 

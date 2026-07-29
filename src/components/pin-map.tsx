@@ -28,6 +28,23 @@ const KIND_LABEL: Record<MapPinKind, string> = {
 
 const LEGEND: MapPinKind[] = ['lead', 'unscheduled', 'scheduled'];
 
+// Dark map styling that matches the dashboard's palette; POI/transit hidden to
+// keep the pins the focus.
+const DARK_STYLE: google.maps.MapTypeStyle[] = [
+  { elementType: 'geometry', stylers: [{ color: '#16222f' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#8ba0b4' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#0a1420' }] },
+  { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#2a3a4a' }] },
+  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#26374a' }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#1b2836' }] },
+  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#9fb2c6' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#33475d' }] },
+  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0c1a27' }] },
+  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#4a6076' }] },
+];
+
 declare global {
   interface Window {
     google?: typeof google;
@@ -86,7 +103,7 @@ function makeIcon(g: typeof google.maps, color: string, active: boolean, mini = 
   };
 }
 
-export default function PinMap({ pins, variant = 'large' }: { pins: MapPin[]; variant?: 'large' | 'mini' }) {
+export default function PinMap({ pins, variant = 'large', theme = 'dark' }: { pins: MapPin[]; variant?: 'large' | 'mini'; theme?: 'dark' | 'light' }) {
   const mini = variant === 'mini';
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<{ id: string; marker: google.maps.Marker }[]>([]);
@@ -95,7 +112,7 @@ export default function PinMap({ pins, variant = 'large' }: { pins: MapPin[]; va
   const [selected, setSelected] = useState<MapPin | null>(null);
 
   // Re-init only when the actual pin set changes (parent passes a fresh array each render).
-  const sig = useMemo(() => pins.map((p) => `${p.id}:${p.lat},${p.lng}:${p.kind}`).join('|'), [pins]);
+  const sig = useMemo(() => `${theme}|` + pins.map((p) => `${p.id}:${p.lat},${p.lng}:${p.kind}`).join('|'), [pins, theme]);
 
   useEffect(() => {
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -120,11 +137,12 @@ export default function PinMap({ pins, variant = 'large' }: { pins: MapPin[]; va
         if (cancelled) return;
         gRef.current = g;
 
+        const styles = theme === 'dark' ? DARK_STYLE : undefined;
         const map = new mapsLibrary.Map(
           container,
           mini
-            ? { disableDefaultUI: true, gestureHandling: 'none', keyboardShortcuts: false, clickableIcons: false, zoomControl: false }
-            : { mapTypeControl: false, streetViewControl: false, fullscreenControl: false, zoomControl: true, gestureHandling: 'cooperative', clickableIcons: false },
+            ? { styles, disableDefaultUI: true, gestureHandling: 'none', keyboardShortcuts: false, clickableIcons: false, zoomControl: false }
+            : { styles, mapTypeControl: false, streetViewControl: false, fullscreenControl: false, zoomControl: true, gestureHandling: 'cooperative', clickableIcons: false },
         );
 
         const bounds = new g.LatLngBounds();

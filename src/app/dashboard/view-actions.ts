@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
-import { JOBS_VIEW_COOKIE, MAP_VIEW_COOKIE, normalizeJobsView, normalizeMapView, type JobsView, type MapView } from '@/lib/dashboard-views';
+import { JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, MAP_VIEW_COOKIE, normalizeJobsView, normalizeMapTheme, normalizeMapView, type JobsView, type MapTheme, type MapView } from '@/lib/dashboard-views';
 
 const YEAR = 60 * 60 * 24 * 365;
 
@@ -11,6 +11,12 @@ const YEAR = 60 * 60 * 24 * 365;
 export async function setMapViewAction(view: MapView) {
   await requireOwnerContext();
   cookies().set(MAP_VIEW_COOKIE, normalizeMapView(view), { path: '/', maxAge: YEAR, sameSite: 'lax' });
+}
+
+// Remember the map colour scheme (dark / light).
+export async function setMapThemeAction(theme: MapTheme) {
+  await requireOwnerContext();
+  cookies().set(MAP_THEME_COOKIE, normalizeMapTheme(theme), { path: '/', maxAge: YEAR, sameSite: 'lax' });
 }
 
 // Remember the owner's chosen Jobs layout (List / Board / Table).

@@ -11,6 +11,13 @@ export function normalizeMapView(value: unknown): MapView {
   return value === 'off' ? 'off' : value === 'mini' ? 'mini' : 'large';
 }
 
+// Map colour scheme (the app is dark, so the map defaults dark too).
+export const MAP_THEME_COOKIE = 'lgq_map_theme';
+export type MapTheme = 'dark' | 'light';
+export function normalizeMapTheme(value: unknown): MapTheme {
+  return value === 'light' ? 'light' : 'dark';
+}
+
 // Which Jobs layout the owner last used (List / Board / Table).
 export const JOBS_VIEW_COOKIE = 'lgq_jobs_view';
 export type JobsView = 'list' | 'board' | 'table';
