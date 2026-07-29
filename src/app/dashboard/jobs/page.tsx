@@ -167,11 +167,6 @@ export default async function JobsPage({
           <p className="eyebrow">Pipeline</p>
           <h2>Current jobs</h2>
         </div>
-        <div className="workspace-inline-row" style={{ marginBottom: '0.75rem' }}>
-          <Link href="/dashboard/import" className="btn secondary">Migrate from another CRM</Link>
-          <Link href="/dashboard/jobs/import" className="btn secondary">Import jobs</Link>
-          <Link href="/dashboard/jobs/import-invoices" className="btn secondary">Import invoices</Link>
-        </div>
         <div className="status-tabs workspace-status-tabs">
           {STATUS_FILTERS.map((filter) => {
             const isActive = (filter.value === 'all' && !statusParam) || filter.value === statusParam;
@@ -297,6 +292,20 @@ export default async function JobsPage({
             </button>
           </div>
         </form>
+      </details>
+
+      {/* Bring-your-data tools live at the bottom, out of the way of the daily
+          job list — you reach for these once when setting up, not every visit. */}
+      <details className="panel workspace-section-card workspace-details">
+        <summary className="workspace-details-summary">
+          <span className="btn secondary">Import &amp; migrate</span>
+          <span className="workspace-details-copy">Bring jobs, invoices, or your whole book from another app.</span>
+        </summary>
+        <div className="workspace-inline-row" style={{ marginTop: '0.85rem' }}>
+          <Link href="/dashboard/import" className="btn secondary">Migrate from another app</Link>
+          <Link href="/dashboard/jobs/import" className="btn secondary">Import jobs</Link>
+          <Link href="/dashboard/jobs/import-invoices" className="btn secondary">Import invoices</Link>
+        </div>
       </details>
     </main>
   );

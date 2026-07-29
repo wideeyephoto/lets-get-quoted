@@ -1,10 +1,10 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { LeadStatus, LeadScore, LeadsView } from '@/lib/leads';
-import { archiveLeadAction, snoozeLeadAction, updateLeadStatusAction, setLeadsViewAction } from './actions';
+import { archiveLeadAction, declineLeadAction, snoozeLeadAction, updateLeadStatusAction, setLeadsViewAction } from './actions';
 import styles from './leads.module.css';
 
 // Display-ready lead shape, built server-side in page.tsx so this client
@@ -57,6 +57,93 @@ function scoreText(item: LeadViewItem) {
   return item.score === 'hot' ? '🔥 Hot' : item.score === 'low' ? 'Low' : 'Warm';
 }
 
+// One-tap decline reasons — keys map to LEAD_DECLINE_REASONS server-side. The
+// board decline is quiet (no homeowner text); the full texted close-out lives
+// on the lead detail page.
+const DECLINE_REASONS: { key: string; label: string }[] = [
+  { key: 'out_of_area', label: 'Out of area' },
+  { key: 'excluded_work', label: 'Not our work' },
+  { key: 'below_minimum', label: 'Too small' },
+  { key: 'fully_booked', label: 'Fully booked' },
+];
+
+function GearIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
+}
+
+// View picker collapsed into a gear menu so the four layouts don't crowd the
+// top of the board. Closes on outside-click / Escape.
+function ViewGear({ view, onPick }: { view: LeadsView; onPick: (next: LeadsView) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [open]);
+
+  const current = VIEWS.find((v) => v.id === view) ?? VIEWS[0];
+  return (
+    <div className={styles.viewGear} ref={ref}>
+      <button type="button" className={styles.viewGearBtn} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)} title="Change view">
+        <GearIcon />
+        <span>{current.label}</span>
+      </button>
+      {open && (
+        <div className={styles.viewGearPop} role="menu">
+          <p>View</p>
+          {VIEWS.map((v) => (
+            <button
+              key={v.id}
+              type="button"
+              role="menuitemradio"
+              aria-checked={view === v.id}
+              className={styles.viewGearOpt}
+              onClick={() => { onPick(v.id); setOpen(false); }}
+            >
+              <strong>{v.label}</strong>
+              {view === v.id && <span className={styles.viewGearCheck} aria-hidden="true">✓</span>}
+              <small>{v.hint}</small>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Bottom-of-section explainer: what Hot / Warm / Low actually mean, mirroring
+// the chips shown on every card.
+function ScoreLegend() {
+  return (
+    <div className={styles.scoreLegend}>
+      <span className={styles.scoreLegendTitle}>How leads are scored</span>
+      <div className={styles.scoreLegendRow}>
+        <span className={styles.scoreChip} data-score="hot">🔥 Hot</span>
+        <span>Ready to hire — a clear job in your area, a realistic budget, and they want it soon (or it&rsquo;s high-value). Call these first.</span>
+      </div>
+      <div className={styles.scoreLegendRow}>
+        <span className={styles.scoreChip} data-score="warm">Warm</span>
+        <span>A real lead worth a follow-up, but something&rsquo;s unconfirmed — the timeline, the budget, or they&rsquo;re still comparing options.</span>
+      </div>
+      <div className={styles.scoreLegendRow}>
+        <span className={styles.scoreChip} data-score="low">Low</span>
+        <span>Probably not a fit yet — just researching, out of your area, below your minimum, or work you don&rsquo;t take on.</span>
+      </div>
+      <p className={styles.scoreLegendNote}>Your 24/7 AI Estimator sets this from the homeowner&rsquo;s answers. Open any lead to change its score.</p>
+    </div>
+  );
+}
+
 export default function LeadsWorkspace({ leads, initialView }: { leads: LeadViewItem[]; initialView: LeadsView }) {
   const [view, setView] = useState<LeadsView>(initialView);
   const [pending, startTransition] = useTransition();
@@ -81,32 +168,22 @@ export default function LeadsWorkspace({ leads, initialView }: { leads: LeadView
 
   return (
     <div className={pending ? styles.workspaceBusy : undefined}>
-      <div className={styles.viewSwitch} role="tablist" aria-label="Leads view">
-        {VIEWS.map((v) => (
-          <button
-            key={v.id}
-            type="button"
-            role="tab"
-            aria-selected={view === v.id}
-            className={`${styles.viewBtn}${view === v.id ? ` ${styles.viewBtnOn}` : ''}`}
-            onClick={() => pickView(v.id)}
-            title={v.hint}
-          >
-            {v.label}
-          </button>
-        ))}
+      <div className={styles.viewBar}>
+        <ViewGear view={view} onPick={pickView} />
       </div>
 
-      {view === 'board' && <BoardView leads={leads} />}
+      {view === 'board' && <BoardView leads={leads} run={run} />}
       {view === 'inbox' && <InboxView leads={leads} run={run} />}
       {view === 'table' && <TableView leads={leads} />}
       {view === 'split' && <SplitView leads={leads} run={run} />}
+
+      <ScoreLegend />
     </div>
   );
 }
 
 /* ---------------- Board (kanban by stage) ---------------- */
-function BoardView({ leads }: { leads: LeadViewItem[] }) {
+function BoardView({ leads, run }: { leads: LeadViewItem[]; run: (fn: () => Promise<unknown>) => void }) {
   return (
     <div className={styles.board}>
       {COLUMNS.map((column) => {
@@ -115,38 +192,65 @@ function BoardView({ leads }: { leads: LeadViewItem[] }) {
           <section className={`${styles.column} ${styles[`col_${column.status}`]}`} key={column.status}>
             <header className={styles.columnHeader}><h2>{column.label}</h2><span>{columnLeads.length}</span></header>
             <div className={styles.cards}>
-              {columnLeads.map((lead) => (
-                <div className={styles.leadCardWrap} key={lead.id}>
-                  <Link className={`${styles.leadCard}${lead.isUrgent ? ` ${styles.urgentCard}` : ''}`} href={`/dashboard/leads/${lead.id}`}>
-                    <div className={styles.cardTopline}><strong>{lead.name}</strong><span className={lead.isUrgent ? styles.needsBadge : styles.statusBadge}>{lead.statusLabel}</span></div>
-                    {(lead.hasTriage || lead.flags.length > 0) && (
-                      <div className={styles.cardChips}>
-                        {lead.hasTriage && <span className={styles.scoreChip} data-score={lead.score}>{scoreText(lead)}</span>}
-                        {lead.textOnly && <span className={styles.textOnlyChip}>💬 Text only</span>}
-                        {lead.flags.slice(0, 2).map((flag) => <span className={styles.flagChip} key={flag.key}>{flag.label}</span>)}
-                      </div>
-                    )}
-                    <p>{lead.detail}</p>
-                    <div className={styles.cardMetaGrid}>
-                      <span>{lead.sourceLabel}</span>
-                      <span>Estimated hours: {lead.estimatedHours ? `${lead.estimatedHours} hrs` : 'Not set'}</span>
-                      <time dateTime={lead.createdAt}>Received {lead.ageLabel} ago</time>
-                    </div>
-                    {(lead.phone || lead.email) && <div className={styles.contactHint}>{lead.phone || lead.email}</div>}
-                  </Link>
-                  {(lead.phone || lead.convertedJob) && (
-                    <div className={styles.cardActions}>
-                      {lead.phone && <a className={styles.callLink} href={`tel:${lead.phone}`} aria-label={`Call ${lead.name}`}>📞 Call</a>}
-                      {lead.convertedJob && <Link className={styles.openJobLink} href={`/dashboard/jobs/${lead.convertedJob}`}>Open job →</Link>}
-                    </div>
-                  )}
-                </div>
-              ))}
+              {columnLeads.map((lead) => <BoardCard key={lead.id} lead={lead} run={run} />)}
               {columnLeads.length === 0 && <p className={styles.empty}>No leads here.</p>}
             </div>
           </section>
         );
       })}
+    </div>
+  );
+}
+
+function BoardCard({ lead, run }: { lead: LeadViewItem; run: (fn: () => Promise<unknown>) => void }) {
+  const [declining, setDeclining] = useState(false);
+  return (
+    <div className={`${styles.leadCard}${lead.isUrgent ? ` ${styles.urgentCard}` : ''}`}>
+      {/* The card body is the click target (the actions below carry their own). */}
+      <Link className={styles.cardBody} href={`/dashboard/leads/${lead.id}`}>
+        <div className={styles.cardTopline}><strong>{lead.name}</strong><span className={lead.isUrgent ? styles.needsBadge : styles.statusBadge}>{lead.statusLabel}</span></div>
+        {(lead.hasTriage || lead.flags.length > 0) && (
+          <div className={styles.cardChips}>
+            {lead.hasTriage && <span className={styles.scoreChip} data-score={lead.score}>{scoreText(lead)}</span>}
+            {lead.textOnly && <span className={styles.textOnlyChip}>💬 Text only</span>}
+            {lead.flags.slice(0, 2).map((flag) => <span className={styles.flagChip} key={flag.key}>{flag.label}</span>)}
+          </div>
+        )}
+        <p>{lead.detail}</p>
+        <div className={styles.cardMetaGrid}>
+          <span>{lead.sourceLabel}</span>
+          <span>Estimated hours: {lead.estimatedHours ? `${lead.estimatedHours} hrs` : 'Not set'}</span>
+          <time dateTime={lead.createdAt}>Received {lead.ageLabel} ago</time>
+        </div>
+        {(lead.phone || lead.email) && <div className={styles.contactHint}>{lead.phone || lead.email}</div>}
+      </Link>
+
+      <div className={styles.cardActions}>
+        {lead.phone && <a className={styles.callLink} href={`tel:${lead.phone}`} aria-label={`Call ${lead.name}`}>📞 Call</a>}
+        {lead.status !== 'lost' && (
+          <button type="button" className={styles.declineBtn} aria-expanded={declining} onClick={() => setDeclining((v) => !v)}>Decline</button>
+        )}
+        {lead.convertedJob && <Link className={styles.openJobLink} href={`/dashboard/jobs/${lead.convertedJob}`}>Open job →</Link>}
+      </div>
+
+      {declining && (
+        <div className={styles.declineInline}>
+          <p>Why decline?</p>
+          <div className={styles.declineReasons}>
+            {DECLINE_REASONS.map((r) => (
+              <button
+                key={r.key}
+                type="button"
+                className={styles.declineChip}
+                onClick={() => { setDeclining(false); run(() => declineLeadAction(lead.id, r.key, false)); }}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+          <button type="button" className={styles.declineCancel} onClick={() => setDeclining(false)}>Cancel</button>
+        </div>
+      )}
     </div>
   );
 }

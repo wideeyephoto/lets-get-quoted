@@ -513,3 +513,37 @@
 .sdActivity li { font-size: .82rem; color: #c7d2df; }
 .sdActions { display: flex; flex-wrap: wrap; gap: .5rem; }
 @media (max-width: 720px) { .splitWrap { grid-template-columns: 1fr; } .splitList { max-height: 300px; } .sdGrid { grid-template-columns: 1fr; } }
+
+/* --- View gear (collapsed view picker) --- */
+.viewBar { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
+.viewGear { position: relative; }
+.viewGearBtn { display: inline-flex; align-items: center; gap: .45rem; padding: .5rem .85rem; border-radius: 999px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.03); color: #c7d2df; font: inherit; font-size: .84rem; font-weight: 700; cursor: pointer; transition: color .15s, border-color .15s, background .15s; }
+.viewGearBtn svg { width: 16px; height: 16px; }
+.viewGearBtn:hover { color: #f7f5ef; border-color: rgba(255,122,33,.45); }
+.viewGearBtn[aria-expanded="true"] { color: var(--accent); border-color: rgba(255,122,33,.55); background: rgba(255,122,33,.1); }
+.viewGearPop { position: absolute; top: calc(100% + 6px); right: 0; z-index: 45; width: 240px; display: grid; gap: 2px; padding: 6px; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; background: #101824; box-shadow: 0 24px 60px rgba(0,0,0,.5); }
+.viewGearPop > p { margin: 0; padding: 8px 10px 4px; font-size: .66rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.45); }
+.viewGearOpt { display: grid; grid-template-columns: 1fr auto; gap: .05rem .5rem; width: 100%; text-align: left; font: inherit; color: #dbe4ef; background: transparent; border: 1px solid transparent; border-radius: 8px; padding: .5rem .6rem; cursor: pointer; }
+.viewGearOpt strong { font-size: .85rem; font-weight: 700; }
+.viewGearOpt small { grid-column: 1 / -1; font-size: .72rem; color: rgba(255,255,255,.5); }
+.viewGearOpt:hover { background: rgba(255,255,255,.05); }
+.viewGearOpt[aria-checked="true"] { background: rgba(255,122,33,.12); border-color: rgba(255,122,33,.4); }
+.viewGearOpt[aria-checked="true"] strong { color: #ffb27d; }
+.viewGearCheck { color: var(--accent); font-weight: 900; }
+
+/* --- Board card in-card actions + inline decline --- */
+.cardBody { display: grid; gap: .55rem; color: inherit; text-decoration: none; }
+.declineBtn { padding: .28rem .6rem; border-radius: 6px; font: inherit; font-size: .76rem; font-weight: 800; color: #fca5a5; background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.28); cursor: pointer; }
+.declineBtn:hover { background: rgba(248,113,113,.18); }
+.declineInline { display: grid; gap: .5rem; margin-top: .1rem; padding: .6rem .65rem; border: 1px solid rgba(248,113,113,.28); border-radius: 8px; background: rgba(248,113,113,.06); }
+.declineInline > p { margin: 0; font-size: .66rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: rgba(255,255,255,.55); }
+.declineCancel { justify-self: start; padding: 0; font: inherit; font-size: .74rem; font-weight: 700; color: rgba(255,255,255,.55); background: none; border: 0; cursor: pointer; }
+.declineCancel:hover { color: #fff; }
+
+/* --- Score legend (bottom of the leads section) --- */
+.scoreChip[data-score='warm'] { background: rgba(255,209,102,.14); border-color: rgba(255,209,102,.45); color: #ffd591; }
+.scoreLegend { display: grid; gap: .5rem; margin-top: 1.1rem; padding: .85rem 1rem; border: 1px solid rgba(255,255,255,.09); border-radius: 12px; background: rgba(255,255,255,.02); }
+.scoreLegendTitle { font-size: .66rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: rgba(255,255,255,.5); }
+.scoreLegendRow { display: grid; grid-template-columns: max-content 1fr; gap: .65rem; align-items: start; font-size: .82rem; color: rgba(255,255,255,.72); line-height: 1.45; }
+.scoreLegendRow .scoreChip { white-space: nowrap; }
+.scoreLegendNote { margin: .15rem 0 0; font-size: .76rem; color: rgba(255,255,255,.45); }
