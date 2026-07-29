@@ -44,7 +44,7 @@ export default async function DashboardPage() {
   await expireStaleLeads(supabase, accountId);
 
   const [{ data: account }, { data: identityData }, { data: site }, jobs, leads, { count: clientCount }] = await Promise.all([
-    supabase.from('accounts').select('connect_onboarded, connect_disabled_at, schedule_day_hours, daily_digest_enabled').eq('id', accountId).single(),
+    supabase.from('accounts').select('connect_onboarded, connect_disabled_at, schedule_day_hours, daily_digest_enabled, auto_review_request, quote_followups_enabled, appointment_reminders_enabled').eq('id', accountId).single(),
     supabase.auth.getUserIdentities(),
     supabase.from('sites').select('published, subdomain, custom_domain, custom_domain_verified_at, content').eq('account_id', accountId).maybeSingle(),
     listJobs(supabase, accountId),
@@ -59,6 +59,9 @@ export default async function DashboardPage() {
   const connectDisabledAt = account?.connect_disabled_at ?? null;
   const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
   const dailyDigestOn = Boolean((account as { daily_digest_enabled?: boolean } | null)?.daily_digest_enabled);
+  const reviewsOn = Boolean((account as { auto_review_request?: boolean } | null)?.auto_review_request);
+  const followupsOn = Boolean((account as { quote_followups_enabled?: boolean } | null)?.quote_followups_enabled);
+  const remindersOn = Boolean((account as { appointment_reminders_enabled?: boolean } | null)?.appointment_reminders_enabled);
   const linkedMethodCount = identityData?.identities?.length ?? 1;
   const sitePublished = site?.published ?? false;
   // Blog publishing reminder (owner-set cadence in the builder's Blog section).
@@ -385,7 +388,10 @@ export default async function DashboardPage() {
           <p className="eyebrow">Automation at work</p>
           <h2>Working for you · last 30 days</h2>
         </div>
-        <div style={{ marginTop: '0.5rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.6rem' }}>
+          <AutomationLink id="reviews" label="Review requests" on={reviewsOn} />
+          <AutomationLink id="followups" label="Quote follow-ups" on={followupsOn} />
+          <AutomationLink id="reminders" label="Appointment reminders" on={remindersOn} />
           <AutomationLink id="daily-digest" label="Daily digest" on={dailyDigestOn} />
         </div>
         {automation.total === 0 ? (
