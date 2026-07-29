@@ -194,6 +194,45 @@ alter table accounts add column if not exists instant_book_geo_mode text not nul
 -- Off by default.
 alter table accounts add column if not exists instant_book_drive_time boolean not null default false;
 
+-- EXTRA STOP — a same-day / within-24h "add me to the end of your route" path
+-- that runs ALONGSIDE standard instant booking with its OWN limits and rules.
+-- The contractor reviews each request, proposes an arrival window, and sets a
+-- separate Extra Stop fee; the customer pays only after approving the time and
+-- price. All config is per-account and OFF by default so nothing changes until
+-- an owner opts in (see src/lib/extra-stop.ts). Fees are stored in CENTS to
+-- avoid float drift (matches the payment_plans convention).
+alter table accounts add column if not exists extra_stop_enabled boolean not null default false;
+-- Eligible weekdays as a CSV of day numbers (0=Sun … 6=Sat). Default Mon–Fri.
+alter table accounts add column if not exists extra_stop_weekdays text not null default '1,2,3,4,5';
+-- Earliest time an Extra Stop arrival window may START (HH:MM, 24h, owner's tz).
+alter table accounts add column if not exists extra_stop_earliest_time text not null default '08:00';
+-- Latest time an Extra Stop arrival window may END (HH:MM, 24h, owner's tz).
+alter table accounts add column if not exists extra_stop_latest_end text not null default '20:00';
+-- Separate daily cap. Extra Stops do NOT count toward booking_max_per_day.
+alter table accounts add column if not exists extra_stop_max_per_day integer not null default 2;
+-- Longest visit (minutes) an Extra Stop may qualify for. Longer ⇒ excluded.
+alter table accounts add column if not exists extra_stop_max_visit_minutes integer not null default 60;
+-- Max route detour the contractor will accept, in miles and in minutes.
+alter table accounts add column if not exists extra_stop_max_detour_miles numeric not null default 10;
+alter table accounts add column if not exists extra_stop_max_detour_minutes integer not null default 20;
+-- Fee guardrails (CENTS). The contractor sets the exact fee per request, but it
+-- must land within [min,max]. Defaults $50–$250.
+alter table accounts add column if not exists extra_stop_min_fee_cents integer not null default 5000;
+alter table accounts add column if not exists extra_stop_max_fee_cents integer not null default 25000;
+-- Allow Extra Stops even once the normal daily booking capacity is reached.
+alter table accounts add column if not exists extra_stop_allow_after_capacity boolean not null default true;
+-- Contractor must respond to a request within this many minutes (spec default 30).
+alter table accounts add column if not exists extra_stop_response_deadline_mins integer not null default 30;
+-- Customer must pay within this many minutes of the offer (spec default 15).
+-- NB: enforced app-side — Stripe Checkout's own minimum expiry is 30 min.
+alter table accounts add column if not exists extra_stop_payment_deadline_mins integer not null default 15;
+-- Allowed service categories as a CSV of free-form tags. Empty = all allowed.
+alter table accounts add column if not exists extra_stop_categories text not null default '';
+-- How many intake photos the customer must attach for an Extra Stop request.
+alter table accounts add column if not exists extra_stop_required_photos integer not null default 1;
+-- Require the AI eligibility check to pass before Extra Stop is offered.
+alter table accounts add column if not exists extra_stop_require_ai_approval boolean not null default true;
+
 -- ----------------------------------------------------------------------------
 -- MEMBERSHIPS  — links a person (auth.users) to an account with a role.
 -- This IS the Owner/Crew split, enforced in data instead of UI.
@@ -1308,3 +1347,102 @@ create index if not exists leads_account_id_status_created_at_idx on leads (acco
 create index if not exists sms_events_account_payment_idx on sms_events (account_id, payment_id, created_at desc);
 create index if not exists sms_consent_phone_idx on sms_consent (phone_number, status);
 create index if not exists job_schedule_requests_job_id_idx on job_schedule_requests (job_id, status, created_at desc);
+
+-- ============================================================================
+-- EXTRA STOP — requests + append-only audit log
+-- ============================================================================
+-- One row per customer Extra Stop request. It carries its OWN lifecycle (see the
+-- status check) distinct from job_status: a request only becomes a real job (the
+-- confirmed appointment) once payment succeeds, at which point job_id is set.
+-- Money in CENTS. Timestamps in UTC; display in the account's configured tz.
+create table if not exists extra_stop_requests (
+  id                      uuid primary key default gen_random_uuid(),
+  account_id              uuid not null references accounts(id) on delete cascade,
+  client_id               uuid references clients(id) on delete set null,
+  job_id                  uuid references jobs(id) on delete set null,
+  status                  text not null default 'awaiting_contractor'
+    check (status in (
+      'requested','awaiting_contractor','more_information_requested','contractor_declined',
+      'contractor_offer_sent','awaiting_customer_payment','offer_expired','customer_declined',
+      'confirmed','en_route','arrived','completed','customer_canceled','contractor_canceled',
+      'no_show_reported','no_show_confirmed','refunded','disputed'
+    )),
+  -- customer + location
+  client_name             text not null,
+  client_phone            text,
+  client_email            text,
+  address                 text,
+  lat                     numeric,
+  lng                     numeric,
+  -- AI qualification snapshot (intake answers + generated verdict)
+  intake                  jsonb not null default '{}'::jsonb,
+  photo_paths             jsonb not null default '[]'::jsonb,
+  ai_summary              text,
+  ai_visit_minutes        integer,
+  ai_complexity           text,
+  ai_eligible             boolean,
+  ai_confidence           numeric,
+  ai_exclusions           text[] not null default '{}',
+  -- customer-submitted acceptable availability (NOT a guaranteed chosen slot)
+  availability            jsonb not null default '[]'::jsonb,
+  -- route cost vs the contractor's LAST scheduled stop that day
+  detour_miles            numeric,
+  detour_minutes          integer,
+  route_extension_minutes integer,
+  -- contractor offer
+  arrival_date            date,
+  arrival_start           time,
+  arrival_end             time,
+  fee_cents               integer,
+  diagnostic_fee_cents    integer,
+  offer_visit_minutes     integer,
+  contractor_note         text,
+  -- payment + refunds (the actual charge reuses the payments table)
+  payment_id              uuid references payments(id) on delete set null,
+  refund_cents            integer not null default 0,
+  -- arrival verification (location captured only when permission is granted)
+  arrival_lat             numeric,
+  arrival_lng             numeric,
+  -- lifecycle timestamps (UTC)
+  response_deadline_at    timestamptz,
+  offer_sent_at           timestamptz,
+  payment_deadline_at     timestamptz,
+  hold_expires_at         timestamptz,
+  paid_at                 timestamptz,
+  en_route_at             timestamptz,
+  arrived_at              timestamptz,
+  completed_at            timestamptz,
+  canceled_at             timestamptz,
+  cancel_reason           text,
+  no_show_reported_at     timestamptz,
+  no_show_confirmed_at    timestamptz,
+  created_at              timestamptz not null default now(),
+  updated_at              timestamptz not null default now()
+);
+create index if not exists extra_stop_requests_account_status_idx on extra_stop_requests (account_id, status, created_at desc);
+create index if not exists extra_stop_requests_account_arrival_idx on extra_stop_requests (account_id, arrival_date);
+create index if not exists extra_stop_requests_job_idx on extra_stop_requests (job_id);
+
+-- Append-only audit trail of every state change / action on a request. Cheap to
+-- keep from day one; it's the seed for the deferred admin dispute/audit view.
+create table if not exists extra_stop_events (
+  id           uuid primary key default gen_random_uuid(),
+  account_id   uuid not null references accounts(id) on delete cascade,
+  request_id   uuid not null references extra_stop_requests(id) on delete cascade,
+  actor        text not null,            -- 'customer' | 'contractor' | 'system' | 'stripe'
+  from_status  text,
+  to_status    text,
+  meta         jsonb not null default '{}'::jsonb,
+  created_at   timestamptz not null default now()
+);
+create index if not exists extra_stop_events_request_idx on extra_stop_events (request_id, created_at);
+
+alter table extra_stop_requests enable row level security;
+alter table extra_stop_events enable row level security;
+drop policy if exists extra_stop_requests_owner on extra_stop_requests;
+drop policy if exists extra_stop_events_owner on extra_stop_events;
+-- Owner-only visibility. Public writes (a customer creating a request, the Stripe
+-- webhook confirming payment) go through the service-role client, which bypasses
+-- RLS — the same pattern used by booking_holds / leads.
+create policy extra_stop_requests_owner on extra_stop_requests for all using ( is_owner(account_id) );
+create policy extra_stop_events_owner on extra_stop_events for all using ( is_owner(account_id) );

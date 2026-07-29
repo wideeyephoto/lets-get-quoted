@@ -12,6 +12,8 @@ import { updateScheduleDayHoursAction, updateReviewSettingsAction, updateDeposit
 import { ESTIMATE_POSTURES, normalizeEstimatePosture } from '@/lib/estimate-posture';
 import { getSiteContent } from '@/lib/site-content';
 import { WEEKDAY_LABELS, BOOKING_WINDOW_PRESETS, TIMEZONE_OPTIONS, bookingAvailabilityFromAccount } from '@/lib/booking-availability';
+import { EXTRA_STOP_SETTINGS_COLUMNS } from '@/lib/extra-stop';
+import ExtraStopSettingsSection from './ExtraStopSettingsSection';
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
@@ -73,6 +75,12 @@ export default async function SettingsPage({
     .eq('id', accountId)
     .maybeSingle();
   const booking = bookingAvailabilityFromAccount(bookingSettings);
+
+  const { data: extraStopSettings } = await supabase
+    .from('accounts')
+    .select(EXTRA_STOP_SETTINGS_COLUMNS)
+    .eq('id', accountId)
+    .single();
   const instantBookEnabled = Boolean(bookingSettings?.instant_book_enabled);
   const instantBookMinAmount = bookingSettings?.instant_book_min_amount ? Number(bookingSettings.instant_book_min_amount) : 0;
   const instantBookRadius = bookingSettings?.instant_book_radius_miles ? Number(bookingSettings.instant_book_radius_miles) : 15;
@@ -258,7 +266,7 @@ export default async function SettingsPage({
           {
             id: 'automations',
             label: 'Automations',
-            anchors: ['intake-ai', 'booking-availability', 'reviews', 'followups', 'reminders', 'daily-digest'],
+            anchors: ['intake-ai', 'booking-availability', 'extra-stop', 'reviews', 'followups', 'reminders', 'daily-digest'],
             content: (
               <>
                 <section className="panel workspace-section-card" id="intake-ai">
@@ -414,6 +422,8 @@ export default async function SettingsPage({
                     </div>
                   </form>
                 </section>
+
+                <ExtraStopSettingsSection extraStop={extraStopSettings as Parameters<typeof ExtraStopSettingsSection>[0]['extraStop']} />
 
                 <section className="panel workspace-section-card" id="reviews">
                   <div className="section-heading workspace-section-heading compact-heading">

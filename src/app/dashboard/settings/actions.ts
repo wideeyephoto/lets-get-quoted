@@ -15,6 +15,7 @@ import {
   normalizeLeadDays,
 } from '@/lib/booking-availability';
 import { normalizeInstantBookMinAmount, normalizeInstantBookRadiusMiles, normalizeGeoMode } from '@/lib/instant-booking';
+import { extraStopSettingsFromAccount, dollarsToCents } from '@/lib/extra-stop';
 import { geocodeAddress } from '@/lib/geocode';
 import { normalizeUsPhone } from '@/lib/phone';
 
@@ -138,6 +139,63 @@ export async function updateBookingAvailabilityAction(formData: FormData) {
       instant_book_radius_miles: instantBookRadiusMiles,
       instant_book_geo_mode: instantBookGeoMode,
       instant_book_drive_time: instantBookDriveTime,
+    })
+    .eq('id', accountId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/schedule');
+}
+
+// Extra Stop config. Normalizes every field through the shared builder (feeding
+// it a column-shaped row) so the same clamps/guards used everywhere apply here,
+// then writes the account columns. Fees arrive in dollars, stored in cents.
+export async function updateExtraStopSettingsAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const s = extraStopSettingsFromAccount({
+    extra_stop_enabled: formData.get('extraStopEnabled') === 'on',
+    extra_stop_weekdays: formData.getAll('extraStopWeekday').map(String),
+    extra_stop_earliest_time: formData.get('extraStopEarliest'),
+    extra_stop_latest_end: formData.get('extraStopLatestEnd'),
+    extra_stop_max_per_day: formData.get('extraStopMaxPerDay'),
+    extra_stop_max_visit_minutes: formData.get('extraStopMaxVisitMinutes'),
+    extra_stop_max_detour_miles: formData.get('extraStopMaxDetourMiles'),
+    extra_stop_max_detour_minutes: formData.get('extraStopMaxDetourMinutes'),
+    extra_stop_min_fee_cents: dollarsToCents(formData.get('extraStopMinFee')),
+    extra_stop_max_fee_cents: dollarsToCents(formData.get('extraStopMaxFee')),
+    extra_stop_allow_after_capacity: formData.get('extraStopAllowAfterCapacity') === 'on',
+    extra_stop_response_deadline_mins: formData.get('extraStopResponseDeadline'),
+    extra_stop_payment_deadline_mins: formData.get('extraStopPaymentDeadline'),
+    extra_stop_categories: formData.get('extraStopCategories'),
+    extra_stop_required_photos: formData.get('extraStopRequiredPhotos'),
+    extra_stop_require_ai_approval: formData.get('extraStopRequireAiApproval') === 'on',
+  });
+
+  // Never let the fee band invert (min above max).
+  const minFeeCents = Math.min(s.minFeeCents, s.maxFeeCents);
+  const maxFeeCents = Math.max(s.minFeeCents, s.maxFeeCents);
+
+  const { error } = await supabase
+    .from('accounts')
+    .update({
+      extra_stop_enabled: s.enabled,
+      extra_stop_weekdays: s.weekdays.join(','),
+      extra_stop_earliest_time: s.earliestTime,
+      extra_stop_latest_end: s.latestEnd,
+      extra_stop_max_per_day: s.maxPerDay,
+      extra_stop_max_visit_minutes: s.maxVisitMinutes,
+      extra_stop_max_detour_miles: s.maxDetourMiles,
+      extra_stop_max_detour_minutes: s.maxDetourMinutes,
+      extra_stop_min_fee_cents: minFeeCents,
+      extra_stop_max_fee_cents: maxFeeCents,
+      extra_stop_allow_after_capacity: s.allowAfterCapacity,
+      extra_stop_response_deadline_mins: s.responseDeadlineMins,
+      extra_stop_payment_deadline_mins: s.paymentDeadlineMins,
+      extra_stop_categories: s.categories.join(', '),
+      extra_stop_required_photos: s.requiredPhotos,
+      extra_stop_require_ai_approval: s.requireAiApproval,
     })
     .eq('id', accountId);
 
