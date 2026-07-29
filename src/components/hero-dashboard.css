@@ -12,6 +12,12 @@
   box-shadow:0 44px 100px -50px rgba(0,0,0,.9),0 0 0 1px rgba(255,122,33,.06),inset 0 1px 0 rgba(255,255,255,.05)}
 .fh-win::after{content:"";position:absolute;left:0;right:0;top:0;height:2px;z-index:3;pointer-events:none;
   background:linear-gradient(90deg,transparent,rgba(255,209,102,.5),rgba(190,242,100,.4),transparent)}
+/* wrapper so the panel + its "sample data" caption sit together as one hero cell */
+.fh-shell{align-self:center;width:100%;min-width:0;display:flex;flex-direction:column;gap:11px}
+.fh-samplenote{margin:0;text-align:center;font-size:11.5px;line-height:1.4;color:rgba(247,245,239,.5);
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace}
+.fh-samplenote a{color:rgba(247,245,239,.72);border-bottom:1px solid rgba(255,255,255,.2);text-decoration:none;white-space:nowrap}
+.fh-samplenote a:hover{color:#ffd166;border-color:#ffd166}
 .fh-bar{display:flex;align-items:center;gap:7px;padding:10px 13px;background:#0d1521;border-bottom:1px solid var(--fh-line)}
 .fh-bar i{width:9px;height:9px;border-radius:50%;background:var(--fh-line2)}
 .fh-bar i:nth-child(1){background:#ff5f57}.fh-bar i:nth-child(2){background:#febc2e}.fh-bar i:nth-child(3){background:#28c840}

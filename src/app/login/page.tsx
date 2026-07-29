@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { sendMagicLinkAction } from './actions';
 import { normalizeUsPhone } from '@/lib/phone';
 import { supabase } from '@/lib/supabase';
@@ -63,7 +64,9 @@ function MicrosoftIcon() {
   );
 }
 
-export default function LoginPage() {
+function LoginInner() {
+  const searchParams = useSearchParams();
+  const isSignup = searchParams.get('intent') === 'signup';
   const [step, setStep] = useState<'request' | 'verify'>('request');
   const [identifier, setIdentifier] = useState('');
   const [normalizedPhone, setNormalizedPhone] = useState('');
@@ -193,9 +196,9 @@ export default function LoginPage() {
   return (
     <main className="page-shell">
       <section className="hero-card auth-card">
-        <div className="auth-badge"><LockIcon /><span>Secure Sign-In</span></div>
-        <h1>Sign in</h1>
-        <p>Mobile number or email. No password.</p>
+        <div className="auth-badge"><LockIcon /><span>{isSignup ? 'Free account' : 'Secure Sign-In'}</span></div>
+        <h1>{isSignup ? 'Create your free account' : 'Sign in'}</h1>
+        <p>{isSignup ? 'Phone or email — no password, no card. You only pay when a homeowner pays you.' : 'Mobile number or email. No password.'}</p>
 
         {step === 'request' ? (
           <form onSubmit={handleIdentifierSubmit} className="auth-form">
@@ -204,7 +207,7 @@ export default function LoginPage() {
               <IdCardIcon />
               <input id="login-identifier" type="text" value={identifier} onChange={(event) => setIdentifier(event.target.value)} placeholder="(248) 555-0117 or you@company.com" autoComplete="username" required />
             </div>
-            <button type="submit" className="btn primary" disabled={loading}>{loading ? 'Sending…' : <>Continue <ArrowRightIcon /></>}</button>
+            <button type="submit" className="btn primary" disabled={loading}>{loading ? 'Sending…' : <>{isSignup ? 'Create my account' : 'Continue'} <ArrowRightIcon /></>}</button>
           </form>
         ) : (
           <form onSubmit={verifyPhoneCode} className="auth-form">
@@ -226,9 +229,24 @@ export default function LoginPage() {
 
         {message ? <p className="auth-message" role="status">{message}</p> : null}
 
+        <p className="auth-toggle">
+          {isSignup ? (
+            <>Already have an account? <a href="/login">Sign in</a></>
+          ) : (
+            <>New here? <a href="/login?intent=signup">Create a free account</a></>
+          )}
+        </p>
         <p className="auth-trust"><LockIcon /> Encrypted. We never store passwords.</p>
         <p className="auth-crew-link"><a href="/field/login">On a crew? Open the field app →</a></p>
       </section>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginInner />
+    </Suspense>
   );
 }

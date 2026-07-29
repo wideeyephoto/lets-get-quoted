@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { TRADES } from '@/lib/trades';
 import SiteFooter from '@/components/site-footer';
 import HeroDashboard from '@/components/hero-dashboard';
+import StickyCta from '@/components/sticky-cta';
 import FeatureWheelStory from './features/FeatureWheelStory';
 
 function QuoteIcon() {
@@ -166,7 +167,7 @@ const compareRows: CompareRow[] = [
     ],
   },
   {
-    label: 'Instant AI estimate on your site',
+    label: '24/7 AI Estimator on your site',
     cells: [
       { tone: 'good', text: 'Yes — qualifies leads 24/7' },
       { tone: 'bad', text: 'Not offered' },
@@ -270,23 +271,22 @@ export default function HomePage() {
         <div className="hero-copy">
           <h1>Quote it. Sign it. Get paid. <span className="gradient-text">Straight to your bank.</span></h1>
           <p className="hero-text">
-            One tool to win the lead, quote the job, and get paid &mdash; a contractor website with an AI estimator that
-            qualifies homeowners 24/7, plus e-signatures, scheduling, and Stripe payments that land straight in your
-            bank. No web guy, no paper contract, no chasing checks.
+            The contractor website with a 24/7 AI Estimator that turns visitors into booked jobs &mdash; then quote,
+            e-sign, and get paid in one flow, straight to your bank. No web guy, no paper contracts, no chasing checks.
           </p>
           <div className="actions">
-            <Link href="/login" className="btn primary">
+            <Link href="/login?intent=signup" className="btn primary">
               Create Free Account
             </Link>
             <Link href="/demo" className="btn secondary">
               Explore the demo &mdash; no signup
             </Link>
           </div>
-          <p className="hero-reassure">Free to start &middot; No credit card &middot; You only pay when a homeowner pays you.</p>
+          <p className="hero-reassure hero-reassure-pill">Free to start &middot; No credit card &middot; <strong>you only pay when a homeowner pays you.</strong></p>
           <ul className="hero-trust-row">
-            <li><MessageIcon /><span>AI intake qualifies leads 24/7</span></li>
+            <li><MessageIcon /><span>24/7 AI Estimator prices &amp; books leads for you</span></li>
             <li><SignatureIcon /><span>Quote, e-sign &amp; get paid on Stripe</span></li>
-            <li><TrendDownIcon /><span>No subscription &mdash; fees drop to 0.65%</span></li>
+            <li><TrendDownIcon /><span>No monthly bill &mdash; a small fee only when you get paid (1.25% &rarr; 0.65% as you grow)</span></li>
           </ul>
         </div>
 
@@ -298,6 +298,13 @@ export default function HomePage() {
       <FeatureWheelStory />
 
       <div className="marketing-shell">
+
+      {/* Peak-intent CTA right after the command center, so the desire built
+          across the wheel has a button in reach before the comparison. */}
+      <div className="mid-cta mid-cta-lead">
+        <Link href="/login?intent=signup" className="btn primary">Create Free Account</Link>
+        <Link href="/demo" className="btn secondary">Explore the demo &mdash; no signup</Link>
+      </div>
 
       <section className="section-block">
         <div className="flow-band-grid">
@@ -329,6 +336,11 @@ export default function HomePage() {
           </aside>
         </div>
       </section>
+
+      <div className="mid-cta">
+        <Link href="/login?intent=signup" className="btn primary">Create Free Account</Link>
+        <Link href="/demo" className="btn secondary">Explore the demo &mdash; no signup</Link>
+      </div>
 
       <section className="section-block compare-band">
         <div className="section-heading">
@@ -378,7 +390,7 @@ export default function HomePage() {
           <span><span className="compare-mark tone-bad" aria-hidden="true">✕</span> Not offered</span>
         </p>
         <div className="mid-cta">
-          <Link href="/login" className="btn primary">Create Free Account</Link>
+          <Link href="/login?intent=signup" className="btn primary">Create Free Account</Link>
           <Link href="/demo" className="btn secondary">Explore the demo &mdash; no signup</Link>
         </div>
       </section>
@@ -404,9 +416,21 @@ export default function HomePage() {
             </div>
           ))}
         </div>
-        <p className="pricing-footnote">Platform fee only. Standard Stripe processing (about 2.9% + 30&cent; per card charge) applies separately.</p>
+        <div className="pricing-takehome">
+          <p className="pricing-takehome-h">What a real job actually costs you</p>
+          <ul className="pricing-takehome-rows">
+            <li><span>A $2,140 job, collected</span><span className="v">$2,140</span></li>
+            <li><span>Platform fee (1.25%)</span><span className="v">&minus;$26.75</span></li>
+            <li><span>Stripe processing (2.9% + 30&cent;)</span><span className="v">&minus;$62.36</span></li>
+            <li className="keep"><span>You keep</span><span className="v">~$2,051</span></li>
+          </ul>
+          <p className="pricing-takehome-note">
+            Take the deposit by bank/ACH and Stripe&rsquo;s cut nearly disappears. Slow month with no jobs?
+            <strong> $0</strong> &mdash; while a monthly CRM still bills you $200+.
+          </p>
+        </div>
         <div className="mid-cta">
-          <Link href="/login" className="btn primary">Create Free Account</Link>
+          <Link href="/login?intent=signup" className="btn primary">Create Free Account</Link>
           <Link href="/pricing" className="btn secondary">See full pricing &amp; fee calculator &rarr;</Link>
         </div>
       </section>
@@ -441,7 +465,7 @@ export default function HomePage() {
           <h2>Your next quote could be the fastest payday you&apos;ve had yet.</h2>
           <p>No subscription. No setup fee. You only pay our platform fee when a homeowner actually pays you.</p>
           <div className="actions">
-            <Link href="/login" className="btn primary">
+            <Link href="/login?intent=signup" className="btn primary">
               Create Free Account
             </Link>
           </div>
@@ -450,6 +474,8 @@ export default function HomePage() {
 
       <SiteFooter />
       </div>
+
+      <StickyCta />
     </main>
   );
 }

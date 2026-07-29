@@ -91,6 +91,7 @@ export default function HeroDashboard() {
   }, []);
 
   return (
+    <div className="fh-shell">
     <div className="fh-win" aria-hidden="true" ref={winRef}>
       <div className="fh-bar">
         <i />
@@ -200,7 +201,7 @@ export default function HeroDashboard() {
               <svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z" /><path d="M8 10h8M8 13h5" /></svg>
             </span>
             <div className="m">
-              <b>AI Smart Intake <span className="star">★</span></b>
+              <b>AI Estimator <span className="star">★</span></b>
               <small>Prices leads instantly</small>
             </div>
             <span className="fh-tag">24/7</span>
@@ -237,6 +238,10 @@ export default function HeroDashboard() {
           </div>
         </div>
       </div>
+    </div>
+      <p className="fh-samplenote">
+        Sample dashboard &mdash; illustrative data, not a real customer. <a href="/demo">See the live demo &rarr;</a>
+      </p>
     </div>
   );
 }

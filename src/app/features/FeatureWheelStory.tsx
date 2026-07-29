@@ -20,6 +20,13 @@ export default function FeatureWheelStory() {
     const REDUCE = window.matchMedia('(prefers-reduced-motion:reduce)').matches;
     const cleanups: Array<() => void> = [];
 
+    // The device mockups carry invented sample figures — hide them from
+    // assistive tech and crawlers; the real meaning lives in the adjacent
+    // headings and bullets (see the "Sample data" labels).
+    scope.querySelectorAll<HTMLElement>('.fw-mock, .cc-screen').forEach((el) => {
+      el.setAttribute('aria-hidden', 'true');
+    });
+
     // ---------------- the wheel (scroll-driven rotation + section swap) ------------
     (() => {
       const story = scope.querySelector<HTMLElement>('.fw-story');
