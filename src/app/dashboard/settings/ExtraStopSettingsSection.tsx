@@ -48,6 +48,9 @@ export default function ExtraStopSettingsSection({ extraStop, refundTiers, headl
           <small className="field-hint">Extra Stops are only offered on these days. Clear them all to pause Extra Stop.</small>
         </div>
 
+        <details className="advanced-settings">
+          <summary>Advanced — times, fees, limits, deadlines &amp; refunds</summary>
+          <div className="form-grid compact-form" style={{ marginTop: '0.7rem' }}>
         <div className="field">
           <label htmlFor="extraStopEarliest">Earliest arrival time</label>
           <input id="extraStopEarliest" name="extraStopEarliest" type="time" defaultValue={s.earliestTime} />
@@ -149,6 +152,8 @@ export default function ExtraStopSettingsSection({ extraStop, refundTiers, headl
           <label htmlFor="refundAfterArrived">After arrival (%)</label>
           <input id="refundAfterArrived" name="refundAfterArrived" type="number" min="0" max="100" step="5" defaultValue={t.afterArrived} />
         </div>
+          </div>
+        </details>
 
         <div className="form-actions">
           <SaveButton>Save Extra Stop settings</SaveButton>

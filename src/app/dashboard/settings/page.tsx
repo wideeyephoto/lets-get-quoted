@@ -320,26 +320,31 @@ export default async function SettingsPage({
                       <small className="field-hint">Shades every AI estimate lower (win on price) or higher (position on quality). It never changes your real quote — just the pre-visit ballpark the homeowner sees.</small>
                     </div>
 
-                    <div className="field full">
-                      <label htmlFor="highValueLeadAmount">High-value lead threshold ($)</label>
-                      <input id="highValueLeadAmount" name="highValueLeadAmount" type="number" min="0" step="100" inputMode="numeric" placeholder="e.g. 5000" defaultValue={highValueLeadAmount ?? ''} />
-                      <small className="field-hint">When a lead&apos;s AI estimate could reach this amount, it&apos;s flagged <strong>high-value</strong> and jumps the line &mdash; louder alerts and top priority, so you respond to the big jobs first. Leave blank to turn priority off.</small>
-                    </div>
+                    <details className="advanced-settings">
+                      <summary>Advanced — lead priority &amp; alerts</summary>
+                      <div className="form-grid compact-form" style={{ marginTop: '0.7rem' }}>
+                        <div className="field full">
+                          <label htmlFor="highValueLeadAmount">High-value lead threshold ($)</label>
+                          <input id="highValueLeadAmount" name="highValueLeadAmount" type="number" min="0" step="100" inputMode="numeric" placeholder="e.g. 5000" defaultValue={highValueLeadAmount ?? ''} />
+                          <small className="field-hint">When a lead&apos;s AI estimate could reach this amount, it&apos;s flagged <strong>high-value</strong> and jumps the line &mdash; louder alerts and top priority, so you respond to the big jobs first. Leave blank to turn priority off.</small>
+                        </div>
 
-                    <label className="checkbox-row" htmlFor="muteLowQualityLeads">
-                      <input id="muteLowQualityLeads" name="muteLowQualityLeads" type="checkbox" defaultChecked={muteLowQualityLeads} />
-                      <span>Don&apos;t interrupt me for low-quality leads &mdash; out-of-area, work you don&apos;t do, below-minimum, and &ldquo;just researching&rdquo; still land in your board, just without an alert or dashboard nag (keeps spam, marketing, and AI callers from stealing your attention)</span>
-                    </label>
+                        <label className="checkbox-row" htmlFor="muteLowQualityLeads">
+                          <input id="muteLowQualityLeads" name="muteLowQualityLeads" type="checkbox" defaultChecked={muteLowQualityLeads} />
+                          <span>Don&apos;t interrupt me for low-quality leads &mdash; out-of-area, work you don&apos;t do, below-minimum, and &ldquo;just researching&rdquo; still land in your board, just without an alert or dashboard nag (keeps spam, marketing, and AI callers from stealing your attention)</span>
+                        </label>
 
-                    <label className="checkbox-row" htmlFor="highValueSmsEnabled">
-                      <input id="highValueSmsEnabled" name="highValueSmsEnabled" type="checkbox" defaultChecked={highValueSmsEnabled} />
-                      <span>Text my phone the moment a high-value lead comes in</span>
-                    </label>
-                    <div className="field full">
-                      <label htmlFor="alertPhone">My mobile for high-value texts</label>
-                      <input id="alertPhone" name="alertPhone" type="tel" inputMode="tel" placeholder="(248) 555-0100" defaultValue={alertPhone} />
-                      <small className="field-hint">Your own number &mdash; entering it opts you in to your own lead alerts. Standard rates apply.</small>
-                    </div>
+                        <label className="checkbox-row" htmlFor="highValueSmsEnabled">
+                          <input id="highValueSmsEnabled" name="highValueSmsEnabled" type="checkbox" defaultChecked={highValueSmsEnabled} />
+                          <span>Text my phone the moment a high-value lead comes in</span>
+                        </label>
+                        <div className="field full">
+                          <label htmlFor="alertPhone">My mobile for high-value texts</label>
+                          <input id="alertPhone" name="alertPhone" type="tel" inputMode="tel" placeholder="(248) 555-0100" defaultValue={alertPhone} />
+                          <small className="field-hint">Your own number &mdash; entering it opts you in to your own lead alerts. Standard rates apply.</small>
+                        </div>
+                      </div>
+                    </details>
 
                     <div className="form-actions">
                       <SaveButton>Save intake settings</SaveButton>
@@ -405,40 +410,45 @@ export default async function SettingsPage({
                       <small className="field-hint">Coarse on purpose &mdash; a customer picks a part of the day, and you set the exact time when you confirm.</small>
                     </div>
 
-                    <div className="field">
-                      <label htmlFor="bookingMaxPerDay">Max bookings per day</label>
-                      <input id="bookingMaxPerDay" name="bookingMaxPerDay" type="number" min="1" max="50" step="1" inputMode="numeric" defaultValue={booking.maxPerDay} />
-                      <small className="field-hint">Once a day hits this many jobs, it stops offering slots.</small>
-                    </div>
-                    <div className="field">
-                      <label htmlFor="bookingLeadDays">Soonest a customer can book</label>
-                      <select id="bookingLeadDays" name="bookingLeadDays" defaultValue={String(booking.leadDays)}>
-                        <option value={0}>Same day</option>
-                        <option value={1}>From tomorrow</option>
-                        <option value={2}>2 days out</option>
-                        <option value={3}>3 days out</option>
-                        <option value={7}>A week out</option>
-                      </select>
-                      <small className="field-hint">Gives you lead time to plan your route.</small>
-                    </div>
+                    <details className="advanced-settings">
+                      <summary>Advanced — capacity, timing &amp; route matching</summary>
+                      <div className="form-grid compact-form" style={{ marginTop: '0.7rem' }}>
+                        <div className="field">
+                          <label htmlFor="bookingMaxPerDay">Max bookings per day</label>
+                          <input id="bookingMaxPerDay" name="bookingMaxPerDay" type="number" min="1" max="50" step="1" inputMode="numeric" defaultValue={booking.maxPerDay} />
+                          <small className="field-hint">Once a day hits this many jobs, it stops offering slots.</small>
+                        </div>
+                        <div className="field">
+                          <label htmlFor="bookingLeadDays">Soonest a customer can book</label>
+                          <select id="bookingLeadDays" name="bookingLeadDays" defaultValue={String(booking.leadDays)}>
+                            <option value={0}>Same day</option>
+                            <option value={1}>From tomorrow</option>
+                            <option value={2}>2 days out</option>
+                            <option value={3}>3 days out</option>
+                            <option value={7}>A week out</option>
+                          </select>
+                          <small className="field-hint">Gives you lead time to plan your route.</small>
+                        </div>
 
-                    <div className="field">
-                      <label htmlFor="instantBookRadius">&ldquo;Nearby&rdquo; radius (miles)</label>
-                      <input id="instantBookRadius" name="instantBookRadius" type="number" min="1" max="100" step="1" inputMode="numeric" defaultValue={instantBookRadius} />
-                      <small className="field-hint">How close one of your existing jobs counts as &ldquo;we&apos;ll already be in your area&rdquo; that day.</small>
-                    </div>
-                    <div className="field">
-                      <label htmlFor="instantBookGeoMode">Days near your existing jobs</label>
-                      <select id="instantBookGeoMode" name="instantBookGeoMode" defaultValue={instantBookGeoMode}>
-                        <option value="prefer">Prefer &mdash; show nearby days first</option>
-                        <option value="restrict">Restrict &mdash; only offer nearby days</option>
-                      </select>
-                      <small className="field-hint">Restrict keeps routes tight; a customer with no nearby day is offered a callback instead. Needs your business address (below) geocoded — set it under Business &rarr; mailing address. Only applies when the gate above is on.</small>
-                    </div>
-                    <label className="checkbox-row" htmlFor="instantBookDriveTime">
-                      <input id="instantBookDriveTime" name="instantBookDriveTime" type="checkbox" defaultChecked={instantBookDriveTime} />
-                      <span>Use real <strong>driving distance &amp; time</strong> for &ldquo;nearby&rdquo; (more accurate than straight-line, and shows &ldquo;~X min away&rdquo;). Uses your Google key and needs the <em>Distance Matrix API</em> enabled &mdash; it falls back to straight-line if not.</span>
-                    </label>
+                        <div className="field">
+                          <label htmlFor="instantBookRadius">&ldquo;Nearby&rdquo; radius (miles)</label>
+                          <input id="instantBookRadius" name="instantBookRadius" type="number" min="1" max="100" step="1" inputMode="numeric" defaultValue={instantBookRadius} />
+                          <small className="field-hint">How close one of your existing jobs counts as &ldquo;we&apos;ll already be in your area&rdquo; that day.</small>
+                        </div>
+                        <div className="field">
+                          <label htmlFor="instantBookGeoMode">Days near your existing jobs</label>
+                          <select id="instantBookGeoMode" name="instantBookGeoMode" defaultValue={instantBookGeoMode}>
+                            <option value="prefer">Prefer &mdash; show nearby days first</option>
+                            <option value="restrict">Restrict &mdash; only offer nearby days</option>
+                          </select>
+                          <small className="field-hint">Restrict keeps routes tight; a customer with no nearby day is offered a callback instead. Needs your business address (below) geocoded — set it under Business &rarr; mailing address. Only applies when the gate above is on.</small>
+                        </div>
+                        <label className="checkbox-row" htmlFor="instantBookDriveTime">
+                          <input id="instantBookDriveTime" name="instantBookDriveTime" type="checkbox" defaultChecked={instantBookDriveTime} />
+                          <span>Use real <strong>driving distance &amp; time</strong> for &ldquo;nearby&rdquo; (more accurate than straight-line, and shows &ldquo;~X min away&rdquo;). Uses your Google key and needs the <em>Distance Matrix API</em> enabled &mdash; it falls back to straight-line if not.</span>
+                        </label>
+                      </div>
+                    </details>
 
                     <div className="form-actions">
                       <SaveButton>Save booking availability</SaveButton>
