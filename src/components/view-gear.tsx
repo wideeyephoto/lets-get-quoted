@@ -8,7 +8,8 @@ export type ViewOption<T extends string> = { id: T; label: string; hint: string 
 
 const MAP_OPTIONS: { id: MapView; label: string; hint: string }[] = [
   { id: 'off', label: 'None', hint: 'Hide the map' },
-  { id: 'large', label: 'Map', hint: 'Show it under the header' },
+  // Not "under the header" — on the schedule page it sits under the calendar.
+  { id: 'large', label: 'Map', hint: 'Show your jobs on a map' },
 ];
 
 const MAP_THEME_OPTIONS: { id: MapTheme; label: string; hint: string }[] = [
@@ -27,6 +28,10 @@ function GearIcon() {
 
 // Shared gear/view-settings menu: a list of layout options (radio) plus an
 // optional "Show map" toggle. Closes on outside-click / Escape.
+//
+// `views` is optional: a surface with only one layout (the schedule calendar)
+// still wants the map on/off and theme controls, and should get them from the
+// same menu in the same place rather than a second bespoke control.
 export default function ViewGear<T extends string>({
   views,
   activeView,
@@ -37,9 +42,9 @@ export default function ViewGear<T extends string>({
   onSetMapTheme,
   label,
 }: {
-  views: ViewOption<T>[];
-  activeView: T;
-  onPickView: (next: T) => void;
+  views?: ViewOption<T>[];
+  activeView?: T;
+  onPickView?: (next: T) => void;
   mapView?: MapView; // omit to hide the map options
   onSetMapView?: (next: MapView) => void;
   mapTheme?: MapTheme;
@@ -59,7 +64,8 @@ export default function ViewGear<T extends string>({
     return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
   }, [open]);
 
-  const current = views.find((v) => v.id === activeView) ?? views[0];
+  const showViews = Boolean(views && views.length > 0);
+  const current = views?.find((v) => v.id === activeView) ?? views?.[0];
   const showMapOptions = typeof mapView === 'string' && Boolean(onSetMapView);
   const showMapTheme = showMapOptions && mapView !== 'off' && typeof mapTheme === 'string' && Boolean(onSetMapTheme);
 
@@ -79,28 +85,32 @@ export default function ViewGear<T extends string>({
     <div className={styles.gear} ref={ref}>
       <button type="button" className={styles.gearBtn} aria-haspopup="menu" aria-expanded={open} onClick={toggle} title="View settings">
         <GearIcon />
-        <span>{label ?? current.label}</span>
+        <span>{label ?? current?.label ?? 'View'}</span>
       </button>
       {open && (
         <div className={`${styles.pop}${openUp ? ` ${styles.popUp}` : ''}`} role="menu">
-          <p>View</p>
-          {views.map((v) => (
-            <button
-              key={v.id}
-              type="button"
-              role="menuitemradio"
-              aria-checked={activeView === v.id}
-              className={styles.opt}
-              onClick={() => { onPickView(v.id); setOpen(false); }}
-            >
-              <strong>{v.label}</strong>
-              {activeView === v.id && <span className={styles.check} aria-hidden="true">✓</span>}
-              <small>{v.hint}</small>
-            </button>
-          ))}
+          {showViews && (
+            <>
+              <p>View</p>
+              {views!.map((v) => (
+                <button
+                  key={v.id}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={activeView === v.id}
+                  className={styles.opt}
+                  onClick={() => { onPickView?.(v.id); setOpen(false); }}
+                >
+                  <strong>{v.label}</strong>
+                  {activeView === v.id && <span className={styles.check} aria-hidden="true">✓</span>}
+                  <small>{v.hint}</small>
+                </button>
+              ))}
+            </>
+          )}
           {showMapOptions && (
             <>
-              <div className={styles.sep} />
+              {showViews && <div className={styles.sep} />}
               <p>Map</p>
               {MAP_OPTIONS.map((m) => (
                 <button

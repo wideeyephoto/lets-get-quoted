@@ -27,33 +27,23 @@ export default function BookingLinkCard({ bookingUrl, sitePublished, openWindowC
   // Not live yet: point the owner at what unlocks self-serve booking.
   if (!bookingUrl) {
     return (
-      <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading">
-          <p className="eyebrow">Online booking</p>
-          <h2>Let customers book themselves</h2>
-        </div>
-        <p className="empty-state">
-          {sitePublished
-            ? 'Add a free letsgetquoted.com subdomain to your website to switch on self-serve booking. '
-            : 'Publish your website to switch on self-serve booking — customers pick an open window and it lands on this calendar automatically. '}
-          <Link href="/dashboard/sites">Go to your website →</Link>
-        </p>
-      </section>
+      <p className="empty-state">
+        {sitePublished
+          ? 'Add a free letsgetquoted.com subdomain to your website to switch on self-serve booking. '
+          : 'Publish your website to switch on self-serve booking — customers pick an open window and it lands on this calendar automatically. '}
+        <Link href="/dashboard/sites">Go to your website →</Link>
+      </p>
     );
   }
 
   const displayUrl = bookingUrl.replace(/^https?:\/\//, '');
 
   return (
-    <section className="panel workspace-section-card booking-link-card">
-      <div className="section-heading workspace-section-heading">
-        <p className="eyebrow">Online booking</p>
-        <h2>Your self-serve booking page</h2>
-        <p className="schedule-drag-hint">
-          Share this link and customers pick an open window themselves. Each request lands here as a scheduled job and a
-          warm lead — no phone tag.
-        </p>
-      </div>
+    <div className="booking-link-card">
+      <p className="workspace-details-copy">
+        Share this link and customers pick an open window themselves. Each request lands here as a scheduled job and a
+        warm lead — no phone tag.
+      </p>
       <div className="booking-link-row">
         <input
           className="booking-link-url"
@@ -70,6 +60,6 @@ export default function BookingLinkCard({ bookingUrl, sitePublished, openWindowC
           ? `${openWindowCount} open window${openWindowCount === 1 ? '' : 's'} across ${openDayCount} day${openDayCount === 1 ? '' : 's'} on offer right now. More open up as you keep weekdays free on the calendar.`
           : 'No open windows are showing right now — your next few weekdays are full. Free up a weekday to offer online slots.'}
       </p>
-    </section>
+    </div>
   );
 }

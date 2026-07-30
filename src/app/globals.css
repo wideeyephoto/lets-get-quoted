@@ -8320,3 +8320,250 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 @media (prefers-reduced-motion: reduce) {
   .posture-card, .intake-toggle-track, .intake-toggle-track > span { transition: none; }
 }
+
+/* ---------------------------------------------------------------------------
+   Folded workspace panels
+   A page that carries several configure-once surfaces (schedule: time off,
+   booking link, booking availability) shows them as a short stack of named
+   rows. Open one and its neighbours fold, so only one form is ever on screen.
+--------------------------------------------------------------------------- */
+
+.schedule-setup {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.schedule-setup-head {
+  margin-bottom: 0.15rem;
+}
+
+.schedule-setup-head .eyebrow {
+  margin: 0 0 0.3rem;
+}
+
+.schedule-setup-head h2 {
+  margin: 0;
+  font-size: 1.28rem;
+  letter-spacing: -0.01em;
+}
+
+.schedule-setup-head p {
+  margin: 0.3rem 0 0;
+  color: var(--muted, #93a4b8);
+  font-size: 0.88rem;
+}
+
+.workspace-disclosure {
+  background: rgba(8, 18, 31, 0.82);
+  border: 1px solid rgba(148, 176, 214, 0.14);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.workspace-disclosure:hover {
+  border-color: rgba(148, 176, 214, 0.24);
+}
+
+.workspace-disclosure[open] {
+  background: rgba(10, 22, 37, 0.92);
+  border-color: rgba(255, 122, 41, 0.34);
+}
+
+.workspace-disclosure-head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.05rem 1.3rem;
+  cursor: pointer;
+  list-style: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.workspace-disclosure-head::-webkit-details-marker { display: none; }
+
+.workspace-disclosure-head:focus-visible {
+  outline: 2px solid rgba(255, 122, 41, 0.7);
+  outline-offset: -2px;
+}
+
+.workspace-disclosure-copy {
+  display: grid;
+  gap: 0.22rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.workspace-disclosure-eyebrow {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 122, 41, 0.85);
+}
+
+.workspace-disclosure-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  font-size: 1.05rem;
+  font-weight: 650;
+  color: var(--text, #e8eef6);
+  letter-spacing: -0.01em;
+}
+
+.workspace-disclosure-pill {
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 176, 214, 0.24);
+  color: var(--muted, #93a4b8);
+  white-space: nowrap;
+}
+
+.workspace-disclosure-pill.tone-on {
+  border-color: rgba(52, 199, 123, 0.4);
+  background: rgba(52, 199, 123, 0.12);
+  color: #6fdca4;
+}
+
+.workspace-disclosure-pill.tone-warn {
+  border-color: rgba(255, 176, 32, 0.4);
+  background: rgba(255, 176, 32, 0.1);
+  color: #ffc65c;
+}
+
+/* Readable while folded — this is what makes the closed state useful rather
+   than just hidden. Clamped so a long line can't turn the row into a
+   paragraph. */
+.workspace-disclosure-summary {
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--muted, #93a4b8);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.workspace-disclosure-chevron {
+  flex: none;
+  width: 1.9rem;
+  height: 1.9rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(148, 176, 214, 0.2);
+  color: var(--muted, #93a4b8);
+  transition: transform 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.workspace-disclosure-chevron svg { width: 1rem; height: 1rem; }
+
+.workspace-disclosure[open] .workspace-disclosure-chevron {
+  transform: rotate(180deg);
+  color: #ff7a29;
+  border-color: rgba(255, 122, 41, 0.45);
+}
+
+.workspace-disclosure-body {
+  padding: 0.35rem 1.3rem 1.35rem;
+  border-top: 1px solid rgba(148, 176, 214, 0.1);
+  margin-top: -0.1rem;
+  padding-top: 1.2rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-disclosure,
+  .workspace-disclosure-chevron { transition: none; }
+}
+
+/* ---------------------------------------------------------------------------
+   Schedule map, now below the calendar
+--------------------------------------------------------------------------- */
+
+.schedule-map { margin-bottom: 0; }
+
+/* Map switched off: the gear still has to be reachable, or there'd be no way
+   to switch it back on. */
+.schedule-map-off {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -0.35rem;
+}
+
+/* ---------------------------------------------------------------------------
+   Form density
+   These forms were rows of inputs with the label welded to the box above and
+   the submit button floating at the left edge under a hint. The column count
+   stays as .form-grid sets it (1fr 1fr suits every one of these); what changes
+   is the breathing room, and giving .field-hint / .form-actions the styling
+   they never had.
+--------------------------------------------------------------------------- */
+
+.compact-form {
+  gap: 0.95rem 1.05rem;
+  align-items: start;
+}
+
+.compact-form .field { min-width: 0; }
+
+.compact-form .field-hint {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: rgba(147, 164, 184, 0.85);
+  margin-top: 0.1rem;
+}
+
+.compact-form .form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 0.25rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(148, 176, 214, 0.1);
+}
+
+/* A checkbox with a paragraph of explanation next to it needs the whole row —
+   in one column of a two-column grid the text wrapped every five words. */
+.compact-form > .checkbox-row { grid-column: 1 / -1; }
+
+/* A dollar amount or a count in a full-bleed input reads as though it wants a
+   sentence. Cap them; the label still spans the column. */
+.compact-form .input-narrow { max-width: 13rem; }
+
+/* Named groups, so a long settings form reads as a few decisions rather than
+   one undifferentiated run of fields. */
+.form-group {
+  border: 0;
+  border-top: 1px solid rgba(148, 176, 214, 0.12);
+  margin: 0;
+  padding: 1.1rem 0 0;
+}
+
+.form-group:first-of-type { border-top: 0; padding-top: 0.25rem; }
+
+.form-group > legend {
+  padding: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 122, 41, 0.9);
+}
+
+.form-group > .form-grid { margin-top: 0.55rem; }
+
+.booking-form { display: grid; gap: 1.4rem; }
+
+.booking-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(148, 176, 214, 0.12);
+}

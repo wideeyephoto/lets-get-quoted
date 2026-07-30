@@ -1,12 +1,12 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
-import PinMap from '@/components/pin-map';
 import BookingAvailabilitySection from '../settings/BookingAvailabilitySection';
 import { getMapPins } from '@/lib/map-pins';
 import { MAP_THEME_COOKIE, mapViewCookie, normalizeMapTheme, normalizeMapView } from '@/lib/dashboard-views';
 import { expandScheduledJobs, formatJobTime, formatMoney, listJobs, addDaysToDateKey, type Job } from '@/lib/jobs';
 import { computeHoursByDate } from '@/lib/booking';
+import { bookingAvailabilityFromAccount } from '@/lib/booking-availability';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { deriveJobListBadge } from '@/lib/job-badges';
 import type { Invoice } from '@/lib/invoices';
@@ -19,6 +19,9 @@ import { listActiveScheduleRequests } from '@/lib/scheduling';
 import { getAvailableBookingDays } from '@/lib/booking';
 import ScheduleCalendar from './schedule-calendar';
 import BookingLinkCard from './BookingLinkCard';
+import ScheduleMap from './ScheduleMap';
+import WorkspaceDisclosure from '@/components/workspace-disclosure';
+import DisclosureHashOpen from '@/components/disclosure-hash-open';
 import ClientScheduleOptionsCalendar from './client-schedule-options-calendar';
 import JobDragHandle from './JobDragHandle';
 import ScheduleDragProvider from './ScheduleDragProvider';
@@ -338,15 +341,18 @@ export default async function SchedulePage({
     .eq('id', accountId)
     .maybeSingle();
 
+  const blockCount = availabilityBlocks.length;
+  // booking_weekdays is a stored string, not an array — read it through the same
+  // normalizer the form uses so the folded header can't drift from the form.
+  const bookingAvailability = bookingAvailabilityFromAccount(
+    bookingSettings as Parameters<typeof bookingAvailabilityFromAccount>[0],
+  );
+  const bookingWeekdayCount = bookingAvailability.weekdays.length;
+
   return (
     <main className="wide-shell workspace-shell">
       <ScheduleDragProvider unavailable={unavailableDays}>
       <section className="panel workspace-section-card schedule-calendar-panel">
-        {mapView !== 'off' && (
-          <div className="workspace-embedded-map">
-            <PinMap pins={mapPins} theme={mapTheme} />
-          </div>
-        )}
         <div className="schedule-calendar-header">
           <div className="workspace-hero-copy schedule-calendar-copy">
             <p className="eyebrow">Schedule</p>
@@ -418,58 +424,10 @@ export default async function SchedulePage({
         />
       </section>
 
-      <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading compact-heading">
-          <p className="eyebrow">Time off</p>
-          <h2>Block off busy days</h2>
-        </div>
-        <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-          Mark days you&apos;re unavailable — vacation, personal time, or fully booked. Blocked days drop off your
-          public online-booking page and show as <strong>Off</strong> on the calendar above.
-        </p>
-        <form action={addAvailabilityBlockAction} className="form-grid compact-form">
-          <div className="field">
-            <label htmlFor="blockStart">From</label>
-            <input id="blockStart" name="startDate" type="date" required />
-          </div>
-          <div className="field">
-            <label htmlFor="blockEnd">To</label>
-            <input id="blockEnd" name="endDate" type="date" />
-            <small className="field-hint">Leave blank for a single day.</small>
-          </div>
-          <div className="field full">
-            <label htmlFor="blockReason">Reason (optional, shown only to you)</label>
-            <input id="blockReason" name="reason" placeholder="Vacation, personal, fully booked…" />
-          </div>
-          <div className="form-actions">
-            <SaveButton>Block off these days</SaveButton>
-          </div>
-        </form>
-        {availabilityBlocks.length > 0 ? (
-          <div className="sign-in-methods-list" style={{ marginTop: '1rem' }}>
-            {availabilityBlocks.map((block) => (
-              <div className="sign-in-method-row" key={block.id}>
-                <div className="method-info">
-                  <div>
-                    <span className="method-name">{formatBlockRange(block.start_date, block.end_date)}</span>
-                    <span className="method-detail">{block.reason || 'Blocked off'}</span>
-                  </div>
-                </div>
-                <form action={removeAvailabilityBlockAction.bind(null, block.id)}>
-                  <button type="submit" className="btn ghost">Remove</button>
-                </form>
-              </div>
-            ))}
-          </div>
-        ) : null}
-      </section>
-
-      <BookingLinkCard
-        bookingUrl={bookingUrl}
-        sitePublished={site?.published ?? false}
-        openWindowCount={openWindowCount}
-        openDayCount={bookingDays.length}
-      />
+      {/* Under the calendar, not above it. The map is context for the month
+          you're looking at — leading with it meant the page opened on a picture
+          of Michigan before it said which page you were on. */}
+      <ScheduleMap pins={mapPins} mapView={mapView} mapTheme={mapTheme} />
 
       {unscheduledJobs.length > 0 ? (
         <section className="panel workspace-section-card" id="unscheduled-jobs">
@@ -641,7 +599,95 @@ export default async function SchedulePage({
         </section>
       ) : null}
 
-      <BookingAvailabilitySection bookingSettings={bookingSettings} />
+
+      {/* Everything below is configured once and then rarely touched. Folded by
+          default and mutually exclusive, so the page ends with a short list of
+          settings rather than three screens of forms you scroll past to get
+          back to the calendar. */}
+      <DisclosureHashOpen />
+      <div className="schedule-setup">
+        <div className="schedule-setup-head">
+          <p className="eyebrow">Setup</p>
+          <h2>Booking &amp; availability</h2>
+          <p>Open a section to change it. These stay as you set them.</p>
+        </div>
+
+        <WorkspaceDisclosure
+          group="schedule-setup"
+          eyebrow="Time off"
+          title="Block off busy days"
+          status={blockCount > 0 ? `${blockCount} upcoming` : 'None'}
+          statusTone={blockCount > 0 ? 'on' : 'neutral'}
+          summary="Vacation, personal time, or fully booked. Blocked days drop off your public booking page and show as Off on the calendar."
+        >
+        <form action={addAvailabilityBlockAction} className="form-grid compact-form">
+          <div className="field">
+            <label htmlFor="blockStart">From</label>
+            <input id="blockStart" name="startDate" type="date" required />
+          </div>
+          <div className="field">
+            <label htmlFor="blockEnd">To</label>
+            <input id="blockEnd" name="endDate" type="date" />
+            <small className="field-hint">Leave blank for a single day.</small>
+          </div>
+          <div className="field full">
+            <label htmlFor="blockReason">Reason (optional, shown only to you)</label>
+            <input id="blockReason" name="reason" placeholder="Vacation, personal, fully booked…" />
+          </div>
+          <div className="form-actions">
+            <SaveButton>Block off these days</SaveButton>
+          </div>
+        </form>
+        {availabilityBlocks.length > 0 ? (
+          <div className="sign-in-methods-list" style={{ marginTop: '1rem' }}>
+            {availabilityBlocks.map((block) => (
+              <div className="sign-in-method-row" key={block.id}>
+                <div className="method-info">
+                  <div>
+                    <span className="method-name">{formatBlockRange(block.start_date, block.end_date)}</span>
+                    <span className="method-detail">{block.reason || 'Blocked off'}</span>
+                  </div>
+                </div>
+                <form action={removeAvailabilityBlockAction.bind(null, block.id)}>
+                  <button type="submit" className="btn ghost">Remove</button>
+                </form>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        </WorkspaceDisclosure>
+
+        <WorkspaceDisclosure
+          group="schedule-setup"
+          eyebrow="Online booking"
+          title="Your self-serve booking page"
+          status={bookingUrl ? (openWindowCount > 0 ? `${openWindowCount} open` : 'No windows') : 'Not live'}
+          statusTone={bookingUrl && openWindowCount > 0 ? 'on' : bookingUrl ? 'warn' : 'neutral'}
+          summary={bookingUrl
+            ? 'Share your link and customers pick an open window themselves.'
+            : 'Publish your website to let customers book themselves.'}
+        >
+          <BookingLinkCard
+            bookingUrl={bookingUrl}
+            sitePublished={site?.published ?? false}
+            openWindowCount={openWindowCount}
+            openDayCount={bookingDays.length}
+          />
+        </WorkspaceDisclosure>
+
+        <WorkspaceDisclosure
+          id="booking-availability"
+          group="schedule-setup"
+          eyebrow="Instant booking"
+          title="Your online booking availability"
+          status={bookingAvailability.enabled ? `${bookingWeekdayCount} day${bookingWeekdayCount === 1 ? '' : 's'} a week` : 'Off'}
+          statusTone={bookingAvailability.enabled ? 'on' : 'neutral'}
+          summary="The days you take work, the arrival windows you offer, and how many bookings a day is enough."
+        >
+          <BookingAvailabilitySection bookingSettings={bookingSettings} />
+        </WorkspaceDisclosure>
+      </div>
+
       </ScheduleDragProvider>
     </main>
   );
