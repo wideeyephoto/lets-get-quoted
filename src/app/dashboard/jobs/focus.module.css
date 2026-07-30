@@ -11,7 +11,9 @@
 
 /* --- selected job pane --- */
 
+/* Clear of the sticky mobile top bar when the pane is scrolled to. */
 .pane {
+  scroll-margin-top: 1rem;
   display: grid;
   grid-template-rows: auto auto 1fr auto;
   min-width: 0;

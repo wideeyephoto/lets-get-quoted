@@ -23,6 +23,7 @@ export type CalendarJob = {
   id: string;
   occurrence_key: string;
   client_name: string;
+  short_name: string;
   status: string;
   scheduled_for: string;
   scheduled_time: string | null;
@@ -31,6 +32,9 @@ export type CalendarJob = {
   badge_label: string;
   badge_tone: string;
   badge_title: string | null;
+  value_label: string | null;
+  hours_label: string | null;
+  crew_initials: string[];
 };
 
 export type CrewOption = {
@@ -76,6 +80,13 @@ function addMonths(date: Date, months: number): Date {
 
 function toMonthKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// "8:14 AM" -> "8:14a". A month cell is ~110px wide; the meridiem costs three
+// characters that the client's name needs more.
+function compactTime(time: string | null): string | null {
+  const label = formatJobTime(time);
+  return label ? label.replace(' AM', 'a').replace(' PM', 'p') : null;
 }
 
 function formatCrewNotifiedAt(value: string): string {
@@ -379,15 +390,41 @@ export default function ScheduleCalendar({
                             role="button"
                             tabIndex={0}
                             className={`calendar-job-chip status-${job.status}${draggingJobId === job.id ? ' dragging' : ''}`}
-                            title={`${job.client_name} · ${job.badge_label} · drag to move`}
+                            title={[job.client_name, job.badge_label, job.value_label, job.hours_label, job.crew_initials.length ? `Crew: ${job.crew_initials.join(', ')}` : null, 'drag to move'].filter(Boolean).join(' · ')}
                             onPointerDown={(event) => beginDrag({ jobId: job.id, jobName: job.client_name, time: job.scheduled_time ?? '', sourceDateKey: job.scheduled_for }, event, () => openJobActions(job.occurrence_key))}
                             onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openJobActions(job.occurrence_key); } }}
                           >
-                            <span className="calendar-job-chip-main">
-                              {job.confirmed ? <span className="calendar-confirm-tick" title="Confirmed by client" aria-label="Confirmed by client">✓</span> : null}
-                              {formatJobTime(job.scheduled_time) ? `${formatJobTime(job.scheduled_time)} ` : ''}{job.client_name}
+                            {/* Two lines. The status badge used to take nearly
+                                half the chip and still ellipsised to something
+                                like "WORK S…" — the chip's own colour already
+                                carries the status, and the full label is in the
+                                tooltip, so that space now holds what the job is
+                                worth, how long it takes, and who's on it. */}
+                            <span className="calendar-job-chip-lines">
+                              {/* Name first. Leading with the time meant the
+                                  time filled the line on its own and the client
+                                  was ellipsised away entirely — the chip told
+                                  you when something was happening but never to
+                                  whom. The time drops to the detail line, where
+                                  it sits with the money. */}
+                              <span className="calendar-job-chip-main">
+                                {job.confirmed ? <span className="calendar-confirm-tick" title="Confirmed by client" aria-label="Confirmed by client">✓</span> : null}
+                                {job.short_name}
+                              </span>
+                              {(job.scheduled_time || job.value_label) && (
+                                <span className="calendar-job-chip-meta">
+                                  {/* Time and money only. A 117px month cell
+                                      fits about fourteen characters here;
+                                      hours and crew initials were being
+                                      squeezed into unreadable fragments like
+                                      "1!". Both are in the tooltip, and the
+                                      crew button beside the chip already shows
+                                      whether anyone's assigned. */}
+                                  {compactTime(job.scheduled_time) ? <b>{compactTime(job.scheduled_time)}</b> : null}
+                                  {job.value_label ? <em>{job.value_label}</em> : null}
+                                </span>
+                              )}
                             </span>
-                            <span className={`calendar-job-band-badge status-${job.badge_tone}`} title={job.badge_title ?? undefined}>{job.badge_label}</span>
                           </div>
                           <button
                             type="button"

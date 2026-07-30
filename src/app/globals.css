@@ -3153,8 +3153,25 @@ li + li { margin-top: 0.45rem; }
 .calendar-day-number { font-size: .78rem; font-weight: 700; color: rgba(255,255,255,.6); }
 .calendar-day-jobs { display: flex; flex-direction: column; gap: .25rem; }
 .calendar-job-slot.empty { min-height: 24px; }
-.calendar-job-chip { display: flex; align-items: center; gap: .3rem; width: 100%; padding: .2rem .4rem; border: 0; border-radius: 5px; background: rgba(255,255,255,.08); color: #fff; font: inherit; font-size: .7rem; line-height: 1.3; text-align: left; white-space: nowrap; overflow: hidden; cursor: pointer; }
-.calendar-job-chip-main { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.calendar-job-chip { display: flex; align-items: flex-start; gap: .3rem; width: 100%; padding: .2rem .4rem; border: 0; border-radius: 5px; background: rgba(255,255,255,.08); color: #fff; font: inherit; font-size: .7rem; line-height: 1.3; text-align: left; white-space: nowrap; overflow: hidden; cursor: pointer; }
+/* Two-line chip: who and when on top, what it's worth underneath. */
+.calendar-job-chip-lines { display: grid; gap: .1rem; min-width: 0; flex: 1; }
+.calendar-job-chip-main { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.calendar-job-chip-main { font-weight: 650; }
+.calendar-job-chip-meta b { font-weight: 800; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+.calendar-job-chip-meta {
+  display: flex; align-items: center; gap: .26rem; min-width: 0;
+  font-size: .62rem; line-height: 1.25; opacity: .82; white-space: nowrap; overflow: hidden;
+}
+.calendar-job-chip-meta em { font-style: normal; font-weight: 800; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+.calendar-job-chip-meta > span { flex: 0 1 auto; overflow: hidden; }
+/* Dot separators, so the row reads as one line rather than three chips. */
+.calendar-job-chip-meta > * + *::before { content: '·'; margin-right: .26rem; opacity: .6; }
+.calendar-job-chip-crew {
+  flex: 0 0 auto; padding: 0 .24rem; border-radius: 3px;
+  background: rgba(255,255,255,.16); font-weight: 800; letter-spacing: .02em;
+}
+.calendar-job-chip-crew::before { content: none !important; }
 .calendar-job-band-badge { flex: 0 0 auto; max-width: 46%; overflow: hidden; text-overflow: ellipsis; padding: .12rem .34rem; border-radius: 999px; font-size: .56rem; font-weight: 900; letter-spacing: .03em; text-transform: uppercase; }
 .calendar-job-chip:hover { background: rgba(255,255,255,.16); }
 .calendar-job-chip.status-new_lead { background: rgba(255,209,102,.16); color: #ffd166; }
@@ -3196,8 +3213,15 @@ li + li { margin-top: 0.45rem; }
 .calendar-view-toggle button.active { background: #fff; color: #121212; }
 .calendar-view-toggle button:not(.active):hover { color: #fff; }
 
-.calendar-job-item { display: flex; align-items: center; gap: .3rem; }
+/* The crew button sits OVER the chip's top-right rather than beside it. In a
+   117px month cell it was taking 20px of flow — nearly a third of what was
+   left for text after padding — which is why the money was being cut off. It
+   keeps its full tap target; only the name line reserves room for it. */
+.calendar-job-item { position: relative; display: flex; align-items: center; gap: .3rem; }
 .calendar-job-item .calendar-job-chip { flex: 1 1 auto; min-width: 0; }
+.calendar-job-item > .calendar-crew-toggle { position: absolute; right: 2px; top: 2px; z-index: 2; }
+.calendar-job-item > .calendar-crew-toggle + .calendar-job-chip .calendar-job-chip-main,
+.calendar-job-item .calendar-job-chip .calendar-job-chip-main { padding-right: 1.25rem; }
 .calendar-band {
   position: relative;
   z-index: 1;

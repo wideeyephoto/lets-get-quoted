@@ -57,6 +57,15 @@ function nextWeekdayKey(date: Date, weekday: number): string {
   return toDateKey(nextDate.getFullYear(), nextDate.getMonth(), nextDate.getDate());
 }
 
+// "Nina Delacroix" -> "Nina D." — a month cell is ~110px wide, and the full
+// name pushed everything else off the chip. The full name stays in the tooltip
+// and on the job itself.
+function shortClientName(name: string): string {
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return parts[0] ?? name;
+  return `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}.`;
+}
+
 function crewInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return '?';
@@ -306,6 +315,7 @@ export default async function SchedulePage({
       id: job.id,
       occurrence_key: `${job.id}:${job.scheduled_for}`,
       client_name: job.client_name,
+      short_name: shortClientName(job.client_name),
       status: job.status,
       scheduled_for: job.scheduled_for,
       scheduled_time: job.scheduled_time,
@@ -314,6 +324,14 @@ export default async function SchedulePage({
       badge_label: badge.label,
       badge_tone: badge.tone,
       badge_title: badge.title ?? null,
+      // What a chip needs to be worth reading before it's opened: what the job
+      // is worth, how long it'll take, and who's on it. All of it is already
+      // loaded — it just wasn't being passed down.
+      value_label: job.quoted_amount > 0 ? formatMoney(job.quoted_amount) : null,
+      hours_label: job.estimated_hours ? `${job.estimated_hours}h` : null,
+      crew_initials: (assignmentsByJob[job.id] ?? [])
+        .map((crewId) => crewInitialsById.get(crewId))
+        .filter((initials): initials is string => Boolean(initials)),
     };
   });
 

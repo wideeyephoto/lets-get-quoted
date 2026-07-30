@@ -59,6 +59,7 @@ export default function FocusView({ jobs, onSelect }: { jobs: JobViewItem[]; onS
   const wantRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const dwellRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const paneRef = useRef<HTMLElement | null>(null);
 
   const selected = useMemo(() => jobs.find((j) => j.id === selectedId) ?? null, [jobs, selectedId]);
 
@@ -172,6 +173,19 @@ export default function FocusView({ jobs, onSelect }: { jobs: JobViewItem[]; onS
     if (id === selectedId) return;
     setSelectedId(id);
     setTab('overview');
+
+    // The pane sits below the map, so picking a job off the list could update
+    // something you weren't looking at. Bring it into view — but only when it
+    // isn't already fully on screen, so clicking down a list on a wide monitor
+    // doesn't yank the page on every row.
+    const pane = paneRef.current;
+    if (!pane) return;
+    const box = pane.getBoundingClientRect();
+    const fullyVisible = box.top >= 0 && box.bottom <= window.innerHeight;
+    if (fullyVisible) return;
+    requestAnimationFrame(() => {
+      paneRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   }
 
   // Told to the page (and from there to the map) rather than called inside
@@ -180,6 +194,22 @@ export default function FocusView({ jobs, onSelect }: { jobs: JobViewItem[]; onS
   useEffect(() => {
     onSelect?.(selectedId);
   }, [selectedId, onSelect]);
+
+  // Centre the selected row in the list. The list scrolls independently of the
+  // page, so a job picked from the map, from the keyboard, or one that's simply
+  // further down than the rows on screen would otherwise stay highlighted
+  // somewhere you can't see. Only when it isn't already fully visible, so
+  // clicking down the list doesn't shunt it under your cursor.
+  useEffect(() => {
+    if (!selectedId) return;
+    const row = document.getElementById(`focus-row-${selectedId}`);
+    const list = row?.parentElement?.parentElement; // li -> ul.rows
+    if (!row || !list) return;
+    const r = row.getBoundingClientRect();
+    const l = list.getBoundingClientRect();
+    if (r.top >= l.top && r.bottom <= l.bottom) return;
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [selectedId]);
 
   // Warm the cache on hover only. Never on keyboard traversal — that would turn
   // the prefetch into the request storm it exists to prevent.
@@ -209,7 +239,6 @@ export default function FocusView({ jobs, onSelect }: { jobs: JobViewItem[]; onS
     const next = event.key === 'ArrowDown' ? index + 1 : index - 1;
     if (next < 0 || next >= jobs.length) return;
     select(jobs[next].id);
-    document.getElementById(`focus-row-${jobs[next].id}`)?.scrollIntoView({ block: 'nearest' });
   }
 
   if (jobs.length === 0) {
@@ -222,7 +251,7 @@ export default function FocusView({ jobs, onSelect }: { jobs: JobViewItem[]; onS
 
   return (
     <div className={styles.focus}>
-      <section className={styles.pane} aria-label="Selected job">
+      <section className={styles.pane} aria-label="Selected job" ref={paneRef}>
         {selected ? (
           <>
             <header className={styles.hero}>
