@@ -80,6 +80,25 @@ export async function updateScheduleDayHoursAction(formData: FormData) {
   revalidatePath('/dashboard/schedule');
 }
 
+// One-click "turn on the essentials": the safe, high-value automations that work
+// with no configuration — review asks, quote follow-ups, appointment reminders,
+// and the daily digest. Each still has its own card to tune or turn back off.
+export async function enableRecommendedAutomationsAction() {
+  const { supabase, accountId } = await requireOwnerContext();
+  const { error } = await supabase
+    .from('accounts')
+    .update({
+      auto_review_request: true,
+      quote_followups_enabled: true,
+      appointment_reminders_enabled: true,
+      daily_digest_enabled: true,
+    })
+    .eq('id', accountId);
+  if (error) throw new Error(error.message);
+  revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard');
+}
+
 export async function updateReviewSettingsAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
   const autoReviewRequest = formData.get('autoReviewRequest') === 'on';

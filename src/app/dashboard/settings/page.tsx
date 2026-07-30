@@ -9,7 +9,7 @@ import FinanceReports from './FinanceReports';
 import { getAvailableTaxYears, buildProfitAndLoss, buildScheduleCWorksheet, build1099PrepList } from '@/lib/tax-reports';
 import SaveButton from '@/components/save-button';
 import DeleteAccountButton from './DeleteAccountButton';
-import { updateScheduleDayHoursAction, updateReviewSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBookingAvailabilityAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction } from './actions';
+import { updateScheduleDayHoursAction, updateReviewSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBookingAvailabilityAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction } from './actions';
 import { ESTIMATE_POSTURES, normalizeEstimatePosture } from '@/lib/estimate-posture';
 import { getSiteContent } from '@/lib/site-content';
 import { WEEKDAY_LABELS, BOOKING_WINDOW_PRESETS, TIMEZONE_OPTIONS, bookingAvailabilityFromAccount } from '@/lib/booking-availability';
@@ -155,6 +155,7 @@ export default async function SettingsPage({
     .eq('id', accountId)
     .maybeSingle();
   const dailyDigestEnabled = Boolean(digestSettings?.daily_digest_enabled);
+  const allEssentialsOn = autoReviewRequest && quoteFollowupsEnabled && appointmentRemindersEnabled && dailyDigestEnabled;
 
   const requestedYear = searchParams.year ? parseInt(searchParams.year, 10) : NaN;
   const selectedYear = availableYears.includes(requestedYear) ? requestedYear : availableYears[0];
@@ -281,6 +282,23 @@ export default async function SettingsPage({
             anchors: ['intake-ai', 'booking-availability', 'extra-stop', 'reviews', 'followups', 'reminders', 'daily-digest'],
             content: (
               <div className="automation-list">
+                {allEssentialsOn ? (
+                  <div className="automation-recommend done">
+                    <span className="automation-recommend-mark" aria-hidden="true">✓</span>
+                    <div className="automation-recommend-copy">
+                      <strong>Your essential automations are on.</strong>
+                      <span>Review asks, quote follow-ups, appointment reminders, and your daily digest are all running. Tune any below.</span>
+                    </div>
+                  </div>
+                ) : (
+                  <form action={enableRecommendedAutomationsAction} className="automation-recommend">
+                    <div className="automation-recommend-copy">
+                      <strong>Turn on the essentials in one click</strong>
+                      <span>Enables review asks, quote follow-ups, appointment reminders, and your daily digest with sensible defaults. Tune or turn any off below.</span>
+                    </div>
+                    <SaveButton>Turn on recommended</SaveButton>
+                  </form>
+                )}
                 <p className="automation-group">Booking &amp; intake</p>
                 <AutomationCard id="intake-ai" title="Intake AI" subtitle="Instant estimates & lead priority" status={{ label: 'Always on', tone: 'neutral' }}>
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
@@ -429,6 +447,12 @@ export default async function SettingsPage({
                 </AutomationCard>
 
                 <AutomationCard id="extra-stop" title="Extra Stop" subtitle="Same-day &ldquo;add me to your route&rdquo;" status={{ label: extraStopEnabled ? 'On' : 'Off', tone: extraStopEnabled ? 'on' : 'off' }}>
+                  {!account?.connect_onboarded ? (
+                    <div className="automation-prereq" style={{ marginBottom: '0.9rem' }}>
+                      <span aria-hidden="true">💳</span>
+                      <span>Extra Stop collects a fee before the visit — <Link href="/dashboard/settings#payments">connect Stripe</Link> to get paid. You can still set it up now.</span>
+                    </div>
+                  ) : null}
                   <ExtraStopSettingsSection headless extraStop={extraStopSettings as Parameters<typeof ExtraStopSettingsSection>[0]['extraStop']} refundTiers={extraStopRefundTiers} />
                 </AutomationCard>
 
@@ -437,8 +461,7 @@ export default async function SettingsPage({
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     When on, marking a job complete automatically asks the client for a Google review — texted if
                     they have a mobile on file, emailed otherwise. It only sends once per job, and you can always
-                    send the request by hand from any completed job. Link your Google Business Profile in the
-                    website builder so the review has somewhere to go.
+                    send the request by hand from any completed job.
                   </p>
                   <form action={updateReviewSettingsAction} className="form-grid compact-form">
                     <label className="checkbox-row" htmlFor="autoReviewRequest">
@@ -462,6 +485,14 @@ export default async function SettingsPage({
                         feedback instead of a public review
                       </span>
                     </label>
+                    <div className="automation-prereq">
+                      <span aria-hidden="true">🔗</span>
+                      <span>Reviews need a Google Business Profile to point to — <Link href="/dashboard/sites">link yours in the Website builder</Link> so the ask has somewhere to go.</span>
+                    </div>
+                    <details className="automation-preview">
+                      <summary>Preview the review text</summary>
+                      <p className="automation-preview-bubble">Hi Sarah, thanks for choosing {businessName}! If we earned it, a quick review means the world to a small business: [your Google review link]. Reply STOP to opt out.</p>
+                    </details>
                     <div className="form-actions">
                       <SaveButton>Save review settings</SaveButton>
                     </div>
@@ -484,6 +515,10 @@ export default async function SettingsPage({
                       />
                       <span>Automatically follow up on quotes that haven&apos;t been approved</span>
                     </label>
+                    <details className="automation-preview">
+                      <summary>Preview the follow-up text</summary>
+                      <p className="automation-preview-bubble">Hi Sarah, just checking in on your quote from {businessName}. Ready to move forward? Review and approve it here: [link]. Reply STOP to opt out.</p>
+                    </details>
                     <div className="form-actions">
                       <SaveButton>Save follow-up settings</SaveButton>
                     </div>
@@ -506,6 +541,10 @@ export default async function SettingsPage({
                       />
                       <span>Automatically remind clients the day before their appointment</span>
                     </label>
+                    <details className="automation-preview">
+                      <summary>Preview the reminder text</summary>
+                      <p className="automation-preview-bubble">{businessName} reminder — Sarah, your appointment is coming up tomorrow at 9:00 AM. Reply C to confirm. Reply STOP to opt out.</p>
+                    </details>
                     <div className="form-actions">
                       <SaveButton>Save reminder settings</SaveButton>
                     </div>

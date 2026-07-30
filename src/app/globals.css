@@ -728,6 +728,32 @@ h3 {
 .automation-card[open] .automation-caret { transform: rotate(90deg); }
 .automation-body { padding: 0.1rem 1.05rem 1.15rem; }
 
+/* One-click "turn on the essentials" banner at the top of the Automations tab. */
+.automation-recommend { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; border: 1px solid rgba(255, 122, 33, 0.4); background: linear-gradient(180deg, rgba(255, 122, 33, 0.1), rgba(255, 209, 102, 0.05)); border-radius: 0.85rem; padding: 1rem 1.15rem; margin-bottom: 1.1rem; }
+.automation-recommend.done { border-color: rgba(52, 211, 153, 0.32); background: rgba(52, 211, 153, 0.07); }
+.automation-recommend-copy { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.automation-recommend-copy strong { font-size: 0.95rem; }
+.automation-recommend-copy span { font-size: 0.82rem; color: rgba(200, 210, 224, 0.82); }
+.automation-recommend-mark { width: 1.7rem; height: 1.7rem; flex: none; display: grid; place-items: center; border-radius: 999px; background: rgba(52, 211, 153, 0.18); color: #6ee7b7; font-weight: 800; }
+
+/* "Advanced settings" expander inside an automation form, and inline message previews. */
+.form-grid > .advanced-settings,
+.form-grid > .automation-preview { grid-column: 1 / -1; }
+.advanced-settings { border-top: 1px dashed rgba(255, 255, 255, 0.1); padding-top: 0.7rem; margin-top: 0.2rem; }
+.advanced-settings > summary,
+.automation-preview > summary { cursor: pointer; font-size: 0.82rem; font-weight: 700; color: rgba(200, 210, 224, 0.85); list-style: none; display: inline-flex; align-items: center; gap: 0.4rem; }
+.advanced-settings > summary::-webkit-details-marker,
+.automation-preview > summary::-webkit-details-marker { display: none; }
+.advanced-settings > summary::before,
+.automation-preview > summary::before { content: '▸'; font-size: 0.7rem; transition: transform 0.15s ease; }
+.advanced-settings[open] > summary::before,
+.automation-preview[open] > summary::before { transform: rotate(90deg); }
+.advanced-settings > summary:hover,
+.automation-preview > summary:hover { color: #fff; }
+.automation-preview-bubble { margin-top: 0.6rem; padding: 0.7rem 0.85rem; border-radius: 0.7rem 0.7rem 0.7rem 0.2rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); font-size: 0.85rem; line-height: 1.45; color: rgba(247, 245, 239, 0.9); max-width: 42ch; }
+.automation-prereq { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.82rem; color: #ffd166; background: rgba(255, 209, 102, 0.1); border: 1px solid rgba(255, 209, 102, 0.3); border-radius: 0.6rem; padding: 0.55rem 0.7rem; }
+.automation-prereq a { color: #ffd166; text-decoration: underline; }
+
 /* Contextual entry point to an automation's settings, dropped onto the page that
    automation affects (Extra Stops, Schedule, …). Live on/off pill + deep link. */
 .automation-link {
