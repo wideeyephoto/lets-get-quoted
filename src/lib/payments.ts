@@ -50,23 +50,27 @@ export async function getTrailingVolume(accountId: string): Promise<number> {
   const admin = createAdminClient();
   const since = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
 
-  // Exclude imported historical payments — they're real records but not new
-  // processed volume, so they must never bump the fee bracket. Defensive: if the
-  // `imported` column hasn't been migrated yet, fall back to counting all paid
-  // (there are no imported rows to exclude in that state anyway).
+  // Count only Stripe-SETTLED volume toward the fee bracket: exclude imported
+  // historical payments AND manual cash/check settlements (markPaymentPaidManually,
+  // which never gets a stripe_payment_intent). Otherwise a contractor could self-
+  // mark large "cash" payments to inflate volume and drop their real platform fee.
+  // Defensive: if `imported` isn't migrated yet, fall back but still require a
+  // stripe_payment_intent.
   const { data, error } = await admin
     .from('payments')
-    .select('amount, imported')
+    .select('amount, imported, stripe_payment_intent')
     .eq('account_id', accountId)
     .eq('status', 'paid')
+    .not('stripe_payment_intent', 'is', null)
     .gte('paid_at', since);
 
   if (error) {
     const fallback = await admin
       .from('payments')
-      .select('amount')
+      .select('amount, stripe_payment_intent')
       .eq('account_id', accountId)
       .eq('status', 'paid')
+      .not('stripe_payment_intent', 'is', null)
       .gte('paid_at', since);
     if (fallback.error) throw fallback.error;
     return (fallback.data ?? []).reduce((sum, row) => sum + Number(row.amount), 0);
@@ -254,6 +258,9 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
     const existing = await stripe.checkout.sessions.retrieve(payment.stripe_checkout_session);
 
     if (existing.payment_status === 'paid') {
+      // Compare-and-set like every other payment transition — only advance a
+      // still-open payment, never resurrect a refunded/disputed one through the
+      // TOCTOU window between the read above and this write.
       await admin
         .from('payments')
         .update({
@@ -262,7 +269,8 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
           stripe_payment_intent:
             typeof existing.payment_intent === 'string' ? existing.payment_intent : existing.payment_intent?.id,
         })
-        .eq('id', paymentId);
+        .eq('id', paymentId)
+        .in('status', ['requested', 'processing', 'failed']);
       throw new Error('This payment has already been completed.');
     }
 
@@ -426,39 +434,54 @@ export async function refundPayment(
     // Stripe emits a charge.refunded webhook automatically; that handler reconciles
     // the same numbers idempotently. Omitting `amount` refunds the full remaining
     // balance; a partial refund sends the exact cents.
-    const refund = await stripe.refunds.create({
-      payment_intent: payment.stripe_payment_intent,
-      ...(isFull ? {} : { amount: requestedCents }),
-      metadata: {
-        payment_id: paymentId,
-        reason: 'Refunded by contractor',
+    //
+    // The idempotencyKey is the real double-refund guard: a retry (after a lost DB
+    // write) or a double-click computes the SAME key (same paymentId + already +
+    // requested), so Stripe returns the ORIGINAL refund instead of creating a second
+    // one. A genuinely different slice yields a different key and a new refund.
+    const refund = await stripe.refunds.create(
+      {
+        payment_intent: payment.stripe_payment_intent,
+        ...(isFull ? {} : { amount: requestedCents }),
+        metadata: {
+          payment_id: paymentId,
+          reason: 'Refunded by contractor',
+        },
       },
-    });
+      { idempotencyKey: `refund_${paymentId}_${alreadyCents}_${requestedCents}` },
+    );
 
     console.log(`Refund created: ${refund.id} for payment ${paymentId} (${isFull ? 'full' : 'partial'} ${formatMoneyCents(requestedCents)})`);
 
     const refundedTotal = fromCents(alreadyCents + requestedCents);
 
-    // Reflect it immediately (the webhook will confirm the same value later).
-    const { error } = await supabase
+    // Compare-and-set: only advance the row if refunded_amount is still what we read
+    // (and it's still 'paid'). A concurrent refund/webhook that already advanced it
+    // loses this write harmlessly — Stripe's idempotency already prevented double money.
+    let casQuery = supabase
       .from('payments')
       .update({ refunded_amount: refundedTotal, status: isFull ? 'refunded' : 'paid' })
-      .eq('id', paymentId);
-
+      .eq('id', paymentId)
+      .eq('status', 'paid');
+    casQuery = payment.refunded_amount == null ? casQuery.is('refunded_amount', null) : casQuery.eq('refunded_amount', payment.refunded_amount);
+    const { data: claimed, error } = await casQuery.select('id').maybeSingle();
     if (error) {
       throw error;
     }
 
-    // Only a FULL refund voids the linked invoice — a partial refund leaves it standing.
-    if (isFull && payment.invoice?.id) {
-      await supabase.from('invoices').update({ status: 'void' }).eq('id', payment.invoice.id);
-    }
-
-    // The homeowner refund text states the full payment amount, so only send it on
-    // a full refund. Partial refunds are recorded on the job timeline for the
-    // contractor but don't fire a (potentially misleading) "fully refunded" text.
-    if (isFull) {
-      await sendPaymentSmsEvent(paymentId, 'payment_refunded');
+    // Side effects run only for the winning write, so a concurrent path can't
+    // double-void the invoice or double-text the homeowner.
+    if (claimed) {
+      // Only a FULL refund voids the linked invoice — a partial refund leaves it standing.
+      if (isFull && payment.invoice?.id) {
+        await supabase.from('invoices').update({ status: 'void' }).eq('id', payment.invoice.id);
+      }
+      // The homeowner refund text states the full payment amount, so only send it on
+      // a full refund. Partial refunds are recorded on the job timeline for the
+      // contractor but don't fire a (potentially misleading) "fully refunded" text.
+      if (isFull) {
+        await sendPaymentSmsEvent(paymentId, 'payment_refunded');
+      }
     }
 
     return { amount: fromCents(requestedCents), isFull, refundedTotal };

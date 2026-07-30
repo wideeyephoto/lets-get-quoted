@@ -93,23 +93,13 @@ export async function resolveExtraStopCancellation(
         ? tiers.contractorCancel
         : computeCustomerRefundPercent(req, Date.now(), tiers);
 
-  // Issue the refund only if money was actually captured.
-  let refundCents = 0;
-  if (req.paid_at && req.payment_id && req.fee_cents && refundPct > 0) {
-    refundCents = Math.round((req.fee_cents * refundPct) / 100);
-    if (refundCents > 0) {
-      try {
-        await refundPayment(admin, accountId, req.payment_id, centsToDollars(refundCents));
-      } catch (error) {
-        console.error('Extra Stop refund failed:', error instanceof Error ? error.message : error);
-        refundCents = 0; // record the intent; contractor can retry from the payment
-      }
-    }
-  }
+  // Compute the intended refund up front, but DON'T move money yet.
+  const intendedRefundCents =
+    req.paid_at && req.payment_id && req.fee_cents && refundPct > 0 ? Math.round((req.fee_cents * refundPct) / 100) : 0;
 
   const nowIso = new Date().toISOString();
   const status = opts.kind === 'no_show' ? 'no_show_confirmed' : opts.kind === 'contractor_cancel' ? 'contractor_canceled' : 'customer_canceled';
-  const patch: Record<string, unknown> = { status, refund_cents: refundCents, cancel_reason: opts.reason ?? null, updated_at: nowIso };
+  const patch: Record<string, unknown> = { status, refund_cents: intendedRefundCents, cancel_reason: opts.reason ?? null, updated_at: nowIso };
   if (opts.kind === 'no_show') {
     patch.no_show_confirmed_at = nowIso;
     patch.no_show_reported_at = req.no_show_reported_at ?? nowIso;
@@ -117,6 +107,9 @@ export async function resolveExtraStopCancellation(
     patch.canceled_at = nowIso;
   }
 
+  // Claim the terminal transition FIRST — only the winner moves money, so two
+  // concurrent resolutions (customer-cancel racing admin-resolve, or a double
+  // submit) can't both issue a refund.
   const { data: claimed } = await admin
     .from('extra_stop_requests')
     .update(patch)
@@ -125,7 +118,21 @@ export async function resolveExtraStopCancellation(
     .eq('status', req.status)
     .select('id')
     .maybeSingle();
-  if (!claimed) return { pct: refundPct, refundCents }; // already resolved by a concurrent path
+  if (!claimed) return { pct: refundPct, refundCents: intendedRefundCents }; // already resolved by a concurrent path
+
+  // Winner issues the refund (refundPayment is itself idempotency-keyed). On
+  // failure, correct the recorded amount back to 0 so the row never claims money
+  // that didn't move — the contractor can retry from the payment.
+  let refundCents = intendedRefundCents;
+  if (intendedRefundCents > 0 && req.payment_id) {
+    try {
+      await refundPayment(admin, accountId, req.payment_id, centsToDollars(intendedRefundCents));
+    } catch (error) {
+      console.error('Extra Stop refund failed:', error instanceof Error ? error.message : error);
+      refundCents = 0;
+      await admin.from('extra_stop_requests').update({ refund_cents: 0 }).eq('id', requestId).eq('account_id', accountId);
+    }
+  }
 
   // No-show escalation: auto-lock Extra Stop on a verified no-show, escalating by
   // how many the account has had recently (10-day → 30-day → disabled pending

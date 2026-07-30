@@ -198,11 +198,26 @@ export async function createInvoiceWithSingleItem(
 export async function markInvoicePaidForPayment(supabase: SupabaseClient, invoiceId: string): Promise<void> {
   const { data: invoice, error } = await supabase
     .from('invoices')
-    .select('status, signed_at')
+    .select('status, signed_at, total')
     .eq('id', invoiceId)
     .maybeSingle();
   if (error || !invoice) return;
   if (invoice.status === 'paid' || invoice.status === 'void') return;
+
+  // Only flip to 'paid' once the invoice is actually collected in full — a single
+  // deposit on a multi-payment invoice must NOT mark the whole thing paid. Net of
+  // any refunds; epsilon guards float rounding on the dollars column.
+  const { data: paidRows } = await supabase
+    .from('payments')
+    .select('amount, refunded_amount')
+    .eq('invoice_id', invoiceId)
+    .eq('status', 'paid');
+  const collected = (paidRows ?? []).reduce(
+    (sum, row) => sum + (Number((row as { amount: number }).amount) || 0) - (Number((row as { refunded_amount: number }).refunded_amount) || 0),
+    0,
+  );
+  const total = Number(invoice.total) || 0;
+  if (collected + 0.005 < total) return; // still an outstanding balance
 
   await supabase
     .from('invoices')
