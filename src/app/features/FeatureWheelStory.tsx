@@ -46,6 +46,39 @@ export default function FeatureWheelStory() {
       let visible = false;
       let lastT = 0;
 
+      // ---- adaptive quality -------------------------------------------------
+      // Two rounds of trimming still left this sluggish on an older iPad, so
+      // rather than keep guessing at device classes, the wheel measures the
+      // frame rate it is ACTUALLY getting and steps down if it can't keep up.
+      // A capable tablet keeps the full treatment; a 2018 iPad doesn't have to
+      // pretend it's a laptop.
+      //
+      // The step-down does two things, and the first matters most: it stops
+      // easing the rotation. Easing is what "lagging behind the scroll" IS —
+      // the wheel is deliberately trailing its target. Snapping means the wheel
+      // is always exactly where the scroll says it should be, so even at 20fps
+      // it reads as steppy rather than delayed. It also halves the update rate,
+      // since a snapped wheel doesn't need 60 samples a second.
+      let lite = false;
+      try { lite = sessionStorage.getItem('fw-lite') === '1'; } catch { /* private mode */ }
+      if (lite) scope.classList.add('fw-lite');
+      const samples: number[] = [];
+      let frameParity = 0;
+
+      const judge = (dt: number) => {
+        if (lite || samples.length >= 40) return;
+        samples.push(dt);
+        if (samples.length < 40) return;
+        const median = [...samples].sort((a, b) => a - b)[20];
+        // ~26ms is worse than 38fps sustained while scrolling. A device that
+        // can't hold that will never make eased rotation look smooth.
+        if (median > 26) {
+          lite = true;
+          scope.classList.add('fw-lite');
+          try { sessionStorage.setItem('fw-lite', '1'); } catch { /* ignore */ }
+        }
+      };
+
       const activate = (i: number) => {
         if (i === cur) return;
         cur = i;
@@ -86,13 +119,17 @@ export default function FeatureWheelStory() {
         // frame factor by elapsed time makes the wheel settle in the same
         // fraction of a second whatever the device manages.
         const dt = lastT ? Math.min(64, now - lastT) : 16.667;
+        if (lastT) judge(dt); // skip the first frame after waking — dt is a guess
         lastT = now;
+
+        // Snapped rotation doesn't need every frame.
+        if (lite && (frameParity ^= 1)) { schedule(); return; }
 
         const p = progress();
         const targetRot = -30 * STEPS * p; // 30° between spokes
         const i = Math.max(0, Math.min(STEPS, Math.round(p * STEPS)));
-        if (REDUCE) {
-          curRot = -30 * i;
+        if (REDUCE || lite) {
+          curRot = targetRot;
         } else {
           const k = 1 - Math.pow(1 - 0.14, dt / 16.667);
           curRot += (targetRot - curRot) * k;
@@ -108,9 +145,10 @@ export default function FeatureWheelStory() {
 
         // Settled and nothing moving: stop burning frames until the next scroll.
         if (curRot !== targetRot) schedule();
+        else lastT = 0; // parked — the next frame's delta must not span the gap
       }
 
-      const wake = () => { lastT = 0; schedule(); };
+      const wake = () => { schedule(); };
       const onResize = () => { measure(); wake(); };
       window.addEventListener('scroll', wake, { passive: true });
       window.addEventListener('resize', onResize, { passive: true });
@@ -124,7 +162,7 @@ export default function FeatureWheelStory() {
           (entries) => {
             visible = entries.some((en) => en.isIntersecting);
             if (visible) wake();
-            else if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+            else if (rafId) { cancelAnimationFrame(rafId); rafId = 0; lastT = 0; }
           },
           { rootMargin: '200px 0px' },
         );
