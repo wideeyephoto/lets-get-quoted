@@ -597,3 +597,42 @@
 .aiSuiteLink::before { content: ''; position: absolute; top: -2px; bottom: -2px; left: 50%; transform: translateX(-50%); width: 2px; background: linear-gradient(rgba(255,122,33,.8), rgba(255,122,33,.3)); }
 .aiSuiteLink span { position: relative; z-index: 1; padding: .2rem .65rem; border-radius: 999px; border: 1px solid rgba(255,122,33,.5); background: #141f31; color: #ffb27d; font-size: .66rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
 @media (prefers-reduced-motion: reduce) { .sectionCardFeatured, .sectionCardFeatured.sectionCardOpen { animation: none; box-shadow: 0 0 20px -14px rgba(255,122,33,.5); } }
+
+/* --- Intake method picker ---------------------------------------------- */
+/* One control for one boolean. Replaces two mirrored toggles that read as
+   independent switches for what is a single either/or choice. */
+.intakePicker { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: .7rem; margin: .2rem 0 1rem; }
+.intakeChoice {
+  display: flex; align-items: flex-start; gap: .7rem; text-align: left;
+  padding: .85rem .9rem; border-radius: 12px; cursor: pointer;
+  border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.03); color: inherit;
+  transition: border-color .16s ease, background .16s ease;
+}
+.intakeChoice:hover { border-color: rgba(255,255,255,.24); }
+.intakeChoiceOn { border-color: rgba(255,122,33,.6); background: rgba(255,122,33,.1); }
+.intakeChoiceMark {
+  flex: none; margin-top: .15rem; width: 1.1rem; height: 1.1rem; border-radius: 999px;
+  border: 2px solid rgba(255,255,255,.32); background: transparent;
+}
+.intakeChoiceOn .intakeChoiceMark { border-color: #ff7a21; box-shadow: inset 0 0 0 4px #ff7a21; }
+.intakeChoiceCopy { display: grid; gap: .15rem; min-width: 0; }
+.intakeChoiceCopy strong { display: flex; align-items: center; gap: .45rem; font-size: .92rem; color: #f2f5f9; }
+.intakeChoiceCopy em {
+  font-style: normal; padding: .1rem .4rem; border-radius: 999px;
+  background: rgba(255,122,33,.18); border: 1px solid rgba(255,122,33,.4);
+  color: #ffb27d; font-size: .6rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase;
+}
+.intakeChoiceCopy small { font-size: .8rem; line-height: 1.45; color: rgba(255,255,255,.6); }
+.intakeChoice:focus-visible { outline: 2px solid rgba(56,189,248,.75); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) { .intakeChoice { transition: none; } }
+
+/* --- Intake AI panel, nested in the Smart Intake group ------------------ */
+/* IntakeAiSettingsSection is built as a standalone Settings panel, so dropped
+   in here its page-scale <h2> dwarfs the SectionCard titles it now sits under.
+   Scale it to the group rather than forking the component — Settings still
+   renders it at full size elsewhere. */
+.aiSuite :global(.panel) { border-radius: 12px; padding: 1rem 1.05rem; }
+.aiSuite h2 { font-size: 1rem; line-height: 1.3; margin: .1rem 0 0; letter-spacing: 0; max-width: none; }
+.aiSuite :global(.eyebrow) { font-size: .62rem; }
+.aiSuite :global(.workspace-details-copy) { font-size: .84rem; line-height: 1.5; }

@@ -364,12 +364,17 @@ export default async function SettingsPage({
                     <div className="automation-prereq" style={{ marginBottom: '0.9rem' }}>
                       <span aria-hidden="true">📝</span>
                       <span>
-                        Smart Intake is off, so your website is using the <strong>old-school quote form</strong> &mdash;
+                        Smart Intake is off, so your website is using the <strong>classic quote form</strong> &mdash;
                         visitors type out their job and wait for you to reply with a price. Switching this back on
                         replaces it with instant AI estimates. Only one intake runs at a time.
                       </span>
                     </div>
                   ) : null}
+                  <p className="workspace-details-copy">
+                    Estimate wording, pricing posture, lead filters and high-value alerts are all tuned in the{' '}
+                    <Link href="/dashboard/sites">website builder</Link> &mdash; they change what the AI asks and how it
+                    prices, so they live next to the page itself.
+                  </p>
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     Your website&apos;s AI intake opens the relationship for you: it asks a homeowner{' '}
                     <strong>2&ndash;8 short questions</strong>, gives them a instant ballpark, and captures the

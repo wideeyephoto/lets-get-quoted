@@ -1559,10 +1559,46 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
             {activeTab === 'page' && (
               <div className={styles.formSection}>
                 <div className={styles.cardGroupLabel}>Get you leads</div>
-                <p className={styles.cardGroupHint}>Choose how visitors reach you — Smart Intake (recommended) or the classic quote form below. One is always active: turning either on switches the other off, so you never get doubled-up requests.</p>
+                <p className={styles.cardGroupHint}>One intake runs at a time — pick which, then set it up below.</p>
 
+                {/* One control for one boolean. This used to be two mirrored
+                    toggles (Smart Intake bound to !quoteForm.enabled, the classic
+                    form bound to quoteForm.enabled), which read as two
+                    independent switches for what is a single either/or choice —
+                    and produced the odd "Disable Smart Intake" label whenever it
+                    was on. */}
+                <div className={styles.intakePicker} role="radiogroup" aria-label="How visitors reach you">
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={!siteContent.quoteForm.enabled}
+                    className={`${styles.intakeChoice}${!siteContent.quoteForm.enabled ? ` ${styles.intakeChoiceOn}` : ''}`}
+                    onClick={() => updateQuoteForm({ ...siteContent.quoteForm, enabled: false })}
+                  >
+                    <span className={styles.intakeChoiceMark} aria-hidden="true" />
+                    <span className={styles.intakeChoiceCopy}>
+                      <strong>Smart Intake <em>Recommended</em></strong>
+                      <small>AI asks a couple of questions and shows an instant ballpark price.</small>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={siteContent.quoteForm.enabled}
+                    className={`${styles.intakeChoice}${siteContent.quoteForm.enabled ? ` ${styles.intakeChoiceOn}` : ''}`}
+                    onClick={() => updateQuoteForm({ ...siteContent.quoteForm, enabled: true })}
+                  >
+                    <span className={styles.intakeChoiceMark} aria-hidden="true" />
+                    <span className={styles.intakeChoiceCopy}>
+                      <strong>Classic quote form</strong>
+                      <small>Visitors type out the job and wait for you to reply with a price.</small>
+                    </span>
+                  </button>
+                </div>
+
+                {!siteContent.quoteForm.enabled && (
                 <div className={styles.aiSuite}>
-                <SectionCard variant="featured" title="Smart Intake with Instant Estimates via AI (Recommended)" description="Gives visitors an automatic ballpark price, no waiting — our AI asks a couple of questions to scope the job, then prices it for your trade and shows a realistic $ range. Every request still reaches you as a lead, with the shown range included." evidence="Instant online estimates capture 2–3× more leads than a plain contact form — most homeowners are price-shopping, and the ones who see a number stop searching. Answering while they're still on the page beats a next-day callback every time." enabled={!siteContent.quoteForm.enabled} onToggleEnabled={(value) => updateQuoteForm({ ...siteContent.quoteForm, enabled: !value })} open={openSection === 'estimate'} onToggleOpen={() => toggleSection('estimate')}>
+                <SectionCard variant="featured" title="Smart Intake settings" description="Gives visitors an automatic ballpark price, no waiting — our AI asks a couple of questions to scope the job, then prices it for your trade and shows a realistic $ range. Every request still reaches you as a lead, with the shown range included." evidence="Instant online estimates capture 2–3× more leads than a plain contact form — most homeowners are price-shopping, and the ones who see a number stop searching. Answering while they're still on the page beats a next-day callback every time." open={openSection === 'estimate'} onToggleOpen={() => toggleSection('estimate')}>
                   <label className={styles.formField}><span>Phone</span><input id="bf-phone" type="tel" value={site.phone || ''} onChange={(event) => handleChange('phone', event.target.value || null)} placeholder="(555) 123-4567" /><small className={styles.fieldHint}>Powers your call buttons and the text/call follow-up on leads.</small></label>
                   <label className={styles.formField}><span>Email on the AI intake</span><select value={siteContent.estimateRanges.emailField} onChange={(event) => updateEstimateRanges({ ...siteContent.estimateRanges, emailField: event.target.value as SiteEstimateRangesContent['emailField'] })}><option value="optional">Optional — ask, but don&apos;t require it</option><option value="required">Required</option><option value="off">Don&apos;t ask for email</option></select><small>A phone number is always required here — the follow-up promised to visitors is a text or call.</small></label>
                   <label className={styles.formField}><span>What visitors see it called</span><select value={siteContent.quoteForm.estimateLabel} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, estimateLabel: event.target.value as SiteQuoteFormContent['estimateLabel'] })}><option value="instant">&quot;Instant Estimate&quot;</option><option value="quick">&quot;Instant Quote&quot;</option></select><small>The heading + button on the AI intake card.</small></label>
@@ -1594,15 +1630,23 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
                   )}
                   <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.leadFilters.phoneVerification} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, phoneVerification: event.target.checked })} /><span><strong>Verify phone numbers with a text code</strong><small>The strongest junk filter — visitors confirm a 6-digit code before the AI intake submits. Verified leads get a green badge. Skipped automatically if texting isn&apos;t configured.</small></span></label>
                 </SectionCard>
-                </div>
 
+                <div className={styles.aiSuiteLink} aria-hidden="true"><span>⚡ Tuned by</span></div>
+
+                {/* Account-level tuning for the same AI. It only applies when
+                    Smart Intake is the active method, so it lives inside this
+                    group rather than floating between cards. */}
                 {intakeSlot}
+                </div>
+                )}
 
-                <SectionCard title="Quote request form (old school)" description="The classic multi-field form where visitors type out their job details and wait for you to reply with a price. Turning this on switches Smart Intake off (only one intake runs at a time); turning it off brings Smart Intake back." enabled={siteContent.quoteForm.enabled} onToggleEnabled={(value) => updateQuoteForm({ ...siteContent.quoteForm, enabled: value })} open={openSection === 'quoteForm'} onToggleOpen={() => toggleSection('quoteForm')}>
+                {siteContent.quoteForm.enabled && (
+                <SectionCard title="Quote request form" description="The classic multi-field form where visitors type out their job details and wait for you to reply with a price. Switch back to Smart Intake above to price jobs instantly instead." open={openSection === 'quoteForm'} onToggleOpen={() => toggleSection('quoteForm')}>
                   <label className={styles.formField}><span>Phone</span><input id="bf-phone-quote" type="tel" value={site.phone || ''} onChange={(event) => handleChange('phone', event.target.value || null)} placeholder="(555) 123-4567" /><small className={styles.fieldHint}>Powers your call buttons across the site.</small></label>
                   <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.phonePublic} onChange={(event) => updateSiteContent({ phonePublic: event.target.checked })} /><span><strong>Show my phone number on my website</strong><small>Off = no call buttons anywhere — visitors reach you through the form instead. Texting still works either way. Site-wide setting.</small></span></label>
                   <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.quoteForm.emailRequired} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, emailRequired: event.target.checked })} /><span><strong>Require email on quote form</strong><small>Ask homeowners for an email address on every request so future email campaigns have clean contact data.</small></span></label>
                 </SectionCard>
+                )}
 
                 <div className={styles.cardGroupLabel}>Main sections</div>
                 <p className={styles.cardGroupHint}>Drag a section by its ⠿ handle to reorder it on your live page. Turned-off sections keep their spot but stay hidden until you switch them on.</p>
