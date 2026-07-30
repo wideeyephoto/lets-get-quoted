@@ -98,7 +98,12 @@ export default function FeatureWheelStory() {
           curRot += (targetRot - curRot) * k;
           if (Math.abs(targetRot - curRot) < 0.04) curRot = targetRot;
         }
-        if (rotor) rotor.style.setProperty('--rot', `${curRot.toFixed(2)}deg`);
+        // Written to every consumer individually — see the @property note in
+        // the stylesheet. `nodes` is the six spoke buttons, the only other
+        // elements that read --rot.
+        const rot = `${curRot.toFixed(2)}deg`;
+        if (rotor) rotor.style.setProperty('--rot', rot);
+        for (const n of nodes) n.style.setProperty('--rot', rot);
         activate(i);
 
         // Settled and nothing moving: stop burning frames until the next scroll.
@@ -142,6 +147,7 @@ export default function FeatureWheelStory() {
       });
 
       if (rotor) rotor.style.setProperty('--rot', '0deg');
+      for (const n of nodes) n.style.setProperty('--rot', '0deg');
       activate(0);
       schedule();
 

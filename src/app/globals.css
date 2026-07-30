@@ -1346,6 +1346,14 @@ li + li { margin-top: 0.45rem; }
     color: transparent;
     animation: gradient-shift 6s ease-in-out infinite;
   }
+  /* background-position on background-clip:text has no compositable
+     equivalent — every frame repaints the glyphs, forever, and there are
+     several of these on the marketing page at once. The gradient itself is
+     what carries the look; the drift across it is a bonus a tablet shouldn't
+     pay for while it's trying to scroll. */
+  @media (hover: none) and (pointer: coarse) {
+    .gradient-text { animation: none; background-position: 50% center; }
+  }
 }
 @media (forced-colors: active) {
   .gradient-text {

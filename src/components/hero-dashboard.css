@@ -23,9 +23,13 @@
 .fh-bar i:nth-child(1){background:#ff5f57}.fh-bar i:nth-child(2){background:#febc2e}.fh-bar i:nth-child(3){background:#28c840}
 .fh-bar .u{margin-left:8px;font-family:var(--fh-mono);font-size:11px;color:var(--fh-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fh-live{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-family:var(--fh-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--fh-muted2)}
-.fh-live b{width:7px;height:7px;border-radius:50%;background:var(--fh-green)}
-@media (prefers-reduced-motion:no-preference){ .fh-live b{ animation:fh-livep 2.4s ease-in-out infinite } }
-@keyframes fh-livep{0%,100%{box-shadow:0 0 0 3px rgba(74,222,128,.18)}50%{box-shadow:0 0 0 5px rgba(74,222,128,.04)}}
+.fh-live b{position:relative;width:7px;height:7px;border-radius:50%;background:var(--fh-green);box-shadow:0 0 0 3px rgba(74,222,128,.18)}
+.fh-live b::after,.fh-spark .dot::after{content:"";position:absolute;inset:-3px;border-radius:50%;background:rgba(74,222,128,.18);opacity:0}
+@media (prefers-reduced-motion:no-preference){ .fh-live b::after{ animation:fh-livep 2.4s ease-in-out infinite } }
+/* Was animating box-shadow spread, which repaints every frame and never stops.
+   Same halo as a scaled pseudo-element: transform+opacity stay on the
+   compositor and cost the paint budget nothing. */
+@keyframes fh-livep{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.7);opacity:.1}}
 
 .fh-body{position:relative;padding:15px}
 .fh-body::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.7;
@@ -59,7 +63,7 @@
 .fh-spark .area{fill:url(#fhg)}
 .fh-spark .line{fill:none;stroke:var(--fh-lime);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .fh-spark .dot{fill:var(--fh-lime)}
-@media (prefers-reduced-motion:no-preference){ .fh-spark .dot{animation:fh-livep 2.4s ease-in-out infinite} }
+@media (prefers-reduced-motion:no-preference){ .fh-spark .dot{position:relative} .fh-spark .dot::after{animation:fh-livep 2.4s ease-in-out infinite} }
 
 .fh-bars{display:flex;align-items:flex-end;gap:6px;height:56px;width:118px}
 .fh-bars span{flex:1;border-radius:4px 4px 0 0;background:linear-gradient(180deg,var(--fh-orange),rgba(255,122,33,.15))}

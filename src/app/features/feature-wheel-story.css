@@ -36,8 +36,9 @@
   /* ---------- intro header ---------- */
   .fw-head{max-width:1280px;margin:0 auto;padding:clamp(32px,6vw,72px) clamp(16px,4vw,48px) 0;position:relative;z-index:1}
   .fw-kick{display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-2);border:1px solid var(--line);background:rgba(255,255,255,.02);border-radius:999px;padding:7px 13px;margin:0 0 16px}
-  .fw-kick .dotp{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px rgba(74,222,128,.14);flex:0 0 auto}
-  @media (prefers-reduced-motion:no-preference){.fw-kick .dotp{animation:fw-pulse 2.4s ease-in-out infinite}}
+  .fw-kick .dotp{position:relative;width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px rgba(74,222,128,.14);flex:0 0 auto}
+  .fw-kick .dotp::after{content:"";position:absolute;inset:-4px;border-radius:50%;background:rgba(74,222,128,.14);opacity:0}
+  @media (prefers-reduced-motion:no-preference){.fw-kick .dotp::after{animation:fw-pulse 2.4s ease-in-out infinite}}
   .fw-head h2{margin:0 0 12px;font-size:clamp(28px,5vw,50px);line-height:1.03;letter-spacing:-.025em;font-weight:660;max-width:16ch}
   .fw-scope .grad-word{background:linear-gradient(135deg,var(--orange),var(--gold));-webkit-background-clip:text;background-clip:text;color:transparent}
   .fw-sub{margin:0;color:var(--muted);font-size:clamp(15px,1.7vw,18px);max-width:60ch}
@@ -45,7 +46,9 @@
   .fw-scrollcue .tri{color:var(--ck);transition:color .55s ease}
   @media (prefers-reduced-motion:no-preference){.fw-scrollcue .tri{animation:fw-bob 1.6s ease-in-out infinite}}
   @keyframes fw-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(3px)}}
-  @keyframes fw-pulse{0%,100%{box-shadow:0 0 0 4px rgba(74,222,128,.16)}50%{box-shadow:0 0 0 7px rgba(74,222,128,.04)}}
+  /* Was box-shadow spread, which is a paint-every-frame property on an
+     animation that never ends. transform+opacity ride the compositor. */
+  @keyframes fw-pulse{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.55);opacity:.15}}
 
   /* ---------- story scaffold ---------- */
   .fw-story{position:relative;z-index:1;height:620vh}
@@ -58,6 +61,16 @@
   /* big circle, hub pushed well off the left edge so only a slim arc shows and
      the badges become the focus (not the circle body) */
   .fw-wheel-inner{--dia:1000px;--hubx:-660px;position:absolute;left:var(--hubx);top:50%;width:var(--dia);height:var(--dia);margin-top:calc(var(--dia) / -2)}
+  /* --rot is written every animation frame. As a plain custom property it
+     INHERITS, so setting it on the rotor invalidated style for all ~114
+     elements in the subtree, sixty times a second — which is where this
+     section's time actually went on a tablet.
+     Registering it as non-inheriting means a write only invalidates the element
+     it's written to, so the JS sets it on the rotor and on each of the six
+     nodes instead: seven single-element invalidations rather than one that
+     cascades. Safari <16.4 ignores @property, falls back to the inherited
+     behaviour, and still renders identically — just without the saving. */
+  @property --rot { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
   .fw-rotor{position:absolute;inset:0;transform:rotate(var(--rot,0deg));will-change:transform}
   .fw-ring{position:absolute;border-radius:50%}
   .fw-ring.outer{inset:0;border:1px solid rgba(255,255,255,.05);box-shadow:0 0 44px -44px color-mix(in srgb,var(--ck) 12%,transparent) inset;transition:box-shadow .55s ease}
@@ -102,14 +115,23 @@
   .fw-right{min-width:0}
   /* all cards share one grid cell → the container is always as tall as the
      tallest card, so swapping sections never reflows the layout (no scroll jump) */
-  .fw-copies{position:relative;width:100%;display:grid;perspective:1800px}
-  .fw-copy{grid-area:1 / 1;opacity:0;transform:translateY(12px);pointer-events:none;
-    transition:opacity .5s cubic-bezier(.2,.7,.2,1),transform .5s cubic-bezier(.2,.7,.2,1),box-shadow .55s ease;
+  /* No child here uses a 3D transform, so `perspective` bought nothing and cost
+     a 3D rendering context around six large cards. */
+  .fw-copies{position:relative;width:100%;display:grid}
+  /* visibility:hidden, not just opacity:0 — an opacity:0 element is still
+     rastered and composited every frame. All six cards live stacked in the same
+     grid cell (deliberately: the container keeps the tallest card's height so
+     swapping sections never reflows), and each carries a 120px-blur shadow. So
+     five invisible cards' worth of shadow was being painted continuously. The
+     visibility flip is delayed by the length of the fade so the card still
+     fades out rather than vanishing. */
+  .fw-copy{grid-area:1 / 1;opacity:0;visibility:hidden;transform:translateY(12px);pointer-events:none;
+    transition:opacity .5s cubic-bezier(.2,.7,.2,1),transform .5s cubic-bezier(.2,.7,.2,1),visibility 0s linear .5s;
     display:flex;flex-direction:column;gap:14px;justify-content:center;
     border:1px solid var(--line-2);border-radius:20px;padding:clamp(24px,3vw,40px);overflow:hidden;
     background:linear-gradient(180deg,#0d1a28,#091320);
     box-shadow:0 50px 120px -60px rgba(0,0,0,.9),0 0 0 1px color-mix(in srgb,var(--ck) 10%,transparent),inset 0 1px 0 rgba(255,255,255,.04)}
-  .fw-copy.is-active{opacity:1;transform:none;pointer-events:auto;z-index:1;box-shadow:0 50px 120px -60px rgba(0,0,0,.9),0 0 0 1px color-mix(in srgb,var(--ck) 30%,transparent),0 0 46px -10px color-mix(in srgb,var(--ck) 42%,transparent),inset 0 1px 0 rgba(255,255,255,.05)}
+  .fw-copy.is-active{opacity:1;visibility:visible;transition:opacity .5s cubic-bezier(.2,.7,.2,1),transform .5s cubic-bezier(.2,.7,.2,1),visibility 0s;transform:none;pointer-events:auto;z-index:1;box-shadow:0 50px 120px -60px rgba(0,0,0,.9),0 0 0 1px color-mix(in srgb,var(--ck) 30%,transparent),0 0 46px -10px color-mix(in srgb,var(--ck) 42%,transparent),inset 0 1px 0 rgba(255,255,255,.05)}
   .fw-copy::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,var(--ck),transparent 72%)}
   .fw-copy-top{display:flex;align-items:center;gap:12px}
   .fw-copy-ic{flex:0 0 auto;width:42px;height:42px;border-radius:11px;display:grid;place-items:center;border:1px solid color-mix(in srgb,var(--ck) 30%,var(--line));background:color-mix(in srgb,var(--ck) 12%,transparent);color:var(--ck)}
@@ -306,6 +328,56 @@
     .fw-mock{min-height:0;max-height:clamp(158px,27vh,262px);place-items:start center;
       -webkit-mask:linear-gradient(180deg,#000 80%,transparent);mask:linear-gradient(180deg,#000 80%,transparent)}
   }
+
+  /* ---------- tablets get the band too ----------
+     The clipped band above is why the wheel is smooth on a phone: a 560px
+     rotor in a 112px overflow:hidden strip, instead of a 1000px absolutely
+     positioned wheel with overflow:visible spinning behind the whole stage.
+     It was gated purely on width, so an iPad — comfortably wider than 940px
+     but with a fraction of a laptop's GPU — got the heavy desktop wheel. Width
+     was standing in for capability, and on a tablet it's the wrong proxy.
+     Same rules, keyed on a touch pointer, so desktop windows narrowed past
+     940px still behave exactly as before. */
+  @media (hover:none) and (pointer:coarse){
+    /* shorter pin so the wheel doesn't scroll-jack for ~5 swipes on a phone */
+    .fw-story{height:340vh}
+    .fw-sticky{align-items:stretch}
+    .fw-stage{grid-template-columns:minmax(0,1fr);gap:8px;align-content:start;padding-top:4px;padding-bottom:16px}
+    .fw-left{min-height:0;order:-1;justify-content:flex-start}
+    /* wheel becomes a clipped band at the top; the frame is rotated 90° so the
+       reading position sits at top-centre and the hub falls off-screen below.
+       Kept short on phones so the card below gets the vertical room. */
+    .fw-wheel{position:relative;inset:auto;display:block;height:112px;overflow:hidden;margin:0 -16px;z-index:0}
+    .fw-wheel-inner{left:50%;top:40px;margin-top:0;--dia:560px;transform:translateX(-50%) rotate(-90deg)}
+    .fw-node{transform:translate(50%,-50%) rotate(calc(90deg - (var(--rot,0deg) + var(--base))))}
+    .fw-node b{display:none}
+    .fw-node em{font-size:13px}
+    .fw-spoke.is-active .fw-node{transform:translate(50%,-50%) rotate(calc(90deg - (var(--rot,0deg) + var(--base)))) scale(1.05)}
+    /* The chapter chips duplicated the wheel's own titled nodes right above
+       them (which are already tappable to jump chapters), so they're hidden —
+       this also hands the card back that row of vertical space. */
+    .fw-nav{display:none;gap:6px;overflow-x:auto;padding:2px 2px 4px;margin:2px -4px 0;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+    .fw-nav::-webkit-scrollbar{display:none}
+    .fw-navbtn{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:5px 11px;border-radius:999px;
+      border:1px solid var(--line-2);background:rgba(255,255,255,.03);color:var(--muted-2);font-family:var(--mono);font-size:12px;
+      white-space:nowrap;cursor:pointer;-webkit-appearance:none;appearance:none;transition:color .2s ease,background .2s ease,border-color .2s ease}
+    .fw-navbtn .n{font-weight:700;font-variant-numeric:tabular-nums;opacity:.65}
+    .fw-navbtn .t{font-weight:600}
+    .fw-navbtn[aria-current="true"]{color:#140a02;border-color:transparent;background:linear-gradient(135deg,var(--ck),color-mix(in srgb,var(--ck) 55%,#fff))}
+    .fw-navbtn[aria-current="true"] .n{opacity:.9}
+    .fw-right{order:1;min-width:0}
+    .fw-copies{min-height:0;grid-template-columns:minmax(0,1fr)}
+    .fw-copy{position:relative;min-width:0;max-width:100%;opacity:1;transform:none;pointer-events:auto;display:none}
+    .fw-copy.is-active{display:flex}
+    /* tighten the pinned card so the whole thing fits one phone screen */
+    .fw-copy{padding:clamp(15px,3.2vw,22px);gap:10px}
+    .fw-copy-top{gap:10px}
+    /* the mockups are the biggest block — cap + softly fade them so the copy
+       below always clears the fold (they're decorative sample data anyway) */
+    .fw-mock{min-height:0;max-height:clamp(158px,27vh,262px);place-items:start center;
+      -webkit-mask:linear-gradient(180deg,#000 80%,transparent);mask:linear-gradient(180deg,#000 80%,transparent)}
+  }
+
 
   /* Below 900px the app shows a fixed ~4.4rem mobile top bar; offset the pinned
      wheel so its title clears the bar instead of hiding behind it. (Viewport
@@ -548,4 +620,23 @@
        .fw-node is the worst place to carry one: all six counter-rotate on every
        frame of the wheel, so each is re-sampling what's behind it as it moves. */
     .fw-scope .fw-node{-webkit-backdrop-filter:none;backdrop-filter:none}
+    /* Decorative loops that never end. Each one keeps the compositor awake for
+       as long as the page is open, competing with the scroll for frames. */
+    .fw-scope .fw-kick .dotp::after,
+    .fw-scope .fw-scrollcue .tri,
+    .fw-scope .fw-copy.playing .qf-think span{animation:none}
+    /* stroke-dashoffset is not a compositable property: the signature
+       "signature being drawn" repaints the path every frame for 1.5s on each
+       of the six section changes. Show it already drawn instead. */
+    .fw-scope .fw-copy.playing .sg path{animation:none;stroke-dashoffset:0}
+    /* Each section change restarts ~20 staggered entrance animations inside the
+       card, and each one starting is its own style recalc — landing exactly
+       when the wheel is mid-rotation, which is when a stutter is most visible.
+       The card still cross-fades; its contents just arrive with it. */
+    .fw-scope .fw-copy.playing .fx{animation:none}
+    .fw-scope .fw-copy.playing .qb-stamp{animation:none}
+    /* The active card's shadow is the single most expensive paint in the
+       section; a tablet does not need a 120px spread to read it as raised. */
+    .fw-scope .fw-copy{box-shadow:0 18px 40px -24px rgba(0,0,0,.9),0 0 0 1px color-mix(in srgb,var(--ck) 10%,transparent)}
+    .fw-scope .fw-copy.is-active{box-shadow:0 18px 40px -24px rgba(0,0,0,.9),0 0 0 1px color-mix(in srgb,var(--ck) 30%,transparent)}
   }
