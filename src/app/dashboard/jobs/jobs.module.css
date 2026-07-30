@@ -52,3 +52,4 @@
    reachable — otherwise there'd be no way to turn the map back on. Mirrors
    .viewBar on the leads page. */
 .viewBar { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
+.gearRow { display: flex; align-items: center; gap: 0.55rem; flex-wrap: wrap; justify-content: flex-end; }

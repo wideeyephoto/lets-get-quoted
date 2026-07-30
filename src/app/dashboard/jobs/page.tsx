@@ -190,6 +190,8 @@ export default async function JobsPage({
       paidLabel: formatMoney(paidTotal),
       invoiceRef: primaryInvoice?.ref ?? null,
       invoiceStatusLabel: primaryInvoice ? INVOICE_STATUS_LABEL[primaryInvoice.status] ?? primaryInvoice.status : null,
+      scope: job.scope ?? null,
+      photoCount: (job.photo_paths ?? []).length,
     };
   });
 
@@ -209,12 +211,18 @@ export default async function JobsPage({
           <p className="eyebrow">Pipeline</p>
           <h1>Current jobs</h1>
         </div>
-        <div style={{ marginTop: '0.5rem' }}>
-          <AutomationLink id="followups" label="Quote follow-ups" on={followupsOn} />
-        </div>
         {/* The map lives inside the workspace so the view gear can sit on its
-            legend row (same as leads); the workspace also owns the empty state. */}
-        <JobsWorkspace jobs={jobItems} initialView={jobsView} mapView={mapView} mapTheme={mapTheme} mapPins={mapPins} />
+            legend row (same as leads); the workspace also owns the empty state.
+            Quote follow-ups rides along so it sits beside the View gear rather
+            than floating under the title on its own line. */}
+        <JobsWorkspace
+          jobs={jobItems}
+          initialView={jobsView}
+          mapView={mapView}
+          mapTheme={mapTheme}
+          mapPins={mapPins}
+          toolbarAccessory={<AutomationLink id="followups" label="Quote follow-ups" on={followupsOn} />}
+        />
       </section>
 
       <div className="stat-ticker panel">

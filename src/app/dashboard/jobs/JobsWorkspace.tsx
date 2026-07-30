@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useMemo, useState, useTransition, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { JobStatus } from '@/lib/jobs';
@@ -33,6 +33,10 @@ export type JobViewItem = {
   paidLabel: string;
   invoiceRef: string | null;
   invoiceStatusLabel: string | null;
+  // Enough to draw a job's cover before any detail request: what the job is
+  // (picks the trade glyph) and whether a real photo is on its way.
+  scope: string | null;
+  photoCount: number;
 };
 
 const VIEWS = [
@@ -65,7 +69,7 @@ function StatusBadge({ job }: { job: JobViewItem }) {
   );
 }
 
-export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme, mapPins }: { jobs: JobViewItem[]; initialView: JobsView; mapView: MapView; mapTheme: MapTheme; mapPins: MapPin[] }) {
+export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme, mapPins, toolbarAccessory }: { jobs: JobViewItem[]; initialView: JobsView; mapView: MapView; mapTheme: MapTheme; mapPins: MapPin[]; toolbarAccessory?: ReactNode }) {
   const [view, setView] = useState<JobsView>(initialView);
   const [status, setStatus] = useState<JobStatus | 'all'>('all');
   const [pending, startTransition] = useTransition();
@@ -93,8 +97,13 @@ export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme, ma
   // The view/map gear sits on the map's legend row, matching the leads page. Down
   // in the filter bar its popover opened downwards into the panels below it and
   // was overlapped by them; on the legend row it opens over the map instead.
+  // Anything the page wants beside the gear travels with it, so the two never
+  // drift onto separate lines whichever branch renders the gear.
   const gear = (
-    <ViewGear views={VIEWS} activeView={view} onPickView={pickView} mapView={mapView} onSetMapView={setMap} mapTheme={mapTheme} onSetMapTheme={setTheme} label="View" />
+    <div className={styles.gearRow}>
+      {toolbarAccessory}
+      <ViewGear views={VIEWS} activeView={view} onPickView={pickView} mapView={mapView} onSetMapView={setMap} mapTheme={mapTheme} onSetMapTheme={setTheme} label="View" />
+    </div>
   );
 
   return (

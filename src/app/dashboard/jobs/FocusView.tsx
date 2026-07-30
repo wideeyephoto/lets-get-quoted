@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { JobDetailDto } from '@/lib/job-detail';
 import type { JobViewItem } from './JobsWorkspace';
+import JobCover from './JobCover';
 import styles from './focus.module.css';
 
 // Master-detail view of the pipeline: one job open on the left, the whole list
@@ -218,6 +219,15 @@ export default function FocusView({ jobs }: { jobs: JobViewItem[] }) {
         {selected ? (
           <>
             <header className={styles.hero}>
+              <div className={styles.heroLayout}>
+              <JobCover
+                jobId={selected.id}
+                scope={selected.scope}
+                photoUrl={fresh?.photos[0]?.url ?? null}
+                photoCount={selected.photoCount}
+                photoTotal={fresh?.photoCount}
+              />
+              <div className={styles.heroCopy}>
               <p className={styles.heroTag}>Selected job</p>
               <div className={styles.heroTop}>
                 <h2>{selected.clientName || 'Untitled job'}</h2>
@@ -265,6 +275,8 @@ export default function FocusView({ jobs }: { jobs: JobViewItem[] }) {
                 <Link className="btn secondary" href={`/dashboard/jobs/${selected.id}?open=costs`}>
                   Add expense
                 </Link>
+              </div>
+              </div>
               </div>
             </header>
 
