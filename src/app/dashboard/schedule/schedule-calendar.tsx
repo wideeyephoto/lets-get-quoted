@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import SaveButton from '@/components/save-button';
@@ -90,6 +90,7 @@ export default function ScheduleCalendar({
   assignmentsByJob,
   blocks = [],
   fullDates = [],
+  monthNav,
 }: {
   weeks: CalendarCell[][];
   todayKey: string;
@@ -98,6 +99,8 @@ export default function ScheduleCalendar({
   assignmentsByJob: Record<string, string[]>;
   blocks?: Array<{ start_date: string; end_date: string; reason: string | null }>;
   fullDates?: string[];
+  /** Server-rendered month arrows + label, so they share the toolbar row. */
+  monthNav?: ReactNode;
 }) {
   const fullSet = useMemo(() => new Set(fullDates), [fullDates]);
   const router = useRouter();
@@ -249,8 +252,11 @@ export default function ScheduleCalendar({
 
   return (
     <>
+      {/* Month nav and view switcher share one row. They were two separate
+          blocks stacked above each other, both about which dates you're
+          looking at. */}
       <div className="calendar-toolbar">
-        <p className="calendar-hint">Click a job to reschedule it, remove it from the schedule, or manage crew.</p>
+        {monthNav}
         <div className="calendar-view-toggle" aria-label="Calendar view">
           <button type="button" className={calendarView === 'month' ? 'active' : ''} onClick={() => setCalendarView('month')}>Month</button>
           <button type="button" className={calendarView === 'week' ? 'active' : ''} onClick={() => setCalendarView('week')}>Week</button>

@@ -8585,6 +8585,198 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 
 .booking-availability-body .workspace-details-copy { margin: 0 0 1rem; }
 
+/* ---------------------------------------------------------------------------
+   Schedule header
+   Identity, numbers and the primary action on one row; month nav and the view
+   switcher on the next; then the grid. Everything explanatory moved below the
+   calendar, because a hint you read after looking doesn't need to sit above it.
+--------------------------------------------------------------------------- */
+
+.schedule-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem 1.25rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.1rem;
+}
+
+/* Scoped to the bar, not to .schedule-bar-id — the title carries that class
+   itself now, and a descendant selector silently stopped matching. */
+.schedule-bar .workspace-title {
+  flex: none;
+  margin: 0;
+  font-size: clamp(1.4rem, 2.2vw, 1.85rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+/* Takes the slack between the title and the CTA so the button stays pinned
+   right on a wide screen and wraps cleanly on a narrow one. */
+.schedule-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+}
+
+.sched-stat {
+  display: grid;
+  gap: 0.05rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 176, 214, 0.16);
+  background: rgba(255, 255, 255, 0.03);
+  text-decoration: none;
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+
+.sched-stat:hover {
+  border-color: rgba(255, 122, 41, 0.4);
+  background: rgba(255, 122, 41, 0.07);
+}
+
+.sched-stat strong {
+  font-size: 1.02rem;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  color: var(--text, #e8eef6);
+  line-height: 1.15;
+}
+
+.sched-stat small {
+  font-size: 0.66rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted, #93a4b8);
+  white-space: nowrap;
+}
+
+/* Only tinted when there's actually something waiting. */
+.sched-stat.needs {
+  border-color: rgba(255, 176, 32, 0.38);
+  background: rgba(255, 176, 32, 0.09);
+}
+.sched-stat.needs strong { color: #ffc65c; }
+
+.schedule-bar-cta { flex: none; white-space: nowrap; }
+
+/* Month nav, sharing the toolbar row with the view switcher */
+.month-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.month-nav-label {
+  margin: 0 0.35rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.month-nav-arrow,
+.month-nav-today {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(148, 176, 214, 0.2);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text, #e8eef6);
+  text-decoration: none;
+  font-weight: 700;
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+
+.month-nav-arrow {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  font-size: 0.95rem;
+}
+
+.month-nav-today {
+  height: 2rem;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+}
+
+.month-nav-arrow:hover,
+.month-nav-today:hover {
+  border-color: rgba(255, 122, 41, 0.45);
+  background: rgba(255, 122, 41, 0.1);
+}
+
+/* Hint + setup shortcuts, under the grid */
+.schedule-panel-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(148, 176, 214, 0.1);
+}
+
+.schedule-panel-foot p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted, #93a4b8);
+}
+
+.schedule-panel-foot-links {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.schedule-panel-foot-links > a {
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: rgba(255, 122, 41, 0.95);
+  text-decoration: none;
+}
+
+.schedule-panel-foot-links > a:hover { text-decoration: underline; }
+
+@media (max-width: 780px) {
+  .schedule-bar { gap: 0.7rem; }
+  .schedule-bar-id { flex: 1 1 100%; }
+
+  /* Four evenly-sized tiles beat a ragged wrap at phone widths — and the label
+     goes beside the number rather than under it, which halves the block's
+     height. Stacked, these four alone cost 190px of the screen before you saw
+     a single date. */
+  .schedule-stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.4rem;
+    justify-content: flex-start;
+    flex: 1 1 100%;
+  }
+
+  .sched-stat {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    padding: 0.42rem 0.6rem;
+    border-radius: 10px;
+  }
+
+  .sched-stat strong { font-size: 0.92rem; }
+  .sched-stat small { font-size: 0.6rem; letter-spacing: 0.05em; }
+
+  .schedule-bar-cta { flex: 1 1 100%; justify-content: center; }
+  .month-nav-label { font-size: 1.05rem; }
+  .schedule-panel-foot { justify-content: flex-start; }
+}
+
 .booking-form-actions {
   display: flex;
   justify-content: flex-end;

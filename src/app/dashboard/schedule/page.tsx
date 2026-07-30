@@ -198,6 +198,9 @@ export default async function SchedulePage({
   const prevMonth = monthParam(year, monthIndex - 1);
   const nextMonth = monthParam(year, monthIndex + 1);
   const currentMonth = monthParam(now.getFullYear(), now.getMonth());
+  // "Today" is dead weight while you're looking at this month — which is most
+  // visits, since that's where the page lands.
+  const viewingThisMonth = monthParam(year, monthIndex) === currentMonth;
   const quickSchedulePresets = [
     { label: 'Today 8 AM', date: todayKey, time: '08:00' },
     { label: 'Tomorrow 8 AM', date: addDaysToKey(now, 1), time: '08:00' },
@@ -370,67 +373,54 @@ export default async function SchedulePage({
     <main className="wide-shell workspace-shell">
       <ScheduleDragProvider unavailable={unavailableDays}>
       <section className="panel workspace-section-card schedule-calendar-panel">
-        <div className="schedule-calendar-header">
-          <div className="workspace-hero-copy schedule-calendar-copy">
-            <p className="eyebrow">Schedule</p>
-            <h1 className="workspace-title">Job calendar</h1>
-            <p className="workspace-lead">
-              See what&apos;s on the books this month and get unscheduled jobs onto a date.
-            </p>
-            <div className="schedule-automation-row">
-              <Link href="/dashboard/schedule/plan" className="btn primary">
-                🧭 Plan my day
-              </Link>
-              <a href="#booking-availability" className="btn secondary">
-                Set booking availability &darr;
-              </a>
-              <AutomationLink id="reminders" label="Appointment reminders" on={remindersOn} />
-            </div>
-          </div>
-          <div className="workspace-metric-grid calendar-heading-metrics">
-            <Link className="workspace-metric-card accent schedule-summary-card metric-card-link" href="/dashboard/jobs" aria-label="Open jobs page">
-              <div className="schedule-summary-title">
-                <span className="workspace-metric-label">Next 30 days</span>
-              </div>
-              <div className="schedule-summary-stats">
-                <span>
-                  <strong>{scheduledNext30Days}</strong>
-                  <small>Jobs</small>
-                </span>
-                <span>
-                  <strong>{formatMoney(estimatedRevenue)}</strong>
-                  <small>Revenue</small>
-                </span>
-                <span>
-                  <strong>{formatMoney(estimatedProfit)}</strong>
-                  <small>Profit</small>
-                </span>
-              </div>
+        {/* Two rows, not six. The page used to spend ~470px on desktop and
+            ~640px on mobile introducing itself — an eyebrow, a title, a lead
+            paragraph, an action row, a metric card, then a SECOND eyebrow and
+            heading for the same calendar — before showing a single date. */}
+        <header className="schedule-bar">
+          {/* No "SCHEDULE" eyebrow: the nav already marks where you are and the
+              heading says it again. It cost a line on every screen size. */}
+          <h1 className="workspace-title schedule-bar-id">Job calendar</h1>
+
+          <div className="schedule-stats">
+            <Link className="sched-stat" href="/dashboard/jobs" aria-label={`${scheduledNext30Days} jobs booked in the next 30 days`}>
+              <strong>{scheduledNext30Days}</strong>
+              <small>Jobs · 30d</small>
+            </Link>
+            <Link className="sched-stat" href="/dashboard/jobs" aria-label={`${formatMoney(estimatedRevenue)} estimated revenue in the next 30 days`}>
+              <strong>{formatMoney(estimatedRevenue)}</strong>
+              <small>Revenue</small>
+            </Link>
+            <Link className="sched-stat" href="/dashboard/jobs" aria-label={`${formatMoney(estimatedProfit)} estimated profit in the next 30 days`}>
+              <strong>{formatMoney(estimatedProfit)}</strong>
+              <small>Profit</small>
             </Link>
             <a
-              className="workspace-metric-card metric-card-link"
+              className={`sched-stat${unscheduledJobs.length > 0 ? ' needs' : ''}`}
               href="#unscheduled-jobs"
               aria-label={`${unscheduledJobs.length} active ${unscheduledJobs.length === 1 ? 'job needs' : 'jobs need'} a scheduled date`}
             >
-              <span className="workspace-metric-label">Needs date</span>
-              <strong className="workspace-metric-value">{unscheduledJobs.length}</strong>
+              <strong>{unscheduledJobs.length}</strong>
+              <small>Needs date</small>
             </a>
           </div>
-        </div>
 
-        <div className="calendar-heading">
-          <div>
-            <p className="eyebrow">Calendar</p>
-            <h2>{monthLabel}</h2>
-          </div>
-          <div className="actions">
-            <Link href={`/dashboard/schedule?month=${prevMonth}`} className="btn secondary">← Prev</Link>
-            <Link href={`/dashboard/schedule?month=${currentMonth}`} className="btn secondary">Today</Link>
-            <Link href={`/dashboard/schedule?month=${nextMonth}`} className="btn secondary">Next →</Link>
-          </div>
-        </div>
+          <Link href="/dashboard/schedule/plan" className="btn primary schedule-bar-cta">
+            🧭 Plan my day
+          </Link>
+        </header>
 
         <ScheduleCalendar
+          monthNav={
+            <div className="month-nav">
+              <Link href={`/dashboard/schedule?month=${prevMonth}`} className="month-nav-arrow" aria-label="Previous month">←</Link>
+              <h2 className="month-nav-label">{monthLabel}</h2>
+              <Link href={`/dashboard/schedule?month=${nextMonth}`} className="month-nav-arrow" aria-label="Next month">→</Link>
+              {!viewingThisMonth && (
+                <Link href={`/dashboard/schedule?month=${currentMonth}`} className="month-nav-today">Today</Link>
+              )}
+            </div>
+          }
           weeks={weeks}
           todayKey={todayKey}
           jobs={calendarJobs}
@@ -439,6 +429,14 @@ export default async function SchedulePage({
           blocks={availabilityBlocks}
           fullDates={fullDates}
         />
+
+        <div className="schedule-panel-foot">
+          <p>Click a job to reschedule it, remove it from the schedule, or manage crew.</p>
+          <div className="schedule-panel-foot-links">
+            <a href="#booking-availability">Set booking availability &darr;</a>
+            <AutomationLink id="reminders" label="Appointment reminders" on={remindersOn} />
+          </div>
+        </div>
       </section>
 
       {/* Under the calendar, not above it. The map is context for the month
