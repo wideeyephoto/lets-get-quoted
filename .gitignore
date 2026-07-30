@@ -10,7 +10,7 @@ yarn-error.log*
 .next/
 out/
 build/
-tsconfig.tsbuildinfo
+*.tsbuildinfo
 .vercel
 .env*
 
