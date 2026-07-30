@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
-import { JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeJobsView, normalizeMapTheme, normalizeMapView, type JobsView, type MapSurface, type MapTheme, type MapView } from '@/lib/dashboard-views';
+import { CALENDAR_WEEKEND_COOKIE, JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeJobsView, normalizeMapTheme, normalizeMapView, serializeWeekendDays, type JobsView, type MapSurface, type MapTheme, type MapView, type WeekendDays } from '@/lib/dashboard-views';
 
 const YEAR = 60 * 60 * 24 * 365;
 
@@ -23,4 +23,10 @@ export async function setMapThemeAction(theme: MapTheme) {
 export async function setJobsViewAction(view: JobsView) {
   await requireOwnerContext();
   cookies().set(JOBS_VIEW_COOKIE, normalizeJobsView(view), { path: '/', maxAge: YEAR, sameSite: 'lax' });
+}
+
+// Remember whether the schedule calendar shows Saturday and Sunday columns.
+export async function setCalendarWeekendAction(days: WeekendDays) {
+  await requireOwnerContext();
+  cookies().set(CALENDAR_WEEKEND_COOKIE, serializeWeekendDays(days), { path: '/', maxAge: YEAR, sameSite: 'lax' });
 }

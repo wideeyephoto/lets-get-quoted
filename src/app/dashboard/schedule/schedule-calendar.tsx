@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState, useTransition, type ReactNode } from 'rea
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import SaveButton from '@/components/save-button';
+import CalendarDaysGear from './CalendarDaysGear';
+import { setCalendarWeekendAction } from '../view-actions';
+import type { WeekendDays } from '@/lib/dashboard-views';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
 import { removeJobScheduleAction, scheduleJobAction, textCrewJobDateAction, toggleJobCrewAction } from '../jobs/actions';
@@ -91,6 +94,7 @@ export default function ScheduleCalendar({
   blocks = [],
   fullDates = [],
   monthNav,
+  weekendDays = { sat: true, sun: true },
 }: {
   weeks: CalendarCell[][];
   todayKey: string;
@@ -101,8 +105,26 @@ export default function ScheduleCalendar({
   fullDates?: string[];
   /** Server-rendered month arrows + label, so they share the toolbar row. */
   monthNav?: ReactNode;
+  /** Seeded from the cookie server-side so the grid never flashes 7 columns. */
+  weekendDays?: WeekendDays;
 }) {
   const fullSet = useMemo(() => new Set(fullDates), [fullDates]);
+
+  // Local state so a toggle lands instantly; the cookie write is fire-and-forget
+  // and only decides what the NEXT page load starts with.
+  const [days, setDays] = useState<WeekendDays>(weekendDays);
+  function updateDays(next: WeekendDays) {
+    setDays(next);
+    void setCalendarWeekendAction(next).catch(() => {});
+  }
+
+  // Real weekday indexes (0=Sun … 6=Sat), kept rather than re-indexed: the
+  // multi-day job bars read the neighbouring date off this index, and a
+  // renumbered array would make Friday think Sunday was next to it.
+  const visibleDays = useMemo(
+    () => [0, 1, 2, 3, 4, 5, 6].filter((d) => (d !== 0 || days.sun) && (d !== 6 || days.sat)),
+    [days],
+  );
   const router = useRouter();
   const [assignments, setAssignments] = useState(assignmentsByJob);
   const [openOccurrenceKey, setOpenOccurrenceKey] = useState<string | null>(null);
@@ -148,6 +170,22 @@ export default function ScheduleCalendar({
   }, [jobsByDate, todayKey, weeks]);
 
   const visibleWeeks = useMemo(() => calendarView === 'week' ? [weekAtAGlance] : weeks, [calendarView, weekAtAGlance, weeks]);
+
+  // Hiding a column hides any work booked on it. Silently dropping a scheduled
+  // job off the calendar is how you miss it, so the gear says when that's
+  // happening in the month you're looking at.
+  const hiddenJobCount = useMemo(() => {
+    const hidden = [!days.sun ? 0 : null, !days.sat ? 6 : null].filter((d): d is number => d !== null);
+    if (hidden.length === 0) return 0;
+    let count = 0;
+    for (const week of visibleWeeks) {
+      for (const dayIndex of hidden) {
+        const cell = week[dayIndex];
+        if (cell) count += jobsByDate.get(cell.dateKey)?.length ?? 0;
+      }
+    }
+    return count;
+  }, [visibleWeeks, days, jobsByDate]);
 
   const visibleWeekLayouts = useMemo(() => {
     return visibleWeeks.map((week) => {
@@ -290,12 +328,13 @@ export default function ScheduleCalendar({
           ))}
         </div>
       ) : (
-        <div className="calendar-grid">
-          {WEEKDAY_LABELS.map((label) => (
-            <div className="calendar-weekday" key={label}>{label}</div>
+        <div className="calendar-grid" style={{ gridTemplateColumns: `repeat(${visibleDays.length}, minmax(0, 1fr))` }}>
+          {visibleDays.map((day) => (
+            <div className="calendar-weekday" key={day}>{WEEKDAY_LABELS[day]}</div>
           ))}
           {visibleWeeks.map((week, weekIndex) =>
-            week.map((cell, cellIndex) => {
+            visibleDays.map((cellIndex) => {
+              const cell = week[cellIndex];
               if (!cell) {
                 return <div className="calendar-cell empty" key={`${weekIndex}-${cellIndex}`} />;
               }
@@ -372,6 +411,11 @@ export default function ScheduleCalendar({
               );
             })
           )}
+        </div>
+      )}
+      {calendarView !== 'year' && (
+        <div className="calendar-days-row">
+          <CalendarDaysGear days={days} onChange={updateDays} hiddenJobCount={hiddenJobCount} />
         </div>
       )}
 

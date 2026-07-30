@@ -8711,6 +8711,158 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
   background: rgba(255, 122, 41, 0.1);
 }
 
+/* ---------------------------------------------------------------------------
+   Weekend-column gear, bottom-right of the calendar
+--------------------------------------------------------------------------- */
+
+.calendar-days-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.45rem;
+}
+
+.calendar-days-gear { position: relative; }
+
+.calendar-days-gear-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 176, 214, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(147, 164, 184, 0.75);
+  cursor: pointer;
+  /* Quiet until you go looking for it — it's a preference, not an action. */
+  opacity: 0.6;
+  transition: opacity 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+}
+
+.calendar-days-gear-btn:hover,
+.calendar-days-gear-btn[aria-expanded='true'] {
+  opacity: 1;
+  color: #ff7a29;
+  border-color: rgba(255, 122, 41, 0.45);
+}
+
+.calendar-days-gear-btn:focus-visible {
+  opacity: 1;
+  outline: 2px solid rgba(255, 122, 41, 0.7);
+  outline-offset: 2px;
+}
+
+.calendar-days-gear-btn svg { width: 0.95rem; height: 0.95rem; }
+
+/* "5" when two columns are hidden — explains a short week at a glance. */
+.calendar-days-gear-count {
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+}
+
+.calendar-days-pop {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.4rem);
+  z-index: 40;
+  width: 16rem;
+  padding: 0.7rem;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 176, 214, 0.2);
+  background: #0d1a2b;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+  display: grid;
+  gap: 0.15rem;
+  text-align: left;
+}
+
+.calendar-days-pop > p {
+  margin: 0 0 0.25rem;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted, #93a4b8);
+}
+
+.calendar-days-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.35rem;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.calendar-days-toggle:hover { background: rgba(255, 255, 255, 0.04); }
+.calendar-days-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+
+.calendar-days-track {
+  flex: none;
+  width: 2.1rem;
+  height: 1.2rem;
+  border-radius: 999px;
+  background: rgba(148, 176, 214, 0.22);
+  padding: 0.15rem;
+  transition: background 0.16s ease;
+}
+
+.calendar-days-track > span {
+  display: block;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.16s ease;
+}
+
+.calendar-days-toggle input:checked + .calendar-days-track { background: #ff7a29; }
+.calendar-days-toggle input:checked + .calendar-days-track > span { transform: translateX(0.9rem); }
+.calendar-days-toggle input:focus-visible + .calendar-days-track {
+  outline: 2px solid rgba(255, 122, 41, 0.7);
+  outline-offset: 2px;
+}
+
+.calendar-days-copy { display: grid; gap: 0.05rem; min-width: 0; }
+.calendar-days-copy strong { font-size: 0.86rem; font-weight: 650; color: var(--text, #e8eef6); }
+.calendar-days-copy small { font-size: 0.74rem; color: var(--muted, #93a4b8); }
+
+/* Work is hidden right now — worth seeing without opening the menu. */
+.calendar-days-gear-warn {
+  display: inline-grid;
+  place-items: center;
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 50%;
+  background: rgba(255, 176, 32, 0.9);
+  color: #1a1207;
+  font-size: 0.66rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.calendar-days-note.warn {
+  color: #ffc65c;
+  border-top-color: rgba(255, 176, 32, 0.3);
+}
+
+.calendar-days-note {
+  margin: 0.35rem 0 0 !important;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(148, 176, 214, 0.12);
+  font-size: 0.72rem !important;
+  font-weight: 400 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  line-height: 1.4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .calendar-days-track,
+  .calendar-days-track > span,
+  .calendar-days-gear-btn { transition: none; }
+}
+
 /* Hint + setup shortcuts, under the grid */
 .schedule-panel-foot {
   display: flex;
