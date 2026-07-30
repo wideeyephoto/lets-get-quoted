@@ -2,10 +2,12 @@
 // can therefore be flipped straight from the Automations list without opening the
 // card and saving a form.
 //
-// Deliberately NOT in here: "Intake AI" (genuinely always on, no column) and
-// "Online booking" (its on/off is derived from the booking weekday set, so a
-// switch would have to guess which days to restore). Those stay status pills.
+// Deliberately NOT in here: "Intake AI", which is genuinely always on and has no
+// column behind it, so it keeps its status pill.
 export const AUTOMATION_COLUMNS = {
+  // Master switch only — the weekday/window setup underneath is untouched, so
+  // turning booking back on restores exactly what was configured.
+  booking: 'booking_enabled',
   'extra-stop': 'extra_stop_enabled',
   'missed-call': 'call_textback_enabled',
   reviews: 'auto_review_request',

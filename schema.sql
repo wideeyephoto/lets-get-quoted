@@ -166,6 +166,11 @@ alter table accounts add column if not exists booking_windows jsonb not null def
 alter table accounts add column if not exists booking_max_per_day integer not null default 4;
 -- Soonest a customer may self-book, in days ahead (1 = from tomorrow, the old behavior).
 alter table accounts add column if not exists booking_lead_days integer not null default 1;
+-- Master on/off for self-serve online booking, flipped from the Automations list.
+-- Off closes the public /book page's calendar without disturbing the weekday /
+-- window / capacity setup underneath, so turning it back on restores exactly the
+-- availability the contractor had configured. Defaults true = prior behavior.
+alter table accounts add column if not exists booking_enabled boolean not null default true;
 
 -- Value gate for instant booking. When ON, the /book page asks a couple of quick
 -- questions for an instant AI estimate first, and only jobs at/above the floor

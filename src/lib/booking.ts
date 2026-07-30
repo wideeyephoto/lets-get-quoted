@@ -42,6 +42,8 @@ export function computeBookingDays(opts: {
   maxOfferedDays?: number;
 }): BookingDay[] {
   const { availability, countByDate, hoursByDate, takenByDate, blockedDates, now } = opts;
+  // Master switch off ⇒ offer nothing, whatever the weekday setup underneath says.
+  if (!availability.enabled) return [];
   const lookahead = opts.lookaheadDays ?? LOOKAHEAD_DAYS;
   const maxOffered = opts.maxOfferedDays ?? MAX_OFFERED_DAYS;
   // Only offer windows that start within the working-hours span.
@@ -85,7 +87,7 @@ export function computeBookingDays(opts: {
 export async function getAvailableBookingDays(admin: SupabaseClient, accountId: string): Promise<BookingDay[]> {
   const { data: account } = await admin
     .from('accounts')
-    .select('schedule_day_hours, timezone, booking_weekdays, booking_windows, booking_max_per_day, booking_lead_days, workday_start, workday_end, job_buffer_minutes')
+    .select('schedule_day_hours, timezone, booking_enabled, booking_weekdays, booking_windows, booking_max_per_day, booking_lead_days, workday_start, workday_end, job_buffer_minutes')
     .eq('id', accountId)
     .maybeSingle();
   const availability = bookingAvailabilityFromAccount(account);

@@ -31,6 +31,14 @@ describe('booking-availability normalizers', () => {
     expect(normalizeBookingWindowTimes([])).toEqual(['08:00', '13:00']); // never silently zero
   });
 
+  it('reads the booking master switch, defaulting on for a pre-migration row', () => {
+    expect(bookingAvailabilityFromAccount({ booking_enabled: false }).enabled).toBe(false);
+    expect(bookingAvailabilityFromAccount({ booking_enabled: true }).enabled).toBe(true);
+    // Only an explicit false closes booking — absent/null/undefined stay on.
+    expect(bookingAvailabilityFromAccount({}).enabled).toBe(true);
+    expect(bookingAvailabilityFromAccount({ booking_enabled: null }).enabled).toBe(true);
+  });
+
   it('clamps max-per-day and lead-days', () => {
     expect(normalizeMaxPerDay('0')).toBe(1);
     expect(normalizeMaxPerDay(999)).toBe(50);
@@ -42,6 +50,7 @@ describe('booking-availability normalizers', () => {
 
   it('bookingAvailabilityFromAccount degrades a null row to old-behavior defaults', () => {
     expect(bookingAvailabilityFromAccount(null)).toEqual({
+      enabled: true, // absent column ⇒ on, preserving pre-migration behavior
       timezone: 'America/New_York',
       weekdays: [1, 2, 3, 4, 5],
       windowTimes: ['08:00', '13:00'],
@@ -56,6 +65,7 @@ describe('booking-availability normalizers', () => {
 });
 
 const BASE: BookingAvailability = {
+  enabled: true,
   timezone: 'America/New_York',
   weekdays: [1, 2, 3, 4, 5],
   windowTimes: ['08:00', '13:00'],
@@ -97,6 +107,14 @@ describe('computeBookingDays', () => {
 
     const sameDay = computeBookingDays({ availability: { ...BASE, leadDays: 0 }, ...empty(), now: new Date('2026-08-03T12:00:00Z') });
     expect(sameDay[0].dateKey).toBe('2026-08-03'); // Monday, today
+  });
+
+  it('returns nothing when the master switch is off, whatever the weekday setup says', () => {
+    const off = computeBookingDays({ availability: { ...BASE, enabled: false }, ...empty(), now: new Date('2026-08-03T12:00:00Z') });
+    expect(off).toEqual([]);
+    // ...and the setup underneath is untouched, so flipping back on restores it.
+    const backOn = computeBookingDays({ availability: { ...BASE, enabled: true }, ...empty(), now: new Date('2026-08-03T12:00:00Z') });
+    expect(backOn.length).toBeGreaterThan(0);
   });
 
   it('returns nothing when booking is closed (no weekdays)', () => {

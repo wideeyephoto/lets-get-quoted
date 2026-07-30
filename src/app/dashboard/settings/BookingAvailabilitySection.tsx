@@ -7,6 +7,7 @@ import SaveButton from '@/components/save-button';
 // every field from the raw account row internally — callers just pass the row.
 export type BookingSettingsRow = {
   timezone?: string | null;
+  booking_enabled?: boolean | null;
   booking_weekdays?: string | null;
   booking_windows?: string | null;
   booking_max_per_day?: number | null;

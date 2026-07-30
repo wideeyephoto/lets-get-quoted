@@ -43,6 +43,10 @@ export const DEFAULT_WORKDAY_END = '17:00';
 export const DEFAULT_CAPACITY_HOURS = 8;
 
 export type BookingAvailability = {
+  // Master switch for self-serve booking. Off closes the public calendar while
+  // leaving the weekday/window/capacity setup below untouched, so turning it back
+  // on restores exactly what was configured.
+  enabled: boolean;
   timezone: string;
   weekdays: number[]; // 0 (Sun) … 6 (Sat)
   windowTimes: string[]; // subset of preset times, always in preset order
@@ -142,6 +146,7 @@ type AccountAvailabilityRow = {
   timezone?: unknown;
   booking_weekdays?: unknown;
   booking_windows?: unknown;
+  booking_enabled?: unknown;
   booking_max_per_day?: unknown;
   booking_lead_days?: unknown;
   workday_start?: unknown;
@@ -155,6 +160,8 @@ type AccountAvailabilityRow = {
 // pre-migration row still works).
 export function bookingAvailabilityFromAccount(row: AccountAvailabilityRow): BookingAvailability {
   return {
+    // Absent (pre-migration row) counts as on, preserving prior behavior.
+    enabled: row?.booking_enabled !== false,
     timezone: normalizeTimezone(row?.timezone),
     weekdays: normalizeBookingWeekdays(row?.booking_weekdays),
     windowTimes: normalizeBookingWindowTimes(row?.booking_windows),

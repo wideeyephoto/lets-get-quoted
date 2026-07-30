@@ -334,7 +334,7 @@ export default async function SchedulePage({
 
   const { data: bookingSettings } = await supabase
     .from('accounts')
-    .select('timezone, booking_weekdays, booking_windows, booking_max_per_day, booking_lead_days, instant_book_enabled, instant_book_min_amount, instant_book_radius_miles, instant_book_geo_mode, instant_book_drive_time')
+    .select('timezone, booking_enabled, booking_weekdays, booking_windows, booking_max_per_day, booking_lead_days, instant_book_enabled, instant_book_min_amount, instant_book_radius_miles, instant_book_geo_mode, instant_book_drive_time')
     .eq('id', accountId)
     .maybeSingle();
 

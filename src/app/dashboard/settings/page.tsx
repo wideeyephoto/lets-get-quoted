@@ -122,7 +122,7 @@ export default async function SettingsPage({
   // to the old-behavior defaults instead of 500-ing the page.
   const { data: bookingSettings } = await supabase
     .from('accounts')
-    .select('timezone, booking_weekdays, booking_windows, booking_max_per_day, booking_lead_days, instant_book_enabled, instant_book_min_amount, instant_book_radius_miles, instant_book_geo_mode, instant_book_drive_time')
+    .select('timezone, booking_enabled, booking_weekdays, booking_windows, booking_max_per_day, booking_lead_days, instant_book_enabled, instant_book_min_amount, instant_book_radius_miles, instant_book_geo_mode, instant_book_drive_time')
     .eq('id', accountId)
     .maybeSingle();
   const booking = bookingAvailabilityFromAccount(bookingSettings);
@@ -140,6 +140,7 @@ export default async function SettingsPage({
   // At-a-glance status for the Automations accordion cards.
   const extraStopEnabled = Boolean((extraStopSettings as { extra_stop_enabled?: boolean } | null)?.extra_stop_enabled);
   const bookingActive = booking.weekdays.length > 0;
+  const bookingEnabled = booking.enabled;
   const instantBookEnabled = Boolean(bookingSettings?.instant_book_enabled);
   const instantBookMinAmount = bookingSettings?.instant_book_min_amount ? Number(bookingSettings.instant_book_min_amount) : 0;
   const instantBookRadius = bookingSettings?.instant_book_radius_miles ? Number(bookingSettings.instant_book_radius_miles) : 15;
@@ -380,7 +381,13 @@ export default async function SettingsPage({
                   </form>
                 </AutomationCard>
 
-                <AutomationCard id="booking-availability" title="Online booking" subtitle="Days & windows customers can grab" status={{ label: bookingActive ? 'On' : 'Paused', tone: bookingActive ? 'on' : 'off' }}>
+                <AutomationCard id="booking-availability" title="Online booking" subtitle="Days & windows customers can grab" toggle={{ key: 'booking', on: bookingEnabled }}>
+                  {bookingEnabled && !bookingActive ? (
+                    <div className="automation-prereq" style={{ marginBottom: '0.9rem' }}>
+                      <span aria-hidden="true">⚠️</span>
+                      <span>Booking is on, but no weekdays are selected below &mdash; so nothing is bookable yet. Pick the days you take work.</span>
+                    </div>
+                  ) : null}
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     This controls the times customers can grab on your public <strong>Book a time</strong> page. Pick
                     the days you take work, the arrival windows you offer, and how many bookings a day is enough. A
