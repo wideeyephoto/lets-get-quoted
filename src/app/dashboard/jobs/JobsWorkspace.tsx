@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, useTransition, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { JobStatus } from '@/lib/jobs';
@@ -72,6 +72,11 @@ function StatusBadge({ job }: { job: JobViewItem }) {
 export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme, mapPins, toolbarAccessory }: { jobs: JobViewItem[]; initialView: JobsView; mapView: MapView; mapTheme: MapTheme; mapPins: MapPin[]; toolbarAccessory?: ReactNode }) {
   const [view, setView] = useState<JobsView>(initialView);
   const [status, setStatus] = useState<JobStatus | 'all'>('all');
+  // Which job the Focus pane has open, so the map can centre on it.
+  const [focusJobId, setFocusJobId] = useState<string | null>(null);
+  // Stable identity: FocusView calls this from an effect, so a new function
+  // every render would re-fire it on every render.
+  const onFocusSelect = useCallback((id: string | null) => setFocusJobId(id), []);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -116,7 +121,7 @@ export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme, ma
           than the query. */}
       {mapView === 'large' ? (
         <div className="workspace-embedded-map">
-          <PinMap pins={mapPins} theme={mapTheme} legendAccessory={gear} />
+          <PinMap pins={mapPins} theme={mapTheme} legendAccessory={gear} focusPinId={view === 'focus' && focusJobId ? `job-${focusJobId}` : null} />
         </div>
       ) : (
         // Map off: keep the gear reachable, or there'd be no way to turn it back on.
@@ -130,7 +135,7 @@ export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme, ma
           {view === 'list' && <ListView jobs={filtered} />}
           {view === 'board' && <BoardView jobs={jobs} />}
           {view === 'table' && <TableView jobs={filtered} />}
-          {view === 'focus' && <FocusView jobs={filtered} />}
+          {view === 'focus' && <FocusView jobs={filtered} onSelect={onFocusSelect} />}
 
           {view !== 'board' ? (
             <div className={styles.bar}>

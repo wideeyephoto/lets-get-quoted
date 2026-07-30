@@ -46,5 +46,8 @@ export const JOBS_VIEW_COOKIE = 'lgq_jobs_view';
 export type JobsView = 'list' | 'board' | 'table' | 'focus';
 export const JOBS_VIEWS: JobsView[] = ['list', 'board', 'table', 'focus'];
 export function normalizeJobsView(value: unknown): JobsView {
-  return JOBS_VIEWS.includes(value as JobsView) ? (value as JobsView) : 'list';
+  // Focus is the default for anyone who hasn't chosen: it answers "what's the
+  // state of this job" without a page load per job. An explicit choice is a
+  // cookie, so nobody who picked List/Board/Table gets moved off it.
+  return JOBS_VIEWS.includes(value as JobsView) ? (value as JobsView) : 'focus';
 }

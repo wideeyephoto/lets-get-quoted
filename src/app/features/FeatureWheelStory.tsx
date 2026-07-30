@@ -43,6 +43,8 @@ export default function FeatureWheelStory() {
       let curRot = 0;
       let rafId = 0;
       let running = true;
+      let visible = false;
+      let lastT = 0;
 
       const activate = (i: number) => {
         if (i === cur) return;
@@ -60,30 +62,73 @@ export default function FeatureWheelStory() {
         }
       };
 
+      // story.offsetHeight and window.innerHeight were read every frame, which
+      // forces layout 60 times a second for values that only change on resize.
+      let range = 0;
+      const measure = () => { range = story.offsetHeight - window.innerHeight; };
+      measure();
+
       const progress = () => {
-        const range = story.offsetHeight - window.innerHeight;
         if (range <= 0) return 0;
         return Math.min(1, Math.max(0, -story.getBoundingClientRect().top / range));
       };
 
-      const tick = () => {
-        if (!running) return;
+      const schedule = () => { if (!rafId && running && visible) rafId = requestAnimationFrame(tick); };
+
+      function tick(now: number) {
+        rafId = 0;
+        if (!running || !visible) return;
+
+        // Frame-rate INDEPENDENT easing. `curRot += delta * 0.14` converges per
+        // FRAME, so on a device rendering 30fps instead of 60 the wheel took
+        // twice as long in wall-clock time to catch up to the scroll — which is
+        // exactly when it can least afford to feel slow. Converting the per-
+        // frame factor by elapsed time makes the wheel settle in the same
+        // fraction of a second whatever the device manages.
+        const dt = lastT ? Math.min(64, now - lastT) : 16.667;
+        lastT = now;
+
         const p = progress();
         const targetRot = -30 * STEPS * p; // 30° between spokes
         const i = Math.max(0, Math.min(STEPS, Math.round(p * STEPS)));
         if (REDUCE) {
           curRot = -30 * i;
         } else {
-          curRot += (targetRot - curRot) * 0.14;
+          const k = 1 - Math.pow(1 - 0.14, dt / 16.667);
+          curRot += (targetRot - curRot) * k;
           if (Math.abs(targetRot - curRot) < 0.04) curRot = targetRot;
         }
         if (rotor) rotor.style.setProperty('--rot', `${curRot.toFixed(2)}deg`);
         activate(i);
-        rafId = requestAnimationFrame(tick);
-      };
+
+        // Settled and nothing moving: stop burning frames until the next scroll.
+        if (curRot !== targetRot) schedule();
+      }
+
+      const wake = () => { lastT = 0; schedule(); };
+      const onResize = () => { measure(); wake(); };
+      window.addEventListener('scroll', wake, { passive: true });
+      window.addEventListener('resize', onResize, { passive: true });
+
+      // The loop used to run from mount to unmount whether or not the wheel was
+      // anywhere near the screen — two forced layout reads per frame, forever,
+      // taxing every other thing on the page.
+      let io: IntersectionObserver | undefined;
+      if ('IntersectionObserver' in window) {
+        io = new IntersectionObserver(
+          (entries) => {
+            visible = entries.some((en) => en.isIntersecting);
+            if (visible) wake();
+            else if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+          },
+          { rootMargin: '200px 0px' },
+        );
+        io.observe(story);
+      } else {
+        visible = true;
+      }
 
       const goto = (i: number) => {
-        const range = story.offsetHeight - window.innerHeight;
         const top = window.pageYOffset + story.getBoundingClientRect().top + (i / STEPS) * range;
         window.scrollTo({ top: Math.round(top), behavior: REDUCE ? 'auto' : 'smooth' });
       };
@@ -98,11 +143,14 @@ export default function FeatureWheelStory() {
 
       if (rotor) rotor.style.setProperty('--rot', '0deg');
       activate(0);
-      rafId = requestAnimationFrame(tick);
+      schedule();
 
       cleanups.push(() => {
         running = false;
-        cancelAnimationFrame(rafId);
+        if (rafId) cancelAnimationFrame(rafId);
+        io?.disconnect();
+        window.removeEventListener('scroll', wake);
+        window.removeEventListener('resize', onResize);
         clickHandlers.forEach(([b, h]) => b.removeEventListener('click', h));
       });
     })();
@@ -138,27 +186,43 @@ export default function FeatureWheelStory() {
       const screens = cards.map((c) => c.querySelector<HTMLElement>('.cc-screen'));
       const heads = cards.map((c) => c.querySelector<HTMLElement>('.cc-card-head'));
       let ticking = false;
+      // Every read is done before any write. Interleaving them — measure a card,
+      // move it, measure the next — makes each write invalidate layout so the
+      // next read has to recompute it: one forced reflow per card per scroll
+      // frame, which is what makes this expensive on a slower tablet.
       const frame = () => {
         const vh = window.innerHeight;
+
+        // --- read pass ---
+        const offsets: Array<number | null> = [];
         let live = -1;
         let liveDist = Infinity;
         cards.forEach((c, i) => {
           const r = c.getBoundingClientRect();
-          if (r.bottom < -90 || r.top > vh + 90) return;
-          const f = (r.top + r.height / 2 - vh / 2) / vh; // ~ -1 (below) .. 1 (above)
-          const s = screens[i];
-          if (s) s.style.transform = `translateY(${(f * -28).toFixed(1)}px)`;
-          const h = heads[i];
-          if (h) h.style.transform = `translateY(${(f * 12).toFixed(1)}px)`;
-          // the card nearest the viewport centre becomes "live" and lights up
+          if (r.bottom < -90 || r.top > vh + 90) {
+            offsets[i] = null;
+            return;
+          }
           const centre = r.top + r.height / 2;
+          offsets[i] = (centre - vh / 2) / vh; // ~ -1 (below) .. 1 (above)
           const dist = Math.abs(centre - vh / 2);
           if (centre > vh * 0.12 && centre < vh * 0.88 && dist < liveDist) {
             liveDist = dist;
             live = i;
           }
         });
-        cards.forEach((c, i) => c.classList.toggle('cc-live', i === live));
+
+        // --- write pass ---
+        cards.forEach((c, i) => {
+          const f = offsets[i];
+          if (f != null) {
+            const s = screens[i];
+            if (s) s.style.transform = `translateY(${(f * -28).toFixed(1)}px)`;
+            const h = heads[i];
+            if (h) h.style.transform = `translateY(${(f * 12).toFixed(1)}px)`;
+          }
+          c.classList.toggle('cc-live', i === live);
+        });
         ticking = false;
       };
       const onScroll = () => {

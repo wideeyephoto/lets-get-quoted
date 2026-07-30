@@ -48,7 +48,7 @@ function StatusBadge({ job }: { job: JobViewItem }) {
   );
 }
 
-export default function FocusView({ jobs }: { jobs: JobViewItem[] }) {
+export default function FocusView({ jobs, onSelect }: { jobs: JobViewItem[]; onSelect?: (jobId: string | null) => void }) {
   const [selectedId, setSelectedId] = useState<string | null>(jobs[0]?.id ?? null);
   const [detail, setDetail] = useState<JobDetailDto | null>(null);
   const [loading, setLoading] = useState(false);
@@ -173,6 +173,13 @@ export default function FocusView({ jobs }: { jobs: JobViewItem[] }) {
     setSelectedId(id);
     setTab('overview');
   }
+
+  // Told to the page (and from there to the map) rather than called inside
+  // select(), so the first job counts too and a filter change that moves the
+  // selection is picked up as well.
+  useEffect(() => {
+    onSelect?.(selectedId);
+  }, [selectedId, onSelect]);
 
   // Warm the cache on hover only. Never on keyboard traversal — that would turn
   // the prefetch into the request storm it exists to prevent.

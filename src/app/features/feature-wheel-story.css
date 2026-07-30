@@ -24,7 +24,11 @@
     background:radial-gradient(44% 60% at 34% 28%,color-mix(in srgb,var(--ck) 16%,transparent),transparent 70%),radial-gradient(40% 55% at 72% 18%,rgba(255,209,102,.10),transparent 72%),radial-gradient(36% 50% at 56% 64%,rgba(74,222,128,.05),transparent 72%);
     filter:blur(36px);opacity:.5;transition:background .55s ease}
   @media (prefers-reduced-motion:no-preference){.fw-scope::before{animation:fw-aurora 17s ease-in-out infinite alternate}}
-  @keyframes fw-aurora{0%{transform:translateX(-53%) translateY(-2%) scale(1)}100%{transform:translateX(-45%) translateY(4%) scale(1.14)}}
+  /* Translate only — no scale. Scaling a filter:blur(36px) layer re-rasterizes
+     the blur on every frame of a 17s loop that never stops; translating it can
+     be handled by the compositor. Visually near-identical, and it was the
+     single most expensive thing on this page for a tablet GPU. */
+  @keyframes fw-aurora{0%{transform:translateX(-53%) translateY(-2%)}100%{transform:translateX(-45%) translateY(4%)}}
   /* film grain */
   .fw-scope::after{content:"";position:absolute;inset:0;z-index:3;pointer-events:none;opacity:.05;mix-blend-mode:overlay;background-size:170px;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
@@ -529,3 +533,19 @@
   /* focus */
   .fw-scope :focus-visible{outline:2px solid var(--gold);outline-offset:3px}
   .fw-scope :focus:not(:focus-visible){outline:none}
+
+  /* ---------- touch devices ----------
+     An older iPad runs this whole section on a GPU that is a fraction of a
+     laptop's, and every one of these is decorative. Cheaper ambience there, so
+     the scroll-driven wheel keeps the frame budget it actually needs. */
+  @media (hover:none) and (pointer:coarse){
+    /* A 36px blur over ~1200x700px is re-rasterized on every resize/scroll
+       composite; half the radius is a quarter of the work. */
+    .fw-scope::before{filter:blur(18px);opacity:.42;animation:none}
+    /* mix-blend-mode forces the whole section off the fast compositing path. */
+    .fw-scope::after{display:none}
+    /* backdrop-filter has always been disproportionately expensive on iOS, and
+       .fw-node is the worst place to carry one: all six counter-rotate on every
+       frame of the wheel, so each is re-sampling what's behind it as it moves. */
+    .fw-scope .fw-node{-webkit-backdrop-filter:none;backdrop-filter:none}
+  }

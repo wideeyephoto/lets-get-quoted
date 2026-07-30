@@ -105,10 +105,11 @@ function makeIcon(g: typeof google.maps, color: string, active: boolean, mini = 
   };
 }
 
-export default function PinMap({ pins, variant = 'large', theme = 'dark', legendAccessory }: { pins: MapPin[]; variant?: 'large' | 'mini'; theme?: 'dark' | 'light'; legendAccessory?: ReactNode }) {
+export default function PinMap({ pins, variant = 'large', theme = 'dark', legendAccessory, focusPinId = null }: { pins: MapPin[]; variant?: 'large' | 'mini'; theme?: 'dark' | 'light'; legendAccessory?: ReactNode; focusPinId?: string | null }) {
   const mini = variant === 'mini';
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<{ id: string; marker: google.maps.Marker }[]>([]);
+  const mapRef = useRef<google.maps.Map | null>(null);
   const gRef = useRef<typeof google.maps | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [selected, setSelected] = useState<MapPin | null>(null);
@@ -146,6 +147,8 @@ export default function PinMap({ pins, variant = 'large', theme = 'dark', legend
             ? { styles, disableDefaultUI: true, gestureHandling: 'none', keyboardShortcuts: false, clickableIcons: false, zoomControl: false }
             : { styles, mapTypeControl: false, streetViewControl: false, fullscreenControl: false, zoomControl: true, gestureHandling: 'cooperative', clickableIcons: false },
         );
+
+        mapRef.current = map;
 
         const bounds = new g.LatLngBounds();
         markersRef.current = [];
@@ -196,9 +199,30 @@ export default function PinMap({ pins, variant = 'large', theme = 'dark', legend
 
     return () => {
       cancelled = true;
+      mapRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sig]);
+
+  // Centre on one pin when the page asks — the jobs pipeline points this at
+  // whichever job is open, so the map follows the selection instead of showing
+  // the same whole-territory view whatever you're looking at.
+  //
+  // A job with no geocoded address has no pin at all (see getMapPins), and so
+  // does a completed or archived one. Nothing happens in that case rather than
+  // jumping somewhere misleading.
+  useEffect(() => {
+    if (mini || !focusPinId || status !== 'ready') return;
+    const map = mapRef.current;
+    const pin = pins.find((p) => p.id === focusPinId);
+    if (!map || !pin) return;
+    map.panTo({ lat: pin.lat, lng: pin.lng });
+    const zoom = map.getZoom();
+    // Close in, but only if we're further out — no yo-yo if you're already there.
+    if (typeof zoom === 'number' && zoom < 13) map.setZoom(13);
+    setSelected(pin);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusPinId, sig, status, mini]);
 
   // Emphasize the selected marker + wire Escape-to-close (large map only).
   useEffect(() => {
