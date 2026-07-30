@@ -477,9 +477,24 @@ export type SiteQuoteFormContent = {
   // Controls the wording used on the quote-request call-to-action ('Quick Estimate'
   // vs 'Instant Estimate') across the hero quick-capture form and the full form.
   estimateLabel: 'quick' | 'instant';
+  // Wording for the call-to-action when the CLASSIC quote form is the active
+  // intake. Free text, because "Instant Estimate" is a promise the classic form
+  // doesn't keep — nobody gets a price on the spot, they get a reply later.
+  // Owner-editable; DEFAULT_QUOTE_FORM_HEADING when left blank.
+  formHeading: string;
 };
 
-export function getEstimateButtonLabel(quoteForm: Pick<SiteQuoteFormContent, 'estimateLabel'>): string {
+export const DEFAULT_QUOTE_FORM_HEADING = 'Request an Estimate';
+
+// The wording on the intake call-to-action, wherever it appears — the hero
+// capture's heading, the header CTA, and the "not published yet" notice.
+// Mode-aware on purpose: the AI intake really does return a price on the spot,
+// so "Instant Estimate" is accurate there; the classic form does not, so it uses
+// the owner's own wording instead of inheriting a claim it can't honour.
+export function getEstimateButtonLabel(
+  quoteForm: Pick<SiteQuoteFormContent, 'estimateLabel' | 'enabled' | 'formHeading'>,
+): string {
+  if (quoteForm.enabled) return quoteForm.formHeading?.trim() || DEFAULT_QUOTE_FORM_HEADING;
   return quoteForm.estimateLabel === 'instant' ? 'Instant Estimate' : 'Instant Quote';
 }
 
@@ -934,6 +949,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       enabled: quoteForm.enabled === true,
       emailRequired: toBoolean(quoteForm.emailRequired),
       estimateLabel: quoteForm.estimateLabel === 'instant' ? 'instant' : 'quick',
+      formHeading: toString(quoteForm.formHeading).slice(0, 40) || DEFAULT_QUOTE_FORM_HEADING,
     },
     stickyCallBar: {
       enabled: stickyCallBar.enabled !== false,
