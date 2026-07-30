@@ -526,16 +526,8 @@ export default function BookingSetup({
                   <div className="bset-dependent">
                     <div className="bset-grid">
                       <label className="bset-field">
-                        <span>Minimum job value ($) <Tip text="A job estimating below this is sent to request-a-callback instead of taking a slot. Blank or 0 for no floor." /></span>
-                        <input
-                          type="number"
-                          min="0"
-                          step="100"
-                          inputMode="numeric"
-                          placeholder="e.g. 500"
-                          value={instant.minAmount || ''}
-                          onChange={(e) => setInstant({ ...instant, minAmount: Number(e.target.value) || 0 })}
-                        />
+                        <span>Minimum job value <Tip text="A job estimating below this is sent to request-a-callback instead of taking a slot. Blank or 0 for no floor." /></span>
+                        <MoneyInput value={instant.minAmount} onChange={(n) => setInstant({ ...instant, minAmount: n })} />
                       </label>
                       <label className="bset-field">
                         <span>“Nearby” radius (miles) <Tip text="How close an existing job counts as “we'll already be in your area” that day." /></span>
@@ -682,6 +674,50 @@ export default function BookingSetup({
         <p className="bset-saved" aria-live="polite"><Icon name="checkCircle" /> Schedule saved</p>
       )}
     </main>
+  );
+}
+
+// --- money field -----------------------------------------------------------
+
+function formatDollars(n: number): string {
+  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Reads as money at rest ($5,000.00) and as plain digits while you're typing —
+// thousands separators fight the cursor if they're inserted mid-edit.
+//
+// The threshold is stored in whole dollars, so the value is rounded on the way
+// out and always redisplays with .00. Showing cents you can't actually save
+// would be the field lying about what it kept.
+function MoneyInput({ value, onChange }: { value: number; onChange: (next: number) => void }) {
+  const [text, setText] = useState(value > 0 ? formatDollars(value) : '');
+  const [editing, setEditing] = useState(false);
+
+  // Reflect a change made elsewhere (Discard changes) unless it's being typed in.
+  useEffect(() => {
+    if (!editing) setText(value > 0 ? formatDollars(value) : '');
+  }, [value, editing]);
+
+  return (
+    <div className="bset-money">
+      <span aria-hidden="true">$</span>
+      <input
+        type="text"
+        inputMode="decimal"
+        placeholder="0.00"
+        value={text}
+        aria-label="Minimum job value in dollars"
+        onFocus={() => { setEditing(true); setText(value > 0 ? String(value) : ''); }}
+        onBlur={() => setEditing(false)}
+        onChange={(event) => {
+          const raw = event.target.value;
+          setText(raw);
+          const digits = raw.replace(/[^\d.]/g, '');
+          const parsed = Number(digits);
+          onChange(digits && Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : 0);
+        }}
+      />
+    </div>
   );
 }
 

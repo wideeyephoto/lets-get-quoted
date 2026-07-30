@@ -9200,8 +9200,12 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
   border: 2px solid var(--bset-line-strong);
   border-radius: 18px;
   background: var(--bset-card);
-  overflow: hidden;
+  /* NOT overflow:hidden — it clipped the three-dot menu in Time off. The
+     header carries the radius itself so the corners still look right. */
 }
+
+.bset-section-head[aria-expanded='false'] { border-radius: 16px; }
+.bset-section-head[aria-expanded='true'] { border-radius: 16px 16px 0 0; }
 
 .bset-section-quiet { border-width: 1px; border-color: var(--bset-line); }
 
@@ -9477,9 +9481,41 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
   border-color: transparent;
 }
 
+.bset select option,
+.bset select optgroup { background: #101c2b; color: #f7f5ef; }
+
 .bset-tip { display: inline-grid; place-items: center; color: rgba(147, 164, 184, 0.7); cursor: help; }
 .bset-tip svg { width: 0.85rem; height: 0.85rem; }
 .bset-tip:hover { color: var(--bset-accent); }
+
+/* $ lives in the field, so the label doesn't need "($)" and the number lines
+   up with the currency mark rather than floating in an empty box. */
+.bset-money {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--bset-line);
+  border-radius: 10px;
+  background: var(--bset-inner);
+}
+
+.bset-money:focus-within { outline: 2px solid rgba(255, 122, 41, 0.7); outline-offset: 1px; border-color: transparent; }
+.bset-money > span { color: var(--muted, #93a4b8); font-size: 0.9rem; font-weight: 650; }
+
+.bset-money input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.62rem 0;
+  border: 0;
+  background: none;
+  color: var(--text, #e8eef6);
+  font: inherit;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.bset-money input:focus-visible { outline: none; }
 
 .bset-check {
   display: flex;
@@ -9600,7 +9636,7 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
   position: absolute;
   right: 0;
   top: calc(100% + 0.3rem);
-  z-index: 30;
+  z-index: 60;
   display: grid;
   min-width: 13rem;
   padding: 0.3rem;
