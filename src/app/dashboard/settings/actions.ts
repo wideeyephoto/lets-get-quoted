@@ -7,7 +7,8 @@ import { updateSite } from '@/lib/sites';
 import { getSiteContent, mergeSiteContent } from '@/lib/site-content';
 import { sendTestDigest } from '@/lib/daily-digest';
 import { normalizeEstimatePosture } from '@/lib/estimate-posture';
-import { AUTOMATION_COLUMNS, isAutomationKey, type AutomationKey } from '@/lib/automations';
+import { AUTOMATION_COLUMNS, AUTOMATION_LABELS, isAutomationKey, type AutomationKey } from '@/lib/automations';
+import { recordAccountEvent } from '@/lib/account-events';
 import {
   normalizeTimezone,
   normalizeBookingWeekdays,
@@ -104,6 +105,17 @@ export async function toggleSmartIntakeAction(next: boolean) {
   });
   await updateSite(supabase, accountId, site.id as string, { content });
 
+  const { data: { user } } = await supabase.auth.getUser();
+  await recordAccountEvent({
+    accountId,
+    kind: 'automation_toggled',
+    summary: next
+      ? 'Smart Intake turned on (website now shows instant AI estimates)'
+      : 'Smart Intake turned off (website switched to the old-school quote form)',
+    actorEmail: user?.email ?? null,
+    meta: { automation: 'intake-ai', quoteFormEnabled: !next },
+  });
+
   revalidatePath('/dashboard/settings');
   revalidatePath('/dashboard/sites');
 }
@@ -119,6 +131,17 @@ export async function toggleAutomationAction(key: AutomationKey, next: boolean) 
     .update({ [AUTOMATION_COLUMNS[key]]: next })
     .eq('id', accountId);
   if (error) throw new Error(error.message);
+
+  // Audit AFTER the write succeeds, and never let it fail the change itself.
+  const { data: { user } } = await supabase.auth.getUser();
+  await recordAccountEvent({
+    accountId,
+    kind: 'automation_toggled',
+    summary: `${AUTOMATION_LABELS[key]} turned ${next ? 'on' : 'off'}`,
+    actorEmail: user?.email ?? null,
+    meta: { automation: key, column: AUTOMATION_COLUMNS[key], enabled: next },
+  });
+
   revalidatePath('/dashboard/settings');
   revalidatePath('/dashboard');
 }

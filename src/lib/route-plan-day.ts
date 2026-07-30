@@ -1,7 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { coordOf, type LatLng } from '@/lib/distance';
 import { driveMatrix, DRIVE_MATRIX_MAX_POINTS } from '@/lib/drive-time';
-import { backfillJobCoordinates } from '@/lib/jobs';
 import { listCrewAssignmentsForJobs } from '@/lib/crew';
 import { planDayRoute, type PlanStop, type RoutePlan } from '@/lib/route-plan';
 
@@ -89,10 +88,6 @@ export async function listDayJobs(
   dateKey: string,
   crewId?: string | null,
 ): Promise<{ jobs: PlanJobRow[]; filteredOutCount: number }> {
-  // Self-healing, same as the dashboard map: a job that never got geocoded can't
-  // be routed, so try a small batch before we plan.
-  await backfillJobCoordinates(supabase, accountId, 12);
-
   const { data } = await supabase
     .from('jobs')
     .select(JOB_FIELDS)

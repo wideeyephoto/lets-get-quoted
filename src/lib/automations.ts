@@ -21,3 +21,15 @@ export type AutomationKey = keyof typeof AUTOMATION_COLUMNS;
 export function isAutomationKey(value: string): value is AutomationKey {
   return Object.prototype.hasOwnProperty.call(AUTOMATION_COLUMNS, value);
 }
+
+// Human-readable names for the audit trail, so a settings-history line reads
+// "Online booking turned off" rather than leaking a column name at the owner.
+export const AUTOMATION_LABELS: Record<AutomationKey, string> = {
+  booking: 'Online booking',
+  'extra-stop': 'Extra Stop',
+  'missed-call': 'Missed-call text-back',
+  reviews: 'Review requests',
+  followups: 'Quote follow-ups',
+  reminders: 'Appointment reminders',
+  'daily-digest': 'Daily digest',
+};

@@ -4,7 +4,7 @@ import { listCrew } from '@/lib/crew';
 import { formatTimeLabel, parseTimeMinutes, type PlannedStop } from '@/lib/route-plan';
 import { buildDayPlan } from '@/lib/route-plan-day';
 import SaveButton from '@/components/save-button';
-import { applyDayPlanAction, notifyMovedClientsAction } from './actions';
+import { applyDayPlanAction, geocodeDayAction, notifyMovedClientsAction } from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,6 +65,7 @@ export default async function PlanDayPage({
     untexted?: string;
     failed?: string;
     stranded?: string;
+    geocoded?: string;
   };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
@@ -142,6 +143,13 @@ export default async function PlanDayPage({
             ) : (
               <>Couldn&apos;t save the route, so nothing was changed — your calendar is exactly as it was. Try again.</>
             )}
+          </p>
+        ) : null}
+        {searchParams.geocoded !== undefined ? (
+          <p className={`route-plan-flash ${Number(searchParams.geocoded) > 0 ? 'good' : ''}`}>
+            {Number(searchParams.geocoded) > 0
+              ? `✓ Put ${searchParams.geocoded} job${searchParams.geocoded === '1' ? '' : 's'} on the map — they can be routed now.`
+              : 'Couldn’t place any of them. Check the addresses are real street addresses, not just a city or a note.'}
           </p>
         ) : null}
         {appliedCount > 0 ? (
@@ -373,8 +381,13 @@ export default async function PlanDayPage({
               </div>
               <p className="workspace-details-copy">
                 These jobs are on this day but have no address we could map, so they keep their current times and
-                aren&apos;t part of the route above.
+                aren&apos;t part of the route above. We retry these overnight — or map them now.
               </p>
+              <form action={geocodeDayAction} style={{ marginBottom: '1rem' }}>
+                <input type="hidden" name="dateKey" value={dateKey} />
+                <input type="hidden" name="crewId" value={crewId ?? ''} />
+                <SaveButton>Try to map these now</SaveButton>
+              </form>
               <div className="sign-in-methods-list">
                 {plan.unroutable.map((stop) => (
                   <div className="sign-in-method-row" key={stop.id}>

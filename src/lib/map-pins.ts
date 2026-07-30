@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { backfillJobCoordinates, formatMoney, listJobs } from '@/lib/jobs';
-import { backfillLeadCoordinates, formatElapsedTime, getLeadTriage, isLeadSnoozed, listLeads } from '@/lib/leads';
+import { formatMoney, listJobs } from '@/lib/jobs';
+import { formatElapsedTime, getLeadTriage, isLeadSnoozed, listLeads } from '@/lib/leads';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import type { MapPin, MapPinRow } from '@/components/pin-map';
 
@@ -25,12 +25,10 @@ function scheduledLabel(dateIso: string, time: string | null): string {
 //   unscheduled → a job/quote with no date yet (gold)
 //   scheduled   → a job with a date on the calendar (green)
 export async function getMapPins(supabase: SupabaseClient, accountId: string): Promise<MapPin[]> {
-  // Self-healing: geocode a small batch of any leads/jobs still missing coords.
-  await Promise.all([
-    backfillLeadCoordinates(supabase, accountId, 12),
-    backfillJobCoordinates(supabase, accountId, 12),
-  ]);
-
+  // Rows missing coordinates are repaired by the nightly sweep
+  // (/api/cron/geocode-backfill), not here: doing it inline billed up to 24
+  // geocode lookups on every dashboard load and put them in front of first paint.
+  // A pin can be absent for one night; that's cheaper than paying on every render.
   const [leads, jobs] = await Promise.all([listLeads(supabase, accountId), listJobs(supabase, accountId)]);
 
   // Crew names per mapped, active job (for the job cards).

@@ -9,6 +9,7 @@ import FinanceReports from './FinanceReports';
 import { getAvailableTaxYears, buildProfitAndLoss, buildScheduleCWorksheet, build1099PrepList } from '@/lib/tax-reports';
 import SaveButton from '@/components/save-button';
 import AutomationSwitch from '@/components/automation-switch';
+import { listAccountEvents } from '@/lib/account-events';
 import DeleteAccountButton from './DeleteAccountButton';
 import { updateScheduleDayHoursAction, updateReviewSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBookingAvailabilityAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, updateCallTextbackSettingsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
 import { ESTIMATE_POSTURES, normalizeEstimatePosture } from '@/lib/estimate-posture';
@@ -145,6 +146,9 @@ export default async function SettingsPage({
   // builder switches it off. quoteForm.enabled is the source of truth; this is its
   // inverse, exactly as getSiteContent derives it.
   const smartIntakeOn = businessBasics.estimateRanges.enabled;
+  // Settings history. Empty (and harmless) until the account_events migration is
+  // applied — listAccountEvents swallows a missing table rather than 500-ing.
+  const settingsHistory = await listAccountEvents(supabase, accountId, 8);
   const instantBookEnabled = Boolean(bookingSettings?.instant_book_enabled);
   const instantBookMinAmount = bookingSettings?.instant_book_min_amount ? Number(bookingSettings.instant_book_min_amount) : 0;
   const instantBookRadius = bookingSettings?.instant_book_radius_miles ? Number(bookingSettings.instant_book_radius_miles) : 15;
@@ -674,6 +678,37 @@ export default async function SettingsPage({
                     </SaveButton>
                   </form>
                 </AutomationCard>
+
+                {settingsHistory.length > 0 ? (
+                  <>
+                    <p className="automation-group">Recent changes</p>
+                    <section className="panel workspace-section-card" id="settings-history">
+                      <div className="section-heading workspace-section-heading compact-heading">
+                        <p className="eyebrow">Settings history</p>
+                        <h2>Who changed what</h2>
+                      </div>
+                      <p className="workspace-details-copy" style={{ marginTop: '0.5rem' }}>
+                        Switching an automation off can quietly stop work coming in, so every flip is recorded here.
+                      </p>
+                      <ul className="settings-history-list">
+                        {settingsHistory.map((event) => (
+                          <li key={event.id}>
+                            <span className="settings-history-summary">{event.summary}</span>
+                            <span className="settings-history-meta">
+                              {new Date(event.created_at).toLocaleString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                              })}
+                              {event.actor_email ? ` · ${event.actor_email}` : ''}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  </>
+                ) : null}
               </div>
             ),
           },

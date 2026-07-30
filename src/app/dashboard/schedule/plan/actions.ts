@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
 import { createJobFeedEvent } from '@/lib/job-feed';
-import { updateJobSchedule } from '@/lib/jobs';
+import { backfillJobCoordinates, updateJobSchedule } from '@/lib/jobs';
 import { normalizeUsPhone } from '@/lib/phone';
 import { isPhoneOptedOut, recordSmsConsent, sendArrivalTimeChangedSms } from '@/lib/sms';
 import { buildScheduleChangeset, formatTimeLabel, parseTimeMinutes } from '@/lib/route-plan';
@@ -148,4 +148,20 @@ export async function notifyMovedClientsAction(formData: FormData) {
 
   revalidatePath('/dashboard/messages');
   redirect(planUrl(dateKey, crewId, { texted: String(sent), ...(skipped ? { untexted: String(skipped) } : {}) }));
+}
+
+// Puts the day's un-mappable jobs on the map now, rather than waiting for the
+// nightly sweep. Geocoding moved out of page render because it billed a lookup on
+// every load; this keeps it available on demand, where the contractor asked for it
+// and can see the result.
+export async function geocodeDayAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const dateKey = String(formData.get('dateKey') ?? '').trim();
+  const crewId = String(formData.get('crewId') ?? '').trim() || null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) redirect('/dashboard/schedule');
+
+  const fixed = await backfillJobCoordinates(supabase, accountId, 25);
+
+  revalidatePath('/dashboard/schedule');
+  redirect(planUrl(dateKey, crewId, { geocoded: String(fixed) }));
 }

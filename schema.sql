@@ -1632,3 +1632,28 @@ alter table accounts add column if not exists call_textback_enabled boolean not 
 alter table accounts add column if not exists call_tracking_number text;
 alter table accounts add column if not exists call_forward_number text;
 create index if not exists accounts_call_tracking_idx on accounts (call_tracking_number) where call_tracking_number is not null;
+
+-- ============================================================================
+-- Account settings audit trail. Who changed which switch, and when.
+--
+-- Turning off Online booking, Extra Stop or missed-call text-back stops money
+-- arriving; until now those flips were silent and unattributable, so "bookings
+-- dried up last Tuesday" had no answer. Jobs have job_feed and staff actions have
+-- admin_actions — this is the equivalent for account-level settings.
+--
+-- Append-only by design: owners may READ their own history (so it can be shown in
+-- the dashboard) but never write or edit it. Writes go through the service-role
+-- path, the same shape as account_credits above.
+create table if not exists account_events (
+  id          uuid primary key default gen_random_uuid(),
+  account_id  uuid not null references accounts(id) on delete cascade,
+  kind        text not null,            -- 'automation_toggled' | ...
+  summary     text not null,            -- human-readable, shown as-is
+  actor_email text,                     -- who did it; null for system/cron
+  meta        jsonb not null default '{}'::jsonb,
+  created_at  timestamptz not null default now()
+);
+create index if not exists account_events_account_idx on account_events (account_id, created_at desc);
+alter table account_events enable row level security;
+drop policy if exists account_events_owner_read on account_events;
+create policy account_events_owner_read on account_events for select using ( is_owner(account_id) );
