@@ -7,6 +7,7 @@ import type { JobStatus } from '@/lib/jobs';
 import { setJobsViewAction, setMapThemeAction, setMapViewAction } from '@/app/dashboard/view-actions';
 import type { JobsView, MapTheme, MapView } from '@/lib/dashboard-views';
 import ViewGear from '@/components/view-gear';
+import { pinRecordId, revealRow } from '@/lib/reveal-row';
 import PinMap, { type MapPin } from '@/components/pin-map';
 import FocusView from './FocusView';
 import styles from './jobs.module.css';
@@ -77,6 +78,19 @@ export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme, ma
   // Stable identity: FocusView calls this from an effect, so a new function
   // every render would re-fire it on every render.
   const onFocusSelect = useCallback((id: string | null) => setFocusJobId(id), []);
+  // A pin click asks the Focus pane to open that job. The nonce makes clicking
+  // the same pin twice count twice — otherwise re-clicking a job you're already
+  // on wouldn't bring the pane back into view.
+  const [pinRequest, setPinRequest] = useState<{ id: string; nonce: number } | null>(null);
+
+  const onPinClick = useCallback((pin: MapPin) => {
+    const jobId = pinRecordId(pin.id, 'job');
+    if (!jobId) return; // lead pins live on the leads page
+    // Focus shows one job at a time, so "go to it" means open it. The other
+    // layouts are lists, so it means scroll to its row.
+    setPinRequest((prev) => ({ id: jobId, nonce: (prev?.nonce ?? 0) + 1 }));
+    revealRow(`job-row-${jobId}`);
+  }, []);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -121,7 +135,7 @@ export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme, ma
           than the query. */}
       {mapView === 'large' ? (
         <div className="workspace-embedded-map">
-          <PinMap pins={mapPins} theme={mapTheme} legendAccessory={gear} focusPinId={view === 'focus' && focusJobId ? `job-${focusJobId}` : null} />
+          <PinMap pins={mapPins} theme={mapTheme} legendAccessory={gear} focusPinId={view === 'focus' && focusJobId ? `job-${focusJobId}` : null} onPinClick={onPinClick} />
         </div>
       ) : (
         // Map off: keep the gear reachable, or there'd be no way to turn it back on.
@@ -135,7 +149,7 @@ export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme, ma
           {view === 'list' && <ListView jobs={filtered} />}
           {view === 'board' && <BoardView jobs={jobs} />}
           {view === 'table' && <TableView jobs={filtered} />}
-          {view === 'focus' && <FocusView jobs={filtered} onSelect={onFocusSelect} />}
+          {view === 'focus' && <FocusView jobs={filtered} onSelect={onFocusSelect} openRequest={pinRequest} />}
 
           {view !== 'board' ? (
             <div className={styles.bar}>
@@ -166,7 +180,7 @@ function ListView({ jobs }: { jobs: JobViewItem[] }) {
   return (
     <div className="job-list">
       {jobs.map((job) => (
-        <Link key={job.id} href={`/dashboard/jobs/${job.id}`} className="job-row">
+        <Link id={`job-row-${job.id}`} key={job.id} href={`/dashboard/jobs/${job.id}`} className="job-row">
           <div className="job-row-header">
             <span className="job-ref">{job.ref}</span>
             <StatusBadge job={job} />
@@ -195,7 +209,7 @@ function BoardView({ jobs }: { jobs: JobViewItem[] }) {
             <header className={styles.columnHeader}><h3>{col.label}</h3><span>{items.length}</span></header>
             <div className={styles.cards}>
               {items.map((job) => (
-                <Link key={job.id} href={`/dashboard/jobs/${job.id}`} className={styles.jobCard}>
+                <Link id={`job-row-${job.id}`} key={job.id} href={`/dashboard/jobs/${job.id}`} className={styles.jobCard}>
                   <div className={styles.cardTop}><strong>{job.clientName}</strong><StatusBadge job={job} /></div>
                   <span className={styles.cardRef}>{job.ref}</span>
                   <p className={styles.cardAddr}>{job.address || 'No address on file'}</p>
@@ -255,7 +269,7 @@ function TableView({ jobs }: { jobs: JobViewItem[] }) {
         </thead>
         <tbody>
           {sorted.map((job) => (
-            <tr key={job.id}>
+            <tr id={`job-row-${job.id}`} key={job.id}>
               <td className={styles.tMono}>{job.ref}</td>
               <td><Link href={`/dashboard/jobs/${job.id}`} className={styles.tName}>{job.clientName}</Link></td>
               <td><StatusBadge job={job} /></td>

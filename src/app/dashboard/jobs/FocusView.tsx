@@ -48,7 +48,16 @@ function StatusBadge({ job }: { job: JobViewItem }) {
   );
 }
 
-export default function FocusView({ jobs, onSelect }: { jobs: JobViewItem[]; onSelect?: (jobId: string | null) => void }) {
+export default function FocusView({
+  jobs,
+  onSelect,
+  openRequest,
+}: {
+  jobs: JobViewItem[];
+  onSelect?: (jobId: string | null) => void;
+  /** A pin on the map asking for a job; the nonce lets the same one repeat. */
+  openRequest?: { id: string; nonce: number } | null;
+}) {
   const [selectedId, setSelectedId] = useState<string | null>(jobs[0]?.id ?? null);
   const [detail, setDetail] = useState<JobDetailDto | null>(null);
   const [loading, setLoading] = useState(false);
@@ -169,8 +178,21 @@ export default function FocusView({ jobs, onSelect }: { jobs: JobViewItem[]; onS
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
+  // Opened from the map. Goes through the same path as a click on the list, so
+  // the pane scrolls into view and the row centres itself exactly as it would.
+  useEffect(() => {
+    if (!openRequest) return;
+    if (!jobs.some((j) => j.id === openRequest.id)) return; // filtered out
+    selectRef.current(openRequest.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openRequest?.nonce]);
+
+  // Held in a ref so the map-request effect can call the latest version without
+  // re-running every time the selection changes.
+  const selectRef = useRef<(id: string) => void>(() => {});
+  selectRef.current = select;
+
   function select(id: string) {
-    if (id === selectedId) return;
     setSelectedId(id);
     setTab('overview');
 

@@ -105,11 +105,15 @@ function makeIcon(g: typeof google.maps, color: string, active: boolean, mini = 
   };
 }
 
-export default function PinMap({ pins, variant = 'large', theme = 'dark', legendAccessory, focusPinId = null }: { pins: MapPin[]; variant?: 'large' | 'mini'; theme?: 'dark' | 'light'; legendAccessory?: ReactNode; focusPinId?: string | null }) {
+export default function PinMap({ pins, variant = 'large', theme = 'dark', legendAccessory, focusPinId = null, onPinClick }: { pins: MapPin[]; variant?: 'large' | 'mini'; theme?: 'dark' | 'light'; legendAccessory?: ReactNode; focusPinId?: string | null; onPinClick?: (pin: MapPin) => void }) {
   const mini = variant === 'mini';
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<{ id: string; marker: google.maps.Marker }[]>([]);
   const mapRef = useRef<google.maps.Map | null>(null);
+  // Held in a ref because the map is built once per pin-set (the effect keys on
+  // `sig`), so a handler captured in that closure would go stale.
+  const onPinClickRef = useRef(onPinClick);
+  onPinClickRef.current = onPinClick;
   const gRef = useRef<typeof google.maps | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [selected, setSelected] = useState<MapPin | null>(null);
@@ -163,8 +167,12 @@ export default function PinMap({ pins, variant = 'large', theme = 'dark', legend
           });
           // Mini map: a click jumps straight to the record (no room for a card).
           marker.addListener('click', () => {
-            if (mini) window.location.href = pin.href;
-            else setSelected(pin);
+            if (mini) { window.location.href = pin.href; return; }
+            setSelected(pin);
+            // The page decides what "go to this one" means — scroll its row
+            // into view, open it in the Focus pane — rather than the map
+            // assuming a navigation.
+            onPinClickRef.current?.(pin);
           });
           markersRef.current.push({ id: pin.id, marker });
         }

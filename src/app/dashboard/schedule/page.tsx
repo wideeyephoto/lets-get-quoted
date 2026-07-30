@@ -66,6 +66,38 @@ function shortClientName(name: string): string {
   return `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}.`;
 }
 
+// The city off an address, short enough for a 117px calendar cell and never
+// cut mid-word. Standard postal abbreviations first ("Madison Heights" ->
+// "Madison Hts"), then whole trailing words are dropped until it fits
+// ("Grosse Pointe Farms" -> "Grosse Pt"). An ellipsised "Grosse Poi…" tells
+// you less than a whole word does.
+const CITY_MAX = 12;
+const CITY_SHORT: Array<[RegExp, string]> = [
+  [/\bHeights\b/i, 'Hts'],
+  [/\bTownship\b/i, 'Twp'],
+  [/\bSaint\b/i, 'St'],
+  [/\bMount\b/i, 'Mt'],
+  [/\bPointe?\b/i, 'Pt'],
+  [/\bVillage\b/i, 'Vlg'],
+];
+
+function shortCity(address: string | null): string | null {
+  if (!address) return null;
+  // "1775 E 14 Mile Rd, Madison Heights, MI 48071" — the city is the middle part.
+  const parts = address.split(',').map((part) => part.trim()).filter(Boolean);
+  if (parts.length < 2) return null;
+  let city = parts[parts.length - 2];
+  if (!city || /^\d/.test(city)) return null;
+  for (const [pattern, abbrev] of CITY_SHORT) city = city.replace(pattern, abbrev);
+
+  // Drop whole trailing words rather than keeping only the first one.
+  // "Saint Clair Shores" abbreviates to "St Clair Shores", and first-word-only
+  // rendered that city as, simply, "St".
+  const words = city.trim().split(/\s+/).filter(Boolean);
+  while (words.length > 1 && words.join(' ').length > CITY_MAX) words.pop();
+  return words.join(' ') || null;
+}
+
 function crewInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return '?';
@@ -316,6 +348,7 @@ export default async function SchedulePage({
       occurrence_key: `${job.id}:${job.scheduled_for}`,
       client_name: job.client_name,
       short_name: shortClientName(job.client_name),
+      city_label: shortCity(job.address),
       status: job.status,
       scheduled_for: job.scheduled_for,
       scheduled_time: job.scheduled_time,

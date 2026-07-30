@@ -3167,6 +3167,10 @@ li + li { margin-top: 0.45rem; }
 .calendar-job-chip-meta > span { flex: 0 1 auto; overflow: hidden; }
 /* Dot separators, so the row reads as one line rather than three chips. */
 .calendar-job-chip-meta > * + *::before { content: '·'; margin-right: .26rem; opacity: .6; }
+.calendar-job-chip-city {
+  font-size: .6rem; line-height: 1.2; opacity: .72; letter-spacing: .01em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .calendar-job-chip-crew {
   flex: 0 0 auto; padding: 0 .24rem; border-radius: 3px;
   background: rgba(255,255,255,.16); font-weight: 800; letter-spacing: .02em;
@@ -9894,4 +9898,24 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 
 @media (prefers-reduced-motion: reduce) {
   .bset-card, .bset-day, .bset-window, .bset-chev, .bset-switch-track, .bset-switch-track > span { transition: none; }
+}
+
+/* Applied for ~1.5s by revealRow() when a map pin points at a record, so the
+   row you were sent to identifies itself instead of leaving you to work out
+   which of twenty it was. Outline rather than border: it doesn't reflow the
+   row, so nothing shifts under the cursor as it fades. */
+.row-revealed {
+  animation: row-reveal-flash 1.5s ease-out 1;
+  border-radius: 12px;
+}
+
+@keyframes row-reveal-flash {
+  0%   { outline: 2px solid rgba(255, 122, 41, 0.9); outline-offset: 2px; background-color: rgba(255, 122, 41, 0.16); }
+  70%  { outline: 2px solid rgba(255, 122, 41, 0.5); outline-offset: 2px; background-color: rgba(255, 122, 41, 0.08); }
+  100% { outline: 2px solid rgba(255, 122, 41, 0);   outline-offset: 2px; background-color: transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Still mark it — just hold the highlight rather than pulsing it away. */
+  .row-revealed { animation: none; outline: 2px solid rgba(255, 122, 41, 0.75); outline-offset: 2px; }
 }

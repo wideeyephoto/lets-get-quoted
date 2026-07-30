@@ -24,6 +24,7 @@ export type CalendarJob = {
   occurrence_key: string;
   client_name: string;
   short_name: string;
+  city_label: string | null;
   status: string;
   scheduled_for: string;
   scheduled_time: string | null;
@@ -390,7 +391,7 @@ export default function ScheduleCalendar({
                             role="button"
                             tabIndex={0}
                             className={`calendar-job-chip status-${job.status}${draggingJobId === job.id ? ' dragging' : ''}`}
-                            title={[job.client_name, job.badge_label, job.value_label, job.hours_label, job.crew_initials.length ? `Crew: ${job.crew_initials.join(', ')}` : null, 'drag to move'].filter(Boolean).join(' · ')}
+                            title={[job.client_name, job.badge_label, job.value_label, job.hours_label, job.city_label, job.crew_initials.length ? `Crew: ${job.crew_initials.join(', ')}` : null, 'drag to move'].filter(Boolean).join(' · ')}
                             onPointerDown={(event) => beginDrag({ jobId: job.id, jobName: job.client_name, time: job.scheduled_time ?? '', sourceDateKey: job.scheduled_for }, event, () => openJobActions(job.occurrence_key))}
                             onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openJobActions(job.occurrence_key); } }}
                           >
@@ -424,6 +425,11 @@ export default function ScheduleCalendar({
                                   {job.value_label ? <em>{job.value_label}</em> : null}
                                 </span>
                               )}
+                              {/* Where it is. Its own line because time and
+                                  money already fill the one above, and a city
+                                  squeezed in beside them would be the sort of
+                                  fragment this whole pass is removing. */}
+                              {job.city_label ? <span className="calendar-job-chip-city">{job.city_label}</span> : null}
                             </span>
                           </div>
                           <button

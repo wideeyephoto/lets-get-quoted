@@ -9,6 +9,7 @@ import { setMapThemeAction, setMapViewAction } from '@/app/dashboard/view-action
 import type { MapTheme, MapView } from '@/lib/dashboard-views';
 import ViewGear from '@/components/view-gear';
 import PinMap, { type MapPin } from '@/components/pin-map';
+import { pinRecordId, revealRow } from '@/lib/reveal-row';
 import styles from './leads.module.css';
 
 // Display-ready lead shape, built server-side in page.tsx so this client
@@ -143,7 +144,17 @@ export default function LeadsWorkspace({ leads, initialView, mapView, mapTheme, 
     <div className={pending ? styles.workspaceBusy : undefined}>
       {mapView !== 'off' ? (
         <div className="workspace-embedded-map">
-          <PinMap pins={mapPins} theme={mapTheme} legendAccessory={gear} />
+          <PinMap
+            pins={mapPins}
+            theme={mapTheme}
+            legendAccessory={gear}
+            // A pin is the same lead as the row below it; clicking one should
+            // take you to the other rather than making you hunt for it.
+            onPinClick={(pin) => {
+              const id = pinRecordId(pin.id, 'lead');
+              if (id) revealRow(`lead-row-${id}`);
+            }}
+          />
         </div>
       ) : (
         <div className={styles.viewBar}>{gear}</div>
@@ -182,7 +193,7 @@ function BoardView({ leads, run }: { leads: LeadViewItem[]; run: (fn: () => Prom
 function BoardCard({ lead, run }: { lead: LeadViewItem; run: (fn: () => Promise<unknown>) => void }) {
   const [declining, setDeclining] = useState(false);
   return (
-    <div className={`${styles.leadCard}${lead.isUrgent ? ` ${styles.urgentCard}` : ''}`}>
+    <div id={`lead-row-${lead.id}`} className={`${styles.leadCard}${lead.isUrgent ? ` ${styles.urgentCard}` : ''}`}>
       {/* The card body is the click target (the actions below carry their own). */}
       <Link className={styles.cardBody} href={`/dashboard/leads/${lead.id}`}>
         <div className={styles.cardTopline}><strong>{lead.name}</strong><span className={lead.isUrgent ? styles.needsBadge : styles.statusBadge}>{lead.statusLabel}</span></div>
@@ -238,7 +249,7 @@ function InboxView({ leads, run }: { leads: LeadViewItem[]; run: (fn: () => Prom
   return (
     <div className={styles.inbox}>
       {sorted.map((lead) => (
-        <div className={`${styles.inboxRow}${lead.isUrgent ? ` ${styles.inboxUrgent}` : ''}`} key={lead.id}>
+        <div id={`lead-row-${lead.id}`} className={`${styles.inboxRow}${lead.isUrgent ? ` ${styles.inboxUrgent}` : ''}`} key={lead.id}>
           <span className={styles.heatDot} data-score={lead.score} aria-hidden="true" />
           <Link href={`/dashboard/leads/${lead.id}`} className={styles.inboxBody}>
             <div className={styles.inboxTop}>
@@ -305,7 +316,7 @@ function TableView({ leads }: { leads: LeadViewItem[] }) {
         </thead>
         <tbody>
           {sorted.map((lead) => (
-            <tr key={lead.id}>
+            <tr id={`lead-row-${lead.id}`} key={lead.id}>
               <td><Link href={`/dashboard/leads/${lead.id}`} className={styles.tName}>{lead.name}</Link></td>
               <td><span className={styles.scoreChip} data-score={lead.score}>{scoreText(lead)}</span></td>
               <td className={styles.tMuted}>{lead.detail}</td>
