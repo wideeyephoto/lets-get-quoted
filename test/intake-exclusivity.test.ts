@@ -5,7 +5,7 @@ import { getSiteContent } from '@/lib/site-content';
 // OR the classic quote form, never both and never neither. quoteForm.enabled is
 // the single source of truth; Smart Intake is on whenever the quote form is off.
 describe('intake method is mutually exclusive', () => {
-  const smartIntakeOn = (content: unknown) => {
+  const smartIntakeOn = (content: Record<string, unknown> | null | undefined) => {
     const c = getSiteContent(content);
     return c.estimateRanges.enabled === !c.quoteForm.enabled;
   };

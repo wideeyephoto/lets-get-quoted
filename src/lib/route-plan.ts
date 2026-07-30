@@ -313,6 +313,84 @@ function schedule(
   return { planned, miles, minutes };
 }
 
+// ---------------------------------------------------------------------------
+// Applying a plan
+// ---------------------------------------------------------------------------
+
+// A single start-time move the contractor is about to commit.
+export type ScheduleChange = { jobId: string; label: string; from: string | null; to: string };
+
+export type ScheduleChangeset = {
+  changes: ScheduleChange[];
+  // Confirmed appointments the submitted plan tried to move. Counted, never applied.
+  keptConfirmed: number;
+  // Stops already sitting at the proposed time.
+  unchanged: number;
+  // Entries that don't correspond to a job on this day for this account, or that
+  // carry an unparseable time. Dropped rather than guessed at.
+  ignored: number;
+};
+
+export type ApplyCandidate = {
+  id: string;
+  client_name: string;
+  scheduled_time: string | null;
+  appointment_confirmed_at: string | null;
+};
+
+// Resolves submitted "<jobId>:<HH:MM>" entries against the day's real jobs into
+// the exact set of writes to perform — with every rule applied UP FRONT, before
+// anything is written. Doing this as one pure pass is what lets the caller decide
+// to write all of it or none of it, instead of discovering a problem halfway
+// through and leaving the day half-reordered.
+//
+// The submitted times are the contractor's, but nothing in them is trusted: a job
+// must genuinely be on the day, the time must parse, and a confirmed appointment
+// can never be moved off the time the customer agreed to — whatever the form says.
+export function buildScheduleChangeset(jobs: ApplyCandidate[], entries: string[]): ScheduleChangeset {
+  const byId = new Map(jobs.map((job) => [job.id, job]));
+  const changes: ScheduleChange[] = [];
+  const seen = new Set<string>();
+  let keptConfirmed = 0;
+  let unchanged = 0;
+  let ignored = 0;
+
+  for (const entry of entries) {
+    const separator = entry.indexOf(':');
+    if (separator < 0) {
+      ignored += 1;
+      continue;
+    }
+    const jobId = entry.slice(0, separator);
+    const time = entry.slice(separator + 1);
+    const job = byId.get(jobId);
+    const minutes = parseTimeMinutes(time);
+    if (!job || minutes == null || seen.has(jobId)) {
+      ignored += 1;
+      continue;
+    }
+    seen.add(jobId);
+
+    const current = parseTimeMinutes(job.scheduled_time);
+    if (job.appointment_confirmed_at) {
+      if (current !== minutes) keptConfirmed += 1;
+      continue;
+    }
+    if (current === minutes) {
+      unchanged += 1;
+      continue;
+    }
+    changes.push({
+      jobId,
+      label: job.client_name,
+      from: job.scheduled_time,
+      to: `${formatTimeMinutes(minutes)}:00`,
+    });
+  }
+
+  return { changes, keptConfirmed, unchanged, ignored };
+}
+
 export function planDayRoute(input: PlanInput): RoutePlan {
   const { stops, homeBase, workdayStart, workdayEnd, bufferMinutes, defaultVisitMinutes, matrix } = input;
 

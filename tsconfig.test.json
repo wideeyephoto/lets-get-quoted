@@ -1,0 +1,11 @@
+{
+  // Typechecks the app AND the test suite. The base tsconfig.json is Next's, and
+  // it includes only `src` — so until this existed, nothing typechecked test/ at
+  // all. That's how six tests came to sit broken on main: BookingAvailability
+  // grew four fields, the fixtures never followed, and tsc had no view of them.
+  //
+  // Run via `npm run typecheck` (not part of `next build`, which keeps using
+  // tsconfig.json).
+  "extends": "./tsconfig.json",
+  "include": ["next-env.d.ts", "src", "test", ".next/types/**/*.ts"]
+}

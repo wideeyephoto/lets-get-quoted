@@ -7,7 +7,7 @@ import { createJobFeedEvent } from '@/lib/job-feed';
 import { updateJobSchedule } from '@/lib/jobs';
 import { normalizeUsPhone } from '@/lib/phone';
 import { isPhoneOptedOut, recordSmsConsent, sendArrivalTimeChangedSms } from '@/lib/sms';
-import { formatTimeLabel, parseTimeMinutes } from '@/lib/route-plan';
+import { buildScheduleChangeset, formatTimeLabel, parseTimeMinutes } from '@/lib/route-plan';
 import { listDayJobs } from '@/lib/route-plan-day';
 
 function planUrl(dateKey: string, crewId: string | null, extra?: Record<string, string>): string {
@@ -19,10 +19,14 @@ function planUrl(dateKey: string, crewId: string | null, extra?: Record<string, 
 
 // Writes the proposed order onto the calendar as new start times.
 //
-// The times come from the page so the contractor gets exactly the plan they were
-// shown, but nothing is trusted: every job must genuinely be on that day for this
-// account, and a confirmed appointment can never be moved off the time the
-// customer agreed to — even if the form says otherwise.
+// All-or-nothing. Every rule is applied up front by buildScheduleChangeset — job
+// is really on this day, time parses, confirmed appointments untouchable — so the
+// only thing left to fail is the database. If one write does fail, the ones
+// already made are put back, because a half-applied route is worse than no route:
+// it leaves stops overlapping at times nobody chose.
+//
+// Postgres would do this more cleanly in one transaction, which needs an RPC and
+// a migration; this keeps the guarantee without a schema change.
 export async function applyDayPlanAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
   const dateKey = String(formData.get('dateKey') ?? '').trim();
@@ -32,49 +36,61 @@ export async function applyDayPlanAction(formData: FormData) {
   // "<jobId>:<HH:MM>" per stop, in the planned visit order.
   const entries = formData.getAll('stop').map((value) => String(value));
   const { jobs } = await listDayJobs(supabase, accountId, dateKey, crewId);
-  const jobById = new Map(jobs.map((job) => [job.id, job]));
+  const { changes, keptConfirmed } = buildScheduleChangeset(jobs, entries);
 
-  const moved: string[] = [];
-  let skippedConfirmed = 0;
+  const kept: Record<string, string> = keptConfirmed ? { kept: String(keptConfirmed) } : {};
+  if (changes.length === 0) redirect(planUrl(dateKey, crewId, { applied: '0', ...kept }));
 
-  for (const entry of entries) {
-    const separator = entry.indexOf(':');
-    if (separator < 0) continue;
-    const jobId = entry.slice(0, separator);
-    const time = entry.slice(separator + 1);
-    const job = jobById.get(jobId);
-    if (!job) continue; // not on this day / not this account — ignore silently
-    const minutes = parseTimeMinutes(time);
-    if (minutes == null) continue;
+  // Applied so far, newest last, so a failure can be unwound in reverse.
+  const applied: Array<{ jobId: string; previous: string | null }> = [];
+  let failure: string | null = null;
+  let stranded = 0;
 
-    // The promise: a confirmed appointment keeps its time.
-    if (job.appointment_confirmed_at) {
-      if (parseTimeMinutes(job.scheduled_time) !== minutes) skippedConfirmed += 1;
-      continue;
+  try {
+    for (const change of changes) {
+      await updateJobSchedule(supabase, accountId, change.jobId, dateKey, change.to);
+      applied.push({ jobId: change.jobId, previous: change.from });
     }
-    if (parseTimeMinutes(job.scheduled_time) === minutes) continue; // already there
+  } catch (error) {
+    failure = error instanceof Error ? error.message : 'Unknown error';
+    // Unwind. Each restore is itself best-effort — if one fails there is nothing
+    // further we can do but count it and say so rather than pretend.
+    for (const done of [...applied].reverse()) {
+      try {
+        await updateJobSchedule(supabase, accountId, done.jobId, dateKey, done.previous);
+      } catch {
+        stranded += 1;
+      }
+    }
+    console.error('applyDayPlanAction rolled back:', failure);
+  }
 
-    const nextTime = `${time}:00`;
-    await updateJobSchedule(supabase, accountId, jobId, dateKey, nextTime);
-    await createJobFeedEvent(supabase, accountId, jobId, {
+  if (failure) {
+    revalidatePath('/dashboard/schedule');
+    redirect(planUrl(dateKey, crewId, { failed: '1', ...(stranded ? { stranded: String(stranded) } : {}) }));
+  }
+
+  // Only once every move stuck: the feed is an audit trail, so it must not record
+  // moves that were rolled back.
+  for (const change of changes) {
+    await createJobFeedEvent(supabase, accountId, change.jobId, {
       kind: 'job_scheduled',
       title: 'Start time updated by route planning',
-      body: `Arrival moved to ${formatTimeLabel(minutes)} to tighten the day's driving.`,
+      body: `Arrival moved to ${formatTimeLabel(parseTimeMinutes(change.to) ?? 0)} to tighten the day's driving.`,
       visibility: 'internal',
-      meta: { scheduled_for: dateKey, scheduled_time: nextTime, source: 'route_plan' },
+      meta: { scheduled_for: dateKey, scheduled_time: change.to, source: 'route_plan' },
     });
-    moved.push(jobId);
   }
 
   revalidatePath('/dashboard/schedule');
   revalidatePath('/dashboard/jobs');
-  for (const jobId of moved) revalidatePath(`/dashboard/jobs/${jobId}`);
+  for (const change of changes) revalidatePath(`/dashboard/jobs/${change.jobId}`);
 
   redirect(
     planUrl(dateKey, crewId, {
-      applied: String(moved.length),
-      ...(moved.length ? { moved: moved.join(',') } : {}),
-      ...(skippedConfirmed ? { kept: String(skippedConfirmed) } : {}),
+      applied: String(changes.length),
+      moved: changes.map((change) => change.jobId).join(','),
+      ...kept,
     }),
   );
 }

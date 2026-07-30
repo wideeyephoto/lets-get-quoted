@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { planDayRoute, parseTimeMinutes, formatTimeMinutes, formatTimeLabel, type PlanStop } from '@/lib/route-plan';
+import {
+  planDayRoute,
+  buildScheduleChangeset,
+  parseTimeMinutes,
+  formatTimeMinutes,
+  formatTimeLabel,
+  type PlanStop,
+  type ApplyCandidate,
+} from '@/lib/route-plan';
 
 // A tidy synthetic geography: four stops strung west-to-east along one latitude,
 // roughly 5 miles apart, with the shop sitting at the west end. The shortest route
@@ -268,5 +276,108 @@ describe('planDayRoute edge cases', () => {
     expect(plan.planned).toHaveLength(12);
     expect(new Set(plan.planned.map((p) => p.stop.id)).size).toBe(12); // no drops, no dupes
     expect(plan.plannedMiles).toBeLessThanOrEqual(plan.currentMiles);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Applying a plan
+// ---------------------------------------------------------------------------
+
+function candidate(over: Partial<ApplyCandidate> & { id: string }): ApplyCandidate {
+  return {
+    client_name: `Client ${over.id}`,
+    scheduled_time: null,
+    appointment_confirmed_at: null,
+    ...over,
+  };
+}
+
+describe('buildScheduleChangeset', () => {
+  it('turns submitted entries into the exact writes to perform', () => {
+    const jobs = [
+      candidate({ id: 'a', scheduled_time: '13:00:00' }),
+      candidate({ id: 'b', scheduled_time: '09:00:00' }),
+    ];
+    const { changes, ignored, unchanged, keptConfirmed } = buildScheduleChangeset(jobs, ['a:08:00', 'b:10:30']);
+
+    expect(changes).toEqual([
+      { jobId: 'a', label: 'Client a', from: '13:00:00', to: '08:00:00' },
+      { jobId: 'b', label: 'Client b', from: '09:00:00', to: '10:30:00' },
+    ]);
+    expect([ignored, unchanged, keptConfirmed]).toEqual([0, 0, 0]);
+  });
+
+  // The feature's core promise. Previously guaranteed only by reading the code.
+  it('NEVER moves a confirmed appointment, even when the form says to', () => {
+    const jobs = [
+      candidate({ id: 'confirmed', scheduled_time: '09:00:00', appointment_confirmed_at: '2026-07-28T10:00:00Z' }),
+      candidate({ id: 'free', scheduled_time: '09:00:00' }),
+    ];
+    const { changes, keptConfirmed } = buildScheduleChangeset(jobs, ['confirmed:15:00', 'free:15:00']);
+
+    expect(changes.map((c) => c.jobId)).toEqual(['free']);
+    expect(keptConfirmed).toBe(1);
+  });
+
+  it('does not count a confirmed stop left at its own time as kept-back', () => {
+    const jobs = [candidate({ id: 'c', scheduled_time: '09:00:00', appointment_confirmed_at: '2026-07-28T10:00:00Z' })];
+    const { changes, keptConfirmed } = buildScheduleChangeset(jobs, ['c:09:00']);
+    expect(changes).toHaveLength(0);
+    expect(keptConfirmed).toBe(0);
+  });
+
+  it('drops entries for jobs that are not on this day for this account', () => {
+    const jobs = [candidate({ id: 'mine', scheduled_time: '09:00:00' })];
+    const { changes, ignored } = buildScheduleChangeset(jobs, ['someone-elses-job:08:00', 'mine:08:00']);
+    expect(changes.map((c) => c.jobId)).toEqual(['mine']);
+    expect(ignored).toBe(1);
+  });
+
+  it('drops malformed entries and unparseable times instead of guessing', () => {
+    const jobs = [candidate({ id: 'a', scheduled_time: '09:00:00' })];
+    const { changes, ignored } = buildScheduleChangeset(jobs, ['no-separator', 'a:99:99', 'a:not-a-time', '']);
+    expect(changes).toHaveLength(0);
+    expect(ignored).toBe(4);
+  });
+
+  it('ignores a duplicated job id rather than writing it twice', () => {
+    const jobs = [candidate({ id: 'a', scheduled_time: '09:00:00' })];
+    const { changes, ignored } = buildScheduleChangeset(jobs, ['a:08:00', 'a:16:00']);
+    expect(changes).toEqual([{ jobId: 'a', label: 'Client a', from: '09:00:00', to: '08:00:00' }]);
+    expect(ignored).toBe(1);
+  });
+
+  it('counts stops already at the proposed time as unchanged, not as writes', () => {
+    const jobs = [
+      candidate({ id: 'a', scheduled_time: '08:00:00' }),
+      candidate({ id: 'b', scheduled_time: '08:00' }), // no seconds — same time
+    ];
+    const { changes, unchanged } = buildScheduleChangeset(jobs, ['a:08:00', 'b:08:00']);
+    expect(changes).toHaveLength(0);
+    expect(unchanged).toBe(2);
+  });
+
+  it('treats a stop with no time yet as a real move', () => {
+    const jobs = [candidate({ id: 'a', scheduled_time: null })];
+    const { changes } = buildScheduleChangeset(jobs, ['a:08:00']);
+    expect(changes).toEqual([{ jobId: 'a', label: 'Client a', from: null, to: '08:00:00' }]);
+  });
+
+  it('carries the previous time on every change, so a failed apply can be unwound', () => {
+    const jobs = [
+      candidate({ id: 'a', scheduled_time: '13:00:00' }),
+      candidate({ id: 'b', scheduled_time: null }),
+    ];
+    const { changes } = buildScheduleChangeset(jobs, ['a:08:00', 'b:10:00']);
+    expect(changes.map((c) => c.from)).toEqual(['13:00:00', null]);
+  });
+
+  it('returns nothing to do for an empty submission', () => {
+    expect(buildScheduleChangeset([candidate({ id: 'a' })], [])).toEqual({
+      changes: [],
+      keptConfirmed: 0,
+      unchanged: 0,
+      ignored: 0,
+    });
   });
 });

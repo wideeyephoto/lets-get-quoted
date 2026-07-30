@@ -63,6 +63,8 @@ export default async function PlanDayPage({
     kept?: string;
     texted?: string;
     untexted?: string;
+    failed?: string;
+    stranded?: string;
   };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
@@ -85,6 +87,7 @@ export default async function PlanDayPage({
   const keptCount = Number(searchParams.kept);
   const textedCount = Number(searchParams.texted);
   const untextedCount = Number(searchParams.untexted);
+  const strandedCount = Number(searchParams.stranded);
   const justMovedIds = (searchParams.moved ?? '').split(',').filter(Boolean);
   // Stops whose time we just changed. The notify action resolves who actually has
   // a mobile on file and reports back on anyone it couldn't reach.
@@ -129,6 +132,18 @@ export default async function PlanDayPage({
           </div>
         </form>
 
+        {searchParams.failed === '1' ? (
+          <p className="route-plan-flash warn">
+            {strandedCount > 0 ? (
+              <>
+                Couldn&apos;t save the whole route, and {strandedCount} {strandedCount === 1 ? 'stop' : 'stops'} could
+                not be put back — check the times below against your calendar before relying on them.
+              </>
+            ) : (
+              <>Couldn&apos;t save the route, so nothing was changed — your calendar is exactly as it was. Try again.</>
+            )}
+          </p>
+        ) : null}
         {appliedCount > 0 ? (
           <p className="route-plan-flash good">
             ✓ Applied — {appliedCount} start {appliedCount === 1 ? 'time' : 'times'} updated on your calendar.

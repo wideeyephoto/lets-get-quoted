@@ -73,6 +73,8 @@ const BASE: BookingAvailability = {
   leadDays: 1,
   workdayStart: '08:00',
   workdayEnd: '17:00',
+  capacityHours: 8,
+  bufferMinutes: 0,
 };
 const empty = () => ({ countByDate: new Map<string, number>(), takenByDate: new Map<string, Set<string>>() });
 
