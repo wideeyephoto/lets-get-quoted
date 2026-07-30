@@ -37,6 +37,15 @@ describe('buildCsp', () => {
     expect(connect.some((v) => v.includes('undefined') || v.includes('null'))).toBe(false);
   });
 
+  it('allows the Google Maps SDK its own fonts and stylesheets', () => {
+    // Found by the report-only rollout against a real browser: the Maps SDK pulls
+    // stylesheets from fonts.googleapis.com and font files from fonts.gstatic.com.
+    // Without these, enforcing would break every map in the app.
+    const directives = parse(buildCsp({ nonce: 'n', supabaseOrigin: SUPABASE }));
+    expect(directives.get('style-src')).toContain('https://fonts.googleapis.com');
+    expect(directives.get('font-src')).toContain('https://fonts.gstatic.com');
+  });
+
   it('allows the Turnstile iframe and keeps framing to our own origin', () => {
     const directives = parse(buildCsp({ nonce: 'n', supabaseOrigin: SUPABASE }));
     expect(directives.get('frame-src')).toContain('https://challenges.cloudflare.com');

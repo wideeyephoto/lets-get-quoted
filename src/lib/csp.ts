@@ -45,12 +45,17 @@ export function buildCsp({ nonce, supabaseOrigin }: CspOptions): string {
     ['script-src', ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", 'https:', "'unsafe-inline'"]],
     // Next injects <style> tags and React writes inline style attributes, neither
     // of which a nonce covers. This is the standard, accepted compromise.
-    ['style-src', ["'self'", "'unsafe-inline'"]],
+    // fonts.googleapis.com: the Google Maps SDK pulls its own stylesheets from
+    // there. Report-only caught this — without it, enforcing would have broken
+    // every map in the app.
+    ['style-src', ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com']],
     // Contractors pick their own photos (Unsplash, Pexels, Supabase storage, their
     // own hosts), so any https image is allowed. Low risk, and anything tighter
     // would be pure noise.
     ['img-src', ["'self'", 'data:', 'blob:', 'https:']],
-    ['font-src', ["'self'", 'data:']],
+    // fonts.gstatic.com is where the Maps SDK fetches the font files for its own
+    // labels and controls — same story as style-src above.
+    ['font-src', ["'self'", 'data:', 'https://fonts.gstatic.com']],
     ['connect-src', connect],
     // Turnstile renders in an iframe; the builder previews our own pages.
     ['frame-src', ["'self'", 'https://challenges.cloudflare.com']],
