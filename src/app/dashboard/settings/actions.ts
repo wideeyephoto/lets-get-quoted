@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import { updateSite } from '@/lib/sites';
-import { mergeSiteContent } from '@/lib/site-content';
+import { getSiteContent, mergeSiteContent } from '@/lib/site-content';
 import { sendTestDigest } from '@/lib/daily-digest';
 import { normalizeEstimatePosture } from '@/lib/estimate-posture';
 import { AUTOMATION_COLUMNS, isAutomationKey, type AutomationKey } from '@/lib/automations';
@@ -81,9 +81,33 @@ export async function updateScheduleDayHoursAction(formData: FormData) {
   revalidatePath('/dashboard/schedule');
 }
 
-// One-click "turn on the essentials": the safe, high-value automations that work
-// with no configuration — review asks, quote follow-ups, appointment reminders,
-// and the daily digest. Each still has its own card to tune or turn back off.
+// Switches the website between Smart Intake (AI instant estimates) and the classic
+// quote form. Unlike the other automations this isn't an `accounts` column — it
+// lives in the site content, where `quoteForm.enabled` is the single source of
+// truth and getSiteContent derives estimateRanges.enabled as its inverse. Exactly
+// one intake method is ever live, so turning Smart Intake off IS turning the old
+// quote form on; the same pair of switches sits in the website builder.
+export async function toggleSmartIntakeAction(next: boolean) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const { data: site } = await supabase
+    .from('sites')
+    .select('id, content')
+    .eq('account_id', accountId)
+    .maybeSingle();
+  if (!site) throw new Error('Create your website first to choose how leads come in.');
+
+  const current = getSiteContent((site.content as Record<string, unknown> | null) ?? null);
+  const content = mergeSiteContent((site.content as Record<string, unknown>) ?? {}, {
+    // Spread the existing quoteForm so its other settings (email required, button
+    // wording) survive the flip.
+    quoteForm: { ...current.quoteForm, enabled: !next },
+  });
+  await updateSite(supabase, accountId, site.id as string, { content });
+
+  revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/sites');
+}
+
 // Flips one automation on or off straight from the Automations list. Touches only
 // that automation's own column, so it can never clobber the rest of the card's
 // settings the way re-submitting a partial form would.
@@ -99,6 +123,9 @@ export async function toggleAutomationAction(key: AutomationKey, next: boolean) 
   revalidatePath('/dashboard');
 }
 
+// One-click "turn on the essentials": the safe, high-value automations that work
+// with no configuration — review asks, quote follow-ups, appointment reminders,
+// and the daily digest. Each still has its own card to tune or turn back off.
 export async function enableRecommendedAutomationsAction() {
   const { supabase, accountId } = await requireOwnerContext();
   const { error } = await supabase

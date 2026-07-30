@@ -9,9 +9,8 @@ import FinanceReports from './FinanceReports';
 import { getAvailableTaxYears, buildProfitAndLoss, buildScheduleCWorksheet, build1099PrepList } from '@/lib/tax-reports';
 import SaveButton from '@/components/save-button';
 import AutomationSwitch from '@/components/automation-switch';
-import type { AutomationKey } from '@/lib/automations';
 import DeleteAccountButton from './DeleteAccountButton';
-import { updateScheduleDayHoursAction, updateReviewSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBookingAvailabilityAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, updateCallTextbackSettingsAction, toggleAutomationAction } from './actions';
+import { updateScheduleDayHoursAction, updateReviewSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBookingAvailabilityAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, updateCallTextbackSettingsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
 import { ESTIMATE_POSTURES, normalizeEstimatePosture } from '@/lib/estimate-posture';
 import { getSiteContent } from '@/lib/site-content';
 import { WEEKDAY_LABELS, BOOKING_WINDOW_PRESETS, TIMEZONE_OPTIONS, bookingAvailabilityFromAccount } from '@/lib/booking-availability';
@@ -31,10 +30,11 @@ function formatDate(value: string): string {
 // on/off control); expand to reveal the section's form. The `id` stays on the
 // <details> so deep links (#reviews, #daily-digest, …) still resolve and open it.
 //
-// Pass `toggle` for an automation backed by a single boolean column — it gets a
-// real switch you can flip from the list without opening the card. Pass `status`
-// for the ones that aren't (Intake AI is always on; Online booking's on/off is
-// derived from the booking weekday set), so the row still reads at a glance.
+// Pass `toggle` with the action that flips it and it gets a real switch you can
+// use from the list without opening the card. The action is explicit rather than
+// derived from the id because these don't all live in the same place: most are a
+// boolean column on `accounts`, but Intake AI is a flag inside the site content.
+// `status` remains for rows with nothing to flip.
 type AutomationStatus = { label: string; tone: 'on' | 'off' | 'neutral' };
 function AutomationCard({
   id,
@@ -48,7 +48,7 @@ function AutomationCard({
   title: string;
   subtitle: string;
   status?: AutomationStatus;
-  toggle?: { key: AutomationKey; on: boolean };
+  toggle?: { on: boolean; action: (next: boolean) => Promise<void> };
   children: ReactNode;
 }) {
   return (
@@ -59,7 +59,7 @@ function AutomationCard({
           <span className="automation-sub">{subtitle}</span>
         </span>
         {toggle ? (
-          <AutomationSwitch label={title} on={toggle.on} action={toggleAutomationAction.bind(null, toggle.key)} />
+          <AutomationSwitch label={title} on={toggle.on} action={toggle.action} />
         ) : status ? (
           <span className={`automation-status ${status.tone}`}>{status.label}</span>
         ) : null}
@@ -141,6 +141,10 @@ export default async function SettingsPage({
   const extraStopEnabled = Boolean((extraStopSettings as { extra_stop_enabled?: boolean } | null)?.extra_stop_enabled);
   const bookingActive = booking.weekdays.length > 0;
   const bookingEnabled = booking.enabled;
+  // Intake AI isn't "always on" — enabling the classic quote form in the website
+  // builder switches it off. quoteForm.enabled is the source of truth; this is its
+  // inverse, exactly as getSiteContent derives it.
+  const smartIntakeOn = businessBasics.estimateRanges.enabled;
   const instantBookEnabled = Boolean(bookingSettings?.instant_book_enabled);
   const instantBookMinAmount = bookingSettings?.instant_book_min_amount ? Number(bookingSettings.instant_book_min_amount) : 0;
   const instantBookRadius = bookingSettings?.instant_book_radius_miles ? Number(bookingSettings.instant_book_radius_miles) : 15;
@@ -329,7 +333,24 @@ export default async function SettingsPage({
                   </form>
                 )}
                 <p className="automation-group">Booking &amp; intake</p>
-                <AutomationCard id="intake-ai" title="Intake AI" subtitle="Instant estimates & lead priority" status={{ label: 'Always on', tone: 'neutral' }}>
+                <AutomationCard
+                  id="intake-ai"
+                  title="Intake AI"
+                  subtitle="Instant estimates & lead priority"
+                  {...(site
+                    ? { toggle: { on: smartIntakeOn, action: toggleSmartIntakeAction } }
+                    : { status: { label: 'Needs a website', tone: 'neutral' as const } })}
+                >
+                  {site && !smartIntakeOn ? (
+                    <div className="automation-prereq" style={{ marginBottom: '0.9rem' }}>
+                      <span aria-hidden="true">📝</span>
+                      <span>
+                        Smart Intake is off, so your website is using the <strong>old-school quote form</strong> &mdash;
+                        visitors type out their job and wait for you to reply with a price. Switching this back on
+                        replaces it with instant AI estimates. Only one intake runs at a time.
+                      </span>
+                    </div>
+                  ) : null}
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     Your website&apos;s AI intake opens the relationship for you: it asks a homeowner{' '}
                     <strong>2&ndash;8 short questions</strong>, gives them a instant ballpark, and captures the
@@ -381,7 +402,7 @@ export default async function SettingsPage({
                   </form>
                 </AutomationCard>
 
-                <AutomationCard id="booking-availability" title="Online booking" subtitle="Days & windows customers can grab" toggle={{ key: 'booking', on: bookingEnabled }}>
+                <AutomationCard id="booking-availability" title="Online booking" subtitle="Days & windows customers can grab" toggle={{ on: bookingEnabled, action: toggleAutomationAction.bind(null, 'booking') }}>
                   {bookingEnabled && !bookingActive ? (
                     <div className="automation-prereq" style={{ marginBottom: '0.9rem' }}>
                       <span aria-hidden="true">⚠️</span>
@@ -491,7 +512,7 @@ export default async function SettingsPage({
                   </form>
                 </AutomationCard>
 
-                <AutomationCard id="extra-stop" title="Extra Stop" subtitle="Same-day &ldquo;add me to your route&rdquo;" toggle={{ key: 'extra-stop', on: extraStopEnabled }}>
+                <AutomationCard id="extra-stop" title="Extra Stop" subtitle="Same-day &ldquo;add me to your route&rdquo;" toggle={{ on: extraStopEnabled, action: toggleAutomationAction.bind(null, 'extra-stop') }}>
                   {!account?.connect_onboarded ? (
                     <div className="automation-prereq" style={{ marginBottom: '0.9rem' }}>
                       <span aria-hidden="true">💳</span>
@@ -501,7 +522,7 @@ export default async function SettingsPage({
                   <ExtraStopSettingsSection headless extraStop={extraStopSettings as Parameters<typeof ExtraStopSettingsSection>[0]['extraStop']} refundTiers={extraStopRefundTiers} />
                 </AutomationCard>
 
-                <AutomationCard id="missed-call" title="Missed-call text-back" subtitle="Auto-text callers you miss" toggle={{ key: 'missed-call', on: callTextbackEnabled }}>
+                <AutomationCard id="missed-call" title="Missed-call text-back" subtitle="Auto-text callers you miss" toggle={{ on: callTextbackEnabled, action: toggleAutomationAction.bind(null, 'missed-call') }}>
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     When a call to your tracking number goes unanswered, we instantly text the caller back so the
                     lead doesn&apos;t go to a competitor — and log it on your leads board to follow up.
@@ -532,7 +553,7 @@ export default async function SettingsPage({
                 </AutomationCard>
 
                 <p className="automation-group">Customer follow-through</p>
-                <AutomationCard id="reviews" title="Review requests" subtitle="Auto-ask after a completed job" toggle={{ key: 'reviews', on: autoReviewRequest }}>
+                <AutomationCard id="reviews" title="Review requests" subtitle="Auto-ask after a completed job" toggle={{ on: autoReviewRequest, action: toggleAutomationAction.bind(null, 'reviews') }}>
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     When on, marking a job complete automatically asks the client for a Google review — texted if
                     they have a mobile on file, emailed otherwise. It only sends once per job, and you can always
@@ -574,7 +595,7 @@ export default async function SettingsPage({
                   </form>
                 </AutomationCard>
 
-                <AutomationCard id="followups" title="Quote follow-ups" subtitle="Nudge unapproved quotes" toggle={{ key: 'followups', on: quoteFollowupsEnabled }}>
+                <AutomationCard id="followups" title="Quote follow-ups" subtitle="Nudge unapproved quotes" toggle={{ on: quoteFollowupsEnabled, action: toggleAutomationAction.bind(null, 'followups') }}>
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     When on, we gently nudge clients who were sent a quote but haven&apos;t approved it yet —
                     up to twice (around day 2 and day 5), texting them if they have a mobile on file and emailing
@@ -600,7 +621,7 @@ export default async function SettingsPage({
                   </form>
                 </AutomationCard>
 
-                <AutomationCard id="reminders" title="Appointment reminders" subtitle="Day-before text or email" toggle={{ key: 'reminders', on: appointmentRemindersEnabled }}>
+                <AutomationCard id="reminders" title="Appointment reminders" subtitle="Day-before text or email" toggle={{ on: appointmentRemindersEnabled, action: toggleAutomationAction.bind(null, 'reminders') }}>
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     When on, the day before a scheduled job we automatically remind the client — texting them if
                     they have a mobile on file that&apos;s opted in, and emailing otherwise. It runs once per
@@ -627,7 +648,7 @@ export default async function SettingsPage({
                 </AutomationCard>
 
                 <p className="automation-group">Your briefing</p>
-                <AutomationCard id="daily-digest" title="Daily digest" subtitle="Your business each morning" toggle={{ key: 'daily-digest', on: dailyDigestEnabled }}>
+                <AutomationCard id="daily-digest" title="Daily digest" subtitle="Your business each morning" toggle={{ on: dailyDigestEnabled, action: toggleAutomationAction.bind(null, 'daily-digest') }}>
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     When on, each morning we email you a short digest of your business — money received,
                     new leads, quotes approved, today&apos;s schedule, appointment confirmations, new reviews,

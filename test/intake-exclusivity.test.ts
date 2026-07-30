@@ -36,3 +36,30 @@ describe('intake method is mutually exclusive', () => {
     }
   });
 });
+
+// The Settings → Automations switch writes quoteForm.enabled and reads back
+// estimateRanges.enabled as "is Smart Intake on". That round trip only holds
+// because the two are strict inverses, so lock it here: if this ever drifts, the
+// switch silently starts lying about which intake is live.
+describe('the Automations switch round-trips through quoteForm.enabled', () => {
+  const smartIntakeAfterWriting = (smartIntakeOn: boolean) =>
+    getSiteContent({ quoteForm: { enabled: !smartIntakeOn } }).estimateRanges.enabled;
+
+  it('turning Smart Intake on writes the quote form off, and reads back on', () => {
+    expect(smartIntakeAfterWriting(true)).toBe(true);
+  });
+
+  it('turning Smart Intake off writes the quote form on, and reads back off', () => {
+    expect(smartIntakeAfterWriting(false)).toBe(false);
+  });
+
+  it('preserves the quote form’s other settings across a flip', () => {
+    // The action spreads the existing quoteForm, so wording and email-required
+    // survive being switched off and back on.
+    const before = getSiteContent({ quoteForm: { enabled: true, emailRequired: true, estimateLabel: 'instant' } });
+    const flipped = getSiteContent({ quoteForm: { ...before.quoteForm, enabled: false } });
+    expect(flipped.estimateRanges.enabled).toBe(true);
+    expect(flipped.quoteForm.emailRequired).toBe(true);
+    expect(flipped.quoteForm.estimateLabel).toBe('instant');
+  });
+});
