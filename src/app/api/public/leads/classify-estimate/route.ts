@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
 import { getSiteContent } from '@/lib/site-content';
 import { estimatePostureBias } from '@/lib/estimate-posture';
+import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -9,21 +10,6 @@ export const runtime = 'nodejs';
 // told to stop the moment more questions stop improving the price — confident
 // cases still resolve in 2-3.
 const MAX_QUESTIONS = 6;
-
-// Best-effort in-memory throttle. Resets on cold start / across instances,
-// but this is a low-traffic public endpoint that calls a paid API — this is
-// just a cheap deterrent against naive scripted abuse, not a real rate limiter.
-const requestLog = new Map<string, number[]>();
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX = 15;
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const history = (requestLog.get(ip) ?? []).filter((timestamp) => now - timestamp < RATE_LIMIT_WINDOW_MS);
-  history.push(now);
-  requestLog.set(ip, history);
-  return history.length > RATE_LIMIT_MAX;
-}
 
 // An estimate with no numbers: the wizard still collects the lead, it just
 // skips showing a price. Never invent a generic number — a wrong range is
@@ -45,8 +31,10 @@ function extractOutputText(payload: unknown): string {
 // Responses API, chained with previous_response_id so we don't have to
 // resend conversation history) before returning a size/tier classification.
 export async function POST(request: NextRequest) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-  if (isRateLimited(ip)) {
+  const admin = createAdminClient();
+  const ip = clientIpFrom(request.headers);
+  // Durable cross-instance limit on a paid-OpenAI endpoint (15/min per IP).
+  if (!(await checkRateLimit(admin, `classify:ip:${ip}`, 15, 60))) {
     return NextResponse.json({ error: 'Too many requests.' }, { status: 429 });
   }
 
@@ -67,7 +55,6 @@ export async function POST(request: NextRequest) {
 
   // Only run for real, published sites — keeps this endpoint from being a
   // free-standing OpenAI proxy for anyone who finds the URL.
-  const admin = createAdminClient();
   const { data: site } = await admin.from('sites').select('id, account_id, content, service_area').eq('id', siteId).eq('published', true).maybeSingle();
   if (!site) {
     return NextResponse.json({ error: 'Site not found.' }, { status: 404 });

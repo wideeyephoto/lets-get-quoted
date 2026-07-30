@@ -1559,3 +1559,35 @@ create index if not exists availability_blocks_account_idx on availability_block
 alter table availability_blocks enable row level security;
 drop policy if exists availability_blocks_owner on availability_blocks;
 create policy availability_blocks_owner on availability_blocks for all using ( is_owner(account_id) );
+
+-- ============================================================================
+-- RATE LIMITING — durable, cross-instance fixed-window counter.
+-- ============================================================================
+-- Replaces per-serverless-instance in-memory Maps (useless on Vercel) for the
+-- public write/cost/SMS endpoints. One row per bucket (e.g. 'lead:ip:1.2.3.4').
+-- Only reached via the service-role client on public routes; RLS on, no policy.
+create table if not exists rate_limits (
+  bucket        text primary key,
+  window_start  timestamptz not null default now(),
+  count         int not null default 0
+);
+alter table rate_limits enable row level security;
+
+-- Atomic check-and-increment: one upsert either resets the window (if the current
+-- one has elapsed) or increments the count. Returns true iff still within limit.
+create or replace function check_rate_limit(p_bucket text, p_limit int, p_window_seconds int)
+returns boolean
+language plpgsql
+as $$
+declare
+  v_count int;
+begin
+  insert into rate_limits (bucket, window_start, count)
+  values (p_bucket, now(), 1)
+  on conflict (bucket) do update
+    set count = case when rate_limits.window_start < now() - make_interval(secs => p_window_seconds) then 1 else rate_limits.count + 1 end,
+        window_start = case when rate_limits.window_start < now() - make_interval(secs => p_window_seconds) then now() else rate_limits.window_start end
+  returning count into v_count;
+  return v_count <= p_limit;
+end;
+$$;

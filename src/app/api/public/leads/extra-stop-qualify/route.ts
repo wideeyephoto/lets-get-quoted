@@ -2,23 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
 import { extraStopSettingsFromAccount, EXTRA_STOP_SETTINGS_COLUMNS } from '@/lib/extra-stop';
 import { qualifyExtraStop, qualifyOptionsFromSettings } from '@/lib/extra-stop-qualify';
+import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
-
-// Cheap in-memory deterrent against scripted abuse of a public, AI-backed
-// endpoint (mirrors classify-estimate). Resets on cold start — not a real
-// distributed limiter.
-const requestLog = new Map<string, number[]>();
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX = 15;
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const history = (requestLog.get(ip) ?? []).filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
-  history.push(now);
-  requestLog.set(ip, history);
-  return history.length > RATE_LIMIT_MAX;
-}
 
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
@@ -27,8 +13,10 @@ const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice
 // actually submits (see the Extra Stop request action). Never throws to the
 // client: any failure degrades to "not eligible" so booking still proceeds.
 export async function POST(request: NextRequest) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-  if (isRateLimited(ip)) {
+  const admin = createAdminClient();
+  const ip = clientIpFrom(request.headers);
+  // Durable cross-instance limit on a paid-OpenAI endpoint (15/min per IP).
+  if (!(await checkRateLimit(admin, `esqualify:ip:${ip}`, 15, 60))) {
     return NextResponse.json({ error: 'Too many requests.' }, { status: 429 });
   }
 
@@ -45,7 +33,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Describe the issue first.' }, { status: 400 });
   }
 
-  const admin = createAdminClient();
   const { data: site } = await admin
     .from('sites')
     .select('id, account_id, company_name, service_area, published')

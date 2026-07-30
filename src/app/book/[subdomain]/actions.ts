@@ -1,7 +1,9 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import { createAdminClient } from '@/lib/auth';
+import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
 import { getPublicSiteBySubdomain } from '@/lib/sites';
 import { getSiteContent, isFullyBookedActive } from '@/lib/site-content';
 import { normalizeUsPhone } from '@/lib/phone';
@@ -177,6 +179,10 @@ function readContact(formData: FormData) {
 
 export async function submitBookingAction(subdomain: string, formData: FormData) {
   const admin = createAdminClient();
+  const ip = clientIpFrom(headers());
+  if (!(await checkRateLimit(admin, `book:ip:${ip}`, 10, 60))) {
+    redirect(`/book/${subdomain}?error=busy`);
+  }
   const site = await getPublicSiteBySubdomain(admin, subdomain);
   if (!site) redirect(`/book/${subdomain}?error=unavailable`);
 
@@ -256,6 +262,11 @@ export async function submitBookingAction(subdomain: string, formData: FormData)
 export async function submitExtraStopRequestAction(formData: FormData): Promise<ExtraStopSubmitResult> {
   try {
     const admin = createAdminClient();
+    const ip = clientIpFrom(headers());
+    // Burns paid AI + geocoding + accepts photo uploads — cap per IP.
+    if (!(await checkRateLimit(admin, `extrastop:ip:${ip}`, 8, 60))) {
+      return { ok: false, error: 'Too many requests — please wait a minute and try again.' };
+    }
     const subdomain = (formData.get('subdomain') ?? '').toString();
     const site = await getPublicSiteBySubdomain(admin, subdomain);
     if (!site) return { ok: false, error: 'This booking link is unavailable.' };
@@ -335,6 +346,10 @@ export async function submitExtraStopRequestAction(formData: FormData): Promise<
 // leaves a warm lead for the owner to schedule by hand. Never a dead end.
 export async function submitCallbackAction(subdomain: string, formData: FormData) {
   const admin = createAdminClient();
+  const ip = clientIpFrom(headers());
+  if (!(await checkRateLimit(admin, `callback:ip:${ip}`, 10, 60))) {
+    redirect(`/book/${subdomain}?error=busy`);
+  }
   const site = await getPublicSiteBySubdomain(admin, subdomain);
   if (!site) redirect(`/book/${subdomain}?error=unavailable`);
 

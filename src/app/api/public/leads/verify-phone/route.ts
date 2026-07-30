@@ -5,6 +5,7 @@ import { leadVerificationToken } from '@/lib/lead-verification';
 import { normalizeUsPhone } from '@/lib/phone';
 import { getSiteContent } from '@/lib/site-content';
 import { isSmsConfigured, sendVerificationCodeSms } from '@/lib/sms';
+import { checkRateLimitStrict, clientIpFrom } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -14,21 +15,12 @@ export const runtime = 'nodejs';
 // there is no codes table and nothing to clean up.
 const CODE_TTL_MS = 10 * 60 * 1000;
 
-const requestLog = new Map<string, number[]>();
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_MAX = 5;
-
-function isRateLimited(key: string): boolean {
-  const now = Date.now();
-  const history = (requestLog.get(key) ?? []).filter((timestamp) => now - timestamp < RATE_LIMIT_WINDOW_MS);
-  history.push(now);
-  requestLog.set(key, history);
-  return history.length > RATE_LIMIT_MAX;
-}
-
 export async function POST(request: NextRequest) {
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-  if (isRateLimited(ip)) {
+  const admin = createAdminClient();
+  const ip = clientIpFrom(request.headers);
+  // Durable, cross-instance limits. Fail CLOSED — this sends an SMS to an
+  // attacker-supplied number, so a limiter error must block, not allow.
+  if (!(await checkRateLimitStrict(admin, `verifyphone:ip:${ip}`, 5, 60))) {
     return NextResponse.json({ error: 'Too many requests — wait a minute and try again.' }, { status: 429 });
   }
 
@@ -38,11 +30,14 @@ export async function POST(request: NextRequest) {
   if (!siteId || !phone) {
     return NextResponse.json({ error: 'Enter a valid phone number first.' }, { status: 400 });
   }
-  if (isRateLimited(`phone:${phone}`)) {
+  // Per-number: 5/min AND a hard 10/day cap to blunt SMS pumping / text-bombing.
+  if (!(await checkRateLimitStrict(admin, `verifyphone:phone:${phone}`, 5, 60))) {
     return NextResponse.json({ error: 'Too many codes sent to this number — wait a minute.' }, { status: 429 });
   }
+  if (!(await checkRateLimitStrict(admin, `verifyphone:phoneday:${phone}`, 10, 86_400))) {
+    return NextResponse.json({ error: 'Daily limit reached for this number. Try again tomorrow.' }, { status: 429 });
+  }
 
-  const admin = createAdminClient();
   const { data: site } = await admin
     .from('sites')
     .select('id, company_name, content')

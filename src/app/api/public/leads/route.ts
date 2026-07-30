@@ -8,6 +8,7 @@ import { isLeadVerificationValid } from '@/lib/lead-verification';
 import { normalizeUsPhone } from '@/lib/phone';
 import { getSiteContent, isFullyBookedActive } from '@/lib/site-content';
 import { isSmsConfigured, sendOwnerHighValueLeadSms } from '@/lib/sms';
+import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -95,6 +96,13 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = createAdminClient();
+
+  // Durable per-IP cap on lead creation (photos + owner email/SMS + DB writes).
+  const ip = clientIpFrom(request.headers);
+  if (!(await checkRateLimit(admin, `lead:ip:${ip}`, 20, 60))) {
+    return NextResponse.json({ error: 'Too many requests — please wait a minute and try again.' }, { status: 429 });
+  }
+
   const { data: site } = await admin
     .from('sites')
     .select('id, account_id, company_name, subdomain, custom_domain, published, content')
