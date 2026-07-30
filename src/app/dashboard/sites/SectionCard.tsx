@@ -88,7 +88,7 @@ export default function SectionCard({ title, description, evidence, enabled, onT
           {description && <p className={styles.sectionCardDesc}>{description}</p>}
           {evidence && (
             <p className={styles.sectionCardEvidence}>
-              <strong>Why this converts</strong>
+              <strong>Why it works</strong>
               {evidence}
             </p>
           )}

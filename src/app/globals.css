@@ -8240,3 +8240,83 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
   .es-cta-btn, .es-benefit { transition: none; }
   .es-cta-btn:hover, .es-benefit:hover { transform: none; }
 }
+
+/* ---- Smart Intake: estimate strategy & alerts (section 3) ------------- */
+.intake-ai-lead { margin: 0 0 1rem; }
+.intake-summary {
+  padding: .9rem 1rem; margin-bottom: 1.1rem; border-radius: 12px;
+  border: 1px solid rgba(74, 222, 128, .26); background: rgba(74, 222, 128, .06);
+}
+.intake-summary > strong { display: block; margin-bottom: .5rem; font-size: .92rem; color: #bbf7d0; }
+.intake-summary ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
+.intake-summary li { display: flex; align-items: baseline; justify-content: space-between; gap: .8rem; font-size: .85rem; color: rgba(255,255,255,.72); }
+.intake-summary a { flex: none; font-size: .78rem; font-weight: 800; color: #7dd3fc; }
+
+.intake-block { padding: 1rem 0; border-top: 1px solid rgba(255,255,255,.07); }
+.intake-block:first-of-type { border-top: 0; padding-top: 0; }
+.intake-block-head { margin-bottom: .7rem; }
+.intake-block-head strong { display: block; font-size: .95rem; color: #e7ecf3; }
+.intake-block-head small { display: block; margin-top: .15rem; font-size: .8rem; line-height: 1.45; color: rgba(255,255,255,.52); }
+
+.posture-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: .65rem; }
+.posture-card {
+  display: grid; gap: .3rem; text-align: left; cursor: pointer;
+  padding: .85rem .9rem; border-radius: 12px; color: inherit;
+  border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.03);
+  transition: border-color .16s ease, background .16s ease;
+}
+.posture-card:hover { border-color: rgba(255,255,255,.26); }
+.posture-card.on { border-color: rgba(255,122,33,.6); background: rgba(255,122,33,.1); }
+.posture-card-mark { width: 1rem; height: 1rem; border-radius: 999px; border: 2px solid rgba(255,255,255,.3); }
+.posture-card.on .posture-card-mark { border-color: #ff7a21; box-shadow: inset 0 0 0 3.5px #ff7a21; }
+.posture-card strong { display: flex; align-items: center; gap: .4rem; font-size: .9rem; color: #fff; }
+.posture-card em {
+  font-style: normal; padding: .08rem .38rem; border-radius: 999px; font-size: .58rem; font-weight: 800;
+  letter-spacing: .04em; text-transform: uppercase;
+  background: rgba(255,122,33,.18); border: 1px solid rgba(255,122,33,.4); color: #ffb27d;
+}
+.posture-card small { font-size: .78rem; line-height: 1.45; color: rgba(255,255,255,.58); }
+.posture-card:focus-visible { outline: 2px solid rgba(56,189,248,.75); outline-offset: 2px; }
+
+.intake-amount { display: flex; align-items: center; gap: .5rem; max-width: 15rem; }
+.intake-amount span { font-size: 1.15rem; font-weight: 800; color: rgba(255,255,255,.6); }
+.intake-amount input { flex: 1; font-size: 1.05rem; font-weight: 700; }
+
+.intake-toggle { display: flex; align-items: flex-start; gap: .7rem; padding: .6rem 0; cursor: pointer; }
+.intake-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+.intake-toggle-track {
+  flex: none; margin-top: .1rem; position: relative; width: 2.6rem; height: 1.5rem; border-radius: 999px;
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18); transition: background .16s ease;
+}
+.intake-toggle-track > span {
+  position: absolute; top: .16rem; left: .18rem; width: 1.05rem; height: 1.05rem; border-radius: 999px;
+  background: #cbd5e1; transition: transform .16s ease, background .16s ease;
+}
+.intake-toggle input:checked + .intake-toggle-track { background: rgba(52,211,153,.4); border-color: rgba(52,211,153,.6); }
+.intake-toggle input:checked + .intake-toggle-track > span { transform: translateX(1.05rem); background: #6ee7b7; }
+.intake-toggle input:focus-visible + .intake-toggle-track { box-shadow: 0 0 0 3px rgba(56,189,248,.45); }
+.intake-toggle-copy strong { display: block; font-size: .9rem; color: #e7ecf3; }
+.intake-toggle-copy small { display: block; margin-top: .1rem; font-size: .79rem; line-height: 1.45; color: rgba(255,255,255,.52); }
+
+.intake-field { display: grid; gap: .25rem; margin: .2rem 0 .6rem 3.3rem; max-width: 18rem; }
+.intake-field span { font-size: .82rem; color: rgba(255,255,255,.62); }
+
+.intake-savebar {
+  display: flex; align-items: center; justify-content: flex-end; gap: 1rem; flex-wrap: wrap;
+  margin-top: 1.1rem; padding-top: .9rem; border-top: 1px solid rgba(255,255,255,.08);
+}
+.intake-savebar p { margin: 0; font-size: .83rem; color: rgba(255,209,102,.9); }
+.intake-save-ok { color: #6ee7b7; font-weight: 700; }
+.intake-save-error { color: #fca5a5; font-weight: 700; }
+/* Sticks to the bottom only while there's something to save. */
+.intake-savebar.stuck {
+  position: sticky; bottom: 0; z-index: 5;
+  margin: 1.1rem -1.05rem -1.05rem; padding: .8rem 1.05rem;
+  border-radius: 0 0 12px 12px;
+  background: rgba(8, 18, 31, .96); border-top: 1px solid rgba(255,209,102,.3);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .posture-card, .intake-toggle-track, .intake-toggle-track > span { transition: none; }
+}
