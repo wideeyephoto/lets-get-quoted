@@ -89,6 +89,7 @@ export default function ScheduleCalendar({
   crew,
   assignmentsByJob,
   blocks = [],
+  fullDates = [],
 }: {
   weeks: CalendarCell[][];
   todayKey: string;
@@ -96,7 +97,9 @@ export default function ScheduleCalendar({
   crew: CrewOption[];
   assignmentsByJob: Record<string, string[]>;
   blocks?: Array<{ start_date: string; end_date: string; reason: string | null }>;
+  fullDates?: string[];
 }) {
+  const fullSet = useMemo(() => new Set(fullDates), [fullDates]);
   const router = useRouter();
   const [assignments, setAssignments] = useState(assignmentsByJob);
   const [openOccurrenceKey, setOpenOccurrenceKey] = useState<string | null>(null);
@@ -296,14 +299,16 @@ export default function ScheduleCalendar({
               const previousDateKey = cellIndex > 0 ? addDaysToDateKey(cell.dateKey, -1) : null;
               const nextDateKey = cellIndex < week.length - 1 ? addDaysToDateKey(cell.dateKey, 1) : null;
               const block = blocks.find((b) => cell.dateKey >= b.start_date && cell.dateKey <= b.end_date);
+              const isFull = !block && fullSet.has(cell.dateKey);
               return (
                 <div
-                  className={`calendar-cell${cell.dateKey === todayKey ? ' today' : ''}${overDateKey === cell.dateKey ? ' drag-over' : ''}${block ? ' blocked' : ''}`}
+                  className={`calendar-cell${cell.dateKey === todayKey ? ' today' : ''}${overDateKey === cell.dateKey ? ' drag-over' : ''}${block ? ' blocked' : ''}${isFull ? ' full' : ''}`}
                   key={cell.dateKey}
                   data-date-key={cell.dateKey}
                 >
                   <span className="calendar-day-number">{cell.day}</span>
                   {block ? <span className="calendar-blocked-chip" title={block.reason || 'Blocked off'}>Off</span> : null}
+                  {isFull ? <span className="calendar-full-chip" title="Daily capacity reached">Full</span> : null}
                   <div className="calendar-day-jobs">
                     {laneJobs.map((job, laneIndex) => {
                       if (!job) {

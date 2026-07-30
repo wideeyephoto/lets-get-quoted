@@ -46,7 +46,7 @@ function formatDropDate(dateKey: string): string {
 type PendingDrop = { jobId: string; jobName: string; dateKey: string; sourceDateKey: string | null; sourceTime: string };
 type UndoInfo = { jobId: string; jobName: string; sourceDateKey: string | null; sourceTime: string; isMove: boolean };
 
-export default function ScheduleDragProvider({ children }: { children: ReactNode }) {
+export default function ScheduleDragProvider({ children, unavailable = {} }: { children: ReactNode; unavailable?: Record<string, string> }) {
   const router = useRouter();
   const [overDateKey, setOverDateKey] = useState<string | null>(null);
   const [draggingJobId, setDraggingJobId] = useState<string | null>(null);
@@ -176,6 +176,9 @@ export default function ScheduleDragProvider({ children }: { children: ReactNode
               <button type="button" className="crew-assign-close" onClick={cancelDrop} aria-label="Cancel">×</button>
             </div>
             <div className="schedule-drop-body">
+              {unavailable[pendingDrop.dateKey] ? (
+                <p className="schedule-drop-warning" role="alert">⚠ {unavailable[pendingDrop.dateKey]} You can still schedule it here.</p>
+              ) : null}
               <p className="schedule-drop-prompt">Pick a start time to put this job on the calendar.</p>
               <div className="schedule-drop-times" role="group" aria-label="Start time">
                 {QUICK_DROP_TIMES.map((slot) => (

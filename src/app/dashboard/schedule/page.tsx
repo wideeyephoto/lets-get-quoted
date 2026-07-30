@@ -5,7 +5,8 @@ import PinMap from '@/components/pin-map';
 import BookingAvailabilitySection from '../settings/BookingAvailabilitySection';
 import { getMapPins } from '@/lib/map-pins';
 import { MAP_THEME_COOKIE, mapViewCookie, normalizeMapTheme, normalizeMapView } from '@/lib/dashboard-views';
-import { expandScheduledJobs, formatJobTime, formatMoney, listJobs, type Job } from '@/lib/jobs';
+import { expandScheduledJobs, formatJobTime, formatMoney, listJobs, addDaysToDateKey, type Job } from '@/lib/jobs';
+import { computeHoursByDate } from '@/lib/booking';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { deriveJobListBadge } from '@/lib/job-badges';
 import type { Invoice } from '@/lib/invoices';
@@ -122,7 +123,7 @@ export default async function SchedulePage({
 }) {
   const { supabase, accountId } = await requireOwnerContext();
   const [{ data: account }, jobs, { data: site }] = await Promise.all([
-    supabase.from('accounts').select('schedule_day_hours, appointment_reminders_enabled').eq('id', accountId).single(),
+    supabase.from('accounts').select('schedule_day_hours, appointment_reminders_enabled, job_buffer_minutes').eq('id', accountId).single(),
     listJobs(supabase, accountId),
     supabase.from('sites').select('published, subdomain').eq('account_id', accountId).maybeSingle(),
   ]);
@@ -170,6 +171,26 @@ export default async function SchedulePage({
   const now = new Date();
   const todayKey = toDateKey(now.getFullYear(), now.getMonth(), now.getDate());
   const availabilityBlocks = await listUpcomingBlocks(supabase, accountId, todayKey);
+
+  // Days at/over the daily hours capacity ("full"), and a reason map for the soft
+  // warning shown when you drag a job onto a full or blocked day (you can override).
+  const jobBufferMinutes = Number((account as { job_buffer_minutes?: number } | null)?.job_buffer_minutes) || 0;
+  const hoursByDateForCalendar = computeHoursByDate(
+    scheduledJobs.map((job) => ({ scheduled_for: job.scheduled_for, estimated_hours: job.estimated_hours })),
+    scheduleDayHours,
+    jobBufferMinutes,
+  );
+  const fullDates: string[] = [];
+  for (const [key, hrs] of hoursByDateForCalendar) if (hrs >= scheduleDayHours) fullDates.push(key);
+  const unavailableDays: Record<string, string> = {};
+  for (const key of fullDates) unavailableDays[key] = `That day's ${scheduleDayHours}h capacity is already full.`;
+  for (const block of availabilityBlocks) {
+    for (let i = 0; i < 400; i++) {
+      const key = addDaysToDateKey(block.start_date, i);
+      if (key > block.end_date) break;
+      unavailableDays[key] = block.reason ? `Blocked off — ${block.reason}.` : 'This day is blocked off.';
+    }
+  }
   const monthLabel = new Date(year, monthIndex, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const prevMonth = monthParam(year, monthIndex - 1);
   const nextMonth = monthParam(year, monthIndex + 1);
@@ -319,7 +340,7 @@ export default async function SchedulePage({
 
   return (
     <main className="wide-shell workspace-shell">
-      <ScheduleDragProvider>
+      <ScheduleDragProvider unavailable={unavailableDays}>
       <section className="panel workspace-section-card schedule-calendar-panel">
         {mapView !== 'off' && (
           <div className="workspace-embedded-map">
@@ -390,6 +411,7 @@ export default async function SchedulePage({
           crew={crewOptions}
           assignmentsByJob={assignmentsByJob}
           blocks={availabilityBlocks}
+          fullDates={fullDates}
         />
       </section>
 
