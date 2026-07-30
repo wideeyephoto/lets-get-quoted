@@ -7,6 +7,7 @@ import type { JobStatus } from '@/lib/jobs';
 import { setJobsViewAction, setMapThemeAction, setMapViewAction } from '@/app/dashboard/view-actions';
 import type { JobsView, MapTheme, MapView } from '@/lib/dashboard-views';
 import ViewGear from '@/components/view-gear';
+import PinMap, { type MapPin } from '@/components/pin-map';
 import styles from './jobs.module.css';
 
 // Display-ready job shape, built server-side so this client view never imports
@@ -56,7 +57,7 @@ function StatusBadge({ job }: { job: JobViewItem }) {
   );
 }
 
-export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme }: { jobs: JobViewItem[]; initialView: JobsView; mapView: MapView; mapTheme: MapTheme }) {
+export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme, mapPins }: { jobs: JobViewItem[]; initialView: JobsView; mapView: MapView; mapTheme: MapTheme; mapPins: MapPin[] }) {
   const [view, setView] = useState<JobsView>(initialView);
   const [status, setStatus] = useState<JobStatus | 'all'>('all');
   const [pending, startTransition] = useTransition();
@@ -81,33 +82,52 @@ export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme }: 
 
   const filtered = useMemo(() => (status === 'all' ? jobs : jobs.filter((j) => j.status === status)), [jobs, status]);
 
+  // The view/map gear sits on the map's legend row, matching the leads page. Down
+  // in the filter bar its popover opened downwards into the panels below it and
+  // was overlapped by them; on the legend row it opens over the map instead.
+  const gear = (
+    <ViewGear views={VIEWS} activeView={view} onPickView={pickView} mapView={mapView} onSetMapView={setMap} mapTheme={mapTheme} onSetMapTheme={setTheme} label="View" />
+  );
+
   return (
     <div className={pending ? styles.busy : undefined}>
-      {view === 'list' && <ListView jobs={filtered} />}
-      {view === 'board' && <BoardView jobs={jobs} />}
-      {view === 'table' && <TableView jobs={filtered} />}
+      {mapView === 'large' ? (
+        <div className="workspace-embedded-map">
+          <PinMap pins={mapPins} theme={mapTheme} legendAccessory={gear} />
+        </div>
+      ) : (
+        // Map off: keep the gear reachable, or there'd be no way to turn it back on.
+        <div className={styles.viewBar}>{gear}</div>
+      )}
 
-      <div className={styles.bar}>
-        {view !== 'board' ? (
-          <div className={styles.tabs} role="tablist" aria-label="Filter jobs by status">
-            {STATUS_FILTERS.map((f) => (
-              <button
-                key={f.value}
-                type="button"
-                role="tab"
-                aria-selected={status === f.value}
-                className={`${styles.tab}${status === f.value ? ` ${styles.tabOn}` : ''}`}
-                onClick={() => setStatus(f.value)}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <span />
-        )}
-        <ViewGear views={VIEWS} activeView={view} onPickView={pickView} mapView={mapView} onSetMapView={setMap} mapTheme={mapTheme} onSetMapTheme={setTheme} label="View" />
-      </div>
+      {jobs.length === 0 ? (
+        <p className="empty-state">No jobs yet. Create your first job below.</p>
+      ) : (
+        <>
+          {view === 'list' && <ListView jobs={filtered} />}
+          {view === 'board' && <BoardView jobs={jobs} />}
+          {view === 'table' && <TableView jobs={filtered} />}
+
+          {view !== 'board' ? (
+            <div className={styles.bar}>
+              <div className={styles.tabs} role="tablist" aria-label="Filter jobs by status">
+                {STATUS_FILTERS.map((f) => (
+                  <button
+                    key={f.value}
+                    type="button"
+                    role="tab"
+                    aria-selected={status === f.value}
+                    className={`${styles.tab}${status === f.value ? ` ${styles.tabOn}` : ''}`}
+                    onClick={() => setStatus(f.value)}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }

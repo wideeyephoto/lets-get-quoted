@@ -14,7 +14,6 @@ import type { Payment } from '@/lib/payments';
 import { cookies } from 'next/headers';
 import { createJobAction } from './actions';
 import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
-import PinMap from '@/components/pin-map';
 import { getMapPins } from '@/lib/map-pins';
 import { JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeJobsView, normalizeMapTheme, normalizeMapView } from '@/lib/dashboard-views';
 import JobsWorkspace, { type JobViewItem } from './JobsWorkspace';
@@ -186,16 +185,9 @@ export default async function JobsPage({
         <div style={{ marginTop: '0.5rem' }}>
           <AutomationLink id="followups" label="Quote follow-ups" on={followupsOn} />
         </div>
-        {mapView === 'large' && (
-          <div className="workspace-embedded-map">
-            <PinMap pins={mapPins} theme={mapTheme} />
-          </div>
-        )}
-        {allJobs.length === 0 ? (
-          <p className="empty-state">No jobs yet. Create your first job below.</p>
-        ) : (
-          <JobsWorkspace jobs={jobItems} initialView={jobsView} mapView={mapView} mapTheme={mapTheme} />
-        )}
+        {/* The map lives inside the workspace so the view gear can sit on its
+            legend row (same as leads); the workspace also owns the empty state. */}
+        <JobsWorkspace jobs={jobItems} initialView={jobsView} mapView={mapView} mapTheme={mapTheme} mapPins={mapPins} />
       </section>
 
       <div className="stat-ticker panel">

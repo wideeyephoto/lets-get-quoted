@@ -47,3 +47,8 @@
 .tOpen { color: #ffb27d; font-weight: 700; white-space: nowrap; }
 
 @media (max-width: 640px) { .board { grid-template-columns: 1fr; } }
+
+/* Shown instead of the map when the map is switched off, so the view gear stays
+   reachable — otherwise there'd be no way to turn the map back on. Mirrors
+   .viewBar on the leads page. */
+.viewBar { display: flex; justify-content: flex-end; margin-bottom: 1rem; }
