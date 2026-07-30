@@ -43,6 +43,7 @@ function AutomationCard({
   subtitle,
   status,
   toggle,
+  group,
   children,
 }: {
   id: string;
@@ -50,10 +51,15 @@ function AutomationCard({
   subtitle: string;
   status?: AutomationStatus;
   toggle?: { on: boolean; action: (next: boolean) => Promise<void> };
+  // Cards sharing a group name behave as one accordion — opening any of them
+  // closes the rest. Native <details name>, the same mechanism the schedule
+  // popovers use; browsers without support simply allow several open, which is
+  // the old behaviour rather than a broken one.
+  group: string;
   children: ReactNode;
 }) {
   return (
-    <details className="automation-card" id={id}>
+    <details className="automation-card" id={id} name={group}>
       <summary className="automation-summary">
         <span className="automation-heads">
           <strong>{title}</strong>
@@ -354,6 +360,7 @@ export default async function SettingsPage({
                 <p className="automation-group">Booking &amp; intake</p>
                 <AutomationCard
                   id="intake-ai"
+                  group="booking-intake"
                   title="Intake AI"
                   subtitle="Instant estimates & lead priority"
                   {...(site
@@ -426,7 +433,7 @@ export default async function SettingsPage({
                   </form>
                 </AutomationCard>
 
-                <AutomationCard id="booking-availability" title="Online booking" subtitle="Days & windows customers can grab" toggle={{ on: bookingEnabled, action: toggleAutomationAction.bind(null, 'booking') }}>
+                <AutomationCard group="booking-intake" id="booking-availability" title="Online booking" subtitle="Days & windows customers can grab" toggle={{ on: bookingEnabled, action: toggleAutomationAction.bind(null, 'booking') }}>
                   {bookingEnabled && !bookingActive ? (
                     <div className="automation-prereq" style={{ marginBottom: '0.9rem' }}>
                       <span aria-hidden="true">⚠️</span>
@@ -536,7 +543,7 @@ export default async function SettingsPage({
                   </form>
                 </AutomationCard>
 
-                <AutomationCard id="extra-stop" title="Extra Stop" subtitle="Same-day &ldquo;add me to your route&rdquo;" toggle={{ on: extraStopEnabled, action: toggleAutomationAction.bind(null, 'extra-stop') }}>
+                <AutomationCard group="booking-intake" id="extra-stop" title="Extra Stop" subtitle="Same-day &ldquo;add me to your route&rdquo;" toggle={{ on: extraStopEnabled, action: toggleAutomationAction.bind(null, 'extra-stop') }}>
                   {!account?.connect_onboarded ? (
                     <div className="automation-prereq" style={{ marginBottom: '0.9rem' }}>
                       <span aria-hidden="true">💳</span>
@@ -546,7 +553,7 @@ export default async function SettingsPage({
                   <ExtraStopSettingsSection headless extraStop={extraStopSettings as Parameters<typeof ExtraStopSettingsSection>[0]['extraStop']} refundTiers={extraStopRefundTiers} />
                 </AutomationCard>
 
-                <AutomationCard id="missed-call" title="Missed-call text-back" subtitle="Auto-text callers you miss" toggle={{ on: callTextbackEnabled, action: toggleAutomationAction.bind(null, 'missed-call') }}>
+                <AutomationCard group="booking-intake" id="missed-call" title="Missed-call text-back" subtitle="Auto-text callers you miss" toggle={{ on: callTextbackEnabled, action: toggleAutomationAction.bind(null, 'missed-call') }}>
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     When a call to your tracking number goes unanswered, we instantly text the caller back so the
                     lead doesn&apos;t go to a competitor — and log it on your leads board to follow up.
@@ -577,7 +584,7 @@ export default async function SettingsPage({
                 </AutomationCard>
 
                 <p className="automation-group">Customer follow-through</p>
-                <AutomationCard id="reviews" title="Review requests" subtitle="Auto-ask after a completed job" toggle={{ on: autoReviewRequest, action: toggleAutomationAction.bind(null, 'reviews') }}>
+                <AutomationCard group="follow-through" id="reviews" title="Review requests" subtitle="Auto-ask after a completed job" toggle={{ on: autoReviewRequest, action: toggleAutomationAction.bind(null, 'reviews') }}>
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     When on, marking a job complete automatically asks the client for a Google review — texted if
                     they have a mobile on file, emailed otherwise. It only sends once per job, and you can always
@@ -619,7 +626,7 @@ export default async function SettingsPage({
                   </form>
                 </AutomationCard>
 
-                <AutomationCard id="followups" title="Quote follow-ups" subtitle="Nudge unapproved quotes" toggle={{ on: quoteFollowupsEnabled, action: toggleAutomationAction.bind(null, 'followups') }}>
+                <AutomationCard group="follow-through" id="followups" title="Quote follow-ups" subtitle="Nudge unapproved quotes" toggle={{ on: quoteFollowupsEnabled, action: toggleAutomationAction.bind(null, 'followups') }}>
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     When on, we gently nudge clients who were sent a quote but haven&apos;t approved it yet —
                     up to twice (around day 2 and day 5), texting them if they have a mobile on file and emailing
@@ -645,7 +652,7 @@ export default async function SettingsPage({
                   </form>
                 </AutomationCard>
 
-                <AutomationCard id="reminders" title="Appointment reminders" subtitle="Day-before text or email" toggle={{ on: appointmentRemindersEnabled, action: toggleAutomationAction.bind(null, 'reminders') }}>
+                <AutomationCard group="follow-through" id="reminders" title="Appointment reminders" subtitle="Day-before text or email" toggle={{ on: appointmentRemindersEnabled, action: toggleAutomationAction.bind(null, 'reminders') }}>
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     When on, the day before a scheduled job we automatically remind the client — texting them if
                     they have a mobile on file that&apos;s opted in, and emailing otherwise. It runs once per
@@ -674,6 +681,7 @@ export default async function SettingsPage({
                 <p className="automation-group">Confirmations to you</p>
                 <AutomationCard
                   id="quote-confirmation"
+                  group="confirmations"
                   title="Quote confirmation emails"
                   subtitle="Email me when a quote goes out"
                   toggle={{ on: quoteConfirmationOn, action: toggleAutomationAction.bind(null, 'quote-confirmation') }}
@@ -691,6 +699,7 @@ export default async function SettingsPage({
 
                 <AutomationCard
                   id="payment-confirmation"
+                  group="confirmations"
                   title="Payment request confirmations"
                   subtitle="Email me when I ask a customer to pay"
                   toggle={{ on: paymentConfirmationOn, action: toggleAutomationAction.bind(null, 'payment-confirmation') }}
@@ -704,6 +713,7 @@ export default async function SettingsPage({
 
                 <AutomationCard
                   id="review-confirmation"
+                  group="confirmations"
                   title="Review request confirmations"
                   subtitle="Email me when a review ask goes out"
                   toggle={{ on: reviewConfirmationOn, action: toggleAutomationAction.bind(null, 'review-confirmation') }}
@@ -716,6 +726,7 @@ export default async function SettingsPage({
 
                 <AutomationCard
                   id="reminder-confirmation"
+                  group="confirmations"
                   title="Appointment reminder summary"
                   subtitle="One email a night, not one per customer"
                   toggle={{ on: reminderConfirmationOn, action: toggleAutomationAction.bind(null, 'reminder-confirmation') }}
@@ -731,7 +742,7 @@ export default async function SettingsPage({
                 </AutomationCard>
 
                 <p className="automation-group">Your briefing</p>
-                <AutomationCard id="daily-digest" title="Daily digest" subtitle="Your business each morning" toggle={{ on: dailyDigestEnabled, action: toggleAutomationAction.bind(null, 'daily-digest') }}>
+                <AutomationCard group="briefing" id="daily-digest" title="Daily digest" subtitle="Your business each morning" toggle={{ on: dailyDigestEnabled, action: toggleAutomationAction.bind(null, 'daily-digest') }}>
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     When on, each morning we email you a short digest of your business — money received,
                     new leads, quotes approved, today&apos;s schedule, appointment confirmations, new reviews,

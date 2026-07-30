@@ -80,6 +80,18 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
 
   const [step, setStep] = useState<'describe' | 'qa' | 'contact' | 'result'>(wizardEnabled ? 'describe' : 'contact');
 
+  // `step` is seeded from wizardEnabled, which is fine on a live site where the
+  // intake method never changes mid-visit — but the builder's live preview
+  // switches it under a mounted form. Without this, turning Smart Intake off
+  // left the hero on the wizard's 'describe' screen: the progress dots and
+  // data-edit updated, while the heading, "a couple quick questions" line and
+  // the describe box all stayed, because those are gated on `step`, not on
+  // wizardEnabled. Re-seed whenever the method changes so the hero matches the
+  // rest of the page.
+  useEffect(() => {
+    setStep(wizardEnabled ? 'describe' : 'contact');
+  }, [wizardEnabled]);
+
   // On each wizard step change (not initial mount / StrictMode re-run), move
   // focus into the new step so keyboard/SR users aren't dropped on <body> when
   // the previous step's button unmounts — the focused field's accessible name
