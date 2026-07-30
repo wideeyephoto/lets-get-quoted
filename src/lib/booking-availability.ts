@@ -38,6 +38,9 @@ export const DEFAULT_BOOKING_WEEKDAYS = [1, 2, 3, 4, 5];
 export const DEFAULT_BOOKING_WINDOW_TIMES = ['08:00', '13:00'];
 export const DEFAULT_BOOKING_MAX_PER_DAY = 4;
 export const DEFAULT_BOOKING_LEAD_DAYS = 1;
+export const DEFAULT_WORKDAY_START = '08:00';
+export const DEFAULT_WORKDAY_END = '17:00';
+export const DEFAULT_CAPACITY_HOURS = 8;
 
 export type BookingAvailability = {
   timezone: string;
@@ -45,7 +48,39 @@ export type BookingAvailability = {
   windowTimes: string[]; // subset of preset times, always in preset order
   maxPerDay: number;
   leadDays: number;
+  // Availability engine additions:
+  workdayStart: string; // HH:MM — offered windows must start within [start,end)
+  workdayEnd: string; // HH:MM
+  capacityHours: number; // hours/day cap (schedule_day_hours); day fills at this
+  bufferMinutes: number; // travel/lunch buffer added to each job's daily footprint
 };
+
+// HH:MM (24h) or fallback. Accepts 'H:MM'/'HH:MM(:SS)'.
+export function normalizeWorkdayTime(value: unknown, fallback: string): string {
+  if (typeof value !== 'string') return fallback;
+  const m = /^(\d{1,2}):(\d{2})/.exec(value.trim());
+  if (!m) return fallback;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (h < 0 || h > 23 || min < 0 || min > 59) return fallback;
+  return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+}
+
+export function normalizeCapacityHours(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.min(24, Math.max(1, n)) : DEFAULT_CAPACITY_HOURS;
+}
+
+export function normalizeBufferMinutes(value: unknown): number {
+  const n = Math.round(Number(value));
+  return Number.isFinite(n) ? Math.min(240, Math.max(0, n)) : 0;
+}
+
+// A window's start time (minutes since midnight) must fall within the workday.
+export function timeToMinutes(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number);
+  return (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0);
+}
 
 export function normalizeTimezone(value: unknown): string {
   return typeof value === 'string' && TIMEZONE_VALUES.has(value) ? value : DEFAULT_TIMEZONE;
@@ -109,6 +144,10 @@ type AccountAvailabilityRow = {
   booking_windows?: unknown;
   booking_max_per_day?: unknown;
   booking_lead_days?: unknown;
+  workday_start?: unknown;
+  workday_end?: unknown;
+  schedule_day_hours?: unknown;
+  job_buffer_minutes?: unknown;
 } | null | undefined;
 
 // Defensive: builds a normalized BookingAvailability from raw account columns,
@@ -121,5 +160,9 @@ export function bookingAvailabilityFromAccount(row: AccountAvailabilityRow): Boo
     windowTimes: normalizeBookingWindowTimes(row?.booking_windows),
     maxPerDay: normalizeMaxPerDay(row?.booking_max_per_day),
     leadDays: normalizeLeadDays(row?.booking_lead_days),
+    workdayStart: normalizeWorkdayTime(row?.workday_start, DEFAULT_WORKDAY_START),
+    workdayEnd: normalizeWorkdayTime(row?.workday_end, DEFAULT_WORKDAY_END),
+    capacityHours: normalizeCapacityHours(row?.schedule_day_hours),
+    bufferMinutes: normalizeBufferMinutes(row?.job_buffer_minutes),
   };
 }

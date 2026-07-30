@@ -22,6 +22,14 @@ import ClientScheduleOptionsCalendar from './client-schedule-options-calendar';
 import JobDragHandle from './JobDragHandle';
 import ScheduleDragProvider from './ScheduleDragProvider';
 import AutomationLink from '@/components/automation-link';
+import SaveButton from '@/components/save-button';
+import { listUpcomingBlocks } from '@/lib/availability-blocks';
+import { addAvailabilityBlockAction, removeAvailabilityBlockAction } from './actions';
+
+function formatBlockRange(start: string, end: string): string {
+  const fmt = (key: string) => new Date(`${key}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return start === end ? fmt(start) : `${fmt(start)} – ${fmt(end)}`;
+}
 
 const STATUS_LABEL: Record<Job['status'], string> = {
   new_lead: 'New request',
@@ -161,6 +169,7 @@ export default async function SchedulePage({
 
   const now = new Date();
   const todayKey = toDateKey(now.getFullYear(), now.getMonth(), now.getDate());
+  const availabilityBlocks = await listUpcomingBlocks(supabase, accountId, todayKey);
   const monthLabel = new Date(year, monthIndex, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const prevMonth = monthParam(year, monthIndex - 1);
   const nextMonth = monthParam(year, monthIndex + 1);
@@ -380,7 +389,54 @@ export default async function SchedulePage({
           jobs={calendarJobs}
           crew={crewOptions}
           assignmentsByJob={assignmentsByJob}
+          blocks={availabilityBlocks}
         />
+      </section>
+
+      <section className="panel workspace-section-card">
+        <div className="section-heading workspace-section-heading compact-heading">
+          <p className="eyebrow">Time off</p>
+          <h2>Block off busy days</h2>
+        </div>
+        <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+          Mark days you&apos;re unavailable — vacation, personal time, or fully booked. Blocked days drop off your
+          public online-booking page and show as <strong>Off</strong> on the calendar above.
+        </p>
+        <form action={addAvailabilityBlockAction} className="form-grid compact-form">
+          <div className="field">
+            <label htmlFor="blockStart">From</label>
+            <input id="blockStart" name="startDate" type="date" required />
+          </div>
+          <div className="field">
+            <label htmlFor="blockEnd">To</label>
+            <input id="blockEnd" name="endDate" type="date" />
+            <small className="field-hint">Leave blank for a single day.</small>
+          </div>
+          <div className="field full">
+            <label htmlFor="blockReason">Reason (optional, shown only to you)</label>
+            <input id="blockReason" name="reason" placeholder="Vacation, personal, fully booked…" />
+          </div>
+          <div className="form-actions">
+            <SaveButton>Block off these days</SaveButton>
+          </div>
+        </form>
+        {availabilityBlocks.length > 0 ? (
+          <div className="sign-in-methods-list" style={{ marginTop: '1rem' }}>
+            {availabilityBlocks.map((block) => (
+              <div className="sign-in-method-row" key={block.id}>
+                <div className="method-info">
+                  <div>
+                    <span className="method-name">{formatBlockRange(block.start_date, block.end_date)}</span>
+                    <span className="method-detail">{block.reason || 'Blocked off'}</span>
+                  </div>
+                </div>
+                <form action={removeAvailabilityBlockAction.bind(null, block.id)}>
+                  <button type="submit" className="btn ghost">Remove</button>
+                </form>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <BookingLinkCard

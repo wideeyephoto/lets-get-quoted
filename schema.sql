@@ -1534,3 +1534,28 @@ alter table accounts add column if not exists suspended_by text;
 -- and see the evidence deadline. dispute_due_by is Stripe's evidence_details.due_by.
 alter table payments add column if not exists stripe_dispute_id text;
 alter table payments add column if not exists dispute_due_by timestamptz;
+
+-- ============================================================================
+-- AVAILABILITY — working hours, per-job buffer, and manual time-off blocks.
+-- ============================================================================
+-- Real working-hours window (used to bound offered arrival windows) and a
+-- travel/lunch buffer added to each job's footprint when computing daily capacity
+-- (schedule_day_hours is the hours/day cap). Defaults reproduce prior behavior.
+alter table accounts add column if not exists workday_start time not null default '08:00';
+alter table accounts add column if not exists workday_end time not null default '17:00';
+alter table accounts add column if not exists job_buffer_minutes integer not null default 0;
+
+-- Owner-declared time off / blocked days. A date range (inclusive) that drops out
+-- of online booking and shows as blocked on the calendar. all-day only for now.
+create table if not exists availability_blocks (
+  id          uuid primary key default gen_random_uuid(),
+  account_id  uuid not null references accounts(id) on delete cascade,
+  start_date  date not null,
+  end_date    date not null,
+  reason      text,
+  created_at  timestamptz not null default now()
+);
+create index if not exists availability_blocks_account_idx on availability_blocks (account_id, start_date);
+alter table availability_blocks enable row level security;
+drop policy if exists availability_blocks_owner on availability_blocks;
+create policy availability_blocks_owner on availability_blocks for all using ( is_owner(account_id) );

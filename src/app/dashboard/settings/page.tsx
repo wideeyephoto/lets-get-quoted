@@ -56,7 +56,7 @@ export default async function SettingsPage({
     await Promise.all([
       supabase.auth.getUser(),
       supabase.auth.getUserIdentities(),
-      supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded, connect_disabled_at, schedule_day_hours').eq('id', accountId).single(),
+      supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded, connect_disabled_at, schedule_day_hours, workday_start, workday_end, job_buffer_minutes').eq('id', accountId).single(),
       supabase.from('sites').select('id, company_name, content').eq('account_id', accountId).maybeSingle(),
       getAvailableTaxYears(supabase, accountId),
       supabase
@@ -582,14 +582,17 @@ export default async function SettingsPage({
                 <section className="panel workspace-section-card">
                   <div className="section-heading workspace-section-heading compact-heading">
                     <p className="eyebrow">Scheduling</p>
-                    <h2>Workday length</h2>
+                    <h2>Working hours &amp; capacity</h2>
                   </div>
                   <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-                    Estimated job hours are spread across the calendar using this daily capacity. A 10-hour job stays on one day when this is set to 10.
+                    These drive the calendar and your online booking. Once a day&apos;s booked hours reach your
+                    daily capacity, that day auto-fills and stops offering slots — and online booking only offers
+                    arrival windows inside your working hours. The buffer is added to each job so back-to-back
+                    visits leave travel time.
                   </p>
                   <form action={updateScheduleDayHoursAction} className="form-grid compact-form">
                     <div className="field">
-                      <label htmlFor="scheduleDayHours">Hours in a workday</label>
+                      <label htmlFor="scheduleDayHours">Daily capacity (hours)</label>
                       <input
                         id="scheduleDayHours"
                         name="scheduleDayHours"
@@ -600,9 +603,31 @@ export default async function SettingsPage({
                         defaultValue={account?.schedule_day_hours ?? 8}
                         required
                       />
+                      <small className="field-hint">A day fills up (and blocks new bookings) once scheduled hours reach this.</small>
+                    </div>
+                    <div className="field">
+                      <label htmlFor="jobBufferMinutes">Buffer between jobs (minutes)</label>
+                      <input
+                        id="jobBufferMinutes"
+                        name="jobBufferMinutes"
+                        type="number"
+                        min="0"
+                        max="240"
+                        step="5"
+                        defaultValue={Number((account as { job_buffer_minutes?: number } | null)?.job_buffer_minutes) || 0}
+                      />
+                      <small className="field-hint">Travel/lunch time counted against capacity for each job.</small>
+                    </div>
+                    <div className="field">
+                      <label htmlFor="workdayStart">Workday starts</label>
+                      <input id="workdayStart" name="workdayStart" type="time" defaultValue={String((account as { workday_start?: string } | null)?.workday_start ?? '08:00').slice(0, 5)} />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="workdayEnd">Workday ends</label>
+                      <input id="workdayEnd" name="workdayEnd" type="time" defaultValue={String((account as { workday_end?: string } | null)?.workday_end ?? '17:00').slice(0, 5)} />
                     </div>
                     <div className="form-actions">
-                      <SaveButton>Save schedule settings</SaveButton>
+                      <SaveButton>Save working hours</SaveButton>
                     </div>
                   </form>
                 </section>

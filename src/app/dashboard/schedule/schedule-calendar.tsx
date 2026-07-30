@@ -88,12 +88,14 @@ export default function ScheduleCalendar({
   jobs,
   crew,
   assignmentsByJob,
+  blocks = [],
 }: {
   weeks: CalendarCell[][];
   todayKey: string;
   jobs: CalendarJob[];
   crew: CrewOption[];
   assignmentsByJob: Record<string, string[]>;
+  blocks?: Array<{ start_date: string; end_date: string; reason: string | null }>;
 }) {
   const router = useRouter();
   const [assignments, setAssignments] = useState(assignmentsByJob);
@@ -293,13 +295,15 @@ export default function ScheduleCalendar({
               const laneJobs = Array.from({ length: weekLayout?.laneCount ?? 0 }, (_, laneIndex) => dayLanes[laneIndex] ?? null);
               const previousDateKey = cellIndex > 0 ? addDaysToDateKey(cell.dateKey, -1) : null;
               const nextDateKey = cellIndex < week.length - 1 ? addDaysToDateKey(cell.dateKey, 1) : null;
+              const block = blocks.find((b) => cell.dateKey >= b.start_date && cell.dateKey <= b.end_date);
               return (
                 <div
-                  className={`calendar-cell${cell.dateKey === todayKey ? ' today' : ''}${overDateKey === cell.dateKey ? ' drag-over' : ''}`}
+                  className={`calendar-cell${cell.dateKey === todayKey ? ' today' : ''}${overDateKey === cell.dateKey ? ' drag-over' : ''}${block ? ' blocked' : ''}`}
                   key={cell.dateKey}
                   data-date-key={cell.dateKey}
                 >
                   <span className="calendar-day-number">{cell.day}</span>
+                  {block ? <span className="calendar-blocked-chip" title={block.reason || 'Blocked off'}>Off</span> : null}
                   <div className="calendar-day-jobs">
                     {laneJobs.map((job, laneIndex) => {
                       if (!job) {

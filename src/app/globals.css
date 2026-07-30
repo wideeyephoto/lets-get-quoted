@@ -767,6 +767,10 @@ h3 {
 .extra-stop-empty p { margin: 0; max-width: 54ch; color: rgba(200, 210, 224, 0.8); line-height: 1.5; }
 .extra-stop-empty .btn { margin-top: 0.5rem; }
 
+/* Blocked-off (time-off) day on the schedule calendar. */
+.calendar-cell.blocked { position: relative; background: repeating-linear-gradient(135deg, rgba(255, 122, 33, 0.06) 0 7px, transparent 7px 15px); }
+.calendar-blocked-chip { position: absolute; top: 0.3rem; right: 0.3rem; font-size: 0.58rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #ffb27a; background: rgba(255, 122, 33, 0.16); border: 1px solid rgba(255, 122, 33, 0.4); border-radius: 999px; padding: 0.05rem 0.36rem; }
+
 /* Screen-reader-only text (visually hidden, still announced). */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 

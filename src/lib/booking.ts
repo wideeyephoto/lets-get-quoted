@@ -1,8 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { createJob, expandScheduledJobs } from '@/lib/jobs';
+import { createJob, expandScheduledJobs, addDaysToDateKey } from '@/lib/jobs';
 import { createLead, type Lead } from '@/lib/leads';
 import { getAccountOwnerEmail, sendLeadNotificationEmail, sendBookingConfirmationEmail } from '@/lib/email';
-import { bookingAvailabilityFromAccount, windowsForTimes, type BookingAvailability } from '@/lib/booking-availability';
+import { bookingAvailabilityFromAccount, windowsForTimes, timeToMinutes, type BookingAvailability } from '@/lib/booking-availability';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
@@ -34,15 +34,23 @@ function utcDateKey(dt: Date): string {
 export function computeBookingDays(opts: {
   availability: BookingAvailability;
   countByDate: Map<string, number>;
+  hoursByDate?: Map<string, number>;
   takenByDate: Map<string, Set<string>>;
+  blockedDates?: Set<string>;
   now: Date;
   lookaheadDays?: number;
   maxOfferedDays?: number;
 }): BookingDay[] {
-  const { availability, countByDate, takenByDate, now } = opts;
+  const { availability, countByDate, hoursByDate, takenByDate, blockedDates, now } = opts;
   const lookahead = opts.lookaheadDays ?? LOOKAHEAD_DAYS;
   const maxOffered = opts.maxOfferedDays ?? MAX_OFFERED_DAYS;
-  const windows = windowsForTimes(availability.windowTimes);
+  // Only offer windows that start within the working-hours span.
+  const dayStart = timeToMinutes(availability.workdayStart);
+  const dayEnd = timeToMinutes(availability.workdayEnd);
+  const windows = windowsForTimes(availability.windowTimes).filter((w) => {
+    const t = timeToMinutes(w.time);
+    return t >= dayStart && t < dayEnd;
+  });
   const weekdaySet = new Set(availability.weekdays);
   if (windows.length === 0 || weekdaySet.size === 0) return []; // booking closed
 
@@ -55,7 +63,9 @@ export function computeBookingDays(opts: {
     const dt = new Date(base + offset * DAY_MS);
     if (!weekdaySet.has(dt.getUTCDay())) continue;
     const key = utcDateKey(dt);
-    if ((countByDate.get(key) ?? 0) >= availability.maxPerDay) continue;
+    if (blockedDates?.has(key)) continue; // owner blocked this day off
+    if ((countByDate.get(key) ?? 0) >= availability.maxPerDay) continue; // count cap
+    if ((hoursByDate?.get(key) ?? 0) >= availability.capacityHours) continue; // hours cap — auto-block when the day's booked
     const taken = takenByDate.get(key) ?? new Set<string>();
     const slots = windows.filter((w) => !taken.has(w.time));
     if (slots.length === 0) continue;
@@ -75,18 +85,25 @@ export function computeBookingDays(opts: {
 export async function getAvailableBookingDays(admin: SupabaseClient, accountId: string): Promise<BookingDay[]> {
   const { data: account } = await admin
     .from('accounts')
-    .select('schedule_day_hours, timezone, booking_weekdays, booking_windows, booking_max_per_day, booking_lead_days')
+    .select('schedule_day_hours, timezone, booking_weekdays, booking_windows, booking_max_per_day, booking_lead_days, workday_start, workday_end, job_buffer_minutes')
     .eq('id', accountId)
     .maybeSingle();
-  const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
   const availability = bookingAvailabilityFromAccount(account);
+  const scheduleDayHours = availability.capacityHours;
 
-  const { data: jobs } = await admin
-    .from('jobs')
-    .select('scheduled_for, scheduled_time, status, estimated_hours')
-    .eq('account_id', accountId)
-    .not('scheduled_for', 'is', null)
-    .neq('status', 'archived');
+  const [{ data: jobs }, { data: blocks }] = await Promise.all([
+    admin
+      .from('jobs')
+      .select('scheduled_for, scheduled_time, status, estimated_hours')
+      .eq('account_id', accountId)
+      .not('scheduled_for', 'is', null)
+      .neq('status', 'archived'),
+    admin
+      .from('availability_blocks')
+      .select('start_date, end_date')
+      .eq('account_id', accountId)
+      .gte('end_date', utcDateKey(new Date())),
+  ]);
 
   const occurrences = expandScheduledJobs(jobs ?? [], scheduleDayHours);
   const countByDate = new Map<string, number>();
@@ -102,7 +119,56 @@ export async function getAvailableBookingDays(admin: SupabaseClient, accountId: 
     }
   }
 
-  return computeBookingDays({ availability, countByDate, takenByDate, now: new Date() });
+  // Per-day scheduled hours (est + buffer), spread across a multi-day job's span.
+  const hoursByDate = computeHoursByDate(jobs ?? [], availability.capacityHours, availability.bufferMinutes);
+  const blockedDates = expandBlockedDates(blocks ?? [], LOOKAHEAD_DAYS + 1);
+
+  return computeBookingDays({ availability, countByDate, hoursByDate, takenByDate, blockedDates, now: new Date() });
+}
+
+// Distribute each scheduled job's effective hours (estimated + buffer) across the
+// days it spans, capped at the daily capacity — the input to the hours-based
+// auto-block. A job with no hours contributes nothing here (the count cap covers it).
+export function computeHoursByDate(
+  jobs: Array<{ scheduled_for: string | null; estimated_hours?: number | string | null }>,
+  capacityHours: number,
+  bufferMinutes: number,
+): Map<string, number> {
+  const cap = capacityHours > 0 ? capacityHours : 8;
+  const bufferHours = (Number(bufferMinutes) || 0) / 60;
+  const hoursByDate = new Map<string, number>();
+  for (const job of jobs) {
+    if (!job.scheduled_for) continue;
+    let remaining = (Number(job.estimated_hours) || 0) + bufferHours;
+    if (remaining <= 0) continue;
+    for (let offset = 0; remaining > 0 && offset < 60; offset++) {
+      const key = addDaysToDateKey(job.scheduled_for, offset);
+      hoursByDate.set(key, (hoursByDate.get(key) ?? 0) + Math.min(remaining, cap));
+      remaining -= cap;
+    }
+  }
+  return hoursByDate;
+}
+
+// Expand block date-ranges into the set of blocked date keys within the horizon.
+export function expandBlockedDates(
+  blocks: Array<{ start_date: string; end_date: string }>,
+  horizonDays: number,
+  fromKey?: string,
+): Set<string> {
+  const start = fromKey ?? utcDateKey(new Date());
+  const horizon = new Set<string>();
+  for (let i = 0; i <= horizonDays; i++) horizon.add(addDaysToDateKey(start, i));
+  const blocked = new Set<string>();
+  for (const b of blocks) {
+    if (!b.start_date || !b.end_date) continue;
+    for (let i = 0; i <= horizonDays; i++) {
+      const key = addDaysToDateKey(b.start_date, i);
+      if (key > b.end_date) break;
+      if (horizon.has(key)) blocked.add(key);
+    }
+  }
+  return blocked;
 }
 
 // Re-validate a client-submitted slot against freshly-derived availability. The

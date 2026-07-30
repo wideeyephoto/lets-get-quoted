@@ -13,6 +13,10 @@ import {
   normalizeBookingWindowTimes,
   normalizeMaxPerDay,
   normalizeLeadDays,
+  normalizeWorkdayTime,
+  normalizeBufferMinutes,
+  DEFAULT_WORKDAY_START,
+  DEFAULT_WORKDAY_END,
 } from '@/lib/booking-availability';
 import { normalizeInstantBookMinAmount, normalizeInstantBookRadiusMiles, normalizeGeoMode } from '@/lib/instant-booking';
 import { extraStopSettingsFromAccount, dollarsToCents } from '@/lib/extra-stop';
@@ -55,10 +59,18 @@ export async function updateBusinessBasicsAction(formData: FormData) {
 export async function updateScheduleDayHoursAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
   const scheduleDayHours = parseScheduleDayHours(formData.get('scheduleDayHours'));
+  const workdayStart = normalizeWorkdayTime(formData.get('workdayStart'), DEFAULT_WORKDAY_START);
+  const workdayEnd = normalizeWorkdayTime(formData.get('workdayEnd'), DEFAULT_WORKDAY_END);
+  const jobBufferMinutes = normalizeBufferMinutes(formData.get('jobBufferMinutes'));
 
   const { error } = await supabase
     .from('accounts')
-    .update({ schedule_day_hours: scheduleDayHours })
+    .update({
+      schedule_day_hours: scheduleDayHours,
+      workday_start: workdayStart,
+      workday_end: workdayEnd,
+      job_buffer_minutes: jobBufferMinutes,
+    })
     .eq('id', accountId);
 
   if (error) throw new Error(error.message);
