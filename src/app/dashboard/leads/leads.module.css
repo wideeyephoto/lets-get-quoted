@@ -2,7 +2,11 @@
 .requestStats > div { min-width: 0; }
 .urgentStat { display: grid; gap: .25rem; padding: 1rem; border: 1px solid rgba(255, 122, 33, .36); border-radius: 18px; background: linear-gradient(135deg, rgba(255, 122, 33, .22), rgba(255, 209, 102, .08)); }
 .urgentStat span:first-child { color: #ffd166; }
-.board { display: grid; grid-template-columns: repeat(5, minmax(220px, 1fr)); gap: .8rem; overflow-x: auto; padding: .2rem 0 .8rem; }
+/* 180px, not 220px: at 220 the five stages needed 1151px inside a ~978px panel,
+   so Lost sat off the edge behind a scrollbar with nothing to suggest it was
+   there. A pipeline you can't see the end of isn't a pipeline — 180 fits all five
+   at desktop width, and the overflow-x below still covers narrower windows. */
+.board { display: grid; grid-template-columns: repeat(5, minmax(180px, 1fr)); gap: .8rem; overflow-x: auto; padding: .2rem 0 .8rem; }
 .column { min-height: 300px; padding: .8rem; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: rgba(255,255,255,.025); }
 /* Per-status pipeline column accents: a colored top bar + tinted background,
    header label, and count badge, so each stage reads at a glance. */
@@ -37,7 +41,11 @@
 .leadCard strong { font-size: .92rem; }
 .leadCard p { display: -webkit-box; overflow: hidden; margin: 0; color: rgba(255,255,255,.62); font-size: .78rem; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .meta { display: flex; justify-content: space-between; gap: .5rem; color: rgba(255,255,255,.48); font-size: .68rem; }
-.cardTopline { display: flex; align-items: flex-start; justify-content: space-between; gap: .6rem; }
+/* The badge doesn't shrink and the name can't go below its min-content width, so
+   in a narrow column the pair overflowed the card and the badge got sliced by the
+   edge. Let the row wrap: the badge drops under the name rather than off the card. */
+.cardTopline { display: flex; align-items: flex-start; justify-content: space-between; gap: .3rem .6rem; flex-wrap: wrap; }
+.cardTopline > strong { min-width: 0; overflow-wrap: anywhere; }
 .statusBadge, .needsBadge { flex-shrink: 0; width: fit-content; padding: .24rem .45rem; border-radius: 999px; font-size: .62rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
 .statusBadge { background: rgba(255,255,255,.08); color: rgba(255,255,255,.62); }
 .needsBadge { background: rgba(255, 209, 102, .18); color: #ffd166; }

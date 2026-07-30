@@ -2352,3 +2352,18 @@
 .legalFoot { margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid #e6e9ef; }
 .legalFoot a { color: var(--theme-accent); text-decoration: none; font-weight: 700; }
 .legalFoot a:hover { text-decoration: underline; }
+
+/* Public-site nav links were 16px tall — a line of text with 3px of padding —
+   which is a hard target for a customer on a phone, on the one nav that has to
+   work for people who aren't us. The hit area is expanded with an overlay so the
+   animated underline (positioned at the box's bottom edge) stays tight to the
+   text instead of drifting away from it. */
+@media (max-width: 640px) {
+  .navLinks { gap: 1.25rem clamp(1rem, 4vw, 2rem); }
+  .navLinks a { position: relative; }
+  .navLinks a::before {
+    content: '';
+    position: absolute;
+    inset: -0.75rem -0.6rem;
+  }
+}

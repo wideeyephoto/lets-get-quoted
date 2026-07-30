@@ -3600,6 +3600,16 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   align-content: start;
 }
 
+/* Grid items default to min-width:auto, so they refuse to shrink below their
+   content's min-content width. The leads pipeline is repeat(5, minmax(220px,1fr))
+   = 1151px of minimum, which pushed its whole panel past the 1100px shell and
+   made the page scroll sideways at 1440px — and dragged the embedded map out with
+   it. min-width:0 lets the panel shrink so the pipeline's own overflow-x:auto can
+   do its job and scroll internally, as it was always meant to. */
+.workspace-shell > * {
+  min-width: 0;
+}
+
 .workspace-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.9fr);
@@ -7956,4 +7966,24 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
   .route-plan-control-actions > :first-child { grid-column: 1 / -1; }
   .route-plan-control-actions > :last-child { grid-column: 1 / -1; }
   .route-plan-control-actions .btn { width: 100%; justify-content: center; }
+}
+
+/* ---- Touch targets ------------------------------------------------- */
+/* The dismiss control was a 27x27 circle — well under the ~44px a thumb needs,
+   and it sits right beside the button people actually want. Keep the small
+   visual circle, expand the hit area around it. */
+.quote-request-alert-close::after {
+  content: '';
+  position: absolute;
+  inset: -0.55rem;
+}
+
+/* Two of our own controls sat at ~31px on a phone. Both are ordinary links that
+   happen to be styled compactly; on touch they get a full-height target. */
+@media (max-width: 640px) {
+  .sidenav-sublink,
+  .automation-link {
+    min-height: 44px;
+    align-items: center;
+  }
 }
