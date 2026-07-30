@@ -3,9 +3,10 @@
 import { useMemo, useState, useTransition } from 'react';
 import { updateIntakeSettingsAction } from './actions';
 
-// Estimate strategy + lead alerts (account-level). Shared so it renders both in
-// Settings and inside the Website Builder's intake section — both write the same
-// account columns through updateIntakeSettingsAction, so they always mirror.
+// Estimate strategy + lead alerts (account-level), rendered as step 3 of the
+// Website Builder's intake setup. Writes account columns through
+// updateIntakeSettingsAction; Settings links across to here rather than keeping
+// a second copy of the same form.
 //
 // Client-side because the save bar needs to know whether anything has changed:
 // the action is called directly rather than through a plain form action, which
@@ -86,14 +87,7 @@ export default function IntakeAiSettingsSection({
   }
 
   return (
-    <section className="panel workspace-section-card intake-ai-section" id="intake-ai">
-      <div className="section-heading workspace-section-heading compact-heading">
-        <h2>3. Estimate strategy &amp; lead alerts</h2>
-      </div>
-      <p className="workspace-details-copy intake-ai-lead">
-        Control how your ballpark estimates are positioned and which leads get your immediate attention.
-      </p>
-
+    <section className="intake-ai-section" id="intake-ai">
       <div className="intake-summary">
         <strong>Your Smart Intake is active</strong>
         <ul>

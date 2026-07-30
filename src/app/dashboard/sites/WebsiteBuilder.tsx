@@ -305,6 +305,17 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
   const [jobPhotoOptions, setJobPhotoOptions] = useState<JobPhotoImportOption[]>([]);
   const [jobPhotosLoaded, setJobPhotosLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<BuilderTab>('business');
+
+  // The Page tab is a guided 1-2-3, so open step 1 the first time it's shown —
+  // otherwise every step sits collapsed and there's no obvious starting point.
+  // Only once: after that the owner's own open/closed choices stand.
+  const pageTabPrimed = useRef(false);
+  useEffect(() => {
+    if (activeTab === 'page' && !pageTabPrimed.current) {
+      pageTabPrimed.current = true;
+      setOpenSection('estimate');
+    }
+  }, [activeTab]);
   // 'basics' so the first Business card (name + trade + AI quick-start) is open
   // on arrival — the natural starting point for a new site.
   const [openSection, setOpenSection] = useState<string | null>('basics');
@@ -1641,8 +1652,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
 
                 {/* Account-level tuning for the same AI. It only applies when
                     Smart Intake is the active method, so it lives inside this
-                    group rather than floating between cards. */}
-                {intakeSlot}
+                    group rather than floating between cards — and collapses like
+                    its siblings, so arriving on the tab doesn't dump the third
+                    step open while the first two are shut. */}
+                <SectionCard variant="linked" title="3. Estimate strategy &amp; lead alerts" description="Control how your ballpark estimates are positioned and which leads get your immediate attention." open={openSection === 'intakeAi'} onToggleOpen={() => toggleSection('intakeAi')}>
+                  {intakeSlot}
+                </SectionCard>
                 </div>
                 )}
 
