@@ -8011,3 +8011,25 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
   color: rgba(255, 255, 255, 0.62);
 }
 .booking-contact-hint strong { color: rgba(255, 255, 255, 0.86); }
+
+/* ---- Mobile: let short labels wrap instead of truncating ------------ */
+/* Both of these ellipsis on one line, which is right on a wide row and wrong on
+   a 390px phone, where the text IS the content:
+     "11 scheduled jobs need crew"  ->  "11 schedul…"
+     "Invoice / payment requested"  ->  "Invoice / paym…"
+   A card whose whole job is telling you what needs doing can't truncate the
+   telling. These are two or three words; wrapping to a second line costs a few
+   pixels and keeps the meaning. */
+@media (max-width: 640px) {
+  .priority-copy strong,
+  .pipeline-step strong,
+  .pipeline-step small,
+  /* "Draft invoice will be created automatically" — an explanation that stops
+     explaining anything once it's cut to "Draft invoice will be…". */
+  .invoice-context-pill strong {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+  .pipeline-step strong { line-height: 1.25; }
+}
