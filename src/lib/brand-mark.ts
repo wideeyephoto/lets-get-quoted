@@ -60,11 +60,24 @@ export function brandMarkDataUri(svg: string): string {
 
 // The `icons` block for a published site's generateMetadata — a per-site SVG
 // favicon so a contractor's tab shows their trade mark, not the platform's.
-export function siteIconsMetadata(site: BrandMarkSite): { icon: { url: string; type: string }[]; shortcut: { url: string; type: string }[] } {
+export function siteIconsMetadata(site: BrandMarkSite): {
+  icon: { url: string; type: string }[];
+  shortcut: { url: string; type: string }[];
+  apple: { url: string; sizes: string; type: string }[];
+} {
   // Honor the owner's "Transparent background" choice: a tile-less, accent-
   // colored mark instead of the white-on-accent tile.
   const transparent = getSiteContent(site.content).logoStyle === 'transparent';
   const url = brandMarkDataUri(siteBrandMarkSvg(site, transparent ? 'accent' : 'color'));
   const entry = [{ url, type: 'image/svg+xml' }];
-  return { icon: entry, shortcut: entry };
+  // iOS ignores an SVG touch icon and flattens transparency to white, so the
+  // home-screen icon is a separate opaque PNG (src/app/site/[subdomain]/
+  // apple-icon.tsx). Absolute path on purpose: the middleware rewrites a tenant
+  // host's sub-paths, so /apple-icon lands on that route for the right site.
+  //
+  // Declared HERE rather than left to Next's file convention, because setting
+  // `icons` in generateMetadata replaces the auto-detected icons entirely —
+  // the apple-icon file existed but no link was ever emitted.
+  const apple = [{ url: '/apple-icon', sizes: '180x180', type: 'image/png' }];
+  return { icon: entry, shortcut: entry, apple };
 }

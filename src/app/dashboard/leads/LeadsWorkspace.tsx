@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { LeadStatus, LeadScore, LeadsView } from '@/lib/leads';
@@ -99,6 +99,10 @@ const VIEW_OPTIONS = VIEWS.map((v) => ({ id: v.id, label: v.label, hint: v.hint 
 
 export default function LeadsWorkspace({ leads, initialView, mapView, mapTheme, mapPins }: { leads: LeadViewItem[]; initialView: LeadsView; mapView: MapView; mapTheme: MapTheme; mapPins: MapPin[] }) {
   const [view, setView] = useState<LeadsView>(initialView);
+  // A pin click asks the split view to open that lead. The nonce makes clicking
+  // the same pin twice count twice, so re-clicking the lead you're already on
+  // still brings its details back into view.
+  const [pinRequest, setPinRequest] = useState<{ id: string; nonce: number } | null>(null);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -152,7 +156,11 @@ export default function LeadsWorkspace({ leads, initialView, mapView, mapTheme, 
             // take you to the other rather than making you hunt for it.
             onPinClick={(pin) => {
               const id = pinRecordId(pin.id, 'lead');
-              if (id) revealRow(`lead-row-${id}`);
+              if (!id) return; // job pins live on the jobs page
+              // Split view shows one lead at a time, so "go to it" means open
+              // it; the other layouts are lists, so it means scroll to its row.
+              setPinRequest((prev) => ({ id, nonce: (prev?.nonce ?? 0) + 1 }));
+              revealRow(`lead-row-${id}`);
             }}
           />
         </div>
@@ -163,7 +171,7 @@ export default function LeadsWorkspace({ leads, initialView, mapView, mapTheme, 
       {view === 'board' && <BoardView leads={leads} run={run} />}
       {view === 'inbox' && <InboxView leads={leads} run={run} />}
       {view === 'table' && <TableView leads={leads} />}
-      {view === 'split' && <SplitView leads={leads} run={run} />}
+      {view === 'split' && <SplitView leads={leads} run={run} openRequest={pinRequest} />}
 
       <ScoreLegend />
     </div>
@@ -335,9 +343,51 @@ function TableView({ leads }: { leads: LeadViewItem[] }) {
 }
 
 /* ---------------- Split view (list + detail) ---------------- */
-function SplitView({ leads, run }: { leads: LeadViewItem[]; run: (fn: () => Promise<unknown>) => void }) {
+function SplitView({
+  leads,
+  run,
+  openRequest,
+}: {
+  leads: LeadViewItem[];
+  run: (fn: () => Promise<unknown>) => void;
+  /** A pin on the map asking for a lead; the nonce lets the same one repeat. */
+  openRequest?: { id: string; nonce: number } | null;
+}) {
   const [selectedId, setSelectedId] = useState<string | null>(leads[0]?.id ?? null);
   const selected = leads.find((l) => l.id === selectedId) ?? leads[0] ?? null;
+  const detailRef = useRef<HTMLDivElement | null>(null);
+
+  // Same treatment the jobs pipeline gives a pin click: open the record, bring
+  // its detail into view, and centre its row in the list's own scroller — each
+  // only when it isn't already fully visible, so working down the list on a
+  // wide monitor doesn't yank the page or shunt the row under the cursor.
+  const reveal = useCallback((id: string) => {
+    setSelectedId(id);
+    requestAnimationFrame(() => {
+      const detail = detailRef.current;
+      if (detail) {
+        const box = detail.getBoundingClientRect();
+        if (box.top < 0 || box.bottom > window.innerHeight) {
+          detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+      const row = document.getElementById(`lead-row-${id}`);
+      const list = row?.parentElement;
+      if (!row || !list) return;
+      const r = row.getBoundingClientRect();
+      const l = list.getBoundingClientRect();
+      if (r.top < l.top || r.bottom > l.bottom) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }, []);
+
+  const revealRef = useRef(reveal);
+  revealRef.current = reveal;
+  useEffect(() => {
+    if (!openRequest) return;
+    if (!leads.some((l) => l.id === openRequest.id)) return; // filtered out
+    revealRef.current(openRequest.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openRequest?.nonce]);
 
   return (
     <div className={styles.splitWrap}>
@@ -345,6 +395,7 @@ function SplitView({ leads, run }: { leads: LeadViewItem[]; run: (fn: () => Prom
         {leads.map((lead) => (
           <button
             type="button"
+            id={`lead-row-${lead.id}`}
             key={lead.id}
             className={`${styles.splitRow}${selected?.id === lead.id ? ` ${styles.splitRowOn}` : ''}`}
             onClick={() => setSelectedId(lead.id)}
@@ -360,7 +411,7 @@ function SplitView({ leads, run }: { leads: LeadViewItem[]; run: (fn: () => Prom
       </div>
 
       {selected ? (
-        <div className={styles.splitDetail} key={selected.id}>
+        <div className={styles.splitDetail} key={selected.id} ref={detailRef}>
           <div className={styles.sdHead}>
             <div>
               <p className="eyebrow">Lead details</p>
