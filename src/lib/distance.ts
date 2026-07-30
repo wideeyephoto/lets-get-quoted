@@ -28,6 +28,13 @@ export function nearestMiles(from: LatLng, anchors: LatLng[]): number | null {
   return best;
 }
 
+// City-driving fallback when real drive-time isn't enabled: ~30 mph door-to-door.
+// Shared so every straight-line estimate in the app tells the contractor the same
+// story (Extra Stop detours, day-route planning).
+export function minutesFromMiles(miles: number): number {
+  return Math.round(miles * 2);
+}
+
 // A usable lat/lng from possibly-null numeric columns, or null.
 export function coordOf(row: { lat?: number | null; lng?: number | null }): LatLng | null {
   return typeof row.lat === 'number' && typeof row.lng === 'number' ? { lat: row.lat, lng: row.lng } : null;

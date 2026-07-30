@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { haversineMiles, coordOf, type LatLng } from '@/lib/distance';
+import { haversineMiles, coordOf, minutesFromMiles, type LatLng } from '@/lib/distance';
 import { driveDistances } from '@/lib/drive-time';
 
 // Route cost of inserting an Extra Stop at the END of a day's route. Answers the
@@ -17,11 +17,6 @@ export type ExtraStopRoute = {
   // What we measured from, for the card's label ("from your 3:00 PM stop").
   anchorLabel: string | null;
 };
-
-// City-driving fallback when real drive-time isn't enabled: ~30 mph door-to-door.
-function minutesFromMiles(miles: number): number {
-  return Math.round(miles * 2);
-}
 
 function localDateKey(timeZone: string, date = new Date()): string {
   // en-CA yields YYYY-MM-DD; anchored in the account tz so "today" is right.

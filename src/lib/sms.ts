@@ -581,6 +581,22 @@ export async function sendOnMyWaySms(params: {
   return providerId;
 }
 
+// Tells a customer their arrival time shifted — sent only when the contractor
+// opts to after re-planning a day's route. Never automatic: a silent time change
+// is how you lose a customer. Caller resolves consent; mirrored to the inbox.
+export async function sendArrivalTimeChangedSms(params: {
+  phone: string;
+  businessName: string;
+  clientName: string;
+  whenLabel: string;
+  accountId?: string;
+}) {
+  const message = `Let's Get Quoted: ${params.clientName}, ${params.businessName} here — we've updated your arrival time to ${params.whenLabel}. Reply here if that doesn't work and we'll sort it out. Reply STOP to opt out.`;
+  const providerId = await sendTwilioMessage(params.phone, message);
+  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
+  return providerId;
+}
+
 // Auto text-back after a missed call. The caller reached out first, so a single
 // reply is solicited; still honors opt-out + STOP, and mirrors to the inbox so
 // the owner can reply. Returns null when the number is opted out.

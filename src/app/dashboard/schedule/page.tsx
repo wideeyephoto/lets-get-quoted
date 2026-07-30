@@ -355,6 +355,9 @@ export default async function SchedulePage({
               See what&apos;s on the books this month and get unscheduled jobs onto a date.
             </p>
             <div className="schedule-automation-row">
+              <Link href="/dashboard/schedule/plan" className="btn primary">
+                🧭 Plan my day
+              </Link>
               <a href="#booking-availability" className="btn secondary">
                 Set booking availability &darr;
               </a>

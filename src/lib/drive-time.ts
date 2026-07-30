@@ -41,3 +41,49 @@ export async function driveDistances(origin: LatLng, destinations: LatLng[]): Pr
     return null;
   }
 }
+
+// Every-point-to-every-point drive legs, for day-route planning — the route
+// optimizer needs the full matrix, not one origin's row. Keyed `${fromId}->${toId}`
+// so the planner can look a leg up directly.
+//
+// Distance Matrix bills per element and caps a request at 100, so this is capped
+// at 10 points (100 elements, one request) — a contractor's day, plus the shop.
+// Same all-or-nothing failure contract as driveDistances: null on any problem, and
+// the planner silently falls back to straight-line.
+export const DRIVE_MATRIX_MAX_POINTS = 10;
+
+export async function driveMatrix(
+  points: Array<{ id: string; coord: LatLng }>,
+): Promise<Map<string, DriveResult> | null> {
+  const key = process.env.GOOGLE_MAPS_API_KEY;
+  if (!key || points.length < 2 || points.length > DRIVE_MATRIX_MAX_POINTS) return null;
+  try {
+    const param = points.map((p) => `${p.coord.lat},${p.coord.lng}`).join('|');
+    const url =
+      `https://maps.googleapis.com/maps/api/distancematrix/json` +
+      `?origins=${encodeURIComponent(param)}&destinations=${encodeURIComponent(param)}&units=imperial&key=${key}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      status?: string;
+      rows?: Array<{ elements?: Array<{ status?: string; distance?: { value?: number }; duration?: { value?: number } }> }>;
+    };
+    if (data.status !== 'OK' || !Array.isArray(data.rows) || data.rows.length !== points.length) return null;
+
+    const legs = new Map<string, DriveResult>();
+    data.rows.forEach((row, from) => {
+      row.elements?.forEach((el, to) => {
+        if (from === to) return;
+        if (el?.status !== 'OK' || typeof el.distance?.value !== 'number' || typeof el.duration?.value !== 'number') return;
+        legs.set(`${points[from].id}->${points[to].id}`, {
+          miles: el.distance.value / METERS_PER_MILE,
+          minutes: el.duration.value / 60,
+        });
+      });
+    });
+    return legs.size > 0 ? legs : null;
+  } catch (error) {
+    console.error('driveMatrix failed:', error instanceof Error ? error.message : error);
+    return null;
+  }
+}
