@@ -37,13 +37,33 @@ export async function uploadJobPhoto(accountId: string, file: File): Promise<str
 }
 
 export async function createJobPhotoUrls(accountId: string, paths: string[]): Promise<string[]> {
+  return (await createJobPhotoLinks(accountId, paths)).map((link) => link.url);
+}
+
+/**
+ * Signed URLs paired with the path they belong to.
+ *
+ * createJobPhotoUrls drops two kinds of entry — paths owned by another account,
+ * and paths the storage API declined to sign — so the array it returns is often
+ * SHORTER than the one passed in. Callers were zipping it back against the
+ * original paths by index, which silently shifts every photo after the first
+ * gap onto the wrong URL. Pairing them here removes the chance to get it wrong.
+ */
+export async function createJobPhotoLinks(
+  accountId: string,
+  paths: string[],
+): Promise<Array<{ path: string; url: string }>> {
   const ownedPaths = paths.filter((path) => path.startsWith(`${accountId}/`));
   if (ownedPaths.length === 0) return [];
   const { data, error } = await createAdminClient().storage
     .from(JOB_PHOTOS_BUCKET)
     .createSignedUrls(ownedPaths, 60 * 60);
   if (error) throw error;
-  return data.map((item) => item.signedUrl).filter((url): url is string => Boolean(url));
+  // createSignedUrls returns one entry per requested path, in order, each
+  // carrying its own path — so pair off that rather than off the index.
+  return (data ?? [])
+    .map((item, index) => ({ path: item.path ?? ownedPaths[index], url: item.signedUrl }))
+    .filter((link): link is { path: string; url: string } => Boolean(link.path && link.url));
 }
 
 export async function deleteJobPhotos(accountId: string, paths: string[]) {

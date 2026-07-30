@@ -3,12 +3,12 @@ import { requireOwnerContext } from '@/lib/auth';
 import PhotoGallery from '@/components/photo-gallery';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import { deriveJobListBadge, computeJobMilestones } from '@/lib/job-badges';
-import { getJob, listCosts, computeMargin, formatJobQuoteSummary, formatJobSchedule, formatMoney, formatPercent, parseQuoteItems, type Cost, type Job } from '@/lib/jobs';
+import { getJob, listCosts, computeMargin, formatJobQuoteSummary, formatJobSchedule, formatMoney, formatPercent, parseQuoteItems, type Job } from '@/lib/jobs';
 import { listServices } from '@/lib/services';
 import { listJobTasks, taskProgress } from '@/lib/job-tasks';
-import { createJobPhotoUrls } from '@/lib/job-photo-storage';
-import { listPayments, type Payment, type PaymentStatus } from '@/lib/payments';
-import { listInvoices, selectPrimaryInvoice, type Invoice, type InvoiceStatus } from '@/lib/invoices';
+import { createJobPhotoLinks } from '@/lib/job-photo-storage';
+import { listPayments, type Payment } from '@/lib/payments';
+import { listInvoices, selectPrimaryInvoice, type Invoice } from '@/lib/invoices';
 import { createLinkedFeedItems, getActiveClientAccessCount, listJobFeed, sortJobFeed, type JobFeedEvent } from '@/lib/job-feed';
 import { listCrew, listCrewIdsForJob } from '@/lib/crew';
 import { getLeadByConvertedJob } from '@/lib/leads';
@@ -46,115 +46,20 @@ import QuoteDeliveryBanner from './QuoteDeliveryBanner';
 import CopyLinkButton from './CopyLinkButton';
 import RequestReviewButton from './RequestReviewButton';
 import QuoteBuilder from './QuoteBuilder';
-
-const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
-  requested: 'Awaiting payment',
-  processing: 'Processing',
-  paid: 'Paid',
-  failed: 'Failed',
-  refunded: 'Refunded',
-  disputed: 'Disputed',
-};
-
-const INVOICE_STATUS_LABEL: Record<InvoiceStatus, string> = {
-  draft: 'Draft',
-  sent: 'Sent',
-  signed: 'Signed',
-  paid: 'Paid',
-  void: 'Void',
-};
-
-const COST_TYPE_ICON: Record<Cost['type'], string> = {
-  material: '🧱',
-  labor: '👷',
-  sub: '🤝',
-  receipt: '🧾',
-  other: '📦',
-};
-
-const FEED_VISIBILITY_LABEL: Record<JobFeedEvent['visibility'], string> = {
-  internal: 'Internal',
-  client: 'Client visible',
-  client_financial: 'Client financial',
-};
-
-const FEED_KIND_LABEL: Record<string, string> = {
-  job_created: 'Job',
-  job_update: 'Update',
-  job_scheduled: 'Schedule',
-  job_completed: 'Completed',
-  appointment_reminder: 'Reminder',
-  appointment_confirmed: 'Confirmed',
-  review_feedback: 'Private feedback',
-  cost_added: 'Cost',
-  payment_requested: 'Payment request',
-  payment_paid: 'Payment received',
-  payment_failed: 'Payment issue',
-  payment_refunded: 'Refund',
-  payment_disputed: 'Chargeback',
-  dispute_won: 'Chargeback won',
-  dispute_lost: 'Chargeback lost',
-  invoice_created: 'Invoice',
-  invoice_signoff_link: 'Client sign-off',
-  invoice_sent: 'Invoice sent',
-  invoice_signed: 'Invoice signed',
-  invoice_paid: 'Invoice paid',
-  payment_cancelled: 'Payment cancelled',
-  invoice_voided: 'Invoice cancelled',
-  client_link_created: 'Client link',
-  client_link_revoked: 'Client link',
-  review_requested: 'Review request',
-  quote_followup: 'Quote follow-up',
-};
-
-const FEED_KIND_ICON: Record<string, string> = {
-  job_created: '+',
-  job_update: 'i',
-  job_scheduled: 'S',
-  job_completed: '✓',
-  cost_added: '$',
-  payment_requested: '$',
-  payment_paid: '✓',
-  payment_failed: '!',
-  payment_refunded: '↩',
-  payment_disputed: '⚠',
-  dispute_won: '✓',
-  dispute_lost: '⚠',
-  invoice_created: 'I',
-  invoice_signoff_link: '✓',
-  invoice_sent: 'I',
-  invoice_signed: '✓',
-  invoice_paid: '✓',
-  payment_cancelled: '×',
-  invoice_voided: '×',
-  client_link_created: '↗',
-  client_link_revoked: '×',
-  review_requested: '⭐',
-  quote_followup: '↻',
-};
-
-function marginTier(margin: number): 'margin-good' | 'margin-ok' | 'margin-bad' {
-  if (margin >= 0.35) return 'margin-good';
-  if (margin >= 0.2) return 'margin-ok';
-  return 'margin-bad';
-}
-
-function formatFeedTime(value: string): string {
-  return new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-}
-
-function getFeedDisplayTitle(event: JobFeedEvent): string {
-  if (event.kind === 'job_created') return 'Quote sent';
-  if (event.kind === 'client_link_created') return 'Client view link created';
-  if (event.kind === 'client_link_revoked') return 'Client view links revoked';
-  return event.title || event.kind;
-}
-
-function getFeedDisplayBody(event: JobFeedEvent): string | null {
-  if (event.kind === 'client_link_created') return 'A client view link was created for this job.';
-  if (event.kind === 'client_link_revoked') return 'Active client view links for this job were revoked.';
-  return event.body;
-}
+// Shared with the pipeline's Focus pane so the two can't describe the same
+// event differently — see src/lib/job-detail-labels.ts.
+import {
+  COST_TYPE_ICON,
+  FEED_KIND_ICON,
+  FEED_KIND_LABEL,
+  FEED_VISIBILITY_LABEL,
+  INVOICE_STATUS_LABEL,
+  PAYMENT_STATUS_LABEL,
+  formatFeedTime,
+  getFeedDisplayBody,
+  getFeedDisplayTitle,
+  marginTier,
+} from '@/lib/job-detail-labels';
 
 type PipelineChecklistItem = {
   label: string;
@@ -241,8 +146,7 @@ export default async function JobDetailPage({
   const invoiceDisplayTotal = jobInvoice ? Math.max(Number(jobInvoice.total), Number(job.quoted_amount)) : Number(job.quoted_amount);
   const invoiceBalance = jobInvoice ? Math.max(0, invoiceDisplayTotal - invoicePaidTotal) : null;
   const outstandingBalance = Math.max(0, invoiceDisplayTotal - invoicePaidTotal);
-  const jobPhotoUrls = await createJobPhotoUrls(accountId, job.photo_paths || []);
-  const jobPhotos = (job.photo_paths || []).map((path, index) => ({ path, url: jobPhotoUrls[index] })).filter((photo) => photo.url);
+  const jobPhotos = await createJobPhotoLinks(accountId, job.photo_paths || []);
   const { data: accountRow } = await supabase
     .from('accounts')
     .select('connect_onboarded')

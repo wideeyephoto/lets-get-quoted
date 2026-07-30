@@ -7,8 +7,9 @@ import PastClientsPicker, { type PastClientOption } from '@/components/past-clie
 import QuickFillButtons from '@/components/quick-fill-buttons';
 import FormattedCurrencyInput from '@/components/formatted-currency-input';
 import { deriveJobListBadge } from '@/lib/job-badges';
-import type { Invoice } from '@/lib/invoices';
-import { listJobs, formatMoney, type Job } from '@/lib/jobs';
+import { selectPrimaryInvoice, type Invoice } from '@/lib/invoices';
+import { INVOICE_STATUS_LABEL } from '@/lib/job-detail-labels';
+import { listJobs, formatJobTime, formatMoney, type Job } from '@/lib/jobs';
 import { listLeads, type Lead } from '@/lib/leads';
 import type { Payment } from '@/lib/payments';
 import { cookies } from 'next/headers';
@@ -25,7 +26,10 @@ function formatScheduledLabel(dateIso: string, time: string | null): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateIso);
   const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(dateIso);
   const label = Number.isNaN(d.getTime()) ? dateIso : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  return time ? `${label} · ${time}` : label;
+  // formatJobTime, not the raw column — scheduled_time is '08:14:00' in the
+  // database and was being printed verbatim.
+  const clock = formatJobTime(time);
+  return clock ? `${label} · ${clock}` : label;
 }
 
 function normalizeKey(value: string | null | undefined): string | null {
@@ -147,8 +151,27 @@ export default async function JobsPage({
   }, {});
 
   // Serialize every job (with its live badge) for the client view switcher.
+  //
+  // The invoice and payment rows above are already loaded for every job, used
+  // once for the badge, and then thrown away. Spending them here costs nothing
+  // and is what lets the Focus pane paint a job's money the instant you click
+  // it, with no network round trip.
   const jobItems: JobViewItem[] = allJobs.map((job) => {
-    const badge = deriveJobListBadge(job, paymentsByJob[job.id] ?? [], invoicesByJob[job.id] ?? [], clientAccessCountByJob[job.id] ?? 0);
+    const jobInvoices = invoicesByJob[job.id] ?? [];
+    const jobPayments = paymentsByJob[job.id] ?? [];
+    const badge = deriveJobListBadge(job, jobPayments, jobInvoices, clientAccessCountByJob[job.id] ?? 0);
+
+    const primaryInvoice = selectPrimaryInvoice(jobInvoices);
+    // An invoice can be raised for more than the quote, so the larger of the
+    // two is what's actually owed — same rule as the full job page.
+    const displayTotal = primaryInvoice
+      ? Math.max(Number(primaryInvoice.total), Number(job.quoted_amount))
+      : Number(job.quoted_amount);
+    const paidTotal = (primaryInvoice
+      ? jobPayments.filter((p) => p.invoice_id === primaryInvoice.id && p.status === 'paid')
+      : jobPayments.filter((p) => p.status === 'paid')
+    ).reduce((sum, p) => sum + Number(p.amount), 0);
+
     return {
       id: job.id,
       ref: job.ref,
@@ -163,6 +186,10 @@ export default async function JobsPage({
       quotedLabel: formatMoney(job.quoted_amount),
       estimatedHours: job.estimated_hours,
       createdAt: job.created_at,
+      outstandingLabel: formatMoney(Math.max(0, displayTotal - paidTotal)),
+      paidLabel: formatMoney(paidTotal),
+      invoiceRef: primaryInvoice?.ref ?? null,
+      invoiceStatusLabel: primaryInvoice ? INVOICE_STATUS_LABEL[primaryInvoice.status] ?? primaryInvoice.status : null,
     };
   });
 

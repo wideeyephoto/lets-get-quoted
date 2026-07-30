@@ -8,6 +8,7 @@ import { setJobsViewAction, setMapThemeAction, setMapViewAction } from '@/app/da
 import type { JobsView, MapTheme, MapView } from '@/lib/dashboard-views';
 import ViewGear from '@/components/view-gear';
 import PinMap, { type MapPin } from '@/components/pin-map';
+import FocusView from './FocusView';
 import styles from './jobs.module.css';
 
 // Display-ready job shape, built server-side so this client view never imports
@@ -26,12 +27,19 @@ export type JobViewItem = {
   quotedLabel: string;
   estimatedHours: number | null;
   createdAt: string;
+  // Money the server already had in hand. Lets the Focus pane answer "what do
+  // they still owe me" with zero network on selection.
+  outstandingLabel: string;
+  paidLabel: string;
+  invoiceRef: string | null;
+  invoiceStatusLabel: string | null;
 };
 
 const VIEWS = [
   { id: 'list' as const, label: 'List', hint: 'The classic stacked list' },
   { id: 'board' as const, label: 'Board', hint: 'Kanban by stage' },
   { id: 'table' as const, label: 'Table', hint: 'Sort & scan' },
+  { id: 'focus' as const, label: 'Focus', hint: 'One job open, list beside it' },
 ];
 
 const STATUS_FILTERS: { value: JobStatus | 'all'; label: string }[] = [
@@ -91,7 +99,10 @@ export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme, ma
 
   return (
     <div className={pending ? styles.busy : undefined}>
-      {mapView === 'large' ? (
+      {/* Focus needs the width, and the map costs a SECOND full jobs+leads
+          fetch on every load (getMapPins re-runs listJobs). Keep the gear
+          reachable so the map can be turned back on from any view. */}
+      {mapView === 'large' && view !== 'focus' ? (
         <div className="workspace-embedded-map">
           <PinMap pins={mapPins} theme={mapTheme} legendAccessory={gear} />
         </div>
@@ -107,6 +118,7 @@ export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme, ma
           {view === 'list' && <ListView jobs={filtered} />}
           {view === 'board' && <BoardView jobs={jobs} />}
           {view === 'table' && <TableView jobs={filtered} />}
+          {view === 'focus' && <FocusView jobs={filtered} />}
 
           {view !== 'board' ? (
             <div className={styles.bar}>

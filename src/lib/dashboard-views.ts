@@ -41,10 +41,10 @@ export function serializeWeekendDays(days: WeekendDays): string {
   return kept || 'none';
 }
 
-// Which Jobs layout the owner last used (List / Board / Table).
+// Which Jobs layout the owner last used (List / Board / Table / Focus).
 export const JOBS_VIEW_COOKIE = 'lgq_jobs_view';
-export type JobsView = 'list' | 'board' | 'table';
-export const JOBS_VIEWS: JobsView[] = ['list', 'board', 'table'];
+export type JobsView = 'list' | 'board' | 'table' | 'focus';
+export const JOBS_VIEWS: JobsView[] = ['list', 'board', 'table', 'focus'];
 export function normalizeJobsView(value: unknown): JobsView {
   return JOBS_VIEWS.includes(value as JobsView) ? (value as JobsView) : 'list';
 }
