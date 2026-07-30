@@ -1,8 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { normalizeSupabaseUrl } from '@/lib/supabase-url';
+import { buildCsp, cspHeaderName, generateNonce } from '@/lib/csp';
 
 export async function middleware(request: NextRequest) {
+  // One nonce per request. It goes on the REQUEST headers so Next can read it
+  // back out and stamp it onto every script it renders, and on the RESPONSE so
+  // the browser enforces (or, for now, reports on) the same policy.
+  const nonce = generateNonce();
+  let supabaseOrigin: string | null = null;
+  try {
+    supabaseOrigin = new URL(normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL)).origin;
+  } catch {
+    // Missing or garbled env var — omit the origin rather than emit a broken policy.
+  }
+  const csp = buildCsp({ nonce, supabaseOrigin });
+  const cspHeader = cspHeaderName();
+  const applyCsp = <T extends { headers: Headers }>(res: T): T => {
+    res.headers.set(cspHeader, csp);
+    return res;
+  };
   const hostname = (request.headers.get('x-forwarded-host') || request.headers.get('host') || '').split(':')[0].toLowerCase();
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
   const reservedHosts = new Set([rootDomain, `www.${rootDomain}`, `app.${rootDomain}`]);
@@ -20,7 +37,8 @@ export async function middleware(request: NextRequest) {
     const requestHeaders = new Headers(request.headers);
     requestHeaders.delete('x-lgq-standalone-site');
     requestHeaders.set('x-lgq-standalone-site', '1');
-    return NextResponse.rewrite(publicSiteUrl, { request: { headers: requestHeaders } });
+    requestHeaders.set(cspHeader, csp);
+    return applyCsp(NextResponse.rewrite(publicSiteUrl, { request: { headers: requestHeaders } }));
   }
 
   const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
@@ -32,7 +50,8 @@ export async function middleware(request: NextRequest) {
     const requestHeaders = new Headers(request.headers);
     requestHeaders.delete('x-lgq-standalone-site');
     requestHeaders.set('x-lgq-standalone-site', '1');
-    return NextResponse.rewrite(customSiteUrl, { request: { headers: requestHeaders } });
+    requestHeaders.set(cspHeader, csp);
+    return applyCsp(NextResponse.rewrite(customSiteUrl, { request: { headers: requestHeaders } }));
   }
 
   // The site builder's bare live-preview route renders the raw public
@@ -44,8 +63,9 @@ export async function middleware(request: NextRequest) {
   if (request.nextUrl.pathname === '/dashboard/sites/preview') {
     requestHeaders.set('x-lgq-bare-preview', '1');
   }
+  requestHeaders.set(cspHeader, csp);
 
-  let response = NextResponse.next({ request: { headers: requestHeaders } });
+  let response = applyCsp(NextResponse.next({ request: { headers: requestHeaders } }));
 
   const supabase = createServerClient(
     normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL),
@@ -59,7 +79,7 @@ export async function middleware(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
-          response = NextResponse.next({ request: { headers: requestHeaders } });
+          response = applyCsp(NextResponse.next({ request: { headers: requestHeaders } }));
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
           );
@@ -86,7 +106,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  return response;
+  return applyCsp(response);
 }
 
 export const config = {
