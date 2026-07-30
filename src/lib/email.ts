@@ -129,7 +129,7 @@ export async function sendInvoiceEmail(input: SendInvoiceEmailInput): Promise<vo
       throw new Error(result.error.message);
     }
 
-    console.log(`Invoice email sent: ${input.invoice.ref} to ${input.recipientEmail}`);
+    console.log(`Invoice email sent: ${input.invoice.ref}`);
   } catch (err) {
     console.error('Invoice email error:', err);
     throw err;
@@ -174,7 +174,7 @@ export async function sendClientQuoteEmail(input: SendClientQuoteEmailInput): Pr
     console.error('Failed to send client quote email:', result.error);
     throw new Error(result.error.message);
   }
-  console.log(`Client quote email sent to ${input.recipientEmail}: ${input.jobRef}`);
+  console.log(`Client quote email sent: ${input.jobRef}`);
 }
 
 // Generic contractor-facing alert email (payout paused, chargeback opened,
@@ -214,7 +214,7 @@ export async function sendContractorAlertEmail(input: {
     console.error('Failed to send contractor alert email:', result.error);
     throw new Error(result.error.message);
   }
-  console.log(`Contractor alert email sent to ${input.recipientEmail}: ${input.subject}`);
+  console.log(`Contractor alert email sent: ${input.subject}`);
 }
 
 // Gentle nudge on a quote the client hasn't approved yet, over email — the
@@ -241,7 +241,7 @@ export async function sendQuoteFollowupEmail(input: {
     console.error('Failed to send quote follow-up email:', result.error);
     throw new Error(result.error.message);
   }
-  console.log(`Quote follow-up email sent to ${input.recipientEmail}`);
+  console.log('Quote follow-up email sent');
 }
 
 // Post-job ask for a Google review, over email — the fallback channel when the
@@ -274,7 +274,7 @@ export async function sendReviewRequestEmail(input: {
     console.error('Failed to send review request email:', result.error);
     throw new Error(result.error.message);
   }
-  console.log(`Review request email sent to ${input.recipientEmail}`);
+  console.log('Review request email sent');
 }
 
 // "Book again" nudge to a past customer, over email — the fallback channel when

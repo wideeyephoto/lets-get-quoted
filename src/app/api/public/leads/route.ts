@@ -129,17 +129,22 @@ export async function POST(request: NextRequest) {
   // Blocked contacts are silently dropped — the visitor sees success, the
   // owner's inbox stays clean, and the blocked party learns nothing.
   if (normalizedPhone || email) {
-    const conditions = [
-      ...(normalizedPhone ? [`phone.eq.${normalizedPhone}`] : []),
-      ...(email ? [`email.eq.${email}`] : []),
-    ].join(',');
-    const { data: blocked } = await admin
-      .from('lead_blocklist')
-      .select('id')
-      .eq('account_id', site.account_id)
-      .or(conditions)
-      .limit(1);
-    if (blocked && blocked.length > 0) return NextResponse.json({ ok: true });
+    // Separate equality queries instead of a string-built .or() — a crafted
+    // "email" (the regex permits commas) could otherwise inject extra PostgREST
+    // conditions and, by erroring the query, make the blocklist check fail OPEN.
+    const blockChecks: PromiseLike<boolean>[] = [];
+    if (normalizedPhone) {
+      blockChecks.push(
+        admin.from('lead_blocklist').select('id').eq('account_id', site.account_id).eq('phone', normalizedPhone).limit(1).then(({ data }) => Boolean(data && data.length)),
+      );
+    }
+    if (email) {
+      blockChecks.push(
+        admin.from('lead_blocklist').select('id').eq('account_id', site.account_id).eq('email', email).limit(1).then(({ data }) => Boolean(data && data.length)),
+      );
+    }
+    const results = await Promise.all(blockChecks);
+    if (results.some(Boolean)) return NextResponse.json({ ok: true });
   }
 
   // Lead-quality flags + score, computed server-side from the owner's filters

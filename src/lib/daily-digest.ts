@@ -129,10 +129,15 @@ export async function runDailyDigests(now: Date = new Date()): Promise<DigestRun
   const admin = createAdminClient();
   const todayKey = utcDateKey(now);
 
+  // Filter "already sent today" IN the query (not after the limit) and sort
+  // un-served accounts first, so with more than MAX_ACCOUNTS_PER_RUN opted-in
+  // owners the tail can't be starved of digests. todayKey is our own YYYY-MM-DD.
   const { data: accounts, error } = await admin
     .from('accounts')
     .select('id, last_digest_date')
     .eq('daily_digest_enabled', true)
+    .or(`last_digest_date.is.null,last_digest_date.neq.${todayKey}`)
+    .order('last_digest_date', { ascending: true, nullsFirst: true })
     .limit(MAX_ACCOUNTS_PER_RUN);
   if (error) {
     return { accounts: 0, sent: 0, skippedQuiet: 0, skippedNoEmail: 0, failed: 0, reason: 'digest not enabled/available' };

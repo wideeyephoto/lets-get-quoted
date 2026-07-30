@@ -18,8 +18,26 @@ function supabaseImageHost() {
   return '**.supabase.co';
 }
 
+// Baseline security headers applied to every response. Deliberately conservative:
+// clickjacking (X-Frame-Options + CSP frame-ancestors 'self' — the builder frames
+// its own preview same-origin, so 'self' is safe), MIME-sniff, transport, and
+// referrer. A full content CSP (script-src/style-src) is intentionally NOT set
+// here — it needs per-route nonces/allowlists (Stripe.js, Google Maps, Next inline)
+// and testing before it can go on without breaking rendering.
+const SECURITY_HEADERS = [
+  { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+  { key: 'Content-Security-Policy', value: "frame-ancestors 'self'" },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'Strict-Transport-Security', value: 'max-age=31536000' },
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=()' },
+];
+
 const nextConfig = {
   reactStrictMode: true,
+  async headers() {
+    return [{ source: '/:path*', headers: SECURITY_HEADERS }];
+  },
   // /features folded into the homepage — keep the old URL alive for inbound
   // links, the footer, and any indexed pages.
   async redirects() {

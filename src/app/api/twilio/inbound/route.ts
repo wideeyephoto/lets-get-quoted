@@ -12,8 +12,14 @@ const OPT_IN = new Set(['START', 'UNSTOP']);
 // Reply keywords that confirm an upcoming appointment (from the reminder text).
 const CONFIRM = new Set(['C', 'CONFIRM', 'CONFIRMED', 'YES']);
 
+// Escape XML metacharacters so a DB-sourced name/business/label (interpolated
+// below) can't malform the TwiML with a stray &, <, or >.
+function escapeXml(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+
 function twiml(message?: string) {
-  const body = message ? `<Message>${message}</Message>` : '';
+  const body = message ? `<Message>${escapeXml(message)}</Message>` : '';
   return new NextResponse(`<?xml version="1.0" encoding="UTF-8"?><Response>${body}</Response>`, { headers: { 'Content-Type': 'text/xml' } });
 }
 
