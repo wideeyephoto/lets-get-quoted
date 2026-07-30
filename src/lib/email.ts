@@ -217,6 +217,89 @@ export async function sendContractorAlertEmail(input: {
   console.log(`Contractor alert email sent: ${input.subject}`);
 }
 
+// ---------------------------------------------------------------------------
+// "It went out" confirmations for the contractor
+// ---------------------------------------------------------------------------
+// When something goes to a customer, the contractor gets a copy of the fact —
+// not the customer's document. They asked for it and then it left their hands;
+// a one-line receipt saying who it reached, and how, is what's actually useful.
+//
+// Delivery is described honestly, including when it DIDN'T happen: an invoice
+// with nowhere to send it says so, rather than the contractor assuming the
+// customer has it and waiting on a payment that was never requested.
+
+export type SentChannel = 'sms' | 'email' | 'none';
+
+// Pure so the wording stays consistent between quotes and invoices and can be
+// asserted in tests without sending anything.
+export function describeDelivery(channel: SentChannel, sentTo: string | null): string {
+  if (channel === 'sms' && sentTo) return `Texted to ${sentTo}.`;
+  if (channel === 'email' && sentTo) return `Emailed to ${sentTo}.`;
+  return 'Not delivered — there was no mobile or email on file for them, so nothing was sent.';
+}
+
+export async function sendQuoteSentConfirmationEmail(input: {
+  recipientEmail: string;
+  businessName: string;
+  clientName: string;
+  jobRef: string;
+  quotedAmount: number;
+  channel: SentChannel;
+  sentTo: string | null;
+  jobUrl: string;
+}): Promise<void> {
+  const delivered = input.channel !== 'none';
+  await sendContractorAlertEmail({
+    recipientEmail: input.recipientEmail,
+    businessName: input.businessName,
+    subject: delivered
+      ? `Quote sent to ${input.clientName} — ${formatMoney(input.quotedAmount)}`
+      : `Quote for ${input.clientName} couldn't be sent`,
+    heading: delivered ? `Your quote is with ${input.clientName}` : `No way to reach ${input.clientName}`,
+    bodyLines: [
+      `Job ${input.jobRef} · ${formatMoney(input.quotedAmount)}`,
+      describeDelivery(input.channel, input.sentTo),
+      delivered
+        ? 'You’ll be notified when they open it or approve it.'
+        : 'Add a mobile or an email on the job, then send it again.',
+    ],
+    ctaLabel: 'Open the job',
+    ctaUrl: input.jobUrl,
+    tone: 'info',
+  });
+}
+
+export async function sendInvoiceSentConfirmationEmail(input: {
+  recipientEmail: string;
+  businessName: string;
+  clientName: string;
+  invoiceRef: string;
+  total: number;
+  channel: SentChannel;
+  sentTo: string | null;
+  jobUrl: string;
+}): Promise<void> {
+  const delivered = input.channel !== 'none';
+  await sendContractorAlertEmail({
+    recipientEmail: input.recipientEmail,
+    businessName: input.businessName,
+    subject: delivered
+      ? `Invoice ${input.invoiceRef} sent to ${input.clientName}`
+      : `Invoice ${input.invoiceRef} couldn't be sent`,
+    heading: delivered ? `${input.clientName} has invoice ${input.invoiceRef}` : `No way to reach ${input.clientName}`,
+    bodyLines: [
+      `${input.invoiceRef} · ${formatMoney(input.total)}`,
+      describeDelivery(input.channel, input.sentTo),
+      delivered
+        ? 'They can review, sign and pay from the link in their email.'
+        : 'Add an email address on the job, then mark the invoice sent again.',
+    ],
+    ctaLabel: 'Open the job',
+    ctaUrl: input.jobUrl,
+    tone: 'info',
+  });
+}
+
 // Gentle nudge on a quote the client hasn't approved yet, over email — the
 // fallback channel when there's no consented mobile. Sent by the follow-up cron.
 export async function sendQuoteFollowupEmail(input: {

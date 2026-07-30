@@ -14,6 +14,7 @@ export const AUTOMATION_COLUMNS = {
   followups: 'quote_followups_enabled',
   reminders: 'appointment_reminders_enabled',
   'daily-digest': 'daily_digest_enabled',
+  'quote-confirmation': 'quote_confirmation_email',
 } as const;
 
 export type AutomationKey = keyof typeof AUTOMATION_COLUMNS;
@@ -32,4 +33,5 @@ export const AUTOMATION_LABELS: Record<AutomationKey, string> = {
   followups: 'Quote follow-ups',
   reminders: 'Appointment reminders',
   'daily-digest': 'Daily digest',
+  'quote-confirmation': 'Quote confirmation emails',
 };

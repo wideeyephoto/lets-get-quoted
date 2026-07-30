@@ -14,7 +14,7 @@ import { uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, createScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
 import { isPhoneOptedOut, recordSmsConsent, sendClientJobDashboardSms, sendLeadDeclineSms, sendLeadQuoteVisitOptionsSms, sendLeadQuoteVisitSms } from '@/lib/sms';
-import { sendClientQuoteEmail } from '@/lib/email';
+import { sendClientQuoteEmail, sendQuoteSentConfirmationEmail } from '@/lib/email';
 
 function optionalText(value: FormDataEntryValue | null): string | null {
   const text = (value ?? '').toString().trim();
@@ -399,6 +399,36 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
         : `The quote and sign-off link were emailed to ${clientEmail}.`,
       visibility: 'client',
     });
+  }
+
+  // Receipt to the contractor: the quote left their hands, here's where it went.
+  // Opt-out via Settings → Automations; a quote goes out on every won lead, so
+  // some contractors will want the confirmation and some will find it noise.
+  // Defensive read — a pre-migration row has no column and defaults to on.
+  try {
+    const { data: prefs } = await supabase
+      .from('accounts')
+      .select('quote_confirmation_email')
+      .eq('id', accountId)
+      .maybeSingle();
+    const wantsConfirmation = (prefs as { quote_confirmation_email?: boolean } | null)?.quote_confirmation_email !== false;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (wantsConfirmation && user?.email) {
+      const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
+      await sendQuoteSentConfirmationEmail({
+        recipientEmail: user.email,
+        businessName,
+        clientName: job.client_name,
+        jobRef: job.ref,
+        quotedAmount,
+        channel: delivery === 'sms' ? 'sms' : delivery === 'email' ? 'email' : 'none',
+        sentTo: delivery === 'sms' ? job.client_phone : delivery === 'email' ? clientEmail : null,
+        jobUrl: `${origin}/dashboard/jobs/${job.id}`,
+      });
+    }
+  } catch (err) {
+    // A confirmation must never break sending the quote itself.
+    console.error(`Quote confirmation email failed for job ${job.id}:`, err);
   }
 
   if (quickBooking.hasInput && !sendClientText) {

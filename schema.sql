@@ -171,6 +171,10 @@ alter table accounts add column if not exists booking_lead_days integer not null
 -- window / capacity setup underneath, so turning it back on restores exactly the
 -- availability the contractor had configured. Defaults true = prior behavior.
 alter table accounts add column if not exists booking_enabled boolean not null default true;
+-- Email the contractor a receipt when a quote goes out to a customer. Default on:
+-- it confirms the thing left, and who it reached. Off for contractors who send
+-- enough quotes that the confirmations become noise.
+alter table accounts add column if not exists quote_confirmation_email boolean not null default true;
 
 -- Value gate for instant booking. When ON, the /book page asks a couple of quick
 -- questions for an instant AI estimate first, and only jobs at/above the floor

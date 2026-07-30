@@ -146,6 +146,15 @@ export default async function SettingsPage({
   // builder switches it off. quoteForm.enabled is the source of truth; this is its
   // inverse, exactly as getSiteContent derives it.
   const smartIntakeOn = businessBasics.estimateRanges.enabled;
+  // Defensive read, like the other automation flags: a pre-migration row has no
+  // column, and the confirmation defaults to on.
+  const { data: quoteConfirmSettings } = await supabase
+    .from('accounts')
+    .select('quote_confirmation_email')
+    .eq('id', accountId)
+    .maybeSingle();
+  const quoteConfirmationOn =
+    (quoteConfirmSettings as { quote_confirmation_email?: boolean } | null)?.quote_confirmation_email !== false;
   // Settings history. Empty (and harmless) until the account_events migration is
   // applied — listAccountEvents swallows a missing table rather than 500-ing.
   const settingsHistory = await listAccountEvents(supabase, accountId, 8);
@@ -652,6 +661,23 @@ export default async function SettingsPage({
                 </AutomationCard>
 
                 <p className="automation-group">Your briefing</p>
+                <AutomationCard
+                  id="quote-confirmation"
+                  title="Quote confirmation emails"
+                  subtitle="Email me when a quote goes out"
+                  toggle={{ on: quoteConfirmationOn, action: toggleAutomationAction.bind(null, 'quote-confirmation') }}
+                >
+                  <p className="workspace-details-copy" style={{ marginTop: 0 }}>
+                    When you send a quote, we email the customer their quote and send you a short confirmation of where
+                    it went &mdash; texted or emailed, and to which number or address. If there was no way to reach them,
+                    the confirmation says that instead, so you&apos;re not left waiting on a quote that never arrived.
+                  </p>
+                  <p className="workspace-details-copy">
+                    Turn this off if you send enough quotes that the confirmations become noise. It doesn&apos;t change
+                    what the customer receives.
+                  </p>
+                </AutomationCard>
+
                 <AutomationCard id="daily-digest" title="Daily digest" subtitle="Your business each morning" toggle={{ on: dailyDigestEnabled, action: toggleAutomationAction.bind(null, 'daily-digest') }}>
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     When on, each morning we email you a short digest of your business — money received,

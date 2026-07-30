@@ -16,7 +16,7 @@ import {
   type InvoiceStatus,
 } from '@/lib/invoices';
 import { getJob } from '@/lib/jobs';
-import { sendInvoiceEmail } from '@/lib/email';
+import { sendInvoiceEmail, sendInvoiceSentConfirmationEmail, type SentChannel } from '@/lib/email';
 
 export async function createInvoiceAction(jobId: string, formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
@@ -104,30 +104,52 @@ export async function updateInvoiceStatusAction(jobId: string, invoiceId: string
         throw new Error('Job not found');
       }
 
-      // Get owner email
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user?.email) {
-        throw new Error('Owner email not found');
-      }
 
-      // Get origin for email link
       const h = headers();
       const proto = h.get('x-forwarded-proto') ?? 'http';
       const host = h.get('host');
       const origin = `${proto}://${host}`;
 
-      // Send invoice email to the contractor owner
-      await sendInvoiceEmail({
-        invoice,
-        items,
-        businessName: account.business_name,
-        clientName: job.client_name,
-        jobRef: job.ref,
-        recipientEmail: user.email,
-        origin,
-      });
+      // The invoice goes to the CLIENT. It is addressed to them, shows their
+      // name, and carries a public no-login link to review, sign and pay —
+      // which only works if it reaches the person doing those things. It used to
+      // be sent to the contractor instead, so the homeowner never got the
+      // invoice and the payment link never reached anyone who could use it.
+      let channel: SentChannel = 'none';
+      let sentTo: string | null = null;
+      if (job.client_email) {
+        await sendInvoiceEmail({
+          invoice,
+          items,
+          businessName: account.business_name,
+          clientName: job.client_name,
+          jobRef: job.ref,
+          recipientEmail: job.client_email,
+          origin,
+        });
+        channel = 'email';
+        sentTo = job.client_email;
+      }
+
+      // ...and the contractor gets a receipt of the fact, not a copy of the
+      // customer's document. When there was nowhere to send it, that is what the
+      // receipt says — better than letting them wait on a payment request the
+      // customer never received.
+      if (user?.email) {
+        await sendInvoiceSentConfirmationEmail({
+          recipientEmail: user.email,
+          businessName: account.business_name,
+          clientName: job.client_name,
+          invoiceRef: invoice.ref,
+          total: Number(invoice.total),
+          channel,
+          sentTo,
+          jobUrl: `${origin}/dashboard/jobs/${jobId}`,
+        });
+      }
     } catch (err) {
-      // Log error but don't fail the status update
+      // Log it but never fail the status change over an email.
       console.error('Failed to send invoice email:', err);
     }
   }
