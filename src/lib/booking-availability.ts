@@ -18,6 +18,45 @@ export const BOOKING_WINDOW_PRESETS: BookingWindow[] = [
 ];
 const WINDOW_BY_TIME = new Map(BOOKING_WINDOW_PRESETS.map((w) => [w.time, w]));
 
+// An owner can also add their own arrival time. The presets cover the common
+// shape of a day, but "we start at 7" and "evenings from 6" are real and were
+// impossible to express before.
+export const MAX_BOOKING_WINDOWS = 8;
+
+export function isWindowTime(value: string): boolean {
+  const match = /^(\d{2}):(\d{2})$/.exec(value);
+  if (!match) return false;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  return hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59;
+}
+
+export function formatWindowClock(time: string): string {
+  const [h, m] = time.split(':').map(Number);
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m).padStart(2, '0')} ${suffix}`;
+}
+
+// Preset times keep their written label; a custom time gets one derived from
+// where it falls in the day, so the public page never shows a bare "14:45".
+export function labelForWindowTime(time: string): string {
+  const preset = WINDOW_BY_TIME.get(time);
+  if (preset) return preset.label;
+  const hour = Number(time.slice(0, 2));
+  const part =
+    hour < 11 ? 'Morning'
+    : hour < 13 ? 'Midday'
+    : hour < 16 ? 'Afternoon'
+    : hour < 18 ? 'Late afternoon'
+    : 'Evening';
+  return `${part} · ${formatWindowClock(time)}`;
+}
+
+export function windowsForTimes(times: string[]): BookingWindow[] {
+  return times.map((time) => ({ time, label: labelForWindowTime(time) }));
+}
+
 export const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 // Common US IANA timezones for the settings dropdown. Kept short and labeled in
@@ -120,8 +159,11 @@ export function normalizeBookingWindowTimes(value: unknown): string[] {
       raw = value.split(',');
     }
   } else return [...DEFAULT_BOOKING_WINDOW_TIMES];
-  const picked = new Set(raw.map((t) => String(t).trim()).filter((t) => WINDOW_BY_TIME.has(t)));
-  const ordered = BOOKING_WINDOW_PRESETS.filter((w) => picked.has(w.time)).map((w) => w.time);
+  // Any valid HH:MM, not just the presets — custom windows are stored the same
+  // way. Sorted chronologically so the public page always reads down the day,
+  // whatever order they were added in.
+  const picked = new Set(raw.map((t) => String(t).trim()).filter(isWindowTime));
+  const ordered = [...picked].sort().slice(0, MAX_BOOKING_WINDOWS);
   return ordered.length ? ordered : [...DEFAULT_BOOKING_WINDOW_TIMES];
 }
 
@@ -133,13 +175,6 @@ export function normalizeMaxPerDay(value: unknown): number {
 export function normalizeLeadDays(value: unknown): number {
   const n = Math.round(Number(value));
   return Number.isFinite(n) ? Math.min(30, Math.max(0, n)) : DEFAULT_BOOKING_LEAD_DAYS;
-}
-
-// Resolve offered window times to their full {time,label} presets, in order.
-export function windowsForTimes(times: string[]): BookingWindow[] {
-  return times
-    .map((t) => WINDOW_BY_TIME.get(t))
-    .filter((w): w is BookingWindow => Boolean(w));
 }
 
 type AccountAvailabilityRow = {

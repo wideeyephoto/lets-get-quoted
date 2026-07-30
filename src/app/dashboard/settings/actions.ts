@@ -236,10 +236,14 @@ export async function updateBookingAvailabilityAction(formData: FormData) {
   const instantBookRadiusMiles = normalizeInstantBookRadiusMiles(formData.get('instantBookRadius'));
   const instantBookGeoMode = normalizeGeoMode(formData.get('instantBookGeoMode'));
   const instantBookDriveTime = formData.get('instantBookDriveTime') === 'on';
+  // The master switch. It was readable but never writable from this action, so
+  // the only way to pause online booking was to clear every weekday.
+  const bookingEnabled = formData.get('bookingEnabled') !== 'off';
 
   const { error } = await supabase
     .from('accounts')
     .update({
+      booking_enabled: bookingEnabled,
       timezone,
       booking_weekdays: weekdays.join(','),
       booking_windows: windowTimes,
@@ -257,6 +261,7 @@ export async function updateBookingAvailabilityAction(formData: FormData) {
 
   revalidatePath('/dashboard/settings');
   revalidatePath('/dashboard/schedule');
+  revalidatePath('/dashboard/schedule/booking');
 }
 
 // Extra Stop config. Normalizes every field through the shared builder (feeding

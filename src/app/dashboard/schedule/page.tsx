@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
-import BookingAvailabilitySection from '../settings/BookingAvailabilitySection';
 import { getMapPins } from '@/lib/map-pins';
 import { CALENDAR_WEEKEND_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeMapTheme, normalizeMapView, normalizeWeekendDays } from '@/lib/dashboard-views';
 import { expandScheduledJobs, formatJobTime, formatMoney, listJobs, addDaysToDateKey, type Job } from '@/lib/jobs';
@@ -18,22 +17,12 @@ import { updateCrewAction } from '../crew/actions';
 import { listActiveScheduleRequests } from '@/lib/scheduling';
 import { getAvailableBookingDays } from '@/lib/booking';
 import ScheduleCalendar from './schedule-calendar';
-import BookingLinkCard from './BookingLinkCard';
 import ScheduleMap from './ScheduleMap';
-import WorkspaceDisclosure from '@/components/workspace-disclosure';
-import DisclosureHashOpen from '@/components/disclosure-hash-open';
 import ClientScheduleOptionsCalendar from './client-schedule-options-calendar';
 import JobDragHandle from './JobDragHandle';
 import ScheduleDragProvider from './ScheduleDragProvider';
 import AutomationLink from '@/components/automation-link';
-import SaveButton from '@/components/save-button';
 import { listUpcomingBlocks } from '@/lib/availability-blocks';
-import { addAvailabilityBlockAction, removeAvailabilityBlockAction } from './actions';
-
-function formatBlockRange(start: string, end: string): string {
-  const fmt = (key: string) => new Date(`${key}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  return start === end ? fmt(start) : `${fmt(start)} – ${fmt(end)}`;
-}
 
 const STATUS_LABEL: Record<Job['status'], string> = {
   new_lead: 'New request',
@@ -364,11 +353,6 @@ export default async function SchedulePage({
     : bookingPaused || openWindowCount === 0
       ? 'warn'
       : 'on';
-  const bookingSummary = !bookingUrl
-    ? 'Publish your website to let customers book themselves.'
-    : bookingPaused
-      ? 'Paused — no days are open for booking. Pick the days you take work below.'
-      : `Share your link and customers pick an open window themselves. You're offering ${bookingWeekdayCount} day${bookingWeekdayCount === 1 ? '' : 's'} a week.`;
 
   return (
     <main className="wide-shell workspace-shell">
@@ -621,80 +605,25 @@ export default async function SchedulePage({
           default and mutually exclusive, so the page ends with a short list of
           settings rather than three screens of forms you scroll past to get
           back to the calendar. */}
-      <DisclosureHashOpen />
-      <div className="schedule-setup">
-        <div className="schedule-setup-head">
-          <p className="eyebrow">Setup</p>
-          <h2>Booking &amp; availability</h2>
-          <p>Open a section to change it. These stay as you set them.</p>
-        </div>
-
-        <WorkspaceDisclosure
-          group="schedule-setup"
-          eyebrow="Time off"
-          title="Block off busy days"
-          status={blockCount > 0 ? `${blockCount} upcoming` : 'None'}
-          statusTone={blockCount > 0 ? 'on' : 'neutral'}
-          summary="Vacation, personal time, or fully booked. Blocked days drop off your public booking page and show as Off on the calendar."
-        >
-        <form action={addAvailabilityBlockAction} className="form-grid compact-form">
-          <div className="field">
-            <label htmlFor="blockStart">From</label>
-            <input id="blockStart" name="startDate" type="date" required />
-          </div>
-          <div className="field">
-            <label htmlFor="blockEnd">To</label>
-            <input id="blockEnd" name="endDate" type="date" />
-            <small className="field-hint">Leave blank for a single day.</small>
-          </div>
-          <div className="field full">
-            <label htmlFor="blockReason">Reason (optional, shown only to you)</label>
-            <input id="blockReason" name="reason" placeholder="Vacation, personal, fully booked…" />
-          </div>
-          <div className="form-actions">
-            <SaveButton>Block off these days</SaveButton>
-          </div>
-        </form>
-        {availabilityBlocks.length > 0 ? (
-          <div className="sign-in-methods-list" style={{ marginTop: '1rem' }}>
-            {availabilityBlocks.map((block) => (
-              <div className="sign-in-method-row" key={block.id}>
-                <div className="method-info">
-                  <div>
-                    <span className="method-name">{formatBlockRange(block.start_date, block.end_date)}</span>
-                    <span className="method-detail">{block.reason || 'Blocked off'}</span>
-                  </div>
-                </div>
-                <form action={removeAvailabilityBlockAction.bind(null, block.id)}>
-                  <button type="submit" className="btn ghost">Remove</button>
-                </form>
-              </div>
-            ))}
-          </div>
-        ) : null}
-        </WorkspaceDisclosure>
-
-        {/* The link and the availability rules are one feature: the page you
-            share, and what that page is allowed to offer. Splitting them meant
-            reading the settings without being able to see what they produced. */}
-        <WorkspaceDisclosure
-          id="booking-availability"
-          group="schedule-setup"
-          eyebrow="Online booking"
-          title="Your self-serve booking page"
-          status={bookingStatus}
-          statusTone={bookingTone}
-          summary={bookingSummary}
-        >
-          <BookingLinkCard
-            bookingUrl={bookingUrl}
-            sitePublished={site?.published ?? false}
-            openWindowCount={openWindowCount}
-            openDayCount={bookingDays.length}
-          />
-          <BookingAvailabilitySection bookingSettings={bookingSettings} />
-        </WorkspaceDisclosure>
-      </div>
+      {/* Booking, availability and time off now live on their own screen —
+          they had grown into three forms and a preview, which is a page, not a
+          footer. This is the way in, and it reads as a status line so you can
+          tell at a glance whether the public page is working. */}
+      <Link className="schedule-setup-link" href="/dashboard/schedule/booking" id="booking-availability">
+        <span className="schedule-setup-link-copy">
+          <span className="eyebrow">Setup</span>
+          <strong>Booking &amp; availability</strong>
+          <span>
+            {bookingStatus === 'Not live'
+              ? 'Publish your website to let customers book themselves.'
+              : bookingPaused
+                ? 'Online booking is paused — no days are open.'
+                : `${bookingWeekdayCount} day${bookingWeekdayCount === 1 ? '' : 's'} a week · ${openWindowCount} open window${openWindowCount === 1 ? '' : 's'} · ${blockCount} day${blockCount === 1 ? '' : 's'} blocked off`}
+          </span>
+        </span>
+        <span className={`schedule-setup-pill tone-${bookingTone}`}>{bookingStatus}</span>
+        <span className="schedule-setup-go" aria-hidden="true">→</span>
+      </Link>
 
       </ScheduleDragProvider>
     </main>
