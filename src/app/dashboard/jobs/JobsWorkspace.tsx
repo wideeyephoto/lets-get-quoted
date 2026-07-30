@@ -108,10 +108,13 @@ export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme, ma
 
   return (
     <div className={pending ? styles.busy : undefined}>
-      {/* Focus needs the width, and the map costs a SECOND full jobs+leads
-          fetch on every load (getMapPins re-runs listJobs). Keep the gear
-          reachable so the map can be turned back on from any view. */}
-      {mapView === 'large' && view !== 'focus' ? (
+      {/* The map shows in every view, Focus included. It was suppressed here on
+          the grounds that getMapPins re-runs listJobs — but that cost is paid
+          whenever the map is on in ANY view, so Focus was the wrong place to
+          special-case it, and the gear went on showing Map as ticked while
+          nothing rendered. A control that lies about its own state is worse
+          than the query. */}
+      {mapView === 'large' ? (
         <div className="workspace-embedded-map">
           <PinMap pins={mapPins} theme={mapTheme} legendAccessory={gear} />
         </div>
