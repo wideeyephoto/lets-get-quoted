@@ -21,6 +21,32 @@ function describePhoneLinkError(error: { message?: string; code?: string }): str
   return message || 'Unable to add this phone number.';
 }
 
+// Auth errors sometimes arrive with an empty body, and supabase-js stringifies
+// that into the literal text "{}" — which then rendered on the settings page as
+// `{}` and told the contractor nothing at all. Anything opaque becomes a sentence
+// about what to do next; the raw error still goes to the console for diagnosis.
+function describeEmailLinkError(error: { message?: string; code?: string; status?: number }): string {
+  const message = (error.message ?? '').trim();
+  const code = error.code ?? '';
+  const opaque = !message || message === '{}' || message === '[object Object]';
+
+  if (code === 'email_exists' || /already (been )?registered|already in use|already exists/i.test(message)) {
+    return 'That email is already used by another account. Remove it there first, or sign in with it directly.';
+  }
+  if (error.status === 429 || code === 'over_email_send_rate_limit' || /rate limit/i.test(message)) {
+    return 'Too many confirmation emails have gone out recently. Wait a few minutes and try again.';
+  }
+  if (error.status === 422 || /invalid|malformed/i.test(message)) {
+    return 'That email address looks wrong — check it and try again.';
+  }
+  if (opaque) {
+    // Almost always the project's outbound email, not anything the contractor
+    // did, so don't imply they mistyped something.
+    return 'We couldn’t send the confirmation email — that’s on our side, not yours. Try again in a few minutes, and get in touch if it keeps happening.';
+  }
+  return message;
+}
+
 type Props = {
   email: string | null;
   phone: string | null;
@@ -132,7 +158,10 @@ export default function SignInMethods({ email, phone, providers }: Props) {
     const { error } = await supabase.auth.updateUser({ email: emailInput });
     setBusyProvider(null);
     if (error) {
-      setMessage({ type: 'error', text: error.message });
+      // Keep the real thing somewhere findable — the friendly text deliberately
+      // drops the status code and provider detail.
+      console.error('Linking an email failed:', { status: error.status, code: error.code, message: error.message });
+      setMessage({ type: 'error', text: describeEmailLinkError(error) });
       return;
     }
     setMessage({ type: 'success', text: `Check ${emailInput} for a confirmation link to finish adding email sign-in.` });
