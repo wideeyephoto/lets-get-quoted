@@ -1240,6 +1240,17 @@ li + li { margin-top: 0.45rem; }
 }
 
 .section-heading { max-width: 46rem; }
+/* Page titles inside a section heading are <h1> for semantics — every page needs
+   exactly one, and these pages had none, so screen-reader users navigating by
+   heading found no page name and the hierarchy started at h2. Visually they must
+   stay section-sized: the global h1 is clamp(2.6rem, 5vw, 5rem) with an 11ch
+   max-width, which would dwarf and wrap them. */
+.section-heading h1 {
+  font-size: clamp(1.8rem, 3vw, 2.8rem);
+  line-height: 1.02;
+  margin: 0.25rem 0 0;
+  max-width: none;
+}
 
 .feature-grid {
   display: grid;
@@ -7987,3 +7998,16 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
     align-items: center;
   }
 }
+
+/* The "mobile or email" requirement sits directly under that pair of fields, at
+   the point the decision is made. The server rejects a booking without one, so
+   this is a rule, not a suggestion — two of the four booking forms enforced it
+   while saying nothing, and the other two mentioned it below the address field
+   where it read as an aside. */
+.booking-contact-hint {
+  grid-column: 1 / -1;
+  margin: -0.35rem 0 0.15rem;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.62);
+}
+.booking-contact-hint strong { color: rgba(255, 255, 255, 0.86); }

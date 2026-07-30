@@ -54,7 +54,7 @@ export default async function ExtraStopsPage() {
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading">
           <p className="eyebrow">Extra Stop</p>
-          <h2>Same-day route requests</h2>
+          <h1>Same-day route requests</h1>
         </div>
         {settings.locked ? (
           <p className="payment-banner warning" style={{ marginTop: '.5rem' }}>

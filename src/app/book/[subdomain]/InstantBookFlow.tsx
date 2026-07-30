@@ -203,7 +203,7 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
             <label htmlFor="cb-address">Address</label>
             <input id="cb-address" name="address" defaultValue={address} placeholder="1418 Maplewood Ave, Royal Oak, MI" />
           </div>
-          <p className="job-meta" style={{ margin: 0 }}>Add a mobile or email so {businessName} can reach you.</p>
+          <p className="field-hint booking-contact-hint">Add a mobile <strong>or</strong> an email &mdash; {businessName} needs one to get back to you.</p>
           <div className="field full">
             <SaveButton className="btn primary" pendingLabel="Sending…" savedLabel="Sent ✓">Request a callback</SaveButton>
           </div>
@@ -238,6 +238,7 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
             <label htmlFor="nw-email">Email</label>
             <input id="nw-email" name="email" type="email" placeholder="jane@email.com" />
           </div>
+          <p className="field-hint booking-contact-hint">Add a mobile <strong>or</strong> an email &mdash; {businessName} needs one to get back to you.</p>
           <div className="field full">
             <label htmlFor="nw-address">Address</label>
             <input id="nw-address" name="address" defaultValue={address} placeholder="1418 Maplewood Ave, Royal Oak, MI" />
@@ -300,11 +301,11 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
           <label htmlFor="bk-email">Email</label>
           <input id="bk-email" name="email" type="email" placeholder="jane@email.com" />
         </div>
+        <p className="field-hint booking-contact-hint">Add a mobile <strong>or</strong> an email &mdash; {businessName} needs one to get back to you.</p>
         <div className="field full">
           <label htmlFor="bk-address">Address</label>
           <input id="bk-address" name="address" defaultValue={address} placeholder="1418 Maplewood Ave, Royal Oak, MI" />
         </div>
-        <p className="job-meta" style={{ margin: 0 }}>Add a mobile or email so {businessName} can confirm.</p>
         <div className="field full">
           <SaveButton className="btn primary" pendingLabel="Booking…" savedLabel="Booked ✓">Request this time</SaveButton>
         </div>

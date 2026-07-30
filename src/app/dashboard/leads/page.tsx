@@ -82,7 +82,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
   return (
     <main className="wide-shell workspace-shell">
       <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading"><p className="eyebrow">Pipeline</p><h2>Current leads</h2></div>
+        <div className="section-heading workspace-section-heading"><p className="eyebrow">Pipeline</p><h1>Current leads</h1></div>
         {leads.length === 0 ? <p className="empty-state">No leads yet. Website requests will appear here — or <Link href="/dashboard/leads?add=1#add-lead">add a lead manually</Link>.</p> : (
           <LeadsWorkspace leads={viewLeads} initialView={initialView} mapView={mapView} mapTheme={mapTheme} mapPins={mapPins} />
         )}

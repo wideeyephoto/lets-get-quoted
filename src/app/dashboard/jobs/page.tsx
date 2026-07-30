@@ -181,7 +181,7 @@ export default async function JobsPage({
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading">
           <p className="eyebrow">Pipeline</p>
-          <h2>Current jobs</h2>
+          <h1>Current jobs</h1>
         </div>
         <div style={{ marginTop: '0.5rem' }}>
           <AutomationLink id="followups" label="Quote follow-ups" on={followupsOn} />

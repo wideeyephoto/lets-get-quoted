@@ -51,7 +51,7 @@ export default async function CrewPage({ searchParams }: { searchParams: { statu
         <div className="section-heading workspace-section-heading">
           <div>
             <p className="eyebrow">Roster</p>
-            <h2>Crew members</h2>
+            <h1>Crew members</h1>
           </div>
           <Link href="/dashboard/payroll" className="btn secondary">Payroll &amp; hours →</Link>
         </div>

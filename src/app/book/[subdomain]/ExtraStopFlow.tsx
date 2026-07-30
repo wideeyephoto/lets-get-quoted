@@ -242,6 +242,7 @@ export default function ExtraStopFlow({
               <label htmlFor="es-email">Email</label>
               <input id="es-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="jane@email.com" />
             </div>
+            <p className="field-hint booking-contact-hint">Add a mobile <strong>or</strong> an email &mdash; {businessName} needs one to get back to you.</p>
             <div className="field full">
               <label htmlFor="es-address">Address</label>
               <input id="es-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="1418 Maplewood Ave, Royal Oak, MI" />

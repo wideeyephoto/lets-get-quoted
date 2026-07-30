@@ -235,6 +235,7 @@ export default async function DashboardPage() {
 
   return (
     <main className="wide-shell workspace-shell">
+      <h1 className="sr-only">Dashboard</h1>
       {connectDisabledAt ? (
         <section
           className="panel workspace-section-card"
