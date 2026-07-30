@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import AddressAutocomplete from '@/components/address-autocomplete';
-import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadSource, getAverageRequestResponseMs, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, LEADS_VIEW_COOKIE, listLeads, normalizeLeadsView, type Lead } from '@/lib/leads';
+import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadSource, getAverageRequestResponseMs, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, LEADS_VIEW_COOKIE, listLeads, normalizeLeadsView } from '@/lib/leads';
+import { estimateRangeLabel, leadScoreLabel, leadStageLabel } from '@/lib/lead-detail-labels';
 import { archiveLeadAction, createLeadAction, unsnoozeLeadAction } from './actions';
 import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
 import SaveButton from '@/components/save-button';
@@ -11,14 +12,6 @@ import { MAP_THEME_COOKIE, mapViewCookie, normalizeMapTheme, normalizeMapView } 
 import LeadsWorkspace, { type LeadViewItem } from './LeadsWorkspace';
 import styles from './leads.module.css';
 
-function responseLabel(lead: Lead) {
-  if (lead.status === 'new' && lead.source === 'website_form') return 'Needs response';
-  if (lead.status === 'new') return 'New request';
-  if (lead.status === 'contacted') return 'Contacted';
-  if (lead.status === 'quoted') return 'Quote sent';
-  if (lead.status === 'won') return 'Won';
-  return 'Lost';
-}
 
 export default async function LeadsPage({ searchParams }: { searchParams: { add?: string } }) {
   const { supabase, accountId } = await requireOwnerContext();
@@ -55,7 +48,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
       id: lead.id,
       name: lead.name || 'Unnamed request',
       status: lead.status,
-      statusLabel: responseLabel(lead),
+      statusLabel: leadStageLabel(lead.status, lead.source),
       sourceLabel: formatLeadSource(lead.source),
       phone: lead.phone,
       email: lead.email,
@@ -67,15 +60,17 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
       convertedJob: lead.converted_job,
       score: triage.score,
       hasTriage: Boolean(lead.triage),
-      scoreLabel: triage.score === 'hot' ? '🔥 Hot' : triage.score === 'low' ? 'Low' : 'Warm',
+      scoreLabel: leadScoreLabel(triage.score),
       flags: triage.flags.filter((flag) => flag !== 'phone_verified').map((key) => ({ key, label: LEAD_FLAG_LABELS[key] || key })),
       textOnly: triage.contactPreference === 'text_only',
       estimate,
-      estimateLabel: estimate ? `$${estimate.min.toLocaleString('en-US')}–$${estimate.max.toLocaleString('en-US')}` : null,
+      estimateLabel: estimateRangeLabel(estimate),
       timeline: triage.timeline ?? null,
       location: triage.location ?? null,
       contactLog: triage.contactLog ?? [],
       isUrgent: lead.status === 'new' && lead.source === 'website_form',
+      projectType: lead.project_type,
+      photoCount: (lead.photo_paths || []).length,
     };
   });
 

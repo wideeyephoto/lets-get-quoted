@@ -5,14 +5,15 @@ import ServiceIcon from '@/lib/templates/ServiceIcon';
 import { getTradeGlyph } from '@/lib/site-content';
 import styles from './focus.module.css';
 
-// Every job gets a cover. If it has photos, the first one is it. If it doesn't,
-// we draw one rather than showing an empty grey box or — worse — a stock photo
-// of somebody else's house, which would read as a picture of THIS job.
+// Every job and every lead gets a cover. If it has photos, the first one is it.
+// If it doesn't, we draw one rather than showing an empty grey box or — worse —
+// a stock photo of somebody else's house, which would read as a picture of THIS
+// job.
 //
-// The drawn cover is derived from the job itself: the glyph comes from the same
-// trade-matching the brand mark uses (a "sewer line" job gets a droplet, a
-// "remodel" gets a hammer), and the colour is hashed off the job id so a given
-// job always looks the same and two jobs side by side don't.
+// The drawn cover is derived from the record itself: the glyph comes from the
+// same trade-matching the brand mark uses (a "sewer line" job gets a droplet, a
+// "remodel" gets a hammer), and the colour is hashed off the record id so a
+// given record always looks like itself and two side by side never look alike.
 
 function hueFor(id: string): number {
   let hash = 0;
@@ -20,19 +21,20 @@ function hueFor(id: string): number {
   return hash;
 }
 
-export default function JobCover({
-  jobId,
-  scope,
+export default function RecordCover({
+  recordId,
+  subject,
   photoUrl,
   photoCount,
   photoTotal,
 }: {
-  jobId: string;
-  /** What the job is, used to pick the trade glyph. */
-  scope: string | null;
+  /** Job or lead id — hashed for the drawn cover's hue. */
+  recordId: string;
+  /** What the work is (a job's scope, a lead's project type), used to pick the glyph. */
+  subject: string | null;
   /** Signed URL of the first photo, once the detail request has landed. */
   photoUrl?: string | null;
-  /** Photos on the job, known from the list payload before any fetch. */
+  /** Photos on the record, known from the list payload before any fetch. */
   photoCount: number;
   /** Total once known, for the "+3" badge. */
   photoTotal?: number;
@@ -40,11 +42,11 @@ export default function JobCover({
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  const hue = hueFor(jobId);
-  const glyph = getTradeGlyph(scope || '');
+  const hue = hueFor(recordId);
+  const glyph = getTradeGlyph(subject || '');
   const showPhoto = Boolean(photoUrl) && !failed;
-  // A job we know has photos, whose URL hasn't arrived yet: hold the drawn cover
-  // and let the photo fade over it, rather than popping a grey box first.
+  // A record we know has photos, whose URL hasn't arrived yet: hold the drawn
+  // cover and let the photo fade over it, rather than popping a grey box first.
   const awaitingPhoto = photoCount > 0 && !photoUrl && !failed;
   const extra = (photoTotal ?? photoCount) - 1;
 

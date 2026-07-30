@@ -4,9 +4,10 @@ import { notFound } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
 import PhotoGallery from '@/components/photo-gallery';
 import LeadRadiusMap from '@/components/lead-radius-map';
-import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
+import { createLeadPhotoLinks } from '@/lib/lead-photo-storage';
 import { expireStaleLeads, formatElapsedTime, formatLeadSource, getLead, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, LEAD_LAYOUT_COOKIE, listLeads, type Lead, type LeadQuoteVisit } from '@/lib/leads';
 import { expandScheduledJobs, formatJobSchedule, formatJobTime, listJobs, type Job, type QuoteItem, type ScheduledJobOccurrence } from '@/lib/jobs';
+import { LEAD_STATUS_LABEL } from '@/lib/lead-detail-labels';
 import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
 import { clearLeadQuoteVisitAction, convertLeadAction, reopenLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, setLeadLayoutAction, undoConvertLeadAction, updateLeadDetailsAction, updateLeadStatusAction } from '../actions';
 import DepositField from './DepositField';
@@ -18,16 +19,6 @@ import QuoteStartDateCalendar from './QuoteStartDateCalendar';
 import SaveButton, { ScrollTopOnSaveProvider } from '@/components/save-button';
 import QuickFillButtons from '@/components/quick-fill-buttons';
 import styles from '../leads.module.css';
-
-// Canonical lead-status labels, matching the board vocabulary (e.g. 'quoted'
-// reads "Quote sent") instead of leaking the raw enum through CSS capitalize.
-const LEAD_STATUS_LABEL: Record<string, string> = {
-  new: 'New request',
-  contacted: 'Contacted',
-  quoted: 'Quote sent',
-  won: 'Won',
-  lost: 'Lost',
-};
 
 function extractCity(address: string | null): string {
   if (!address) return 'No address on file';
@@ -123,8 +114,10 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const stripeConnected = Boolean(account?.stripe_connect_id && account?.connect_onboarded);
   const quoteSeedItems: QuoteItem[] = [{ id: 'seed-base', label: lead.project_type || '', amount: 0, kind: 'base', selected: true, recommended: false }];
 
-  const photoUrls = await createLeadPhotoUrls(accountId, lead.photo_paths || []);
-  const photos = (lead.photo_paths || []).map((path, index) => ({ path, url: photoUrls[index] })).filter((photo) => photo.url);
+  // Paired path+url, never zipped by index: a photo belonging to another account
+  // or one the storage API declines to sign shortens the URL list, which would
+  // put every later photo under the wrong path.
+  const photos = await createLeadPhotoLinks(accountId, lead.photo_paths || []);
   const defaultPhoto = photos[0];
   const updateLeadDetails = updateLeadDetailsAction.bind(null, lead.id);
   const convertLead = convertLeadAction.bind(null, lead.id);

@@ -7,9 +7,11 @@ import type { LeadStatus, LeadScore, LeadsView } from '@/lib/leads';
 import { archiveLeadAction, declineLeadAction, snoozeLeadAction, updateLeadStatusAction, setLeadsViewAction } from './actions';
 import { setMapThemeAction, setMapViewAction } from '@/app/dashboard/view-actions';
 import type { MapTheme, MapView } from '@/lib/dashboard-views';
+import { leadScoreLabel } from '@/lib/lead-detail-labels';
 import ViewGear from '@/components/view-gear';
 import PinMap, { type MapPin } from '@/components/pin-map';
 import { pinRecordId, revealRow } from '@/lib/reveal-row';
+import LeadFocusView from './LeadFocusView';
 import styles from './leads.module.css';
 
 // Display-ready lead shape, built server-side in page.tsx so this client
@@ -39,6 +41,10 @@ export type LeadViewItem = {
   location: string | null;
   contactLog: { at: string; label: string; note?: string }[];
   isUrgent: boolean;
+  // Enough to draw a lead's cover before any detail request: what they asked
+  // for (picks the trade glyph) and whether a real photo is on its way.
+  projectType: string | null;
+  photoCount: number;
 };
 
 const COLUMNS: { status: LeadStatus; label: string }[] = [
@@ -56,10 +62,11 @@ const VIEWS: { id: LeadsView; label: string; hint: string }[] = [
   { id: 'inbox', label: 'Priority inbox', hint: 'Hottest first' },
   { id: 'table', label: 'Table', hint: 'Sort & scan' },
   { id: 'split', label: 'Split view', hint: 'List + detail' },
+  { id: 'focus', label: 'Focus', hint: 'One lead open, list beside it' },
 ];
 
 function scoreText(item: LeadViewItem) {
-  return item.score === 'hot' ? '🔥 Hot' : item.score === 'low' ? 'Low' : 'Warm';
+  return leadScoreLabel(item.score);
 }
 
 // One-tap decline reasons — keys map to LEAD_DECLINE_REASONS server-side. The
@@ -99,10 +106,15 @@ const VIEW_OPTIONS = VIEWS.map((v) => ({ id: v.id, label: v.label, hint: v.hint 
 
 export default function LeadsWorkspace({ leads, initialView, mapView, mapTheme, mapPins }: { leads: LeadViewItem[]; initialView: LeadsView; mapView: MapView; mapTheme: MapTheme; mapPins: MapPin[] }) {
   const [view, setView] = useState<LeadsView>(initialView);
-  // A pin click asks the split view to open that lead. The nonce makes clicking
-  // the same pin twice count twice, so re-clicking the lead you're already on
-  // still brings its details back into view.
+  // A pin click asks the split or focus view to open that lead. The nonce makes
+  // clicking the same pin twice count twice, so re-clicking the lead you're
+  // already on still brings its details back into view.
   const [pinRequest, setPinRequest] = useState<{ id: string; nonce: number } | null>(null);
+  // Which lead the Focus pane has open, so the map can centre on it.
+  const [focusLeadId, setFocusLeadId] = useState<string | null>(null);
+  // Stable identity: LeadFocusView calls this from an effect, so a new function
+  // every render would re-fire it on every render.
+  const onFocusSelect = useCallback((id: string | null) => setFocusLeadId(id), []);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -152,13 +164,15 @@ export default function LeadsWorkspace({ leads, initialView, mapView, mapTheme, 
             pins={mapPins}
             theme={mapTheme}
             legendAccessory={gear}
+            focusPinId={view === 'focus' && focusLeadId ? `lead-${focusLeadId}` : null}
             // A pin is the same lead as the row below it; clicking one should
             // take you to the other rather than making you hunt for it.
             onPinClick={(pin) => {
               const id = pinRecordId(pin.id, 'lead');
               if (!id) return; // job pins live on the jobs page
-              // Split view shows one lead at a time, so "go to it" means open
-              // it; the other layouts are lists, so it means scroll to its row.
+              // Split and Focus show one lead at a time, so "go to it" means
+              // open it; the other layouts are lists, so it means scroll to its
+              // row.
               setPinRequest((prev) => ({ id, nonce: (prev?.nonce ?? 0) + 1 }));
               revealRow(`lead-row-${id}`);
             }}
@@ -172,6 +186,7 @@ export default function LeadsWorkspace({ leads, initialView, mapView, mapTheme, 
       {view === 'inbox' && <InboxView leads={leads} run={run} />}
       {view === 'table' && <TableView leads={leads} />}
       {view === 'split' && <SplitView leads={leads} run={run} openRequest={pinRequest} />}
+      {view === 'focus' && <LeadFocusView leads={leads} run={run} onSelect={onFocusSelect} openRequest={pinRequest} />}
 
       <ScoreLegend />
     </div>

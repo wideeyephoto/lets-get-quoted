@@ -460,6 +460,93 @@
 .rowMoney { display: grid; gap: 0.05rem; text-align: right; font-size: 0.85rem; font-weight: 700; }
 .rowMoney small { font-size: 0.66rem; font-weight: 600; color: rgba(147, 164, 184, 0.85); }
 
+/* --- leads pipeline ---
+   Same pane, same list, same tabs. What differs is what a lead is: no money
+   banked yet, a heat score instead of a stage, and a clock that is counting
+   against you. Everything below is additive — the shared rules above still do
+   the work. */
+
+/* Chips under the name: score, stage, text-only, AI flags. */
+.chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.55rem; }
+
+/* Second action row — status changes and set-aside, kept visually below
+   call/text/quote so the thing you came to do is never the fifth button. */
+.quietActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  padding-top: 0.7rem;
+  border-top: 1px dashed rgba(148, 176, 214, 0.18);
+}
+
+.quietBtn {
+  padding: 0.34rem 0.65rem;
+  border: 1px solid rgba(148, 176, 214, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(200, 212, 226, 0.9);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
+}
+
+.quietBtn:hover { background: rgba(255, 255, 255, 0.07); color: #f0f4f9; }
+.quietBtn:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.7); outline-offset: 1px; }
+.quietBtn:disabled { opacity: 0.5; cursor: default; }
+
+/* A website request nobody has answered — the age is the story, so it's the
+   thing that changes colour. */
+.waiting { color: #ffd166; }
+
+/* Rows carry a heat dot in front of the name, so the list scans by temperature
+   before you read a word of it. */
+.rowLead { grid-template-columns: max-content minmax(6.5rem, 1fr) max-content; }
+.listColsLead { grid-template-columns: max-content minmax(6.5rem, 1fr) max-content; }
+
+.rowDot { align-self: center; }
+
+/* Est. value over age, right-aligned and tabular so a column of amounts lines
+   up on the decimal rather than wandering. */
+.rowValue {
+  display: grid;
+  gap: 0.05rem;
+  text-align: right;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #ffd591;
+  font-variant-numeric: tabular-nums;
+}
+.rowValue small { font-size: 0.66rem; font-weight: 600; color: rgba(147, 164, 184, 0.85); }
+
+/* The homeowner's own words. Quoted, because paraphrasing a customer in a CRM
+   is how details get lost. */
+.quote {
+  margin: 0;
+  padding: 0.15rem 0 0.15rem 0.75rem;
+  border-left: 2px solid rgba(255, 122, 41, 0.45);
+  font-size: 0.87rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* "3rd request from this address" — worth knowing before you pick up the phone. */
+.repeat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(72, 199, 142, 0.45);
+  background: rgba(72, 199, 142, 0.12);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #7fe0b2;
+}
+
 /* --- skeleton --- */
 
 .skeleton { display: grid; gap: 0.6rem; }

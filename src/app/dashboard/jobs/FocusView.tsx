@@ -4,8 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { JobDetailDto } from '@/lib/job-detail';
 import type { JobViewItem } from './JobsWorkspace';
-import JobCover from './JobCover';
-import styles from './focus.module.css';
+import RecordCover from '../RecordCover';
+import styles from '../focus.module.css';
 
 // Master-detail view of the pipeline: one job open on the left, the whole list
 // on the right, the way a contractor actually works a pipeline — read the top
@@ -278,9 +278,9 @@ export default function FocusView({
           <>
             <header className={styles.hero}>
               <div className={styles.heroLayout}>
-              <JobCover
-                jobId={selected.id}
-                scope={selected.scope}
+              <RecordCover
+                recordId={selected.id}
+                subject={selected.scope}
                 photoUrl={fresh?.photos[0]?.url ?? null}
                 photoCount={selected.photoCount}
                 photoTotal={fresh?.photoCount}
