@@ -7,6 +7,7 @@ import { updateSite } from '@/lib/sites';
 import { mergeSiteContent } from '@/lib/site-content';
 import { sendTestDigest } from '@/lib/daily-digest';
 import { normalizeEstimatePosture } from '@/lib/estimate-posture';
+import { AUTOMATION_COLUMNS, isAutomationKey, type AutomationKey } from '@/lib/automations';
 import {
   normalizeTimezone,
   normalizeBookingWeekdays,
@@ -83,6 +84,21 @@ export async function updateScheduleDayHoursAction(formData: FormData) {
 // One-click "turn on the essentials": the safe, high-value automations that work
 // with no configuration — review asks, quote follow-ups, appointment reminders,
 // and the daily digest. Each still has its own card to tune or turn back off.
+// Flips one automation on or off straight from the Automations list. Touches only
+// that automation's own column, so it can never clobber the rest of the card's
+// settings the way re-submitting a partial form would.
+export async function toggleAutomationAction(key: AutomationKey, next: boolean) {
+  const { supabase, accountId } = await requireOwnerContext();
+  if (!isAutomationKey(key)) throw new Error('Unknown automation.');
+  const { error } = await supabase
+    .from('accounts')
+    .update({ [AUTOMATION_COLUMNS[key]]: next })
+    .eq('id', accountId);
+  if (error) throw new Error(error.message);
+  revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard');
+}
+
 export async function enableRecommendedAutomationsAction() {
   const { supabase, accountId } = await requireOwnerContext();
   const { error } = await supabase

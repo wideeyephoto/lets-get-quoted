@@ -8,8 +8,10 @@ import SettingsTabs from './SettingsTabs';
 import FinanceReports from './FinanceReports';
 import { getAvailableTaxYears, buildProfitAndLoss, buildScheduleCWorksheet, build1099PrepList } from '@/lib/tax-reports';
 import SaveButton from '@/components/save-button';
+import AutomationSwitch from '@/components/automation-switch';
+import type { AutomationKey } from '@/lib/automations';
 import DeleteAccountButton from './DeleteAccountButton';
-import { updateScheduleDayHoursAction, updateReviewSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBookingAvailabilityAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, updateCallTextbackSettingsAction } from './actions';
+import { updateScheduleDayHoursAction, updateReviewSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBookingAvailabilityAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, updateCallTextbackSettingsAction, toggleAutomationAction } from './actions';
 import { ESTIMATE_POSTURES, normalizeEstimatePosture } from '@/lib/estimate-posture';
 import { getSiteContent } from '@/lib/site-content';
 import { WEEKDAY_LABELS, BOOKING_WINDOW_PRESETS, TIMEZONE_OPTIONS, bookingAvailabilityFromAccount } from '@/lib/booking-availability';
@@ -26,10 +28,29 @@ function formatDate(value: string): string {
 
 // One automation in the grouped, collapsible Automations tab. Collapsed by
 // default so the whole tab reads as a scannable index (title + one-liner +
-// on/off pill); expand to reveal the section's form. The `id` stays on the
+// on/off control); expand to reveal the section's form. The `id` stays on the
 // <details> so deep links (#reviews, #daily-digest, …) still resolve and open it.
+//
+// Pass `toggle` for an automation backed by a single boolean column — it gets a
+// real switch you can flip from the list without opening the card. Pass `status`
+// for the ones that aren't (Intake AI is always on; Online booking's on/off is
+// derived from the booking weekday set), so the row still reads at a glance.
 type AutomationStatus = { label: string; tone: 'on' | 'off' | 'neutral' };
-function AutomationCard({ id, title, subtitle, status, children }: { id: string; title: string; subtitle: string; status: AutomationStatus; children: ReactNode }) {
+function AutomationCard({
+  id,
+  title,
+  subtitle,
+  status,
+  toggle,
+  children,
+}: {
+  id: string;
+  title: string;
+  subtitle: string;
+  status?: AutomationStatus;
+  toggle?: { key: AutomationKey; on: boolean };
+  children: ReactNode;
+}) {
   return (
     <details className="automation-card" id={id}>
       <summary className="automation-summary">
@@ -37,7 +58,11 @@ function AutomationCard({ id, title, subtitle, status, children }: { id: string;
           <strong>{title}</strong>
           <span className="automation-sub">{subtitle}</span>
         </span>
-        <span className={`automation-status ${status.tone}`}>{status.label}</span>
+        {toggle ? (
+          <AutomationSwitch label={title} on={toggle.on} action={toggleAutomationAction.bind(null, toggle.key)} />
+        ) : status ? (
+          <span className={`automation-status ${status.tone}`}>{status.label}</span>
+        ) : null}
         <svg className="automation-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
       </summary>
       <div className="automation-body">{children}</div>
@@ -459,7 +484,7 @@ export default async function SettingsPage({
                   </form>
                 </AutomationCard>
 
-                <AutomationCard id="extra-stop" title="Extra Stop" subtitle="Same-day &ldquo;add me to your route&rdquo;" status={{ label: extraStopEnabled ? 'On' : 'Off', tone: extraStopEnabled ? 'on' : 'off' }}>
+                <AutomationCard id="extra-stop" title="Extra Stop" subtitle="Same-day &ldquo;add me to your route&rdquo;" toggle={{ key: 'extra-stop', on: extraStopEnabled }}>
                   {!account?.connect_onboarded ? (
                     <div className="automation-prereq" style={{ marginBottom: '0.9rem' }}>
                       <span aria-hidden="true">💳</span>
@@ -469,7 +494,7 @@ export default async function SettingsPage({
                   <ExtraStopSettingsSection headless extraStop={extraStopSettings as Parameters<typeof ExtraStopSettingsSection>[0]['extraStop']} refundTiers={extraStopRefundTiers} />
                 </AutomationCard>
 
-                <AutomationCard id="missed-call" title="Missed-call text-back" subtitle="Auto-text callers you miss" status={{ label: callTextbackEnabled ? 'On' : 'Off', tone: callTextbackEnabled ? 'on' : 'off' }}>
+                <AutomationCard id="missed-call" title="Missed-call text-back" subtitle="Auto-text callers you miss" toggle={{ key: 'missed-call', on: callTextbackEnabled }}>
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     When a call to your tracking number goes unanswered, we instantly text the caller back so the
                     lead doesn&apos;t go to a competitor — and log it on your leads board to follow up.
@@ -500,7 +525,7 @@ export default async function SettingsPage({
                 </AutomationCard>
 
                 <p className="automation-group">Customer follow-through</p>
-                <AutomationCard id="reviews" title="Review requests" subtitle="Auto-ask after a completed job" status={{ label: autoReviewRequest ? 'On' : 'Off', tone: autoReviewRequest ? 'on' : 'off' }}>
+                <AutomationCard id="reviews" title="Review requests" subtitle="Auto-ask after a completed job" toggle={{ key: 'reviews', on: autoReviewRequest }}>
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     When on, marking a job complete automatically asks the client for a Google review — texted if
                     they have a mobile on file, emailed otherwise. It only sends once per job, and you can always
@@ -542,7 +567,7 @@ export default async function SettingsPage({
                   </form>
                 </AutomationCard>
 
-                <AutomationCard id="followups" title="Quote follow-ups" subtitle="Nudge unapproved quotes" status={{ label: quoteFollowupsEnabled ? 'On' : 'Off', tone: quoteFollowupsEnabled ? 'on' : 'off' }}>
+                <AutomationCard id="followups" title="Quote follow-ups" subtitle="Nudge unapproved quotes" toggle={{ key: 'followups', on: quoteFollowupsEnabled }}>
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     When on, we gently nudge clients who were sent a quote but haven&apos;t approved it yet —
                     up to twice (around day 2 and day 5), texting them if they have a mobile on file and emailing
@@ -568,7 +593,7 @@ export default async function SettingsPage({
                   </form>
                 </AutomationCard>
 
-                <AutomationCard id="reminders" title="Appointment reminders" subtitle="Day-before text or email" status={{ label: appointmentRemindersEnabled ? 'On' : 'Off', tone: appointmentRemindersEnabled ? 'on' : 'off' }}>
+                <AutomationCard id="reminders" title="Appointment reminders" subtitle="Day-before text or email" toggle={{ key: 'reminders', on: appointmentRemindersEnabled }}>
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     When on, the day before a scheduled job we automatically remind the client — texting them if
                     they have a mobile on file that&apos;s opted in, and emailing otherwise. It runs once per
@@ -595,7 +620,7 @@ export default async function SettingsPage({
                 </AutomationCard>
 
                 <p className="automation-group">Your briefing</p>
-                <AutomationCard id="daily-digest" title="Daily digest" subtitle="Your business each morning" status={{ label: dailyDigestEnabled ? 'On' : 'Off', tone: dailyDigestEnabled ? 'on' : 'off' }}>
+                <AutomationCard id="daily-digest" title="Daily digest" subtitle="Your business each morning" toggle={{ key: 'daily-digest', on: dailyDigestEnabled }}>
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     When on, each morning we email you a short digest of your business — money received,
                     new leads, quotes approved, today&apos;s schedule, appointment confirmations, new reviews,

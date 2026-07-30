@@ -724,6 +724,43 @@ h3 {
 .automation-status.on { background: rgba(52, 211, 153, 0.14); color: #6ee7b7; border-color: rgba(52, 211, 153, 0.3); }
 .automation-status.off { background: rgba(255, 255, 255, 0.06); color: rgba(200, 210, 224, 0.75); border-color: rgba(255, 255, 255, 0.12); }
 .automation-status.neutral { background: rgba(255, 209, 102, 0.12); color: #ffd166; border-color: rgba(255, 209, 102, 0.28); }
+/* The real on/off switch on an automation row — deliberately big enough to hit
+   with a thumb on a phone (44px min target) and readable at a glance. */
+.automation-switch-wrap { display: flex; align-items: center; gap: 0.5rem; flex: none; }
+.automation-switch {
+  display: inline-flex; align-items: center; gap: 0.55rem;
+  background: none; border: 0; padding: 0.3rem; margin: 0; cursor: pointer;
+  min-height: 2.75rem; font: inherit; color: inherit;
+}
+.automation-switch:disabled { cursor: progress; opacity: 0.65; }
+.automation-switch-track {
+  position: relative; flex: none; width: 3.25rem; height: 1.85rem; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.16);
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+.automation-switch-knob {
+  position: absolute; top: 0.19rem; left: 0.19rem; width: 1.35rem; height: 1.35rem;
+  border-radius: 999px; background: #cbd5e1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  transition: transform 0.16s ease, background 0.16s ease;
+}
+.automation-switch-text {
+  font-size: 0.78rem; font-weight: 800; letter-spacing: 0.02em;
+  color: rgba(200, 210, 224, 0.75); min-width: 1.7rem; text-align: left;
+}
+.automation-switch.on .automation-switch-track { background: rgba(52, 211, 153, 0.36); border-color: rgba(52, 211, 153, 0.6); }
+.automation-switch.on .automation-switch-knob { transform: translateX(1.4rem); background: #6ee7b7; }
+.automation-switch.on .automation-switch-text { color: #6ee7b7; }
+.automation-switch:hover .automation-switch-track { border-color: rgba(255, 255, 255, 0.32); }
+.automation-switch.on:hover .automation-switch-track { border-color: rgba(52, 211, 153, 0.85); }
+.automation-switch:focus-visible { outline: none; }
+.automation-switch:focus-visible .automation-switch-track { box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.45); }
+.automation-switch-error { font-size: 0.7rem; font-weight: 700; color: #fca5a5; white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  .automation-switch-track, .automation-switch-knob { transition: none; }
+}
+
 .automation-caret { width: 1rem; height: 1rem; color: rgba(200, 210, 224, 0.55); flex: none; transition: transform 0.15s ease; }
 .automation-card[open] .automation-caret { transform: rotate(90deg); }
 .automation-body { padding: 0.1rem 1.05rem 1.15rem; }
