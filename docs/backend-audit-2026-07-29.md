@@ -77,6 +77,27 @@ Turnstile + durable limiting exist but are wired **only to the marketing `/conta
 
 ---
 
+## Remediation status (2026-07-29)
+
+**Fixed & deployed** (schema migrations applied):
+- ✅ P1-a refund idempotency key + compare-and-set (`3f179fe`)
+- ✅ P1-b claim-before-refund in `resolveExtraStopCancellation` (`3f179fe`)
+- ✅ P1-c durable Postgres rate limiter on verify-phone / classify-estimate / extra-stop-qualify / lead + booking actions, with per-number daily cap (`1c581ff`)
+- ✅ P1-d security headers — X-Frame-Options, CSP frame-ancestors, HSTS, nosniff, Referrer-Policy, Permissions-Policy (`bddff8d`)
+- ✅ P2-a invoice only marked paid when collected ≥ total (`3f179fe`)
+- ✅ P2-b trailing volume = Stripe-settled only (`3f179fe`)
+- ✅ P2-c daily-digest coverage past 500 accounts (`bddff8d`)
+- ✅ P3 checkout self-heal status guard (`3f179fe`), `.or()` blocklist injection → separate `.eq()` (`bddff8d`), PII removed from email logs (`bddff8d`), TwiML XML-escaped (`bddff8d`)
+
+**Deliberately deferred** (low severity; need schema/behavior changes best done with care):
+- Full content-CSP (script-src/style-src) — needs per-route nonces/allowlists + testing (only `frame-ancestors` shipped).
+- Review-invite token hashing + expiry — token is already 144-bit unguessable; hashing needs a schema change + read-path rewrite.
+- Cron UTC→owner-timezone date math (reminders/digest/followups) + Extra Stop auto-complete UTC parse — correct-by-luck for the continental US; needs tz plumbing.
+- `getPublicPayment` `select('*')` narrowing — not leaked today; narrowing risks dropping a needed column.
+- DB-error passthrough in server actions — owner-scoped, low; broad refactor.
+- Notification (reminders/followups/digest) atomic-claim idempotency — only bites under truly concurrent cron runs (Vercel doesn't).
+- Invoice-signing via raw UUID / field taskId intra-account scoping / self-serve delete typed confirm — design-level, no cross-tenant break.
+
 ## Suggested order of work
 1. **P1-a / P1-b** (refund idempotency + ordering) — small, contained, real money.
 2. **P1-c** (Turnstile + shared-store rate-limiting on the four public endpoints) — needs a rate-limit store (Upstash/Redis) decision.
