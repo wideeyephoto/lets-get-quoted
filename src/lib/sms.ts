@@ -581,6 +581,17 @@ export async function sendOnMyWaySms(params: {
   return providerId;
 }
 
+// Auto text-back after a missed call. The caller reached out first, so a single
+// reply is solicited; still honors opt-out + STOP, and mirrors to the inbox so
+// the owner can reply. Returns null when the number is opted out.
+export async function sendMissedCallTextBack(params: { accountId: string; phone: string; businessName: string }): Promise<string | null> {
+  if (await isPhoneOptedOut(params.accountId, params.phone)) return null;
+  const message = `Let's Get Quoted: sorry we missed your call at ${params.businessName}! Reply here and we'll help you out. Reply STOP to opt out.`;
+  const providerId = await sendTwilioMessage(params.phone, message);
+  await logOutboundToInbox(params.accountId, params.phone, message, providerId);
+  return providerId;
+}
+
 // Sends a client the link to save a card for automatic billing on a recurring
 // plan. No charge happens at this step — it just collects the card + mandate.
 // Caller resolves consent; mirrored into the inbox like other customer texts.

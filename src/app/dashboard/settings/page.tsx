@@ -9,7 +9,7 @@ import FinanceReports from './FinanceReports';
 import { getAvailableTaxYears, buildProfitAndLoss, buildScheduleCWorksheet, build1099PrepList } from '@/lib/tax-reports';
 import SaveButton from '@/components/save-button';
 import DeleteAccountButton from './DeleteAccountButton';
-import { updateScheduleDayHoursAction, updateReviewSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBookingAvailabilityAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction } from './actions';
+import { updateScheduleDayHoursAction, updateReviewSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBookingAvailabilityAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, updateCallTextbackSettingsAction } from './actions';
 import { ESTIMATE_POSTURES, normalizeEstimatePosture } from '@/lib/estimate-posture';
 import { getSiteContent } from '@/lib/site-content';
 import { WEEKDAY_LABELS, BOOKING_WINDOW_PRESETS, TIMEZONE_OPTIONS, bookingAvailabilityFromAccount } from '@/lib/booking-availability';
@@ -56,7 +56,7 @@ export default async function SettingsPage({
     await Promise.all([
       supabase.auth.getUser(),
       supabase.auth.getUserIdentities(),
-      supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded, connect_disabled_at, schedule_day_hours, workday_start, workday_end, job_buffer_minutes').eq('id', accountId).single(),
+      supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded, connect_disabled_at, schedule_day_hours, workday_start, workday_end, job_buffer_minutes, call_textback_enabled, call_forward_number, call_tracking_number').eq('id', accountId).single(),
       supabase.from('sites').select('id, company_name, content').eq('account_id', accountId).maybeSingle(),
       getAvailableTaxYears(supabase, accountId),
       supabase
@@ -156,6 +156,9 @@ export default async function SettingsPage({
     .maybeSingle();
   const dailyDigestEnabled = Boolean(digestSettings?.daily_digest_enabled);
   const allEssentialsOn = autoReviewRequest && quoteFollowupsEnabled && appointmentRemindersEnabled && dailyDigestEnabled;
+  const callTextbackEnabled = Boolean((account as { call_textback_enabled?: boolean } | null)?.call_textback_enabled);
+  const callForwardNumber = String((account as { call_forward_number?: string } | null)?.call_forward_number ?? '');
+  const callTrackingNumber = String((account as { call_tracking_number?: string } | null)?.call_tracking_number ?? '');
 
   const requestedYear = searchParams.year ? parseInt(searchParams.year, 10) : NaN;
   const selectedYear = availableYears.includes(requestedYear) ? requestedYear : availableYears[0];
@@ -279,7 +282,7 @@ export default async function SettingsPage({
           {
             id: 'automations',
             label: 'Automations',
-            anchors: ['intake-ai', 'booking-availability', 'extra-stop', 'reviews', 'followups', 'reminders', 'daily-digest'],
+            anchors: ['intake-ai', 'booking-availability', 'extra-stop', 'missed-call', 'reviews', 'followups', 'reminders', 'daily-digest'],
             content: (
               <div className="automation-list">
                 {allEssentialsOn ? (
@@ -464,6 +467,36 @@ export default async function SettingsPage({
                     </div>
                   ) : null}
                   <ExtraStopSettingsSection headless extraStop={extraStopSettings as Parameters<typeof ExtraStopSettingsSection>[0]['extraStop']} refundTiers={extraStopRefundTiers} />
+                </AutomationCard>
+
+                <AutomationCard id="missed-call" title="Missed-call text-back" subtitle="Auto-text callers you miss" status={{ label: callTextbackEnabled ? 'On' : 'Off', tone: callTextbackEnabled ? 'on' : 'off' }}>
+                  <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
+                    When a call to your tracking number goes unanswered, we instantly text the caller back so the
+                    lead doesn&apos;t go to a competitor — and log it on your leads board to follow up.
+                  </p>
+                  <form action={updateCallTextbackSettingsAction} className="form-grid compact-form">
+                    <label className="checkbox-row" htmlFor="callTextbackEnabled">
+                      <input id="callTextbackEnabled" name="callTextbackEnabled" type="checkbox" defaultChecked={callTextbackEnabled} />
+                      <span>Text callers back automatically when I miss a call</span>
+                    </label>
+                    <div className="field">
+                      <label htmlFor="callForwardNumber">Ring my phone at</label>
+                      <input id="callForwardNumber" name="callForwardNumber" type="tel" inputMode="tel" placeholder="(248) 555-0100" defaultValue={callForwardNumber} />
+                      <small className="field-hint">Where your tracking number forwards calls before falling back to a text.</small>
+                    </div>
+                    <div className="field">
+                      <label htmlFor="callTrackingNumber">Your tracking number</label>
+                      <input id="callTrackingNumber" name="callTrackingNumber" type="tel" inputMode="tel" placeholder="(248) 555-0199" defaultValue={callTrackingNumber} />
+                      <small className="field-hint">The number customers call. Put this on your website/ads instead of your cell.</small>
+                    </div>
+                    <div className="automation-prereq">
+                      <span aria-hidden="true">📞</span>
+                      <span>Point that number&apos;s <strong>Voice webhook</strong> to <code>https://letsgetquoted.com/api/twilio/voice</code> in Twilio. Don&apos;t have a number yet? Contact support and we&apos;ll set one up.</span>
+                    </div>
+                    <div className="form-actions">
+                      <SaveButton>Save missed-call settings</SaveButton>
+                    </div>
+                  </form>
                 </AutomationCard>
 
                 <p className="automation-group">Customer follow-through</p>

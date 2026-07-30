@@ -99,6 +99,19 @@ export async function enableRecommendedAutomationsAction() {
   revalidatePath('/dashboard');
 }
 
+export async function updateCallTextbackSettingsAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const enabled = formData.get('callTextbackEnabled') === 'on';
+  const forward = normalizeUsPhone(String(formData.get('callForwardNumber') ?? ''));
+  const tracking = normalizeUsPhone(String(formData.get('callTrackingNumber') ?? ''));
+  const { error } = await supabase
+    .from('accounts')
+    .update({ call_textback_enabled: enabled, call_forward_number: forward || null, call_tracking_number: tracking || null })
+    .eq('id', accountId);
+  if (error) throw new Error('Could not save missed-call settings.');
+  revalidatePath('/dashboard/settings');
+}
+
 export async function updateReviewSettingsAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
   const autoReviewRequest = formData.get('autoReviewRequest') === 'on';

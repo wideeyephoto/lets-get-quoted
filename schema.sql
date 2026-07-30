@@ -1618,3 +1618,12 @@ create unique index if not exists job_tracking_token_idx on job_tracking (token_
 alter table job_tracking enable row level security;
 drop policy if exists job_tracking_owner on job_tracking;
 create policy job_tracking_owner on job_tracking for all using ( is_owner(account_id) );
+
+-- Missed-call text-back. A Twilio tracking number (call_tracking_number) points
+-- its Voice webhook at /api/twilio/voice, which rings the contractor's real line
+-- (call_forward_number); an unanswered call auto-texts the caller + logs a lead.
+-- Requires a provisioned/BYO number wired in the Twilio console — not automatic.
+alter table accounts add column if not exists call_textback_enabled boolean not null default false;
+alter table accounts add column if not exists call_tracking_number text;
+alter table accounts add column if not exists call_forward_number text;
+create index if not exists accounts_call_tracking_idx on accounts (call_tracking_number) where call_tracking_number is not null;
