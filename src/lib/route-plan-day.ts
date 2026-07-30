@@ -3,6 +3,7 @@ import { coordOf, type LatLng } from '@/lib/distance';
 import { driveMatrix, DRIVE_MATRIX_MAX_POINTS } from '@/lib/drive-time';
 import { listCrewAssignmentsForJobs } from '@/lib/crew';
 import { planDayRoute, type PlanStop, type RoutePlan } from '@/lib/route-plan';
+import { listUpcomingBlocks } from '@/lib/availability-blocks';
 
 // Loads one day off the calendar and hands it to the pure planner in
 // src/lib/route-plan.ts. Everything that touches the database or Google lives
@@ -10,12 +11,18 @@ import { planDayRoute, type PlanStop, type RoutePlan } from '@/lib/route-plan';
 
 export type DayPlan = RoutePlan & {
   dateKey: string;
+  // Set when the contractor has marked this day off. The plan is still produced —
+  // they may be looking at it deliberately — but the page says so rather than
+  // quietly proposing a route for a day they aren't working.
+  blockedReason: string | null;
   // Jobs on the day that were filtered out because they belong to other crew.
   filteredOutCount: number;
   // Confirmed appointments we pinned, for the page's explanation line.
   lockedCount: number;
   // The crew this plan is for, when filtered.
   crewId: string | null;
+  // Set when real drive time was enabled but couldn't be used for this day.
+  driveTimeSkipped: 'too_many_stops' | null;
 };
 
 export type PlanJobRow = {
@@ -140,6 +147,9 @@ export async function buildDayPlan(
   // Real drive legs when the owner opted into Distance Matrix and the day is
   // small enough for one request. Anything else stays on straight-line.
   let matrix: Map<string, { miles: number; minutes: number }> | undefined;
+  // Why the downgrade happened, so the page can say "too many stops for one
+  // lookup" instead of leaving the contractor to wonder why the numbers changed.
+  let driveTimeSkipped: 'too_many_stops' | null = null;
   if (settings.driveTimeEnabled) {
     const points: Array<{ id: string; coord: LatLng }> = [];
     if (settings.homeBase) points.push({ id: 'start', coord: settings.homeBase });
@@ -149,6 +159,8 @@ export async function buildDayPlan(
     }
     if (points.length >= 2 && points.length <= DRIVE_MATRIX_MAX_POINTS) {
       matrix = (await driveMatrix(points)) ?? undefined;
+    } else if (points.length > DRIVE_MATRIX_MAX_POINTS) {
+      driveTimeSkipped = 'too_many_stops';
     }
   }
 
@@ -162,10 +174,23 @@ export async function buildDayPlan(
     matrix,
   });
 
+  // Is this day blocked off? listUpcomingBlocks only returns ranges ending today
+  // or later, so a past date simply never matches — correct, and no extra query.
+  let blockedReason: string | null = null;
+  try {
+    const blocks = await listUpcomingBlocks(supabase, accountId, dateKey);
+    const covering = blocks.find((b) => b.start_date <= dateKey && dateKey <= b.end_date);
+    if (covering) blockedReason = covering.reason?.trim() || 'Blocked off';
+  } catch {
+    // A blocks read failure must not stop the plan; worst case we don't warn.
+  }
+
   return {
     plan: {
       ...plan,
       dateKey,
+      blockedReason,
+      driveTimeSkipped,
       filteredOutCount,
       lockedCount: stops.filter((stop) => stop.locked).length,
       crewId: crewId ?? null,
@@ -173,4 +198,43 @@ export async function buildDayPlan(
     jobs,
     settings,
   };
+}
+
+// The nearest day (forward, then backward) that actually has work on it.
+//
+// "No jobs scheduled for this day" is a dead end when the contractor is a couple
+// of taps from the day they meant — most of the time they landed on today, today
+// is empty, and the useful answer is "your next day out is Monday".
+export async function findNearestDayWithJobs(
+  supabase: SupabaseClient,
+  accountId: string,
+  fromDateKey: string,
+): Promise<{ dateKey: string; direction: 'next' | 'previous' } | null> {
+  const base = supabase
+    .from('jobs')
+    .select('scheduled_for')
+    .eq('account_id', accountId)
+    .not('scheduled_for', 'is', null)
+    .not('status', 'in', '(complete,archived)');
+
+  const { data: next } = await base
+    .gt('scheduled_for', fromDateKey)
+    .order('scheduled_for', { ascending: true })
+    .limit(1);
+  const forward = (next ?? [])[0]?.scheduled_for as string | undefined;
+  if (forward) return { dateKey: forward, direction: 'next' };
+
+  // Nothing ahead — offer the most recent day behind instead, so the page still
+  // gives them somewhere to go.
+  const { data: prev } = await supabase
+    .from('jobs')
+    .select('scheduled_for')
+    .eq('account_id', accountId)
+    .not('scheduled_for', 'is', null)
+    .not('status', 'in', '(complete,archived)')
+    .lt('scheduled_for', fromDateKey)
+    .order('scheduled_for', { ascending: false })
+    .limit(1);
+  const back = (prev ?? [])[0]?.scheduled_for as string | undefined;
+  return back ? { dateKey: back, direction: 'previous' } : null;
 }

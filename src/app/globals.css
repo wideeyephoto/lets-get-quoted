@@ -3592,6 +3592,12 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .workspace-shell {
   display: grid;
   gap: 1.25rem;
+  /* .wide-shell sets min-height: 100vh so the page fills the screen. Without
+     this, the grid's auto rows stretch to consume that height, and any page with
+     little content (a quiet day, an empty list) inflates its panels with dead
+     space — cards ending up twice as tall as the words inside them. Pack the
+     rows at the top and let the shell keep the background. */
+  align-content: start;
 }
 
 .workspace-hero {
@@ -7906,3 +7912,48 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 }
 .settings-history-summary { font-size: 0.88rem; color: #e7ecf3; }
 .settings-history-meta { font-size: 0.76rem; color: rgba(255, 255, 255, 0.45); white-space: nowrap; }
+
+/* ---- Mobile: keep the lead nudge from swallowing the screen ---------- */
+/* At 390px the alert was ~358px wide and ~180px tall, sitting over the bottom
+   third of every page — covering the content you were reading and the controls
+   you'd tap next. Same urgency, a third of the footprint: the age line drops
+   (it's the least load-bearing) and the button moves alongside the headline. */
+@media (max-width: 640px) {
+  .quote-request-alert {
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    width: auto;
+    padding: 0.75rem 0.85rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.15rem 0.75rem;
+    border-radius: 14px;
+  }
+  .quote-request-alert p { grid-column: 1; grid-row: 1; font-size: 0.66rem; }
+  .quote-request-alert strong { grid-column: 1; grid-row: 2; font-size: 0.92rem; }
+  .quote-request-alert span { display: none; }
+  .quote-request-alert .btn { grid-column: 2; grid-row: 1 / span 2; white-space: nowrap; }
+  /* Reserve a gutter for the dismiss control. Left at the corner it overlapped
+     "View lead", so a thumb aiming for the lead could dismiss the alert
+     instead — the one misfire that loses the thing being nudged about. */
+  .quote-request-alert { padding-right: 2.15rem; }
+  .quote-request-alert-close { top: 50%; transform: translateY(-50%); right: 0.3rem; }
+}
+
+/* ---- Mobile: Plan my day day-stepper ------------------------------- */
+/* The four controls wrapped one-per-row on a phone, pushing the route itself
+   below the fold. Step buttons share a row; the primary action stays full width. */
+@media (max-width: 640px) {
+  .route-plan-controls { gap: 0.75rem; }
+  .route-plan-controls .field { min-width: 0; width: 100%; }
+  .route-plan-control-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    width: 100%;
+  }
+  .route-plan-control-actions > :first-child { grid-column: 1 / -1; }
+  .route-plan-control-actions > :last-child { grid-column: 1 / -1; }
+  .route-plan-control-actions .btn { width: 100%; justify-content: center; }
+}

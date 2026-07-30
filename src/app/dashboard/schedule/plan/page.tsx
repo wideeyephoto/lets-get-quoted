@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { listCrew } from '@/lib/crew';
 import { formatTimeLabel, parseTimeMinutes, type PlannedStop } from '@/lib/route-plan';
-import { buildDayPlan } from '@/lib/route-plan-day';
+import { buildDayPlan, findNearestDayWithJobs } from '@/lib/route-plan-day';
 import SaveButton from '@/components/save-button';
 import { applyDayPlanAction, geocodeDayAction, notifyMovedClientsAction } from './actions';
 
@@ -96,6 +96,11 @@ export default async function PlanDayPage({
 
   const crewQuery = crewId ? `&crew=${crewId}` : '';
 
+  // Only needed for the empty state, so only fetched then.
+  const nearestWorkDay = plan.planned.length === 0 && plan.unroutable.length === 0
+    ? await findNearestDayWithJobs(supabase, accountId, dateKey)
+    : null;
+
   return (
     <main className="wide-shell workspace-shell">
       <section className="panel workspace-section-card">
@@ -133,6 +138,12 @@ export default async function PlanDayPage({
           </div>
         </form>
 
+        {plan.blockedReason ? (
+          <p className="route-plan-flash warn">
+            You&apos;ve marked this day off — {plan.blockedReason}. Planning it anyway is fine; just checking you meant
+            this day.
+          </p>
+        ) : null}
         {searchParams.failed === '1' ? (
           <p className="route-plan-flash warn">
             {strandedCount > 0 ? (
@@ -187,7 +198,18 @@ export default async function PlanDayPage({
               : 'There are no active jobs scheduled for this day yet.'}
           </p>
           <p className="form-actions">
-            <Link href="/dashboard/schedule" className="btn primary">Open the calendar</Link>
+            {nearestWorkDay ? (
+              <Link
+                href={`/dashboard/schedule/plan?date=${nearestWorkDay.dateKey}${crewQuery}`}
+                className="btn primary"
+              >
+                {nearestWorkDay.direction === 'next' ? 'Go to your next day out' : 'Go to your last day out'} &mdash;{' '}
+                {dayLabel(nearestWorkDay.dateKey)}
+              </Link>
+            ) : null}
+            <Link href="/dashboard/schedule" className={nearestWorkDay ? 'btn secondary' : 'btn primary'}>
+              Open the calendar
+            </Link>
           </p>
         </section>
       ) : (
@@ -233,7 +255,9 @@ export default async function PlanDayPage({
               <li>
                 {plan.driveTimeSource === 'drive_matrix'
                   ? 'Distances are real driving distances from Google.'
-                  : 'Distances are straight-line estimates at about 30 mph. Turn on real driving distance under Schedule → Instant booking for exact numbers.'}
+                  : plan.driveTimeSkipped === 'too_many_stops'
+                    ? `Distances are straight-line estimates at about 30 mph — this day has too many stops for a single driving-distance lookup, so real drive time was skipped. The order is still right; the minutes are approximate.`
+                    : 'Distances are straight-line estimates at about 30 mph. Turn on real driving distance under Schedule → Instant booking for exact numbers.'}
               </li>
               <li>
                 {plan.anchor === 'home_base'
@@ -276,6 +300,12 @@ export default async function PlanDayPage({
             <ol className="route-plan-list">
               {plan.planned.map((entry) => {
                 const wasMinutes = parseTimeMinutes(entry.stop.scheduledTime);
+                // A locked stop keeps the time the customer agreed to, so that is
+                // what we show. `arrivalMinutes` is when we'd realistically get
+                // there, which only differs when the day can't reach it in time —
+                // surfaced as a warning below rather than as a new time.
+                const shownMinutes =
+                  entry.stop.locked && entry.committedMinutes != null ? entry.committedMinutes : entry.arrivalMinutes;
                 return (
                   <li className="route-plan-stop" key={entry.stop.id}>
                     <span className="route-plan-num">{entry.order}</span>
@@ -285,8 +315,10 @@ export default async function PlanDayPage({
                           {entry.stop.label}
                         </Link>
                         <span className="route-plan-time">
-                          <strong>{formatTimeLabel(entry.arrivalMinutes)}</strong>
-                          {entry.moved ? (
+                          <strong>{formatTimeLabel(shownMinutes)}</strong>
+                          {entry.stop.locked ? (
+                            <small>agreed with the customer</small>
+                          ) : entry.moved ? (
                             <small>{wasMinutes == null ? 'no time set before' : `was ${formatTimeLabel(wasMinutes)}`}</small>
                           ) : (
                             <small>unchanged</small>
@@ -303,7 +335,11 @@ export default async function PlanDayPage({
                       </p>
                       <div className="route-plan-badges">
                         {entry.stop.locked ? <span className="route-plan-badge locked">🔒 Customer confirmed</span> : null}
-                        {entry.late ? <span className="route-plan-badge warn">Tight — you may run late here</span> : null}
+                        {entry.late ? (
+                          <span className="route-plan-badge warn">
+                            Tight — on this route you&apos;d reach them nearer {formatTimeLabel(entry.arrivalMinutes)}
+                          </span>
+                        ) : null}
                         {entry.waitMinutes >= 15 ? (
                           <span className="route-plan-badge">{minutesLabel(entry.waitMinutes)} gap before this stop</span>
                         ) : null}
@@ -328,9 +364,14 @@ export default async function PlanDayPage({
             <form action={applyDayPlanAction} className="route-plan-apply">
               <input type="hidden" name="dateKey" value={dateKey} />
               <input type="hidden" name="crewId" value={crewId ?? ''} />
-              {plan.planned.map((entry) => (
-                <input key={entry.stop.id} type="hidden" name="stop" value={`${entry.stop.id}:${entry.arrivalTime}`} />
-              ))}
+              {/* Locked stops are deliberately not submitted — their time isn't
+                  changing. The server re-checks this anyway, so a UI mistake here
+                  still can't move a confirmed appointment. */}
+              {plan.planned
+                .filter((entry) => !entry.stop.locked)
+                .map((entry) => (
+                  <input key={entry.stop.id} type="hidden" name="stop" value={`${entry.stop.id}:${entry.arrivalTime}`} />
+                ))}
               {canApply ? (
                 <>
                   <p className="route-plan-apply-copy">

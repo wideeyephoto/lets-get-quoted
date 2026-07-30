@@ -38,7 +38,13 @@ export type PlannedStop = {
   departMinutes: number; // arrival + visit + buffer
   legMiles: number; // travel from the previous anchor to here
   legMinutes: number;
-  moved: boolean; // proposed arrival differs from the committed time
+  // Proposed arrival differs from the committed time AND we're allowed to change
+  // it. Always false for a locked stop: its calendar time is never rewritten, so
+  // showing it as "moving" would promise something applying will refuse to do.
+  moved: boolean;
+  // A locked stop's agreed time. `arrivalMinutes` stays the realistic arrival, so
+  // the two together say "promised 8:05, you'd get there 5:20 PM".
+  committedMinutes: number | null;
   // A locked stop we cannot reach by its committed time — surfaced, never
   // silently absorbed.
   late: boolean;
@@ -300,7 +306,8 @@ function schedule(
       departMinutes: arrival + visit + bufferMinutes,
       legMiles: Math.round(leg.miles * 10) / 10,
       legMinutes: Math.round(leg.minutes),
-      moved: currentMinutes == null || Math.round(currentMinutes) !== Math.round(arrival),
+      moved: stop.locked ? false : currentMinutes == null || Math.round(currentMinutes) !== Math.round(arrival),
+      committedMinutes: committed,
       late: committed != null && earliest > committed,
       waitMinutes: committed != null && committed > earliest ? Math.round(committed - earliest) : 0,
     });

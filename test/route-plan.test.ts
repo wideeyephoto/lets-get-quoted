@@ -160,11 +160,29 @@ describe('planDayRoute confirmed appointments', () => {
       ...base,
       stops: [stop({ id: 'impossible', lat: 42.5, lng: -78.0, scheduledTime: '08:05', locked: true })],
     });
-    // Flagged late, and shown at the time we'd REALLY get there rather than
-    // parroting back a promise the day can't keep.
+    // Flagged late, with the realistic arrival available for the warning...
     expect(plan.planned[0].late).toBe(true);
     expect(plan.planned[0].arrivalMinutes).toBeGreaterThan(8 * 60 + 5);
-    expect(plan.planned[0].moved).toBe(true);
+    // ...but NOT reported as moving. Applying will never rewrite a confirmed
+    // appointment, so showing it as changed would promise something the apply
+    // step refuses to do — and the counts either side would disagree.
+    expect(plan.planned[0].moved).toBe(false);
+    expect(plan.planned[0].committedMinutes).toBe(8 * 60 + 5);
+  });
+
+  it('never reports a locked stop as moving, even when the route would run it late', () => {
+    const plan = planDayRoute({
+      ...base,
+      stops: [
+        stop({ id: 'first', ...AT(0.0), visitMinutes: 240 }),
+        stop({ id: 'locked', ...AT(0.3), scheduledTime: '09:00', locked: true }),
+      ],
+    });
+    const locked = plan.planned.find((p) => p.stop.id === 'locked')!;
+    expect(locked.moved).toBe(false);
+    expect(locked.committedMinutes).toBe(9 * 60);
+    // Only the free stops are offered up as changes.
+    expect(plan.planned.filter((p) => p.moved).map((p) => p.stop.id)).toEqual(['first']);
   });
 
   it('records idle time before an appointment it would reach early', () => {
