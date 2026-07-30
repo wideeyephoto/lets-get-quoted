@@ -13,7 +13,7 @@ import {
   updateCrewMember,
 } from '@/lib/crew';
 import { deleteCrewPhotos, isCrewPhotoFile, uploadCrewPhoto, validateCrewPhotoFile } from '@/lib/crew-photo-storage';
-import { getJob } from '@/lib/jobs';
+import { createCost, getJob } from '@/lib/jobs';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { ensureSmsConsentBaseline, sendCrewAssignmentSms } from '@/lib/sms';
 import { sendCrewMagicLink } from '@/lib/crew-auth';
@@ -152,13 +152,17 @@ export async function inviteCrewAction(crewId: string) {
   revalidatePath('/dashboard/crew');
 }
 
-// `notify` is bound per submit button (Assign & text vs Assign without text),
-// so the owner chooses whether the crew member gets an assignment SMS. The
-// form's default action and the primary button both bind true, so the Enter-key
-// / default submit preserves the previous always-text behavior.
-export async function assignCrewToJobAction(crewId: string, notify: boolean, formData: FormData) {
+// One Assign button with a "text them" checkbox beside it, rather than two
+// buttons that differed only in a trailing clause. Two submit buttons made the
+// texting decision look like two different actions; it's one action with an
+// option, and the option is now visible before you commit to it.
+//
+// Unchecked is a real choice, so the checkbox value is read here rather than
+// bound: an absent checkbox means don't text.
+export async function assignCrewToJobAction(crewId: string, formData: FormData) {
   const jobId = optionalText(formData.get('jobId'));
   if (!jobId) throw new Error('Choose a job before assigning crew.');
+  const notify = formData.get('notify') !== null;
 
   const { supabase, accountId } = await requireOwnerContext();
   const [job, crewMembers, existingCrewIds] = await Promise.all([
@@ -207,4 +211,66 @@ export async function assignCrewToJobAction(crewId: string, notify: boolean, for
   revalidatePath('/dashboard/jobs');
   revalidatePath(`/dashboard/jobs/${jobId}`);
   revalidatePath('/dashboard/schedule');
+}
+
+// Log labor against a job by hand — the counterpart to a crew member logging it
+// from the field app. Same createCost path the job page uses, so the entry is
+// identical in every way that matters: server-computed amount (hours × rate,
+// never a client-supplied total) and a crew snapshot taken at insert.
+export async function addLaborEntryAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const jobId = optionalText(formData.get('jobId'));
+  if (!jobId) throw new Error('Choose a job to log this labor against.');
+  const crewId = optionalText(formData.get('crewId'));
+
+  const hours = Number(formData.get('hours'));
+  if (!Number.isFinite(hours) || hours <= 0) throw new Error('Enter how many hours were worked.');
+
+  // Fall back to the crew member's saved rate so the common case is two fields,
+  // not three. An entry logged at a zero rate is exactly what the Hours & pay
+  // tab flags as "missing rate", so it's worth trying not to create one.
+  let rate = Number(formData.get('rate'));
+  if (!Number.isFinite(rate) || rate <= 0) {
+    const { data: member } = crewId
+      ? await supabase.from('crew').select('hourly_rate').eq('account_id', accountId).eq('id', crewId).maybeSingle()
+      : { data: null };
+    rate = Number(member?.hourly_rate) || 0;
+  }
+
+  const job = await getJob(supabase, accountId, jobId);
+  if (!job) throw new Error('Job not found.');
+
+  const description = optionalText(formData.get('description')) ?? 'Labor added by owner';
+  const cost = await createCost(supabase, accountId, jobId, { type: 'labor', description, crewId, hours, rate });
+
+  await createJobFeedEvent(supabase, accountId, jobId, {
+    kind: 'cost_added',
+    title: 'Labor added',
+    body: description,
+    visibility: 'internal',
+    amount: Number(cost.amount),
+    sourceTable: 'costs',
+    sourceId: cost.id,
+  });
+
+  revalidatePath('/dashboard/crew');
+  revalidatePath('/dashboard/jobs');
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
+// Remove a labor entry that shouldn't count — a double-log from the field, or
+// one with no hours on it. Scoped to type='labor' so this can never be used to
+// delete a material cost or anything else attached to a job.
+export async function deleteLaborEntryAction(entryId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const { error } = await supabase
+    .from('costs')
+    .delete()
+    .eq('account_id', accountId)
+    .eq('id', entryId)
+    .eq('type', 'labor');
+  if (error) throw error;
+  revalidatePath('/dashboard/crew');
+  revalidatePath('/dashboard/jobs');
 }

@@ -21,8 +21,11 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard/extra-stops', label: 'Extra Stops', hint: 'Same-day route add-ons' },
   { href: '/dashboard/recurring', label: 'Recurring', hint: 'Repeating jobs & auto-billing' },
   { href: '/dashboard/services', label: 'Price book', hint: 'Saved services & prices' },
-  { href: '/dashboard/crew', label: 'Crew', hint: 'Your team & assignments' },
-  { href: '/dashboard/payroll', label: 'Payroll', hint: 'Crew hours & pay by period' },
+  // Crew and hours are one destination, not two. They were split across a
+  // "Crew" page and a "Payroll" page that could only be reached from a link
+  // buried in the roster header — and neither could answer "who worked, on
+  // what, for how much" without a page load between the halves.
+  { href: '/dashboard/crew', label: 'Crew & Labor', hint: 'Your team, their hours & pay' },
   { href: '/dashboard/messages', label: 'Messages', hint: 'Two-way customer texts' },
   { href: '/dashboard/campaigns', label: 'Marketing', hint: 'Email & text past customers' },
   { href: '/dashboard/rebook', label: 'Rebook', hint: 'Win back past customers' },
@@ -46,7 +49,7 @@ const FLOW_CLASS: Record<string, string> = {
 // badge and Account drops to the sidebar footer, so neither appears here.
 const NAV_GROUPS: { label: string; hrefs: string[] }[] = [
   { label: 'Work', hrefs: ['/dashboard/leads', '/dashboard/jobs', '/dashboard/schedule', '/dashboard/extra-stops', '/dashboard/clients'] },
-  { label: 'Team', hrefs: ['/dashboard/crew', '/dashboard/payroll'] },
+  { label: 'Team', hrefs: ['/dashboard/crew'] },
   { label: 'Money', hrefs: ['/dashboard/recurring', '/dashboard/services', '/dashboard/insights'] },
   { label: 'Grow', hrefs: ['/dashboard/messages', '/dashboard/campaigns', '/dashboard/rebook', '/dashboard/reviews'] },
 ];

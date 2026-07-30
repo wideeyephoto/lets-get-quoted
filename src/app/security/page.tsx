@@ -54,7 +54,7 @@ export default function SecurityPage() {
           <p className="eyebrow">Security &amp; trust</p>
           <h2>Built to be trusted with real money.</h2>
           <p>
-            You&apos;re running payroll and collecting payments through this tool — it has to earn that. Here&apos;s
+            You&apos;re tracking crew hours and collecting payments through this tool — it has to earn that. Here&apos;s
             plainly how your money and your customers&apos; information are kept safe.
           </p>
         </div>

@@ -1,266 +1,269 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { createCrewPhotoUrls } from '@/lib/crew-photo-storage';
-import { formatJobSchedule, formatMoney, listJobs } from '@/lib/jobs';
+import { formatMoney, listJobs } from '@/lib/jobs';
 import { formatPhoneDashes } from '@/lib/phone';
-import CrewWorkHistory from '@/components/crew-work-history';
-import SaveButton from '@/components/save-button';
-import CrewPhotoUpload from './CrewPhotoUpload';
-import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
-import { assignCrewToJobAction, createCrewAction, deleteArchivedCrewAction, inviteCrewAction, setCrewActiveAction, updateCrewAction, updateCrewPhotoAction } from './actions';
+import {
+  buildLaborCsv,
+  exportBlockedReason,
+  normalizeOffset,
+  normalizePeriodMode,
+  periodStatus,
+  resolvePayPeriod,
+  summarizeCrewLabor,
+  summarizeJobLabor,
+} from '@/lib/labor';
+import { laborTotalsByCrew, listLaborEntries } from '@/lib/labor-data';
+import { LABOR_SETTINGS_COOKIE, normalizeLaborSettings, roundHours } from '@/lib/labor-settings';
+import CrewRoster, { type CrewRow } from './CrewRoster';
+import HoursAndPay from './HoursAndPay';
+import LaborByJob from './LaborByJob';
+import styles from './crew.module.css';
 
-function initialsFor(name: string) {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('') || 'C';
+// Crew & Labor — one home for the roster, the hours those people logged, and
+// what that labor did to each job's budget.
+//
+// The three used to be two pages and a gap: a roster you couldn't see hours on,
+// a "Payroll" page reachable only from a link inside the roster header, and no
+// way at all to ask "which jobs are running over on labor". Tabs are links
+// rather than client state so a tab is shareable, back works, and the server
+// only fetches what the open tab actually needs.
+
+export const dynamic = 'force-dynamic';
+
+const TABS = [
+  { id: 'crew', label: 'Crew members' },
+  { id: 'hours', label: 'Hours & pay' },
+  { id: 'jobs', label: 'Labor by job' },
+] as const;
+
+type TabId = (typeof TABS)[number]['id'];
+
+function normalizeTab(value: unknown): TabId {
+  return TABS.some((tab) => tab.id === value) ? (value as TabId) : 'crew';
 }
 
-export default async function CrewPage({ searchParams }: { searchParams: { status?: string } }) {
+function initialsFor(name: string) {
+  return (
+    name
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join('') || 'C'
+  );
+}
+
+export default async function CrewLaborPage({
+  searchParams,
+}: {
+  searchParams: {
+    tab?: string;
+    status?: string;
+    period?: string;
+    offset?: string;
+    from?: string;
+    to?: string;
+    crew?: string;
+    add?: string;
+  };
+}) {
   const { supabase, accountId } = await requireOwnerContext();
+  const tab = normalizeTab(searchParams.tab);
+  const settings = normalizeLaborSettings(cookies().get(LABOR_SETTINGS_COOKIE)?.value);
+
+  // No period in the URL means "whatever this account calls a pay period",
+  // which is the setting — so the tab opens on their cadence, not on a week.
+  const period = resolvePayPeriod(
+    searchParams.period ? normalizePeriodMode(searchParams.period) : settings.periodMode,
+    normalizeOffset(searchParams.offset),
+    { from: searchParams.from, to: searchParams.to },
+  );
+
   const [crew, jobs] = await Promise.all([listCrew(supabase, accountId), listJobs(supabase, accountId)]);
-  const photoUrls = await createCrewPhotoUrls(accountId, crew.map((member) => member.photo_path).filter((path): path is string => Boolean(path)));
+  const photoUrls = await createCrewPhotoUrls(
+    accountId,
+    crew.map((member) => member.photo_path).filter((path): path is string => Boolean(path)),
+  );
+
   const activeCrew = crew.filter((member) => member.active);
   const assignableJobs = jobs.filter((job) => job.status !== 'complete' && job.status !== 'archived');
 
-  // Invert jobId -> crewIds into crewId -> open jobs, so each card can show what
-  // the member is currently working on (and flag idle active members as free).
+  // Invert jobId -> crewIds into crewId -> open jobs, so each row can show what
+  // the member is on right now (and mark idle active members as available).
   const assignmentsByJob = await listCrewAssignmentsForJobs(supabase, accountId, assignableJobs.map((job) => job.id));
   const jobsById = new Map(assignableJobs.map((job) => [job.id, job]));
-  const jobsByCrew: Record<string, typeof assignableJobs> = {};
+  const jobsByCrew: Record<string, { id: string; ref: string; clientName: string }[]> = {};
   for (const [jobId, crewIds] of Object.entries(assignmentsByJob)) {
     const job = jobsById.get(jobId);
     if (!job) continue;
     for (const crewId of crewIds) {
       const bucket = jobsByCrew[crewId] ?? (jobsByCrew[crewId] = []);
-      bucket.push(job);
+      bucket.push({ id: job.id, ref: job.ref, clientName: job.client_name });
     }
   }
-  const onJobCount = activeCrew.filter((member) => (jobsByCrew[member.id]?.length ?? 0) > 0).length;
-  const availableCount = activeCrew.length - onJobCount;
 
-  const filter = searchParams.status === 'archived' ? 'archived' : 'active';
-  const visibleCrew = crew.filter((member) => (filter === 'archived' ? !member.active : member.active));
+  const onJobCount = activeCrew.filter((member) => (jobsByCrew[member.id]?.length ?? 0) > 0).length;
+
+  // Hours for the roster's "this pay period" summary. Cheap enough to always
+  // load: it's the number that makes a roster row worth reading.
+  const totals = await laborTotalsByCrew(supabase, accountId, { startIso: period.startIso, endIso: period.endIso });
+
+  const crewRows: CrewRow[] = crew.map((member) => {
+    const bucket = totals.get(member.id);
+    return {
+      id: member.id,
+      name: member.name,
+      initials: initialsFor(member.name),
+      photoUrl: member.photo_path ? photoUrls[member.photo_path] ?? null : null,
+      roleLabel: member.role_label,
+      hourlyRate: Number(member.hourly_rate) || 0,
+      rateLabel: Number(member.hourly_rate) > 0 ? `${formatMoney(Number(member.hourly_rate))}/hr` : 'No rate set',
+      phone: member.phone || null,
+      phoneLabel: member.phone ? formatPhoneDashes(member.phone) : null,
+      email: member.email,
+      active: member.active,
+      fieldApp: member.user_id ? 'linked' : member.email ? 'invitable' : 'no-email',
+      jobs: jobsByCrew[member.id] ?? [],
+      periodHours: bucket?.hours ?? 0,
+      periodPay: bucket?.pay ?? 0,
+      periodPayLabel: formatMoney(bucket?.pay ?? 0),
+      createdAt: member.created_at,
+    };
+  });
+
+  // Only the open tab pays for its own reads.
+  const laborEntries =
+    tab === 'hours' || tab === 'jobs'
+      ? await listLaborEntries(supabase, accountId, {
+          startIso: period.startIso,
+          endIso: period.endIso,
+          crewId: tab === 'hours' ? searchParams.crew ?? null : null,
+        })
+      : [];
+
+  const hours =
+    tab === 'hours'
+      ? summarizeCrewLabor(laborEntries, {
+          overtimeThreshold: settings.overtimeThreshold,
+          roundHours: settings.rounding === 'none' ? undefined : (value) => roundHours(value, settings.rounding),
+        })
+      : null;
+  const jobRows = tab === 'jobs' ? summarizeJobLabor(laborEntries, jobs) : [];
+
+  const tabHref = (next: TabId) => {
+    const query = new URLSearchParams();
+    query.set('tab', next);
+    if (searchParams.period) query.set('period', searchParams.period);
+    if (searchParams.offset) query.set('offset', searchParams.offset);
+    if (searchParams.from) query.set('from', searchParams.from);
+    if (searchParams.to) query.set('to', searchParams.to);
+    return `/dashboard/crew?${query.toString()}`;
+  };
 
   return (
     <main className="wide-shell workspace-shell">
       <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading">
+        <header className={styles.pageHead}>
           <div>
-            <p className="eyebrow">Roster</p>
-            <h1>Crew members</h1>
+            <p className="eyebrow">Team</p>
+            <h1 className={styles.pageTitle}>Crew &amp; Labor</h1>
           </div>
-          <Link href="/dashboard/payroll" className="btn secondary">Payroll &amp; hours →</Link>
-        </div>
-        {crew.length === 0 ? (
-          <p className="empty-state">No crew members yet. Add your first one below.</p>
-        ) : (
-          <>
-            <div className="status-tabs workspace-status-tabs">
-              <Link href="/dashboard/crew" className={`status-tab${filter === 'active' ? ' active' : ''}`}>
-                Active ({activeCrew.length})
+          <div className={styles.pageHeadActions}>
+            {tab === 'crew' ? (
+              <Link href="/dashboard/crew?tab=crew&add=1#add-crew" className="btn primary">
+                + Add crew member
               </Link>
-              <Link href="/dashboard/crew?status=archived" className={`status-tab${filter === 'archived' ? ' active' : ''}`}>
-                Archived ({crew.length - activeCrew.length})
-              </Link>
-            </div>
-            {visibleCrew.length === 0 ? (
-              <p className="empty-state">
-                {filter === 'archived' ? 'No archived crew members.' : 'No active crew members. Add one below, or check the Archived tab.'}
-              </p>
-            ) : (
-              <div className="job-list">
-                {visibleCrew.map((member) => {
-              const photoUrl = member.photo_path ? photoUrls[member.photo_path] : null;
-              return (
-                <div key={member.id} className="job-row crew-card">
-                  <div className="crew-row-intro">
-                    <CrewPhotoUpload
-                      action={updateCrewPhotoAction.bind(null, member.id)}
-                      photoUrl={photoUrl}
-                      initials={initialsFor(member.name)}
-                      name={member.name}
-                    />
-                    <div className="crew-row-main">
-                      <div className="job-row-header">
-                        <span className="crew-card-name">{member.name}</span>
-                        <span className={`status-badge ${member.active ? 'status-complete' : 'status-archived'}`}>
-                          {member.active ? 'Active' : 'Archived'}
-                        </span>
-                      </div>
-                      <div className="crew-card-meta">
-                        <span className="crew-card-role">{member.role_label}</span>
-                        {member.hourly_rate > 0 ? (
-                          <span className="crew-card-contact">{formatMoney(member.hourly_rate)}/hr</span>
-                        ) : null}
-                      </div>
-                      {member.phone ? (
-                        <div className="job-hero-contact" style={{ marginTop: '0.5rem' }}>
-                          <a href={`tel:${member.phone}`} className="hero-phone-link" aria-label={`Call ${member.name}`}>
-                            <span aria-hidden="true">📞</span> {formatPhoneDashes(member.phone)}
-                          </a>
-                        </div>
-                      ) : null}
-                      {member.active ? (
-                        <div className="crew-card-jobs">
-                          {(jobsByCrew[member.id] ?? []).length > 0 ? (
-                            (jobsByCrew[member.id] ?? []).map((job) => (
-                              <Link key={job.id} href={`/dashboard/jobs/${job.id}`} className="crew-job-chip">
-                                {job.ref} · {job.client_name}
-                              </Link>
-                            ))
-                          ) : (
-                            <span className="crew-available-pill">Available</span>
-                          )}
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="crew-card-actions">
-                    {member.active ? (
-                      assignableJobs.length === 0 ? (
-                        <p className="crew-assign-empty">No open jobs to assign yet.</p>
-                      ) : (
-                        <form action={assignCrewToJobAction.bind(null, member.id, true)} className="inline-action-form">
-                          <select name="jobId" aria-label={`Assign ${member.name} to job`} required>
-                            <option value="">Choose job</option>
-                            {assignableJobs.map((job) => (
-                              <option key={job.id} value={job.id}>{job.ref} - {job.client_name} ({formatJobSchedule(job.scheduled_for, job.scheduled_time)})</option>
-                            ))}
-                          </select>
-                          <button type="submit" formAction={assignCrewToJobAction.bind(null, member.id, true)} className="btn secondary" aria-label={`Assign ${member.name} to the selected job and text them`}>Assign &amp; text</button>
-                          <button type="submit" formAction={assignCrewToJobAction.bind(null, member.id, false)} className="btn secondary" aria-label={`Assign ${member.name} to the selected job without texting`}>Assign without texting</button>
-                        </form>
-                      )
-                    ) : null}
-                    {member.active ? (
-                      member.user_id ? (
-                        <span className="crew-field-linked">✓ Field app linked</span>
-                      ) : member.email ? (
-                        <form action={inviteCrewAction.bind(null, member.id)}>
-                          <SaveButton className="btn secondary" pendingLabel="Sending…" savedLabel="Invite sent ✓">Invite to field app</SaveButton>
-                        </form>
-                      ) : (
-                        <span className="crew-field-hint">Add an email to invite to the field app</span>
-                      )
-                    ) : null}
-                    <form action={setCrewActiveAction.bind(null, member.id, !member.active)}>
-                      <button type="submit" className="btn secondary">
-                        {member.active ? 'Archive' : 'Reactivate'}
-                      </button>
-                    </form>
-                    {!member.active ? (
-                      <ConfirmActionButton
-                        action={deleteArchivedCrewAction.bind(null, member.id)}
-                        confirmMessage={`Delete ${member.name}? This can't be undone.`}
-                        className="btn danger"
-                        pendingLabel="Deleting…"
-                        savedLabel="Deleted ✓"
-                      >
-                        Delete
-                      </ConfirmActionButton>
-                    ) : null}
-                  </div>
+            ) : null}
+          </div>
+        </header>
 
-                  <details className="workspace-details" style={{ marginTop: '1rem' }}>
-                    <summary className="workspace-details-summary">
-                      <span className="btn secondary">Edit crew member</span>
-                      <span className="workspace-details-copy">Update name, phone, role, and default hourly rate.</span>
-                    </summary>
-                    <form action={updateCrewAction.bind(null, member.id)} className="form-grid compact-form" style={{ marginTop: '1rem' }}>
-                      <div className="field">
-                        <label htmlFor={`name-${member.id}`}>Name</label>
-                        <input id={`name-${member.id}`} name="name" required defaultValue={member.name} />
-                      </div>
-                      <div className="field">
-                        <label htmlFor={`phone-${member.id}`}>Phone</label>
-                        <input id={`phone-${member.id}`} name="phone" type="tel" required defaultValue={member.phone} />
-                      </div>
-                      <div className="field">
-                        <label htmlFor={`email-${member.id}`}>Email (for field app)</label>
-                        <input id={`email-${member.id}`} name="email" type="email" defaultValue={member.email ?? ''} placeholder="mike@email.com" />
-                      </div>
-                      <div className="field">
-                        <label htmlFor={`roleLabel-${member.id}`}>Role</label>
-                        <input id={`roleLabel-${member.id}`} name="roleLabel" defaultValue={member.role_label} />
-                      </div>
-                      <div className="field">
-                        <label htmlFor={`hourlyRate-${member.id}`}>Hourly rate ($)</label>
-                        <input id={`hourlyRate-${member.id}`} name="hourlyRate" type="number" min="0" step="0.01" defaultValue={member.hourly_rate} />
-                      </div>
-                      <div className="field full">
-                        <SaveButton>Save crew member</SaveButton>
-                      </div>
-                    </form>
-                  </details>
+        <nav className={styles.tabs} aria-label="Crew and labor sections">
+          {TABS.map((item) => (
+            <Link
+              key={item.id}
+              href={tabHref(item.id)}
+              className={`${styles.tab}${tab === item.id ? ` ${styles.tabOn}` : ''}`}
+              aria-current={tab === item.id ? 'page' : undefined}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
 
-                  <CrewWorkHistory crewId={member.id} />
-                </div>
-              );
-                })}
-              </div>
-            )}
-          </>
-        )}
+        {tab === 'crew' ? (
+          <CrewRoster
+            rows={crewRows}
+            assignableJobs={assignableJobs.map((job) => ({ id: job.id, ref: job.ref, clientName: job.client_name }))}
+            periodLabel={period.rangeLabel}
+            initialStatus={searchParams.status === 'archived' ? 'archived' : 'active'}
+            openAdd={searchParams.add === '1' || crew.length === 0}
+          />
+        ) : null}
+
+        {tab === 'hours' && hours ? (
+          <HoursAndPay
+            rows={hours.rows}
+            totals={{
+              hours: hours.totalHours,
+              pay: hours.totalPay,
+              overtime: hours.totalOvertime,
+              needsReview: hours.needsReview,
+              activeCrew: activeCrew.length,
+            }}
+            period={period}
+            status={periodStatus(period, hours.needsReview, laborEntries.length)}
+            exportBlocked={exportBlockedReason(hours.rows)}
+            csv={buildLaborCsv(hours.rows, period)}
+            crewFilter={searchParams.crew ?? null}
+            crewOptions={activeCrew.map((member) => ({ id: member.id, name: member.name }))}
+            assignableJobs={assignableJobs.map((job) => ({ id: job.id, ref: job.ref, clientName: job.client_name }))}
+            jobLookup={Object.fromEntries(jobs.map((job) => [job.id, `${job.ref} · ${job.client_name}`]))}
+            settings={settings}
+          />
+        ) : null}
+
+        {tab === 'jobs' ? (
+          <LaborByJob
+            rows={jobRows}
+            period={period}
+            crewOptions={crew.map((member) => ({ id: member.id, name: member.name }))}
+            entries={laborEntries.map((entry) => ({
+              id: entry.id,
+              jobId: entry.job_id,
+              crewId: entry.crew_id,
+              crewName: entry.crew_name || 'Unassigned',
+              description: entry.description || 'Labor',
+              hours: Number(entry.hours) || 0,
+              amount: Number(entry.amount) || 0,
+              loggedAt: entry.created_at,
+            }))}
+          />
+        ) : null}
       </section>
 
-      <div className="stat-ticker panel">
-        <div className="stat-ticker-item">
-          <span className="stat-ticker-value">{crew.length}</span>
-          <span className="stat-ticker-label">Total crew</span>
+      {tab === 'crew' ? (
+        <div className={`stat-ticker panel ${styles.rosterStats}`}>
+          <div className="stat-ticker-item">
+            <span className="stat-ticker-value">{activeCrew.length}</span>
+            <span className="stat-ticker-label">Active crew</span>
+          </div>
+          <div className="stat-ticker-item">
+            <span className="stat-ticker-value">{onJobCount}</span>
+            <span className="stat-ticker-label">On a job</span>
+          </div>
+          <div className="stat-ticker-item">
+            <span className="stat-ticker-value">{activeCrew.length - onJobCount}</span>
+            <span className="stat-ticker-label">Available</span>
+          </div>
+          <div className="stat-ticker-item">
+            <span className="stat-ticker-value">{crew.length - activeCrew.length}</span>
+            <span className="stat-ticker-label">Archived</span>
+          </div>
         </div>
-        <div className="stat-ticker-item">
-          <span className="stat-ticker-value">{activeCrew.length}</span>
-          <span className="stat-ticker-label">Active</span>
-        </div>
-        <div className="stat-ticker-item">
-          <span className="stat-ticker-value">{onJobCount}</span>
-          <span className="stat-ticker-label">On a job</span>
-        </div>
-        <div className="stat-ticker-item">
-          <span className="stat-ticker-value">{availableCount}</span>
-          <span className="stat-ticker-label">Available</span>
-        </div>
-      </div>
-
-      <details className="panel workspace-section-card workspace-details" open={crew.length === 0}>
-        <summary className="workspace-details-summary">
-          <span className="btn primary">+ Add crew member</span>
-          <span className="workspace-details-copy">They&apos;ll get a text when a manager assigns them to a job.</span>
-        </summary>
-        <form action={createCrewAction} className="form-grid">
-          <div className="field">
-            <label htmlFor="name">Name</label>
-            <input id="name" name="name" required placeholder="Mike Torres" />
-          </div>
-          <div className="field">
-            <label htmlFor="phone">Phone</label>
-            <input id="phone" name="phone" type="tel" required placeholder="(248) 555-0117" />
-          </div>
-          <div className="field">
-            <label htmlFor="email">Email (for field app)</label>
-            <input id="email" name="email" type="email" placeholder="mike@email.com" />
-          </div>
-          <div className="field">
-            <label htmlFor="roleLabel">Role</label>
-            <input id="roleLabel" name="roleLabel" placeholder="Laborer" />
-          </div>
-          <div className="field">
-            <label htmlFor="hourlyRate">Hourly rate ($)</label>
-            <input id="hourlyRate" name="hourlyRate" type="number" min="0" step="0.01" placeholder="28" />
-          </div>
-          <div className="field full">
-            <label htmlFor="photo">Owner-taken crew photo</label>
-            <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp,image/avif" capture="environment" />
-          </div>
-          <div className="field full">
-            <SaveButton pendingLabel="Adding…" savedLabel="Added ✓">Add crew member</SaveButton>
-          </div>
-        </form>
-      </details>
+      ) : null}
     </main>
   );
 }

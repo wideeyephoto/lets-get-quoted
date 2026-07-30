@@ -79,7 +79,7 @@ const FAQ_GROUPS: FaqGroup[] = [
       },
       {
         q: 'Can my crew use it too?',
-        a: 'Yes. Crew get their own logins and a field view to see their jobs and log hours, materials, and photos on site. Payroll rolls those hours up for you automatically.',
+        a: 'Yes. Crew get their own logins and a field view to see their jobs and log hours, materials, and photos on site. Those hours roll up under Crew & Labor so you know what to pay. It is a rollup to pay from, not a payroll service — it does not calculate tax or move money to your crew.',
       },
     ],
   },

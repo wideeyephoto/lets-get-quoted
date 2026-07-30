@@ -33,9 +33,12 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         <div className="stripe-alert-wrap">
           <div className="stripe-alert-banner">
             <span className="stripe-alert-icon" aria-hidden="true">⚠️</span>
+            {/* Says which direction the money goes. Stripe here is for taking
+                money FROM homeowners; it has nothing to do with paying crew,
+                and the old wording ("payouts") was read as though it did. */}
             <div className="stripe-alert-copy">
-              <strong>Stripe payouts aren&apos;t connected yet.</strong>
-              <span>Homeowners can&apos;t pay you until this is finished — it only takes a few minutes.</span>
+              <strong>Customer payments are not connected</strong>
+              <span>Connect Stripe to accept homeowner deposits and invoice payments.</span>
             </div>
             <Link href="/dashboard/settings" className="btn primary stripe-alert-cta">
               Connect Stripe

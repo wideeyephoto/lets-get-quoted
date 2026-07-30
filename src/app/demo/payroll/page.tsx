@@ -70,11 +70,12 @@ export default function DemoPayrollPage() {
     <main className="wide-shell workspace-shell">
       <section className="workspace-hero panel">
         <div className="workspace-hero-copy">
-          <p className="eyebrow">Payroll</p>
-          <h1 className="workspace-title">Crew hours &amp; pay</h1>
+          <p className="eyebrow">Crew &amp; Labor</p>
+          <h1 className="workspace-title">Hours &amp; pay</h1>
           <p className="workspace-lead">
-            Hours your crew logs from the field (and any labor you enter on a job) roll up here by pay period — so you
-            know exactly what to pay, and can export it in a tap.
+            Hours your crew logs from the field (and any labor you add to a job) roll up here by pay period — so you
+            know what to pay, and can export it in a tap. A rollup to pay from, not a payroll run: no tax is
+            calculated or withheld.
           </p>
         </div>
       </section>
@@ -129,7 +130,7 @@ export default function DemoPayrollPage() {
       <section className="panel workspace-section-card demo-locked-card">
         <div className="section-heading workspace-section-heading">
           <p className="eyebrow">Try it yourself</p>
-          <h2>Run your own payroll</h2>
+          <h2>Track your own crew hours</h2>
         </div>
         <p className="workspace-card-copy">
           Your crew logs hours from the field, and every pay period totals up here ready to export — this demo account

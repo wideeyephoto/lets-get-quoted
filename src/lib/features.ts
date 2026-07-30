@@ -127,7 +127,7 @@ export const FEATURE_CATEGORIES: FeatureCategory[] = [
       { id: 'crew-roster', name: 'Crew roster', desc: 'Roles, hourly rates, and photos.' },
       { id: 'crew-assignment', name: 'Crew assignment', desc: 'Assign crew to jobs; newly added crew get an auto text.' },
       { id: 'field-app', name: 'Field app', desc: 'Crew log in to see their jobs and record hours, materials, and photos on site.' },
-      { id: 'payroll', name: 'Payroll', desc: 'Hours-and-pay rollups by crew member and period.' },
+      { id: 'payroll', name: 'Hours & pay', desc: 'Hours-and-pay rollups by crew member and pay period. Not a payroll run — no tax is calculated or withheld.' },
     ],
   },
   {

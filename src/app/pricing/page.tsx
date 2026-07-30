@@ -20,7 +20,7 @@ const included = [
   'AI instant estimate & lead intake',
   'Quotes, e-signatures & the client portal',
   'Scheduling, online booking & reminders',
-  'Jobs, crew, payroll & the field app',
+  'Jobs, crew, hours & the field app',
   'Recurring plans & auto-billing',
   'Reviews, campaigns & rebook',
   'Insights, tax reports & QuickBooks export',

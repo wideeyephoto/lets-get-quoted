@@ -38,8 +38,8 @@ const GROUPS: { label: string; items: DemoItem[] }[] = [
   {
     label: 'Team',
     items: [
-      { icon: '/dashboard/crew', label: 'Crew', href: '/demo/crew' },
-      { icon: '/dashboard/payroll', label: 'Payroll', href: '/demo/payroll' },
+      { icon: '/dashboard/crew', label: 'Crew & Labor', href: '/demo/crew' },
+      { icon: '/dashboard/crew', label: 'Hours & pay', href: '/demo/payroll' },
     ],
   },
   {
