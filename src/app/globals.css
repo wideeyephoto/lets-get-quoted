@@ -8561,6 +8561,30 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 
 .booking-form { display: grid; gap: 1.4rem; }
 
+/* Divides the shareable link from the rules that govern it inside the one
+   Online booking panel — they're the same feature, so this is a seam rather
+   than a second card. */
+.booking-settings-seam {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin: 1.5rem 0 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(147, 164, 184, 0.9);
+}
+
+.booking-settings-seam::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(148, 176, 214, 0.16);
+}
+
+.booking-availability-body .workspace-details-copy { margin: 0 0 1rem; }
+
 .booking-form-actions {
   display: flex;
   justify-content: flex-end;

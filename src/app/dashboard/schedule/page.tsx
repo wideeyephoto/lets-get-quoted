@@ -349,6 +349,23 @@ export default async function SchedulePage({
   );
   const bookingWeekdayCount = bookingAvailability.weekdays.length;
 
+  // One header for the whole feature, so the folded row says whether customers
+  // can actually book right now — not just that the setting exists. Clearing
+  // every weekday is how you pause online booking, so it counts as paused even
+  // though booking_enabled is still true.
+  const bookingPaused = !bookingAvailability.enabled || bookingWeekdayCount === 0;
+  const bookingStatus = !bookingUrl ? 'Not live' : bookingPaused ? 'Paused' : `${openWindowCount} open`;
+  const bookingTone: 'neutral' | 'on' | 'warn' = !bookingUrl
+    ? 'neutral'
+    : bookingPaused || openWindowCount === 0
+      ? 'warn'
+      : 'on';
+  const bookingSummary = !bookingUrl
+    ? 'Publish your website to let customers book themselves.'
+    : bookingPaused
+      ? 'Paused — no days are open for booking. Pick the days you take work below.'
+      : `Share your link and customers pick an open window themselves. You're offering ${bookingWeekdayCount} day${bookingWeekdayCount === 1 ? '' : 's'} a week.`;
+
   return (
     <main className="wide-shell workspace-shell">
       <ScheduleDragProvider unavailable={unavailableDays}>
@@ -657,15 +674,17 @@ export default async function SchedulePage({
         ) : null}
         </WorkspaceDisclosure>
 
+        {/* The link and the availability rules are one feature: the page you
+            share, and what that page is allowed to offer. Splitting them meant
+            reading the settings without being able to see what they produced. */}
         <WorkspaceDisclosure
+          id="booking-availability"
           group="schedule-setup"
           eyebrow="Online booking"
           title="Your self-serve booking page"
-          status={bookingUrl ? (openWindowCount > 0 ? `${openWindowCount} open` : 'No windows') : 'Not live'}
-          statusTone={bookingUrl && openWindowCount > 0 ? 'on' : bookingUrl ? 'warn' : 'neutral'}
-          summary={bookingUrl
-            ? 'Share your link and customers pick an open window themselves.'
-            : 'Publish your website to let customers book themselves.'}
+          status={bookingStatus}
+          statusTone={bookingTone}
+          summary={bookingSummary}
         >
           <BookingLinkCard
             bookingUrl={bookingUrl}
@@ -673,17 +692,6 @@ export default async function SchedulePage({
             openWindowCount={openWindowCount}
             openDayCount={bookingDays.length}
           />
-        </WorkspaceDisclosure>
-
-        <WorkspaceDisclosure
-          id="booking-availability"
-          group="schedule-setup"
-          eyebrow="Instant booking"
-          title="Your online booking availability"
-          status={bookingAvailability.enabled ? `${bookingWeekdayCount} day${bookingWeekdayCount === 1 ? '' : 's'} a week` : 'Off'}
-          statusTone={bookingAvailability.enabled ? 'on' : 'neutral'}
-          summary="The days you take work, the arrival windows you offer, and how many bookings a day is enough."
-        >
           <BookingAvailabilitySection bookingSettings={bookingSettings} />
         </WorkspaceDisclosure>
       </div>

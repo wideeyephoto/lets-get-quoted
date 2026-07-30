@@ -40,9 +40,10 @@ export default function BookingLinkCard({ bookingUrl, sitePublished, openWindowC
 
   return (
     <div className="booking-link-card">
+      {/* The folded header already says "share your link" — don't say it twice
+          the moment it opens. This adds what that header can't fit. */}
       <p className="workspace-details-copy">
-        Share this link and customers pick an open window themselves. Each request lands here as a scheduled job and a
-        warm lead — no phone tag.
+        Each request lands here as a scheduled job and a warm lead — no phone tag.
       </p>
       <div className="booking-link-row">
         <input

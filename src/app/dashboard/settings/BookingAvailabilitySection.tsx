@@ -29,9 +29,14 @@ export default function BookingAvailabilitySection({ bookingSettings }: { bookin
 
   return (
     <div className="booking-availability-body">
+      {/* Sits directly under the shareable link, so it says what these settings
+          do to THAT page rather than re-introducing the feature. */}
+      <div className="booking-settings-seam">
+        <span>What that page offers</span>
+      </div>
       <p className="workspace-details-copy">
-        This controls the times customers can grab on your public <strong>Book a time</strong> page. A
-        booking still lands as a request for you to confirm &mdash; this just decides what&apos;s offered.
+        A booking still lands as a request for you to confirm &mdash; this just decides what&apos;s on the
+        table.
       </p>
       {/* Grouped rather than one flat run of fields. Availability, volume, the
           instant-book gate and the route rules are four different decisions, and
