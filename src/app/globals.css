@@ -2808,9 +2808,10 @@ li + li { margin-top: 0.45rem; }
   gap: 1rem;
   flex-wrap: wrap;
   padding: 1.1rem 1.3rem;
-  border: 1px solid rgba(251, 191, 36, 0.4);
+  border: 1px solid rgba(255, 122, 33, 0.5);
   border-radius: 16px;
-  background: rgba(251, 191, 36, 0.1);
+  background: linear-gradient(180deg, rgba(255, 122, 33, 0.11), rgba(255, 122, 33, 0.03));
+  box-shadow: 0 0 24px rgba(255, 122, 33, 0.18), inset 0 0 22px rgba(255, 122, 33, 0.05);
 }
 
 .stripe-alert-icon { font-size: 1.4rem; line-height: 1; flex-shrink: 0; }
@@ -3212,9 +3213,25 @@ li + li { margin-top: 0.45rem; }
 
 .calendar-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; margin: 0 0 .75rem; }
 .calendar-hint { margin: 0; color: rgba(255,255,255,.5); font-size: .82rem; }
-.calendar-view-toggle { display: inline-flex; padding: .2rem; border: 1px solid rgba(255,255,255,.12); border-radius: 999px; background: rgba(255,255,255,.04); }
-.calendar-view-toggle button { border: 0; border-radius: 999px; padding: .35rem .65rem; background: transparent; color: rgba(255,255,255,.58); font: inherit; font-size: .75rem; font-weight: 800; cursor: pointer; }
-.calendar-view-toggle button.active { background: #fff; color: #121212; }
+/* The group is ringed in cool light; the segment you're on is filled with the
+   brand orange. It used to be a flat white pill — the one bright white object
+   on a near-black page, which read as a hole punched in the UI rather than as
+   a selected state. Orange also keeps "selected" meaning the same thing here
+   as it does on every other control in the dashboard. */
+.calendar-view-toggle {
+  display: inline-flex;
+  padding: .2rem;
+  border: 1px solid rgba(58,160,255,.38);
+  border-radius: 999px;
+  background: rgba(58,160,255,.05);
+  box-shadow: 0 0 14px rgba(58,160,255,.16), inset 0 0 12px rgba(58,160,255,.05);
+}
+.calendar-view-toggle button { border: 0; border-radius: 999px; padding: .35rem .65rem; background: transparent; color: rgba(255,255,255,.58); font: inherit; font-size: .75rem; font-weight: 800; cursor: pointer; transition: color .16s ease, box-shadow .16s ease; }
+.calendar-view-toggle button.active {
+  background: linear-gradient(135deg, #ff5a1f 0%, #ff8a3d 100%);
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(255,176,120,.55), 0 0 14px rgba(255,122,33,.5);
+}
 .calendar-view-toggle button:not(.active):hover { color: #fff; }
 
 /* The crew button sits OVER the chip's top-right rather than beside it. In a
@@ -8656,23 +8673,40 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
   justify-content: flex-end;
 }
 
+/* Lit outlines rather than grey boxes: a hairline in cool light with a soft
+   halo behind it, so the numbers read as instruments on a dark dash. The icon
+   spans both text rows on the left, which costs no extra height — this bar was
+   deliberately compressed so the calendar is visible on arrival, and a stacked
+   icon would have undone that. */
 .sched-stat {
   display: grid;
-  gap: 0.05rem;
-  padding: 0.45rem 0.8rem;
-  border-radius: 12px;
-  border: 1px solid rgba(148, 176, 214, 0.16);
-  background: rgba(255, 255, 255, 0.03);
+  grid-template-columns: max-content minmax(0, 1fr);
+  align-items: center;
+  gap: 0 0.55rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 14px;
+  border: 1px solid rgba(58, 160, 255, 0.34);
+  background: linear-gradient(180deg, rgba(58, 160, 255, 0.08), rgba(58, 160, 255, 0.02));
+  box-shadow: 0 0 16px rgba(58, 160, 255, 0.14), inset 0 0 14px rgba(58, 160, 255, 0.05);
   text-decoration: none;
-  transition: border-color 0.16s ease, background 0.16s ease;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
 }
 
 .sched-stat:hover {
-  border-color: rgba(255, 122, 41, 0.4);
-  background: rgba(255, 122, 41, 0.07);
+  border-color: rgba(58, 160, 255, 0.62);
+  box-shadow: 0 0 22px rgba(58, 160, 255, 0.3), inset 0 0 16px rgba(58, 160, 255, 0.08);
+}
+
+.sched-stat-icon {
+  grid-row: span 2;
+  width: 1.45rem;
+  height: 1.45rem;
+  color: #6fc0ff;
+  filter: drop-shadow(0 0 6px rgba(58, 160, 255, 0.5));
 }
 
 .sched-stat strong {
+  grid-column: 2;
   font-size: 1.02rem;
   font-weight: 750;
   letter-spacing: -0.01em;
@@ -8681,22 +8715,62 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 }
 
 .sched-stat small {
+  grid-column: 2;
   font-size: 0.66rem;
   font-weight: 650;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--muted, #93a4b8);
+  color: rgba(126, 183, 240, 0.92);
   white-space: nowrap;
 }
 
-/* Only tinted when there's actually something waiting. */
+/* Only lit amber when there's actually something waiting — the one card that
+   is asking you to do something shouldn't look like the three that aren't. */
 .sched-stat.needs {
-  border-color: rgba(255, 176, 32, 0.38);
-  background: rgba(255, 176, 32, 0.09);
+  border-color: rgba(255, 176, 32, 0.45);
+  background: linear-gradient(180deg, rgba(255, 176, 32, 0.11), rgba(255, 176, 32, 0.03));
+  box-shadow: 0 0 18px rgba(255, 176, 32, 0.2), inset 0 0 14px rgba(255, 176, 32, 0.06);
+}
+.sched-stat.needs:hover {
+  border-color: rgba(255, 176, 32, 0.7);
+  box-shadow: 0 0 24px rgba(255, 176, 32, 0.34), inset 0 0 16px rgba(255, 176, 32, 0.09);
 }
 .sched-stat.needs strong { color: #ffc65c; }
+.sched-stat.needs small { color: rgba(255, 198, 92, 0.92); }
+.sched-stat.needs .sched-stat-icon {
+  color: #ffb020;
+  filter: drop-shadow(0 0 6px rgba(255, 176, 32, 0.55));
+}
 
 .schedule-bar-cta { flex: none; white-space: nowrap; }
+
+/* Primary actions inside the dashboard glow. Scoped to the workspace shell and
+   the account banner on purpose — .btn.primary is also the button on every
+   contractor's public site and on the marketing pages, and those are not this
+   theme. */
+.workspace-shell .btn.primary,
+.stripe-alert-cta {
+  box-shadow:
+    0 0 0 1px rgba(255, 178, 122, 0.5),
+    0 0 18px rgba(255, 122, 33, 0.4),
+    0 6px 18px rgba(0, 0, 0, 0.35);
+  transition: box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.workspace-shell .btn.primary:hover,
+.stripe-alert-cta:hover {
+  box-shadow:
+    0 0 0 1px rgba(255, 200, 158, 0.75),
+    0 0 26px rgba(255, 122, 33, 0.6),
+    0 8px 22px rgba(0, 0, 0, 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-shell .btn.primary,
+  .stripe-alert-cta,
+  .sched-stat,
+  .calendar-view-toggle button { transition: none; }
+}
 
 /* Month nav, sharing the toolbar row with the view switcher */
 .month-nav {

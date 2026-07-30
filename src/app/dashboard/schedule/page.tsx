@@ -149,6 +149,25 @@ function groupByJobId<T extends { job_id: string }>(rows: T[]): Record<string, T
   }, {});
 }
 
+// Marks for the four header stats. Drawn here rather than pulled from the baked
+// icon set — that set is trade glyphs (wrench, droplet, roller) for contractor
+// sites, and none of them mean "revenue". Four paths is cheaper than growing
+// that set for dashboard chrome.
+const STAT_PATHS: Record<string, string> = {
+  briefcase: 'M3 8.5h18v10a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5v-10Zm5-1V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v1.5M3 12.5h18',
+  money: 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17Zm2.6 5.2a3 3 0 0 0-2.6-1.2c-1.5 0-2.6.8-2.6 2s1 1.7 2.6 2 2.7.8 2.7 2-1.2 2-2.7 2a3 3 0 0 1-2.7-1.3M12 6v12',
+  trend: 'M3.5 16.5 9 11l3.5 3.5L20.5 6.5M15.5 6.5h5v5',
+  calendar: 'M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5v12a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-12ZM8 3v4M16 3v4M4 10h16M8.5 13.5h.01M12 13.5h.01M15.5 13.5h.01M8.5 16.5h.01M12 16.5h.01',
+};
+
+function StatIcon({ shape }: { shape: keyof typeof STAT_PATHS }) {
+  return (
+    <svg className="sched-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={STAT_PATHS[shape]} />
+    </svg>
+  );
+}
+
 export default async function SchedulePage({
   searchParams,
 }: {
@@ -420,14 +439,17 @@ export default async function SchedulePage({
 
           <div className="schedule-stats">
             <Link className="sched-stat" href="/dashboard/jobs" aria-label={`${scheduledNext30Days} jobs booked in the next 30 days`}>
+              <StatIcon shape="briefcase" />
               <strong>{scheduledNext30Days}</strong>
               <small>Jobs · 30d</small>
             </Link>
             <Link className="sched-stat" href="/dashboard/jobs" aria-label={`${formatMoney(estimatedRevenue)} estimated revenue in the next 30 days`}>
+              <StatIcon shape="money" />
               <strong>{formatMoney(estimatedRevenue)}</strong>
               <small>Revenue</small>
             </Link>
             <Link className="sched-stat" href="/dashboard/jobs" aria-label={`${formatMoney(estimatedProfit)} estimated profit in the next 30 days`}>
+              <StatIcon shape="trend" />
               <strong>{formatMoney(estimatedProfit)}</strong>
               <small>Profit</small>
             </Link>
@@ -436,6 +458,7 @@ export default async function SchedulePage({
               href="#unscheduled-jobs"
               aria-label={`${unscheduledJobs.length} active ${unscheduledJobs.length === 1 ? 'job needs' : 'jobs need'} a scheduled date`}
             >
+              <StatIcon shape="calendar" />
               <strong>{unscheduledJobs.length}</strong>
               <small>Needs date</small>
             </a>
