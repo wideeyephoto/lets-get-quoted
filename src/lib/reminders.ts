@@ -5,7 +5,8 @@ import { formatJobSchedule } from '@/lib/jobs';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { resolveAccountForPhone } from '@/lib/messages';
 import { sendAppointmentReminderSms } from '@/lib/sms';
-import { sendAppointmentReminderEmail } from '@/lib/email';
+import { getAccountOwnerEmail, sendAppointmentReminderEmail, sendReminderRunSummaryEmail } from '@/lib/email';
+import { wantsConfirmation } from '@/lib/confirmation-prefs';
 
 // Bound the work one cron invocation will do.
 const MAX_SENDS_PER_RUN = 200;
@@ -63,6 +64,14 @@ export async function runAppointmentReminders(): Promise<ReminderRunSummary> {
   let sent = 0;
   let skipped = 0;
   let failed = 0;
+  // Per-account tallies for the end-of-run summary, so a contractor hears once
+  // about their own customers rather than once per customer.
+  const byAccount = new Map<string, { sent: number; failed: number }>();
+  const tally = (accountId: string, key: 'sent' | 'failed') => {
+    const row = byAccount.get(accountId) ?? { sent: 0, failed: 0 };
+    row[key] += 1;
+    byAccount.set(accountId, row);
+  };
 
   for (const job of jobs ?? []) {
     if (sent >= MAX_SENDS_PER_RUN) break;
@@ -127,11 +136,15 @@ export async function runAppointmentReminders(): Promise<ReminderRunSummary> {
         meta: { channel, scheduled_for: job.scheduled_for, scheduled_time: job.scheduled_time ?? null },
       });
       sent++;
+      tally(job.account_id as string, 'sent');
     } catch (error) {
       console.error(`Appointment reminder failed for job ${job.id}:`, error instanceof Error ? error.message : error);
       failed++;
+      tally(job.account_id as string, 'failed');
     }
   }
+
+  await sendReminderSummaries(admin, byAccount);
 
   return { candidates: (jobs ?? []).length, sent, skipped, failed };
 }
@@ -188,4 +201,37 @@ export async function confirmUpcomingAppointment(admin: SupabaseClient, phone: s
     confirmed: true,
     job: { ref: match.ref as string, whenLabel, businessName, clientFirst: (match.client_name || '').trim().split(/\s+/)[0] || '' },
   };
+}
+
+// One summary per account per run, for contractors who opted in. Off by default:
+// reminders go out for every job booked tomorrow, so a per-customer confirmation
+// would be a stack of mail at 10pm rather than a signal worth reading.
+//
+// Entirely best-effort — the reminders themselves have already been sent, and a
+// failure here must not colour the run's result.
+async function sendReminderSummaries(
+  admin: SupabaseClient,
+  byAccount: Map<string, { sent: number; failed: number }>,
+): Promise<void> {
+  const origin = (process.env.NEXT_PUBLIC_APP_URL || 'https://letsgetquoted.com').replace(/\/$/, '');
+  for (const [accountId, counts] of byAccount) {
+    if (counts.sent === 0 && counts.failed === 0) continue;
+    try {
+      if (!(await wantsConfirmation(admin, accountId, 'reminder_confirmation_email'))) continue;
+      const [ownerEmail, { data: account }] = await Promise.all([
+        getAccountOwnerEmail(admin, accountId),
+        admin.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
+      ]);
+      if (!ownerEmail) continue;
+      await sendReminderRunSummaryEmail({
+        recipientEmail: ownerEmail,
+        businessName: (account?.business_name as string) || 'Your business',
+        sentCount: counts.sent,
+        failedCount: counts.failed,
+        dashboardUrl: `${origin}/dashboard/schedule`,
+      });
+    } catch (error) {
+      console.error(`Reminder summary failed for account ${accountId}:`, error instanceof Error ? error.message : error);
+    }
+  }
 }

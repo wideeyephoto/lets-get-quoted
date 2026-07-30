@@ -15,6 +15,9 @@ export const AUTOMATION_COLUMNS = {
   reminders: 'appointment_reminders_enabled',
   'daily-digest': 'daily_digest_enabled',
   'quote-confirmation': 'quote_confirmation_email',
+  'payment-confirmation': 'payment_confirmation_email',
+  'review-confirmation': 'review_confirmation_email',
+  'reminder-confirmation': 'reminder_confirmation_email',
 } as const;
 
 export type AutomationKey = keyof typeof AUTOMATION_COLUMNS;
@@ -34,4 +37,7 @@ export const AUTOMATION_LABELS: Record<AutomationKey, string> = {
   reminders: 'Appointment reminders',
   'daily-digest': 'Daily digest',
   'quote-confirmation': 'Quote confirmation emails',
+  'payment-confirmation': 'Payment request confirmations',
+  'review-confirmation': 'Review request confirmations',
+  'reminder-confirmation': 'Appointment reminder summary',
 };

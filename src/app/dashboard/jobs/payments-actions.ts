@@ -8,6 +8,8 @@ import { cancelPaymentRequest, createDepositRequest, getPaymentDetails, refundPa
 import { addInvoiceItem, createInvoice, listInvoices, selectPrimaryInvoice } from '@/lib/invoices';
 import { createPaymentFeedEvent, createJobFeedEvent } from '@/lib/job-feed';
 import { normalizeUsPhone } from '@/lib/phone';
+import { wantsConfirmation } from '@/lib/confirmation-prefs';
+import { sendPaymentRequestedConfirmationEmail } from '@/lib/email';
 import { recordSmsConsent, retryFailedPaymentSmsEvent, sendPaymentSmsEvent } from '@/lib/sms';
 
 async function ensureJobInvoice(supabase: Awaited<ReturnType<typeof requireOwnerContext>>['supabase'], accountId: string, jobId: string) {
@@ -46,6 +48,32 @@ export async function createDepositRequestAction(jobId: string, formData: FormDa
   });
   await createPaymentFeedEvent(supabase, payment.id, 'payment_requested');
   if (sendSms) await sendPaymentSmsEvent(payment.id, 'payment_requested');
+
+  // Receipt to the contractor. Never allowed to fail the request itself.
+  try {
+    if (await wantsConfirmation(supabase, accountId, 'payment_confirmation_email')) {
+      const [{ data: { user } }, { data: account }] = await Promise.all([
+        supabase.auth.getUser(),
+        supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
+      ]);
+      if (user?.email) {
+        const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
+        const job = await getJob(supabase, accountId, jobId);
+        await sendPaymentRequestedConfirmationEmail({
+          recipientEmail: user.email,
+          businessName: account?.business_name || 'Your business',
+          clientName: job?.client_name || 'your customer',
+          label,
+          amount,
+          channel: sendSms && homeownerPhone ? 'sms' : 'none',
+          sentTo: sendSms ? homeownerPhone : null,
+          jobUrl: `${origin}/dashboard/jobs/${jobId}`,
+        });
+      }
+    }
+  } catch (err) {
+    console.error(`Payment confirmation email failed for job ${jobId}:`, err);
+  }
 
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }

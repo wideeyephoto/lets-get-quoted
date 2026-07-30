@@ -15,6 +15,7 @@ import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, createScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
 import { isPhoneOptedOut, recordSmsConsent, sendClientJobDashboardSms, sendLeadDeclineSms, sendLeadQuoteVisitOptionsSms, sendLeadQuoteVisitSms } from '@/lib/sms';
 import { sendClientQuoteEmail, sendQuoteSentConfirmationEmail } from '@/lib/email';
+import { wantsConfirmation } from '@/lib/confirmation-prefs';
 
 function optionalText(value: FormDataEntryValue | null): string | null {
   const text = (value ?? '').toString().trim();
@@ -406,14 +407,9 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
   // some contractors will want the confirmation and some will find it noise.
   // Defensive read — a pre-migration row has no column and defaults to on.
   try {
-    const { data: prefs } = await supabase
-      .from('accounts')
-      .select('quote_confirmation_email')
-      .eq('id', accountId)
-      .maybeSingle();
-    const wantsConfirmation = (prefs as { quote_confirmation_email?: boolean } | null)?.quote_confirmation_email !== false;
+    const wanted = await wantsConfirmation(supabase, accountId, 'quote_confirmation_email');
     const { data: { user } } = await supabase.auth.getUser();
-    if (wantsConfirmation && user?.email) {
+    if (wanted && user?.email) {
       const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
       await sendQuoteSentConfirmationEmail({
         recipientEmail: user.email,

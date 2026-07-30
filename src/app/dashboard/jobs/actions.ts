@@ -28,7 +28,8 @@ import { listCrew, listCrewIdsForJob, setJobCrewAssignments, toggleJobCrewAssign
 import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
 import { isPhoneOptedOut, recordSmsConsent, sendClientJobDashboardSms, sendCrewAssignmentSms, sendCrewScheduleSelectedSms, sendJobUpdateSms, sendReviewRequestSms } from '@/lib/sms';
-import { sendReviewRequestEmail } from '@/lib/email';
+import { sendReviewRequestEmail, sendReviewRequestConfirmationEmail } from '@/lib/email';
+import { wantsConfirmation } from '@/lib/confirmation-prefs';
 import { sendPushToCrew } from '@/lib/push';
 import { isEmailSuppressed, resolveMarketingMailingAddress } from '@/lib/email-suppression';
 import { createReviewInvite } from '@/lib/reviews';
@@ -792,6 +793,34 @@ export async function requestJobReviewAction(jobId: string): Promise<{ ok: boole
   const job = await getJob(supabase, accountId, jobId);
   const result = await deliverJobReviewRequest(supabase, accountId, job);
   if (result.ok) revalidatePath(`/dashboard/jobs/${jobId}`);
+
+  // Receipt to the contractor, if they want one. Never fails the ask itself.
+  if (result.ok && job) {
+    try {
+      if (await wantsConfirmation(supabase, accountId, 'review_confirmation_email')) {
+        const [{ data: { user } }, { data: account }] = await Promise.all([
+          supabase.auth.getUser(),
+          supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
+        ]);
+        if (user?.email) {
+          const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
+          const phone = job.client_phone ? normalizeUsPhone(job.client_phone) : null;
+          await sendReviewRequestConfirmationEmail({
+            recipientEmail: user.email,
+            businessName: account?.business_name || 'Your business',
+            clientName: job.client_name,
+            jobRef: job.ref,
+            channel: phone ? 'sms' : job.client_email ? 'email' : 'none',
+            sentTo: phone || job.client_email || null,
+            jobUrl: `${origin}/dashboard/jobs/${jobId}`,
+          });
+        }
+      }
+    } catch (err) {
+      console.error(`Review confirmation email failed for job ${jobId}:`, err);
+    }
+  }
+
   return result;
 }
 

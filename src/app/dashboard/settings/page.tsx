@@ -148,13 +148,19 @@ export default async function SettingsPage({
   const smartIntakeOn = businessBasics.estimateRanges.enabled;
   // Defensive read, like the other automation flags: a pre-migration row has no
   // column, and the confirmation defaults to on.
-  const { data: quoteConfirmSettings } = await supabase
+  const { data: confirmSettings } = await supabase
     .from('accounts')
-    .select('quote_confirmation_email')
+    .select('quote_confirmation_email, payment_confirmation_email, review_confirmation_email, reminder_confirmation_email')
     .eq('id', accountId)
     .maybeSingle();
-  const quoteConfirmationOn =
-    (quoteConfirmSettings as { quote_confirmation_email?: boolean } | null)?.quote_confirmation_email !== false;
+  const confirmRow = (confirmSettings ?? {}) as Record<string, boolean | undefined>;
+  // Fall back to each column's own default, matching CONFIRMATION_DEFAULTS.
+  const confirmOn = (column: string, fallback: boolean) =>
+    typeof confirmRow[column] === 'boolean' ? (confirmRow[column] as boolean) : fallback;
+  const quoteConfirmationOn = confirmOn('quote_confirmation_email', true);
+  const paymentConfirmationOn = confirmOn('payment_confirmation_email', true);
+  const reviewConfirmationOn = confirmOn('review_confirmation_email', true);
+  const reminderConfirmationOn = confirmOn('reminder_confirmation_email', false);
   // Settings history. Empty (and harmless) until the account_events migration is
   // applied — listAccountEvents swallows a missing table rather than 500-ing.
   const settingsHistory = await listAccountEvents(supabase, accountId, 8);
@@ -660,7 +666,7 @@ export default async function SettingsPage({
                   </form>
                 </AutomationCard>
 
-                <p className="automation-group">Your briefing</p>
+                <p className="automation-group">Confirmations to you</p>
                 <AutomationCard
                   id="quote-confirmation"
                   title="Quote confirmation emails"
@@ -678,6 +684,48 @@ export default async function SettingsPage({
                   </p>
                 </AutomationCard>
 
+                <AutomationCard
+                  id="payment-confirmation"
+                  title="Payment request confirmations"
+                  subtitle="Email me when I ask a customer to pay"
+                  toggle={{ on: paymentConfirmationOn, action: toggleAutomationAction.bind(null, 'payment-confirmation') }}
+                >
+                  <p className="workspace-details-copy" style={{ marginTop: 0 }}>
+                    Confirms the amount, and whether it actually reached them. If you created the request without
+                    texting it, the confirmation says so &mdash; that request is sitting on the job unsent, and it&apos;s
+                    worth knowing before you wonder why nobody has paid.
+                  </p>
+                </AutomationCard>
+
+                <AutomationCard
+                  id="review-confirmation"
+                  title="Review request confirmations"
+                  subtitle="Email me when a review ask goes out"
+                  toggle={{ on: reviewConfirmationOn, action: toggleAutomationAction.bind(null, 'review-confirmation') }}
+                >
+                  <p className="workspace-details-copy" style={{ marginTop: 0 }}>
+                    One email per review ask, saying who it went to and by which channel. Useful if review requests are
+                    sent automatically after a job completes and you&apos;d rather not check the job feed to see it happened.
+                  </p>
+                </AutomationCard>
+
+                <AutomationCard
+                  id="reminder-confirmation"
+                  title="Appointment reminder summary"
+                  subtitle="One email a night, not one per customer"
+                  toggle={{ on: reminderConfirmationOn, action: toggleAutomationAction.bind(null, 'reminder-confirmation') }}
+                >
+                  <p className="workspace-details-copy" style={{ marginTop: 0 }}>
+                    Reminders go out to <strong>every</strong> customer booked for the next day, so this is deliberately
+                    a single summary &mdash; how many were reminded, and how many couldn&apos;t be reached. The ones that
+                    failed haven&apos;t heard from you, which is the part worth acting on.
+                  </p>
+                  <p className="workspace-details-copy">
+                    Off by default, and it only sends on nights when reminders actually went out.
+                  </p>
+                </AutomationCard>
+
+                <p className="automation-group">Your briefing</p>
                 <AutomationCard id="daily-digest" title="Daily digest" subtitle="Your business each morning" toggle={{ on: dailyDigestEnabled, action: toggleAutomationAction.bind(null, 'daily-digest') }}>
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     When on, each morning we email you a short digest of your business — money received,

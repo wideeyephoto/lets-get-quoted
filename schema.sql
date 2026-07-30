@@ -175,6 +175,13 @@ alter table accounts add column if not exists booking_enabled boolean not null d
 -- it confirms the thing left, and who it reached. Off for contractors who send
 -- enough quotes that the confirmations become noise.
 alter table accounts add column if not exists quote_confirmation_email boolean not null default true;
+-- The same receipt for the other things that go out to a customer. Payment
+-- requests and review asks confirm per send; appointment reminders confirm once
+-- per nightly run, because they fire for every job booked tomorrow and a mail
+-- per customer would be a pile of email at 10pm rather than a useful signal.
+alter table accounts add column if not exists payment_confirmation_email boolean not null default true;
+alter table accounts add column if not exists review_confirmation_email boolean not null default true;
+alter table accounts add column if not exists reminder_confirmation_email boolean not null default false;
 
 -- Value gate for instant booking. When ON, the /book page asks a couple of quick
 -- questions for an instant AI estimate first, and only jobs at/above the floor

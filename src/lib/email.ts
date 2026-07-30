@@ -269,6 +269,86 @@ export async function sendQuoteSentConfirmationEmail(input: {
   });
 }
 
+export async function sendPaymentRequestedConfirmationEmail(input: {
+  recipientEmail: string;
+  businessName: string;
+  clientName: string;
+  label: string;
+  amount: number;
+  channel: SentChannel;
+  sentTo: string | null;
+  jobUrl: string;
+}): Promise<void> {
+  const delivered = input.channel !== 'none';
+  await sendContractorAlertEmail({
+    recipientEmail: input.recipientEmail,
+    businessName: input.businessName,
+    subject: delivered
+      ? `Payment request sent to ${input.clientName} — ${formatMoney(input.amount)}`
+      : `Payment request for ${input.clientName} is waiting to be sent`,
+    heading: delivered ? `${input.clientName} has your payment request` : `${input.clientName} hasn’t been asked yet`,
+    bodyLines: [
+      `${input.label} · ${formatMoney(input.amount)}`,
+      delivered
+        ? describeDelivery(input.channel, input.sentTo)
+        : 'The request is on the job, but nothing was sent to them — you didn’t choose to text it.',
+      delivered ? 'You’ll be notified when they pay.' : 'Open the job to send them the link.',
+    ],
+    ctaLabel: 'Open the job',
+    ctaUrl: input.jobUrl,
+    tone: 'info',
+  });
+}
+
+export async function sendReviewRequestConfirmationEmail(input: {
+  recipientEmail: string;
+  businessName: string;
+  clientName: string;
+  jobRef: string;
+  channel: SentChannel;
+  sentTo: string | null;
+  jobUrl: string;
+}): Promise<void> {
+  await sendContractorAlertEmail({
+    recipientEmail: input.recipientEmail,
+    businessName: input.businessName,
+    subject: `Review request sent to ${input.clientName}`,
+    heading: `You asked ${input.clientName} for a review`,
+    bodyLines: [`Job ${input.jobRef}`, describeDelivery(input.channel, input.sentTo)],
+    ctaLabel: 'Open the job',
+    ctaUrl: input.jobUrl,
+    tone: 'info',
+  });
+}
+
+// One email per nightly run, not one per customer: reminders go out for every
+// job booked the next day, so a per-send confirmation would be a stack of mail
+// rather than a signal. This says how many went and how many couldn't.
+export async function sendReminderRunSummaryEmail(input: {
+  recipientEmail: string;
+  businessName: string;
+  sentCount: number;
+  failedCount: number;
+  dashboardUrl: string;
+}): Promise<void> {
+  const plural = input.sentCount === 1 ? 'reminder' : 'reminders';
+  await sendContractorAlertEmail({
+    recipientEmail: input.recipientEmail,
+    businessName: input.businessName,
+    subject: `${input.sentCount} appointment ${plural} sent for tomorrow`,
+    heading: `Tomorrow’s customers have been reminded`,
+    bodyLines: [
+      `${input.sentCount} ${plural} went out.`,
+      input.failedCount > 0
+        ? `${input.failedCount} couldn’t be delivered — those customers haven’t heard from you.`
+        : 'Everyone booked for tomorrow was reached.',
+    ],
+    ctaLabel: 'Open your schedule',
+    ctaUrl: input.dashboardUrl,
+    tone: 'info',
+  });
+}
+
 export async function sendInvoiceSentConfirmationEmail(input: {
   recipientEmail: string;
   businessName: string;
