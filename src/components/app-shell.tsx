@@ -90,7 +90,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const isDashboard = pathname.startsWith('/dashboard');
   // Homeowner-facing transactional pages (paying, approving a quote, an invoice)
   // stay on the minimal top bar — a big marketing rail there would be off-key.
-  const isTransactional = pathname.startsWith('/pay') || pathname.startsWith('/client') || pathname.startsWith('/invoice');
+  const isTransactional = pathname.startsWith('/pay') || pathname.startsWith('/client') || pathname.startsWith('/invoice') || pathname.startsWith('/track');
   // A signed-in contractor gets the FULL dashboard rail on every app/marketing
   // page (incl. the homepage) — same live counts, Website badge, New button and
   // Stripe pill as inside /dashboard — never the logged-out marketing teaser.

@@ -6,7 +6,8 @@ import { formatPhoneDashes } from '@/lib/phone';
 import { listJobTasks, taskProgress } from '@/lib/job-tasks';
 import SaveButton from '@/components/save-button';
 import FieldHeader from '../../FieldHeader';
-import { setFieldJobStatusAction, postFieldUpdateAction, logFieldTimeAction, logFieldMaterialAction, toggleFieldTaskAction, addFieldTaskAction } from './actions';
+import { setFieldJobStatusAction, postFieldUpdateAction, logFieldTimeAction, logFieldMaterialAction, toggleFieldTaskAction, addFieldTaskAction, markArrivedFieldAction } from './actions';
+import OnMyWayButton from './OnMyWayButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -116,6 +117,19 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
           <h2 className="field-block-title">Scope of work</h2>
           <p className="field-scope-body">{job.scope || 'No scope notes added yet.'}</p>
         </section>
+
+        {!isComplete ? (
+          <section className="field-block">
+            <h2 className="field-block-title">Heading over?</h2>
+            <p style={{ margin: '0 0 0.6rem', fontSize: '0.9rem', opacity: 0.75 }}>Text {job.client_name?.split(' ')[0] || 'the customer'} a live tracking link so they know you&rsquo;re on the way.</p>
+            <div className="field-actions-row">
+              <OnMyWayButton jobId={job.id} alreadyEnRoute={false} />
+              <form action={markArrivedFieldAction.bind(null, job.id)}>
+                <SaveButton className="btn secondary" pendingLabel="Saving…" savedLabel="Arrived ✓">I&rsquo;ve arrived</SaveButton>
+              </form>
+            </div>
+          </section>
+        ) : null}
 
         <section className="field-block">
           <h2 className="field-block-title">Update status</h2>

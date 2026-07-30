@@ -1591,3 +1591,30 @@ begin
   return v_count <= p_limit;
 end;
 $$;
+
+-- ============================================================================
+-- JOB TRACKING — "on my way" live status link texted to the customer.
+-- ============================================================================
+-- One active row per en-route job. The customer opens /track/<token> to see the
+-- tech's status, a map, and an ETA. token is stored HASHED (sha-256); the raw
+-- token lives only in the texted URL. Short-lived (expires same day).
+create table if not exists job_tracking (
+  id           uuid primary key default gen_random_uuid(),
+  account_id   uuid not null references accounts(id) on delete cascade,
+  job_id       uuid not null references jobs(id) on delete cascade,
+  token_hash   text not null,
+  status       text not null default 'en_route' check (status in ('en_route', 'arrived', 'done')),
+  tech_lat     numeric,
+  tech_lng     numeric,
+  eta_minutes  integer,
+  en_route_at  timestamptz not null default now(),
+  arrived_at   timestamptz,
+  updated_at   timestamptz not null default now(),
+  expires_at   timestamptz not null default (now() + interval '12 hours'),
+  created_at   timestamptz not null default now()
+);
+create index if not exists job_tracking_job_idx on job_tracking (job_id, created_at desc);
+create unique index if not exists job_tracking_token_idx on job_tracking (token_hash);
+alter table job_tracking enable row level security;
+drop policy if exists job_tracking_owner on job_tracking;
+create policy job_tracking_owner on job_tracking for all using ( is_owner(account_id) );

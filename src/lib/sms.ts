@@ -565,6 +565,22 @@ export async function sendAppointmentReminderSms(params: {
   return providerId;
 }
 
+// "On my way" — texts the customer a live tracking link when the tech heads out.
+// Caller resolves consent; mirrored into the two-way inbox like other texts.
+export async function sendOnMyWaySms(params: {
+  phone: string;
+  businessName: string;
+  trackingUrl: string;
+  etaMinutes?: number | null;
+  accountId?: string;
+}) {
+  const eta = params.etaMinutes ? ` — about ${params.etaMinutes} min away` : '';
+  const message = `Let's Get Quoted: ${params.businessName} is on the way${eta}! Track live here: ${params.trackingUrl}. Reply STOP to opt out.`;
+  const providerId = await sendTwilioMessage(params.phone, message);
+  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
+  return providerId;
+}
+
 // Sends a client the link to save a card for automatic billing on a recurring
 // plan. No charge happens at this step — it just collects the card + mandate.
 // Caller resolves consent; mirrored into the inbox like other customer texts.
