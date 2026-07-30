@@ -8033,3 +8033,103 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
   }
   .pipeline-step strong { line-height: 1.25; }
 }
+
+/* ---- Extra Stop explainer (shown while it's switched off) ------------ */
+.es-explainer { display: grid; gap: 1.1rem; margin-top: 1.1rem; }
+
+.es-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(260px, 0.9fr);
+  gap: 1.25rem;
+  align-items: start;
+  padding: 1.4rem;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 122, 33, 0.26);
+  background: linear-gradient(150deg, rgba(255, 122, 33, 0.13), rgba(8, 18, 31, 0.9) 46%);
+}
+.es-hero-copy h2 { font-size: clamp(1.6rem, 2.6vw, 2.3rem); line-height: 1.1; margin: 0.3rem 0 0.6rem; }
+.es-accent { color: #ff9d4d; }
+.es-lead { margin: 0 0 0.9rem; color: rgba(255, 255, 255, 0.72); font-size: 0.95rem; line-height: 1.5; max-width: 46ch; }
+.es-promises { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.45rem 1.1rem; }
+.es-promises li { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.86rem; font-weight: 700; color: #e7ecf3; }
+.es-promises span { color: #6ee7b7; font-weight: 900; }
+
+.es-earnings {
+  padding: 1.1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(3, 10, 18, 0.55);
+}
+.es-earnings-label { margin: 0; font-size: 0.66rem; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); }
+.es-earnings-line { margin: 0.45rem 0 0.1rem; font-size: 0.92rem; color: rgba(255, 255, 255, 0.78); }
+.es-earnings-line strong { color: #fff; }
+.es-earnings-total { margin: 0.1rem 0 0.4rem; font-size: clamp(2rem, 4vw, 2.9rem); font-weight: 900; line-height: 1; color: #ff9d4d; }
+.es-earnings-total span { font-size: 0.9rem; font-weight: 700; color: rgba(255, 255, 255, 0.55); }
+.es-earnings-note { margin: 0; font-size: 0.74rem; line-height: 1.45; color: rgba(255, 255, 255, 0.45); }
+
+.es-block {
+  padding: 1.2rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.025);
+}
+.es-block-title { margin: 0 0 0.9rem; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); }
+
+.es-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.8rem; }
+.es-step { padding: 0.9rem; border-radius: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.07); }
+.es-step-num { display: inline-grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 999px; background: #ff7a21; color: #06131f; font-weight: 900; font-size: 0.82rem; }
+.es-step strong { display: block; margin: 0.5rem 0 0.3rem; font-size: 0.95rem; color: #e7ecf3; }
+.es-step p { margin: 0; font-size: 0.83rem; line-height: 1.5; color: rgba(255, 255, 255, 0.6); }
+
+.es-split { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.1rem; }
+
+.es-phone { padding: 0.9rem; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(3, 10, 18, 0.5); }
+.es-phone-from { margin: 0 0 0.5rem; font-size: 0.74rem; font-weight: 800; color: rgba(255, 255, 255, 0.55); }
+.es-phone-bubble { margin: 0 0 0.5rem; padding: 0.7rem 0.8rem; border-radius: 12px 12px 12px 3px; background: rgba(255, 255, 255, 0.08); font-size: 0.9rem; color: #e7ecf3; }
+.es-phone-sub { margin: 0 0 0.7rem; font-size: 0.8rem; color: rgba(255, 255, 255, 0.55); }
+.es-phone-choice {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap;
+  margin: 0 0 0.45rem; padding: 0.6rem 0.75rem; border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12); font-size: 0.85rem; font-weight: 700; color: #e7ecf3;
+}
+.es-phone-choice span { font-size: 0.72rem; font-weight: 600; color: rgba(255, 255, 255, 0.5); }
+.es-phone-choice.primary { border-color: rgba(255, 122, 33, 0.55); background: rgba(255, 122, 33, 0.14); }
+.es-phone-foot { margin: 0.6rem 0 0; font-size: 0.72rem; color: rgba(255, 255, 255, 0.42); }
+
+.es-example { padding: 0.9rem; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(3, 10, 18, 0.5); }
+.es-example-job { margin: 0 0 0.6rem; font-size: 1rem; font-weight: 800; color: #e7ecf3; }
+.es-example-facts { list-style: none; margin: 0 0 0.9rem; padding: 0; display: grid; gap: 0.3rem; font-size: 0.83rem; color: rgba(255, 255, 255, 0.62); }
+.es-example-facts li { display: flex; gap: 0.45rem; }
+.es-example-label { margin: 0; font-size: 0.66rem; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; color: rgba(255, 255, 255, 0.45); }
+.es-example-offer { margin: 0.2rem 0 0.1rem; font-size: 1.25rem; font-weight: 900; color: #ff9d4d; }
+.es-example-fee { margin: 0 0 0.6rem; font-size: 1.05rem; font-weight: 800; color: #e7ecf3; }
+.es-example-note { margin: 0; font-size: 0.76rem; color: rgba(255, 255, 255, 0.45); }
+
+.es-benefits { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 0.8rem; }
+.es-benefit { padding: 0.9rem; border-radius: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.07); }
+.es-benefit-icon { font-size: 1.2rem; }
+.es-benefit strong { display: block; margin: 0.45rem 0 0.3rem; font-size: 0.9rem; color: #e7ecf3; }
+.es-benefit p { margin: 0; font-size: 0.81rem; line-height: 1.5; color: rgba(255, 255, 255, 0.6); }
+
+.es-getstarted { border-color: rgba(255, 122, 33, 0.28); background: rgba(255, 122, 33, 0.05); }
+.es-checklist { list-style: none; margin: 0 0 1.1rem; padding: 0; display: grid; gap: 0.5rem; }
+.es-checklist li {
+  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+  padding: 0.7rem 0.85rem; border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.09); background: rgba(255, 255, 255, 0.03);
+}
+.es-check {
+  flex: none; display: grid; place-items: center; width: 1.5rem; height: 1.5rem; border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.2); color: #06131f; font-weight: 900; font-size: 0.8rem;
+}
+.es-checklist li.done .es-check { background: #4ade80; border-color: #4ade80; }
+.es-check-copy { flex: 1; min-width: 0; display: grid; gap: 0.12rem; }
+.es-check-copy strong { font-size: 0.9rem; color: #e7ecf3; }
+.es-check-copy small { font-size: 0.78rem; color: rgba(255, 255, 255, 0.5); }
+.es-check-state { font-size: 0.74rem; font-weight: 800; color: #6ee7b7; }
+.es-cta { display: flex; align-items: center; gap: 0.9rem; flex-wrap: wrap; }
+.es-cta p { margin: 0; font-size: 0.8rem; color: rgba(255, 255, 255, 0.5); }
+
+@media (max-width: 860px) {
+  .es-hero { grid-template-columns: minmax(0, 1fr); }
+}

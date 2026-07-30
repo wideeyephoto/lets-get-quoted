@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { requireOwnerContext, createAdminClient } from '@/lib/auth';
 import { listExtraStopRequests } from '@/lib/extra-stop-requests';
 import { sweepExtraStopOffers } from '@/lib/extra-stop-sweep';
@@ -7,6 +6,7 @@ import { computeExtraStopRoute } from '@/lib/extra-stop-route';
 import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
 import ExtraStopRequestCard, { type CardRequest } from './ExtraStopRequestCard';
 import AutomationLink from '@/components/automation-link';
+import ExtraStopExplainer from './ExtraStopExplainer';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,9 +17,10 @@ export default async function ExtraStopsPage() {
   // payment holds, closes unanswered requests). Best-effort — never blocks render.
   await sweepExtraStopOffers(createAdminClient(), accountId).catch(() => undefined);
 
-  const [{ data: accountRow }, requests] = await Promise.all([
-    supabase.from('accounts').select(`${EXTRA_STOP_SETTINGS_COLUMNS}, extra_stop_lock_reason, timezone, instant_book_drive_time`).eq('id', accountId).single(),
+  const [{ data: accountRow }, requests, { data: site }] = await Promise.all([
+    supabase.from('accounts').select(`${EXTRA_STOP_SETTINGS_COLUMNS}, extra_stop_lock_reason, timezone, instant_book_drive_time, connect_onboarded, business_name`).eq('id', accountId).single(),
     listExtraStopRequests(supabase, accountId, { limit: 100 }),
+    supabase.from('sites').select('published, subdomain, company_name').eq('account_id', accountId).maybeSingle(),
   ]);
   const settings = extraStopSettingsFromAccount(accountRow as Parameters<typeof extraStopSettingsFromAccount>[0]);
   const lockReason = (accountRow as { extra_stop_lock_reason?: string } | null)?.extra_stop_lock_reason || '';
@@ -41,6 +42,13 @@ export default async function ExtraStopsPage() {
       return { r, route, photoUrls };
     }),
   );
+
+  // For the explainer's setup checklist — real state, not decoration.
+  const stripeConnected = Boolean((accountRow as { connect_onboarded?: boolean } | null)?.connect_onboarded);
+  const appOrigin = (process.env.NEXT_PUBLIC_APP_URL || `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'}`).replace(/\/$/, '');
+  const bookingUrl = site?.published && site?.subdomain ? `${appOrigin}/book/${site.subdomain}` : null;
+  const businessName =
+    (site?.company_name as string) || (accountRow as { business_name?: string } | null)?.business_name || 'Your business';
 
   const defaults = {
     earliest: settings.earliestTime,
@@ -74,17 +82,15 @@ export default async function ExtraStopsPage() {
             ))}
           </div>
         ) : !settings.enabled && !settings.locked ? (
-          <div className="extra-stop-empty">
-            <span className="extra-stop-empty-mark" aria-hidden="true">📍</span>
-            <h3>Turn on Extra Stop to fill gaps in today&apos;s route</h3>
-            <p>
-              When it&apos;s on, nearby customers can ask to be squeezed onto the end of your route today. You review
-              each request, propose an arrival window, and set a one-off fee &mdash; and they only pay once they
-              approve the time and price. It runs alongside normal booking with its own daily limit, and skips your
-              usual minimum-value and soonest-booking rules.
-            </p>
-            <Link href="/dashboard/settings#extra-stop" className="btn primary">Turn on Extra Stop &rarr;</Link>
-          </div>
+          <ExtraStopExplainer
+            weekdayCount={settings.weekdays.length}
+            maxPerDay={settings.maxPerDay}
+            maxFeeDollars={defaults.maxFeeDollars}
+            minFeeDollars={defaults.minFeeDollars}
+            stripeConnected={stripeConnected}
+            bookingUrl={bookingUrl}
+            businessName={businessName}
+          />
         ) : (
           <div className="extra-stop-empty">
             <span className="extra-stop-empty-mark" aria-hidden="true">📍</span>
