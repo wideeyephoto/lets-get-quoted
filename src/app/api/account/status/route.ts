@@ -4,6 +4,7 @@ import { createAdminClient, getCurrentMembership } from '@/lib/auth';
 import { expireStaleLeads, getLeadTriage } from '@/lib/leads';
 import { listJobs } from '@/lib/jobs';
 import { EXTRA_STOP_SETTINGS_COLUMNS, extraStopSettingsFromAccount } from '@/lib/extra-stop';
+import { bookingAvailabilityFromAccount } from '@/lib/booking-availability';
 
 // Lightweight status check used by the app shell to show persistent dashboard
 // badges and alerts. Intentionally returns only minimal state needed for the
@@ -29,7 +30,9 @@ export async function GET() {
   const [{ data: account }, { data: site }, { data: newLeadRows }, jobs] = await Promise.all([
     admin
       .from('accounts')
-      .select(`connect_onboarded, business_name, mute_low_quality_leads, ${EXTRA_STOP_SETTINGS_COLUMNS}`)
+      .select(
+        `connect_onboarded, business_name, mute_low_quality_leads, booking_enabled, booking_weekdays, booking_windows, ${EXTRA_STOP_SETTINGS_COLUMNS}`,
+      )
       .eq('id', membership.accountId)
       .maybeSingle(),
     admin
@@ -71,6 +74,9 @@ export async function GET() {
   // overrides `enabled` — showing green there would say the opposite of the truth.
   const extraStop = extraStopSettingsFromAccount((account ?? {}) as Parameters<typeof extraStopSettingsFromAccount>[0]);
   const extraStopState: 'on' | 'off' | 'paused' = extraStop.locked ? 'paused' : extraStop.enabled ? 'on' : 'off';
+  const bookingAvailability = bookingAvailabilityFromAccount(
+    (account ?? {}) as Parameters<typeof bookingAvailabilityFromAccount>[0],
+  );
 
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
   const sitePublished = site?.published ?? false;
@@ -95,5 +101,14 @@ export async function GET() {
     newestQuoteRequestCreatedAt: newestLead?.created_at ?? null,
     newestQuoteRequestHighValue,
     extraStopState,
+    // Online booking, judged the same way its own setup page judges it: the
+    // switch being on is not the same as the page being able to take a booking.
+    // Without a published site, or with no open days or no arrival windows,
+    // there is nothing to book — so it reports 'paused' rather than claiming ON.
+    bookingState: !bookingAvailability.enabled
+      ? ('off' as const)
+      : siteUrl && bookingAvailability.weekdays.length > 0 && bookingAvailability.windowTimes.length > 0
+        ? ('on' as const)
+        : ('paused' as const),
   });
 }

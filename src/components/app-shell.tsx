@@ -18,6 +18,7 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard/jobs', label: 'Jobs', hint: 'Quotes · Invoices · Payments' },
   { href: '/dashboard/clients', label: 'Clients', hint: 'Customer profiles & history' },
   { href: '/dashboard/schedule', label: 'Schedule', hint: 'Calendar & unscheduled work' },
+  { href: '/dashboard/schedule/booking', label: 'Online Booking', hint: 'Your public booking page & availability' },
   { href: '/dashboard/extra-stops', label: 'Extra Stops', hint: 'Same-day route add-ons' },
   { href: '/dashboard/recurring', label: 'Recurring', hint: 'Repeating jobs & auto-billing' },
   { href: '/dashboard/services', label: 'Price book', hint: 'Saved services & prices' },
@@ -36,6 +37,19 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
 ];
 
 // The connected-pill "flow" styling now spans all three pipeline stages.
+// Which rail entry owns the highlight for a path.
+//
+// Plain startsWith stopped being enough once one nav entry sat underneath
+// another: on /dashboard/schedule/booking both Schedule and Online Booking
+// match, and two lit rows say you are in two places at once. Longest match wins.
+function isActiveNav(pathname: string, href: string): boolean {
+  if (href === '/dashboard') return pathname === href;
+  if (!pathname.startsWith(href)) return false;
+  return !baseNavItems.some(
+    (other) => other.href.length > href.length && other.href.startsWith(href) && pathname.startsWith(other.href),
+  );
+}
+
 const FLOW_CLASS: Record<string, string> = {
   '/dashboard/leads': ' flow-link flow-start',
   '/dashboard/jobs': ' flow-link flow-mid',
@@ -48,7 +62,7 @@ const FLOW_CLASS: Record<string, string> = {
 // list. Dashboard (home) sits above the groups; Website is promoted to its own
 // badge and Account drops to the sidebar footer, so neither appears here.
 const NAV_GROUPS: { label: string; hrefs: string[] }[] = [
-  { label: 'Work', hrefs: ['/dashboard/leads', '/dashboard/jobs', '/dashboard/schedule', '/dashboard/extra-stops', '/dashboard/clients'] },
+  { label: 'Work', hrefs: ['/dashboard/leads', '/dashboard/jobs', '/dashboard/schedule', '/dashboard/schedule/booking', '/dashboard/extra-stops', '/dashboard/clients'] },
   { label: 'Team', hrefs: ['/dashboard/crew'] },
   { label: 'Money', hrefs: ['/dashboard/recurring', '/dashboard/services', '/dashboard/insights'] },
   { label: 'Grow', hrefs: ['/dashboard/messages', '/dashboard/campaigns', '/dashboard/rebook', '/dashboard/reviews'] },
@@ -66,17 +80,37 @@ type AccountStatus = {
   newestQuoteRequestCreatedAt: string | null;
   newestQuoteRequestHighValue: boolean;
   /** Whether Extra Stop is accepting same-day work right now. */
-  extraStopState: ExtraStopState;
+  extraStopState: NavState;
+  /** Whether the public booking page is actually live. */
+  bookingState: NavState;
 };
 
-// 'paused' is support's lock, which overrides the owner's own switch.
-export type ExtraStopState = 'on' | 'off' | 'paused' | 'unknown';
+// Whether an automation is actually accepting work right now. 'paused' is the
+// case that matters most: the owner's switch says on, but something else means
+// nothing is really on offer. Green there would say the opposite of the truth,
+// and OFF would blame the owner for something they did not do.
+export type NavState = 'on' | 'off' | 'paused' | 'unknown';
 
-const EXTRA_STOP_PILL: Record<Exclude<ExtraStopState, 'unknown'>, { label: string; title: string }> = {
-  on: { label: 'ON', title: 'Extra Stops is ON — customers can ask to be squeezed into today' },
-  off: { label: 'OFF', title: 'Extra Stops is OFF — nobody can ask to be added to today' },
-  paused: { label: 'PAUSED', title: 'Extra Stops is paused by support — nothing new can be added to a day' },
+// Nav entries that carry their own on/off state. The WORD is the state and the
+// colour only agrees with it, so it still reads without colour vision.
+const NAV_STATE_PILL: Record<string, Record<Exclude<NavState, 'unknown'>, { label: string; title: string }>> = {
+  '/dashboard/extra-stops': {
+    on: { label: 'ON', title: 'Extra Stops is ON — customers can ask to be squeezed into today' },
+    off: { label: 'OFF', title: 'Extra Stops is OFF — nobody can ask to be added to today' },
+    paused: { label: 'PAUSED', title: 'Extra Stops is paused by support — nothing new can be added to a day' },
+  },
+  '/dashboard/schedule/booking': {
+    on: { label: 'ON', title: 'Online booking is live — customers can grab an open slot from your website' },
+    off: { label: 'OFF', title: 'Online booking is off — your booking page is not accepting requests' },
+    // Switched on, but there is nothing to book: no published site, no open days,
+    // or no arrival windows. ON here would be a promise the page cannot keep.
+    paused: { label: 'NOT LIVE', title: 'Online booking is on but nothing is on offer — publish your website, or open some days and arrival windows' },
+  },
 };
+
+function navState(value: unknown): NavState {
+  return value === 'on' || value === 'off' || value === 'paused' ? value : 'unknown';
+}
 
 const QUOTE_REQUEST_ALERT_DISMISSED_KEY = 'lgq-dismissed-quote-request-alert';
 
@@ -102,7 +136,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [newestLeadHighValue, setNewestLeadHighValue] = useState(false);
   // 'unknown' until the first status check answers — a pill that guessed OFF for
   // a second on every page load would be worse than one that waits.
-  const [extraStopState, setExtraStopState] = useState<ExtraStopState>('unknown');
+  const [extraStopState, setExtraStopState] = useState<NavState>('unknown');
+  const [bookingState, setBookingState] = useState<NavState>('unknown');
   const [dismissedQuoteRequestId, setDismissedQuoteRequestId] = useState<string | null>(null);
   const isDashboard = pathname.startsWith('/dashboard');
   // Homeowner-facing transactional pages (paying, approving a quote, an invoice)
@@ -217,6 +252,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       setNewestQuoteRequestCreatedAt(null);
       setNewestLeadHighValue(false);
       setExtraStopState('unknown');
+      setBookingState('unknown');
       setSiteUrl(null);
       setBusinessName(null);
       return;
@@ -237,11 +273,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             setNewestQuoteRequestId(data.newestQuoteRequestId ?? null);
             setNewestQuoteRequestCreatedAt(data.newestQuoteRequestCreatedAt ?? null);
             setNewestLeadHighValue(Boolean(data.newestQuoteRequestHighValue));
-            setExtraStopState(
-              data.extraStopState === 'on' || data.extraStopState === 'off' || data.extraStopState === 'paused'
-                ? data.extraStopState
-                : 'unknown',
-            );
+            setExtraStopState(navState(data.extraStopState));
+            setBookingState(navState(data.bookingState));
           }
         })
         .catch(() => {});
@@ -306,10 +339,10 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     const renderSideLink = (href: string, extraClass = '') => {
       const item = byHref.get(href);
       if (!item) return null;
-      // Dashboard home would otherwise match every /dashboard/* path, so it
-      // needs an exact check; the rest highlight on their subtree.
-      const active = href === '/dashboard' ? pathname === href : pathname.startsWith(href);
+      const active = isActiveNav(pathname, href);
       const count = countByHref[href] ?? 0;
+      const state =
+        href === '/dashboard/extra-stops' ? extraStopState : href === '/dashboard/schedule/booking' ? bookingState : 'unknown';
       return (
         <Link
           href={href}
@@ -319,13 +352,12 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
         >
           <NavIcon href={href} />
           <span>{item.label}</span>
-          {/* Extra Stop is the one automation that can put a stranger on today's
-              route, and its switch is three clicks deep in Settings. Whether
-              it's on is worth knowing from anywhere, so it says so here — in a
-              word, not only in a colour. */}
-          {href === '/dashboard/extra-stops' && extraStopState !== 'unknown' ? (
-            <span className="sidenav-state" data-state={extraStopState} title={EXTRA_STOP_PILL[extraStopState].title}>
-              {EXTRA_STOP_PILL[extraStopState].label}
+          {/* The two automations that can put work on your calendar without you
+              touching anything. Both switches are pages deep, so the rail says
+              which way they are set from wherever you happen to be. */}
+          {state !== 'unknown' && NAV_STATE_PILL[href] ? (
+            <span className="sidenav-state" data-state={state} title={NAV_STATE_PILL[href][state].title}>
+              {NAV_STATE_PILL[href][state].label}
             </span>
           ) : null}
           {count > 0 ? <span className="sidenav-count">{count}</span> : null}
@@ -473,7 +505,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       if (!item) return null;
       const cls = `sidenav-link${extraClass ? ` ${extraClass}` : ''}`;
       if (isLoggedIn) {
-        const active = href === '/dashboard' ? pathname === href : pathname.startsWith(href);
+        const active = isActiveNav(pathname, href);
         return (
           <Link href={href} key={href} className={`${cls}${active ? ' active' : ''}`} title={item.hint}>
             <NavIcon href={href} />
