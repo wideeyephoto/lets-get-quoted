@@ -1,3 +1,4 @@
+import { geocodeAddress } from '@/lib/geocode';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type CrewMember = {
@@ -13,6 +14,13 @@ export type CrewMember = {
   active: boolean;
   deleted_at: string | null;
   created_at: string;
+  // Where this person's day starts. Plan my day anchors their route here instead
+  // of the shop when the day is filtered to them. Optional in the type because
+  // these columns arrive with 2026-07-31-route-stops.sql and a pre-migration read
+  // returns rows without them.
+  start_address?: string | null;
+  start_lat?: number | null;
+  start_lng?: number | null;
 };
 
 export type CrewInput = {
@@ -42,6 +50,34 @@ export type CrewWorkHistoryItem = {
   rate: number | null;
   created_at: string;
 };
+
+// Where a crew member's day starts, for Plan my day.
+//
+// Precise-only, like every other coordinate this app stores: a city-level
+// geocode would put their start point miles from their driveway and quietly
+// change every leg of the route. A vague or unresolvable address keeps the text
+// (so they can see what they typed and fix it) and stores no coordinates, which
+// makes the planner fall back to the business address.
+export async function saveCrewStartAddress(
+  supabase: SupabaseClient,
+  accountId: string,
+  crewId: string,
+  address: string | null,
+): Promise<void> {
+  const clean = (address ?? '').trim() || null;
+  const geo = clean ? await geocodeAddress(clean) : null;
+  const coords = geo?.precise ? { start_lat: geo.lat, start_lng: geo.lng } : { start_lat: null, start_lng: null };
+
+  const { error } = await supabase
+    .from('crew')
+    .update({ start_address: clean, ...coords })
+    .eq('id', crewId)
+    .eq('account_id', accountId);
+
+  // Pre-migration the columns don't exist. Losing a start address is a missing
+  // convenience; failing the whole crew save over it would lose their name.
+  if (error && error.code !== '42703' && error.code !== 'PGRST204') throw error;
+}
 
 export async function listCrew(
   supabase: SupabaseClient,

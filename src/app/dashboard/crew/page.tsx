@@ -134,6 +134,7 @@ export default async function CrewLaborPage({
       phone: member.phone || null,
       phoneLabel: member.phone ? formatPhoneDashes(member.phone) : null,
       email: member.email,
+      startAddress: member.start_address ?? null,
       active: member.active,
       fieldApp: member.user_id ? 'linked' : member.email ? 'invitable' : 'no-email',
       jobs: jobsByCrew[member.id] ?? [],

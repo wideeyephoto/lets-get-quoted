@@ -9,6 +9,17 @@ import { normalizeUsPhone } from '@/lib/phone';
 import { isPhoneOptedOut, recordSmsConsent, sendArrivalTimeChangedSms } from '@/lib/sms';
 import { buildScheduleChangeset, formatTimeLabel, parseTimeMinutes } from '@/lib/route-plan';
 import { listDayJobs } from '@/lib/route-plan-day';
+import { geocodeAddress } from '@/lib/geocode';
+import { isRouteStopId, normalizeKind, rememberPlace, routeStopUuid } from '@/lib/route-stops';
+
+// The plan page is force-dynamic, but Next still serves a route's last RSC
+// payload from the client router cache on navigation — so a server action that
+// redirects back here shows the day as it was before the action ran. Every
+// action that changes what this page displays has to clear its own path.
+function revalidatePlan(): void {
+  revalidatePath('/dashboard/schedule/plan');
+  revalidatePath('/dashboard/schedule');
+}
 
 function planUrl(dateKey: string, crewId: string | null, extra?: Record<string, string>): string {
   const params = new URLSearchParams({ date: dateKey });
@@ -33,13 +44,40 @@ export async function applyDayPlanAction(formData: FormData) {
   const crewId = String(formData.get('crewId') ?? '').trim() || null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) redirect('/dashboard/schedule');
 
-  // "<jobId>:<HH:MM>" per stop, in the planned visit order.
+  // "<stopId>:<HH:MM>" per stop, in the planned visit order. Route stops carry a
+  // "rs:" prefix so the two tables can be told apart without trusting the browser
+  // to say which one a row belongs to.
   const entries = formData.getAll('stop').map((value) => String(value));
+  const jobEntries = entries.filter((entry) => !isRouteStopId(entry));
+  const stopEntries = entries.filter((entry) => isRouteStopId(entry));
+
   const { jobs } = await listDayJobs(supabase, accountId, dateKey, crewId);
-  const { changes, keptConfirmed } = buildScheduleChangeset(jobs, entries);
+  const { changes, keptConfirmed } = buildScheduleChangeset(jobs, jobEntries);
+
+  // Supply stops are written first and separately. They're not appointments, so
+  // there's nobody to disappoint if one lands and the batch then fails — and
+  // keeping them out of the job rollback keeps that guarantee simple to reason
+  // about. An id that isn't on this day for this account updates nothing.
+  let stopsUpdated = 0;
+  for (const entry of stopEntries) {
+    const separator = entry.lastIndexOf(':');
+    const id = routeStopUuid(entry.slice(0, separator));
+    const time = entry.slice(separator + 1);
+    if (!id || parseTimeMinutes(time) == null) continue;
+    const { error } = await supabase
+      .from('route_stops')
+      .update({ scheduled_time: time, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('account_id', accountId)
+      .eq('scheduled_for', dateKey);
+    if (!error) stopsUpdated += 1;
+  }
 
   const kept: Record<string, string> = keptConfirmed ? { kept: String(keptConfirmed) } : {};
-  if (changes.length === 0) redirect(planUrl(dateKey, crewId, { applied: '0', ...kept }));
+  if (changes.length === 0) {
+    revalidatePlan();
+    redirect(planUrl(dateKey, crewId, { applied: stopsUpdated > 0 ? String(stopsUpdated) : '0', ...kept }));
+  }
 
   // Applied so far, newest last, so a failure can be unwound in reverse.
   const applied: Array<{ jobId: string; previous: string | null }> = [];
@@ -66,7 +104,7 @@ export async function applyDayPlanAction(formData: FormData) {
   }
 
   if (failure) {
-    revalidatePath('/dashboard/schedule');
+    revalidatePlan();
     redirect(planUrl(dateKey, crewId, { failed: '1', ...(stranded ? { stranded: String(stranded) } : {}) }));
   }
 
@@ -82,17 +120,94 @@ export async function applyDayPlanAction(formData: FormData) {
     });
   }
 
-  revalidatePath('/dashboard/schedule');
+  revalidatePlan();
   revalidatePath('/dashboard/jobs');
   for (const change of changes) revalidatePath(`/dashboard/jobs/${change.jobId}`);
 
   redirect(
     planUrl(dateKey, crewId, {
-      applied: String(changes.length),
+      applied: String(changes.length + stopsUpdated),
       moved: changes.map((change) => change.jobId).join(','),
       ...kept,
     }),
   );
+}
+
+// Adds a stop to the day that isn't a job — a dump run, a supply pickup, fuel.
+//
+// The address is geocoded here rather than trusted from the browser, because an
+// un-mappable stop can't be routed and would silently drop out of the day it was
+// just added to. If it doesn't resolve we still save it, and the page lists it
+// under "can't be routed yet" with the same nudge a job with a bad address gets.
+export async function addRouteStopAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const dateKey = String(formData.get('dateKey') ?? '').trim();
+  const crewId = String(formData.get('crewId') ?? '').trim() || null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) redirect('/dashboard/schedule');
+
+  const label = String(formData.get('label') ?? '').trim().slice(0, 120);
+  const address = String(formData.get('address') ?? '').trim().slice(0, 300) || null;
+  const kind = normalizeKind(formData.get('kind'));
+  const minutesRaw = Number(formData.get('minutes'));
+  const minutes = Number.isFinite(minutesRaw) ? Math.max(0, Math.min(480, Math.round(minutesRaw))) : 20;
+  const scheduledTime = String(formData.get('scheduledTime') ?? '').trim() || null;
+  // A saved place carries coordinates already, so re-geocoding it would bill a
+  // lookup to learn what we were told last time.
+  const savedLat = Number(formData.get('lat'));
+  const savedLng = Number(formData.get('lng'));
+  const hasSavedCoords = Number.isFinite(savedLat) && Number.isFinite(savedLng) && savedLat !== 0;
+
+  if (!label) redirect(planUrl(dateKey, crewId, { stopError: 'label' }));
+
+  let lat: number | null = hasSavedCoords ? savedLat : null;
+  let lng: number | null = hasSavedCoords ? savedLng : null;
+  if (!hasSavedCoords && address) {
+    const geo = await geocodeAddress(address);
+    if (geo?.precise) {
+      lat = geo.lat;
+      lng = geo.lng;
+    }
+  }
+
+  const { error } = await supabase.from('route_stops').insert({
+    account_id: accountId,
+    crew_id: crewId,
+    scheduled_for: dateKey,
+    scheduled_time: scheduledTime,
+    label,
+    address,
+    lat,
+    lng,
+    minutes,
+    kind,
+  });
+  if (error) redirect(planUrl(dateKey, crewId, { stopError: 'save' }));
+
+  // Remembered for next time only when it's a real place — a stop with no address
+  // can't be re-used, and a place book full of address-less entries is noise.
+  if (address) {
+    await rememberPlace(supabase, accountId, { label, address, lat, lng, kind, minutes });
+  }
+
+  // No redirect. The form that submitted this is already on the plan page, and a
+  // server action's revalidatePath re-renders the page it was called from — while
+  // redirecting to the same route hands Next's client router cache a chance to
+  // serve the day exactly as it was before the stop existed.
+  revalidatePlan();
+}
+
+export async function deleteRouteStopAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const dateKey = String(formData.get('dateKey') ?? '').trim();
+  const stopId = String(formData.get('stopId') ?? '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey) || !stopId) redirect('/dashboard/schedule');
+
+  // account_id in the filter, not just the id: RLS already scopes this, and the
+  // belt-and-braces means a guessed uuid can't delete another tenant's stop even
+  // if a policy is ever loosened.
+  await supabase.from('route_stops').delete().eq('id', stopId).eq('account_id', accountId);
+
+  revalidatePlan();
 }
 
 // Texts the customers whose arrival time just changed. Opt-in, one tap, after the
@@ -162,6 +277,6 @@ export async function geocodeDayAction(formData: FormData) {
 
   const fixed = await backfillJobCoordinates(supabase, accountId, 25);
 
-  revalidatePath('/dashboard/schedule');
+  revalidatePlan();
   redirect(planUrl(dateKey, crewId, { geocoded: String(fixed) }));
 }

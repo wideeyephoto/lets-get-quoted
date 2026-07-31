@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type MutableRefObject } from 'react';
 
 type AddressAutocompleteProps = {
   id?: string;
@@ -11,6 +11,11 @@ type AddressAutocompleteProps = {
   className?: string;
   maxLength?: number;
   autoComplete?: string;
+  // The input stays uncontrolled — Google's suggestion list writes to it
+  // directly — so a caller that needs to read or set the text gets the element
+  // itself, and is told when the text changes.
+  inputRef?: MutableRefObject<HTMLInputElement | null>;
+  onValueChange?: (value: string) => void;
 };
 
 declare global {
@@ -105,6 +110,8 @@ export default function AddressAutocomplete({
   className,
   maxLength,
   autoComplete = 'off',
+  inputRef: externalInputRef,
+  onValueChange,
 }: AddressAutocompleteProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const placesRef = useRef<google.maps.PlacesLibrary | null>(null);
@@ -246,7 +253,10 @@ export default function AddressAutocomplete({
   return (
     <div className="address-autocomplete">
       <input
-        ref={inputRef}
+        ref={(node) => {
+          (inputRef as MutableRefObject<HTMLInputElement | null>).current = node;
+          if (externalInputRef) externalInputRef.current = node;
+        }}
         id={id}
         name={name}
         defaultValue={defaultValue}
@@ -263,7 +273,10 @@ export default function AddressAutocomplete({
         onBlur={() => {
           blurTimerRef.current = window.setTimeout(() => setSuggestions([]), 140);
         }}
-        onChange={(event) => queueSuggestions(event.currentTarget.value)}
+        onChange={(event) => {
+          onValueChange?.(event.currentTarget.value);
+          queueSuggestions(event.currentTarget.value);
+        }}
         onInput={(event) => queueSuggestions(event.currentTarget.value)}
         onFocus={(event) => queueSuggestions(event.currentTarget.value)}
         onKeyDown={handleKeyDown}

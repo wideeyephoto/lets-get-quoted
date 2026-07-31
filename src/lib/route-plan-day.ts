@@ -55,6 +55,9 @@ export type PlanAccountSettings = {
   bufferMinutes: number;
   defaultVisitMinutes: number;
   homeBase: LatLng | null;
+  // The text the owner typed, so the Google Maps link can use a real address
+  // rather than a lat/lng pair nobody recognizes.
+  mailingAddress: string | null;
   driveTimeEnabled: boolean;
 };
 
@@ -65,7 +68,7 @@ export async function getPlanAccountSettings(
   const { data } = await supabase
     .from('accounts')
     .select(
-      'timezone, workday_start, workday_end, job_buffer_minutes, schedule_day_hours, service_center_lat, service_center_lng, instant_book_drive_time',
+      'timezone, workday_start, workday_end, job_buffer_minutes, schedule_day_hours, service_center_lat, service_center_lng, instant_book_drive_time, mailing_address',
     )
     .eq('id', accountId)
     .maybeSingle();
@@ -83,7 +86,59 @@ export async function getPlanAccountSettings(
     // rather than a guess of zero, which would stack stops on top of each other.
     defaultVisitMinutes: Math.max(30, Math.round(((Number(data?.schedule_day_hours) || 8) / 4) * 60)),
     homeBase: homeLat != null && homeLng != null ? { lat: Number(homeLat), lng: Number(homeLng) } : null,
+    mailingAddress: ((data?.mailing_address as string | null) ?? null) || null,
     driveTimeEnabled: Boolean(data?.instant_book_drive_time),
+  };
+}
+
+export type DayAnchor = {
+  coord: LatLng | null;
+  address: string | null;
+  // Whose address the day is measured from, so the page can say so rather than
+  // leaving the owner to wonder why one crew's mileage looks different.
+  source: 'crew' | 'business' | null;
+  crewName: string | null;
+};
+
+// Where the day starts and ends.
+//
+// A two-truck shop's drivers don't both leave from the shop. When the plan is
+// filtered to one crew member and that person has their own start address, their
+// route is measured from there; everything else falls back to the business
+// address, and a shop with neither is routed stop-to-stop.
+export async function resolveDayAnchor(
+  supabase: SupabaseClient,
+  accountId: string,
+  crewId: string | null | undefined,
+  settings: PlanAccountSettings,
+): Promise<DayAnchor> {
+  const business: DayAnchor = {
+    coord: settings.homeBase,
+    address: settings.mailingAddress,
+    source: settings.homeBase ? 'business' : null,
+    crewName: null,
+  };
+  if (!crewId) return business;
+
+  // Defensive: the start_* columns arrive with 2026-07-31-route-stops.sql, and a
+  // deploy ahead of the migration must fall back rather than throw.
+  const { data, error } = await supabase
+    .from('crew')
+    .select('name, start_address, start_lat, start_lng')
+    .eq('account_id', accountId)
+    .eq('id', crewId)
+    .maybeSingle();
+  if (error || !data) return business;
+
+  const lat = (data as { start_lat?: number | null }).start_lat;
+  const lng = (data as { start_lng?: number | null }).start_lng;
+  if (lat == null || lng == null) return business;
+
+  return {
+    coord: { lat: Number(lat), lng: Number(lng) },
+    address: ((data as { start_address?: string | null }).start_address ?? null) || null,
+    source: 'crew',
+    crewName: (data as { name?: string }).name ?? null,
   };
 }
 

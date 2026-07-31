@@ -9,8 +9,10 @@ import {
   findNearestDayWithJobs,
   getPlanAccountSettings,
   listDayJobs,
+  resolveDayAnchor,
   toPlanStop,
 } from '@/lib/route-plan-day';
+import { listDayRouteStops, listSavedPlaces, toPlanStop as routeStopToPlanStop } from '@/lib/route-stops';
 import { listUpcomingBlocks } from '@/lib/availability-blocks';
 import type { DayPlanPayload, DriveMatrixPayload } from '@/lib/day-plan-view';
 import SaveButton from '@/components/save-button';
@@ -71,8 +73,19 @@ export default async function PlanDayPage({
   const requestedDate = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.date ?? '') ? (searchParams.date as string) : null;
   const dateKey = requestedDate ?? accountToday(settings.timezone);
 
-  const { jobs, filteredOutCount } = await listDayJobs(supabase, accountId, dateKey, crewId);
-  const stops = jobs.map((job) => toPlanStop(job, settings.defaultVisitMinutes));
+  const [{ jobs, filteredOutCount }, dayRouteStops, savedPlaces, anchor] = await Promise.all([
+    listDayJobs(supabase, accountId, dateKey, crewId),
+    listDayRouteStops(supabase, accountId, dateKey, crewId),
+    listSavedPlaces(supabase, accountId),
+    resolveDayAnchor(supabase, accountId, crewId, settings),
+  ]);
+
+  // Supply stops route exactly like jobs — same coordinates, same minutes, same
+  // proposed arrival — so from here down there's no distinction to make.
+  const stops = [
+    ...jobs.map((job) => toPlanStop(job, settings.defaultVisitMinutes)),
+    ...dayRouteStops.map(routeStopToPlanStop),
+  ];
   const routable = stops.filter((stop) => stop.lat != null && stop.lng != null);
   const unroutable = stops.filter((stop) => stop.lat == null || stop.lng == null);
 
@@ -83,7 +96,7 @@ export default async function PlanDayPage({
   let driveTimeSkipped: 'too_many_stops' | null = null;
   if (settings.driveTimeEnabled) {
     const points: Array<{ id: string; coord: LatLng }> = [];
-    if (settings.homeBase) points.push({ id: 'start', coord: settings.homeBase });
+    if (anchor.coord) points.push({ id: 'start', coord: anchor.coord });
     for (const stop of routable) {
       const coord = coordOf(stop);
       if (coord) points.push({ id: stop.id, coord });
@@ -97,7 +110,7 @@ export default async function PlanDayPage({
 
   const planInput = {
     stops,
-    homeBase: settings.homeBase,
+    homeBase: anchor.coord,
     workdayStart: settings.workdayStart,
     workdayEnd: settings.workdayEnd,
     bufferMinutes: settings.bufferMinutes,
@@ -125,8 +138,12 @@ export default async function PlanDayPage({
     stops: routable,
     optimizedOrder: optimized.planned.map((entry) => entry.stop.id),
     currentOrder,
-    homeBase: settings.homeBase,
-    homeAddress: null,
+    homeBase: anchor.coord,
+    homeAddress: anchor.address,
+    anchorSource: anchor.source,
+    anchorCrewName: anchor.crewName,
+    routeStops: dayRouteStops,
+    savedPlaces,
     workdayStart: settings.workdayStart,
     workdayEnd: settings.workdayEnd,
     bufferMinutes: settings.bufferMinutes,
@@ -217,6 +234,29 @@ export default async function PlanDayPage({
         <p className="plan-flash warn">
           {untextedCount} {untextedCount === 1 ? "customer couldn't" : "customers couldn't"} be texted — no mobile on file, or they opted out.
         </p>
+      ) : null}
+
+      {/* Without a mapped start point every day's mileage is short by the drive
+          out and the drive home — often the two longest legs. Dismissible, and
+          it never blocks planning. */}
+      {routable.length > 0 && !anchor.coord ? (
+        <details className="panel plan-panel plan-nohome">
+          <summary>
+            <strong>This day&apos;s mileage is missing the drive out and back</strong>
+            <span>
+              No mapped {crewId ? 'start address for this crew member' : 'business address'} yet, so the route is
+              measured stop to stop.
+            </span>
+          </summary>
+          <p>
+            {crewId
+              ? 'Set where this crew member starts their day and their route will be measured from there.'
+              : 'Add your business address and every day will include the drive to the first job and back from the last.'}
+          </p>
+          <Link href={crewId ? '/dashboard/crew' : '/dashboard/settings#marketing-address'} className="btn primary">
+            {crewId ? 'Open the crew roster' : 'Add your business address'}
+          </Link>
+        </details>
       ) : null}
 
       {routable.length === 0 ? (

@@ -1,11 +1,14 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import FloatingPanel from '@/components/floating-panel';
 import SaveButton from '@/components/save-button';
+import ServiceIcon from '@/lib/templates/ServiceIcon';
+import { isRouteStopId, KIND_GLYPH, KIND_LABEL, routeStopUuid, type RouteStop } from '@/lib/route-stops';
 import RouteMap, { type MapStop } from './RouteMap';
-import { applyDayPlanAction } from './actions';
+import AddRouteStop from './AddRouteStop';
+import { applyDayPlanAction, deleteRouteStopAction } from './actions';
 import { formatTimeLabel, formatTimeMinutes, parseTimeMinutes, type PlannedStop } from '@/lib/route-plan';
 import {
   costOrder,
@@ -38,6 +41,12 @@ const MENU_WIDTH = 232;
 
 export default function DayPlanner({ payload, mapsApiKey }: Props) {
   const byId = useMemo(() => new Map(payload.stops.map((stop) => [stop.id, stop])), [payload.stops]);
+  // Supply stops keep their own record so the row can show what kind of stop it
+  // is and offer to remove it — a job is never removed from a day here.
+  const routeStopById = useMemo(
+    () => new Map(payload.routeStops.map((stop) => [stop.id, stop])),
+    [payload.routeStops],
+  );
 
   // The calendar's own order is the starting point. Showing the optimizer's order
   // by default would mean the page never matches the day the contractor actually
@@ -58,6 +67,30 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [overtimeDismissed, setOvertimeDismissed] = useState(false);
   const listRef = useRef<HTMLOListElement | null>(null);
+
+  // useState only reads its initial value on mount, so a server action that adds
+  // or removes a stop re-renders this component with a payload the order state
+  // has never heard of — the new stop simply wouldn't appear, and a removed one
+  // would linger, until a full page load. Reconcile instead of resetting: the
+  // contractor's arrangement survives, gaining what appeared and losing what went.
+  const stopSignature = useMemo(
+    () => [...payload.stops.map((stop) => stop.id)].sort().join('|'),
+    [payload.stops],
+  );
+  const knownSignature = useRef(stopSignature);
+  useEffect(() => {
+    if (knownSignature.current === stopSignature) return;
+    knownSignature.current = stopSignature;
+    setOrder((current) => {
+      const live = new Set(payload.stops.map((stop) => stop.id));
+      const kept = current.filter((id) => live.has(id));
+      const keptSet = new Set(kept);
+      // New arrivals land where the calendar would put them, which for a stop
+      // with no time is the end.
+      const added = payload.currentOrder.filter((id) => !keptSet.has(id));
+      return [...kept, ...added];
+    });
+  }, [stopSignature, payload.stops, payload.currentOrder]);
 
   const plan = useMemo(() => costOrder(payload, order), [payload, order]);
   const optimized = useMemo(() => costOrder(payload, payload.optimizedOrder), [payload]);
@@ -191,6 +224,12 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
 
   const overtime = plan.overflowMinutes > 0;
   const workdayEndLabel = formatTimeLabel(parseTimeMinutes(payload.workdayEnd) ?? 17 * 60);
+  // Only jobs have a page to open. A supply stop's id would build a /dashboard/
+  // jobs/rs:… link that 404s, so every "open the job" affordance resolves to the
+  // nearest actual job instead.
+  const jobEntries = plan.planned.filter((entry) => !isRouteStopId(entry.stop.id));
+  const firstJob = jobEntries[0] ?? null;
+  const lastJob = jobEntries[jobEntries.length - 1] ?? null;
   const manualDeltaMiles = Math.round((plan.miles - optimized.miles) * 10) / 10;
   const manualDeltaMinutes = Math.round(plan.minutes - optimized.minutes);
 
@@ -260,8 +299,8 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
             >
               Adjust the day
             </button>
-            {plan.planned.length > 0 ? (
-              <Link href={`/dashboard/jobs/${plan.planned[plan.planned.length - 1].stop.id}`} className="btn secondary">
+            {lastJob ? (
+              <Link href={`/dashboard/jobs/${lastJob.stop.id}`} className="btn secondary">
                 Move the last job
               </Link>
             ) : null}
@@ -318,6 +357,9 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
                 blocksDrag={dragId !== null && dragId !== entry.stop.id && pinned.has(entry.stop.id)}
                 pinned={pinned.has(entry.stop.id)}
                 anchoredToHome={payload.anchor === 'home_base'}
+                routeStop={isRouteStopId(entry.stop.id) ? routeStopById.get(routeStopUuid(entry.stop.id)) ?? null : null}
+                dateKey={payload.dateKey}
+                crewId={payload.crewId}
                 menuOpen={menuFor === entry.stop.id}
                 onMenu={(open) => setMenuFor(open ? entry.stop.id : null)}
                 onTogglePin={() => togglePin(entry.stop.id)}
@@ -329,6 +371,13 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
               />
             ))}
           </ol>
+
+          <AddRouteStop
+            dateKey={payload.dateKey}
+            crewId={payload.crewId}
+            savedPlaces={payload.savedPlaces}
+            stopCount={payload.routeStops.length}
+          />
         </section>
 
         <aside className="plan-aside">
@@ -367,15 +416,14 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
               <li>
                 <Link href={`/dashboard/schedule?date=${payload.dateKey}`}>Open this day on the calendar</Link>
               </li>
-              {plan.planned[0] ? (
-                <li><Link href={`/dashboard/jobs/${plan.planned[0].stop.id}`}>Change the first arrival time</Link></li>
+              {firstJob ? (
+                <li><Link href={`/dashboard/jobs/${firstJob.stop.id}`}>Change the first arrival time</Link></li>
               ) : null}
-              {plan.planned[plan.planned.length - 1] ? (
-                <li>
-                  <Link href={`/dashboard/jobs/${plan.planned[plan.planned.length - 1].stop.id}`}>
-                    Move the last job to another day
-                  </Link>
-                </li>
+              {lastJob && lastJob !== firstJob ? (
+                <li><Link href={`/dashboard/jobs/${lastJob.stop.id}`}>Move the last job to another day</Link></li>
+              ) : null}
+              {payload.crewId ? (
+                <li><Link href="/dashboard/crew">Set where this crew member starts</Link></li>
               ) : null}
               <li><Link href="/dashboard/settings#schedule">Change your working hours</Link></li>
             </ul>
@@ -522,12 +570,22 @@ function RouteInsights({
   }
 
   notes.push({
-    tone: 'info',
+    tone: payload.anchorSource ? 'info' : 'warn',
     text:
-      payload.anchor === 'home_base'
-        ? 'The day starts and ends at your business address.'
-        : 'No mapped business address yet, so the route is measured stop to stop. Add one in Settings → Business to include the drive out and back.',
+      payload.anchorSource === 'crew'
+        ? `The day starts and ends at ${payload.anchorCrewName ?? 'this crew member'}'s own address, not the shop.`
+        : payload.anchorSource === 'business'
+          ? 'The day starts and ends at your business address.'
+          : 'No mapped business address, so the route is measured stop to stop — the drive out and back isn’t counted.',
   });
+
+  const errandCount = payload.routeStops.length;
+  if (errandCount > 0) {
+    notes.push({
+      tone: 'info',
+      text: `${errandCount} supply ${errandCount === 1 ? 'stop is' : 'stops are'} routed into this day alongside the jobs.`,
+    });
+  }
 
   if (payload.lockedCount > 0) {
     notes.push({
@@ -591,6 +649,9 @@ function StopRow({
   blocksDrag,
   pinned,
   anchoredToHome,
+  routeStop,
+  dateKey,
+  crewId,
   menuOpen,
   onMenu,
   onTogglePin,
@@ -609,6 +670,10 @@ function StopRow({
   blocksDrag: boolean;
   pinned: boolean;
   anchoredToHome: boolean;
+  // Set when this row is a supply stop rather than a job.
+  routeStop: RouteStop | null;
+  dateKey: string;
+  crewId: string | null;
   menuOpen: boolean;
   onMenu: (open: boolean) => void;
   onTogglePin: () => void;
@@ -633,6 +698,7 @@ function StopRow({
     blocksDrag ? 'is-blocking' : '',
     stop.locked ? 'is-locked' : '',
     pinned ? 'is-pinned' : '',
+    routeStop ? 'is-errand' : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -665,7 +731,14 @@ function StopRow({
       <span className="plan-stop-num" aria-hidden="true">{index + 1}</span>
 
       <div className="plan-stop-who">
-        <Link href={`/dashboard/jobs/${stop.id}`} className="plan-stop-name">{stop.label}</Link>
+        {routeStop ? (
+          <span className="plan-stop-name is-errand">
+            <ServiceIcon name={KIND_GLYPH[routeStop.kind]} />
+            {stop.label}
+          </span>
+        ) : (
+          <Link href={`/dashboard/jobs/${stop.id}`} className="plan-stop-name">{stop.label}</Link>
+        )}
         <p className="plan-stop-addr">{stop.address || 'No address on file'}</p>
       </div>
 
@@ -686,6 +759,11 @@ function StopRow({
             ? 'First stop of the day'
             : `${entry.legMiles} mi · ${minutesLabel(entry.legMinutes)} drive`}
         </span>
+        {routeStop ? (
+          <span className="plan-badge errand" title="Not a job — a stop on the way. It costs time and miles but bills nobody.">
+            {KIND_LABEL[routeStop.kind]}
+          </span>
+        ) : null}
         {stop.locked ? (
           <span
             className="plan-badge locked"
@@ -730,15 +808,28 @@ function StopRow({
           ⋮
         </button>
         <FloatingPanel anchorRef={menuButtonRef} open={menuOpen} onClose={() => onMenu(false)} className="plan-stop-menu" width={MENU_WIDTH}>
-          <Link href={`/dashboard/jobs/${stop.id}`} className="plan-stop-menu-item" onClick={() => onMenu(false)}>
-            View job
-          </Link>
-          <Link href={`/dashboard/jobs/${stop.id}`} className="plan-stop-menu-item" onClick={() => onMenu(false)}>
-            Change arrival time
-          </Link>
-          <Link href={`/dashboard/jobs/${stop.id}`} className="plan-stop-menu-item" onClick={() => onMenu(false)}>
-            Move to another day
-          </Link>
+          {routeStop ? (
+            // A supply stop has no job page to open and nothing to invoice. The
+            // only thing to do with one is take it off the day.
+            <form action={deleteRouteStopAction}>
+              <input type="hidden" name="dateKey" value={dateKey} />
+              <input type="hidden" name="crewId" value={crewId ?? ''} />
+              <input type="hidden" name="stopId" value={routeStop.id} />
+              <button type="submit" className="plan-stop-menu-item danger">Remove this stop</button>
+            </form>
+          ) : (
+            <>
+              <Link href={`/dashboard/jobs/${stop.id}`} className="plan-stop-menu-item" onClick={() => onMenu(false)}>
+                View job
+              </Link>
+              <Link href={`/dashboard/jobs/${stop.id}`} className="plan-stop-menu-item" onClick={() => onMenu(false)}>
+                Change arrival time
+              </Link>
+              <Link href={`/dashboard/jobs/${stop.id}`} className="plan-stop-menu-item" onClick={() => onMenu(false)}>
+                Move to another day
+              </Link>
+            </>
+          )}
           {!stop.locked ? (
             <button type="button" className="plan-stop-menu-item" onClick={onTogglePin}>
               {pinned ? 'Unlock this stop' : 'Lock this stop here'}

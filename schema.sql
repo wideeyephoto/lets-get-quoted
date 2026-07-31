@@ -496,6 +496,80 @@ do $$ begin
     check (time_clock_mode in ('off', 'optional', 'required'));
 exception when duplicate_object then null; end $$;
 
+-- Places a contractor goes back to: the county dump, the Home Depot on the way
+-- out, the yard that stocks the right pipe. Account-scoped and free-form —
+-- every trade's list is different, and a national directory would be wrong for
+-- the one-yard-in-town case that actually matters.
+create table if not exists saved_places (
+  id              uuid primary key default gen_random_uuid(),
+  account_id      uuid not null references accounts(id) on delete cascade,
+  label           text not null,
+  address         text not null,
+  lat             numeric,
+  lng             numeric,
+  kind            text not null default 'supply',
+  default_minutes integer not null default 20,
+  -- Ordering for the quick-add list: most-used first, ties broken by recency.
+  use_count       integer not null default 0,
+  last_used_at    timestamptz,
+  created_at      timestamptz not null default now()
+);
+do $$ begin
+  alter table saved_places add constraint saved_places_kind_check
+    check (kind in ('supply', 'dump', 'fuel', 'other'));
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter table saved_places add constraint saved_places_minutes_check
+    check (default_minutes between 0 and 480);
+exception when duplicate_object then null; end $$;
+create unique index if not exists saved_places_unique_per_account
+  on saved_places (account_id, lower(label), lower(address));
+create index if not exists saved_places_account_rank_idx
+  on saved_places (account_id, use_count desc, last_used_at desc nulls last);
+
+-- A stop on one day that isn't a job: a dump run, a supply pickup, fuel. They
+-- cost real time and real miles, and leaving them out of the route is why a
+-- planned day and a real day disagree.
+create table if not exists route_stops (
+  id             uuid primary key default gen_random_uuid(),
+  account_id     uuid not null references accounts(id) on delete cascade,
+  -- NULL = belongs to the whole day, so it shows in every crew's plan. Same rule
+  -- unassigned jobs already follow.
+  crew_id        uuid references crew(id) on delete set null,
+  saved_place_id uuid references saved_places(id) on delete set null,
+  scheduled_for  date not null,
+  -- NULL = "fit it in": the planner places it and proposes a time, exactly as it
+  -- does for a job with no time on it.
+  scheduled_time time,
+  label          text not null,
+  address        text,
+  lat            numeric,
+  lng            numeric,
+  minutes        integer not null default 20,
+  kind           text not null default 'supply',
+  note           text,
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now()
+);
+do $$ begin
+  alter table route_stops add constraint route_stops_kind_check
+    check (kind in ('supply', 'dump', 'fuel', 'other'));
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter table route_stops add constraint route_stops_minutes_check
+    check (minutes between 0 and 480);
+exception when duplicate_object then null; end $$;
+create index if not exists route_stops_day_idx on route_stops (account_id, scheduled_for);
+create index if not exists route_stops_crew_idx on route_stops (crew_id) where crew_id is not null;
+
+-- Where a crew member's day starts. Filtering Plan my day to one crew anchors
+-- the route at their address instead of the shop. Coordinates are stored only
+-- when geocoding was precise — a city-level match would silently move every leg
+-- of their day by several miles.
+alter table crew add column if not exists start_address text;
+alter table crew add column if not exists start_lat numeric;
+alter table crew add column if not exists start_lng numeric;
+
 -- ----------------------------------------------------------------------------
 -- COSTS  — itemized job costing.
 -- ----------------------------------------------------------------------------
@@ -1348,6 +1422,19 @@ create policy time_entry_owner       on time_entries for all    using ( is_owner
 create policy time_entry_crew_read   on time_entries for select using ( crew_owns_crew_row(crew_id) );
 create policy time_entry_crew_insert on time_entries for insert with check ( crew_on_job(job_id) and crew_owns_crew_row(crew_id) and account_id = job_account_id(job_id) );
 create policy time_entry_crew_update on time_entries for update using ( crew_owns_crew_row(crew_id) ) with check ( crew_owns_crew_row(crew_id) );
+
+-- ROUTE STOPS + SAVED PLACES: owners manage both. Crew get READ on route stops,
+-- and only ones assigned to them, so the field app can show a dump run without
+-- exposing another truck's route. A stop with crew_id null is the owner's
+-- planning surface only until the field app has somewhere to put it.
+alter table saved_places enable row level security;
+alter table route_stops enable row level security;
+drop policy if exists saved_place_owner on saved_places;
+drop policy if exists route_stop_owner on route_stops;
+drop policy if exists route_stop_crew_read on route_stops;
+create policy saved_place_owner    on saved_places for all    using ( is_owner(account_id) );
+create policy route_stop_owner     on route_stops  for all    using ( is_owner(account_id) );
+create policy route_stop_crew_read on route_stops  for select using ( crew_id is not null and crew_owns_crew_row(crew_id) );
 
 -- JOB_FEED: owners full access. Crew may READ and POST feed events on an assigned
 -- job (status changes, field notes, client-shared updates) — nothing else.

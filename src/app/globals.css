@@ -9426,6 +9426,92 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 .plan-savebar-copy span { font-size: 0.82rem; color: rgba(255, 255, 255, 0.58); }
 .plan-savebar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
 
+/* --- Supply stops ------------------------------------------------------ */
+/* A stop that isn't a job reads differently: cooler, quieter, and marked with
+   what kind of errand it is. It still costs the day real time and real miles —
+   the whole reason it's here — but nobody is paying for it. */
+.plan-stop.is-errand { background: rgba(125, 211, 252, 0.045); }
+.plan-stop.is-errand .plan-stop-num {
+  background: linear-gradient(160deg, #7dd3fc, #38bdf8);
+  color: #062033;
+}
+.plan-stop-name.is-errand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #bae6fd;
+}
+.plan-stop-name.is-errand svg { width: 0.95rem; height: 0.95rem; flex-shrink: 0; }
+.plan-badge.errand { background: rgba(125, 211, 252, 0.16); color: #bae6fd; }
+.plan-stop-menu-item.danger { color: #ff9a8b; }
+.plan-stop-menu-item.danger:hover { background: rgba(255, 110, 90, 0.12); }
+
+.plan-addstop-collapsed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem 0.9rem;
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+.plan-place-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; min-width: 0; }
+.plan-place-chips-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(247, 245, 239, 0.42);
+}
+/* The place book. Second time to the county dump should be one tap, so these
+   sort by how often this contractor actually goes. */
+.plan-place-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.26rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 211, 252, 0.3);
+  background: rgba(125, 211, 252, 0.09);
+  color: #bae6fd;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plan-place-chip:hover { border-color: rgba(125, 211, 252, 0.6); background: rgba(125, 211, 252, 0.16); }
+.plan-place-chip svg { width: 0.85rem; height: 0.85rem; flex-shrink: 0; }
+
+.plan-addstop {
+  margin-top: 0.9rem;
+  padding: 1rem 1.05rem;
+  border-radius: 14px;
+  border: 1px solid rgba(125, 211, 252, 0.28);
+  background: rgba(125, 211, 252, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.plan-addstop-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.plan-addstop-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 0.7rem; }
+.plan-addstop .field { margin: 0; }
+.plan-addstop .form-actions { margin: 0; }
+
+/* --- No home base ------------------------------------------------------- */
+.plan-nohome {
+  padding: 0.9rem 1.1rem;
+  border-color: rgba(251, 191, 36, 0.35);
+  background: rgba(251, 191, 36, 0.07);
+}
+.plan-nohome > summary { cursor: pointer; list-style: none; display: flex; flex-direction: column; gap: 0.15rem; }
+.plan-nohome > summary::-webkit-details-marker { display: none; }
+.plan-nohome > summary strong { color: #fde68a; font-size: 0.95rem; }
+.plan-nohome > summary span { font-size: 0.85rem; color: rgba(255, 255, 255, 0.62); }
+.plan-nohome p { margin: 0.75rem 0; font-size: 0.88rem; color: rgba(255, 255, 255, 0.7); }
+
 .plan-empty { padding: 2rem 1.5rem; text-align: center; }
 .plan-empty h2 { margin: 0 0 0.5rem; font-size: 1.25rem; }
 .plan-empty p { margin: 0 auto; max-width: 52ch; color: rgba(255, 255, 255, 0.6); }

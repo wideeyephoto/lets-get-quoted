@@ -1,4 +1,5 @@
 import { scheduleOrder, type OrderedPlan, type PlanInput, type PlanStop } from '@/lib/route-plan';
+import type { RouteStop, SavedPlace } from '@/lib/route-stops';
 import type { LatLng } from '@/lib/distance';
 
 // The bridge between the server-rendered day plan and the client component that
@@ -25,6 +26,14 @@ export type DayPlanPayload = {
   currentOrder: string[];
   homeBase: LatLng | null;
   homeAddress: string | null;
+  // Whose address the day is measured from — the shop, or the crew member it's
+  // filtered to. Null means neither is set and the route is stop-to-stop.
+  anchorSource: 'crew' | 'business' | null;
+  anchorCrewName: string | null;
+  // The day's non-job stops (dump runs, supply pickups) and the place book they
+  // can be quick-added from.
+  routeStops: RouteStop[];
+  savedPlaces: SavedPlace[];
   workdayStart: string;
   workdayEnd: string;
   bufferMinutes: number;

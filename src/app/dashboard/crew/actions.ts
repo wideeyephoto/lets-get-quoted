@@ -11,6 +11,7 @@ import {
   deleteArchivedCrewMember,
   listCrew,
   listCrewIdsForJob,
+  saveCrewStartAddress,
   setCrewActive,
   setJobCrewAssignments,
   updateCrewPhoto,
@@ -82,6 +83,12 @@ export async function updateCrewAction(crewId: string, formData: FormData) {
     roleLabel: optionalText(formData.get('roleLabel')),
     hourlyRate: Number.isFinite(hourlyRateRaw) && hourlyRateRaw > 0 ? hourlyRateRaw : 0,
   });
+
+  // Where this person's day starts, for Plan my day. Geocoded precise-only:
+  // a city-level match would silently move every leg of their route by miles,
+  // so a vague address stores the text and no coordinates, and the plan keeps
+  // falling back to the shop.
+  await saveCrewStartAddress(supabase, accountId, crewId, optionalText(formData.get('startAddress')) ?? null);
 
   // Keep a baseline consent row in step with the (possibly new) phone number.
   await ensureSmsConsentBaseline(accountId, phone).catch(() => {});

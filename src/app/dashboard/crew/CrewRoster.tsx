@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import CrewWorkHistory from '@/components/crew-work-history';
 import SaveButton from '@/components/save-button';
+import AddressAutocomplete from '@/components/address-autocomplete';
 import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
 import CrewPhotoUpload from './CrewPhotoUpload';
 import {
@@ -36,6 +37,8 @@ export type CrewRow = {
   phone: string | null;
   phoneLabel: string | null;
   email: string | null;
+  // Where their day starts, for Plan my day. Null = start from the shop.
+  startAddress: string | null;
   active: boolean;
   fieldApp: 'linked' | 'invitable' | 'no-email';
   jobs: { id: string; ref: string; clientName: string }[];
@@ -515,6 +518,22 @@ function CrewDrawer({ row, onClose, periodLabel }: { row: CrewRow; onClose: () =
             <div className="field">
               <label htmlFor={`hourlyRate-${row.id}`}>Hourly rate ($)</label>
               <input id={`hourlyRate-${row.id}`} name="hourlyRate" type="number" min="0" step="0.01" defaultValue={row.hourlyRate} />
+            </div>
+            <div className="field full">
+              <label htmlFor={`startAddress-${row.id}`}>Starts the day at (optional)</label>
+              {/* Plan my day measures this person's route from here instead of
+                  the shop when the day is filtered to them. Verified as you type
+                  because an address that won't geocode stores no coordinates and
+                  silently falls back to the business address. */}
+              <AddressAutocomplete
+                id={`startAddress-${row.id}`}
+                name="startAddress"
+                defaultValue={row.startAddress ?? ''}
+                placeholder="Their home or the yard they leave from"
+              />
+              <small className="field-hint">
+                Leave blank to start their day from the business address like everyone else.
+              </small>
             </div>
             <div className="field full">
               <SaveButton>Save crew member</SaveButton>
