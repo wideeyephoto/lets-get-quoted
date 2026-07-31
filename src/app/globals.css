@@ -2811,6 +2811,13 @@ li + li { margin-top: 0.45rem; }
   display: flex;
   align-items: center;
   gap: 0.95rem;
+  /* It's a submit button — a form control inherits none of this by default. */
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
   padding: 1.05rem 1.25rem;
   border: 1px solid rgba(217, 173, 129, 0.95);
   border-radius: 18px;
@@ -2855,6 +2862,11 @@ li + li { margin-top: 0.45rem; }
   outline: 2px solid #ffdcc4;
   outline-offset: 3px;
 }
+
+/* Waiting on Stripe for the onboarding link. Stays lit — dimming it here would
+   read as "this failed" rather than "this is working". */
+.stripe-alert-banner:disabled { cursor: progress; }
+.stripe-alert-banner:disabled:hover { transform: none; }
 
 .stripe-alert-icon {
   position: relative;

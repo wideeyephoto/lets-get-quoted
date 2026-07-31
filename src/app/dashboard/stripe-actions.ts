@@ -12,7 +12,9 @@ function getOrigin() {
   return `${proto}://${host}`;
 }
 
-export async function connectStripeAction() {
+// Everything the connect does except the redirect, so a caller can decide what
+// happens when Stripe won't hand back a link.
+async function createStripeOnboardingUrl(): Promise<string> {
   const { supabase, accountId } = await requireOwnerContext();
 
   const { data: account, error } = await supabase
@@ -34,12 +36,32 @@ export async function connectStripeAction() {
   const stripeAccountId = await createOrGetRecipientAccount(supabase, accountId, account.business_name, contactEmail);
 
   const origin = getOrigin();
-  const url = await createOnboardingLink(
+  return createOnboardingLink(
     stripeAccountId,
     `${origin}/dashboard/stripe-return`,
     `${origin}/dashboard/stripe-return`
   );
+}
 
+export async function connectStripeAction() {
+  redirect(await createStripeOnboardingUrl());
+}
+
+/**
+ * The same connect, started from the dashboard-wide banner.
+ *
+ * Identical on the happy path. The difference is the failure: this banner sits
+ * on every dashboard page, so an action that throws replaces whatever the owner
+ * was in the middle of with an error screen. Settings is where the same button
+ * lives with room to explain itself — and where this banner used to point.
+ */
+export async function connectStripeFromBannerAction() {
+  let url: string;
+  try {
+    url = await createStripeOnboardingUrl();
+  } catch {
+    redirect('/dashboard/settings#payments');
+  }
   redirect(url);
 }
 
