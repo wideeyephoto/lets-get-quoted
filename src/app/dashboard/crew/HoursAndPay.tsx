@@ -90,7 +90,14 @@ const CREW_VIEW_OPTIONS: ViewOption<CrewView>[] = [
   { id: 'table', label: 'Table', hint: 'Every crew member in one list' },
   { id: 'grouped', label: 'Grouped', hint: 'Sections by what needs doing' },
   { id: 'rail', label: 'Review', hint: 'Table with the actions pinned beside it' },
+  { id: 'focus', label: 'Focus', hint: 'The whole period, with what to do next pinned beside it' },
 ];
+
+// Views that put the rail beside the table rather than under it. They need the
+// wide shell, and they move the period's one action into the rail.
+function isRailView(view: CrewView): boolean {
+  return view === 'rail' || view === 'focus';
+}
 
 // The order the sections appear in is the order the work happens in: sort out
 // the exceptions, pay who's owed, then everything already settled.
@@ -254,7 +261,7 @@ export default function HoursAndPay({
   useEffect(() => {
     const main = document.querySelector('main.wide-shell');
     if (!main) return;
-    main.classList.toggle('crew-wide', view === 'rail');
+    main.classList.toggle('crew-wide', isRailView(view));
     return () => main.classList.remove('crew-wide');
   }, [view]);
   const [selected, setSelected] = useState<string[]>([]);
@@ -458,6 +465,41 @@ export default function HoursAndPay({
     return { row: newest, count: sameBatch.length, total: sameBatch.reduce((sum, row) => sum + (row.paidAmount ?? 0), 0) };
   }, [rows]);
 
+  // The period's one action, rendered once and placed differently by view: in
+  // the summary card for Table/Grouped/Review, in the rail for Focus. Defined
+  // here rather than twice so the two placements can never drift into offering
+  // different buttons for the same state.
+  //
+  // Approving and paying are the only green buttons on this screen. Orange is
+  // the brand's "do the thing" everywhere else in the app; keeping green for
+  // exactly these two means a green button always signals money agreed or money
+  // recorded, and never anything reversible-looking that isn't.
+  const primaryActionButton = !payAvailable || !primaryAction ? null : primaryAction.id === 'review' ? (
+    <button type="button" className="btn primary" onClick={() => applyFilter({ status: 'needs_review', payment: 'all' })}>
+      {primaryAction.label}
+    </button>
+  ) : primaryAction.id === 'approve' ? (
+    <button type="button" className={`btn primary ${styles.goAction}`} disabled={busy('approve')} onClick={() => arm({ kind: 'approve', crewIds: [] })}>
+      {busy('approve') ? 'Approving…' : 'Approve hours'}
+    </button>
+  ) : primaryAction.id === 'pay' || primaryAction.id === 'finish' ? (
+    <button
+      type="button"
+      className={`btn primary ${styles.goAction}`}
+      disabled={Boolean(periodPayBlocked)}
+      // The tooltip is the whole explanation of why it's greyed out. A disabled
+      // button that says nothing is just a dead end.
+      title={periodPayBlocked ?? undefined}
+      onClick={() => setDialog({ kind: 'pay', ids: payableNow.map(rowKey) })}
+    >
+      {primaryAction.label}
+    </button>
+  ) : (
+    <button type="button" className="btn primary" onClick={() => setDrawer({ mode: 'history' })}>
+      {primaryAction.label}
+    </button>
+  );
+
   return (
     <>
       <div className={styles.hpHead}>
@@ -628,31 +670,12 @@ export default function HoursAndPay({
 
         {/* One primary action. What it is depends entirely on where the period
             has got to — never two equally loud buttons to choose between. */}
-        {payAvailable && primaryAction ? (
+        {/* Focus moves this into the rail, where it stays in view while you
+            scroll the crew. Leaving a copy here as well would be two equally
+            loud buttons for one decision. */}
+        {payAvailable && primaryAction && view !== 'focus' ? (
           <div className={styles.periodActions}>
-            {primaryAction.id === 'review' ? (
-              <button type="button" className="btn primary" onClick={() => applyFilter({ status: 'needs_review', payment: 'all' })}>
-                {primaryAction.label}
-              </button>
-            ) : primaryAction.id === 'approve' ? (
-              <button type="button" className="btn primary" disabled={busy('approve')} onClick={() => arm({ kind: 'approve', crewIds: [] })}>
-                {busy('approve') ? 'Approving…' : 'Approve hours'}
-              </button>
-            ) : primaryAction.id === 'pay' || primaryAction.id === 'finish' ? (
-              <button
-                type="button"
-                className="btn primary"
-                disabled={Boolean(periodPayBlocked)}
-                title={periodPayBlocked ?? undefined}
-                onClick={() => setDialog({ kind: 'pay', ids: payableNow.map(rowKey) })}
-              >
-                {primaryAction.label}
-              </button>
-            ) : (
-              <button type="button" className="btn primary" onClick={() => setDrawer({ mode: 'history' })}>
-                {primaryAction.label}
-              </button>
-            )}
+            {primaryActionButton}
             <small>{primaryAction.help}</small>
           </div>
         ) : null}
@@ -1168,7 +1191,11 @@ export default function HoursAndPay({
               </div>
             ) : null}
 
-            <p className={styles.hpNote}>
+            {/* The caveat that keeps "Paid" honest. In Focus it becomes the bar
+                that closes the page, because that's the last thing you read
+                before recording a payment. */}
+            <p className={styles.hpNote} data-view={view}>
+              {view === 'focus' ? <span className={styles.hpNoteMark} aria-hidden="true">i</span> : null}
               Estimated pay is each entry&apos;s hours × the rate it was logged at. Periods are cut on when time was logged — a labor
               entry has no separate &ldquo;worked on&rdquo; date. Marking someone paid records that you paid them: no tax is
               calculated or withheld here and no money moves.
@@ -1177,6 +1204,25 @@ export default function HoursAndPay({
 
           {/* --- the rail --- */}
           <aside className={styles.payRail}>
+            {/* Focus leads with the decision. The rest of the rail is reference;
+                this is the thing you came to do, and it stays put while you
+                scroll a long crew list. */}
+            {view === 'focus' && primaryActionButton ? (
+              // The card is tinted by what the action IS, not by where it sits.
+              // A green card wrapped round an orange "Review entries" button
+              // would promise the approval step before it's actually available.
+              <section
+                className={`${styles.railCard} ${styles.railAction}`}
+                data-tone={primaryAction?.id === 'approve' || primaryAction?.id === 'pay' || primaryAction?.id === 'finish' ? 'go' : 'todo'}
+              >
+                <h3>{primaryAction?.id === 'pay' || primaryAction?.id === 'finish' ? 'Pay this period' : primaryAction?.label ?? 'Next step'}</h3>
+                {primaryActionButton}
+                <small className={styles.railActionHelp}>
+                  {periodPayBlocked ?? primaryAction?.help}
+                </small>
+              </section>
+            ) : null}
+
             <section className={styles.railCard}>
               <h3>Pay period summary</h3>
               <PayDonut totals={totals} onSlice={(payment) => applyFilter({ payment, status: 'all', flagged: false })} />

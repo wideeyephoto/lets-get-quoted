@@ -64,8 +64,8 @@ export function normalizeClientsView(value: unknown): ClientsView {
 
 // Which Crew & Labor "Hours & pay" layout the owner last used.
 export const CREW_VIEW_COOKIE = 'lgq_crew_view';
-export type CrewView = 'table' | 'grouped' | 'rail';
-export const CREW_VIEWS: CrewView[] = ['table', 'grouped', 'rail'];
+export type CrewView = 'table' | 'grouped' | 'rail' | 'focus';
+export const CREW_VIEWS: CrewView[] = ['table', 'grouped', 'rail', 'focus'];
 export function normalizeCrewView(value: unknown): CrewView {
   // Table is what this tab already is, so an owner who never opens the gear
   // sees exactly what they saw yesterday.

@@ -2008,3 +2008,118 @@
   .board { grid-template-columns: minmax(0, 1fr); }
   .cardGrid { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ==========================================================================
+   Hours & pay — Focus.
+
+   Review already pins the reference material beside the table. Focus goes one
+   step further and pins the DECISION: the period's single next action leads the
+   rail and stays in view the whole way down a long crew list, so "who still
+   needs approving" and "approve them" are never a scroll apart.
+
+   The restraint that makes it work: green appears on exactly two buttons on this
+   screen — approve, and record a payment. Orange stays the app's ordinary "do
+   the thing". So a green button here always means money agreed or money
+   recorded, and the glow is spent on that one control rather than sprinkled.
+   ========================================================================== */
+
+/* Same geometry as Review, and for the same measured reason: below 1600px a
+   rail beside a nine-column table pushes Payment and Payment date off the edge —
+   the two columns this screen exists to show. Under that, the rail stacks. */
+@media (min-width: 1600px) {
+  .payLayout[data-view='focus'] {
+    grid-template-columns: minmax(0, 1fr) 18rem;
+    align-items: start;
+  }
+  .payLayout[data-view='focus'] .payRail {
+    grid-template-columns: minmax(0, 1fr);
+    position: sticky;
+    top: 0.5rem;
+    /* The rail is a column of its own, so it reads as one thing rather than
+       four cards that happen to be stacked. */
+    padding: 0.55rem;
+    border: 1px solid rgba(255, 122, 33, 0.34);
+    border-radius: 16px;
+    background: rgba(255, 122, 33, 0.035);
+  }
+}
+@media (min-width: 1800px) {
+  .payLayout[data-view='focus'] { grid-template-columns: minmax(0, 1fr) 20rem; }
+}
+
+/* The one card that is an instruction rather than a readout. Its tint follows
+   the action inside it: green once there is money to agree or record, orange
+   while there is still work to do before that. */
+.railAction[data-tone='go'] {
+  border-color: rgba(72, 199, 142, 0.42);
+  background: rgba(72, 199, 142, 0.06);
+}
+.railAction[data-tone='go'] h3 { color: #cdf3e0; }
+.railAction[data-tone='todo'] {
+  border-color: rgba(255, 122, 33, 0.42);
+  background: rgba(255, 122, 33, 0.06);
+}
+.railAction[data-tone='todo'] h3 { color: #ffc79a; }
+.railActionHelp {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: rgba(147, 164, 184, 0.95);
+}
+
+/* Approve and record-a-payment. Nothing else on this screen is green.
+   `button.goAction.goAction` rather than `.goAction`: the element also carries
+   the global `.btn.primary`, which is two classes and would otherwise keep its
+   orange gradient. Element + doubled class outranks it without reaching for
+   !important, which would then have to be fought again by the disabled rule. */
+button.goAction.goAction {
+  --accent: #2f9e6a;
+  background: linear-gradient(180deg, #3fbe83, #2b8f60);
+  border-color: rgba(72, 199, 142, 0.65);
+  color: #06241a;
+  box-shadow: 0 10px 26px -14px rgba(72, 199, 142, 0.9);
+}
+button.goAction.goAction:hover:not(:disabled) { background: linear-gradient(180deg, #4bd093, #31a56e); }
+/* Disabled has to look disabled without losing the label — the tooltip on it is
+   the only place the reason lives. */
+button.goAction.goAction:disabled {
+  background: rgba(72, 199, 142, 0.16);
+  border-color: rgba(72, 199, 142, 0.3);
+  color: rgba(205, 243, 224, 0.55);
+  box-shadow: none;
+}
+
+/* Focus turns the caveat into the bar that closes the page. */
+.hpNote[data-view='focus'] {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  max-width: none;
+  margin-top: 1rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid rgba(148, 176, 214, 0.2);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.hpNoteMark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: 0.1rem;
+  border-radius: 50%;
+  border: 1px solid rgba(148, 176, 214, 0.45);
+  font-size: 0.68rem;
+  font-weight: 800;
+  font-style: italic;
+  color: rgba(200, 214, 230, 0.95);
+}
+
+/* The KPI strip is the page's headline in Focus, so its numbers get the size
+   the mockup asks for and the cards get room to breathe. */
+.periodCard[data-view='focus'] .periodStats { gap: 0.55rem; }
+.periodCard[data-view='focus'] .periodStat { padding: 0.7rem 0.8rem; }
+.periodCard[data-view='focus'] .periodStat strong { font-size: 1.45rem; }
+.periodCard[data-view='focus'] .periodStat:hover { border-color: rgba(255, 122, 33, 0.45); }
