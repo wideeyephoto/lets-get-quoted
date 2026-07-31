@@ -52,6 +52,7 @@ function payFromForm(formData: FormData) {
     hourlyRate: positiveAmount(formData.get('hourlyRate')) ?? 0,
     annualSalary: payType === 'salary' ? positiveAmount(formData.get('annualSalary')) : null,
     dayRate: payType === 'day_rate' ? positiveAmount(formData.get('dayRate')) : null,
+    payrollId: optionalText(formData.get('payrollId')) ?? null,
   };
 }
 

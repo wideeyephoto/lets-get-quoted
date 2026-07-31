@@ -27,6 +27,7 @@ import { CREW_ROSTER_VIEW_COOKIE, CREW_THEME_COOKIE, CREW_VIEW_COOKIE, normalize
 import { listOutstandingPeriods, listPayEvents, listPeriodEntryLines, loadCrewPayContext } from '@/lib/crew-pay-data';
 import { PAY_DAY_COLUMNS, payDaySettingsFromAccount, payDayView, type PayDaySettings } from '@/lib/pay-day';
 import { payBasisFromCrew, payRateLabel } from '@/lib/pay-types';
+import { normalizePayrollProvider } from '@/lib/payroll-export';
 import { laborTotalsByCrew, listLaborEntries } from '@/lib/labor-data';
 import { LABOR_RULE_COLUMNS, LABOR_SETTINGS_COOKIE, laborRulesFromAccount, normalizeLaborSettings } from '@/lib/labor-settings';
 import { SHIFT_FLAG_HELP, SHIFT_FLAG_LABEL, formatClock, formatElapsed, openShiftFlag } from '@/lib/time-clock';
@@ -100,7 +101,7 @@ export default async function CrewLaborPage({
   // the ACCOUNT, so a phone and a laptop cannot total the same week differently.
   const { data: accountRules } = await supabase
     .from('accounts')
-    .select(`timezone, require_separate_payer, ${LABOR_RULE_COLUMNS}`)
+    .select(`timezone, require_separate_payer, payroll_provider, ${LABOR_RULE_COLUMNS}`)
     .eq('id', accountId)
     .maybeSingle();
   const timeZone = ((accountRules as { timezone?: string } | null)?.timezone) || 'America/New_York';
@@ -159,6 +160,7 @@ export default async function CrewLaborPage({
       payType: payBasisFromCrew(member).payType,
       annualSalary: member.annual_salary == null ? null : Number(member.annual_salary),
       dayRate: member.day_rate == null ? null : Number(member.day_rate),
+      payrollId: member.payroll_id ?? null,
       // Reads from the pay basis, so a salaried member shows "$72,000.00/yr"
       // rather than the derived hourly figure nobody typed.
       rateLabel: payRateLabel(payBasisFromCrew(member)),
@@ -372,6 +374,7 @@ export default async function CrewLaborPage({
 
         {tab === 'hours' && pay && payTotals && periodState ? (
           <HoursAndPay
+            payrollProvider={normalizePayrollProvider((accountRules as { payroll_provider?: string } | null)?.payroll_provider)}
             rows={pay.rows}
             totals={payTotals}
             periodState={periodState}

@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { requireOwnerContext } from '@/lib/auth';
 import { LABOR_SETTINGS_COOKIE, normalizeLaborSettings, serializeLaborSettings } from '@/lib/labor-settings';
+import { normalizePayrollProvider } from '@/lib/payroll-export';
 import { normalizeTimeClockMode } from '@/lib/time-clock';
 import { getTimeClockMode, setTimeClockMode } from '@/lib/time-clock-data';
 
@@ -51,6 +52,9 @@ export async function saveLaborSettingsAction(formData: FormData) {
         : 'none',
       labor_rules_set_at: new Date().toISOString(),
       require_separate_payer: formData.get('requireSeparatePayer') !== null,
+      // Decides the SHAPE of the export, not only its column names — a salaried
+      // employee belongs in an hours import differently from an hourly one.
+      payroll_provider: normalizePayrollProvider(formData.get('payrollProvider')),
     })
     .eq('id', accountId);
   if (payError) console.error('Payroll rules save failed:', payError.message);

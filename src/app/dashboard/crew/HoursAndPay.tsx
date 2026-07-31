@@ -37,6 +37,13 @@ import {
   type PeriodTotals,
 } from '@/lib/crew-pay';
 import { PAY_TYPE_LABEL } from '@/lib/pay-types';
+import {
+  PAYROLL_PROVIDER_LABEL,
+  buildPayrollExport,
+  exportableRows,
+  type PayrollExport,
+  type PayrollProvider,
+} from '@/lib/payroll-export';
 import { EXPORT_FORMAT_LABEL, ROUNDING_LABEL, type LaborSettings } from '@/lib/labor-settings';
 import { TIME_CLOCK_MODES, type TimeClockMode } from '@/lib/time-clock';
 import SaveButton from '@/components/save-button';
@@ -186,6 +193,7 @@ function ArmedForm({
 }
 
 export default function HoursAndPay({
+  payrollProvider = 'generic',
   rows,
   totals,
   periodState,
@@ -221,6 +229,8 @@ export default function HoursAndPay({
   hoursLastPeriod,
   previousPayLabel,
 }: {
+  /** Which provider's file shape to build. Defaults to a plain spreadsheet. */
+  payrollProvider?: PayrollProvider;
   rows: CrewPayRow[];
   totals: PeriodTotals;
   periodState: PayPeriodState;
@@ -314,6 +324,7 @@ export default function HoursAndPay({
   const [toast, setToast] = useState<PayActionState | null>(null);
   const [armed, setArmed] = useState<Armed>(null);
   const exportFormRef = useRef<HTMLFormElement | null>(null);
+  const [exportResult, setExportResult] = useState<PayrollExport | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   /** Fire a pay action. The armed form does the submitting; this is the trigger. */
@@ -466,16 +477,40 @@ export default function HoursAndPay({
     </>
   );
 
-  function download(only?: CrewPayRow[]) {
-    const chosen = only ?? visible;
-    const csv = buildPayCsv(chosen, period.rangeLabel);
+  function saveFile(csv: string, filename: string) {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `hours-${period.rangeLabel.replace(/[^\w]+/g, '-').toLowerCase()}.csv`;
+    link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
+  }
+
+  /**
+   * The file the payroll provider imports.
+   *
+   * Deliberately not the same file as the review sheet below. This one only
+   * carries approved, unpaid rows, drops salaried staff (their provider already
+   * pays them from the salary on file), and reports both facts rather than
+   * quietly shipping a shorter file than the owner expected.
+   */
+  function downloadForPayroll() {
+    const { rows: approved, excluded: notReady } = exportableRows(rows);
+    const result = buildPayrollExport(approved, {
+      provider: payrollProvider,
+      rangeLabel: period.rangeLabel,
+      periodEndKey: periodEndKey(period),
+      alreadySent: rows.some((row) => row.record?.sentAt),
+    });
+    setExportResult({ ...result, excluded: [...notReady, ...result.excluded] });
+    if (result.included > 0) saveFile(result.csv, result.filename);
+    if (payAvailable && result.included > 0) exportFormRef.current?.requestSubmit();
+  }
+
+  function download(only?: CrewPayRow[]) {
+    const chosen = only ?? visible;
+    saveFile(buildPayCsv(chosen, period.rangeLabel), `hours-${period.rangeLabel.replace(/[^\w]+/g, '-').toLowerCase()}.csv`);
     // The export lands in this period's history. It changes nobody's status:
     // hours leaving as a file is not the same claim as hours being paid.
     if (payAvailable) exportFormRef.current?.requestSubmit();
@@ -991,9 +1026,39 @@ export default function HoursAndPay({
               <button type="button" className="btn ghost" onClick={() => download()} disabled={visible.length === 0}>
                 Export CSV
               </button>
+              <button type="button" className="btn secondary" onClick={downloadForPayroll} disabled={rows.length === 0}>
+                Send to {PAYROLL_PROVIDER_LABEL[payrollProvider] === 'A spreadsheet (any provider, or a bookkeeper)' ? 'payroll' : PAYROLL_PROVIDER_LABEL[payrollProvider]}
+              </button>
             </div>
 
             {exportBlocked ? <p className={styles.exportBlocked}>Heads up: {exportBlocked}</p> : null}
+
+            {exportResult ? (
+              <div className={styles.exportReport} role="status">
+                <strong>
+                  {exportResult.included > 0
+                    ? `${exportResult.filename} — ${exportResult.included} ${exportResult.included === 1 ? 'row' : 'rows'}`
+                    : 'Nothing to send'}
+                </strong>
+                {exportResult.problems.map((problem) => (
+                  <p key={problem} className={styles.exportProblem}>{problem}</p>
+                ))}
+                {exportResult.excluded.length > 0 ? (
+                  <details>
+                    <summary>{exportResult.excluded.length} not in the file</summary>
+                    <ul>
+                      {exportResult.excluded.map((item) => (
+                        <li key={`${item.name}-${item.reason}`}><b>{item.name}</b> — {item.reason}</li>
+                      ))}
+                    </ul>
+                  </details>
+                ) : null}
+                {exportResult.notes.map((note) => (
+                  <p key={note} className={styles.exportNote}>{note}</p>
+                ))}
+                <button type="button" className="btn ghost" onClick={() => setExportResult(null)}>Dismiss</button>
+              </div>
+            ) : null}
 
             {/* --- bulk actions --- */}
             {selected.length > 0 ? (
@@ -1548,8 +1613,22 @@ export default function HoursAndPay({
               ))}
             </select>
           </label>
+          <label>
+            <span>Payroll provider</span>
+            <select name="payrollProvider" defaultValue={payrollProvider}>
+              {Object.entries(PAYROLL_PROVIDER_LABEL).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </label>
           <p className={styles.settingsNote}>
-            Default hourly rates live on each person — set them under <Link href="/dashboard/crew?tab=crew">Crew members</Link>.
+            The provider decides the shape of the file, not just its columns — salaried crew are left out of an hours
+            import because your provider already pays them from the salary on file. Tax, deductions and benefits are
+            never in it; that&apos;s your provider&apos;s job.
+          </p>
+          <p className={styles.settingsNote}>
+            How each person is paid lives on them — set it under <Link href="/dashboard/crew?tab=crew">Crew members</Link>,
+            along with their payroll ID.
           </p>
           <SaveButton className="btn primary" pendingLabel="Saving…" savedLabel="Saved ✓">Save settings</SaveButton>
         </form>

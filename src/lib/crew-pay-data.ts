@@ -116,7 +116,16 @@ export async function loadCrewPayContext(
      * treated as hourly — which is what this did before pay types existed, and
      * is still right for any caller that only wants the hours.
      */
-    crew?: Array<{ id: string; name: string; role_label?: string | null; pay_type?: unknown; hourly_rate?: unknown; annual_salary?: unknown; day_rate?: unknown }>;
+    crew?: Array<{
+      id: string;
+      name: string;
+      role_label?: string | null;
+      pay_type?: unknown;
+      hourly_rate?: unknown;
+      annual_salary?: unknown;
+      day_rate?: unknown;
+      payroll_id?: string | null;
+    }>;
     timeZone?: string;
   },
 ): Promise<CrewPayContext> {
@@ -168,7 +177,10 @@ export async function loadCrewPayContext(
   return {
     available: true,
     periodRow,
-    rows: buildPayRows(summary.rows, records, { openShiftCrewIds }),
+    rows: buildPayRows(summary.rows, records, {
+      openShiftCrewIds,
+      payrollIds: Object.fromEntries(roster.map((member) => [member.id, member.payroll_id ?? null])),
+    }),
     records,
     overlaps,
   };

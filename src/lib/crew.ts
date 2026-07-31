@@ -29,6 +29,11 @@ export type CrewMember = {
   pay_type?: string | null;
   annual_salary?: number | null;
   day_rate?: number | null;
+  // This person's id in the payroll provider (ADP File #, Gusto Employee ID).
+  // Providers match on their own id, not on a name — and two crew rows aimed at
+  // one payroll employee is a double payment, which a partial unique index
+  // refuses.
+  payroll_id?: string | null;
 };
 
 export type CrewInput = {
@@ -41,6 +46,7 @@ export type CrewInput = {
   payType?: PayType;
   annualSalary?: number | null;
   dayRate?: number | null;
+  payrollId?: string | null;
 };
 
 /**
@@ -62,6 +68,7 @@ function payColumns(input: CrewInput): Record<string, unknown> {
     annual_salary: annualSalary,
     day_rate: dayRate,
     hourly_rate: costingRate(basis),
+    payroll_id: (input.payrollId ?? '').trim() || null,
   };
 }
 

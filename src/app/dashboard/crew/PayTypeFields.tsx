@@ -33,6 +33,7 @@ export default function PayTypeFields({
   hourlyRate = '',
   annualSalary = '',
   dayRate = '',
+  payrollId = '',
 }: {
   /** Keeps ids unique — this renders once per crew row plus once for the add form. */
   idPrefix: string;
@@ -40,6 +41,7 @@ export default function PayTypeFields({
   hourlyRate?: number | string;
   annualSalary?: number | string;
   dayRate?: number | string;
+  payrollId?: string;
 }) {
   const [payType, setPayType] = useState<PayType>(initialPayType);
   const [salary, setSalary] = useState(String(annualSalary ?? ''));
@@ -112,6 +114,20 @@ export default function PayTypeFields({
           value={daily}
           onChange={(event) => setDaily(event.target.value)}
         />
+      </div>
+
+      <div className="field">
+        <label htmlFor={`payrollId-${idPrefix}`}>Payroll ID (optional)</label>
+        <input
+          id={`payrollId-${idPrefix}`}
+          name="payrollId"
+          defaultValue={payrollId}
+          placeholder="e.g. 004821"
+        />
+        {/* Providers match on their own id, never on a name — and a name match
+            breaks the first time somebody is "Michael" in one system and "Mike"
+            in the other. */}
+        <p className="hint">Their employee number in your payroll provider. ADP and Paychex won&apos;t match a row without it.</p>
       </div>
 
       {derived ? (

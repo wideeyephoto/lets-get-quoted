@@ -1,4 +1,5 @@
 import { round2, toDateKey, type CrewLaborRow, type PayPeriod } from './labor';
+import { PAY_TYPE_LABEL } from './pay-types';
 
 // Crew pay — the approval-and-payment lifecycle on top of the hours rollup.
 //
@@ -274,6 +275,8 @@ export type CrewPayRow = CrewLaborRow & {
    * hours moved after the fact; the stored figures are never rewritten to hide it.
    */
   adjustment: number;
+  /** This person's id in the payroll provider. Null until an owner records one. */
+  payrollId: string | null;
   locked: boolean;
   /** "Paid Jul 31" — the line under the payment badge. */
   paymentLabel: string | null;
@@ -300,7 +303,12 @@ function shortDate(value: string | null): string | null {
 export function buildPayRows(
   laborRows: CrewLaborRow[],
   records: PayRecord[],
-  context?: { openShiftCrewIds?: string[]; now?: Date },
+  context?: {
+    openShiftCrewIds?: string[];
+    now?: Date;
+    /** This person's id in the payroll provider, keyed by crew id. */
+    payrollIds?: Record<string, string | null>;
+  },
 ): CrewPayRow[] {
   const byCrew = new Map(records.map((record) => [record.crewId, record]));
   const openShifts = new Set(context?.openShiftCrewIds ?? []);
@@ -359,6 +367,7 @@ export function buildPayRows(
       approvedAmount,
       paidAmount,
       adjustment,
+      payrollId: (row.crewId ? context?.payrollIds?.[row.crewId] : null) ?? null,
       locked: record?.locked ?? false,
       paymentLabel:
         record?.paidAt && record.paymentDate ? `Paid ${shortDate(record.paymentDate)}` : record?.sentAt ? 'Sent to payroll' : null,
@@ -638,16 +647,28 @@ function csvCell(value: string | number): string {
  * "Danny, 18.5 hours, $444.80" is the file somebody pays from twice. Exporting
  * changes no status here — it is recorded in the period's history as an export
  * and nothing more.
+ *
+ * THIS IS THE REVIEW SHEET, not the payroll file. It carries everything about
+ * the period including statuses; payroll-export.ts builds the thing a provider
+ * actually imports. The distinction matters because this one is allowed to be
+ * comprehensive and that one has to be exactly right.
+ *
+ * The rate column is per pay type. Emitting the stored hourly_rate for a
+ * salaried person prints a DERIVED job-costing figure next to their salary, and
+ * hours × that rate doesn't equal the pay beside it — a discrepancy that reads
+ * as a bug in the numbers rather than as two different questions.
  */
 export function buildPayCsv(rows: CrewPayRow[], rangeLabel: string): string {
   const grid: (string | number)[][] = [
     [
       'Crew member',
       'Role',
+      'Paid as',
       'Regular hours',
       'Overtime hours',
       'Total hours',
       'Rate',
+      'Basis',
       'Estimated pay',
       'Approval status',
       'Payment status',
@@ -661,10 +682,15 @@ export function buildPayCsv(rows: CrewPayRow[], rangeLabel: string): string {
     ...rows.map((row) => [
       row.name,
       row.roleLabel ?? '',
+      PAY_TYPE_LABEL[row.payType],
       row.regularHours,
       row.overtimeHours,
       row.hours,
-      row.rateVaries ? 'Varies' : row.rate ?? '',
+      // Blank rather than the derived costing figure: for a salaried person
+      // that number is not a pay rate, and printing it beside their pay invites
+      // multiplying the two.
+      row.payType !== 'hourly' ? '' : row.rateVaries ? 'Varies' : row.rate ?? '',
+      row.payBasis,
       row.estimatedPay.toFixed(2),
       PAY_STATUS_LABEL[reviewStateOf(row.status) === 'approved' ? 'approved' : row.status],
       PAYMENT_STATE_LABEL[row.payment],

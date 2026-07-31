@@ -571,6 +571,32 @@
   color: rgba(255, 200, 190, 0.95);
 }
 
+/* What the payroll export actually did — who's in the file, who isn't and why,
+   and what to check before importing. Shown rather than toasted, because "3
+   crew aren't in this file" is not something to read in a disappearing strip. */
+.exportReport {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2, rgba(255, 255, 255, 0.03));
+  font-size: 0.86rem;
+}
+.exportReport > strong { display: block; margin-bottom: 0.35rem; }
+.exportReport details { margin: 0.5rem 0; }
+.exportReport summary { cursor: pointer; opacity: 0.85; }
+.exportReport ul { margin: 0.45rem 0 0; padding-left: 1.1rem; display: grid; gap: 0.3rem; }
+.exportReport li { line-height: 1.5; opacity: 0.85; }
+.exportReport .btn { margin-top: 0.6rem; }
+.exportProblem {
+  margin: 0.35rem 0;
+  padding: 0.45rem 0.65rem;
+  border-left: 3px solid rgba(255, 101, 101, 0.7);
+  background: rgba(255, 101, 101, 0.07);
+  line-height: 1.5;
+}
+.exportNote { margin: 0.35rem 0 0; font-size: 0.81rem; opacity: 0.65; line-height: 1.5; }
+
 .addLabor, .settings {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));

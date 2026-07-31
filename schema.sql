@@ -226,6 +226,16 @@ alter table accounts add column if not exists labor_overtime_threshold numeric(6
 alter table accounts add column if not exists labor_rounding text not null default 'none';
 alter table accounts add column if not exists labor_rules_set_at timestamptz;
 alter table accounts add column if not exists require_separate_payer boolean not null default false;
+
+-- Which payroll provider receives the export. It decides the SHAPE of the file,
+-- not only its column names — a salaried employee belongs in an hours import
+-- differently from an hourly one, and getting that wrong pays somebody their
+-- salary twice in one run. See src/lib/payroll-export.ts.
+alter table accounts add column if not exists payroll_provider text;
+do $$ begin
+  alter table accounts add constraint accounts_payroll_provider_check
+    check (payroll_provider is null or payroll_provider in ('generic', 'gusto', 'quickbooks', 'adp', 'paychex'));
+exception when duplicate_object then null; end $$;
 do $$ begin
   alter table accounts add constraint accounts_labor_period_mode_check
     check (labor_period_mode in ('weekly', 'biweekly', 'monthly', 'custom'));
@@ -355,6 +365,15 @@ do $$ begin
   alter table crew add constraint crew_day_rate_check
     check (pay_type <> 'day_rate' or (day_rate is not null and day_rate > 0));
 exception when duplicate_object then null; end $$;
+
+-- This person's id IN THE PAYROLL PROVIDER (ADP File #, Gusto Employee ID).
+-- Providers match on their own id, never on a name — a name match breaks the
+-- first time somebody is "Michael" in one system and "Mike" in the other, or
+-- two people share a name. Partial unique so the many crew with no id don't
+-- collide: two crew rows aimed at one payroll employee is a double payment.
+alter table crew add column if not exists payroll_id text;
+create unique index if not exists crew_payroll_id_unique
+  on crew (account_id, payroll_id) where payroll_id is not null and deleted_at is null;
 
 -- ----------------------------------------------------------------------------
 -- SITES  — the published website config for an account.

@@ -43,6 +43,7 @@ export type CrewRow = {
   payType: PayType;
   annualSalary: number | null;
   dayRate: number | null;
+  payrollId: string | null;
   rateLabel: string;
   phone: string | null;
   phoneLabel: string | null;
@@ -1004,6 +1005,7 @@ function CrewDrawer({ row, onClose, periodLabel }: { row: CrewRow; onClose: () =
               hourlyRate={row.hourlyRate}
               annualSalary={row.annualSalary ?? ''}
               dayRate={row.dayRate ?? ''}
+              payrollId={row.payrollId ?? ''}
             />
             <div className="field full">
               <label htmlFor={`startAddress-${row.id}`}>Starts the day at (optional)</label>
