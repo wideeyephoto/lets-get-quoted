@@ -91,6 +91,74 @@ describe('expanding jobs onto calendar days', () => {
   });
 });
 
+describe('a guessed span skips non-working days', () => {
+  // Jul 31 2026 is a Friday.
+  const MON_TO_FRI = [1, 2, 3, 4, 5];
+  const friday = job({ scheduled_for: '2026-07-31', estimated_hours: 16 });
+  const days = (j: SchedulableJob, weekdays?: number[]) =>
+    expandScheduledJobs([j], 8, weekdays).map((o) => o.scheduled_for);
+
+  it('lands a two-day job on Friday and Monday, not Friday and Saturday', () => {
+    expect(days(friday, MON_TO_FRI)).toEqual(['2026-07-31', '2026-08-03']);
+  });
+
+  it('steps over a whole weekend for a longer job', () => {
+    const threeDay = job({ scheduled_for: '2026-07-31', estimated_hours: 24 });
+    expect(days(threeDay, MON_TO_FRI)).toEqual(['2026-07-31', '2026-08-03', '2026-08-04']);
+  });
+
+  // Otherwise a job the owner deliberately put on a Saturday would disappear
+  // from the calendar entirely.
+  it('always keeps the day it is actually scheduled on', () => {
+    const saturday = job({ scheduled_for: '2026-08-01', estimated_hours: 8 });
+    expect(days(saturday, MON_TO_FRI)).toEqual(['2026-08-01']);
+    const saturdayLong = job({ scheduled_for: '2026-08-01', estimated_hours: 16 });
+    expect(days(saturdayLong, MON_TO_FRI)).toEqual(['2026-08-01', '2026-08-03']);
+  });
+
+  it('honours a working week that includes Saturday', () => {
+    expect(days(friday, [1, 2, 3, 4, 5, 6])).toEqual(['2026-07-31', '2026-08-01']);
+  });
+
+  it('does not skip when no working week is given', () => {
+    expect(days(friday)).toEqual(['2026-07-31', '2026-08-01']);
+  });
+
+  it('treats an empty working week as unconfigured, not as never working', () => {
+    // Otherwise every job would be stranded on its first day forever.
+    expect(days(friday, [])).toEqual(['2026-07-31', '2026-08-01']);
+  });
+
+  // The distinction the whole feature rests on: a range the owner typed is a
+  // statement, and the system doesn't get to route around it.
+  it('draws an entered range literally, weekend included', () => {
+    const entered = job({ scheduled_for: '2026-07-31', scheduled_until: '2026-08-02' });
+    expect(days(entered, MON_TO_FRI)).toEqual(['2026-07-31', '2026-08-01', '2026-08-02']);
+  });
+});
+
+describe('booking hours skip non-working days too', () => {
+  const MON_TO_FRI = [1, 2, 3, 4, 5];
+
+  it('spills Friday overflow onto Monday', () => {
+    const hours = computeHoursByDate([{ scheduled_for: '2026-07-31', estimated_hours: 12 }], 8, 0, MON_TO_FRI);
+    expect(hours.get('2026-07-31')).toBe(8);
+    expect(hours.get('2026-08-01')).toBeUndefined();
+    expect(hours.get('2026-08-03')).toBe(4);
+  });
+
+  it('leaves an entered range exactly where it was entered', () => {
+    const hours = computeHoursByDate(
+      [{ scheduled_for: '2026-07-31', scheduled_until: '2026-08-02', estimated_hours: 12 }],
+      8,
+      0,
+      MON_TO_FRI,
+    );
+    expect(hours.get('2026-08-01')).toBeCloseTo(4, 5);
+    expect(hours.get('2026-08-03')).toBeUndefined();
+  });
+});
+
 describe('schedule label', () => {
   it('shows a single day unchanged', () => {
     expect(formatJobSchedule('2026-08-04', null)).toBe('Aug 4, 2026');

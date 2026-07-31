@@ -311,20 +311,57 @@ export type ScheduledJobOccurrence<T extends SchedulableJob> = Omit<T, 'schedule
   scheduled_for: string;
 };
 
+export function weekdayOfDateKey(dateKey: string): number {
+  return new Date(`${dateKey}T00:00:00`).getDay();
+}
+
+/**
+ * Place each scheduled job on the calendar days it occupies.
+ *
+ * `workingWeekdays` (0 = Sunday) is the account's working week — the same one
+ * online booking uses. It only affects a span this code GUESSED from estimated
+ * hours: a two-day guess starting Friday lands on Friday and Monday, not
+ * Friday and Saturday.
+ *
+ * A range the owner entered is drawn literally. They picked both ends on a
+ * calendar, and "runs through Sunday" means through Sunday — routing that
+ * around the working week would be the system overruling a stated fact, which
+ * is the thing per-job dates exist to stop.
+ */
 export function expandScheduledJobs<T extends SchedulableJob>(
   jobs: T[],
-  workDayHours: number
+  workDayHours: number,
+  workingWeekdays?: number[]
 ): ScheduledJobOccurrence<T>[] {
   const occurrences: ScheduledJobOccurrence<T>[] = [];
+  // An empty list would mean "no day is a working day" and strand every job on
+  // its first day forever, so treat it as "not configured".
+  const working = workingWeekdays && workingWeekdays.length > 0 ? new Set(workingWeekdays) : null;
+  const at = (job: T, dateKey: string) => ({ ...job, scheduled_for: dateKey }) as ScheduledJobOccurrence<T>;
 
   for (const job of jobs) {
     if (!job.scheduled_for) continue;
+
+    const entered = daysBetweenInclusive(job.scheduled_for, job.scheduled_until);
+    if (entered) {
+      for (let dayOffset = 0; dayOffset < entered; dayOffset++) {
+        occurrences.push(at(job, addDaysToDateKey(job.scheduled_for, dayOffset)));
+      }
+      continue;
+    }
+
     const spanDays = getJobScheduleSpanDays(job, workDayHours);
-    for (let dayOffset = 0; dayOffset < spanDays; dayOffset++) {
-      occurrences.push({
-        ...job,
-        scheduled_for: addDaysToDateKey(job.scheduled_for, dayOffset),
-      } as ScheduledJobOccurrence<T>);
+    let placed = 0;
+    // Bounded because a span is at most a few days and the skipping could
+    // otherwise walk forever on bad weekday data.
+    for (let dayOffset = 0; placed < spanDays && dayOffset < 366; dayOffset++) {
+      const dateKey = addDaysToDateKey(job.scheduled_for, dayOffset);
+      // Day one is always the day it's scheduled. If the owner put a job on a
+      // Saturday that IS where it is — otherwise it would vanish from the
+      // calendar entirely.
+      if (dayOffset > 0 && working && !working.has(weekdayOfDateKey(dateKey))) continue;
+      occurrences.push(at(job, dateKey));
+      placed++;
     }
   }
 

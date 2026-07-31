@@ -4,6 +4,7 @@ import {
   expandScheduledJobs,
   addDaysToDateKey,
   daysBetweenInclusive,
+  weekdayOfDateKey,
   isMissingEndDateColumn,
   SPAN_COLUMNS,
   SPAN_COLUMNS_BEFORE_END_DATE,
@@ -130,7 +131,7 @@ export async function getAvailableBookingDays(admin: SupabaseClient, accountId: 
   // can't infer the row shape — assert the one we asked for.
   const jobRows = (jobs ?? []) as unknown as Array<SchedulableJob & { scheduled_time: string | null }>;
 
-  const occurrences = expandScheduledJobs(jobRows, scheduleDayHours);
+  const occurrences = expandScheduledJobs(jobRows, scheduleDayHours, availability.weekdays);
   const countByDate = new Map<string, number>();
   const takenByDate = new Map<string, Set<string>>();
   for (const occurrence of occurrences) {
@@ -145,7 +146,7 @@ export async function getAvailableBookingDays(admin: SupabaseClient, accountId: 
   }
 
   // Per-day scheduled hours (est + buffer), spread across a multi-day job's span.
-  const hoursByDate = computeHoursByDate(jobRows, availability.capacityHours, availability.bufferMinutes);
+  const hoursByDate = computeHoursByDate(jobRows, availability.capacityHours, availability.bufferMinutes, availability.weekdays);
   const blockedDates = expandBlockedDates(blocks ?? [], LOOKAHEAD_DAYS + 1);
 
   return computeBookingDays({ availability, countByDate, hoursByDate, takenByDate, blockedDates, now: new Date() });
@@ -158,10 +159,14 @@ export function computeHoursByDate(
   jobs: Array<{ scheduled_for: string | null; scheduled_until?: string | null; estimated_hours?: number | string | null }>,
   capacityHours: number,
   bufferMinutes: number,
+  workingWeekdays?: number[],
 ): Map<string, number> {
   const cap = capacityHours > 0 ? capacityHours : 8;
   const bufferHours = (Number(bufferMinutes) || 0) / 60;
   const hoursByDate = new Map<string, number>();
+  // Same rule as expandScheduledJobs: only a GUESSED span routes around the
+  // working week. An empty list means "not configured", not "never works".
+  const working = workingWeekdays && workingWeekdays.length > 0 ? new Set(workingWeekdays) : null;
   for (const job of jobs) {
     if (!job.scheduled_for) continue;
     const total = (Number(job.estimated_hours) || 0) + bufferHours;
@@ -183,10 +188,14 @@ export function computeHoursByDate(
     }
 
     // No range entered: fall back to filling day after day at capacity, which
-    // is what every job did before the end date existed.
+    // is what every job did before the end date existed — except that the
+    // overflow now lands on the next WORKING day. Friday's spillover is
+    // Monday's problem, not Saturday's.
     let remaining = total;
-    for (let offset = 0; remaining > 0 && offset < 60; offset++) {
+    for (let offset = 0; remaining > 0 && offset < 366; offset++) {
       const key = addDaysToDateKey(job.scheduled_for, offset);
+      // Day one is always the scheduled day, even if it's a Sunday.
+      if (offset > 0 && working && !working.has(weekdayOfDateKey(key))) continue;
       hoursByDate.set(key, (hoursByDate.get(key) ?? 0) + Math.min(remaining, cap));
       remaining -= cap;
     }

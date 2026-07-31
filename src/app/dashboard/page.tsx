@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import AutomationLink from '@/components/automation-link';
 import { expandScheduledJobs, formatJobTime, formatMoney, listJobs } from '@/lib/jobs';
+import { normalizeBookingWeekdays } from '@/lib/booking-availability';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { expireStaleLeads, listLeads } from '@/lib/leads';
 import { listActiveScheduleRequests } from '@/lib/scheduling';
@@ -43,7 +44,7 @@ export default async function DashboardPage() {
   await expireStaleLeads(supabase, accountId);
 
   const [{ data: account }, { data: identityData }, { data: site }, jobs, leads, { count: clientCount }] = await Promise.all([
-    supabase.from('accounts').select('connect_onboarded, connect_disabled_at, schedule_day_hours, daily_digest_enabled, auto_review_request, quote_followups_enabled, appointment_reminders_enabled').eq('id', accountId).single(),
+    supabase.from('accounts').select('connect_onboarded, connect_disabled_at, schedule_day_hours, daily_digest_enabled, auto_review_request, quote_followups_enabled, appointment_reminders_enabled, booking_weekdays').eq('id', accountId).single(),
     supabase.auth.getUserIdentities(),
     supabase.from('sites').select('published, subdomain, custom_domain, custom_domain_verified_at, content').eq('account_id', accountId).maybeSingle(),
     listJobs(supabase, accountId),
@@ -127,7 +128,11 @@ export default async function DashboardPage() {
   const onboardingComplete = completedStepCount === onboardingSteps.length;
 
   const scheduledJobs = jobs.filter((job) => job.status !== 'archived' && job.scheduled_for);
-  const scheduledJobOccurrences = expandScheduledJobs(scheduledJobs, scheduleDayHours);
+  const scheduledJobOccurrences = expandScheduledJobs(
+    scheduledJobs,
+    scheduleDayHours,
+    normalizeBookingWeekdays((account as { booking_weekdays?: unknown } | null)?.booking_weekdays),
+  );
   const openLeadCount = leads.filter((lead) => lead.status === 'new' || lead.status === 'contacted').length;
   const quotedLeadCount = leads.filter((lead) => lead.status === 'quoted').length;
   const [crew, assignmentsByJob, automation, rebookDue, privateFeedback] = await Promise.all([

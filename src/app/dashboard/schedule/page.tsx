@@ -5,7 +5,7 @@ import { getMapPins } from '@/lib/map-pins';
 import { CALENDAR_WEEKEND_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeMapTheme, normalizeMapView, normalizeWeekendDays } from '@/lib/dashboard-views';
 import { expandScheduledJobs, formatJobTime, formatMoney, listJobs, addDaysToDateKey, type Job } from '@/lib/jobs';
 import { computeHoursByDate } from '@/lib/booking';
-import { bookingAvailabilityFromAccount } from '@/lib/booking-availability';
+import { bookingAvailabilityFromAccount, normalizeBookingWeekdays } from '@/lib/booking-availability';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { deriveJobListBadge } from '@/lib/job-badges';
 import type { Invoice } from '@/lib/invoices';
@@ -175,11 +175,14 @@ export default async function SchedulePage({
 }) {
   const { supabase, accountId } = await requireOwnerContext();
   const [{ data: account }, jobs, { data: site }] = await Promise.all([
-    supabase.from('accounts').select('schedule_day_hours, appointment_reminders_enabled, job_buffer_minutes').eq('id', accountId).single(),
+    supabase.from('accounts').select('schedule_day_hours, appointment_reminders_enabled, job_buffer_minutes, booking_weekdays').eq('id', accountId).single(),
     listJobs(supabase, accountId),
     supabase.from('sites').select('published, subdomain').eq('account_id', accountId).maybeSingle(),
   ]);
   const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
+  // The working week, reused from booking: a span guessed from estimated hours
+  // shouldn't spill onto days nobody works.
+  const workingWeekdays = normalizeBookingWeekdays((account as { booking_weekdays?: unknown } | null)?.booking_weekdays);
   const remindersOn = Boolean((account as { appointment_reminders_enabled?: boolean } | null)?.appointment_reminders_enabled);
 
   // Self-serve booking link — the same public page customers use, built from the
@@ -192,7 +195,7 @@ export default async function SchedulePage({
 
   const activeJobs = jobs.filter((job) => job.status !== 'archived');
   const scheduledJobs = activeJobs.filter((job) => job.scheduled_for);
-  const scheduledJobOccurrences = expandScheduledJobs(scheduledJobs, scheduleDayHours);
+  const scheduledJobOccurrences = expandScheduledJobs(scheduledJobs, scheduleDayHours, workingWeekdays);
   const readinessRank = (status: Job['status']) => (status === 'in_progress' ? 0 : status === 'new_lead' ? 1 : 2);
   const unscheduledJobs = activeJobs
     .filter((job) => !job.scheduled_for)
@@ -228,9 +231,16 @@ export default async function SchedulePage({
   // warning shown when you drag a job onto a full or blocked day (you can override).
   const jobBufferMinutes = Number((account as { job_buffer_minutes?: number } | null)?.job_buffer_minutes) || 0;
   const hoursByDateForCalendar = computeHoursByDate(
-    scheduledJobs.map((job) => ({ scheduled_for: job.scheduled_for, estimated_hours: job.estimated_hours })),
+    // scheduled_until included so a multi-day job marks every day it runs as
+    // busy, not just the first ones.
+    scheduledJobs.map((job) => ({
+      scheduled_for: job.scheduled_for,
+      scheduled_until: job.scheduled_until ?? null,
+      estimated_hours: job.estimated_hours,
+    })),
     scheduleDayHours,
     jobBufferMinutes,
+    workingWeekdays,
   );
   const fullDates: string[] = [];
   for (const [key, hrs] of hoursByDateForCalendar) if (hrs >= scheduleDayHours) fullDates.push(key);

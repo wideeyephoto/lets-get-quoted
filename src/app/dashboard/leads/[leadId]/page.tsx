@@ -7,6 +7,7 @@ import LeadRadiusMap from '@/components/lead-radius-map';
 import { createLeadPhotoLinks } from '@/lib/lead-photo-storage';
 import { expireStaleLeads, formatElapsedTime, formatLeadSource, getLead, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, LEAD_LAYOUT_COOKIE, listLeads, type Lead, type LeadQuoteVisit } from '@/lib/leads';
 import { expandScheduledJobs, formatJobSchedule, formatJobTime, listJobs, type Job, type QuoteItem, type ScheduledJobOccurrence } from '@/lib/jobs';
+import { normalizeBookingWeekdays } from '@/lib/booking-availability';
 import { LEAD_STATUS_LABEL } from '@/lib/lead-detail-labels';
 import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
 import { clearLeadQuoteVisitAction, convertLeadAction, reopenLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, setLeadLayoutAction, undoConvertLeadAction, updateLeadDetailsAction, updateLeadStatusAction } from '../actions';
@@ -74,9 +75,9 @@ function dayLabel(date: Date) {
   return new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(date);
 }
 
-function buildAvailability(jobs: Job[], leads: Lead[], scheduleDayHours: number, startDate: Date, length = 7) {
+function buildAvailability(jobs: Job[], leads: Lead[], scheduleDayHours: number, startDate: Date, length = 7, workingWeekdays?: number[]) {
   const scheduledJobs = jobs.filter((job) => job.status !== 'archived' && job.scheduled_for);
-  const occurrences = expandScheduledJobs(scheduledJobs, scheduleDayHours);
+  const occurrences = expandScheduledJobs(scheduledJobs, scheduleDayHours, workingWeekdays);
   const quoteVisits = leads.filter((lead) => lead.quote_visit?.scheduledFor);
 
   return Array.from({ length }, (_, index) => {
@@ -103,7 +104,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
     getLead(supabase, accountId, params.leadId),
     listJobs(supabase, accountId, undefined, { includeLeadQuotes: true }),
     listLeads(supabase, accountId),
-    supabase.from('accounts').select('schedule_day_hours, business_name, stripe_connect_id, connect_onboarded').eq('id', accountId).maybeSingle(),
+    supabase.from('accounts').select('schedule_day_hours, business_name, stripe_connect_id, connect_onboarded, booking_weekdays').eq('id', accountId).maybeSingle(),
     supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
   ]);
   if (!lead) notFound();
@@ -149,8 +150,9 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const previousQuoteStart = dateKey(addDays(quoteStartStart, -30));
   const nextQuoteStart = dateKey(addDays(quoteStartStart, 30));
   const canViewPreviousQuoteStart = dateKey(quoteStartStart) > dateKey(today);
-  const availability = buildAvailability(jobs, leads, scheduleDayHours, availabilityStart);
-  const quoteStartAvailability = buildAvailability(jobs, leads, scheduleDayHours, quoteStartStart, 30);
+  const workingWeekdays = normalizeBookingWeekdays((account as { booking_weekdays?: unknown } | null)?.booking_weekdays);
+  const availability = buildAvailability(jobs, leads, scheduleDayHours, availabilityStart, 7, workingWeekdays);
+  const quoteStartAvailability = buildAvailability(jobs, leads, scheduleDayHours, quoteStartStart, 30, workingWeekdays);
   const availabilityCards = availability.map((day) => ({
     key: day.key,
     label: day.label,
