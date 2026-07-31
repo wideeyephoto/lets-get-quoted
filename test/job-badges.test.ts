@@ -36,26 +36,44 @@ const badge = (j: Job, payments: Payment[] = [], invoices: Invoice[] = [], links
   deriveJobListBadge(j, payments, invoices, links);
 
 describe('the header badge and the pipeline checklist agree', () => {
-  // The bug this file exists for: the badge said "Send quote" while the
-  // checklist row directly beside it said "Quote sent", about the same job.
+  // The bug this file exists for: the badge named the next action while the
+  // checklist row directly beside it named the milestone, about the same job.
   it('names the quote step the same way the badge does', () => {
     const quotedButUnsent = job({ quoted_amount: 11800 });
-    expect(badge(quotedButUnsent).label).toBe('Send quote');
-    expect(checklist(quotedButUnsent)[0].label).toBe('Send quote');
+    expect(badge(quotedButUnsent).label).toBe('Send to client');
+    expect(checklist(quotedButUnsent)[0].label).toBe('Send to client');
     expect(checklist(quotedButUnsent)[0].complete).toBe(false);
   });
 
-  it('says "Add quote" in both places when there is no amount yet', () => {
+  it('says the price is missing in both places when there is no amount yet', () => {
     const noQuote = job();
-    expect(badge(noQuote).label).toBe('Add quote');
-    expect(checklist(noQuote)[0].label).toBe('Add quote');
+    expect(badge(noQuote).label).toBe('Needs price');
+    expect(checklist(noQuote)[0].label).toBe('Needs price');
   });
 
-  it('only says the quote was sent once a link exists', () => {
+  it('only says it went out once a client link exists', () => {
     const shared = job({ quoted_amount: 11800 });
-    expect(badge(shared, [], [], 1).label).toBe('Quote sent · Awaiting approval');
-    expect(checklist(shared, [], [], 1)[0].label).toBe('Quote sent');
+    expect(badge(shared, [], [], 1).label).toBe('Awaiting approval');
+    expect(checklist(shared, [], [], 1)[0].label).toBe('Sent to client');
     expect(checklist(shared, [], [], 1)[0].complete).toBe(true);
+  });
+
+  // The whole point of the rename: "Add quote" and "Send quote" were three
+  // characters apart and both parsed as "quote stuff to do".
+  it('gives the three quote states no words in common', () => {
+    const labels = [
+      badge(job()).label,
+      badge(job({ quoted_amount: 11800 })).label,
+      badge(job({ quoted_amount: 11800 }), [], [], 1).label,
+    ];
+    const words = labels.flatMap((label) => label.toLowerCase().split(/\s+/));
+    expect(new Set(words).size).toBe(words.length);
+  });
+
+  it('explains each quote state on hover', () => {
+    expect(badge(job()).title).toBeTruthy();
+    expect(badge(job({ quoted_amount: 11800 })).title).toBeTruthy();
+    expect(badge(job({ quoted_amount: 11800 }), [], [], 1).title).toBeTruthy();
   });
 });
 
@@ -70,7 +88,7 @@ describe('no step claims something that has not happened', () => {
       job({ quoted_amount: 11800, status: 'in_progress' }),
       job({ quoted_amount: 11800, scheduled_for: '2026-08-04' }),
     ];
-    const pastTense = ['Quote sent', 'Quote approved', 'Scheduled / underway', 'Invoice / payment requested', 'Paid / signed off'];
+    const pastTense = ['Sent to client', 'Quote approved', 'Scheduled / underway', 'Invoice / payment requested', 'Paid / signed off'];
 
     for (const j of cases) {
       for (const step of checklist(j)) {
@@ -81,7 +99,7 @@ describe('no step claims something that has not happened', () => {
 
   it('never shows an outstanding-action label on a finished step', () => {
     const done = job({ quoted_amount: 11800, status: 'complete', scheduled_for: '2026-08-04' });
-    const todo = ['Add quote', 'Send quote', 'Awaiting approval', 'Schedule the work', 'Request payment', 'Awaiting payment'];
+    const todo = ['Needs price', 'Send to client', 'Awaiting approval', 'Schedule the work', 'Request payment', 'Awaiting payment'];
 
     for (const step of checklist(done, [paid(11800)], [invoice('paid', 11800)], 1)) {
       expect(step.complete).toBe(true);
@@ -110,6 +128,10 @@ describe('checklist details', () => {
   it('reports the quote amount and whether the feed link is out', () => {
     expect(checklist(job({ quoted_amount: 11800 }))[0].detail).toBe('$11,800 quoted · Share Job Feed link');
     expect(checklist(job({ quoted_amount: 11800 }), [], [], 1)[0].detail).toBe('$11,800 quoted · Job Feed shared');
+  });
+
+  it('does not talk about sharing a link for a job with no price', () => {
+    expect(checklist(job())[0].detail).toBe('Price the work before you send it');
   });
 
   it('counts payment links once one is requested', () => {

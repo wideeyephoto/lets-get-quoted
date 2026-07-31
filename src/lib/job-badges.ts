@@ -90,9 +90,13 @@ export function deriveJobListBadge(
   if (paidPayment && !job.scheduled_for) return { label: 'Paid · Schedule work', tone: 'in_progress' };
   if (job.scheduled_for) return { label: 'Work scheduled', tone: 'in_progress' };
   if (job.status === 'in_progress') return { label: 'Ready for invoice', tone: 'in_progress' };
-  if (job.quoted_amount > 0 && activeClientLinkCount === 0) return { label: 'Send quote', tone: 'new_lead' };
-  if (job.quoted_amount > 0) return { label: 'Quote sent · Awaiting approval', tone: 'new_lead' };
-  return { label: 'Add quote', tone: 'new_lead' };
+  // Three consecutive states, named for the thing that's actually missing.
+  // They used to read "Send quote" and "Add quote" — three characters apart,
+  // both parsing as "quote stuff to do", so nobody could tell which step a job
+  // was on. No two of these share a word now.
+  if (job.quoted_amount > 0 && activeClientLinkCount === 0) return { label: 'Send to client', tone: 'new_lead', title: 'Priced, but the customer has no link to view it yet.' };
+  if (job.quoted_amount > 0) return { label: 'Awaiting approval', tone: 'new_lead', title: 'The customer can see the quote — waiting on them.' };
+  return { label: 'Needs price', tone: 'new_lead', title: 'No amount on this job yet.' };
 }
 
 export type PipelineChecklistItem = {
@@ -108,8 +112,8 @@ export type PipelineChecklistItem = {
  *
  * Lives beside deriveJobListBadge because the two describe the same job state
  * and sat next to each other on screen saying different things: the badge named
- * the next action ("Send quote") while the checklist row named the milestone
- * ("Quote sent"), which reads as a claim about a quote that was never sent.
+ * the next action while the checklist row named the milestone ("Quote sent"),
+ * which reads as a claim about a quote that was never sent.
  *
  * So every step is named for what it actually IS — the outstanding action while
  * it's open, the thing that happened once it's closed — and the first step
@@ -123,7 +127,6 @@ export function buildPipelineChecklist(
   originatingLeadId: string | null
 ): PipelineChecklistItem[] {
   const milestones = computeJobMilestones(job, payments, invoices, activeClientLinkCount);
-  const quoteDetail = job.quoted_amount > 0 ? `${formatMoney(job.quoted_amount)} quoted` : 'Add quote amount';
   const feedDetail = activeClientLinkCount > 0 ? 'Job Feed shared' : 'Share Job Feed link';
 
   return [
@@ -131,8 +134,12 @@ export function buildPipelineChecklist(
       key: 'quote',
       // Same split deriveJobListBadge uses, so the badge and this row never
       // disagree about whether the quote has gone out.
-      label: milestones.quoteShared ? 'Quote sent' : job.quoted_amount > 0 ? 'Send quote' : 'Add quote',
-      detail: `${quoteDetail} · ${feedDetail}`,
+      label: milestones.quoteShared ? 'Sent to client' : job.quoted_amount > 0 ? 'Send to client' : 'Needs price',
+      detail:
+        job.quoted_amount > 0
+          ? `${formatMoney(job.quoted_amount)} quoted · ${feedDetail}`
+          : // Nothing to say about sharing a link for a job with no price on it.
+            'Price the work before you send it',
       complete: milestones.quoteShared,
       href: originatingLeadId ? `/dashboard/leads/${originatingLeadId}` : `/dashboard/jobs/${job.id}#job-feed`,
     },
