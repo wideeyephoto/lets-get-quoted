@@ -53,6 +53,8 @@ export type PlanAccountSettings = {
   workdayStart: string;
   workdayEnd: string;
   bufferMinutes: number;
+  /** The account's daily capacity, in hours. */
+  scheduleDayHours: number;
   defaultVisitMinutes: number;
   homeBase: LatLng | null;
   // The text the owner typed, so the Google Maps link can use a real address
@@ -82,6 +84,7 @@ export async function getPlanAccountSettings(
     workdayStart: (data?.workday_start as string) || '08:00',
     workdayEnd: (data?.workday_end as string) || '17:00',
     bufferMinutes: Number(data?.job_buffer_minutes) || 0,
+    scheduleDayHours: Number(data?.schedule_day_hours) || 8,
     // A job with no hours estimate gets a conservative slice of the working day
     // rather than a guess of zero, which would stack stops on top of each other.
     defaultVisitMinutes: Math.max(30, Math.round(((Number(data?.schedule_day_hours) || 8) / 4) * 60)),

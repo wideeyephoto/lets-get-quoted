@@ -80,6 +80,8 @@ export async function updateScheduleDayHoursAction(formData: FormData) {
   revalidatePath('/dashboard/settings');
   revalidatePath('/dashboard');
   revalidatePath('/dashboard/schedule');
+  // The panel now lives on these two, so they have to be cleared as well.
+  revalidatePath('/dashboard/schedule/plan');
 }
 
 // Switches the website between Smart Intake (AI instant estimates) and the classic

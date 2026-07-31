@@ -17,6 +17,7 @@ import { listDayRouteStops, listSavedPlaces, toPlanStop as routeStopToPlanStop }
 import { listUpcomingBlocks } from '@/lib/availability-blocks';
 import type { DayPlanPayload, DriveMatrixPayload } from '@/lib/day-plan-view';
 import SaveButton from '@/components/save-button';
+import WorkingHoursPanel from '@/components/working-hours-panel';
 import DayPlanner from './DayPlanner';
 import PlanDayControls from './PlanDayControls';
 import { geocodeDayAction, notifyMovedClientsAction } from './actions';
@@ -354,6 +355,14 @@ export default async function PlanDayPage({
           </div>
         </section>
       ) : null}
+      {/* Every arrival time above is derived from these, so this is where they
+          belong — not two clicks deep in Settings. */}
+      <WorkingHoursPanel
+        scheduleDayHours={settings.scheduleDayHours}
+        jobBufferMinutes={settings.bufferMinutes}
+        workdayStart={settings.workdayStart}
+        workdayEnd={settings.workdayEnd}
+      />
     </main>
   );
 }

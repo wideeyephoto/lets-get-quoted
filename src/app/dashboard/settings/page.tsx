@@ -12,7 +12,7 @@ import AddressAutocomplete from '@/components/address-autocomplete';
 import AutomationSwitch from '@/components/automation-switch';
 import { listAccountEvents } from '@/lib/account-events';
 import DeleteAccountButton from './DeleteAccountButton';
-import { updateScheduleDayHoursAction, updateReviewSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBookingAvailabilityAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, updateCallTextbackSettingsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
+import { updateReviewSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBookingAvailabilityAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, updateCallTextbackSettingsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
 import { ESTIMATE_POSTURES, normalizeEstimatePosture } from '@/lib/estimate-posture';
 import { getSiteContent } from '@/lib/site-content';
 import { WEEKDAY_LABELS, BOOKING_WINDOW_PRESETS, TIMEZONE_OPTIONS, bookingAvailabilityFromAccount } from '@/lib/booking-availability';
@@ -841,64 +841,6 @@ export default async function SettingsPage({
                     </div>
                     <div className="form-actions">
                       <SaveButton>Save business basics</SaveButton>
-                    </div>
-                  </form>
-                </section>
-
-                <section className="panel workspace-section-card">
-                  <div className="section-heading workspace-section-heading compact-heading">
-                    <p className="eyebrow">Scheduling</p>
-                    <h2>Working hours &amp; capacity</h2>
-                  </div>
-                  {/* Deliberately says what this does NOT control. It used to
-                      decide how many calendar days a job took up, which meant
-                      editing one number here redrew every job on the schedule.
-                      Job length lives on the job now. */}
-                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-                    These decide when a day is <strong>full</strong> and what your online booking offers. Once a
-                    day&apos;s booked hours reach your daily capacity, that day stops offering slots — and booking only
-                    offers arrival windows inside your working hours. The buffer is added to each job so back-to-back
-                    visits leave travel time. How many days a job takes is set on the job itself, under{' '}
-                    <strong>Scheduled for</strong> and <strong>Runs through</strong>.
-                  </p>
-                  <form action={updateScheduleDayHoursAction} className="form-grid compact-form">
-                    <div className="field">
-                      <label htmlFor="scheduleDayHours">Daily capacity (hours)</label>
-                      <input
-                        id="scheduleDayHours"
-                        name="scheduleDayHours"
-                        type="number"
-                        min="1"
-                        max="24"
-                        step="0.25"
-                        defaultValue={account?.schedule_day_hours ?? 8}
-                        required
-                      />
-                      <small className="field-hint">A day fills up (and blocks new bookings) once scheduled hours reach this.</small>
-                    </div>
-                    <div className="field">
-                      <label htmlFor="jobBufferMinutes">Buffer between jobs (minutes)</label>
-                      <input
-                        id="jobBufferMinutes"
-                        name="jobBufferMinutes"
-                        type="number"
-                        min="0"
-                        max="240"
-                        step="5"
-                        defaultValue={Number((account as { job_buffer_minutes?: number } | null)?.job_buffer_minutes) || 0}
-                      />
-                      <small className="field-hint">Travel/lunch time counted against capacity for each job.</small>
-                    </div>
-                    <div className="field">
-                      <label htmlFor="workdayStart">Workday starts</label>
-                      <input id="workdayStart" name="workdayStart" type="time" defaultValue={String((account as { workday_start?: string } | null)?.workday_start ?? '08:00').slice(0, 5)} />
-                    </div>
-                    <div className="field">
-                      <label htmlFor="workdayEnd">Workday ends</label>
-                      <input id="workdayEnd" name="workdayEnd" type="time" defaultValue={String((account as { workday_end?: string } | null)?.workday_end ?? '17:00').slice(0, 5)} />
-                    </div>
-                    <div className="form-actions">
-                      <SaveButton>Save working hours</SaveButton>
                     </div>
                   </form>
                 </section>

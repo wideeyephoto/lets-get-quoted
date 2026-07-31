@@ -23,6 +23,7 @@ import JobDragHandle from './JobDragHandle';
 import ScheduleDragProvider from './ScheduleDragProvider';
 import AutomationLink from '@/components/automation-link';
 import { listUpcomingBlocks } from '@/lib/availability-blocks';
+import WorkingHoursPanel from '@/components/working-hours-panel';
 
 const STATUS_LABEL: Record<Job['status'], string> = {
   new_lead: 'New request',
@@ -175,7 +176,7 @@ export default async function SchedulePage({
 }) {
   const { supabase, accountId } = await requireOwnerContext();
   const [{ data: account }, jobs, { data: site }] = await Promise.all([
-    supabase.from('accounts').select('schedule_day_hours, appointment_reminders_enabled, job_buffer_minutes, booking_weekdays').eq('id', accountId).single(),
+    supabase.from('accounts').select('schedule_day_hours, appointment_reminders_enabled, job_buffer_minutes, booking_weekdays, workday_start, workday_end').eq('id', accountId).single(),
     listJobs(supabase, accountId),
     supabase.from('sites').select('published, subdomain').eq('account_id', accountId).maybeSingle(),
   ]);
@@ -710,6 +711,15 @@ export default async function SchedulePage({
       </Link>
 
       </ScheduleDragProvider>
+      {/* The settings that decide when a day is full, under the calendar that
+          shows it. Condensed — the summary states them; opening is only for
+          changing them. */}
+      <WorkingHoursPanel
+        scheduleDayHours={scheduleDayHours}
+        jobBufferMinutes={jobBufferMinutes}
+        workdayStart={(account as { workday_start?: string } | null)?.workday_start ?? null}
+        workdayEnd={(account as { workday_end?: string } | null)?.workday_end ?? null}
+      />
     </main>
   );
 }
