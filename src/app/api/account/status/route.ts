@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { createAdminClient, getCurrentMembership } from '@/lib/auth';
 import { expireStaleLeads, getLeadTriage } from '@/lib/leads';
 import { listJobs } from '@/lib/jobs';
+import { EXTRA_STOP_SETTINGS_COLUMNS, extraStopSettingsFromAccount } from '@/lib/extra-stop';
 
 // Lightweight status check used by the app shell to show persistent dashboard
 // badges and alerts. Intentionally returns only minimal state needed for the
@@ -26,7 +27,11 @@ export async function GET() {
   const admin = createAdminClient();
   await expireStaleLeads(admin, membership.accountId);
   const [{ data: account }, { data: site }, { data: newLeadRows }, jobs] = await Promise.all([
-    admin.from('accounts').select('connect_onboarded, business_name, mute_low_quality_leads').eq('id', membership.accountId).maybeSingle(),
+    admin
+      .from('accounts')
+      .select(`connect_onboarded, business_name, mute_low_quality_leads, ${EXTRA_STOP_SETTINGS_COLUMNS}`)
+      .eq('id', membership.accountId)
+      .maybeSingle(),
     admin
       .from('sites')
       .select('published, subdomain, custom_domain, custom_domain_verified_at, company_name')
@@ -59,6 +64,14 @@ export async function GET() {
       const newestLead = attentionLeads[0] ?? null;
       const newestQuoteRequestHighValue = newestLead ? newestLead.triage.flags.includes('high_value') : false;
 
+  // Extra Stop is the one automation that puts a stranger on today's route, and
+  // its switch lived three clicks deep in Settings. Whether it's ON is a thing
+  // the owner should be able to see from anywhere in the app, so it rides along
+  // with the rest of the shell state. 'paused' is support's lock, which
+  // overrides `enabled` — showing green there would say the opposite of the truth.
+  const extraStop = extraStopSettingsFromAccount((account ?? {}) as Parameters<typeof extraStopSettingsFromAccount>[0]);
+  const extraStopState: 'on' | 'off' | 'paused' = extraStop.locked ? 'paused' : extraStop.enabled ? 'on' : 'off';
+
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
   const sitePublished = site?.published ?? false;
   const siteUrl = sitePublished
@@ -81,5 +94,6 @@ export async function GET() {
     newestQuoteRequestId: newestLead?.id ?? null,
     newestQuoteRequestCreatedAt: newestLead?.created_at ?? null,
     newestQuoteRequestHighValue,
+    extraStopState,
   });
 }

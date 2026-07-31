@@ -65,6 +65,17 @@ type AccountStatus = {
   newestQuoteRequestId: string | null;
   newestQuoteRequestCreatedAt: string | null;
   newestQuoteRequestHighValue: boolean;
+  /** Whether Extra Stop is accepting same-day work right now. */
+  extraStopState: ExtraStopState;
+};
+
+// 'paused' is support's lock, which overrides the owner's own switch.
+export type ExtraStopState = 'on' | 'off' | 'paused' | 'unknown';
+
+const EXTRA_STOP_PILL: Record<Exclude<ExtraStopState, 'unknown'>, { label: string; title: string }> = {
+  on: { label: 'ON', title: 'Extra Stops is ON — customers can ask to be squeezed into today' },
+  off: { label: 'OFF', title: 'Extra Stops is OFF — nobody can ask to be added to today' },
+  paused: { label: 'PAUSED', title: 'Extra Stops is paused by support — nothing new can be added to a day' },
 };
 
 const QUOTE_REQUEST_ALERT_DISMISSED_KEY = 'lgq-dismissed-quote-request-alert';
@@ -89,6 +100,9 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [newestQuoteRequestId, setNewestQuoteRequestId] = useState<string | null>(null);
   const [newestQuoteRequestCreatedAt, setNewestQuoteRequestCreatedAt] = useState<string | null>(null);
   const [newestLeadHighValue, setNewestLeadHighValue] = useState(false);
+  // 'unknown' until the first status check answers — a pill that guessed OFF for
+  // a second on every page load would be worse than one that waits.
+  const [extraStopState, setExtraStopState] = useState<ExtraStopState>('unknown');
   const [dismissedQuoteRequestId, setDismissedQuoteRequestId] = useState<string | null>(null);
   const isDashboard = pathname.startsWith('/dashboard');
   // Homeowner-facing transactional pages (paying, approving a quote, an invoice)
@@ -202,6 +216,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       setNewestQuoteRequestId(null);
       setNewestQuoteRequestCreatedAt(null);
       setNewestLeadHighValue(false);
+      setExtraStopState('unknown');
       setSiteUrl(null);
       setBusinessName(null);
       return;
@@ -222,6 +237,11 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             setNewestQuoteRequestId(data.newestQuoteRequestId ?? null);
             setNewestQuoteRequestCreatedAt(data.newestQuoteRequestCreatedAt ?? null);
             setNewestLeadHighValue(Boolean(data.newestQuoteRequestHighValue));
+            setExtraStopState(
+              data.extraStopState === 'on' || data.extraStopState === 'off' || data.extraStopState === 'paused'
+                ? data.extraStopState
+                : 'unknown',
+            );
           }
         })
         .catch(() => {});
@@ -299,6 +319,15 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
         >
           <NavIcon href={href} />
           <span>{item.label}</span>
+          {/* Extra Stop is the one automation that can put a stranger on today's
+              route, and its switch is three clicks deep in Settings. Whether
+              it's on is worth knowing from anywhere, so it says so here — in a
+              word, not only in a colour. */}
+          {href === '/dashboard/extra-stops' && extraStopState !== 'unknown' ? (
+            <span className="sidenav-state" data-state={extraStopState} title={EXTRA_STOP_PILL[extraStopState].title}>
+              {EXTRA_STOP_PILL[extraStopState].label}
+            </span>
+          ) : null}
           {count > 0 ? <span className="sidenav-count">{count}</span> : null}
         </Link>
       );

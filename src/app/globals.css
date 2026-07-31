@@ -12388,3 +12388,38 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 .calendar-planned-note a { color: #ff9d5c; }
 
 .calendar-days-row { gap: 0.75rem; align-items: center; }
+
+/* Extra Stop's on/off state, in the sidebar.
+   It is the one automation that can put a stranger on today's route, and its
+   switch is three clicks deep in Settings — so the rail says which way it's set
+   from every page in the app. The WORD carries the state; the colour only
+   agrees with it, so it still reads for anyone who can't tell red from green. */
+.sidenav-state {
+  margin-left: auto;
+  display: inline-grid;
+  place-items: center;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.07em;
+  line-height: 1.5;
+}
+.sidenav-state[data-state='on'] {
+  border-color: rgba(72, 199, 142, 0.55);
+  background: rgba(72, 199, 142, 0.16);
+  color: #7fe0b2;
+}
+.sidenav-state[data-state='off'] {
+  border-color: rgba(255, 107, 107, 0.5);
+  background: rgba(255, 107, 107, 0.14);
+  color: #ff9d9d;
+}
+.sidenav-state[data-state='paused'] {
+  border-color: rgba(255, 209, 102, 0.55);
+  background: rgba(255, 209, 102, 0.14);
+  color: #ffd591;
+}
+/* A count and a state pill on the same row would both claim the right edge. */
+.sidenav-link .sidenav-state + .sidenav-count { margin-left: 0.3rem; margin-right: 0; }
