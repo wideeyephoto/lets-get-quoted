@@ -13,8 +13,9 @@ import {
   type PeriodStatus,
 } from '@/lib/labor';
 import { EXPORT_FORMAT_LABEL, ROUNDING_LABEL, type LaborSettings } from '@/lib/labor-settings';
+import { TIME_CLOCK_MODES, type TimeClockMode } from '@/lib/time-clock';
 import SaveButton from '@/components/save-button';
-import { addLaborEntryAction, deleteLaborEntryAction } from './actions';
+import { addLaborEntryAction, closeOpenShiftAction, deleteLaborEntryAction } from './actions';
 import { saveLaborSettingsAction } from './settings-actions';
 import styles from './crew.module.css';
 
@@ -33,6 +34,21 @@ function money2(n: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
 }
 
+// Pre-formatted server-side: the flag, the elapsed label and the default end
+// time all depend on "now", and computing them in the client would make the
+// first paint disagree with the server's.
+export type OpenShiftView = {
+  id: string;
+  crewName: string;
+  jobLabel: string;
+  startedLabel: string;
+  elapsedLabel: string;
+  defaultEnd: string;
+  flag: 'running-long' | 'implausible' | null;
+  flagLabel: string | null;
+  flagHelp: string | null;
+};
+
 function loggedLabel(iso: string): string {
   return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
@@ -49,6 +65,9 @@ export default function HoursAndPay({
   assignableJobs,
   jobLookup,
   settings,
+  timeClockMode,
+  timeClockAvailable,
+  openShifts,
 }: {
   rows: CrewLaborRow[];
   totals: { hours: number; pay: number; overtime: number; needsReview: number; activeCrew: number };
@@ -61,6 +80,9 @@ export default function HoursAndPay({
   assignableJobs: { id: string; ref: string; clientName: string }[];
   jobLookup: Record<string, string>;
   settings: LaborSettings;
+  timeClockMode: TimeClockMode;
+  timeClockAvailable: boolean;
+  openShifts: OpenShiftView[];
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -196,6 +218,48 @@ export default function HoursAndPay({
         </div>
       </div>
 
+      {/* Who's on the clock right now. Above the review banner on purpose: an
+          open shift is still accruing, so it's the only thing on this screen
+          that gets worse while you look at it. */}
+      {openShifts.length > 0 ? (
+        <div className={styles.shiftBanner} data-flagged={openShifts.some((shift) => shift.flag) || undefined}>
+          <div className={styles.shiftHead}>
+            <strong>{openShifts.length} {openShifts.length === 1 ? 'shift is' : 'shifts are'} still running</strong>
+            <span>Open shifts aren&apos;t in the totals below until they&apos;re closed.</span>
+          </div>
+          <ul className={styles.shiftList}>
+            {openShifts.map((shift) => (
+              <li key={shift.id}>
+                <span className={styles.shiftWho}>
+                  <strong>{shift.crewName}</strong>
+                  <small>{shift.jobLabel}</small>
+                </span>
+                <span className={styles.shiftTime}>
+                  <strong>{shift.elapsedLabel}</strong>
+                  <small>since {shift.startedLabel}</small>
+                </span>
+                {shift.flag ? (
+                  <span className={styles.shiftFlag} data-level={shift.flag} title={shift.flagHelp ?? undefined}>
+                    {shift.flagLabel}
+                  </span>
+                ) : (
+                  <span />
+                )}
+                <form action={closeOpenShiftAction.bind(null, shift.id)} className={styles.shiftClose}>
+                  <label>
+                    <span className="sr-only">End time for {shift.crewName}</span>
+                    <input type="datetime-local" name="endedAt" defaultValue={shift.defaultEnd} max={shift.defaultEnd} required />
+                  </label>
+                  <SaveButton className={styles.quietBtnSm} pendingLabel="Closing…" savedLabel="Closed ✓">
+                    Close shift
+                  </SaveButton>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {totals.needsReview > 0 ? (
         <div className={styles.reviewBanner}>
           <div>
@@ -272,6 +336,19 @@ export default function HoursAndPay({
             How this account counts hours. Saved to this browser — they change the totals on this screen and in the export,
             not the entries themselves.
           </p>
+          <label>
+            <span>Time clock</span>
+            <select name="timeClockMode" defaultValue={timeClockMode} disabled={!timeClockAvailable}>
+              {TIME_CLOCK_MODES.map((mode) => (
+                <option key={mode.id} value={mode.id}>{mode.label}</option>
+              ))}
+            </select>
+            <em className={styles.settingHint}>
+              {timeClockAvailable
+                ? TIME_CLOCK_MODES.find((mode) => mode.id === timeClockMode)?.hint
+                : 'Run the time-clock migration to enable clock in / clock out.'}
+            </em>
+          </label>
           <label>
             <span>Pay-period frequency</span>
             <select name="periodMode" defaultValue={settings.periodMode}>

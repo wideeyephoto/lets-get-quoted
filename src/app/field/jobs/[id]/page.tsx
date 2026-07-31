@@ -6,7 +6,10 @@ import { formatPhoneDashes } from '@/lib/phone';
 import { listJobTasks, taskProgress } from '@/lib/job-tasks';
 import SaveButton from '@/components/save-button';
 import FieldHeader from '../../FieldHeader';
-import { setFieldJobStatusAction, postFieldUpdateAction, logFieldTimeAction, logFieldMaterialAction, toggleFieldTaskAction, addFieldTaskAction, markArrivedFieldAction } from './actions';
+import { setFieldJobStatusAction, postFieldUpdateAction, logFieldTimeAction, logFieldMaterialAction, toggleFieldTaskAction, addFieldTaskAction, markArrivedFieldAction, clockInFieldAction, clockOutFieldAction } from './actions';
+import { getOpenShift, getTimeClockMode } from '@/lib/time-clock-data';
+import { formatClock, formatElapsed } from '@/lib/time-clock';
+import FieldClock from './FieldClock';
 import OnMyWayButton from './OnMyWayButton';
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +25,7 @@ function formatTime(value: string): string {
   return new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-export default async function FieldJobPage({ params, searchParams }: { params: { id: string }; searchParams: { logged?: string } }) {
+export default async function FieldJobPage({ params, searchParams }: { params: { id: string }; searchParams: { logged?: string; clocked?: string; clock?: string; hours?: string } }) {
   const { supabase, accountId, crew, businessName } = await requireCrewContext();
 
   if (!(await isJobAssignedToCrew(supabase, accountId, params.id, crew.id))) {
@@ -72,6 +75,19 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
             : null;
   const loggedFlashError = searchParams.logged === 'time-invalid' || searchParams.logged === 'material-invalid';
 
+  // The time clock. Read here so the page can show the running shift and, when
+  // the owner has made clocking required, drop the manual hours form entirely.
+  const clockMode = await getTimeClockMode(supabase, accountId);
+  const openShift = clockMode === 'off' ? null : await getOpenShift(supabase, accountId, crew.id);
+  const shiftOnThisJob = openShift && openShift.job_id === params.id ? openShift : null;
+  const clockFlash = searchParams.clock
+    ? searchParams.clock
+    : searchParams.clocked === 'in'
+      ? 'Clocked in ✓'
+      : searchParams.clocked === 'out'
+        ? `Clocked out ✓ ${searchParams.hours ?? ''} hrs logged`.trim()
+        : null;
+
   const jobTasks = await listJobTasks(supabase, accountId, params.id);
   const taskStats = taskProgress(jobTasks);
 
@@ -83,6 +99,7 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
       <FieldHeader businessName={businessName} crewName={crew.name} backHref="/field" />
       <main className="field-main">
         {loggedFlash ? <div className={`field-flash${loggedFlashError ? ' is-error' : ''}`}>{loggedFlash}</div> : null}
+        {clockFlash ? <div className={`field-flash${searchParams.clock ? ' is-error' : ''}`}>{clockFlash}</div> : null}
         <div className="field-detail-head">
           <h1>{job.client_name}</h1>
           <span className={`field-status field-status-${job.status}`}>{STATUS_LABEL[job.status] ?? job.status}</span>
@@ -185,20 +202,38 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
             </p>
           ) : null}
 
-          <form action={logFieldTimeAction.bind(null, job.id)} className="field-log-form">
-            <div className="field-log-row">
-              <label>
-                <span>Hours</span>
-                <input name="hours" type="number" min="0" step="0.25" inputMode="decimal" placeholder="0" required />
-              </label>
-              <label>
-                <span>Rate ($/hr)</span>
-                <input name="rate" type="number" min="0" step="0.01" inputMode="decimal" defaultValue={Number(crew.hourly_rate) > 0 ? Number(crew.hourly_rate) : ''} placeholder="0" />
-              </label>
-            </div>
-            <input name="description" type="text" placeholder="What you worked on (optional)" />
-            <SaveButton className="btn secondary" pendingLabel="Saving…" savedLabel="Logged ✓">Log time</SaveButton>
-          </form>
+          {/* The clock, when the owner has switched it on. It goes above the
+              manual form because when both are available it's the one that
+              needs no arithmetic at the end of a long day. */}
+          {clockMode !== 'off' ? (
+            <FieldClock
+              jobId={job.id}
+              clockIn={clockInFieldAction.bind(null, job.id)}
+              clockOut={clockOutFieldAction.bind(null, job.id)}
+              startedAt={shiftOnThisJob?.started_at ?? null}
+              startedLabel={shiftOnThisJob ? formatClock(shiftOnThisJob.started_at) : null}
+              elapsedLabel={shiftOnThisJob ? formatElapsed(shiftOnThisJob.started_at) : null}
+              busyElsewhere={Boolean(openShift && !shiftOnThisJob)}
+              required={clockMode === 'required'}
+            />
+          ) : null}
+
+          {clockMode !== 'required' ? (
+            <form action={logFieldTimeAction.bind(null, job.id)} className="field-log-form">
+              <div className="field-log-row">
+                <label>
+                  <span>Hours</span>
+                  <input name="hours" type="number" min="0" step="0.25" inputMode="decimal" placeholder="0" required />
+                </label>
+                <label>
+                  <span>Rate ($/hr)</span>
+                  <input name="rate" type="number" min="0" step="0.01" inputMode="decimal" defaultValue={Number(crew.hourly_rate) > 0 ? Number(crew.hourly_rate) : ''} placeholder="0" />
+                </label>
+              </div>
+              <input name="description" type="text" placeholder="What you worked on (optional)" />
+              <SaveButton className="btn secondary" pendingLabel="Saving…" savedLabel="Logged ✓">Log time</SaveButton>
+            </form>
+          ) : null}
 
           <form action={logFieldMaterialAction.bind(null, job.id)} className="field-log-form">
             <div className="field-log-row">

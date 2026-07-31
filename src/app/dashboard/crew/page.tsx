@@ -17,6 +17,9 @@ import {
 } from '@/lib/labor';
 import { laborTotalsByCrew, listLaborEntries } from '@/lib/labor-data';
 import { LABOR_SETTINGS_COOKIE, normalizeLaborSettings, roundHours } from '@/lib/labor-settings';
+import { SHIFT_FLAG_HELP, SHIFT_FLAG_LABEL, formatClock, formatElapsed, openShiftFlag } from '@/lib/time-clock';
+import { getTimeClockMode, isTimeClockAvailable, listOpenShifts } from '@/lib/time-clock-data';
+import type { OpenShiftView } from './HoursAndPay';
 import CrewRoster, { type CrewRow } from './CrewRoster';
 import HoursAndPay from './HoursAndPay';
 import LaborByJob from './LaborByJob';
@@ -43,6 +46,13 @@ type TabId = (typeof TABS)[number]['id'];
 
 function normalizeTab(value: unknown): TabId {
   return TABS.some((tab) => tab.id === value) ? (value as TabId) : 'crew';
+}
+
+// "2026-07-30T14:05" — what <input type="datetime-local"> expects, in the
+// viewer's own wall clock rather than UTC.
+function localInputValue(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function initialsFor(name: string) {
@@ -134,6 +144,32 @@ export default async function CrewLaborPage({
     };
   });
 
+  // The time clock reads 'off' when its migration hasn't been run, so the whole
+  // feature stays invisible rather than throwing.
+  const timeClockMode = await getTimeClockMode(supabase, accountId);
+  // Only asked on the tab that shows the control — it's a second round trip
+  // that exists purely to word one hint correctly.
+  const timeClockAvailable = tab === 'hours' ? await isTimeClockAvailable(supabase, accountId) : false;
+  const openShifts: OpenShiftView[] =
+    tab === 'hours' && timeClockMode !== 'off'
+      ? (await listOpenShifts(supabase, accountId)).map((shift) => {
+          const flag = openShiftFlag(shift.startedAt);
+          return {
+            id: shift.id,
+            crewName: shift.crewName,
+            jobLabel: shift.jobLabel,
+            startedLabel: formatClock(shift.startedAt),
+            elapsedLabel: formatElapsed(shift.startedAt),
+            // datetime-local wants local wall-clock with no zone; "now" is the
+            // safest default end because it's the latest defensible one.
+            defaultEnd: localInputValue(new Date()),
+            flag,
+            flagLabel: flag ? SHIFT_FLAG_LABEL[flag] : null,
+            flagHelp: flag ? SHIFT_FLAG_HELP[flag] : null,
+          };
+        })
+      : [];
+
   // Only the open tab pays for its own reads.
   const laborEntries =
     tab === 'hours' || tab === 'jobs'
@@ -222,6 +258,9 @@ export default async function CrewLaborPage({
             assignableJobs={assignableJobs.map((job) => ({ id: job.id, ref: job.ref, clientName: job.client_name }))}
             jobLookup={Object.fromEntries(jobs.map((job) => [job.id, `${job.ref} · ${job.client_name}`]))}
             settings={settings}
+            timeClockMode={timeClockMode}
+            timeClockAvailable={timeClockAvailable}
+            openShifts={openShifts}
           />
         ) : null}
 

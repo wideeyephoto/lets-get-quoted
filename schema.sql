@@ -442,6 +442,57 @@ create table if not exists crew_assignments (
 );
 
 -- ----------------------------------------------------------------------------
+-- TIME_ENTRIES  — clock in / clock out, when an account turns it on.
+--
+-- A separate table on purpose. An OPEN shift is not a cost: it has no hours and
+-- no amount yet, and writing it into `costs` would drag an unknown into every
+-- job-margin and pay total until somebody clocked out. So a shift lives here
+-- while it is running, and on clock-out it BECOMES a normal labor cost row
+-- (cost_id below). Everything downstream — Hours & pay, Labor by job, margin —
+-- keeps working unchanged, because the end product is still a costs row.
+--
+-- The partial unique index is the real constraint: one open shift per crew
+-- member, account-wide. Without it, a double tap on Clock in, or clocking in on
+-- a second job while still on the first, silently starts two shifts and bills
+-- the same minutes twice.
+-- ----------------------------------------------------------------------------
+create table if not exists time_entries (
+  id            uuid primary key default gen_random_uuid(),
+  account_id    uuid not null references accounts(id) on delete cascade,
+  crew_id       uuid not null references crew(id) on delete cascade,
+  job_id        uuid not null references jobs(id) on delete cascade,
+
+  started_at    timestamptz not null default now(),
+  ended_at      timestamptz,
+  -- Snapshotted at clock-in, so a later rate change doesn't silently restate
+  -- shifts that were already worked.
+  rate          numeric(10,2) not null default 0,
+  note          text,
+
+  -- The labor cost this shift turned into. Null while the shift is open.
+  cost_id       uuid references costs(id) on delete set null,
+  -- True when the owner closed it from the dashboard because the crew member
+  -- forgot. Worth showing: an owner-guessed end time is not a clocked one.
+  closed_by_owner boolean not null default false,
+
+  created_at    timestamptz not null default now()
+);
+
+create unique index if not exists time_entries_one_open_per_crew
+  on time_entries (crew_id) where ended_at is null;
+create index if not exists time_entries_account_started_idx
+  on time_entries (account_id, started_at desc);
+create index if not exists time_entries_cost_idx on time_entries (cost_id);
+
+-- Whether crew must clock in/out, may choose to, or never see it.
+-- 'off' keeps the original behaviour: type your hours when the work is done.
+alter table accounts add column if not exists time_clock_mode text not null default 'off';
+do $$ begin
+  alter table accounts add constraint accounts_time_clock_mode_check
+    check (time_clock_mode in ('off', 'optional', 'required'));
+exception when duplicate_object then null; end $$;
+
+-- ----------------------------------------------------------------------------
 -- COSTS  — itemized job costing.
 -- ----------------------------------------------------------------------------
 create table if not exists costs (
@@ -1277,6 +1328,22 @@ create policy asg_crew_read on crew_assignments for select using ( crew_owns_cre
 create policy cost_owner       on costs for all    using ( is_owner(account_id) );
 create policy cost_crew_read   on costs for select using ( crew_owns_crew_row(crew_id) );
 create policy cost_crew_insert on costs for insert with check ( crew_on_job(job_id) and crew_owns_crew_row(crew_id) and account_id = job_account_id(job_id) );
+
+-- TIME_ENTRIES: owners full access (they close forgotten shifts). A crew member
+-- may open a shift on a job they're assigned to, attributed to themselves, and
+-- read/close only their OWN — never a coworker's, and never one on a job they
+-- were taken off. The account_id is pinned to the job's real account so a crew
+-- session can't open a shift carrying a foreign account_id, the same guard the
+-- costs insert policy uses.
+alter table time_entries enable row level security;
+drop policy if exists time_entry_owner on time_entries;
+drop policy if exists time_entry_crew_read on time_entries;
+drop policy if exists time_entry_crew_insert on time_entries;
+drop policy if exists time_entry_crew_update on time_entries;
+create policy time_entry_owner       on time_entries for all    using ( is_owner(account_id) );
+create policy time_entry_crew_read   on time_entries for select using ( crew_owns_crew_row(crew_id) );
+create policy time_entry_crew_insert on time_entries for insert with check ( crew_on_job(job_id) and crew_owns_crew_row(crew_id) and account_id = job_account_id(job_id) );
+create policy time_entry_crew_update on time_entries for update using ( crew_owns_crew_row(crew_id) ) with check ( crew_owns_crew_row(crew_id) );
 
 -- JOB_FEED: owners full access. Crew may READ and POST feed events on an assigned
 -- job (status changes, field notes, client-shared updates) — nothing else.

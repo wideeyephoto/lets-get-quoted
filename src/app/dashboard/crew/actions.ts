@@ -1,7 +1,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
+import { LABOR_SETTINGS_COOKIE, normalizeLaborSettings, roundHours } from '@/lib/labor-settings';
+import { validateManualEnd } from '@/lib/time-clock';
+import { clockOut, getTimeEntry } from '@/lib/time-clock-data';
 import {
   createCrewMember,
   deleteArchivedCrewMember,
@@ -257,6 +261,49 @@ export async function addLaborEntryAction(formData: FormData) {
   revalidatePath('/dashboard/crew');
   revalidatePath('/dashboard/jobs');
   revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
+// Close a shift a crew member left running.
+//
+// The owner supplies the end time, because they're guessing at when the work
+// actually stopped — the alternative is banking every hour between the missed
+// clock-out and whenever somebody noticed. The row is stamped closed_by_owner
+// so the difference between a clocked end time and a guessed one stays visible
+// afterwards.
+export async function closeOpenShiftAction(entryId: string, formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const entry = await getTimeEntry(supabase, accountId, entryId);
+  if (!entry) throw new Error('That shift no longer exists.');
+  if (entry.ended_at) throw new Error('That shift has already been closed.');
+
+  // A datetime-local value has no zone, so it's read as the owner's local time —
+  // which is what they typed and what the crew worked.
+  const raw = String(formData.get('endedAt') ?? '').trim();
+  const endedAt = raw ? new Date(raw) : new Date();
+  if (Number.isNaN(endedAt.getTime())) throw new Error('That end time isn\'t a real time.');
+
+  const problem = validateManualEnd(entry.started_at, endedAt.toISOString());
+  if (problem) throw new Error(problem);
+
+  const { data: member } = await supabase
+    .from('crew')
+    .select('name')
+    .eq('account_id', accountId)
+    .eq('id', entry.crew_id)
+    .maybeSingle();
+
+  const settings = normalizeLaborSettings(cookies().get(LABOR_SETTINGS_COOKIE)?.value);
+  await clockOut(supabase, accountId, entry, {
+    endedAt: endedAt.toISOString(),
+    crewName: (member?.name as string) || 'Crew member',
+    note: String(formData.get('note') ?? '').trim() || null,
+    closedByOwner: true,
+    round: settings.rounding === 'none' ? undefined : (hours) => roundHours(hours, settings.rounding),
+  });
+
+  revalidatePath('/dashboard/crew');
+  revalidatePath(`/dashboard/jobs/${entry.job_id}`);
 }
 
 // Remove a labor entry that shouldn't count — a double-log from the field, or

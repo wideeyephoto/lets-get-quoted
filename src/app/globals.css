@@ -7320,6 +7320,51 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
   font-weight: 600;
 }
 .field-chip:active { background: rgba(255,255,255,0.12); }
+/* Time clock, field app. Big targets: this is tapped with a glove on, in
+   daylight, standing on someone's roof. */
+.field-clock {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(148, 176, 214, 0.3);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.field-clock.is-running {
+  border-color: rgba(72, 199, 142, 0.55);
+  background: rgba(72, 199, 142, 0.1);
+}
+
+.field-clock-state { display: flex; align-items: center; gap: 0.7rem; }
+.field-clock-state strong { display: block; font-size: 1rem; }
+.field-clock-state span { display: block; margin-top: 0.1rem; font-size: 0.85rem; color: rgba(255, 255, 255, 0.72); line-height: 1.45; }
+
+/* A pulse, so a running shift reads as running from across a room. */
+.field-clock-dot {
+  flex: none;
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: #48c78e;
+  box-shadow: 0 0 0 0 rgba(72, 199, 142, 0.7);
+  animation: fieldClockPulse 2s ease-out infinite;
+}
+
+@keyframes fieldClockPulse {
+  0% { box-shadow: 0 0 0 0 rgba(72, 199, 142, 0.6); }
+  70% { box-shadow: 0 0 0 0.6rem rgba(72, 199, 142, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(72, 199, 142, 0); }
+}
+
+.field-clock-form { display: grid; gap: 0.5rem; }
+.field-clock .btn { width: 100%; padding: 0.95rem 1rem; font-size: 1rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .field-clock-dot { animation: none; }
+}
+
 .field-block { margin-top: 1.5rem; }
 .field-block-title {
   margin: 0 0 0.5rem;

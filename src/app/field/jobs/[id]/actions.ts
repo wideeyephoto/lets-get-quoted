@@ -11,6 +11,7 @@ import { createCost } from '@/lib/jobs';
 import { createJobTask, setJobTaskDone } from '@/lib/job-tasks';
 import { startJobEnRoute, markJobArrivedTracking } from '@/lib/job-tracking';
 import { isPhoneOptedOut, sendOnMyWaySms } from '@/lib/sms';
+import { clockIn, clockOut, getOpenShift, getTimeClockMode } from '@/lib/time-clock-data';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
@@ -91,12 +92,61 @@ export async function markArrivedFieldAction(jobId: string) {
   redirect(`/field/jobs/${jobId}?arrived=1`);
 }
 
+// Start a shift. The rate is snapshotted now, so a rate change later doesn't
+// restate time that was already worked.
+export async function clockInFieldAction(jobId: string) {
+  const { supabase, accountId, crew } = await requireCrewContext();
+  await assertAssigned(supabase, accountId, jobId, crew.id);
+
+  const mode = await getTimeClockMode(supabase, accountId);
+  if (mode === 'off') redirect(`/field/jobs/${jobId}`);
+
+  try {
+    await clockIn(supabase, accountId, crew.id, jobId, Number(crew.hourly_rate) || 0);
+  } catch (error) {
+    // Everything that can go wrong here is worth SAYING — "already clocked in
+    // on another job" is the one a crew member actually hits, and a silent
+    // no-op would leave them tapping a button that appears dead.
+    const message = error instanceof Error ? error.message : 'Could not clock in.';
+    redirect(`/field/jobs/${jobId}?clock=${encodeURIComponent(message)}`);
+  }
+
+  revalidatePath(`/field/jobs/${jobId}`);
+  redirect(`/field/jobs/${jobId}?clocked=in`);
+}
+
+// End the shift and turn it into a labor entry.
+export async function clockOutFieldAction(jobId: string, formData: FormData) {
+  const { supabase, accountId, crew } = await requireCrewContext();
+  await assertAssigned(supabase, accountId, jobId, crew.id);
+
+  const entry = await getOpenShift(supabase, accountId, crew.id);
+  if (!entry || entry.job_id !== jobId) redirect(`/field/jobs/${jobId}?clock=${encodeURIComponent('No open shift to clock out of.')}`);
+
+  const note = String(formData.get('description') ?? '').trim() || null;
+  const { hours } = await clockOut(supabase, accountId, entry, {
+    endedAt: new Date().toISOString(),
+    crewName: crew.name,
+    note,
+  });
+
+  revalidatePath(`/field/jobs/${jobId}`);
+  redirect(`/field/jobs/${jobId}?clocked=out&hours=${hours}`);
+}
+
 // Crew logs their hours on the job from the field. Amount is server-computed as
 // hours × rate (createCost never trusts a client amount for labor); the rate
 // defaults to the crew member's saved hourly rate but can be overridden.
 export async function logFieldTimeAction(jobId: string, formData: FormData) {
   const { supabase, accountId, crew } = await requireCrewContext();
   await assertAssigned(supabase, accountId, jobId, crew.id);
+
+  // With the clock required, typing hours is not a second way in — it's a way
+  // around the thing the owner turned on. The UI hides the form; this is the
+  // check that means hiding it is enough.
+  if ((await getTimeClockMode(supabase, accountId)) === 'required') {
+    redirect(`/field/jobs/${jobId}?clock=${encodeURIComponent('Clock in and out to log time on this job.')}`);
+  }
 
   const hours = Number(formData.get('hours'));
   if (!Number.isFinite(hours) || hours <= 0) redirect(`/field/jobs/${jobId}?logged=time-invalid`);
