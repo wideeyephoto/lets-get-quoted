@@ -40,6 +40,7 @@ import { TIME_CLOCK_MODES, type TimeClockMode } from '@/lib/time-clock';
 import SaveButton from '@/components/save-button';
 import { addLaborEntryAction, closeOpenShiftAction, deleteLaborEntryAction } from './actions';
 import { saveLaborSettingsAction } from './settings-actions';
+import PayMasterDetail from './PayMasterDetail';
 import {
   approveHoursAction,
   closePeriodAction,
@@ -90,7 +91,7 @@ const CREW_VIEW_OPTIONS: ViewOption<CrewView>[] = [
   { id: 'table', label: 'Table', hint: 'Every crew member in one list' },
   { id: 'grouped', label: 'Grouped', hint: 'Sections by what needs doing' },
   { id: 'rail', label: 'Review', hint: 'Table with the actions pinned beside it' },
-  { id: 'focus', label: 'Focus', hint: 'The whole period, with what to do next pinned beside it' },
+  { id: 'focus', label: 'Focus', hint: 'One person at a time — their timesheet, approval and pay' },
 ];
 
 // Views that put the rail beside the table rather than under it. They need the
@@ -270,6 +271,9 @@ export default function HoursAndPay({
     };
   }, [view]);
   const [selected, setSelected] = useState<string[]>([]);
+  // Which person the master-detail layout is showing. Null until one is picked;
+  // the component then falls back to whoever most needs looking at.
+  const [detailKey, setDetailKey] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('all');
   const [flaggedOnly, setFlaggedOnly] = useState(false);
@@ -968,7 +972,35 @@ export default function HoursAndPay({
             ) : null}
 
             {/* --- the crew --- */}
-            <div className={styles.tableWrap} hidden={view === 'grouped'}>
+            {view === 'focus' ? (
+              <PayMasterDetail
+                rows={visible}
+                groups={groupCrewRows(visible)}
+                selectedKey={detailKey}
+                onSelect={setDetailKey}
+                keyOf={rowKey}
+                jobLookup={jobLookup}
+                jobsByCrew={jobsByCrew}
+                events={events}
+                payAvailable={payAvailable}
+                approving={busy('approve')}
+                onApprove={(crewIds) => arm({ kind: 'approve', crewIds })}
+                onPay={(ids) => setDialog({ kind: 'pay', ids })}
+                onOpenProfile={(key) => setDrawer({ mode: 'crew', crewId: key })}
+                onHistory={() => setDrawer({ mode: 'history' })}
+                periodLabel={period.rangeLabel}
+                periodActionTitle={
+                  primaryAction?.id === 'pay' || primaryAction?.id === 'finish' ? 'Pay this period' : primaryAction?.label ?? null
+                }
+                periodAction={primaryActionButton}
+                periodActionHelp={periodPayBlocked ?? primaryAction?.help ?? null}
+                periodActionTone={
+                  primaryAction?.id === 'approve' || primaryAction?.id === 'pay' || primaryAction?.id === 'finish' ? 'go' : 'todo'
+                }
+              />
+            ) : null}
+
+            <div className={styles.tableWrap} hidden={view === 'grouped' || view === 'focus'}>
               <table className={styles.payTable}>
                 <thead>
                   <tr>
@@ -1161,7 +1193,10 @@ export default function HoursAndPay({
               </table>
             </div>
 
-            {view !== 'grouped' && visible.length > pageSize ? (
+            {/* Master-detail pages nothing — the left list is the whole filtered
+                crew, because paging a list you are stepping through one at a
+                time would hide the person you were about to click. */}
+            {view !== 'grouped' && view !== 'focus' && visible.length > pageSize ? (
               <div className={styles.pager}>
                 <small>
                   Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, visible.length)} of {visible.length} crew members
@@ -1207,26 +1242,11 @@ export default function HoursAndPay({
             </p>
           </div>
 
-          {/* --- the rail --- */}
-          <aside className={styles.payRail}>
-            {/* Focus leads with the decision. The rest of the rail is reference;
-                this is the thing you came to do, and it stays put while you
-                scroll a long crew list. */}
-            {view === 'focus' && primaryActionButton ? (
-              // The card is tinted by what the action IS, not by where it sits.
-              // A green card wrapped round an orange "Review entries" button
-              // would promise the approval step before it's actually available.
-              <section
-                className={`${styles.railCard} ${styles.railAction}`}
-                data-tone={primaryAction?.id === 'approve' || primaryAction?.id === 'pay' || primaryAction?.id === 'finish' ? 'go' : 'todo'}
-              >
-                <h3>{primaryAction?.id === 'pay' || primaryAction?.id === 'finish' ? 'Pay this period' : primaryAction?.label ?? 'Next step'}</h3>
-                {primaryActionButton}
-                <small className={styles.railActionHelp}>
-                  {periodPayBlocked ?? primaryAction?.help}
-                </small>
-              </section>
-            ) : null}
+          {/* --- the rail ---
+              Not rendered under Focus: master-detail carries its own, beside the
+              person it is about, and two rails on one screen is two places to
+              look for the same button. */}
+          <aside className={styles.payRail} hidden={view === 'focus'}>
 
             <section className={styles.railCard}>
               <h3>Pay period summary</h3>

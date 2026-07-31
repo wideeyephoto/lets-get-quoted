@@ -2026,26 +2026,9 @@
 /* Same geometry as Review, and for the same measured reason: below 1600px a
    rail beside a nine-column table pushes Payment and Payment date off the edge —
    the two columns this screen exists to show. Under that, the rail stacks. */
-@media (min-width: 1600px) {
-  .payLayout[data-view='focus'] {
-    grid-template-columns: minmax(0, 1fr) 18rem;
-    align-items: start;
-  }
-  .payLayout[data-view='focus'] .payRail {
-    grid-template-columns: minmax(0, 1fr);
-    position: sticky;
-    top: 0.5rem;
-    /* The rail is a column of its own, so it reads as one thing rather than
-       four cards that happen to be stacked. */
-    padding: 0.55rem;
-    border: 1px solid rgba(255, 122, 33, 0.34);
-    border-radius: 16px;
-    background: rgba(255, 122, 33, 0.035);
-  }
-}
-@media (min-width: 1800px) {
-  .payLayout[data-view='focus'] { grid-template-columns: minmax(0, 1fr) 20rem; }
-}
+/* Focus is master-detail, which is three columns of its own and brings its own
+   rail — so the pay layout stays a single column and gets out of its way. */
+.payLayout[data-view='focus'] { grid-template-columns: minmax(0, 1fr); }
 
 /* The one card that is an instruction rather than a readout. Its tint follows
    the action inside it: green once there is money to agree or record, orange
@@ -2295,3 +2278,219 @@ button.goAction.goAction:disabled {
 /* Selected rows keep the orange left edge they already had; the theme only
    deepens the tint so it survives the lighter card surface behind it. */
 :global(.crew-focus) .payRow[data-selected] { background: rgba(255, 122, 33, 0.12); }
+
+/* ==========================================================================
+   Hours & pay — master-detail (what Focus renders on this tab).
+
+   Three columns: who needs looking at, everything about the one you picked,
+   and what to do about them. The table layouts answer "how does the crew
+   compare"; this answers "is THIS person right", which is the question you
+   actually have when something needs reviewing.
+   ========================================================================== */
+
+.mdLayout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.7rem; align-items: start; }
+
+@media (min-width: 1150px) {
+  .mdLayout { grid-template-columns: 15rem minmax(0, 1fr); }
+}
+@media (min-width: 1550px) {
+  /* The rail only appears once the middle column can still hold a timesheet.
+     Below that it stacks under the detail rather than squeezing it. */
+  .mdLayout { grid-template-columns: 15.5rem minmax(0, 1fr) 17rem; }
+  .mdList, .mdRail { position: sticky; top: 0.5rem; max-height: calc(100vh - 1.5rem); overflow-y: auto; }
+}
+
+/* --- master --- */
+
+.mdList {
+  display: grid;
+  gap: 0.7rem;
+  align-content: start;
+  padding: 0.55rem;
+  border: 1px solid rgba(148, 176, 214, 0.18);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.mdList section { display: grid; gap: 0.25rem; }
+.mdList ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.2rem; }
+
+.mdGroupHead {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.1rem;
+  padding: 0 0.25rem;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgba(147, 164, 184, 0.9);
+}
+.mdGroupHead span {
+  padding: 0.02rem 0.36rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 176, 214, 0.3);
+  font-size: 0.66rem;
+}
+.mdGroupHead[data-tone='alert'] { color: #ffb4a7; }
+.mdGroupHead[data-tone='alert'] span { border-color: rgba(255, 107, 107, 0.5); background: rgba(255, 107, 107, 0.14); }
+.mdGroupHead[data-tone='warn'] { color: #ffd591; }
+.mdGroupHead[data-tone='warn'] span { border-color: rgba(255, 209, 102, 0.45); background: rgba(255, 209, 102, 0.12); }
+.mdGroupHead[data-tone='ok'] { color: #7fe0b2; }
+.mdGroupHead[data-tone='ok'] span { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.13); }
+
+.mdPerson {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  gap: 0.45rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.4rem 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mdPerson:hover { background: rgba(255, 255, 255, 0.05); }
+/* The selected person carries the same orange left edge a selected table row
+   does, so "this is the one I am working on" looks the same in both layouts. */
+.mdPerson[data-on] {
+  border-color: rgba(255, 122, 33, 0.45);
+  background: rgba(255, 122, 33, 0.1);
+  box-shadow: inset 3px 0 0 #ff7a21;
+}
+.mdPerson:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.75); outline-offset: 1px; }
+
+.mdAvatar, .mdAvatarLg {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(148, 176, 214, 0.3);
+  background: rgba(255, 122, 33, 0.16);
+  font-weight: 800;
+  color: #ffb27d;
+}
+.mdAvatar { width: 1.7rem; height: 1.7rem; font-size: 0.62rem; }
+.mdAvatarLg { width: 2.7rem; height: 2.7rem; font-size: 0.86rem; }
+
+.mdPersonNames { display: grid; gap: 0.02rem; min-width: 0; }
+.mdPersonNames strong { font-size: 0.84rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mdPersonNames small { font-size: 0.68rem; color: rgba(147, 164, 184, 0.9); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mdPersonFigures { display: grid; gap: 0.02rem; text-align: right; font-variant-numeric: tabular-nums; }
+.mdPersonFigures b { font-size: 0.76rem; font-weight: 750; }
+.mdPersonFigures i { font-style: normal; font-size: 0.68rem; color: #ffd591; }
+
+/* --- detail --- */
+
+.mdDetail {
+  display: grid;
+  gap: 0.85rem;
+  align-content: start;
+  padding: 0.95rem 1.05rem;
+  border: 1px solid rgba(148, 176, 214, 0.2);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.mdHead { display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap; }
+.mdHeadNames { display: grid; gap: 0.05rem; min-width: 0; flex: 1 1 12rem; }
+.mdHeadNames strong { font-size: 1.05rem; font-weight: 780; }
+.mdHeadNames small { font-size: 0.79rem; color: rgba(147, 164, 184, 0.95); }
+
+.mdBadge {
+  padding: 0.14rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 176, 214, 0.35);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+}
+.mdBadge[data-state='approved'] { border-color: rgba(72, 199, 142, 0.55); background: rgba(72, 199, 142, 0.14); color: #7fe0b2; }
+.mdBadge[data-state='needs_review'] { border-color: rgba(255, 209, 102, 0.55); background: rgba(255, 209, 102, 0.12); color: #ffd591; }
+.mdBadge[data-state='paid'] { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.12); color: #7fe0b2; }
+
+.mdFlags { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.mdFlags li {
+  padding: 0.14rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 176, 214, 0.3);
+  font-size: 0.72rem;
+}
+.mdFlags li[data-severity='block'] { border-color: rgba(255, 107, 107, 0.5); background: rgba(255, 107, 107, 0.12); color: #ffb4a7; }
+.mdFlags li[data-severity='warn'] { border-color: rgba(255, 209, 102, 0.45); background: rgba(255, 209, 102, 0.1); color: #ffd591; }
+
+.mdFacts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.65rem 0.7rem;
+  border: 1px solid rgba(148, 176, 214, 0.16);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.mdFacts > div { display: grid; gap: 0.12rem; min-width: 0; }
+.mdFacts dt {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(147, 164, 184, 0.85);
+}
+.mdFacts dd { margin: 0; font-size: 0.87rem; font-weight: 650; overflow: hidden; text-overflow: ellipsis; }
+
+.mdSection { display: grid; gap: 0.45rem; }
+.mdSection h4 { display: flex; align-items: baseline; gap: 0.5rem; margin: 0; font-size: 0.88rem; font-weight: 750; }
+.mdSection h4 span { font-size: 0.72rem; font-weight: 600; color: rgba(147, 164, 184, 0.9); }
+
+.mdEntries { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.mdEntries th, .mdEntries td { padding: 0.42rem 0.6rem; text-align: left; white-space: nowrap; }
+.mdEntries thead th {
+  border-bottom: 1px solid rgba(148, 176, 214, 0.24);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgba(147, 164, 184, 0.95);
+}
+.mdEntries tbody tr { border-bottom: 1px solid rgba(148, 176, 214, 0.1); }
+.mdEntries tbody tr:last-child { border-bottom: 0; }
+/* An entry that is why this person needs reviewing says so where you are
+   reading it, not only in a chip at the top. */
+.mdEntries tbody tr[data-issue] { background: rgba(255, 209, 102, 0.07); }
+.mdEntries td:nth-child(3) { white-space: normal; min-width: 8rem; }
+
+.mdApproval { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.35rem; }
+.mdApproval li {
+  display: grid;
+  grid-template-columns: 1.4rem minmax(0, 1fr) max-content;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(148, 176, 214, 0.16);
+  border-radius: 12px;
+}
+.mdApproval li[data-done] { border-color: rgba(72, 199, 142, 0.35); background: rgba(72, 199, 142, 0.05); }
+.mdApproval li > span { display: grid; place-items: center; font-size: 0.95rem; color: rgba(147, 164, 184, 0.8); }
+.mdApproval li[data-done] > span { color: #7fe0b2; }
+.mdApproval strong { display: block; font-size: 0.85rem; font-weight: 700; }
+.mdApproval small { display: block; font-size: 0.74rem; color: rgba(147, 164, 184, 0.95); }
+
+/* --- rail --- */
+
+.mdRail { display: grid; gap: 0.6rem; align-content: start; }
+.mdNote { margin: 0.6rem 0 0; font-size: 0.72rem; line-height: 1.5; color: rgba(147, 164, 184, 0.9); }
+
+.mdAudit { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.45rem; }
+.mdAudit li { display: grid; gap: 0.05rem; padding-bottom: 0.45rem; border-bottom: 1px solid rgba(148, 176, 214, 0.12); }
+.mdAudit li:last-child { border-bottom: 0; padding-bottom: 0; }
+.mdAudit strong { font-size: 0.79rem; font-weight: 700; }
+.mdAudit small { font-size: 0.7rem; color: rgba(147, 164, 184, 0.9); }
+.mdAudit em { font-style: normal; font-size: 0.72rem; color: rgba(200, 210, 224, 0.85); }
