@@ -3314,6 +3314,225 @@ li + li { margin-top: 0.45rem; }
 }
 .calendar-view-toggle button:not(.active):hover { color: #fff; }
 
+/* ---- View switcher (the dashboard calendar; the demo keeps the segmented
+   toggle above). Five views won't fit in a segmented control without shrinking
+   every label to an abbreviation, so this is one button that names the view
+   you're in and opens a menu. Same blue ring + orange lit treatment. ---- */
+/* .calendar-toolbar is flex with space-between, so this sits hard right — the
+   top-right corner of the calendar. margin-left:auto keeps it there even when
+   the month nav wraps to its own line. */
+.calendar-view-menu { margin-left: auto; }
+
+.calendar-view-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid rgba(58, 160, 255, 0.38);
+  border-radius: 12px;
+  background: rgba(58, 160, 255, 0.05);
+  box-shadow: 0 0 14px rgba(58, 160, 255, 0.16), inset 0 0 12px rgba(58, 160, 255, 0.05);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.calendar-view-trigger:hover,
+.calendar-view-trigger.open {
+  border-color: rgba(255, 138, 61, 0.6);
+  box-shadow: 0 0 18px rgba(255, 122, 33, 0.32), inset 0 0 12px rgba(255, 122, 33, 0.06);
+}
+
+.calendar-view-trigger:focus-visible { outline: 2px solid rgba(255, 176, 120, 0.8); outline-offset: 2px; }
+.calendar-view-trigger-ic { width: 1.05rem; height: 1.05rem; flex: none; color: var(--accent); }
+.calendar-view-trigger-text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.15; }
+.calendar-view-trigger-text small { font-size: 0.6rem; letter-spacing: 0.09em; text-transform: uppercase; color: rgba(255, 255, 255, 0.45); }
+.calendar-view-trigger-text strong { font-size: 0.8rem; font-weight: 800; }
+.calendar-view-caret { width: 0.85rem; height: 0.85rem; flex: none; color: rgba(255, 255, 255, 0.5); transition: transform 0.16s ease; }
+.calendar-view-trigger.open .calendar-view-caret { transform: rotate(180deg); }
+
+.calendar-view-panel {
+  padding: 0.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(10, 20, 33, 0.97);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+
+.calendar-view-option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.5rem 0.55rem;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.calendar-view-option:hover { background: rgba(255, 255, 255, 0.06); }
+.calendar-view-option.active { background: rgba(255, 122, 33, 0.12); box-shadow: inset 0 0 0 1px rgba(255, 122, 33, 0.3); }
+.calendar-view-option-ic { width: 1.1rem; height: 1.1rem; flex: none; color: rgba(255, 255, 255, 0.55); }
+.calendar-view-option.active .calendar-view-option-ic { color: var(--accent); }
+.calendar-view-option-text { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; flex: 1 1 auto; }
+.calendar-view-option-text strong { font-size: 0.82rem; font-weight: 800; }
+.calendar-view-option-text small { font-size: 0.7rem; color: rgba(255, 255, 255, 0.5); }
+.calendar-view-option-tick { flex: none; color: var(--accent); font-weight: 900; font-size: 0.8rem; }
+
+.calendar-view-empty {
+  margin: 1.5rem 0;
+  padding: 2rem 1rem;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.9rem;
+}
+
+/* ---- Agenda: the days that have work, and nothing else. Rows are wide, so
+   everything the month cell had to ellipsis or drop into a tooltip fits. ---- */
+.calendar-agenda { display: flex; flex-direction: column; gap: 0.5rem; margin: 0.9rem 0 0; padding: 0; list-style: none; }
+
+.calendar-agenda-day {
+  display: grid;
+  grid-template-columns: 3.6rem minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.calendar-agenda-day.today { border-color: rgba(255, 138, 61, 0.45); background: rgba(255, 138, 61, 0.05); }
+.calendar-agenda-date { display: flex; flex-direction: column; align-items: center; gap: 0.1rem; padding-top: 0.35rem; }
+.calendar-agenda-date small { font-size: 0.64rem; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255, 255, 255, 0.45); }
+.calendar-agenda-date strong { font-size: 1.25rem; font-weight: 800; line-height: 1; }
+.calendar-agenda-day.today .calendar-agenda-date strong { color: var(--accent); }
+.calendar-agenda-flag { margin-top: 0.15rem; font-size: 0.58rem; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; color: #ffc65c; }
+.calendar-agenda-jobs { display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
+
+.calendar-agenda-job {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1.6fr) minmax(0, auto) minmax(0, auto) 2.6rem;
+  gap: 0.7rem;
+  align-items: center;
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-left-width: 3px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+
+.calendar-agenda-job:hover { border-color: rgba(255, 138, 61, 0.42); background: rgba(255, 138, 61, 0.05); }
+.calendar-agenda-job:focus-visible { outline: 2px solid rgba(255, 176, 120, 0.75); outline-offset: 2px; }
+.calendar-agenda-when { font-size: 0.76rem; font-weight: 800; color: rgba(255, 255, 255, 0.72); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.calendar-agenda-who { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.calendar-agenda-who strong { font-size: 0.86rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.calendar-agenda-who small { font-size: 0.72rem; color: rgba(255, 255, 255, 0.5); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Grid items are min-width:auto, so a nowrap badge like "Invoice sent ·
+   Awaiting payment" refuses to shrink and pushes the whole page sideways.
+   min-width:0 lets the track win; the ellipsis is the safety valve. */
+.calendar-agenda-job > * { min-width: 0; }
+.calendar-agenda-badge { justify-self: start; max-width: 100%; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.62rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: rgba(255, 255, 255, 0.08); color: rgba(255, 255, 255, 0.75); }
+.calendar-agenda-figures { display: flex; gap: 0.6rem; align-items: baseline; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.calendar-agenda-figures em { font-style: normal; font-weight: 800; font-size: 0.82rem; }
+.calendar-agenda-figures i { font-style: normal; font-size: 0.74rem; color: rgba(255, 255, 255, 0.5); }
+.calendar-agenda-crew { justify-self: end; font-size: 0.7rem; font-weight: 800; color: rgba(255, 255, 255, 0.55); white-space: nowrap; }
+
+/* ---- Timeline: one bar per job across the month. The only view where a
+   multi-day job reads as a single thing rather than as N separate chips. ---- */
+.calendar-timeline-scroll { margin-top: 0.9rem; overflow-x: auto; scrollbar-width: thin; scrollbar-color: rgba(255, 138, 61, 0.38) transparent; }
+.calendar-timeline-scroll::-webkit-scrollbar { height: 10px; }
+.calendar-timeline-scroll::-webkit-scrollbar-track { background: transparent; }
+.calendar-timeline-scroll::-webkit-scrollbar-thumb { background: rgba(255, 138, 61, 0.32); background-clip: content-box; border: 2px solid transparent; border-radius: 999px; }
+
+.calendar-timeline { display: grid; align-items: center; gap: 0.3rem 0; padding-bottom: 0.5rem; }
+
+.calendar-timeline-corner,
+.calendar-timeline-head {
+  position: sticky;
+  top: 0;
+  padding-bottom: 0.35rem;
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.42);
+  text-align: center;
+}
+
+.calendar-timeline-corner { text-align: left; padding-left: 0.15rem; }
+
+.calendar-timeline-column {
+  border-radius: 6px;
+  pointer-events: none;
+  /* The grid centres its items, which collapses an empty span to zero height.
+     Stretch is what makes these full-height columns rather than nothing. */
+  align-self: stretch;
+}
+.calendar-timeline-column.weekend { background: rgba(255, 255, 255, 0.055); }
+.calendar-timeline-column.today { background: rgba(255, 138, 61, 0.13); box-shadow: inset 0 0 0 1px rgba(255, 138, 61, 0.34); }
+
+.calendar-timeline-head.weekend { color: rgba(255, 255, 255, 0.22); }
+.calendar-timeline-head.today { color: var(--accent); }
+
+.calendar-timeline-name {
+  padding-right: 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-timeline-bar {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 1.65rem;
+  padding: 0 0.5rem;
+  border: 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.14s ease, box-shadow 0.14s ease;
+}
+
+.calendar-timeline-bar span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.calendar-timeline-bar:hover { filter: brightness(1.18); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.28); }
+.calendar-timeline-bar:focus-visible { outline: 2px solid rgba(255, 176, 120, 0.85); outline-offset: 2px; }
+
+@media (max-width: 720px) {
+  /* The five-column job row stops fitting; drop to name + figures and let the
+     rest wrap under it. */
+  .calendar-agenda-job { grid-template-columns: 4.6rem minmax(0, 1fr); row-gap: 0.35rem; }
+  .calendar-agenda-badge,
+  .calendar-agenda-figures { grid-column: 2; }
+  /* On its own row here, so it can wrap and keep the whole status rather than
+     ellipsising to "Invoice sent · Awaiti…". */
+  .calendar-agenda-badge { white-space: normal; overflow: visible; }
+  .calendar-agenda-crew { display: none; }
+  .calendar-view-trigger-text small { display: none; }
+}
+
 /* The crew button sits OVER the chip's top-right rather than beside it. In a
    117px month cell it was taking 20px of flow — nearly a third of what was
    left for text after padding — which is why the money was being cut off. It

@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import SaveButton from '@/components/save-button';
+import FloatingPanel from '@/components/floating-panel';
 import CalendarDaysGear from './CalendarDaysGear';
 import { setCalendarWeekendAction } from '../view-actions';
 import type { WeekendDays } from '@/lib/dashboard-views';
@@ -15,7 +16,74 @@ import { formatJobSchedule, formatJobTime } from '@/lib/jobs';
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-type CalendarView = 'month' | 'week' | 'year';
+type CalendarView = 'month' | 'week' | 'year' | 'agenda' | 'timeline';
+
+// Five views is past what a segmented control can hold without shrinking every
+// label to an abbreviation, so the switcher is a menu with room to say what
+// each view is actually for.
+const VIEW_OPTIONS: Array<{ id: CalendarView; label: string; hint: string; icon: string }> = [
+  { id: 'month', label: 'Month', hint: 'The full grid, one cell a day', icon: 'M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5v12a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-12ZM4 10h16M9.5 10v10M14.5 10v10M4 15h16' },
+  { id: 'week', label: 'Week', hint: 'One week, taller cells', icon: 'M3.5 8.5h17v7h-17zM8.5 8.5v7M13 8.5v7M17 8.5v7' },
+  { id: 'agenda', label: 'Agenda', hint: 'Just the days with work on them', icon: 'M4.5 7h2M10 7h9.5M4.5 12h2M10 12h9.5M4.5 17h2M10 17h9.5' },
+  { id: 'timeline', label: 'Timeline', hint: 'One bar per job across the month', icon: 'M4 7.5h9M7 12h12M5 16.5h7' },
+  { id: 'year', label: '12 months', hint: 'The year at a glance', icon: 'M4.5 5h6v6h-6zM13.5 5h6v6h-6zM4.5 13h6v6h-6zM13.5 13h6v6h-6z' },
+];
+
+function CalendarViewMenu({ value, onChange }: { value: CalendarView; onChange: (next: CalendarView) => void }) {
+  const [open, setOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const current = VIEW_OPTIONS.find((option) => option.id === value) ?? VIEW_OPTIONS[0];
+
+  return (
+    <div className="calendar-view-menu">
+      <button
+        ref={buttonRef}
+        type="button"
+        className={`calendar-view-trigger${open ? ' open' : ''}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <svg className="calendar-view-trigger-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d={current.icon} />
+        </svg>
+        <span className="calendar-view-trigger-text">
+          <small>View</small>
+          <strong>{current.label}</strong>
+        </span>
+        <svg className="calendar-view-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      <FloatingPanel anchorRef={buttonRef} open={open} onClose={() => setOpen(false)} className="calendar-view-panel" width={264}>
+        <div role="menu" aria-label="Calendar view">
+          {VIEW_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              role="menuitemradio"
+              aria-checked={option.id === value}
+              className={`calendar-view-option${option.id === value ? ' active' : ''}`}
+              onClick={() => {
+                onChange(option.id);
+                setOpen(false);
+              }}
+            >
+              <svg className="calendar-view-option-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d={option.icon} />
+              </svg>
+              <span className="calendar-view-option-text">
+                <strong>{option.label}</strong>
+                <small>{option.hint}</small>
+              </span>
+              {option.id === value ? <span className="calendar-view-option-tick" aria-hidden="true">✓</span> : null}
+            </button>
+          ))}
+        </div>
+      </FloatingPanel>
+    </div>
+  );
+}
 
 export type CalendarCell = { day: number; dateKey: string } | null;
 
@@ -183,6 +251,54 @@ export default function ScheduleCalendar({
 
   const visibleWeeks = useMemo(() => calendarView === 'week' ? [weekAtAGlance] : weeks, [calendarView, weekAtAGlance, weeks]);
 
+  // Every real day in the month, in order. Padding cells are null, so filtering
+  // them out leaves exactly the month — which is what both new views count in.
+  const monthDays = useMemo(
+    () => weeks.flat().filter((cell): cell is Exclude<CalendarCell, null> => Boolean(cell)),
+    [weeks],
+  );
+
+  // Agenda: only the days that have work on them. A month of empty rows is the
+  // month grid with extra scrolling.
+  const agendaDays = useMemo(
+    () =>
+      monthDays
+        .map((cell) => ({ cell, dayJobs: [...(jobsByDate.get(cell.dateKey) ?? [])].sort(compareCalendarJobs) }))
+        .filter((entry) => entry.dayJobs.length > 0),
+    [monthDays, jobsByDate],
+  );
+
+  // Timeline: one row per JOB, not per occurrence. `jobs` arrives already
+  // expanded to a row per day, so this folds those back into a first and last
+  // column — which is the only view that shows a multi-day job as one thing.
+  const timelineRows = useMemo(() => {
+    const columnByDate = new Map(monthDays.map((cell, index) => [cell.dateKey, index]));
+    const byJob = new Map<string, { job: CalendarJob; first: number; last: number }>();
+
+    for (const job of jobs) {
+      const column = columnByDate.get(job.scheduled_for);
+      // A job running in from the previous month has occurrences outside this
+      // grid; the ones inside it still place the bar correctly.
+      if (column === undefined) continue;
+      const row = byJob.get(job.id);
+      if (!row) {
+        byJob.set(job.id, { job, first: column, last: column });
+        continue;
+      }
+      // Keep the earliest occurrence as the row's representative so its time,
+      // and the popover it opens, belong to day one.
+      if (column < row.first) {
+        row.first = column;
+        row.job = job;
+      }
+      if (column > row.last) row.last = column;
+    }
+
+    return [...byJob.values()].sort(
+      (a, b) => a.first - b.first || b.last - b.first - (a.last - a.first) || a.job.client_name.localeCompare(b.job.client_name),
+    );
+  }, [jobs, monthDays]);
+
   // Hiding a column hides any work booked on it. Silently dropping a scheduled
   // job off the calendar is how you miss it, so the gear says when that's
   // happening in the month you're looking at.
@@ -307,13 +423,138 @@ export default function ScheduleCalendar({
           looking at. */}
       <div className="calendar-toolbar">
         {monthNav}
-        <div className="calendar-view-toggle" aria-label="Calendar view">
-          <button type="button" className={calendarView === 'month' ? 'active' : ''} onClick={() => setCalendarView('month')}>Month</button>
-          <button type="button" className={calendarView === 'week' ? 'active' : ''} onClick={() => setCalendarView('week')}>Week</button>
-          <button type="button" className={calendarView === 'year' ? 'active' : ''} onClick={() => setCalendarView('year')}>12 months</button>
-        </div>
+        <CalendarViewMenu value={calendarView} onChange={setCalendarView} />
       </div>
-      {calendarView === 'year' ? (
+      {calendarView === 'agenda' ? (
+        agendaDays.length === 0 ? (
+          <p className="calendar-view-empty">Nothing scheduled this month.</p>
+        ) : (
+          <ol className="calendar-agenda">
+            {agendaDays.map(({ cell, dayJobs }) => (
+              <li className={`calendar-agenda-day${cell.dateKey === todayKey ? ' today' : ''}`} key={cell.dateKey}>
+                <div className="calendar-agenda-date">
+                  <small>{WEEKDAY_LABELS[new Date(`${cell.dateKey}T00:00:00`).getDay()]}</small>
+                  <strong>{cell.day}</strong>
+                  {fullSet.has(cell.dateKey) ? <span className="calendar-agenda-flag" title="Daily capacity reached">Full</span> : null}
+                </div>
+                <div className="calendar-agenda-jobs">
+                  {dayJobs.map((job) => {
+                    const assignedMembers = (assignments[job.id] ?? [])
+                      .map((id) => crew.find((member) => member.id === id))
+                      .filter((member): member is CrewOption => Boolean(member));
+                    return (
+                      <button
+                        type="button"
+                        key={job.occurrence_key}
+                        className={`calendar-agenda-job status-${job.status} ${getBandColorClass(job.id)}`}
+                        onClick={() => openJobActions(job.occurrence_key)}
+                      >
+                        <span className="calendar-agenda-when">{formatJobTime(job.scheduled_time) ?? 'No set time'}</span>
+                        <span className="calendar-agenda-who">
+                          <strong>
+                            {job.confirmed ? <span className="calendar-confirm-tick" title="Confirmed by client">✓</span> : null}
+                            {job.client_name}
+                          </strong>
+                          {job.city_label ? <small>{job.city_label}</small> : null}
+                        </span>
+                        {/* The row has the width the month cell never had, so
+                            the status label can be spelled out instead of
+                            ellipsised to "WORK S…". */}
+                        <span className={`calendar-agenda-badge status-${job.badge_tone}`} title={job.badge_title ?? undefined}>{job.badge_label}</span>
+                        <span className="calendar-agenda-figures">
+                          {job.value_label ? <em>{job.value_label}</em> : null}
+                          {job.hours_label ? <i>{job.hours_label}</i> : null}
+                        </span>
+                        <span className="calendar-agenda-crew">
+                          {assignedMembers.length > 0 ? assignedMembers.map((member) => initials(member.name)).join(' ') : '—'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </li>
+            ))}
+          </ol>
+        )
+      ) : calendarView === 'timeline' ? (
+        timelineRows.length === 0 ? (
+          <p className="calendar-view-empty">Nothing scheduled this month.</p>
+        ) : (
+          <div className="calendar-timeline-scroll">
+            <div
+              className="calendar-timeline"
+              style={{
+                gridTemplateColumns: `minmax(140px, 180px) repeat(${monthDays.length}, minmax(26px, 1fr))`,
+                minWidth: 180 + monthDays.length * 26,
+              }}
+            >
+              {/* Full-height column tints, drawn first so the bars paint over
+                  them. Without something to count against, a bar 20 columns
+                  along is impossible to place by eye. Explicit end line rather
+                  than -1, which resolves against explicit rows this grid
+                  doesn't have. */}
+              {monthDays.map((cell, dayIndex) => {
+                const weekday = new Date(`${cell.dateKey}T00:00:00`).getDay();
+                const isToday = cell.dateKey === todayKey;
+                if (!isToday && weekday !== 0 && weekday !== 6) return null;
+                return (
+                  <span
+                    key={`column-${cell.dateKey}`}
+                    aria-hidden="true"
+                    className={`calendar-timeline-column${isToday ? ' today' : ' weekend'}`}
+                    style={{ gridColumn: dayIndex + 2, gridRow: `1 / ${timelineRows.length + 2}` }}
+                  />
+                );
+              })}
+              <span className="calendar-timeline-corner" style={{ gridRow: 1 }}>Job</span>
+              {monthDays.map((cell, dayIndex) => {
+                const weekday = new Date(`${cell.dateKey}T00:00:00`).getDay();
+                return (
+                  <span
+                    key={cell.dateKey}
+                    style={{ gridRow: 1, gridColumn: dayIndex + 2 }}
+                    className={`calendar-timeline-head${cell.dateKey === todayKey ? ' today' : ''}${weekday === 0 || weekday === 6 ? ' weekend' : ''}`}
+                  >
+                    {cell.day}
+                  </span>
+                );
+              })}
+              {timelineRows.map(({ job, first, last }, rowIndex) => {
+                const span = last - first + 1;
+                return (
+                  // Both cells pinned to the same explicit row. Auto-placement
+                  // won't do it: the bar has an explicit column, and an
+                  // explicitly-placed item drops into the first row it FITS
+                  // rather than the one its sibling name just landed in — which
+                  // scattered names and bars onto different rows entirely.
+                  <Fragment key={job.id}>
+                    <span className="calendar-timeline-name" style={{ gridRow: rowIndex + 2, gridColumn: 1 }} title={job.client_name}>
+                      {job.client_name}
+                    </span>
+                    <button
+                      type="button"
+                      className={`calendar-timeline-bar status-${job.status} ${getBandColorClass(job.id)}`}
+                      // +2, not +1: column 1 is the job name.
+                      style={{ gridRow: rowIndex + 2, gridColumn: `${first + 2} / span ${span}` }}
+                      title={[job.client_name, `${span} day${span === 1 ? '' : 's'}`, job.badge_label, job.value_label, job.hours_label, job.city_label].filter(Boolean).join(' · ')}
+                      onClick={() => openJobActions(job.occurrence_key)}
+                    >
+                      {/* A one-day bar is ~26px. Anything written in it comes
+                          out as "8. P…", so below three days the bar is just a
+                          block and the label lives in the tooltip. */}
+                      {span >= 3 ? (
+                        <span>
+                          {span} days{job.value_label ? ` · ${job.value_label}` : ''}
+                        </span>
+                      ) : null}
+                    </button>
+                  </Fragment>
+                );
+              })}
+            </div>
+          </div>
+        )
+      ) : calendarView === 'year' ? (
         <div className="calendar-year-grid">
           {twelveMonthSummary.map((month) => (
             <article className="calendar-year-card" key={month.monthKey}>
