@@ -12056,3 +12056,9 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   .client-focus-row:hover, .client-focus-row.is-selected { transform: none; }
   .client-focus-pane, .client-modal, .client-modal-backdrop { animation: none; }
 }
+
+/* The Crew & Labor Review layout pins its action rail beside a nine-column
+   table. At the standard 1100px cap that left roughly 650px for a table that
+   needs 840, pushing Payment and Payment date off the right edge — the two
+   columns the screen exists to show. Only this one layout opts out. */
+.wide-shell.crew-wide { max-width: 1500px; }

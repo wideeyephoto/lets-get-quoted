@@ -14,12 +14,15 @@ import {
   toDateKey,
 } from '@/lib/labor';
 import {
+  comparePeriods,
+  hoursByWeekday,
   payPeriodState,
   periodPrimaryAction,
   periodProgress,
   summarizePayTotals,
   type CrewPayRow,
 } from '@/lib/crew-pay';
+import { CREW_VIEW_COOKIE, normalizeCrewView } from '@/lib/dashboard-views';
 import { listPayEvents, loadCrewPayContext } from '@/lib/crew-pay-data';
 import { laborTotalsByCrew, listLaborEntries } from '@/lib/labor-data';
 import { LABOR_SETTINGS_COOKIE, normalizeLaborSettings } from '@/lib/labor-settings';
@@ -197,6 +200,27 @@ export default async function CrewLaborPage({
       : null;
 
   const payTotals = pay ? summarizePayTotals(pay.rows) : null;
+  const crewView = normalizeCrewView(cookies().get(CREW_VIEW_COOKIE)?.value);
+
+  // The period before this one, for the "vs last period" comparison and the
+  // second series on the hours chart. Only the grouped layout shows either, so
+  // this is the one read that is paid for a view rather than for the tab.
+  const previousPeriod =
+    tab === 'hours' && crewView === 'grouped'
+      ? resolvePayPeriod(
+          searchParams.period ? normalizePeriodMode(searchParams.period) : settings.periodMode,
+          normalizeOffset(searchParams.offset) - 1,
+          { from: searchParams.from, to: searchParams.to },
+        )
+      : null;
+  const previousEntries = previousPeriod
+    ? await listLaborEntries(supabase, accountId, {
+        startIso: previousPeriod.startIso,
+        endIso: previousPeriod.endIso,
+        crewId: searchParams.crew ?? null,
+      })
+    : [];
+  const previousPay = previousEntries.reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0);
   const periodState =
     pay && payTotals ? payPeriodState(pay.rows, payTotals, period, { reopened: Boolean(pay.periodRow?.reopenedAt) }) : null;
   const payEvents = pay?.periodRow ? await listPayEvents(supabase, accountId, { periodId: pay.periodRow.id, limit: 60 }) : [];
@@ -229,7 +253,10 @@ export default async function CrewLaborPage({
   };
 
   return (
-    <main className="wide-shell workspace-shell">
+    // Review pins the actions beside the table, which only fits if the shell
+    // stops capping content at 1100px. Driven by the cookie so the width is
+    // right on first paint; picking a view refreshes to pick the change up.
+    <main className={`wide-shell workspace-shell${tab === 'hours' && crewView === 'rail' ? ' crew-wide' : ''}`}>
       <section className="panel workspace-section-card">
         <header className={styles.pageHead}>
           <div>
@@ -292,6 +319,13 @@ export default async function CrewLaborPage({
             showTodayColumn={periodHasToday}
             todayKey={todayKey}
             progress={periodProgress(period, now)}
+            initialView={crewView}
+            comparison={payTotals ? comparePeriods(payTotals.estimatedPay, previousPay) : null}
+            hoursThisPeriod={hoursByWeekday(pay.rows.flatMap((row) => row.entries))}
+            hoursLastPeriod={hoursByWeekday(
+              previousEntries.map((entry) => ({ loggedAt: entry.created_at, hours: Number(entry.hours) || 0 })),
+            )}
+            previousPayLabel={formatMoney(previousPay)}
             settings={settings}
             timeClockMode={timeClockMode}
             timeClockAvailable={timeClockAvailable}

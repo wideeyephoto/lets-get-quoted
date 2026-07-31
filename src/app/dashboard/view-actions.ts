@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
-import { CALENDAR_WEEKEND_COOKIE, CLIENTS_VIEW_COOKIE, JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeClientsView, normalizeJobsView, normalizeMapTheme, normalizeMapView, serializeWeekendDays, type ClientsView, type JobsView, type MapSurface, type MapTheme, type MapView, type WeekendDays } from '@/lib/dashboard-views';
+import { CALENDAR_WEEKEND_COOKIE, CLIENTS_VIEW_COOKIE, CREW_VIEW_COOKIE, JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeClientsView, normalizeCrewView, normalizeJobsView, normalizeMapTheme, normalizeMapView, serializeWeekendDays, type ClientsView, type CrewView, type JobsView, type MapSurface, type MapTheme, type MapView, type WeekendDays } from '@/lib/dashboard-views';
 
 const YEAR = 60 * 60 * 24 * 365;
 
@@ -35,4 +35,10 @@ export async function setCalendarWeekendAction(days: WeekendDays) {
 export async function setClientsViewAction(view: ClientsView) {
   await requireOwnerContext();
   cookies().set(CLIENTS_VIEW_COOKIE, normalizeClientsView(view), { path: '/', maxAge: YEAR, sameSite: 'lax' });
+}
+
+// Remember the owner's chosen Hours & pay layout (Table / Grouped / Rail).
+export async function setCrewViewAction(view: CrewView) {
+  await requireOwnerContext();
+  cookies().set(CREW_VIEW_COOKIE, normalizeCrewView(view), { path: '/', maxAge: YEAR, sameSite: 'lax' });
 }

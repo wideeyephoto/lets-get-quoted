@@ -1527,3 +1527,246 @@
 @media (prefers-reduced-motion: reduce) {
   .payRow, .periodStat { transition: none; }
 }
+
+/* ==========================================================================
+   Hours & pay — the two extra layouts behind the view gear.
+
+   Table (default) is the list. Grouped answers "what is left before I can pay
+   everyone" by putting each exception in its own section with the action that
+   clears it on the heading. Review keeps the table but pins the actions beside
+   it instead of below.
+   ========================================================================== */
+
+.hpHeadRight { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+
+/* --- Review: the rail moves alongside ---
+   The shell caps content near 976px, which is why the rail sits under the
+   table by default. This layout only earns its keep once there is genuinely
+   room for both, so it stays stacked until there is. */
+/* 1600px, measured rather than guessed: at 1500 the table column came out at
+   801px against a table needing 839, so the payment columns went back behind a
+   scrollbar. Below this the rail stacks under the table exactly as the Table
+   layout does — the two views only diverge once the screen can actually hold
+   both, which is better than a Review layout that hides what it exists to show. */
+@media (min-width: 1600px) {
+  /* 17rem, not 19: it leaves 60px of headroom instead of 4. */
+  .payLayout[data-view='rail'] {
+    grid-template-columns: minmax(0, 1fr) 17rem;
+    align-items: start;
+  }
+  .payLayout[data-view='rail'] .payRail { grid-template-columns: minmax(0, 1fr); position: sticky; top: 0.5rem; }
+}
+@media (min-width: 1800px) {
+  .payLayout[data-view='rail'] { grid-template-columns: minmax(0, 1fr) 19rem; }
+}
+
+/* --- Grouped: the period at a glance --- */
+.groupTopRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 0.9rem;
+}
+
+.compareCard,
+.breakdownCard,
+.chartCard,
+.countsCard {
+  display: grid;
+  align-content: start;
+  gap: 0.3rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(148, 176, 214, 0.2);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.compareCard > small,
+.breakdownCard > small,
+.chartHead small,
+.countsCard > small {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgba(147, 164, 184, 0.95);
+}
+.compareCard strong { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; color: #7fe0b2; font-variant-numeric: tabular-nums; }
+
+.compareDelta { font-style: normal; font-size: 0.82rem; font-weight: 750; }
+.compareDelta[data-dir='up'] { color: #7fe0b2; }
+.compareDelta[data-dir='down'] { color: #ffb4a7; }
+.compareDelta[data-dir='flat'] { color: rgba(147, 164, 184, 0.95); }
+.compareWas { font-size: 0.74rem; color: rgba(147, 164, 184, 0.9); font-variant-numeric: tabular-nums; }
+
+/* --- the weekday chart --- */
+.chartHead { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; }
+.chartLegend { display: flex; align-items: center; gap: 0.3rem; font-size: 0.7rem; color: rgba(147, 164, 184, 0.95); font-variant-numeric: tabular-nums; }
+.chartKeyNow, .chartKeyWas { width: 0.55rem; height: 0.55rem; border-radius: 2px; }
+.chartKeyNow { background: #ff8a3d; }
+.chartKeyWas { background: rgba(148, 176, 214, 0.55); margin-left: 0.4rem; }
+
+.chartBars { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.25rem; margin-top: 0.4rem; }
+.chartDay { display: grid; gap: 0.25rem; justify-items: center; }
+.chartPair { display: flex; align-items: flex-end; gap: 2px; height: 3.6rem; width: 100%; justify-content: center; }
+.chartNow, .chartWas { width: 40%; min-height: 2px; border-radius: 3px 3px 0 0; }
+.chartNow { background: linear-gradient(180deg, #ffb27d, #ff7a21); }
+.chartWas { background: rgba(148, 176, 214, 0.4); }
+.chartDay small { font-size: 0.62rem; color: rgba(147, 164, 184, 0.9); }
+
+/* --- status counts --- */
+.countsCard ul { list-style: none; margin: 0.2rem 0 0; padding: 0; display: grid; gap: 0.1rem; }
+.countsCard li { display: grid; }
+.countsCard button {
+  display: grid;
+  grid-template-columns: 0.55rem minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.22rem 0.2rem;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: #cbd6e4;
+  font: inherit;
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: pointer;
+}
+.countsCard button:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
+.countsCard button span { width: 0.55rem; height: 0.55rem; border-radius: 50%; }
+.countsCard button span[data-tone='alert'] { background: #ff8f8f; }
+.countsCard button span[data-tone='warn'] { background: #ff8a3d; }
+.countsCard button span[data-tone='ok'] { background: #48c78e; }
+.countsCard button span[data-tone='muted'] { background: rgba(148, 176, 214, 0.5); }
+.countsCard button b { font-variant-numeric: tabular-nums; }
+.countsCard p {
+  margin: 0.45rem 0 0;
+  padding-top: 0.4rem;
+  border-top: 1px solid rgba(148, 176, 214, 0.18);
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: rgba(147, 164, 184, 0.95);
+}
+
+/* --- the sections --- */
+.groupWrap { display: grid; gap: 0.7rem; }
+
+.group {
+  border: 1px solid rgba(148, 176, 214, 0.2);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+  overflow: hidden;
+}
+/* The stripe is the only thing carrying tone, and every section says its name
+   in words beside it. */
+.group[data-tone='alert'] { box-shadow: inset 3px 0 0 #ff8f8f; }
+.group[data-tone='warn'] { box-shadow: inset 3px 0 0 #ff8a3d; }
+.group[data-tone='ok'] { box-shadow: inset 3px 0 0 #48c78e; }
+.group[data-tone='muted'] { box-shadow: inset 3px 0 0 rgba(148, 176, 214, 0.5); }
+
+.groupHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  padding: 0.7rem 0.9rem;
+}
+.groupTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.groupTitle:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.75); outline-offset: 3px; border-radius: 6px; }
+.groupTitle strong { font-size: 0.95rem; font-weight: 750; }
+.groupTitle small { font-size: 0.78rem; color: rgba(147, 164, 184, 0.95); font-variant-numeric: tabular-nums; }
+.groupDot { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: currentColor; opacity: 0.75; }
+.group[data-tone='alert'] .groupDot { color: #ff8f8f; }
+.group[data-tone='warn'] .groupDot { color: #ff8a3d; }
+.group[data-tone='ok'] .groupDot { color: #48c78e; }
+.group[data-tone='muted'] .groupDot { color: rgba(148, 176, 214, 0.6); }
+
+.groupCount {
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 176, 214, 0.3);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.groupActions { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.groupChevron { color: rgba(147, 164, 184, 0.9); font-size: 0.85rem; }
+.groupEmpty { margin: 0; padding: 0 0.9rem 0.9rem; font-size: 0.82rem; color: rgba(147, 164, 184, 0.9); }
+
+.groupGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 0.5rem;
+  padding: 0 0.9rem 0.9rem;
+}
+
+.memberCard {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.65rem 0.7rem;
+  border: 1px solid rgba(148, 176, 214, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  transition: border-color 0.14s ease, background 0.14s ease, transform 0.14s ease;
+}
+.memberCard:hover { border-color: rgba(255, 122, 41, 0.4); transform: translateY(-2px); }
+.memberCard[data-selected] { border-color: rgba(255, 122, 33, 0.7); background: rgba(255, 122, 33, 0.09); }
+
+.memberTop { display: grid; grid-template-columns: auto auto minmax(0, 1fr) max-content; align-items: center; gap: 0.45rem; }
+.memberTop input { width: 1.05rem; height: 1.05rem; accent-color: #ff7a21; cursor: pointer; }
+.memberCheckSpacer { width: 1.05rem; }
+
+.memberName {
+  display: grid;
+  gap: 0.02rem;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.memberName strong { font-size: 0.86rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.memberName small { font-size: 0.68rem; color: rgba(147, 164, 184, 0.92); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.memberName:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.75); outline-offset: 2px; border-radius: 6px; }
+
+.memberHours { display: grid; justify-items: end; gap: 0.02rem; text-align: right; }
+.memberHours strong { font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+.memberHours small { font-size: 0.58rem; letter-spacing: 0.07em; text-transform: uppercase; color: rgba(147, 164, 184, 0.9); }
+.memberHours b { font-size: 0.86rem; font-weight: 800; color: #ffb27d; font-variant-numeric: tabular-nums; }
+
+.memberFoot { display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .memberCard { transition: none; }
+  .memberCard:hover { transform: none; }
+}
+
+@media (max-width: 700px) {
+  .groupGrid { grid-template-columns: minmax(0, 1fr); padding: 0 0.6rem 0.7rem; }
+  .groupHead { padding: 0.6rem; }
+  .chartPair { height: 3rem; }
+}
+
+/* Grouped prints the same figures in its own top row, so the card keeps only
+   the period identity and the one action. Two copies of the same total on one
+   screen is one too many. */
+.periodCard[data-view='grouped'] { grid-template-columns: minmax(14rem, 1fr) minmax(11rem, auto); }
+.periodCard[data-view='grouped'] .periodStats { display: none; }

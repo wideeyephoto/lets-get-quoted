@@ -4,6 +4,9 @@ import {
   buildPayCsv,
   buildPayRows,
   canTransition,
+  comparePeriods,
+  groupCrewRows,
+  hoursByWeekday,
   formatKeyDay,
   formatKeyRange,
   hoursLabel,
@@ -334,5 +337,66 @@ describe('export', () => {
   it('escapes a name that would otherwise break the columns', () => {
     const rows = rowsFor([entry({ crew_name: 'Torres, Mike "Big Mike"' })]);
     expect(buildPayCsv(rows, 'Jul 26 – Aug 1').split('\n')[1]).toContain('"Torres, Mike ""Big Mike"""');
+  });
+});
+
+describe('grouping the crew by what needs doing', () => {
+  it('is a partition — everybody lands in exactly one bucket', () => {
+    const rows = rowsFor([
+      entry(),
+      entry({ id: 'e2', crew_id: 'c2', crew_name: 'Needs sorting', rate: 0, amount: 0 }),
+      entry({ id: 'e3', crew_id: 'c3', crew_name: 'Already paid' }),
+    ], [record({ id: 'r3', crewId: 'c3', crewName: 'Already paid', status: 'paid', paidAmount: 336, paidAt: LOGGED, paymentDate: '2026-07-31' })]);
+    const groups = groupCrewRows(rows);
+    const total = groups.needs_review.length + groups.unpaid.length + groups.paid.length + groups.no_hours.length;
+    expect(total).toBe(rows.length);
+    expect(groups.needs_review.map((row) => row.name)).toEqual(['Needs sorting']);
+    expect(groups.paid.map((row) => row.name)).toEqual(['Already paid']);
+    expect(groups.unpaid.map((row) => row.name)).toEqual(['Mike Torres']);
+  });
+
+  // Somebody with a problem on their hours isn't waiting to be paid, they're
+  // waiting to be sorted out — and the tally beside the sections has to agree.
+  it('counts a blocked person as needing review, not as unpaid', () => {
+    const rows = rowsFor([entry({ rate: 0, amount: 0 })]);
+    const groups = groupCrewRows(rows);
+    expect(groups.needs_review).toHaveLength(1);
+    expect(groups.unpaid).toHaveLength(0);
+  });
+});
+
+describe('comparing with the period before', () => {
+  it('reports the change as a percentage', () => {
+    expect(comparePeriods(1100, 1000).label).toBe('+10% vs last period');
+    expect(comparePeriods(900, 1000).label).toBe('-10% vs last period');
+    expect(comparePeriods(1100, 1000).deltaPay).toBe(100);
+  });
+
+  // A percentage against zero is infinity dressed up as a statistic.
+  it('refuses to divide by an empty period', () => {
+    expect(comparePeriods(500, 0).deltaPercent).toBeNull();
+    expect(comparePeriods(500, 0).label).toBe('No hours last period');
+    expect(comparePeriods(0, 0).label).toBe('Nothing either period');
+  });
+});
+
+describe('hours by weekday', () => {
+  it('always returns seven buckets so two periods line up', () => {
+    expect(hoursByWeekday([])).toEqual([0, 0, 0, 0, 0, 0, 0]);
+  });
+
+  it('buckets by the day the hours were logged on', () => {
+    // 26 Jul 2026 is a Sunday, 27th a Monday.
+    const buckets = hoursByWeekday([
+      { loggedAt: new Date(2026, 6, 26, 9).toISOString(), hours: 4 },
+      { loggedAt: new Date(2026, 6, 27, 9).toISOString(), hours: 8 },
+      { loggedAt: new Date(2026, 6, 27, 14).toISOString(), hours: 2 },
+    ]);
+    expect(buckets[0]).toBe(4);
+    expect(buckets[1]).toBe(10);
+  });
+
+  it('ignores an unparseable timestamp rather than throwing', () => {
+    expect(hoursByWeekday([{ loggedAt: 'not a date', hours: 5 }])).toEqual([0, 0, 0, 0, 0, 0, 0]);
   });
 });

@@ -61,3 +61,13 @@ export function normalizeClientsView(value: unknown): ClientsView {
   // explicit choice is a cookie, so nobody gets moved off what they picked.
   return CLIENTS_VIEWS.includes(value as ClientsView) ? (value as ClientsView) : 'list';
 }
+
+// Which Crew & Labor "Hours & pay" layout the owner last used.
+export const CREW_VIEW_COOKIE = 'lgq_crew_view';
+export type CrewView = 'table' | 'grouped' | 'rail';
+export const CREW_VIEWS: CrewView[] = ['table', 'grouped', 'rail'];
+export function normalizeCrewView(value: unknown): CrewView {
+  // Table is what this tab already is, so an owner who never opens the gear
+  // sees exactly what they saw yesterday.
+  return CREW_VIEWS.includes(value as CrewView) ? (value as CrewView) : 'table';
+}

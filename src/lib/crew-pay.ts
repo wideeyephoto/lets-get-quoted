@@ -654,6 +654,78 @@ export function buildPayCsv(rows: CrewPayRow[], rangeLabel: string): string {
   return grid.map((line) => line.map(csvCell).join(',')).join('\n');
 }
 
+// -- Grouping ----------------------------------------------------------------
+
+export type CrewGroups = { needs_review: CrewPayRow[]; unpaid: CrewPayRow[]; paid: CrewPayRow[]; no_hours: CrewPayRow[] };
+
+/**
+ * The crew split by what needs doing to them.
+ *
+ * A PARTITION — everybody lands in exactly one bucket, so the four counts add
+ * up to the crew. That matters because the same screen shows both the sections
+ * and a tally beside them: if "Unpaid" meant "not yet paid" in one place and
+ * "unpaid and ready to go" in the other, the two would disagree by however many
+ * people still need reviewing, on a screen about money.
+ *
+ * Needs review wins over unpaid deliberately: somebody with a problem on their
+ * hours isn't waiting to be paid, they're waiting to be sorted out.
+ */
+export function groupCrewRows(rows: CrewPayRow[]): CrewGroups {
+  const groups: CrewGroups = { needs_review: [], unpaid: [], paid: [], no_hours: [] };
+  for (const row of rows) {
+    if (row.hours === 0) groups.no_hours.push(row);
+    else if (row.review === 'needs_review' || row.blockers.length > 0) groups.needs_review.push(row);
+    else if (row.payment === 'paid') groups.paid.push(row);
+    else groups.unpaid.push(row);
+  }
+  return groups;
+}
+
+// -- Comparison with the period before ---------------------------------------
+
+export const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/**
+ * Hours bucketed by the day of the week they were logged on.
+ *
+ * Seven buckets, always — a week with nothing on Sunday still has a Sunday, and
+ * a chart that drops empty days would make two periods impossible to compare
+ * side by side.
+ */
+export function hoursByWeekday(entries: Array<{ loggedAt: string; hours: number }>): number[] {
+  const buckets = [0, 0, 0, 0, 0, 0, 0];
+  for (const entry of entries) {
+    const date = new Date(entry.loggedAt);
+    if (Number.isNaN(date.getTime())) continue;
+    buckets[date.getDay()] += Number(entry.hours) || 0;
+  }
+  return buckets.map(round2);
+}
+
+export type PeriodComparison = {
+  /** Positive means this period is ahead of the one before it. */
+  deltaPay: number;
+  /** Percentage change, or null when the previous period had nothing to compare. */
+  deltaPercent: number | null;
+  label: string;
+};
+
+/**
+ * This period against the one before.
+ *
+ * A percentage against zero is infinity dressed up as a statistic, so a period
+ * following an empty one says "no hours last period" rather than "+100%".
+ */
+export function comparePeriods(currentPay: number, previousPay: number): PeriodComparison {
+  const deltaPay = round2(currentPay - previousPay);
+  if (previousPay <= 0) {
+    return { deltaPay, deltaPercent: null, label: previousPay === 0 && currentPay === 0 ? 'Nothing either period' : 'No hours last period' };
+  }
+  const deltaPercent = Math.round((deltaPay / previousPay) * 1000) / 10;
+  const sign = deltaPercent > 0 ? '+' : '';
+  return { deltaPay, deltaPercent, label: `${sign}${deltaPercent}% vs last period` };
+}
+
 // -- Audit -------------------------------------------------------------------
 
 export type PayEventAction =

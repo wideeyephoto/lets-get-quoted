@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode, type RefObject } from 'react';
 import Link from 'next/link';
 import { useFormState } from 'react-dom';
 import {
@@ -21,8 +21,10 @@ import {
   PAY_WARNING_SEVERITY,
   PERIOD_STATE_HELP,
   PERIOD_STATE_LABEL,
+  WEEKDAY_LABELS,
   UNDO_DISCLAIMER,
   buildPayCsv,
+  groupCrewRows,
   hoursLabel,
   markPeriodBlockedReason,
   payMoney,
@@ -30,6 +32,7 @@ import {
   type PayEvent,
   type PayPeriodState,
   type PeriodAction,
+  type PeriodComparison,
   type PeriodTotals,
 } from '@/lib/crew-pay';
 import { EXPORT_FORMAT_LABEL, ROUNDING_LABEL, type LaborSettings } from '@/lib/labor-settings';
@@ -48,6 +51,9 @@ import {
   undoPaidAction,
   type PayActionState,
 } from './pay-actions';
+import ViewGear, { type ViewOption } from '@/components/view-gear';
+import { setCrewViewAction } from '@/app/dashboard/view-actions';
+import type { CrewView } from '@/lib/dashboard-views';
 import { PaymentConfirmDialog, ReasonDialog } from './PaymentDialogs';
 import styles from './crew.module.css';
 
@@ -79,6 +85,21 @@ export type OpenShiftView = {
 type StatusFilter = 'all' | 'needs_review' | 'approved' | 'draft';
 type PaymentFilter = 'all' | 'unpaid' | 'sent' | 'paid';
 type SortKey = 'name' | 'hours' | 'pay' | 'review' | 'payment';
+
+const CREW_VIEW_OPTIONS: ViewOption<CrewView>[] = [
+  { id: 'table', label: 'Table', hint: 'Every crew member in one list' },
+  { id: 'grouped', label: 'Grouped', hint: 'Sections by what needs doing' },
+  { id: 'rail', label: 'Review', hint: 'Table with the actions pinned beside it' },
+];
+
+// The order the sections appear in is the order the work happens in: sort out
+// the exceptions, pay who's owed, then everything already settled.
+const GROUPS = [
+  { id: 'needs_review', label: 'Needs review', tone: 'alert' as const },
+  { id: 'unpaid', label: 'Unpaid', tone: 'warn' as const },
+  { id: 'paid', label: 'Paid', tone: 'ok' as const },
+  { id: 'no_hours', label: 'No hours', tone: 'muted' as const },
+];
 
 const REVIEW_RANK: Record<string, number> = { needs_review: 0, draft: 1, approved: 2 };
 const PAYMENT_RANK: Record<string, number> = { unpaid: 0, sent: 1, paid: 2 };
@@ -177,6 +198,11 @@ export default function HoursAndPay({
   timeClockMode,
   timeClockAvailable,
   openShifts,
+  initialView,
+  comparison,
+  hoursThisPeriod,
+  hoursLastPeriod,
+  previousPayLabel,
 }: {
   rows: CrewPayRow[];
   totals: PeriodTotals;
@@ -202,7 +228,35 @@ export default function HoursAndPay({
   timeClockMode: TimeClockMode;
   timeClockAvailable: boolean;
   openShifts: OpenShiftView[];
+  initialView: CrewView;
+  /** This period against the one before. Only the grouped layout shows it. */
+  comparison: PeriodComparison | null;
+  hoursThisPeriod: number[];
+  hoursLastPeriod: number[];
+  previousPayLabel: string;
 }) {
+  const [view, setView] = useState<CrewView>(initialView);
+  const [, startViewSave] = useTransition();
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  function pickView(next: CrewView) {
+    setView(next);
+    // Remembered for next time; the width below doesn't wait for it.
+    startViewSave(() => {
+      void setCrewViewAction(next).catch(() => {});
+    });
+  }
+
+  // Review needs a wider shell than the 1100px cap, and the shell is rendered
+  // by the page above this component. The server sets the class from the cookie
+  // so the first paint is right; this keeps it in step the moment the view
+  // changes, rather than making a layout change wait on a round trip.
+  useEffect(() => {
+    const main = document.querySelector('main.wide-shell');
+    if (!main) return;
+    main.classList.toggle('crew-wide', view === 'rail');
+    return () => main.classList.remove('crew-wide');
+  }, [view]);
   const [selected, setSelected] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('all');
@@ -234,6 +288,9 @@ export default function HoursAndPay({
   const busy = (kind: NonNullable<Armed>['kind']) => armed?.kind === kind;
 
   const byKey = useMemo(() => new Map(rows.map((row) => [rowKey(row), row])), [rows]);
+  // Shared with the grouped sections so the tally and the sections can never
+  // disagree about what "unpaid" means.
+  const groups = useMemo(() => groupCrewRows(rows), [rows]);
 
   // A toast that stays forever is a banner. This one says its piece and goes.
   useEffect(() => {
@@ -410,9 +467,14 @@ export default function HoursAndPay({
             Review crew hours, agree what they come to, and record who you&apos;ve paid for this period.
           </p>
         </div>
-        <span className={styles.periodStatus} data-status={periodState} title={PERIOD_STATE_HELP[periodState]}>
-          {PERIOD_STATE_LABEL[periodState]}
-        </span>
+        <div className={styles.hpHeadRight}>
+          <span className={styles.periodStatus} data-status={periodState} title={PERIOD_STATE_HELP[periodState]}>
+            {PERIOD_STATE_LABEL[periodState]}
+          </span>
+          {/* The same gear the Leads, Jobs, Schedule and Clients pages use, so
+              it's a control that's already learned. */}
+          <ViewGear views={CREW_VIEW_OPTIONS} activeView={view} onPickView={pickView} label="View" />
+        </div>
       </div>
 
       {/* Pay-period selector: arrows step whole periods, the select changes the
@@ -492,7 +554,7 @@ export default function HoursAndPay({
       ) : null}
 
       {/* --- the pay period, and the one thing to do with it --- */}
-      <section className={styles.periodCard} aria-label="Pay period summary">
+      <section className={styles.periodCard} data-view={view} aria-label="Pay period summary">
         <div className={styles.periodCardMain}>
           <div className={styles.periodCardHead}>
             <small>Pay period</small>
@@ -595,6 +657,63 @@ export default function HoursAndPay({
           </div>
         ) : null}
       </section>
+
+      {/* Grouped opens with the shape of the period rather than the list: what
+          it comes to, how that compares with last time, where it sits by
+          payment status, and which days the hours landed on. */}
+      {view === 'grouped' ? (
+        <div className={styles.groupTopRow}>
+          <div className={styles.compareCard}>
+            <small>Total est. pay</small>
+            <strong>{payMoney(totals.estimatedPay)}</strong>
+            {comparison ? (
+              <em
+                className={styles.compareDelta}
+                data-dir={comparison.deltaPercent === null ? 'flat' : comparison.deltaPercent >= 0 ? 'up' : 'down'}
+              >
+                {comparison.label}
+              </em>
+            ) : null}
+            <span className={styles.compareWas}>{previousPayLabel} last period</span>
+          </div>
+
+          <div className={styles.breakdownCard}>
+            <small>Pay status breakdown</small>
+            <PayDonut totals={totals} onSlice={(payment) => applyFilter({ payment, status: 'all', flagged: false })} />
+          </div>
+
+          <HoursChart current={hoursThisPeriod} previous={hoursLastPeriod} />
+
+          <div className={styles.countsCard}>
+            <small>Status counts</small>
+            <ul>
+              <li>
+                <button type="button" onClick={() => applyFilter({ status: 'needs_review', payment: 'all', flagged: false })}>
+                  <span data-tone="alert" />Needs review<b>{groups.needs_review.length}</b>
+                </button>
+              </li>
+              <li>
+                <button type="button" onClick={() => applyFilter({ status: 'all', payment: 'unpaid', flagged: false })}>
+                  <span data-tone="warn" />Unpaid<b>{groups.unpaid.length}</b>
+                </button>
+              </li>
+              <li>
+                <button type="button" onClick={() => applyFilter({ status: 'all', payment: 'paid', flagged: false })}>
+                  <span data-tone="ok" />Paid<b>{groups.paid.length}</b>
+                </button>
+              </li>
+              <li>
+                <button type="button" onClick={() => applyFilter({ status: 'all', payment: 'all', flagged: false })}>
+                  <span data-tone="muted" />No hours<b>{groups.no_hours.length}</b>
+                </button>
+              </li>
+            </ul>
+            <p>
+              Total crew members <b>{totals.crewCount}</b>
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       {!payAvailable ? (
         <p className={styles.exportBlocked}>
@@ -727,7 +846,7 @@ export default function HoursAndPay({
           </div>
         </div>
       ) : (
-        <div className={styles.payLayout}>
+        <div className={styles.payLayout} data-view={view}>
           <div className={styles.payMain}>
             {/* --- toolbar --- */}
             <div className={styles.payToolbar}>
@@ -797,8 +916,31 @@ export default function HoursAndPay({
               </div>
             ) : null}
 
+            {view === 'grouped' ? (
+              <GroupedCrew
+                rows={visible}
+                collapsed={collapsed}
+                onToggleGroup={(id) =>
+                  setCollapsed((current) => {
+                    const next = new Set(current);
+                    if (next.has(id)) next.delete(id);
+                    else next.add(id);
+                    return next;
+                  })
+                }
+                selected={selected}
+                onToggleSelect={toggle}
+                onOpenCrew={(crewId) => setDrawer({ mode: 'crew', crewId })}
+                onPayGroup={(ids) => setDialog({ kind: 'pay', ids })}
+                onApproveGroup={(ids) => arm({ kind: 'approve', crewIds: ids })}
+                onFilter={applyFilter}
+                onHistory={() => setDrawer({ mode: 'history' })}
+                payAvailable={payAvailable}
+              />
+            ) : null}
+
             {/* --- the crew --- */}
-            <div className={styles.tableWrap}>
+            <div className={styles.tableWrap} hidden={view === 'grouped'}>
               <table className={styles.payTable}>
                 <thead>
                   <tr>
@@ -991,7 +1133,7 @@ export default function HoursAndPay({
               </table>
             </div>
 
-            {visible.length > pageSize ? (
+            {view !== 'grouped' && visible.length > pageSize ? (
               <div className={styles.pager}>
                 <small>
                   Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, visible.length)} of {visible.length} crew members
@@ -1427,7 +1569,7 @@ function PayDonut({ totals, onSlice }: { totals: PeriodTotals; onSlice: (payment
   const slices = [
     { id: 'paid' as const, label: 'Paid', count: totals.paid, amount: totals.paidPay, color: '#48c78e' },
     { id: 'sent' as const, label: 'Sent to payroll', count: totals.sent, amount: 0, color: '#94b0d6' },
-    { id: 'unpaid' as const, label: 'Unpaid', count: totals.unpaid - totals.sent, amount: totals.unpaidPay, color: '#ff7a21' },
+    { id: 'unpaid' as const, label: 'Not yet paid', count: totals.unpaid - totals.sent, amount: totals.unpaidPay, color: '#ff7a21' },
   ].filter((slice) => slice.count > 0);
 
   const total = slices.reduce((sum, slice) => sum + slice.count, 0) || 1;
@@ -1499,5 +1641,215 @@ function ExportRecorder({ formRef, fields }: { formRef: RefObject<HTMLFormElemen
     <form ref={formRef} action={formAction} hidden>
       {fields}
     </form>
+  );
+}
+
+/**
+ * The crew grouped by what needs doing to them.
+ *
+ * The table answers "who worked and what are they owed". This answers the
+ * question an owner actually opens the tab with — "what is left before I can
+ * pay everyone" — by putting the exceptions in their own section with the
+ * action that clears them attached to the heading.
+ *
+ * Sections stay in workflow order and an empty section still shows, because
+ * "nobody needs review" is the answer somebody came looking for.
+ */
+function GroupedCrew({
+  rows,
+  collapsed,
+  onToggleGroup,
+  selected,
+  onToggleSelect,
+  onOpenCrew,
+  onPayGroup,
+  onApproveGroup,
+  onFilter,
+  onHistory,
+  payAvailable,
+}: {
+  rows: CrewPayRow[];
+  collapsed: Set<string>;
+  onToggleGroup: (id: string) => void;
+  selected: string[];
+  onToggleSelect: (id: string) => void;
+  onOpenCrew: (crewId: string) => void;
+  onPayGroup: (ids: string[]) => void;
+  onApproveGroup: (ids: string[]) => void;
+  onFilter: (next: { status?: StatusFilter; payment?: PaymentFilter; flagged?: boolean }) => void;
+  onHistory: () => void;
+  payAvailable: boolean;
+}) {
+  const buckets = useMemo(() => groupCrewRows(rows) as unknown as Record<string, CrewPayRow[]>, [rows]);
+
+  return (
+    <div className={styles.groupWrap}>
+      {GROUPS.map((group) => {
+        const members = buckets[group.id] ?? [];
+        const isOpen = !collapsed.has(group.id);
+        const total = members.reduce((sum, row) => sum + row.estimatedPay, 0);
+        const payable = members.filter((row) => row.eligible && row.hours > 0 && row.payment !== 'paid');
+
+        return (
+          <section key={group.id} className={styles.group} data-tone={group.tone}>
+            <header className={styles.groupHead}>
+              <button type="button" className={styles.groupTitle} onClick={() => onToggleGroup(group.id)} aria-expanded={isOpen}>
+                <span className={styles.groupDot} aria-hidden="true" />
+                <strong>{group.label}</strong>
+                <span className={styles.groupCount}>
+                  {members.length} {members.length === 1 ? 'member' : 'members'}
+                </span>
+                {members.length > 0 ? <small>Est. pay {payMoney(total)}</small> : null}
+              </button>
+
+              <div className={styles.groupActions}>
+                {group.id === 'needs_review' && members.length > 0 ? (
+                  <button type="button" className="btn secondary" onClick={() => onFilter({ status: 'needs_review', payment: 'all', flagged: false })}>
+                    Review all
+                  </button>
+                ) : null}
+                {group.id === 'unpaid' && payAvailable && payable.length > 0 ? (
+                  <>
+                    {members.some((row) => row.review !== 'approved') ? (
+                      <button type="button" className="btn secondary" onClick={() => onApproveGroup(payable.map(rowKey))}>
+                        Approve all
+                      </button>
+                    ) : null}
+                    <button type="button" className="btn secondary" onClick={() => onPayGroup(payable.map(rowKey))}>
+                      Mark all as paid
+                    </button>
+                  </>
+                ) : null}
+                {group.id === 'paid' && members.length > 0 ? (
+                  <button type="button" className="btn secondary" onClick={onHistory}>
+                    View payment history
+                  </button>
+                ) : null}
+                <span className={styles.groupChevron} aria-hidden="true">{isOpen ? '▾' : '▸'}</span>
+              </div>
+            </header>
+
+            {isOpen ? (
+              members.length === 0 ? (
+                <p className={styles.groupEmpty}>
+                  {group.id === 'needs_review'
+                    ? 'Nothing here needs sorting out.'
+                    : group.id === 'unpaid'
+                      ? 'Everyone with hours has been paid for this period.'
+                      : group.id === 'paid'
+                        ? 'Nobody has been marked paid for this period yet.'
+                        : 'Every crew member has hours logged for this period.'}
+                </p>
+              ) : (
+                <div className={styles.groupGrid}>
+                  {members.map((row) => {
+                    const id = rowKey(row);
+                    const canSelect = row.eligible && row.hours > 0 && row.payment !== 'paid';
+                    const initials = row.name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || '?';
+                    return (
+                      <article key={id} className={styles.memberCard} data-selected={selected.includes(id) || undefined}>
+                        <div className={styles.memberTop}>
+                          {canSelect ? (
+                            <input
+                              type="checkbox"
+                              checked={selected.includes(id)}
+                              onChange={() => onToggleSelect(id)}
+                              aria-label={'Select ' + row.name}
+                            />
+                          ) : (
+                            <span className={styles.memberCheckSpacer} aria-hidden="true" />
+                          )}
+                          <span className={styles.miniAvatar} aria-hidden="true">{initials}</span>
+                          <button type="button" className={styles.memberName} onClick={() => row.crewId && onOpenCrew(row.crewId)}>
+                            <strong>{row.name}</strong>
+                            <small>
+                              {row.roleLabel ?? 'Crew'}
+                              {row.rate ? ' · ' + payMoney(row.rate) + '/hr' : ''}
+                            </small>
+                          </button>
+                          <span className={styles.memberHours}>
+                            <strong>{hoursLabel(row.hours)}</strong>
+                            <small>Est. pay</small>
+                            <b>{payMoney(row.estimatedPay)}</b>
+                          </span>
+                        </div>
+                        <div className={styles.memberFoot}>
+                          <span className={styles.payBadge} data-state={row.review} title={PAY_STATUS_HELP[row.status]}>
+                            {PAY_STATUS_LABEL[row.review === 'approved' ? 'approved' : row.status]}
+                          </span>
+                          <span className={styles.payBadge} data-payment={row.payment}>
+                            {PAYMENT_STATE_LABEL[row.payment]}
+                          </span>
+                          {row.warnings
+                            .filter((warning) => PAY_WARNING_SEVERITY[warning] !== 'info')
+                            .map((warning) => (
+                              <span
+                                key={warning}
+                                className={styles.flagChip}
+                                data-severity={PAY_WARNING_SEVERITY[warning]}
+                                title={PAY_WARNING_HELP[warning]}
+                              >
+                                {PAY_WARNING_LABEL[warning]}
+                              </span>
+                            ))}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+              )
+            ) : null}
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Two periods side by side, by weekday.
+ *
+ * Seven bars either way whatever the data does — a week with nothing on Sunday
+ * still has a Sunday, and dropping empty days would make the two periods
+ * impossible to line up.
+ */
+function HoursChart({ current, previous }: { current: number[]; previous: number[] }) {
+  const peak = Math.max(1, ...current, ...previous);
+  const currentTotal = current.reduce((sum, hours) => sum + hours, 0);
+  const previousTotal = previous.reduce((sum, hours) => sum + hours, 0);
+
+  return (
+    <div className={styles.chartCard}>
+      <div className={styles.chartHead}>
+        <small>Hours overview</small>
+        <span className={styles.chartLegend}>
+          <b className={styles.chartKeyNow} /> {hoursLabel(currentTotal)}
+          <b className={styles.chartKeyWas} /> {hoursLabel(previousTotal)} last
+        </span>
+      </div>
+      <div
+        className={styles.chartBars}
+        role="img"
+        aria-label={'Hours by weekday: ' + hoursLabel(currentTotal) + ' this period against ' + hoursLabel(previousTotal) + ' last period'}
+      >
+        {WEEKDAY_LABELS.map((label, index) => (
+          <div key={label} className={styles.chartDay}>
+            <div className={styles.chartPair}>
+              <span
+                className={styles.chartNow}
+                style={{ height: Math.round((current[index] / peak) * 100) + '%' }}
+                title={label + ': ' + hoursLabel(current[index])}
+              />
+              <span
+                className={styles.chartWas}
+                style={{ height: Math.round((previous[index] / peak) * 100) + '%' }}
+                title={label + ' last period: ' + hoursLabel(previous[index])}
+              />
+            </div>
+            <small>{label}</small>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
