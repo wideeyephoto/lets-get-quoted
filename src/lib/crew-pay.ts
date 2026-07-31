@@ -403,6 +403,14 @@ export type PeriodTotals = {
   approvedHours: number;
   estimatedPay: number;
   approvedPay: number;
+  /**
+   * What has actually been AGREED — the approved snapshots, not what the hours
+   * are worth now. This is the only figure on the screen that cannot still move
+   * on its own, which is what makes it worth separating from the estimate.
+   */
+  agreedPay: number;
+  /** The rest: real work, real money, but nobody has signed off the number yet. */
+  estimatingPay: number;
   paidPay: number;
   unpaidPay: number;
   needsReview: number;
@@ -428,6 +436,14 @@ export function summarizePayTotals(rows: CrewPayRow[]): PeriodTotals {
     approvedHours: round2(eligible.filter((row) => row.review === 'approved').reduce((sum, row) => sum + row.hours, 0)),
     estimatedPay: round2(rows.reduce((sum, row) => sum + row.estimatedPay, 0)),
     approvedPay: round2(eligible.filter((row) => row.review === 'approved').reduce((sum, row) => sum + row.estimatedPay, 0)),
+    // approvedAmount, falling back to the estimate only when a row is approved
+    // without a stored snapshot — which happens on a pre-migration database.
+    agreedPay: round2(
+      eligible
+        .filter((row) => row.review === 'approved')
+        .reduce((sum, row) => sum + (row.approvedAmount ?? row.estimatedPay), 0),
+    ),
+    estimatingPay: round2(rows.filter((row) => row.review !== 'approved').reduce((sum, row) => sum + row.estimatedPay, 0)),
     // What was RECORDED as paid, not what the hours are worth now — an edit made
     // after payment must not silently change the amount that went out.
     paidPay: round2(paidRows.reduce((sum, row) => sum + (row.paidAmount ?? row.estimatedPay), 0)),

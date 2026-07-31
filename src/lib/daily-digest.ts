@@ -3,6 +3,11 @@ import { createAdminClient } from '@/lib/auth';
 import { getAccountOwnerEmail, sendDailyDigestEmail } from '@/lib/email';
 import { countRebookCandidates } from '@/lib/rebook';
 import { formatJobTime } from '@/lib/jobs';
+import { PAY_DAY_COLUMNS, daysBetween, payDayFor, payDaySettingsFromAccount, payDayView } from './pay-day';
+import { DEFAULT_LABOR_SETTINGS } from './labor-settings';
+import { resolvePayPeriod, toDateKey } from './labor';
+import { loadCrewPayContext } from './crew-pay-data';
+import { summarizePayTotals } from './crew-pay';
 
 // Owner "here's your business today" digest — one email that ties together the
 // day's money, pipeline, schedule, and reputation so the app reads as one
@@ -36,6 +41,11 @@ export type DailyDigest = {
   todaysJobs: DigestJob[];
   todaysJobsCount: number;
   rebookDue: number;
+  /**
+   * Payday, when it is close enough to act on. Null the rest of the time — a
+   * digest that mentions payday every single day is a digest nobody reads.
+   */
+  payday: { label: string; needsApproval: number; unpaid: number } | null;
 };
 
 function utcDateKey(d: Date): string {
@@ -97,6 +107,16 @@ export async function buildDailyDigest(supabase: SupabaseClient, accountId: stri
   let rebookDue = 0;
   try { rebookDue = await countRebookCandidates(supabase, accountId); } catch { rebookDue = 0; }
 
+  // Payday: told two days out, which is long enough to chase a timesheet and
+  // short enough to still be about this week. Best-effort — a digest must not
+  // fail because the pay-day columns are not there yet.
+  let payday: DailyDigest['payday'] = null;
+  try {
+    payday = await buildPaydayLine(supabase, accountId, now);
+  } catch {
+    payday = null;
+  }
+
   const hasSignal =
     moneyInCount > 0 || failedCount > 0 || newLeads > 0 || quotesApproved > 0 ||
     confirmations > 0 || newReviews > 0 || privateFeedback > 0 || todaysJobsCount > 0;
@@ -107,7 +127,7 @@ export async function buildDailyDigest(supabase: SupabaseClient, accountId: stri
     dateLabel, hasSignal,
     moneyInCount, moneyInTotal, openRequestsCount, openRequestsTotal, failedCount, failedTotal,
     newLeads, quotesApproved, confirmations, newReviews, newReviewsAvg, privateFeedback,
-    todaysJobs, todaysJobsCount, rebookDue,
+    todaysJobs, todaysJobsCount, rebookDue, payday,
   };
 }
 
@@ -198,4 +218,50 @@ export async function sendTestDigest(supabase: SupabaseClient, accountId: string
     isTest: true,
   });
   return { ok: true, message: `Sent a test digest to ${to}.` };
+}
+
+/**
+ * The payday line, or null when it is not worth saying.
+ *
+ * Only speaks up inside a two-day window before the pay day and while anything
+ * is still outstanding: a reminder that fires every morning regardless is one
+ * nobody reads by Thursday. It reports what still stands in the way — hours
+ * nobody has approved — rather than just the date, because the date on its own
+ * is not actionable.
+ */
+async function buildPaydayLine(
+  supabase: SupabaseClient,
+  accountId: string,
+  now: Date,
+): Promise<DailyDigest['payday']> {
+  const { data: account } = await supabase
+    .from('accounts')
+    .select(PAY_DAY_COLUMNS)
+    .eq('id', accountId)
+    .maybeSingle();
+  const settings = payDaySettingsFromAccount(account as Parameters<typeof payDaySettingsFromAccount>[0]);
+
+  const settingsRow = DEFAULT_LABOR_SETTINGS;
+  const period = resolvePayPeriod(settingsRow.periodMode, 0, { now });
+  const endKey = toDateKey(new Date(new Date(period.endIso).getTime() - 86400000));
+  const dayKey = payDayFor(endKey, settings);
+  const days = daysBetween(toDateKey(now), dayKey);
+  // Two days out, on the day, or already late. Anything else is not news.
+  if (days > 2) return null;
+
+  const context = await loadCrewPayContext(supabase, accountId, {
+    period,
+    settings: settingsRow,
+    crewId: null,
+    includeOpenShifts: false,
+  });
+  const totals = summarizePayTotals(context.rows);
+  if (totals.hours === 0 || totals.unpaid === 0) return null;
+
+  const view = payDayView({ periodEndKey: endKey, todayKey: toDateKey(now), settings, hasHours: true, allPaid: false });
+  return {
+    label: view.label,
+    needsApproval: totals.needsReview + (totals.crewCount - totals.approved - totals.needsReview),
+    unpaid: totals.unpaid,
+  };
 }

@@ -20,6 +20,23 @@ export async function saveLaborSettingsAction(formData: FormData) {
   const current = await getTimeClockMode(supabase, accountId);
   if (mode !== current) await setTimeClockMode(supabase, accountId, mode);
 
+  // The pay day is per ACCOUNT for the same reason the time clock is: the
+  // reminder that goes out two days before it is sent by a cron with no cookie
+  // to read, and "when do we pay" is a fact about the business rather than a
+  // preference of whoever's browser this is.
+  const delayRaw = Number(formData.get('payDelayDays'));
+  const weekdayRaw = String(formData.get('payWeekday') ?? '');
+  const payUpdate = {
+    pay_delay_days: Number.isFinite(delayRaw) ? Math.max(0, Math.min(31, Math.round(delayRaw))) : 5,
+    pay_weekday: /^[0-6]$/.test(weekdayRaw) ? Number(weekdayRaw) : null,
+    // Stamped so the screen can stop saying it is assuming a pay day.
+    pay_day_set_at: new Date().toISOString(),
+  };
+  // Pre-migration this column set does not exist; the rest of the save should
+  // still land rather than the whole form failing.
+  const { error: payError } = await supabase.from('accounts').update(payUpdate).eq('id', accountId);
+  if (payError) console.error('Pay day save failed:', payError.message);
+
   // Round-tripped through the normalizer so a hand-posted form can't put an
   // overtime threshold of 0 (every hour becomes overtime) into the cookie.
   const settings = normalizeLaborSettings(
@@ -38,4 +55,5 @@ export async function saveLaborSettingsAction(formData: FormData) {
   });
 
   revalidatePath('/dashboard/crew');
+  revalidatePath('/dashboard/settings');
 }

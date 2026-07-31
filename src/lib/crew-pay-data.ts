@@ -12,7 +12,7 @@ import {
   type PayRecord,
   type PayStatus,
 } from './crew-pay';
-import { summarizeCrewLabor, type PayPeriod } from './labor';
+import { resolvePayPeriod, summarizeCrewLabor, type PayPeriod, type PeriodMode } from './labor';
 import { listLaborEntries } from './labor-data';
 import { roundHours, type LaborSettings } from './labor-settings';
 import { listOpenShifts } from './time-clock-data';
@@ -544,4 +544,118 @@ export async function reopenPayPeriod(
     .eq('account_id', accountId)
     .eq('id', periodId);
   if (error) throw new Error('Could not reopen this pay period.');
+}
+
+// -- What is still owed from BEFORE this period ------------------------------
+//
+// The pay screen shows one period at a time, so being caught up is something an
+// owner has to remember rather than see. This is the look-behind: the periods
+// that already ended, still have somebody unpaid in them, and would otherwise
+// only be found by clicking the back arrow until the numbers went quiet.
+
+export type OutstandingPeriod = {
+  key: string;
+  offset: number;
+  rangeLabel: string;
+  endKey: string;
+  crewWithHours: number;
+  paidCount: number;
+  hours: number;
+  /** What the unpaid people in that period are owed, at the rates on their entries. */
+  outstandingPay: number;
+};
+
+/**
+ * Recent periods that still owe somebody money.
+ *
+ * Walks back `lookback` periods and compares who logged hours against who has a
+ * paid record. Deliberately NOT a stored flag: a period is outstanding because
+ * of the state of its rows, and a flag would go stale the moment somebody was
+ * paid late or an entry was added after the fact.
+ *
+ * Two queries regardless of the lookback — one for the labor, one for the pay
+ * records — because six round trips to draw one strip is not worth it.
+ */
+export async function listOutstandingPeriods(
+  supabase: SupabaseClient,
+  accountId: string,
+  mode: PeriodMode,
+  options?: { lookback?: number; now?: Date },
+): Promise<OutstandingPeriod[]> {
+  const lookback = Math.max(1, Math.min(12, options?.lookback ?? 6));
+  const now = options?.now ?? new Date();
+
+  const periods = Array.from({ length: lookback }, (_, index) => resolvePayPeriod(mode, -(index + 1), { now }));
+  if (periods.length === 0) return [];
+  const oldest = periods[periods.length - 1];
+
+  const { data: laborRows, error: laborError } = await supabase
+    .from('costs')
+    .select('crew_id, hours, amount, created_at')
+    .eq('account_id', accountId)
+    .eq('category', 'Labor')
+    .gte('created_at', oldest.startIso)
+    .lt('created_at', periods[0].endIso);
+  // No labor means nothing can be outstanding; a read failure means we must not
+  // claim it is either.
+  if (laborError || !laborRows || laborRows.length === 0) return [];
+
+  const keys = periods.map((period) => payPeriodKey(period));
+  const { data: paidRows } = await supabase
+    .from('crew_pay_entries')
+    .select('crew_id, status, period:crew_pay_periods!inner(period_key)')
+    .eq('account_id', accountId)
+    .in('status', ['paid'])
+    .in('period.period_key', keys);
+
+  const paidByKey = new Map<string, Set<string>>();
+  // PostgREST types an embedded to-one relation as an array, so the shape has to
+  // be widened before it can be read either way round.
+  for (const row of (paidRows ?? []) as unknown as Array<{
+    crew_id: string;
+    period: { period_key: string } | { period_key: string }[] | null;
+  }>) {
+    const period = Array.isArray(row.period) ? row.period[0] : row.period;
+    const key = period?.period_key;
+    if (!key) continue;
+    const bucket = paidByKey.get(key) ?? new Set<string>();
+    bucket.add(row.crew_id);
+    paidByKey.set(key, bucket);
+  }
+
+  const out: OutstandingPeriod[] = [];
+  for (const [index, period] of periods.entries()) {
+    const key = keys[index];
+    const inPeriod = (laborRows as Array<{ crew_id: string | null; hours: unknown; amount: unknown; created_at: string }>).filter(
+      (row) => row.created_at >= period.startIso && row.created_at < period.endIso,
+    );
+    // Unattached labor can't carry a payment record, so it can't be owed to
+    // anybody — the same rule the pay rows themselves use.
+    const withCrew = inPeriod.filter((row) => row.crew_id);
+    if (withCrew.length === 0) continue;
+
+    const paid = paidByKey.get(key) ?? new Set<string>();
+    const crewIds = new Set(withCrew.map((row) => row.crew_id as string));
+    const unpaidIds = [...crewIds].filter((id) => !paid.has(id));
+    if (unpaidIds.length === 0) continue;
+
+    out.push({
+      key,
+      offset: period.offset,
+      rangeLabel: period.rangeLabel,
+      endKey: periodEndKey(period),
+      crewWithHours: crewIds.size,
+      paidCount: paid.size,
+      hours: Math.round(withCrew.reduce((sum, row) => sum + (Number(row.hours) || 0), 0) * 100) / 100,
+      outstandingPay:
+        Math.round(
+          withCrew
+            .filter((row) => unpaidIds.includes(row.crew_id as string))
+            .reduce((sum, row) => sum + (Number(row.amount) || 0), 0) * 100,
+        ) / 100,
+    });
+  }
+
+  // Oldest first: the one that has been waiting longest is the one to answer.
+  return out.sort((a, b) => a.offset - b.offset);
 }

@@ -28,6 +28,7 @@ import {
   hoursLabel,
   markPeriodBlockedReason,
   payMoney,
+  periodEndKey,
   type CrewPayRow,
   type PayEvent,
   type PayPeriodState,
@@ -41,6 +42,8 @@ import SaveButton from '@/components/save-button';
 import { addLaborEntryAction, closeOpenShiftAction, deleteLaborEntryAction } from './actions';
 import { saveLaborSettingsAction } from './settings-actions';
 import PayMasterDetail from './PayMasterDetail';
+import { WEEKDAY_NAMES, daysWaiting, payDaySentence, waitingLabel, type PayDaySettings, type PayDayView } from '@/lib/pay-day';
+import type { OutstandingPeriod } from '@/lib/crew-pay-data';
 import {
   approveHoursAction,
   closePeriodAction,
@@ -208,6 +211,9 @@ export default function HoursAndPay({
   openShifts,
   initialView,
   comparison,
+  payDay,
+  payDue,
+  outstanding,
   hoursThisPeriod,
   hoursLastPeriod,
   previousPayLabel,
@@ -239,6 +245,12 @@ export default function HoursAndPay({
   initialView: CrewView;
   /** This period against the one before. Only the grouped layout shows it. */
   comparison: PeriodComparison | null;
+  /** How this account decides when a period is due. Null on the other tabs. */
+  payDay: PayDaySettings | null;
+  /** Where this period stands against that day. */
+  payDue: PayDayView | null;
+  /** Earlier periods that still owe somebody — the look-behind strip. */
+  outstanding: OutstandingPeriod[];
   hoursThisPeriod: number[];
   hoursLastPeriod: number[];
   previousPayLabel: string;
@@ -463,6 +475,10 @@ export default function HoursAndPay({
   }
 
   const filteredName = crewFilter ? crewOptions.find((option) => option.id === crewFilter)?.name : null;
+  // Measured from the END of the period: money is not owed for a week that has
+  // not finished, so counting from a Monday entry would call it late early.
+  const waitingDays = daysWaiting(periodEndKey(period), todayKey);
+  const waiting = waitingLabel(waitingDays);
   const payableNow = rows.filter((row) => row.eligible && row.hours > 0 && row.payment !== 'paid');
   const periodPayBlocked = markPeriodBlockedReason(rows);
   const drawerRow = drawer?.mode === 'crew' ? byKey.get(drawer.crewId) ?? null : null;
@@ -604,6 +620,33 @@ export default function HoursAndPay({
         </div>
       ) : null}
 
+      {/* Being caught up is otherwise something you have to REMEMBER: the screen
+          shows one period at a time, so a week left unpaid three weeks ago is
+          invisible until you click back far enough to find it. */}
+      {outstanding.length > 0 ? (
+        <section className={styles.owedStrip} aria-label="Earlier periods still owed">
+          <div>
+            <strong>
+              {outstanding.length === 1
+                ? 'An earlier period still owes somebody'
+                : `${outstanding.length} earlier periods still owe somebody`}
+            </strong>
+            <small>
+              {payMoney(outstanding.reduce((sum, period) => sum + period.outstandingPay, 0))} outstanding · oldest{' '}
+              {outstanding[0].rangeLabel}
+            </small>
+          </div>
+          <div className={styles.owedLinks}>
+            {outstanding.slice(0, 3).map((period) => (
+              <Link key={period.key} href={periodHref({ offset: String(period.offset), from: null, to: null })}>
+                {period.rangeLabel}
+                <em>{payMoney(period.outstandingPay)}</em>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       {/* --- the pay period, and the one thing to do with it --- */}
       <section className={styles.periodCard} data-view={view} aria-label="Pay period summary">
         <div className={styles.periodCardMain}>
@@ -625,6 +668,21 @@ export default function HoursAndPay({
               ({progress.daysDone} of {progress.daysTotal} days)
             </small>
           </div>
+
+          {/* The half of the question the screen could never answer. */}
+          {payDue ? (
+            <p className={styles.payDue} data-tone={payDue.tone}>
+              <span aria-hidden="true">◷</span>
+              <strong>{payDue.label}</strong>
+              {payDay && !payDay.chosen ? (
+                // Said out loud: an assumed pay day driving an "overdue" badge
+                // would be the app inventing a deadline the owner never set.
+                <button type="button" className="linklike" onClick={() => setSettingsOpen(true)}>
+                  Assuming {payDaySentence(payDay).charAt(0).toLowerCase() + payDaySentence(payDay).slice(1)} — set your pay day
+                </button>
+              ) : null}
+            </p>
+          ) : null}
         </div>
 
         {/* Every number is a filter. A "4" you can't act on is trivia. */}
@@ -634,6 +692,12 @@ export default function HoursAndPay({
               Total est. pay
             </small>
             <strong>{payMoney(totals.estimatedPay)}</strong>
+            {/* The part that has been agreed cannot move on its own; the rest
+                still can. Leading with one number hid that difference. */}
+            <em>
+              {totals.agreedPay > 0 ? `${payMoney(totals.agreedPay)} agreed` : 'none agreed yet'}
+              {totals.estimatingPay > 0 ? ` · ${payMoney(totals.estimatingPay)} still estimating` : ''}
+            </em>
           </button>
           {/* Hours LOGGED, said plainly. Calling this "approved hours" while it
               counts everything is the kind of small lie that ends with someone
@@ -1116,6 +1180,11 @@ export default function HoursAndPay({
                             {PAYMENT_STATE_LABEL[row.payment]}
                           </span>
                           {row.paymentDetail ? <small className={styles.paySub}>{row.paymentDetail}</small> : null}
+                          {/* How long they have been waiting. "Unpaid" with no
+                              age reads the same on day one and week three. */}
+                          {row.payment !== 'paid' && row.hours > 0 && waiting ? (
+                            <small className={styles.paySub} data-late={waitingDays >= 7 || undefined}>{waiting}</small>
+                          ) : null}
                           {row.locked ? (
                             <small className={styles.paySub} title="Paid entries lock so a stray edit can't move money that has gone out.">
                               🔒 Locked
@@ -1372,9 +1441,34 @@ export default function HoursAndPay({
       {settingsOpen ? (
         <form action={saveLaborSettingsAction} className={styles.settings}>
           <p className={styles.settingsLead}>
-            How this account counts hours. Saved to this browser — they change the totals on this screen and in the export, not the
-            entries themselves.
+            How this account counts hours. Most of these are saved to this browser — they change the totals on this screen and in the
+            export, not the entries themselves. The pay day and the time clock are saved to the account, because the crew and the
+            payday reminder both have to see the same answer.
           </p>
+          {/* The setting that lets anything on this screen be early or late. */}
+          <label>
+            <span>Pay day</span>
+            <span className={styles.payDayRow}>
+              <select name="payDelayDays" defaultValue={String(payDay?.delayDays ?? 5)}>
+                {[0, 1, 2, 3, 4, 5, 6, 7, 10, 14].map((days) => (
+                  <option key={days} value={days}>
+                    {days === 0 ? 'The day it ends' : `${days} ${days === 1 ? 'day' : 'days'} after`}
+                  </option>
+                ))}
+              </select>
+              <select name="payWeekday" defaultValue={payDay?.weekday == null ? '' : String(payDay.weekday)}>
+                <option value="">on whatever day that lands on</option>
+                {WEEKDAY_NAMES.map((name, day) => (
+                  <option key={name} value={day}>on the following {name}</option>
+                ))}
+              </select>
+            </span>
+            <em className={styles.settingHint}>
+              {payDay
+                ? `${payDaySentence(payDay)}.${payDay.chosen ? '' : ' Assumed until you set it — nothing is called late on a guess.'}`
+                : 'When each pay period is due to be settled.'}
+            </em>
+          </label>
           <label>
             <span>Time clock</span>
             <select name="timeClockMode" defaultValue={timeClockMode} disabled={!timeClockAvailable}>

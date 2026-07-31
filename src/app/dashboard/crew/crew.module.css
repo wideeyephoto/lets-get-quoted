@@ -2494,3 +2494,75 @@ button.goAction.goAction:disabled {
 .mdAudit strong { font-size: 0.79rem; font-weight: 700; }
 .mdAudit small { font-size: 0.7rem; color: rgba(147, 164, 184, 0.9); }
 .mdAudit em { font-style: normal; font-size: 0.72rem; color: rgba(200, 210, 224, 0.85); }
+
+/* ==========================================================================
+   When crew get paid.
+
+   The screen could say who was owed money and never when it was due, so nothing
+   could be early or late. These three pieces are the "when": the pay day on the
+   period card, the look-behind strip for periods that already ended owing
+   somebody, and the age on an unpaid row.
+   ========================================================================== */
+
+.payDue {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin: 0.5rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: rgba(200, 212, 226, 0.9);
+}
+.payDue > span { font-size: 0.9rem; opacity: 0.8; }
+.payDue strong { font-weight: 700; }
+/* Tone follows how close it is, and never carries the meaning alone — the
+   sentence says "in 3 days" or "4 days ago" either way. */
+.payDue[data-tone='ok'] strong { color: #cbd6e4; }
+.payDue[data-tone='warn'] strong { color: #ffd591; }
+.payDue[data-tone='alert'] strong { color: #ffb4a7; }
+.payDue[data-tone='muted'] { color: rgba(147, 164, 184, 0.8); }
+.payDue button { font-size: 0.78rem; }
+
+/* Being caught up should be visible, not remembered. */
+.owedStrip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(255, 107, 107, 0.42);
+  border-radius: 14px;
+  background: rgba(255, 107, 107, 0.07);
+}
+.owedStrip > div { display: grid; gap: 0.15rem; min-width: 0; }
+.owedStrip strong { font-size: 0.92rem; font-weight: 750; color: #ffb4a7; }
+.owedStrip small { font-size: 0.8rem; color: rgba(200, 212, 226, 0.85); }
+
+.owedLinks { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.owedLinks a {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid rgba(148, 176, 214, 0.3);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #dbe4ef;
+  font-size: 0.78rem;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.owedLinks a:hover { border-color: rgba(255, 122, 41, 0.55); background: rgba(255, 122, 41, 0.12); color: #fff; }
+.owedLinks em { font-style: normal; font-weight: 800; color: #ffd591; font-variant-numeric: tabular-nums; }
+
+/* An unpaid row that has been unpaid a while says so. Under a week it is just
+   information; past that it is the thing the row is about. */
+.paySub[data-late] { color: #ffb4a7 !important; font-weight: 700; }
+
+/* The two selects read as one sentence, so they sit on one line. */
+.payDayRow { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.payDayRow select { flex: 1 1 10rem; min-width: 0; }

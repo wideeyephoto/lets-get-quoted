@@ -23,7 +23,8 @@ import {
   type CrewPayRow,
 } from '@/lib/crew-pay';
 import { CREW_ROSTER_VIEW_COOKIE, CREW_THEME_COOKIE, CREW_VIEW_COOKIE, normalizeCrewTheme, normalizeCrewView, normalizeRosterView } from '@/lib/dashboard-views';
-import { listPayEvents, loadCrewPayContext } from '@/lib/crew-pay-data';
+import { listOutstandingPeriods, listPayEvents, loadCrewPayContext } from '@/lib/crew-pay-data';
+import { PAY_DAY_COLUMNS, payDaySettingsFromAccount, payDayView, type PayDaySettings } from '@/lib/pay-day';
 import { laborTotalsByCrew, listLaborEntries } from '@/lib/labor-data';
 import { LABOR_SETTINGS_COOKIE, normalizeLaborSettings } from '@/lib/labor-settings';
 import { SHIFT_FLAG_HELP, SHIFT_FLAG_LABEL, formatClock, formatElapsed, openShiftFlag } from '@/lib/time-clock';
@@ -200,6 +201,26 @@ export default async function CrewLaborPage({
       : null;
 
   const payTotals = pay ? summarizePayTotals(pay.rows) : null;
+
+  // When this period is due, and what is still owed from before it. Both only
+  // on the tab that shows them — the roster does not need either.
+  let payDay: PayDaySettings | null = null;
+  let payDue: ReturnType<typeof payDayView> | null = null;
+  let outstanding: Awaited<ReturnType<typeof listOutstandingPeriods>> = [];
+  if (tab === 'hours' && pay && payTotals) {
+    const { data: payDayRow } = await supabase.from('accounts').select(PAY_DAY_COLUMNS).eq('id', accountId).maybeSingle();
+    payDay = payDaySettingsFromAccount(payDayRow as Parameters<typeof payDaySettingsFromAccount>[0]);
+    payDue = payDayView({
+      periodEndKey: toDateKey(new Date(new Date(period.endIso).getTime() - 86400000)),
+      todayKey: toDateKey(new Date()),
+      settings: payDay,
+      hasHours: payTotals.hours > 0,
+      // "Everyone" means everyone who could carry a payment record — labor with
+      // nobody attached to it is not somebody waiting to be paid.
+      allPaid: payTotals.crewCount > 0 && payTotals.unpaid === 0,
+    });
+    outstanding = await listOutstandingPeriods(supabase, accountId, settings.periodMode).catch(() => []);
+  }
   const crewView = normalizeCrewView(cookies().get(CREW_VIEW_COOKIE)?.value);
   const rosterView = normalizeRosterView(cookies().get(CREW_ROSTER_VIEW_COOKIE)?.value);
   // The page theme, not a layout. Read once here and worn by the whole shell so
@@ -342,6 +363,9 @@ export default async function CrewLaborPage({
             progress={periodProgress(period, now)}
             initialView={crewView}
             comparison={payTotals ? comparePeriods(payTotals.estimatedPay, previousPay) : null}
+            payDay={payDay}
+            payDue={payDue}
+            outstanding={outstanding}
             hoursThisPeriod={hoursByWeekday(pay.rows.flatMap((row) => row.entries))}
             hoursLastPeriod={hoursByWeekday(
               previousEntries.map((entry) => ({ loggedAt: entry.created_at, hours: Number(entry.hours) || 0 })),

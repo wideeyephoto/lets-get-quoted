@@ -688,6 +688,17 @@ export async function sendDailyDigestEmail(input: {
   const schedule = [
     d.confirmations > 0 ? row('Appointments confirmed', String(d.confirmations), 'good') : '',
     d.rebookDue > 0 ? row('Past clients due to rebook', String(d.rebookDue)) : '',
+    // Payday only appears when it is close and something is still outstanding —
+    // and it says what stands in the way, because the date alone is not a task.
+    d.payday
+      ? row(
+          d.payday.label,
+          d.payday.needsApproval > 0
+            ? `${d.payday.needsApproval} to approve · ${d.payday.unpaid} unpaid`
+            : `${d.payday.unpaid} still to pay`,
+          'warn',
+        )
+      : '',
   ].join('');
 
   const todayList = d.todaysJobs.length

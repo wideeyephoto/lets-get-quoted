@@ -217,6 +217,21 @@ alter table accounts add column if not exists instant_book_drive_time boolean no
 -- price. All config is per-account and OFF by default so nothing changes until
 -- an owner opts in (see src/lib/extra-stop.ts). Fees are stored in CENTS to
 -- avoid float drift (matches the payment_plans convention).
+-- When crew get paid. Without this nothing on Hours & pay could be early or
+-- late: a period unpaid for three weeks looked exactly like yesterday's.
+-- pay_weekday is nullable and MUST be read with a nullish check before it is
+-- coerced — Number(null) is 0, which is a valid weekday, so a plain cast pins
+-- every unset account to Sundays.
+alter table accounts add column if not exists pay_delay_days integer not null default 5;
+alter table accounts add column if not exists pay_weekday integer;
+alter table accounts add column if not exists pay_day_set_at timestamptz;
+do $$ begin
+  alter table accounts add constraint accounts_pay_delay_check check (pay_delay_days between 0 and 31);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter table accounts add constraint accounts_pay_weekday_check check (pay_weekday is null or pay_weekday between 0 and 6);
+exception when duplicate_object then null; end $$;
+
 alter table accounts add column if not exists extra_stop_enabled boolean not null default false;
 -- Eligible weekdays as a CSV of day numbers (0=Sun … 6=Sat). Default Mon–Fri.
 alter table accounts add column if not exists extra_stop_weekdays text not null default '1,2,3,4,5';
