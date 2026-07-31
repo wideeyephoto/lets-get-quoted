@@ -217,6 +217,28 @@ alter table accounts add column if not exists instant_book_drive_time boolean no
 -- price. All config is per-account and OFF by default so nothing changes until
 -- an owner opts in (see src/lib/extra-stop.ts). Fees are stored in CENTS to
 -- avoid float drift (matches the payment_plans convention).
+-- The rules that decide a pay amount, on the ACCOUNT rather than in a cookie.
+-- They used to be per-browser, so the same week could total differently on a
+-- phone and a laptop, and nothing recorded which rules an amount was agreed
+-- under. require_separate_payer is the optional two-person rule.
+alter table accounts add column if not exists labor_period_mode text not null default 'weekly';
+alter table accounts add column if not exists labor_overtime_threshold numeric(6,2) not null default 40;
+alter table accounts add column if not exists labor_rounding text not null default 'none';
+alter table accounts add column if not exists labor_rules_set_at timestamptz;
+alter table accounts add column if not exists require_separate_payer boolean not null default false;
+do $$ begin
+  alter table accounts add constraint accounts_labor_period_mode_check
+    check (labor_period_mode in ('weekly', 'biweekly', 'monthly', 'custom'));
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter table accounts add constraint accounts_labor_rounding_check
+    check (labor_rounding in ('none', 'quarter', 'tenth'));
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter table accounts add constraint accounts_labor_overtime_check
+    check (labor_overtime_threshold between 1 and 168);
+exception when duplicate_object then null; end $$;
+
 -- When crew get paid. Without this nothing on Hours & pay could be early or
 -- late: a period unpaid for three weeks looked exactly like yesterday's.
 -- pay_weekday is nullable and MUST be read with a nullish check before it is
@@ -2027,6 +2049,36 @@ create table if not exists crew_pay_entries (
   constraint crew_pay_entries_paid_check check (status <> 'paid' or (paid_at is not null and payment_date is not null))
 );
 create unique index if not exists crew_pay_entries_unique_idx on crew_pay_entries (period_id, crew_id);
+
+-- The entries an approved amount was built from, frozen as they were then.
+-- Without them an adjustment can say "$60 more than agreed" and never say which
+-- shift moved, and a dispute about hours has nothing to appeal to.
+create table if not exists crew_pay_entry_lines (
+  id            uuid primary key default gen_random_uuid(),
+  account_id    uuid not null references accounts(id) on delete cascade,
+  pay_entry_id  uuid not null references crew_pay_entries(id) on delete cascade,
+  -- SET NULL, not cascade: if the cost is ever removed the LINE must survive,
+  -- because the line is the evidence.
+  cost_id       uuid references costs(id) on delete set null,
+  job_id        uuid references jobs(id) on delete set null,
+  description   text,
+  logged_at     timestamptz,
+  hours         numeric(8,2) not null,
+  rate          numeric(10,2) not null,
+  amount        numeric(12,2) not null,
+  created_at    timestamptz not null default now()
+);
+create index if not exists crew_pay_entry_lines_entry_idx on crew_pay_entry_lines (pay_entry_id);
+create index if not exists crew_pay_entry_lines_cost_idx on crew_pay_entry_lines (cost_id) where cost_id is not null;
+create unique index if not exists crew_pay_entry_lines_unique
+  on crew_pay_entry_lines (pay_entry_id, cost_id) where cost_id is not null;
+alter table crew_pay_entry_lines enable row level security;
+-- Read and insert only, like crew_pay_events: evidence the owner can rewrite is
+-- not evidence.
+drop policy if exists crew_pay_entry_lines_read on crew_pay_entry_lines;
+create policy crew_pay_entry_lines_read on crew_pay_entry_lines for select using ( is_owner(account_id) );
+drop policy if exists crew_pay_entry_lines_insert on crew_pay_entry_lines;
+create policy crew_pay_entry_lines_insert on crew_pay_entry_lines for insert with check ( is_owner(account_id) );
 create index if not exists crew_pay_entries_account_idx on crew_pay_entries (account_id, period_id);
 create index if not exists crew_pay_entries_crew_idx on crew_pay_entries (account_id, crew_id, paid_at desc);
 

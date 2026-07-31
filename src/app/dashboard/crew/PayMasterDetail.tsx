@@ -14,6 +14,7 @@ import {
   type CrewPayRow,
   type PayEvent,
 } from '@/lib/crew-pay';
+import type { PayEntryLine } from '@/lib/crew-pay-data';
 import styles from './crew.module.css';
 
 // Hours & pay as master-detail: pick one person on the left, see everything
@@ -47,6 +48,8 @@ export type MasterDetailProps = {
   onOpenProfile: (key: string) => void;
   onHistory: () => void;
   periodLabel: string;
+  /** The entries each approval was built from, frozen at approval, by crew id. */
+  approvedLines: Record<string, PayEntryLine[]>;
   /** The period's one action, rendered by the parent so both layouts agree. */
   periodActionTitle: string | null;
   periodAction: ReactNode;
@@ -103,6 +106,7 @@ export default function PayMasterDetail({
   onOpenProfile,
   onHistory,
   periodLabel,
+  approvedLines,
   periodActionTitle,
   periodAction,
   periodActionHelp,
@@ -127,6 +131,12 @@ export default function PayMasterDetail({
   const selectedId = keyOf(selected);
   const jobs = selected.crewId ? jobsByCrew[selected.crewId] ?? [] : [];
   const record = selected.record;
+  // The frozen evidence for this person, if their hours have been approved.
+  const lines = selected.crewId ? approvedLines[selected.crewId] ?? [] : [];
+  const frozen = new Map(lines.filter((line) => line.costId).map((line) => [line.costId as string, line] as const));
+  const liveIds = new Set(selected.entries.map((entry) => entry.id));
+  const gone = lines.filter((line) => line.costId && !liveIds.has(line.costId));
+
   const canApprove = payAvailable && Boolean(selected.crewId) && selected.review !== 'approved' && selected.blockers.length === 0;
   const canPay = payAvailable && selected.eligible && selected.review === 'approved' && selected.payment !== 'paid';
 
@@ -242,16 +252,44 @@ export default function PayMasterDetail({
                 <tbody>
                   {[...selected.entries]
                     .sort((a, b) => a.loggedAt.localeCompare(b.loggedAt))
-                    .map((entry) => (
-                      <tr key={entry.id} data-issue={entry.issue ?? undefined}>
-                        <td>{entryDate(entry.loggedAt)}</td>
-                        <td>{entry.jobId ? jobLookup[entry.jobId] ?? '—' : <span className={styles.dim}>No job</span>}</td>
-                        <td>{entry.description}</td>
-                        <td className={styles.num}>{entry.hours}</td>
-                        <td className={styles.num}>{entry.rate > 0 ? payMoney(entry.rate) : <span className={styles.dim}>—</span>}</td>
-                        <td className={styles.num}>{payMoney(entry.amount)}</td>
-                      </tr>
-                    ))}
+                    .map((entry) => {
+                      // What this entry looked like when the amount was agreed.
+                      // A row that has changed since says so where it is read,
+                      // which is the difference between "the total moved" and
+                      // "Tuesday went from 8 hours to 6".
+                      const approved = frozen.get(entry.id);
+                      const moved = approved && (approved.hours !== entry.hours || approved.rate !== entry.rate);
+                      return (
+                        <tr key={entry.id} data-issue={entry.issue ?? undefined} data-moved={moved || undefined}>
+                          <td>{entryDate(entry.loggedAt)}</td>
+                          <td>{entry.jobId ? jobLookup[entry.jobId] ?? '—' : <span className={styles.dim}>No job</span>}</td>
+                          <td>
+                            {entry.description}
+                            {moved ? (
+                              <small className={styles.mdMoved}>
+                                approved at {approved!.hours} h × {payMoney(approved!.rate)}
+                              </small>
+                            ) : null}
+                          </td>
+                          <td className={styles.num}>{entry.hours}</td>
+                          <td className={styles.num}>{entry.rate > 0 ? payMoney(entry.rate) : <span className={styles.dim}>—</span>}</td>
+                          <td className={styles.num}>{payMoney(entry.amount)}</td>
+                        </tr>
+                      );
+                    })}
+                  {/* Entries that were part of the approval and are no longer
+                      here at all. The lock stops this happening from now on, but
+                      anything approved before it existed can still show up. */}
+                  {gone.map((line) => (
+                    <tr key={line.id} data-gone="true">
+                      <td>{line.loggedAt ? entryDate(line.loggedAt) : '—'}</td>
+                      <td><span className={styles.dim}>—</span></td>
+                      <td>{line.description ?? 'Entry'}<small className={styles.mdMoved}>removed since approval</small></td>
+                      <td className={styles.num}>{line.hours}</td>
+                      <td className={styles.num}>{payMoney(line.rate)}</td>
+                      <td className={styles.num}>{payMoney(line.amount)}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

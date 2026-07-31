@@ -43,7 +43,7 @@ import { addLaborEntryAction, closeOpenShiftAction, deleteLaborEntryAction } fro
 import { saveLaborSettingsAction } from './settings-actions';
 import PayMasterDetail from './PayMasterDetail';
 import { WEEKDAY_NAMES, daysWaiting, payDaySentence, waitingLabel, type PayDaySettings, type PayDayView } from '@/lib/pay-day';
-import type { OutstandingPeriod } from '@/lib/crew-pay-data';
+import type { OutstandingPeriod, PayEntryLine } from '@/lib/crew-pay-data';
 import {
   approveHoursAction,
   closePeriodAction,
@@ -206,6 +206,7 @@ export default function HoursAndPay({
   todayKey,
   progress,
   settings,
+  requireSeparatePayer,
   timeClockMode,
   timeClockAvailable,
   openShifts,
@@ -214,6 +215,7 @@ export default function HoursAndPay({
   payDay,
   payDue,
   outstanding,
+  approvedLines,
   hoursThisPeriod,
   hoursLastPeriod,
   previousPayLabel,
@@ -239,6 +241,8 @@ export default function HoursAndPay({
   todayKey: string;
   progress: { daysTotal: number; daysDone: number; daysLeft: number };
   settings: LaborSettings;
+  /** Whether whoever approved is barred from recording the payment. */
+  requireSeparatePayer: boolean;
   timeClockMode: TimeClockMode;
   timeClockAvailable: boolean;
   openShifts: OpenShiftView[];
@@ -251,6 +255,8 @@ export default function HoursAndPay({
   payDue: PayDayView | null;
   /** Earlier periods that still owe somebody — the look-behind strip. */
   outstanding: OutstandingPeriod[];
+  /** The entries each approval was built from, frozen at approval, by crew id. */
+  approvedLines: Record<string, PayEntryLine[]>;
   hoursThisPeriod: number[];
   hoursLastPeriod: number[];
   previousPayLabel: string;
@@ -1053,6 +1059,7 @@ export default function HoursAndPay({
                 onOpenProfile={(key) => setDrawer({ mode: 'crew', crewId: key })}
                 onHistory={() => setDrawer({ mode: 'history' })}
                 periodLabel={period.rangeLabel}
+                approvedLines={approvedLines}
                 periodActionTitle={
                   primaryAction?.id === 'pay' || primaryAction?.id === 'finish' ? 'Pay this period' : primaryAction?.label ?? null
                 }
@@ -1446,6 +1453,18 @@ export default function HoursAndPay({
             payday reminder both have to see the same answer.
           </p>
           {/* The setting that lets anything on this screen be early or late. */}
+          {/* A control, not a preference: with it on, whoever approved cannot be
+              the one who records the payment. Off by default because most of
+              these businesses are one person. */}
+          <label className={styles.settingCheck}>
+            <input type="checkbox" name="requireSeparatePayer" defaultChecked={requireSeparatePayer} />
+            <span>
+              Someone other than the approver has to record the payment
+              <em className={styles.settingHint}>
+                Approving hours and paying for them are two different claims. On a one-person shop leave this off.
+              </em>
+            </span>
+          </label>
           <label>
             <span>Pay day</span>
             <span className={styles.payDayRow}>

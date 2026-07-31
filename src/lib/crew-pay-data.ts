@@ -310,11 +310,26 @@ export type PaySnapshot = {
   regularHours: number;
   overtimeHours: number;
   amount: number;
+  /**
+   * The entries this amount was built from, frozen as they were at approval.
+   * Without them an adjustment can say "$60 more than agreed" and never say
+   * which shift moved — and a dispute about hours has nothing to appeal to.
+   */
+  lines?: Array<{ costId: string; jobId: string | null; description: string; loggedAt: string; hours: number; rate: number; amount: number }>;
 };
 
 /** The rollup for one row, taken server-side so a client can't name its own amount. */
 export function snapshotOf(row: CrewPayRow): PaySnapshot {
   return {
+    lines: row.entries.map((entry) => ({
+      costId: entry.id,
+      jobId: entry.jobId,
+      description: entry.description,
+      loggedAt: entry.loggedAt,
+      hours: entry.hours,
+      rate: entry.rate,
+      amount: entry.amount,
+    })),
     crewId: row.crewId as string,
     crewName: row.name,
     regularHours: row.regularHours,
@@ -384,9 +399,11 @@ export async function approveHours(
   periodId: string,
   snapshots: PaySnapshot[],
   actorEmail: string | null,
+  /** The rules the amounts were computed under, frozen alongside them. */
+  rules?: { overtimeThreshold: number; rounding: string },
 ): Promise<PayRecord[]> {
   const approvedAt = new Date().toISOString();
-  return upsertEntries(
+  const records = await upsertEntries(
     supabase,
     accountId,
     periodId,
@@ -399,8 +416,123 @@ export async function approveHours(
       approved_amount: snapshot.amount,
       approved_at: approvedAt,
       approved_by: actorEmail,
+      ...(rules ? { overtime_threshold: rules.overtimeThreshold, rounding_rule: rules.rounding } : {}),
     })),
   );
+
+  await writeEntryLines(supabase, accountId, records, snapshots);
+  return records;
+}
+
+/**
+ * Freeze the entries behind each approved amount.
+ *
+ * Best-effort and after the fact: an approval that landed is an approval, and
+ * failing to write its evidence must not undo it. The lines are insert-only by
+ * RLS, so re-approving deletes the old set first — evidence the owner can edit
+ * in place is not evidence, but evidence that silently doubles is worse.
+ */
+async function writeEntryLines(
+  supabase: SupabaseClient,
+  accountId: string,
+  records: PayRecord[],
+  snapshots: PaySnapshot[],
+): Promise<void> {
+  const byCrew = new Map(snapshots.map((snapshot) => [snapshot.crewId, snapshot] as const));
+  for (const record of records) {
+    const snapshot = byCrew.get(record.crewId);
+    if (!snapshot?.lines?.length) continue;
+    try {
+      await supabase.from('crew_pay_entry_lines').delete().eq('account_id', accountId).eq('pay_entry_id', record.id);
+      const { error } = await supabase.from('crew_pay_entry_lines').insert(
+        snapshot.lines.map((line) => ({
+          account_id: accountId,
+          pay_entry_id: record.id,
+          cost_id: line.costId,
+          job_id: line.jobId,
+          description: line.description,
+          logged_at: line.loggedAt,
+          hours: line.hours,
+          rate: line.rate,
+          amount: line.amount,
+        })),
+      );
+      if (error) throw new Error(error.message);
+    } catch (error) {
+      console.error(`Pay entry lines failed for ${record.crewName}:`, error instanceof Error ? error.message : error);
+    }
+  }
+}
+
+/** The frozen lines behind an approval, for the detail pane and any dispute. */
+export type PayEntryLine = {
+  id: string;
+  costId: string | null;
+  description: string | null;
+  loggedAt: string | null;
+  hours: number;
+  rate: number;
+  amount: number;
+};
+
+/**
+ * The frozen lines for every approved person in a period, keyed by crew id.
+ *
+ * One query for the whole screen rather than one per person — the detail pane
+ * switches between people with no round trip, so the evidence has to already be
+ * there when it does.
+ */
+export async function listPeriodEntryLines(
+  supabase: SupabaseClient,
+  accountId: string,
+  periodId: string,
+): Promise<Record<string, PayEntryLine[]>> {
+  const { data, error } = await supabase
+    .from('crew_pay_entry_lines')
+    .select('id, cost_id, description, logged_at, hours, rate, amount, entry:crew_pay_entries!inner(crew_id, period_id)')
+    .eq('account_id', accountId)
+    .eq('entry.period_id', periodId)
+    .order('logged_at', { ascending: true });
+  if (error || !data) return {};
+
+  const out: Record<string, PayEntryLine[]> = {};
+  for (const row of data as unknown as Array<Record<string, unknown> & { entry: { crew_id: string } | { crew_id: string }[] }>) {
+    const entry = Array.isArray(row.entry) ? row.entry[0] : row.entry;
+    if (!entry?.crew_id) continue;
+    (out[entry.crew_id] ??= []).push({
+      id: String(row.id),
+      costId: (row.cost_id as string | null) ?? null,
+      description: (row.description as string | null) ?? null,
+      loggedAt: (row.logged_at as string | null) ?? null,
+      hours: Number(row.hours) || 0,
+      rate: Number(row.rate) || 0,
+      amount: Number(row.amount) || 0,
+    });
+  }
+  return out;
+}
+
+export async function listPayEntryLines(
+  supabase: SupabaseClient,
+  accountId: string,
+  payEntryId: string,
+): Promise<PayEntryLine[]> {
+  const { data, error } = await supabase
+    .from('crew_pay_entry_lines')
+    .select('id, cost_id, description, logged_at, hours, rate, amount')
+    .eq('account_id', accountId)
+    .eq('pay_entry_id', payEntryId)
+    .order('logged_at', { ascending: true });
+  if (error) return [];
+  return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+    id: String(row.id),
+    costId: (row.cost_id as string | null) ?? null,
+    description: (row.description as string | null) ?? null,
+    loggedAt: (row.logged_at as string | null) ?? null,
+    hours: Number(row.hours) || 0,
+    rate: Number(row.rate) || 0,
+    amount: Number(row.amount) || 0,
+  }));
 }
 
 export type PaymentInput = PayMethodInput & {

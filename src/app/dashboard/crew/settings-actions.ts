@@ -34,8 +34,26 @@ export async function saveLaborSettingsAction(formData: FormData) {
   };
   // Pre-migration this column set does not exist; the rest of the save should
   // still land rather than the whole form failing.
-  const { error: payError } = await supabase.from('accounts').update(payUpdate).eq('id', accountId);
-  if (payError) console.error('Pay day save failed:', payError.message);
+  // The rules that decide an amount go to the ACCOUNT too. They used to be
+  // cookie-only, which meant the same week could total differently on a phone
+  // and a laptop, and nothing recorded which rules an amount was agreed under.
+  const thresholdRaw = Number(formData.get('overtimeThreshold'));
+  const { error: payError } = await supabase
+    .from('accounts')
+    .update({
+      ...payUpdate,
+      labor_period_mode: ['weekly', 'biweekly', 'monthly', 'custom'].includes(String(formData.get('periodMode')))
+        ? String(formData.get('periodMode'))
+        : 'weekly',
+      labor_overtime_threshold: Number.isFinite(thresholdRaw) && thresholdRaw >= 1 && thresholdRaw <= 168 ? thresholdRaw : 40,
+      labor_rounding: ['none', 'quarter', 'tenth'].includes(String(formData.get('rounding')))
+        ? String(formData.get('rounding'))
+        : 'none',
+      labor_rules_set_at: new Date().toISOString(),
+      require_separate_payer: formData.get('requireSeparatePayer') !== null,
+    })
+    .eq('id', accountId);
+  if (payError) console.error('Payroll rules save failed:', payError.message);
 
   // Round-tripped through the normalizer so a hand-posted form can't put an
   // overtime threshold of 0 (every hour becomes overtime) into the cookie.

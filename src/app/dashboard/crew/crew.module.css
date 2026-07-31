@@ -2566,3 +2566,16 @@ button.goAction.goAction:disabled {
 /* The two selects read as one sentence, so they sit on one line. */
 .payDayRow { display: flex; gap: 0.4rem; flex-wrap: wrap; }
 .payDayRow select { flex: 1 1 10rem; min-width: 0; }
+
+/* A settings row that is a switch rather than a field. */
+.settingCheck { display: flex; align-items: flex-start; gap: 0.55rem; }
+.settingCheck input { margin-top: 0.2rem; accent-color: #ff7a21; }
+.settingCheck > span { display: grid; gap: 0.15rem; font-size: 0.85rem; }
+
+/* An entry that has changed since the amount was agreed says so where it is
+   read, not only as a total that moved. */
+.mdMoved { display: block; font-size: 0.68rem; color: #ffd591; }
+.mdEntries tbody tr[data-moved] { background: rgba(255, 209, 102, 0.09); }
+.mdEntries tbody tr[data-gone] { opacity: 0.7; }
+.mdEntries tbody tr[data-gone] td { text-decoration: line-through; }
+.mdEntries tbody tr[data-gone] small { text-decoration: none; }

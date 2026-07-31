@@ -33,7 +33,7 @@ import {
   undoPaid,
 } from '@/lib/crew-pay-data';
 import { normalizeOffset, normalizePeriodMode, resolvePayPeriod, type PayPeriod } from '@/lib/labor';
-import { LABOR_SETTINGS_COOKIE, normalizeLaborSettings } from '@/lib/labor-settings';
+import { LABOR_RULE_COLUMNS, LABOR_SETTINGS_COOKIE, laborRulesFromAccount, normalizeLaborSettings } from '@/lib/labor-settings';
 
 // Every payment action on the Hours & pay tab.
 //
@@ -84,12 +84,23 @@ function selectedIds(formData: FormData): string[] {
 
 async function context(formData: FormData) {
   const { supabase, accountId, userEmail } = await requireOwnerContext();
-  const { data: zoneRow } = await supabase.from('accounts').select('timezone').eq('id', accountId).maybeSingle();
-  const period = periodFrom(formData, (zoneRow?.timezone as string) || 'America/New_York');
-  const settings = normalizeLaborSettings(cookies().get(LABOR_SETTINGS_COOKIE)?.value);
+  const { data: accountRow } = await supabase
+    .from('accounts')
+    .select(`timezone, require_separate_payer, ${LABOR_RULE_COLUMNS}`)
+    .eq('id', accountId)
+    .maybeSingle();
+  const period = periodFrom(formData, ((accountRow as { timezone?: string } | null)?.timezone) || 'America/New_York');
+  // The rules the ACCOUNT keeps, falling back to this browser's cookie only
+  // while they have never been saved — so an amount is never computed under one
+  // set of rules on a laptop and a different set on a phone.
+  const settings = laborRulesFromAccount(
+    accountRow as Parameters<typeof laborRulesFromAccount>[0],
+    normalizeLaborSettings(cookies().get(LABOR_SETTINGS_COOKIE)?.value),
+  );
+  const requireSeparatePayer = (accountRow as { require_separate_payer?: boolean } | null)?.require_separate_payer === true;
   const state = await loadCrewPayContext(supabase, accountId, { period, settings, includeOpenShifts: true });
   if (!state.available) throw new PayUnavailableError();
-  return { supabase, accountId, userEmail, period, state };
+  return { supabase, accountId, userEmail, period, state, settings, requireSeparatePayer };
 }
 
 function rangeLabel(period: PayPeriod): string {
@@ -111,7 +122,7 @@ function rowsFor(rows: CrewPayRow[], ids: string[]): CrewPayRow[] {
 
 export async function approveHoursAction(_prev: PayActionState, formData: FormData): Promise<PayActionState> {
   try {
-    const { supabase, accountId, userEmail, period, state } = await context(formData);
+    const { supabase, accountId, userEmail, period, state, settings } = await context(formData);
     const chosen = rowsFor(state.rows, selectedIds(formData));
     const approvable = chosen.filter((row) => row.eligible && row.hours > 0 && row.blockers.length === 0 && row.review !== 'approved');
 
@@ -127,7 +138,10 @@ export async function approveHoursAction(_prev: PayActionState, formData: FormDa
     }
 
     const periodRow = await ensurePayPeriodRow(supabase, accountId, period);
-    await approveHours(supabase, accountId, periodRow.id, approvable.map(snapshotOf), userEmail);
+    await approveHours(supabase, accountId, periodRow.id, approvable.map(snapshotOf), userEmail, {
+      overtimeThreshold: settings.overtimeThreshold,
+      rounding: settings.rounding,
+    });
 
     const total = approvable.reduce((sum, row) => sum + row.estimatedPay, 0);
     await logPayEvent(supabase, accountId, {
@@ -158,7 +172,7 @@ export async function approveHoursAction(_prev: PayActionState, formData: FormDa
 
 export async function markPaidAction(_prev: PayActionState, formData: FormData): Promise<PayActionState> {
   try {
-    const { supabase, accountId, userEmail, period, state } = await context(formData);
+    const { supabase, accountId, userEmail, period, state, requireSeparatePayer } = await context(formData);
 
     const paymentDate = text(formData, 'paymentDate');
     const dateProblem = paymentDateProblem(paymentDate);
@@ -180,6 +194,22 @@ export async function markPaidAction(_prev: PayActionState, formData: FormData):
       : chosen;
 
     const confirmation = buildPayConfirmation(readied, readied.map((row) => row.crewId ?? 'unassigned'));
+
+    // Two-person rule, where the account has asked for one. Approving and paying
+    // are separate claims; letting one person make both removes the only check
+    // this screen has on an amount that nobody else ever looks at.
+    if (requireSeparatePayer && userEmail) {
+      const selfApproved = confirmation.rows.filter((row) => row.record?.approvedBy && row.record.approvedBy === userEmail);
+      if (selfApproved.length > 0) {
+        return FAIL(
+          'Somebody else has to record this payment.',
+          [
+            `You approved ${selfApproved.length === 1 ? selfApproved[0].name : `${selfApproved.length} of these`}, and this account requires a different person to pay than approved.`,
+            'Turn that off in Labor settings if it is not how you work.',
+          ],
+        );
+      }
+    }
 
     if (confirmation.rows.length === 0) {
       return FAIL(

@@ -82,3 +82,64 @@ export function roundHours(hours: number, rule: RoundingRule): number {
   const step = rule === 'quarter' ? 0.25 : 0.1;
   return Math.round(hours / step) * step;
 }
+
+// -- The same rules, but per ACCOUNT ------------------------------------------
+//
+// They started as a cookie, which was defensible while they only shaped a
+// display. They stopped being defensible the moment money was approved against
+// them: the same account on a phone and a laptop could total one week two
+// different ways, and nothing recorded which rules an amount was agreed under.
+//
+// The cookie is still read, as the fallback for an account that has never saved
+// them — so nothing changes underneath an owner who has been using it.
+
+export const LABOR_RULE_COLUMNS = 'labor_period_mode, labor_overtime_threshold, labor_rounding, labor_rules_set_at';
+
+export type AccountLaborRules = LaborSettings & {
+  /** False while these are still the defaults nobody chose. */
+  chosen: boolean;
+};
+
+export function laborRulesFromAccount(
+  row: {
+    labor_period_mode?: unknown;
+    labor_overtime_threshold?: unknown;
+    labor_rounding?: unknown;
+    labor_rules_set_at?: unknown;
+  } | null,
+  cookieFallback?: LaborSettings,
+): AccountLaborRules {
+  const chosen = typeof row?.labor_rules_set_at === 'string' && row.labor_rules_set_at.length > 0;
+  // Until they have been saved once, whatever this browser was already using is
+  // a better answer than a global default — it is what the owner has been
+  // looking at.
+  const base = chosen ? DEFAULT_LABOR_SETTINGS : cookieFallback ?? DEFAULT_LABOR_SETTINGS;
+  if (!chosen) return { ...base, chosen: false };
+
+  const threshold = Number(row?.labor_overtime_threshold);
+  return {
+    periodMode: normalizePeriodModeValue(row?.labor_period_mode, base.periodMode),
+    overtimeThreshold: Number.isFinite(threshold) && threshold >= 1 && threshold <= 168 ? threshold : base.overtimeThreshold,
+    rounding: normalizeRoundingValue(row?.labor_rounding, base.rounding),
+    // Never lived on the account: it is a preference about a CSV, not a rule
+    // that decides an amount.
+    exportFormat: base.exportFormat,
+    chosen: true,
+  };
+}
+
+function normalizePeriodModeValue(value: unknown, fallback: PeriodMode): PeriodMode {
+  const modes: PeriodMode[] = ['weekly', 'biweekly', 'monthly', 'custom'];
+  return modes.includes(value as PeriodMode) ? (value as PeriodMode) : fallback;
+}
+
+function normalizeRoundingValue(value: unknown, fallback: RoundingRule): RoundingRule {
+  const rules: RoundingRule[] = ['none', 'quarter', 'tenth'];
+  return rules.includes(value as RoundingRule) ? (value as RoundingRule) : fallback;
+}
+
+/** "Weekly · overtime past 40 h · exact hours" — for showing what was applied. */
+export function laborRulesSentence(settings: LaborSettings): string {
+  const mode = settings.periodMode === 'custom' ? 'Custom range' : settings.periodMode[0].toUpperCase() + settings.periodMode.slice(1);
+  return `${mode} · overtime past ${settings.overtimeThreshold} h/week · ${ROUNDING_LABEL[settings.rounding].toLowerCase()}`;
+}

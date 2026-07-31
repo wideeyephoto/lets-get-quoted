@@ -24,10 +24,10 @@ import {
   type CrewPayRow,
 } from '@/lib/crew-pay';
 import { CREW_ROSTER_VIEW_COOKIE, CREW_THEME_COOKIE, CREW_VIEW_COOKIE, normalizeCrewTheme, normalizeCrewView, normalizeRosterView } from '@/lib/dashboard-views';
-import { listOutstandingPeriods, listPayEvents, loadCrewPayContext } from '@/lib/crew-pay-data';
+import { listOutstandingPeriods, listPayEvents, listPeriodEntryLines, loadCrewPayContext } from '@/lib/crew-pay-data';
 import { PAY_DAY_COLUMNS, payDaySettingsFromAccount, payDayView, type PayDaySettings } from '@/lib/pay-day';
 import { laborTotalsByCrew, listLaborEntries } from '@/lib/labor-data';
-import { LABOR_SETTINGS_COOKIE, normalizeLaborSettings } from '@/lib/labor-settings';
+import { LABOR_RULE_COLUMNS, LABOR_SETTINGS_COOKIE, laborRulesFromAccount, normalizeLaborSettings } from '@/lib/labor-settings';
 import { SHIFT_FLAG_HELP, SHIFT_FLAG_LABEL, formatClock, formatElapsed, openShiftFlag } from '@/lib/time-clock';
 import { getTimeClockMode, isTimeClockAvailable, listOpenShifts } from '@/lib/time-clock-data';
 import type { OpenShiftView } from './HoursAndPay';
@@ -93,13 +93,21 @@ export default async function CrewLaborPage({
 }) {
   const { supabase, accountId } = await requireOwnerContext();
   const tab = normalizeTab(searchParams.tab);
-  const settings = normalizeLaborSettings(cookies().get(LABOR_SETTINGS_COOKIE)?.value);
-
   // Pay periods are cut in the CONTRACTOR's zone, not the server's — on Vercel
   // the server is UTC, which put every Saturday evening of an Eastern shop into
-  // the following week's payroll.
-  const { data: zoneRow } = await supabase.from('accounts').select('timezone').eq('id', accountId).maybeSingle();
-  const timeZone = (zoneRow?.timezone as string) || 'America/New_York';
+  // the following week's payroll. And the rules that decide an amount live on
+  // the ACCOUNT, so a phone and a laptop cannot total the same week differently.
+  const { data: accountRules } = await supabase
+    .from('accounts')
+    .select(`timezone, require_separate_payer, ${LABOR_RULE_COLUMNS}`)
+    .eq('id', accountId)
+    .maybeSingle();
+  const timeZone = ((accountRules as { timezone?: string } | null)?.timezone) || 'America/New_York';
+  const settings = laborRulesFromAccount(
+    accountRules as Parameters<typeof laborRulesFromAccount>[0],
+    normalizeLaborSettings(cookies().get(LABOR_SETTINGS_COOKIE)?.value),
+  );
+  const requireSeparatePayer = (accountRules as { require_separate_payer?: boolean } | null)?.require_separate_payer === true;
 
   // No period in the URL means "whatever this account calls a pay period",
   // which is the setting — so the tab opens on their cadence, not on a week.
@@ -214,6 +222,7 @@ export default async function CrewLaborPage({
   let payDay: PayDaySettings | null = null;
   let payDue: ReturnType<typeof payDayView> | null = null;
   let outstanding: Awaited<ReturnType<typeof listOutstandingPeriods>> = [];
+  let approvedLines: Awaited<ReturnType<typeof listPeriodEntryLines>> = {};
   if (tab === 'hours' && pay && payTotals) {
     const { data: payDayRow } = await supabase.from('accounts').select(PAY_DAY_COLUMNS).eq('id', accountId).maybeSingle();
     payDay = payDaySettingsFromAccount(payDayRow as Parameters<typeof payDaySettingsFromAccount>[0]);
@@ -227,6 +236,12 @@ export default async function CrewLaborPage({
       allPaid: payTotals.crewCount > 0 && payTotals.unpaid === 0,
     });
     outstanding = await listOutstandingPeriods(supabase, accountId, settings.periodMode, { timeZone }).catch(() => []);
+    // The entries each approval was built from, frozen as they were then. Loaded
+    // for the whole period so the detail pane can switch people without a round
+    // trip — and so an adjustment can say WHICH shift moved, not just that one did.
+    if (pay.periodRow?.id) {
+      approvedLines = await listPeriodEntryLines(supabase, accountId, pay.periodRow.id).catch(() => ({}));
+    }
   }
   const crewView = normalizeCrewView(cookies().get(CREW_VIEW_COOKIE)?.value);
   const rosterView = normalizeRosterView(cookies().get(CREW_ROSTER_VIEW_COOKIE)?.value);
@@ -373,12 +388,14 @@ export default async function CrewLaborPage({
             payDay={payDay}
             payDue={payDue}
             outstanding={outstanding}
+            approvedLines={approvedLines}
             hoursThisPeriod={hoursByWeekday(pay.rows.flatMap((row) => row.entries))}
             hoursLastPeriod={hoursByWeekday(
               previousEntries.map((entry) => ({ loggedAt: entry.created_at, hours: Number(entry.hours) || 0 })),
             )}
             previousPayLabel={formatMoney(previousPay)}
             settings={settings}
+            requireSeparatePayer={requireSeparatePayer}
             timeClockMode={timeClockMode}
             timeClockAvailable={timeClockAvailable}
             openShifts={openShifts}
