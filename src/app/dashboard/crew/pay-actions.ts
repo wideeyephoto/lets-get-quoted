@@ -64,10 +64,14 @@ function optional(formData: FormData, key: string): string | null {
  * action operates on exactly the range the owner was looking at when they
  * clicked — not on whatever "this week" happens to mean by the time it runs.
  */
-function periodFrom(formData: FormData): PayPeriod {
+function periodFrom(formData: FormData, timeZone: string): PayPeriod {
   return resolvePayPeriod(normalizePeriodMode(text(formData, 'period') || 'weekly'), normalizeOffset(text(formData, 'offset')), {
     from: optional(formData, 'from'),
     to: optional(formData, 'to'),
+    // The SAME zone the screen used. Without it the action would approve or pay
+    // against a slightly different week than the one that was on screen — the
+    // worst possible place for a boundary to move.
+    timeZone,
   });
 }
 
@@ -80,7 +84,8 @@ function selectedIds(formData: FormData): string[] {
 
 async function context(formData: FormData) {
   const { supabase, accountId, userEmail } = await requireOwnerContext();
-  const period = periodFrom(formData);
+  const { data: zoneRow } = await supabase.from('accounts').select('timezone').eq('id', accountId).maybeSingle();
+  const period = periodFrom(formData, (zoneRow?.timezone as string) || 'America/New_York');
   const settings = normalizeLaborSettings(cookies().get(LABOR_SETTINGS_COOKIE)?.value);
   const state = await loadCrewPayContext(supabase, accountId, { period, settings, includeOpenShifts: true });
   if (!state.available) throw new PayUnavailableError();

@@ -5,7 +5,7 @@ import { countRebookCandidates } from '@/lib/rebook';
 import { formatJobTime } from '@/lib/jobs';
 import { PAY_DAY_COLUMNS, daysBetween, payDayFor, payDaySettingsFromAccount, payDayView } from './pay-day';
 import { DEFAULT_LABOR_SETTINGS } from './labor-settings';
-import { resolvePayPeriod, toDateKey } from './labor';
+import { resolvePayPeriod, zonedDateKey } from './labor';
 import { loadCrewPayContext } from './crew-pay-data';
 import { summarizePayTotals } from './crew-pay';
 
@@ -236,16 +236,17 @@ async function buildPaydayLine(
 ): Promise<DailyDigest['payday']> {
   const { data: account } = await supabase
     .from('accounts')
-    .select(PAY_DAY_COLUMNS)
+    .select(`${PAY_DAY_COLUMNS}, timezone`)
     .eq('id', accountId)
     .maybeSingle();
   const settings = payDaySettingsFromAccount(account as Parameters<typeof payDaySettingsFromAccount>[0]);
+  const timeZone = ((account as { timezone?: string } | null)?.timezone) || 'America/New_York';
 
   const settingsRow = DEFAULT_LABOR_SETTINGS;
-  const period = resolvePayPeriod(settingsRow.periodMode, 0, { now });
-  const endKey = toDateKey(new Date(new Date(period.endIso).getTime() - 86400000));
+  const period = resolvePayPeriod(settingsRow.periodMode, 0, { now, timeZone });
+  const endKey = zonedDateKey(new Date(new Date(period.endIso).getTime() - 1), timeZone);
   const dayKey = payDayFor(endKey, settings);
-  const days = daysBetween(toDateKey(now), dayKey);
+  const days = daysBetween(zonedDateKey(now, timeZone), dayKey);
   // Two days out, on the day, or already late. Anything else is not news.
   if (days > 2) return null;
 
@@ -258,7 +259,7 @@ async function buildPaydayLine(
   const totals = summarizePayTotals(context.rows);
   if (totals.hours === 0 || totals.unpaid === 0) return null;
 
-  const view = payDayView({ periodEndKey: endKey, todayKey: toDateKey(now), settings, hasHours: true, allPaid: false });
+  const view = payDayView({ periodEndKey: endKey, todayKey: zonedDateKey(now, timeZone), settings, hasHours: true, allPaid: false });
   return {
     label: view.label,
     needsApproval: totals.needsReview + (totals.crewCount - totals.approved - totals.needsReview),

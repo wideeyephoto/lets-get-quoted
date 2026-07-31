@@ -580,12 +580,16 @@ export async function listOutstandingPeriods(
   supabase: SupabaseClient,
   accountId: string,
   mode: PeriodMode,
-  options?: { lookback?: number; now?: Date },
+  options?: { lookback?: number; now?: Date; timeZone?: string },
 ): Promise<OutstandingPeriod[]> {
   const lookback = Math.max(1, Math.min(12, options?.lookback ?? 6));
   const now = options?.now ?? new Date();
 
-  const periods = Array.from({ length: lookback }, (_, index) => resolvePayPeriod(mode, -(index + 1), { now }));
+  // Same zone the screen used, or the look-behind would disagree with the
+  // period the owner is standing in about where the boundaries are.
+  const periods = Array.from({ length: lookback }, (_, index) =>
+    resolvePayPeriod(mode, -(index + 1), { now, timeZone: options?.timeZone }),
+  );
   if (periods.length === 0) return [];
   const oldest = periods[periods.length - 1];
 
@@ -658,4 +662,80 @@ export async function listOutstandingPeriods(
 
   // Oldest first: the one that has been waiting longest is the one to answer.
   return out.sort((a, b) => a.offset - b.offset);
+}
+
+// -- Guarding the hours behind a payment -------------------------------------
+
+/**
+ * Why this labor entry can't be deleted, or null when it can.
+ *
+ * `locked` lives on crew_pay_entries, one row per person per period — it never
+ * reached the cost rows underneath. So the Tuesday shift that made up a payment
+ * recorded on Friday could still be deleted: the paid snapshot survived, which
+ * is right, but the evidence for it did not, and the difference then showed as
+ * an unexplained adjustment.
+ *
+ * Checked against APPROVED as well as paid. An approved amount is a number
+ * somebody agreed to; quietly removing an hour from underneath it is the same
+ * problem one step earlier.
+ */
+export async function laborEntryLockReason(
+  supabase: SupabaseClient,
+  accountId: string,
+  entryId: string,
+): Promise<string | null> {
+  const { data: entry, error } = await supabase
+    .from('costs')
+    .select('id, crew_id, crew_name, created_at')
+    .eq('account_id', accountId)
+    .eq('id', entryId)
+    .eq('type', 'labor')
+    .maybeSingle();
+  // Not finding it is not a reason to block — the delete will no-op anyway.
+  if (error || !entry) return null;
+  const crewId = (entry as { crew_id: string | null }).crew_id;
+  // Labor with nobody attached can't be part of anyone's pay record.
+  if (!crewId) return null;
+
+  const { data: records, error: recordError } = await supabase
+    .from('crew_pay_entries')
+    .select('status, period:crew_pay_periods!inner(starts_on, ends_on)')
+    .eq('account_id', accountId)
+    .eq('crew_id', crewId)
+    .in('status', ['approved', 'sent', 'paid']);
+  // Pre-migration, or a read failure. Blocking every delete because we could not
+  // check would be worse than the risk it guards against.
+  if (recordError || !records || records.length === 0) return null;
+
+  const loggedKey = String((entry as { created_at: string }).created_at).slice(0, 10);
+  for (const row of records as unknown as Array<{
+    status: string;
+    period: { starts_on: string; ends_on: string } | { starts_on: string; ends_on: string }[] | null;
+  }>) {
+    const period = Array.isArray(row.period) ? row.period[0] : row.period;
+    if (!period) continue;
+    if (loggedKey < period.starts_on || loggedKey > period.ends_on) continue;
+    const name = (entry as { crew_name: string | null }).crew_name || 'This crew member';
+    const range = formatKeyRange(period.starts_on, period.ends_on);
+    return row.status === 'paid'
+      ? `${name} has already been paid for ${range}, and this entry is part of that payment. Deleting it would leave the payment with nothing behind it. Undo the payment first if it was wrong.`
+      : `${name}'s hours for ${range} have been approved, and this entry is part of what was agreed. Undo the approval first if it needs changing.`;
+  }
+  return null;
+}
+
+/** How many labor entries are attached to a crew member, ever. */
+export async function countLaborEntriesForCrew(
+  supabase: SupabaseClient,
+  accountId: string,
+  crewId: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from('costs')
+    .select('id', { count: 'exact', head: true })
+    .eq('account_id', accountId)
+    .eq('crew_id', crewId)
+    .eq('type', 'labor');
+  if (error) return 0;
+  return count ?? 0;
 }

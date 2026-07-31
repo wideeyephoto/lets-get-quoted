@@ -17,7 +17,7 @@ import {
   updateCrewPhoto,
   updateCrewMember,
 } from '@/lib/crew';
-import { countPayRecordsForCrew } from '@/lib/crew-pay-data';
+import { countLaborEntriesForCrew, countPayRecordsForCrew, laborEntryLockReason } from '@/lib/crew-pay-data';
 import { deleteCrewPhotos, isCrewPhotoFile, uploadCrewPhoto, validateCrewPhotoFile } from '@/lib/crew-photo-storage';
 import { createCost, getJob } from '@/lib/jobs';
 import { createJobFeedEvent } from '@/lib/job-feed';
@@ -139,6 +139,16 @@ export async function deleteArchivedCrewAction(crewId: string) {
   if (payRecords > 0) {
     throw new Error(
       'This crew member appears in a pay period that has been approved or paid, so their record has to stay. They are already archived and off the roster.',
+    );
+  }
+
+  // Even with no pay record, their hours are job costs. costs.crew_id is ON
+  // DELETE SET NULL, so deleting the person would silently unattach every entry
+  // and change what those jobs cost — retroactively, with nothing to show for it.
+  const laborEntries = await countLaborEntriesForCrew(supabase, accountId, crewId);
+  if (laborEntries > 0) {
+    throw new Error(
+      `This crew member has ${laborEntries} labor ${laborEntries === 1 ? 'entry' : 'entries'} against jobs. Deleting them would take those hours off the jobs they were worked on and change what each one cost. They are already archived and off the roster.`,
     );
   }
 
@@ -330,6 +340,13 @@ export async function closeOpenShiftAction(entryId: string, formData: FormData) 
 // delete a material cost or anything else attached to a job.
 export async function deleteLaborEntryAction(entryId: string) {
   const { supabase, accountId } = await requireOwnerContext();
+
+  // Hours that are part of an approved or paid period stay put. The `locked`
+  // flag only ever guarded the pay record; the cost row underneath it was
+  // deletable, which meant a payment could end up with no evidence behind it.
+  const locked = await laborEntryLockReason(supabase, accountId, entryId);
+  if (locked) throw new Error(locked);
+
   const { error } = await supabase
     .from('costs')
     .delete()

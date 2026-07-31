@@ -58,26 +58,119 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // so a period's boundaries never depend on when the page was opened.
 const BIWEEKLY_EPOCH = Date.UTC(2024, 0, 7); // Sunday, 7 Jan 2024
 
-export function startOfDay(date: Date): Date {
-  const copy = new Date(date);
-  copy.setHours(0, 0, 0, 0);
-  return copy;
+// -- Pay periods are cut in the CONTRACTOR's timezone --------------------------
+//
+// They used to be cut in the server's, and the server is Vercel, which is UTC.
+// For an Eastern shop that put every Saturday evening into the following week's
+// payroll: 8pm Saturday ET is 00:00 Sunday UTC. Nobody would have spotted it
+// except as a week that was quietly light and a next week that was quietly
+// heavy, every single week.
+//
+// `timeZone` is optional throughout and falls back to the runtime's own zone, so
+// a caller that has no account context behaves exactly as it did before.
+
+/** Milliseconds to add to a UTC instant to read it as wall-clock in `timeZone`. */
+function zoneOffsetMs(instant: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).formatToParts(instant);
+  const get = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? '0');
+  // Intl renders midnight as hour 24 rather than 0 in some engines.
+  const hour = get('hour') % 24;
+  return Date.UTC(get('year'), get('month') - 1, get('day'), hour, get('minute'), get('second')) - instant.getTime();
 }
 
-/** Sunday of the week containing `date`, at local midnight. */
-export function startOfWeek(date: Date): Date {
-  const day = startOfDay(date);
-  day.setDate(day.getDate() - day.getDay());
-  return day;
+/** The wall-clock Y/M/D in `timeZone` at this instant. */
+function zonedParts(date: Date, timeZone?: string): { year: number; month: number; day: number } {
+  if (!timeZone) return { year: date.getFullYear(), month: date.getMonth() + 1, day: date.getDate() };
+  const shifted = new Date(date.getTime() + zoneOffsetMs(date, timeZone));
+  return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth() + 1, day: shifted.getUTCDate() };
+}
+
+/**
+ * The instant local midnight happens on this date in this zone.
+ *
+ * Two passes: guess with the offset at noon-ish, then re-measure at the guess.
+ * A single pass lands an hour out on the two days a year the clocks change,
+ * which is exactly the boundary a pay period must not get wrong.
+ */
+function zonedMidnight(year: number, month: number, day: number, timeZone?: string): Date {
+  if (!timeZone) return new Date(year, month - 1, day);
+  const naive = Date.UTC(year, month - 1, day);
+  const first = new Date(naive - zoneOffsetMs(new Date(naive), timeZone));
+  return new Date(naive - zoneOffsetMs(first, timeZone));
+}
+
+export function startOfDay(date: Date, timeZone?: string): Date {
+  if (!timeZone) {
+    const copy = new Date(date);
+    copy.setHours(0, 0, 0, 0);
+    return copy;
+  }
+  const { year, month, day } = zonedParts(date, timeZone);
+  return zonedMidnight(year, month, day, timeZone);
+}
+
+/** Sunday of the week containing `date`, at midnight in the given zone. */
+export function startOfWeek(date: Date, timeZone?: string): Date {
+  if (!timeZone) {
+    const day = startOfDay(date);
+    day.setDate(day.getDate() - day.getDay());
+    return day;
+  }
+  const midnight = startOfDay(date, timeZone);
+  // Which weekday that midnight IS in the zone, not in the server's.
+  const weekday = new Date(midnight.getTime() + zoneOffsetMs(midnight, timeZone)).getUTCDay();
+  const { year, month, day } = zonedParts(midnight, timeZone);
+  return zonedMidnight(year, month, day - weekday, timeZone);
+}
+
+/** Add days to a zoned midnight and stay on midnight, DST changes included. */
+export function addZonedDays(midnight: Date, days: number, timeZone?: string): Date {
+  const { year, month, day } = zonedParts(midnight, timeZone);
+  return zonedMidnight(year, month, day + days, timeZone);
+}
+
+/** Public alias so resolvePayPeriod can read the parts it needs. */
+function zonedPartsOf(date: Date, timeZone?: string) {
+  return zonedParts(date, timeZone);
+}
+
+function zonedNow(now: Date, timeZone?: string): { year: number; month: number } {
+  const parts = zonedParts(now, timeZone);
+  return { year: parts.year, month: parts.month };
+}
+
+/** First of a month at local midnight; month may be out of 1-12 and rolls. */
+function zonedFirstOfMonth(year: number, month: number, timeZone?: string): Date {
+  const rolledYear = year + Math.floor((month - 1) / 12);
+  const rolledMonth = ((((month - 1) % 12) + 12) % 12) + 1;
+  return zonedMidnight(rolledYear, rolledMonth, 1, timeZone);
+}
+
+/** The date key ('YYYY-MM-DD') this instant falls on in the given zone. */
+export function zonedDateKey(date: Date, timeZone?: string): string {
+  const { year, month, day } = zonedParts(date, timeZone);
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
 export function toDateKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-export function parseDateKey(value: string | null | undefined): Date | null {
+export function parseDateKey(value: string | null | undefined, timeZone?: string): Date | null {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
-  const date = new Date(`${value}T00:00:00`);
+  const [year, month, day] = value.split('-').map(Number);
+  // A custom range typed as "Jul 26" means midnight in the CONTRACTOR's zone.
+  // Parsing it in the server's put an Eastern shop's range four hours out.
+  const date = timeZone ? zonedMidnight(year, month, day, timeZone) : new Date(`${value}T00:00:00`);
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
@@ -100,16 +193,23 @@ function formatRange(start: Date, endExclusive: Date, now: Date): string {
 export function resolvePayPeriod(
   mode: PeriodMode,
   offset = 0,
-  options?: { from?: string | null; to?: string | null; now?: Date },
+  options?: { from?: string | null; to?: string | null; now?: Date; timeZone?: string },
 ): PayPeriod {
   const now = options?.now ?? new Date();
+  // The contractor's zone, not the server's. Omitted, everything below behaves
+  // exactly as it did — which is what keeps the callers that have no account
+  // context working.
+  const zone = options?.timeZone;
 
   if (mode === 'custom') {
-    const from = parseDateKey(options?.from) ?? startOfWeek(now);
+    const from = parseDateKey(options?.from, zone) ?? startOfWeek(now, zone);
     // Inclusive end in the URL, exclusive internally — "to=Jul 31" has to
     // include everything logged on the 31st.
-    const toInclusive = parseDateKey(options?.to) ?? from;
-    const end = new Date(Math.max(toInclusive.getTime(), from.getTime()) + DAY_MS);
+    const toInclusive = parseDateKey(options?.to, zone) ?? from;
+    const latest = new Date(Math.max(toInclusive.getTime(), from.getTime()));
+    // A day is not always 24 hours — stepping by DAY_MS across a clock change
+    // ends the range an hour early or late.
+    const end = addZonedDays(latest, 1, zone);
     return {
       mode,
       offset: 0,
@@ -122,8 +222,9 @@ export function resolvePayPeriod(
   }
 
   if (mode === 'monthly') {
-    const first = new Date(now.getFullYear(), now.getMonth() + offset, 1);
-    const next = new Date(now.getFullYear(), now.getMonth() + offset + 1, 1);
+    const here = zonedNow(now, zone);
+    const first = zonedFirstOfMonth(here.year, here.month + offset, zone);
+    const next = zonedFirstOfMonth(here.year, here.month + offset + 1, zone);
     return {
       mode,
       offset,
@@ -139,19 +240,16 @@ export function resolvePayPeriod(
   let start: Date;
   if (mode === 'biweekly') {
     // Which fortnight since the epoch contains today, then step by `offset`.
-    const thisWeek = startOfWeek(now);
-    const fortnights = Math.floor((Date.UTC(thisWeek.getFullYear(), thisWeek.getMonth(), thisWeek.getDate()) - BIWEEKLY_EPOCH) / (14 * DAY_MS));
-    start = new Date(thisWeek);
-    const weeksIntoPeriod = Math.round(
-      (Date.UTC(thisWeek.getFullYear(), thisWeek.getMonth(), thisWeek.getDate()) - BIWEEKLY_EPOCH - fortnights * 14 * DAY_MS) / (7 * DAY_MS),
-    );
-    start.setDate(start.getDate() - weeksIntoPeriod * 7 + offset * 14);
+    const thisWeek = startOfWeek(now, zone);
+    const weekParts = zonedPartsOf(thisWeek, zone);
+    const weekUtc = Date.UTC(weekParts.year, weekParts.month - 1, weekParts.day);
+    const fortnights = Math.floor((weekUtc - BIWEEKLY_EPOCH) / (14 * DAY_MS));
+    const weeksIntoPeriod = Math.round((weekUtc - BIWEEKLY_EPOCH - fortnights * 14 * DAY_MS) / (7 * DAY_MS));
+    start = addZonedDays(thisWeek, -weeksIntoPeriod * 7 + offset * 14, zone);
   } else {
-    start = startOfWeek(now);
-    start.setDate(start.getDate() + offset * 7);
+    start = addZonedDays(startOfWeek(now, zone), offset * 7, zone);
   }
-  const end = new Date(start);
-  end.setDate(end.getDate() + lengthDays);
+  const end = addZonedDays(start, lengthDays, zone);
 
   const isCurrent = offset === 0;
   return {

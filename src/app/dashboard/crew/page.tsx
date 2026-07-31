@@ -12,6 +12,7 @@ import {
   resolvePayPeriod,
   summarizeJobLabor,
   toDateKey,
+  zonedDateKey,
 } from '@/lib/labor';
 import {
   comparePeriods,
@@ -94,12 +95,18 @@ export default async function CrewLaborPage({
   const tab = normalizeTab(searchParams.tab);
   const settings = normalizeLaborSettings(cookies().get(LABOR_SETTINGS_COOKIE)?.value);
 
+  // Pay periods are cut in the CONTRACTOR's zone, not the server's — on Vercel
+  // the server is UTC, which put every Saturday evening of an Eastern shop into
+  // the following week's payroll.
+  const { data: zoneRow } = await supabase.from('accounts').select('timezone').eq('id', accountId).maybeSingle();
+  const timeZone = (zoneRow?.timezone as string) || 'America/New_York';
+
   // No period in the URL means "whatever this account calls a pay period",
   // which is the setting — so the tab opens on their cadence, not on a week.
   const period = resolvePayPeriod(
     searchParams.period ? normalizePeriodMode(searchParams.period) : settings.periodMode,
     normalizeOffset(searchParams.offset),
-    { from: searchParams.from, to: searchParams.to },
+    { from: searchParams.from, to: searchParams.to, timeZone },
   );
 
   const [crew, jobs] = await Promise.all([listCrew(supabase, accountId), listJobs(supabase, accountId)]);
@@ -211,15 +218,15 @@ export default async function CrewLaborPage({
     const { data: payDayRow } = await supabase.from('accounts').select(PAY_DAY_COLUMNS).eq('id', accountId).maybeSingle();
     payDay = payDaySettingsFromAccount(payDayRow as Parameters<typeof payDaySettingsFromAccount>[0]);
     payDue = payDayView({
-      periodEndKey: toDateKey(new Date(new Date(period.endIso).getTime() - 86400000)),
-      todayKey: toDateKey(new Date()),
+      periodEndKey: zonedDateKey(new Date(new Date(period.endIso).getTime() - 1), timeZone),
+      todayKey: zonedDateKey(new Date(), timeZone),
       settings: payDay,
       hasHours: payTotals.hours > 0,
       // "Everyone" means everyone who could carry a payment record — labor with
       // nobody attached to it is not somebody waiting to be paid.
       allPaid: payTotals.crewCount > 0 && payTotals.unpaid === 0,
     });
-    outstanding = await listOutstandingPeriods(supabase, accountId, settings.periodMode).catch(() => []);
+    outstanding = await listOutstandingPeriods(supabase, accountId, settings.periodMode, { timeZone }).catch(() => []);
   }
   const crewView = normalizeCrewView(cookies().get(CREW_VIEW_COOKIE)?.value);
   const rosterView = normalizeRosterView(cookies().get(CREW_ROSTER_VIEW_COOKIE)?.value);
@@ -236,7 +243,7 @@ export default async function CrewLaborPage({
       ? resolvePayPeriod(
           searchParams.period ? normalizePeriodMode(searchParams.period) : settings.periodMode,
           normalizeOffset(searchParams.offset) - 1,
-          { from: searchParams.from, to: searchParams.to },
+          { from: searchParams.from, to: searchParams.to, timeZone },
         )
       : null;
   const previousEntries = previousPeriod
