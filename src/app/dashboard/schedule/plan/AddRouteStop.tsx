@@ -20,6 +20,8 @@ export default function AddRouteStop({
   crewId,
   savedPlaces,
   stopCount,
+  prefill,
+  onPrefillUsed,
 }: {
   dateKey: string;
   crewId: string | null;
@@ -28,6 +30,10 @@ export default function AddRouteStop({
   // redirect (that would hand Next's router cache a stale page), so this is how
   // the form learns its submission actually landed.
   stopCount: number;
+  // A store picked off the map. Same path as a saved place: name, address and
+  // coordinates all arrive together, so nothing is typed and nothing is geocoded.
+  prefill: { label: string; address: string; lat: number; lng: number } | null;
+  onPrefillUsed: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<string>('supply');
@@ -54,10 +60,10 @@ export default function AddRouteStop({
     if (addressRef.current) addressRef.current.value = '';
   }, [stopCount]);
 
-  function applySavedPlace(place: SavedPlace) {
+  function fill(place: { label: string; address: string; lat: number | null; lng: number | null; kind?: string; minutes?: number }) {
     setLabel(place.label);
-    setKind(place.kind);
-    setMinutes(place.default_minutes);
+    if (place.kind) setKind(place.kind);
+    if (place.minutes) setMinutes(place.minutes);
     setCoords(place.lat != null && place.lng != null ? { lat: Number(place.lat), lng: Number(place.lng) } : null);
     if (addressRef.current) {
       addressRef.current.value = place.address;
@@ -67,6 +73,21 @@ export default function AddRouteStop({
     }
     setOpen(true);
   }
+
+  function applySavedPlace(place: SavedPlace) {
+    fill({ ...place, kind: place.kind, minutes: place.default_minutes });
+  }
+
+  // A store clicked on the map. The address field is uncontrolled, so this has to
+  // run after the form is mounted — hence an effect rather than a direct call.
+  useEffect(() => {
+    if (!prefill) return;
+    fill({ ...prefill, kind: 'supply' });
+    onPrefillUsed();
+    // fill/onPrefillUsed are stable enough for this one-shot handoff; re-running
+    // on every render would re-open a form the contractor just cancelled.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill]);
 
   if (!open) {
     return (

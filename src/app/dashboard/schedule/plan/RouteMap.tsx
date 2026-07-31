@@ -51,11 +51,32 @@ const HOME_SVG = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
   </svg>`,
 )}`;
 
+// Deliberately smaller and flatter than a stop pin: these are suggestions on the
+// side of the road, not part of the day.
+const SUPPLY_SVG = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+  `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
+    <circle cx="11" cy="11" r="9" fill="#0f1c2b" stroke="#7dd3fc" stroke-width="2"/>
+    <path d="M8 7.5 14.5 14M13.5 7 8.5 12" stroke="#7dd3fc" stroke-width="1.8" stroke-linecap="round"/>
+  </svg>`,
+)}`;
+
+export type NearbyPlace = { label: string; address: string; lat: number; lng: number };
+
+// Sample points along the route to search around. One search covers a radius,
+// and a day can be twenty miles end to end, so the ends and the middle catch far
+// more than the centroid alone — while keeping this to three billed lookups
+// however many stops the day has.
+function samplePoints(path: Array<{ lat: number; lng: number }>): Array<{ lat: number; lng: number }> {
+  if (path.length <= 3) return path;
+  return [path[0], path[Math.floor(path.length / 2)], path[path.length - 1]];
+}
+
 export default function RouteMap({
   stops,
   homeBase,
   apiKey,
   deferRoute = false,
+  onAddPlace,
 }: {
   stops: MapStop[];
   homeBase: LatLng | null;
@@ -65,6 +86,9 @@ export default function RouteMap({
   // dragging past four rows would otherwise fire four Directions requests that
   // are all obsolete before they land.
   deferRoute?: boolean;
+  // Called when a supply store on the map is chosen, so it can be dropped into
+  // the day as a real stop rather than just noted.
+  onAddPlace?: (place: NearbyPlace) => void;
 }) {
   const holderRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -75,11 +99,19 @@ export default function RouteMap({
   // still the current route before it paints itself over a newer one.
   const drawIdRef = useRef(0);
 
+  const supplyMarkersRef = useRef<google.maps.Marker[]>([]);
+
   const [status, setStatus] = useState<'loading' | 'ready' | 'failed'>('loading');
   const [roadRoute, setRoadRoute] = useState(false);
   // The stop list recomputes synchronously; only the road route takes time, so
   // that's the one thing that gets to say it's working.
   const [routing, setRouting] = useState(false);
+  // Off by default, and deliberately. Every toggle-on is three billed Places
+  // lookups, and a map speckled with stores nobody asked about is worse than a
+  // clean one — so this is something you turn on when you need a run.
+  const [showSupply, setShowSupply] = useState(false);
+  const [supplyState, setSupplyState] = useState<'idle' | 'loading' | 'none' | 'failed'>('idle');
+  const [supplyCount, setSupplyCount] = useState(0);
 
   const fitRoute = useCallback(() => {
     if (mapRef.current && boundsRef.current && !boundsRef.current.isEmpty()) {
@@ -222,11 +254,87 @@ export default function RouteMap({
     }
   }, [stops, homeBase, status, apiKey, deferRoute]);
 
+  // Supply stores near the route. Searched once when switched on and left alone
+  // after that — dragging stops around doesn't move a Home Depot.
+  useEffect(() => {
+    for (const marker of supplyMarkersRef.current) marker.setMap(null);
+    supplyMarkersRef.current = [];
+
+    const map = mapRef.current;
+    if (!showSupply || status !== 'ready' || !map || !apiKey || stops.length === 0) {
+      setSupplyState('idle');
+      setSupplyCount(0);
+      return;
+    }
+
+    let cancelled = false;
+    setSupplyState('loading');
+
+    void (async () => {
+      try {
+        const places = await loadMapsLibrary<google.maps.PlacesLibrary>(apiKey, 'places');
+        const path = [...(homeBase ? [homeBase] : []), ...stops.map((s) => ({ lat: s.lat, lng: s.lng }))];
+        const found = new Map<string, NearbyPlace>();
+
+        for (const point of samplePoints(path)) {
+          const { places: results } = await places.Place.searchNearby({
+            fields: ['displayName', 'formattedAddress', 'location', 'id'],
+            locationRestriction: { center: point, radius: 6000 },
+            includedPrimaryTypes: ['hardware_store', 'home_improvement_store'],
+            maxResultCount: 8,
+          });
+          for (const place of results ?? []) {
+            const location = place.location;
+            if (!place.id || !location) continue;
+            found.set(place.id, {
+              label: place.displayName ?? 'Supply store',
+              address: place.formattedAddress ?? '',
+              lat: location.lat(),
+              lng: location.lng(),
+            });
+          }
+        }
+        if (cancelled || !mapRef.current || !window.google) return;
+
+        for (const place of found.values()) {
+          const marker = new window.google.maps.Marker({
+            map: mapRef.current,
+            position: { lat: place.lat, lng: place.lng },
+            icon: {
+              url: SUPPLY_SVG,
+              scaledSize: new window.google.maps.Size(22, 22),
+              anchor: new window.google.maps.Point(11, 11),
+            },
+            title: onAddPlace ? `${place.label} — click to add as a stop` : place.label,
+            zIndex: 5,
+          });
+          // Finding the store is only half of it; the useful move is putting it
+          // in the day, with its address and coordinates already filled in.
+          if (onAddPlace) marker.addListener('click', () => onAddPlace(place));
+          supplyMarkersRef.current.push(marker);
+        }
+        setSupplyCount(found.size);
+        setSupplyState(found.size === 0 ? 'none' : 'idle');
+      } catch {
+        // Places not enabled on the key, or over quota. The route is unaffected.
+        if (!cancelled) setSupplyState('failed');
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // Deliberately not keyed on `stops`: re-searching on every drag would bill a
+    // lookup per reorder to find the same stores in the same places.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showSupply, status, apiKey]);
+
   useEffect(() => {
     const markers = markersRef.current;
+    const supply = supplyMarkersRef.current;
     const line = lineRef.current;
     return () => {
-      for (const marker of markers) marker.setMap(null);
+      for (const marker of [...markers, ...supply]) marker.setMap(null);
       line?.setMap(null);
     };
   }, []);
@@ -248,9 +356,29 @@ export default function RouteMap({
       <div ref={holderRef} className="plan-map-canvas" role="img" aria-label={`Route map with ${stops.length} stops`} />
       {status === 'loading' ? <div className="plan-map-veil">Loading map…</div> : null}
       {status === 'ready' && routing ? <span className="plan-map-busy">Recalculating route…</span> : null}
-      <button type="button" className="plan-map-fit" onClick={fitRoute} disabled={status !== 'ready'}>
-        Fit entire route
-      </button>
+      <div className="plan-map-controls">
+        <button
+          type="button"
+          className={`plan-map-toggle${showSupply ? ' is-on' : ''}`}
+          onClick={() => setShowSupply((on) => !on)}
+          disabled={status !== 'ready' || stops.length === 0}
+          aria-pressed={showSupply}
+          title="Hardware and home-improvement stores near today's route"
+        >
+          {supplyState === 'loading'
+            ? 'Finding stores…'
+            : supplyState === 'failed'
+              ? 'Stores unavailable'
+              : supplyState === 'none'
+                ? 'No stores nearby'
+                : showSupply && supplyCount > 0
+                  ? `${supplyCount} supply stores`
+                  : 'Supply stores'}
+        </button>
+        <button type="button" className="plan-map-fit" onClick={fitRoute} disabled={status !== 'ready'}>
+          Fit entire route
+        </button>
+      </div>
       {status === 'ready' && !roadRoute && !routing && stops.length > 0 ? (
         <span className="plan-map-note">Straight-line preview</span>
       ) : null}

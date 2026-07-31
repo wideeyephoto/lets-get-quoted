@@ -6,7 +6,7 @@ import FloatingPanel from '@/components/floating-panel';
 import SaveButton from '@/components/save-button';
 import ServiceIcon from '@/lib/templates/ServiceIcon';
 import { isRouteStopId, KIND_GLYPH, KIND_LABEL, routeStopUuid, type RouteStop } from '@/lib/route-stops';
-import RouteMap, { type MapStop } from './RouteMap';
+import RouteMap, { type MapStop, type NearbyPlace } from './RouteMap';
 import AddRouteStop from './AddRouteStop';
 import { applyDayPlanAction, deleteRouteStopAction } from './actions';
 import { formatTimeLabel, formatTimeMinutes, parseTimeMinutes, type PlannedStop } from '@/lib/route-plan';
@@ -65,6 +65,8 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
   // around while they rearrange the rest.
   const [pinned, setPinned] = useState<Set<string>>(new Set());
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  // A supply store picked off the map, waiting to be turned into a real stop.
+  const [prefill, setPrefill] = useState<NearbyPlace | null>(null);
   const [overtimeDismissed, setOvertimeDismissed] = useState(false);
   const listRef = useRef<HTMLOListElement | null>(null);
 
@@ -98,7 +100,12 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
 
   const isOptimized = sameOrder(order, payload.optimizedOrder);
   const isCurrent = sameOrder(order, payload.currentOrder);
-  const optimizerHelps = !sameOrder(payload.currentOrder, payload.optimizedOrder) && optimized.miles < current.miles - 0.05;
+  // The optimizer minimizes driving MINUTES, so judging its offer on miles alone
+  // meant a genuinely quicker order could be dismissed with "we couldn't find a
+  // shorter route" while we were holding one. Offer it when it wins on either.
+  const optimizerHelps =
+    !sameOrder(payload.currentOrder, payload.optimizedOrder) &&
+    (optimized.minutes < current.minutes - 0.5 || optimized.miles < current.miles - 0.05);
 
   // What Save schedule would actually write. A confirmed appointment is never in
   // here: its time is the customer's, not ours.
@@ -237,7 +244,16 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
     <>
       <section className="panel plan-panel plan-route-panel">
         <div className="plan-route-grid">
-          <RouteMap stops={mapStops} homeBase={payload.homeBase} apiKey={mapsApiKey} deferRoute={dragId !== null} />
+          <RouteMap
+            stops={mapStops}
+            homeBase={payload.homeBase}
+            apiKey={mapsApiKey}
+            deferRoute={dragId !== null}
+            onAddPlace={(place) => {
+              setPrefill(place);
+              listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }}
+          />
 
           <div className="plan-route-side">
             <RouteStatus
@@ -377,6 +393,8 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
             crewId={payload.crewId}
             savedPlaces={payload.savedPlaces}
             stopCount={payload.routeStops.length}
+            prefill={prefill}
+            onPrefillUsed={() => setPrefill(null)}
           />
         </section>
 
@@ -505,7 +523,9 @@ function RouteStatus({
             : isOptimized
               ? 'Route optimized'
               : optimizerHelps
-                ? `Better route found — saves ${savedMiles > 0 ? `${savedMiles} mi` : ''}${savedMiles > 0 && savedMinutes > 0 ? ' and ' : ''}${savedMinutes > 0 ? minutesLabel(savedMinutes) : ''}`
+                ? savedMiles > 0 || savedMinutes > 0
+                  ? `Better route found — saves ${savedMiles > 0 ? `${savedMiles} mi` : ''}${savedMiles > 0 && savedMinutes > 0 ? ' and ' : ''}${savedMinutes > 0 ? minutesLabel(savedMinutes) : ''}`
+                  : 'A tighter order exists'
                 : isCurrent
                   ? 'Your order, kept as it is'
                   : 'Your order'}

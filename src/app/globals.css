@@ -8977,10 +8977,15 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
   color: rgba(255, 255, 255, 0.72);
 }
 .plan-map-busy { border-color: rgba(255, 138, 61, 0.45); color: #ffc08a; }
-.plan-map-fit {
+.plan-map-controls {
   position: absolute;
   right: 0.7rem;
   top: 0.7rem;
+  display: flex;
+  gap: 0.4rem;
+}
+.plan-map-fit,
+.plan-map-toggle {
   padding: 0.4rem 0.8rem;
   border-radius: 9px;
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -8990,9 +8995,19 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
   font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
 }
 .plan-map-fit:hover:not(:disabled) { border-color: rgba(255, 138, 61, 0.5); color: #ffc08a; }
-.plan-map-fit:disabled { opacity: 0.4; cursor: default; }
+.plan-map-fit:disabled,
+.plan-map-toggle:disabled { opacity: 0.4; cursor: default; }
+.plan-map-toggle:hover:not(:disabled) { border-color: rgba(125, 211, 252, 0.5); color: #bae6fd; }
+/* On is a state worth seeing at a glance, because it's the one control here that
+   costs money every time it's switched. */
+.plan-map-toggle.is-on {
+  border-color: rgba(125, 211, 252, 0.7);
+  background: rgba(125, 211, 252, 0.16);
+  color: #bae6fd;
+}
 
 .plan-route-side { display: flex; flex-direction: column; gap: 0.85rem; min-width: 0; }
 
