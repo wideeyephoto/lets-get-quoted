@@ -5334,12 +5334,20 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.02);
   flex-wrap: wrap;
+  /* The lift is what makes a row feel like an object rather than text. Kept to
+     transform and colour so it composites on the GPU and a long list doesn't
+     stutter under the cursor. */
+  transition: transform 0.16s cubic-bezier(0.2, 0.9, 0.3, 1.2), border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
 }
 
-.client-row:hover {
+.client-row:hover,
+.client-row.is-selected {
   border-color: rgba(255, 138, 61, 0.4);
   background: rgba(255, 138, 61, 0.04);
+  transform: translateX(3px);
+  box-shadow: -3px 0 0 0 #ff7a21, 0 8px 22px rgba(0, 0, 0, 0.28);
 }
+.client-row:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.8); outline-offset: 2px; }
 
 .client-row-name {
   display: flex;
@@ -11746,4 +11754,305 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 @media (prefers-reduced-motion: reduce) {
   /* Still mark it — just hold the highlight rather than pulsing it away. */
   .row-revealed { animation: none; outline: 2px solid rgba(255, 122, 41, 0.75); outline-offset: 2px; }
+}
+
+/* ===== Clients workspace — four views =====
+   One dataset, four shapes, because "who are my customers" is four different
+   questions: skim the book, recognise a face, compare and sort, or work one
+   person with the list to hand.
+
+   Selecting does something in every view. Motion is transform + opacity only,
+   so a 500-row list stays smooth, and all of it is switched off under
+   prefers-reduced-motion at the bottom. */
+
+.clients-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.9rem;
+}
+.clients-toolbar .client-search-bar { flex: 1 1 18rem; margin: 0; }
+.clients-toolbar .btn { flex: none; }
+
+.clients-repeat-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: rgba(247, 245, 239, 0.78);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.clients-repeat-toggle input { accent-color: #ff7a21; width: 1rem; height: 1rem; }
+
+/* --- the initials chip, shared by every view --- */
+.client-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 138, 61, 0.35);
+  background: linear-gradient(135deg, rgba(255, 122, 33, 0.3), rgba(255, 209, 102, 0.14));
+  color: #ffd7b8;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.client-avatar.small { width: 2.1rem; height: 2.1rem; font-size: 0.7rem; }
+.client-avatar.large { width: 3.4rem; height: 3.4rem; font-size: 1.05rem; }
+
+/* --- Cards --- */
+.client-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 0.7rem;
+  max-height: 34rem;
+  overflow-y: auto;
+  padding: 0.15rem;
+}
+
+.client-card {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.025);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.2), border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+.client-card:hover,
+.client-card.is-selected {
+  transform: translateY(-4px);
+  border-color: rgba(255, 138, 61, 0.55);
+  background: rgba(255, 138, 61, 0.06);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.4);
+}
+.client-card:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.85); outline-offset: 3px; }
+.client-card-top { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.client-card-name { font-size: 0.98rem; font-weight: 780; letter-spacing: -0.01em; }
+.client-card-contact {
+  font-size: 0.78rem;
+  color: rgba(247, 245, 239, 0.6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.client-card-stats {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.82rem;
+}
+.client-card-total { font-weight: 800; color: #ffb27d; font-variant-numeric: tabular-nums; }
+.client-card-last { font-size: 0.72rem; color: rgba(247, 245, 239, 0.45); }
+
+/* --- Table --- */
+.client-table-wrap {
+  max-height: 34rem;
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+}
+.client-table { width: 100%; border-collapse: collapse; min-width: 40rem; }
+.client-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background: #101c2b;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(247, 245, 239, 0.6);
+  text-align: left;
+}
+.client-table thead th.num, .client-table td.num { text-align: right; }
+.client-table thead button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+.client-table thead button span { opacity: 0.5; font-size: 0.7em; }
+.client-table thead button:hover { color: #fff; }
+.client-table td {
+  padding: 0.5rem 0.7rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.86rem;
+}
+.client-table tbody tr { transition: background 0.14s ease, box-shadow 0.14s ease; }
+.client-table tbody tr:hover,
+.client-table tbody tr.is-selected {
+  background: rgba(255, 138, 61, 0.07);
+  box-shadow: inset 3px 0 0 #ff7a21;
+}
+.client-table-name { display: flex; align-items: center; gap: 0.5rem; color: inherit; text-decoration: none; font-weight: 700; }
+.client-table-name:hover { color: #ffb27d; }
+.client-table-contact { color: rgba(247, 245, 239, 0.62); font-size: 0.8rem; }
+
+/* --- Focus: list beside an open customer --- */
+.client-focus { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.8rem; }
+@media (min-width: 900px) {
+  .client-focus { grid-template-columns: minmax(0, 20rem) minmax(0, 1fr); align-items: start; }
+}
+
+.client-focus-list {
+  display: grid;
+  gap: 0.3rem;
+  align-content: start;
+  max-height: 34rem;
+  overflow-y: auto;
+  padding: 0.15rem;
+}
+.client-focus-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.55rem 0.6rem;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.02);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.15s cubic-bezier(0.2, 0.9, 0.3, 1.2), background 0.15s ease, border-color 0.15s ease;
+}
+.client-focus-row:hover { background: rgba(255, 255, 255, 0.05); transform: translateX(2px); }
+.client-focus-row.is-selected {
+  border-color: rgba(255, 138, 61, 0.55);
+  background: rgba(255, 138, 61, 0.1);
+  transform: translateX(4px);
+}
+.client-focus-row:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.8); outline-offset: 2px; }
+.client-focus-who { display: grid; gap: 0.05rem; min-width: 0; }
+.client-focus-who strong { font-size: 0.87rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.client-focus-who small { font-size: 0.72rem; color: rgba(247, 245, 239, 0.55); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.client-focus-total { font-size: 0.82rem; font-weight: 800; color: #ffb27d; font-variant-numeric: tabular-nums; }
+
+/* Remounted on every selection (keyed by id), so this entrance plays each time
+   — the movement is what tells you the click landed. */
+.client-focus-pane {
+  padding: 1.1rem 1.2rem;
+  border: 1px solid rgba(255, 138, 61, 0.28);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 138, 61, 0.07), rgba(255, 255, 255, 0.02));
+  animation: client-focus-in 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.05);
+}
+@keyframes client-focus-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.995); }
+  to { opacity: 1; transform: none; }
+}
+.client-focus-head { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.9rem; }
+.client-focus-head h3 { margin: 0; font-size: 1.15rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.client-focus-head p { margin: 0.15rem 0 0; font-size: 0.85rem; color: rgba(247, 245, 239, 0.62); }
+
+.client-focus-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0 0 0.9rem;
+}
+.client-focus-stats div {
+  padding: 0.6rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.client-focus-stats dt {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(247, 245, 239, 0.55);
+}
+.client-focus-stats dd { margin: 0.1rem 0 0; font-size: 1.05rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.client-focus-address { margin: 0 0 0.9rem; font-size: 0.85rem; color: rgba(247, 245, 239, 0.7); }
+.client-focus-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+/* --- Add client dialog --- */
+.client-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(3, 8, 15, 0.74);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  overflow-y: auto;
+  animation: client-modal-fade 0.16s ease;
+}
+@keyframes client-modal-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.client-modal {
+  width: min(34rem, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  border: 1px solid rgba(255, 138, 61, 0.3);
+  border-radius: 18px;
+  background: #0d1a29;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+  animation: client-focus-in 0.2s cubic-bezier(0.2, 0.9, 0.3, 1.05);
+}
+.client-modal > header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  padding: 1rem 1.15rem 0.7rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.client-modal > header h3 { margin: 0; font-size: 1.1rem; }
+.client-modal > header p { margin: 0.25rem 0 0; font-size: 0.8rem; color: rgba(247, 245, 239, 0.6); line-height: 1.45; }
+.client-modal > header button {
+  margin-left: auto;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.05);
+  color: #dbe4ef;
+  font: inherit;
+  cursor: pointer;
+}
+
+.client-modal-form { display: grid; gap: 0.75rem; padding: 1rem 1.15rem 1.2rem; }
+.client-modal-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+.client-modal-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.2rem; }
+
+@media (max-width: 620px) {
+  .client-modal-row { grid-template-columns: minmax(0, 1fr); }
+  .client-focus-stats { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Every bit of the above is decoration over information that is already there
+   in words, so switching it off costs nothing. */
+@media (prefers-reduced-motion: reduce) {
+  .client-row, .client-card, .client-focus-row, .client-table tbody tr { transition: none; }
+  .client-row:hover, .client-row.is-selected,
+  .client-card:hover, .client-card.is-selected,
+  .client-focus-row:hover, .client-focus-row.is-selected { transform: none; }
+  .client-focus-pane, .client-modal, .client-modal-backdrop { animation: none; }
 }

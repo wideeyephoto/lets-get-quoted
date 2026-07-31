@@ -1,27 +1,51 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import { listClientsWithStats } from '@/lib/clients';
+import { CLIENTS_VIEW_COOKIE, normalizeClientsView } from '@/lib/dashboard-views';
 import { formatMoney } from '@/lib/jobs';
 import { formatPhoneDashes } from '@/lib/phone';
-import ClientsSearchList, { type ClientSearchRow } from './ClientsSearchList';
+import ClientsWorkspace, { type ClientRow } from './ClientsWorkspace';
 
 function formatDate(value: string | null): string {
   if (!value) return '—';
   return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export default async function ClientsPage() {
+function initialsFor(name: string): string {
+  return (
+    name
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join('') || '?'
+  );
+}
+
+export default async function ClientsPage({ searchParams }: { searchParams: { created?: string; existing?: string } }) {
   const { supabase, accountId } = await requireOwnerContext();
   const clients = await listClientsWithStats(supabase, accountId);
   const repeatCount = clients.filter((client) => client.jobCount > 1).length;
+  const view = normalizeClientsView(cookies().get(CLIENTS_VIEW_COOKIE)?.value);
 
-  const searchRows: ClientSearchRow[] = clients.map((client) => ({
+  const rows: ClientRow[] = clients.map((client) => ({
     id: client.id,
     name: client.name,
+    initials: initialsFor(client.name),
     isRepeat: client.jobCount > 1,
-    contactLine: [client.phone ? formatPhoneDashes(client.phone) : null, client.email].filter(Boolean).join(' · ') || 'No contact on file',
+    phone: client.phone,
+    phoneLabel: client.phone ? formatPhoneDashes(client.phone) : null,
+    email: client.email,
+    address: client.address,
+    contactLine:
+      [client.phone ? formatPhoneDashes(client.phone) : null, client.email].filter(Boolean).join(' · ') ||
+      'No contact on file',
+    jobCount: client.jobCount,
     jobsLabel: `${client.jobCount} job${client.jobCount === 1 ? '' : 's'}`,
+    totalValue: client.totalValue,
     totalLabel: formatMoney(client.totalValue),
+    lastJobAt: client.lastJobAt,
     lastLabel: formatDate(client.lastJobAt),
     search: [client.name, client.phone, client.email, client.address].filter(Boolean).join(' ').toLowerCase(),
   }));
@@ -42,18 +66,22 @@ export default async function ClientsPage() {
         </div>
       </section>
 
-      {clients.length === 0 ? (
-        <section className="panel workspace-section-card">
+      {searchParams.existing ? (
+        <p className="flash flash-info">That phone or email is already on a customer — here they are, rather than a second copy.</p>
+      ) : null}
+
+      <section className="panel workspace-section-card">
+        {clients.length === 0 ? (
           <p className="empty-state">
-            No clients yet. As you create jobs, each customer gets a profile here automatically — or{' '}
-            <Link href="/dashboard/clients/import">import your existing customer list</Link>.
+            No clients yet. Add your first customer below, or{' '}
+            <Link href="/dashboard/clients/import">import your existing customer list</Link>. Every job you create adds
+            its customer here automatically too.
           </p>
-        </section>
-      ) : (
-        <section className="panel workspace-section-card">
-          <ClientsSearchList clients={searchRows} />
-        </section>
-      )}
+        ) : null}
+        {/* Rendered even with an empty book: the Add button lives in here, and a
+            list you can't add to is the problem this page had. */}
+        <ClientsWorkspace clients={rows} initialView={view} />
+      </section>
 
       <div className="actions" style={{ marginTop: '1.25rem' }}>
         <Link href="/dashboard/clients/import" className="btn secondary">Import customers</Link>

@@ -51,3 +51,13 @@ export function normalizeJobsView(value: unknown): JobsView {
   // cookie, so nobody who picked List/Board/Table gets moved off it.
   return JOBS_VIEWS.includes(value as JobsView) ? (value as JobsView) : 'focus';
 }
+
+// Which Clients layout the owner last used (List / Cards / Table / Focus).
+export const CLIENTS_VIEW_COOKIE = 'lgq_clients_view';
+export type ClientsView = 'list' | 'cards' | 'table' | 'focus';
+export const CLIENTS_VIEWS: ClientsView[] = ['list', 'cards', 'table', 'focus'];
+export function normalizeClientsView(value: unknown): ClientsView {
+  // List stays the default: it's what this page has always been, and an
+  // explicit choice is a cookie, so nobody gets moved off what they picked.
+  return CLIENTS_VIEWS.includes(value as ClientsView) ? (value as ClientsView) : 'list';
+}

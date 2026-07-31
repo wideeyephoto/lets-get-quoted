@@ -1,7 +1,9 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { requireOwnerContext } from '@/lib/auth';
+import { normalizeUsPhone } from '@/lib/phone';
 import { updateClient } from '@/lib/clients';
 import {
   parseTable,
@@ -131,4 +133,53 @@ export async function updateClientAction(clientId: string, formData: FormData) {
 
   revalidatePath(`/dashboard/clients/${clientId}`);
   revalidatePath('/dashboard/clients');
+}
+
+// Creates a customer by hand, from the Clients page.
+//
+// Until now a client only ever appeared as a side effect of a job or an import,
+// which meant the one thing you'd expect a customer list to do — add a customer —
+// couldn't be done from it.
+//
+// Dedupe is deliberate and matches findOrCreateClientId: phone first, then
+// email. Adding somebody who is already in the book returns their existing
+// profile rather than creating a second copy, because two half-filled records
+// for the same person is exactly what a customer list is supposed to prevent.
+export async function createClientAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const name = String(formData.get('name') ?? '').trim().slice(0, 160);
+  if (!name) throw new Error('A customer needs a name.');
+
+  const phoneRaw = String(formData.get('phone') ?? '').trim();
+  const phone = phoneRaw ? normalizeUsPhone(phoneRaw) : null;
+  const email = String(formData.get('email') ?? '').trim().toLowerCase() || null;
+  const address = String(formData.get('address') ?? '').trim().slice(0, 300) || null;
+  const notes = String(formData.get('notes') ?? '').trim().slice(0, 2000) || null;
+
+  // Same keys, same order as the automatic path.
+  let existingId: string | null = null;
+  if (phone) {
+    const { data } = await supabase.from('clients').select('id').eq('account_id', accountId).eq('phone', phone).limit(1).maybeSingle();
+    existingId = (data?.id as string) ?? null;
+  }
+  if (!existingId && email) {
+    const { data } = await supabase.from('clients').select('id').eq('account_id', accountId).eq('email', email).limit(1).maybeSingle();
+    existingId = (data?.id as string) ?? null;
+  }
+
+  if (existingId) {
+    revalidatePath('/dashboard/clients');
+    redirect(`/dashboard/clients/${existingId}?existing=1`);
+  }
+
+  const { data, error } = await supabase
+    .from('clients')
+    .insert({ account_id: accountId, name, phone, email, address, notes })
+    .select('id')
+    .single();
+  if (error || !data) throw new Error('Could not save that customer.');
+
+  revalidatePath('/dashboard/clients');
+  redirect(`/dashboard/clients/${data.id as string}?created=1`);
 }

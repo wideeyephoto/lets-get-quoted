@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
-import { CALENDAR_WEEKEND_COOKIE, JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeJobsView, normalizeMapTheme, normalizeMapView, serializeWeekendDays, type JobsView, type MapSurface, type MapTheme, type MapView, type WeekendDays } from '@/lib/dashboard-views';
+import { CALENDAR_WEEKEND_COOKIE, CLIENTS_VIEW_COOKIE, JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeClientsView, normalizeJobsView, normalizeMapTheme, normalizeMapView, serializeWeekendDays, type ClientsView, type JobsView, type MapSurface, type MapTheme, type MapView, type WeekendDays } from '@/lib/dashboard-views';
 
 const YEAR = 60 * 60 * 24 * 365;
 
@@ -29,4 +29,10 @@ export async function setJobsViewAction(view: JobsView) {
 export async function setCalendarWeekendAction(days: WeekendDays) {
   await requireOwnerContext();
   cookies().set(CALENDAR_WEEKEND_COOKIE, serializeWeekendDays(days), { path: '/', maxAge: YEAR, sameSite: 'lax' });
+}
+
+// Remember the owner's chosen Clients layout (List / Cards / Table / Focus).
+export async function setClientsViewAction(view: ClientsView) {
+  await requireOwnerContext();
+  cookies().set(CLIENTS_VIEW_COOKIE, normalizeClientsView(view), { path: '/', maxAge: YEAR, sameSite: 'lax' });
 }
