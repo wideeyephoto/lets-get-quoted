@@ -12156,3 +12156,180 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 .extrastop-panel[data-state='locked'] { border-color: rgba(255, 209, 102, 0.4); }
 
 .extrastop-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+
+/* ---------------------------------------------------------------------------
+   Fill a gap with a nearby lead (Plan my day)
+
+   The panel that suggests texting a waiting lead about a hole in today's route.
+   Styled quieter than the route itself on purpose: it is an opportunity, not a
+   commitment, and it sits under the day rather than competing with it.
+   --------------------------------------------------------------------------- */
+
+.offer-panel { margin-top: 1rem; }
+.offer-head { margin-bottom: 0.9rem; }
+.offer-head h2 { margin: 0 0 0.35rem; font-size: 1.15rem; }
+.offer-head p { margin: 0; max-width: 60ch; font-size: 0.86rem; line-height: 1.55; color: rgba(255, 255, 255, 0.6); }
+
+.offer-empty {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  border: 1px dashed rgba(148, 176, 214, 0.22);
+  border-radius: 12px;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.55);
+  max-width: 62ch;
+}
+
+/* -- Suggestions ---------------------------------------------------------- */
+
+.offer-suggestions,
+.offer-waiting,
+.offer-settled {
+  list-style: none;
+  margin: 0 0 0.9rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.offer-suggestions > li {
+  border: 1px solid rgba(148, 176, 214, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.85rem 1rem;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+.offer-suggestions > li[data-open] {
+  border-color: rgba(255, 122, 33, 0.4);
+  background: rgba(255, 122, 33, 0.05);
+}
+
+.offer-suggestion-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.offer-suggestion-copy { display: grid; gap: 0.25rem; min-width: 0; flex: 1 1 22rem; }
+.offer-suggestion-copy strong { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; font-size: 0.95rem; font-weight: 750; }
+.offer-suggestion-copy strong a { color: inherit; text-decoration: none; }
+.offer-suggestion-copy strong a:hover { text-decoration: underline; }
+.offer-suggestion-copy small { font-size: 0.82rem; line-height: 1.5; color: rgba(255, 255, 255, 0.55); }
+/* The gap itself is the reason this row exists, so it reads brighter than the
+   address line above it. */
+.offer-slot { color: rgba(255, 255, 255, 0.72) !important; }
+
+.offer-chip {
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 176, 214, 0.3);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+/* -- The draft ------------------------------------------------------------ */
+
+.offer-draft {
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(148, 176, 214, 0.16);
+  display: grid;
+  gap: 0.85rem;
+}
+.offer-draft textarea { width: 100%; min-height: 4.5rem; resize: vertical; line-height: 1.5; }
+.offer-draft .field > small { font-size: 0.75rem; color: rgba(255, 255, 255, 0.45); }
+.offer-draft .field > small.warn { color: #fde68a; }
+.offer-draft-row { display: flex; gap: 0.85rem; flex-wrap: wrap; }
+.offer-draft-row .field { flex: 1 1 11rem; min-width: 0; }
+
+/* Exactly what lands on their phone, envelope and all. Monospace-ish framing so
+   it reads as a quoted message rather than as more page text. */
+.offer-preview {
+  border: 1px solid rgba(148, 176, 214, 0.22);
+  border-radius: 12px;
+  background: rgba(10, 16, 28, 0.55);
+  padding: 0.7rem 0.85rem;
+}
+.offer-preview > span {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+.offer-preview p {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.86);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* -- Holding -------------------------------------------------------------- */
+
+.offer-waiting > li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.8rem 1rem;
+  border: 1px solid rgba(255, 209, 102, 0.4);
+  border-radius: 14px;
+  background: rgba(255, 209, 102, 0.07);
+}
+.offer-waiting-copy { display: grid; gap: 0.2rem; min-width: 0; flex: 1 1 24rem; }
+.offer-waiting-copy strong { font-size: 0.93rem; font-weight: 750; }
+.offer-waiting-copy small { font-size: 0.81rem; line-height: 1.5; color: rgba(255, 255, 255, 0.62); }
+
+/* -- Settled -------------------------------------------------------------- */
+
+.offer-settled > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid rgba(148, 176, 214, 0.16);
+  border-radius: 12px;
+}
+.offer-settled > li > div { display: grid; gap: 0.2rem; min-width: 0; }
+.offer-settled strong { font-size: 0.9rem; font-weight: 700; }
+.offer-settled strong a { color: inherit; text-decoration: none; }
+.offer-settled strong a:hover { text-decoration: underline; }
+.offer-settled small { font-size: 0.8rem; line-height: 1.5; color: rgba(255, 255, 255, 0.55); }
+
+/* The word carries the state; colour only agrees with it. */
+.offer-status {
+  flex: 0 0 auto;
+  margin-top: 0.1rem;
+  padding: 0.14rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 176, 214, 0.35);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+  white-space: nowrap;
+}
+.offer-status[data-status='accepted'] { border-color: rgba(72, 199, 142, 0.55); background: rgba(72, 199, 142, 0.14); color: #7fe0b2; }
+.offer-status[data-status='accepted_late'] { border-color: rgba(255, 209, 102, 0.55); background: rgba(255, 209, 102, 0.12); color: #ffd591; }
+.offer-settled > li[data-status='accepted'] { border-color: rgba(72, 199, 142, 0.28); }
+
+@media (max-width: 760px) {
+  .offer-suggestion-head > button { width: 100%; }
+  .offer-waiting > li form { width: 100%; }
+  .offer-waiting > li form button { width: 100%; }
+}
+.offer-said { font-style: italic; color: rgba(255, 255, 255, 0.68) !important; }

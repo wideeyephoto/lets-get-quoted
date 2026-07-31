@@ -97,6 +97,38 @@ export async function sendOwnerHighValueLeadSms(input: {
   }
 }
 
+// The one text that asks a lead whether they want the gap in today's route.
+//
+// The body was written (or at least approved) by the contractor before this ran
+// — nothing here is composed on the fly, because a homeowner who never asked to
+// hear from us should not receive a machine-generated pitch. The envelope with
+// the YES/NO instruction and the opt-out line is added by composeOfferMessage(),
+// so this delivers `message` verbatim. Consent is the caller's to resolve.
+export async function sendEstimateOfferSms(input: {
+  accountId: string;
+  toPhone: string;
+  message: string;
+}): Promise<string> {
+  const providerId = await sendTwilioMessage(input.toPhone, input.message);
+  await logOutboundToInbox(input.accountId, input.toPhone, input.message, providerId);
+  return providerId;
+}
+
+// Tells the contractor, on their own mobile, that a lead answered. A self-alert
+// to the number they entered in settings — not a customer conversation, so it
+// skips the inbox and the consent ledger, exactly like the high-value lead
+// alert. Best-effort: never throws, because it runs inside a Twilio webhook.
+export async function sendOwnerEstimateAcceptedSms(input: { alertPhone: string; message: string }): Promise<void> {
+  try {
+    if (!twilioConfiguration()) return;
+    const to = normalizeUsPhone(input.alertPhone);
+    if (!to) return;
+    await sendTwilioMessage(to, `Let's Get Quoted: ${input.message} Reply STOP to opt out.`);
+  } catch (error) {
+    console.error('Owner estimate-offer alert SMS failed:', error instanceof Error ? error.message : error);
+  }
+}
+
 // Extra Stop offer → customer: the pay link + arrival window + fee + the
 // hard 15-minute reservation deadline. Transactional (the customer gave their
 // number to request this), account-scoped, mirrored to the inbox. Best-effort.

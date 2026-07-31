@@ -546,15 +546,19 @@ create table if not exists route_stops (
   lat            numeric,
   lng            numeric,
   minutes        integer not null default 20,
+  -- 'estimate' is never created by hand: it's the stop a lead's YES makes when
+  -- they accept an offered slot (see estimate_offers).
   kind           text not null default 'supply',
   note           text,
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now()
 );
+-- route_stops.lead_id is added further down, once leads exists.
 do $$ begin
+  alter table route_stops drop constraint if exists route_stops_kind_check;
   alter table route_stops add constraint route_stops_kind_check
-    check (kind in ('supply', 'dump', 'fuel', 'other'));
-exception when duplicate_object then null; end $$;
+    check (kind in ('supply', 'dump', 'fuel', 'other', 'estimate'));
+end $$;
 do $$ begin
   alter table route_stops add constraint route_stops_minutes_check
     check (minutes between 0 and 480);
@@ -946,6 +950,67 @@ create index if not exists leads_client_id_idx on leads (client_id);
 alter table leads add column if not exists lat numeric;
 alter table leads add column if not exists lng numeric;
 alter table leads add column if not exists geocoded_at timestamptz;
+
+-- The estimate visit an accepted offer creates. Declared here rather than with
+-- the rest of route_stops because it points at leads, which is defined above.
+alter table route_stops add column if not exists lead_id uuid references leads(id) on delete set null;
+create index if not exists route_stops_lead_idx on route_stops (lead_id) where lead_id is not null;
+
+-- Offering a nearby lead the gap in a day's route.
+--
+-- One row per ask. The unique index on lead_id is the guardrail that matters:
+-- a lead gets asked once, ever, and that is enforced by the database rather
+-- than by everyone remembering to check.
+create table if not exists estimate_offers (
+  id              uuid primary key default gen_random_uuid(),
+  account_id      uuid not null references accounts(id) on delete cascade,
+  lead_id         uuid not null references leads(id) on delete cascade,
+  crew_id         uuid references crew(id) on delete set null,
+  status          text not null default 'held',
+  offer_date      date not null,
+  -- What the homeowner was promised: a window, never a single time.
+  window_start    time not null,
+  window_end      time not null,
+  -- What the route was planned around, inside that window.
+  arrival_time    time not null,
+  visit_minutes   integer not null default 30,
+  detour_miles    numeric,
+  detour_minutes  integer,
+  after_stop_id   text,
+  phone           text not null,
+  -- The text as sent. A template id would stop being an answer the moment the
+  -- template was edited.
+  body            text not null,
+  hold_minutes    integer not null default 45,
+  hold_expires_at timestamptz not null,
+  sent_at         timestamptz not null default now(),
+  replied_at      timestamptz,
+  reply_body      text,
+  forwarded_at    timestamptz,
+  route_stop_id   uuid references route_stops(id) on delete set null,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
+do $$ begin
+  alter table estimate_offers add constraint estimate_offers_status_check
+    check (status in ('held', 'accepted', 'accepted_late', 'declined', 'expired', 'canceled'));
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter table estimate_offers add constraint estimate_offers_window_check
+    check (window_end > window_start and arrival_time >= window_start and arrival_time <= window_end);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter table estimate_offers add constraint estimate_offers_hold_check
+    check (hold_minutes between 15 and 120);
+exception when duplicate_object then null; end $$;
+do $$ begin
+  alter table estimate_offers add constraint estimate_offers_visit_check
+    check (visit_minutes between 10 and 240);
+exception when duplicate_object then null; end $$;
+create unique index if not exists estimate_offers_one_per_lead on estimate_offers (lead_id);
+create index if not exists estimate_offers_day_idx on estimate_offers (account_id, offer_date);
+create index if not exists estimate_offers_pending_idx
+  on estimate_offers (phone, sent_at desc) where status = 'held';
 
 -- Contacts an owner has blocked from submitting new website leads. Matching
 -- submissions are silently dropped (the visitor still sees success).
@@ -1435,6 +1500,12 @@ drop policy if exists route_stop_crew_read on route_stops;
 create policy saved_place_owner    on saved_places for all    using ( is_owner(account_id) );
 create policy route_stop_owner     on route_stops  for all    using ( is_owner(account_id) );
 create policy route_stop_crew_read on route_stops  for select using ( crew_id is not null and crew_owns_crew_row(crew_id) );
+
+-- ESTIMATE_OFFERS: the owner's own. Replies come in through the Twilio webhook
+-- on the service-role client, which bypasses RLS.
+alter table estimate_offers enable row level security;
+drop policy if exists estimate_offer_owner on estimate_offers;
+create policy estimate_offer_owner on estimate_offers for all using ( is_owner(account_id) );
 
 -- JOB_FEED: owners full access. Crew may READ and POST feed events on an assigned
 -- job (status changes, field notes, client-shared updates) — nothing else.

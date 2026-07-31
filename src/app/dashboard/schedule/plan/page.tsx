@@ -20,8 +20,11 @@ import SaveButton from '@/components/save-button';
 import WorkingHoursPanel from '@/components/working-hours-panel';
 import ExtraStopPanel from '@/components/extra-stop-panel';
 import { EXTRA_STOP_SETTINGS_COLUMNS, extraStopSettingsFromAccount } from '@/lib/extra-stop';
+import { loadOfferContext, offerDisplay } from '@/lib/estimate-offers-data';
+import { DEFAULT_ESTIMATE_MINUTES, draftOfferBody, rankOfferSuggestions, timeFromMinutes } from '@/lib/estimate-offers';
 import DayPlanner from './DayPlanner';
 import PlanDayControls from './PlanDayControls';
+import EstimateOffers, { type OfferSuggestionView, type OfferView } from './EstimateOffers';
 import { geocodeDayAction, notifyMovedClientsAction } from './actions';
 
 export const dynamic = 'force-dynamic';
@@ -35,6 +38,15 @@ function shiftDateKey(dateKey: string, days: number): string {
   const [y, m, d] = dateKey.split('-').map(Number);
   const date = new Date(y, m - 1, d + days);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+// How the day gets referred to inside a text to a homeowner. "today" and
+// "tomorrow" are what a person would say; anything further out gets its name.
+function dayWordFor(dateKey: string, todayKey: string): string {
+  if (dateKey === todayKey) return 'today';
+  if (dateKey === shiftDateKey(todayKey, 1)) return 'tomorrow';
+  const [y, m, d] = dateKey.split('-').map(Number);
+  return `on ${new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'long' })}`;
 }
 
 // The order the calendar is in right now: by committed time, untimed stops last.
@@ -147,16 +159,100 @@ export default async function PlanDayPage({
   // up at all are three different answers and the panel says which.
   const { data: extraStopRow } = await supabase
     .from('accounts')
-    .select(EXTRA_STOP_SETTINGS_COLUMNS)
+    .select(`${EXTRA_STOP_SETTINGS_COLUMNS}, business_name`)
     .eq('id', accountId)
     .maybeSingle();
   const extraStop = extraStopSettingsFromAccount((extraStopRow ?? {}) as Parameters<typeof extraStopSettingsFromAccount>[0]);
+  const businessName = ((extraStopRow as { business_name?: string } | null)?.business_name || "Let's Get Quoted").trim();
   const { count: extraStopToday } = await supabase
     .from('extra_stop_requests')
     .select('id', { count: 'exact', head: true })
     .eq('account_id', accountId)
     .eq('arrival_date', dateKey)
     .in('status', ['confirmed', 'en_route', 'arrived', 'completed']);
+
+  // Leads sitting close to a hole in today's route.
+  //
+  // Measured against the day as the CALENDAR has it, not against the optimized
+  // proposal: a window we promise a homeowner has to exist in the day that is
+  // actually booked, not in one the contractor may never apply.
+  const offerContext = routable.length > 0 ? await loadOfferContext(supabase, accountId, dateKey) : null;
+  const now = new Date();
+  let offerSuggestions: OfferSuggestionView[] = [];
+  let offerViews: OfferView[] = [];
+  let offerEmptyReason: string | null = null;
+
+  if (offerContext?.available) {
+    offerViews = offerContext.offers.map((offer) => {
+      const display = offerDisplay(offer, now);
+      return {
+        id: offer.id,
+        leadId: offer.lead_id,
+        leadName: offerContext.offerLeadNames.get(offer.lead_id) ?? 'Unnamed lead',
+        windowLabel: display.windowLabel,
+        status: display.status,
+        holding: display.hold.holding,
+        minutesLeft: display.hold.minutesLeft,
+        expiresLabel: display.hold.expiresLabel,
+        replyBody: offer.reply_body,
+        arrivalLabel: formatTimeLabel(parseTimeMinutes(offer.arrival_time) ?? 0),
+      };
+    });
+
+    const dayWord = dayWordFor(dateKey, accountToday(settings.timezone));
+    const ranked = rankOfferSuggestions({
+      placement: {
+        planned: currentPlan.planned,
+        homeBase: anchor.coord,
+        workdayStartMinutes: parseTimeMinutes(settings.workdayStart) ?? 8 * 60,
+        workdayEndMinutes: parseTimeMinutes(settings.workdayEnd) ?? 17 * 60,
+        bufferMinutes: settings.bufferMinutes,
+        visitMinutes: DEFAULT_ESTIMATE_MINUTES,
+      },
+      leads: offerContext.candidates,
+      alreadyOfferedLeadIds: offerContext.offeredLeadIds,
+      // A slot someone is still deciding about is not a free slot.
+      blocked: offerViews
+        .filter((view) => view.holding)
+        .map((view) => {
+          const offer = offerContext.offers.find((row) => row.id === view.id)!;
+          return {
+            startMinutes: parseTimeMinutes(offer.window_start) ?? 0,
+            endMinutes: parseTimeMinutes(offer.window_end) ?? 0,
+          };
+        }),
+    });
+
+    offerSuggestions = ranked.map(({ lead, placement, window }) => ({
+      leadId: lead.id,
+      leadName: lead.name?.trim() || 'Unnamed lead',
+      projectType: lead.projectType,
+      address: lead.address,
+      detourMiles: Number(placement.detourMiles.toFixed(1)),
+      detourMinutes: placement.detourMinutes,
+      addedMinutes: placement.addedMinutes,
+      afterStopLabel: placement.afterStopLabel,
+      beforeStopLabel: placement.beforeStopLabel,
+      windowStart: timeFromMinutes(window.startMinutes),
+      windowEnd: timeFromMinutes(window.endMinutes),
+      arrivalTime: timeFromMinutes(window.arrivalMinutes),
+      windowLabel: window.label,
+      afterStopId: placement.afterStopId,
+      defaultBody: draftOfferBody({
+        leadName: lead.name,
+        projectType: lead.projectType,
+        windowLabel: window.label,
+        dayWord,
+      }),
+    }));
+
+    if (ranked.length === 0) {
+      offerEmptyReason =
+        offerContext.candidates.length === 0
+          ? 'No open leads with a mapped address right now. A lead needs a street address we can put on the map before we can tell whether they’re near you.'
+          : 'None of your open leads sit close enough to a gap in this day. We only suggest one where the detour is short and there’s at least an hour free — so this stays quiet most days.';
+    }
+  }
 
   const matrixPayload: DriveMatrixPayload = matrix ? Object.fromEntries(matrix) : {};
   const payload: DayPlanPayload = {
@@ -311,6 +407,18 @@ export default async function PlanDayPage({
       ) : (
         <DayPlanner payload={payload} mapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? null} />
       )}
+
+      {/* Right under the route, because it's about the holes in it. */}
+      {offerContext?.available ? (
+        <EstimateOffers
+          dateKey={dateKey}
+          crewId={crewId}
+          businessName={businessName}
+          suggestions={offerSuggestions}
+          offers={offerViews}
+          emptyReason={offerEmptyReason}
+        />
+      ) : null}
 
       {justMoved.length > 0 ? (
         <section className="panel plan-panel">

@@ -4,6 +4,7 @@ import { normalizeUsPhone } from '@/lib/phone';
 import { validateTwilioSignature } from '@/lib/sms';
 import { logInboundMessage } from '@/lib/messages';
 import { confirmUpcomingAppointment } from '@/lib/reminders';
+import { resolveOfferReply } from '@/lib/estimate-offers-data';
 
 export const runtime = 'nodejs';
 
@@ -41,6 +42,18 @@ export async function POST(request: Request) {
     } catch (error) {
       console.error('Failed to log inbound SMS:', error instanceof Error ? error.message : error);
     }
+  }
+
+  // An outstanding estimate offer answers first.
+  //
+  // It shares the word YES with appointment confirmation below, and it has to
+  // win: an offer is a question we asked this person minutes ago about a slot we
+  // are actively holding for them, so their "yes" is far more likely to mean
+  // that than to mean "confirm the appointment I already have". Opt-out and HELP
+  // keywords are excluded so STOP can never be read as an answer.
+  if (phone && rawBody && !OPT_OUT.has(keyword) && !OPT_IN.has(keyword) && keyword !== 'HELP') {
+    const outcome = await resolveOfferReply(phone, rawBody);
+    if (outcome.handled) return twiml(outcome.reply ?? undefined);
   }
 
   // Appointment confirmation: "C"/"confirm"/"yes" marks the client's upcoming

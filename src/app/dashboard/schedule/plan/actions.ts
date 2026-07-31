@@ -10,7 +10,7 @@ import { isPhoneOptedOut, recordSmsConsent, sendArrivalTimeChangedSms } from '@/
 import { arrivalWindow, buildScheduleChangeset, formatTimeLabel, parseTimeMinutes } from '@/lib/route-plan';
 import { getPlanAccountSettings, listDayJobs } from '@/lib/route-plan-day';
 import { geocodeAddress } from '@/lib/geocode';
-import { isRouteStopId, normalizeKind, rememberPlace, routeStopUuid } from '@/lib/route-stops';
+import { isRouteStopId, normalizeManualKind, rememberPlace, routeStopUuid } from '@/lib/route-stops';
 import { savePreferredLast } from '@/lib/day-plan-prefs';
 
 // The plan page is force-dynamic, but Next still serves a route's last RSC
@@ -148,7 +148,7 @@ export async function addRouteStopAction(formData: FormData) {
 
   const label = String(formData.get('label') ?? '').trim().slice(0, 120);
   const address = String(formData.get('address') ?? '').trim().slice(0, 300) || null;
-  const kind = normalizeKind(formData.get('kind'));
+  const kind = normalizeManualKind(formData.get('kind'));
   const minutesRaw = Number(formData.get('minutes'));
   const minutes = Number.isFinite(minutesRaw) ? Math.max(0, Math.min(480, Math.round(minutesRaw))) : 20;
   const scheduledTime = String(formData.get('scheduledTime') ?? '').trim() || null;

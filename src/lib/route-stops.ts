@@ -9,14 +9,19 @@ import type { PlanStop } from '@/lib/route-plan';
 // is what stops them leaking into job counts, revenue, the client feed, and
 // every other place "a job" means "work someone is paying for".
 
+// The kinds a contractor can add by hand. 'estimate' is deliberately absent:
+// an estimate visit is somebody's appointment, so it exists only where one was
+// actually agreed — see estimate-offers-data.ts.
 export const ROUTE_STOP_KINDS = ['supply', 'dump', 'fuel', 'other'] as const;
-export type RouteStopKind = (typeof ROUTE_STOP_KINDS)[number];
+export const ALL_ROUTE_STOP_KINDS = [...ROUTE_STOP_KINDS, 'estimate'] as const;
+export type RouteStopKind = (typeof ALL_ROUTE_STOP_KINDS)[number];
 
 export const KIND_LABEL: Record<RouteStopKind, string> = {
   supply: 'Supply run',
   dump: 'Dump / disposal',
   fuel: 'Fuel',
   other: 'Other stop',
+  estimate: 'Estimate visit',
 };
 
 // The glyph key each kind draws with, from the same icon set the price book and
@@ -26,6 +31,7 @@ export const KIND_GLYPH: Record<RouteStopKind, string> = {
   dump: 'trash',
   fuel: 'droplet',
   other: 'package',
+  estimate: 'pencilRuler',
 };
 
 export type RouteStop = {
@@ -33,6 +39,8 @@ export type RouteStop = {
   account_id: string;
   crew_id: string | null;
   saved_place_id: string | null;
+  /** Set when the stop is an estimate visit a lead accepted by text. */
+  lead_id: string | null;
   scheduled_for: string;
   scheduled_time: string | null;
   label: string;
@@ -55,8 +63,9 @@ export type SavedPlace = {
   use_count: number;
 };
 
-const STOP_FIELDS =
+const LEGACY_STOP_FIELDS =
   'id, account_id, crew_id, saved_place_id, scheduled_for, scheduled_time, label, address, lat, lng, minutes, kind, note';
+const STOP_FIELDS = LEGACY_STOP_FIELDS.replace('saved_place_id,', 'saved_place_id, lead_id,');
 const PLACE_FIELDS = 'id, label, address, lat, lng, kind, default_minutes, use_count';
 
 // A route stop's id inside the planner is prefixed so the save action can tell
@@ -72,7 +81,15 @@ export function routeStopUuid(id: string): string {
   return id.slice(ROUTE_STOP_PREFIX.length);
 }
 
+// For rows read back out of the database, where every kind is legitimate.
 export function normalizeKind(value: unknown): RouteStopKind {
+  const kind = String(value ?? '');
+  return (ALL_ROUTE_STOP_KINDS as readonly string[]).includes(kind) ? (kind as RouteStopKind) : 'other';
+}
+
+// For the add-a-stop form, where it isn't: a hand-posted kind must not be able
+// to manufacture an estimate visit nobody agreed to.
+export function normalizeManualKind(value: unknown): RouteStopKind {
   const kind = String(value ?? '');
   return (ROUTE_STOP_KINDS as readonly string[]).includes(kind) ? (kind as RouteStopKind) : 'other';
 }
@@ -88,7 +105,10 @@ export function toPlanStop(stop: RouteStop): PlanStop {
     // A stop with no minutes on it is still a stop; 20 is the table default and
     // the sane floor for "park, walk in, walk out".
     visitMinutes: Number(stop.minutes) > 0 ? Number(stop.minutes) : 20,
-    // Nobody confirmed a dump run, so it's always free to move.
+    // Nobody confirmed a dump run, so it's free to move. An accepted estimate
+    // isn't pinned either: the homeowner was given a two-to-three hour window,
+    // not a minute, and locking the stop to one end of it would throw away the
+    // slack that made the promise keepable in the first place.
     locked: false,
   };
 }
@@ -101,20 +121,27 @@ export async function listDayRouteStops(
   dateKey: string,
   crewId?: string | null,
 ): Promise<RouteStop[]> {
-  const { data, error } = await supabase
-    .from('route_stops')
-    .select(STOP_FIELDS)
-    .eq('account_id', accountId)
-    .eq('scheduled_for', dateKey)
-    .order('scheduled_time', { ascending: true, nullsFirst: false });
+  const query = (fields: string) =>
+    supabase
+      .from('route_stops')
+      .select(fields)
+      .eq('account_id', accountId)
+      .eq('scheduled_for', dateKey)
+      .order('scheduled_time', { ascending: true, nullsFirst: false });
+
+  let { data, error } = await query(STOP_FIELDS);
+  // lead_id arrived with estimate offers. Between deploying the code and running
+  // the migration this select would 42703 and take every supply stop down with
+  // it — so ask again without the new column rather than lose the whole day.
+  if (error?.code === '42703') ({ data, error } = await query(LEGACY_STOP_FIELDS));
 
   // Pre-migration, or a read failure: a day with no supply stops is the correct
   // degradation. The route is still right, it just doesn't include the dump run.
   if (error) return [];
 
-  const all = (data ?? []) as RouteStop[];
+  const all = (data ?? []) as unknown as RouteStop[];
   const stops = crewId ? all.filter((stop) => !stop.crew_id || stop.crew_id === crewId) : all;
-  return stops.map((stop) => ({ ...stop, kind: normalizeKind(stop.kind) }));
+  return stops.map((stop) => ({ ...stop, lead_id: stop.lead_id ?? null, kind: normalizeKind(stop.kind) }));
 }
 
 export async function listSavedPlaces(supabase: SupabaseClient, accountId: string): Promise<SavedPlace[]> {
