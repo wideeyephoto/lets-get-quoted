@@ -1,42 +1,69 @@
 'use client';
 
-import { Fragment, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import Link from 'next/link';
+import { useFormState } from 'react-dom';
 import {
   ENTRY_ISSUE_HELP,
   ENTRY_ISSUE_LABEL,
   PERIOD_MODES,
-  PERIOD_STATUS_LABEL,
   QUICK_PERIODS,
-  type CrewLaborRow,
   type PayPeriod,
-  type PeriodStatus,
 } from '@/lib/labor';
+import {
+  PAYMENT_METHOD_LABEL,
+  PAYMENT_STATE_LABEL,
+  PAY_EVENT_LABEL,
+  PAY_STATUS_HELP,
+  PAY_STATUS_LABEL,
+  PAY_WARNING_HELP,
+  PAY_WARNING_LABEL,
+  PAY_WARNING_SEVERITY,
+  PERIOD_STATE_HELP,
+  PERIOD_STATE_LABEL,
+  UNDO_DISCLAIMER,
+  buildPayCsv,
+  hoursLabel,
+  markPeriodBlockedReason,
+  payMoney,
+  type CrewPayRow,
+  type PayEvent,
+  type PayPeriodState,
+  type PeriodAction,
+  type PeriodTotals,
+} from '@/lib/crew-pay';
 import { EXPORT_FORMAT_LABEL, ROUNDING_LABEL, type LaborSettings } from '@/lib/labor-settings';
 import { TIME_CLOCK_MODES, type TimeClockMode } from '@/lib/time-clock';
 import SaveButton from '@/components/save-button';
 import { addLaborEntryAction, closeOpenShiftAction, deleteLaborEntryAction } from './actions';
 import { saveLaborSettingsAction } from './settings-actions';
+import {
+  approveHoursAction,
+  closePeriodAction,
+  markPaidAction,
+  markSentAction,
+  recordExportAction,
+  reopenPeriodAction,
+  setEntryLockAction,
+  undoPaidAction,
+  type PayActionState,
+} from './pay-actions';
+import { PaymentConfirmDialog, ReasonDialog } from './PaymentDialogs';
 import styles from './crew.module.css';
 
 // Hours & pay.
 //
-// Named for what it does. This product does not run payroll — it does not
-// calculate or withhold tax, file anything, or move money to anyone's bank —
-// so calling the screen "Payroll" promised four things it has never done. Every
-// money figure here is an estimate off logged hours, and says so.
+// The shape of the screen is the shape of the job: review the exceptions,
+// approve the hours, record the payment, done. Everything else — settings,
+// history, corrections, the awkward cases — is reachable without being in the
+// way of that line.
+//
+// This product does not run payroll. It does not calculate or withhold tax,
+// file anything, or move money to anyone's bank. "Paid" here means the
+// contractor recorded that they paid, and every surface that says it says so.
 
-function money(n: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
-}
+const IDLE: PayActionState = { ok: false, message: '' };
 
-function money2(n: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
-}
-
-// Pre-formatted server-side: the flag, the elapsed label and the default end
-// time all depend on "now", and computing them in the client would make the
-// first paint disagree with the server's.
 export type OpenShiftView = {
   id: string;
   crewName: string;
@@ -49,47 +76,275 @@ export type OpenShiftView = {
   flagHelp: string | null;
 };
 
+type StatusFilter = 'all' | 'needs_review' | 'approved' | 'draft';
+type PaymentFilter = 'all' | 'unpaid' | 'sent' | 'paid';
+type SortKey = 'name' | 'hours' | 'pay' | 'review' | 'payment';
+
+const REVIEW_RANK: Record<string, number> = { needs_review: 0, draft: 1, approved: 2 };
+const PAYMENT_RANK: Record<string, number> = { unpaid: 0, sent: 1, paid: 2 };
+
+function rowKey(row: CrewPayRow): string {
+  return row.crewId ?? 'unassigned';
+}
+
 function loggedLabel(iso: string): string {
   return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function stamp(iso: string): string {
+  return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function dayLabel(value: string | null): string {
+  if (!value) return '—';
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T00:00:00`) : new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+/** What a button has asked to happen. Held by the page, not by the button. */
+type Armed = { kind: 'approve' | 'sent'; crewIds: string[] } | { kind: 'close'; crewIds?: undefined } | null;
+
+/**
+ * A pay action as an always-mounted form that a button arms.
+ *
+ * The buttons that trigger these actions are conditional on the very status the
+ * action changes — "Approve hours" only exists while hours are unapproved,
+ * "Mark as sent to payroll" only while they're unsent. When the form lived
+ * inside the button, a successful action re-rendered the row, unmounted the
+ * form, and the effect that reports the result never ran: the work happened and
+ * the screen said nothing. Keeping the form out here, mounted for the life of
+ * the page, means the result always has somewhere to land.
+ */
+function ArmedForm({
+  action,
+  armed,
+  fields,
+  onDone,
+}: {
+  action: (prev: PayActionState, formData: FormData) => Promise<PayActionState>;
+  armed: Armed;
+  fields: ReactNode;
+  onDone: (state: PayActionState) => void;
+}) {
+  const ref = useRef<HTMLFormElement | null>(null);
+  const [state, formAction] = useFormState(action, IDLE);
+
+  useEffect(() => {
+    // The hidden inputs below are rendered from the same `armed` value, so by
+    // the time this effect runs they are already in the form.
+    if (armed) ref.current?.requestSubmit();
+  }, [armed]);
+
+  useEffect(() => {
+    if (state.message) onDone(state);
+    // onDone is a stable setter from the parent; re-firing on identity churn
+    // would re-toast the same result on every keystroke elsewhere.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+
+  return (
+    <form ref={ref} action={formAction} hidden>
+      {fields}
+      {(armed?.crewIds ?? []).map((id) => (
+        <input key={id} type="hidden" name="crewIds" value={id} />
+      ))}
+    </form>
+  );
 }
 
 export default function HoursAndPay({
   rows,
   totals,
+  periodState,
+  primaryAction,
   period,
-  status,
+  periodClosedAt,
+  periodReopenReason,
+  overlaps,
+  events,
+  payAvailable,
   exportBlocked,
-  csv,
   crewFilter,
   crewOptions,
   assignableJobs,
   jobLookup,
+  jobsByCrew,
+  hoursToday,
+  showTodayColumn,
+  todayKey,
+  progress,
   settings,
   timeClockMode,
   timeClockAvailable,
   openShifts,
 }: {
-  rows: CrewLaborRow[];
-  totals: { hours: number; pay: number; overtime: number; needsReview: number; activeCrew: number };
+  rows: CrewPayRow[];
+  totals: PeriodTotals;
+  periodState: PayPeriodState;
+  primaryAction: PeriodAction | null;
   period: PayPeriod;
-  status: PeriodStatus;
+  periodClosedAt: string | null;
+  periodReopenReason: string | null;
+  overlaps: { rangeLabel: string; paidCount: number }[];
+  events: PayEvent[];
+  payAvailable: boolean;
   exportBlocked: string | null;
-  csv: string;
   crewFilter: string | null;
   crewOptions: { id: string; name: string }[];
   assignableJobs: { id: string; ref: string; clientName: string }[];
   jobLookup: Record<string, string>;
+  jobsByCrew: Record<string, { ref: string; clientName: string }[]>;
+  hoursToday: Record<string, number>;
+  showTodayColumn: boolean;
+  todayKey: string;
+  progress: { daysTotal: number; daysDone: number; daysLeft: number };
   settings: LaborSettings;
   timeClockMode: TimeClockMode;
   timeClockAvailable: boolean;
   openShifts: OpenShiftView[];
 }) {
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('all');
+  const [flaggedOnly, setFlaggedOnly] = useState(false);
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'pay', dir: 'desc' });
+  const [pageSize, setPageSize] = useState(25);
+  const [page, setPage] = useState(1);
   const [addOpen, setAddOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [reviewOnly, setReviewOnly] = useState(false);
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [drawer, setDrawer] = useState<{ mode: 'crew'; crewId: string } | { mode: 'history' } | null>(null);
+  const [dialog, setDialog] = useState<
+    | { kind: 'pay'; ids: string[] }
+    | { kind: 'undo'; crewId: string; name: string }
+    | { kind: 'unlock'; crewId: string; name: string }
+    | { kind: 'reopen' }
+    | null
+  >(null);
+  const [toast, setToast] = useState<PayActionState | null>(null);
+  const [armed, setArmed] = useState<Armed>(null);
+  const exportFormRef = useRef<HTMLFormElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
-  const visible = useMemo(() => (reviewOnly ? rows.filter((row) => row.issues.length > 0) : rows), [rows, reviewOnly]);
+  /** Fire a pay action. The armed form does the submitting; this is the trigger. */
+  function arm(next: NonNullable<Armed>) {
+    setArmed(next);
+  }
+  const busy = (kind: NonNullable<Armed>['kind']) => armed?.kind === kind;
+
+  const byKey = useMemo(() => new Map(rows.map((row) => [rowKey(row), row])), [rows]);
+
+  // A toast that stays forever is a banner. This one says its piece and goes.
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 9000);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  // Close the row menu on an outside click — measured by CONTAINMENT, not by
+  // stopping propagation. Next hydrates into the document itself, so React's
+  // listener and a document listener sit on the same node: stopPropagation in a
+  // handler doesn't stop the other one. A "click outside" that fired on a click
+  // INSIDE the menu unmounted the menu's form in the same tick, and the browser
+  // cancelled the submit as "form not connected" — the action silently did
+  // nothing. Escape closes it too.
+  useEffect(() => {
+    if (!menuFor) return;
+    const close = (event: MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setMenuFor(null);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuFor(null);
+    };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', escape);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', escape);
+    };
+  }, [menuFor]);
+
+  // Escape closes the drawer. Anything that covers the page has to be
+  // dismissable from the keyboard — a panel you can only leave with the mouse
+  // is a trap for anyone not using one.
+  useEffect(() => {
+    if (!drawer) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDrawer(null);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [drawer]);
+
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    const filtered = rows.filter((row) => {
+      if (statusFilter !== 'all' && row.review !== statusFilter) return false;
+      if (paymentFilter !== 'all' && row.payment !== paymentFilter) return false;
+      if (flaggedOnly && !row.warnings.some((warning) => PAY_WARNING_SEVERITY[warning] !== 'info')) return false;
+      if (!needle) return true;
+      const jobs = row.crewId ? jobsByCrew[row.crewId] ?? [] : [];
+      return (
+        row.name.toLowerCase().includes(needle) ||
+        (row.roleLabel ?? '').toLowerCase().includes(needle) ||
+        jobs.some((job) => `${job.ref} ${job.clientName}`.toLowerCase().includes(needle))
+      );
+    });
+
+    const direction = sort.dir === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      switch (sort.key) {
+        case 'name':
+          return a.name.localeCompare(b.name) * direction;
+        case 'hours':
+          return (a.hours - b.hours) * direction;
+        case 'review':
+          return ((REVIEW_RANK[a.review] ?? 3) - (REVIEW_RANK[b.review] ?? 3)) * direction || a.name.localeCompare(b.name);
+        case 'payment':
+          return ((PAYMENT_RANK[a.payment] ?? 3) - (PAYMENT_RANK[b.payment] ?? 3)) * direction || a.name.localeCompare(b.name);
+        default:
+          return (a.estimatedPay - b.estimatedPay) * direction || a.name.localeCompare(b.name);
+      }
+    });
+  }, [rows, statusFilter, paymentFilter, flaggedOnly, query, sort, jobsByCrew]);
+
+  const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const paged = visible.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  // Selection follows the filter, not the page: ticking "select all" while a
+  // filter is on has to mean the rows that filter describes, and the bulk bar
+  // says how many that is.
+  const selectable = useMemo(() => visible.filter((row) => row.eligible && row.hours > 0 && row.payment !== 'paid'), [visible]);
+  const selectedRows = useMemo(() => selected.map((id) => byKey.get(id)).filter(Boolean) as CrewPayRow[], [selected, byKey]);
+  const selectedTotal = selectedRows.reduce((sum, row) => sum + row.estimatedPay, 0);
+  const allSelected = selectable.length > 0 && selectable.every((row) => selected.includes(rowKey(row)));
+
+  function toggle(id: string) {
+    setSelected((current) => (current.includes(id) ? current.filter((value) => value !== id) : [...current, id]));
+  }
+
+  function toggleAll() {
+    setSelected(allSelected ? [] : selectable.map(rowKey));
+  }
+
+  function applyFilter(next: { status?: StatusFilter; payment?: PaymentFilter; flagged?: boolean }) {
+    if (next.status !== undefined) setStatusFilter(next.status);
+    if (next.payment !== undefined) setPaymentFilter(next.payment);
+    if (next.flagged !== undefined) setFlaggedOnly(next.flagged);
+    setPage(1);
+  }
+
+  function handleDone(state: PayActionState) {
+    setToast(state);
+    setArmed(null);
+    if (state.ok) {
+      setSelected([]);
+      setDialog(null);
+      setMenuFor(null);
+    }
+  }
 
   function periodHref(patch: Record<string, string | null>): string {
     const query = new URLSearchParams();
@@ -104,7 +359,24 @@ export default function HoursAndPay({
     return `/dashboard/crew?${query.toString()}`;
   }
 
-  function download() {
+  // Period identity travels with every action, so a click always acts on the
+  // range that was on screen rather than on "now" at the moment it runs.
+  const periodFields = (
+    <>
+      <input type="hidden" name="period" value={period.mode} />
+      <input type="hidden" name="offset" value={period.offset} />
+      {period.mode === 'custom' ? (
+        <>
+          <input type="hidden" name="from" value={period.startIso.slice(0, 10)} />
+          <input type="hidden" name="to" value={period.endIso.slice(0, 10)} />
+        </>
+      ) : null}
+    </>
+  );
+
+  function download(only?: CrewPayRow[]) {
+    const chosen = only ?? visible;
+    const csv = buildPayCsv(chosen, period.rangeLabel);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -112,9 +384,22 @@ export default function HoursAndPay({
     link.download = `hours-${period.rangeLabel.replace(/[^\w]+/g, '-').toLowerCase()}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+    // The export lands in this period's history. It changes nobody's status:
+    // hours leaving as a file is not the same claim as hours being paid.
+    if (payAvailable) exportFormRef.current?.requestSubmit();
   }
 
   const filteredName = crewFilter ? crewOptions.find((option) => option.id === crewFilter)?.name : null;
+  const payableNow = rows.filter((row) => row.eligible && row.hours > 0 && row.payment !== 'paid');
+  const periodPayBlocked = markPeriodBlockedReason(rows);
+  const drawerRow = drawer?.mode === 'crew' ? byKey.get(drawer.crewId) ?? null : null;
+  const latestPayment = useMemo(() => {
+    const paid = rows.filter((row) => row.record?.paidAt);
+    if (paid.length === 0) return null;
+    const newest = paid.reduce((best, row) => ((row.record!.paidAt ?? '') > (best.record!.paidAt ?? '') ? row : best));
+    const sameBatch = paid.filter((row) => row.record?.paymentDate === newest.record?.paymentDate);
+    return { row: newest, count: sameBatch.length, total: sameBatch.reduce((sum, row) => sum + (row.paidAmount ?? 0), 0) };
+  }, [rows]);
 
   return (
     <>
@@ -122,32 +407,26 @@ export default function HoursAndPay({
         <div>
           <h2 className={styles.hpTitle}>Hours &amp; pay</h2>
           <p className={styles.hpLead}>
-            Review crew hours, check them against the jobs they were logged on, and prepare pay totals.
+            Review crew hours, agree what they come to, and record who you&apos;ve paid for this period.
           </p>
         </div>
-        <span className={styles.periodStatus} data-status={status}>{PERIOD_STATUS_LABEL[status]}</span>
+        <span className={styles.periodStatus} data-status={periodState} title={PERIOD_STATE_HELP[periodState]}>
+          {PERIOD_STATE_LABEL[periodState]}
+        </span>
       </div>
 
       {/* Pay-period selector: arrows step whole periods, the select changes the
           length, and the quick filters are shortcuts to common ones. */}
       <div className={styles.periodBar}>
         <div className={styles.periodNav}>
-          <Link
-            href={periodHref({ offset: String(period.offset - 1), from: null, to: null })}
-            className={styles.periodArrow}
-            aria-label="Previous pay period"
-          >
+          <Link href={periodHref({ offset: String(period.offset - 1), from: null, to: null })} className={styles.periodArrow} aria-label="Previous pay period">
             ←
           </Link>
           <div className={styles.periodLabel}>
             <strong>{period.label}</strong>
             <small>{period.rangeLabel}</small>
           </div>
-          <Link
-            href={periodHref({ offset: String(period.offset + 1), from: null, to: null })}
-            className={styles.periodArrow}
-            aria-label="Next pay period"
-          >
+          <Link href={periodHref({ offset: String(period.offset + 1), from: null, to: null })} className={styles.periodArrow} aria-label="Next pay period">
             →
           </Link>
         </div>
@@ -191,34 +470,212 @@ export default function HoursAndPay({
         ) : null}
       </div>
 
-      <div className={styles.cards}>
-        <div className={styles.card} data-tone="pay">
-          <small title="Hours × the rate on each entry. An estimate of what to pay — this product does not run payroll, withhold tax, or move money.">
-            Estimated pay
-          </small>
-          <strong>{money(totals.pay)}</strong>
+      {toast ? (
+        <div className={styles.toast} data-ok={toast.ok || undefined} role="status" aria-live="polite">
+          <div>
+            <strong>{toast.message}</strong>
+            {toast.detail?.map((line) => (
+              <span key={line}>{line}</span>
+            ))}
+          </div>
+          <div className={styles.toastActions}>
+            {toast.ok && payAvailable ? (
+              <button type="button" className="linklike" onClick={() => setDrawer({ mode: 'history' })}>
+                View history
+              </button>
+            ) : null}
+            <button type="button" className={styles.toastClose} onClick={() => setToast(null)} aria-label="Dismiss">
+              ✕
+            </button>
+          </div>
         </div>
-        <div className={styles.card}>
-          <small>Total hours</small>
-          <strong>{totals.hours}</strong>
-        </div>
-        <div className={styles.card} data-tone={totals.overtime > 0 ? 'warn' : undefined}>
-          <small title={`Hours past ${settings.overtimeThreshold} in any single week, counted per crew member. No overtime premium is added to estimated pay — set your own rule and apply it when you pay.`}>
-            Overtime hours
-          </small>
-          <strong>{totals.overtime}</strong>
-        </div>
-        <div className={styles.card}>
-          <small>Active crew</small>
-          <strong>{totals.activeCrew}</strong>
-        </div>
-        <div className={styles.card} data-tone={totals.needsReview > 0 ? 'alert' : 'ok'}>
-          <small>Entries needing review</small>
-          <strong>{totals.needsReview}</strong>
-        </div>
-      </div>
+      ) : null}
 
-      {/* Who's on the clock right now. Above the review banner on purpose: an
+      {/* --- the pay period, and the one thing to do with it --- */}
+      <section className={styles.periodCard} aria-label="Pay period summary">
+        <div className={styles.periodCardMain}>
+          <div className={styles.periodCardHead}>
+            <small>Pay period</small>
+            <strong>{period.rangeLabel}</strong>
+            <span className={styles.periodStatus} data-status={periodState} title={PERIOD_STATE_HELP[periodState]}>
+              {PERIOD_STATE_LABEL[periodState]}
+            </span>
+          </div>
+          <div className={styles.periodProgress}>
+            <div className={styles.periodProgressBar} role="presentation">
+              <span style={{ width: `${Math.round((progress.daysDone / progress.daysTotal) * 100)}%` }} />
+            </div>
+            <small>
+              {period.open
+                ? `${progress.daysLeft} ${progress.daysLeft === 1 ? 'day' : 'days'} left in this pay period`
+                : 'This pay period has ended'}{' '}
+              ({progress.daysDone} of {progress.daysTotal} days)
+            </small>
+          </div>
+        </div>
+
+        {/* Every number is a filter. A "4" you can't act on is trivia. */}
+        <div className={styles.periodStats}>
+          <button type="button" className={styles.periodStat} data-tone="pay" onClick={() => applyFilter({ status: 'all', payment: 'all', flagged: false })}>
+            <small title="Hours × the rate on each entry. An estimate of what to pay — this product does not run payroll, withhold tax or move money.">
+              Total est. pay
+            </small>
+            <strong>{payMoney(totals.estimatedPay)}</strong>
+          </button>
+          {/* Hours LOGGED, said plainly. Calling this "approved hours" while it
+              counts everything is the kind of small lie that ends with someone
+              paying for time they never agreed. What's approved is its own line. */}
+          <button type="button" className={styles.periodStat} onClick={() => applyFilter({ status: 'approved', payment: 'all', flagged: false })}>
+            <small>Hours logged</small>
+            <strong>{hoursLabel(totals.hours)}</strong>
+            <em>
+              {totals.overtimeHours > 0 ? `OT ${hoursLabel(totals.overtimeHours)}` : null}
+              {totals.overtimeHours > 0 && totals.approvedHours > 0 ? ' · ' : null}
+              {totals.approvedHours > 0 ? `${hoursLabel(totals.approvedHours)} approved` : null}
+              {totals.overtimeHours === 0 && totals.approvedHours === 0 ? 'None approved yet' : null}
+            </em>
+          </button>
+          <button type="button" className={styles.periodStat} onClick={() => applyFilter({ status: 'all', payment: 'all', flagged: false })}>
+            <small>Crew members</small>
+            <strong>{totals.crewCount}</strong>
+            <em>{rows.filter((row) => row.hours > 0).length} with hours</em>
+          </button>
+          <button
+            type="button"
+            className={styles.periodStat}
+            data-tone={totals.needsReview > 0 ? 'alert' : undefined}
+            onClick={() => applyFilter({ status: 'needs_review', payment: 'all', flagged: false })}
+          >
+            <small>Need review</small>
+            <strong>{totals.needsReview}</strong>
+          </button>
+          <button
+            type="button"
+            className={styles.periodStat}
+            data-tone={totals.unpaid > 0 ? 'warn' : undefined}
+            onClick={() => applyFilter({ status: 'all', payment: 'unpaid', flagged: false })}
+          >
+            <small>Unpaid</small>
+            <strong>{totals.unpaid}</strong>
+          </button>
+          <button type="button" className={styles.periodStat} data-tone="ok" onClick={() => applyFilter({ status: 'all', payment: 'paid', flagged: false })}>
+            <small>Paid</small>
+            <strong>{totals.paid}</strong>
+          </button>
+        </div>
+
+        {/* One primary action. What it is depends entirely on where the period
+            has got to — never two equally loud buttons to choose between. */}
+        {payAvailable && primaryAction ? (
+          <div className={styles.periodActions}>
+            {primaryAction.id === 'review' ? (
+              <button type="button" className="btn primary" onClick={() => applyFilter({ status: 'needs_review', payment: 'all' })}>
+                {primaryAction.label}
+              </button>
+            ) : primaryAction.id === 'approve' ? (
+              <button type="button" className="btn primary" disabled={busy('approve')} onClick={() => arm({ kind: 'approve', crewIds: [] })}>
+                {busy('approve') ? 'Approving…' : 'Approve hours'}
+              </button>
+            ) : primaryAction.id === 'pay' || primaryAction.id === 'finish' ? (
+              <button
+                type="button"
+                className="btn primary"
+                disabled={Boolean(periodPayBlocked)}
+                title={periodPayBlocked ?? undefined}
+                onClick={() => setDialog({ kind: 'pay', ids: payableNow.map(rowKey) })}
+              >
+                {primaryAction.label}
+              </button>
+            ) : (
+              <button type="button" className="btn primary" onClick={() => setDrawer({ mode: 'history' })}>
+                {primaryAction.label}
+              </button>
+            )}
+            <small>{primaryAction.help}</small>
+          </div>
+        ) : null}
+      </section>
+
+      {!payAvailable ? (
+        <p className={styles.exportBlocked}>
+          Approval and payment tracking are off until the crew-pay migration has been run on this database. Hours, totals and the
+          export below all still work.
+        </p>
+      ) : null}
+
+      {/* The states worth saying out loud rather than leaving to be inferred
+          from six numbers and a badge. */}
+      {periodState === 'paid' && latestPayment ? (
+        <div className={styles.reviewBanner} data-tone="ok">
+          <div>
+            <strong>This pay period was marked paid on {dayLabel(latestPayment.row.record?.paymentDate ?? null)}</strong>
+            <span>
+              {totals.paid} {totals.paid === 1 ? 'crew member' : 'crew members'} · {payMoney(totals.paidPay)} recorded.
+            </span>
+          </div>
+          <button type="button" className="btn secondary" onClick={() => setDrawer({ mode: 'history' })}>
+            View payment record
+          </button>
+        </div>
+      ) : periodState === 'partially-paid' ? (
+        <div className={styles.reviewBanner}>
+          <div>
+            <strong>
+              {totals.paid} of {totals.crewCount} crew members {totals.paid === 1 ? 'has' : 'have'} been marked paid
+            </strong>
+            <span>{payMoney(totals.unpaidPay)} is still outstanding for this period.</span>
+          </div>
+          <button type="button" className="btn secondary" onClick={() => applyFilter({ payment: 'unpaid', status: 'all', flagged: false })}>
+            View unpaid crew
+          </button>
+        </div>
+      ) : totals.needsReview > 0 ? (
+        <div className={styles.reviewBanner}>
+          <div>
+            <strong>
+              {totals.needsReview} {totals.needsReview === 1 ? 'entry needs' : 'entries need'} attention before this period can be
+              approved
+            </strong>
+            <span>Hours with no rate, or entries with no hours on them, don&apos;t add up to a payable total.</span>
+          </div>
+          <button type="button" className="btn secondary" onClick={() => applyFilter({ status: 'needs_review', payment: 'all', flagged: false })}>
+            Review entries
+          </button>
+        </div>
+      ) : null}
+
+      {overlaps.length > 0 ? (
+        <div className={styles.reviewBanner} data-tone="alert">
+          <div>
+            <strong>Some of these days have already been paid in another period</strong>
+            <span>
+              {overlaps.map((overlap) => `${overlap.rangeLabel} (${overlap.paidCount} paid)`).join(', ')}. Paying this range too would
+              pay the same hours twice.
+            </span>
+          </div>
+        </div>
+      ) : null}
+
+      {periodClosedAt ? (
+        <div className={styles.reviewBanner}>
+          <div>
+            <strong>This pay period is closed</strong>
+            <span>Closed {stamp(periodClosedAt)}. Reopen it if something has to change — it stays in the history either way.</span>
+          </div>
+          <button type="button" className="btn secondary" onClick={() => setDialog({ kind: 'reopen' })}>
+            Reopen period
+          </button>
+        </div>
+      ) : periodReopenReason ? (
+        <div className={styles.reviewBanner}>
+          <div>
+            <strong>This period was reopened</strong>
+            <span>{periodReopenReason}</span>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Who's on the clock right now. Above everything else on purpose: an
           open shift is still accruing, so it's the only thing on this screen
           that gets worse while you look at it. */}
       {openShifts.length > 0 ? (
@@ -260,39 +717,408 @@ export default function HoursAndPay({
         </div>
       ) : null}
 
-      {totals.needsReview > 0 ? (
-        <div className={styles.reviewBanner}>
-          <div>
-            <strong>{totals.needsReview} {totals.needsReview === 1 ? 'entry needs' : 'entries need'} a look</strong>
-            <span>Hours with no rate, or entries with no hours on them, don&apos;t add up to a payable total.</span>
+      {rows.length === 0 ? (
+        <div className={styles.empty}>
+          <h3>No crew hours have been logged for this period</h3>
+          <p>Hours logged through the field app or added to a job will appear here.</p>
+          <div className={styles.emptyActions}>
+            <button type="button" className="btn primary" onClick={() => setAddOpen(true)}>Add labor manually</button>
+            <Link href="/dashboard/crew?tab=crew" className="btn secondary">Invite crew to the field app</Link>
           </div>
-          <button type="button" className="btn secondary" onClick={() => setReviewOnly((v) => !v)}>
-            {reviewOnly ? 'Show everyone' : 'Review time entries'}
-          </button>
         </div>
-      ) : null}
+      ) : (
+        <div className={styles.payLayout}>
+          <div className={styles.payMain}>
+            {/* --- toolbar --- */}
+            <div className={styles.payToolbar}>
+              <div className={styles.search}>
+                <span aria-hidden="true">⌕</span>
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(event) => {
+                    setQuery(event.target.value);
+                    setPage(1);
+                  }}
+                  placeholder="Search crew by name, role, or job…"
+                  aria-label="Search crew"
+                />
+              </div>
+              <label className={styles.filter}>
+                <span>Status</span>
+                <select value={statusFilter} onChange={(event) => applyFilter({ status: event.target.value as StatusFilter })}>
+                  <option value="all">All</option>
+                  <option value="needs_review">Needs review</option>
+                  <option value="draft">Not approved</option>
+                  <option value="approved">Approved</option>
+                </select>
+              </label>
+              <label className={styles.filter}>
+                <span>Payment</span>
+                <select value={paymentFilter} onChange={(event) => applyFilter({ payment: event.target.value as PaymentFilter })}>
+                  <option value="all">All</option>
+                  <option value="unpaid">Unpaid</option>
+                  <option value="sent">Sent to payroll</option>
+                  <option value="paid">Paid</option>
+                </select>
+              </label>
+              <label className={styles.filterCheck}>
+                <input type="checkbox" checked={flaggedOnly} onChange={(event) => applyFilter({ flagged: event.target.checked })} />
+                <span>Flagged only</span>
+              </label>
+              <button type="button" className="btn ghost" onClick={() => download()} disabled={visible.length === 0}>
+                Export CSV
+              </button>
+            </div>
 
-      <div className={styles.hpActions}>
-        <button type="button" className="btn secondary" onClick={() => setAddOpen((v) => !v)} aria-expanded={addOpen}>
-          + Add labor manually
-        </button>
-        <button
-          type="button"
-          className="btn secondary"
-          onClick={download}
-          disabled={Boolean(exportBlocked)}
-          title={exportBlocked ?? 'Download this period as a CSV'}
-        >
-          Export CSV
-        </button>
-        <button type="button" className="btn ghost" onClick={() => setSettingsOpen((v) => !v)} aria-expanded={settingsOpen}>
-          Labor settings
-        </button>
-      </div>
+            {exportBlocked ? <p className={styles.exportBlocked}>Heads up: {exportBlocked}</p> : null}
 
-      {/* A dimmed button with no reason is a dead end. Say what's wrong and
-          the owner can go fix it. */}
-      {exportBlocked ? <p className={styles.exportBlocked}>Export is off: {exportBlocked}</p> : null}
+            {/* --- bulk actions --- */}
+            {selected.length > 0 ? (
+              <div className={styles.bulkBar} role="region" aria-label="Bulk actions">
+                <span className={styles.bulkCount}>
+                  <strong>{selected.length} selected</strong>
+                  <small>Total: {payMoney(selectedTotal)}</small>
+                </span>
+                <div className={styles.bulkActions}>
+                  <button type="button" className="btn primary" onClick={() => setDialog({ kind: 'pay', ids: selected })} disabled={!payAvailable}>
+                    Mark selected as paid
+                  </button>
+                  <button type="button" className="btn secondary" disabled={busy('approve')} onClick={() => arm({ kind: 'approve', crewIds: selected })}>
+                    {busy('approve') ? 'Approving…' : 'Approve selected'}
+                  </button>
+                  <button type="button" className="btn secondary" onClick={() => download(selectedRows)}>
+                    Export selected
+                  </button>
+                  <button type="button" className="btn ghost" onClick={() => setSelected([])}>
+                    Clear
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {/* --- the crew --- */}
+            <div className={styles.tableWrap}>
+              <table className={styles.payTable}>
+                <thead>
+                  <tr>
+                    <th className={styles.checkCell}>
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        onChange={toggleAll}
+                        disabled={selectable.length === 0}
+                        aria-label={allSelected ? 'Clear selection' : `Select all ${selectable.length} payable crew members`}
+                      />
+                    </th>
+                    <SortHeader label="Crew member" sortKey="name" sort={sort} onSort={setSort} />
+                    <SortHeader label="Status" sortKey="review" sort={sort} onSort={setSort} />
+                    <th>Current / next job</th>
+                    {showTodayColumn ? <th className={styles.num}>Hours today</th> : null}
+                    <SortHeader label="Hours this period" sortKey="hours" sort={sort} onSort={setSort} numeric />
+                    <SortHeader label="Est. pay" sortKey="pay" sort={sort} onSort={setSort} numeric />
+                    <SortHeader label="Payment" sortKey="payment" sort={sort} onSort={setSort} />
+                    <th>Payment date</th>
+                    <th className={styles.actionsCell}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paged.map((row) => {
+                    const id = rowKey(row);
+                    const jobs = row.crewId ? jobsByCrew[row.crewId] ?? [] : [];
+                    const canSelect = row.eligible && row.hours > 0 && row.payment !== 'paid';
+                    const flags = row.warnings.filter((warning) => PAY_WARNING_SEVERITY[warning] !== 'info');
+                    return (
+                      <tr key={id} className={styles.payRow} data-selected={selected.includes(id) || undefined} data-paid={row.payment === 'paid' || undefined}>
+                        <td className={styles.checkCell}>
+                          <input
+                            type="checkbox"
+                            checked={selected.includes(id)}
+                            onChange={() => toggle(id)}
+                            disabled={!canSelect}
+                            aria-label={
+                              canSelect
+                                ? `Select ${row.name}`
+                                : row.payment === 'paid'
+                                  ? `${row.name} is already marked paid`
+                                  : (row.ineligibleReason ?? `${row.name} has no hours in this period`)
+                            }
+                            title={canSelect ? undefined : row.payment === 'paid' ? 'Already marked paid for this period.' : row.ineligibleReason ?? 'No hours in this period.'}
+                          />
+                        </td>
+                        <td>
+                          <button type="button" className={styles.whoBtn} onClick={() => row.crewId && setDrawer({ mode: 'crew', crewId: row.crewId })}>
+                            <span className={styles.miniAvatar} aria-hidden="true">
+                              {row.name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || '?'}
+                            </span>
+                            <span className={styles.whoNames}>
+                              <strong>{row.name}</strong>
+                              <small>
+                                {row.roleLabel ?? 'Crew'}
+                                {row.rate ? ` · ${payMoney(row.rate)}/hr` : row.rateVaries ? ' · rates vary' : ''}
+                              </small>
+                            </span>
+                          </button>
+                        </td>
+                        <td data-label="Status">
+                          <span className={styles.payBadge} data-state={row.review} title={PAY_STATUS_HELP[row.status]}>
+                            {PAY_STATUS_LABEL[row.review === 'approved' ? 'approved' : row.status]}
+                          </span>
+                          {flags.length > 0 ? (
+                            <span className={styles.flagChips}>
+                              {flags.map((warning) => (
+                                <span key={warning} className={styles.flagChip} data-severity={PAY_WARNING_SEVERITY[warning]} title={PAY_WARNING_HELP[warning]}>
+                                  {PAY_WARNING_LABEL[warning]}
+                                </span>
+                              ))}
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className={styles.jobCell} data-label="Current / next job">
+                          {jobs.length > 0 ? (
+                            <>
+                              <span className={styles.jobRef}>{jobs[0].ref}</span>
+                              <small>{jobs[0].clientName}{jobs.length > 1 ? ` +${jobs.length - 1}` : ''}</small>
+                            </>
+                          ) : (
+                            <span className={styles.dim}>—</span>
+                          )}
+                        </td>
+                        {showTodayColumn ? (
+                          <td className={styles.num} data-label="Hours today">
+                            {row.crewId && hoursToday[row.crewId] ? hoursLabel(hoursToday[row.crewId]) : <span className={styles.dim}>0h 00m</span>}
+                          </td>
+                        ) : null}
+                        <td className={styles.num} data-label="Hours this period">
+                          <strong>{hoursLabel(row.hours)}</strong>
+                          {row.overtimeHours > 0 ? <small className={styles.otCell}>OT {hoursLabel(row.overtimeHours)}</small> : null}
+                        </td>
+                        <td className={`${styles.num} ${styles.payCell}`} data-label="Estimated pay">
+                          <strong>{payMoney(row.estimatedPay)}</strong>
+                          {row.adjustment !== 0 ? (
+                            <small
+                              className={styles.adjust}
+                              title={
+                                row.payment === 'paid'
+                                  ? `Paid ${payMoney(row.paidAmount ?? 0)}. The hours have changed since, and the difference is unpaid.`
+                                  : `Approved at ${payMoney(row.approvedAmount ?? 0)}. The hours have changed since.`
+                              }
+                            >
+                              {row.adjustment > 0 ? '+' : '−'}
+                              {payMoney(Math.abs(row.adjustment))} since {row.payment === 'paid' ? 'payment' : 'approval'}
+                            </small>
+                          ) : null}
+                        </td>
+                        <td data-label="Payment">
+                          <span className={styles.payBadge} data-payment={row.payment}>
+                            {PAYMENT_STATE_LABEL[row.payment]}
+                          </span>
+                          {row.paymentDetail ? <small className={styles.paySub}>{row.paymentDetail}</small> : null}
+                          {row.locked ? (
+                            <small className={styles.paySub} title="Paid entries lock so a stray edit can't move money that has gone out.">
+                              🔒 Locked
+                            </small>
+                          ) : null}
+                        </td>
+                        <td className={styles.num} data-label="Payment date">{row.record?.paymentDate ? dayLabel(row.record.paymentDate) : <span className={styles.dim}>—</span>}</td>
+                        <td className={styles.actionsCell}>
+                          <div className={styles.menuWrap} ref={menuFor === id ? menuRef : null}>
+                            <button
+                              type="button"
+                              className={styles.rowBtn}
+                              aria-haspopup="menu"
+                              aria-expanded={menuFor === id}
+                              aria-label={`Actions for ${row.name}`}
+                              onClick={() => setMenuFor(menuFor === id ? null : id)}
+                            >
+                              ⋯
+                            </button>
+                            {menuFor === id ? (
+                              <div className={styles.menu} role="menu">
+                                <button type="button" role="menuitem" onClick={() => row.crewId && setDrawer({ mode: 'crew', crewId: row.crewId })}>
+                                  View hours &amp; entries
+                                </button>
+                                {payAvailable && row.eligible && row.review !== 'approved' && row.hours > 0 ? (
+                                  <button type="button" role="menuitem" onClick={() => arm({ kind: 'approve', crewIds: [id] })}>
+                                    Approve hours
+                                  </button>
+                                ) : null}
+                                {payAvailable && row.review === 'approved' && row.payment !== 'paid' ? (
+                                  <button type="button" role="menuitem" onClick={() => setDialog({ kind: 'pay', ids: [id] })}>
+                                    Mark paid
+                                  </button>
+                                ) : null}
+                                {payAvailable && row.review === 'approved' && row.payment === 'unpaid' ? (
+                                  <button type="button" role="menuitem" onClick={() => arm({ kind: 'sent', crewIds: [id] })}>
+                                    Mark as sent to payroll
+                                  </button>
+                                ) : null}
+                                {row.crewId ? (
+                                  <Link href={`/dashboard/crew?tab=crew`} role="menuitem">
+                                    Open crew member
+                                  </Link>
+                                ) : null}
+                                {payAvailable && row.payment === 'paid' ? (
+                                  <div className={styles.menuDanger}>
+                                    <button type="button" role="menuitem" onClick={() => setDialog({ kind: 'undo', crewId: row.crewId as string, name: row.name })}>
+                                      Undo paid status
+                                    </button>
+                                    {row.locked ? (
+                                      <button type="button" role="menuitem" onClick={() => setDialog({ kind: 'unlock', crewId: row.crewId as string, name: row.name })}>
+                                        Unlock entry
+                                      </button>
+                                    ) : null}
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {paged.length === 0 ? (
+                    <tr>
+                      <td colSpan={showTodayColumn ? 10 : 9} className={styles.tableEmpty}>
+                        Nothing matches those filters.{' '}
+                        <button type="button" className="linklike" onClick={() => { applyFilter({ status: 'all', payment: 'all', flagged: false }); setQuery(''); }}>
+                          Clear filters
+                        </button>
+                      </td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+
+            {visible.length > pageSize ? (
+              <div className={styles.pager}>
+                <small>
+                  Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, visible.length)} of {visible.length} crew members
+                </small>
+                <div className={styles.pagerBtns}>
+                  <button type="button" onClick={() => setPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1} aria-label="Previous page">
+                    ‹
+                  </button>
+                  {Array.from({ length: pageCount }, (_, index) => index + 1).map((number) => (
+                    <button
+                      key={number}
+                      type="button"
+                      onClick={() => setPage(number)}
+                      aria-current={number === currentPage ? 'page' : undefined}
+                      data-on={number === currentPage || undefined}
+                    >
+                      {number}
+                    </button>
+                  ))}
+                  <button type="button" onClick={() => setPage(Math.min(pageCount, currentPage + 1))} disabled={currentPage === pageCount} aria-label="Next page">
+                    ›
+                  </button>
+                </div>
+                <label className={styles.pagerSize}>
+                  <span className="sr-only">Rows per page</span>
+                  <select value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1); }}>
+                    {[10, 25, 50, 100].map((size) => (
+                      <option key={size} value={size}>{size} / page</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            ) : null}
+
+            <p className={styles.hpNote}>
+              Estimated pay is each entry&apos;s hours × the rate it was logged at. Periods are cut on when time was logged — a labor
+              entry has no separate &ldquo;worked on&rdquo; date. Marking someone paid records that you paid them: no tax is
+              calculated or withheld here and no money moves.
+            </p>
+          </div>
+
+          {/* --- the rail --- */}
+          <aside className={styles.payRail}>
+            <section className={styles.railCard}>
+              <h3>Pay period summary</h3>
+              <PayDonut totals={totals} onSlice={(payment) => applyFilter({ payment, status: 'all', flagged: false })} />
+              <dl className={styles.railTotals}>
+                <div>
+                  <dt>Total</dt>
+                  <dd>{payMoney(totals.estimatedPay)}</dd>
+                </div>
+              </dl>
+            </section>
+
+            {latestPayment ? (
+              <section className={styles.railCard}>
+                <h3>Payment details</h3>
+                <dl className={styles.railList}>
+                  <div>
+                    <dt>Marked paid by</dt>
+                    <dd>{latestPayment.row.record?.paidBy ?? 'Unknown'}</dd>
+                  </div>
+                  <div>
+                    <dt>Payment date</dt>
+                    <dd>{dayLabel(latestPayment.row.record?.paymentDate ?? null)}</dd>
+                  </div>
+                  <div>
+                    <dt>Method</dt>
+                    <dd>{latestPayment.row.record?.paymentMethod ? PAYMENT_METHOD_LABEL[latestPayment.row.record.paymentMethod] : 'Not recorded'}</dd>
+                  </div>
+                  {latestPayment.row.record?.paymentReference ? (
+                    <div>
+                      <dt>Reference</dt>
+                      <dd>{latestPayment.row.record.paymentReference}</dd>
+                    </div>
+                  ) : null}
+                  {latestPayment.row.record?.paymentNote ? (
+                    <div>
+                      <dt>Note</dt>
+                      <dd>{latestPayment.row.record.paymentNote}</dd>
+                    </div>
+                  ) : null}
+                  <div>
+                    <dt>Covers</dt>
+                    <dd>
+                      {latestPayment.count} {latestPayment.count === 1 ? 'crew member' : 'crew members'} · {payMoney(latestPayment.total)}
+                    </dd>
+                  </div>
+                </dl>
+                <button type="button" className="btn secondary" onClick={() => setDrawer({ mode: 'history' })}>
+                  View payment history
+                </button>
+              </section>
+            ) : null}
+
+            <section className={styles.railCard}>
+              <h3>Quick actions</h3>
+              <ul className={styles.railActions}>
+                <li>
+                  <button type="button" onClick={() => setAddOpen((value) => !value)}>Add labor manually</button>
+                </li>
+                <li>
+                  <Link href="/dashboard/crew?tab=crew">Invite crew to field app</Link>
+                </li>
+                <li>
+                  <button type="button" onClick={() => download()}>Export hours &amp; pay</button>
+                </li>
+                <li>
+                  <button type="button" onClick={() => setSettingsOpen((value) => !value)}>Labor settings</button>
+                </li>
+                {payAvailable && !periodClosedAt && !period.open && totals.needsReview === 0 ? (
+                  <li>
+                    <button type="button" disabled={busy('close')} onClick={() => arm({ kind: 'close' })}>
+                      {busy('close') ? 'Closing…' : 'Close this pay period'}
+                    </button>
+                  </li>
+                ) : null}
+                {payAvailable ? (
+                  <li>
+                    <button type="button" onClick={() => setDrawer({ mode: 'history' })}>View period history</button>
+                  </li>
+                ) : null}
+              </ul>
+            </section>
+          </aside>
+        </div>
+      )}
 
       {addOpen ? (
         <form action={addLaborEntryAction} className={styles.addLabor}>
@@ -333,8 +1159,8 @@ export default function HoursAndPay({
       {settingsOpen ? (
         <form action={saveLaborSettingsAction} className={styles.settings}>
           <p className={styles.settingsLead}>
-            How this account counts hours. Saved to this browser — they change the totals on this screen and in the export,
-            not the entries themselves.
+            How this account counts hours. Saved to this browser — they change the totals on this screen and in the export, not the
+            entries themselves.
           </p>
           <label>
             <span>Time clock</span>
@@ -378,159 +1204,300 @@ export default function HoursAndPay({
             </select>
           </label>
           <p className={styles.settingsNote}>
-            Default hourly rates live on each person — set them under{' '}
-            <Link href="/dashboard/crew?tab=crew">Crew members</Link>.
+            Default hourly rates live on each person — set them under <Link href="/dashboard/crew?tab=crew">Crew members</Link>.
           </p>
           <SaveButton className="btn primary" pendingLabel="Saving…" savedLabel="Saved ✓">Save settings</SaveButton>
         </form>
       ) : null}
 
-      {rows.length === 0 ? (
-        <div className={styles.empty}>
-          <h3>No crew hours yet</h3>
-          <p>Hours logged through the field app or added to a job will appear here.</p>
-          <div className={styles.emptyActions}>
-            <button type="button" className="btn primary" onClick={() => setAddOpen(true)}>Add labor manually</button>
-            <Link href="/dashboard/crew?tab=crew" className="btn secondary">Invite crew to the field app</Link>
-          </div>
+      {/* Every pay action's form, mounted for the life of the page so a result
+          always has somewhere to land — see ArmedForm. */}
+      <ArmedForm action={approveHoursAction} armed={armed?.kind === 'approve' ? armed : null} fields={periodFields} onDone={handleDone} />
+      <ArmedForm action={markSentAction} armed={armed?.kind === 'sent' ? armed : null} fields={periodFields} onDone={handleDone} />
+      <ArmedForm action={closePeriodAction} armed={armed?.kind === 'close' ? armed : null} fields={periodFields} onDone={handleDone} />
+
+      {/* Submitted by the CSV download so the export lands in the history. */}
+      <ExportRecorder formRef={exportFormRef} fields={periodFields} />
+
+      {/* --- drawer --- */}
+      {drawer ? (
+        <div className={styles.drawerBackdrop} onMouseDown={(event) => event.target === event.currentTarget && setDrawer(null)}>
+          <div className={styles.drawerScrim} onMouseDown={() => setDrawer(null)} />
+          <aside className={styles.drawer} role="dialog" aria-modal="true" aria-label={drawer.mode === 'history' ? 'Period history' : 'Crew member detail'}>
+            <header className={styles.drawerHead}>
+              <h3>{drawer.mode === 'history' ? 'Period history' : drawerRow?.name ?? 'Crew member'}</h3>
+              <button type="button" className={styles.drawerClose} onClick={() => setDrawer(null)} aria-label="Close">✕</button>
+            </header>
+
+            {drawer.mode === 'crew' && drawerRow ? (
+              <div className={styles.drawerBody}>
+                <div className={styles.drawerStats}>
+                  <div>
+                    <small>Hours</small>
+                    <strong>{hoursLabel(drawerRow.hours)}</strong>
+                  </div>
+                  <div>
+                    <small>Overtime</small>
+                    <strong>{drawerRow.overtimeHours > 0 ? hoursLabel(drawerRow.overtimeHours) : '—'}</strong>
+                  </div>
+                  <div>
+                    <small>Estimated pay</small>
+                    <strong>{payMoney(drawerRow.estimatedPay)}</strong>
+                  </div>
+                </div>
+
+                {drawerRow.warnings.length > 0 ? (
+                  <ul className={styles.drawerWarnings}>
+                    {drawerRow.warnings.map((warning) => (
+                      <li key={warning} data-severity={PAY_WARNING_SEVERITY[warning]}>
+                        <strong>{PAY_WARNING_LABEL[warning]}</strong>
+                        <span>{PAY_WARNING_HELP[warning]}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+
+                {drawerRow.record?.paidAt ? (
+                  <div className={styles.drawerPayment}>
+                    <strong>Payment record</strong>
+                    <p>
+                      {payMoney(drawerRow.paidAmount ?? 0)} recorded on {dayLabel(drawerRow.record.paymentDate)} by{' '}
+                      {drawerRow.record.paidBy ?? 'unknown'}
+                      {drawerRow.record.paymentMethod ? ` · ${PAYMENT_METHOD_LABEL[drawerRow.record.paymentMethod]}` : ''}
+                      {drawerRow.record.paymentReference ? ` · ${drawerRow.record.paymentReference}` : ''}.
+                    </p>
+                    {drawerRow.record.paymentNote ? <p className={styles.dim}>{drawerRow.record.paymentNote}</p> : null}
+                    <button type="button" className="btn ghost" onClick={() => setDialog({ kind: 'undo', crewId: drawerRow.crewId as string, name: drawerRow.name })}>
+                      Undo paid status
+                    </button>
+                  </div>
+                ) : null}
+
+                <div className={styles.entryList}>
+                  <div className={styles.entryHead} aria-hidden="true">
+                    <span>Job</span>
+                    <span>Logged</span>
+                    <span className={styles.num}>Hours</span>
+                    <span className={styles.num}>Rate</span>
+                    <span className={styles.num}>Amount</span>
+                    <span />
+                  </div>
+                  {drawerRow.entries.map((entry) => (
+                    <div key={entry.id} className={styles.entryRow}>
+                      <span>
+                        {entry.jobId ? <Link href={`/dashboard/jobs/${entry.jobId}`}>{jobLookup[entry.jobId] ?? 'Job'}</Link> : <span className={styles.dim}>No job</span>}
+                        <small>{entry.description}</small>
+                      </span>
+                      <span>{loggedLabel(entry.loggedAt)}</span>
+                      <span className={styles.num}>{entry.hours}</span>
+                      <span className={styles.num}>{entry.rate > 0 ? payMoney(entry.rate) : '—'}</span>
+                      <span className={styles.num}>{payMoney(entry.amount)}</span>
+                      <span className={styles.entryAction}>
+                        {entry.issue ? (
+                          <span className={styles.entryStatus} data-state="warn" title={ENTRY_ISSUE_HELP[entry.issue]}>
+                            {ENTRY_ISSUE_LABEL[entry.issue]}
+                          </span>
+                        ) : null}
+                        {drawerRow.locked ? (
+                          <span className={styles.dim} title="This entry is locked because it has been paid. Unlock it from the row menu first.">🔒</span>
+                        ) : (
+                          <form action={deleteLaborEntryAction.bind(null, entry.id)}>
+                            <button type="submit" className={styles.entryDelete} title="Remove this labor entry">Remove</button>
+                          </form>
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <PayHistoryList events={events.filter((event) => !event.crewId || event.crewId === drawerRow.crewId)} />
+              </div>
+            ) : (
+              <div className={styles.drawerBody}>
+                <PayHistoryList events={events} />
+              </div>
+            )}
+          </aside>
         </div>
-      ) : (
-        <>
-          <div className={styles.tableWrap}>
-            <table className={styles.hoursTable}>
-              <thead>
-                <tr>
-                  <th>Crew member</th>
-                  <th className={styles.num}>Regular</th>
-                  <th className={styles.num}>Overtime</th>
-                  <th className={styles.num}>Rate</th>
-                  <th className={styles.num}>Estimated pay</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visible.map((row) => {
-                  const key = row.crewId ?? 'unassigned';
-                  const open = expanded === key;
-                  return (
-                    // Keyed Fragment: the key belongs on the outermost element a
-                    // map returns, and a bare <>…</> can't carry one.
-                    <Fragment key={key}>
-                      <tr
-                        className={`${styles.hoursRow}${open ? ` ${styles.hoursRowOn}` : ''}`}
-                        onClick={() => setExpanded(open ? null : key)}
-                      >
-                        <td>
-                          <button type="button" className={styles.expandBtn} aria-expanded={open}>
-                            <span aria-hidden="true">{open ? '▾' : '▸'}</span>
-                            <span>
-                              <strong>{row.name}</strong>
-                              {row.roleLabel ? <small>{row.roleLabel}</small> : null}
-                            </span>
-                          </button>
-                        </td>
-                        <td className={styles.num}>{row.regularHours}</td>
-                        <td className={styles.num}>
-                          {row.overtimeHours > 0 ? <span className={styles.otCell}>{row.overtimeHours}</span> : '—'}
-                        </td>
-                        <td className={styles.num}>
-                          {row.rateVaries ? <span title="This period has entries at more than one rate.">Varies</span> : row.rate ? `${money2(row.rate)}` : '—'}
-                        </td>
-                        <td className={`${styles.num} ${styles.payCell}`}>{money2(row.estimatedPay)}</td>
-                        <td>
-                          {row.issues.length === 0 ? (
-                            <span className={styles.entryStatus} data-state="ok">Complete</span>
-                          ) : (
-                            row.issues.map((issue) => (
-                              <span key={issue} className={styles.entryStatus} data-state="warn" title={ENTRY_ISSUE_HELP[issue]}>
-                                {ENTRY_ISSUE_LABEL[issue]}
-                              </span>
-                            ))
-                          )}
-                        </td>
-                      </tr>
-                      {open ? (
-                        <tr className={styles.detailRow}>
-                          <td colSpan={6}>
-                            <div className={styles.entryList}>
-                              <div className={styles.entryHead} aria-hidden="true">
-                                <span>Job</span>
-                                <span>Logged</span>
-                                <span className={styles.num}>Hours</span>
-                                <span className={styles.num}>Rate</span>
-                                <span className={styles.num}>Amount</span>
-                                <span />
-                              </div>
-                              {row.entries.map((entry) => (
-                                <div key={entry.id} className={styles.entryRow}>
-                                  <span>
-                                    {entry.jobId ? (
-                                      <Link href={`/dashboard/jobs/${entry.jobId}`}>{jobLookup[entry.jobId] ?? 'Job'}</Link>
-                                    ) : (
-                                      <span className={styles.dim}>No job</span>
-                                    )}
-                                    <small>{entry.description}</small>
-                                  </span>
-                                  <span>
-                                    {loggedLabel(entry.loggedAt)}
-                                    <small className={styles.dim} title="When this entry was logged. A labor entry has no separate date for when the work was done.">
-                                      logged
-                                    </small>
-                                  </span>
-                                  <span className={styles.num}>{entry.hours}</span>
-                                  <span className={styles.num}>{entry.rate > 0 ? money2(entry.rate) : '—'}</span>
-                                  <span className={styles.num}>{money2(entry.amount)}</span>
-                                  <span className={styles.entryAction}>
-                                    {entry.issue ? (
-                                      <span className={styles.entryStatus} data-state="warn" title={ENTRY_ISSUE_HELP[entry.issue]}>
-                                        {ENTRY_ISSUE_LABEL[entry.issue]}
-                                      </span>
-                                    ) : null}
-                                    <form action={deleteLaborEntryAction.bind(null, entry.id)}>
-                                      <button type="submit" className={styles.entryDelete} title="Remove this labor entry">
-                                        Remove
-                                      </button>
-                                    </form>
-                                  </span>
-                                </div>
-                              ))}
-                              <p className={styles.entryFoot}>
-                                {row.jobIds.length} {row.jobIds.length === 1 ? 'job' : 'jobs'} · {row.entryCount}{' '}
-                                {row.entryCount === 1 ? 'entry' : 'entries'} · {row.hours} hours total
-                              </p>
-                            </div>
-                          </td>
-                        </tr>
-                      ) : null}
-                    </Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+      ) : null}
 
-          {/* Sticky, so the total and the export stay reachable while you scroll
-              a long period rather than living at the bottom of it. */}
-          <div className={styles.stickyBar}>
-            <span>
-              <small>{period.rangeLabel}</small>
-              <strong>{totals.hours} hrs · {money2(totals.pay)} estimated</strong>
-            </span>
-            <span className={styles.stickyActions}>
-              {totals.needsReview > 0 ? <span className={styles.stickyWarn}>{totals.needsReview} to review</span> : null}
-              <button type="button" className="btn primary" onClick={download} disabled={Boolean(exportBlocked)} title={exportBlocked ?? undefined}>
-                Export CSV
-              </button>
-            </span>
-          </div>
+      {/* --- dialogs --- */}
+      {dialog?.kind === 'pay' ? (
+        <PaymentConfirmDialog
+          rows={dialog.ids.map((id) => byKey.get(id)).filter(Boolean) as CrewPayRow[]}
+          rangeLabel={period.rangeLabel}
+          todayKey={todayKey}
+          periodFields={periodFields}
+          action={markPaidAction}
+          onDone={handleDone}
+          onClose={() => setDialog(null)}
+          onReviewFirst={() => {
+            setDialog(null);
+            applyFilter({ status: 'draft', payment: 'all' });
+          }}
+        />
+      ) : null}
 
-          <p className={styles.hpNote}>
-            Estimated pay is each entry&apos;s hours × the rate it was logged at. Periods are cut on when time was logged —
-            a labor entry has no separate &ldquo;worked on&rdquo; date. This is a rollup to pay from, not a payroll run:
-            no tax is calculated or withheld and no money moves.
-          </p>
-        </>
-      )}
+      {dialog?.kind === 'undo' ? (
+        <ReasonDialog
+          title={`Undo paid status for ${dialog.name}`}
+          lead="The payment record stays in the history. This adds a line saying it was undone."
+          disclaimer={UNDO_DISCLAIMER}
+          confirmLabel="Undo paid status"
+          fields={
+            <>
+              {periodFields}
+              <input type="hidden" name="crewId" value={dialog.crewId} />
+            </>
+          }
+          action={undoPaidAction}
+          onDone={handleDone}
+          onClose={() => setDialog(null)}
+        />
+      ) : null}
+
+      {dialog?.kind === 'unlock' ? (
+        <ReasonDialog
+          title={`Unlock ${dialog.name}’s paid entry`}
+          lead="Unlocking lets the hours behind a payment be edited. The payment record itself is not changed."
+          confirmLabel="Unlock entry"
+          fields={
+            <>
+              {periodFields}
+              <input type="hidden" name="crewId" value={dialog.crewId} />
+              <input type="hidden" name="locked" value="0" />
+            </>
+          }
+          action={setEntryLockAction}
+          onDone={handleDone}
+          onClose={() => setDialog(null)}
+        />
+      ) : null}
+
+      {dialog?.kind === 'reopen' ? (
+        <ReasonDialog
+          title="Reopen this pay period"
+          lead="Payments already recorded stay exactly as they are."
+          confirmLabel="Reopen period"
+          fields={periodFields}
+          action={reopenPeriodAction}
+          onDone={handleDone}
+          onClose={() => setDialog(null)}
+        />
+      ) : null}
     </>
+  );
+}
+
+function SortHeader({
+  label,
+  sortKey,
+  sort,
+  onSort,
+  numeric,
+}: {
+  label: string;
+  sortKey: SortKey;
+  sort: { key: SortKey; dir: 'asc' | 'desc' };
+  onSort: (next: { key: SortKey; dir: 'asc' | 'desc' }) => void;
+  numeric?: boolean;
+}) {
+  const active = sort.key === sortKey;
+  return (
+    <th className={numeric ? styles.num : undefined} aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+      <button
+        type="button"
+        className={styles.sortBtn}
+        onClick={() => onSort({ key: sortKey, dir: active && sort.dir === 'desc' ? 'asc' : 'desc' })}
+      >
+        {label}
+        <span aria-hidden="true">{active ? (sort.dir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+      </button>
+    </th>
+  );
+}
+
+/**
+ * The period at a glance, by payment state.
+ *
+ * A ring is only as honest as its legend — every slice is also a row with a
+ * count and an amount, because "40% orange" is not a number anyone can act on.
+ */
+function PayDonut({ totals, onSlice }: { totals: PeriodTotals; onSlice: (payment: PaymentFilter) => void }) {
+  const slices = [
+    { id: 'paid' as const, label: 'Paid', count: totals.paid, amount: totals.paidPay, color: '#48c78e' },
+    { id: 'sent' as const, label: 'Sent to payroll', count: totals.sent, amount: 0, color: '#94b0d6' },
+    { id: 'unpaid' as const, label: 'Unpaid', count: totals.unpaid - totals.sent, amount: totals.unpaidPay, color: '#ff7a21' },
+  ].filter((slice) => slice.count > 0);
+
+  const total = slices.reduce((sum, slice) => sum + slice.count, 0) || 1;
+  let cursor = 0;
+  const stops = slices
+    .map((slice) => {
+      const start = (cursor / total) * 100;
+      cursor += slice.count;
+      const end = (cursor / total) * 100;
+      return `${slice.color} ${start}% ${end}%`;
+    })
+    .join(', ');
+
+  return (
+    <div className={styles.donutWrap}>
+      <div
+        className={styles.donut}
+        style={{ background: slices.length > 0 ? `conic-gradient(${stops})` : 'rgba(148, 176, 214, 0.2)' }}
+        role="img"
+        aria-label={slices.map((slice) => `${slice.count} ${slice.label}`).join(', ') || 'No crew with hours'}
+      />
+      <ul className={styles.donutLegend}>
+        {slices.map((slice) => (
+          <li key={slice.id}>
+            <button type="button" onClick={() => onSlice(slice.id)}>
+              <span className={styles.donutDot} style={{ background: slice.color }} aria-hidden="true" />
+              <span>{slice.label} ({slice.count})</span>
+              <strong>{slice.amount > 0 ? payMoney(slice.amount) : '—'}</strong>
+            </button>
+          </li>
+        ))}
+        {totals.noHours > 0 ? (
+          <li className={styles.donutMuted}>
+            <span className={styles.donutDot} style={{ background: 'rgba(148, 176, 214, 0.35)' }} aria-hidden="true" />
+            <span>No hours ({totals.noHours})</span>
+            <strong>—</strong>
+          </li>
+        ) : null}
+      </ul>
+    </div>
+  );
+}
+
+function PayHistoryList({ events }: { events: PayEvent[] }) {
+  if (events.length === 0) {
+    return <p className={styles.dim}>Nothing has happened to this period yet.</p>;
+  }
+  return (
+    <ol className={styles.historyList}>
+      {events.map((event) => (
+        <li key={event.id}>
+          <div className={styles.historyHead}>
+            <strong>{PAY_EVENT_LABEL[event.action] ?? event.action}</strong>
+            <small>{stamp(event.createdAt)}</small>
+          </div>
+          <p>{event.summary}</p>
+          {event.reason ? <p className={styles.historyReason}>“{event.reason}”</p> : null}
+          <small className={styles.dim}>{event.actorEmail ?? 'System'}</small>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/** A hidden form the CSV download submits so the export is recorded. */
+function ExportRecorder({ formRef, fields }: { formRef: RefObject<HTMLFormElement>; fields: ReactNode }) {
+  const [, formAction] = useFormState(recordExportAction, IDLE);
+  return (
+    <form ref={formRef} action={formAction} hidden>
+      {fields}
+    </form>
   );
 }

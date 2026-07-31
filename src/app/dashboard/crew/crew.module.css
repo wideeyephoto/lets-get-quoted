@@ -458,39 +458,6 @@
   text-decoration: none;
 }
 
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-  gap: 0.55rem;
-  margin-bottom: 0.9rem;
-}
-
-.card {
-  display: grid;
-  gap: 0.12rem;
-  padding: 0.65rem 0.8rem;
-  border: 1px solid rgba(148, 176, 214, 0.2);
-  border-radius: 13px;
-  background: rgba(255, 255, 255, 0.03);
-}
-.card small {
-  font-size: 0.64rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(147, 164, 184, 0.95);
-  cursor: help;
-}
-.card strong { font-size: 1.3rem; font-weight: 780; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-
-.card[data-tone='pay'] { border-color: rgba(255, 122, 33, 0.35); background: rgba(255, 122, 33, 0.07); }
-.card[data-tone='pay'] strong { color: #ffb27d; }
-.card[data-tone='warn'] { border-color: rgba(255, 209, 102, 0.42); background: rgba(255, 209, 102, 0.08); }
-.card[data-tone='warn'] strong { color: #ffd591; }
-.card[data-tone='alert'] { border-color: rgba(255, 101, 101, 0.5); background: rgba(255, 101, 101, 0.09); }
-.card[data-tone='alert'] strong { color: #ffb4a7; }
-.card[data-tone='ok'] strong { color: #7fe0b2; }
-
 .reviewBanner {
   display: flex;
   align-items: center;
@@ -505,6 +472,13 @@
 }
 .reviewBanner strong { display: block; font-size: 0.92rem; color: #ffd591; }
 .reviewBanner span span, .reviewBanner div span { font-size: 0.83rem; color: rgba(200, 212, 226, 0.86); }
+
+/* Tone carries meaning, so it never travels alone — each of these banners
+   also states its case in words. */
+.reviewBanner[data-tone='ok'] { border-color: rgba(72, 199, 142, 0.45); background: rgba(72, 199, 142, 0.08); }
+.reviewBanner[data-tone='ok'] strong { color: #7fe0b2; }
+.reviewBanner[data-tone='alert'] { border-color: rgba(255, 101, 101, 0.5); background: rgba(255, 101, 101, 0.09); }
+.reviewBanner[data-tone='alert'] strong { color: #ffb4a7; }
 
 /* --- open shifts --- */
 
@@ -744,30 +718,6 @@
 .entryFoot { margin: 0.5rem 0 0; font-size: 0.78rem; color: rgba(147, 164, 184, 0.9); }
 .entryFoot a { color: #ff9d5c; text-decoration: none; }
 
-.stickyBar {
-  position: sticky;
-  bottom: 0;
-  z-index: 5;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.8rem;
-  flex-wrap: wrap;
-  margin-top: 0.6rem;
-  padding: 0.6rem 0.9rem;
-  border: 1px solid rgba(148, 176, 214, 0.28);
-  border-radius: 13px;
-  background: rgba(10, 20, 33, 0.96);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
-}
-.stickyBar > span:first-child { display: grid; gap: 0.05rem; }
-.stickyBar small { font-size: 0.68rem; letter-spacing: 0.07em; text-transform: uppercase; color: rgba(147, 164, 184, 0.95); }
-.stickyBar strong { font-size: 0.98rem; font-weight: 750; }
-.stickyActions { display: flex; align-items: center; gap: 0.6rem; }
-.stickyWarn { font-size: 0.8rem; font-weight: 700; color: #ffd591; }
-
 .hpNote { margin: 0.8rem 0 0; font-size: 0.78rem; color: rgba(147, 164, 184, 0.9); line-height: 1.55; max-width: 52rem; }
 
 .groupToggle { display: inline-flex; padding: 0.18rem; border: 1px solid rgba(148, 176, 214, 0.26); border-radius: 999px; background: rgba(255, 255, 255, 0.04); }
@@ -803,7 +753,7 @@
 }
 
 .drawerHead { display: flex; align-items: center; gap: 0.9rem; margin-bottom: 1rem; }
-.drawerHead h2 { margin: 0; font-size: 1.25rem; letter-spacing: -0.01em; }
+.drawerHead h2, .drawerHead h3 { margin: 0; font-size: 1.25rem; letter-spacing: -0.01em; }
 .drawerHead p { margin: 0.15rem 0 0; font-size: 0.85rem; color: rgba(200, 212, 226, 0.85); }
 
 .drawerClose {
@@ -862,9 +812,718 @@
   .rowContact, .rowJobs { grid-column: 1 / -1; }
   .row { grid-template-columns: minmax(0, 1fr); }
   .rowActions { justify-content: flex-end; }
-  .stickyBar { position: static; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .row, .tab, .hoursRow, .rowBtn { transition: none; }
+}
+
+/* ==========================================================================
+   Crew pay — the period card, the payable table, the bulk bar and the
+   dialogs money is recorded through.
+
+   Colour never carries a status on its own here: every badge is a word, and
+   the tones only reinforce it. Green is recorded/done, amber is look-at-this,
+   red blocks, orange stays the primary action.
+   ========================================================================== */
+
+/* --- the pay period --- */
+
+.periodCard {
+  display: grid;
+  grid-template-columns: minmax(14rem, 1fr) minmax(0, 2.2fr) minmax(11rem, auto);
+  gap: 1rem;
+  align-items: center;
+  padding: 0.9rem 1rem;
+  margin-bottom: 0.9rem;
+  border: 1px solid rgba(148, 176, 214, 0.24);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+}
+
+.periodCardMain { display: grid; gap: 0.5rem; min-width: 0; }
+.periodCardHead { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.periodCardHead small {
+  width: 100%;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(147, 164, 184, 0.95);
+}
+.periodCardHead strong { font-size: 1.05rem; font-weight: 780; letter-spacing: -0.01em; }
+
+.periodProgress { display: grid; gap: 0.3rem; }
+.periodProgressBar {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(148, 176, 214, 0.2);
+  overflow: hidden;
+}
+.periodProgressBar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ff5a1f, #ffb27d);
+}
+.periodProgress small { font-size: 0.74rem; color: rgba(147, 164, 184, 0.95); }
+
+/* Every figure is a filter — a count you can't act on is trivia. */
+.periodStats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.periodStat {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid rgba(148, 176, 214, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+.periodStat:hover { border-color: rgba(255, 122, 41, 0.45); background: rgba(255, 255, 255, 0.06); }
+.periodStat:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.8); outline-offset: 2px; }
+.periodStat small {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(147, 164, 184, 0.95);
+}
+.periodStat strong { font-size: 1.15rem; font-weight: 780; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.periodStat em { font-style: normal; font-size: 0.68rem; color: rgba(147, 164, 184, 0.9); }
+
+.periodStat[data-tone='pay'] { border-color: rgba(255, 122, 33, 0.35); background: rgba(255, 122, 33, 0.07); }
+.periodStat[data-tone='pay'] strong { color: #ffb27d; }
+.periodStat[data-tone='warn'] strong { color: #ffd591; }
+.periodStat[data-tone='alert'] strong { color: #ffb4a7; }
+.periodStat[data-tone='ok'] strong { color: #7fe0b2; }
+
+/* One primary action, and a line saying what it will do. */
+.periodActions { display: grid; gap: 0.35rem; justify-items: stretch; }
+.periodActions small { font-size: 0.72rem; color: rgba(147, 164, 184, 0.95); line-height: 1.4; }
+.periodActions form { display: grid; }
+
+.periodStatus[data-status='empty'] { border-color: rgba(148, 176, 214, 0.35); color: rgba(200, 212, 226, 0.8); }
+.periodStatus[data-status='ready'],
+.periodStatus[data-status='approved'] { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.12); color: #7fe0b2; }
+.periodStatus[data-status='partially-paid'] { border-color: rgba(255, 122, 33, 0.5); background: rgba(255, 122, 33, 0.12); color: #ffb27d; }
+.periodStatus[data-status='paid'] { border-color: rgba(72, 199, 142, 0.6); background: rgba(72, 199, 142, 0.18); color: #8fe9c0; }
+.periodStatus[data-status='reopened'] { border-color: rgba(169, 200, 255, 0.5); background: rgba(169, 200, 255, 0.12); color: #a9c8ff; }
+
+/* --- toolbar + layout --- */
+
+.payLayout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; align-items: start; }
+.payMain { min-width: 0; }
+
+.payToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+.payToolbar .search { flex: 1 1 16rem; }
+
+.filterCheck {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding-bottom: 0.5rem;
+  font-size: 0.82rem;
+  color: rgba(200, 212, 226, 0.9);
+  white-space: nowrap;
+}
+
+/* --- bulk bar --- */
+
+/* Sticks to the top of the scroll rather than the bottom: it appears in
+   response to the row you just ticked, so it has to be near it. */
+.bulkBar {
+  position: sticky;
+  top: 0.4rem;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid rgba(255, 122, 33, 0.45);
+  border-radius: 13px;
+  background: rgba(16, 28, 43, 0.97);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
+}
+.bulkCount { display: grid; gap: 0.05rem; }
+.bulkCount strong { font-size: 0.92rem; font-weight: 750; }
+.bulkCount small { font-size: 0.76rem; color: #ffb27d; font-variant-numeric: tabular-nums; }
+.bulkActions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+
+/* --- the table --- */
+
+/* Narrow enough to fit beside the rail on a laptop. The payment columns are
+   the point of this table — pushing them off the right edge behind a scrollbar
+   would hide the thing somebody opened the screen to check. */
+.payTable { width: 100%; border-collapse: collapse; min-width: 42rem; }
+
+.payTable thead th {
+  padding: 0.55rem 0.55rem;
+  border-bottom: 1px solid rgba(148, 176, 214, 0.24);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(147, 164, 184, 0.95);
+  text-align: left;
+  /* Headers wrap rather than forcing the table wider than its column. A
+     "Payment date" pushed off the right edge is a column nobody reads. */
+  white-space: normal;
+  line-height: 1.25;
+}
+.payTable th.num, .payTable td.num { text-align: right; }
+.payTable td {
+  padding: 0.5rem 0.55rem;
+  border-bottom: 1px solid rgba(148, 176, 214, 0.12);
+  font-size: 0.86rem;
+  vertical-align: middle;
+}
+.payTable tbody tr:last-child td { border-bottom: 0; }
+
+.payRow { transition: background 0.13s ease; }
+.payRow:hover { background: rgba(255, 255, 255, 0.035); }
+.payRow[data-selected] { background: rgba(255, 122, 33, 0.09); box-shadow: inset 3px 0 0 #ff7a21; }
+.payRow[data-paid] td { opacity: 0.86; }
+
+.checkCell { width: 2.2rem; }
+.checkCell input { width: 1.05rem; height: 1.05rem; accent-color: #ff7a21; cursor: pointer; }
+.checkCell input:disabled { cursor: not-allowed; opacity: 0.4; }
+.actionsCell { width: 3rem; text-align: right; }
+
+.sortBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+.sortBtn span { opacity: 0.55; font-size: 0.7em; }
+.sortBtn:hover { color: #fff; }
+.sortBtn:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.75); outline-offset: 2px; }
+
+.whoBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+.whoBtn:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.75); outline-offset: 2px; border-radius: 8px; }
+
+.miniAvatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  border: 1px solid rgba(148, 176, 214, 0.3);
+  background: linear-gradient(135deg, rgba(255, 122, 33, 0.28), rgba(255, 209, 102, 0.16));
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.whoNames { display: grid; gap: 0.02rem; min-width: 0; }
+.whoNames strong { font-size: 0.88rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.whoNames small { font-size: 0.7rem; color: rgba(147, 164, 184, 0.92); white-space: nowrap; }
+
+.jobCell { display: table-cell; font-size: 0.8rem; }
+.jobCell small { display: block; font-size: 0.7rem; color: rgba(147, 164, 184, 0.88); }
+
+/* --- badges --- */
+
+.payBadge {
+  display: inline-block;
+  padding: 0.16rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 176, 214, 0.3);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.payBadge[data-state='needs_review'] { border-color: rgba(255, 209, 102, 0.55); background: rgba(255, 209, 102, 0.12); color: #ffd591; }
+.payBadge[data-state='approved'] { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.12); color: #7fe0b2; }
+.payBadge[data-state='draft'] { color: rgba(200, 212, 226, 0.85); }
+.payBadge[data-payment='paid'] { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.14); color: #7fe0b2; }
+.payBadge[data-payment='sent'] { border-color: rgba(169, 200, 255, 0.5); background: rgba(169, 200, 255, 0.12); color: #a9c8ff; }
+.payBadge[data-payment='unpaid'] { border-color: rgba(255, 122, 33, 0.4); background: rgba(255, 122, 33, 0.08); color: #ffb27d; }
+
+.paySub { display: block; margin-top: 0.15rem; font-size: 0.68rem; color: rgba(147, 164, 184, 0.9); }
+
+.flagChips { display: flex; flex-wrap: wrap; gap: 0.2rem; margin-top: 0.22rem; }
+.flagChip {
+  padding: 0.08rem 0.38rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 209, 102, 0.45);
+  background: rgba(255, 209, 102, 0.1);
+  color: #ffd591;
+  font-size: 0.63rem;
+  font-weight: 700;
+  cursor: help;
+}
+.flagChip[data-severity='block'] { border-color: rgba(255, 101, 101, 0.5); background: rgba(255, 101, 101, 0.1); color: #ffb4a7; }
+
+.adjust { display: block; font-size: 0.66rem; font-weight: 650; color: #ffd591; cursor: help; }
+
+/* Overtime is a second line, not a suffix — "45h 00mOT 5h 00m" is one number
+   pretending to be two. */
+.payTable .otCell { display: block; font-size: 0.68rem; }
+
+.tableEmpty { padding: 1.4rem 0.8rem !important; text-align: center; color: rgba(147, 164, 184, 0.95); }
+
+/* --- pager --- */
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 0.6rem;
+  font-size: 0.78rem;
+  color: rgba(147, 164, 184, 0.95);
+}
+.pagerBtns { display: flex; gap: 0.2rem; }
+.pagerBtns button {
+  min-width: 1.9rem;
+  padding: 0.24rem 0.5rem;
+  border: 1px solid rgba(148, 176, 214, 0.28);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #cbd6e4;
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.pagerBtns button[data-on] { border-color: rgba(255, 122, 33, 0.6); background: rgba(255, 122, 33, 0.16); color: #ffb27d; }
+.pagerBtns button:disabled { opacity: 0.4; cursor: not-allowed; }
+.pagerSize select {
+  padding: 0.24rem 0.4rem;
+  border: 1px solid rgba(148, 176, 214, 0.28);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #dbe4ef;
+  font: inherit;
+  font-size: 0.78rem;
+}
+.pagerSize select option { background: #101c2b; color: #f7f5ef; }
+
+/* --- the rail --- */
+
+.payRail { display: grid; gap: 0.7rem; align-content: start; }
+
+.railCard {
+  padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(148, 176, 214, 0.2);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.railCard h3 {
+  margin: 0 0 0.6rem;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgba(147, 164, 184, 0.95);
+}
+.railCard .btn, .railCard button.btn { width: 100%; margin-top: 0.6rem; }
+
+.donutWrap { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); gap: 0.7rem; align-items: center; }
+.donut {
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 50%;
+  -webkit-mask: radial-gradient(circle, transparent 0 calc(50% - 11px), #000 calc(50% - 10px));
+  mask: radial-gradient(circle, transparent 0 calc(50% - 11px), #000 calc(50% - 10px));
+}
+.donutLegend { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.2rem; min-width: 0; }
+.donutLegend button {
+  display: grid;
+  grid-template-columns: 0.55rem minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.1rem 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.76rem;
+  text-align: left;
+  cursor: pointer;
+}
+.donutLegend button:hover { color: #fff; }
+.donutLegend button:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.75); outline-offset: 2px; border-radius: 6px; }
+.donutLegend strong { font-size: 0.76rem; font-variant-numeric: tabular-nums; }
+.donutMuted {
+  display: grid;
+  grid-template-columns: 0.55rem minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.76rem;
+  color: rgba(147, 164, 184, 0.85);
+}
+.donutDot { width: 0.55rem; height: 0.55rem; border-radius: 50%; }
+
+.railTotals { margin: 0.6rem 0 0; padding-top: 0.5rem; border-top: 1px solid rgba(148, 176, 214, 0.18); }
+.railTotals div, .railList div { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+.railTotals dt, .railList dt { font-size: 0.76rem; color: rgba(147, 164, 184, 0.95); }
+.railTotals dd { margin: 0; font-size: 0.95rem; font-weight: 780; font-variant-numeric: tabular-nums; }
+.railList { margin: 0; display: grid; gap: 0.3rem; }
+.railList dd { margin: 0; font-size: 0.78rem; font-weight: 650; text-align: right; overflow-wrap: anywhere; }
+
+.railActions { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.1rem; }
+.railActions li { display: grid; }
+.railActions button, .railActions a {
+  display: block;
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: #cbd6e4;
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.railActions button:hover, .railActions a:hover { background: rgba(255, 255, 255, 0.07); color: #fff; }
+.railActions button:disabled { opacity: 0.6; cursor: progress; }
+
+/* --- toast --- */
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.8rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid rgba(255, 101, 101, 0.5);
+  border-radius: 13px;
+  background: rgba(255, 101, 101, 0.1);
+}
+.toast[data-ok] { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.1); }
+.toast > div:first-child { display: grid; gap: 0.15rem; }
+.toast strong { font-size: 0.9rem; }
+.toast span { font-size: 0.8rem; color: rgba(200, 212, 226, 0.88); }
+.toastActions { display: flex; align-items: center; gap: 0.5rem; }
+.toastClose {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  border: 1px solid rgba(148, 176, 214, 0.3);
+  background: rgba(255, 255, 255, 0.05);
+  color: #dbe4ef;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* --- modal --- */
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(3, 8, 15, 0.74);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  overflow-y: auto;
+}
+
+.modal {
+  width: min(30rem, 100%);
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  border: 1px solid rgba(148, 176, 214, 0.3);
+  border-radius: 18px;
+  background: #0d1a29;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+}
+.modalWide { width: min(40rem, 100%); }
+
+.modalHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.8rem;
+  padding: 1rem 1.1rem 0.7rem;
+  border-bottom: 1px solid rgba(148, 176, 214, 0.18);
+}
+.modalHead h3 { margin: 0; font-size: 1.05rem; letter-spacing: -0.01em; }
+.modalHead p { margin: 0.2rem 0 0; font-size: 0.82rem; color: rgba(200, 212, 226, 0.85); }
+.modalClose {
+  margin-left: auto;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 1px solid rgba(148, 176, 214, 0.3);
+  background: rgba(255, 255, 255, 0.05);
+  color: #dbe4ef;
+  font: inherit;
+  cursor: pointer;
+}
+.modalBody { padding: 0.9rem 1.1rem 1.1rem; }
+
+.payForm { display: grid; gap: 0.75rem; }
+
+.paySummaryStrip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid rgba(148, 176, 214, 0.22);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.paySummaryStrip small {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(147, 164, 184, 0.95);
+}
+.paySummaryStrip strong { font-size: 1.05rem; font-weight: 780; font-variant-numeric: tabular-nums; }
+.payTotalCell strong { color: #ffb27d; }
+
+.payNotice {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid rgba(148, 176, 214, 0.25);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 0.82rem;
+}
+.payNotice[data-tone='warn'] { border-color: rgba(255, 209, 102, 0.45); background: rgba(255, 209, 102, 0.08); }
+.payNotice strong { display: block; font-size: 0.85rem; margin-bottom: 0.2rem; }
+.payNotice p { margin: 0 0 0.35rem; color: rgba(200, 212, 226, 0.88); line-height: 1.45; }
+.payNotice ul { margin: 0 0 0.35rem; padding-left: 1.1rem; display: grid; gap: 0.2rem; color: rgba(200, 212, 226, 0.88); line-height: 1.4; }
+.payNoticeActions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
+
+.payCheck { display: flex; align-items: flex-start; gap: 0.4rem; font-size: 0.82rem; cursor: pointer; }
+.payCheck input { margin-top: 0.15rem; accent-color: #ff7a21; }
+
+.payGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+.payField { display: grid; gap: 0.2rem; min-width: 0; }
+.payFieldWide { grid-column: 1 / -1; }
+.payField > span {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(147, 164, 184, 0.95);
+}
+.payField input, .payField select, .payField textarea {
+  padding: 0.45rem 0.55rem;
+  border: 1px solid rgba(148, 176, 214, 0.3);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #f2f6fb;
+  font: inherit;
+  font-size: 0.86rem;
+}
+.payField select option { background: #101c2b; color: #f7f5ef; }
+.payField em { font-style: normal; font-size: 0.7rem; color: rgba(147, 164, 184, 0.9); }
+
+.payWhoList { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.15rem; max-height: 11rem; overflow-y: auto; }
+.payWhoList li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 5.5rem 6rem;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.28rem 0.4rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 0.82rem;
+}
+.payWhoList strong { text-align: right; font-variant-numeric: tabular-nums; }
+.payWhoHours { text-align: right; font-variant-numeric: tabular-nums; color: rgba(147, 164, 184, 0.95); }
+
+.payActions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5rem; }
+.payFinePrint { margin: 0; font-size: 0.72rem; color: rgba(147, 164, 184, 0.9); line-height: 1.45; }
+.payDisclaimer {
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  border-left: 3px solid rgba(255, 209, 102, 0.6);
+  background: rgba(255, 209, 102, 0.07);
+  font-size: 0.8rem;
+  color: rgba(200, 212, 226, 0.9);
+  line-height: 1.45;
+}
+
+.actionResult {
+  padding: 0.5rem 0.7rem;
+  border: 1px solid rgba(255, 101, 101, 0.5);
+  border-radius: 11px;
+  background: rgba(255, 101, 101, 0.1);
+  font-size: 0.82rem;
+}
+.actionResult[data-ok] { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.1); }
+.actionResult strong { display: block; font-size: 0.85rem; }
+.actionResult ul { margin: 0.25rem 0 0; padding-left: 1.1rem; display: grid; gap: 0.15rem; color: rgba(200, 212, 226, 0.88); }
+
+/* --- pay drawer --- */
+
+.drawerBody { display: grid; gap: 0.9rem; }
+
+.drawerStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid rgba(148, 176, 214, 0.22);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.drawerStats small {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(147, 164, 184, 0.95);
+}
+.drawerStats strong { font-size: 1rem; font-weight: 780; font-variant-numeric: tabular-nums; }
+
+.drawerWarnings { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.35rem; }
+.drawerWarnings li {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0.45rem 0.6rem;
+  border-left: 3px solid rgba(255, 209, 102, 0.6);
+  border-radius: 0 9px 9px 0;
+  background: rgba(255, 209, 102, 0.07);
+  font-size: 0.8rem;
+}
+.drawerWarnings li[data-severity='block'] { border-left-color: rgba(255, 101, 101, 0.7); background: rgba(255, 101, 101, 0.08); }
+.drawerWarnings li[data-severity='info'] { border-left-color: rgba(148, 176, 214, 0.5); background: rgba(255, 255, 255, 0.03); }
+.drawerWarnings strong { font-size: 0.8rem; }
+.drawerWarnings span { color: rgba(200, 212, 226, 0.85); line-height: 1.4; }
+
+.drawerPayment {
+  padding: 0.7rem 0.8rem;
+  border: 1px solid rgba(72, 199, 142, 0.4);
+  border-radius: 12px;
+  background: rgba(72, 199, 142, 0.08);
+}
+.drawerPayment strong { display: block; font-size: 0.8rem; color: #7fe0b2; }
+.drawerPayment p { margin: 0.25rem 0 0; font-size: 0.82rem; line-height: 1.45; }
+.drawerPayment .btn { margin-top: 0.55rem; }
+
+.historyList { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.historyList li {
+  padding: 0.5rem 0.65rem;
+  border: 1px solid rgba(148, 176, 214, 0.18);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.025);
+}
+.historyHead { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+.historyHead strong { font-size: 0.8rem; }
+.historyHead small { font-size: 0.7rem; color: rgba(147, 164, 184, 0.9); white-space: nowrap; }
+.historyList p { margin: 0.2rem 0 0; font-size: 0.8rem; color: rgba(200, 212, 226, 0.88); line-height: 1.45; }
+.historyReason { color: #ffd591 !important; font-style: italic; }
+
+/* --- the rail sits under the table, not beside it ---
+   The dashboard shell caps its content column at about 976px. A 17rem rail
+   beside a nine-column table left roughly 690px for a table that needs 770,
+   which pushed Payment and Payment date off the right edge behind a scrollbar —
+   the two columns this whole screen exists to show. So the table gets the full
+   width and the rail becomes a row of cards beneath it. */
+
+@media (min-width: 780px) {
+  .payRail { grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); align-items: start; }
+}
+
+/* --- job-site screens --- */
+
+/* Under 900px the table stops being a table: each crew member becomes a card
+   with the three things that matter on it — who, what they're owed, and what
+   to do — reachable without scrolling sideways with a gloved thumb. */
+@media (max-width: 900px) {
+  .periodCard { grid-template-columns: minmax(0, 1fr); }
+  .periodActions { justify-items: stretch; }
+
+  .tableWrap { border: 0; overflow: visible; }
+  .payTable, .payTable tbody, .payTable tr, .payTable td { display: block; width: auto; min-width: 0; }
+  .payTable thead { display: none; }
+  .payTable tr {
+    position: relative;
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr) max-content;
+    gap: 0.3rem 0.6rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    padding: 0.7rem 0.8rem;
+    border: 1px solid rgba(148, 176, 214, 0.22);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.03);
+  }
+  .payTable td { padding: 0; border: 0; font-size: 0.85rem; }
+  .payTable td.num { text-align: left; }
+  .checkCell { grid-row: 1; grid-column: 1; }
+  .checkCell input { width: 1.35rem; height: 1.35rem; }
+  .payTable td:nth-child(2) { grid-row: 1; grid-column: 2; }
+  .actionsCell { grid-row: 1; grid-column: 3; text-align: right; }
+  .actionsCell .rowBtn { min-width: 2.5rem; min-height: 2.5rem; }
+  .payTable td:not(.checkCell):not(.actionsCell):not(:nth-child(2)) { grid-column: 2 / -1; }
+  /* Every value carries its own column header once the header row is gone.
+     A lone "—" under a card tells you nothing about what is missing. */
+  .payTable td[data-label]::before {
+    content: attr(data-label) ' ';
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: rgba(147, 164, 184, 0.95);
+  }
+  .payTable .tableEmpty { grid-column: 1 / -1; }
+
+  .bulkBar { position: sticky; bottom: 0.4rem; top: auto; }
+  .modal { width: 100%; }
+  .payGrid { grid-template-columns: minmax(0, 1fr); }
+  .payWhoList li { grid-template-columns: minmax(0, 1fr) 4.5rem 5rem; }
+  .donutWrap { grid-template-columns: 3.6rem minmax(0, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .payRow, .periodStat { transition: none; }
 }

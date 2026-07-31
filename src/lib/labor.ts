@@ -465,24 +465,11 @@ export function summarizeJobLabor(
 
 // -- Period status -----------------------------------------------------------
 
-// Only the states that can be derived from the data are here. "Exported" and
-// "Finalized" are deliberately absent: knowing a period was exported means
-// RECORDING that it was, and there is no column for it. Showing a badge the
-// data can't back would be a badge that lies the first time someone exports
-// twice.
-export type PeriodStatus = 'open' | 'needs-review' | 'ready';
-
-export const PERIOD_STATUS_LABEL: Record<PeriodStatus, string> = {
-  open: 'Open',
-  'needs-review': 'Needs review',
-  ready: 'Ready to export',
-};
-
-export function periodStatus(period: PayPeriod, needsReview: number, entryCount: number): PeriodStatus {
-  if (needsReview > 0) return 'needs-review';
-  if (period.open || entryCount === 0) return 'open';
-  return 'ready';
-}
+// A period's STATE — open, needs review, approved, partially paid, paid — moved
+// to crew-pay.ts, because it can no longer be worked out from the hours alone:
+// it depends on what has been approved and what has been paid. Deriving it in
+// two places would be two answers to one question. What stays here is the
+// export gate, which really is only about the health of the entries.
 
 /** Why the export button is off, or null when it's fine to export. */
 export function exportBlockedReason(rows: CrewLaborRow[]): string | null {
@@ -500,27 +487,5 @@ export function exportBlockedReason(rows: CrewLaborRow[]): string | null {
   return null;
 }
 
-// -- Export ------------------------------------------------------------------
-
-function csvCell(value: string | number): string {
-  const text = String(value);
-  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-}
-
-export function buildLaborCsv(rows: CrewLaborRow[], period: PayPeriod): string {
-  const grid: (string | number)[][] = [
-    ['Crew member', 'Role', 'Regular hours', 'Overtime hours', 'Total hours', 'Rate', 'Estimated pay', 'Jobs', 'Period'],
-    ...rows.map((row) => [
-      row.name,
-      row.roleLabel ?? '',
-      row.regularHours,
-      row.overtimeHours,
-      row.hours,
-      row.rateVaries ? 'Varies' : row.rate ?? '',
-      row.estimatedPay.toFixed(2),
-      row.jobIds.length,
-      period.rangeLabel,
-    ]),
-  ];
-  return grid.map((line) => line.map(csvCell).join(',')).join('\n');
-}
+// The CSV moved to crew-pay.ts too: an export that doesn't carry approval and
+// payment status is the file somebody pays from twice.

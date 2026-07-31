@@ -17,6 +17,7 @@ import {
   updateCrewPhoto,
   updateCrewMember,
 } from '@/lib/crew';
+import { countPayRecordsForCrew } from '@/lib/crew-pay-data';
 import { deleteCrewPhotos, isCrewPhotoFile, uploadCrewPhoto, validateCrewPhotoFile } from '@/lib/crew-photo-storage';
 import { createCost, getJob } from '@/lib/jobs';
 import { createJobFeedEvent } from '@/lib/job-feed';
@@ -129,6 +130,17 @@ export async function setCrewActiveAction(crewId: string, active: boolean) {
 
 export async function deleteArchivedCrewAction(crewId: string) {
   const { supabase, accountId } = await requireOwnerContext();
+
+  // Someone who has been paid can't be deleted. Their payment records are the
+  // answer to "did we pay them for that week", and deleting the person would
+  // take that answer with them — which is the one thing a pay history must
+  // never do. Archiving already keeps them off the roster.
+  const payRecords = await countPayRecordsForCrew(supabase, accountId, crewId);
+  if (payRecords > 0) {
+    throw new Error(
+      'This crew member appears in a pay period that has been approved or paid, so their record has to stay. They are already archived and off the roster.',
+    );
+  }
 
   const photoPath = await deleteArchivedCrewMember(supabase, accountId, crewId);
   if (photoPath) await deleteCrewPhotos(accountId, [photoPath]);

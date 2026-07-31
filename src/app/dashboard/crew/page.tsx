@@ -6,17 +6,23 @@ import { createCrewPhotoUrls } from '@/lib/crew-photo-storage';
 import { formatMoney, listJobs } from '@/lib/jobs';
 import { formatPhoneDashes } from '@/lib/phone';
 import {
-  buildLaborCsv,
   exportBlockedReason,
   normalizeOffset,
   normalizePeriodMode,
-  periodStatus,
   resolvePayPeriod,
-  summarizeCrewLabor,
   summarizeJobLabor,
+  toDateKey,
 } from '@/lib/labor';
+import {
+  payPeriodState,
+  periodPrimaryAction,
+  periodProgress,
+  summarizePayTotals,
+  type CrewPayRow,
+} from '@/lib/crew-pay';
+import { listPayEvents, loadCrewPayContext } from '@/lib/crew-pay-data';
 import { laborTotalsByCrew, listLaborEntries } from '@/lib/labor-data';
-import { LABOR_SETTINGS_COOKIE, normalizeLaborSettings, roundHours } from '@/lib/labor-settings';
+import { LABOR_SETTINGS_COOKIE, normalizeLaborSettings } from '@/lib/labor-settings';
 import { SHIFT_FLAG_HELP, SHIFT_FLAG_LABEL, formatClock, formatElapsed, openShiftFlag } from '@/lib/time-clock';
 import { getTimeClockMode, isTimeClockAvailable, listOpenShifts } from '@/lib/time-clock-data';
 import type { OpenShiftView } from './HoursAndPay';
@@ -173,22 +179,44 @@ export default async function CrewLaborPage({
 
   // Only the open tab pays for its own reads.
   const laborEntries =
-    tab === 'hours' || tab === 'jobs'
-      ? await listLaborEntries(supabase, accountId, {
-          startIso: period.startIso,
-          endIso: period.endIso,
-          crewId: tab === 'hours' ? searchParams.crew ?? null : null,
-        })
+    tab === 'jobs'
+      ? await listLaborEntries(supabase, accountId, { startIso: period.startIso, endIso: period.endIso, crewId: null })
       : [];
+  const jobRows = tab === 'jobs' ? summarizeJobLabor(laborEntries, jobs) : [];
 
-  const hours =
+  // Hours & pay reads through the pay context so the screen and the actions
+  // that follow from it are looking at exactly the same rollup.
+  const pay =
     tab === 'hours'
-      ? summarizeCrewLabor(laborEntries, {
-          overtimeThreshold: settings.overtimeThreshold,
-          roundHours: settings.rounding === 'none' ? undefined : (value) => roundHours(value, settings.rounding),
+      ? await loadCrewPayContext(supabase, accountId, {
+          period,
+          settings,
+          crewId: searchParams.crew ?? null,
+          includeOpenShifts: timeClockMode !== 'off',
         })
       : null;
-  const jobRows = tab === 'jobs' ? summarizeJobLabor(laborEntries, jobs) : [];
+
+  const payTotals = pay ? summarizePayTotals(pay.rows) : null;
+  const periodState =
+    pay && payTotals ? payPeriodState(pay.rows, payTotals, period, { reopened: Boolean(pay.periodRow?.reopenedAt) }) : null;
+  const payEvents = pay?.periodRow ? await listPayEvents(supabase, accountId, { periodId: pay.periodRow.id, limit: 60 }) : [];
+
+  // "Hours today" only earns a column while the period actually contains today,
+  // and is counted here rather than in the browser so it agrees with the same
+  // clock every other date on this page was cut with.
+  const now = new Date();
+  const todayKey = toDateKey(now);
+  const periodHasToday = now >= new Date(period.startIso) && now < new Date(period.endIso);
+  const hoursToday: Record<string, number> = {};
+  if (pay && periodHasToday) {
+    for (const row of pay.rows as CrewPayRow[]) {
+      if (!row.crewId) continue;
+      const total = row.entries
+        .filter((entry) => toDateKey(new Date(entry.loggedAt)) === todayKey)
+        .reduce((sum, entry) => sum + entry.hours, 0);
+      if (total > 0) hoursToday[row.crewId] = Math.round(total * 100) / 100;
+    }
+  }
 
   const tabHref = (next: TabId) => {
     const query = new URLSearchParams();
@@ -240,24 +268,30 @@ export default async function CrewLaborPage({
           />
         ) : null}
 
-        {tab === 'hours' && hours ? (
+        {tab === 'hours' && pay && payTotals && periodState ? (
           <HoursAndPay
-            rows={hours.rows}
-            totals={{
-              hours: hours.totalHours,
-              pay: hours.totalPay,
-              overtime: hours.totalOvertime,
-              needsReview: hours.needsReview,
-              activeCrew: activeCrew.length,
-            }}
+            rows={pay.rows}
+            totals={payTotals}
+            periodState={periodState}
+            primaryAction={periodPrimaryAction(periodState, payTotals)}
             period={period}
-            status={periodStatus(period, hours.needsReview, laborEntries.length)}
-            exportBlocked={exportBlockedReason(hours.rows)}
-            csv={buildLaborCsv(hours.rows, period)}
+            periodClosedAt={pay.periodRow?.closedAt ?? null}
+            periodReopenReason={pay.periodRow?.reopenReason ?? null}
+            overlaps={pay.overlaps}
+            events={payEvents}
+            payAvailable={pay.available}
+            exportBlocked={exportBlockedReason(pay.rows)}
             crewFilter={searchParams.crew ?? null}
             crewOptions={activeCrew.map((member) => ({ id: member.id, name: member.name }))}
             assignableJobs={assignableJobs.map((job) => ({ id: job.id, ref: job.ref, clientName: job.client_name }))}
             jobLookup={Object.fromEntries(jobs.map((job) => [job.id, `${job.ref} · ${job.client_name}`]))}
+            jobsByCrew={Object.fromEntries(
+              Object.entries(jobsByCrew).map(([crewId, list]) => [crewId, list.map((job) => ({ ref: job.ref, clientName: job.clientName }))]),
+            )}
+            hoursToday={hoursToday}
+            showTodayColumn={periodHasToday}
+            todayKey={todayKey}
+            progress={periodProgress(period, now)}
             settings={settings}
             timeClockMode={timeClockMode}
             timeClockAvailable={timeClockAvailable}

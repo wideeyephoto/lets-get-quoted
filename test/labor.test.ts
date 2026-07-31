@@ -1,11 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
-  buildLaborCsv,
   entryIssue,
   exportBlockedReason,
   normalizeOffset,
   normalizePeriodMode,
-  periodStatus,
   resolvePayPeriod,
   splitOvertime,
   summarizeCrewLabor,
@@ -197,22 +195,9 @@ describe('labor by job', () => {
   });
 });
 
-describe('period status and export gating', () => {
-  it('is open while the period is still running', () => {
-    const period = resolvePayPeriod('weekly', 0, { now: NOW });
-    expect(periodStatus(period, 0, 3)).toBe('open');
-  });
-
-  it('reports needing review ahead of anything else', () => {
-    const period = resolvePayPeriod('weekly', -1, { now: NOW });
-    expect(periodStatus(period, 2, 5)).toBe('needs-review');
-  });
-
-  it('is ready once a finished period is clean', () => {
-    const period = resolvePayPeriod('weekly', -1, { now: NOW });
-    expect(periodStatus(period, 0, 5)).toBe('ready');
-  });
-
+// Period state now lives in crew-pay.ts, where it also has to account for what
+// has been approved and paid — see test/crew-pay.test.ts.
+describe('export gating', () => {
   it('explains why export is off instead of only dimming it', () => {
     const { rows } = summarizeCrewLabor([entry({ rate: 0, amount: 0 })]);
     const reason = exportBlockedReason(rows);
@@ -224,14 +209,6 @@ describe('period status and export gating', () => {
   it('allows export when everything is complete', () => {
     const { rows } = summarizeCrewLabor([entry()]);
     expect(exportBlockedReason(rows)).toBeNull();
-  });
-});
-
-describe('csv export', () => {
-  it('escapes a name that would otherwise break the columns', () => {
-    const { rows } = summarizeCrewLabor([entry({ crew_name: 'Torres, Mike "Big Mike"' })]);
-    const csv = buildLaborCsv(rows, resolvePayPeriod('weekly', 0, { now: NOW }));
-    expect(csv.split('\n')[1]).toContain('"Torres, Mike ""Big Mike"""');
   });
 });
 

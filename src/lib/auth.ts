@@ -125,7 +125,10 @@ export async function requireOwnerContext() {
     redirect('/account-suspended');
   }
 
-  return { supabase, userId: user.id, accountId: membership.accountId };
+  // userEmail is who to write into an audit trail. Anything that records a
+  // decision — approving hours, marking a crew member paid — has to name a
+  // person, and "the account" isn't a person.
+  return { supabase, userId: user.id, userEmail: user.email ?? null, accountId: membership.accountId };
 }
 
 // --- Internal staff console (/admin) -----------------------------------------
