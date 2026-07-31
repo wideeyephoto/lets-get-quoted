@@ -7,8 +7,8 @@ import { createJobFeedEvent } from '@/lib/job-feed';
 import { backfillJobCoordinates, updateJobSchedule } from '@/lib/jobs';
 import { normalizeUsPhone } from '@/lib/phone';
 import { isPhoneOptedOut, recordSmsConsent, sendArrivalTimeChangedSms } from '@/lib/sms';
-import { buildScheduleChangeset, formatTimeLabel, parseTimeMinutes } from '@/lib/route-plan';
-import { listDayJobs } from '@/lib/route-plan-day';
+import { arrivalWindow, buildScheduleChangeset, formatTimeLabel, parseTimeMinutes } from '@/lib/route-plan';
+import { getPlanAccountSettings, listDayJobs } from '@/lib/route-plan-day';
 import { geocodeAddress } from '@/lib/geocode';
 import { isRouteStopId, normalizeKind, rememberPlace, routeStopUuid } from '@/lib/route-stops';
 import { savePreferredLast } from '@/lib/day-plan-prefs';
@@ -224,11 +224,15 @@ export async function notifyMovedClientsAction(formData: FormData) {
     .filter(Boolean);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey) || jobIds.length === 0) redirect('/dashboard/schedule');
 
-  const [{ jobs }, { data: account }] = await Promise.all([
+  const [{ jobs }, { data: account }, settings] = await Promise.all([
     listDayJobs(supabase, accountId, dateKey, crewId),
     supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
+    // For the floor under the window: the first customer of the day must not be
+    // told an hour that starts before the crew does.
+    getPlanAccountSettings(supabase, accountId),
   ]);
   const businessName = (account?.business_name as string) || "Let's Get Quoted contractor";
+  const dayStart = parseTimeMinutes(settings.workdayStart);
   const wanted = new Set(jobIds);
 
   let sent = 0;
@@ -246,17 +250,18 @@ export async function notifyMovedClientsAction(formData: FormData) {
       continue;
     }
     await recordSmsConsent(accountId, phone, 'arrival_time_changed');
+    const window = arrivalWindow(minutes, { earliestMinutes: dayStart });
     await sendArrivalTimeChangedSms({
       phone,
       businessName,
       clientName: job.client_name,
-      whenLabel: formatTimeLabel(minutes),
+      windowLabel: window.label,
       accountId,
     });
     await createJobFeedEvent(supabase, accountId, job.id, {
       kind: 'job_update',
-      title: 'Customer texted their new arrival time',
-      body: `Told them we'll arrive at ${formatTimeLabel(minutes)}.`,
+      title: 'Customer texted their new arrival window',
+      body: `Told them we'll arrive ${window.label} (estimated ${formatTimeLabel(minutes)}).`,
       visibility: 'client',
     });
     sent += 1;

@@ -4,7 +4,7 @@ import { listCrew } from '@/lib/crew';
 import { getDayPlanPrefs } from '@/lib/day-plan-prefs';
 import { coordOf, type LatLng } from '@/lib/distance';
 import { driveMatrix, DRIVE_MATRIX_MAX_POINTS } from '@/lib/drive-time';
-import { formatTimeLabel, parseTimeMinutes, planDayRoute, scheduleOrder, type PlanStop } from '@/lib/route-plan';
+import { arrivalWindow, formatTimeLabel, parseTimeMinutes, planDayRoute, scheduleOrder, type PlanStop } from '@/lib/route-plan';
 import {
   accountToday,
   findNearestDayWithJobs,
@@ -300,13 +300,21 @@ export default async function PlanDayPage({
             {justMoved.length} {justMoved.length === 1 ? 'customer has' : 'customers have'} a different arrival time than
             before. We won&apos;t text anyone unless you say so.
           </p>
+          {/* The window shown here is the window that gets sent — a preview that
+              said "8:07 AM" while the text said "7:07 AM to 9:07 AM" would be a
+              preview of a different message. */}
           <ul className="plan-notify-list">
             {justMoved.map((entry) => (
               <li key={entry.stop.id}>
-                <strong>{entry.stop.label}</strong> — now {formatTimeLabel(entry.arrivalMinutes)}
+                <strong>{entry.stop.label}</strong> —{' '}
+                {arrivalWindow(entry.arrivalMinutes, { earliestMinutes: parseTimeMinutes(settings.workdayStart) }).label}
               </li>
             ))}
           </ul>
+          <p className="plan-notify-note">
+            Customers get a window, not a single time. It runs an hour either side of the estimate, and never starts
+            before your workday does.
+          </p>
           <form action={notifyMovedClientsAction}>
             <input type="hidden" name="dateKey" value={dateKey} />
             <input type="hidden" name="crewId" value={crewId ?? ''} />

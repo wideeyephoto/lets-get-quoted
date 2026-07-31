@@ -588,10 +588,13 @@ export async function sendArrivalTimeChangedSms(params: {
   phone: string;
   businessName: string;
   clientName: string;
-  whenLabel: string;
+  /** A RANGE, not a single time — see arrivalWindow(). "7:10 AM to 9:10 AM". */
+  windowLabel: string;
   accountId?: string;
 }) {
-  const message = `Let's Get Quoted: ${params.clientName}, ${params.businessName} here — we've updated your arrival time to ${params.whenLabel}. Reply here if that doesn't work and we'll sort it out. Reply STOP to opt out.`;
+  // A window rather than a time on purpose: one slow job turns a promised
+  // "8:07 AM" into a text that was wrong the moment it was sent.
+  const message = `Let's Get Quoted: ${params.clientName}, ${params.businessName} here — your new arrival window is ${params.windowLabel}. Reply here if that doesn't work and we'll sort it out. Reply STOP to opt out.`;
   const providerId = await sendTwilioMessage(params.phone, message);
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;

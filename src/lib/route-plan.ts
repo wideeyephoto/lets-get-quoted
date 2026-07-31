@@ -118,6 +118,47 @@ export function formatTimeLabel(total: number): string {
   return `${hour12}:${String(clamped % 60).padStart(2, '0')} ${period}`;
 }
 
+// -- Arrival windows ---------------------------------------------------------
+
+/** How far either side of the estimate a customer-facing arrival window runs. */
+export const ARRIVAL_WINDOW_MINUTES = 60;
+
+export type ArrivalWindow = { startMinutes: number; endMinutes: number; label: string };
+
+/**
+ * The window to give a customer for an estimated arrival.
+ *
+ * A single time is a promise nobody can keep — one slow job and every text sent
+ * that morning was wrong. A window is the honest version of the same fact.
+ *
+ * The early edge is clamped to when the crew actually starts. Telling somebody
+ * "7:07 AM" for the first job of an 8 AM day promises an hour that doesn't
+ * exist, and it's the first customer of the day — the one most likely to be
+ * standing at the window waiting. Clamping shortens the window rather than
+ * sliding it, because the late edge is the part they're planning around.
+ */
+export function arrivalWindow(
+  arrivalMinutes: number,
+  options?: { spreadMinutes?: number; earliestMinutes?: number | null },
+): ArrivalWindow {
+  const spread = Math.max(0, options?.spreadMinutes ?? ARRIVAL_WINDOW_MINUTES);
+  const arrival = Math.max(0, Math.min(23 * 60 + 59, Math.round(arrivalMinutes)));
+
+  // Never before the crew starts — and never after the estimate itself, which
+  // would leave a window that doesn't contain the time we actually expect.
+  const earliest = options?.earliestMinutes;
+  const floor = typeof earliest === 'number' && Number.isFinite(earliest) ? Math.max(0, Math.round(earliest)) : 0;
+  const startMinutes = Math.min(arrival, Math.max(arrival - spread, floor));
+  // Windows don't run into tomorrow.
+  const endMinutes = Math.min(23 * 60 + 59, arrival + spread);
+
+  return {
+    startMinutes,
+    endMinutes,
+    label: `${formatTimeLabel(startMinutes)} to ${formatTimeLabel(endMinutes)}`,
+  };
+}
+
 function coordOfStop(stop: PlanStop): LatLng | null {
   return typeof stop.lat === 'number' && typeof stop.lng === 'number' ? { lat: stop.lat, lng: stop.lng } : null;
 }

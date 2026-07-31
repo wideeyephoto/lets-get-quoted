@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  arrivalWindow,
   planDayRoute,
   buildScheduleChangeset,
   parseTimeMinutes,
@@ -397,5 +398,40 @@ describe('buildScheduleChangeset', () => {
       unchanged: 0,
       ignored: 0,
     });
+  });
+});
+
+describe('customer arrival windows', () => {
+  it('runs an hour either side of the estimate', () => {
+    const window = arrivalWindow(14 * 60 + 15); // 2:15 PM
+    expect(window.label).toBe('1:15 PM to 3:15 PM');
+    expect(window.startMinutes).toBe(13 * 60 + 15);
+    expect(window.endMinutes).toBe(15 * 60 + 15);
+  });
+
+  // The first customer of the day is the one most likely to be waiting at the
+  // window, and the one an unclamped range would lie to.
+  it('never opens before the crew starts', () => {
+    const window = arrivalWindow(8 * 60 + 7, { earliestMinutes: 8 * 60 });
+    expect(window.label).toBe('8:00 AM to 9:07 AM');
+  });
+
+  it('shortens the window rather than sliding it later', () => {
+    const window = arrivalWindow(8 * 60 + 7, { earliestMinutes: 8 * 60 });
+    // The late edge is what the customer plans around, so it stays put.
+    expect(window.endMinutes).toBe(9 * 60 + 7);
+  });
+
+  it('still contains the estimate when the day starts after it', () => {
+    // A job scheduled before the workday start shouldn't produce a window that
+    // excludes the time we actually expect to arrive.
+    const window = arrivalWindow(7 * 60, { earliestMinutes: 9 * 60 });
+    expect(window.startMinutes).toBeLessThanOrEqual(7 * 60);
+    expect(window.endMinutes).toBeGreaterThanOrEqual(7 * 60);
+  });
+
+  it('does not run into yesterday or tomorrow', () => {
+    expect(arrivalWindow(30).startMinutes).toBe(0);
+    expect(arrivalWindow(23 * 60 + 30).endMinutes).toBe(23 * 60 + 59);
   });
 });

@@ -9561,6 +9561,16 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   flex-direction: column;
   gap: 0.3rem;
 }
+/* Says what the customer will actually receive, right where you decide to
+   send it — a window, not the single time the row above shows. */
+.plan-notify-note {
+  margin: 0 0 1rem;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.52);
+  line-height: 1.5;
+  max-width: 46rem;
+}
+
 .plan-panel > h2 { margin: 0 0 0.5rem; font-size: 1.2rem; }
 .plan-panel > p { color: rgba(255, 255, 255, 0.65); font-size: 0.9rem; }
 
