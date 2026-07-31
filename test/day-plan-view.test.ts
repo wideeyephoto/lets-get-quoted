@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { scheduleOrder, type PlanInput, type PlanStop } from '@/lib/route-plan';
 import {
   costOrder,
+  endOn,
   fullRouteUrl,
   isMovable,
   reorderStops,
@@ -239,5 +240,28 @@ describe('costing straight off the serialized payload', () => {
     const result = costOrder(payload, ['b', 'a']);
     expect(result.planned).toHaveLength(2);
     expect(result.miles).toBeGreaterThan(0);
+  });
+});
+
+describe('the stop you mean to end on', () => {
+  it('moves it to the end and leaves everything else in order', () => {
+    expect(endOn(['a', 'b', 'c', 'd'], 'b')).toEqual(['a', 'c', 'd', 'b']);
+  });
+
+  it('does nothing when it is already last', () => {
+    const order = ['a', 'b', 'c'];
+    expect(endOn(order, 'c')).toBe(order);
+  });
+
+  it('leaves an order alone when nothing is preferred', () => {
+    const order = ['a', 'b', 'c'];
+    expect(endOn(order, null)).toBe(order);
+  });
+
+  // Yesterday's preference reaching today's list must not silently append an id
+  // that isn't on the day.
+  it('ignores a stop that isn’t in this list', () => {
+    const order = ['a', 'b'];
+    expect(endOn(order, 'zzz')).toBe(order);
   });
 });

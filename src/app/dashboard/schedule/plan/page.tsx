@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { listCrew } from '@/lib/crew';
+import { getDayPlanPrefs } from '@/lib/day-plan-prefs';
 import { coordOf, type LatLng } from '@/lib/distance';
 import { driveMatrix, DRIVE_MATRIX_MAX_POINTS } from '@/lib/drive-time';
 import { formatTimeLabel, parseTimeMinutes, planDayRoute, scheduleOrder, type PlanStop } from '@/lib/route-plan';
@@ -130,6 +131,14 @@ export default async function PlanDayPage({
     // A blocks read failure must not stop the plan; worst case we don't warn.
   }
 
+  // What the contractor decided about this day last time they looked at it —
+  // so a route planned the night before is still planned in the morning. A
+  // preference pointing at a stop that has since left the day is dropped here
+  // rather than shipped to the browser to be ignored.
+  const prefs = await getDayPlanPrefs(supabase, accountId, dateKey, crewId);
+  const preferredLastId =
+    prefs.preferredLastId && routable.some((stop) => stop.id === prefs.preferredLastId) ? prefs.preferredLastId : null;
+
   const matrixPayload: DriveMatrixPayload = matrix ? Object.fromEntries(matrix) : {};
   const payload: DayPlanPayload = {
     dateKey,
@@ -154,6 +163,7 @@ export default async function PlanDayPage({
     anchor: optimized.anchor,
     lockedCount: routable.filter((stop) => stop.locked).length,
     filteredOutCount,
+    preferredLastId,
   };
 
   const crewQuery = crewId ? `&crew=${crewId}` : '';

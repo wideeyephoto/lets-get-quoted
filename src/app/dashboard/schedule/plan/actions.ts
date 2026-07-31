@@ -11,6 +11,7 @@ import { buildScheduleChangeset, formatTimeLabel, parseTimeMinutes } from '@/lib
 import { listDayJobs } from '@/lib/route-plan-day';
 import { geocodeAddress } from '@/lib/geocode';
 import { isRouteStopId, normalizeKind, rememberPlace, routeStopUuid } from '@/lib/route-stops';
+import { savePreferredLast } from '@/lib/day-plan-prefs';
 
 // The plan page is force-dynamic, but Next still serves a route's last RSC
 // payload from the client router cache on navigation — so a server action that
@@ -279,4 +280,20 @@ export async function geocodeDayAction(formData: FormData) {
 
   revalidatePlan();
   redirect(planUrl(dateKey, crewId, { geocoded: String(fixed) }));
+}
+
+/**
+ * Remember (or forget) the stop this day should end on.
+ *
+ * Called straight from the row menu rather than through a form: it changes one
+ * remembered fact and nothing about the calendar, so there is nothing to submit
+ * and nothing to navigate to. The running order is deliberately NOT saved here
+ * — that still only reaches the calendar when Save schedule is pressed.
+ */
+export async function setPreferredLastAction(dateKey: string, crewId: string | null, stopId: string | null) {
+  const { supabase, accountId } = await requireOwnerContext();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) throw new Error('That day isn\u2019t a real date.');
+
+  await savePreferredLast(supabase, accountId, dateKey, crewId || null, stopId || null);
+  revalidatePlan();
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import FloatingPanel from '@/components/floating-panel';
 import SaveButton from '@/components/save-button';
@@ -8,10 +8,11 @@ import ServiceIcon from '@/lib/templates/ServiceIcon';
 import { isRouteStopId, KIND_GLYPH, KIND_LABEL, routeStopUuid, type RouteStop } from '@/lib/route-stops';
 import RouteMap, { type MapStop, type NearbyPlace } from './RouteMap';
 import AddRouteStop from './AddRouteStop';
-import { applyDayPlanAction, deleteRouteStopAction } from './actions';
+import { applyDayPlanAction, deleteRouteStopAction, setPreferredLastAction } from './actions';
 import { formatTimeLabel, formatTimeMinutes, parseTimeMinutes, type PlannedStop } from '@/lib/route-plan';
 import {
   costOrder,
+  endOn,
   fullRouteUrl,
   minutesLabel,
   navTarget,
@@ -51,7 +52,12 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
   // The calendar's own order is the starting point. Showing the optimizer's order
   // by default would mean the page never matches the day the contractor actually
   // has — and "apply" would be the only way to see their real schedule.
-  const [order, setOrder] = useState<string[]>(payload.currentOrder);
+  //
+  // With one exception: a last stop they told us about. Opening the day with
+  // that stop back in the middle, under an amber "this isn't last any more"
+  // badge, would greet somebody who planned last night with a warning about
+  // their own decision.
+  const [order, setOrder] = useState<string[]>(() => endOn(payload.currentOrder, payload.preferredLastId));
   const [history, setHistory] = useState<string[][]>([]);
   // The stop being held, by id rather than index — during a live drag its index
   // changes constantly, which is the whole point.
@@ -69,7 +75,12 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
   // optimizer puts it last and the toggle moves it there, but nothing stops a
   // job being dragged after it, because the day changes. When it stops being
   // last the row says so out loud instead of quietly rearranging itself.
-  const [preferredLastId, setPreferredLastId] = useState<string | null>(null);
+  //
+  // Seeded from the server and written back on every change, so a route planned
+  // the night before is still planned in the morning. Kept in state as well so
+  // the badge moves on the click rather than after the round trip.
+  const [preferredLastId, setPreferredLastId] = useState<string | null>(payload.preferredLastId);
+  const [, startPrefSave] = useTransition();
   const [menuFor, setMenuFor] = useState<string | null>(null);
   // A supply store picked off the map, waiting to be turned into a real stop.
   const [prefill, setPrefill] = useState<NearbyPlace | null>(null);
@@ -96,9 +107,24 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
       // New arrivals land where the calendar would put them, which for a stop
       // with no time is the end.
       const added = payload.currentOrder.filter((id) => !keptSet.has(id));
-      return [...kept, ...added];
+      // The SERVER's preference, not the state — a change of signature is
+      // usually a change of day, and this effect runs before the one that syncs
+      // the preference, so local state is still yesterday's answer here.
+      return endOn([...kept, ...added], payload.preferredLastId);
     });
-  }, [stopSignature, payload.stops, payload.currentOrder]);
+  }, [stopSignature, payload.stops, payload.currentOrder, payload.preferredLastId]);
+
+  // The server is the source of truth once it answers — and it also answers
+  // when the day or the crew filter changes, which is a different day's
+  // preference entirely. useState only reads its initial value, so without this
+  // the previous day's last stop would follow you around.
+  const serverPreferredLast = payload.preferredLastId;
+  const knownPref = useRef(serverPreferredLast);
+  useEffect(() => {
+    if (knownPref.current === serverPreferredLast) return;
+    knownPref.current = serverPreferredLast;
+    setPreferredLastId(serverPreferredLast);
+  }, [serverPreferredLast]);
 
   // A stop taken off the day can't still be the one you're ending on.
   useEffect(() => {
@@ -108,13 +134,7 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
   // A preferred last stop is honoured by the optimizer's offer, so the route it
   // proposes is one the contractor would actually accept — and the miles and
   // minutes shown against it are the real cost of ending there.
-  const endLast = useCallback(
-    (ids: string[]) =>
-      preferredLastId && ids.includes(preferredLastId)
-        ? [...ids.filter((id) => id !== preferredLastId), preferredLastId]
-        : ids,
-    [preferredLastId],
-  );
+  const endLast = useCallback((ids: string[]) => endOn(ids, preferredLastId), [preferredLastId]);
 
   const plan = useMemo(() => costOrder(payload, order), [payload, order]);
   const optimizedOrder = useMemo(() => endLast(payload.optimizedOrder), [endLast, payload.optimizedOrder]);
@@ -228,14 +248,22 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
 
   // Setting a preferred last stop moves it there now — a toggle that changed a
   // label and nothing else would leave the contractor to do the drag anyway.
+  //
+  // The badge flips immediately and the write happens behind it. If the write
+  // fails the next render puts it back to whatever the server actually holds,
+  // which is the honest outcome: a preference that didn't save shouldn't look
+  // saved the night before you rely on it.
   function togglePreferredLast(stopId: string) {
     setMenuFor(null);
-    if (preferredLastId === stopId) {
-      setPreferredLastId(null);
-      return;
-    }
-    setPreferredLastId(stopId);
-    moveToEnd(stopId);
+    const next = preferredLastId === stopId ? null : stopId;
+    setPreferredLastId(next);
+    if (next) moveToEnd(stopId);
+    // Keep the ref in step so the sync effect doesn't immediately undo this
+    // when the revalidated payload arrives carrying the same value.
+    knownPref.current = next;
+    startPrefSave(() => {
+      void setPreferredLastAction(payload.dateKey, payload.crewId, next);
+    });
   }
 
   function moveToEnd(stopId: string) {

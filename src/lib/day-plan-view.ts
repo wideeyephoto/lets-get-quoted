@@ -45,6 +45,13 @@ export type DayPlanPayload = {
   lockedCount: number;
   filteredOutCount: number;
   crewName: string | null;
+  /**
+   * The stop the contractor means to end this day on, remembered from last
+   * time. A preference the optimizer honours — never a lock, so the day can
+   * still change around it. Null when nothing is set, or when what was set has
+   * since left the day.
+   */
+  preferredLastId: string | null;
 };
 
 export function planInputFrom(payload: DayPlanPayload): PlanInput {
@@ -111,6 +118,23 @@ export function reorderStops(
   }
 
   return next;
+}
+
+/**
+ * Move the contractor's chosen last stop to the end of an order.
+ *
+ * A preference, so it only ever rewrites an order somebody asked for — never
+ * one they're in the middle of arranging. Returns the input untouched when
+ * nothing is preferred or the preferred stop isn't in this list, which is what
+ * makes it safe to apply on every read.
+ */
+export function endOn(order: string[], preferredLastId: string | null): string[] {
+  if (!preferredLastId) return order;
+  // Already there, or not here at all. Returning the same array rather than an
+  // identical copy keeps this idempotent by reference, so applying it on every
+  // read can't invalidate a memo that depends on the order.
+  if (order[order.length - 1] === preferredLastId || !order.includes(preferredLastId)) return order;
+  return [...order.filter((id) => id !== preferredLastId), preferredLastId];
 }
 
 export function sameOrder(a: string[], b: string[]): boolean {
