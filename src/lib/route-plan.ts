@@ -321,6 +321,78 @@ function schedule(
 }
 
 // ---------------------------------------------------------------------------
+// Costing an order the contractor chose
+// ---------------------------------------------------------------------------
+
+export type OrderedPlan = {
+  planned: PlannedStop[];
+  miles: number;
+  minutes: number;
+  // Time on site across the day, excluding travel and buffers.
+  workMinutes: number;
+  // When the last stop's work ends. The trailing buffer is travel padding to a
+  // next stop that doesn't exist, so it isn't counted — the day is over.
+  finishMinutes: number;
+  // Minutes past the end of the working day (0 when it fits).
+  overflowMinutes: number;
+};
+
+// Cost one specific visit order, rather than searching for a better one.
+//
+// planDayRoute() answers "what order should today be?". This answers "what does
+// THIS order cost?" — which is what the page needs after the contractor drags a
+// stop, and what it needs to describe the day already on the calendar. Pure, and
+// cheap enough to run on every pointer move: with a full matrix it's a walk down
+// the list, so reordering recomputes arrivals, legs, and the finish time without
+// a round trip.
+export function scheduleOrder(orderedIds: string[], input: PlanInput): OrderedPlan {
+  const { stops, homeBase, workdayStart, workdayEnd, bufferMinutes, defaultVisitMinutes, matrix } = input;
+  const byId = new Map(stops.map((stop) => [stop.id, stop]));
+  const startMinutes = parseTimeMinutes(workdayStart) ?? 8 * 60;
+  const endMinutes = parseTimeMinutes(workdayEnd) ?? 17 * 60;
+
+  // Unknown ids and stops with no coordinates are dropped rather than guessed at:
+  // a stop we can't place can't be costed, and inventing a leg for it would put a
+  // fabricated distance into the day's totals.
+  const order = orderedIds
+    .map((id) => {
+      const stop = byId.get(id);
+      const coord = stop ? coordOfStop(stop) : null;
+      return stop && coord ? { id, coord } : null;
+    })
+    .filter((node): node is { id: string; coord: LatLng } => node !== null);
+
+  const result = schedule(
+    order,
+    byId,
+    ANCHOR_KEY,
+    homeBase ?? null,
+    startMinutes,
+    defaultVisitMinutes,
+    bufferMinutes,
+    matrix,
+  );
+
+  const workMinutes = result.planned.reduce(
+    (sum, entry) => sum + visitMinutesOf(entry.stop, defaultVisitMinutes),
+    0,
+  );
+  const last = result.planned[result.planned.length - 1];
+  const finishMinutes = last
+    ? last.arrivalMinutes + visitMinutesOf(last.stop, defaultVisitMinutes)
+    : startMinutes;
+
+  return {
+    planned: result.planned,
+    miles: Math.round(result.miles * 10) / 10,
+    minutes: Math.round(result.minutes),
+    workMinutes,
+    finishMinutes,
+    overflowMinutes: Math.max(0, Math.round(finishMinutes - endMinutes)),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Applying a plan
 // ---------------------------------------------------------------------------
 
