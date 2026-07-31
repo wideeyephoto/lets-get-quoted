@@ -113,3 +113,35 @@ describe('projectPlanVisits — what a plan puts on the calendar before it exist
     expect(visits).toHaveLength(10);
   });
 });
+
+describe('projectPlanVisits — beside visits that are already real jobs', () => {
+  const base = {
+    id: 'p1',
+    title: 'Weekly mow',
+    client_name: 'Jordan Reyes',
+    amount: 120,
+    frequency: 'weekly' as const,
+    next_run_date: '2026-08-05',
+    active: true,
+    remaining_cycles: null as number | null,
+  };
+
+  it('does not draw a ghost over a visit that has a job', () => {
+    const materialized = new Set(['p1:2026-08-05', 'p1:2026-08-12']);
+    const visits = projectPlanVisits([base], { fromKey: '2026-08-01', toKey: '2026-08-31' }, undefined, materialized);
+    expect(visits.map((v) => v.dateKey)).toEqual(['2026-08-19', '2026-08-26']);
+  });
+
+  it('keeps the cadence counting through the ones it skipped', () => {
+    const materialized = new Set(['p1:2026-08-05']);
+    const visits = projectPlanVisits([base], { fromKey: '2026-08-01', toKey: '2026-08-31' }, undefined, materialized);
+    // The 12th is still the second visit of the series, not the first.
+    expect(visits[0].cycle).toBe(2);
+  });
+
+  it('only matches its own plan', () => {
+    const materialized = new Set(['other-plan:2026-08-05']);
+    const visits = projectPlanVisits([base], { fromKey: '2026-08-01', toKey: '2026-08-31' }, undefined, materialized);
+    expect(visits[0].dateKey).toBe('2026-08-05');
+  });
+});

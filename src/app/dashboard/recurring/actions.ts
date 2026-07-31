@@ -2,9 +2,10 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import {
   createRecurringPlan,
+  ensurePlanVisits,
   getRecurringPlan,
   setRecurringPlanActive,
   deleteRecurringPlan,
@@ -57,6 +58,18 @@ export async function createRecurringPlanAction(formData: FormData) {
     autoCharge,
   });
 
+  // Put the first visits on the calendar now rather than one at a time on the
+  // morning of each. Jobs only — the invoice and the charge still happen on the
+  // day, in the daily sweep, so nobody is billed for work weeks out.
+  //
+  // Best-effort: a plan that saved is a plan that saved. If this fails the sweep
+  // creates each visit on its day, which is where we started.
+  try {
+    await ensurePlanVisits(createAdminClient(), plan);
+  } catch (error) {
+    console.error('Recurring visit horizon failed:', error instanceof Error ? error.message : error);
+  }
+
   let flash = 'created';
   if (autoCharge) {
     try {
@@ -69,6 +82,8 @@ export async function createRecurringPlanAction(formData: FormData) {
   }
 
   revalidatePath('/dashboard/recurring');
+  revalidatePath('/dashboard/schedule');
+  revalidatePath('/dashboard/jobs');
   redirect(`/dashboard/recurring?flash=${flash}`);
 }
 
@@ -82,14 +97,20 @@ export async function runPlanNowAction(planId: string) {
 export async function setPlanActiveAction(planId: string, active: boolean) {
   const { supabase, accountId } = await requireOwnerContext();
   await setRecurringPlanActive(supabase, accountId, planId, active);
+  // Pausing removes upcoming visits and resuming puts them back, so the calendar
+  // this changed has to be re-rendered too.
   revalidatePath('/dashboard/recurring');
+  revalidatePath('/dashboard/schedule');
+  revalidatePath('/dashboard/jobs');
 }
 
 export async function deletePlanAction(planId: string) {
   const { supabase, accountId } = await requireOwnerContext();
-  await deleteRecurringPlan(supabase, accountId, planId);
+  const { visitsRemoved } = await deleteRecurringPlan(supabase, accountId, planId);
   revalidatePath('/dashboard/recurring');
-  redirect('/dashboard/recurring?flash=deleted');
+  revalidatePath('/dashboard/schedule');
+  revalidatePath('/dashboard/jobs');
+  redirect(`/dashboard/recurring?flash=deleted${visitsRemoved > 0 ? `&removed=${visitsRemoved}` : ''}`);
 }
 
 export async function resendCardLinkAction(planId: string) {

@@ -57,6 +57,15 @@ export type Job = {
   lat?: number | null;
   lng?: number | null;
   geocoded_at?: string | null;
+  /** Set when a recurring plan put this visit on the calendar. */
+  recurring_plan_id?: string | null;
+  /**
+   * Which visit in the plan's cadence this job IS. Deliberately separate from
+   * scheduled_for: the owner can move the job to another day, and the daily
+   * sweep still has to find this exact visit to bill it — matching on the
+   * calendar date would miss it and create a duplicate.
+   */
+  recurring_visit_date?: string | null;
   created_at: string;
 };
 

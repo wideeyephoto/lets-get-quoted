@@ -229,18 +229,24 @@ export default async function SchedulePage({
   const todayKey = toDateKey(now.getFullYear(), now.getMonth(), now.getDate());
   const availabilityBlocks = await listUpcomingBlocks(supabase, accountId, todayKey);
 
-  // Recurring visits that haven't happened yet.
+  // Recurring visits past the horizon.
   //
-  // A plan's job is created on the morning of the visit, not before — which is
-  // right for billing and useless for planning: set up a weekly mow and this
-  // calendar stayed empty until the day it happened. These are drawn from the
-  // plan's own cadence so the month shows what you've actually committed to.
-  // They are NOT jobs and are passed separately so nothing here can treat them
-  // as one.
-  const plannedVisits = projectPlanVisits(await listRecurringPlans(supabase, accountId), {
-    fromKey: toDateKey(year, monthIndex, 1),
-    toKey: toDateKey(year, monthIndex, daysInMonth),
-  });
+  // A plan puts its next few visits on the calendar as real jobs the moment
+  // it's created. Everything after that is still only a cadence, so it's drawn
+  // from the plan itself — the month shows the whole commitment, not just the
+  // part that has been materialized. A visit that already HAS a job is skipped
+  // here, or the same afternoon would appear twice.
+  const materializedVisits = new Set(
+    jobs
+      .filter((job) => job.recurring_plan_id && job.recurring_visit_date)
+      .map((job) => `${job.recurring_plan_id}:${job.recurring_visit_date}`),
+  );
+  const plannedVisits = projectPlanVisits(
+    await listRecurringPlans(supabase, accountId),
+    { fromKey: toDateKey(year, monthIndex, 1), toKey: toDateKey(year, monthIndex, daysInMonth) },
+    undefined,
+    materializedVisits,
+  );
 
   // Days at/over the daily hours capacity ("full"), and a reason map for the soft
   // warning shown when you drag a job onto a full or blocked day (you can override).

@@ -12,10 +12,10 @@ import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
 import { setPlanActiveAction, deletePlanAction, resendCardLinkAction, runPlanNowAction } from './actions';
 
 const FLASH_MESSAGES: Record<string, { tone: 'success' | 'info' | 'warn'; text: string }> = {
-  created: { tone: 'success', text: 'Recurring plan created. The first visit will be created automatically on its date.' },
-  'card-sent': { tone: 'success', text: 'Plan saved and a secure card-setup link was sent to your customer.' },
-  'card-failed': { tone: 'warn', text: 'Plan saved, but the card link couldn’t be sent. Add an email or opted-in phone, then resend it.' },
-  deleted: { tone: 'info', text: 'Recurring plan cancelled. No more visits will be created.' },
+  created: { tone: 'success', text: 'Recurring plan created — the next visits are on your calendar already. Each one is invoiced on the day it happens, not before.' },
+  'card-sent': { tone: 'success', text: 'Plan saved, the next visits are on your calendar, and a secure card-setup link was sent to your customer.' },
+  'card-failed': { tone: 'warn', text: 'Plan saved and the visits are on your calendar, but the card link couldn’t be sent. Add an email or opted-in phone, then resend it.' },
+  deleted: { tone: 'info', text: 'Recurring plan cancelled. Its upcoming visits were taken off the calendar; anything already worked or billed stays.' },
   'ran-paid': { tone: 'success', text: 'Visit created and the saved card was charged. Check the job and its payment to confirm.' },
   'ran-skipped': { tone: 'info', text: 'Visit created and the schedule advanced. Nothing was charged (auto-charge off or no card on file).' },
   'ran-failed': { tone: 'warn', text: 'Visit created, but the card charge didn’t go through — the customer was sent a pay link. See the job’s payment.' },

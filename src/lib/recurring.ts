@@ -123,6 +123,11 @@ export function projectPlanVisits(
   plans: PlanProjectionInput[],
   range: { fromKey: string; toKey: string },
   maxPerPlan = 60,
+  /**
+   * Visits that already have a job, keyed `planId:dateKey`. Those are drawn from
+   * the job itself; projecting them too would put a ghost on top of real work.
+   */
+  materialized?: ReadonlySet<string>,
 ): PlannedVisit[] {
   const visits: PlannedVisit[] = [];
   if (range.toKey < range.fromKey) return visits;
@@ -141,7 +146,7 @@ export function projectPlanVisits(
     let dateKey = plan.next_run_date;
     for (let cycle = 1; cycle <= limit; cycle++) {
       if (dateKey > range.toKey) break;
-      if (dateKey >= range.fromKey) {
+      if (dateKey >= range.fromKey && !materialized?.has(`${plan.id}:${dateKey}`)) {
         visits.push({
           planId: plan.id,
           planTitle: plan.title,
@@ -237,18 +242,41 @@ export async function getRecurringPlan(supabase: SupabaseClient, accountId: stri
   return (data as RecurringPlan) ?? null;
 }
 
-export async function setRecurringPlanActive(supabase: SupabaseClient, accountId: string, planId: string, active: boolean): Promise<void> {
+/**
+ * Pause or resume a plan, and make the calendar agree.
+ *
+ * Pausing takes the plan's future visits back off the calendar — they exist
+ * only because the plan said they would, and leaving them behind is how a
+ * paused plan still sends a crew somewhere. Resuming puts them back.
+ *
+ * Returns how many visits changed, so the page can say so rather than silently
+ * removing work the owner was looking at.
+ */
+export async function setRecurringPlanActive(
+  supabase: SupabaseClient,
+  accountId: string,
+  planId: string,
+  active: boolean,
+): Promise<{ visitsChanged: number }> {
   const { error } = await supabase
     .from('recurring_plans')
     .update({ active, updated_at: new Date().toISOString() })
     .eq('account_id', accountId)
     .eq('id', planId);
   if (error) throw error;
+
+  if (!active) return { visitsChanged: await removeFuturePlanVisits(supabase, accountId, planId) };
+
+  const plan = await getRecurringPlan(supabase, accountId, planId);
+  return { visitsChanged: plan ? await ensurePlanVisits(createAdminClient(), plan) : 0 };
 }
 
-export async function deleteRecurringPlan(supabase: SupabaseClient, accountId: string, planId: string): Promise<void> {
+export async function deleteRecurringPlan(supabase: SupabaseClient, accountId: string, planId: string): Promise<{ visitsRemoved: number }> {
+  // Before the plan goes, so the jobs can still be found by their link to it.
+  const visitsRemoved = await removeFuturePlanVisits(supabase, accountId, planId);
   const { error } = await supabase.from('recurring_plans').delete().eq('account_id', accountId).eq('id', planId);
   if (error) throw error;
+  return { visitsRemoved };
 }
 
 type ChargeOutcome = 'paid' | 'failed' | 'skipped';
@@ -395,9 +423,145 @@ async function chargePlanVisit(
   }
 }
 
-// Spawn the due visit for one plan: create the scheduled job, LOCK the cadence
-// forward (before charging, so a mid-run failure can never respawn this visit),
-// then attempt the auto-charge.
+// -- visits on the calendar, ahead of the day they happen ---------------------
+//
+// A plan used to create its job on the morning of the visit. That is right for
+// billing — the invoice and the charge belong to the visit — and it left the
+// calendar empty all week, with nothing to assign crew to or route.
+//
+// So the two halves are separated. The JOB is created as far ahead as the
+// horizon; the INVOICE and the CHARGE still happen on the day, in the sweep.
+// jobs.recurring_visit_date is what ties them together, and it never moves even
+// if the owner drags the job to another day — so the sweep always finds the
+// visit it means to bill and can never create a second one for it.
+
+/** How many visits of each plan sit on the calendar ahead of time. */
+export const VISIT_HORIZON = 4;
+
+async function findVisitJob(
+  admin: ReturnType<typeof createAdminClient>,
+  accountId: string,
+  planId: string,
+  visitDate: string,
+): Promise<Job | null> {
+  const { data } = await admin
+    .from('jobs')
+    .select('*')
+    .eq('account_id', accountId)
+    .eq('recurring_plan_id', planId)
+    .eq('recurring_visit_date', visitDate)
+    .maybeSingle();
+  return (data as Job) ?? null;
+}
+
+async function createVisitJob(
+  admin: ReturnType<typeof createAdminClient>,
+  plan: RecurringPlan,
+  visitDate: string,
+): Promise<Job> {
+  const job = await createJob(admin, plan.account_id, {
+    clientName: plan.client_name,
+    clientPhone: plan.client_phone,
+    clientEmail: plan.client_email,
+    address: plan.address,
+    scope: plan.scope,
+    status: 'in_progress',
+    scheduledFor: visitDate,
+    quotedAmount: plan.amount,
+  });
+  await admin.from('jobs').update({ recurring_plan_id: plan.id, recurring_visit_date: visitDate }).eq('id', job.id);
+  return { ...job, recurring_plan_id: plan.id, recurring_visit_date: visitDate } as Job;
+}
+
+/**
+ * Put the plan's next few visits on the calendar as real jobs.
+ *
+ * Idempotent by design — called at plan creation, on every cron run, and when a
+ * plan is resumed. A visit that already has a job is left exactly as it is,
+ * including any crew, notes or rescheduling the owner has done to it. The
+ * unique index is the backstop for two of these racing.
+ *
+ * Creates nothing for a paused plan, and never runs past a fixed term.
+ */
+export async function ensurePlanVisits(
+  admin: ReturnType<typeof createAdminClient>,
+  plan: RecurringPlan,
+  horizon = VISIT_HORIZON,
+): Promise<number> {
+  if (!plan.active || !plan.next_run_date) return 0;
+
+  // Six visits left means six visits, however wide the horizon is.
+  const term = typeof plan.remaining_cycles === 'number' ? Math.max(0, plan.remaining_cycles) : null;
+  const wanted = term == null ? horizon : Math.min(term, horizon);
+  if (wanted <= 0) return 0;
+
+  const dates: string[] = [];
+  let dateKey = plan.next_run_date;
+  for (let index = 0; index < wanted; index++) {
+    dates.push(dateKey);
+    dateKey = advanceDate(dateKey, plan.frequency);
+  }
+
+  // One read for what's already there, rather than a lookup per date.
+  const { data: existing, error } = await admin
+    .from('jobs')
+    .select('recurring_visit_date')
+    .eq('account_id', plan.account_id)
+    .eq('recurring_plan_id', plan.id)
+    .in('recurring_visit_date', dates);
+  // Pre-migration the columns don't exist (42703). Creating visits without the
+  // link would make jobs the sweep can never find and would then duplicate, so
+  // the correct degradation is the old behaviour: nothing ahead.
+  if (error) return 0;
+
+  const have = new Set(((existing ?? []) as Array<{ recurring_visit_date: string }>).map((row) => row.recurring_visit_date));
+
+  let created = 0;
+  for (const visitDate of dates) {
+    if (have.has(visitDate)) continue;
+    try {
+      await createVisitJob(admin, plan, visitDate);
+      created += 1;
+    } catch (createError) {
+      // 23505 = another run got there first, which is the index doing its job.
+      const code = (createError as { code?: string })?.code;
+      if (code !== '23505') {
+        console.error(`Recurring visit ${visitDate} for plan ${plan.id} failed:`, createError instanceof Error ? createError.message : createError);
+      }
+    }
+  }
+  return created;
+}
+
+/**
+ * Take the plan's not-yet-happened visits back off the calendar.
+ *
+ * Used when a plan is paused or cancelled: those jobs exist only because the
+ * plan said they would, and leaving them behind puts work on the calendar that
+ * nobody is going to do. Strictly future — today's visit and everything before
+ * it may already have been billed, worked, or staffed, and is real history.
+ */
+export async function removeFuturePlanVisits(
+  supabase: SupabaseClient,
+  accountId: string,
+  planId: string,
+  fromDateKey = todayDateKey(),
+): Promise<number> {
+  const { data, error } = await supabase
+    .from('jobs')
+    .delete()
+    .eq('account_id', accountId)
+    .eq('recurring_plan_id', planId)
+    .gt('recurring_visit_date', fromDateKey)
+    .select('id');
+  if (error) return 0;
+  return (data ?? []).length;
+}
+
+// Spawn the due visit for one plan: bill the job that's already on the calendar
+// for it (creating it only if it somehow isn't), LOCK the cadence forward
+// (before charging, so a mid-run failure can never respawn this visit), then
+// attempt the auto-charge.
 async function spawnPlanOccurrence(admin: ReturnType<typeof createAdminClient>, plan: RecurringPlan): Promise<{ outcome: ChargeOutcome; jobId: string }> {
   const dateKey = plan.next_run_date;
 
@@ -422,16 +586,10 @@ async function spawnPlanOccurrence(admin: ReturnType<typeof createAdminClient>, 
     .maybeSingle();
   if (!claimed) return { outcome: 'skipped', jobId: '' };
 
-  const job = await createJob(admin, plan.account_id, {
-    clientName: plan.client_name,
-    clientPhone: plan.client_phone,
-    clientEmail: plan.client_email,
-    address: plan.address,
-    scope: plan.scope,
-    status: 'in_progress',
-    scheduledFor: dateKey,
-    quotedAmount: plan.amount,
-  });
+  // The job for this visit usually already exists — visits are put on the
+  // calendar as soon as the plan is created, so the owner can see and staff them
+  // ahead of time. Today's work is to BILL it, not to create a second copy.
+  const job = (await findVisitJob(admin, plan.account_id, plan.id, dateKey)) ?? (await createVisitJob(admin, plan, dateKey));
 
   await admin.from('recurring_plans').update({ last_job_id: job.id }).eq('id', plan.id);
 
@@ -495,6 +653,8 @@ export type RecurringRunSummary = {
   charged: number;
   chargeFailed: number;
   failed: number;
+  /** Future visits added to the calendar to keep every plan's horizon full. */
+  visitsCreated?: number;
   reason?: string;
 };
 
@@ -534,5 +694,35 @@ export async function runDueRecurringPlans(): Promise<RecurringRunSummary> {
     }
   }
 
-  return { due: (plans ?? []).length, spawned, charged, chargeFailed, failed };
+  // Top the horizon back up — for the plans that just billed a visit AND for
+  // every other active plan, so a book of plans set up before this existed grows
+  // its calendar visits on the next run rather than only when it's next touched.
+  const topped = await topUpVisitHorizon(admin);
+
+  return { due: (plans ?? []).length, spawned, charged, chargeFailed, failed, visitsCreated: topped };
+}
+
+/**
+ * Make sure every active plan has its next few visits on the calendar.
+ *
+ * Runs after the daily sweep. Best-effort per plan: one plan that can't put a
+ * visit up must not stop the rest.
+ */
+export async function topUpVisitHorizon(admin: ReturnType<typeof createAdminClient>): Promise<number> {
+  const { data: plans, error } = await admin
+    .from('recurring_plans')
+    .select('*')
+    .eq('active', true)
+    .limit(MAX_PLANS_PER_RUN);
+  if (error) return 0;
+
+  let created = 0;
+  for (const plan of (plans ?? []) as RecurringPlan[]) {
+    try {
+      created += await ensurePlanVisits(admin, plan);
+    } catch (planError) {
+      console.error(`Visit top-up failed for plan ${plan.id}:`, planError instanceof Error ? planError.message : planError);
+    }
+  }
+  return created;
 }

@@ -1138,6 +1138,20 @@ create table if not exists recurring_plans (
   updated_at                timestamptz not null default now()
 );
 create index if not exists recurring_plans_due_idx on recurring_plans (account_id, active, next_run_date);
+
+-- Recurring visits, created as real jobs ahead of the day they happen. The
+-- visit date is stored on the job and never moves, so the daily sweep can find
+-- the exact visit to bill even after the owner drags the job to another day —
+-- matching on scheduled_for would miss it and create a duplicate.
+alter table jobs add column if not exists recurring_plan_id uuid references recurring_plans(id) on delete set null;
+alter table jobs add column if not exists recurring_visit_date date;
+create unique index if not exists jobs_recurring_visit_unique
+  on jobs (recurring_plan_id, recurring_visit_date)
+  where recurring_plan_id is not null and recurring_visit_date is not null;
+create index if not exists jobs_recurring_plan_idx
+  on jobs (recurring_plan_id, recurring_visit_date)
+  where recurring_plan_id is not null;
+
 -- Optional fixed term: the plan stops after this many visits (decremented on
 -- each spawn; deactivated at 0). Null = ongoing.
 alter table recurring_plans add column if not exists remaining_cycles int;
