@@ -16,6 +16,29 @@ type AddressAutocompleteProps = {
   // itself, and is told when the text changes.
   inputRef?: MutableRefObject<HTMLInputElement | null>;
   onValueChange?: (value: string) => void;
+  /**
+   * What the field is for.
+   *
+   * 'address' (default) puts the formatted address in the input — the existing
+   * behaviour everywhere. 'place' puts the BUSINESS NAME in it instead, which
+   * is what you want on a field labelled Name: typing "Home Dep" and picking
+   * the Rochester Rd branch should leave "The Home Depot" in the box, not a
+   * street address, while the address goes wherever the caller wants it.
+   */
+  mode?: 'address' | 'place';
+  /**
+   * Where to look first. Without it, "Home Depot Royal Oak" typed in Michigan
+   * returns Royal Oaks Boulevard in Franklin, Tennessee — a national search for
+   * a business somebody is about to drive to this afternoon. A bias doesn't
+   * exclude anything further out, it just stops the local branch losing to a
+   * better-known one 500 miles away.
+   */
+  bias?: { lat: number; lng: number } | null;
+  /**
+   * The whole place, once one is picked. Coordinates come back too, so a caller
+   * can skip geocoding an address Google just handed it.
+   */
+  onPlaceSelected?: (place: { name: string; address: string; lat: number | null; lng: number | null }) => void;
 };
 
 declare global {
@@ -112,6 +135,9 @@ export default function AddressAutocomplete({
   autoComplete = 'off',
   inputRef: externalInputRef,
   onValueChange,
+  mode = 'address',
+  onPlaceSelected,
+  bias,
 }: AddressAutocompleteProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const placesRef = useRef<google.maps.PlacesLibrary | null>(null);
@@ -146,6 +172,9 @@ export default function AddressAutocomplete({
           input: search,
           sessionToken,
           region: 'us',
+          // ~40km, which covers a working day's driving without walling off
+          // anything further.
+          ...(bias ? { locationBias: { center: bias, radius: 40000 } } : {}),
         });
         if (requestRef.current !== requestId) return;
 
@@ -217,14 +246,29 @@ export default function AddressAutocomplete({
     const selectedAddress = suggestion.label;
     setSuggestions([]);
     setHighlightedIndex(-1);
-    if (inputRef.current) inputRef.current.value = selectedAddress;
+    // Show the prediction immediately; the detail fetch below refines it.
+    if (inputRef.current) inputRef.current.value = mode === 'place' ? suggestion.mainText : selectedAddress;
 
     try {
       const place = suggestion.prediction.toPlace();
-      await place.fetchFields({ fields: ['formattedAddress'] });
-      if (place.formattedAddress && inputRef.current) {
-        inputRef.current.value = place.formattedAddress;
-      }
+      // Only ask for coordinates when somebody is listening for them — every
+      // extra field on a Place is billable.
+      const fields =
+        mode === 'place' || onPlaceSelected
+          ? ['displayName', 'formattedAddress', 'location']
+          : ['formattedAddress'];
+      await place.fetchFields({ fields });
+
+      const address = place.formattedAddress ?? selectedAddress;
+      const name = place.displayName ?? suggestion.mainText;
+      if (inputRef.current) inputRef.current.value = mode === 'place' ? name : address;
+      onValueChange?.(mode === 'place' ? name : address);
+      onPlaceSelected?.({
+        name,
+        address,
+        lat: place.location?.lat() ?? null,
+        lng: place.location?.lng() ?? null,
+      });
     } catch {
       // Keep the selected prediction text if full place details are unavailable.
     } finally {
@@ -251,7 +295,11 @@ export default function AddressAutocomplete({
   }
 
   return (
-    <div className="address-autocomplete">
+    // Only the field with a list open is lifted. Two autocompletes in one form
+    // sit at the same z-index, so the one later in the DOM painted over the
+    // other's suggestions — on the Add a stop form that made every Name
+    // suggestion unclickable, hidden behind the Address input below it.
+    <div className={`address-autocomplete${suggestions.length > 0 ? ' is-open' : ''}`}>
       <input
         ref={(node) => {
           (inputRef as MutableRefObject<HTMLInputElement | null>).current = node;

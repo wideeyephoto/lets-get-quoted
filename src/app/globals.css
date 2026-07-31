@@ -6633,6 +6633,9 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 }
 
 .address-autocomplete { position: relative; z-index: 20; width: 100%; }
+/* Above the sticky save bar (z-index 40) and above any sibling field, so an
+   open suggestion list is always the thing you click. */
+.address-autocomplete.is-open { z-index: 60; }
 .address-autocomplete input { width: 100%; }
 .address-autocomplete-suggestions {
   position: absolute;
@@ -6667,6 +6670,49 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 .address-autocomplete-suggestions button.active { background: rgba(255,122,33,0.14); }
 .address-autocomplete-suggestions span { font-size: 0.9rem; font-weight: 800; line-height: 1.25; }
 .address-autocomplete-suggestions small { color: rgba(247,245,239,0.66); font-size: 0.78rem; line-height: 1.3; }
+
+/* Customer lookup — same dropdown as the address suggestions, because it does
+   the same job in the same place and a second visual language for "pick one of
+   these" would just be a second thing to learn. */
+.client-lookup { position: relative; z-index: 20; width: 100%; }
+.client-lookup:focus-within { z-index: 60; }
+.client-lookup input { width: 100%; }
+.client-lookup-list {
+  position: absolute;
+  z-index: 2147483647;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 12px;
+  background: rgba(16,28,43,0.94);
+  box-shadow: 0 18px 44px rgba(0,0,0,0.35);
+  color: #f7f5ef;
+}
+.client-lookup-list button {
+  display: grid;
+  width: 100%;
+  gap: 0.15rem;
+  padding: 0.68rem 0.8rem;
+  border: 0;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.client-lookup-list button:first-child { border-top: 0; }
+.client-lookup-list button:hover,
+.client-lookup-list button.active { background: rgba(255,122,33,0.14); }
+.client-lookup-list span { font-size: 0.9rem; font-weight: 800; line-height: 1.25; }
+.client-lookup-list small { color: rgba(247,245,239,0.66); font-size: 0.78rem; line-height: 1.3; }
+.client-lookup-note {
+  margin: 0.3rem 0 0;
+  font-size: 0.74rem;
+  color: rgba(126, 224, 178, 0.85);
+}
 
 .pac-container {
   z-index: 10000;

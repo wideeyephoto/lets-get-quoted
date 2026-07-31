@@ -4,6 +4,7 @@ import { formatMoney } from '@/lib/jobs';
 import { listRecurringPlans, todayDateKey } from '@/lib/recurring';
 import { planMonthlyValue, visitCountdown } from '@/lib/recurring-display';
 import { listServices } from '@/lib/services';
+import { listClientsWithStats } from '@/lib/clients';
 import RecurringComposer from './RecurringComposer';
 import RecurringPlanCard from '@/components/recurring-plan-card';
 import RecurringHowItWorks from '@/components/recurring-how-it-works';
@@ -26,6 +27,15 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
   const plans = await listRecurringPlans(supabase, accountId);
   const services = (await listServices(supabase, accountId, { activeOnly: true }))
     .map((service) => ({ id: service.id, name: service.name, unitPrice: Number(service.unit_price) || 0 }));
+  // The customer book, so the composer can recognise somebody already in it
+  // rather than creating a second copy of them.
+  const clients = (await listClientsWithStats(supabase, accountId)).map((client) => ({
+    id: client.id,
+    name: client.name,
+    phone: client.phone ?? null,
+    email: client.email ?? null,
+    address: client.address ?? null,
+  }));
   const today = todayDateKey();
   const flash = searchParams.flash ? FLASH_MESSAGES[searchParams.flash] : null;
   // "Run next visit now" passes the created job id so we can link straight to it.
@@ -93,7 +103,7 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
         <div className="section-heading workspace-section-heading compact-heading">
           <p className="eyebrow">Plans{activeCount > 0 ? ` · ${activeCount} active` : ''}</p>
         </div>
-        <RecurringComposer today={today} services={services} />
+        <RecurringComposer today={today} services={services} clients={clients} />
 
         {plans.length === 0 ? (
           <p className="empty-state">No recurring plans yet. Create one above and its visits will schedule themselves.</p>

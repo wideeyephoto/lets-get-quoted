@@ -468,6 +468,7 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
             stopCount={payload.routeStops.length}
             prefill={prefill}
             onPrefillUsed={() => setPrefill(null)}
+            bias={payload.homeBase}
           />
         </section>
 

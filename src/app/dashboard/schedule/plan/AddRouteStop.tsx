@@ -22,6 +22,7 @@ export default function AddRouteStop({
   stopCount,
   prefill,
   onPrefillUsed,
+  bias,
 }: {
   dateKey: string;
   crewId: string | null;
@@ -34,15 +35,24 @@ export default function AddRouteStop({
   // coordinates all arrive together, so nothing is typed and nothing is geocoded.
   prefill: { label: string; address: string; lat: number; lng: number } | null;
   onPrefillUsed: () => void;
+  // Where this day is being worked, so a search finds the local branch.
+  bias?: { lat: number; lng: number } | null;
 }) {
   const [open, setOpen] = useState(false);
   const [kind, setKind] = useState<string>('supply');
-  const [label, setLabel] = useState('');
   const [minutes, setMinutes] = useState(20);
-  // Set only when a saved place was used, so the action can skip geocoding.
+  // Set only when a saved place or a Places result was used, so the action can
+  // skip geocoding an address we were already given coordinates for.
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  // Both fields are uncontrolled: Google's suggestion list writes into them
+  // directly, so the refs are how everything else reads and fills them.
+  const labelRef = useRef<HTMLInputElement | null>(null);
   const addressRef = useRef<HTMLInputElement | null>(null);
   const lastCount = useRef(stopCount);
+
+  function setLabel(value: string) {
+    if (labelRef.current && labelRef.current.value !== value) labelRef.current.value = value;
+  }
 
   useEffect(() => {
     if (stopCount <= lastCount.current) {
@@ -53,10 +63,10 @@ export default function AddRouteStop({
     // The stop is on the day now; leaving its details in the form invites the
     // same stop being added twice.
     setOpen(false);
-    setLabel('');
     setKind('supply');
     setMinutes(20);
     setCoords(null);
+    if (labelRef.current) labelRef.current.value = '';
     if (addressRef.current) addressRef.current.value = '';
   }, [stopCount]);
 
@@ -141,14 +151,27 @@ export default function AddRouteStop({
       <div className="plan-addstop-grid">
         <div className="field">
           <label htmlFor="stopLabel">Name</label>
-          <input
+          {/* Search by the name you'd actually say. Picking a result fills the
+              address and its coordinates too, so the stop is routable without
+              typing an address or paying for a geocode to find one we were
+              just handed. */}
+          <AddressAutocomplete
             id="stopLabel"
             name="label"
+            mode="place"
+            bias={bias}
             required
             maxLength={120}
-            value={label}
-            onChange={(event) => setLabel(event.target.value)}
             placeholder="Home Depot — Rochester Rd"
+            inputRef={labelRef}
+            onPlaceSelected={(place) => {
+              setLabel(place.name);
+              setCoords(place.lat != null && place.lng != null ? { lat: place.lat, lng: place.lng } : null);
+              if (addressRef.current && place.address) {
+                addressRef.current.value = place.address;
+                addressRef.current.dispatchEvent(new Event('input', { bubbles: true }));
+              }
+            }}
           />
         </div>
         <div className="field">
@@ -179,6 +202,7 @@ export default function AddRouteStop({
           id="stopAddress"
           name="address"
           placeholder="Start typing the address"
+          bias={bias}
           onValueChange={() => setCoords(null)}
         />
       </div>

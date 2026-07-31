@@ -1,6 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import AddressAutocomplete from '@/components/address-autocomplete';
+import ClientLookup, { type LookupClient } from '@/components/client-lookup';
 import SaveButton from '@/components/save-button';
 import { createRecurringPlanAction } from './actions';
 
@@ -15,8 +17,36 @@ const FREQUENCY_OPTIONS = [
 
 type ServiceOption = { id: string; name: string; unitPrice: number };
 
-export default function RecurringComposer({ today, services = [] }: { today: string; services?: ServiceOption[] }) {
+export default function RecurringComposer({
+  today,
+  services = [],
+  clients = [],
+}: {
+  today: string;
+  services?: ServiceOption[];
+  clients?: LookupClient[];
+}) {
   const [autoCharge, setAutoCharge] = useState(false);
+  const phoneRef = useRef<HTMLInputElement | null>(null);
+  const emailRef = useRef<HTMLInputElement | null>(null);
+  const addressRef = useRef<HTMLInputElement | null>(null);
+
+  // Picking an existing customer fills what we already know about them. It only
+  // ever writes into a field the owner hasn't typed in — overwriting an address
+  // somebody just entered because the name matched an old record would lose the
+  // thing they came here to set.
+  function fillFromClient(client: LookupClient | null) {
+    if (!client) return;
+    const fill = (ref: typeof phoneRef, value: string | null) => {
+      if (ref.current && value && !ref.current.value.trim()) {
+        ref.current.value = value;
+        ref.current.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    };
+    fill(phoneRef, client.phone);
+    fill(emailRef, client.email);
+    fill(addressRef, client.address);
+  }
 
   // Picking a saved service fills the plan name + price (both uncontrolled
   // inputs live in the same form), so owners don't retype what they already saved.
@@ -98,21 +128,28 @@ export default function RecurringComposer({ today, services = [] }: { today: str
         <div className="cost-form-row">
           <div className="field">
             <label htmlFor="rp-client">Customer name</label>
-            <input id="rp-client" name="clientName" type="text" required placeholder="Jordan Reyes" />
+            <ClientLookup
+              id="rp-client"
+              name="clientName"
+              clients={clients}
+              required
+              placeholder="Jordan Reyes"
+              onPick={fillFromClient}
+            />
           </div>
           <div className="field">
             <label htmlFor="rp-phone">Phone</label>
-            <input id="rp-phone" name="clientPhone" type="tel" placeholder="(555) 123-4567" />
+            <input id="rp-phone" ref={phoneRef} name="clientPhone" type="tel" placeholder="(555) 123-4567" />
           </div>
           <div className="field">
             <label htmlFor="rp-email">Email</label>
-            <input id="rp-email" name="clientEmail" type="email" placeholder="jordan@email.com" />
+            <input id="rp-email" ref={emailRef} name="clientEmail" type="email" placeholder="jordan@email.com" />
           </div>
         </div>
 
         <div className="field">
           <label htmlFor="rp-address">Service address (optional)</label>
-          <input id="rp-address" name="address" type="text" placeholder="123 Oak St" />
+          <AddressAutocomplete id="rp-address" name="address" inputRef={addressRef} placeholder="123 Oak St" />
         </div>
 
         <label className="recurring-autocharge">
