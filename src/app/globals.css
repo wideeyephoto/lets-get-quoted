@@ -4846,10 +4846,40 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
   color: rgba(247, 245, 239, 0.6);
 }
 
+/* The list is the only part of this page that grows, so it's the part that
+   scrolls — otherwise a thousand customers bury the page's own actions.
+   max-height rather than height: a short list still shrinks to fit, so small
+   accounts get no empty box. Deliberately NOT overscroll-behavior: contain —
+   chaining to the page at the end of the list is how you get to the bottom. */
 .client-list {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  max-height: min(70vh, 900px);
+  overflow-y: auto;
+  /* The scrollbar renders inside the container, over the right-hand stats. */
+  padding-right: 0.4rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 138, 61, 0.38) transparent;
+}
+
+.client-list::-webkit-scrollbar { width: 10px; }
+.client-list::-webkit-scrollbar-track { background: transparent; }
+.client-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 138, 61, 0.32);
+  background-clip: content-box;
+  border: 2px solid transparent;
+  border-radius: 999px;
+}
+.client-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 138, 61, 0.55);
+  background-clip: content-box;
+}
+
+@media (max-width: 620px) {
+  /* Rows wrap to two lines here, and a tall inner scroller on a phone leaves
+     nothing of the page left to grab. */
+  .client-list { max-height: 60vh; }
 }
 
 .client-row {

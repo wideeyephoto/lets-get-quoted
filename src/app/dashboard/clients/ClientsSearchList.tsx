@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 
 export type ClientSearchRow = {
@@ -21,6 +21,14 @@ type ClientsSearchListProps = {
 
 export default function ClientsSearchList({ clients }: ClientsSearchListProps) {
   const [query, setQuery] = useState('');
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // The list is its own scroll window, and filtering swaps the rows without
+  // touching the offset — so searching from halfway down would open partway
+  // into the results, with the best matches above the fold.
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: 0 });
+  }, [query]);
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -52,7 +60,7 @@ export default function ClientsSearchList({ clients }: ClientsSearchListProps) {
       {matches.length === 0 ? (
         <p className="empty-state">No clients match “{query.trim()}”. Try a name, phone number, email, or address.</p>
       ) : (
-        <div className="client-list">
+        <div className="client-list" ref={listRef}>
           {matches.map((client) => (
             <Link href={`/dashboard/clients/${client.id}`} className="client-row" key={client.id}>
               <div className="client-row-main">
