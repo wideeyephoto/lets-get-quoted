@@ -1770,3 +1770,241 @@
    screen is one too many. */
 .periodCard[data-view='grouped'] { grid-template-columns: minmax(14rem, 1fr) minmax(11rem, auto); }
 .periodCard[data-view='grouped'] .periodStats { display: none; }
+
+/* --- roster view gear + alternative layouts --------------------------------
+   Four ways to look at the same crew. The rows layout above is unchanged and
+   stays the default; these are what the gear switches to.
+   -------------------------------------------------------------------------- */
+
+/* The gear sits at the end of the filter row, aligned with the selects rather
+   than with their little uppercase captions. */
+.filterGear { display: flex; align-items: end; margin-left: auto; padding-bottom: 0.05rem; }
+
+/* --- cards --- */
+
+.cardGrid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 0.7rem;
+}
+
+.card {
+  display: grid;
+  gap: 0.55rem;
+  align-content: start;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid rgba(148, 176, 214, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.028);
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+.card:hover { border-color: rgba(255, 122, 41, 0.38); background: rgba(255, 255, 255, 0.05); }
+
+.cardOpen {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+.cardOpen:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.75); outline-offset: 3px; border-radius: 10px; }
+
+.cardAvatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid rgba(148, 176, 214, 0.3);
+  background: rgba(255, 122, 33, 0.16);
+  font-size: 1rem;
+  font-weight: 800;
+  color: #ffb27d;
+}
+.cardAvatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.cardNames { display: grid; gap: 0.1rem; min-width: 0; }
+.cardNames strong { font-size: 0.98rem; font-weight: 750; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cardNames small { font-size: 0.76rem; color: rgba(147, 164, 184, 0.92); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.cardFacts { display: grid; gap: 0.4rem; margin: 0; }
+.cardFacts > div { display: grid; gap: 0.1rem; min-width: 0; }
+.cardFacts dt {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(147, 164, 184, 0.8);
+}
+.cardFacts dd {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  min-width: 0;
+  font-size: 0.82rem;
+  color: #cbd6e4;
+}
+.cardFacts dd strong { font-variant-numeric: tabular-nums; }
+
+/* --- board --- */
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.boardCol {
+  display: grid;
+  gap: 0.45rem;
+  align-content: start;
+  padding: 0.75rem;
+  border: 1px solid rgba(148, 176, 214, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.02);
+}
+/* Green on the column that means "you can send someone right now" — the one
+   state that is actually good news. The heading says it too. */
+.boardCol[data-col='free'] { border-color: rgba(72, 199, 142, 0.3); }
+.boardCol[data-col='archived'] { opacity: 0.8; }
+
+.boardCol > header { display: grid; grid-template-columns: 1fr max-content; gap: 0.15rem 0.5rem; align-items: center; }
+.boardCol > header strong { font-size: 0.88rem; font-weight: 750; }
+.boardCol > header small { grid-column: 1 / -1; font-size: 0.72rem; color: rgba(147, 164, 184, 0.85); }
+
+.boardCount {
+  justify-self: end;
+  min-width: 1.5rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 176, 214, 0.3);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.boardCol[data-col='free'] .boardCount { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.13); color: #7fe0b2; }
+
+.boardCol > ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
+.boardEmpty { margin: 0; font-size: 0.8rem; color: rgba(147, 164, 184, 0.75); }
+
+.boardCard {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.55rem 0.6rem;
+  border: 1px solid rgba(148, 176, 214, 0.18);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.035);
+}
+.boardCard:hover { border-color: rgba(255, 122, 41, 0.38); }
+
+.boardOpen {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+}
+.boardOpen:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.75); outline-offset: 3px; border-radius: 9px; }
+.boardCard .rowActions { flex-wrap: wrap; }
+
+/* --- table --- */
+
+/* The table is allowed to scroll sideways inside its own box; the page must
+   never scroll horizontally because of it. */
+.tableWrap {
+  overflow-x: auto;
+  border: 1px solid rgba(148, 176, 214, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.rosterTable { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+
+.rosterTable th, .rosterTable td {
+  padding: 0.5rem 0.7rem;
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.rosterTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #0f1a27;
+  border-bottom: 1px solid rgba(148, 176, 214, 0.24);
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgba(147, 164, 184, 0.95);
+}
+
+.rosterTable tbody tr { border-bottom: 1px solid rgba(148, 176, 214, 0.1); }
+.rosterTable tbody tr:last-child { border-bottom: 0; }
+.rosterTable tbody tr:hover { background: rgba(255, 255, 255, 0.035); }
+.rosterTable tbody th { font-weight: 600; }
+.rosterTable .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.tableName {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.tableName:hover { color: #ffb27d; }
+.tableName:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.75); outline-offset: 2px; border-radius: 6px; }
+
+.avatarSm {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid rgba(148, 176, 214, 0.3);
+  background: rgba(255, 122, 33, 0.16);
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #ffb27d;
+}
+.avatarSm img { width: 100%; height: 100%; object-fit: cover; }
+
+.tableAssignRow td { padding: 0 0.7rem 0.6rem; }
+.tableAssignRow .assignForm { margin-top: 0; border-top: 0; padding-top: 0; white-space: normal; }
+
+@media (max-width: 760px) {
+  .filterGear { margin-left: 0; }
+  .board { grid-template-columns: minmax(0, 1fr); }
+  .cardGrid { grid-template-columns: minmax(0, 1fr); }
+}

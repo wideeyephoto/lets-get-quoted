@@ -22,7 +22,7 @@ import {
   summarizePayTotals,
   type CrewPayRow,
 } from '@/lib/crew-pay';
-import { CREW_VIEW_COOKIE, normalizeCrewView } from '@/lib/dashboard-views';
+import { CREW_ROSTER_VIEW_COOKIE, CREW_VIEW_COOKIE, normalizeCrewView, normalizeRosterView } from '@/lib/dashboard-views';
 import { listPayEvents, loadCrewPayContext } from '@/lib/crew-pay-data';
 import { laborTotalsByCrew, listLaborEntries } from '@/lib/labor-data';
 import { LABOR_SETTINGS_COOKIE, normalizeLaborSettings } from '@/lib/labor-settings';
@@ -201,6 +201,7 @@ export default async function CrewLaborPage({
 
   const payTotals = pay ? summarizePayTotals(pay.rows) : null;
   const crewView = normalizeCrewView(cookies().get(CREW_VIEW_COOKIE)?.value);
+  const rosterView = normalizeRosterView(cookies().get(CREW_ROSTER_VIEW_COOKIE)?.value);
 
   // The period before this one, for the "vs last period" comparison and the
   // second series on the hours chart. Only the grouped layout shows either, so
@@ -256,7 +257,13 @@ export default async function CrewLaborPage({
     // Review pins the actions beside the table, which only fits if the shell
     // stops capping content at 1100px. Driven by the cookie so the width is
     // right on first paint; picking a view refreshes to pick the change up.
-    <main className={`wide-shell workspace-shell${tab === 'hours' && crewView === 'rail' ? ' crew-wide' : ''}`}>
+    <main
+      className={`wide-shell workspace-shell${
+        (tab === 'hours' && crewView === 'rail') || (tab === 'crew' && (rosterView === 'board' || rosterView === 'table'))
+          ? ' crew-wide'
+          : ''
+      }`}
+    >
       <section className="panel workspace-section-card">
         <header className={styles.pageHead}>
           <div>
@@ -291,6 +298,7 @@ export default async function CrewLaborPage({
             assignableJobs={assignableJobs.map((job) => ({ id: job.id, ref: job.ref, clientName: job.client_name }))}
             periodLabel={period.rangeLabel}
             initialStatus={searchParams.status === 'archived' ? 'archived' : 'active'}
+            initialView={rosterView}
             openAdd={searchParams.add === '1' || crew.length === 0}
           />
         ) : null}

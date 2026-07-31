@@ -1,11 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import CrewWorkHistory from '@/components/crew-work-history';
 import SaveButton from '@/components/save-button';
 import AddressAutocomplete from '@/components/address-autocomplete';
+import ViewGear, { type ViewOption } from '@/components/view-gear';
 import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
+import { setRosterViewAction } from '@/app/dashboard/view-actions';
+import type { RosterView } from '@/lib/dashboard-views';
 import CrewPhotoUpload from './CrewPhotoUpload';
 import {
   assignCrewToJobAction,
@@ -60,6 +63,17 @@ const SORTS = [
 
 type SortId = (typeof SORTS)[number]['id'];
 
+// The same four-option shape the Clients and Jobs gears use, so it's a control
+// that's already learned. Each one answers a different question about the crew:
+// who are they, what do they look like, who's free, and how do twenty of them
+// compare line by line.
+const ROSTER_VIEW_OPTIONS: ViewOption<RosterView>[] = [
+  { id: 'rows', label: 'Rows', hint: 'One line each, the everyday roster' },
+  { id: 'cards', label: 'Cards', hint: 'Photos and details, a card per person' },
+  { id: 'board', label: 'Board', hint: "Split by who's free and who's out on a job" },
+  { id: 'table', label: 'Table', hint: 'Dense columns for a big crew' },
+];
+
 const FIELD_APP_LABEL: Record<CrewRow['fieldApp'], string> = {
   linked: 'Field app',
   invitable: 'Not invited',
@@ -77,12 +91,14 @@ export default function CrewRoster({
   assignableJobs,
   periodLabel,
   initialStatus,
+  initialView,
   openAdd,
 }: {
   rows: CrewRow[];
   assignableJobs: JobOption[];
   periodLabel: string;
   initialStatus: 'active' | 'archived';
+  initialView: RosterView;
   openAdd: boolean;
 }) {
   const [query, setQuery] = useState('');
@@ -93,6 +109,30 @@ export default function CrewRoster({
   const [sort, setSort] = useState<SortId>('name');
   const [openId, setOpenId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(openAdd);
+  const [view, setView] = useState<RosterView>(initialView);
+  const [, startViewSave] = useTransition();
+
+  // The layout changes immediately; remembering it is a background write. A
+  // cookie that fails to save is a worse view tomorrow, not a broken page now.
+  function pickView(next: RosterView) {
+    setView(next);
+    startViewSave(() => {
+      void setRosterViewAction(next).catch(() => {});
+    });
+  }
+
+  // Board columns and the nine-column table both want more than the 1100px cap,
+  // and the shell is rendered by the page above this component. The server sets
+  // the class from the cookie so the first paint is right; this keeps it in step
+  // the moment the view changes rather than making a layout change wait on a
+  // round trip.
+  const wide = view === 'board' || view === 'table';
+  useEffect(() => {
+    const main = document.querySelector('main.wide-shell');
+    if (!main) return;
+    main.classList.toggle('crew-wide', wide);
+    return () => main.classList.remove('crew-wide');
+  }, [wide]);
 
   const roles = useMemo(
     () => [...new Set(rows.map((row) => row.roleLabel).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
@@ -141,6 +181,20 @@ export default function CrewRoster({
 
   const activeCount = rows.filter((row) => row.active).length;
   const selected = openId ? rows.find((row) => row.id === openId) ?? null : null;
+
+  // The board's whole point: who could you send somewhere right now. Archived
+  // people get their own column rather than being called "available", which
+  // they emphatically are not.
+  const columns = useMemo(() => {
+    const free = visible.filter((row) => row.active && row.jobs.length === 0);
+    const busy = visible.filter((row) => row.active && row.jobs.length > 0);
+    const archived = visible.filter((row) => !row.active);
+    return [
+      { id: 'free', label: 'Available now', hint: 'Nobody has them booked today', rows: free },
+      { id: 'busy', label: 'On a job', hint: 'Already assigned', rows: busy },
+      ...(archived.length > 0 ? [{ id: 'archived', label: 'Archived', hint: 'Not on the crew right now', rows: archived }] : []),
+    ];
+  }, [visible]);
 
   return (
     <>
@@ -205,6 +259,12 @@ export default function CrewRoster({
               ))}
             </select>
           </label>
+
+          {/* The same gear the Leads, Jobs, Schedule, Clients and Hours & pay
+              screens carry — in the same place, doing the same thing. */}
+          <div className={styles.filterGear}>
+            <ViewGear views={ROSTER_VIEW_OPTIONS} activeView={view} onPickView={pickView} label="View" />
+          </div>
         </div>
       </div>
 
@@ -218,6 +278,76 @@ export default function CrewRoster({
         <p className="empty-state">
           {status === 'archived' ? 'No archived crew members match those filters.' : 'No crew members match those filters.'}
         </p>
+      ) : view === 'cards' ? (
+        <ul className={styles.cardGrid}>
+          {visible.map((row) => (
+            <CrewCardItem
+              key={row.id}
+              row={row}
+              assignableJobs={assignableJobs}
+              periodLabel={periodLabel}
+              onOpen={() => setOpenId(row.id)}
+            />
+          ))}
+        </ul>
+      ) : view === 'board' ? (
+        <div className={styles.board}>
+          {columns.map((column) => (
+            <section key={column.id} className={styles.boardCol} data-col={column.id}>
+              <header>
+                <strong>{column.label}</strong>
+                <span className={styles.boardCount}>{column.rows.length}</span>
+                <small>{column.hint}</small>
+              </header>
+              {column.rows.length === 0 ? (
+                <p className={styles.boardEmpty}>
+                  {column.id === 'free' ? 'Everyone is booked.' : 'Nobody here.'}
+                </p>
+              ) : (
+                <ul>
+                  {column.rows.map((row) => (
+                    <CrewBoardItem
+                      key={row.id}
+                      row={row}
+                      assignableJobs={assignableJobs}
+                      periodLabel={periodLabel}
+                      onOpen={() => setOpenId(row.id)}
+                    />
+                  ))}
+                </ul>
+              )}
+            </section>
+          ))}
+        </div>
+      ) : view === 'table' ? (
+        <div className={styles.tableWrap}>
+          <table className={styles.rosterTable}>
+            <thead>
+              <tr>
+                <th scope="col">Crew member</th>
+                <th scope="col">Role</th>
+                <th scope="col" className={styles.num}>Rate</th>
+                <th scope="col">Phone</th>
+                <th scope="col">Field app</th>
+                <th scope="col">Current job</th>
+                <th scope="col" className={styles.num}>Hours</th>
+                <th scope="col" className={styles.num}>Est. pay</th>
+                <th scope="col"><span className="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((row) => (
+                <CrewTableRow
+                  key={row.id}
+                  row={row}
+                  assignableJobs={assignableJobs}
+                  periodLabel={periodLabel}
+                  onOpen={() => setOpenId(row.id)}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <>
           <div className={styles.rowHead} aria-hidden="true">
@@ -284,18 +414,22 @@ export default function CrewRoster({
   );
 }
 
-function CrewRowItem({
-  row,
-  assignableJobs,
-  periodLabel,
-  onOpen,
-}: {
-  row: CrewRow;
-  assignableJobs: JobOption[];
-  periodLabel: string;
-  onOpen: () => void;
-}) {
-  const [assigning, setAssigning] = useState(false);
+// -- shared pieces ------------------------------------------------------------
+//
+// Four layouts, one set of actions. Extracted rather than copied so that
+// "Assign job" can never mean something subtly different depending on which
+// view the owner happens to have chosen.
+
+function hoursHrefFor(row: CrewRow): string {
+  return `/dashboard/crew?tab=hours&crew=${row.id}`;
+}
+
+// Close the row menu by ref containment on mousedown, NOT by a click listener:
+// Next hydrates into `document`, so React's delegated handler and a document
+// listener sit on the same node and stopPropagation can't keep them apart. A
+// click handler here unmounts the menu — and any form inside it — in the same
+// tick the button is pressed, and the submit silently never happens.
+function useRowMenu() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -315,7 +449,128 @@ function CrewRowItem({
     };
   }, [menuOpen]);
 
-  const hoursHref = `/dashboard/crew?tab=hours&crew=${row.id}`;
+  return { menuOpen, setMenuOpen, menuRef };
+}
+
+function CrewActions({
+  row,
+  assigning,
+  setAssigning,
+  onOpen,
+}: {
+  row: CrewRow;
+  assigning: boolean;
+  setAssigning: (next: (previous: boolean) => boolean) => void;
+  onOpen: () => void;
+}) {
+  const { menuOpen, setMenuOpen, menuRef } = useRowMenu();
+
+  return (
+    <div className={styles.rowActions}>
+      {row.active ? (
+        <button type="button" className={styles.rowBtn} onClick={() => setAssigning((v) => !v)} aria-expanded={assigning}>
+          Assign job
+        </button>
+      ) : null}
+      <Link href={hoursHrefFor(row)} className={styles.rowBtn}>View hours</Link>
+
+      <div className={styles.menuWrap} ref={menuRef}>
+        <button
+          type="button"
+          className={styles.rowBtn}
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          aria-label={`More actions for ${row.name}`}
+          onClick={() => setMenuOpen((v) => !v)}
+        >
+          •••
+        </button>
+        {menuOpen ? (
+          <div className={styles.menu} role="menu">
+            <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onOpen(); }}>
+              Edit crew member
+            </button>
+            {row.active && row.fieldApp === 'invitable' ? (
+              <form action={inviteCrewAction.bind(null, row.id)}>
+                <button type="submit" role="menuitem">Invite to field app</button>
+              </form>
+            ) : null}
+            <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onOpen(); }}>
+              View full work history
+            </button>
+            {/* Archive is destructive-adjacent, so it lives behind the menu and
+                below a divider rather than beside the everyday actions. */}
+            <form action={setCrewActiveAction.bind(null, row.id, !row.active)} className={styles.menuDanger}>
+              <button type="submit" role="menuitem">
+                {row.active ? 'Archive crew member' : 'Reactivate crew member'}
+              </button>
+            </form>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function AssignForm({ row, assignableJobs }: { row: CrewRow; assignableJobs: JobOption[] }) {
+  return (
+    <form action={assignCrewToJobAction.bind(null, row.id)} className={styles.assignForm}>
+      {assignableJobs.length === 0 ? (
+        <p className={styles.dim}>No open jobs to assign yet.</p>
+      ) : (
+        <>
+          <label className={styles.assignField}>
+            <span>Job</span>
+            <select name="jobId" required aria-label={`Assign ${row.name} to a job`}>
+              <option value="">Choose a job</option>
+              {assignableJobs.map((job) => (
+                <option key={job.id} value={job.id}>{job.ref} · {job.clientName}</option>
+              ))}
+            </select>
+          </label>
+          <label className={styles.assignNotify}>
+            <input type="checkbox" name="notify" defaultChecked />
+            <span>Notify {row.name.split(' ')[0]} by text</span>
+          </label>
+          <SaveButton className="btn primary" pendingLabel="Assigning…" savedLabel="Assigned ✓">Assign</SaveButton>
+        </>
+      )}
+    </form>
+  );
+}
+
+// What this person is on right now — the one fact the roster exists to answer.
+function CurrentJob({ row, showExtra = true }: { row: CrewRow; showExtra?: boolean }) {
+  if (row.jobs.length > 0) {
+    return (
+      <>
+        <span className={styles.jobRef}>{row.jobs[0].ref} · {row.jobs[0].clientName}</span>
+        {showExtra && row.jobs.length > 1 ? <small>+{row.jobs.length - 1} more</small> : null}
+      </>
+    );
+  }
+  if (row.active) return <span className={styles.availablePill}>Available</span>;
+  return <span className={styles.dim}>Archived</span>;
+}
+
+function periodTitle(periodLabel: string): string {
+  return `Hours × the rate on each entry, for ${periodLabel}. Estimated — this product doesn't run payroll.`;
+}
+
+// -- layouts ------------------------------------------------------------------
+
+function CrewRowItem({
+  row,
+  assignableJobs,
+  periodLabel,
+  onOpen,
+}: {
+  row: CrewRow;
+  assignableJobs: JobOption[];
+  periodLabel: string;
+  onOpen: () => void;
+}) {
+  const [assigning, setAssigning] = useState(false);
 
   return (
     <li className={`${styles.row}${row.active ? '' : ` ${styles.rowArchived}`}`}>
@@ -347,95 +602,182 @@ function CrewRowItem({
         </span>
 
         <span className={styles.rowJobs}>
-          {row.jobs.length > 0 ? (
-            <>
-              <span className={styles.jobRef}>{row.jobs[0].ref} · {row.jobs[0].clientName}</span>
-              {row.jobs.length > 1 ? <small>+{row.jobs.length - 1} more</small> : null}
-            </>
-          ) : row.active ? (
-            <span className={styles.availablePill}>Available</span>
-          ) : (
-            <span className={styles.dim}>Archived</span>
-          )}
+          <CurrentJob row={row} />
         </span>
 
         <span className={styles.rowPeriod}>
           <strong>{row.periodHours} hrs</strong>
-          <small title={`Hours × the rate on each entry, for ${periodLabel}. Estimated — this product doesn't run payroll.`}>
-            {row.periodPayLabel} est.
+          <small title={periodTitle(periodLabel)}>{row.periodPayLabel} est.</small>
+        </span>
+      </button>
+
+      <CrewActions row={row} assigning={assigning} setAssigning={setAssigning} onOpen={onOpen} />
+
+      {assigning ? <AssignForm row={row} assignableJobs={assignableJobs} /> : null}
+    </li>
+  );
+}
+
+// Cards: the roster as people rather than as records. The photo is the point —
+// on a crew of twenty, a face is faster to find than a name.
+function CrewCardItem({
+  row,
+  assignableJobs,
+  periodLabel,
+  onOpen,
+}: {
+  row: CrewRow;
+  assignableJobs: JobOption[];
+  periodLabel: string;
+  onOpen: () => void;
+}) {
+  const [assigning, setAssigning] = useState(false);
+
+  return (
+    <li className={`${styles.card}${row.active ? '' : ` ${styles.rowArchived}`}`}>
+      <button type="button" className={styles.cardOpen} onClick={onOpen} aria-label={`Open ${row.name}'s profile`}>
+        <span className={styles.cardAvatar} aria-hidden="true">
+          {row.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={row.photoUrl} alt="" />
+          ) : (
+            row.initials
+          )}
+        </span>
+        <span className={styles.cardNames}>
+          <strong>{row.name}</strong>
+          <small>{row.roleLabel} · {row.rateLabel}</small>
+        </span>
+      </button>
+
+      <dl className={styles.cardFacts}>
+        <div>
+          <dt>Current job</dt>
+          <dd><CurrentJob row={row} /></dd>
+        </div>
+        <div>
+          <dt>{periodLabel}</dt>
+          <dd title={periodTitle(periodLabel)}>
+            <strong>{row.periodHours} hrs</strong> <span className={styles.dim}>· {row.periodPayLabel} est.</span>
+          </dd>
+        </div>
+        <div>
+          <dt>Contact</dt>
+          <dd>
+            {row.phoneLabel ?? <span className={styles.dim}>No phone</span>}{' '}
+            <span className={styles.appChip} data-state={row.fieldApp} title={FIELD_APP_TITLE[row.fieldApp]}>
+              {FIELD_APP_LABEL[row.fieldApp]}
+            </span>
+          </dd>
+        </div>
+      </dl>
+
+      <CrewActions row={row} assigning={assigning} setAssigning={setAssigning} onOpen={onOpen} />
+
+      {assigning ? <AssignForm row={row} assignableJobs={assignableJobs} /> : null}
+    </li>
+  );
+}
+
+// Board: one question, answered by the shape of the screen — who can I send
+// somewhere right now, and who is already out.
+function CrewBoardItem({
+  row,
+  assignableJobs,
+  periodLabel,
+  onOpen,
+}: {
+  row: CrewRow;
+  assignableJobs: JobOption[];
+  periodLabel: string;
+  onOpen: () => void;
+}) {
+  const [assigning, setAssigning] = useState(false);
+
+  return (
+    <li className={styles.boardCard}>
+      <button type="button" className={styles.boardOpen} onClick={onOpen} aria-label={`Open ${row.name}'s profile`}>
+        <span className={styles.avatar} aria-hidden="true">
+          {row.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={row.photoUrl} alt="" />
+          ) : (
+            row.initials
+          )}
+        </span>
+        <span className={styles.rowNames}>
+          <strong>{row.name}</strong>
+          <small>{row.roleLabel} · {row.rateLabel}</small>
+          <small title={periodTitle(periodLabel)}>
+            {row.periodHours} hrs · {row.periodPayLabel} est.
+            {row.jobs.length > 0 ? ` · ${row.jobs[0].ref}` : ''}
           </small>
         </span>
       </button>
 
-      <div className={styles.rowActions}>
-        {row.active ? (
-          <button type="button" className={styles.rowBtn} onClick={() => setAssigning((v) => !v)} aria-expanded={assigning}>
-            Assign job
-          </button>
-        ) : null}
-        <Link href={hoursHref} className={styles.rowBtn}>View hours</Link>
+      <CrewActions row={row} assigning={assigning} setAssigning={setAssigning} onOpen={onOpen} />
 
-        <div className={styles.menuWrap} ref={menuRef}>
-          <button
-            type="button"
-            className={styles.rowBtn}
-            aria-haspopup="menu"
-            aria-expanded={menuOpen}
-            aria-label={`More actions for ${row.name}`}
-            onClick={() => setMenuOpen((v) => !v)}
-          >
-            •••
-          </button>
-          {menuOpen ? (
-            <div className={styles.menu} role="menu">
-              <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onOpen(); }}>
-                Edit crew member
-              </button>
-              {row.active && row.fieldApp === 'invitable' ? (
-                <form action={inviteCrewAction.bind(null, row.id)}>
-                  <button type="submit" role="menuitem">Invite to field app</button>
-                </form>
-              ) : null}
-              <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onOpen(); }}>
-                View full work history
-              </button>
-              {/* Archive is destructive-adjacent, so it lives behind the menu and
-                  below a divider rather than beside the everyday actions. */}
-              <form action={setCrewActiveAction.bind(null, row.id, !row.active)} className={styles.menuDanger}>
-                <button type="submit" role="menuitem">
-                  {row.active ? 'Archive crew member' : 'Reactivate crew member'}
-                </button>
-              </form>
-            </div>
-          ) : null}
-        </div>
-      </div>
-
-      {assigning ? (
-        <form action={assignCrewToJobAction.bind(null, row.id)} className={styles.assignForm}>
-          {assignableJobs.length === 0 ? (
-            <p className={styles.dim}>No open jobs to assign yet.</p>
-          ) : (
-            <>
-              <label className={styles.assignField}>
-                <span>Job</span>
-                <select name="jobId" required aria-label={`Assign ${row.name} to a job`}>
-                  <option value="">Choose a job</option>
-                  {assignableJobs.map((job) => (
-                    <option key={job.id} value={job.id}>{job.ref} · {job.clientName}</option>
-                  ))}
-                </select>
-              </label>
-              <label className={styles.assignNotify}>
-                <input type="checkbox" name="notify" defaultChecked />
-                <span>Notify {row.name.split(' ')[0]} by text</span>
-              </label>
-              <SaveButton className="btn primary" pendingLabel="Assigning…" savedLabel="Assigned ✓">Assign</SaveButton>
-            </>
-          )}
-        </form>
-      ) : null}
+      {assigning ? <AssignForm row={row} assignableJobs={assignableJobs} /> : null}
     </li>
+  );
+}
+
+// Table: every column at once, for the shop where the roster is long enough
+// that comparing two people line by line beats scrolling cards.
+function CrewTableRow({
+  row,
+  assignableJobs,
+  periodLabel,
+  onOpen,
+}: {
+  row: CrewRow;
+  assignableJobs: JobOption[];
+  periodLabel: string;
+  onOpen: () => void;
+}) {
+  const [assigning, setAssigning] = useState(false);
+
+  return (
+    <>
+      <tr className={row.active ? undefined : styles.rowArchived}>
+        <th scope="row">
+          <button type="button" className={styles.tableName} onClick={onOpen}>
+            <span className={styles.avatarSm} aria-hidden="true">
+              {row.photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={row.photoUrl} alt="" />
+              ) : (
+                row.initials
+              )}
+            </span>
+            {row.name}
+          </button>
+        </th>
+        <td>{row.roleLabel || <span className={styles.dim}>—</span>}</td>
+        <td className={styles.num}>{row.rateLabel}</td>
+        <td>{row.phoneLabel ?? <span className={styles.dim}>No phone</span>}</td>
+        <td>
+          <span className={styles.appChip} data-state={row.fieldApp} title={FIELD_APP_TITLE[row.fieldApp]}>
+            {FIELD_APP_LABEL[row.fieldApp]}
+          </span>
+        </td>
+        <td><CurrentJob row={row} /></td>
+        <td className={styles.num}>{row.periodHours}</td>
+        <td className={styles.num} title={periodTitle(periodLabel)}>{row.periodPayLabel}</td>
+        <td>
+          <CrewActions row={row} assigning={assigning} setAssigning={setAssigning} onOpen={onOpen} />
+        </td>
+      </tr>
+      {/* A form inside a cell would break the column grid, so it gets its own
+          full-width row directly under the person it belongs to. */}
+      {assigning ? (
+        <tr className={styles.tableAssignRow}>
+          <td colSpan={9}>
+            <AssignForm row={row} assignableJobs={assignableJobs} />
+          </td>
+        </tr>
+      ) : null}
+    </>
   );
 }
 

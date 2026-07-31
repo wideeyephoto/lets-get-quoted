@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
-import { CALENDAR_WEEKEND_COOKIE, CLIENTS_VIEW_COOKIE, CREW_VIEW_COOKIE, JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeClientsView, normalizeCrewView, normalizeJobsView, normalizeMapTheme, normalizeMapView, serializeWeekendDays, type ClientsView, type CrewView, type JobsView, type MapSurface, type MapTheme, type MapView, type WeekendDays } from '@/lib/dashboard-views';
+import { CALENDAR_WEEKEND_COOKIE, CLIENTS_VIEW_COOKIE, CREW_ROSTER_VIEW_COOKIE, CREW_VIEW_COOKIE, JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeClientsView, normalizeCrewView, normalizeJobsView, normalizeMapTheme, normalizeMapView, normalizeRosterView, serializeWeekendDays, type ClientsView, type CrewView, type JobsView, type MapSurface, type MapTheme, type MapView, type RosterView, type WeekendDays } from '@/lib/dashboard-views';
 
 const YEAR = 60 * 60 * 24 * 365;
 
@@ -41,4 +41,10 @@ export async function setClientsViewAction(view: ClientsView) {
 export async function setCrewViewAction(view: CrewView) {
   await requireOwnerContext();
   cookies().set(CREW_VIEW_COOKIE, normalizeCrewView(view), { path: '/', maxAge: YEAR, sameSite: 'lax' });
+}
+
+// Remember the owner's chosen Crew members layout (Rows / Cards / Board / Table).
+export async function setRosterViewAction(view: RosterView) {
+  await requireOwnerContext();
+  cookies().set(CREW_ROSTER_VIEW_COOKIE, normalizeRosterView(view), { path: '/', maxAge: YEAR, sameSite: 'lax' });
 }
