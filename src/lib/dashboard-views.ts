@@ -76,8 +76,8 @@ export function normalizeCrewView(value: unknown): CrewView {
 // the one above: the roster and the pay table answer different questions, and
 // picking a board on one is no reason to change the other.
 export const CREW_ROSTER_VIEW_COOKIE = 'lgq_crew_roster_view';
-export type RosterView = 'rows' | 'cards' | 'board' | 'table';
-export const ROSTER_VIEWS: RosterView[] = ['rows', 'cards', 'board', 'table'];
+export type RosterView = 'rows' | 'cards' | 'board' | 'table' | 'focus';
+export const ROSTER_VIEWS: RosterView[] = ['rows', 'cards', 'board', 'table', 'focus'];
 export function normalizeRosterView(value: unknown): RosterView {
   // Rows is what the roster already is, so nobody who never opens the gear
   // finds their team rearranged.

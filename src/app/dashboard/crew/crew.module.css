@@ -2123,3 +2123,93 @@ button.goAction.goAction:disabled {
 .periodCard[data-view='focus'] .periodStat { padding: 0.7rem 0.8rem; }
 .periodCard[data-view='focus'] .periodStat strong { font-size: 1.45rem; }
 .periodCard[data-view='focus'] .periodStat:hover { border-color: rgba(255, 122, 33, 0.45); }
+
+/* --- roster: Focus -----------------------------------------------------------
+   The everyday Rows list, with one instruction pinned beside it. Same idea as
+   Focus on Hours & pay: the thing to do stays in view while you scroll the crew,
+   so "who isn't set up" and "fix them" are never a scroll apart.
+   -------------------------------------------------------------------------- */
+
+.focusLayout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.9rem; align-items: start; }
+.focusMain { min-width: 0; }
+
+.focusRail { display: grid; gap: 0.6rem; align-content: start; }
+
+@media (min-width: 1100px) {
+  /* Below this the rail would squeeze the roster rows into an unreadable
+     column, so it stacks underneath as a row of cards instead. */
+  .focusLayout { grid-template-columns: minmax(0, 1fr) 19rem; }
+  .focusRail { position: sticky; top: 0.5rem; }
+}
+@media (min-width: 780px) and (max-width: 1099px) {
+  .focusRail { grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+}
+
+.focusCard {
+  display: grid;
+  gap: 0.3rem;
+  align-content: start;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid rgba(148, 176, 214, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.028);
+}
+.focusCard > small {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: rgba(147, 164, 184, 0.9);
+}
+.focusCard > strong { font-size: 0.98rem; font-weight: 750; line-height: 1.35; }
+.focusCard > p { margin: 0.15rem 0 0; font-size: 0.8rem; line-height: 1.5; color: rgba(147, 164, 184, 0.95); }
+.focusCard .btn { margin-top: 0.55rem; justify-self: start; }
+
+/* The instruction card is toned by how much the gap costs if it's left. Only
+   the one that corrupts the pay numbers gets the alert colour. */
+.focusCard[data-tone='alert'] { border-color: rgba(255, 107, 107, 0.45); background: rgba(255, 107, 107, 0.06); }
+.focusCard[data-tone='alert'] > strong { color: #ffb4a7; }
+.focusCard[data-tone='warn'] { border-color: rgba(255, 209, 102, 0.42); background: rgba(255, 209, 102, 0.05); }
+.focusCard[data-tone='warn'] > strong { color: #ffd591; }
+.focusCard[data-tone='ok'] { border-color: rgba(72, 199, 142, 0.35); background: rgba(72, 199, 142, 0.05); }
+.focusCard[data-tone='ok'] > strong { color: #7fe0b2; }
+
+.focusBig { font-size: 1.5rem !important; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+
+/* Names rather than a count — each opens that person, which is where the rate
+   is set and the invite is sent. */
+.focusNames { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.45rem; }
+.focusNames button {
+  padding: 0.16rem 0.5rem;
+  border: 1px solid rgba(148, 176, 214, 0.3);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #dbe4ef;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.focusNames button:hover { border-color: rgba(255, 122, 41, 0.55); background: rgba(255, 122, 41, 0.12); color: #fff; }
+.focusNames button:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.75); outline-offset: 1px; }
+
+.focusCounts, .focusActions { list-style: none; margin: 0.3rem 0 0; padding: 0; display: grid; gap: 0.12rem; }
+.focusCounts button, .focusActions button, .focusActions a {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.34rem 0.4rem;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: #dbe4ef;
+  font: inherit;
+  font-size: 0.83rem;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.focusCounts button:hover:not(:disabled), .focusActions button:hover, .focusActions a:hover { background: rgba(255, 255, 255, 0.07); color: #fff; }
+.focusCounts button:disabled { opacity: 0.45; cursor: default; }
+.focusCounts b { font-size: 0.95rem; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 1.3rem; }
