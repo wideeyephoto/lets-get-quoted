@@ -5,8 +5,34 @@ import { extraStopSettingsFromAccount, EXTRA_STOP_SETTINGS_COLUMNS, EXTRA_STOP_T
 import { computeExtraStopRoute } from '@/lib/extra-stop-route';
 import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
 import ExtraStopRequestCard, { type CardRequest } from './ExtraStopRequestCard';
-import AutomationLink from '@/components/automation-link';
 import ExtraStopExplainer from './ExtraStopExplainer';
+import ExtraStopStatus, { ExtraStopHead } from './ExtraStopStatus';
+
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+// "Mon – Fri" when the days are a run, "Mon, Wed, Fri" when they aren't. A
+// seven-item list where a range would do is the kind of thing that makes a
+// summary card unreadable at a glance.
+function weekdayLabel(days: number[]): string {
+  if (days.length === 0) return 'None';
+  if (days.length === 7) return 'Every day';
+  const sorted = [...days].sort((a, b) => a - b);
+  const consecutive = sorted.every((day, index) => index === 0 || day === sorted[index - 1] + 1);
+  if (consecutive && sorted.length > 2) return `${WEEKDAY_SHORT[sorted[0]]} – ${WEEKDAY_SHORT[sorted[sorted.length - 1]]}`;
+  return sorted.map((day) => WEEKDAY_SHORT[day]).join(', ');
+}
+
+function clockLabel(hhmm: string): string {
+  const [hours, minutes] = hhmm.split(':').map(Number);
+  if (!Number.isFinite(hours)) return hhmm;
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hour12 = hours % 12 === 0 ? 12 : hours % 12;
+  return minutes ? `${hour12}:${String(minutes).padStart(2, '0')} ${period}` : `${hour12} ${period}`;
+}
+
+function money(cents: number): string {
+  return `$${Math.round(cents / 100).toLocaleString('en-US')}`;
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -57,52 +83,82 @@ export default async function ExtraStopsPage() {
     maxFeeDollars: Math.round(settings.maxFeeCents / 100),
   };
 
-  return (
-    <main className="wide-shell workspace-shell">
-      <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading">
-          <p className="eyebrow">Extra Stop</p>
-          <h1>Same-day route requests</h1>
-        </div>
-        {settings.locked ? (
-          <p className="payment-banner warning" style={{ marginTop: '.5rem' }}>
-            Extra Stop is temporarily locked{settings.lockedUntil ? ` until ${new Date(settings.lockedUntil).toLocaleDateString('en-US', { dateStyle: 'medium' })}` : ''}
-            {lockReason ? ` — ${lockReason}` : ' after a reported no-show.'} It&apos;ll reopen automatically; contact support if you think this is a mistake.
-          </p>
-        ) : settings.enabled ? (
-          <div style={{ marginTop: '.6rem' }}>
-            <AutomationLink id="extra-stop" label="Extra Stop settings" on />
-          </div>
-        ) : null}
+  // Requests already accepted onto today, for the summary card.
+  const todayKey = new Date().toLocaleDateString('en-CA', { timeZone: timezone });
+  const acceptedToday = requests.filter(
+    (r) => r.arrival_date === todayKey && ['confirmed', 'en_route', 'arrived', 'completed'].includes(r.status),
+  ).length;
 
-        {active.length > 0 ? (
+  return (
+    <main className="wide-shell workspace-shell bset">
+      <ExtraStopHead bookingUrl={bookingUrl} />
+
+      <ExtraStopStatus
+        enabled={settings.enabled}
+        locked={settings.locked}
+        lockedUntil={settings.lockedUntil}
+        lockReason={lockReason}
+        // Never configured looks exactly like "off" on a boolean, and offering
+        // work on an unset fee band would quote rules nobody chose.
+        configured={settings.maxFeeCents > 0 && settings.weekdays.length > 0}
+        stripeConnected={stripeConnected}
+        bookingUrl={bookingUrl}
+        dayNames={weekdayLabel(settings.weekdays)}
+        dayCount={settings.weekdays.length}
+        hoursLabel={`${clockLabel(settings.earliestTime)} – ${clockLabel(settings.latestEnd)}`}
+        feeLabel={
+          settings.maxFeeCents > 0
+            ? settings.minFeeCents > 0 && settings.minFeeCents !== settings.maxFeeCents
+              ? `${money(settings.minFeeCents)} – ${money(settings.maxFeeCents)}`
+              : money(settings.maxFeeCents)
+            : 'Not set'
+        }
+        maxPerDay={settings.maxPerDay}
+        todayCount={acceptedToday}
+        openCount={active.length}
+      />
+
+      {active.length > 0 ? (
+        <section className="panel workspace-section-card">
+          <div className="section-heading workspace-section-heading compact-heading">
+            <p className="eyebrow">Waiting on you</p>
+            <h2>{active.length} open {active.length === 1 ? 'request' : 'requests'}</h2>
+          </div>
           <div style={{ marginTop: '1rem' }}>
             {activeCards.map(({ r, route, photoUrls }) => (
               <ExtraStopRequestCard key={r.id} request={r as unknown as CardRequest} route={route} photoUrls={photoUrls} defaults={defaults} />
             ))}
           </div>
-        ) : !settings.enabled && !settings.locked ? (
-          <ExtraStopExplainer
-            weekdayCount={settings.weekdays.length}
-            maxPerDay={settings.maxPerDay}
-            maxFeeDollars={defaults.maxFeeDollars}
-            minFeeDollars={defaults.minFeeDollars}
-            stripeConnected={stripeConnected}
-            bookingUrl={bookingUrl}
-            businessName={businessName}
-          />
-        ) : (
+        </section>
+      ) : (
+        <section className="panel workspace-section-card extra-stop-empty-panel">
           <div className="extra-stop-empty">
             <span className="extra-stop-empty-mark" aria-hidden="true">📍</span>
-            <h3>{settings.locked ? 'No active requests while locked' : "You're all set — waiting on requests"}</h3>
+            <h3>{settings.locked ? 'No active requests while paused' : settings.enabled ? "You're all set — waiting on requests" : 'Nothing can come in yet'}</h3>
             <p>
               {settings.locked
                 ? 'New Extra Stop requests are paused until the lock lifts. Anything already in progress will still appear here.'
-                : 'When a customer requests an Extra Stop from your Book page, it lands here and we text and email you right away.'}
+                : settings.enabled
+                  ? 'When a customer requests an Extra Stop from your booking page, it lands here and we text and email you right away.'
+                  : 'Turn Extra Stops on above and requests from your booking page will land here.'}
             </p>
           </div>
-        )}
-      </section>
+        </section>
+      )}
+
+      {/* Always shown, on purpose. This is the only place that explains what
+          Extra Stop is, what it earns, and what it costs a customer — hiding it
+          the moment the switch flips left an owner who turned it on with no way
+          back to the explanation, and nothing to send a customer to. */}
+      <ExtraStopExplainer
+        weekdayCount={settings.weekdays.length}
+        maxPerDay={settings.maxPerDay}
+        maxFeeDollars={defaults.maxFeeDollars}
+        minFeeDollars={defaults.minFeeDollars}
+        stripeConnected={stripeConnected}
+        bookingUrl={bookingUrl}
+        businessName={businessName}
+      />
 
       {history.length ? (
         <section className="panel workspace-section-card">

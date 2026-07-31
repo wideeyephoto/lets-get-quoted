@@ -69,7 +69,7 @@ export default function ExtraStopPanel({
             </Link>
           ) : (
             <>
-              <form action={setExtraStopEnabledAction.bind(null, !enabled)}>
+              <form action={setExtraStopEnabledAction.bind(null, !enabled, 'plan_my_day')}>
                 <SaveButton
                   className={enabled ? 'btn secondary' : 'btn primary'}
                   pendingLabel={enabled ? 'Turning off…' : 'Turning on…'}

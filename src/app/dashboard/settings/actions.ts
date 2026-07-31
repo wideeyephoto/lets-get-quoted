@@ -474,23 +474,31 @@ export async function deleteAccountAction() {
 // Deliberately narrow: it flips one boolean and touches nothing else. Reusing
 // updateExtraStopSettingsAction would mean the day page posting a whole config
 // form, and any field it failed to include would be silently reset to a default.
-export async function setExtraStopEnabledAction(enabled: boolean) {
+const EXTRA_STOP_TOGGLE_SOURCE: Record<string, string> = {
+  plan_my_day: 'Plan my day',
+  extra_stops_page: 'the Extra Stops page',
+};
+
+export async function setExtraStopEnabledAction(enabled: boolean, source = 'plan_my_day') {
   const { supabase, accountId, userEmail } = await requireOwnerContext();
 
   const { error } = await supabase.from('accounts').update({ extra_stop_enabled: enabled }).eq('id', accountId);
   if (error) throw new Error(error.message);
 
   // Turning this off stops money arriving, so it goes in the same audit trail
-  // as every other automation switch rather than happening quietly.
+  // as every other automation switch rather than happening quietly. WHERE it was
+  // switched is part of the record — the switch now exists in two places, and an
+  // audit line that names the wrong one is worse than one that names none.
   await recordAccountEvent({
     accountId,
     kind: 'automation_toggled',
-    summary: `Extra Stop turned ${enabled ? 'on' : 'off'} from Plan my day.`,
+    summary: `Extra Stop turned ${enabled ? 'on' : 'off'} from ${EXTRA_STOP_TOGGLE_SOURCE[source] ?? source}.`,
     actorEmail: userEmail,
-    meta: { automation: 'extra-stop', enabled, source: 'plan_my_day' },
+    meta: { automation: 'extra-stop', enabled, source },
   });
 
   revalidatePath('/dashboard/settings');
   revalidatePath('/dashboard/schedule');
   revalidatePath('/dashboard/schedule/plan');
+  revalidatePath('/dashboard/extra-stops');
 }

@@ -12423,3 +12423,12 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 }
 /* A count and a state pill on the same row would both claim the right edge. */
 .sidenav-link .sidenav-state + .sidenav-count { margin-left: 0.3rem; margin-right: 0; }
+
+/* Extra Stops reuses the booking summary cards, but as links rather than
+   in-page jumps — an anchor would otherwise pick up the global link colour and
+   underline and stop matching the buttons beside it. */
+a.bset-card { color: inherit; text-decoration: none; }
+
+/* The empty queue now sits in a panel of its own rather than under a heading,
+   so it no longer needs to clear one — the panel padding is the only padding. */
+.extra-stop-empty-panel .extra-stop-empty { margin-top: 0; padding: 1.2rem 1rem; }
