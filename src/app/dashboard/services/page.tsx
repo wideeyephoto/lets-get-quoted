@@ -1,16 +1,12 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
-import { formatMoney } from '@/lib/jobs';
 import { listServices, SERVICE_UNITS, type Service } from '@/lib/services';
+import { formatUnitPrice, glyphsForServices, priceBookStats, unitSuffix } from '@/lib/price-book';
+import ServiceIcon from '@/lib/templates/ServiceIcon';
+import PriceBookStats from '@/components/price-book-stats';
 import SaveButton from '@/components/save-button';
 import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
 import { createServiceAction, updateServiceAction, setServiceActiveAction, deleteServiceAction } from './actions';
-
-const UNIT_LABEL: Record<string, string> = { each: 'each', hour: '/hr', sqft: '/sqft', visit: '/visit', job: '/job' };
-
-function priceLabel(service: Service): string {
-  return `${formatMoney(service.unit_price)}${service.unit && service.unit !== 'each' ? ` ${UNIT_LABEL[service.unit] ?? service.unit}` : ''}`;
-}
 
 export default async function ServicesPage({ searchParams }: { searchParams: { status?: string } }) {
   const { supabase, accountId } = await requireOwnerContext();
@@ -19,10 +15,14 @@ export default async function ServicesPage({ searchParams }: { searchParams: { s
   const active = services.filter((s) => s.active);
   const filter = searchParams.status === 'archived' ? 'archived' : 'active';
   const visible = services.filter((s) => (filter === 'archived' ? !s.active : s.active));
+  // Icons are resolved for the whole book at once so an unmatched service inherits
+  // the trade its neighbours imply rather than a generic mark.
+  const glyphs = glyphsForServices(visible.map((s) => s.name));
+  const stats = priceBookStats(active.map((s) => s.unit_price));
 
   return (
     <main className="wide-shell workspace-shell">
-      <section className="workspace-hero panel">
+      <section className={`workspace-hero panel${stats ? '' : ' workspace-hero-solo'}`}>
         <div className="workspace-hero-copy">
           <p className="eyebrow">Price book</p>
           <h1 className="workspace-title">Your services &amp; prices</h1>
@@ -34,6 +34,7 @@ export default async function ServicesPage({ searchParams }: { searchParams: { s
             <Link href="/dashboard/services/import" className="btn secondary">Import services</Link>
           </div>
         </div>
+        {stats ? <PriceBookStats stats={stats} /> : null}
       </section>
 
       <section className="panel workspace-section-card">
@@ -54,16 +55,31 @@ export default async function ServicesPage({ searchParams }: { searchParams: { s
           </p>
         ) : (
           <div className="service-list">
-            {visible.map((service) => (
+            {visible.map((service, index) => (
               <div key={service.id} className={`service-row${service.active ? '' : ' is-archived'}`}>
-                <div className="service-row-main">
-                  <div className="service-row-head">
-                    <strong>{service.name}</strong>
-                    <span className="service-price">{priceLabel(service)}</span>
+                <div className="service-row-top">
+                  <span className="service-glyph"><ServiceIcon name={glyphs[index]} /></span>
+                  <div className="service-row-main">
+                    <span className="service-price">
+                      {formatUnitPrice(service.unit_price)}
+                      {unitSuffix(service.unit) ? <span className="service-price-unit">{unitSuffix(service.unit)}</span> : null}
+                    </span>
+                    <strong className="service-name">{service.name}</strong>
                   </div>
-                  {service.description ? <p className="service-desc">{service.description}</p> : null}
                 </div>
+                {service.description ? <p className="service-desc">{service.description}</p> : null}
                 <div className="service-row-actions">
+                  {service.active ? (
+                    <details className="service-edit workspace-details">
+                      <summary className="workspace-details-summary">
+                        <span className="btn secondary">Edit</span>
+                      </summary>
+                      <form action={updateServiceAction.bind(null, service.id)} className="service-form">
+                        <ServiceFields prefix={`svc-${service.id}`} service={service} />
+                        <SaveButton>Save service</SaveButton>
+                      </form>
+                    </details>
+                  ) : null}
                   <form action={setServiceActiveAction.bind(null, service.id, !service.active)}>
                     <button type="submit" className="btn secondary">{service.active ? 'Archive' : 'Reactivate'}</button>
                   </form>
@@ -79,18 +95,6 @@ export default async function ServicesPage({ searchParams }: { searchParams: { s
                     </ConfirmActionButton>
                   ) : null}
                 </div>
-
-                {service.active ? (
-                  <details className="service-edit workspace-details">
-                    <summary className="workspace-details-summary">
-                      <span className="btn secondary">Edit</span>
-                    </summary>
-                    <form action={updateServiceAction.bind(null, service.id)} className="service-form">
-                      <ServiceFields prefix={`svc-${service.id}`} service={service} />
-                      <SaveButton>Save service</SaveButton>
-                    </form>
-                  </details>
-                ) : null}
               </div>
             ))}
           </div>

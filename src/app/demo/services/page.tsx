@@ -1,14 +1,10 @@
 import Link from 'next/link';
-import { formatMoney } from '@/lib/jobs';
 import type { Service } from '@/lib/services';
+import { formatUnitPrice, glyphsForServices, priceBookStats, unitSuffix } from '@/lib/price-book';
+import ServiceIcon from '@/lib/templates/ServiceIcon';
+import PriceBookStats from '@/components/price-book-stats';
 
 export const dynamic = 'force-dynamic';
-
-const UNIT_LABEL: Record<string, string> = { each: 'each', hour: '/hr', sqft: '/sqft', visit: '/visit', job: '/job' };
-
-function priceLabel(service: Service): string {
-  return `${formatMoney(service.unit_price)}${service.unit && service.unit !== 'each' ? ` ${UNIT_LABEL[service.unit] ?? service.unit}` : ''}`;
-}
 
 function demoService(
   id: string,
@@ -49,10 +45,12 @@ const DEMO_SERVICES: Service[] = [
 export default function DemoServicesPage() {
   const services = DEMO_SERVICES;
   const active = services.filter((s) => s.active);
+  const glyphs = glyphsForServices(services.map((s) => s.name));
+  const stats = priceBookStats(active.map((s) => s.unit_price));
 
   return (
     <main className="wide-shell workspace-shell">
-      <section className="workspace-hero panel">
+      <section className={`workspace-hero panel${stats ? '' : ' workspace-hero-solo'}`}>
         <div className="workspace-hero-copy">
           <p className="eyebrow">Price book</p>
           <h1 className="workspace-title">Your services &amp; prices</h1>
@@ -61,6 +59,7 @@ export default function DemoServicesPage() {
             retyping prices. You can always tweak the amount per job.
           </p>
         </div>
+        {stats ? <PriceBookStats stats={stats} /> : null}
       </section>
 
       <section className="panel workspace-section-card">
@@ -74,18 +73,22 @@ export default function DemoServicesPage() {
         </div>
 
         <div className="service-list">
-          {services.map((service) => (
+          {services.map((service, index) => (
             <div key={service.id} className="service-row">
-              <div className="service-row-main">
-                <div className="service-row-head">
-                  <strong>{service.name}</strong>
-                  <span className="service-price">{priceLabel(service)}</span>
+              <div className="service-row-top">
+                <span className="service-glyph"><ServiceIcon name={glyphs[index]} /></span>
+                <div className="service-row-main">
+                  <span className="service-price">
+                    {formatUnitPrice(service.unit_price)}
+                    {unitSuffix(service.unit) ? <span className="service-price-unit">{unitSuffix(service.unit)}</span> : null}
+                  </span>
+                  <strong className="service-name">{service.name}</strong>
                 </div>
-                {service.description ? <p className="service-desc">{service.description}</p> : null}
               </div>
+              {service.description ? <p className="service-desc">{service.description}</p> : null}
               <div className="service-row-actions">
-                <button type="button" className="btn secondary" disabled>Archive</button>
                 <span className="btn secondary" aria-disabled="true">Edit</span>
+                <button type="button" className="btn secondary" disabled>Archive</button>
               </div>
             </div>
           ))}

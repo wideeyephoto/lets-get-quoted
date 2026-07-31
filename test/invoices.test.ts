@@ -99,4 +99,12 @@ describe('formatMoney', () => {
     expect(formatMoney(1000)).toBe('$1,000');
     expect(formatMoney(1234567)).toBe('$1,234,567');
   });
+
+  // A loss is "-$1,500", not "$-1,500". Insights shows a negative gross profit,
+  // job margin a negative profit, and a client statement a negative balance.
+  it('puts the sign outside the currency symbol', () => {
+    expect(formatMoney(-1500)).toBe('-$1,500');
+    expect(formatMoney(-0.4)).toBe('$0');
+    expect(formatMoney(-1)).toBe('-$1');
+  });
 });

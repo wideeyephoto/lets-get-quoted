@@ -143,6 +143,23 @@ export default function DemoInsightsPage() {
             ))}
           </div>
         </div>
+        <div className="insight-hero-visual">
+          <div className="insight-ring-wrap">
+            <div
+              className="insight-ring"
+              style={{ ['--ring' as string]: marginPct }}
+              role="img"
+              aria-label={`Margin ${marginPct}% — ${formatMoney(grossProfit)} kept of ${formatMoney(collected)} collected.`}
+            />
+            <div className="insight-ring-label">
+              <span className="insight-ring-value">{marginPct}%</span>
+              <span className="insight-ring-caption">margin</span>
+            </div>
+          </div>
+          <p className="insight-ring-foot">
+            You kept <strong>{formatMoney(grossProfit)}</strong> of the {formatMoney(collected)} you collected.
+          </p>
+        </div>
       </section>
 
       <section className="panel workspace-section-card">
@@ -150,7 +167,7 @@ export default function DemoInsightsPage() {
           <p className="eyebrow">Money</p>
           <h2>What you kept — last 12 months</h2>
         </div>
-        <div className="workspace-metric-grid">
+        <div className="workspace-metric-grid four-up">
           <article className="workspace-metric-card accent">
             <span className="workspace-metric-label">Collected</span>
             <strong className="workspace-metric-value">{formatMoney(collected)}</strong>
@@ -174,6 +191,10 @@ export default function DemoInsightsPage() {
         </div>
 
         <div className="cost-split">
+          <div className="cost-split-heading">
+            <span>Where it went</span>
+            <span className="cost-split-total">{formatMoney(costs)} in costs</span>
+          </div>
           <div
             className="cost-split-track"
             role="img"
@@ -197,6 +218,8 @@ export default function DemoInsightsPage() {
         <div className="funnel">
           {funnel.map((stage, index) => {
             const width = Math.max(4, Math.round((stage.count / leadsTop) * 100));
+            const previous = index > 0 ? funnel[index - 1] : null;
+            const lost = previous ? previous.count - stage.count : 0;
             return (
               <div className="funnel-stage" key={stage.key}>
                 <div className="funnel-stage-head">
@@ -206,13 +229,12 @@ export default function DemoInsightsPage() {
                 <div className="funnel-track">
                   <div className={`funnel-bar funnel-bar-${stage.key}`} style={{ width: `${width}%` }} />
                 </div>
-                {index > 0 ? (
+                <div className="funnel-stage-foot">
                   <span className="funnel-stage-rate">
-                    {stage.rateOfPrev}% of {funnel[index - 1].label.toLowerCase()}
+                    {previous ? `${stage.rateOfPrev}% of ${previous.label.toLowerCase()}` : 'Top of funnel'}
                   </span>
-                ) : (
-                  <span className="funnel-stage-rate">Top of funnel</span>
-                )}
+                  {lost > 0 ? <span className="funnel-stage-drop">−{lost.toLocaleString()} dropped off</span> : null}
+                </div>
               </div>
             );
           })}
@@ -241,11 +263,13 @@ export default function DemoInsightsPage() {
           role="img"
           aria-label="Monthly collected revenue and profit for the last six months"
         >
+          <div className="revenue-chart-grid" aria-hidden="true" />
           {revenueByMonth.map((month) => {
             const height = Math.max(2, Math.round((month.total / peakMonthTotal) * 100));
             const profitShare = month.total > 0 ? Math.max(0, Math.min(100, Math.round((month.profit / month.total) * 100))) : 0;
+            const isPeak = month.total > 0 && month.total === peakMonthTotal;
             return (
-              <div className="revenue-col" key={month.key}>
+              <div className={`revenue-col${isPeak ? ' is-peak' : ''}`} key={month.key}>
                 <span className="revenue-col-value">{month.total > 0 ? formatMoney(month.total) : ''}</span>
                 <div className="revenue-col-track">
                   <div className="revenue-col-bar" style={{ height: `${height}%` }}>

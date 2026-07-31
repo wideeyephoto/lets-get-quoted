@@ -1,20 +1,11 @@
 import Link from 'next/link';
 import { formatMoney } from '@/lib/jobs';
-import { FREQUENCY_LABEL, type RecurringPlan } from '@/lib/recurring';
+import { todayDateKey, type RecurringPlan } from '@/lib/recurring';
+import { planMonthlyValue, visitCountdown } from '@/lib/recurring-display';
 import { DEMO_ACCOUNT_ID, dateKeyFromNow } from '@/lib/demo-data';
+import RecurringPlanCard from '@/components/recurring-plan-card';
 
 export const dynamic = 'force-dynamic';
-
-function formatDateKey(dateKey: string): string {
-  const [year, month, day] = dateKey.split('-').map(Number);
-  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
-}
 
 // Inline, correctly-typed demo plans for the fictional "Evergreen Lawn &
 // Landscape". No DB, no Supabase, no server actions — this page is read-only.
@@ -71,14 +62,15 @@ const DEMO_PLANS: RecurringPlan[] = [
 
 export default function DemoRecurringPage() {
   const plans = DEMO_PLANS;
-  const activeCount = plans.filter((plan) => plan.active).length;
-  const autoBilled = plans.filter((plan) => plan.auto_charge && plan.card_last4).length;
-  const monthlyRecurring = plans
-    .filter((plan) => plan.active)
-    .reduce((sum, plan) => {
-      const perMonth = plan.frequency === 'weekly' ? plan.amount * 4.33 : plan.frequency === 'biweekly' ? plan.amount * 2.17 : plan.amount;
-      return sum + perMonth;
-    }, 0);
+  const today = todayDateKey();
+  const activePlans = plans.filter((plan) => plan.active);
+  const activeCount = activePlans.length;
+  const autoBilled = activePlans.filter((plan) => plan.auto_charge && plan.card_last4).length;
+  const monthlyRecurring = activePlans.reduce((sum, plan) => sum + planMonthlyValue(plan.amount, plan.frequency), 0);
+  const dueThisWeek = activePlans.filter((plan) => {
+    const days = visitCountdown(plan.next_run_date, today).days;
+    return days >= 0 && days < 7;
+  }).length;
 
   return (
     <main className="wide-shell workspace-shell">
@@ -91,22 +83,24 @@ export default function DemoRecurringPage() {
             scheduled job automatically. Add a saved card and every visit is charged for you, hands-off.
           </p>
         </div>
-        <div className="workspace-metric-grid compact">
-          <article className="workspace-metric-card accent">
-            <span className="workspace-metric-label">Active plans</span>
-            <strong className="workspace-metric-value">{activeCount}</strong>
-            <p className="workspace-metric-note">Repeating jobs generating visits automatically.</p>
-          </article>
-          <article className="workspace-metric-card">
-            <span className="workspace-metric-label">Auto-billed</span>
-            <strong className="workspace-metric-value">{autoBilled}</strong>
-            <p className="workspace-metric-note">Plans with a card on file, charged every visit.</p>
-          </article>
-          <article className="workspace-metric-card">
-            <span className="workspace-metric-label">Recurring / mo</span>
+        <div className="recurring-hero-metrics">
+          <article className="workspace-metric-card accent recurring-mrr-card">
+            <span className="workspace-metric-label">Est. monthly recurring</span>
             <strong className="workspace-metric-value">{formatMoney(monthlyRecurring)}</strong>
-            <p className="workspace-metric-note">Estimated monthly value across active plans.</p>
+            <p className="workspace-metric-note">
+              Across {activeCount} active plan{activeCount === 1 ? '' : 's'}, normalized to a month.
+            </p>
           </article>
+          <div className="workspace-metric-grid condensed recurring-hero-pair">
+            <article className="workspace-metric-card">
+              <span className="workspace-metric-label">Due this week</span>
+              <strong className="workspace-metric-value">{dueThisWeek}</strong>
+            </article>
+            <article className="workspace-metric-card">
+              <span className="workspace-metric-label">Auto-billed</span>
+              <strong className="workspace-metric-value">{autoBilled}</strong>
+            </article>
+          </div>
         </div>
       </section>
 
@@ -117,49 +111,20 @@ export default function DemoRecurringPage() {
         </div>
 
         <div className="recurring-list">
-          {plans.map((plan) => {
-            const paused = !plan.active;
-            return (
-              <div key={plan.id} className={`recurring-card${paused ? ' is-paused' : ''}`}>
-                <div className="recurring-card-main">
-                  <div className="recurring-card-head">
-                    <strong>{plan.title}</strong>
-                    <span className="recurring-freq">{FREQUENCY_LABEL[plan.frequency]}</span>
-                    {paused ? <span className="recurring-paused-tag">Paused</span> : null}
-                  </div>
-                  <p className="recurring-card-meta">
-                    {plan.client_name}
-                    {plan.amount > 0 ? ` · ${formatMoney(plan.amount)}/visit` : ''}
-                    {plan.active ? ` · Next ${formatDateKey(plan.next_run_date)}` : ''}
-                  </p>
-                  <div className="recurring-billing">
-                    {plan.auto_charge ? (
-                      plan.card_last4 ? (
-                        <span className="recurring-card-onfile">
-                          💳 {plan.card_brand ? plan.card_brand.replace(/^\w/, (c) => c.toUpperCase()) : 'Card'} •••• {plan.card_last4}
-                        </span>
-                      ) : (
-                        <span className="recurring-card-pending">
-                          Awaiting card
-                          <button type="button" className="linklike" disabled>Resend link</button>
-                        </span>
-                      )
-                    ) : (
-                      <span className="recurring-manual">Manual billing</span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="recurring-card-actions">
-                  {plan.active ? (
-                    <button type="button" className="btn secondary" disabled>Run next visit now</button>
-                  ) : null}
-                  <button type="button" className="btn secondary" disabled>{paused ? 'Resume' : 'Pause'}</button>
-                  <button type="button" className="linklike danger" disabled>Cancel plan</button>
-                </div>
-              </div>
-            );
-          })}
+          {plans.map((plan) => (
+            <RecurringPlanCard
+              key={plan.id}
+              plan={plan}
+              today={today}
+              resendLink={<button type="button" className="linklike" disabled>Resend link</button>}
+            >
+              {plan.active ? (
+                <button type="button" className="btn secondary" disabled>Run next visit now</button>
+              ) : null}
+              <button type="button" className="btn secondary" disabled>{plan.active ? 'Pause' : 'Resume'}</button>
+              <button type="button" className="linklike danger" disabled>Cancel plan</button>
+            </RecurringPlanCard>
+          ))}
         </div>
       </section>
 

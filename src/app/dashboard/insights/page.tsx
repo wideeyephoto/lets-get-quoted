@@ -36,10 +36,12 @@ export default async function InsightsPage({ searchParams }: { searchParams: { w
   const costTotal = Math.max(1, insights.costs);
   const materialsWidth = Math.round((insights.materialsCost / costTotal) * 100);
   const laborWidth = 100 - materialsWidth;
+  const isLoss = insights.grossProfit < 0;
+  const hasRevenueTrend = insights.revenueByMonth.some((month) => month.total > 0);
 
   return (
     <main className="wide-shell workspace-shell">
-      <section className="workspace-hero panel">
+      <section className={`workspace-hero panel${insights.collected > 0 ? '' : ' workspace-hero-solo'}`}>
         <div className="workspace-hero-copy">
           <p className="eyebrow">Insights</p>
           <h1 className="workspace-title">Profit, cash &amp; conversion</h1>
@@ -63,6 +65,28 @@ export default async function InsightsPage({ searchParams }: { searchParams: { w
             <Link href="/dashboard/settings#finances" className="btn secondary">Tax &amp; finance reports →</Link>
           </p>
         </div>
+        {/* Margin is the number that answers "am I making money", and it was sitting
+            in the fourth card below the fold while the hero ran an empty column. */}
+        {insights.collected > 0 ? (
+          <div className="insight-hero-visual">
+            <div className="insight-ring-wrap">
+              <div
+                className={`insight-ring${isLoss ? ' is-negative' : ''}`}
+                style={{ ['--ring' as string]: Math.max(0, Math.min(100, marginPct)) }}
+                role="img"
+                aria-label={`Margin ${marginPct}% — ${formatMoney(insights.grossProfit)} kept of ${formatMoney(insights.collected)} collected.`}
+              />
+              <div className="insight-ring-label">
+                <span className="insight-ring-value">{marginPct}%</span>
+                <span className="insight-ring-caption">margin</span>
+              </div>
+            </div>
+            <p className="insight-ring-foot">
+              You kept <strong>{formatMoney(insights.grossProfit)}</strong> of the {formatMoney(insights.collected)} you
+              collected.
+            </p>
+          </div>
+        ) : null}
       </section>
 
       {!insights.hasAnyData ? (
@@ -79,7 +103,8 @@ export default async function InsightsPage({ searchParams }: { searchParams: { w
           <p className="eyebrow">Money</p>
           <h2>What you kept — {insights.windowLabel.toLowerCase()}</h2>
         </div>
-        <div className="workspace-metric-grid">
+        {/* Four cards in a three-column grid orphaned the fourth on its own row. */}
+        <div className="workspace-metric-grid four-up">
           <article className="workspace-metric-card accent">
             <span className="workspace-metric-label">Collected</span>
             <strong className="workspace-metric-value">
@@ -87,16 +112,18 @@ export default async function InsightsPage({ searchParams }: { searchParams: { w
             </strong>
             <p className="workspace-metric-note">Payments paid in this window.</p>
           </article>
-          <article className="workspace-metric-card">
+          <article className={`workspace-metric-card${isLoss ? ' is-loss' : ''}`}>
             <span className="workspace-metric-label">Gross profit</span>
-            <strong className="workspace-metric-value">
+            {/* A loss printed in the same white as a profit reads as a positive
+                number at a glance. */}
+            <strong className={`workspace-metric-value${isLoss ? ' is-negative' : ''}`}>
               {formatMoney(insights.grossProfit)} <DeltaPill delta={insights.deltas?.grossProfit} />
             </strong>
             <p className="workspace-metric-note">Collected minus {formatMoney(insights.costs)} in costs.</p>
           </article>
           <article className="workspace-metric-card">
             <span className="workspace-metric-label">Margin</span>
-            <strong className="workspace-metric-value">{marginPct}%</strong>
+            <strong className={`workspace-metric-value${isLoss ? ' is-negative' : ''}`}>{marginPct}%</strong>
             <p className="workspace-metric-note">Share of every dollar you keep.</p>
           </article>
           <article className="workspace-metric-card">
@@ -110,6 +137,10 @@ export default async function InsightsPage({ searchParams }: { searchParams: { w
 
         {insights.costs > 0 ? (
           <div className="cost-split">
+            <div className="cost-split-heading">
+              <span>Where it went</span>
+              <span className="cost-split-total">{formatMoney(insights.costs)} in costs</span>
+            </div>
             <div className="cost-split-track" role="img" aria-label={`Costs: ${formatMoney(insights.materialsCost)} materials, ${formatMoney(insights.laborCost)} labor`}>
               <div className="cost-split-seg materials" style={{ width: `${materialsWidth}%` }} />
               <div className="cost-split-seg labor" style={{ width: `${laborWidth}%` }} />
@@ -157,6 +188,10 @@ export default async function InsightsPage({ searchParams }: { searchParams: { w
         <div className="funnel">
           {insights.funnel.map((stage, index) => {
             const width = Math.max(4, Math.round((stage.count / leadsTop) * 100));
+            const previous = index > 0 ? insights.funnel[index - 1] : null;
+            // A percentage tells you the shape; the count tells you the cost. Both,
+            // because "38% of leads" and "5 didn't get quoted" land differently.
+            const lost = previous ? previous.count - stage.count : 0;
             return (
               <div className="funnel-stage" key={stage.key}>
                 <div className="funnel-stage-head">
@@ -166,13 +201,16 @@ export default async function InsightsPage({ searchParams }: { searchParams: { w
                 <div className="funnel-track">
                   <div className={`funnel-bar funnel-bar-${stage.key}`} style={{ width: `${width}%` }} />
                 </div>
-                {index > 0 ? (
+                <div className="funnel-stage-foot">
                   <span className="funnel-stage-rate">
-                    {stage.rateOfPrev}% of {insights.funnel[index - 1].label.toLowerCase()}
+                    {previous ? `${stage.rateOfPrev}% of ${previous.label.toLowerCase()}` : 'Top of funnel'}
                   </span>
-                ) : (
-                  <span className="funnel-stage-rate">Top of funnel</span>
-                )}
+                  {lost > 0 ? (
+                    <span className="funnel-stage-drop">
+                      −{lost.toLocaleString()} dropped off
+                    </span>
+                  ) : null}
+                </div>
               </div>
             );
           })}
@@ -196,28 +234,41 @@ export default async function InsightsPage({ searchParams }: { searchParams: { w
           <p className="eyebrow">Revenue &amp; profit</p>
           <h2>Collected, last 6 months</h2>
         </div>
-        <div className="revenue-chart" role="img" aria-label="Monthly collected revenue and profit for the last six months">
-          {insights.revenueByMonth.map((month) => {
-            const height = Math.max(2, Math.round((month.total / insights.peakMonthTotal) * 100));
-            // Profit's share of the month's collected total — the solid "kept" portion.
-            const profitShare = month.total > 0 ? Math.max(0, Math.min(100, Math.round((month.profit / month.total) * 100))) : 0;
-            return (
-              <div className="revenue-col" key={month.key}>
-                <span className="revenue-col-value">{month.total > 0 ? formatMoney(month.total) : ''}</span>
-                <div className="revenue-col-track">
-                  <div className="revenue-col-bar" style={{ height: `${height}%` }}>
-                    <div className="revenue-col-profit" style={{ height: `${profitShare}%` }} />
+        {/* Six months of zeroes used to render as a 190px void with month names
+            under it, which reads as a broken chart rather than an empty one. */}
+        {hasRevenueTrend ? (
+          <>
+            <div className="revenue-chart" role="img" aria-label="Monthly collected revenue and profit for the last six months">
+              <div className="revenue-chart-grid" aria-hidden="true" />
+              {insights.revenueByMonth.map((month) => {
+                const height = Math.max(2, Math.round((month.total / insights.peakMonthTotal) * 100));
+                // Profit's share of the month's collected total — the solid "kept" portion.
+                const profitShare = month.total > 0 ? Math.max(0, Math.min(100, Math.round((month.profit / month.total) * 100))) : 0;
+                const isPeak = month.total > 0 && month.total === insights.peakMonthTotal;
+                return (
+                  <div className={`revenue-col${isPeak ? ' is-peak' : ''}`} key={month.key}>
+                    <span className="revenue-col-value">{month.total > 0 ? formatMoney(month.total) : ''}</span>
+                    <div className="revenue-col-track">
+                      <div className="revenue-col-bar" style={{ height: `${height}%` }}>
+                        <div className="revenue-col-profit" style={{ height: `${profitShare}%` }} />
+                      </div>
+                    </div>
+                    <span className="revenue-col-label">{month.label}</span>
                   </div>
-                </div>
-                <span className="revenue-col-label">{month.label}</span>
-              </div>
-            );
-          })}
-        </div>
-        <div className="cost-split-legend revenue-legend">
-          <span><i className="dot collected" /> Collected</span>
-          <span><i className="dot profit" /> Profit kept</span>
-        </div>
+                );
+              })}
+            </div>
+            <div className="cost-split-legend revenue-legend">
+              <span><i className="dot collected" /> Collected</span>
+              <span><i className="dot profit" /> Profit kept</span>
+            </div>
+          </>
+        ) : (
+          <div className="revenue-chart-empty">
+            <strong>No payments collected yet</strong>
+            <span>Once invoices start getting paid, six months of collected revenue and the profit you kept show up here.</span>
+          </div>
+        )}
       </section>
     </main>
   );

@@ -174,7 +174,11 @@ export function computeMargin(job: Pick<Job, 'quoted_amount'>, costs: Cost[]): M
 }
 
 export function formatMoney(n: number): string {
-  return '$' + Math.round(n).toLocaleString();
+  // The sign belongs outside the currency symbol: a loss is "-$1,500", never
+  // "$-1,500". Insights renders a negative gross profit, job margin renders a
+  // negative profit, and a client statement renders a negative balance.
+  const rounded = Math.round(n) || 0;
+  return (rounded < 0 ? '-$' : '$') + Math.abs(rounded).toLocaleString();
 }
 
 export function formatJobQuoteSummary(

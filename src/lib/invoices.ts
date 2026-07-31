@@ -59,7 +59,10 @@ export type InvoiceItem = {
 };
 
 export function formatMoney(n: number): string {
-  return '$' + Math.round(n).toLocaleString();
+  // Kept in step with the copy in @/lib/jobs — the sign goes outside the currency
+  // symbol, so a credit reads "-$120" rather than "$-120".
+  const rounded = Math.round(n) || 0;
+  return (rounded < 0 ? '-$' : '$') + Math.abs(rounded).toLocaleString();
 }
 
 async function generateInvoiceRef(supabase: SupabaseClient, accountId: string): Promise<string> {

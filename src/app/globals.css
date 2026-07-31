@@ -4615,12 +4615,40 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   color: var(--muted, #c8d0dc);
 }
 
+/* Bars used to hang in empty space with nothing to measure them against. The
+   fixed label heights below are load-bearing: .revenue-chart-grid is positioned
+   off them, so the baseline lands exactly where the bars sit. */
 .revenue-chart {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   gap: 0.6rem;
   align-items: end;
-  min-height: 190px;
+  min-height: 230px;
+}
+
+/* Gridlines + baseline, drawn across the whole chart rather than per column. */
+.revenue-chart-grid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(1.05rem + 0.4rem);
+  bottom: calc(1.15rem + 0.4rem);
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.07) 0 1px,
+    transparent 1px 25%
+  );
+}
+.revenue-chart-grid::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .revenue-col {
@@ -4628,15 +4656,17 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   flex-direction: column;
   align-items: center;
   gap: 0.4rem;
-  height: 190px;
+  height: 230px;
   justify-content: flex-end;
+  position: relative;
 }
 
 .revenue-col-value {
   font-size: 0.72rem;
   color: var(--muted, #c8d0dc);
   font-variant-numeric: tabular-nums;
-  min-height: 1em;
+  height: 1.05rem;
+  line-height: 1.05rem;
   white-space: nowrap;
 }
 
@@ -4658,6 +4688,39 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .revenue-col-label {
   font-size: 0.78rem;
   color: var(--muted, #c8d0dc);
+  height: 1.15rem;
+  line-height: 1.15rem;
+}
+
+/* The best month earns a lit cap and a brighter label — one glance answers "when
+   was my best month", which a row of same-coloured bars never did. */
+.revenue-col.is-peak .revenue-col-value { color: #ffc08a; font-weight: 700; }
+.revenue-col.is-peak .revenue-col-label { color: rgba(255, 255, 255, 0.82); }
+.revenue-col.is-peak .revenue-col-bar {
+  box-shadow: 0 0 16px -2px rgba(255, 122, 33, 0.65);
+}
+
+/* Six months of zeroes rendered as a 190px void with month names under it. Say so. */
+.revenue-chart-empty {
+  display: grid;
+  place-items: center;
+  gap: 0.3rem;
+  min-height: 180px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 1.5rem 1rem;
+}
+.revenue-chart-empty strong { color: rgba(255, 255, 255, 0.75); font-size: 0.95rem; }
+.revenue-chart-empty span { font-size: 0.85rem; max-width: 34ch; }
+
+@media (max-width: 640px) {
+  /* Six "$34,875" labels over 52px columns run into each other and read as mush.
+     Keep the peak — the one worth naming — and hide the rest with visibility so
+     the reserved height that positions the gridlines doesn't move. */
+  .revenue-col:not(.is-peak) .revenue-col-value { visibility: hidden; }
+  .revenue-col-value { font-size: 0.66rem; }
 }
 
 /* ---- Insights v2: deltas, cost split, profit-shaded trend ---- */
@@ -4720,6 +4783,8 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
   position: relative;
   overflow: hidden;
   background: rgba(255, 122, 33, 0.22);
+  border: 1px solid rgba(255, 122, 33, 0.3);
+  border-bottom: none;
 }
 .revenue-col-profit {
   position: absolute;
@@ -4728,6 +4793,164 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
   bottom: 0;
   background: linear-gradient(180deg, var(--accent, #ff7a21), #ff9d4d);
   transition: height 0.4s ease;
+}
+
+/* ---- Insights v3: margin ring, four-up money row, funnel with drop-off ---- */
+
+/* The hero's right column was empty on this page while the one number that
+   answers "am I actually making money" sat in the fourth card below the fold. */
+.insight-hero-visual {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+  padding: 0.5rem 0;
+}
+
+.insight-ring-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(100%, 14.5rem);
+  aspect-ratio: 1;
+}
+
+.insight-ring {
+  --ring: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: conic-gradient(
+    from -90deg,
+    var(--accent, #ff7a21) 0,
+    #ffc266 calc(var(--ring) * 1%),
+    rgba(255, 255, 255, 0.07) calc(var(--ring) * 1%) 100%
+  );
+  /* Punch the hole with a mask rather than an opaque inner disc, so the ring sits
+     on the hero's gradient without having to match its colour. */
+  -webkit-mask: radial-gradient(circle, transparent 0 calc(50% - 14px), #000 calc(50% - 13px));
+  mask: radial-gradient(circle, transparent 0 calc(50% - 14px), #000 calc(50% - 13px));
+  filter: drop-shadow(0 0 16px rgba(255, 122, 33, 0.35));
+  transition: background 0.5s ease;
+}
+/* A loss can't be drawn as a share of a pie; the ring goes red and empty and the
+   number below it carries the meaning instead. */
+.insight-ring.is-negative {
+  background: conic-gradient(from -90deg, rgba(255, 110, 90, 0.55) 0 100%);
+  filter: drop-shadow(0 0 16px rgba(255, 110, 90, 0.3));
+}
+
+.insight-ring-label {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  text-align: center;
+}
+.insight-ring-value {
+  font-family: var(--font-display);
+  font-size: clamp(1.9rem, 4vw, 2.6rem);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.insight-ring-caption {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(247, 245, 239, 0.56);
+}
+.insight-ring-foot {
+  margin: 0;
+  text-align: center;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-variant-numeric: tabular-nums;
+  max-width: 26ch;
+}
+
+/* Four metrics in a three-column grid left the fourth alone on its own row beside
+   two empty holes. Four columns on desktop, two side by side on a phone. */
+.workspace-metric-grid.four-up {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+@media (max-width: 900px) {
+  .workspace-metric-grid.four-up { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 460px) {
+  .workspace-metric-grid.four-up { grid-template-columns: 1fr; }
+}
+
+/* "$-1,500" rendered in the same white as a profit read as a positive number at a
+   glance. A loss should look like one. */
+.workspace-metric-value.is-negative { color: #ff9a8b; }
+.workspace-metric-card.is-loss {
+  border-color: rgba(255, 110, 90, 0.3);
+  background: linear-gradient(180deg, rgba(255, 110, 90, 0.12), rgba(255, 255, 255, 0.03));
+}
+
+.cost-split-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(247, 245, 239, 0.56);
+}
+.cost-split-total {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: #f7f5ef;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Funnel bars carried no light at all. A slow sheen travels the won bar — the one
+   stage that's worth celebrating — and each stage states what it lost. */
+.funnel-bar { position: relative; overflow: hidden; }
+.funnel-bar-won::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.45) 50%, transparent 80%);
+  transform: translateX(-130%);
+  animation: funnel-sheen 4.5s ease-in-out infinite;
+}
+@keyframes funnel-sheen {
+  0%, 55% { transform: translateX(-130%); }
+  85%, 100% { transform: translateX(130%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .funnel-bar-won::after { animation: none; opacity: 0; }
+}
+
+.funnel-stage-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.35rem;
+  flex-wrap: wrap;
+}
+/* The demo's "top job types" and "lead sources" reuse .funnel without a foot row,
+   so the base margin has to stay; only zero it where the foot already spaces it. */
+.funnel-stage-foot .funnel-stage-rate { margin-top: 0; }
+.funnel-stage-drop {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: rgba(255, 154, 139, 0.85);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .insight-hero-visual { padding-top: 1.25rem; }
+  .insight-ring-wrap { width: min(100%, 11rem); }
 }
 
 /* ---- Two-way SMS inbox ---- */
@@ -6973,31 +7196,124 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 .recurring-autocharge > span { display: flex; flex-direction: column; gap: 0.2rem; }
 .recurring-autocharge strong { font-size: 0.95rem; }
 
-.recurring-list { display: flex; flex-direction: column; gap: 0.7rem; margin-top: 1.1rem; }
-.recurring-card {
+/* Hero: the monthly run-rate is the headline, so it gets a card to itself and the
+   two supporting counts share a row underneath rather than three equal columns
+   that made none of them look like the answer. */
+.recurring-hero-metrics {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1rem 1.1rem;
-  border-radius: 13px;
+  flex-direction: column;
+  gap: 0.75rem;
+  justify-content: center;
+  min-width: 0;
+}
+.recurring-mrr-card .workspace-metric-value { font-size: clamp(1.9rem, 3.4vw, 2.6rem); }
+.recurring-hero-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* The empty-state explainer that replaces it before the first plan exists. */
+.recurring-how {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  justify-content: center;
+  padding: 1.15rem 1.2rem;
   border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 22px;
   background: rgba(255,255,255,0.03);
+  min-width: 0;
+}
+.recurring-how-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.recurring-how-step { display: flex; gap: 0.75rem; align-items: flex-start; }
+.recurring-how-step strong { display: block; font-size: 0.95rem; }
+.recurring-how-step p { margin: 0.15rem 0 0; font-size: 0.83rem; line-height: 1.45; color: rgba(255,255,255,0.6); }
+.recurring-how-mark {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255,138,61,0.35);
+  background: linear-gradient(160deg, rgba(255,122,33,0.24), rgba(255,122,33,0.06));
+  color: #ffb37a;
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+}
+/* The three steps are one loop, so draw the thread between them. */
+.recurring-how-step + .recurring-how-step .recurring-how-mark { position: relative; }
+.recurring-how-step + .recurring-how-step .recurring-how-mark::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  width: 1px;
+  height: 0.85rem;
+  background: linear-gradient(180deg, transparent, rgba(255,138,61,0.4));
+}
+
+.recurring-list { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1.1rem; }
+
+/* Eight plans used to render as eight interchangeable grey slabs: a $185/visit
+   plan looked exactly like a $48 one, and "Next Sun, Aug 2, 2026" made the owner
+   do the date arithmetic. The card now leads with the two things that decide
+   whether a plan matters — what it's worth and how soon it fires. */
+.recurring-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.4rem 1rem;
+  padding: 1rem 1.15rem 0.9rem;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background:
+    linear-gradient(160deg, rgba(255,122,33,0.06), transparent 40%),
+    rgba(255,255,255,0.03);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.recurring-card:hover {
+  border-color: rgba(255,138,61,0.35);
+  box-shadow: 0 12px 32px -22px rgba(255,122,33,0.75);
 }
 .recurring-card.is-paused { opacity: 0.62; }
-.recurring-card-main { display: flex; flex-direction: column; gap: 0.35rem; min-width: 0; }
-.recurring-card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
-.recurring-card-head strong { font-size: 1.02rem; }
+
+/* The cadence mark: a ring whose dash pattern reads as the plan's rhythm. */
+.recurring-cadence-mark {
+  grid-row: 1 / span 2;
+  display: grid;
+  place-items: center;
+  width: 2.8rem;
+  height: 2.8rem;
+  border-radius: 50%;
+  border: 2px dashed rgba(255,138,61,0.4);
+  background: radial-gradient(circle at 50% 40%, rgba(255,122,33,0.2), transparent 70%);
+  color: #ffb37a;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+.recurring-card.is-paused .recurring-cadence-mark {
+  border-color: rgba(255,255,255,0.22);
+  color: rgba(255,255,255,0.5);
+  background: none;
+}
+
+.recurring-card-main { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
+.recurring-card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.55rem; }
+.recurring-card-head strong { font-size: 1.05rem; }
 .recurring-freq {
   padding: 0.12rem 0.55rem;
   border-radius: 999px;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  background: rgba(56,189,248,0.15);
-  color: #7dd3fc;
+  background: rgba(255,209,102,0.16);
+  color: var(--accent-2, #ffd166);
 }
 .recurring-paused-tag {
   padding: 0.12rem 0.55rem;
@@ -7008,11 +7324,146 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
   color: rgba(255,255,255,0.6);
 }
 .recurring-card-meta { margin: 0; font-size: 0.85rem; color: rgba(255,255,255,0.6); }
-.recurring-billing { display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; }
-.recurring-card-onfile { color: #bef264; font-weight: 600; }
-.recurring-card-pending { display: inline-flex; align-items: center; gap: 0.5rem; color: #ffb37a; }
-.recurring-manual { color: rgba(255,255,255,0.5); }
-.recurring-card-actions { display: flex; align-items: center; gap: 0.75rem; }
+
+/* The money column. Right-aligned so amounts line up down the list and the book
+   can be read as a column of numbers. */
+.recurring-money {
+  grid-row: 1 / span 2;
+  grid-column: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+  text-align: right;
+}
+.recurring-money-amount {
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.recurring-money-unit { font-size: 0.72rem; color: rgba(255,255,255,0.5); letter-spacing: 0.02em; }
+.recurring-money-rate {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: rgba(255,179,122,0.92);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Next-visit countdown. Tone escalates as the date closes in, so a list of plans
+   sorts itself visually without the owner reading a single date. */
+.recurring-next {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.16rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.recurring-next.later { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.66); }
+.recurring-next.soon { background: rgba(255,209,102,0.14); color: var(--accent-2, #ffd166); }
+.recurring-next.imminent {
+  background: rgba(255,122,33,0.18);
+  border-color: rgba(255,138,61,0.5);
+  color: #ffc08a;
+  box-shadow: 0 0 14px -2px rgba(255,122,33,0.5);
+}
+.recurring-next.overdue { background: rgba(255,110,90,0.16); border-color: rgba(255,110,90,0.4); color: #ff9a8b; }
+
+/* Three upcoming visits on a rail — the plan's rhythm made visible. The next one
+   is lit; the rest are the promise that it keeps going. */
+.recurring-rail {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  margin-top: 0.1rem;
+}
+.recurring-rail-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.74rem;
+  color: rgba(255,255,255,0.45);
+  font-variant-numeric: tabular-nums;
+}
+.recurring-rail-dot::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.28);
+}
+.recurring-rail-dot.is-next { color: rgba(255,255,255,0.82); font-weight: 600; }
+.recurring-rail-dot.is-next::before {
+  background: var(--accent, #ff7a21);
+  box-shadow: 0 0 8px rgba(255,122,33,0.9);
+}
+.recurring-rail-sep { color: rgba(255,255,255,0.2); font-size: 0.7rem; }
+
+.recurring-billing { display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; flex-wrap: wrap; }
+/* A card on file is the difference between "billing" and "billed", so it gets to
+   look like a card rather than an emoji in a sentence. */
+.recurring-card-onfile {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.16rem 0.55rem 0.16rem 0.4rem;
+  border-radius: 7px;
+  border: 1px solid rgba(190,242,100,0.28);
+  background: rgba(190,242,100,0.1);
+  color: #d9f99d;
+  font-size: 0.76rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.recurring-card-onfile::before {
+  content: '';
+  width: 1.05rem;
+  height: 0.72rem;
+  border-radius: 2px;
+  background: linear-gradient(140deg, #bef264, #84cc16);
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,0.22);
+}
+.recurring-card-pending { display: inline-flex; align-items: center; gap: 0.5rem; color: #ffb37a; font-weight: 600; }
+.recurring-manual { color: rgba(255,255,255,0.45); font-size: 0.78rem; }
+.recurring-card-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  margin-top: 0.35rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid rgba(255,255,255,0.07);
+}
+.recurring-card-actions .btn { padding: 0.32rem 0.8rem; font-size: 0.8rem; }
+.recurring-card-actions .danger { margin-left: auto; }
+
+@media (max-width: 720px) {
+  .recurring-card { grid-template-columns: auto minmax(0, 1fr); }
+  /* The money column can't sit in a third column that no longer exists; drop it
+     under the copy rather than letting it collapse the title to one word a line. */
+  .recurring-money {
+    grid-row: auto;
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: flex-start;
+    gap: 0.5rem;
+  }
+  .recurring-card-actions .danger { margin-left: 0; }
+}
+
+@media (max-width: 520px) {
+  /* Three dates wrap on a phone and strand a trailing arrow at the end of the
+     first line. Two still read as a rhythm; a dangling "→" reads as a bug. */
+  .recurring-rail-dot:nth-of-type(3) { display: none; }
+  .recurring-rail-dot:nth-of-type(2) .recurring-rail-sep { display: none; }
+}
 
 .linklike {
   background: none;
@@ -7388,31 +7839,182 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 /* ---------------------------------------------------------------------------
    PRICE BOOK — saved services
    --------------------------------------------------------------------------- */
-.service-list { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 1.1rem; }
+/* A price book read as eleven identical full-width slabs: the price — the only
+   thing anyone opens this page for — sat in a small chip beside the name, and the
+   middle 40% of every row was empty. Cards put the money in display type, give
+   each service its trade glyph, and let the list be scanned in two dimensions. */
+.service-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(265px, 1fr));
+  gap: 0.85rem;
+  margin-top: 1.1rem;
+}
 .service-row {
+  position: relative;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem 1rem;
-  padding: 0.95rem 1.1rem;
-  border-radius: 13px;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 1rem 1.05rem 0.85rem;
+  border-radius: 18px;
   border: 1px solid rgba(255,255,255,0.1);
+  background:
+    linear-gradient(160deg, rgba(255,122,33,0.07), transparent 46%),
+    rgba(255,255,255,0.03);
+  overflow: hidden;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+/* A hairline of accent along the top edge, lit on hover — the same "neon edge"
+   language as the Stripe banner, dialled right down so a grid of them is calm. */
+.service-row::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255,122,33,0.55), transparent);
+  opacity: 0.35;
+  transition: opacity 0.18s ease;
+}
+.service-row:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255,138,61,0.42);
+  box-shadow: 0 12px 30px -18px rgba(255,122,33,0.7);
+}
+.service-row:hover::before { opacity: 1; }
+.service-row.is-archived { opacity: 0.55; }
+.service-row.is-archived::before { display: none; }
+
+/* Hero stats: how big the book is, what it averages, and how wide the spread is. */
+.pricebook-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  justify-content: center;
+  min-width: 0;
+}
+.pricebook-range {
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 22px;
+  padding: 1rem 1.05rem;
   background: rgba(255,255,255,0.03);
 }
-.service-row.is-archived { opacity: 0.6; }
-.service-row-main { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 0.25rem; }
-.service-row-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.6rem; }
-.service-row-head strong { font-size: 1.02rem; }
-.service-price {
-  font-weight: 700;
-  color: #bef264;
+.pricebook-range-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.7rem;
+}
+.pricebook-range-head strong {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
-.service-desc { margin: 0; font-size: 0.86rem; color: rgba(255,255,255,0.6); }
-.service-row-actions { display: flex; align-items: center; gap: 0.7rem; }
-.service-edit { flex-basis: 100%; margin-top: 0.2rem; }
+.pricebook-range-track {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.07);
+}
+.pricebook-range-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255,122,33,0.35), var(--accent, #ff7a21));
+}
+/* Where the average sits between the cheapest and dearest job — a book bunched at
+   one end reads very differently from one that spans a full range. */
+.pricebook-range-marker {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  background: #ffc08a;
+  box-shadow: 0 0 10px rgba(255,122,33,0.9), 0 0 0 3px rgba(8,18,31,0.9);
+}
+.pricebook-range-ends {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.55);
+  font-variant-numeric: tabular-nums;
+}
+
+.service-row-top { display: flex; align-items: flex-start; gap: 0.8rem; min-width: 0; }
+
+.service-glyph {
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255,138,61,0.28);
+  background: linear-gradient(160deg, rgba(255,122,33,0.22), rgba(255,122,33,0.07));
+  color: #ffb37a;
+  flex-shrink: 0;
+}
+.service-glyph svg { width: 1.35rem; height: 1.35rem; }
+
+.service-row-main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 0.15rem; }
+.service-name {
+  font-size: 0.98rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.service-price {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #f7f5ef;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: baseline;
+  gap: 0.22rem;
+}
+.service-price .service-price-unit {
+  font-family: var(--font-body);
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: rgba(255,179,122,0.9);
+  letter-spacing: 0.02em;
+}
+.service-desc {
+  margin: 0;
+  font-size: 0.83rem;
+  line-height: 1.45;
+  color: rgba(255,255,255,0.58);
+}
+.service-row-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: auto;
+  padding-top: 0.7rem;
+  border-top: 1px solid rgba(255,255,255,0.07);
+}
+.service-row-actions .btn { padding: 0.32rem 0.75rem; font-size: 0.8rem; }
+.service-row-actions .linklike { margin-left: auto; }
+/* Closed, the <details> is just its Edit button and sits inline with Archive.
+   Open, it claims its own line so the form isn't squeezed beside two buttons. */
+.service-edit { padding: 0; }
+.service-edit[open] { flex-basis: 100%; order: 9; }
+/* An edit form in a 265px column is unusable; give that card the whole row while
+   it's open. Without :has() the form is merely narrow, never broken. */
+.service-row:has(.service-edit[open]) { grid-column: 1 / -1; }
+.service-row:has(.service-edit[open]) .service-form-grid { grid-template-columns: 2fr 1fr 1fr; }
 .service-form { display: flex; flex-direction: column; gap: 0.9rem; margin-top: 0.9rem; }
+/* A column flex container stretches its children, which turned Save into a
+   full-width orange bar shouting across the card. */
+.service-form > button[type='submit'] { align-self: flex-start; }
 .service-form-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 0.7rem; }
+/* Make it obvious the Edit button is a toggle that's currently on. */
+.service-edit[open] > summary .btn { border-color: rgba(255,138,61,0.5); color: #ffc08a; }
 
 .quote-book-picker {
   min-height: 40px;

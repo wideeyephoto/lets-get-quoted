@@ -1,22 +1,14 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { formatMoney } from '@/lib/jobs';
-import { listRecurringPlans, todayDateKey, FREQUENCY_LABEL } from '@/lib/recurring';
+import { listRecurringPlans, todayDateKey } from '@/lib/recurring';
+import { planMonthlyValue, visitCountdown } from '@/lib/recurring-display';
 import { listServices } from '@/lib/services';
 import RecurringComposer from './RecurringComposer';
+import RecurringPlanCard from '@/components/recurring-plan-card';
+import RecurringHowItWorks from '@/components/recurring-how-it-works';
 import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
 import { setPlanActiveAction, deletePlanAction, resendCardLinkAction, runPlanNowAction } from './actions';
-
-function formatDateKey(dateKey: string): string {
-  const [year, month, day] = dateKey.split('-').map(Number);
-  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
-}
 
 const FLASH_MESSAGES: Record<string, { tone: 'success' | 'info' | 'warn'; text: string }> = {
   created: { tone: 'success', text: 'Recurring plan created. The first visit will be created automatically on its date.' },
@@ -43,9 +35,14 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
   const activeCount = activePlans.length;
   // Normalize every active plan to a monthly figure so the owner sees the real
   // recurring revenue this book of plans throws off — weekly counts ~4.33×/mo.
-  const MONTHLY_MULTIPLIER: Record<string, number> = { weekly: 52 / 12, biweekly: 26 / 12, monthly: 1 };
-  const monthlyRecurring = activePlans.reduce((sum, plan) => sum + plan.amount * (MONTHLY_MULTIPLIER[plan.frequency] ?? 1), 0);
+  const monthlyRecurring = activePlans.reduce((sum, plan) => sum + planMonthlyValue(plan.amount, plan.frequency), 0);
   const autoBilledCount = activePlans.filter((plan) => plan.auto_charge && plan.card_last4).length;
+  // Visits the owner should expect this week — the thing a recurring book is
+  // actually promising, and the one number that was nowhere on this page.
+  const dueThisWeek = activePlans.filter((plan) => {
+    const days = visitCountdown(plan.next_run_date, today).days;
+    return days >= 0 && days < 7;
+  }).length;
 
   return (
     <main className="wide-shell workspace-shell">
@@ -59,22 +56,28 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
           </p>
         </div>
         {plans.length > 0 ? (
-          <div className="workspace-metric-grid">
-            <article className="workspace-metric-card accent">
+          <div className="recurring-hero-metrics">
+            <article className="workspace-metric-card accent recurring-mrr-card">
               <span className="workspace-metric-label">Est. monthly recurring</span>
               <strong className="workspace-metric-value">{formatMoney(monthlyRecurring)}</strong>
-              <p className="workspace-metric-note">Across {activeCount} active plan{activeCount === 1 ? '' : 's'}, normalized to a month.</p>
+              <p className="workspace-metric-note">
+                Across {activeCount} active plan{activeCount === 1 ? '' : 's'}, normalized to a month.
+              </p>
             </article>
-            <article className="workspace-metric-card">
-              <span className="workspace-metric-label">Active plans</span>
-              <strong className="workspace-metric-value">{activeCount}</strong>
-            </article>
-            <article className="workspace-metric-card">
-              <span className="workspace-metric-label">Auto-billed</span>
-              <strong className="workspace-metric-value">{autoBilledCount}</strong>
-            </article>
+            <div className="workspace-metric-grid condensed recurring-hero-pair">
+              <article className="workspace-metric-card">
+                <span className="workspace-metric-label">Due this week</span>
+                <strong className="workspace-metric-value">{dueThisWeek}</strong>
+              </article>
+              <article className="workspace-metric-card">
+                <span className="workspace-metric-label">Auto-billed</span>
+                <strong className="workspace-metric-value">{autoBilledCount}</strong>
+              </article>
+            </div>
           </div>
-        ) : null}
+        ) : (
+          <RecurringHowItWorks />
+        )}
       </section>
 
       {flash ? (
@@ -99,63 +102,38 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
             {plans.map((plan) => {
               const paused = !plan.active;
               return (
-                <div key={plan.id} className={`recurring-card${paused ? ' is-paused' : ''}`}>
-                  <div className="recurring-card-main">
-                    <div className="recurring-card-head">
-                      <strong>{plan.title}</strong>
-                      <span className="recurring-freq">{FREQUENCY_LABEL[plan.frequency]}</span>
-                      {paused ? <span className="recurring-paused-tag">Paused</span> : null}
-                    </div>
-                    <p className="recurring-card-meta">
-                      {plan.client_name}
-                      {plan.amount > 0 ? ` · ${formatMoney(plan.amount)}/visit` : ''}
-                      {plan.active ? ` · Next ${formatDateKey(plan.next_run_date)}` : ''}
-                      {plan.active && plan.remaining_cycles != null ? ` · ${plan.remaining_cycles} visit${plan.remaining_cycles === 1 ? '' : 's'} left` : ''}
-                    </p>
-                    <div className="recurring-billing">
-                      {plan.auto_charge ? (
-                        plan.card_last4 ? (
-                          <span className="recurring-card-onfile">
-                            💳 {plan.card_brand ? plan.card_brand.replace(/^\w/, (c) => c.toUpperCase()) : 'Card'} •••• {plan.card_last4}
-                          </span>
-                        ) : (
-                          <span className="recurring-card-pending">
-                            Awaiting card
-                            <form action={resendCardLinkAction.bind(null, plan.id)}>
-                              <button type="submit" className="linklike">Resend link</button>
-                            </form>
-                          </span>
-                        )
-                      ) : (
-                        <span className="recurring-manual">Manual billing</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="recurring-card-actions">
-                    {plan.active ? (
-                      <ConfirmActionButton
-                        action={runPlanNowAction.bind(null, plan.id)}
-                        confirmMessage={
-                          plan.auto_charge && plan.card_last4
-                            ? `Create the next visit now and charge the card on file (•••• ${plan.card_last4}) ${plan.amount > 0 ? formatMoney(plan.amount) : ''}? This bills the customer immediately and moves the schedule forward.`
-                            : 'Create the next scheduled visit now and move the schedule forward?'
-                        }
-                        className="btn secondary"
-                        pendingLabel="Running…"
-                        savedLabel="Done ✓"
-                      >
-                        Run next visit now
-                      </ConfirmActionButton>
-                    ) : null}
-                    <form action={setPlanActiveAction.bind(null, plan.id, paused)}>
-                      <button type="submit" className="btn secondary">{paused ? 'Resume' : 'Pause'}</button>
+                <RecurringPlanCard
+                  key={plan.id}
+                  plan={plan}
+                  today={today}
+                  resendLink={
+                    <form action={resendCardLinkAction.bind(null, plan.id)}>
+                      <button type="submit" className="linklike">Resend link</button>
                     </form>
-                    <form action={deletePlanAction.bind(null, plan.id)}>
-                      <button type="submit" className="linklike danger">Cancel plan</button>
-                    </form>
-                  </div>
-                </div>
+                  }
+                >
+                  {plan.active ? (
+                    <ConfirmActionButton
+                      action={runPlanNowAction.bind(null, plan.id)}
+                      confirmMessage={
+                        plan.auto_charge && plan.card_last4
+                          ? `Create the next visit now and charge the card on file (•••• ${plan.card_last4}) ${plan.amount > 0 ? formatMoney(plan.amount) : ''}? This bills the customer immediately and moves the schedule forward.`
+                          : 'Create the next scheduled visit now and move the schedule forward?'
+                      }
+                      className="btn secondary"
+                      pendingLabel="Running…"
+                      savedLabel="Done ✓"
+                    >
+                      Run next visit now
+                    </ConfirmActionButton>
+                  ) : null}
+                  <form action={setPlanActiveAction.bind(null, plan.id, paused)}>
+                    <button type="submit" className="btn secondary">{paused ? 'Resume' : 'Pause'}</button>
+                  </form>
+                  <form action={deletePlanAction.bind(null, plan.id)} className="danger">
+                    <button type="submit" className="linklike danger">Cancel plan</button>
+                  </form>
+                </RecurringPlanCard>
               );
             })}
           </div>
