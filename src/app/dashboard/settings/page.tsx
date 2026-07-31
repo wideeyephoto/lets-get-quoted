@@ -8,6 +8,7 @@ import SettingsTabs from './SettingsTabs';
 import FinanceReports from './FinanceReports';
 import { getAvailableTaxYears, buildProfitAndLoss, buildScheduleCWorksheet, build1099PrepList } from '@/lib/tax-reports';
 import SaveButton from '@/components/save-button';
+import AddressAutocomplete from '@/components/address-autocomplete';
 import AutomationSwitch from '@/components/automation-switch';
 import { listAccountEvents } from '@/lib/account-events';
 import DeleteAccountButton from './DeleteAccountButton';
@@ -202,7 +203,12 @@ export default async function SettingsPage({
     .select('mailing_address')
     .eq('id', accountId)
     .maybeSingle();
-  const mailingAddress = (mailingSettings?.mailing_address as string | null) ?? '';
+  // Older values were typed into a textarea; a newline inside an <input> value
+  // renders as nothing, so an existing address would look half-missing until the
+  // owner retyped it.
+  const mailingAddress = ((mailingSettings?.mailing_address as string | null) ?? '')
+    .replace(/\s*\n\s*/g, ', ')
+    .trim();
 
   const { data: digestSettings } = await supabase
     .from('accounts')
@@ -910,13 +916,22 @@ export default async function SettingsPage({
                   <form action={updateMailingAddressAction} className="form-grid compact-form">
                     <div className="field">
                       <label htmlFor="mailingAddress">Mailing address</label>
-                      <textarea
+                      {/* Verified-as-you-type rather than free text. This address is
+                          doing two jobs: the CAN-SPAM footer, and — once geocoded —
+                          the point Plan my day measures the drive out and back from.
+                          A typo or a city-only entry fails the precise-match test
+                          silently, and the only symptom is a day whose mileage is
+                          quietly short. Picking a real place makes that impossible. */}
+                      <AddressAutocomplete
                         id="mailingAddress"
                         name="mailingAddress"
-                        rows={3}
-                        placeholder={'123 Main St, Suite 4\nSpringfield, IL 62704'}
+                        placeholder="123 Main St, Suite 4, Springfield, IL 62704"
                         defaultValue={mailingAddress}
                       />
+                      <small className="field-hint">
+                        Start typing and pick your address. We also use this to work out the drive to your first job
+                        and back from your last.
+                      </small>
                     </div>
                     <div className="form-actions">
                       <SaveButton>Save mailing address</SaveButton>

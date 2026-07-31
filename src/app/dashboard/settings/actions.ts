@@ -364,11 +364,19 @@ export async function updateFollowupSettingsAction(formData: FormData) {
 }
 
 // CAN-SPAM: the business's physical postal address, printed in the footer of
-// every marketing email. Stored as a single free-text block (street, city,
-// state, ZIP) so it renders exactly as the owner types it.
+// every marketing email — and, once geocoded, the point Plan my day measures the
+// drive out and back from.
 export async function updateMailingAddressAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
-  const mailingAddress = String(formData.get('mailingAddress') ?? '').trim() || null;
+  // The field is an autocomplete now, which yields one line. Older values were
+  // typed into a textarea and can carry newlines; collapse them so the footer
+  // renders on one line and the geocoder gets a clean single-line query.
+  const mailingAddress =
+    String(formData.get('mailingAddress') ?? '')
+      .replace(/\s*\n\s*/g, ', ')
+      .replace(/\s+/g, ' ')
+      .replace(/\s*,\s*,\s*/g, ', ')
+      .trim() || null;
 
   // Geocode the business address into the service-area center / cold-start anchor
   // for route-density. Best-effort + precise-only; clears the center if the
