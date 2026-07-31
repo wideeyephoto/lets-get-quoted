@@ -104,39 +104,6 @@ export function reorderStops(
   return next;
 }
 
-// The indexes a lifted stop may legally land on, so the list can light them up
-// while the contractor is still dragging rather than rejecting the drop after.
-export function validDropIndexes(
-  order: string[],
-  byId: Map<string, PlanStop>,
-  fromIndex: number,
-  pinned?: ReadonlySet<string>,
-): number[] {
-  const valid: number[] = [];
-  for (let index = 0; index < order.length; index++) {
-    if (reorderStops(order, byId, fromIndex, index, pinned) !== null) valid.push(index);
-  }
-  return valid;
-}
-
-export type RouteVerdict = 'optimized' | 'better_found' | 'manual' | 'unroutable';
-
-// What the page says at the top. Deliberately separate from the numbers: a route
-// that saves nothing is still "optimized", and one the contractor rearranged by
-// hand is neither optimized nor in need of optimizing — it's theirs.
-export function routeVerdict(input: {
-  stopCount: number;
-  isOptimizedOrder: boolean;
-  isCurrentOrder: boolean;
-  touched: boolean;
-}): RouteVerdict {
-  if (input.stopCount === 0) return 'unroutable';
-  if (input.touched) return 'manual';
-  if (input.isOptimizedOrder && input.isCurrentOrder) return 'optimized';
-  if (input.isOptimizedOrder) return 'better_found';
-  return 'manual';
-}
-
 export function sameOrder(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((id, index) => id === b[index]);
 }

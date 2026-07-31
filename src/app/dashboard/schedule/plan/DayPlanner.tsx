@@ -14,7 +14,6 @@ import {
   navTarget,
   reorderStops,
   sameOrder,
-  validDropIndexes,
   type DayPlanPayload,
 } from '@/lib/day-plan-view';
 
@@ -45,9 +44,13 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
   // has — and "apply" would be the only way to see their real schedule.
   const [order, setOrder] = useState<string[]>(payload.currentOrder);
   const [history, setHistory] = useState<string[][]>([]);
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [dropTargets, setDropTargets] = useState<Set<number>>(new Set());
-  const [overIndex, setOverIndex] = useState<number | null>(null);
+  // The stop being held, by id rather than index — during a live drag its index
+  // changes constantly, which is the whole point.
+  const [dragId, setDragId] = useState<string | null>(null);
+  // The order as it stood when the drag began, so a drag abandoned outside the
+  // list snaps back instead of leaving a half-considered arrangement behind.
+  const dragOriginRef = useRef<string[] | null>(null);
+  const didDropRef = useRef(false);
   // Stops the contractor pinned for this session. Unlike a customer-confirmed
   // lock this doesn't protect a promised time — it just stops a stop sliding
   // around while they rearrange the rest.
@@ -86,27 +89,58 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
     [byId, pinned],
   );
 
-  const commit = useCallback((next: string[]) => {
-    setHistory((past) => [...past.slice(-19), order]);
+  const commit = useCallback((next: string[], from?: string[]) => {
+    setHistory((past) => [...past.slice(-19), from ?? order]);
     setOrder(next);
   }, [order]);
 
-  function handleDragStart(index: number) {
-    setDragIndex(index);
-    setDropTargets(new Set(validDropIndexes(order, byId, index, pinned)));
+  function handleDragStart(stopId: string) {
+    dragOriginRef.current = order;
+    didDropRef.current = false;
+    setDragId(stopId);
+  }
+
+  // The list rearranges under the cursor rather than waiting for the drop, so the
+  // card is always sitting where it would land — and because every number on the
+  // page is derived from the order, the arrival and finish times on it are the
+  // real ones for that position. You see the consequence before committing to it.
+  //
+  // Everything is resolved by stop id inside a functional update: dragover fires
+  // faster than React re-renders, so an index captured at render time can already
+  // be one swap out of date by the time it's read.
+  function handleDragOver(targetId: string, pointerY: number, rect: DOMRect) {
+    if (!dragId || targetId === dragId) return;
+    setOrder((current) => {
+      const from = current.indexOf(dragId);
+      const to = current.indexOf(targetId);
+      if (from === -1 || to === -1 || from === to) return current;
+
+      // Only swap once the pointer is past the middle of the row it's over, in
+      // the direction of travel. Reordering on first contact makes rows of
+      // different heights oscillate: the swap moves the row out from under the
+      // cursor, which immediately triggers the opposite swap back.
+      const midpoint = rect.top + rect.height / 2;
+      if (to > from ? pointerY < midpoint : pointerY > midpoint) return current;
+
+      return reorderStops(current, byId, from, to, pinned) ?? current;
+    });
   }
 
   function handleDragEnd() {
-    setDragIndex(null);
-    setOverIndex(null);
-    setDropTargets(new Set());
+    // Dropped outside any row (or onto something that refused it): put it back.
+    if (!didDropRef.current && dragOriginRef.current) setOrder(dragOriginRef.current);
+    dragOriginRef.current = null;
+    setDragId(null);
   }
 
-  function handleDrop(index: number) {
-    if (dragIndex === null) return;
-    const next = reorderStops(order, byId, dragIndex, index, pinned);
-    handleDragEnd();
-    if (next) commit(next);
+  function handleDrop() {
+    didDropRef.current = true;
+    const origin = dragOriginRef.current;
+    dragOriginRef.current = null;
+    setDragId(null);
+    // The list already shows the result; all that's left is to make the whole
+    // drag one undo step rather than one per row it passed over.
+    if (origin && !sameOrder(origin, order)) setHistory((past) => [...past.slice(-19), origin]);
   }
 
   // Keyboard equivalent, because a route you can only reorder with a mouse is a
@@ -164,7 +198,7 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
     <>
       <section className="panel plan-panel plan-route-panel">
         <div className="plan-route-grid">
-          <RouteMap stops={mapStops} homeBase={payload.homeBase} apiKey={mapsApiKey} />
+          <RouteMap stops={mapStops} homeBase={payload.homeBase} apiKey={mapsApiKey} deferRoute={dragId !== null} />
 
           <div className="plan-route-side">
             <RouteStatus
@@ -249,11 +283,29 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
               </h2>
             </div>
             {movableCount > 1 ? (
-              <p className="plan-drag-hint">Drag a stop to reorder the day.</p>
+              <p className="plan-drag-hint">
+                {dragId ? 'Let go to keep this order — times update as you move.' : 'Drag a stop to reorder the day.'}
+              </p>
             ) : null}
           </div>
 
-          <ol className="plan-stop-list" ref={listRef}>
+          {/* The gaps between rows are part of the list too. Without this a drop
+              landing in a 0.5rem gutter counts as "dropped nowhere" and snaps the
+              whole arrangement back, which feels like the app lost the drag. */}
+          <ol
+            className={`plan-stop-list${dragId ? ' is-dragging' : ''}`}
+            ref={listRef}
+            onDragOver={(event) => {
+              if (!dragId) return;
+              event.preventDefault();
+              event.dataTransfer.dropEffect = 'move';
+            }}
+            onDrop={(event) => {
+              if (!dragId) return;
+              event.preventDefault();
+              handleDrop();
+            }}
+          >
             {plan.planned.map((entry, index) => (
               <StopRow
                 key={entry.stop.id}
@@ -261,19 +313,19 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
                 index={index}
                 total={plan.planned.length}
                 draggable={canDrag(entry.stop.id)}
-                isDragging={dragIndex === index}
-                isDropTarget={dragIndex !== null && dropTargets.has(index) && index !== dragIndex}
-                isOver={overIndex === index}
+                isDragging={dragId === entry.stop.id}
+                dragActive={dragId !== null}
+                blocksDrag={dragId !== null && dragId !== entry.stop.id && pinned.has(entry.stop.id)}
                 pinned={pinned.has(entry.stop.id)}
                 anchoredToHome={payload.anchor === 'home_base'}
                 menuOpen={menuFor === entry.stop.id}
                 onMenu={(open) => setMenuFor(open ? entry.stop.id : null)}
                 onTogglePin={() => togglePin(entry.stop.id)}
                 onNudge={(direction) => nudge(index, direction)}
-                onDragStart={() => handleDragStart(index)}
+                onDragStart={() => handleDragStart(entry.stop.id)}
                 onDragEnd={handleDragEnd}
-                onDragOver={() => setOverIndex(index)}
-                onDrop={() => handleDrop(index)}
+                onDragOver={(pointerY, rect) => handleDragOver(entry.stop.id, pointerY, rect)}
+                onDrop={handleDrop}
               />
             ))}
           </ol>
@@ -515,14 +567,28 @@ function RouteInsights({
   );
 }
 
+// A 1×1 transparent image used to suppress the browser's floating drag ghost.
+// The list itself rearranges live now, so the ghost is a second, contradictory
+// copy of the same card sliding over the rows underneath it.
+let ghostImage: HTMLImageElement | null = null;
+function emptyDragImage(): HTMLImageElement | null {
+  if (typeof window === 'undefined') return null;
+  if (!ghostImage) {
+    ghostImage = new window.Image();
+    ghostImage.src =
+      'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+  }
+  return ghostImage.complete ? ghostImage : null;
+}
+
 function StopRow({
   entry,
   index,
   total,
   draggable,
   isDragging,
-  isDropTarget,
-  isOver,
+  dragActive,
+  blocksDrag,
   pinned,
   anchoredToHome,
   menuOpen,
@@ -539,8 +605,8 @@ function StopRow({
   total: number;
   draggable: boolean;
   isDragging: boolean;
-  isDropTarget: boolean;
-  isOver: boolean;
+  dragActive: boolean;
+  blocksDrag: boolean;
   pinned: boolean;
   anchoredToHome: boolean;
   menuOpen: boolean;
@@ -549,7 +615,7 @@ function StopRow({
   onNudge: (direction: -1 | 1) => void;
   onDragStart: () => void;
   onDragEnd: () => void;
-  onDragOver: () => void;
+  onDragOver: (pointerY: number, rect: DOMRect) => void;
   onDrop: () => void;
 }) {
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -562,9 +628,9 @@ function StopRow({
 
   const classes = [
     'plan-stop',
-    isDragging ? 'is-dragging' : '',
-    isDropTarget ? 'is-droppable' : '',
-    isOver && isDropTarget ? 'is-over' : '',
+    isDragging ? 'is-lifted' : '',
+    dragActive && !isDragging ? 'is-shifting' : '',
+    blocksDrag ? 'is-blocking' : '',
     stop.locked ? 'is-locked' : '',
     pinned ? 'is-pinned' : '',
   ]
@@ -579,17 +645,19 @@ function StopRow({
         if (!draggable) return;
         event.dataTransfer.effectAllowed = 'move';
         event.dataTransfer.setData('text/plain', stop.id);
+        const ghost = emptyDragImage();
+        if (ghost) event.dataTransfer.setDragImage(ghost, 0, 0);
         onDragStart();
       }}
       onDragEnd={onDragEnd}
       onDragOver={(event) => {
-        if (!isDropTarget) return;
+        if (!dragActive) return;
         event.preventDefault();
         event.dataTransfer.dropEffect = 'move';
-        onDragOver();
+        onDragOver(event.clientY, event.currentTarget.getBoundingClientRect());
       }}
       onDrop={(event) => {
-        if (!isDropTarget) return;
+        if (!dragActive) return;
         event.preventDefault();
         onDrop();
       }}

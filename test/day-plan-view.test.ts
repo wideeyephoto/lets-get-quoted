@@ -6,7 +6,6 @@ import {
   isMovable,
   reorderStops,
   sameOrder,
-  validDropIndexes,
   type DayPlanPayload,
 } from '@/lib/day-plan-view';
 
@@ -136,25 +135,33 @@ describe('what the contractor is allowed to drag', () => {
   it('lets other stops move past a confirmed appointment', () => {
     const locked = new Map(byId).set('c', { ...C, locked: true });
     expect(reorderStops(order, locked, 3, 0)).toEqual(['d', 'a', 'b', 'c']);
-    expect(validDropIndexes(order, locked, 3)).toEqual([0, 1, 2]);
+    expect(reorderStops(order, locked, 3, 1)).toEqual(['a', 'd', 'b', 'c']);
+    expect(reorderStops(order, locked, 0, 3)).toEqual(['b', 'c', 'd', 'a']);
   });
 
   it('holds a pinned stop in place, because pinning is about position', () => {
     const pinned = new Set(['c']);
     // Moving d before c would slide c from index 2 to 3.
     expect(reorderStops(order, byId, 3, 0, pinned)).toBeNull();
+    expect(reorderStops(order, byId, 3, 2, pinned)).toBeNull();
     // Swapping a and b leaves c exactly where it was.
     expect(reorderStops(order, byId, 0, 1, pinned)).toEqual(['b', 'a', 'c', 'd']);
     expect(isMovable(C, pinned)).toBe(false);
   });
 
-  it('lists only the landings a drop would actually accept', () => {
-    expect(validDropIndexes(order, byId, 0)).toEqual([1, 2, 3]);
-    expect(validDropIndexes(order, byId, 0, new Set(['c']))).toEqual([1]);
+  it('leaves a single-stop day with nowhere to go', () => {
+    expect(reorderStops(['a'], byId, 0, 0)).toBeNull();
   });
 
-  it('leaves a single-stop day with nowhere to drop', () => {
-    expect(validDropIndexes(['a'], byId, 0)).toEqual([]);
+  // The live drag calls this on every dragover, resolving both ends by id, so it
+  // has to be safe to apply repeatedly as the list walks past each row.
+  it('composes across the successive swaps a live drag makes', () => {
+    let running = order;
+    for (const target of [2, 1, 0]) {
+      const from = running.indexOf('d');
+      running = reorderStops(running, byId, from, target) ?? running;
+    }
+    expect(running).toEqual(['d', 'a', 'b', 'c']);
   });
 });
 

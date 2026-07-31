@@ -9128,15 +9128,36 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 .plan-stop.is-locked { background: rgba(74, 222, 128, 0.045); }
 .plan-stop.is-pinned { background: rgba(125, 211, 252, 0.05); }
 .plan-stop[draggable='true'] { cursor: grab; }
-.plan-stop.is-dragging { opacity: 0.4; cursor: grabbing; }
-/* Only the rows a drop would actually be legal on light up — a highlight over a
-   confirmed appointment would promise a move that gets refused. */
-.plan-stop.is-droppable { border-style: dashed; border-color: rgba(255, 138, 61, 0.4); }
-.plan-stop.is-over {
-  border-style: solid;
-  border-color: rgba(255, 138, 61, 0.85);
-  background: rgba(255, 122, 33, 0.1);
-  box-shadow: 0 0 0 1px rgba(255, 138, 61, 0.4), 0 0 20px -6px rgba(255, 122, 33, 0.6);
+
+/* The list rearranges under the cursor, so the card is always sitting exactly
+   where it would land and the times on it are the real ones for that slot.
+   That makes a separate "drop target" highlight redundant — the answer to "where
+   will this go" is that it's already there. */
+.plan-stop-list.is-dragging .plan-stop { transition: transform 0.16s ease, opacity 0.16s ease; }
+
+.plan-stop.is-lifted {
+  cursor: grabbing;
+  border-color: rgba(255, 138, 61, 0.9);
+  background: rgba(255, 122, 33, 0.12);
+  box-shadow: 0 0 0 1px rgba(255, 138, 61, 0.45), 0 14px 32px -12px rgba(255, 122, 33, 0.75);
+  /* Lifted off the page rather than following the cursor: the browser's own drag
+     ghost is suppressed, because a translucent second copy sliding over rows that
+     are themselves moving is two contradictory answers to the same question. */
+  transform: scale(1.012);
+  z-index: 2;
+}
+.plan-stop.is-shifting { opacity: 0.82; }
+/* A pinned stop is the one thing nothing may cross, so during a drag it says so
+   instead of silently refusing the drop. */
+.plan-stop.is-blocking {
+  opacity: 1;
+  border-color: rgba(125, 211, 252, 0.5);
+  border-style: dashed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-stop-list.is-dragging .plan-stop { transition: none; }
+  .plan-stop.is-lifted { transform: none; }
 }
 
 /* The numbers double as the route timeline: the connector makes the list read as

@@ -55,10 +55,16 @@ export default function RouteMap({
   stops,
   homeBase,
   apiKey,
+  deferRoute = false,
 }: {
   stops: MapStop[];
   homeBase: LatLng | null;
   apiKey: string | null;
+  // True while a drag is in progress. Markers and the straight-line path still
+  // follow every reorder; the road route waits until the stop is let go, because
+  // dragging past four rows would otherwise fire four Directions requests that
+  // are all obsolete before they land.
+  deferRoute?: boolean;
 }) {
   const holderRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -176,7 +182,7 @@ export default function RouteMap({
     setRoadRoute(false);
 
     // Upgrade to the real road route when we can get one.
-    if (path.length >= 2 && stops.length <= DIRECTIONS_MAX_WAYPOINTS && !directionsUnavailable) {
+    if (path.length >= 2 && stops.length <= DIRECTIONS_MAX_WAYPOINTS && !directionsUnavailable && !deferRoute) {
       setRouting(true);
       void (async () => {
         try {
@@ -214,7 +220,7 @@ export default function RouteMap({
     } else {
       setRouting(false);
     }
-  }, [stops, homeBase, status, apiKey]);
+  }, [stops, homeBase, status, apiKey, deferRoute]);
 
   useEffect(() => {
     const markers = markersRef.current;
