@@ -2213,3 +2213,85 @@ button.goAction.goAction:disabled {
 .focusCounts button:hover:not(:disabled), .focusActions button:hover, .focusActions a:hover { background: rgba(255, 255, 255, 0.07); color: #fff; }
 .focusCounts button:disabled { opacity: 0.45; cursor: default; }
 .focusCounts b { font-size: 0.95rem; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 1.3rem; }
+
+/* ==========================================================================
+   Crew & Labor — the Focus theme.
+
+   Not a table layout: this is how the whole page is dressed, worn by the shell
+   and therefore by all three tabs, including Labor by job which has no picker of
+   its own. Applying it to one tab and not the others made the page change
+   character as you moved across it.
+
+   Scoped with :global(.crew-focus) because these are CSS-module class names —
+   the shell that carries the theme class is rendered by the page above, so the
+   selector has to reach out of the module and back in.
+   ========================================================================== */
+
+/* Tabs: the selected one is the only place besides the primary action where the
+   theme spends any glow. */
+:global(.crew-focus) .tabs { gap: 0.4rem; }
+:global(.crew-focus) .tab {
+  border-radius: 12px;
+  border: 1px solid rgba(148, 176, 214, 0.16);
+  background: rgba(255, 255, 255, 0.025);
+}
+:global(.crew-focus) .tabOn {
+  border-color: rgba(255, 122, 33, 0.55);
+  background: rgba(255, 122, 33, 0.1);
+  box-shadow: 0 8px 22px -14px rgba(255, 122, 33, 0.9);
+}
+
+:global(.crew-focus) .pageTitle { letter-spacing: -0.02em; }
+
+/* Every major container gets the same thin blue-gray edge and the same radius,
+   so the page reads as one surface rather than a stack of different ones. */
+:global(.crew-focus) .tableWrap,
+:global(.crew-focus) .card,
+:global(.crew-focus) .boardCol,
+:global(.crew-focus) .focusCard,
+:global(.crew-focus) .railCard,
+:global(.crew-focus) .periodCard,
+:global(.crew-focus) .addPanel {
+  border-radius: 16px;
+  border-color: rgba(148, 176, 214, 0.2);
+}
+
+/* Key totals are the thing you came to read. */
+:global(.crew-focus) .periodStat strong { font-size: 1.5rem; letter-spacing: -0.025em; }
+:global(.crew-focus) .periodStat { padding: 0.7rem 0.8rem; border-radius: 14px; }
+:global(.crew-focus) .periodStats { gap: 0.55rem; }
+
+/* Column headers, everywhere there is a table. */
+:global(.crew-focus) .payTable thead th,
+:global(.crew-focus) .hoursTable thead th,
+:global(.crew-focus) .rosterTable thead th,
+:global(.crew-focus) .rowHead {
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+}
+
+/* The action column, pulled out with a stronger orange edge — the one piece of
+   the page that is instructions rather than information. */
+:global(.crew-focus) .payRail,
+:global(.crew-focus) .focusRail {
+  padding: 0.55rem;
+  border: 1px solid rgba(255, 122, 33, 0.36);
+  border-radius: 18px;
+  background: rgba(255, 122, 33, 0.035);
+}
+
+/* Labor by job has no rail and no gear, so the theme reaches it through the
+   furniture it shares with the other two tabs. */
+:global(.crew-focus) .hpHead { padding-bottom: 0.2rem; }
+:global(.crew-focus) .hpTitle { font-size: 1.3rem; letter-spacing: -0.02em; }
+:global(.crew-focus) .toolbar,
+:global(.crew-focus) .payToolbar {
+  padding: 0.6rem 0.7rem;
+  border: 1px solid rgba(148, 176, 214, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Selected rows keep the orange left edge they already had; the theme only
+   deepens the tint so it survives the lighter card surface behind it. */
+:global(.crew-focus) .payRow[data-selected] { background: rgba(255, 122, 33, 0.12); }

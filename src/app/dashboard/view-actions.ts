@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
-import { CALENDAR_WEEKEND_COOKIE, CLIENTS_VIEW_COOKIE, CREW_ROSTER_VIEW_COOKIE, CREW_VIEW_COOKIE, JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeClientsView, normalizeCrewView, normalizeJobsView, normalizeMapTheme, normalizeMapView, normalizeRosterView, serializeWeekendDays, type ClientsView, type CrewView, type JobsView, type MapSurface, type MapTheme, type MapView, type RosterView, type WeekendDays } from '@/lib/dashboard-views';
+import { CALENDAR_WEEKEND_COOKIE, CLIENTS_VIEW_COOKIE, CREW_ROSTER_VIEW_COOKIE, CREW_THEME_COOKIE, CREW_VIEW_COOKIE, JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeClientsView, normalizeCrewView, normalizeJobsView, normalizeMapTheme, normalizeCrewTheme, normalizeMapView, normalizeRosterView, serializeWeekendDays, type ClientsView, type CrewView, type JobsView, type MapSurface, type MapTheme, type MapView, type RosterView, type WeekendDays } from '@/lib/dashboard-views';
 
 const YEAR = 60 * 60 * 24 * 365;
 
@@ -37,14 +37,35 @@ export async function setClientsViewAction(view: ClientsView) {
   cookies().set(CLIENTS_VIEW_COOKIE, normalizeClientsView(view), { path: '/', maxAge: YEAR, sameSite: 'lax' });
 }
 
-// Remember the owner's chosen Hours & pay layout (Table / Grouped / Rail).
-export async function setCrewViewAction(view: CrewView) {
-  await requireOwnerContext();
-  cookies().set(CREW_VIEW_COOKIE, normalizeCrewView(view), { path: '/', maxAge: YEAR, sameSite: 'lax' });
+// Focus is ONE page-level mode for Crew & Labor, not a layout each tab picks
+// separately. Turning it on anywhere puts every tab into its Focus layout and
+// dresses the shell; turning it off anywhere puts the others back to their
+// defaults. Two tabs disagreeing about whether the page is in Focus was the
+// thing that made it feel like a per-tab setting in the first place.
+//
+// The theme lives in its own cookie so Labor by job — which has no picker —
+// still knows which way the page is dressed.
+const jar = () => cookies();
+const write = (name: string, value: string) => jar().set(name, value, { path: '/', maxAge: YEAR, sameSite: 'lax' });
+
+function syncCrewFocus(focus: boolean, keep: 'hours' | 'roster'): void {
+  write(CREW_THEME_COOKIE, normalizeCrewTheme(focus ? 'focus' : 'standard'));
+  if (keep !== 'hours') write(CREW_VIEW_COOKIE, focus ? 'focus' : 'table');
+  if (keep !== 'roster') write(CREW_ROSTER_VIEW_COOKIE, focus ? 'focus' : 'rows');
 }
 
-// Remember the owner's chosen Crew members layout (Rows / Cards / Board / Table).
+// Remember the owner's chosen Hours & pay layout (Table / Grouped / Rail / Focus).
+export async function setCrewViewAction(view: CrewView) {
+  await requireOwnerContext();
+  const next = normalizeCrewView(view);
+  write(CREW_VIEW_COOKIE, next);
+  syncCrewFocus(next === 'focus', 'hours');
+}
+
+// Remember the owner's chosen Crew members layout (Rows / Cards / Board / Table / Focus).
 export async function setRosterViewAction(view: RosterView) {
   await requireOwnerContext();
-  cookies().set(CREW_ROSTER_VIEW_COOKIE, normalizeRosterView(view), { path: '/', maxAge: YEAR, sameSite: 'lax' });
+  const next = normalizeRosterView(view);
+  write(CREW_ROSTER_VIEW_COOKIE, next);
+  syncCrewFocus(next === 'focus', 'roster');
 }

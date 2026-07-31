@@ -261,8 +261,13 @@ export default function HoursAndPay({
   useEffect(() => {
     const main = document.querySelector('main.wide-shell');
     if (!main) return;
-    main.classList.toggle('crew-wide', isRailView(view));
-    return () => main.classList.remove('crew-wide');
+    main.classList.toggle('crew-wide', isRailView(view) || view === 'focus');
+    // Focus is a page theme, not just this tab's layout.
+    main.classList.toggle('crew-focus', view === 'focus');
+    return () => {
+      main.classList.remove('crew-wide');
+      main.classList.remove('crew-focus');
+    };
   }, [view]);
   const [selected, setSelected] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');

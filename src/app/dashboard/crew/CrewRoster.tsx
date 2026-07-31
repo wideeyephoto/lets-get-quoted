@@ -137,8 +137,15 @@ export default function CrewRoster({
     const main = document.querySelector('main.wide-shell');
     if (!main) return;
     main.classList.toggle('crew-wide', wide);
-    return () => main.classList.remove('crew-wide');
-  }, [wide]);
+    // Focus is a page theme, so the shell wears it too — toggled here as well as
+    // set server-side from the cookie, or switching view would leave the page
+    // half-dressed until the next navigation.
+    main.classList.toggle('crew-focus', view === 'focus');
+    return () => {
+      main.classList.remove('crew-wide');
+      main.classList.remove('crew-focus');
+    };
+  }, [wide, view]);
 
   const roles = useMemo(
     () => [...new Set(rows.map((row) => row.roleLabel).filter(Boolean))].sort((a, b) => a.localeCompare(b)),

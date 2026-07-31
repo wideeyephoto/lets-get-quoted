@@ -12432,3 +12432,10 @@ a.bset-card { color: inherit; text-decoration: none; }
 /* The empty queue now sits in a panel of its own rather than under a heading,
    so it no longer needs to clear one — the panel padding is the only padding. */
 .extra-stop-empty-panel .extra-stop-empty { margin-top: 0; padding: 1.2rem 1rem; }
+
+/* Crew & Labor Focus theme — the page-level furniture that is not in the crew
+   CSS module. The panel surfaces lift slightly so the bordered cards inside
+   them read as sitting ON something rather than being cut out of it. */
+.crew-focus .workspace-section-card { border-radius: 18px; border-color: rgba(148, 176, 214, 0.2); }
+.crew-focus .stat-ticker { border-radius: 16px; border-color: rgba(148, 176, 214, 0.2); }
+.crew-focus .stat-ticker-value { font-size: 1.45rem; letter-spacing: -0.02em; }

@@ -22,7 +22,7 @@ import {
   summarizePayTotals,
   type CrewPayRow,
 } from '@/lib/crew-pay';
-import { CREW_ROSTER_VIEW_COOKIE, CREW_VIEW_COOKIE, normalizeCrewView, normalizeRosterView } from '@/lib/dashboard-views';
+import { CREW_ROSTER_VIEW_COOKIE, CREW_THEME_COOKIE, CREW_VIEW_COOKIE, normalizeCrewTheme, normalizeCrewView, normalizeRosterView } from '@/lib/dashboard-views';
 import { listPayEvents, loadCrewPayContext } from '@/lib/crew-pay-data';
 import { laborTotalsByCrew, listLaborEntries } from '@/lib/labor-data';
 import { LABOR_SETTINGS_COOKIE, normalizeLaborSettings } from '@/lib/labor-settings';
@@ -202,6 +202,10 @@ export default async function CrewLaborPage({
   const payTotals = pay ? summarizePayTotals(pay.rows) : null;
   const crewView = normalizeCrewView(cookies().get(CREW_VIEW_COOKIE)?.value);
   const rosterView = normalizeRosterView(cookies().get(CREW_ROSTER_VIEW_COOKIE)?.value);
+  // The page theme, not a layout. Read once here and worn by the whole shell so
+  // all three tabs — including Labor by job, which has no picker — look like one
+  // page rather than changing character as you move across them.
+  const crewTheme = normalizeCrewTheme(cookies().get(CREW_THEME_COOKIE)?.value);
 
   // The period before this one, for the "vs last period" comparison and the
   // second series on the hours chart. Only the grouped layout shows either, so
@@ -258,11 +262,20 @@ export default async function CrewLaborPage({
     // stops capping content at 1100px. Driven by the cookie so the width is
     // right on first paint; picking a view refreshes to pick the change up.
     <main
-      className={`wide-shell workspace-shell${
-        (tab === 'hours' && crewView === 'rail') || (tab === 'crew' && (rosterView === 'board' || rosterView === 'table'))
-          ? ' crew-wide'
-          : ''
-      }`}
+      className={[
+        'wide-shell',
+        'workspace-shell',
+        crewTheme === 'focus' ? 'crew-focus' : '',
+        // Focus's rail, the board columns and the nine-column table all need the
+        // shell to stop capping content at 1100px.
+        crewTheme === 'focus' ||
+        (tab === 'hours' && crewView === 'rail') ||
+        (tab === 'crew' && (rosterView === 'board' || rosterView === 'table'))
+          ? 'crew-wide'
+          : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
     >
       <section className="panel workspace-section-card">
         <header className={styles.pageHead}>

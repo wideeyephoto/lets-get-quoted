@@ -72,6 +72,22 @@ export function normalizeCrewView(value: unknown): CrewView {
   return CREW_VIEWS.includes(value as CrewView) ? (value as CrewView) : 'table';
 }
 
+// Crew & Labor's page theme.
+//
+// Separate from the two per-tab layout cookies on purpose: Focus is not a table
+// layout, it's how the whole screen looks — heavier card surfaces, the action
+// rail pulled out with an orange edge, oversized totals, the caveat as a bar at
+// the foot. Applying that to one tab and not the other two made the page change
+// character as you moved across it.
+//
+// Picking Focus in EITHER tab's gear switches the theme on, and picking any
+// other layout switches it off, so there is one Focus and not two.
+export const CREW_THEME_COOKIE = 'lgq_crew_theme';
+export type CrewTheme = 'standard' | 'focus';
+export function normalizeCrewTheme(value: unknown): CrewTheme {
+  return value === 'focus' ? 'focus' : 'standard';
+}
+
 // Which "Crew members" roster layout the owner last used. Its own cookie, not
 // the one above: the roster and the pay table answer different questions, and
 // picking a board on one is no reason to change the other.
