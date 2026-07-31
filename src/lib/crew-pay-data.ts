@@ -15,6 +15,7 @@ import {
 import { resolvePayPeriod, summarizeCrewLabor, type PayPeriod, type PeriodMode } from './labor';
 import { listLaborEntries } from './labor-data';
 import { roundHours, type LaborSettings } from './labor-settings';
+import { payBasisFromCrew } from './pay-types';
 import { listOpenShifts } from './time-clock-data';
 
 // Server side of crew pay. Reads the period's hours, joins whatever has been
@@ -105,7 +106,19 @@ export type CrewPayContext = {
 export async function loadCrewPayContext(
   supabase: SupabaseClient,
   accountId: string,
-  options: { period: PayPeriod; settings: LaborSettings; crewId?: string | null; includeOpenShifts?: boolean },
+  options: {
+    period: PayPeriod;
+    settings: LaborSettings;
+    crewId?: string | null;
+    includeOpenShifts?: boolean;
+    /**
+     * The roster, so the rollup knows who is salaried. Omitted, everyone is
+     * treated as hourly — which is what this did before pay types existed, and
+     * is still right for any caller that only wants the hours.
+     */
+    crew?: Array<{ id: string; name: string; role_label?: string | null; pay_type?: unknown; hourly_rate?: unknown; annual_salary?: unknown; day_rate?: unknown }>;
+    timeZone?: string;
+  },
 ): Promise<CrewPayContext> {
   const { period, settings } = options;
 
@@ -115,9 +128,23 @@ export async function loadCrewPayContext(
     crewId: options.crewId ?? null,
   });
 
+  const roster = (options.crew ?? []).filter((member) => !options.crewId || member.id === options.crewId);
+  const payBasis = new Map(roster.map((member) => [member.id, payBasisFromCrew(member)] as const));
+  // Only SALARIED people need seeding. A day-rate member with no days worked is
+  // owed nothing, and an hourly member with no hours is owed nothing — putting
+  // either on the table would be inventing a payee out of an empty timesheet.
+  const seedCrew = roster
+    .filter((member) => payBasis.get(member.id)?.payType === 'salary')
+    .map((member) => ({ crewId: member.id, name: member.name, roleLabel: member.role_label ?? null }));
+
   const summary = summarizeCrewLabor(entries, {
     overtimeThreshold: settings.overtimeThreshold,
     roundHours: settings.rounding === 'none' ? undefined : (value) => roundHours(value, settings.rounding),
+    payBasis: payBasis.size > 0 ? payBasis : undefined,
+    periodMode: period.mode,
+    periodDays: Math.round((new Date(period.endIso).getTime() - new Date(period.startIso).getTime()) / 86400000),
+    timeZone: options.timeZone,
+    seedCrew,
   });
 
   const periodRow = await getPayPeriodRow(supabase, accountId, period);
@@ -316,6 +343,14 @@ export type PaySnapshot = {
    * which shift moved — and a dispute about hours has nothing to appeal to.
    */
   lines?: Array<{ costId: string; jobId: string | null; description: string; loggedAt: string; hours: number; rate: number; amount: number }>;
+  /**
+   * How this amount was arrived at. For an hourly person the lines add up to
+   * it; for a salaried one they deliberately do not, and without this recorded
+   * "why is this $1,384.62" has no answer six months later — the salary may
+   * have changed since.
+   */
+  payType?: string;
+  payBasis?: string;
 };
 
 /** The rollup for one row, taken server-side so a client can't name its own amount. */
@@ -335,6 +370,8 @@ export function snapshotOf(row: CrewPayRow): PaySnapshot {
     regularHours: row.regularHours,
     overtimeHours: row.overtimeHours,
     amount: row.estimatedPay,
+    payType: row.payType,
+    payBasis: row.payBasis,
   };
 }
 
@@ -417,6 +454,7 @@ export async function approveHours(
       approved_at: approvedAt,
       approved_by: actorEmail,
       ...(rules ? { overtime_threshold: rules.overtimeThreshold, rounding_rule: rules.rounding } : {}),
+      ...(snapshot.payType ? { pay_type: snapshot.payType, pay_basis: snapshot.payBasis ?? null } : {}),
     })),
   );
 

@@ -23,7 +23,7 @@ function dayLabel(iso: string): string {
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-function EntryRow({ line, note }: { line: MyPayLine; note?: string }) {
+function EntryRow({ line, note, showMoney }: { line: MyPayLine; note?: string; showMoney: boolean }) {
   return (
     <li className="mypay-entry">
       <div className="mypay-entry-main">
@@ -33,7 +33,11 @@ function EntryRow({ line, note }: { line: MyPayLine; note?: string }) {
       </div>
       <div className="mypay-entry-figures">
         <strong>{hoursLabel(line.hours)}</strong>
-        <span>{line.rate > 0 ? money(line.amount) : 'No rate'}</span>
+        {/* Only hourly staff are paid per entry. Putting a figure on each line
+            for a salaried or day-rate person invites adding them up, and the
+            total would not be what they're paid — it would be the cost their
+            time put on those jobs, which is a different question entirely. */}
+        {showMoney ? <span>{line.rate > 0 ? money(line.amount) : 'No rate'}</span> : null}
       </div>
     </li>
   );
@@ -75,10 +79,19 @@ export default async function MyPayPage() {
           <strong className="mypay-amount">{standing.headline}</strong>
           <p className="mypay-detail">{standing.detail}</p>
           <p className="mypay-rate">
-            {view.rate > 0 ? (
-              <>Your rate is {money(view.rate)}/h</>
+            {view.payType === 'hourly' ? (
+              view.rate > 0 ? (
+                <>Your rate is {money(view.rate)}/h</>
+              ) : (
+                <>No hourly rate is set for you yet — ask your manager, or your hours will total nothing.</>
+              )
             ) : (
-              <>No hourly rate is set for you yet — ask your manager, or your hours will total nothing.</>
+              // Salary and day rate: say the basis, because the amount above
+              // deliberately isn't the timesheet total and looks wrong without it.
+              <>
+                {view.rateLabel}
+                {view.payBasis ? ` · ${view.payBasis}` : ''}
+              </>
             )}
           </p>
         </section>
@@ -125,7 +138,11 @@ export default async function MyPayPage() {
 
         <section className="field-section">
           <h2 className="field-section-title">
-            {approved.length > 0 ? 'What was approved' : 'This period'} · {hoursLabel(approved.length > 0 ? check.approvedHours : check.loggedHours)}
+            {/* For anyone not paid by the hour these entries are the WORK, not
+                the arithmetic behind the amount — calling them "what was
+                approved" would imply they add up to it, and they don't. */}
+            {view.payType !== 'hourly' ? 'Work logged' : approved.length > 0 ? 'What was approved' : 'This period'} ·{' '}
+            {hoursLabel(approved.length > 0 ? check.approvedHours : check.loggedHours)}
           </h2>
           {showing.length === 0 ? (
             <p className="field-empty">
@@ -138,6 +155,7 @@ export default async function MyPayPage() {
                   key={line.costId ?? `${line.loggedAt}-${line.hours}`}
                   line={line}
                   note={line.costId ? noteFor.get(line.costId) : undefined}
+                  showMoney={view.payType === 'hourly'}
                 />
               ))}
             </ul>
@@ -153,7 +171,7 @@ export default async function MyPayPage() {
             </p>
             <ul className="mypay-entries">
               {check.loggedAfter.map((line) => (
-                <EntryRow key={line.costId ?? `${line.loggedAt}-later`} line={line} />
+                <EntryRow key={line.costId ?? `${line.loggedAt}-later`} line={line} showMoney={view.payType === 'hourly'} />
               ))}
             </ul>
           </section>

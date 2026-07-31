@@ -5,6 +5,7 @@ import { listLaborEntries } from './labor-data';
 import { LABOR_RULE_COLUMNS, laborRulesFromAccount, roundHours, type AccountLaborRules } from './labor-settings';
 import { checkMyPay, toleranceFor, type MyPayCheck, type MyPayLine, type MyPayRecord, type MyPayStanding, myPayStanding } from './my-pay';
 import { PAY_DAY_COLUMNS, payDaySettingsFromAccount, payDayView, type PayDayView } from './pay-day';
+import { payBasisFromCrew, payRateLabel, type PayType } from './pay-types';
 
 // Reads for the crew member's own pay screen.
 //
@@ -48,6 +49,11 @@ export type MyPayView = {
   todayKey: string;
   rules: AccountLaborRules;
   rate: number;
+  /** "$28.00/h" or "$72,000.00/yr" — never the derived costing rate. */
+  rateLabel: string;
+  payType: PayType;
+  /** Why the amount is what it is. Shown when it isn't just hours × rate. */
+  payBasis: string;
   standing: MyPayStanding;
   payDay: PayDayView;
   /** This period's entries as they stand right now. */
@@ -71,7 +77,15 @@ export async function loadMyPay(
   supabase: SupabaseClient,
   admin: SupabaseClient,
   accountId: string,
-  crew: { id: string; hourly_rate: number | string | null },
+  crew: {
+    id: string;
+    name?: string;
+    role_label?: string | null;
+    hourly_rate: number | string | null;
+    pay_type?: unknown;
+    annual_salary?: unknown;
+    day_rate?: unknown;
+  },
   options?: { now?: Date },
 ): Promise<MyPayView> {
   const now = options?.now ?? new Date();
@@ -99,11 +113,18 @@ export async function loadMyPay(
     crewId: crew.id,
   });
 
-  // Summarized through exactly the rollup the owner's screen uses, so the two
-  // screens can never disagree about what a week came to.
+  // Summarized through exactly the rollup the owner's screen uses — including
+  // the pay basis, so a salaried crew member is not shown their timesheet total
+  // as if it were their pay.
+  const basis = payBasisFromCrew(crew);
   const summary = summarizeCrewLabor(entries, {
     overtimeThreshold: rules.overtimeThreshold,
     roundHours: rules.rounding === 'none' ? undefined : (value) => roundHours(value, rules.rounding),
+    payBasis: new Map([[crew.id, basis]]),
+    periodMode: period.mode,
+    periodDays: Math.round((new Date(period.endIso).getTime() - new Date(period.startIso).getTime()) / 86400000),
+    timeZone,
+    seedCrew: basis.payType === 'salary' ? [{ crewId: crew.id, name: crew.name ?? 'You', roleLabel: crew.role_label ?? null }] : [],
   });
   const mine = summary.rows.find((row) => row.crewId === crew.id) ?? null;
   const logged: MyPayLine[] = (mine?.entries ?? []).map((entry) => ({
@@ -142,6 +163,9 @@ export async function loadMyPay(
     todayKey,
     rules,
     rate: Number(crew.hourly_rate) || 0,
+    rateLabel: payRateLabel(basis),
+    payType: basis.payType,
+    payBasis: mine?.payBasis ?? '',
     standing,
     payDay,
     logged,

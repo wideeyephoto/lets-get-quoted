@@ -26,6 +26,7 @@ import {
 import { CREW_ROSTER_VIEW_COOKIE, CREW_THEME_COOKIE, CREW_VIEW_COOKIE, normalizeCrewTheme, normalizeCrewView, normalizeRosterView } from '@/lib/dashboard-views';
 import { listOutstandingPeriods, listPayEvents, listPeriodEntryLines, loadCrewPayContext } from '@/lib/crew-pay-data';
 import { PAY_DAY_COLUMNS, payDaySettingsFromAccount, payDayView, type PayDaySettings } from '@/lib/pay-day';
+import { payBasisFromCrew, payRateLabel } from '@/lib/pay-types';
 import { laborTotalsByCrew, listLaborEntries } from '@/lib/labor-data';
 import { LABOR_RULE_COLUMNS, LABOR_SETTINGS_COOKIE, laborRulesFromAccount, normalizeLaborSettings } from '@/lib/labor-settings';
 import { SHIFT_FLAG_HELP, SHIFT_FLAG_LABEL, formatClock, formatElapsed, openShiftFlag } from '@/lib/time-clock';
@@ -155,7 +156,12 @@ export default async function CrewLaborPage({
       photoUrl: member.photo_path ? photoUrls[member.photo_path] ?? null : null,
       roleLabel: member.role_label,
       hourlyRate: Number(member.hourly_rate) || 0,
-      rateLabel: Number(member.hourly_rate) > 0 ? `${formatMoney(Number(member.hourly_rate))}/hr` : 'No rate set',
+      payType: payBasisFromCrew(member).payType,
+      annualSalary: member.annual_salary == null ? null : Number(member.annual_salary),
+      dayRate: member.day_rate == null ? null : Number(member.day_rate),
+      // Reads from the pay basis, so a salaried member shows "$72,000.00/yr"
+      // rather than the derived hourly figure nobody typed.
+      rateLabel: payRateLabel(payBasisFromCrew(member)),
       phone: member.phone || null,
       phoneLabel: member.phone ? formatPhoneDashes(member.phone) : null,
       email: member.email,
@@ -212,6 +218,11 @@ export default async function CrewLaborPage({
           settings,
           crewId: searchParams.crew ?? null,
           includeOpenShifts: timeClockMode !== 'off',
+          // Not everyone is paid by the hour. Without this the rollup totals a
+          // salaried person from their timesheet, which is the bug pay types
+          // exist to fix.
+          crew,
+          timeZone,
         })
       : null;
 

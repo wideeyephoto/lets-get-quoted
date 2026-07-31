@@ -310,12 +310,21 @@ export function buildPayRows(
     const warnings: PayWarning[] = [];
 
     if (row.issues.includes('incomplete-time')) warnings.push('no-hours');
-    if (row.issues.includes('missing-rate')) warnings.push('missing-rate');
+    // Both of these are claims about MONEY, and both are false for anyone not
+    // paid by the hour. "Missing rate" says the pay figure is short by what
+    // those hours are worth — it isn't, a day-rate worker is paid by the day —
+    // and it is severity `block`, so it was refusing to let them be approved
+    // over a rate their pay never depended on. Overtime is the same shape one
+    // step milder. The hours themselves are still shown; only the wrong claim
+    // about them goes away.
+    if (row.overtimePaid) {
+      if (row.issues.includes('missing-rate')) warnings.push('missing-rate');
+      if (row.overtimeHours > 0) warnings.push('overtime');
+    }
     if (!row.crewId) warnings.push('unassigned');
     if (row.entries.some((entry) => !entry.jobId)) warnings.push('no-job');
     if (row.crewId && openShifts.has(row.crewId)) warnings.push('open-shift');
     if (row.entries.some((entry) => entry.hours > LONG_SHIFT_HOURS)) warnings.push('long-shift');
-    if (row.overtimeHours > 0) warnings.push('overtime');
 
     const approvedAmount = record && record.approvedAt ? record.approvedAmount : null;
     const paidAmount = record && record.paidAt ? record.paidAmount ?? 0 : null;

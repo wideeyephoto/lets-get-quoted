@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import { LABOR_SETTINGS_COOKIE, normalizeLaborSettings, roundHours } from '@/lib/labor-settings';
+import { normalizePayType } from '@/lib/pay-types';
 import { validateManualEnd } from '@/lib/time-clock';
 import { clockOut, getTimeEntry } from '@/lib/time-clock-data';
 import {
@@ -31,6 +32,29 @@ function optionalText(value: FormDataEntryValue | null): string | undefined {
   return text.length > 0 ? text : undefined;
 }
 
+function positiveAmount(value: FormDataEntryValue | null): number | null {
+  const parsed = Number((value ?? '').toString().trim());
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+/**
+ * How this person is paid, from the form.
+ *
+ * All three amount fields are posted every time (the form shows one and hides
+ * the rest), so only the one belonging to the chosen type is read. Reading them
+ * all would store a salary against somebody switched back to hourly, where it
+ * would be invisible and wrong.
+ */
+function payFromForm(formData: FormData) {
+  const payType = normalizePayType(formData.get('payType'));
+  return {
+    payType,
+    hourlyRate: positiveAmount(formData.get('hourlyRate')) ?? 0,
+    annualSalary: payType === 'salary' ? positiveAmount(formData.get('annualSalary')) : null,
+    dayRate: payType === 'day_rate' ? positiveAmount(formData.get('dayRate')) : null,
+  };
+}
+
 export async function createCrewAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
 
@@ -41,7 +65,6 @@ export async function createCrewAction(formData: FormData) {
     throw new Error('Name and phone are required to add a crew member.');
   }
 
-  const hourlyRateRaw = Number(formData.get('hourlyRate'));
   const photo = formData.get('photo');
   if (isCrewPhotoFile(photo)) validateCrewPhotoFile(photo);
 
@@ -50,7 +73,7 @@ export async function createCrewAction(formData: FormData) {
     phone,
     email: optionalText(formData.get('email')) ?? null,
     roleLabel: optionalText(formData.get('roleLabel')),
-    hourlyRate: Number.isFinite(hourlyRateRaw) && hourlyRateRaw > 0 ? hourlyRateRaw : 0,
+    ...payFromForm(formData),
   });
 
   // Seed a baseline consent row so a future STOP from this crew number has a
@@ -75,14 +98,12 @@ export async function updateCrewAction(crewId: string, formData: FormData) {
     throw new Error('Name and phone are required to update a crew member.');
   }
 
-  const hourlyRateRaw = Number(formData.get('hourlyRate'));
-
   await updateCrewMember(supabase, accountId, crewId, {
     name,
     phone,
     email: optionalText(formData.get('email')) ?? null,
     roleLabel: optionalText(formData.get('roleLabel')),
-    hourlyRate: Number.isFinite(hourlyRateRaw) && hourlyRateRaw > 0 ? hourlyRateRaw : 0,
+    ...payFromForm(formData),
   });
 
   // Where this person's day starts, for Plan my day. Geocoded precise-only:

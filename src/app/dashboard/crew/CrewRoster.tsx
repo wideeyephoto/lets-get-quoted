@@ -10,7 +10,9 @@ import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
 import { setRosterViewAction } from '@/app/dashboard/view-actions';
 import type { RosterView } from '@/lib/dashboard-views';
 import { rosterNextStep, rosterTotals } from '@/lib/crew-roster';
+import type { PayType } from '@/lib/pay-types';
 import CrewPhotoUpload from './CrewPhotoUpload';
+import PayTypeFields from './PayTypeFields';
 import {
   assignCrewToJobAction,
   createCrewAction,
@@ -37,6 +39,10 @@ export type CrewRow = {
   photoUrl: string | null;
   roleLabel: string;
   hourlyRate: number;
+  /** How they're paid. rateLabel reads from this, so it says "/yr" for a salary. */
+  payType: PayType;
+  annualSalary: number | null;
+  dayRate: number | null;
   rateLabel: string;
   phone: string | null;
   phoneLabel: string | null;
@@ -534,10 +540,7 @@ export default function CrewRoster({
               <label htmlFor="roleLabel">Role</label>
               <input id="roleLabel" name="roleLabel" placeholder="Laborer" />
             </div>
-            <div className="field">
-              <label htmlFor="hourlyRate">Hourly rate ($)</label>
-              <input id="hourlyRate" name="hourlyRate" type="number" min="0" step="0.01" placeholder="28" />
-            </div>
+            <PayTypeFields idPrefix="new" />
             <div className="field full">
               <label htmlFor="photo">Crew photo</label>
               <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp,image/avif" capture="environment" />
@@ -995,10 +998,13 @@ function CrewDrawer({ row, onClose, periodLabel }: { row: CrewRow; onClose: () =
               <label htmlFor={`roleLabel-${row.id}`}>Role</label>
               <input id={`roleLabel-${row.id}`} name="roleLabel" defaultValue={row.roleLabel} />
             </div>
-            <div className="field">
-              <label htmlFor={`hourlyRate-${row.id}`}>Hourly rate ($)</label>
-              <input id={`hourlyRate-${row.id}`} name="hourlyRate" type="number" min="0" step="0.01" defaultValue={row.hourlyRate} />
-            </div>
+            <PayTypeFields
+              idPrefix={row.id}
+              payType={row.payType}
+              hourlyRate={row.hourlyRate}
+              annualSalary={row.annualSalary ?? ''}
+              dayRate={row.dayRate ?? ''}
+            />
             <div className="field full">
               <label htmlFor={`startAddress-${row.id}`}>Starts the day at (optional)</label>
               {/* Plan my day measures this person's route from here instead of

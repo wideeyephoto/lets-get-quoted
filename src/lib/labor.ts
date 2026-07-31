@@ -13,6 +13,12 @@
 // nothing here invents one. created_at is the only date a labor entry has, so
 // it is what periods are cut on, and the UI says so rather than implying there
 // is a separate "worked on" date.
+//
+// NOT EVERYONE IS PAID BY THE HOUR. summarizeCrewLabor takes an optional map of
+// how each person is actually paid; without it every row is hourly and this
+// module behaves exactly as it did before pay types existed. See pay-types.ts.
+
+import { payBasisProblem, periodPay, type CrewPayBasis, type PayType } from './pay-types';
 
 export type LaborEntry = {
   id: string;
@@ -363,6 +369,16 @@ export type CrewLaborRow = {
   entryCount: number;
   issues: NonNullable<EntryIssue>[];
   entries: LaborEntryView[];
+  /** How this person is paid. 'hourly' unless the caller says otherwise. */
+  payType: PayType;
+  /** Why estimatedPay is that number, in words — frozen onto an approval. */
+  payBasis: string;
+  /** False for salary and day rate: hours past the threshold don't earn more. */
+  overtimePaid: boolean;
+  /** Distinct days they logged anything, counted in the account's zone. */
+  workedDays: number;
+  /** Why their pay can't be worked out, when it can't. */
+  payProblem: string | null;
 };
 
 export type LaborEntryView = {
@@ -398,9 +414,31 @@ function weekKey(iso: string): string {
  */
 export function summarizeCrewLabor(
   entries: LaborEntry[],
-  options?: { overtimeThreshold?: number; roundHours?: (hours: number) => number },
+  options?: {
+    overtimeThreshold?: number;
+    roundHours?: (hours: number) => number;
+    /**
+     * How each crew member is paid, keyed by crew id. Absent means everyone is
+     * hourly, which is exactly what this function did before pay types existed
+     * — every caller that doesn't care is unaffected.
+     */
+    payBasis?: Map<string, CrewPayBasis>;
+    /** The cadence a salary is divided by. */
+    periodMode?: PeriodMode;
+    /** Length of the period in days, for prorating a salary over a custom range. */
+    periodDays?: number;
+    /** Counting worked DAYS needs a zone — an 8pm shift is not the next day. */
+    timeZone?: string;
+    /**
+     * Crew who must appear whether or not they logged anything. A salaried
+     * person who logged no hours is still owed their salary, and a table built
+     * only from timesheets would leave them off the payroll entirely.
+     */
+    seedCrew?: Array<{ crewId: string; name: string; roleLabel: string | null }>;
+  },
 ): { rows: CrewLaborRow[]; totalHours: number; totalPay: number; totalOvertime: number; needsReview: number } {
   const threshold = options?.overtimeThreshold ?? DEFAULT_OVERTIME_THRESHOLD;
+  const periodMode = options?.periodMode ?? 'weekly';
   // Rounding changes what the hours ARE, so pay has to be recomputed from the
   // rounded figure rather than read off the stored amount — otherwise the table
   // would show 8.25 hours at $30 and a total of $242.50, which adds up to
@@ -409,8 +447,40 @@ export function summarizeCrewLabor(
   const round = options?.roundHours;
   const byCrew = new Map<
     string,
-    CrewLaborRow & { jobs: Set<string>; hoursByWeek: Map<string, number>; rates: Set<number> }
+    CrewLaborRow & { jobs: Set<string>; hoursByWeek: Map<string, number>; rates: Set<number>; days: Set<string> }
   >();
+
+  const blank = (crewId: string | null, name: string, roleLabel: string | null) => ({
+    crewId,
+    name,
+    roleLabel,
+    rate: null,
+    rateVaries: false,
+    hours: 0,
+    regularHours: 0,
+    overtimeHours: 0,
+    estimatedPay: 0,
+    jobIds: [] as string[],
+    entryCount: 0,
+    issues: [] as NonNullable<EntryIssue>[],
+    entries: [] as LaborEntryView[],
+    payType: 'hourly' as PayType,
+    payBasis: '',
+    overtimePaid: true,
+    workedDays: 0,
+    payProblem: null as string | null,
+    jobs: new Set<string>(),
+    hoursByWeek: new Map<string, number>(),
+    rates: new Set<number>(),
+    days: new Set<string>(),
+  });
+
+  // Salaried crew are owed whether or not a timesheet exists, so they are put
+  // on the table before any entry is read rather than only appearing if they
+  // happened to log something.
+  for (const seed of options?.seedCrew ?? []) {
+    if (!byCrew.has(seed.crewId)) byCrew.set(seed.crewId, blank(seed.crewId, seed.name, seed.roleLabel));
+  }
 
   for (const entry of entries) {
     const key = entry.crew_id ?? 'unassigned';
@@ -424,28 +494,16 @@ export function summarizeCrewLabor(
 
     const row =
       byCrew.get(key) ??
-      {
-        crewId: entry.crew_id ?? null,
-        name: entry.crew_name || (entry.crew_id ? 'Crew member' : 'Unassigned labor'),
-        roleLabel: entry.crew_role_label ?? null,
-        rate: null,
-        rateVaries: false,
-        hours: 0,
-        regularHours: 0,
-        overtimeHours: 0,
-        estimatedPay: 0,
-        jobIds: [],
-        entryCount: 0,
-        issues: [],
-        entries: [],
-        jobs: new Set<string>(),
-        hoursByWeek: new Map<string, number>(),
-        rates: new Set<number>(),
-      };
+      blank(
+        entry.crew_id ?? null,
+        entry.crew_name || (entry.crew_id ? 'Crew member' : 'Unassigned labor'),
+        entry.crew_role_label ?? null,
+      );
 
     row.hours += hours;
     row.estimatedPay += amount;
     row.entryCount += 1;
+    row.days.add(zonedDateKey(new Date(entry.created_at), options?.timeZone));
     if (entry.job_id) row.jobs.add(entry.job_id);
     if (rate > 0) row.rates.add(rate);
     if (issue && !row.issues.includes(issue)) row.issues.push(issue);
@@ -470,9 +528,21 @@ export function summarizeCrewLabor(
   }
 
   const rows: CrewLaborRow[] = [...byCrew.values()]
-    .map(({ jobs, hoursByWeek, rates, ...row }) => {
+    .map(({ jobs, hoursByWeek, rates, days, ...row }) => {
       const { regular, overtime } = splitOvertime(hoursByWeek, threshold);
       const rateList = [...rates];
+      const basis = row.crewId ? options?.payBasis?.get(row.crewId) : undefined;
+      // No basis means hourly, and hourly means the summed entry amounts —
+      // byte-for-byte what this function returned before pay types existed.
+      const pay = basis
+        ? periodPay(basis, {
+            mode: periodMode,
+            loggedAmount: row.estimatedPay,
+            workedDays: days.size,
+            periodDays: options?.periodDays,
+          })
+        : { amount: round2(row.estimatedPay), basis: 'Hours logged × rate', overtimePaid: true };
+
       return {
         ...row,
         rate: rateList.length === 1 ? rateList[0] : null,
@@ -480,7 +550,12 @@ export function summarizeCrewLabor(
         hours: round2(row.hours),
         regularHours: regular,
         overtimeHours: overtime,
-        estimatedPay: round2(row.estimatedPay),
+        estimatedPay: pay.amount,
+        payType: basis?.payType ?? 'hourly',
+        payBasis: pay.basis,
+        overtimePaid: pay.overtimePaid,
+        workedDays: days.size,
+        payProblem: basis ? payBasisProblem(basis) : null,
         jobIds: [...jobs],
         entries: row.entries.sort((a, b) => b.loggedAt.localeCompare(a.loggedAt)),
       };

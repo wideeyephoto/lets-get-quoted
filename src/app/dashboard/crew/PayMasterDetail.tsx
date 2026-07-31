@@ -15,6 +15,7 @@ import {
   type PayEvent,
 } from '@/lib/crew-pay';
 import type { PayEntryLine } from '@/lib/crew-pay-data';
+import { PAY_TYPE_LABEL } from '@/lib/pay-types';
 import styles from './crew.module.css';
 
 // Hours & pay as master-detail: pick one person on the left, see everything
@@ -216,19 +217,37 @@ export default function PayMasterDetail({
             <dd>{jobs.length > 0 ? `${jobs[0].ref} · ${jobs[0].clientName}` : <span className={styles.dim}>Not assigned</span>}</dd>
           </div>
           <div>
-            <dt>Pay rate</dt>
-            <dd>{selected.rate != null ? `${payMoney(selected.rate)} / hr` : selected.rateVaries ? 'Varies by entry' : <span className={styles.dim}>Not set</span>}</dd>
+            <dt>Paid</dt>
+            {/* selected.rate is what their hours were COSTED at, which for a
+                salaried person is derived. Naming their actual arrangement is
+                the honest answer to "pay rate". */}
+            <dd>
+              {selected.payType !== 'hourly'
+                ? PAY_TYPE_LABEL[selected.payType]
+                : selected.rate != null
+                  ? `${payMoney(selected.rate)} / hr`
+                  : selected.rateVaries
+                    ? 'Varies by entry'
+                    : <span className={styles.dim}>Not set</span>}
+            </dd>
           </div>
           <div>
             <dt>Hours</dt>
             <dd>
               {hoursLabel(selected.hours)}
-              {selected.overtimeHours > 0 ? <span className={styles.dim}> · OT {hoursLabel(selected.overtimeHours)}</span> : null}
+              {selected.overtimeHours > 0 ? (
+                <span className={styles.dim}>
+                  {selected.overtimePaid ? ` · OT ${hoursLabel(selected.overtimeHours)}` : ` · ${hoursLabel(selected.overtimeHours)} over`}
+                </span>
+              ) : null}
             </dd>
           </div>
           <div>
             <dt>Est. pay</dt>
-            <dd>{payMoney(selected.estimatedPay)}</dd>
+            <dd>
+              {payMoney(selected.estimatedPay)}
+              {selected.payType !== 'hourly' ? <span className={styles.dim}> · {selected.payBasis}</span> : null}
+            </dd>
           </div>
         </dl>
 
@@ -357,13 +376,28 @@ export default function PayMasterDetail({
               <dd>{hoursLabel(selected.regularHours)}</dd>
             </div>
             <div>
-              <dt>Overtime hours</dt>
+              {/* "Overtime" is a claim about money. For salary and day rate the
+                  hours are real and the extra pay isn't, so the label changes
+                  rather than the number being hidden. */}
+              <dt>{selected.overtimePaid ? 'Overtime hours' : `Hours over ${selected.regularHours > 0 ? 'the threshold' : 'standard'}`}</dt>
               <dd>{selected.overtimeHours > 0 ? hoursLabel(selected.overtimeHours) : '—'}</dd>
             </div>
             <div>
               <dt>Est. pay</dt>
               <dd>{payMoney(selected.estimatedPay)}</dd>
             </div>
+            {selected.payType !== 'hourly' ? (
+              <div>
+                <dt>Basis</dt>
+                <dd>{selected.payBasis}</dd>
+              </div>
+            ) : null}
+            {selected.payProblem ? (
+              <div>
+                <dt>Needs attention</dt>
+                <dd>{selected.payProblem}</dd>
+              </div>
+            ) : null}
             {record?.approvedAmount != null ? (
               <div>
                 <dt>Approved at</dt>

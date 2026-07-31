@@ -326,6 +326,36 @@ alter table crew add column if not exists deleted_at timestamptz;
 alter table crew add column if not exists email text;
 create index if not exists crew_email_idx on crew (account_id, lower(email));
 
+-- How this person is actually paid. Everything in the app used to compute money
+-- as hours × rate, so a salaried foreman or a day-rate sub had to be entered as
+-- fake hours and the overtime threshold was applied to a number that was never
+-- hours. hourly_rate stays NOT NULL and keeps its job — but for a non-hourly
+-- person it is no longer what they're PAID, it's what an hour of their time
+-- COSTS A JOB, derived by the app (salary ÷ 2080, day rate ÷ 8) so job costing,
+-- the field app and margin all keep working untouched. See src/lib/pay-types.ts.
+alter table crew add column if not exists pay_type text not null default 'hourly';
+-- Nullable on purpose: a salary of 0 and "no salary recorded" are different
+-- things, and defaulting either to zero would quietly pay somebody nothing.
+alter table crew add column if not exists annual_salary numeric(12,2);
+alter table crew add column if not exists day_rate numeric(10,2);
+
+do $$ begin
+  alter table crew add constraint crew_pay_type_check
+    check (pay_type in ('hourly', 'salary', 'day_rate'));
+exception when duplicate_object then null; end $$;
+
+-- A pay type with nothing behind it would total to zero every period without
+-- ever saying why.
+do $$ begin
+  alter table crew add constraint crew_pay_amount_check
+    check (pay_type <> 'salary' or (annual_salary is not null and annual_salary > 0));
+exception when duplicate_object then null; end $$;
+
+do $$ begin
+  alter table crew add constraint crew_day_rate_check
+    check (pay_type <> 'day_rate' or (day_rate is not null and day_rate > 0));
+exception when duplicate_object then null; end $$;
+
 -- ----------------------------------------------------------------------------
 -- SITES  — the published website config for an account.
 -- ----------------------------------------------------------------------------
@@ -2049,6 +2079,19 @@ create table if not exists crew_pay_entries (
   constraint crew_pay_entries_paid_check check (status <> 'paid' or (paid_at is not null and payment_date is not null))
 );
 create unique index if not exists crew_pay_entries_unique_idx on crew_pay_entries (period_id, crew_id);
+
+-- The rules an amount was actually computed under, frozen with it. Nullable:
+-- entries approved before these existed genuinely do not know, and inventing a
+-- value for them would be worse than admitting it.
+alter table crew_pay_entries add column if not exists overtime_threshold numeric(6,2);
+alter table crew_pay_entries add column if not exists rounding_rule text;
+-- And the BASIS. For an hourly person the frozen lines add up to the amount;
+-- for a salaried one they deliberately do not, so without this "why is this
+-- $1,384.62" has no answer six months later — the salary may have changed
+-- since. pay_basis is human-readable on purpose: a machine could recompute it
+-- from the numbers, a person reading a dispute could not.
+alter table crew_pay_entries add column if not exists pay_type text;
+alter table crew_pay_entries add column if not exists pay_basis text;
 
 -- The entries an approved amount was built from, frozen as they were then.
 -- Without them an adjustment can say "$60 more than agreed" and never say which

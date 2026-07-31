@@ -36,6 +36,7 @@ import {
   type PeriodComparison,
   type PeriodTotals,
 } from '@/lib/crew-pay';
+import { PAY_TYPE_LABEL } from '@/lib/pay-types';
 import { EXPORT_FORMAT_LABEL, ROUNDING_LABEL, type LaborSettings } from '@/lib/labor-settings';
 import { TIME_CLOCK_MODES, type TimeClockMode } from '@/lib/time-clock';
 import SaveButton from '@/components/save-button';
@@ -1128,7 +1129,17 @@ export default function HoursAndPay({
                               <strong>{row.name}</strong>
                               <small>
                                 {row.roleLabel ?? 'Crew'}
-                                {row.rate ? ` · ${payMoney(row.rate)}/hr` : row.rateVaries ? ' · rates vary' : ''}
+                                {/* row.rate is the rate their HOURS were logged
+                                    at, which for a salaried person is a derived
+                                    costing figure nobody typed. Say how they're
+                                    actually paid instead. */}
+                                {row.payType !== 'hourly'
+                                  ? ` · ${PAY_TYPE_LABEL[row.payType]}`
+                                  : row.rate
+                                    ? ` · ${payMoney(row.rate)}/hr`
+                                    : row.rateVaries
+                                      ? ' · rates vary'
+                                      : ''}
                               </small>
                             </span>
                           </button>
@@ -1164,10 +1175,18 @@ export default function HoursAndPay({
                         ) : null}
                         <td className={styles.num} data-label="Hours this period">
                           <strong>{hoursLabel(row.hours)}</strong>
-                          {row.overtimeHours > 0 ? <small className={styles.otCell}>OT {hoursLabel(row.overtimeHours)}</small> : null}
+                          {/* Hours past the threshold are still worth knowing
+                              about for a salaried person — it's just not money.
+                              "Over 40h" says the fact without implying a rate. */}
+                          {row.overtimeHours > 0 ? (
+                            <small className={styles.otCell}>
+                              {row.overtimePaid ? `OT ${hoursLabel(row.overtimeHours)}` : `+${hoursLabel(row.overtimeHours)} over`}
+                            </small>
+                          ) : null}
                         </td>
                         <td className={`${styles.num} ${styles.payCell}`} data-label="Estimated pay">
                           <strong>{payMoney(row.estimatedPay)}</strong>
+                          {row.payType !== 'hourly' ? <small className={styles.dim}>{row.payBasis}</small> : null}
                           {row.adjustment !== 0 ? (
                             <small
                               className={styles.adjust}

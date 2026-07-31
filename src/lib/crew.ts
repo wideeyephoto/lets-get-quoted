@@ -1,4 +1,5 @@
 import { geocodeAddress } from '@/lib/geocode';
+import { costingRate, normalizePayType, type PayType } from '@/lib/pay-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type CrewMember = {
@@ -21,6 +22,13 @@ export type CrewMember = {
   start_address?: string | null;
   start_lat?: number | null;
   start_lng?: number | null;
+  // How they're actually paid. Optional in the type for the same reason as
+  // above — a pre-migration read returns rows without these. `hourly_rate`
+  // stays populated for everyone: for a non-hourly person it stops being what
+  // they're paid and becomes what an hour of their time costs a job.
+  pay_type?: string | null;
+  annual_salary?: number | null;
+  day_rate?: number | null;
 };
 
 export type CrewInput = {
@@ -30,7 +38,44 @@ export type CrewInput = {
   roleLabel?: string;
   hourlyRate?: number;
   photoPath?: string | null;
+  payType?: PayType;
+  annualSalary?: number | null;
+  dayRate?: number | null;
 };
+
+/**
+ * The pay columns to write, with hourly_rate derived for non-hourly types.
+ *
+ * Derived rather than asked for twice: moving somebody onto a salary should not
+ * leave every job they touch costed at the hourly rate they used to have, and
+ * making the owner keep two numbers in step by hand guarantees they drift.
+ * Only the amount belonging to the chosen type is stored — a stale salary left
+ * on somebody switched back to hourly would be invisible and wrong.
+ */
+function payColumns(input: CrewInput): Record<string, unknown> {
+  const payType = normalizePayType(input.payType);
+  const annualSalary = payType === 'salary' ? input.annualSalary ?? null : null;
+  const dayRate = payType === 'day_rate' ? input.dayRate ?? null : null;
+  const basis = { payType, hourlyRate: input.hourlyRate ?? 0, annualSalary, dayRate };
+  return {
+    pay_type: payType,
+    annual_salary: annualSalary,
+    day_rate: dayRate,
+    hourly_rate: costingRate(basis),
+  };
+}
+
+/**
+ * Write the pay columns, and fall back to hourly-only if they don't exist yet.
+ *
+ * Pre-migration, `pay_type` is an unknown column and PostgREST rejects the
+ * whole write — which would mean an owner cannot save a crew member's NAME
+ * until the migration has run. Losing the pay type is recoverable; losing the
+ * edit is not.
+ */
+function isMissingColumn(error: { code?: string } | null): boolean {
+  return error?.code === '42703' || error?.code === 'PGRST204';
+}
 
 function cleanEmail(email: string | null | undefined): string | null {
   const value = (email ?? '').trim().toLowerCase();
@@ -110,22 +155,31 @@ export async function createCrewMember(
   accountId: string,
   input: CrewInput
 ): Promise<CrewMember> {
+  const base = {
+    account_id: accountId,
+    name: input.name,
+    phone: input.phone,
+    email: cleanEmail(input.email),
+    role_label: input.roleLabel?.trim() || 'Laborer',
+    photo_path: input.photoPath ?? null,
+  };
+
   const { data, error } = await supabase
     .from('crew')
-    .insert({
-      account_id: accountId,
-      name: input.name,
-      phone: input.phone,
-      email: cleanEmail(input.email),
-      role_label: input.roleLabel?.trim() || 'Laborer',
-      hourly_rate: input.hourlyRate ?? 0,
-      photo_path: input.photoPath ?? null,
-    })
+    .insert({ ...base, ...payColumns(input) })
     .select('*')
     .single();
 
-  if (error || !data) throw error ?? new Error('Unable to add crew member');
-  return data as CrewMember;
+  if (!error && data) return data as CrewMember;
+  if (!isMissingColumn(error)) throw error ?? new Error('Unable to add crew member');
+
+  const retry = await supabase
+    .from('crew')
+    .insert({ ...base, hourly_rate: input.hourlyRate ?? 0 })
+    .select('*')
+    .single();
+  if (retry.error || !retry.data) throw retry.error ?? new Error('Unable to add crew member');
+  return retry.data as CrewMember;
 }
 
 export async function updateCrewMember(
@@ -134,23 +188,34 @@ export async function updateCrewMember(
   crewId: string,
   input: CrewInput
 ): Promise<CrewMember> {
+  const base = {
+    name: input.name,
+    phone: input.phone,
+    email: cleanEmail(input.email),
+    role_label: input.roleLabel?.trim() || 'Laborer',
+  };
   const { data, error } = await supabase
     .from('crew')
-    .update({
-      name: input.name,
-      phone: input.phone,
-      email: cleanEmail(input.email),
-      role_label: input.roleLabel?.trim() || 'Laborer',
-      hourly_rate: input.hourlyRate ?? 0,
-    })
+    .update({ ...base, ...payColumns(input) })
     .eq('account_id', accountId)
     .eq('id', crewId)
     .is('deleted_at', null)
     .select('*')
     .single();
 
-  if (error || !data) throw error ?? new Error('Unable to update crew member');
-  return data as CrewMember;
+  if (!error && data) return data as CrewMember;
+  if (!isMissingColumn(error)) throw error ?? new Error('Unable to update crew member');
+
+  const retry = await supabase
+    .from('crew')
+    .update({ ...base, hourly_rate: input.hourlyRate ?? 0 })
+    .eq('account_id', accountId)
+    .eq('id', crewId)
+    .is('deleted_at', null)
+    .select('*')
+    .single();
+  if (retry.error || !retry.data) throw retry.error ?? new Error('Unable to update crew member');
+  return retry.data as CrewMember;
 }
 
 // Resolve the crew member linked to a logged-in auth user (for the field app).
