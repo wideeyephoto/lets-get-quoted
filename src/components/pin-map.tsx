@@ -108,7 +108,7 @@ function makeIcon(g: typeof google.maps, color: string, active: boolean, mini = 
 export default function PinMap({ pins, variant = 'large', theme = 'dark', legendAccessory, focusPinId = null, onPinClick }: { pins: MapPin[]; variant?: 'large' | 'mini'; theme?: 'dark' | 'light'; legendAccessory?: ReactNode; focusPinId?: string | null; onPinClick?: (pin: MapPin) => void }) {
   const mini = variant === 'mini';
   const containerRef = useRef<HTMLDivElement>(null);
-  const markersRef = useRef<{ id: string; marker: google.maps.Marker }[]>([]);
+  const markersRef = useRef<{ id: string; kind: MapPinKind; marker: google.maps.Marker }[]>([]);
   const mapRef = useRef<google.maps.Map | null>(null);
   // Held in a ref because the map is built once per pin-set (the effect keys on
   // `sig`), so a handler captured in that closure would go stale.
@@ -117,6 +117,19 @@ export default function PinMap({ pins, variant = 'large', theme = 'dark', legend
   const gRef = useRef<typeof google.maps | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [selected, setSelected] = useState<MapPin | null>(null);
+  // Which pin kinds are switched off, by clicking their legend entry. Held per
+  // map rather than saved: it's a "let me see this without the noise" gesture
+  // while you work, not a setting.
+  const [hidden, setHidden] = useState<Set<MapPinKind>>(new Set());
+
+  // How many of each kind, so a legend entry says what turning it off costs —
+  // and so a kind with nothing on the map can't be toggled at all.
+  const counts = useMemo(() => {
+    const tally: Record<MapPinKind, number> = { lead: 0, unscheduled: 0, scheduled: 0 };
+    for (const pin of pins) tally[pin.kind] += 1;
+    return tally;
+  }, [pins]);
+  const visibleCount = pins.filter((pin) => !hidden.has(pin.kind)).length;
 
   // Re-init only when the actual pin set changes (parent passes a fresh array each render).
   const sig = useMemo(() => `${theme}|` + pins.map((p) => `${p.id}:${p.lat},${p.lng}:${p.kind}`).join('|'), [pins, theme]);
@@ -174,7 +187,7 @@ export default function PinMap({ pins, variant = 'large', theme = 'dark', legend
             // assuming a navigation.
             onPinClickRef.current?.(pin);
           });
-          markersRef.current.push({ id: pin.id, marker });
+          markersRef.current.push({ id: pin.id, kind: pin.kind, marker });
         }
         // Large map only: clicking empty map closes the detail card.
         if (!mini) map.addListener('click', () => setSelected(null));
@@ -234,6 +247,17 @@ export default function PinMap({ pins, variant = 'large', theme = 'dark', legend
 
   // Emphasize the selected marker + wire Escape-to-close (large map only).
   useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    for (const { kind, marker } of markersRef.current) {
+      marker.setMap(hidden.has(kind) ? null : map);
+    }
+    // A card left open over a pin that's no longer drawn is a card about
+    // nothing.
+    setSelected((current) => (current && hidden.has(current.kind) ? null : current));
+  }, [hidden, sig]);
+
+  useEffect(() => {
     if (mini) return;
     const g = gRef.current;
     if (g) {
@@ -285,15 +309,55 @@ export default function PinMap({ pins, variant = 'large', theme = 'dark', legend
         <div className="pin-map-empty">No mapped locations yet — addresses are geocoded as leads and jobs come in.</div>
       ) : null}
       {status === 'error' ? <div className="pin-map-empty">Map unavailable.</div> : null}
+      {/* The legend is the filter. It already names every kind of pin and shows
+          its colour, so making it clickable adds a control without adding a
+          control — and on a busy map "just the leads" is the first thing
+          anybody wants. */}
       <div className="pin-map-legend">
-        {LEGEND.map((kind) => (
-          <span key={kind} className="pin-map-legend-item">
-            <span className="pin-map-dot" style={{ background: PIN_COLORS[kind] }} aria-hidden="true" />
-            {KIND_LABEL[kind]}
-          </span>
-        ))}
+        {LEGEND.map((kind) => {
+          const count = counts[kind];
+          const off = hidden.has(kind);
+          return (
+            <button
+              key={kind}
+              type="button"
+              className="pin-map-legend-item"
+              aria-pressed={!off}
+              data-off={off || undefined}
+              disabled={count === 0}
+              title={
+                count === 0
+                  ? `No ${KIND_LABEL[kind].toLowerCase()} pins on this map`
+                  : off
+                    ? `Show ${KIND_LABEL[kind].toLowerCase()}`
+                    : `Hide ${KIND_LABEL[kind].toLowerCase()}`
+              }
+              onClick={() =>
+                setHidden((current) => {
+                  const next = new Set(current);
+                  if (next.has(kind)) next.delete(kind);
+                  else next.add(kind);
+                  return next;
+                })
+              }
+            >
+              <span className="pin-map-dot" style={{ background: PIN_COLORS[kind] }} aria-hidden="true" />
+              {KIND_LABEL[kind]}
+              <b>{count}</b>
+            </button>
+          );
+        })}
+        {hidden.size > 0 ? (
+          <button type="button" className="pin-map-legend-reset" onClick={() => setHidden(new Set())}>
+            Show all
+          </button>
+        ) : null}
         {legendAccessory ? <span className="pin-map-legend-accessory">{legendAccessory}</span> : null}
       </div>
+      {/* Every pin switched off looks identical to a broken map otherwise. */}
+      {pins.length > 0 && visibleCount === 0 ? (
+        <p className="pin-map-allhidden">All pin types are hidden. Turn one back on in the legend.</p>
+      ) : null}
     </div>
   );
 }
