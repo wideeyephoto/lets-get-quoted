@@ -345,6 +345,10 @@ create table if not exists jobs (
 
   lead_source   lead_source,
   scheduled_for date,
+  -- Last day the job runs, for work that spans days. NULL means a single day,
+  -- or fall back to estimating the span from estimated_hours. Held on the job
+  -- so the calendar can't be reshaped by changing the account's daily capacity.
+  scheduled_until date,
   scheduled_time time,
   estimated_hours numeric(8,2),
 

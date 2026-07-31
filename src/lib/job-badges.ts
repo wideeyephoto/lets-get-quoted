@@ -155,7 +155,7 @@ export function buildPipelineChecklist(
     {
       key: 'schedule',
       label: milestones.scheduled ? 'Scheduled / underway' : 'Schedule the work',
-      detail: job.scheduled_for ? formatJobSchedule(job.scheduled_for, job.scheduled_time) : 'No date set',
+      detail: job.scheduled_for ? formatJobSchedule(job.scheduled_for, job.scheduled_time, job.scheduled_until) : 'No date set',
       complete: milestones.scheduled,
       href: `/dashboard/jobs/${job.id}?open=scheduling#job-scheduling`,
     },

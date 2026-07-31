@@ -3,6 +3,8 @@
 import { useRef, useState } from 'react';
 import FloatingPanel from '@/components/floating-panel';
 
+type QuickDateOption = { label: string; value: string };
+
 type ScheduledDatePickerProps = {
   id: string;
   name: string;
@@ -11,6 +13,17 @@ type ScheduledDatePickerProps = {
   // Accepted for API compatibility; no longer needed now that the calendar
   // floats in a portal and is never clipped by a scrolling ancestor.
   scrollIntoViewOnOpen?: boolean;
+  /** Reported on every change so a parent can drive a dependent field. */
+  onChange?: (value: string) => void;
+  /** Controlled value. Omit to leave the picker uncontrolled, as it was. */
+  value?: string;
+  /** Small caption above the chosen date. */
+  displayLabel?: string;
+  /** Replaces Today / Tomorrow / Next Mon / Next Fri. */
+  quickOptions?: QuickDateOption[];
+  clearLabel?: string;
+  /** Earliest selectable day, as a YYYY-MM-DD key. Earlier days are disabled. */
+  min?: string;
 };
 
 function dateToKey(date: Date): string {
@@ -83,19 +96,32 @@ function addMonths(date: Date, months: number): Date {
   return new Date(date.getFullYear(), date.getMonth() + months, 1);
 }
 
-export default function ScheduledDatePicker({ id, name, defaultValue = '', required = false }: ScheduledDatePickerProps) {
-  const [selectedDate, setSelectedDate] = useState(defaultValue);
+export default function ScheduledDatePicker({
+  id,
+  name,
+  defaultValue = '',
+  required = false,
+  onChange,
+  value,
+  displayLabel = 'Date',
+  quickOptions,
+  clearLabel = 'Clear date',
+  min,
+}: ScheduledDatePickerProps) {
+  const [internalDate, setInternalDate] = useState(defaultValue);
+  const selectedDate = value ?? internalDate;
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState(() => dateFromKey(defaultValue) ?? new Date());
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const quickDateOptions = buildQuickDateOptions(required);
+  const quickDateOptions = quickOptions ?? buildQuickDateOptions(required);
   const calendarCells = buildCalendarCells(visibleMonth);
   const todayKey = dateToKey(new Date());
   const monthLabel = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(visibleMonth);
 
-  function updateSelectedDate(value: string) {
-    setSelectedDate(value);
-    const nextDate = dateFromKey(value);
+  function updateSelectedDate(nextValue: string) {
+    setInternalDate(nextValue);
+    onChange?.(nextValue);
+    const nextDate = dateFromKey(nextValue);
     if (nextDate) setVisibleMonth(nextDate);
   }
 
@@ -103,7 +129,7 @@ export default function ScheduledDatePicker({ id, name, defaultValue = '', requi
     <div className="scheduled-date-picker">
       <div className="modern-date-control">
         <div className="modern-date-display" aria-hidden="true">
-          <span>Date</span>
+          <span>{displayLabel}</span>
           <strong>{formatDateLabel(selectedDate)}</strong>
         </div>
         <input id={id} name={name} type="hidden" value={selectedDate} />
@@ -136,6 +162,9 @@ export default function ScheduledDatePicker({ id, name, defaultValue = '', requi
                   <button
                     key={cell.dateKey}
                     type="button"
+                    // Date keys are zero-padded, so a string compare is a date
+                    // compare — no parsing, no timezone to get wrong.
+                    disabled={Boolean(min) && cell.dateKey < min!}
                     className={[cell.dateKey === selectedDate ? 'selected' : '', cell.dateKey === todayKey ? 'today' : ''].filter(Boolean).join(' ') || undefined}
                     onClick={() => {
                       updateSelectedDate(cell.dateKey);
@@ -148,7 +177,7 @@ export default function ScheduledDatePicker({ id, name, defaultValue = '', requi
               </div>
               {!required ? (
                 <button type="button" className="modern-calendar-clear" onClick={() => { updateSelectedDate(''); setIsCalendarOpen(false); }}>
-                  Clear date
+                  {clearLabel}
                 </button>
               ) : null}
           </FloatingPanel>

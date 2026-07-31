@@ -6047,6 +6047,17 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-top: 1rem; }
 .form-grid .full { grid-column: 1 / -1; }
+
+/* A job's start and end are one fact. Left to the parent grid's flow they land
+   in different columns AND different rows — diagonal from each other, which is
+   the last thing a date range should look like. */
+.job-date-range {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 0.8rem;
+  align-items: start;
+}
 .field { display: flex; flex-direction: column; gap: 0.3rem; }
 .field label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255,255,255,0.55); }
 .field input, .field select, .field textarea {

@@ -44,6 +44,9 @@ export type Job = {
   scope: string | null;
   status: JobStatus;
   scheduled_for: string | null;
+  // Last day the job runs. Optional on the type, not just nullable, because it
+  // arrives undefined until migrations/2026-07-30-job-end-date.sql has run.
+  scheduled_until?: string | null;
   scheduled_time: string | null;
   estimated_hours: number | null;
   quoted_amount: number;
@@ -103,6 +106,7 @@ export type JobInput = {
   scope?: string | null;
   status?: JobStatus;
   scheduledFor?: string | null;
+  scheduledUntil?: string | null;
   scheduledTime?: string | null;
   estimatedHours?: number | null;
   quotedAmount?: number;
@@ -206,20 +210,68 @@ export function formatJobTime(time: string | null): string | null {
   return `${displayHour}:${String(minute).padStart(2, '0')} ${suffix}`;
 }
 
-export function formatJobSchedule(scheduledFor: string | null, scheduledTime?: string | null): string {
+function jobDateLabel(dateKey: string, withYear = true): string {
+  const date = new Date(`${dateKey}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return dateKey;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...(withYear ? { year: 'numeric' } : {}) });
+}
+
+export function formatJobSchedule(
+  scheduledFor: string | null,
+  scheduledTime?: string | null,
+  scheduledUntil?: string | null
+): string {
   if (!scheduledFor) return 'Not yet scheduled';
-  const date = new Date(`${scheduledFor}T00:00:00`);
-  const dateLabel = Number.isNaN(date.getTime())
-    ? scheduledFor
-    : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
   const timeLabel = formatJobTime(scheduledTime ?? null);
+  const span = daysBetweenInclusive(scheduledFor, scheduledUntil);
+
+  if (span && span > 1 && scheduledUntil) {
+    // Year once, on the end, unless the job runs across New Year.
+    const sameYear = scheduledFor.slice(0, 4) === scheduledUntil.slice(0, 4);
+    const range = `${jobDateLabel(scheduledFor, !sameYear)} – ${jobDateLabel(scheduledUntil)}`;
+    const withTime = timeLabel ? `${range} at ${timeLabel}` : range;
+    return `${withTime} (${span} days)`;
+  }
+
+  const dateLabel = jobDateLabel(scheduledFor);
   return timeLabel ? `${dateLabel} at ${timeLabel}` : dateLabel;
 }
 
+/**
+ * Inclusive day count between two date keys, or null if it isn't a real range.
+ * Rounded rather than floored because a DST boundary inside the range makes the
+ * difference 23 or 25 hours, and flooring would silently drop a day.
+ */
+export function daysBetweenInclusive(start: string | null | undefined, end: string | null | undefined): number | null {
+  if (!start || !end) return null;
+  const from = new Date(`${start}T00:00:00`);
+  const to = new Date(`${end}T00:00:00`);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return null;
+  const days = Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1;
+  return days >= 1 ? days : null;
+}
+
+/**
+ * How many calendar days a job occupies.
+ *
+ * An end date the owner typed wins outright — including on finished jobs, where
+ * the derived span deliberately collapses to one day. A guess about a job
+ * that's over is noise; a range somebody entered is a fact, and quietly
+ * shrinking it is the same complaint as the capacity field reshaping the
+ * calendar.
+ *
+ * With no end date this falls back to ceil(hours / capacity), which is what the
+ * whole calendar did before the column existed — so jobs written before the
+ * migration, and jobs nobody has given a range, behave exactly as they did.
+ */
 export function getJobScheduleSpanDays(
-  job: Pick<Job, 'status' | 'estimated_hours'>,
+  job: Pick<Job, 'status' | 'estimated_hours' | 'scheduled_until'> & Partial<Pick<Job, 'scheduled_for'>>,
   workDayHours: number
 ): number {
+  const entered = daysBetweenInclusive(job.scheduled_for, job.scheduled_until);
+  if (entered) return entered;
+
   if (job.status === 'complete' || job.status === 'archived') return 1;
   const dayHours = Number.isFinite(workDayHours) && workDayHours > 0 ? workDayHours : 8;
   const estimatedHours = Number(job.estimated_hours) || 0;
@@ -232,14 +284,34 @@ export function addDaysToDateKey(dateKey: string, days: number): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
-export type ScheduledJobOccurrence<T extends Pick<Job, 'scheduled_for' | 'status' | 'estimated_hours'>> = Omit<
-  T,
-  'scheduled_for'
-> & {
+export type SchedulableJob = Pick<Job, 'scheduled_for' | 'status' | 'estimated_hours' | 'scheduled_until'>;
+
+// Columns any caller needs to work out how many days a job occupies. Two
+// spellings because scheduled_until arrives with
+// migrations/2026-07-30-job-end-date.sql, and naming a column PostgREST
+// doesn't know fails the WHOLE select — which, on the booking path, reads as
+// "no jobs are scheduled" and offers every day as free.
+export const SPAN_COLUMNS = 'scheduled_for, scheduled_until, status, estimated_hours';
+export const SPAN_COLUMNS_BEFORE_END_DATE = 'scheduled_for, status, estimated_hours';
+
+/**
+ * True when a query failed only because the end-date migration is pending.
+ *
+ * Two codes, because PostgREST reports the same missing column differently
+ * depending on the verb: a SELECT surfaces Postgres's own 42703
+ * (undefined_column), while an INSERT/UPDATE is rejected earlier against the
+ * schema cache as PGRST204. Checking only the read code let every job save
+ * throw before the migration ran.
+ */
+export function isMissingEndDateColumn(error: { code?: string } | null | undefined): boolean {
+  return error?.code === '42703' || error?.code === 'PGRST204';
+}
+
+export type ScheduledJobOccurrence<T extends SchedulableJob> = Omit<T, 'scheduled_for'> & {
   scheduled_for: string;
 };
 
-export function expandScheduledJobs<T extends Pick<Job, 'scheduled_for' | 'status' | 'estimated_hours'>>(
+export function expandScheduledJobs<T extends SchedulableJob>(
   jobs: T[],
   workDayHours: number
 ): ScheduledJobOccurrence<T>[] {
@@ -666,36 +738,62 @@ export async function importJobs(
   return { imported, duplicates, skipped };
 }
 
-export async function updateJob(
+/**
+ * Patch a job, tolerating scheduled_until not existing yet.
+ *
+ * That column arrives with migrations/2026-07-30-job-end-date.sql. Until it's
+ * run, PostgREST rejects the WHOLE update for one unknown column — which would
+ * break saving a job at all, not just its end date. So an undefined-column
+ * error retries once without it.
+ */
+async function patchJob(
   supabase: SupabaseClient,
   accountId: string,
   jobId: string,
-  input: JobInput
+  patch: Record<string, unknown>
 ): Promise<Job> {
-  const { data, error } = await supabase
-    .from('jobs')
-    .update({
-      client_name: input.clientName,
-      client_phone: input.clientPhone ?? null,
-      client_email: input.clientEmail ?? null,
-      address: input.address ?? null,
-      scope: input.scope ?? null,
-      status: input.status ?? 'new_lead',
-      scheduled_for: input.scheduledFor ?? null,
-      scheduled_time: input.scheduledTime ?? null,
-      estimated_hours: input.estimatedHours ?? null,
-      quoted_amount: input.quotedAmount ?? 0,
-    })
-    .eq('account_id', accountId)
-    .eq('id', jobId)
-    .select('*')
-    .single();
+  const run = (body: Record<string, unknown>) =>
+    supabase.from('jobs').update(body).eq('account_id', accountId).eq('id', jobId).select('*').single();
+
+  let { data, error } = await run(patch);
+  if (isMissingEndDateColumn(error) && 'scheduled_until' in patch) {
+    const withoutEndDate = { ...patch };
+    delete withoutEndDate.scheduled_until;
+    ({ data, error } = await run(withoutEndDate));
+  }
 
   if (error || !data) {
     throw error ?? new Error('Unable to update job');
   }
 
   return data as Job;
+}
+
+export async function updateJob(
+  supabase: SupabaseClient,
+  accountId: string,
+  jobId: string,
+  input: JobInput
+): Promise<Job> {
+  const scheduledFor = input.scheduledFor ?? null;
+  // An end date without a start, or one that lands before it, would draw a
+  // job backwards. Dropped rather than rejected: the field is optional help,
+  // not something worth failing a whole job save over.
+  const scheduledUntil = daysBetweenInclusive(scheduledFor, input.scheduledUntil ?? null) ? input.scheduledUntil : null;
+
+  return patchJob(supabase, accountId, jobId, {
+    client_name: input.clientName,
+    client_phone: input.clientPhone ?? null,
+    client_email: input.clientEmail ?? null,
+    address: input.address ?? null,
+    scope: input.scope ?? null,
+    status: input.status ?? 'new_lead',
+    scheduled_for: scheduledFor,
+    scheduled_until: scheduledUntil,
+    scheduled_time: input.scheduledTime ?? null,
+    estimated_hours: input.estimatedHours ?? null,
+    quoted_amount: input.quotedAmount ?? 0,
+  });
 }
 
 export async function deleteJob(supabase: SupabaseClient, accountId: string, jobId: string): Promise<void> {
@@ -715,19 +813,18 @@ export async function updateJobSchedule(
   scheduledFor: string | null,
   scheduledTime: string | null
 ): Promise<Job> {
-  const { data, error } = await supabase
-    .from('jobs')
-    .update({ scheduled_for: scheduledFor, scheduled_time: scheduledTime })
-    .eq('account_id', accountId)
-    .eq('id', jobId)
-    .select('*')
-    .single();
+  // Moving a 3-day job has to keep it 3 days. Dragging it across the calendar
+  // is a reschedule, not a re-estimate — so read the current range and carry
+  // its length to the new start date.
+  const current = await getJob(supabase, accountId, jobId);
+  const span = daysBetweenInclusive(current?.scheduled_for, current?.scheduled_until);
+  const scheduledUntil = scheduledFor && span && span > 1 ? addDaysToDateKey(scheduledFor, span - 1) : null;
 
-  if (error || !data) {
-    throw error ?? new Error('Unable to update job schedule.');
-  }
-
-  return data as Job;
+  return patchJob(supabase, accountId, jobId, {
+    scheduled_for: scheduledFor,
+    scheduled_until: scheduledUntil,
+    scheduled_time: scheduledTime,
+  });
 }
 
 // Appends newly uploaded photo paths to the job's existing gallery.

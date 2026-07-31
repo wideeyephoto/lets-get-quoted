@@ -1,5 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { createJob, expandScheduledJobs, addDaysToDateKey } from '@/lib/jobs';
+import {
+  createJob,
+  expandScheduledJobs,
+  addDaysToDateKey,
+  daysBetweenInclusive,
+  isMissingEndDateColumn,
+  SPAN_COLUMNS,
+  SPAN_COLUMNS_BEFORE_END_DATE,
+  type SchedulableJob,
+} from '@/lib/jobs';
 import { createLead, type Lead } from '@/lib/leads';
 import { getAccountOwnerEmail, sendLeadNotificationEmail, sendBookingConfirmationEmail } from '@/lib/email';
 import { bookingAvailabilityFromAccount, windowsForTimes, timeToMinutes, type BookingAvailability } from '@/lib/booking-availability';
@@ -93,13 +102,16 @@ export async function getAvailableBookingDays(admin: SupabaseClient, accountId: 
   const availability = bookingAvailabilityFromAccount(account);
   const scheduleDayHours = availability.capacityHours;
 
-  const [{ data: jobs }, { data: blocks }] = await Promise.all([
+  const scheduledJobs = (columns: string) =>
     admin
       .from('jobs')
-      .select('scheduled_for, scheduled_time, status, estimated_hours')
+      .select(columns)
       .eq('account_id', accountId)
       .not('scheduled_for', 'is', null)
-      .neq('status', 'archived'),
+      .neq('status', 'archived');
+
+  const [withEndDate, { data: blocks }] = await Promise.all([
+    scheduledJobs(`${SPAN_COLUMNS}, scheduled_time`),
     admin
       .from('availability_blocks')
       .select('start_date, end_date')
@@ -107,7 +119,18 @@ export async function getAvailableBookingDays(admin: SupabaseClient, accountId: 
       .gte('end_date', utcDateKey(new Date())),
   ]);
 
-  const occurrences = expandScheduledJobs(jobs ?? [], scheduleDayHours);
+  // Before the end-date migration, asking for scheduled_until fails the select
+  // and the data comes back null — which would tell the booking page that
+  // nothing is scheduled and offer every slot on a fully booked day.
+  const jobs = isMissingEndDateColumn(withEndDate.error)
+    ? (await scheduledJobs(`${SPAN_COLUMNS_BEFORE_END_DATE}, scheduled_time`)).data
+    : withEndDate.data;
+
+  // The column list is built at runtime (see the fallback above), so PostgREST
+  // can't infer the row shape — assert the one we asked for.
+  const jobRows = (jobs ?? []) as unknown as Array<SchedulableJob & { scheduled_time: string | null }>;
+
+  const occurrences = expandScheduledJobs(jobRows, scheduleDayHours);
   const countByDate = new Map<string, number>();
   const takenByDate = new Map<string, Set<string>>();
   for (const occurrence of occurrences) {
@@ -122,7 +145,7 @@ export async function getAvailableBookingDays(admin: SupabaseClient, accountId: 
   }
 
   // Per-day scheduled hours (est + buffer), spread across a multi-day job's span.
-  const hoursByDate = computeHoursByDate(jobs ?? [], availability.capacityHours, availability.bufferMinutes);
+  const hoursByDate = computeHoursByDate(jobRows, availability.capacityHours, availability.bufferMinutes);
   const blockedDates = expandBlockedDates(blocks ?? [], LOOKAHEAD_DAYS + 1);
 
   return computeBookingDays({ availability, countByDate, hoursByDate, takenByDate, blockedDates, now: new Date() });
@@ -132,7 +155,7 @@ export async function getAvailableBookingDays(admin: SupabaseClient, accountId: 
 // days it spans, capped at the daily capacity — the input to the hours-based
 // auto-block. A job with no hours contributes nothing here (the count cap covers it).
 export function computeHoursByDate(
-  jobs: Array<{ scheduled_for: string | null; estimated_hours?: number | string | null }>,
+  jobs: Array<{ scheduled_for: string | null; scheduled_until?: string | null; estimated_hours?: number | string | null }>,
   capacityHours: number,
   bufferMinutes: number,
 ): Map<string, number> {
@@ -141,8 +164,27 @@ export function computeHoursByDate(
   const hoursByDate = new Map<string, number>();
   for (const job of jobs) {
     if (!job.scheduled_for) continue;
-    let remaining = (Number(job.estimated_hours) || 0) + bufferHours;
-    if (remaining <= 0) continue;
+    const total = (Number(job.estimated_hours) || 0) + bufferHours;
+    if (total <= 0) continue;
+
+    // An entered range says which days the work occupies, so spread the hours
+    // evenly across exactly those days. Packing full capacity into the first
+    // ones (below) would leave the back end of a booked-out week looking free.
+    // Even, not capped-per-day: six hours over three days is genuinely two a
+    // day, and should still leave room to book alongside it.
+    const entered = daysBetweenInclusive(job.scheduled_for, job.scheduled_until);
+    if (entered && entered > 1) {
+      const perDay = Math.min(cap, total / entered);
+      for (let offset = 0; offset < entered; offset++) {
+        const key = addDaysToDateKey(job.scheduled_for, offset);
+        hoursByDate.set(key, (hoursByDate.get(key) ?? 0) + perDay);
+      }
+      continue;
+    }
+
+    // No range entered: fall back to filling day after day at capacity, which
+    // is what every job did before the end date existed.
+    let remaining = total;
     for (let offset = 0; remaining > 0 && offset < 60; offset++) {
       const key = addDaysToDateKey(job.scheduled_for, offset);
       hoursByDate.set(key, (hoursByDate.get(key) ?? 0) + Math.min(remaining, cap));

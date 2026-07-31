@@ -844,11 +844,16 @@ export default async function SettingsPage({
                     <p className="eyebrow">Scheduling</p>
                     <h2>Working hours &amp; capacity</h2>
                   </div>
+                  {/* Deliberately says what this does NOT control. It used to
+                      decide how many calendar days a job took up, which meant
+                      editing one number here redrew every job on the schedule.
+                      Job length lives on the job now. */}
                   <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-                    These drive the calendar and your online booking. Once a day&apos;s booked hours reach your
-                    daily capacity, that day auto-fills and stops offering slots — and online booking only offers
-                    arrival windows inside your working hours. The buffer is added to each job so back-to-back
-                    visits leave travel time.
+                    These decide when a day is <strong>full</strong> and what your online booking offers. Once a
+                    day&apos;s booked hours reach your daily capacity, that day stops offering slots — and booking only
+                    offers arrival windows inside your working hours. The buffer is added to each job so back-to-back
+                    visits leave travel time. How many days a job takes is set on the job itself, under{' '}
+                    <strong>Scheduled for</strong> and <strong>Runs through</strong>.
                   </p>
                   <form action={updateScheduleDayHoursAction} className="form-grid compact-form">
                     <div className="field">

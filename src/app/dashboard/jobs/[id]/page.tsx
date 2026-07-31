@@ -40,6 +40,7 @@ import JobExpenseFields from '@/components/job-expense-fields';
 import SaveButton, { ScrollTopOnSaveProvider } from '@/components/save-button';
 import QuickFillButtons from '@/components/quick-fill-buttons';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
+import JobDateRange from '@/components/job-date-range';
 import TimeSlotSelect from '@/components/time-slot-select';
 import AddExpenseModal, { CloseOnSuccess } from './AddExpenseModal';
 import QuoteDeliveryBanner from './QuoteDeliveryBanner';
@@ -222,7 +223,7 @@ export default async function JobDetailPage({
               <span>
                 <strong>
                   <Link href={`/dashboard/jobs/${job.id}?edit=client#job-details`}>
-                    {formatJobSchedule(job.scheduled_for, job.scheduled_time)}
+                    {formatJobSchedule(job.scheduled_for, job.scheduled_time, job.scheduled_until)}
                   </Link>
                 </strong>{' '}
                 Date(s) of Service
@@ -688,10 +689,12 @@ export default async function JobDetailPage({
                   ]}
                 />
               </div>
-              <div className="field">
-                <label htmlFor="scheduledFor">Scheduled for</label>
-                <ScheduledDatePicker id="scheduledFor" name="scheduledFor" defaultValue={job.scheduled_for ?? ''} />
-              </div>
+              <JobDateRange
+                startName="scheduledFor"
+                endName="scheduledUntil"
+                startDefault={job.scheduled_for ?? ''}
+                endDefault={job.scheduled_until ?? ''}
+              />
               <div className="field">
                 <label htmlFor="scheduledTime">Time of day</label>
                 <TimeSlotSelect id="scheduledTime" name="scheduledTime" defaultValue={job.scheduled_time?.slice(0, 5) ?? ''} />
@@ -710,6 +713,9 @@ export default async function JobDetailPage({
                     { label: '40 hrs', value: '40' },
                   ]}
                 />
+                {/* Labor and margin now; it stopped deciding calendar days when
+                    the job gained a real end date. */}
+                <p className="job-meta">Used for labor cost and margin — not for how many days this blocks.</p>
               </div>
               <div className="field">
                 <label htmlFor="quotedAmount">Quoted amount ($)</label>
@@ -729,7 +735,7 @@ export default async function JobDetailPage({
                 </label>
               </div>
               <div className="field full">
-                <p className="workspace-card-copy">Current schedule: {formatJobSchedule(job.scheduled_for, job.scheduled_time)}</p>
+                <p className="workspace-card-copy">Current schedule: {formatJobSchedule(job.scheduled_for, job.scheduled_time, job.scheduled_until)}</p>
               </div>
               <div className="field full">
                 <SaveButton>Save changes</SaveButton>

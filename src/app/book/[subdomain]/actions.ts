@@ -15,7 +15,7 @@ import {
   claimBookingHold,
   type BookingDay,
 } from '@/lib/booking';
-import { expandScheduledJobs } from '@/lib/jobs';
+import { expandScheduledJobs, isMissingEndDateColumn, SPAN_COLUMNS, SPAN_COLUMNS_BEFORE_END_DATE, type SchedulableJob } from '@/lib/jobs';
 import { geocodeAddress } from '@/lib/geocode';
 import { coordOf, nearestMiles, type LatLng } from '@/lib/distance';
 import { driveDistances } from '@/lib/drive-time';
@@ -97,16 +97,27 @@ async function rankNearby(
   const leadCoord = geo?.precise ? { lat: geo.lat, lng: geo.lng } : null;
   if (!leadCoord) return days.map((day) => ({ ...day, nearby: false }));
 
-  const { data: anchorJobs } = await admin
-    .from('jobs')
-    .select('scheduled_for, estimated_hours, status, lat, lng')
-    .eq('account_id', accountId)
-    .not('scheduled_for', 'is', null)
-    .neq('status', 'archived')
-    .not('lat', 'is', null);
+  const anchorQuery = (columns: string) =>
+    admin
+      .from('jobs')
+      .select(columns)
+      .eq('account_id', accountId)
+      .not('scheduled_for', 'is', null)
+      .neq('status', 'archived')
+      .not('lat', 'is', null);
+
+  // Same pre-migration guard as the availability query — a failed select here
+  // would quietly drop every anchor and rank no day as nearby.
+  const withEndDate = await anchorQuery(`${SPAN_COLUMNS}, lat, lng`);
+  const anchorJobs = isMissingEndDateColumn(withEndDate.error)
+    ? (await anchorQuery(`${SPAN_COLUMNS_BEFORE_END_DATE}, lat, lng`)).data
+    : withEndDate.data;
+
+  // Runtime column list (see the fallback above) defeats PostgREST's inference.
+  const anchorRows = (anchorJobs ?? []) as unknown as Array<SchedulableJob & { lat: number | null; lng: number | null }>;
 
   const anchorsByDate = new Map<string, LatLng[]>();
-  for (const occ of expandScheduledJobs(anchorJobs ?? [], opts.scheduleDayHours)) {
+  for (const occ of expandScheduledJobs(anchorRows, opts.scheduleDayHours)) {
     const coord = coordOf(occ);
     if (!coord) continue;
     const list = anchorsByDate.get(occ.scheduled_for) ?? [];

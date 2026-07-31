@@ -135,6 +135,7 @@ export async function updateJobAction(jobId: string, formData: FormData) {
     scope: optionalText(formData.get('scope')),
     status: (formData.get('status') as JobStatus) || 'new_lead',
     scheduledFor: optionalText(formData.get('scheduledFor')),
+    scheduledUntil: optionalText(formData.get('scheduledUntil')),
     scheduledTime: optionalText(formData.get('scheduledTime')),
     estimatedHours: optionalAmount(formData.get('estimatedHours')),
     quotedAmount: parseAmount(formData.get('quotedAmount')),
