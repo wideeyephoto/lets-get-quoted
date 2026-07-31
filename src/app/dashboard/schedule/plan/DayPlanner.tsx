@@ -64,6 +64,12 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
   // lock this doesn't protect a promised time — it just stops a stop sliding
   // around while they rearrange the rest.
   const [pinned, setPinned] = useState<Set<string>>(new Set());
+  // The stop the contractor wants to end the day on — the dump run, the supply
+  // pickup on the way home. Deliberately a PREFERENCE and not a lock: the
+  // optimizer puts it last and the toggle moves it there, but nothing stops a
+  // job being dragged after it, because the day changes. When it stops being
+  // last the row says so out loud instead of quietly rearranging itself.
+  const [preferredLastId, setPreferredLastId] = useState<string | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
   // A supply store picked off the map, waiting to be turned into a real stop.
   const [prefill, setPrefill] = useState<NearbyPlace | null>(null);
@@ -94,17 +100,34 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
     });
   }, [stopSignature, payload.stops, payload.currentOrder]);
 
+  // A stop taken off the day can't still be the one you're ending on.
+  useEffect(() => {
+    if (preferredLastId && !payload.stops.some((stop) => stop.id === preferredLastId)) setPreferredLastId(null);
+  }, [payload.stops, preferredLastId]);
+
+  // A preferred last stop is honoured by the optimizer's offer, so the route it
+  // proposes is one the contractor would actually accept — and the miles and
+  // minutes shown against it are the real cost of ending there.
+  const endLast = useCallback(
+    (ids: string[]) =>
+      preferredLastId && ids.includes(preferredLastId)
+        ? [...ids.filter((id) => id !== preferredLastId), preferredLastId]
+        : ids,
+    [preferredLastId],
+  );
+
   const plan = useMemo(() => costOrder(payload, order), [payload, order]);
-  const optimized = useMemo(() => costOrder(payload, payload.optimizedOrder), [payload]);
+  const optimizedOrder = useMemo(() => endLast(payload.optimizedOrder), [endLast, payload.optimizedOrder]);
+  const optimized = useMemo(() => costOrder(payload, optimizedOrder), [payload, optimizedOrder]);
   const current = useMemo(() => costOrder(payload, payload.currentOrder), [payload]);
 
-  const isOptimized = sameOrder(order, payload.optimizedOrder);
+  const isOptimized = sameOrder(order, optimizedOrder);
   const isCurrent = sameOrder(order, payload.currentOrder);
   // The optimizer minimizes driving MINUTES, so judging its offer on miles alone
   // meant a genuinely quicker order could be dismissed with "we couldn't find a
   // shorter route" while we were holding one. Offer it when it wins on either.
   const optimizerHelps =
-    !sameOrder(payload.currentOrder, payload.optimizedOrder) &&
+    !sameOrder(payload.currentOrder, optimizedOrder) &&
     (optimized.minutes < current.minutes - 0.5 || optimized.miles < current.miles - 0.05);
 
   // What Save schedule would actually write. A confirmed appointment is never in
@@ -199,8 +222,26 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
   }
 
   function resetToOptimized() {
-    if (sameOrder(order, payload.optimizedOrder)) return;
-    commit(payload.optimizedOrder);
+    if (sameOrder(order, optimizedOrder)) return;
+    commit(optimizedOrder);
+  }
+
+  // Setting a preferred last stop moves it there now — a toggle that changed a
+  // label and nothing else would leave the contractor to do the drag anyway.
+  function togglePreferredLast(stopId: string) {
+    setMenuFor(null);
+    if (preferredLastId === stopId) {
+      setPreferredLastId(null);
+      return;
+    }
+    setPreferredLastId(stopId);
+    moveToEnd(stopId);
+  }
+
+  function moveToEnd(stopId: string) {
+    setMenuFor(null);
+    const next = [...order.filter((id) => id !== stopId), stopId];
+    if (!sameOrder(next, order)) commit(next);
   }
 
   function togglePin(stopId: string) {
@@ -265,7 +306,7 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
               savedMinutes={Math.round(current.minutes - optimized.minutes)}
               driveTimeSource={payload.driveTimeSource}
               driveTimeSkipped={payload.driveTimeSkipped}
-              onApplyOptimized={() => commit(payload.optimizedOrder)}
+              onApplyOptimized={() => commit(optimizedOrder)}
             />
 
             <dl className="plan-stat-row">
@@ -372,6 +413,8 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
                 dragActive={dragId !== null}
                 blocksDrag={dragId !== null && dragId !== entry.stop.id && pinned.has(entry.stop.id)}
                 pinned={pinned.has(entry.stop.id)}
+                preferredLast={preferredLastId === entry.stop.id}
+                actuallyLast={index === plan.planned.length - 1}
                 anchoredToHome={payload.anchor === 'home_base'}
                 routeStop={isRouteStopId(entry.stop.id) ? routeStopById.get(routeStopUuid(entry.stop.id)) ?? null : null}
                 dateKey={payload.dateKey}
@@ -379,6 +422,8 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
                 menuOpen={menuFor === entry.stop.id}
                 onMenu={(open) => setMenuFor(open ? entry.stop.id : null)}
                 onTogglePin={() => togglePin(entry.stop.id)}
+                onTogglePreferredLast={() => togglePreferredLast(entry.stop.id)}
+                onMoveToEnd={() => moveToEnd(entry.stop.id)}
                 onNudge={(direction) => nudge(index, direction)}
                 onDragStart={() => handleDragStart(entry.stop.id)}
                 onDragEnd={handleDragEnd}
@@ -668,6 +713,8 @@ function StopRow({
   dragActive,
   blocksDrag,
   pinned,
+  preferredLast,
+  actuallyLast,
   anchoredToHome,
   routeStop,
   dateKey,
@@ -675,6 +722,8 @@ function StopRow({
   menuOpen,
   onMenu,
   onTogglePin,
+  onTogglePreferredLast,
+  onMoveToEnd,
   onNudge,
   onDragStart,
   onDragEnd,
@@ -689,6 +738,10 @@ function StopRow({
   dragActive: boolean;
   blocksDrag: boolean;
   pinned: boolean;
+  /** The contractor wants to end the day here. A preference, not a lock. */
+  preferredLast: boolean;
+  /** Whether it IS last right now — which, being a preference, it may not be. */
+  actuallyLast: boolean;
   anchoredToHome: boolean;
   // Set when this row is a supply stop rather than a job.
   routeStop: RouteStop | null;
@@ -697,6 +750,8 @@ function StopRow({
   menuOpen: boolean;
   onMenu: (open: boolean) => void;
   onTogglePin: () => void;
+  onTogglePreferredLast: () => void;
+  onMoveToEnd: () => void;
   onNudge: (direction: -1 | 1) => void;
   onDragStart: () => void;
   onDragEnd: () => void;
@@ -718,6 +773,7 @@ function StopRow({
     blocksDrag ? 'is-blocking' : '',
     stop.locked ? 'is-locked' : '',
     pinned ? 'is-pinned' : '',
+    preferredLast && !actuallyLast ? 'is-adrift' : '',
     routeStop ? 'is-errand' : '',
   ]
     .filter(Boolean)
@@ -783,6 +839,25 @@ function StopRow({
           <span className="plan-badge errand" title="Not a job — a stop on the way. It costs time and miles but bills nobody.">
             {KIND_LABEL[routeStop.kind]}
           </span>
+        ) : null}
+        {/* A preference, so it can be wrong — and when it is, saying so is the
+            whole value. Silently dragging it back would be the same as not
+            letting the day change, which days do. */}
+        {preferredLast ? (
+          actuallyLast ? (
+            <span className="plan-badge last" title="Where you want to end the day. The optimizer keeps it here, but you can still put something after it.">
+              Last stop
+            </span>
+          ) : (
+            <button
+              type="button"
+              className="plan-badge last is-adrift"
+              onClick={onMoveToEnd}
+              title="You wanted to finish here, but something is scheduled after it now. Click to move it back to the end."
+            >
+              Meant to be last — move it back
+            </button>
+          )
         ) : null}
         {stop.locked ? (
           <span
@@ -855,6 +930,12 @@ function StopRow({
               {pinned ? 'Unlock this stop' : 'Lock this stop here'}
             </button>
           ) : null}
+          {/* Offered on a customer-confirmed stop too: a 4 PM appointment is
+              often exactly the one you mean to end on, and saying so costs
+              nothing — this never moves a confirmed time, only the order. */}
+          <button type="button" className="plan-stop-menu-item" onClick={onTogglePreferredLast}>
+            {preferredLast ? 'Not my last stop' : 'Make this my last stop'}
+          </button>
           {target ? (
             <a
               className="plan-stop-menu-item"

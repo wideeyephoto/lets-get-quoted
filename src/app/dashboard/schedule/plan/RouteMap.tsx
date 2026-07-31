@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { loadMapsLibrary } from '@/lib/google-maps-loader';
+import { supplyBrand, type SupplyBrand } from '@/lib/supply-brands';
 import type { LatLng } from '@/lib/distance';
 
 export type MapStop = { id: string; label: string; lat: number; lng: number; locked: boolean };
@@ -52,13 +53,33 @@ const HOME_SVG = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
 )}`;
 
 // Deliberately smaller and flatter than a stop pin: these are suggestions on the
-// side of the road, not part of the day.
-const SUPPLY_SVG = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
-    <circle cx="11" cy="11" r="9" fill="#0f1c2b" stroke="#7dd3fc" stroke-width="2"/>
-    <path d="M8 7.5 14.5 14M13.5 7 8.5 12" stroke="#7dd3fc" stroke-width="1.8" stroke-linecap="round"/>
-  </svg>`,
-)}`;
+// side of the road, not part of the day. But which store it is matters — "the
+// orange one" is how anybody actually navigates to a Home Depot — so each chain
+// gets its own colour and initials rather than one anonymous marker. See
+// supply-brands.ts for why those aren't the real logos.
+const supplyIconCache = new Map<string, string>();
+
+function supplyMarkerSvg(brand: SupplyBrand): string {
+  const cached = supplyIconCache.get(brand.key);
+  if (cached) return cached;
+
+  const mark = brand.short
+    ? `<text x="14" y="18.4" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="${
+        brand.short.length >= 3 ? 8.5 : brand.short.length === 2 ? 11 : 13.5
+      }" font-weight="800" letter-spacing="-0.4" fill="${brand.fg}" text-anchor="middle">${brand.short}</text>`
+    : // No chain matched: a storefront, not a guess at whose it is.
+      `<path d="M7.5 9.5h13l-1.3 3.2H8.8z" fill="${brand.fg}"/>
+       <path d="M9 13.2h10v6.3H9z" fill="none" stroke="${brand.fg}" stroke-width="1.6"/>`;
+
+  const url = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
+      <rect x="2" y="2" width="24" height="24" rx="7.5" fill="${brand.bg}" stroke="#0b1725" stroke-width="2"/>
+      ${mark}
+    </svg>`,
+  )}`;
+  supplyIconCache.set(brand.key, url);
+  return url;
+}
 
 export type NearbyPlace = { label: string; address: string; lat: number; lng: number };
 
@@ -297,13 +318,14 @@ export default function RouteMap({
         if (cancelled || !mapRef.current || !window.google) return;
 
         for (const place of found.values()) {
+          const brand = supplyBrand(place.label);
           const marker = new window.google.maps.Marker({
             map: mapRef.current,
             position: { lat: place.lat, lng: place.lng },
             icon: {
-              url: SUPPLY_SVG,
-              scaledSize: new window.google.maps.Size(22, 22),
-              anchor: new window.google.maps.Point(11, 11),
+              url: supplyMarkerSvg(brand),
+              scaledSize: new window.google.maps.Size(24, 24),
+              anchor: new window.google.maps.Point(12, 12),
             },
             title: onAddPlace ? `${place.label} — click to add as a stop` : place.label,
             zIndex: 5,

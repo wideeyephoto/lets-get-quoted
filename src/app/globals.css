@@ -9275,6 +9275,26 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 .plan-badge.pinned { background: rgba(125, 211, 252, 0.16); color: #bae6fd; }
 .plan-badge.flexible { background: rgba(255, 255, 255, 0.07); color: rgba(255, 255, 255, 0.58); }
 .plan-badge.flexible::before { content: '↕'; font-weight: 800; }
+
+/* Where the day is meant to end. Violet because it's neither a lock (green)
+   nor a warning (amber) — it's an intention, and it can be out of date. */
+.plan-badge.last { background: rgba(167, 139, 250, 0.18); color: #ddd6fe; }
+.plan-badge.last::before { content: '🏁'; font-size: 0.68rem; }
+
+/* Once it isn't last any more the badge becomes the fix: one click puts it
+   back at the end. So it has to look pressable, not decorative. */
+button.plan-badge.last.is-adrift {
+  border: 1px solid rgba(255, 209, 102, 0.5);
+  background: rgba(255, 209, 102, 0.14);
+  color: #ffd591;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+button.plan-badge.last.is-adrift:hover { background: rgba(255, 209, 102, 0.24); }
+button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.8); outline-offset: 2px; }
+.plan-stop.is-adrift { box-shadow: inset 3px 0 0 rgba(255, 209, 102, 0.75); }
 .plan-badge.warn { background: rgba(251, 191, 36, 0.18); color: #fde68a; white-space: normal; }
 
 .plan-stop-actions {
