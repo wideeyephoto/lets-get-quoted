@@ -100,6 +100,16 @@ export default async function FieldHomePage() {
         <h1 className="field-greeting">Hi {firstName} 👋</h1>
         <FieldPwa />
 
+        {/* Deliberately above the jobs. Somebody checking what they're owed
+            shouldn't have to scroll past a week of work to find it. */}
+        <Link href="/field/pay" className="field-paylink">
+          <span>
+            <strong>My pay</strong>
+            Your hours this period, and when they&apos;re due
+          </span>
+          <span aria-hidden="true">›</span>
+        </Link>
+
         {jobs.length === 0 ? (
           <p className="field-empty">You have no assigned jobs right now. When your manager assigns you to a job, it&apos;ll show up here.</p>
         ) : (

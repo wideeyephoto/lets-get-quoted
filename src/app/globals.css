@@ -8558,6 +8558,99 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 .field-main .btn { width: 100%; }
 .field-actions-row form { flex: 1; min-width: 140px; }
 
+/* -- Field: my pay ------------------------------------------------ */
+/* The crew member's own hours and money. Reuses the field shell, so  */
+/* only what is genuinely new to this screen lives here.              */
+
+.field-paylink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin: 0 0 1.4rem;
+  padding: 0.95rem 1.1rem;
+  border: 1px solid rgba(190, 242, 100, 0.32);
+  border-radius: 14px;
+  background: rgba(190, 242, 100, 0.07);
+  color: inherit;
+  text-decoration: none;
+}
+.field-paylink:active { background: rgba(190, 242, 100, 0.12); }
+.field-paylink strong { display: block; font-size: 1.02rem; margin-bottom: 0.15rem; }
+.field-paylink span { font-size: 0.84rem; color: rgba(255, 255, 255, 0.66); line-height: 1.45; }
+.field-paylink > span:last-child { font-size: 1.5rem; color: rgba(255, 255, 255, 0.4); }
+
+.mypay-standing {
+  padding: 1.1rem 1.2rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  margin-bottom: 1rem;
+}
+/* The tone comes from the pay day, so an overdue period reads as overdue from  */
+/* the home screen rather than looking like every other week.                   */
+.mypay-standing.tone-ok { border-color: rgba(72, 199, 142, 0.4); background: rgba(72, 199, 142, 0.08); }
+.mypay-standing.tone-warn { border-color: rgba(251, 191, 36, 0.42); background: rgba(251, 191, 36, 0.08); }
+.mypay-standing.tone-alert { border-color: rgba(248, 113, 113, 0.5); background: rgba(248, 113, 113, 0.1); }
+
+.mypay-stage {
+  display: block;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: rgba(255, 255, 255, 0.5);
+}
+.mypay-amount { display: block; margin: 0.35rem 0 0; font-size: 1.75rem; font-variant-numeric: tabular-nums; }
+.mypay-detail { margin: 0.4rem 0 0; font-size: 0.92rem; line-height: 1.5; color: rgba(255, 255, 255, 0.82); }
+.mypay-rate { margin: 0.6rem 0 0; font-size: 0.82rem; color: rgba(255, 255, 255, 0.55); line-height: 1.45; }
+
+.mypay-live {
+  margin: 0 0 1rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 11px;
+  border: 1px solid rgba(72, 199, 142, 0.4);
+  background: rgba(72, 199, 142, 0.09);
+  font-size: 0.87rem;
+  line-height: 1.5;
+}
+
+.mypay-flag {
+  display: block;
+  margin: 0 0 1.4rem;
+  padding: 0.9rem 1.05rem;
+  border-radius: 14px;
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  background: rgba(251, 191, 36, 0.09);
+}
+.mypay-flag strong { display: block; font-size: 0.95rem; }
+.mypay-flag p { margin: 0.35rem 0 0; font-size: 0.88rem; line-height: 1.5; color: rgba(255, 255, 255, 0.84); }
+.mypay-flag-list { margin: 0.6rem 0 0; padding-left: 1.05rem; display: grid; gap: 0.35rem; }
+.mypay-flag-list li { font-size: 0.84rem; line-height: 1.45; color: rgba(255, 255, 255, 0.72); }
+
+.mypay-entries, .mypay-history { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.55rem; }
+
+.mypay-entry, .mypay-history li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.9rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+.mypay-entry-main strong, .mypay-history strong { display: block; font-size: 0.92rem; }
+.mypay-entry-when, .mypay-history li span { display: block; margin-top: 0.15rem; font-size: 0.78rem; color: rgba(255, 255, 255, 0.5); }
+.mypay-entry-note { display: block; margin-top: 0.2rem; font-size: 0.78rem; color: rgba(251, 191, 36, 0.9); }
+.mypay-entry-figures { text-align: right; white-space: nowrap; }
+.mypay-entry-figures strong { display: block; font-size: 0.92rem; font-variant-numeric: tabular-nums; }
+.mypay-entry-figures span { display: block; margin-top: 0.15rem; font-size: 0.8rem; color: #bef264; font-variant-numeric: tabular-nums; }
+.mypay-history-when { text-align: right; white-space: nowrap; font-size: 0.78rem; color: rgba(255, 255, 255, 0.5); }
+
+.mypay-aside { margin: 0 0 0.6rem; font-size: 0.84rem; line-height: 1.5; color: rgba(255, 255, 255, 0.6); }
+.mypay-foot { margin: 1.6rem 0 0.9rem; font-size: 0.82rem; line-height: 1.55; color: rgba(255, 255, 255, 0.5); }
+.mypay-back { display: inline-block; font-size: 0.9rem; color: #7dd3fc; text-decoration: none; }
+
 /* ================================================================ */
 /* /features rebuild — bento command center + lifecycle pipeline.    */
 /* All classes are .fx- prefixed so they never touch the existing    */
