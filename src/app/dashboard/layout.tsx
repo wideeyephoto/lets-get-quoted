@@ -31,19 +31,26 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     <>
       {!onboarded ? (
         <div className="stripe-alert-wrap">
-          <div className="stripe-alert-banner">
-            <span className="stripe-alert-icon" aria-hidden="true">⚠️</span>
+          {/* The whole bar is the target, not a button parked inside it — one
+              lit block, one place to click. */}
+          <Link href="/dashboard/settings" className="stripe-alert-banner">
+            <span className="stripe-alert-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2.6" y="5" width="18.8" height="14" rx="2.6" />
+                <path d="M2.6 9.8h18.8M6.4 14.6h4.2" />
+              </svg>
+            </span>
             {/* Says which direction the money goes. Stripe here is for taking
                 money FROM homeowners; it has nothing to do with paying crew,
                 and the old wording ("payouts") was read as though it did. */}
-            <div className="stripe-alert-copy">
+            <span className="stripe-alert-copy">
               <strong>Customer payments are not connected</strong>
               <span>Connect Stripe to accept homeowner deposits and invoice payments.</span>
-            </div>
-            <Link href="/dashboard/settings" className="btn primary stripe-alert-cta">
-              Connect Stripe
-            </Link>
-          </div>
+            </span>
+            <svg className="stripe-alert-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="m9 5 7 7-7 7" />
+            </svg>
+          </Link>
         </div>
       ) : null}
       {children}
