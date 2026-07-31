@@ -15,6 +15,7 @@ import TimeSlotSelect from '@/components/time-slot-select';
 import { scheduleJobAction, sendClientScheduleOptionsAction, updateJobCrewAction } from '../jobs/actions';
 import { updateCrewAction } from '../crew/actions';
 import { listActiveScheduleRequests } from '@/lib/scheduling';
+import { listRecurringPlans, projectPlanVisits } from '@/lib/recurring';
 import { getAvailableBookingDays } from '@/lib/booking';
 import ScheduleCalendar from './schedule-calendar';
 import ScheduleMap from './ScheduleMap';
@@ -227,6 +228,19 @@ export default async function SchedulePage({
   const now = new Date();
   const todayKey = toDateKey(now.getFullYear(), now.getMonth(), now.getDate());
   const availabilityBlocks = await listUpcomingBlocks(supabase, accountId, todayKey);
+
+  // Recurring visits that haven't happened yet.
+  //
+  // A plan's job is created on the morning of the visit, not before — which is
+  // right for billing and useless for planning: set up a weekly mow and this
+  // calendar stayed empty until the day it happened. These are drawn from the
+  // plan's own cadence so the month shows what you've actually committed to.
+  // They are NOT jobs and are passed separately so nothing here can treat them
+  // as one.
+  const plannedVisits = projectPlanVisits(await listRecurringPlans(supabase, accountId), {
+    fromKey: toDateKey(year, monthIndex, 1),
+    toKey: toDateKey(year, monthIndex, daysInMonth),
+  });
 
   // Days at/over the daily hours capacity ("full"), and a reason map for the soft
   // warning shown when you drag a job onto a full or blocked day (you can override).
@@ -494,6 +508,7 @@ export default async function SchedulePage({
           weekendDays={weekendDays}
           weeks={weeks}
           todayKey={todayKey}
+          planned={plannedVisits}
           jobs={calendarJobs}
           crew={crewOptions}
           assignmentsByJob={assignmentsByJob}

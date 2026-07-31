@@ -139,6 +139,44 @@ function getBandColorClass(jobId: string): string {
   return `calendar-band-color-${hash}`;
 }
 
+// A recurring visit the plan will create on the day. Structurally kept apart
+// from CalendarJob so nothing can accidentally drag it, assign crew to it, or
+// link to a job page that doesn't exist yet.
+export type PlannedVisit = {
+  planId: string;
+  planTitle: string;
+  clientName: string;
+  dateKey: string;
+  amount: number;
+  frequency: 'weekly' | 'biweekly' | 'monthly';
+  cycle: number;
+  remainingAfter: number | null;
+};
+
+const CADENCE_WORD: Record<PlannedVisit['frequency'], string> = {
+  weekly: 'weekly',
+  biweekly: 'every 2 weeks',
+  monthly: 'monthly',
+};
+
+// Says what it is AND that it isn't booked yet — the chip is visibly different,
+// but a tooltip that only repeats the name would leave the difference to colour.
+function plannedTitle(visit: PlannedVisit): string {
+  const money = visit.amount > 0 ? ` · $${Math.round(visit.amount).toLocaleString('en-US')}` : '';
+  const left = visit.remainingAfter != null ? ` · ${visit.remainingAfter} visit${visit.remainingAfter === 1 ? '' : 's'} left after this` : '';
+  return `${visit.clientName} — ${visit.planTitle} (${CADENCE_WORD[visit.frequency]})${money}${left}. The job is created automatically on the day.`;
+}
+
+function PlannedChip({ visit }: { visit: PlannedVisit }) {
+  return (
+    <Link href="/dashboard/recurring" className="calendar-planned-chip" title={plannedTitle(visit)}>
+      <span className="calendar-planned-mark" aria-hidden="true">↻</span>
+      <span className="calendar-planned-name">{visit.clientName}</span>
+      <span className="sr-only"> — recurring visit, not booked yet</span>
+    </Link>
+  );
+}
+
 function compareCalendarJobs(first: CalendarJob, second: CalendarJob): number {
   return `${first.scheduled_time ?? ''}${first.client_name}${first.id}`.localeCompare(`${second.scheduled_time ?? ''}${second.client_name}${second.id}`);
 }
@@ -169,6 +207,7 @@ export default function ScheduleCalendar({
   weeks,
   todayKey,
   jobs,
+  planned = [],
   crew,
   assignmentsByJob,
   blocks = [],
@@ -179,6 +218,8 @@ export default function ScheduleCalendar({
   weeks: CalendarCell[][];
   todayKey: string;
   jobs: CalendarJob[];
+  /** Recurring visits whose job doesn't exist yet. Never treated as a job. */
+  planned?: PlannedVisit[];
   crew: CrewOption[];
   assignmentsByJob: Record<string, string[]>;
   blocks?: Array<{ start_date: string; end_date: string; reason: string | null }>;
@@ -260,12 +301,28 @@ export default function ScheduleCalendar({
 
   // Agenda: only the days that have work on them. A month of empty rows is the
   // month grid with extra scrolling.
+  const plannedByDate = useMemo(() => {
+    const map = new Map<string, PlannedVisit[]>();
+    for (const visit of planned) {
+      const bucket = map.get(visit.dateKey) ?? [];
+      bucket.push(visit);
+      map.set(visit.dateKey, bucket);
+    }
+    return map;
+  }, [planned]);
+
   const agendaDays = useMemo(
     () =>
       monthDays
-        .map((cell) => ({ cell, dayJobs: [...(jobsByDate.get(cell.dateKey) ?? [])].sort(compareCalendarJobs) }))
-        .filter((entry) => entry.dayJobs.length > 0),
-    [monthDays, jobsByDate],
+        .map((cell) => ({
+          cell,
+          dayJobs: [...(jobsByDate.get(cell.dateKey) ?? [])].sort(compareCalendarJobs),
+          dayPlanned: plannedByDate.get(cell.dateKey) ?? [],
+        }))
+        // A day whose only entry is a recurring visit still belongs in the
+        // agenda — leaving it out is the whole complaint this fixes.
+        .filter((entry) => entry.dayJobs.length > 0 || entry.dayPlanned.length > 0),
+    [monthDays, jobsByDate, plannedByDate],
   );
 
   // Timeline: one row per JOB, not per occurrence. `jobs` arrives already
@@ -430,7 +487,7 @@ export default function ScheduleCalendar({
           <p className="calendar-view-empty">Nothing scheduled this month.</p>
         ) : (
           <ol className="calendar-agenda">
-            {agendaDays.map(({ cell, dayJobs }) => (
+            {agendaDays.map(({ cell, dayJobs, dayPlanned }) => (
               <li className={`calendar-agenda-day${cell.dateKey === todayKey ? ' today' : ''}`} key={cell.dateKey}>
                 <div className="calendar-agenda-date">
                   <small>{WEEKDAY_LABELS[new Date(`${cell.dateKey}T00:00:00`).getDay()]}</small>
@@ -471,6 +528,26 @@ export default function ScheduleCalendar({
                       </button>
                     );
                   })}
+                  {dayPlanned.map((visit) => (
+                    <Link
+                      key={`${visit.planId}-${visit.dateKey}`}
+                      href="/dashboard/recurring"
+                      className="calendar-agenda-job calendar-agenda-planned"
+                      title={plannedTitle(visit)}
+                    >
+                      <span className="calendar-agenda-when">Recurring</span>
+                      <span className="calendar-agenda-who">
+                        <strong><span className="calendar-planned-mark" aria-hidden="true">↻</span>{visit.clientName}</strong>
+                        <small>{visit.planTitle}</small>
+                      </span>
+                      <span className="calendar-agenda-badge status-neutral">Not booked yet</span>
+                      <span className="calendar-agenda-figures">
+                        {visit.amount > 0 ? <em>${Math.round(visit.amount).toLocaleString('en-US')}</em> : null}
+                        <i>{CADENCE_WORD[visit.frequency]}</i>
+                      </span>
+                      <span className="calendar-agenda-crew">—</span>
+                    </Link>
+                  ))}
                 </div>
               </li>
             ))}
@@ -690,6 +767,12 @@ export default function ScheduleCalendar({
                         </div>
                       );
                     })}
+                    {/* Below the real work, deliberately: these are commitments
+                        the plan will turn into jobs, not jobs. They sit outside
+                        the lane layout because they never span days. */}
+                    {(plannedByDate.get(cell.dateKey) ?? []).map((visit) => (
+                      <PlannedChip key={`${visit.planId}-${visit.dateKey}`} visit={visit} />
+                    ))}
                   </div>
                 </div>
               );
@@ -699,6 +782,16 @@ export default function ScheduleCalendar({
       )}
       {calendarView !== 'year' && (
         <div className="calendar-days-row">
+          {/* Said once, plainly, rather than left for the owner to work out from
+              a dashed border why some entries can't be dragged or assigned. */}
+          {planned.length > 0 ? (
+            <p className="calendar-planned-note">
+              <span className="calendar-planned-mark" aria-hidden="true">↻</span>
+              {planned.length} recurring {planned.length === 1 ? 'visit' : 'visits'} this month. The job for each one is
+              created automatically on the morning of the visit — until then there&apos;s nothing to assign or move.{' '}
+              <Link href="/dashboard/recurring">Manage plans</Link>
+            </p>
+          ) : null}
           <CalendarDaysGear days={days} onChange={updateDays} hiddenJobCount={hiddenJobCount} />
         </div>
       )}

@@ -83,6 +83,83 @@ export function advanceDate(dateKey: string, frequency: RecurringFrequency): str
   return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
 }
 
+/**
+ * A visit a plan is going to produce, before the job for it exists.
+ *
+ * Not a job and never pretending to be one: no id, no crew, nothing to drag.
+ * It's a commitment the owner has made, drawn on the calendar so they can see
+ * it coming.
+ */
+export type PlannedVisit = {
+  planId: string;
+  planTitle: string;
+  clientName: string;
+  dateKey: string;
+  amount: number;
+  frequency: RecurringFrequency;
+  /** 1-based position from the plan's next run, so a fixed term can say "3 of 6". */
+  cycle: number;
+  /** How many visits the plan has left after this one, when the term is fixed. */
+  remainingAfter: number | null;
+};
+
+export type PlanProjectionInput = Pick<
+  RecurringPlan,
+  'id' | 'title' | 'client_name' | 'amount' | 'frequency' | 'next_run_date' | 'active' | 'remaining_cycles'
+>;
+
+/**
+ * What a set of recurring plans will put on the calendar between two dates.
+ *
+ * A recurring plan spawns its job on the morning of the visit and not a day
+ * sooner — which is right for invoicing and charging, and useless for planning:
+ * set up a weekly mow and your calendar stays empty until the day it happens.
+ * This walks the same cadence the cron will walk, using the same advanceDate,
+ * so what's drawn is exactly what will be created.
+ *
+ * Pure: no clock, no database. The caller says which window it cares about.
+ */
+export function projectPlanVisits(
+  plans: PlanProjectionInput[],
+  range: { fromKey: string; toKey: string },
+  maxPerPlan = 60,
+): PlannedVisit[] {
+  const visits: PlannedVisit[] = [];
+  if (range.toKey < range.fromKey) return visits;
+
+  for (const plan of plans) {
+    // A paused plan produces nothing, and drawing its visits would promise work
+    // that is not going to happen.
+    if (!plan.active) continue;
+    if (!plan.next_run_date) continue;
+
+    // A fixed term is a hard stop: six visits means six, not six and then
+    // whatever the calendar felt like drawing.
+    const term = typeof plan.remaining_cycles === 'number' ? Math.max(0, plan.remaining_cycles) : null;
+    const limit = term == null ? maxPerPlan : Math.min(term, maxPerPlan);
+
+    let dateKey = plan.next_run_date;
+    for (let cycle = 1; cycle <= limit; cycle++) {
+      if (dateKey > range.toKey) break;
+      if (dateKey >= range.fromKey) {
+        visits.push({
+          planId: plan.id,
+          planTitle: plan.title,
+          clientName: plan.client_name,
+          dateKey,
+          amount: Number(plan.amount) || 0,
+          frequency: plan.frequency,
+          cycle,
+          remainingAfter: term == null ? null : term - cycle,
+        });
+      }
+      dateKey = advanceDate(dateKey, plan.frequency);
+    }
+  }
+
+  return visits.sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.clientName.localeCompare(b.clientName));
+}
+
 function formatDateLabel(dateKey: string): string {
   const [year, month, day] = dateKey.split('-').map(Number);
   return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('en-US', {
