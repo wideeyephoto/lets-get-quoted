@@ -12062,3 +12062,49 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
    needs 840, pushing Payment and Payment date off the right edge — the two
    columns the screen exists to show. Only this one layout opts out. */
 .wide-shell.crew-wide { max-width: 1500px; }
+
+/* The colour of this stop's incoming leg, matching the line on the map. Purely
+   a cross-reference — the miles and minutes beside it say the same thing in
+   words, and the arrows on the map carry direction. */
+.plan-leg-key {
+  display: inline-block;
+  width: 0.85rem;
+  height: 0.3rem;
+  margin-right: 0.4rem;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+
+/* Extra Stops, under the day it would land in. Same condensed shape as the
+   working-hours panel beside it. */
+.extrastop-panel { margin-top: 1rem; padding: 0.85rem 1.1rem; }
+.extrastop-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.extrastop-copy { display: grid; gap: 0.2rem; min-width: 0; }
+.extrastop-copy strong { display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; font-weight: 750; }
+.extrastop-copy small { font-size: 0.82rem; color: rgba(255, 255, 255, 0.58); line-height: 1.5; max-width: 52rem; }
+
+/* The word is the state; the colour only agrees with it. */
+.extrastop-state {
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 176, 214, 0.35);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.65);
+}
+.extrastop-state[data-state='on'] { border-color: rgba(72, 199, 142, 0.55); background: rgba(72, 199, 142, 0.14); color: #7fe0b2; }
+.extrastop-state[data-state='locked'] { border-color: rgba(255, 209, 102, 0.55); background: rgba(255, 209, 102, 0.12); color: #ffd591; }
+
+.extrastop-panel[data-state='on'] { border-color: rgba(72, 199, 142, 0.3); }
+.extrastop-panel[data-state='locked'] { border-color: rgba(255, 209, 102, 0.4); }
+
+.extrastop-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }

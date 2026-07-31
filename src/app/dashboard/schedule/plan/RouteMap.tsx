@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { loadMapsLibrary } from '@/lib/google-maps-loader';
+import { legColor } from '@/lib/day-plan-view';
 import { supplyBrand, type SupplyBrand } from '@/lib/supply-brands';
 import type { LatLng } from '@/lib/distance';
 
@@ -81,6 +82,52 @@ function supplyMarkerSvg(brand: SupplyBrand): string {
   return url;
 }
 
+function clearLines(lines: google.maps.Polyline[]): void {
+  for (const line of lines) line.setMap(null);
+}
+
+/**
+ * Draw the day one leg at a time.
+ *
+ * Colour says WHICH leg — cool at the start of the day, warm at the end, the
+ * same ramp the stop list uses. Arrows say WHICH WAY. Keeping those two jobs on
+ * separate channels means a route that doubles back on itself is still readable
+ * by anyone who can't tell the hues apart.
+ */
+function drawLegs(
+  map: google.maps.Map,
+  legs: Array<Array<google.maps.LatLng | google.maps.LatLngLiteral>>,
+  opacity: number,
+): google.maps.Polyline[] {
+  return legs.map((path, index) => {
+    const color = legColor(index, legs.length);
+    return new window.google.maps.Polyline({
+      map,
+      path,
+      strokeColor: color,
+      strokeOpacity: opacity,
+      strokeWeight: 4,
+      zIndex: 2 + index,
+      icons: [
+        {
+          icon: {
+            path: window.google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+            scale: 2.6,
+            strokeColor: '#0b1725',
+            strokeWeight: 1,
+            fillColor: color,
+            fillOpacity: 1,
+          },
+          // Spaced rather than one per leg: a short hop still gets an arrow,
+          // and a long one gets several without becoming a dotted line.
+          offset: '8%',
+          repeat: '90px',
+        },
+      ],
+    });
+  });
+}
+
 export type NearbyPlace = { label: string; address: string; lat: number; lng: number };
 
 // Sample points along the route to search around. One search covers a radius,
@@ -114,7 +161,7 @@ export default function RouteMap({
   const holderRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
-  const lineRef = useRef<google.maps.Polyline | null>(null);
+  const linesRef = useRef<google.maps.Polyline[]>([]);
   const boundsRef = useRef<google.maps.LatLngBounds | null>(null);
   // Bumped on every order change so a slow Directions reply can tell whether it's
   // still the current route before it paints itself over a newer one.
@@ -221,17 +268,14 @@ export default function RouteMap({
     const path = [...(homeBase ? [homeBase] : []), ...stops.map((s) => ({ lat: s.lat, lng: s.lng }))];
     if (homeBase && stops.length > 0) path.push(homeBase);
 
-    if (lineRef.current) lineRef.current.setMap(null);
-    lineRef.current =
-      path.length >= 2
-        ? new window.google.maps.Polyline({
-            map,
-            path,
-            strokeColor: '#2f9bff',
-            strokeOpacity: 0.85,
-            strokeWeight: 4,
-          })
-        : null;
+    clearLines(linesRef.current);
+    linesRef.current = drawLegs(
+      map,
+      // Straight-line legs until Directions answers: one segment per hop, so
+      // the colours and arrows are right even before the roads arrive.
+      path.slice(0, -1).map((from, index) => [from, path[index + 1]]),
+      0.8,
+    );
     setRoadRoute(false);
 
     // Upgrade to the real road route when we can get one.
@@ -250,16 +294,15 @@ export default function RouteMap({
           });
           // A newer order started drawing while this was in flight.
           if (drawId !== drawIdRef.current || !mapRef.current) return;
-          const overview = result.routes[0]?.overview_path;
-          if (!overview?.length) return;
-          if (lineRef.current) lineRef.current.setMap(null);
-          lineRef.current = new window.google.maps.Polyline({
-            map: mapRef.current,
-            path: overview,
-            strokeColor: '#2f9bff',
-            strokeOpacity: 0.9,
-            strokeWeight: 4,
-          });
+          // Per LEG, not the overview path: the overview is one line for the
+          // whole day and can't be coloured leg by leg.
+          const legs = result.routes[0]?.legs ?? [];
+          const legPaths = legs
+            .map((leg) => (leg.steps ?? []).flatMap((step) => step.path ?? []))
+            .filter((points) => points.length >= 2);
+          if (legPaths.length === 0) return;
+          clearLines(linesRef.current);
+          linesRef.current = drawLegs(mapRef.current, legPaths, 0.9);
           setRoadRoute(true);
         } catch (error) {
           // Directions not enabled on the key, over quota, or no route between two
@@ -354,10 +397,10 @@ export default function RouteMap({
   useEffect(() => {
     const markers = markersRef.current;
     const supply = supplyMarkersRef.current;
-    const line = lineRef.current;
+    const lines = linesRef.current;
     return () => {
       for (const marker of [...markers, ...supply]) marker.setMap(null);
-      line?.setMap(null);
+      clearLines(lines);
     };
   }, []);
 

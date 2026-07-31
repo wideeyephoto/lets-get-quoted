@@ -14,6 +14,7 @@ import {
   costOrder,
   endOn,
   fullRouteUrl,
+  legColor,
   minutesLabel,
   navTarget,
   reorderStops,
@@ -444,6 +445,7 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
                 preferredLast={preferredLastId === entry.stop.id}
                 actuallyLast={index === plan.planned.length - 1}
                 anchoredToHome={payload.anchor === 'home_base'}
+                legColor={legColor(index, plan.planned.length + (payload.homeBase ? 1 : 0))}
                 routeStop={isRouteStopId(entry.stop.id) ? routeStopById.get(routeStopUuid(entry.stop.id)) ?? null : null}
                 dateKey={payload.dateKey}
                 crewId={payload.crewId}
@@ -745,6 +747,7 @@ function StopRow({
   preferredLast,
   actuallyLast,
   anchoredToHome,
+  legColor: legColour,
   routeStop,
   dateKey,
   crewId,
@@ -772,6 +775,8 @@ function StopRow({
   /** Whether it IS last right now — which, being a preference, it may not be. */
   actuallyLast: boolean;
   anchoredToHome: boolean;
+  /** Matches the leg drawn on the map, so a row and its line are the same colour. */
+  legColor: string;
   // Set when this row is a supply stop rather than a job.
   routeStop: RouteStop | null;
   dateKey: string;
@@ -860,6 +865,11 @@ function StopRow({
 
       <div className="plan-stop-flags">
         <span className="plan-stop-drive">
+          {/* The same colour as this leg on the map — the numbers already pair
+              the two, this pairs the drive between them. */}
+          {index === 0 && !anchoredToHome ? null : (
+            <i className="plan-leg-key" style={{ background: legColour }} aria-hidden="true" />
+          )}
           {index === 0 && !anchoredToHome
             ? 'First stop of the day'
             : `${entry.legMiles} mi · ${minutesLabel(entry.legMinutes)} drive`}

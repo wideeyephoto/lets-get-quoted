@@ -18,6 +18,8 @@ import { listUpcomingBlocks } from '@/lib/availability-blocks';
 import type { DayPlanPayload, DriveMatrixPayload } from '@/lib/day-plan-view';
 import SaveButton from '@/components/save-button';
 import WorkingHoursPanel from '@/components/working-hours-panel';
+import ExtraStopPanel from '@/components/extra-stop-panel';
+import { EXTRA_STOP_SETTINGS_COLUMNS, extraStopSettingsFromAccount } from '@/lib/extra-stop';
 import DayPlanner from './DayPlanner';
 import PlanDayControls from './PlanDayControls';
 import { geocodeDayAction, notifyMovedClientsAction } from './actions';
@@ -139,6 +141,22 @@ export default async function PlanDayPage({
   const prefs = await getDayPlanPrefs(supabase, accountId, dateKey, crewId);
   const preferredLastId =
     prefs.preferredLastId && routable.some((stop) => stop.id === prefs.preferredLastId) ? prefs.preferredLastId : null;
+
+  // Extra Stop, for the panel under the route. Read here rather than guessed:
+  // whether it's on, whether support has paused it, and whether it was ever set
+  // up at all are three different answers and the panel says which.
+  const { data: extraStopRow } = await supabase
+    .from('accounts')
+    .select(EXTRA_STOP_SETTINGS_COLUMNS)
+    .eq('id', accountId)
+    .maybeSingle();
+  const extraStop = extraStopSettingsFromAccount((extraStopRow ?? {}) as Parameters<typeof extraStopSettingsFromAccount>[0]);
+  const { count: extraStopToday } = await supabase
+    .from('extra_stop_requests')
+    .select('id', { count: 'exact', head: true })
+    .eq('account_id', accountId)
+    .eq('arrival_date', dateKey)
+    .in('status', ['confirmed', 'en_route', 'arrived', 'completed']);
 
   const matrixPayload: DriveMatrixPayload = matrix ? Object.fromEntries(matrix) : {};
   const payload: DayPlanPayload = {
@@ -357,6 +375,16 @@ export default async function PlanDayPage({
       ) : null}
       {/* Every arrival time above is derived from these, so this is where they
           belong — not two clicks deep in Settings. */}
+      <ExtraStopPanel
+        enabled={extraStop.enabled}
+        locked={extraStop.locked}
+        lockedUntil={extraStop.lockedUntil}
+        // Never configured looks exactly like "off" on a boolean, and offering a
+        // switch over an unset fee band would put work on rules nobody chose.
+        configured={extraStop.maxFeeCents > 0 && extraStop.weekdays.length > 0}
+        todayCount={extraStopToday ?? 0}
+      />
+
       <WorkingHoursPanel
         scheduleDayHours={settings.scheduleDayHours}
         jobBufferMinutes={settings.bufferMinutes}

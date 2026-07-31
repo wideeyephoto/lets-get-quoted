@@ -137,6 +137,25 @@ export function endOn(order: string[], preferredLastId: string | null): string[]
   return [...order.filter((id) => id !== preferredLastId), preferredLastId];
 }
 
+/**
+ * The colour of one leg of the day.
+ *
+ * A single blue line tells you where the van goes but not which way, and on a
+ * route that crosses itself — which most days do — that is the whole question.
+ * Legs run cool to warm across the day, so the first drive and the last are
+ * never the same colour and the list beside the map can use the same ramp.
+ *
+ * Direction itself is carried by arrows on the line, not by the colour: colour
+ * says WHICH leg, arrows say WHICH WAY, so neither depends on telling hues
+ * apart.
+ */
+export function legColor(index: number, total: number): string {
+  const span = Math.max(1, total - 1);
+  const t = Math.min(1, Math.max(0, index / span));
+  // 195° (blue) through to 45° (amber).
+  return `hsl(${Math.round(195 - t * 150)}, 85%, 58%)`;
+}
+
 export function sameOrder(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((id, index) => id === b[index]);
 }

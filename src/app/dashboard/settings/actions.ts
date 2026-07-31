@@ -468,3 +468,29 @@ export async function deleteAccountAction() {
   await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
   redirect('/login');
 }
+
+// The on/off switch on its own, for the Plan my day panel.
+//
+// Deliberately narrow: it flips one boolean and touches nothing else. Reusing
+// updateExtraStopSettingsAction would mean the day page posting a whole config
+// form, and any field it failed to include would be silently reset to a default.
+export async function setExtraStopEnabledAction(enabled: boolean) {
+  const { supabase, accountId, userEmail } = await requireOwnerContext();
+
+  const { error } = await supabase.from('accounts').update({ extra_stop_enabled: enabled }).eq('id', accountId);
+  if (error) throw new Error(error.message);
+
+  // Turning this off stops money arriving, so it goes in the same audit trail
+  // as every other automation switch rather than happening quietly.
+  await recordAccountEvent({
+    accountId,
+    kind: 'automation_toggled',
+    summary: `Extra Stop turned ${enabled ? 'on' : 'off'} from Plan my day.`,
+    actorEmail: userEmail,
+    meta: { automation: 'extra-stop', enabled, source: 'plan_my_day' },
+  });
+
+  revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/schedule');
+  revalidatePath('/dashboard/schedule/plan');
+}
