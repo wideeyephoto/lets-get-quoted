@@ -65,7 +65,14 @@ function Icon({ name, className }: { name: string; className?: string }) {
   );
 }
 
-const SETTINGS_HREF = '/dashboard/settings#automations';
+// #extra-stop, not #automations. Both open the Automations tab, but only the
+// card's own id gets scrolled to and expanded by the settings deep-link handler
+// — #automations left you at the top of a dozen collapsed cards, which is why
+// these read as buttons that did nothing.
+const SETTINGS_HREF = '/dashboard/settings#extra-stop';
+
+/** Where the request queue lives on this page. */
+const QUEUE_ANCHOR = '#extra-stop-requests';
 
 export default function ExtraStopStatus(props: ExtraStopStatusProps) {
   const { enabled, locked, lockedUntil, lockReason, configured, stripeConnected, bookingUrl } = props;
@@ -168,21 +175,38 @@ export default function ExtraStopStatus(props: ExtraStopStatusProps) {
           <span className="bset-card-edit">Edit <Icon name="chevronRight" /></span>
         </Link>
 
-        <Link href={SETTINGS_HREF} className="bset-card">
-          <span className="bset-card-icon tone-link"><Icon name="pin" /></span>
-          <span className="bset-card-label">Requests</span>
-          <strong>{locked ? 'Paused' : live ? 'Live' : enabled ? 'Not live' : 'Off'}</strong>
-          <small>
-            {props.openCount > 0
-              ? `${props.openCount} waiting on you · ${props.todayCount} accepted today`
-              : props.todayCount > 0
-                ? `${props.todayCount} accepted today`
+        {/* This one is not a settings shortcut — there is nothing to EDIT about
+            requests. It goes to the queue further down the page, and when there
+            is no queue to go to it stops being a link at all rather than
+            offering a click that lands nowhere. */}
+        {props.openCount > 0 || props.todayCount > 0 ? (
+          <a href={QUEUE_ANCHOR} className="bset-card">
+            <span className="bset-card-icon tone-link"><Icon name="pin" /></span>
+            <span className="bset-card-label">Requests</span>
+            <strong>{props.openCount > 0 ? `${props.openCount} waiting on you` : `${props.todayCount} today`}</strong>
+            <small>
+              {props.openCount > 0 && props.todayCount > 0
+                ? `${props.todayCount} already accepted for today`
+                : props.openCount > 0
+                  ? 'Answer them before they expire'
+                  : 'Accepted onto today’s route'}
+            </small>
+            <span className="bset-card-edit">View <Icon name="chevronRight" /></span>
+          </a>
+        ) : (
+          <div className="bset-card is-static">
+            <span className="bset-card-icon tone-link"><Icon name="pin" /></span>
+            <span className="bset-card-label">Requests</span>
+            <strong>{locked ? 'Paused' : live ? 'None waiting' : enabled ? 'Not live' : 'Off'}</strong>
+            <small>
+              {locked
+                ? 'Nothing new can come in while this is paused'
                 : live
-                  ? 'Nothing waiting right now'
-                  : 'Nothing can come in while this is off'}
-          </small>
-          <span className="bset-card-edit">Edit <Icon name="chevronRight" /></span>
-        </Link>
+                  ? 'They appear here the moment one arrives'
+                  : blockedReason ?? 'Nothing can come in while this is off'}
+            </small>
+          </div>
+        )}
       </div>
     </>
   );

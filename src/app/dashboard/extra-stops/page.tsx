@@ -119,7 +119,8 @@ export default async function ExtraStopsPage() {
       />
 
       {active.length > 0 ? (
-        <section className="panel workspace-section-card">
+        // The id the Requests summary card jumps to.
+        <section className="panel workspace-section-card" id="extra-stop-requests">
           <div className="section-heading workspace-section-heading compact-heading">
             <p className="eyebrow">Waiting on you</p>
             <h2>{active.length} open {active.length === 1 ? 'request' : 'requests'}</h2>
@@ -131,7 +132,7 @@ export default async function ExtraStopsPage() {
           </div>
         </section>
       ) : (
-        <section className="panel workspace-section-card extra-stop-empty-panel">
+        <section className="panel workspace-section-card extra-stop-empty-panel" id="extra-stop-requests">
           <div className="extra-stop-empty">
             <span className="extra-stop-empty-mark" aria-hidden="true">📍</span>
             <h3>{settings.locked ? 'No active requests while paused' : settings.enabled ? "You're all set — waiting on requests" : 'Nothing can come in yet'}</h3>

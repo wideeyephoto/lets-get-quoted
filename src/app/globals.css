@@ -12439,3 +12439,8 @@ a.bset-card { color: inherit; text-decoration: none; }
 .crew-focus .workspace-section-card { border-radius: 18px; border-color: rgba(148, 176, 214, 0.2); }
 .crew-focus .stat-ticker { border-radius: 16px; border-color: rgba(148, 176, 214, 0.2); }
 .crew-focus .stat-ticker-value { font-size: 1.45rem; letter-spacing: -0.02em; }
+
+/* A summary card with nowhere to go. It keeps the shape of its siblings so
+   the row stays even, but drops the affordances that promise a click. */
+.bset-card.is-static { cursor: default; }
+.bset-card.is-static:hover { border-color: var(--bset-line); transform: none; }
