@@ -2,13 +2,13 @@ import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import PhotoGallery from '@/components/photo-gallery';
 import AddressAutocomplete from '@/components/address-autocomplete';
-import { deriveJobListBadge, computeJobMilestones } from '@/lib/job-badges';
-import { getJob, listCosts, computeMargin, formatJobQuoteSummary, formatJobSchedule, formatMoney, formatPercent, parseQuoteItems, type Job } from '@/lib/jobs';
+import { deriveJobListBadge, buildPipelineChecklist } from '@/lib/job-badges';
+import { getJob, listCosts, computeMargin, formatJobQuoteSummary, formatJobSchedule, formatMoney, formatPercent, parseQuoteItems } from '@/lib/jobs';
 import { listServices } from '@/lib/services';
 import { listJobTasks, taskProgress } from '@/lib/job-tasks';
 import { createJobPhotoLinks } from '@/lib/job-photo-storage';
-import { listPayments, type Payment } from '@/lib/payments';
-import { listInvoices, selectPrimaryInvoice, type Invoice } from '@/lib/invoices';
+import { listPayments } from '@/lib/payments';
+import { listInvoices, selectPrimaryInvoice } from '@/lib/invoices';
 import { createLinkedFeedItems, getActiveClientAccessCount, listJobFeed, sortJobFeed, type JobFeedEvent } from '@/lib/job-feed';
 import { listCrew, listCrewIdsForJob } from '@/lib/crew';
 import { getLeadByConvertedJob } from '@/lib/leads';
@@ -60,52 +60,6 @@ import {
   getFeedDisplayTitle,
   marginTier,
 } from '@/lib/job-detail-labels';
-
-type PipelineChecklistItem = {
-  label: string;
-  detail: string;
-  complete: boolean;
-  href: string;
-};
-
-function buildPipelineChecklist(job: Job, payments: Payment[], invoices: Invoice[], activeClientLinkCount: number, originatingLeadId: string | null): PipelineChecklistItem[] {
-  const milestones = computeJobMilestones(job, payments, invoices, activeClientLinkCount);
-  const quoteDetail = job.quoted_amount > 0 ? `${formatMoney(job.quoted_amount)} quoted` : 'Add quote amount';
-  const feedDetail = activeClientLinkCount > 0 ? 'Job Feed shared' : 'Share Job Feed link';
-
-  return [
-    {
-      label: 'Quote sent',
-      detail: `${quoteDetail} · ${feedDetail}`,
-      complete: milestones.quoteShared,
-      href: originatingLeadId ? `/dashboard/leads/${originatingLeadId}` : `/dashboard/jobs/${job.id}#job-feed`,
-    },
-    {
-      label: 'Quote approved',
-      detail: milestones.quoteAccepted ? 'Client approved' : 'Awaiting client approval',
-      complete: milestones.quoteAccepted,
-      href: `/dashboard/jobs/${job.id}?edit=client#job-details`,
-    },
-    {
-      label: 'Scheduled / underway',
-      detail: job.scheduled_for ? formatJobSchedule(job.scheduled_for, job.scheduled_time) : 'Schedule the work',
-      complete: milestones.scheduled,
-      href: `/dashboard/jobs/${job.id}?open=scheduling#job-scheduling`,
-    },
-    {
-      label: 'Invoice / payment requested',
-      detail: milestones.paymentRequested ? `${milestones.paymentLinkCount} payment link${milestones.paymentLinkCount === 1 ? '' : 's'} created` : 'Send invoice or payment link',
-      complete: milestones.paymentRequested,
-      href: `/dashboard/jobs/${job.id}?open=payment#request-payment`,
-    },
-    {
-      label: 'Paid / signed off',
-      detail: milestones.paidTotal > 0 ? `${formatMoney(milestones.paidTotal)} paid` : milestones.hasSignedInvoice ? 'Client signed invoice' : 'Awaiting payment or sign-off',
-      complete: milestones.paidOrSignedOff,
-      href: `/dashboard/jobs/${job.id}?open=payment#request-payment`,
-    },
-  ];
-}
 
 export default async function JobDetailPage({
   params,
@@ -307,7 +261,7 @@ export default async function JobDetailPage({
             {pipelineChecklist.map((item, index) => {
               const state = item.complete ? 'complete' : index === currentPipelineIndex ? 'current' : 'upcoming';
               return (
-                <li key={item.label}>
+                <li key={item.key}>
                   <Link className={`pipeline-step pipeline-step-${state}`} href={item.href}>
                     <span className="pipeline-step-marker">{item.complete ? '✓' : ''}</span>
                     <span>

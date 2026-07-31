@@ -5058,14 +5058,20 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
   white-space: nowrap;
 }
 
+/* The step name is what you read; the detail supports it. Both shrink at the
+   same rate by default, so a long detail would ellipsis the name itself into
+   "Awaiting appro…". Make the detail give way first. */
 .pipeline-step strong {
   color: #f7f5ef;
   font-size: 0.78rem;
+  flex: 0 1 auto;
 }
 
 .pipeline-step small {
   color: rgba(247, 245, 239, 0.56);
   font-size: 0.7rem;
+  flex: 0 100 auto;
+  min-width: 0;
 }
 
 .pipeline-step small::before {

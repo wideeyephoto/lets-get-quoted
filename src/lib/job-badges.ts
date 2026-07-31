@@ -1,5 +1,5 @@
 import type { Invoice } from '@/lib/invoices';
-import type { Job, JobStatus } from '@/lib/jobs';
+import { formatJobSchedule, formatMoney, type Job, type JobStatus } from '@/lib/jobs';
 import type { Payment } from '@/lib/payments';
 
 export type JobListBadgeTone = JobStatus | 'flag';
@@ -93,4 +93,90 @@ export function deriveJobListBadge(
   if (job.quoted_amount > 0 && activeClientLinkCount === 0) return { label: 'Send quote', tone: 'new_lead' };
   if (job.quoted_amount > 0) return { label: 'Quote sent · Awaiting approval', tone: 'new_lead' };
   return { label: 'Add quote', tone: 'new_lead' };
+}
+
+export type PipelineChecklistItem = {
+  key: string;
+  label: string;
+  detail: string;
+  complete: boolean;
+  href: string;
+};
+
+/**
+ * The five-step pipeline checklist on the job header.
+ *
+ * Lives beside deriveJobListBadge because the two describe the same job state
+ * and sat next to each other on screen saying different things: the badge named
+ * the next action ("Send quote") while the checklist row named the milestone
+ * ("Quote sent"), which reads as a claim about a quote that was never sent.
+ *
+ * So every step is named for what it actually IS — the outstanding action while
+ * it's open, the thing that happened once it's closed — and the first step
+ * splits on exactly the condition the badge splits on.
+ */
+export function buildPipelineChecklist(
+  job: Job,
+  payments: Payment[],
+  invoices: Invoice[],
+  activeClientLinkCount: number,
+  originatingLeadId: string | null
+): PipelineChecklistItem[] {
+  const milestones = computeJobMilestones(job, payments, invoices, activeClientLinkCount);
+  const quoteDetail = job.quoted_amount > 0 ? `${formatMoney(job.quoted_amount)} quoted` : 'Add quote amount';
+  const feedDetail = activeClientLinkCount > 0 ? 'Job Feed shared' : 'Share Job Feed link';
+
+  return [
+    {
+      key: 'quote',
+      // Same split deriveJobListBadge uses, so the badge and this row never
+      // disagree about whether the quote has gone out.
+      label: milestones.quoteShared ? 'Quote sent' : job.quoted_amount > 0 ? 'Send quote' : 'Add quote',
+      detail: `${quoteDetail} · ${feedDetail}`,
+      complete: milestones.quoteShared,
+      href: originatingLeadId ? `/dashboard/leads/${originatingLeadId}` : `/dashboard/jobs/${job.id}#job-feed`,
+    },
+    {
+      key: 'approval',
+      // Waiting on the client, not on the contractor — so this one names the
+      // wait rather than an action they can't take.
+      label: milestones.quoteAccepted ? 'Quote approved' : 'Awaiting approval',
+      detail: milestones.quoteAccepted ? 'Client approved' : 'Client approves on their quote page',
+      complete: milestones.quoteAccepted,
+      href: `/dashboard/jobs/${job.id}?edit=client#job-details`,
+    },
+    {
+      key: 'schedule',
+      label: milestones.scheduled ? 'Scheduled / underway' : 'Schedule the work',
+      detail: job.scheduled_for ? formatJobSchedule(job.scheduled_for, job.scheduled_time) : 'No date set',
+      complete: milestones.scheduled,
+      href: `/dashboard/jobs/${job.id}?open=scheduling#job-scheduling`,
+    },
+    {
+      key: 'invoice',
+      label: milestones.paymentRequested ? 'Invoice / payment requested' : 'Request payment',
+      detail: milestones.paymentRequested
+        ? `${milestones.paymentLinkCount} payment link${milestones.paymentLinkCount === 1 ? '' : 's'} created`
+        : 'Send invoice or payment link',
+      complete: milestones.paymentRequested,
+      href: `/dashboard/jobs/${job.id}?open=payment#request-payment`,
+    },
+    {
+      key: 'paid',
+      label: milestones.paidOrSignedOff ? 'Paid / signed off' : 'Awaiting payment',
+      detail:
+        milestones.paidTotal > 0
+          ? `${formatMoney(milestones.paidTotal)} paid`
+          : milestones.hasSignedInvoice
+            ? 'Client signed invoice'
+            : // A job marked complete counts as signed off, so this step closes
+              // with nothing paid. Saying "no payment yet" under a ticked step
+              // is the same contradiction in a different place.
+              milestones.isComplete
+              ? 'Job marked complete'
+              : 'No payment or sign-off yet',
+      complete: milestones.paidOrSignedOff,
+      href: `/dashboard/jobs/${job.id}?open=payment#request-payment`,
+    },
+  ];
 }
