@@ -2812,20 +2812,20 @@ li + li { margin-top: 0.45rem; }
   align-items: center;
   gap: 0.95rem;
   padding: 1.05rem 1.25rem;
-  border: 1px solid rgba(255, 203, 152, 0.95);
+  border: 1px solid rgba(217, 173, 129, 0.95);
   border-radius: 18px;
   color: #fff;
   text-decoration: none;
   background:
-    radial-gradient(135% 120% at 50% 118%, rgba(255, 197, 140, 0.5) 0%, rgba(255, 145, 65, 0.2) 42%, transparent 70%),
-    linear-gradient(180deg, #c2490d 0%, #a63c09 55%, #8c3107 100%);
+    radial-gradient(135% 120% at 50% 118%, rgba(255, 197, 140, 0.42) 0%, rgba(255, 145, 65, 0.17) 42%, transparent 70%),
+    linear-gradient(180deg, #a53e0b 0%, #8d3308 55%, #772a06 100%);
   box-shadow:
-    0 0 9px rgba(255, 163, 82, 0.75),
-    0 0 24px rgba(255, 122, 33, 0.5),
-    0 0 62px rgba(255, 100, 20, 0.34),
-    0 14px 46px -14px rgba(255, 96, 18, 0.55),
-    inset 0 1px 0 rgba(255, 232, 212, 0.6),
-    inset 0 -20px 38px -24px rgba(255, 214, 170, 0.6);
+    0 0 9px rgba(255, 163, 82, 0.64),
+    0 0 24px rgba(255, 122, 33, 0.42),
+    0 0 62px rgba(255, 100, 20, 0.29),
+    0 14px 46px -14px rgba(255, 96, 18, 0.47),
+    inset 0 1px 0 rgba(255, 232, 212, 0.51),
+    inset 0 -20px 38px -24px rgba(255, 214, 170, 0.51);
   transition: box-shadow 0.18s ease, transform 0.18s ease;
 }
 
@@ -2844,11 +2844,11 @@ li + li { margin-top: 0.45rem; }
 .stripe-alert-banner:hover {
   transform: translateY(-1px);
   box-shadow:
-    0 0 26px rgba(255, 143, 60, 0.7),
-    0 0 72px rgba(255, 110, 25, 0.42),
-    0 20px 60px -20px rgba(255, 90, 20, 0.8),
-    inset 0 1px 0 rgba(255, 236, 219, 0.7),
-    inset 0 -20px 38px -24px rgba(255, 222, 186, 0.7);
+    0 0 26px rgba(255, 143, 60, 0.6),
+    0 0 72px rgba(255, 110, 25, 0.36),
+    0 20px 60px -20px rgba(255, 90, 20, 0.68),
+    inset 0 1px 0 rgba(255, 236, 219, 0.6),
+    inset 0 -20px 38px -24px rgba(255, 222, 186, 0.6);
 }
 
 .stripe-alert-banner:focus-visible {
