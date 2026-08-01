@@ -53,9 +53,10 @@ export default async function CashFlowPage({ searchParams }: { searchParams: { w
         unbilled={sources.unbilled}
         settingsAvailable={sources.settings.available}
         saveSettings={saveCashSettingsAction}
+        billsPanel={
+          <ScheduledPaymentsPanel rows={sources.scheduled} todayKey={todayKey} available={sources.scheduledAvailable} />
+        }
       />
-
-      <ScheduledPaymentsPanel rows={sources.scheduled} todayKey={todayKey} available={sources.scheduledAvailable} />
 
       <section className="panel workspace-section-card cash-where-card">
         <div className="section-heading workspace-section-heading">

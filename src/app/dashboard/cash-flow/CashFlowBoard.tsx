@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import SaveButton from '@/components/save-button';
 import { buildForecast, KIND_LABEL, type CashEvent } from '@/lib/cash-forecast';
 import CashChart, { type LineKey } from './CashChart';
@@ -28,6 +28,13 @@ type Props = {
   unbilled: { count: number; total: number };
   settingsAvailable: boolean;
   saveSettings: (formData: FormData) => void | Promise<void>;
+  /**
+   * The bills panel, passed in as a slot rather than rendered by the page after
+   * this component. It has to sit ABOVE the day-by-day list — you add what
+   * leaves the account, then read what that does to each day — and the day list
+   * can't move out of here because it's built from the same forecast state.
+   */
+  billsPanel?: ReactNode;
 };
 
 const LATE_DAYS_DEFAULT = 7;
@@ -86,6 +93,7 @@ export default function CashFlowBoard({
   unbilled,
   settingsAvailable,
   saveSettings,
+  billsPanel,
 }: Props) {
   const [balance, setBalance] = useState<number>(savedBalance ?? 0);
   const [buffer, setBuffer] = useState<number>(savedBuffer);
@@ -428,6 +436,8 @@ export default function CashFlowBoard({
           </p>
         </article>
       </div>
+
+      {billsPanel}
 
       <section className="panel workspace-section-card cash-events-card">
         <div className="section-heading workspace-section-heading">
