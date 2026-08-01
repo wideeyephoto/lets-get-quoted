@@ -267,7 +267,7 @@ export default function ScheduleCalendar({
   };
   // Drag-to-schedule is coordinated by the shared provider so the (server-
   // rendered) unscheduled list and this calendar share one drag session.
-  const { beginDrag, overDateKey, draggingJobId } = useScheduleDrag();
+  const { beginDrag, overDateKey, draggingJobId, armedJob, placeArmed } = useScheduleDrag();
 
   // Keep local optimistic state in sync once the server revalidates this
   // route's data (e.g. after a toggle round-trips, or on manual refresh).
@@ -686,9 +686,18 @@ export default function ScheduleCalendar({
               const isFull = !block && fullSet.has(cell.dateKey);
               return (
                 <div
-                  className={`calendar-cell${cell.dateKey === todayKey ? ' today' : ''}${overDateKey === cell.dateKey ? ' drag-over' : ''}${block ? ' blocked' : ''}${isFull ? ' full' : ''}`}
+                  className={`calendar-cell${cell.dateKey === todayKey ? ' today' : ''}${overDateKey === cell.dateKey ? ' drag-over' : ''}${block ? ' blocked' : ''}${isFull ? ' full' : ''}${armedJob ? ' armable' : ''}`}
                   key={cell.dateKey}
                   data-date-key={cell.dateKey}
+                  // Only a drop target while something is armed, so an ordinary
+                  // click on a day still belongs to the jobs inside it.
+                  role={armedJob ? 'button' : undefined}
+                  tabIndex={armedJob ? 0 : undefined}
+                  aria-label={armedJob ? `Schedule ${armedJob.jobName} on ${cell.dateKey}` : undefined}
+                  onClick={armedJob ? () => placeArmed(cell.dateKey) : undefined}
+                  onKeyDown={armedJob ? (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); placeArmed(cell.dateKey); }
+                  } : undefined}
                 >
                   <span className="calendar-day-number">{cell.day}</span>
                   {block ? <span className="calendar-blocked-chip" title={block.reason || 'Blocked off'}>Off</span> : null}

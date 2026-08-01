@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useRef, useState, useTransition, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, useTransition, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { removeJobScheduleAction, scheduleJobAction } from '../jobs/actions';
 
@@ -13,6 +13,12 @@ type ScheduleDragContextValue = {
   beginDrag: (job: DragJob, event: ReactPointerEvent, onTap?: () => void) => void;
   overDateKey: string | null;
   draggingJobId: string | null;
+  /** TAP TO PLACE: the job waiting for a date, or null. */
+  armedJob: DragJob | null;
+  armJob: (job: DragJob) => void;
+  cancelArm: () => void;
+  /** Called by a calendar cell when something is armed. */
+  placeArmed: (dateKey: string) => void;
 };
 
 const ScheduleDragContext = createContext<ScheduleDragContextValue | null>(null);
@@ -56,6 +62,35 @@ export default function ScheduleDragProvider({ children, unavailable = {} }: { c
   const [undo, setUndo] = useState<UndoInfo | null>(null);
   const [isUndoing, startUndoTransition] = useTransition();
   const undoTimer = useRef<number | null>(null);
+
+  // TAP TO PLACE — the two-tap alternative to dragging: tap a job to arm it,
+  // then tap a date. It exists because dragging is the wrong gesture on a
+  // phone (a long pointer drag across a scrolling page is fiddly at best) and
+  // because dragging has never been reachable by keyboard at all. Same drop
+  // prompt, same undo, same server action — only the way you aim differs.
+  const [armedJob, setArmedJob] = useState<DragJob | null>(null);
+  const armJob = useCallback((job: DragJob) => setArmedJob((current) => (current?.jobId === job.jobId ? null : job)), []);
+  const cancelArm = useCallback(() => setArmedJob(null), []);
+  // Reads armedJob from state rather than from a setState updater. The updater
+  // form looked tidier and was wrong: updaters have to be pure, React
+  // double-invokes them in development, and the setPendingDrop tucked inside one
+  // was being discarded — tapping a date armed the job and then did nothing.
+  const placeArmed = useCallback((dateKey: string) => {
+    if (!armedJob) return;
+    if (dateKey !== armedJob.sourceDateKey) {
+      setDropTime(armedJob.time || '');
+      setPendingDrop({ jobId: armedJob.jobId, jobName: armedJob.jobName, dateKey, sourceDateKey: armedJob.sourceDateKey, sourceTime: armedJob.time });
+    }
+    setArmedJob(null);
+  }, [armedJob]);
+
+  // Escape gets you out of an armed job, the same way it closes the drop prompt.
+  useEffect(() => {
+    if (!armedJob) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setArmedJob(null); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [armedJob]);
 
   const beginDrag = useCallback((job: DragJob, event: ReactPointerEvent, onTap?: () => void) => {
     if (event.button > 0) return; // ignore right/middle mouse
@@ -162,7 +197,7 @@ export default function ScheduleDragProvider({ children, unavailable = {} }: { c
   }
 
   return (
-    <ScheduleDragContext.Provider value={{ beginDrag, overDateKey, draggingJobId }}>
+    <ScheduleDragContext.Provider value={{ beginDrag, overDateKey, draggingJobId, armedJob, armJob, cancelArm, placeArmed }}>
       {children}
 
       {pendingDrop ? (
@@ -204,6 +239,13 @@ export default function ScheduleDragProvider({ children, unavailable = {} }: { c
               </div>
             </div>
           </div>
+        </div>
+      ) : null}
+
+      {armedJob && !pendingDrop ? (
+        <div className="schedule-armed-toast" role="status" aria-live="polite">
+          <span><strong>{armedJob.jobName}</strong> — pick a date on the calendar</span>
+          <button type="button" onClick={cancelArm}>Cancel</button>
         </div>
       ) : null}
 

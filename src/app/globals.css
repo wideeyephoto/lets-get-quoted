@@ -3237,6 +3237,39 @@ li + li { margin-top: 0.45rem; }
 }
 .schedule-drag-handle:hover { border-color: rgba(255,122,33,.5); color: #f7f5ef; background: rgba(255,122,33,.08); }
 .schedule-drag-handle:active { cursor: grabbing; }
+.schedule-drag-handle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Armed and waiting for a date. Solid rather than dashed: the button has
+   stopped being an invitation to drag and become a thing that is mid-action. */
+.schedule-drag-handle.armed {
+  border-style: solid; border-color: var(--accent);
+  background: rgba(255,122,33,.16); color: #ffd0ac;
+}
+
+/* Every date is a target while a job is armed. Faint on its own — the toast
+   says what is happening — but unmistakable under the pointer. */
+.calendar-cell.armable { cursor: pointer; box-shadow: inset 0 0 0 1px rgba(255,122,33,.22); }
+.calendar-cell.armable:hover,
+.calendar-cell.armable:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--accent), 0 0 22px -6px rgba(255,122,33,.7);
+}
+
+/* Sits where the undo toast sits, and never at the same time as one. */
+.schedule-armed-toast {
+  position: fixed; left: 50%; bottom: 1.5rem; transform: translateX(-50%);
+  z-index: 210; display: flex; align-items: center; gap: 1rem;
+  padding: .6rem .7rem .6rem 1.05rem; border-radius: 999px;
+  border: 1px solid rgba(255,122,33,.55); background: rgba(14,21,32,.97);
+  box-shadow: 0 22px 44px -18px rgba(0,0,0,.8);
+  font-size: .85rem; color: #f7f5ef;
+}
+.schedule-armed-toast strong { color: var(--accent); }
+.schedule-armed-toast button {
+  font: inherit; font-weight: 700; cursor: pointer;
+  padding: .35rem .8rem; border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.05); color: #f7f5ef;
+}
+.schedule-armed-toast button:hover { border-color: rgba(255,255,255,.4); background: rgba(255,255,255,.1); }
 .schedule-drag-grip { font-size: 1rem; line-height: 1; color: #ff9440; }
 /* The floating preview that follows the pointer while dragging (touch + mouse).
    pointer-events:none so elementFromPoint sees the calendar cell underneath. */
@@ -10501,60 +10534,69 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 
 .schedule-rail > * { flex: 0 0 auto; min-width: 0; }
 
-/* The heading was sized for a full-width panel: at 21rem "Unscheduled jobs" ran
-   to two lines and ate the space the jobs themselves need. */
-.schedule-rail .workspace-section-card { padding: 0.9rem 0.85rem; }
-.schedule-rail .workspace-section-heading { margin-bottom: 0.6rem; }
-.schedule-rail .workspace-section-heading h2 { font-size: 1.15rem; letter-spacing: -0.01em; }
-.schedule-rail .schedule-drag-hint { font-size: 0.76rem; line-height: 1.4; }
+/* --- rail-only dressing ---------------------------------------------------
+   ALL of this is inside the breakpoint on purpose. Below 1100px there is no
+   rail — .schedule-rail is just a wrapper around the same stacked sections the
+   page always had — so compacting cards or unfloating popovers there would be
+   restyling the mobile page for no reason. (It did, briefly: the inline
+   popover rule leaked to every width and put a date picker on top of the
+   calendar on a phone.) */
+@media (min-width: 1100px) {
+  /* The heading was sized for a full-width panel: at 21rem "Unscheduled jobs" ran
+     to two lines and ate the space the jobs themselves need. */
+  .schedule-rail .workspace-section-card { padding: 0.9rem 0.85rem; }
+  .schedule-rail .workspace-section-heading { margin-bottom: 0.6rem; }
+  .schedule-rail .workspace-section-heading h2 { font-size: 1.15rem; letter-spacing: -0.01em; }
+  .schedule-rail .schedule-drag-hint { font-size: 0.76rem; line-height: 1.4; }
 
-/* --- the rail's compact job card ---
-   Same markup as the full-width list; only the shape changes. At 21rem the
-   row's name-beside-buttons layout has nowhere to go, so it stacks. */
-.schedule-rail .sign-in-method-row {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.6rem;
-  padding: 0.7rem 0.75rem;
+  /* --- the rail's compact job card ---
+     Same markup as the full-width list; only the shape changes. At 21rem the
+     row's name-beside-buttons layout has nowhere to go, so it stacks. */
+  .schedule-rail .sign-in-method-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+    padding: 0.7rem 0.75rem;
+  }
+
+  .schedule-rail .schedule-method-row .method-info {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .schedule-rail .method-detail { font-size: 0.74rem; line-height: 1.35; }
+
+  .schedule-rail .schedule-action-buttons {
+    justify-content: stretch;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .schedule-rail .schedule-action-buttons > * { flex: 1 1 8rem; }
+  .schedule-rail .schedule-action-buttons .btn { min-width: 0; width: 100%; font-size: 0.8rem; }
+  .schedule-rail .schedule-drag-handle { justify-content: center; width: 100%; }
+
+  /* In the rail the popovers open INLINE rather than floating. A 720px floating
+     panel anchored to a 21rem column would hang across the calendar and cover the
+     dates you are trying to read. */
+  .schedule-rail .schedule-popover-panel {
+    position: static;
+    width: auto;
+    max-height: none;
+    margin-top: 0.5rem;
+    box-shadow: none;
+  }
+
+  .schedule-rail .schedule-popover-panel::before { display: none; }
+
+  /* The map is context here, not a work surface, so it takes a fixed slice of the
+     rail rather than the 46vh it claims full-width — at that height it alone
+     would fill the rail and push the jobs off screen, which is the exact problem
+     this layout exists to solve. */
+  .schedule-rail .pin-map { height: 15rem; }
+  .schedule-rail .pin-map-shell { margin-top: 0.6rem; }
+  .schedule-rail .pin-map-legend { gap: 0.35rem 0.6rem; font-size: 0.78rem; }
 }
-
-.schedule-rail .schedule-method-row .method-info {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.schedule-rail .method-detail { font-size: 0.74rem; line-height: 1.35; }
-
-.schedule-rail .schedule-action-buttons {
-  justify-content: stretch;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-
-.schedule-rail .schedule-action-buttons > * { flex: 1 1 8rem; }
-.schedule-rail .schedule-action-buttons .btn { min-width: 0; width: 100%; font-size: 0.8rem; }
-.schedule-rail .schedule-drag-handle { justify-content: center; width: 100%; }
-
-/* In the rail the popovers open INLINE rather than floating. A 720px floating
-   panel anchored to a 21rem column would hang across the calendar and cover the
-   dates you are trying to read. */
-.schedule-rail .schedule-popover-panel {
-  position: static;
-  width: auto;
-  max-height: none;
-  margin-top: 0.5rem;
-  box-shadow: none;
-}
-
-.schedule-rail .schedule-popover-panel::before { display: none; }
-
-/* The map is context here, not a work surface, so it takes a fixed slice of the
-   rail rather than the 46vh it claims full-width — at that height it alone
-   would fill the rail and push the jobs off screen, which is the exact problem
-   this layout exists to solve. */
-.schedule-rail .pin-map { height: 15rem; }
-.schedule-rail .pin-map-shell { margin-top: 0.6rem; }
-.schedule-rail .pin-map-legend { gap: 0.35rem 0.6rem; font-size: 0.78rem; }
 
 .schedule-map { margin-bottom: 0; }
 
