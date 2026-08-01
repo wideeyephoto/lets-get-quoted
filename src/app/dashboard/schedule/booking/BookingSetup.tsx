@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { flushSync } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -30,6 +31,11 @@ type InstantBook = {
   geoMode: string;
   driveTime: boolean;
 };
+
+// The four numbered drawers, in the order they appear. A union rather than
+// `string` so a typo in a toggleSection/jumpTo call is a build error instead of
+// a section that silently never opens.
+type SectionKey = 'days' | 'limits' | 'advanced' | 'timeoff';
 
 const FULL_WEEKDAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -113,15 +119,16 @@ export default function BookingSetup({
   const [timezone, setTimezone] = useState(availability.timezone);
   const [instant, setInstant] = useState(instantBook);
 
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    days: true,
-    limits: true,
-    advanced: false,
-    timeoff: true,
-  });
+  // ONE SECTION OPEN AT A TIME. Three of these four were expanded on arrival and
+  // the page opened as a wall of controls — every heading pushed off screen by
+  // the body above it, so there was nothing to skim to decide where to go. As an
+  // accordion the four headings stay together as a contents page. null is a
+  // legitimate state: clicking the open one closes it and shows all four.
+  const [openSection, setOpenSection] = useState<SectionKey | null>('days');
+  const isOpen = (key: SectionKey) => openSection === key;
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
-  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
+  const sectionRefs = useRef<Partial<Record<SectionKey, HTMLElement | null>>>({});
 
   // Compare against what the server sent, so "unsaved" means genuinely
   // different — not merely "touched and put back".
@@ -150,12 +157,27 @@ export default function BookingSetup({
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty]);
 
-  function toggleSection(key: string) {
-    setOpenSections((s) => ({ ...s, [key]: !s[key] }));
+  // Opening one section closes whichever was open, which means everything below
+  // the heading you clicked moves. Without pinning it, clicking section 4 while
+  // section 1 is open yanks the heading up by the height of section 1's body and
+  // you end up somewhere else on the page — the classic accordion lurch.
+  //
+  // flushSync commits the collapse synchronously, so we can measure where the
+  // heading actually landed and put it back before the browser paints. Doing
+  // this in an effect instead would show one frame in the wrong place.
+  function toggleSection(key: SectionKey) {
+    const before = sectionRefs.current[key]?.getBoundingClientRect().top;
+    flushSync(() => setOpenSection((current) => (current === key ? null : key)));
+    const after = sectionRefs.current[key]?.getBoundingClientRect().top;
+    if (before !== undefined && after !== undefined && Math.abs(after - before) > 1) {
+      window.scrollBy(0, after - before);
+    }
   }
 
-  function jumpTo(key: string) {
-    setOpenSections((s) => ({ ...s, [key]: true }));
+  // From the summary cards at the top, where the point IS to travel — so this
+  // one scrolls to the section rather than holding position.
+  function jumpTo(key: SectionKey) {
+    setOpenSection(key);
     requestAnimationFrame(() => {
       sectionRefs.current[key]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
@@ -364,16 +386,16 @@ export default function BookingSetup({
             className="bset-section"
             ref={(el) => { sectionRefs.current.days = el; }}
           >
-            <button type="button" className="bset-section-head" onClick={() => toggleSection('days')} aria-expanded={openSections.days}>
+            <button type="button" className="bset-section-head" onClick={() => toggleSection('days')} aria-expanded={isOpen('days')}>
               <span className="bset-num">1</span>
               <span className="bset-section-copy">
                 <strong>When customers can book</strong>
                 <small>Set your available days and preferred arrival time windows.</small>
               </span>
-              <Icon name="chevronDown" className={`bset-chev${openSections.days ? ' open' : ''}`} />
+              <Icon name="chevronDown" className={`bset-chev${isOpen('days') ? ' open' : ''}`} />
             </button>
 
-            {openSections.days && (
+            {isOpen('days') && (
               <div className="bset-section-body">
                 <div className="bset-field-group">
                   <p className="bset-group-title">Booking days</p>
@@ -455,16 +477,16 @@ export default function BookingSetup({
 
           {/* 2 — limits */}
           <section className="bset-section" ref={(el) => { sectionRefs.current.limits = el; }}>
-            <button type="button" className="bset-section-head" onClick={() => toggleSection('limits')} aria-expanded={openSections.limits}>
+            <button type="button" className="bset-section-head" onClick={() => toggleSection('limits')} aria-expanded={isOpen('limits')}>
               <span className="bset-num">2</span>
               <span className="bset-section-copy">
                 <strong>Booking limits</strong>
                 <small>Control how many jobs you take and how far in advance.</small>
               </span>
-              <Icon name="chevronDown" className={`bset-chev${openSections.limits ? ' open' : ''}`} />
+              <Icon name="chevronDown" className={`bset-chev${isOpen('limits') ? ' open' : ''}`} />
             </button>
 
-            {openSections.limits && (
+            {isOpen('limits') && (
               <div className="bset-section-body">
                 <div className="bset-grid">
                   <label className="bset-field">
@@ -500,16 +522,16 @@ export default function BookingSetup({
 
           {/* 3 — advanced, folded by default */}
           <section className="bset-section bset-section-quiet" ref={(el) => { sectionRefs.current.advanced = el; }}>
-            <button type="button" className="bset-section-head" onClick={() => toggleSection('advanced')} aria-expanded={openSections.advanced}>
+            <button type="button" className="bset-section-head" onClick={() => toggleSection('advanced')} aria-expanded={isOpen('advanced')}>
               <span className="bset-num">3</span>
               <span className="bset-section-copy">
                 <strong>Advanced booking rules</strong>
                 <small>Fine-tune how and who can book instantly.</small>
               </span>
-              <span className="bset-expand">{openSections.advanced ? 'Collapse' : 'Expand'} <Icon name="chevronDown" className={`bset-chev${openSections.advanced ? ' open' : ''}`} /></span>
+              <span className="bset-expand">{isOpen('advanced') ? 'Collapse' : 'Expand'} <Icon name="chevronDown" className={`bset-chev${isOpen('advanced') ? ' open' : ''}`} /></span>
             </button>
 
-            {openSections.advanced && (
+            {isOpen('advanced') && (
               <div className="bset-section-body">
                 <label className="bset-check">
                   <input type="checkbox" checked={instant.enabled} onChange={(e) => setInstant({ ...instant, enabled: e.target.checked })} />
@@ -566,16 +588,16 @@ export default function BookingSetup({
 
           {/* 4 — time off */}
           <section className="bset-section" ref={(el) => { sectionRefs.current.timeoff = el; }}>
-            <button type="button" className="bset-section-head" onClick={() => toggleSection('timeoff')} aria-expanded={openSections.timeoff}>
+            <button type="button" className="bset-section-head" onClick={() => toggleSection('timeoff')} aria-expanded={isOpen('timeoff')}>
               <span className="bset-num">4</span>
               <span className="bset-section-copy">
                 <strong>Time off &amp; blocked dates</strong>
                 <small>Block days you’re unavailable. They drop off your booking page.</small>
               </span>
-              <Icon name="chevronDown" className={`bset-chev${openSections.timeoff ? ' open' : ''}`} />
+              <Icon name="chevronDown" className={`bset-chev${isOpen('timeoff') ? ' open' : ''}`} />
             </button>
 
-            {openSections.timeoff && (
+            {isOpen('timeoff') && (
               <div className="bset-section-body">
                 <TimeOff blocks={blocks} todayKey={todayKey} />
               </div>
