@@ -78,7 +78,7 @@ type AccountStatus = {
   unscheduledJobCount: number;
   /** Leads still being worked — excludes won (now a job) and lost. */
   openLeadCount: number;
-  /** Every job that isn't archived. */
+  /** Live work only — excludes completed and archived. */
   activeJobCount: number;
   newestQuoteRequestId: string | null;
   newestQuoteRequestCreatedAt: string | null;
@@ -357,7 +357,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     // rather than as an empty rail.
     const totalByHref: Record<string, { count: number; title: string }> = {
       '/dashboard/leads': { count: openLeadCount, title: `${openLeadCount} open lead${openLeadCount === 1 ? '' : 's'} (won and lost not counted)` },
-      '/dashboard/jobs': { count: activeJobCount, title: `${activeJobCount} active job${activeJobCount === 1 ? '' : 's'} (archived not counted)` },
+      '/dashboard/jobs': { count: activeJobCount, title: `${activeJobCount} live job${activeJobCount === 1 ? '' : 's'} (completed and archived not counted)` },
     };
     const renderSideLink = (href: string, extraClass = '') => {
       const item = byHref.get(href);

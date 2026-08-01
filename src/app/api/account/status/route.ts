@@ -65,8 +65,10 @@ export async function GET() {
       // lights up both badges.
       const jobsNeedingAttentionCount = jobs.filter((job) => job.status === 'new_lead').length;
       const unscheduledJobCount = jobs.filter((job) => job.status === 'in_progress' && !job.scheduled_for).length;
-      // Inventory to the attention badge's "needs you": everything not archived.
-      const activeJobCount = jobs.filter((job) => job.status !== 'archived').length;
+      // Inventory to the attention badge's "needs you" — but LIVE work only.
+      // Counting 'complete' too meant the number only ever grew, so after a busy
+      // season it would read 300-odd and stop meaning anything at a glance.
+      const activeJobCount = jobs.filter((job) => job.status === 'new_lead' || job.status === 'in_progress').length;
 
       // Muting low-quality leads (default on) keeps them off the dashboard nag —
       // the badge/banner only counts leads that actually deserve a response.
