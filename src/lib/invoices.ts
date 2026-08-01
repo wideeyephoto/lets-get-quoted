@@ -65,19 +65,67 @@ export function formatMoney(n: number): string {
   return (rounded < 0 ? '-$' : '$') + Math.abs(rounded).toLocaleString();
 }
 
+// The next unused INV- number for an account.
+//
+// It reads the HIGHEST number, not the newest row. Those are not the same
+// thing, and assuming they were is what broke invoicing outright: the CRM
+// importer back-dates an imported invoice's created_at to the invoice's own
+// date, so an account can easily hold INV-2005 dated last year alongside a
+// freshly created INV-2001. "Newest row + 1" then mints INV-2002, which already
+// exists, and (account_id, ref) is unique — so every attempt to create an
+// invoice, or to send a payment link on a job that has none, failed with a
+// duplicate-key error and no way for the contractor to get past it.
+//
+// Refs that aren't INV-<digits> (a ref carried over verbatim from another
+// system) are ignored for numbering: they can't collide with the ones we mint.
+export function nextInvoiceRef(existingRefs: Array<string | null | undefined>): string {
+  let highest = 0;
+  for (const ref of existingRefs) {
+    const match = /^INV-(\d+)$/.exec(String(ref ?? '').trim());
+    if (match) {
+      highest = Math.max(highest, parseInt(match[1], 10));
+    }
+  }
+  return `INV-${highest > 0 ? highest + 1 : 2001}`;
+}
+
 async function generateInvoiceRef(supabase: SupabaseClient, accountId: string): Promise<string> {
-  const { data } = await supabase
-    .from('invoices')
-    .select('ref')
-    .eq('account_id', accountId)
-    .order('created_at', { ascending: false })
-    .limit(1);
+  const { data } = await supabase.from('invoices').select('ref').eq('account_id', accountId);
+  return nextInvoiceRef(((data ?? []) as Array<{ ref: string | null }>).map((row) => row.ref));
+}
 
-  const lastRef = data?.[0]?.ref as string | undefined;
-  const lastNumber = lastRef ? parseInt(lastRef.replace(/^INV-/, ''), 10) : NaN;
-  const nextNumber = Number.isFinite(lastNumber) ? lastNumber + 1 : 2001;
+function isDuplicateRef(error: { code?: string } | null): boolean {
+  return error?.code === '23505';
+}
 
-  return `INV-${nextNumber}`;
+// Insert an invoice under a freshly minted ref, re-deriving the ref if another
+// request took it first. Two contractors' tabs — or a payment link and an
+// invoice build — can be in flight at once, and the unique index is the only
+// thing that actually arbitrates; without the retry the loser sees a 500.
+async function insertInvoiceWithRef(
+  supabase: SupabaseClient,
+  accountId: string,
+  row: Record<string, unknown>,
+): Promise<Invoice> {
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const ref = await generateInvoiceRef(supabase, accountId);
+    const { data, error } = await supabase
+      .from('invoices')
+      .insert({ ...row, account_id: accountId, ref })
+      .select('*')
+      .single();
+
+    if (!error && data) {
+      return data as Invoice;
+    }
+
+    lastError = error;
+    if (!isDuplicateRef(error)) break;
+  }
+
+  throw lastError ?? new Error('Unable to create invoice');
 }
 
 export async function listInvoices(supabase: SupabaseClient, accountId: string, jobId: string): Promise<Invoice[]> {
@@ -147,19 +195,7 @@ export async function createInvoice(
     throw new Error('Job not found for this account.');
   }
 
-  const ref = await generateInvoiceRef(supabase, accountId);
-
-  const { data, error } = await supabase
-    .from('invoices')
-    .insert({ account_id: accountId, job_id: jobId, ref, status, total: 0 })
-    .select('*')
-    .single();
-
-  if (error || !data) {
-    throw error ?? new Error('Unable to create invoice');
-  }
-
-  return data as Invoice;
+  return insertInvoiceWithRef(supabase, accountId, { job_id: jobId, status, total: 0 });
 }
 
 // Create a one-line invoice in a single shot — used by the recurring engine to
@@ -174,15 +210,9 @@ export async function createInvoiceWithSingleItem(
   item: { description: string; amount: number },
   status: InvoiceStatus = 'sent',
 ): Promise<Invoice> {
-  const ref = await generateInvoiceRef(supabase, accountId);
   const total = round2(Number(item.amount) || 0);
 
-  const { data: invoice, error } = await supabase
-    .from('invoices')
-    .insert({ account_id: accountId, job_id: jobId, ref, status, total })
-    .select('*')
-    .single();
-  if (error || !invoice) throw error ?? new Error('Unable to create invoice');
+  const invoice = await insertInvoiceWithRef(supabase, accountId, { job_id: jobId, status, total });
 
   const { error: itemError } = await supabase
     .from('invoice_items')

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeInvoiceTotals, selectPrimaryInvoice, formatMoney, type Invoice } from '@/lib/invoices';
+import { computeInvoiceTotals, nextInvoiceRef, selectPrimaryInvoice, formatMoney, type Invoice } from '@/lib/invoices';
 
 // Build just enough of an Invoice for selectPrimaryInvoice (it reads status/total/created_at).
 function inv(partial: Partial<Invoice>): Invoice {
@@ -84,6 +84,42 @@ describe('selectPrimaryInvoice', () => {
 
   it('returns null when every invoice is void', () => {
     expect(selectPrimaryInvoice([inv({ status: 'void' }), inv({ status: 'void' })])).toBeNull();
+  });
+});
+
+describe('nextInvoiceRef', () => {
+  it('starts a fresh account at INV-2001', () => {
+    expect(nextInvoiceRef([])).toBe('INV-2001');
+  });
+
+  it('continues from the highest number', () => {
+    expect(nextInvoiceRef(['INV-2001', 'INV-2002', 'INV-2003'])).toBe('INV-2004');
+  });
+
+  // The bug this function exists to fix. Imported invoices are back-dated to the
+  // invoice's own date, so the row with the newest created_at can hold a LOWER
+  // number than one already on the account. Ordering by created_at and adding 1
+  // handed back a ref that was already taken, and (account_id, ref) is unique —
+  // so building an invoice, or sending a payment link on a job without one,
+  // failed outright with a duplicate key.
+  it('does not depend on insertion or date order', () => {
+    expect(nextInvoiceRef(['INV-1001', 'INV-1004', 'INV-1002', 'INV-1003'])).toBe('INV-1005');
+    expect(nextInvoiceRef(['INV-2005', 'INV-2001'])).toBe('INV-2006');
+  });
+
+  it('compares numerically, not as text', () => {
+    // '999' sorts after '1001' as a string; it must not win.
+    expect(nextInvoiceRef(['INV-999', 'INV-1001'])).toBe('INV-1002');
+  });
+
+  it('ignores refs carried over verbatim from another system', () => {
+    expect(nextInvoiceRef(['2024-017', 'INV-2001', 'Invoice #4', ''])).toBe('INV-2002');
+    // ...and falls back to the starting number when NONE of them are ours.
+    expect(nextInvoiceRef(['2024-017', 'ACME/88'])).toBe('INV-2001');
+  });
+
+  it('tolerates null, undefined and stray whitespace', () => {
+    expect(nextInvoiceRef([null, undefined, '  INV-2007  '])).toBe('INV-2008');
   });
 });
 
