@@ -3248,6 +3248,12 @@ li + li { margin-top: 0.45rem; }
 /* Every date is a target while a job is armed. Faint on its own — the toast
    says what is happening — but unmistakable under the pointer. */
 .calendar-cell.armable { cursor: pointer; box-shadow: inset 0 0 0 1px rgba(255,122,33,.22); }
+/* While a job is armed the WHOLE cell is the target, jobs already on that day
+   included. Without this, tapping a busy day opened the chip you happened to
+   land on — its own reschedule form swallowed the click and the armed job went
+   nowhere. Only applies while armed; chips are clickable again the moment the
+   toast is dismissed. */
+.calendar-cell.armable .calendar-day-jobs { pointer-events: none; }
 .calendar-cell.armable:hover,
 .calendar-cell.armable:focus-visible {
   outline: none;
@@ -10596,6 +10602,129 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   .schedule-rail .pin-map { height: 15rem; }
   .schedule-rail .pin-map-shell { margin-top: 0.6rem; }
   .schedule-rail .pin-map-legend { gap: 0.35rem 0.6rem; font-size: 0.78rem; }
+}
+
+/* --- the mobile job dock -------------------------------------------------
+   On a phone there is no room for a rail, so the jobs come UP OVER the calendar
+   instead of sitting a screen below it. Same reason as the rail: the drag
+   hit-tests whatever is under the finger and tap-to-place needs somewhere to
+   tap, so the job and the date have to share a screen.
+
+   Above the breakpoint this wrapper is `display: contents` — the section flows
+   into the rail exactly as if the component were not in the tree. There is one
+   copy of the job markup; this only decides where it sits. */
+@media (min-width: 1100px) {
+  .schedule-dock { display: contents; }
+  .schedule-dock-tab { display: none; }
+}
+
+@media (max-width: 1099px) {
+  .schedule-dock {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 95;
+    display: flex;
+    flex-direction: column;
+    max-height: 56vh;
+    pointer-events: none;
+  }
+
+  .schedule-dock-tab,
+  .schedule-dock-body { pointer-events: auto; }
+
+  .schedule-dock-tab {
+    align-self: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: -1px;
+    padding: 0.6rem 1.1rem calc(0.6rem + env(safe-area-inset-bottom, 0px));
+    border: 1px solid rgba(255, 122, 33, 0.5);
+    border-bottom: 0;
+    border-radius: 14px 14px 0 0;
+    background: rgba(14, 21, 32, 0.98);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #f7f5ef;
+    cursor: pointer;
+    box-shadow: 0 -14px 34px -18px rgba(0, 0, 0, 0.9);
+  }
+
+  .schedule-dock-count {
+    display: inline-grid;
+    place-items: center;
+    min-width: 1.5rem;
+    height: 1.5rem;
+    padding: 0 0.35rem;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #180c02;
+    font-size: 0.8rem;
+    font-weight: 800;
+  }
+
+  .schedule-dock-chevron { color: var(--accent); }
+
+  /* Closed collapses to nothing rather than unmounting, so opening it does not
+     re-render the server-rendered rows or lose an open crew picker. */
+  .schedule-dock-body {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.22s ease;
+    border-top: 1px solid rgba(255, 122, 33, 0.4);
+    background: rgba(8, 15, 24, 0.98);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+  }
+
+  /* 48vh, not 62. The sheet is only useful if the calendar is still visible
+     behind it — measured at 62vh on a Pixel 7 there were ZERO date cells left
+     above it, which defeats the entire purpose of bringing the jobs up here.
+     Two job cards is enough to work from; the rest scrolls. */
+  .schedule-dock.is-open .schedule-dock-body {
+    max-height: 48vh;
+    overflow-y: auto;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* No panel chrome inside the sheet — the sheet IS the panel. */
+  .schedule-dock .workspace-section-card {
+    border: 0;
+    border-radius: 0;
+    background: none;
+    padding: 0.85rem 0.9rem 1rem;
+  }
+
+  .schedule-dock .workspace-section-heading h2 { font-size: 1.1rem; }
+  .schedule-dock .schedule-drag-hint { font-size: 0.78rem; }
+
+  /* Same reasoning as the rail: a 720px floating panel cannot open inside a
+     scrolling sheet without being clipped, so it lays out inline instead. */
+  .schedule-dock .schedule-popover-panel {
+    position: static;
+    width: auto;
+    max-height: none;
+    margin-top: 0.5rem;
+    box-shadow: none;
+  }
+
+  .schedule-dock .schedule-popover-panel::before { display: none; }
+  .schedule-dock .schedule-action-buttons { flex-wrap: wrap; }
+  .schedule-dock .schedule-action-buttons > * { flex: 1 1 8rem; }
+  .schedule-dock .schedule-action-buttons .btn { min-width: 0; width: 100%; }
+
+  /* The tab is fixed over the page, so the last of the page needs room to clear
+     it — otherwise the working-hours panel sits permanently underneath. */
+  .workspace-shell:has(.schedule-dock) { padding-bottom: 5rem; }
+
+  /* Both toasts have to clear the tab. */
+  .schedule-armed-toast,
+  .schedule-undo-toast { bottom: 5rem; }
 }
 
 .schedule-map { margin-bottom: 0; }

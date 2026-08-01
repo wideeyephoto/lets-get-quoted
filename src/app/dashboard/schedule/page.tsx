@@ -19,6 +19,7 @@ import { listActiveScheduleRequests } from '@/lib/scheduling';
 import { listRecurringPlans, projectPlanVisits } from '@/lib/recurring';
 import { getAvailableBookingDays } from '@/lib/booking';
 import ScheduleCalendar from './schedule-calendar';
+import ScheduleDock from './ScheduleDock';
 import ScheduleMap from './ScheduleMap';
 import ClientScheduleOptionsCalendar from './client-schedule-options-calendar';
 import JobDragHandle from './JobDragHandle';
@@ -551,6 +552,7 @@ export default async function SchedulePage({
           Plan my day. */}
       <aside className="schedule-rail">
       {unscheduledJobs.length > 0 ? (
+        <ScheduleDock count={unscheduledJobs.length}>
         <section className="panel workspace-section-card" id="unscheduled-jobs">
           <div className="section-heading workspace-section-heading">
             <p className="eyebrow">Needs a date</p>
@@ -718,6 +720,7 @@ export default async function SchedulePage({
             })}
           </div>
         </section>
+        </ScheduleDock>
       ) : null}
 
       <ScheduleMap pins={mapPins} mapView={mapView} mapTheme={mapTheme} />
