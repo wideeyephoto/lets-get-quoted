@@ -903,6 +903,7 @@ export default async function SettingsPage({
                   <div className="workspace-inline-row">
                     <Link href="/dashboard/import" className="btn primary">Migrate from another CRM</Link>
                     <Link href="/dashboard/clients/import" className="btn secondary">Import customers</Link>
+                    <Link href="/dashboard/services/import" className="btn secondary">Import services</Link>
                   </div>
                 </section>
 

@@ -30,9 +30,11 @@ export default async function ServicesPage({ searchParams }: { searchParams: { s
             Save the services you sell once, and drop them into quotes and recurring plans with a tap — no more
             retyping prices. You can always tweak the amount per job.
           </p>
-          <div className="workspace-inline-row">
-            <Link href="/dashboard/services/import" className="btn secondary">Import services</Link>
-          </div>
+          {/* No "Import services" here. Bringing a price list over from another
+              tool is a setup job you do once; it belongs with the rest of the
+              migration in Account → Import & migrate, not on the page you open
+              every week to change a price. The route still exists and is linked
+              from both migration entry points. */}
         </div>
         {stats ? <PriceBookStats stats={stats} /> : null}
       </section>
