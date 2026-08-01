@@ -23,6 +23,7 @@ import { laborRulesFromAccount, LABOR_RULE_COLUMNS } from '@/lib/labor-settings'
 import { resolvePayPeriod, type PeriodMode } from '@/lib/labor';
 import { periodEndKey, periodStartKey, payPeriodKey } from '@/lib/crew-pay';
 import { projectPlanVisits } from '@/lib/recurring';
+import { planSchedulePreview } from '@/lib/payment-plan-math';
 
 const MISSING_TABLE = '42P01';
 const MISSING_COLUMN = '42703';
@@ -462,11 +463,17 @@ async function loadIncomingEvents(
   const { todayKey, horizonKey, lagDays } = options;
 
   const [pendingResult, jobsResult, plansResult] = await Promise.all([
+    // `failed` is in here on purpose. A declined auto-charge with a retry
+    // scheduled is money arriving on a known date; leaving it out made it vanish
+    // from the forecast until it recovered, which is precisely the month you
+    // most need to know about it. Which failures actually count is decided
+    // below — an exhausted one never arrives, and one waiting on a new card
+    // arrives when the client gets round to it, which is not a date.
     supabase
       .from('payments')
-      .select('id, job_id, kind, label, amount, status, due_date, requested_at, payment_plan_id')
+      .select('id, job_id, kind, label, amount, status, due_date, requested_at, payment_plan_id, dunning_state, next_retry_at, failure_message')
       .eq('account_id', accountId)
-      .in('status', ['requested', 'processing'])
+      .in('status', ['requested', 'processing', 'failed'])
       .eq('imported', false),
     // Work on the calendar inside the window, plus recently finished work, so
     // the unbilled stat has something to count.
@@ -487,7 +494,7 @@ async function loadIncomingEvents(
   if (pendingResult.error) throw new Error(pendingResult.error.message);
   if (jobsResult.error) throw new Error(jobsResult.error.message);
 
-  const pending = (pendingResult.data ?? []) as Array<{
+  const allPending = (pendingResult.data ?? []) as Array<{
     id: string;
     job_id: string | null;
     kind: string;
@@ -497,7 +504,18 @@ async function loadIncomingEvents(
     due_date: string | null;
     requested_at: string;
     payment_plan_id: string | null;
+    dunning_state: string | null;
+    next_retry_at: string | null;
+    failure_message: string | null;
   }>;
+
+  // A failed payment only earns a place on the curve when a retry is actually
+  // scheduled. 'needs_card' waits on the client to enter a new one and
+  // 'exhausted' has given up — both are real money with no date, and the rule
+  // this whole file runs on is that undated money doesn't get drawn.
+  const isRetrying = (row: (typeof allPending)[number]) =>
+    row.status === 'failed' && row.dunning_state === 'scheduled' && Boolean(row.next_retry_at);
+  const pending = allPending.filter((row) => row.status !== 'failed' || isRetrying(row));
 
   const jobs = (jobsResult.data ?? []) as Array<{
     id: string;
@@ -526,6 +544,29 @@ async function loadIncomingEvents(
       settledByJob.set(row.job_id, (settledByJob.get(row.job_id) ?? 0) + num(row.amount));
     }
   }
+  // Retries are drawn as their own event, so they have to count as "already
+  // accounted for" against the job as well — otherwise the same money appears
+  // once as the retry and again inside the job's remaining balance.
+  for (const row of pending) {
+    if (!isRetrying(row) || !row.job_id) continue;
+    settledByJob.set(row.job_id, (settledByJob.get(row.job_id) ?? 0) + num(row.amount));
+  }
+
+  // A payment plan whose deposit hasn't cleared has no installment rows yet —
+  // they're written in one go the moment the deposit is confirmed. Until then
+  // the whole balance landed as a single lump on the job's end date, which for
+  // a six-month plan is the wrong month by five of them. Project the schedule
+  // the client was actually shown.
+  const pendingPlans = jobIds.length
+    ? (
+        await supabase
+          .from('payment_plans')
+          .select('id, job_id, total_cents, deposit_cents, installment_count, frequency, first_installment_date')
+          .eq('account_id', accountId)
+          .in('job_id', jobIds)
+          .eq('status', 'pending_deposit')
+      ).data ?? []
+    : [];
 
   const events: CashEvent[] = [];
 
@@ -539,20 +580,26 @@ async function loadIncomingEvents(
     // A plan installment has a real scheduled charge date. Anything else is a
     // link somebody has to click, so it lands a typical payment lag after it
     // was sent, not the day it was sent.
-    const expected = row.due_date ?? addDays(String(row.requested_at).slice(0, 10), lagDays);
+    const retrying = isRetrying(row);
+    const expected = retrying
+      ? String(row.next_retry_at).slice(0, 10)
+      : row.due_date ?? addDays(String(row.requested_at).slice(0, 10), lagDays);
     // The expected day can already be in the past, and the forecast will pull it
     // onto today. Say so: a detail line still reading "expected Thu, Jul 30" on a
     // row drawn in August is the page contradicting itself.
     const late = daysBetween(todayKey, expected) < 0;
     const dateKey = late ? todayKey : expected;
     const lateBy = late ? daysBetween(expected, todayKey) : 0;
-    const confirmed = row.status === 'processing' || (row.kind === 'plan_installment' && Boolean(row.due_date));
+    // A retry is never "confirmed" however firmly it's scheduled — the card has
+    // already said no once.
+    const confirmed = !retrying && (row.status === 'processing' || (row.kind === 'plan_installment' && Boolean(row.due_date)));
     events.push({
       id: `pay:${row.id}`,
       dateKey,
       label: `${who} — ${row.label || PAYMENT_KIND_WORD[row.kind] || 'payment'}`,
-      detail:
-        row.status === 'processing'
+      detail: retrying
+        ? `Card declined${row.failure_message ? ` (${row.failure_message})` : ''} · retrying ${dayLabel(dateKey)}`
+        : row.status === 'processing'
           ? `Payment in flight · ${dayLabel(dateKey)}`
           : late
             ? `Asked for, still unpaid · ${lateBy} ${lateBy === 1 ? 'day' : 'days'} past when you'd expect it`
@@ -566,6 +613,48 @@ async function loadIncomingEvents(
       repeating: row.kind === 'plan_installment',
       href: row.job_id ? `/dashboard/jobs/${row.job_id}` : null,
     });
+  }
+
+  // 1b. Installments of a plan that is still waiting on its deposit.
+  for (const plan of pendingPlans as Array<{
+    id: string;
+    job_id: string;
+    total_cents: number;
+    deposit_cents: number;
+    installment_count: number;
+    frequency: 'weekly' | 'biweekly' | 'monthly';
+    first_installment_date: string;
+  }>) {
+    const job = jobById.get(plan.job_id);
+    const schedule = planSchedulePreview(plan);
+    let projected = 0;
+    for (const entry of schedule) {
+      const amount = Math.round(entry.amountCents) / 100;
+      if (amount <= 0) continue;
+      projected += amount;
+      if (entry.dueDate > horizonKey) continue;
+      events.push({
+        id: `planned:${plan.id}:${entry.seq}`,
+        dateKey: entry.dueDate,
+        label: `${job?.client_name ?? 'Customer'} — installment ${entry.seq} of ${schedule.length}`,
+        // Every word of this is load-bearing: none of it happens unless the
+        // deposit is paid first, and a forecast that quietly assumes it was is
+        // the kind of optimism this page exists to remove.
+        detail: `Payment plan — none of these charge until the deposit clears · ${dayLabel(entry.dueDate)}`,
+        amount,
+        kind: 'installment',
+        confirmed: false,
+        slips: true,
+        repeating: true,
+        href: `/dashboard/jobs/${plan.job_id}`,
+      });
+    }
+    // Drawn above, so it must not also land inside the job's remaining balance.
+    // The whole projected total, not just the part inside the window: an
+    // installment falling after the horizon hasn't arrived in this window
+    // either, and adding it back as a lump on the job's end date would date it
+    // even more wrongly than leaving it out.
+    if (projected > 0) settledByJob.set(plan.job_id, (settledByJob.get(plan.job_id) ?? 0) + projected);
   }
 
   // 2. Quoted work on the calendar, net of anything already requested or paid.

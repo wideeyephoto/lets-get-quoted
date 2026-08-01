@@ -26,7 +26,7 @@ export default function RecurringPlanCard({
   const paused = !plan.active;
   const countdown = plan.active ? visitCountdown(plan.next_run_date, today) : null;
   // Three visits is enough to read a rhythm without turning the card into a calendar.
-  const visits = plan.active ? upcomingVisits(plan.next_run_date, plan.frequency, 3) : [];
+  const visits = plan.active ? upcomingVisits(plan.next_run_date, plan.frequency, 3, plan.anchor_day) : [];
   const monthly = planMonthlyValue(plan.amount, plan.frequency);
 
   return (

@@ -248,14 +248,24 @@ describe('expandRecurrence', () => {
     ]);
   });
 
-  it('clamps a monthly series into short months, and the clamp is permanent', () => {
-    // Documented behaviour, matching how recurring plans advance: once the 31st
-    // is lost to a 30-day month it does not come back.
+  it('borrows a short month and gives the day straight back', () => {
+    // February can't hold the 31st, so it takes the 28th — and March returns to
+    // the 31st. The old behaviour walked off the date permanently: one February
+    // and a month-end bill was on the 28th forever.
     expect(expandRecurrence('2026-01-31', 'monthly', { fromKey: '2026-01-01', toKey: '2026-05-01' })).toEqual([
       '2026-01-31',
       '2026-02-28',
-      '2026-03-28',
-      '2026-04-28',
+      '2026-03-31',
+      '2026-04-30',
+    ]);
+  });
+
+  it('anchors on the first occurrence, not on wherever it last landed', () => {
+    // Three short months in a row and the 30th still comes back.
+    expect(expandRecurrence('2026-01-30', 'monthly', { fromKey: '2026-01-01', toKey: '2026-04-15' })).toEqual([
+      '2026-01-30',
+      '2026-02-28',
+      '2026-03-30',
     ]);
   });
 

@@ -35,12 +35,20 @@ export function visitCountdown(nextRunDate: string, today: string): Countdown {
 
 // The next few visit dates, so a plan shows its cadence as a rhythm instead of a
 // single date the owner has to extrapolate from.
-export function upcomingVisits(nextRunDate: string, frequency: RecurringFrequency, count: number): string[] {
+export function upcomingVisits(
+  nextRunDate: string,
+  frequency: RecurringFrequency,
+  count: number,
+  // Same anchor the plan itself advances on, so the dates shown on the card are
+  // the dates that will actually be created. Without it the preview drifts off
+  // a month-end plan while the plan doesn't, and the card quietly lies.
+  anchorDay?: number | null,
+): string[] {
   const dates: string[] = [];
   let cursor = nextRunDate;
   for (let i = 0; i < count; i++) {
     dates.push(cursor);
-    cursor = advanceDate(cursor, frequency);
+    cursor = advanceDate(cursor, frequency, anchorDay);
   }
   return dates;
 }

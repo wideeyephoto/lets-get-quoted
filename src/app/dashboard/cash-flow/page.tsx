@@ -71,16 +71,17 @@ export default async function CashFlowPage({ searchParams }: { searchParams: { w
             <Link href="/dashboard/crew">Hours &amp; pay →</Link>
           </li>
           <li>
-            <strong>Money coming in</strong> — payment requests you&rsquo;ve sent, payment-plan installments, recurring plan
-            visits, and quoted work sitting on the calendar (less anything already collected on it).
+            <strong>Money coming in</strong> — payment requests you&rsquo;ve sent, payment-plan installments (including a
+            plan still waiting on its deposit, spread across its real dates), recurring plan visits, declined charges with
+            a retry scheduled, and quoted work sitting on the calendar (less anything already collected on it).
           </li>
           <li>
             <strong>Bills</strong> — only what you add above. Nothing else in here knows your insurance renews.
           </li>
           <li>
-            <strong>Not counted</strong> — finished work you haven&rsquo;t invoiced. It&rsquo;s real money, but there&rsquo;s
-            no honest date to put it on until somebody is asked for it, and a forecast that guesses cheerfully is worse than
-            one that admits the gap.
+            <strong>Not counted</strong> — finished work you haven&rsquo;t invoiced, and declined charges that are waiting
+            on the client to enter a new card or have run out of retries. All of it is real money with no honest date to
+            put it on, and a forecast that guesses cheerfully is worse than one that admits the gap.
           </li>
         </ul>
       </section>

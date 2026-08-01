@@ -29,6 +29,12 @@ export type RecurringPlan = {
   auto_charge: boolean;
   // Remaining visits before the plan ends; null = ongoing (no term).
   remaining_cycles: number | null;
+  /**
+   * Day-of-month a MONTHLY plan returns to, so one February can't move it
+   * permanently. Optional on the type, not just nullable: it arrives undefined
+   * until migrations/2026-08-01-recurring-anchor-day.sql has run.
+   */
+  anchor_day?: number | null;
   stripe_customer_id: string | null;
   stripe_payment_method_id: string | null;
   card_brand: string | null;
@@ -62,10 +68,25 @@ export function todayDateKey(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-// Advance a YYYY-MM-DD key by one cadence step. Weekly/biweekly are exact day
-// math; monthly adds a calendar month and clamps to the target month's last day
-// (so the 31st becomes the 28th/30th rather than rolling into next month).
-export function advanceDate(dateKey: string, frequency: RecurringFrequency): string {
+/**
+ * Advance a YYYY-MM-DD key by one cadence step.
+ *
+ * Weekly/biweekly are exact day math. Monthly adds a calendar month and clamps
+ * to the target month's last day, so the 31st becomes the 28th/30th rather than
+ * rolling into the next month.
+ *
+ * `anchorDay` is what stops that clamp being permanent. Without it the series
+ * walks off its own date and never comes back — a plan set up on the 31st ran
+ * 01-31, 02-28, then **03-28**, because each step could only see the day it had
+ * just landed on. The customer agreed to the last day of the month and after one
+ * February they're on the 28th forever. With the anchor, every step measures
+ * from the day that was actually agreed, so February borrows the 28th and March
+ * gives the 31st straight back.
+ *
+ * Optional so every existing caller keeps its exact behaviour; the plan-driven
+ * paths pass `plan.anchor_day`.
+ */
+export function advanceDate(dateKey: string, frequency: RecurringFrequency, anchorDay?: number | null): string {
   const [year, month, day] = dateKey.split('-').map(Number);
   if (frequency === 'monthly') {
     let nextYear = year;
@@ -75,12 +96,22 @@ export function advanceDate(dateKey: string, frequency: RecurringFrequency): str
       nextYear += 1;
     }
     const lastDay = new Date(Date.UTC(nextYear, nextMonth, 0)).getUTCDate();
-    return `${nextYear}-${pad(nextMonth)}-${pad(Math.min(day, lastDay))}`;
+    const wanted =
+      typeof anchorDay === 'number' && Number.isFinite(anchorDay) && anchorDay >= 1 && anchorDay <= 31
+        ? Math.round(anchorDay)
+        : day;
+    return `${nextYear}-${pad(nextMonth)}-${pad(Math.min(wanted, lastDay))}`;
   }
   const step = frequency === 'weekly' ? 7 : 14;
   const date = new Date(Date.UTC(year, month - 1, day));
   date.setUTCDate(date.getUTCDate() + step);
   return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
+}
+
+/** The day-of-month a monthly plan should keep returning to. */
+export function anchorDayFrom(dateKey: string): number {
+  const day = Number(dateKey.split('-')[2]);
+  return Number.isFinite(day) && day >= 1 && day <= 31 ? day : 1;
 }
 
 /**
@@ -106,7 +137,7 @@ export type PlannedVisit = {
 export type PlanProjectionInput = Pick<
   RecurringPlan,
   'id' | 'title' | 'client_name' | 'amount' | 'frequency' | 'next_run_date' | 'active' | 'remaining_cycles'
->;
+> & { anchor_day?: number | null };
 
 /**
  * What a set of recurring plans will put on the calendar between two dates.
@@ -158,7 +189,7 @@ export function projectPlanVisits(
           remainingAfter: term == null ? null : term - cycle,
         });
       }
-      dateKey = advanceDate(dateKey, plan.frequency);
+      dateKey = advanceDate(dateKey, plan.frequency, plan.anchor_day);
     }
   }
 
@@ -217,6 +248,9 @@ export async function createRecurringPlan(
       amount: input.amount,
       frequency: input.frequency,
       next_run_date: input.firstVisitDate,
+      // The day the customer agreed to, kept so one February can't move a
+      // month-end plan permanently. See advanceDate.
+      anchor_day: anchorDayFrom(input.firstVisitDate),
       auto_charge: input.autoCharge,
       remaining_cycles: input.termCycles && input.termCycles > 0 ? Math.floor(input.termCycles) : null,
     })
@@ -252,6 +286,34 @@ export async function getRecurringPlan(supabase: SupabaseClient, accountId: stri
  * Returns how many visits changed, so the page can say so rather than silently
  * removing work the owner was looking at.
  */
+/**
+ * The first date on this cadence that hasn't already gone past.
+ *
+ * A plan paused in June and resumed in August still holds June's next_run_date.
+ * Left alone, resuming it would put four visits in the past on the calendar AND
+ * — far worse — the daily sweep, which fires on `next_run_date <= today`, would
+ * immediately bill the customer for every visit nobody made. Rolling the date
+ * forward is the whole of "resume means from here, not from where we left off".
+ *
+ * Pure, and bounded: a plan resumed years later walks a lot of fortnights, so
+ * the loop has a hard stop rather than trusting the data.
+ */
+export function nextFutureRunDate(
+  nextRunDate: string,
+  frequency: RecurringFrequency,
+  todayKey: string,
+  anchorDay?: number | null,
+  maxSteps = 400,
+): string {
+  let dateKey = nextRunDate;
+  for (let step = 0; step < maxSteps && dateKey < todayKey; step++) {
+    dateKey = advanceDate(dateKey, frequency, anchorDay);
+  }
+  // Still behind after the cap means the plan has been dormant for years; today
+  // is a truthful answer and a silently-past date is not.
+  return dateKey < todayKey ? todayKey : dateKey;
+}
+
 export async function setRecurringPlanActive(
   supabase: SupabaseClient,
   accountId: string,
@@ -268,7 +330,23 @@ export async function setRecurringPlanActive(
   if (!active) return { visitsChanged: await removeFuturePlanVisits(supabase, accountId, planId) };
 
   const plan = await getRecurringPlan(supabase, accountId, planId);
-  return { visitsChanged: plan ? await ensurePlanVisits(createAdminClient(), plan) : 0 };
+  if (!plan) return { visitsChanged: 0 };
+
+  // Catch the schedule up BEFORE anything reads it. Both the visit generator
+  // and the billing sweep start from next_run_date, so a stale one is a bill.
+  const today = todayDateKey();
+  const caughtUp = nextFutureRunDate(plan.next_run_date, plan.frequency, today, plan.anchor_day);
+  if (caughtUp !== plan.next_run_date) {
+    const { error: rollError } = await supabase
+      .from('recurring_plans')
+      .update({ next_run_date: caughtUp, updated_at: new Date().toISOString() })
+      .eq('account_id', accountId)
+      .eq('id', planId);
+    if (rollError) throw rollError;
+    plan.next_run_date = caughtUp;
+  }
+
+  return { visitsChanged: await ensurePlanVisits(createAdminClient(), plan) };
 }
 
 /**
@@ -305,7 +383,15 @@ export async function updateRecurringPlan(
 
   const { data, error } = await supabase
     .from('recurring_plans')
-    .update({ amount, frequency, next_run_date: nextRunDate, updated_at: new Date().toISOString() })
+    // Moving the next visit re-anchors the plan: the owner has just said which
+    // day it runs on, and that is now the day it should keep returning to.
+    .update({
+      amount,
+      frequency,
+      next_run_date: nextRunDate,
+      ...(nextRunDate !== current.next_run_date ? { anchor_day: anchorDayFrom(nextRunDate) } : {}),
+      updated_at: new Date().toISOString(),
+    })
     .eq('account_id', accountId)
     .eq('id', planId)
     .select('*')
@@ -570,7 +656,7 @@ export async function ensurePlanVisits(
   let dateKey = plan.next_run_date;
   for (let index = 0; index < wanted; index++) {
     dates.push(dateKey);
-    dateKey = advanceDate(dateKey, plan.frequency);
+    dateKey = advanceDate(dateKey, plan.frequency, plan.anchor_day);
   }
 
   // One read for what's already there, rather than a lookup per date.
@@ -650,7 +736,7 @@ async function spawnPlanOccurrence(admin: ReturnType<typeof createAdminClient>, 
     : {};
   const { data: claimed } = await admin
     .from('recurring_plans')
-    .update({ next_run_date: advanceDate(dateKey, plan.frequency), last_run_at: nowIso, updated_at: nowIso, ...termFields })
+    .update({ next_run_date: advanceDate(dateKey, plan.frequency, plan.anchor_day), last_run_at: nowIso, updated_at: nowIso, ...termFields })
     .eq('id', plan.id)
     .eq('next_run_date', dateKey)
     .select('id')

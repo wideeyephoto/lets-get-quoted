@@ -10,6 +10,7 @@ import ExtraStopStatus, { ExtraStopHead } from './ExtraStopStatus';
 import ExtraStopConfigurator from './ExtraStopConfigurator';
 import ExtraStopCandidates from './ExtraStopCandidates';
 import { customerWords, screenExtraStopCandidates, type CandidateInput } from '@/lib/extra-stop-candidates';
+import { loadScreeningSummary } from '@/lib/extra-stop-screenings';
 import { loadRefundTiers } from '@/lib/extra-stop-refunds';
 
 /** How far back the demand panel looks. A quarter is enough to be a pattern. */
@@ -140,6 +141,9 @@ export default async function ExtraStopsPage() {
     ),
   ];
   const demand = screenExtraStopCandidates(candidateInputs, { maxVisitMinutes: settings.maxVisitMinutes });
+  // The other half of demand: people who actually asked, including the ones the
+  // screener refused. Empty (and harmless) until the migration has run.
+  const screenings = await loadScreeningSummary(supabase, accountId, sinceIso);
 
   const defaults = {
     earliest: settings.earliestTime,
@@ -218,6 +222,7 @@ export default async function ExtraStopsPage() {
           is this thing working, or does my trade just not produce this work? */}
       <ExtraStopCandidates
         report={demand}
+        screenings={screenings}
         windowDays={DEMAND_WINDOW_DAYS}
         minFeeCents={settings.minFeeCents}
         maxVisitMinutes={settings.maxVisitMinutes}

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { CANDIDATE_AI_NOTE, extraStopRuleReference, type CandidateReport } from '@/lib/extra-stop-candidates';
+import type { ScreeningSummary } from '@/lib/extra-stop-screenings';
 
 // "Work that could have been an Extra Stop" — the demand panel.
 //
@@ -25,12 +26,14 @@ function snippet(text: string): string {
 
 export default function ExtraStopCandidates({
   report,
+  screenings,
   windowDays,
   minFeeCents,
   maxVisitMinutes,
   enabled,
 }: {
   report: CandidateReport;
+  screenings: ScreeningSummary;
   windowDays: number;
   minFeeCents: number;
   maxVisitMinutes: number;
@@ -86,6 +89,45 @@ export default function ExtraStopCandidates({
           <p className="es-demand-warn">
             Extra Stops are switched off, so none of these could have been offered. Turn it on above and the next one can.
           </p>
+        ) : null}
+
+        {/* The other half, and the harder number: people who actually asked.
+            Until this was recorded, an empty queue could mean nobody asked OR
+            everybody asked and was turned away — opposite problems. */}
+        {screenings.available && screenings.asked > 0 ? (
+          <div className="es-demand-asked">
+            <p>
+              <strong>{screenings.asked}</strong> {screenings.asked === 1 ? 'person' : 'people'} actually asked through
+              your booking page in this window.{' '}
+              {screenings.turnedAway > 0 ? (
+                <>
+                  <strong>{screenings.turnedAway}</strong> {screenings.turnedAway === 1 ? 'was' : 'were'} turned away
+                  {screenings.unsafe > 0 ? `, ${screenings.unsafe} of them sent to emergency help instead` : ''}.
+                </>
+              ) : (
+                <>Every one of them got an offer.</>
+              )}
+            </p>
+            {screenings.reasons.length > 0 ? (
+              <div className="es-demand-chips">
+                {screenings.reasons.slice(0, 4).map((reason) => (
+                  <span className="es-demand-chip" key={reason.label}>
+                    {reason.label} <b>{reason.count}</b>
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            {screenings.examples.length > 0 ? (
+              <ul className="es-demand-asked-list">
+                {screenings.examples.map((example, index) => (
+                  <li key={`${example.at}-${index}`}>
+                    <span>&ldquo;{snippet(example.issue)}&rdquo;</span>
+                    <em>{example.label}</em>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
         ) : null}
       </div>
 

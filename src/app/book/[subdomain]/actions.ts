@@ -24,6 +24,7 @@ import { evaluateBookingEligibility, bookingFallbackMessage, normalizeGeoMode, t
 import { listServices } from '@/lib/services';
 import { extraStopSettingsFromAccount, EXTRA_STOP_SETTINGS_COLUMNS } from '@/lib/extra-stop';
 import { qualifyExtraStop, qualifyOptionsFromSettings } from '@/lib/extra-stop-qualify';
+import { recordExtraStopScreening } from '@/lib/extra-stop-screenings';
 import { createExtraStopRequest, hasActiveExtraStopRequest } from '@/lib/extra-stop-requests';
 import { uploadLeadPhoto } from '@/lib/lead-photo-storage';
 
@@ -319,6 +320,19 @@ export async function submitExtraStopRequestAction(formData: FormData): Promise<
       { issue, startedWhen: startedWhen ?? '', worsening: worsening ?? '', propertyType: propertyType ?? '', availability: availability ?? '', businessName: site.company_name || '', serviceArea: site.service_area ?? '' },
       qualifyOptionsFromSettings(settings),
     );
+    // Log the verdict either way, and BEFORE returning. A refusal used to leave
+    // no trace at all, so an owner staring at an empty queue couldn't tell
+    // "nobody asked" from "everybody asked and we turned them all away" — two
+    // problems with opposite fixes. Records what was asked and why, never who
+    // asked; see migrations/2026-08-01-extra-stop-screenings.sql.
+    await recordExtraStopScreening(admin, site.account_id, {
+      outcome: qualification.unsafe ? 'unsafe' : qualification.eligible ? 'accepted' : 'not_a_fit',
+      exclusions: qualification.exclusions,
+      reason: qualification.reason,
+      issue,
+      visitMinutes: qualification.visitMinutes,
+    });
+
     if (qualification.unsafe) return { ok: false, unsafe: true, safety: qualification.safety, error: 'This needs urgent attention, not an online booking.' };
     if (!qualification.eligible) return { ok: false, error: qualification.reason || 'This job isn’t a fit for an Extra Stop. You can request a regular booking instead.' };
 

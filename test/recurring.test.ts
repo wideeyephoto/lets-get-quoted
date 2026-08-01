@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { advanceDate, projectPlanVisits, requiresReconsent } from '@/lib/recurring';
+import { advanceDate, anchorDayFrom, nextFutureRunDate, projectPlanVisits, requiresReconsent } from '@/lib/recurring';
 
 describe('advanceDate — weekly', () => {
   it('adds 7 days', () => {
@@ -176,17 +176,71 @@ describe('advanceDate month-end behaviour', () => {
     expect(advanceDate('2026-03-31', 'monthly')).toBe('2026-04-30');
   });
 
-  it('is lossy once clamped — a known limitation, not an accident', () => {
-    // Jan 31 -> Feb 28 -> Mar 28. The original day-of-month is gone, so a plan
-    // sold as "the 31st" quietly becomes "the 28th" forever. Recovering it needs
-    // an anchor day stored on the plan; this test pins the CURRENT behaviour so
-    // the change is deliberate when someone fixes it.
+  it('is still lossy WITHOUT an anchor — the old behaviour, kept for callers that have none', () => {
+    // Jan 31 -> Feb 28 -> Mar 28. Each step can only see the day it just landed
+    // on, so the original day is gone. Every plan-driven path now passes the
+    // anchor; this pins what happens when one doesn't.
     const feb = advanceDate('2026-01-31', 'monthly');
     expect(advanceDate(feb, 'monthly')).toBe('2026-03-28');
+  });
+
+  it('with an anchor, February borrows the day and March gives it back', () => {
+    // The whole point: somebody who agreed to the last day of the month should
+    // not be moved to the 28th forever by one February.
+    const anchor = anchorDayFrom('2026-01-31');
+    expect(anchor).toBe(31);
+    const feb = advanceDate('2026-01-31', 'monthly', anchor);
+    expect(feb).toBe('2026-02-28');
+    const mar = advanceDate(feb, 'monthly', anchor);
+    expect(mar).toBe('2026-03-31');
+    expect(advanceDate(mar, 'monthly', anchor)).toBe('2026-04-30');
+    // …and back to the 31st in May.
+    expect(advanceDate(advanceDate(mar, 'monthly', anchor), 'monthly', anchor)).toBe('2026-05-31');
+  });
+
+  it('ignores an anchor that could never be a day of the month', () => {
+    expect(advanceDate('2026-01-15', 'monthly', 0)).toBe('2026-02-15');
+    expect(advanceDate('2026-01-15', 'monthly', 44)).toBe('2026-02-15');
+    expect(advanceDate('2026-01-15', 'monthly', null)).toBe('2026-02-15');
+  });
+
+  it('leaves weekly and biweekly alone — an anchor is a monthly idea', () => {
+    expect(advanceDate('2026-01-31', 'weekly', 31)).toBe('2026-02-07');
+    expect(advanceDate('2026-01-31', 'biweekly', 31)).toBe('2026-02-14');
   });
 
   it('crosses a year boundary', () => {
     expect(advanceDate('2026-12-15', 'monthly')).toBe('2027-01-15');
     expect(advanceDate('2026-12-30', 'weekly')).toBe('2027-01-06');
+  });
+});
+
+
+describe('nextFutureRunDate — resuming a plan that was paused', () => {
+  // The bug this exists for: next_run_date stays where it was when the plan was
+  // paused. Resume it two months later and the visit generator writes visits
+  // into the past — and the daily sweep, which fires on next_run_date <= today,
+  // bills the customer for every visit nobody made.
+  it('rolls a stale date forward to the next real occurrence', () => {
+    expect(nextFutureRunDate('2026-06-03', 'weekly', '2026-08-01')).toBe('2026-08-05');
+    expect(nextFutureRunDate('2026-06-03', 'biweekly', '2026-08-01')).toBe('2026-08-12');
+    expect(nextFutureRunDate('2026-06-03', 'monthly', '2026-08-01', 3)).toBe('2026-08-03');
+  });
+
+  it('leaves a date that is already ahead exactly where it is', () => {
+    expect(nextFutureRunDate('2026-09-10', 'weekly', '2026-08-01')).toBe('2026-09-10');
+  });
+
+  it('counts today as future — a visit due today has not been missed', () => {
+    expect(nextFutureRunDate('2026-08-01', 'weekly', '2026-08-01')).toBe('2026-08-01');
+  });
+
+  it('keeps the anchor while catching up, so a month-end plan lands month-end', () => {
+    expect(nextFutureRunDate('2026-01-31', 'monthly', '2026-04-15', 31)).toBe('2026-04-30');
+  });
+
+  it('never returns a past date, even for a plan dormant for years', () => {
+    const result = nextFutureRunDate('2019-01-01', 'weekly', '2026-08-01', null, 5);
+    expect(result >= '2026-08-01').toBe(true);
   });
 });

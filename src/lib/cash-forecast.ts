@@ -314,25 +314,29 @@ export function expandRecurrence(
     return [firstDateKey];
   }
 
+  // The first occurrence is the anchor, and it never moves — so a monthly bill
+  // due on the 31st can borrow the 28th in February and have the 31st back in
+  // March, instead of walking off its own date one short month at a time.
+  const anchorDay = Number(firstDateKey.split('-')[2]) || 1;
   const out: string[] = [];
   let dateKey = firstDateKey;
   for (let count = 0; count < maxOccurrences; count++) {
     if (dateKey > window.toKey) break;
     if (endsOn && dateKey > endsOn) break;
     if (dateKey >= window.fromKey) out.push(dateKey);
-    dateKey = advanceRecurrence(dateKey, recurrence);
+    dateKey = advanceRecurrence(dateKey, recurrence, anchorDay);
   }
   return out;
 }
 
-function advanceRecurrence(dateKey: string, recurrence: Recurrence): string {
+function advanceRecurrence(dateKey: string, recurrence: Recurrence, anchorDay: number): string {
   if (recurrence === 'monthly') {
-    const [year, month, day] = dateKey.split('-').map(Number);
+    const [year, month] = dateKey.split('-').map(Number);
     const nextMonth = month === 12 ? 1 : month + 1;
     const nextYear = month === 12 ? year + 1 : year;
     const lastDay = new Date(Date.UTC(nextYear, nextMonth, 0)).getUTCDate();
     const pad = (value: number) => String(value).padStart(2, '0');
-    return `${nextYear}-${pad(nextMonth)}-${pad(Math.min(day, lastDay))}`;
+    return `${nextYear}-${pad(nextMonth)}-${pad(Math.min(anchorDay, lastDay))}`;
   }
   return addDays(dateKey, recurrence === 'weekly' ? 7 : 14);
 }
