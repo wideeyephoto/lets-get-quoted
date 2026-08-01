@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import styles from '../leads.module.css';
 
 type PreviewFrequency = 'weekly' | 'biweekly' | 'monthly';
@@ -137,6 +138,10 @@ export default function QuotePreviewButton({
   const [deposit, setDeposit] = useState<PreviewDeposit | null>(null);
   const [hours, setHours] = useState<PreviewHours>({ show: false, value: 0 });
   const btnRef = useRef<HTMLButtonElement>(null);
+  // Portals need a DOM to aim at, so nothing is rendered into one until after
+  // hydration — server and first client render stay identical.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   function openPreview() {
     // Scope the non-#quoteItems reads to the send-quote form so a duplicate field
@@ -165,13 +170,26 @@ export default function QuotePreviewButton({
   const subscriptionItems = items.filter((item) => item.kind === 'subscription');
   const total = baseItems.reduce((sum, item) => sum + item.amount, 0) + addonItems.filter((item) => selected[item.id]).reduce((sum, item) => sum + item.amount, 0);
 
-  return (
-    <>
-      <button ref={btnRef} type="button" className={`btn ghost ${styles.previewQuoteBtn}`} onClick={openPreview}>
-        <span aria-hidden="true">👁</span> Preview
-      </button>
-      {open ? (
-        <div className={styles.modalBackdrop} role="dialog" aria-modal="true" aria-label="Quote preview" onClick={() => setOpen(false)}>
+  // RENDER THE POPUP INTO document.body, NOT WHERE THE BUTTON SITS.
+  //
+  // The button lives inside the send-quote <section className="panel">, and
+  // .panel carries backdrop-filter: blur(20px). A non-none backdrop-filter makes
+  // that element the containing block for any position:fixed descendant — so
+  // "fixed; inset: 0" stopped meaning the viewport and started meaning the
+  // panel's box. The overlay was laid out 500-odd pixels above the top of the
+  // screen (its title bar and close button off-screen entirely) and then
+  // clipped by the panel's own overflow: hidden.
+  //
+  // Chrome let you scroll to what was left and tap it, so it merely looked
+  // misplaced. Safari refuses to hit-test through the clip, so on an iPad the
+  // popup opened and then answered nothing — not the close button, not the
+  // add-on toggles, not a tap on the backdrop. It reads exactly like a freeze,
+  // but the page is fine; the controls are somewhere you can't reach.
+  //
+  // A portal to <body> puts the overlay outside every panel, which is what the
+  // other modals in the app already do (AddExpenseModal, ImagePickerModal).
+  const modal = open ? (
+    <div className={styles.modalBackdrop} role="dialog" aria-modal="true" aria-label="Quote preview" onClick={() => setOpen(false)}>
           <section className={styles.quotePreviewCard} onClick={(event) => event.stopPropagation()}>
             <div className={styles.quotePreviewBar}>
               <span><span aria-hidden="true">👁</span> Preview — what your client sees</span>
@@ -280,8 +298,15 @@ export default function QuotePreviewButton({
               )}
             </div>
           </section>
-        </div>
-      ) : null}
+    </div>
+  ) : null;
+
+  return (
+    <>
+      <button ref={btnRef} type="button" className={`btn ghost ${styles.previewQuoteBtn}`} onClick={openPreview}>
+        <span aria-hidden="true">👁</span> Preview
+      </button>
+      {mounted && modal ? createPortal(modal, document.body) : null}
     </>
   );
 }
