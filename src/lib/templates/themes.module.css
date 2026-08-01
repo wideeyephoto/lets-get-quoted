@@ -29,9 +29,17 @@
 /* Button style (solid | outline | ghost) applies to the primary accent CTAs in
    EVERY theme, not just .primaryCta — otherwise the control looked like a no-op
    since each template names its main button differently. Solid is the base;
-   outline hollows them out; ghost strips to an underline. */
+   outline hollows them out; ghost strips to an underline.
+
+   Inside the intake form this is scoped to button[type='submit'] — the one
+   primary action — and NOT to every button in it. `.heroQuickForm button` here
+   is (0,3,1), which outranks the selected-chip rule at (0,3,0), so on an outline
+   site every chip was painted the same hollow accent and the timing/contact
+   choices had no visible selected state at all. It also boxed "Start over" and
+   the "Text me a code" secondary. Every one of those is type="button"; the two
+   real CTAs are type="submit", so the attribute is the honest divider. */
 .site[data-button='outline'] .primaryCta,
-.site[data-button='outline'] .heroQuickForm button,
+.site[data-button='outline'] .heroQuickForm button[type='submit'],
 .site[data-button='outline'] .desktopCtaQuote,
 .site[data-button='outline'] .shineBtn,
 .site[data-button='outline'] .shineHeaderCta,
@@ -49,7 +57,7 @@
   background: transparent; color: var(--theme-accent); border: 2px solid var(--theme-accent); border-bottom-width: 2px; border-radius: var(--theme-radius, 8px); box-shadow: none; filter: none;
 }
 .site[data-button='ghost'] .primaryCta,
-.site[data-button='ghost'] .heroQuickForm button,
+.site[data-button='ghost'] .heroQuickForm button[type='submit'],
 .site[data-button='ghost'] .desktopCtaQuote,
 .site[data-button='ghost'] .shineBtn,
 .site[data-button='ghost'] .shineHeaderCta,
@@ -68,14 +76,14 @@
 }
 
 /* Glow (#8): keep the theme's solid fill, add a luminous accent halo. */
-.site[data-button='glow'] .primaryCta, .site[data-button='glow'] .heroQuickForm button, .site[data-button='glow'] .desktopCtaQuote,
+.site[data-button='glow'] .primaryCta, .site[data-button='glow'] .heroQuickForm button[type='submit'], .site[data-button='glow'] .desktopCtaQuote,
 .site[data-button='glow'] .shineBtn, .site[data-button='glow'] .shineHeaderCta, .site[data-button='glow'] .shineFooterCall,
 .site[data-button='glow'] .coatBtn, .site[data-button='glow'] .coatHeaderCta, .site[data-button='glow'] .coatFooterCall,
 .site[data-button='glow'] .fixitBtn, .site[data-button='glow'] .fixitFooterCall, .site[data-button='glow'] .renoBtn,
 .site[data-button='glow'] .renoFooterCall, .site[data-button='glow'] .careBtn, .site[data-button='glow'] .vistaMenu, .site[data-button='glow'] .guildQuote {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--theme-accent) 40%, transparent), 0 0 22px 2px color-mix(in srgb, var(--theme-accent) 55%, transparent);
 }
-.site[data-button='glow'] .primaryCta:hover, .site[data-button='glow'] .heroQuickForm button:hover, .site[data-button='glow'] .desktopCtaQuote:hover,
+.site[data-button='glow'] .primaryCta:hover, .site[data-button='glow'] .heroQuickForm button[type='submit']:hover, .site[data-button='glow'] .desktopCtaQuote:hover,
 .site[data-button='glow'] .shineBtn:hover, .site[data-button='glow'] .shineHeaderCta:hover, .site[data-button='glow'] .shineFooterCall:hover,
 .site[data-button='glow'] .coatBtn:hover, .site[data-button='glow'] .coatHeaderCta:hover, .site[data-button='glow'] .coatFooterCall:hover,
 .site[data-button='glow'] .fixitBtn:hover, .site[data-button='glow'] .fixitFooterCall:hover, .site[data-button='glow'] .renoBtn:hover,
@@ -84,7 +92,7 @@
 }
 
 /* Double border (#11): an outline with an inset accent frame. */
-.site[data-button='double'] .primaryCta, .site[data-button='double'] .heroQuickForm button, .site[data-button='double'] .desktopCtaQuote,
+.site[data-button='double'] .primaryCta, .site[data-button='double'] .heroQuickForm button[type='submit'], .site[data-button='double'] .desktopCtaQuote,
 .site[data-button='double'] .shineBtn, .site[data-button='double'] .shineHeaderCta, .site[data-button='double'] .shineFooterCall,
 .site[data-button='double'] .coatBtn, .site[data-button='double'] .coatHeaderCta, .site[data-button='double'] .coatFooterCall,
 .site[data-button='double'] .fixitBtn, .site[data-button='double'] .fixitFooterCall, .site[data-button='double'] .renoBtn,
@@ -92,7 +100,7 @@
   background: transparent; color: var(--theme-accent); border: 2px solid var(--theme-accent); border-radius: var(--theme-radius, 8px); filter: none;
   box-shadow: inset 0 0 0 4px color-mix(in srgb, var(--theme-accent) 22%, transparent);
 }
-.site[data-button='double'] .primaryCta:hover, .site[data-button='double'] .heroQuickForm button:hover, .site[data-button='double'] .desktopCtaQuote:hover,
+.site[data-button='double'] .primaryCta:hover, .site[data-button='double'] .heroQuickForm button[type='submit']:hover, .site[data-button='double'] .desktopCtaQuote:hover,
 .site[data-button='double'] .shineBtn:hover, .site[data-button='double'] .shineHeaderCta:hover, .site[data-button='double'] .shineFooterCall:hover,
 .site[data-button='double'] .coatBtn:hover, .site[data-button='double'] .coatHeaderCta:hover, .site[data-button='double'] .coatFooterCall:hover,
 .site[data-button='double'] .fixitBtn:hover, .site[data-button='double'] .fixitFooterCall:hover, .site[data-button='double'] .renoBtn:hover,
@@ -101,7 +109,7 @@
 }
 
 /* Gloss (#13): a glossy top highlight over an accent gradient. */
-.site[data-button='gloss'] .primaryCta, .site[data-button='gloss'] .heroQuickForm button, .site[data-button='gloss'] .desktopCtaQuote,
+.site[data-button='gloss'] .primaryCta, .site[data-button='gloss'] .heroQuickForm button[type='submit'], .site[data-button='gloss'] .desktopCtaQuote,
 .site[data-button='gloss'] .shineBtn, .site[data-button='gloss'] .shineHeaderCta, .site[data-button='gloss'] .shineFooterCall,
 .site[data-button='gloss'] .coatBtn, .site[data-button='gloss'] .coatHeaderCta, .site[data-button='gloss'] .coatFooterCall,
 .site[data-button='gloss'] .fixitBtn, .site[data-button='gloss'] .fixitFooterCall, .site[data-button='gloss'] .renoBtn,
@@ -112,7 +120,7 @@
 }
 
 /* Ring (#14): solid fill with a detached outer accent ring. */
-.site[data-button='ring'] .primaryCta, .site[data-button='ring'] .heroQuickForm button, .site[data-button='ring'] .desktopCtaQuote,
+.site[data-button='ring'] .primaryCta, .site[data-button='ring'] .heroQuickForm button[type='submit'], .site[data-button='ring'] .desktopCtaQuote,
 .site[data-button='ring'] .shineBtn, .site[data-button='ring'] .shineHeaderCta, .site[data-button='ring'] .shineFooterCall,
 .site[data-button='ring'] .coatBtn, .site[data-button='ring'] .coatHeaderCta, .site[data-button='ring'] .coatFooterCall,
 .site[data-button='ring'] .fixitBtn, .site[data-button='ring'] .fixitFooterCall, .site[data-button='ring'] .renoBtn,
@@ -121,7 +129,7 @@
 }
 
 /* Fill sweep (#17): a ghost button the accent sweeps up to fill on hover. */
-.site[data-button='sweep'] .primaryCta, .site[data-button='sweep'] .heroQuickForm button, .site[data-button='sweep'] .desktopCtaQuote,
+.site[data-button='sweep'] .primaryCta, .site[data-button='sweep'] .heroQuickForm button[type='submit'], .site[data-button='sweep'] .desktopCtaQuote,
 .site[data-button='sweep'] .shineBtn, .site[data-button='sweep'] .shineHeaderCta, .site[data-button='sweep'] .shineFooterCall,
 .site[data-button='sweep'] .coatBtn, .site[data-button='sweep'] .coatHeaderCta, .site[data-button='sweep'] .coatFooterCall,
 .site[data-button='sweep'] .fixitBtn, .site[data-button='sweep'] .fixitFooterCall, .site[data-button='sweep'] .renoBtn,
@@ -129,21 +137,21 @@
   position: relative; overflow: hidden; z-index: 0; isolation: isolate;
   background: transparent; color: var(--theme-accent); border: 2px solid var(--theme-accent); border-radius: var(--theme-radius, 8px); filter: none;
 }
-.site[data-button='sweep'] .primaryCta::before, .site[data-button='sweep'] .heroQuickForm button::before, .site[data-button='sweep'] .desktopCtaQuote::before,
+.site[data-button='sweep'] .primaryCta::before, .site[data-button='sweep'] .heroQuickForm button[type='submit']::before, .site[data-button='sweep'] .desktopCtaQuote::before,
 .site[data-button='sweep'] .shineBtn::before, .site[data-button='sweep'] .shineHeaderCta::before, .site[data-button='sweep'] .shineFooterCall::before,
 .site[data-button='sweep'] .coatBtn::before, .site[data-button='sweep'] .coatHeaderCta::before, .site[data-button='sweep'] .coatFooterCall::before,
 .site[data-button='sweep'] .fixitBtn::before, .site[data-button='sweep'] .fixitFooterCall::before, .site[data-button='sweep'] .renoBtn::before,
 .site[data-button='sweep'] .renoFooterCall::before, .site[data-button='sweep'] .careBtn::before, .site[data-button='sweep'] .vistaMenu::before, .site[data-button='sweep'] .guildQuote::before {
   content: ''; position: absolute; inset: 0; background: var(--theme-accent); transform: translateY(101%); transition: transform .24s ease; z-index: -1;
 }
-.site[data-button='sweep'] .primaryCta:hover, .site[data-button='sweep'] .heroQuickForm button:hover, .site[data-button='sweep'] .desktopCtaQuote:hover,
+.site[data-button='sweep'] .primaryCta:hover, .site[data-button='sweep'] .heroQuickForm button[type='submit']:hover, .site[data-button='sweep'] .desktopCtaQuote:hover,
 .site[data-button='sweep'] .shineBtn:hover, .site[data-button='sweep'] .shineHeaderCta:hover, .site[data-button='sweep'] .shineFooterCall:hover,
 .site[data-button='sweep'] .coatBtn:hover, .site[data-button='sweep'] .coatHeaderCta:hover, .site[data-button='sweep'] .coatFooterCall:hover,
 .site[data-button='sweep'] .fixitBtn:hover, .site[data-button='sweep'] .fixitFooterCall:hover, .site[data-button='sweep'] .renoBtn:hover,
 .site[data-button='sweep'] .renoFooterCall:hover, .site[data-button='sweep'] .careBtn:hover, .site[data-button='sweep'] .vistaMenu:hover, .site[data-button='sweep'] .guildQuote:hover {
   color: var(--theme-on-accent, #fff);
 }
-.site[data-button='sweep'] .primaryCta:hover::before, .site[data-button='sweep'] .heroQuickForm button:hover::before, .site[data-button='sweep'] .desktopCtaQuote:hover::before,
+.site[data-button='sweep'] .primaryCta:hover::before, .site[data-button='sweep'] .heroQuickForm button[type='submit']:hover::before, .site[data-button='sweep'] .desktopCtaQuote:hover::before,
 .site[data-button='sweep'] .shineBtn:hover::before, .site[data-button='sweep'] .shineHeaderCta:hover::before, .site[data-button='sweep'] .shineFooterCall:hover::before,
 .site[data-button='sweep'] .coatBtn:hover::before, .site[data-button='sweep'] .coatHeaderCta:hover::before, .site[data-button='sweep'] .coatFooterCall:hover::before,
 .site[data-button='sweep'] .fixitBtn:hover::before, .site[data-button='sweep'] .fixitFooterCall:hover::before, .site[data-button='sweep'] .renoBtn:hover::before,

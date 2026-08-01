@@ -125,7 +125,18 @@ export async function POST(request: NextRequest) {
   const alertPhone = (accountSettings?.alert_phone as string | null) || null;
 
   const quoteForm = siteContent.quoteForm;
-  if (quoteForm.emailRequired && !email) {
+  // Two forms, two email settings, and they are NOT interchangeable. The classic
+  // quote form is governed by quoteForm.emailRequired ("Require email on quote
+  // form"); the Instant Estimate wizard has its own off/optional/required
+  // control, which is the one printed next to the field the visitor is looking
+  // at. Enforcing the classic setting on a wizard submission rejected people who
+  // had just been told the field was optional — the form said one thing and the
+  // server said another, and the visitor was the one who lost.
+  const fromWizard = text(data, 'wizard', 4) === '1';
+  const emailIsRequired = fromWizard
+    ? siteContent.estimateRanges.emailField === 'required'
+    : quoteForm.emailRequired;
+  if (emailIsRequired && !email) {
     return NextResponse.json({ error: 'Add your email address so the contractor can follow up.' }, { status: 400 });
   }
   if (!phone && !email) {
