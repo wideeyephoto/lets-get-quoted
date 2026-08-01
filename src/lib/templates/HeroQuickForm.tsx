@@ -5,6 +5,7 @@ import { compressImage } from '@/lib/client-images';
 import { normalizeUsPhone } from '@/lib/phone';
 import { DEFAULT_FULLY_BOOKED_MESSAGE, getEstimateButtonLabel, getPublishedRatingBadge, getSiteContent, isFullyBookedActive } from '@/lib/site-content';
 import type { Site } from '@/lib/sites';
+import IntroVideo from './IntroVideo';
 import styles from './themes.module.css';
 
 type HeroQuickFormProps = {
@@ -164,6 +165,11 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isClassifying, setIsClassifying] = useState(false);
   const [status, setStatus] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
+  // An intake lead landed, but the AI couldn't price it — so there's no 'result'
+  // screen to hang the intro video off. The lead is in either way, which is the
+  // condition the video is actually keyed on.
+  const [sentWithoutEstimate, setSentWithoutEstimate] = useState(false);
+  const introVideo = siteContent.estimateRanges.introVideo;
 
   const [chatQuestion, setChatQuestion] = useState('');
   const [chatAnswer, setChatAnswer] = useState('');
@@ -285,6 +291,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
     setEstimate(null);
     setFit({ inArea: null, excluded: false });
     setStatus(null);
+    setSentWithoutEstimate(false);
     setStep('describe');
   }
 
@@ -396,6 +403,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
       if (details && estimate) {
         setStep('result');
       } else {
+        if (details) setSentWithoutEstimate(true);
         setStatus({ tone: 'success', text: details ? `Thanks! Your request is in — one of our experts will ${contactPref === 'text' ? 'text' : 'text or call'} you within the next few hours with your exact quote.` : `Thanks! We'll call you back within about an hour with your free estimate.` });
         formRef.current?.reset();
         setName('');
@@ -637,6 +645,11 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
             <span className={styles.heroFormResultBadge}>✓ Request sent</span>
           </div>
           <p className={styles.heroFormBasis}>{estimate.basis ? `Based on ${estimate.basis}. ` : ''}A rough estimate, not a final quote.</p>
+          {/* Below the number, never over it. The range is what the visitor
+              waited for; the video is what fills the moment after they've read
+              it. Anything that covered or preceded the estimate would be a toll
+              gate on the one thing the whole intake promised. */}
+          <IntroVideo video={introVideo} />
           {ratingBadge && (
             <div className={styles.heroFormResultRating}>
               <span className={styles.heroFormResultStars} aria-hidden="true">{'★'.repeat(ratingStars)}{'☆'.repeat(5 - ratingStars)}</span>
@@ -654,6 +667,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
       )}
 
       {status && <p className={styles.heroFormStatus} data-tone={status.tone} role={status.tone === 'error' ? 'alert' : 'status'}>{status.text}</p>}
+      {sentWithoutEstimate && step !== 'result' && <IntroVideo video={introVideo} />}
     </form>
   );
 }

@@ -543,10 +543,20 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
                 ? 'No time changes to save'
                 : `${pendingChanges.length} arrival time${pendingChanges.length === 1 ? '' : 's'} will change`}
             </strong>
+            {/* The second line used to fall back to "Nothing on your calendar
+                has changed yet" whenever the owner hadn't dragged anything —
+                directly under "2 arrival times will change", which reads as a
+                flat contradiction. Both statements were true of different
+                things (Save would write 2 times; the owner had edited nothing)
+                and neither line said which. The plan proposes times on arrival,
+                so "you haven't touched it" and "there is something to save" are
+                the NORMAL state here, not a corner case. */}
             <span>
               {history.length > 0 && manualDeltaMiles !== 0
                 ? `Your order drives ${manualDeltaMiles > 0 ? '+' : ''}${manualDeltaMiles} mi (${manualDeltaMinutes > 0 ? '+' : ''}${minutesLabel(manualDeltaMinutes)}) versus the optimized one.`
-                : 'Nothing on your calendar has changed yet.'}
+                : pendingChanges.length > 0
+                  ? 'These are the times this plan works out. Your calendar keeps its current times until you save.'
+                  : 'Nothing on your calendar has changed yet.'}
             </span>
           </div>
 

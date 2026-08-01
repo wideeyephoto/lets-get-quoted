@@ -293,6 +293,20 @@
 .heroFormSteps li::before { counter-increment: hfstep; content: counter(hfstep); position: absolute; left: 0; top: 0; display: inline-flex; align-items: center; justify-content: center; width: 1.4rem; height: 1.4rem; border-radius: 999px; background: color-mix(in srgb, var(--theme-accent) 18%, #fff); border: 1px solid color-mix(in srgb, var(--theme-accent) 45%, transparent); color: #17140f; font-size: .74rem; font-weight: 800; }
 .heroFormSteps li strong { font-size: .82rem; color: #17140f; }
 .heroFormSteps li span { font-size: .74rem; color: #6b7280; line-height: 1.4; }
+/* Owner's intro video on the "request sent" screen. Sized by aspect-ratio, not a
+   padding-top hack, so the frame can't drift out of step with the player inside
+   it — and so the estimate above it never gets shoved by a late reflow. */
+.heroFormVideo { display: grid; gap: .35rem; }
+.heroFormVideoTitle { margin: 0; font-size: .78rem; font-weight: 800; color: #17140f; }
+.heroFormVideoFrame { position: relative; aspect-ratio: 16 / 9; overflow: hidden; border-radius: calc(var(--theme-radius, 8px) * .6); border: 1px solid #d8d3c6; background: #0d0d0f; }
+.heroFormVideoFrame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.heroQuickForm .heroFormVideoPoster { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: 0; min-height: 0; border-radius: 0; background: #0d0d0f; cursor: pointer; }
+.heroFormVideoPoster img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .72; }
+.heroFormVideoPlay { position: relative; width: 3rem; height: 3rem; border-radius: 999px; background: var(--theme-accent); }
+/* Play triangle, drawn rather than shipped as an asset. */
+.heroFormVideoPlay::after { content: ''; position: absolute; top: 50%; left: 54%; transform: translate(-50%, -50%); border-style: solid; border-width: .5rem 0 .5rem .85rem; border-color: transparent transparent transparent var(--theme-on-accent, #111); }
+.heroFormVideoPosterLabel { position: absolute; left: -9999px; }
+.heroFormVideoHint { color: #6b7280; font-size: .7rem; }
 @media (prefers-reduced-motion: reduce) { .heroFormStep, .heroFormResultPanel, .heroFormDots i { animation: none; } .heroQuickForm button[type='submit'], .heroFormCall { transition: none; } .heroQuickForm button[type='submit']:hover:not(:disabled), .heroFormCall:hover { transform: none; } }
 
 /* Proof strip — rating + credential chips rendered beside a lead form. Info

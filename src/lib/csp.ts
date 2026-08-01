@@ -57,8 +57,12 @@ export function buildCsp({ nonce, supabaseOrigin }: CspOptions): string {
     // labels and controls — same story as style-src above.
     ['font-src', ["'self'", 'data:', 'https://fonts.gstatic.com']],
     ['connect-src', connect],
-    // Turnstile renders in an iframe; the builder previews our own pages.
-    ['frame-src', ["'self'", 'https://challenges.cloudflare.com']],
+    // Turnstile renders in an iframe; the builder previews our own pages; the
+    // post-intake intro video is a YouTube embed (nocookie host — see
+    // lib/youtube). Listed now rather than when the CSP flips to enforcing: that
+    // flip is a one-line change, and the video is the one embed whose breakage
+    // nobody would notice, since it only ever renders after a stranger submits.
+    ['frame-src', ["'self'", 'https://challenges.cloudflare.com', 'https://www.youtube-nocookie.com']],
     // Kept from the previous header — the builder frames its own preview.
     ['frame-ancestors', ["'self'"]],
     ['base-uri', ["'self'"]],

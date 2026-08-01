@@ -17,6 +17,7 @@ import { compressImage } from '@/lib/client-images';
 import ImagePickerModal from './ImagePickerModal';
 import DomainConnector from './DomainConnector';
 import GoogleReviewImport from './GoogleReviewImport';
+import IntroVideoField from './IntroVideoField';
 import LivePreview from './LivePreview';
 import SectionCard from './SectionCard';
 import ThemeIcon from './ThemeIcon';
@@ -1613,6 +1614,11 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
                   <label className={styles.formField}><span>Phone</span><input id="bf-phone" type="tel" value={site.phone || ''} onChange={(event) => handleChange('phone', event.target.value || null)} placeholder="(555) 123-4567" /><small className={styles.fieldHint}>Powers your call buttons and the text/call follow-up on leads.</small></label>
                   <label className={styles.formField}><span>Email on the AI intake</span><select value={siteContent.estimateRanges.emailField} onChange={(event) => updateEstimateRanges({ ...siteContent.estimateRanges, emailField: event.target.value as SiteEstimateRangesContent['emailField'] })}><option value="optional">Optional — ask, but don&apos;t require it</option><option value="required">Required</option><option value="off">Don&apos;t ask for email</option></select><small>A phone number is always required here — the follow-up promised to visitors is a text or call.</small></label>
                   <label className={styles.formField}><span>What visitors see it called</span><select value={siteContent.quoteForm.estimateLabel} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, estimateLabel: event.target.value as SiteQuoteFormContent['estimateLabel'] })}><option value="instant">&quot;Instant Estimate&quot;</option><option value="quick">&quot;Instant Quote&quot;</option></select><small>The heading + button on the AI intake card.</small></label>
+                  <div className={styles.contentSubhead}><strong>Thank-you video</strong><small>optional</small></div>
+                  <IntroVideoField
+                    video={siteContent.estimateRanges.introVideo}
+                    onChange={(introVideo) => updateEstimateRanges({ ...siteContent.estimateRanges, introVideo })}
+                  />
                   <div className={styles.contentSubhead}><strong>Website-wide phone visibility</strong></div>
                   <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.phonePublic} onChange={(event) => updateSiteContent({ phonePublic: event.target.checked })} /><span><strong>Show phone number</strong><small>This controls whether your phone number and call buttons appear anywhere on your website.</small></span></label>
                 </SectionCard>

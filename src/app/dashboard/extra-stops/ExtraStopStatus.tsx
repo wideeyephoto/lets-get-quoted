@@ -24,8 +24,14 @@ export type ExtraStopStatusProps = {
   locked: boolean;
   lockedUntil: string | null;
   lockReason: string;
-  /** False when the fee band or the weekdays have never been set. */
-  configured: boolean;
+  // Kept apart on purpose. These were one `configured` boolean, which forced the
+  // status line to name both whenever either was missing — so an owner who had
+  // set a $100–$375 band was told to "set a fee band" while the real gap was the
+  // weekdays.
+  /** The fee band has a ceiling above zero. */
+  feeSet: boolean;
+  /** At least one weekday is ticked. */
+  daysSet: boolean;
   stripeConnected: boolean;
   bookingUrl: string | null;
   dayNames: string;
@@ -74,23 +80,39 @@ const SETTINGS_HREF = '/dashboard/extra-stops#extra-stop-setup';
 /** Where the request queue lives on this page. */
 const QUEUE_ANCHOR = '#extra-stop-requests';
 
+/** "a", "a and b", "a, b and c" — the missing-setup list, read as a sentence. */
+function joinList(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
 export default function ExtraStopStatus(props: ExtraStopStatusProps) {
-  const { enabled, locked, lockedUntil, lockReason, configured, stripeConnected, bookingUrl } = props;
+  const { enabled, locked, lockedUntil, lockReason, feeSet, daysSet, stripeConnected, bookingUrl } = props;
   const router = useRouter();
   const [pending, startToggle] = useTransition();
 
   // Live is the only state that means a customer could actually get a visit out
   // of this today. Everything else is named for the thing that is missing.
-  const live = enabled && !locked && configured && stripeConnected && Boolean(bookingUrl);
+  const live = enabled && !locked && feeSet && daysSet && stripeConnected && Boolean(bookingUrl);
+
+  // Every unmet requirement, not just the first. The old chain stopped at
+  // whichever failed earliest, so an owner missing both their weekdays AND
+  // Stripe was told about the weekdays, fixed them, and only then learned there
+  // was a second thing — one round trip per requirement, each one a surprise.
+  const missing = [
+    bookingUrl ? '' : 'publish your website',
+    daysSet ? '' : 'choose the days you take them',
+    feeSet ? '' : 'set your fee band',
+    stripeConnected ? '' : 'connect Stripe',
+  ].filter(Boolean);
+
   const blockedReason = !enabled
     ? 'Nobody can ask to be added to your day. Your normal booking is unaffected.'
-    : !bookingUrl
-      ? 'Publish your website — Extra Stop requests come in from your booking page.'
-      : !configured
-        ? 'Set a fee band and the days you accept before this can take a request.'
-        : !stripeConnected
-          ? 'Connect Stripe — an Extra Stop is only confirmed once the customer has paid.'
-          : null;
+    : missing.length > 0
+      ? `${joinList(missing).replace(/^./, (first) => first.toUpperCase())} before this can take a request.${
+          stripeConnected ? '' : ' An Extra Stop is only confirmed once the customer has paid.'
+        }`
+      : null;
 
   function setEnabled(next: boolean) {
     startToggle(() => {

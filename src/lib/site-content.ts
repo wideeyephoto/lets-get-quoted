@@ -1,6 +1,7 @@
 import type { SiteImage } from '@/lib/site-images';
 import type { WebsiteImageAssignment } from '@/lib/stock/types';
 import { SERVICE_ICON_GLYPHS } from '@/lib/templates/service-icons.data';
+import { parseYouTubeUrl } from '@/lib/youtube';
 
 export type SiteSectionKey = 'showcase' | 'testimonials' | 'faqs';
 
@@ -505,7 +506,30 @@ export function getEstimateButtonLabel(
 export type SiteEstimateRangesContent = {
   enabled: boolean;
   emailField: 'off' | 'optional' | 'required';
+  // Optional intro video shown on the "request sent" screen, AFTER the lead is
+  // in. It is deliberately not offered anywhere earlier in the intake: a video
+  // in front of the estimate is a toll gate on the one thing the visitor came
+  // for. Here the ask is already answered, so the dwell time is a bonus rather
+  // than a cost.
+  introVideo: SiteIntroVideoContent;
 };
+
+export type SiteIntroVideoContent = {
+  enabled: boolean;
+  /** Whatever the owner pasted; parsed to a video id at render (lib/youtube). */
+  url: string;
+  /** Heading above the player. */
+  title: string;
+};
+
+export const DEFAULT_INTRO_VIDEO_TITLE = 'While you wait — a quick hello';
+
+// Switched on AND pointing at something playable. A half-finished setup renders
+// nothing rather than an empty frame — the owner is never watching this screen
+// themselves, so a broken embed here could sit in front of customers for weeks.
+export function isIntroVideoLive(video: SiteIntroVideoContent): boolean {
+  return video.enabled && parseYouTubeUrl(video.url) !== null;
+}
 
 // Owner controls that prune low-quality website leads before they cost time.
 // Gates run on the AI intake; flags land on the lead's triage record so the
@@ -895,6 +919,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const testimonials = isRecord(root.testimonials) ? root.testimonials : {};
   const quoteForm = isRecord(root.quoteForm) ? root.quoteForm : {};
   const estimateRanges = isRecord(root.estimateRanges) ? root.estimateRanges : {};
+  const introVideo = isRecord(estimateRanges.introVideo) ? estimateRanges.introVideo : {};
   const leadFilters = isRecord(root.leadFilters) ? root.leadFilters : {};
   const fullyBooked = isRecord(leadFilters.fullyBooked) ? leadFilters.fullyBooked : {};
   const stickyCallBar = isRecord(root.stickyCallBar) ? root.stickyCallBar : {};
@@ -970,6 +995,16 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       // is off". A legacy site that had both off now resolves to Smart Intake.
       enabled: quoteForm.enabled !== true,
       emailField: estimateRanges.emailField === 'off' || estimateRanges.emailField === 'required' ? estimateRanges.emailField : 'optional',
+      introVideo: {
+        // `enabled` is the owner's switch, kept raw. Folding "has a usable link"
+        // into it here would mean ticking the box in the builder immediately
+        // un-ticked itself — there's no link yet at that point, which is exactly
+        // when the URL field needs to appear. Whether it actually renders is
+        // isIntroVideoLive(), asked at the point of render.
+        enabled: toBoolean(introVideo.enabled),
+        url: toString(introVideo.url).slice(0, 300),
+        title: toString(introVideo.title, DEFAULT_INTRO_VIDEO_TITLE).slice(0, 60),
+      },
     },
     phonePublic: root.phonePublic !== false,
     leadFilters: {

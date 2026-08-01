@@ -183,6 +183,14 @@
 .toggleRow small { color: #9ca8b8; font-size: .78rem; font-weight: 400; line-height: 1.45; }
 .contentSubhead, .itemHeader { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
 .contentSubhead small { color: #9ca8b8; font-size: .78rem; }
+/* Confirmation thumbnail for the post-intake intro video. The screen it plays on
+   can't be reached from the builder's preview, so this is the only place the
+   owner can check they pasted the right link. */
+.introVideoPreview { display: flex; align-items: center; gap: .8rem; padding: .7rem; border: 1px solid rgba(255,255,255,.14); border-radius: 8px; background: rgba(255,255,255,.04); }
+.introVideoPreview img { flex: none; width: 108px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 5px; background: #0d0d0f; }
+.introVideoPreview div { display: grid; gap: .2rem; min-width: 0; }
+.introVideoPreview strong { color: #f7f5ef; font-size: .86rem; }
+.introVideoPreview small { color: #9ca8b8; font-size: .76rem; line-height: 1.4; }
 .compactImageGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .65rem; }
 .compactImageTile { overflow: hidden; padding: 0; border: 1px solid rgba(255,255,255,.12); border-radius: 7px; background: rgba(255,255,255,.04); color: #f7f5ef; cursor: pointer; }
 .compactImageTile img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }

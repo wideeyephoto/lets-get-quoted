@@ -101,9 +101,10 @@ export default async function ExtraStopsPage() {
         locked={settings.locked}
         lockedUntil={settings.lockedUntil}
         lockReason={lockReason}
-        // Never configured looks exactly like "off" on a boolean, and offering
-        // work on an unset fee band would quote rules nobody chose.
-        configured={settings.maxFeeCents > 0 && settings.weekdays.length > 0}
+        // Passed apart rather than pre-ANDed, so the status line can name the one
+        // that is actually missing instead of both.
+        feeSet={settings.maxFeeCents > 0}
+        daysSet={settings.weekdays.length > 0}
         stripeConnected={stripeConnected}
         bookingUrl={bookingUrl}
         dayNames={weekdayLabel(settings.weekdays)}
