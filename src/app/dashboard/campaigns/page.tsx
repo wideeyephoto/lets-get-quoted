@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { AUDIENCE_DEFS, listCampaigns, loadRecipients, matchesAudience, type Campaign } from '@/lib/campaigns';
 import CampaignComposer from './CampaignComposer';
+import { buildExtraStopPitch } from '@/lib/extra-stop-pitch';
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -20,7 +21,7 @@ function campaignSent(campaign: Campaign): number {
 export default async function CampaignsPage({
   searchParams,
 }: {
-  searchParams: { sent?: string; recipients?: string; skipped?: string; failed?: string; test?: string };
+  searchParams: { sent?: string; recipients?: string; skipped?: string; failed?: string; test?: string; draft?: string };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
 
@@ -46,6 +47,27 @@ export default async function CampaignsPage({
       ];
     }),
   );
+
+  // A draft handed over from the Extra Stops page. Built here rather than
+  // passed through the URL: the message depends on the account's fee band and
+  // how far ahead it takes requests, and a querystring carrying prose is a
+  // querystring somebody can rewrite.
+  let draft: { channel: 'email' | 'sms' | 'both'; audience: string; subject: string; body: string } | undefined;
+  if (searchParams.draft === 'extra-stop') {
+    const [{ data: account }, { data: site }] = await Promise.all([
+      supabase.from('accounts').select('business_name, extra_stop_min_fee_cents, extra_stop_days_ahead').eq('id', accountId).maybeSingle(),
+      supabase.from('sites').select('published, subdomain, company_name').eq('account_id', accountId).maybeSingle(),
+    ]);
+    const origin = (process.env.NEXT_PUBLIC_APP_URL || `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'}`).replace(/\/$/, '');
+    const pitch = buildExtraStopPitch({
+      businessName: (site?.company_name as string) || (account as { business_name?: string } | null)?.business_name || 'us',
+      bookingUrl: site?.published && site?.subdomain ? `${origin}/book/${site.subdomain}` : origin,
+      minFeeCents: Number((account as { extra_stop_min_fee_cents?: number } | null)?.extra_stop_min_fee_cents) || 0,
+      daysAhead: Number((account as { extra_stop_days_ahead?: number } | null)?.extra_stop_days_ahead ?? 1),
+    });
+    // Past customers, because they already know whether they liked the work.
+    draft = { channel: 'email', audience: 'past', subject: pitch.subject, body: pitch.body };
+  }
 
   const sentCount = searchParams.sent ? Number(searchParams.sent) : null;
   const showResult = sentCount !== null;
@@ -93,7 +115,7 @@ export default async function CampaignsPage({
           <div className="section-heading workspace-section-heading compact-heading">
             <p className="eyebrow">New campaign</p>
           </div>
-          <CampaignComposer audiences={AUDIENCE_DEFS} reach={reach} />
+          <CampaignComposer audiences={AUDIENCE_DEFS} reach={reach} initial={draft} />
         </section>
       )}
 

@@ -2,6 +2,9 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireOwnerContext } from '@/lib/auth';
+import { buildForecast } from '@/lib/cash-forecast';
+import { loadCashForecastSources, DEFAULT_HORIZON_DAYS } from '@/lib/cash-forecast-data';
+import { todayDateKey } from '@/lib/recurring';
 
 const CATEGORIES = ['payroll', 'materials', 'equipment', 'bill', 'tax', 'loan', 'other'] as const;
 const RECURRENCES = ['once', 'weekly', 'biweekly', 'monthly'] as const;
@@ -52,7 +55,52 @@ export async function saveCashSettingsAction(formData: FormData) {
   const { error } = await supabase.from('accounts').update(patch).eq('id', accountId);
   if (error) throw new Error(error.message);
 
+  // Record the curve as it stands, so the next time they check in the page can
+  // say whether it was right. Only when a balance was actually given — a
+  // forecast from a made-up starting point is not worth holding anyone to.
+  //
+  // Recomputed here rather than posted from the browser: a number the client
+  // sends is a number the client can be wrong about, and this one is evidence.
+  // Best-effort — a snapshot that fails to write must not fail the save.
+  if (balance !== null) {
+    try {
+      await recordCashSnapshot(supabase, accountId, balance, buffer ?? 0);
+    } catch (snapshotError) {
+      console.error('Cash snapshot failed:', snapshotError instanceof Error ? snapshotError.message : snapshotError);
+    }
+  }
+
   revalidatePath('/dashboard/cash-flow');
+}
+
+async function recordCashSnapshot(
+  supabase: Awaited<ReturnType<typeof requireOwnerContext>>['supabase'],
+  accountId: string,
+  balance: number,
+  buffer: number,
+): Promise<void> {
+  const todayKey = todayDateKey();
+  const sources = await loadCashForecastSources(supabase, accountId, { todayKey, days: DEFAULT_HORIZON_DAYS });
+  const forecast = buildForecast(sources.events, {
+    todayKey,
+    days: DEFAULT_HORIZON_DAYS,
+    startingBalance: balance,
+    buffer,
+    lateDays: 0,
+  });
+
+  await supabase.from('cash_snapshots').upsert(
+    {
+      account_id: accountId,
+      taken_on: todayKey,
+      balance,
+      buffer,
+      horizon_days: DEFAULT_HORIZON_DAYS,
+      projected: forecast.days.map((day) => ({ d: day.dateKey, p: day.projected })),
+    },
+    // Opening the page twice in a morning is one morning, not two forecasts.
+    { onConflict: 'account_id,taken_on' },
+  );
 }
 
 export async function saveScheduledPaymentAction(formData: FormData) {

@@ -19,6 +19,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { expandRecurrence, type CashEvent, type CashEventKind, type Recurrence } from '@/lib/cash-forecast';
 import { addDays, daysBetween, payDayFor, payDaySettingsFromAccount, PAY_DAY_COLUMNS, type PayDaySettings } from '@/lib/pay-day';
+import type { CashSnapshot } from '@/lib/cash-accuracy';
 import { laborRulesFromAccount, LABOR_RULE_COLUMNS } from '@/lib/labor-settings';
 import { resolvePayPeriod, type PeriodMode } from '@/lib/labor';
 import { periodEndKey, periodStartKey, payPeriodKey } from '@/lib/crew-pay';
@@ -52,6 +53,33 @@ export type CashSettings = {
   /** False until the migration has run: the page degrades instead of exploding. */
   available: boolean;
 };
+
+/** The most recent forecast taken BEFORE today, for the accuracy check. */
+export async function loadPreviousSnapshot(
+  supabase: SupabaseClient,
+  accountId: string,
+  todayKey: string,
+): Promise<CashSnapshot | null> {
+  const { data, error } = await supabase
+    .from('cash_snapshots')
+    .select('taken_on, balance, buffer, horizon_days, projected')
+    .eq('account_id', accountId)
+    .lt('taken_on', todayKey)
+    .order('taken_on', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  // Missing table (pre-migration) just means there's nothing to compare against.
+  if (error || !data) return null;
+  const projected = Array.isArray(data.projected) ? (data.projected as { d: string; p: number }[]) : [];
+  return {
+    takenOn: String(data.taken_on),
+    balance: num(data.balance),
+    buffer: num(data.buffer),
+    horizonDays: Number(data.horizon_days) || DEFAULT_HORIZON_DAYS,
+    projected,
+  };
+}
 
 export type CashForecastSources = {
   events: CashEvent[];

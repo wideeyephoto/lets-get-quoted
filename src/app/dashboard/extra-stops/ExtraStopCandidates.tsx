@@ -31,6 +31,7 @@ export default function ExtraStopCandidates({
   minFeeCents,
   maxVisitMinutes,
   enabled,
+  reachable,
 }: {
   report: CandidateReport;
   screenings: ScreeningSummary;
@@ -38,6 +39,8 @@ export default function ExtraStopCandidates({
   minFeeCents: number;
   maxVisitMinutes: number;
   enabled: boolean;
+  /** Past customers who could actually be told, by email or text. */
+  reachable: number;
 }) {
   const rules = extraStopRuleReference();
   const count = report.eligible.length;
@@ -206,6 +209,26 @@ export default function ExtraStopCandidates({
               </span>
             ))}
           </div>
+        </div>
+      ) : null}
+
+      {/* The gap this panel keeps pointing at is distribution, not the feature.
+          The demand is in the account's own history; what's missing is that
+          nobody has been told. Handing the draft to the campaign composer keeps
+          the sending logic in one place — this page only knows WHY. */}
+      {enabled && reachable > 0 ? (
+        <div className="es-demand-tell">
+          <div>
+            <strong>Nobody knows you offer this</strong>
+            <p>
+              It&rsquo;s on your booking page and nowhere else, so the only people who find it are the ones already
+              filling in a form. You have <strong>{reachable}</strong> past customer{reachable === 1 ? '' : 's'} you can
+              reach by email or text — the people who already know whether they liked your work.
+            </p>
+          </div>
+          <Link href="/dashboard/campaigns?draft=extra-stop" className="btn primary">
+            Write them about it →
+          </Link>
         </div>
       ) : null}
 

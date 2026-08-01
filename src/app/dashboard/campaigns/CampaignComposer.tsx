@@ -9,6 +9,12 @@ type Reach = { total: number; email: number; sms: number; either: number };
 type Props = {
   audiences: { id: string; label: string; hint: string }[];
   reach: Record<string, Reach>;
+  /**
+   * A draft handed over from somewhere else — today, the Extra Stops page,
+   * which knows why the message is worth sending and how many people it
+   * reaches, but has no business owning how a campaign is sent.
+   */
+  initial?: { channel?: 'email' | 'sms' | 'both'; audience?: string; subject?: string; body?: string };
 };
 
 const CHANNELS = [
@@ -22,10 +28,10 @@ const CHANNELS = [
 // warning once the owner's text is long enough to bill as multiple segments.
 const SMS_SEGMENT = 160;
 
-export default function CampaignComposer({ audiences, reach }: Props) {
-  const [channel, setChannel] = useState<'email' | 'sms' | 'both'>('email');
-  const [audience, setAudience] = useState(audiences[0]?.id ?? 'past');
-  const [body, setBody] = useState('');
+export default function CampaignComposer({ audiences, reach, initial }: Props) {
+  const [channel, setChannel] = useState<'email' | 'sms' | 'both'>(initial?.channel ?? 'email');
+  const [audience, setAudience] = useState(initial?.audience ?? audiences[0]?.id ?? 'past');
+  const [body, setBody] = useState(initial?.body ?? '');
 
   const wantEmail = channel === 'email' || channel === 'both';
   const wantSms = channel === 'sms' || channel === 'both';
@@ -101,7 +107,7 @@ export default function CampaignComposer({ audiences, reach }: Props) {
       {wantEmail ? (
         <div className="field">
           <label htmlFor="campaign-subject">Email subject</label>
-          <input id="campaign-subject" name="subject" type="text" maxLength={140} placeholder="Booking spring projects now — a little something for past customers" />
+          <input id="campaign-subject" name="subject" type="text" maxLength={140} defaultValue={initial?.subject ?? ''} placeholder="Booking spring projects now — a little something for past customers" />
         </div>
       ) : (
         // Keep the field in the form so switching channel client-side doesn't drop a typed subject.

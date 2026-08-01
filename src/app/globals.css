@@ -14523,3 +14523,35 @@ a.bset-card { color: inherit; text-decoration: none; }
   background: linear-gradient(180deg, var(--accent), #ff9440);
   color: #180c02;
 }
+
+/* "Last time, was it right?" — sits under the lead, above the chart. */
+.cash-accuracy {
+  margin: 1rem 0 0;
+  padding: 0.75rem 0.9rem;
+  border-left: 3px solid;
+  border-radius: 0 12px 12px 0;
+  max-width: 60rem;
+}
+.cash-accuracy.tone-on { border-color: #4ade80; background: rgba(74, 222, 128, 0.09); }
+.cash-accuracy.tone-ahead { border-color: #4ade80; background: rgba(74, 222, 128, 0.09); }
+.cash-accuracy.tone-behind { border-color: #ffb454; background: rgba(255, 180, 84, 0.09); }
+.cash-accuracy-line { margin: 0; font-size: 0.95rem; line-height: 1.55; color: var(--text); font-weight: 600; }
+.cash-accuracy-note { margin: 0.35rem 0 0; font-size: 0.82rem; line-height: 1.5; color: rgba(247, 245, 239, 0.6); }
+
+/* "Nobody knows you offer this" — the distribution hand-off. */
+.es-demand-tell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  margin-top: 1.2rem;
+  padding: 0.95rem 1.1rem;
+  border: 1px solid rgba(255, 122, 33, 0.32);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 122, 33, 0.1), rgba(255, 255, 255, 0.02));
+}
+.es-demand-tell > div { flex: 1 1 22rem; min-width: 0; }
+.es-demand-tell strong { display: block; font-size: 1rem; margin-bottom: 0.25rem; }
+.es-demand-tell p { margin: 0; font-size: 0.87rem; line-height: 1.6; color: rgba(247, 245, 239, 0.7); }
+.es-demand-tell p strong { display: inline; font-family: var(--font-display); color: var(--text); }

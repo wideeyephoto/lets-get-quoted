@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useMemo, useState, type ReactNode } from 'react';
 import SaveButton from '@/components/save-button';
 import { buildForecast, KIND_LABEL, type CashEvent } from '@/lib/cash-forecast';
+import { accuracySentence, type ForecastAccuracy } from '@/lib/cash-accuracy';
 import CashChart, { type LineKey } from './CashChart';
 
 // The interactive half of the cash-flow page.
@@ -26,6 +27,8 @@ type Props = {
   paymentLagDays: number;
   paymentLagMeasured: boolean;
   unbilled: { count: number; total: number };
+  /** How the last forecast actually did. Null when there's nothing honest to say. */
+  accuracy: ForecastAccuracy | null;
   settingsAvailable: boolean;
   saveSettings: (formData: FormData) => void | Promise<void>;
   /**
@@ -91,6 +94,7 @@ export default function CashFlowBoard({
   paymentLagDays,
   paymentLagMeasured,
   unbilled,
+  accuracy,
   settingsAvailable,
   saveSettings,
   billsPanel,
@@ -230,6 +234,19 @@ export default function CashFlowBoard({
             </div>
             {chart}
           </div>
+
+          {/* Directly under the lead, above the chart: whether to believe the
+              curve is the first thing you need, not a footnote under it. */}
+          {accuracy ? (
+            <div className={`cash-accuracy tone-${accuracy.direction}`}>
+              <p className="cash-accuracy-line">{accuracySentence(accuracy)}</p>
+              <p className="cash-accuracy-note">
+                {accuracy.direction === 'on'
+                  ? 'Worth knowing the next number is coming from something that has been right before.'
+                  : 'Some of that gap is money that moved without passing through here — cash jobs, transfers, anything you paid on a card. The rest is worth chasing.'}
+              </p>
+            </div>
+          ) : null}
 
           <div className="insight-window-tabs" role="tablist" aria-label="Forecast window">
             {windows.map((option) => (

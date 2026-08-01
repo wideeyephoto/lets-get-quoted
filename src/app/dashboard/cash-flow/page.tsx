@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { todayDateKey } from '@/lib/recurring';
-import { loadCashForecastSources, DEFAULT_HORIZON_DAYS } from '@/lib/cash-forecast-data';
+import { loadCashForecastSources, loadPreviousSnapshot, DEFAULT_HORIZON_DAYS } from '@/lib/cash-forecast-data';
+import { compareForecast } from '@/lib/cash-accuracy';
 import { payDaySentence } from '@/lib/pay-day';
 import CashFlowBoard from './CashFlowBoard';
 import ScheduledPaymentsPanel from './ScheduledPaymentsPanel';
@@ -32,6 +33,20 @@ export default async function CashFlowPage({ searchParams }: { searchParams: { w
     days: selected.days || DEFAULT_HORIZON_DAYS,
   });
 
+  // Only worth showing against a balance they have actually just checked. A
+  // three-week-old number compared against a two-week-old forecast is two stale
+  // things being held up next to each other.
+  const balanceAge = sources.settings.balanceAt
+    ? Math.floor((Date.now() - new Date(sources.settings.balanceAt).getTime()) / 86400000)
+    : null;
+  const accuracy =
+    sources.settings.balance !== null && balanceAge !== null && balanceAge <= 1
+      ? compareForecast(await loadPreviousSnapshot(supabase, accountId, todayKey), {
+          todayKey,
+          actualBalance: sources.settings.balance,
+        })
+      : null;
+
   return (
     <main className="wide-shell workspace-shell">
       {/* The hero is rendered by the board, not here: the chart lives inside it,
@@ -51,6 +66,7 @@ export default async function CashFlowPage({ searchParams }: { searchParams: { w
         paymentLagDays={sources.paymentLagDays}
         paymentLagMeasured={sources.paymentLagMeasured}
         unbilled={sources.unbilled}
+        accuracy={accuracy}
         settingsAvailable={sources.settings.available}
         saveSettings={saveCashSettingsAction}
         billsPanel={

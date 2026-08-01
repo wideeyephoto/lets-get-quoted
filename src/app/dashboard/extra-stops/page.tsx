@@ -11,6 +11,7 @@ import ExtraStopConfigurator from './ExtraStopConfigurator';
 import ExtraStopCandidates from './ExtraStopCandidates';
 import { customerWords, screenExtraStopCandidates, type CandidateInput } from '@/lib/extra-stop-candidates';
 import { loadScreeningSummary } from '@/lib/extra-stop-screenings';
+import { loadRecipients, matchesAudience } from '@/lib/campaigns';
 import { loadRefundTiers } from '@/lib/extra-stop-refunds';
 
 /** How far back the demand panel looks. A quarter is enough to be a pattern. */
@@ -154,6 +155,11 @@ export default async function ExtraStopsPage() {
   // The other half of demand: people who actually asked, including the ones the
   // screener refused. Empty (and harmless) until the migration has run.
   const screenings = await loadScreeningSummary(supabase, accountId, sinceIso);
+  // How many past customers could actually be told. Counted the same way the
+  // campaign composer counts them, so the two screens can't disagree.
+  const reachable = (await loadRecipients(supabase, accountId).catch(() => []))
+    .filter((recipient) => matchesAudience(recipient, 'past', Date.now()) && (recipient.emailReady || recipient.smsReady))
+    .length;
 
   const defaults = {
     earliest: settings.earliestTime,
@@ -233,6 +239,7 @@ export default async function ExtraStopsPage() {
       <ExtraStopCandidates
         report={demand}
         screenings={screenings}
+        reachable={reachable}
         windowDays={DEMAND_WINDOW_DAYS}
         minFeeCents={settings.minFeeCents}
         maxVisitMinutes={settings.maxVisitMinutes}
