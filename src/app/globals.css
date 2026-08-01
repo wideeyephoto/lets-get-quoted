@@ -11021,17 +11021,77 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 /* Purple is the one hue on this palette that isn't already spoken for — orange
    is the brand, green is paid, red is spend, amber is a warning. That makes it
    free to mean "planning", which is a mode rather than a money event. */
+/* Built like the Stripe alert banner — saturated fill, neon rim, layered bloom,
+   faint lattice — in purple. The glow is four shadows rather than one big blur
+   for the same reason it is there: a tight rim, a mid halo, a wide pool and a
+   downward cast read as light; a single soft shadow reaching that far reads as
+   fog. */
 .action-btn--plan {
-  border-color: transparent;
-  background: linear-gradient(135deg, #6d28d9 0%, #a855f7 100%);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-color: rgba(199, 165, 255, 0.9);
   color: #fff;
-  box-shadow: 0 12px 32px -12px rgba(147, 51, 234, 0.95);
+  background:
+    radial-gradient(135% 120% at 50% 118%, rgba(214, 176, 255, 0.42) 0%, rgba(168, 85, 247, 0.2) 42%, transparent 70%),
+    linear-gradient(180deg, #7c3aed 0%, #6320c9 55%, #4f169f 100%);
+  box-shadow:
+    0 0 9px rgba(180, 120, 255, 0.6),
+    0 0 24px rgba(147, 51, 234, 0.42),
+    0 0 62px rgba(124, 40, 220, 0.3),
+    0 14px 46px -14px rgba(120, 40, 210, 0.5),
+    inset 0 1px 0 rgba(233, 219, 255, 0.5),
+    inset 0 -20px 38px -24px rgba(214, 186, 255, 0.5);
+}
+
+/* Texture, so the fill isn't flat paint. Two hatches, no asset to ship. */
+.action-btn--plan::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1; /* above the background, below the label — see isolation above */
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(60deg, rgba(255, 255, 255, 0.055) 0 1px, transparent 1px 15px),
+    repeating-linear-gradient(-60deg, rgba(255, 255, 255, 0.055) 0 1px, transparent 1px 15px);
+}
+
+/* The shine. It sweeps and then WAITS — most of the timeline is the pause. A
+   highlight crossing every second is a loading bar; one that crosses now and
+   then is a button catching the light. */
+.action-btn--plan::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 34%, rgba(255, 255, 255, 0.42) 50%, transparent 66%);
+  transform: translateX(-135%);
+  animation: planSheen 5.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes planSheen {
+  0%, 62% { transform: translateX(-135%); }
+  86%, 100% { transform: translateX(135%); }
 }
 
 .action-btn--plan:hover {
-  border-color: transparent;
-  background: linear-gradient(135deg, #7c3aed 0%, #b871fb 100%);
-  box-shadow: 0 18px 40px -12px rgba(147, 51, 234, 1);
+  border-color: rgba(219, 195, 255, 0.95);
+  background:
+    radial-gradient(135% 120% at 50% 118%, rgba(224, 195, 255, 0.5) 0%, rgba(178, 105, 255, 0.24) 42%, transparent 70%),
+    linear-gradient(180deg, #8b4bf0 0%, #6f2ada 55%, #591cb4 100%);
+  box-shadow:
+    0 0 26px rgba(186, 130, 255, 0.58),
+    0 0 72px rgba(147, 51, 234, 0.38),
+    0 20px 60px -20px rgba(124, 40, 220, 0.7),
+    inset 0 1px 0 rgba(240, 229, 255, 0.6),
+    inset 0 -20px 38px -24px rgba(224, 200, 255, 0.55);
+}
+
+/* A button that pulses on its own is exactly what reduced-motion is asking you
+   not to do. The fill and the glow stay; only the sweep goes. */
+@media (prefers-reduced-motion: reduce) {
+  .action-btn--plan::after { animation: none; opacity: 0; }
 }
 
 /* 24-grid stroke glyphs, same drawing style as the sidebar rail. */
@@ -13226,3 +13286,8 @@ a.bset-card { color: inherit; text-decoration: none; }
 .unsaved-guard-panel p { margin: 0; color: var(--muted); font-size: 0.9rem; line-height: 1.5; }
 .unsaved-guard-actions { display: flex; flex-wrap: wrap; gap: 0.55rem; margin-top: 0.5rem; }
 .unsaved-guard-actions .btn { flex: 1 1 10rem; }
+
+/* A closed drawer is HIDDEN, not unmounted — its inputs still have to reach the
+   form action, or saving would write blanks over whatever you couldn't see.
+   .bset-section-body sets a display, which would otherwise beat [hidden]. */
+.bset-section-body[hidden] { display: none; }

@@ -283,7 +283,12 @@ export async function updateExtraStopSettingsAction(formData: FormData) {
     extra_stop_max_detour_minutes: formData.get('extraStopMaxDetourMinutes'),
     extra_stop_min_fee_cents: dollarsToCents(formData.get('extraStopMinFee')),
     extra_stop_max_fee_cents: dollarsToCents(formData.get('extraStopMaxFee')),
-    extra_stop_allow_after_capacity: formData.get('extraStopAllowAfterCapacity') === 'on',
+    // ALWAYS ON, for the same reason the checkbox is gone: an Extra Stop is a
+    // paid squeeze-in on a day that is otherwise full. Turning this off leaves
+    // the feature switched on but unable to do the thing it exists for, and
+    // nothing on screen would explain why no requests were coming through. Max
+    // Extra Stops per day is the control that actually limits volume.
+    extra_stop_allow_after_capacity: true,
     extra_stop_response_deadline_mins: formData.get('extraStopResponseDeadline'),
     extra_stop_payment_deadline_mins: formData.get('extraStopPaymentDeadline'),
     extra_stop_categories: formData.get('extraStopCategories'),
@@ -300,10 +305,17 @@ export async function updateExtraStopSettingsAction(formData: FormData) {
   const minFeeCents = Math.min(s.minFeeCents, s.maxFeeCents);
   const maxFeeCents = Math.max(s.minFeeCents, s.maxFeeCents);
 
+  // THE MASTER SWITCH IS NOT PART OF THIS FORM ANYMORE, and absence has to mean
+  // "leave it alone" rather than "off". An unchecked checkbox and a field that
+  // was never rendered are indistinguishable in FormData, so a settings save
+  // from a form without it would have quietly switched Extra Stop off. The
+  // switch lives on the Automations card and on this page's own status header.
+  const enabledField = formData.has('extraStopEnabled');
+
   const { error } = await supabase
     .from('accounts')
     .update({
-      extra_stop_enabled: s.enabled,
+      ...(enabledField ? { extra_stop_enabled: s.enabled } : {}),
       extra_stop_weekdays: s.weekdays.join(','),
       extra_stop_earliest_time: s.earliestTime,
       extra_stop_latest_end: s.latestEnd,

@@ -95,16 +95,11 @@ export default function ExtraStopConfigurator({
       ) : null}
 
       <form action={updateExtraStopSettingsAction} className="bset-form">
-        {/* The master switch travels with the settings so a save can't silently
-            clear it. The Automations tab toggles the same flag. */}
-        <label className="checkbox-row" htmlFor="extraStopEnabled">
-          <input id="extraStopEnabled" name="extraStopEnabled" type="checkbox" defaultChecked={s.enabled} />
-          <span>
-            <strong>Offer Extra Stop on my Book page.</strong> Qualifying same-day jobs can request one after
-            the AI intake. Off means only standard booking is offered.
-          </span>
-        </label>
-
+        {/* No on/off here. This page already says whether Extra Stop is live —
+            in its status header, and in the rail — and a third control saying
+            the same thing invites the two to disagree. The switch is on the
+            Automations card. updateExtraStopSettingsAction leaves the column
+            alone when the field is absent, so saving settings can't flip it. */}
         {SECTIONS.map((section) => (
           <section
             className="bset-section"
@@ -128,8 +123,13 @@ export default function ExtraStopConfigurator({
               </span>
             </button>
 
-            {isOpen(section.key) ? (
-              <div className="bset-section-body">
+            {/* HIDDEN, NOT UNMOUNTED. These are plain DOM inputs, so a closed
+                drawer that isn't rendered contributes nothing to the FormData —
+                and the action would write the resulting blanks straight over
+                your settings. Saving with only drawer 1 open zeroed the fee
+                band. (BookingSetup gets away with unmounting because it builds
+                its FormData from React state instead.) */}
+            <div className="bset-section-body" hidden={!isOpen(section.key)}>
                 {section.key === 'when' ? (
                   <div className="form-grid compact-form">
                     <div className="field full">
@@ -250,10 +250,11 @@ export default function ExtraStopConfigurator({
                       <small className="field-hint">Its own limit — these don’t count against your normal daily booking cap.</small>
                     </div>
 
-                    <label className="checkbox-row full" htmlFor="extraStopAllowAfterCapacity">
-                      <input id="extraStopAllowAfterCapacity" name="extraStopAllowAfterCapacity" type="checkbox" defaultChecked={s.allowAfterCapacity} />
-                      <span>Take Extra Stops even once the day is otherwise full — that’s the point of a paid squeeze-in.</span>
-                    </label>
+                    {/* No checkbox for "take them once the day is full". Its own
+                        label made the argument against itself — that IS the
+                        feature. A switch that turns off the point of the thing
+                        it belongs to is not a setting, it is a trap. The daily
+                        limit above is the real control over volume. */}
                   </div>
                 ) : null}
 
@@ -300,8 +301,7 @@ export default function ExtraStopConfigurator({
                     </div>
                   </div>
                 ) : null}
-              </div>
-            ) : null}
+            </div>
           </section>
         ))}
 
