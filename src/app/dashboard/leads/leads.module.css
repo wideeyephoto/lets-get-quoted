@@ -573,3 +573,18 @@
 .scoreLegendRow .scoreChip { white-space: nowrap; }
 .scoreLegendNote { margin: .15rem 0 0; font-size: .76rem; color: rgba(255,255,255,.45); }
 .scoreLegendNote a { color: #ffb27d; font-weight: 700; }
+
+/* Why the quote didn't send, in the server's own words. Replaces the digest
+   crash page that three different ordinary mistakes all used to produce. */
+.sendQuoteError {
+  margin: .5rem 0 0;
+  padding: .7rem .85rem;
+  border: 1px solid rgba(255, 101, 101, .45);
+  border-left: 4px solid #ff6565;
+  border-radius: 10px;
+  background: rgba(255, 101, 101, .1);
+  color: #ffb4b4;
+  font-size: .84rem;
+  font-weight: 600;
+  line-height: 1.45;
+}

@@ -10,7 +10,7 @@ import { expandScheduledJobs, formatJobSchedule, formatJobTime, listJobs, type J
 import { normalizeBookingWeekdays } from '@/lib/booking-availability';
 import { LEAD_STATUS_LABEL } from '@/lib/lead-detail-labels';
 import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
-import { clearLeadQuoteVisitAction, convertLeadAction, reopenLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, setLeadLayoutAction, undoConvertLeadAction, updateLeadDetailsAction, updateLeadStatusAction } from '../actions';
+import { clearLeadQuoteVisitAction, reopenLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, sendQuoteAction, setLeadLayoutAction, undoConvertLeadAction, updateLeadDetailsAction, updateLeadStatusAction } from '../actions';
 import DepositField from './DepositField';
 import LeadActionDeck from './LeadActionDeck';
 import LeadQuoteFields from './LeadQuoteFields';
@@ -20,6 +20,7 @@ import LeadAvailabilityScheduler from './LeadAvailabilityScheduler';
 import QuoteStartDateCalendar from './QuoteStartDateCalendar';
 import SaveButton, { ScrollTopOnSaveProvider } from '@/components/save-button';
 import QuickFillButtons from '@/components/quick-fill-buttons';
+import SendQuoteForm from './SendQuoteForm';
 import StripeQuoteGate from './StripeQuoteGate';
 import styles from '../leads.module.css';
 
@@ -123,7 +124,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
   const photos = await createLeadPhotoLinks(accountId, lead.photo_paths || []);
   const defaultPhoto = photos[0];
   const updateLeadDetails = updateLeadDetailsAction.bind(null, lead.id);
-  const convertLead = convertLeadAction.bind(null, lead.id);
+  const sendQuote = sendQuoteAction.bind(null, lead.id);
   const undoConvertLead = undoConvertLeadAction.bind(null, lead.id);
   const rescheduleLater = clearLeadQuoteVisitAction.bind(null, lead.id);
   const scheduleVisit = scheduleLeadQuoteVisitAction.bind(null, lead.id);
@@ -453,7 +454,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
               />
               <div className="section-heading workspace-section-heading"><p className="eyebrow">Step 2</p><h2>Send the quote</h2></div>
               <p>Enter the amount and text the client their quote. Job start options can stay tucked away until you need them.</p>
-              <form id="send-quote-form" action={convertLead} className={styles.actionForm}>
+              <SendQuoteForm action={sendQuote} className={styles.actionForm}>
                 {/* Before the work, not after it. */}
                 <StripeQuoteGate connected={stripeConnected} />
                 <div className={styles.quoteItemsField}>
@@ -516,7 +517,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                 {!stripeConnected ? (
                   <p className={styles.stripeGateNote}>Nothing is lost while you connect — this stays as you left it.</p>
                 ) : null}
-              </form>
+              </SendQuoteForm>
             </section>
           ) : null}
         </aside>

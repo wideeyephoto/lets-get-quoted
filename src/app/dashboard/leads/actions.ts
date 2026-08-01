@@ -618,3 +618,32 @@ export async function undoConvertLeadAction(leadId: string) {
   revalidatePath('/dashboard/jobs');
 }
 
+
+export type SendQuoteState = { error: string } | null;
+
+// useActionState wrapper around convertLeadAction.
+//
+// Every validation message in convertLeadAction is written to be useful ("Add at
+// least one line item…", "Connect Stripe before sending…") and none of them ever
+// reached the owner: a thrown Error in a server action renders as "Application
+// error: a server-side exception has occurred" with a digest, so an ordinary
+// mistake — a $0 line item, a plan-only quote — looked like the app had crashed.
+// Returning the message instead puts it back on screen next to the button.
+//
+// redirect() and notFound() signal by THROWING a tagged error, so those are
+// rethrown untouched; swallowing them would strand the owner on the lead page
+// after the job was already created.
+export async function sendQuoteAction(
+  leadId: string,
+  _previous: SendQuoteState,
+  formData: FormData,
+): Promise<SendQuoteState> {
+  try {
+    await convertLeadAction(leadId, formData);
+    return null;
+  } catch (error) {
+    const digest = (error as { digest?: unknown } | null)?.digest;
+    if (typeof digest === 'string' && (digest.startsWith('NEXT_REDIRECT') || digest === 'NEXT_NOT_FOUND')) throw error;
+    return { error: error instanceof Error ? error.message : 'Could not send the quote.' };
+  }
+}
