@@ -17,8 +17,6 @@ import { ESTIMATE_POSTURES, normalizeEstimatePosture } from '@/lib/estimate-post
 import { getSiteContent } from '@/lib/site-content';
 import { WEEKDAY_LABELS, BOOKING_WINDOW_PRESETS, TIMEZONE_OPTIONS, bookingAvailabilityFromAccount } from '@/lib/booking-availability';
 import { EXTRA_STOP_SETTINGS_COLUMNS } from '@/lib/extra-stop';
-import { loadRefundTiers } from '@/lib/extra-stop-refunds';
-import ExtraStopSettingsSection from './ExtraStopSettingsSection';
 import { getTrailingVolume } from '@/lib/payments';
 import { getTierInfo } from '@/lib/stripe';
 import { formatMoney } from '@/lib/jobs';
@@ -140,7 +138,6 @@ export default async function SettingsPage({
     .select(EXTRA_STOP_SETTINGS_COLUMNS)
     .eq('id', accountId)
     .single();
-  const extraStopRefundTiers = await loadRefundTiers(supabase, accountId);
   // Platform fee tier, shown on the Payments tab so a contractor can see the rate
   // they're on and what it takes to reach the next (lower) one.
   const trailingVolume = await getTrailingVolume(accountId);
@@ -556,7 +553,17 @@ export default async function SettingsPage({
                       <span>Extra Stop collects a fee before the visit — <Link href="/dashboard/settings#payments">connect Stripe</Link> to get paid. You can still set it up now.</span>
                     </div>
                   ) : null}
-                  <ExtraStopSettingsSection headless extraStop={extraStopSettings as Parameters<typeof ExtraStopSettingsSection>[0]['extraStop']} refundTiers={extraStopRefundTiers} />
+                  {/* The thirty-odd settings that used to live here moved to the
+                      Extra Stops page, where the requests they govern are. What
+                      belongs on an Automations tab is the switch and the way in. */}
+                  <p className="workspace-details-copy" style={{ marginTop: 0 }}>
+                    A customer asks to be fitted in today — mid-day or at the end of your route. You review
+                    the job, propose an arrival window and set a one-off fee; they pay before it&apos;s
+                    booked.
+                  </p>
+                  <Link className="btn secondary" href="/dashboard/extra-stops#extra-stop-setup">
+                    Adjust Extra Stop settings →
+                  </Link>
                 </AutomationCard>
 
                 <AutomationCard group="booking-intake" id="missed-call" title="Missed-call text-back" subtitle="Auto-text callers you miss" toggle={{ on: callTextbackEnabled, action: toggleAutomationAction.bind(null, 'missed-call') }}>

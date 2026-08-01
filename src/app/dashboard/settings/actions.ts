@@ -288,7 +288,12 @@ export async function updateExtraStopSettingsAction(formData: FormData) {
     extra_stop_payment_deadline_mins: formData.get('extraStopPaymentDeadline'),
     extra_stop_categories: formData.get('extraStopCategories'),
     extra_stop_required_photos: formData.get('extraStopRequiredPhotos'),
-    extra_stop_require_ai_approval: formData.get('extraStopRequireAiApproval') === 'on',
+    // ALWAYS ON. This used to be a checkbox the contractor could clear, which
+    // meant an account could offer same-day, pre-paid, sight-unseen visits with
+    // nothing screening out complex, unsafe or out-of-scope work. That is not a
+    // preference, so it is no longer offered as one. The setting stays in the
+    // column (and in extra-stop-qualify) so nothing downstream changes shape.
+    extra_stop_require_ai_approval: true,
   });
 
   // Never let the fee band invert (min above max).

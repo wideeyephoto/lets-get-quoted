@@ -7,6 +7,8 @@ import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
 import ExtraStopRequestCard, { type CardRequest } from './ExtraStopRequestCard';
 import ExtraStopExplainer from './ExtraStopExplainer';
 import ExtraStopStatus, { ExtraStopHead } from './ExtraStopStatus';
+import ExtraStopConfigurator from './ExtraStopConfigurator';
+import { loadRefundTiers } from '@/lib/extra-stop-refunds';
 
 const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -71,6 +73,7 @@ export default async function ExtraStopsPage() {
 
   // For the explainer's setup checklist — real state, not decoration.
   const stripeConnected = Boolean((accountRow as { connect_onboarded?: boolean } | null)?.connect_onboarded);
+  const refundTiers = await loadRefundTiers(supabase, accountId);
   const appOrigin = (process.env.NEXT_PUBLIC_APP_URL || `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'}`).replace(/\/$/, '');
   const bookingUrl = site?.published && site?.subdomain ? `${appOrigin}/book/${site.subdomain}` : null;
   const businessName =
@@ -159,6 +162,16 @@ export default async function ExtraStopsPage() {
         stripeConnected={stripeConnected}
         bookingUrl={bookingUrl}
         businessName={businessName}
+      />
+
+      {/* The configurator lives HERE now, not in Account > Automations. It is
+          thirty controls about Extra Stops; a settings tab about everything else
+          was never the place to read them. Automations keeps the on/off switch
+          and a link back to this page. */}
+      <ExtraStopConfigurator
+        extraStop={accountRow as Parameters<typeof ExtraStopConfigurator>[0]['extraStop']}
+        refundTiers={refundTiers}
+        stripeConnected={stripeConnected}
       />
 
       {history.length ? (
