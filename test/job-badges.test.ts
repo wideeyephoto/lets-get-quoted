@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildPipelineChecklist, deriveJobListBadge } from '@/lib/job-badges';
+import { buildPipelineChecklist, deriveJobListBadge, formatStartedOn } from '@/lib/job-badges';
 import type { Job } from '@/lib/jobs';
 import type { Invoice } from '@/lib/invoices';
 import type { Payment } from '@/lib/payments';
@@ -150,5 +150,46 @@ describe('checklist details', () => {
     const closed = checklist(job({ quoted_amount: 11800, status: 'complete', scheduled_for: '2026-08-04' }), [paid(11800)], [], 1);
     expect(open.map((s) => s.key)).toEqual(closed.map((s) => s.key));
     expect(open[0].label).not.toBe(closed[0].label);
+  });
+});
+
+describe('the schedule step stops hedging once work has started', () => {
+  // "Scheduled / underway" covered both a job on next Tuesday's calendar and a
+  // job with a crew in the driveway. Pressing "Job started" is what tells the
+  // two apart, so the step has to say which one it means.
+  const scheduled = job({ quoted_amount: 11800, status: 'in_progress', scheduled_for: '2026-08-04' });
+
+  it('hedges while the job is only scheduled', () => {
+    const step = checklist(scheduled)[2];
+    expect(step.label).toBe('Scheduled / underway');
+    expect(step.detail).toContain('Aug');
+  });
+
+  it('commits once there is a start time, and shows the day', () => {
+    const step = checklist({ ...scheduled, started_at: '2026-08-04T14:20:00.000Z' })[2];
+    expect(step.label).toBe('Work underway');
+    expect(step.detail).toMatch(/^Started /);
+  });
+
+  it('keeps the step key and its completeness either way', () => {
+    const before = checklist(scheduled)[2];
+    const after = checklist({ ...scheduled, started_at: '2026-08-04T14:20:00.000Z' })[2];
+    expect(after.key).toBe(before.key);
+    expect(after.complete).toBe(before.complete);
+  });
+});
+
+describe('formatStartedOn', () => {
+  it('is null when nobody pressed the button — never "started when it was created"', () => {
+    expect(formatStartedOn(null)).toBeNull();
+    expect(formatStartedOn(undefined)).toBeNull();
+  });
+
+  it('is null rather than "Invalid Date" on a value that will not parse', () => {
+    expect(formatStartedOn('not a timestamp')).toBeNull();
+  });
+
+  it('reads as a day, not a timestamp', () => {
+    expect(formatStartedOn('2026-08-04T14:20:00.000Z')).toMatch(/^Started \w{3}, \w{3} \d+$/);
   });
 });

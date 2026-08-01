@@ -14,6 +14,16 @@ function moneyCents(value: number): number {
   return Math.round(Number(value || 0) * 100);
 }
 
+/** "Started Sat, Aug 1" — null when nobody pressed the button. */
+export function formatStartedOn(startedAt: string | null | undefined): string | null {
+  if (!startedAt) return null;
+  const at = new Date(startedAt);
+  if (Number.isNaN(at.getTime())) return null;
+  // A timestamptz, so it's read in the reader's own zone rather than built from
+  // parts the way a bare date key has to be.
+  return `Started ${at.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`;
+}
+
 function hasQuoteRevision(job: Job, invoices: Invoice[]): boolean {
   const currentQuoteCents = moneyCents(job.quoted_amount);
   if (currentQuoteCents <= 0) return false;
@@ -128,6 +138,7 @@ export function buildPipelineChecklist(
 ): PipelineChecklistItem[] {
   const milestones = computeJobMilestones(job, payments, invoices, activeClientLinkCount);
   const feedDetail = activeClientLinkCount > 0 ? 'Job Feed shared' : 'Share Job Feed link';
+  const startedLabel = formatStartedOn(job.started_at ?? null);
 
   return [
     {
@@ -154,8 +165,14 @@ export function buildPipelineChecklist(
     },
     {
       key: 'schedule',
-      label: milestones.scheduled ? 'Scheduled / underway' : 'Schedule the work',
-      detail: job.scheduled_for ? formatJobSchedule(job.scheduled_for, job.scheduled_time, job.scheduled_until) : 'No date set',
+      // Once work has actually started this stops hedging. "Scheduled /
+      // underway" covered both a job sitting on Tuesday's calendar and a job
+      // with a crew in the driveway, which is the ambiguity the start button
+      // exists to remove — so when it has been pressed, say which one it is.
+      label: startedLabel ? 'Work underway' : milestones.scheduled ? 'Scheduled / underway' : 'Schedule the work',
+      detail:
+        startedLabel ??
+        (job.scheduled_for ? formatJobSchedule(job.scheduled_for, job.scheduled_time, job.scheduled_until) : 'No date set'),
       complete: milestones.scheduled,
       href: `/dashboard/jobs/${job.id}?open=scheduling#job-scheduling`,
     },

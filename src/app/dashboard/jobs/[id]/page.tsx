@@ -20,11 +20,13 @@ import {
   deleteCostAction,
   deleteJobAction,
   markJobCompleteAction,
+  markJobStartedAction,
   requestJobReviewAction,
   resolveAccountReviewUrl,
   saveQuoteItemsAction,
   sendClientScheduleOptionsAction,
   undoJobCompleteAction,
+  undoJobStartedAction,
   updateJobAction,
   updateJobCrewAction,
   addJobTaskAction,
@@ -118,6 +120,7 @@ export default async function JobDetailPage({
   const boundCreateCost = createCostAction.bind(null, job.id);
   const boundCreateDepositRequest = createDepositRequestAction.bind(null, job.id);
   const boundMarkJobComplete = markJobCompleteAction.bind(null, job.id);
+  const boundMarkJobStarted = markJobStartedAction.bind(null, job.id);
   const boundRequestReview = requestJobReviewAction.bind(null, job.id);
   const boundSaveQuoteItems = saveQuoteItemsAction.bind(null, job.id);
   const quoteItems = parseQuoteItems(job.quote_items);
@@ -246,6 +249,15 @@ export default async function JobDetailPage({
                 <CloseOnSuccess />
               </form>
             </AddExpenseModal>
+            {/* Start and complete are a pair, so they sit together. "Job
+                started" disappears once it has been pressed rather than turning
+                into a disabled button — the feed and the pipeline step carry the
+                fact from then on, and Undo lives with the feed entry it undoes. */}
+            {!job.started_at && job.status !== 'complete' && job.status !== 'archived' ? (
+              <form action={boundMarkJobStarted}>
+                <SaveButton className="btn secondary" pendingLabel="Starting…" savedLabel="Started ✓">Job started</SaveButton>
+              </form>
+            ) : null}
             {job.status !== 'complete' && job.status !== 'archived' ? (
               <form action={boundMarkJobComplete}>
                 <SaveButton className="btn secondary" pendingLabel="Completing…" savedLabel="Completed ✓">Mark complete</SaveButton>
@@ -414,6 +426,11 @@ export default async function JobDetailPage({
                               <Link className="feed-undo-btn" href={`/dashboard/leads/${originatingLead.id}`}>
                                 Undo
                               </Link>
+                            ) : null}
+                            {event.kind === 'job_started' && job.started_at ? (
+                              <form action={undoJobStartedAction.bind(null, job.id, event.id)}>
+                                <SaveButton className="feed-undo-btn" pendingLabel="Undoing…" savedLabel="Undone ✓">Undo</SaveButton>
+                              </form>
                             ) : null}
                             {event.kind === 'job_completed' && job.status === 'complete' ? (
                               <form action={undoJobCompleteAction.bind(null, job.id, event.id)}>

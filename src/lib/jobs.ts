@@ -48,6 +48,13 @@ export type Job = {
   // arrives undefined until migrations/2026-07-30-job-end-date.sql has run.
   scheduled_until?: string | null;
   scheduled_time: string | null;
+  /**
+   * When work actually began. Optional on the type, not just nullable, because
+   * it arrives undefined until migrations/2026-08-01-job-started.sql has run.
+   * Null means nobody has pressed "Job started" — never "started when it was
+   * created".
+   */
+  started_at?: string | null;
   estimated_hours: number | null;
   quoted_amount: number;
   deposit_gate: 'before_schedule' | 'before_work' | null;

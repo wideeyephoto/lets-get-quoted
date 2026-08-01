@@ -173,6 +173,95 @@ export async function updateJobAction(jobId: string, formData: FormData) {
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }
 
+/**
+ * Work began.
+ *
+ * A timestamp AND a status move, because both were previously guesses: a job on
+ * the calendar and a job with a crew in the driveway were the same row. The feed
+ * entry is client-visible on purpose — "they've started" is the single most
+ * common thing a homeowner rings up to ask.
+ *
+ * Idempotent. Pressing it twice must not re-date the start or post a second
+ * entry; the second press is somebody checking it worked.
+ */
+export async function markJobStartedAction(jobId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const job = await getJob(supabase, accountId, jobId);
+  if (!job) throw new Error('Job not found for this account.');
+  if (job.status === 'archived') throw new Error('This job is archived.');
+
+  if (!job.started_at) {
+    const startedAt = new Date().toISOString();
+    const { error } = await supabase
+      .from('jobs')
+      // Starting work IS being in progress. A job still sitting in new_lead
+      // while somebody is on site is the contradiction this button exists to
+      // remove — but a completed job that gets a start time recorded after the
+      // fact must not be dragged back open.
+      .update({ started_at: startedAt, ...(job.status === 'complete' ? {} : { status: 'in_progress' }) })
+      .eq('account_id', accountId)
+      .eq('id', jobId);
+    if (error) throw error;
+
+    await createJobFeedEvent(supabase, accountId, jobId, {
+      kind: 'job_started',
+      title: 'Work started',
+      body: `Work started on ${job.ref}${job.address ? ` at ${job.address}` : ''}.`,
+      visibility: 'client',
+      meta: { startedAt, previousStatus: job.status },
+    });
+  }
+
+  revalidatePath('/dashboard/jobs');
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
+/**
+ * Pressed it on the wrong job.
+ *
+ * Clears the timestamp, puts the status back where it was, and deletes the feed
+ * entry — the client saw "work started", so leaving a struck-through record of a
+ * thing that didn't happen is worse than removing it.
+ */
+export async function undoJobStartedAction(jobId: string, eventId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const job = await getJob(supabase, accountId, jobId);
+  if (!job) throw new Error('Job not found for this account.');
+
+  const { data: event, error: eventError } = await supabase
+    .from('job_feed')
+    .select('id, kind, meta')
+    .eq('account_id', accountId)
+    .eq('job_id', jobId)
+    .eq('id', eventId)
+    .eq('kind', 'job_started')
+    .maybeSingle();
+  if (eventError) throw eventError;
+  if (!event) throw new Error('Start event not found for this job.');
+
+  const previousStatus = parseJobStatus((event.meta as { previousStatus?: unknown } | null)?.previousStatus);
+  const { error: updateError } = await supabase
+    .from('jobs')
+    // Only the status this action changed is put back. A job completed since it
+    // started must stay complete — undoing the start is not undoing the work.
+    .update({ started_at: null, ...(previousStatus && job.status === 'in_progress' ? { status: previousStatus } : {}) })
+    .eq('account_id', accountId)
+    .eq('id', jobId);
+  if (updateError) throw updateError;
+
+  const { error: deleteError } = await supabase
+    .from('job_feed')
+    .delete()
+    .eq('account_id', accountId)
+    .eq('job_id', jobId)
+    .eq('id', eventId)
+    .eq('kind', 'job_started');
+  if (deleteError) throw deleteError;
+
+  revalidatePath('/dashboard/jobs');
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
 export async function markJobCompleteAction(jobId: string) {
   const { supabase, accountId } = await requireOwnerContext();
   const job = await getJob(supabase, accountId, jobId);
