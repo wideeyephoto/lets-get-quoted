@@ -8,7 +8,19 @@ import ExtraStopRequestCard, { type CardRequest } from './ExtraStopRequestCard';
 import ExtraStopExplainer from './ExtraStopExplainer';
 import ExtraStopStatus, { ExtraStopHead } from './ExtraStopStatus';
 import ExtraStopConfigurator from './ExtraStopConfigurator';
+import ExtraStopCandidates from './ExtraStopCandidates';
+import { customerWords, screenExtraStopCandidates, type CandidateInput } from '@/lib/extra-stop-candidates';
 import { loadRefundTiers } from '@/lib/extra-stop-refunds';
+
+/** How far back the demand panel looks. A quarter is enough to be a pattern. */
+const DEMAND_WINDOW_DAYS = 90;
+
+const LEAD_SOURCE_LABEL: Record<string, string> = {
+  website_form: 'Website lead',
+  missed_call: 'Missed call',
+  manual: 'Added by you',
+  referral: 'Referral',
+};
 
 const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -78,6 +90,56 @@ export default async function ExtraStopsPage() {
   const bookingUrl = site?.published && site?.subdomain ? `${appOrigin}/book/${site.subdomain}` : null;
   const businessName =
     (site?.company_name as string) || (accountRow as { business_name?: string } | null)?.business_name || 'Your business';
+
+  // Their own recent work, run through the same deterministic screen a live
+  // request gets. Both tables, because a lead carries the customer's own words
+  // and a job carries the owner's — and the screener wants whichever exists.
+  const sinceIso = new Date(Date.now() - DEMAND_WINDOW_DAYS * 86400000).toISOString();
+  const [{ data: recentLeads }, { data: recentJobs }] = await Promise.all([
+    supabase
+      .from('leads')
+      .select('id, name, message, project_type, estimated_hours, source, created_at')
+      .eq('account_id', accountId)
+      .gte('created_at', sinceIso)
+      .order('created_at', { ascending: false })
+      .limit(200),
+    supabase
+      .from('jobs')
+      .select('id, ref, client_name, scope, estimated_hours, created_at, status')
+      .eq('account_id', accountId)
+      .neq('status', 'archived')
+      .gte('created_at', sinceIso)
+      .order('created_at', { ascending: false })
+      .limit(200),
+  ]);
+
+  const candidateInputs: CandidateInput[] = [
+    ...((recentLeads ?? []) as Array<{ id: string; name: string | null; message: string | null; project_type: string | null; estimated_hours: number | null; source: string; created_at: string }>).map(
+      (lead) => ({
+        id: lead.id,
+        source: 'lead' as const,
+        label: LEAD_SOURCE_LABEL[lead.source] ?? 'Lead',
+        clientName: lead.name || 'Unnamed lead',
+        text: [lead.project_type, customerWords(lead.message)].filter(Boolean).join(' — '),
+        createdAt: lead.created_at,
+        estimatedHours: lead.estimated_hours == null ? null : Number(lead.estimated_hours),
+        href: `/dashboard/leads/${lead.id}`,
+      }),
+    ),
+    ...((recentJobs ?? []) as Array<{ id: string; ref: string; client_name: string; scope: string | null; estimated_hours: number | null; created_at: string }>).map(
+      (job) => ({
+        id: job.id,
+        source: 'job' as const,
+        label: job.ref,
+        clientName: job.client_name,
+        text: job.scope ?? '',
+        createdAt: job.created_at,
+        estimatedHours: job.estimated_hours == null ? null : Number(job.estimated_hours),
+        href: `/dashboard/jobs/${job.id}`,
+      }),
+    ),
+  ];
+  const demand = screenExtraStopCandidates(candidateInputs, { maxVisitMinutes: settings.maxVisitMinutes });
 
   const defaults = {
     earliest: settings.earliestTime,
@@ -150,6 +212,17 @@ export default async function ExtraStopsPage() {
           </div>
         </section>
       )}
+
+      {/* Sits directly under the queue. With no requests in yet, the queue is
+          empty and this is the answer to the question that empty state raises:
+          is this thing working, or does my trade just not produce this work? */}
+      <ExtraStopCandidates
+        report={demand}
+        windowDays={DEMAND_WINDOW_DAYS}
+        minFeeCents={settings.minFeeCents}
+        maxVisitMinutes={settings.maxVisitMinutes}
+        enabled={settings.enabled}
+      />
 
       {/* STILL ON THE PAGE ONCE IT'S RUNNING, just folded away. This is the only
           place that explains what Extra Stop is, what it earns and what it costs

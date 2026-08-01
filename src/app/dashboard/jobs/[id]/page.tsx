@@ -260,7 +260,13 @@ export default async function JobDetailPage({
             ) : null}
             {job.status !== 'complete' && job.status !== 'archived' ? (
               <form action={boundMarkJobComplete}>
-                <SaveButton className="btn secondary" pendingLabel="Completing…" savedLabel="Completed ✓">Mark complete</SaveButton>
+                {/* The end of the job, and the only button on this page that
+                    should feel like one. "Mark complete" was a checkbox in
+                    words; this names the whole thing being finished, which is
+                    also what stops it being pressed halfway through. */}
+                <SaveButton className="btn job-done-btn" pendingLabel="Wrapping up…" savedLabel="Completed ✓">
+                  <span className="job-done-tick" aria-hidden="true">✓</span> Job Fully Completed
+                </SaveButton>
               </form>
             ) : null}
             {job.status === 'complete' ? (
