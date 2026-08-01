@@ -31,6 +31,8 @@ export type CardRequest = {
   fee_cents: number | null;
   diagnostic_fee_cents: number | null;
   arrival_date: string | null;
+  /** The day the CUSTOMER asked for. Null on rows from before this existed. */
+  requested_date?: string | null;
   arrival_start: string | null;
   arrival_end: string | null;
   response_deadline_at: string | null;
@@ -72,6 +74,12 @@ function useCountdown(deadlineIso: string | null): string | null {
 }
 
 const todayKey = () => new Date().toISOString().slice(0, 10);
+const addDaysKey = (key: string, days: number) => {
+  const [year, month, day] = key.split('-').map(Number);
+  const at = new Date(Date.UTC(year, (month || 1) - 1, day || 1));
+  at.setUTCDate(at.getUTCDate() + days);
+  return at.toISOString().slice(0, 10);
+};
 
 export default function ExtraStopRequestCard({ request, photoUrls, route, defaults }: {
   request: CardRequest;
@@ -86,6 +94,21 @@ export default function ExtraStopRequestCard({ request, photoUrls, route, defaul
   const isOpen = request.status === 'awaiting_contractor' || request.status === 'more_information_requested';
   const isLive = request.status === 'confirmed' || request.status === 'en_route' || request.status === 'arrived';
   const availabilityText = request.availability.map((a) => String(a)).filter(Boolean).join(' · ');
+  // Requests made before the day picker existed genuinely meant today — that was
+  // the only thing the form could ask for — so they say so rather than "—".
+  const requestedDayLabel = (() => {
+    const key = request.requested_date;
+    if (!key) return 'Today (asked before days could be picked)';
+    if (key === todayKey()) return 'Today';
+    const [year, month, day] = key.split('-').map(Number);
+    const label = new Date(Date.UTC(year, (month || 1) - 1, day || 1)).toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'UTC',
+    });
+    return key === addDaysKey(todayKey(), 1) ? `Tomorrow · ${label}` : label;
+  })();
 
   // "I've Arrived" captures the browser location when granted, then records it.
   async function handleArrived() {
@@ -129,6 +152,10 @@ export default function ExtraStopRequestCard({ request, photoUrls, route, defaul
         <div className="field"><label>Customer</label><p className="job-meta" style={{ margin: 0 }}>{request.client_name}{request.client_phone ? ` · ${request.client_phone}` : ''}{request.client_email ? ` · ${request.client_email}` : ''}</p></div>
         <div className="field"><label>Address</label><p className="job-meta" style={{ margin: 0 }}>{request.address || '—'}</p></div>
         <div className="field"><label>Est. visit</label><p className="job-meta" style={{ margin: 0 }}>{request.ai_visit_minutes ? `~${request.ai_visit_minutes} min` : '—'}{request.ai_complexity ? ` · ${request.ai_complexity}` : ''}{request.ai_confidence != null ? ` · ${Math.round(request.ai_confidence * 100)}% conf.` : ''}</p></div>
+        {/* The day they asked for, said plainly. Without it the availability text
+            ("any time after 2") is a window with no day attached, and the offer
+            form's date silently becomes the thing that decides it. */}
+        <div className="field"><label>Day requested</label><p className="job-meta" style={{ margin: 0 }}>{requestedDayLabel}</p></div>
         <div className="field"><label>Customer availability</label><p className="job-meta" style={{ margin: 0 }}>{availabilityText || '—'}</p></div>
         {request.intake?.startedWhen || request.intake?.worsening || request.intake?.propertyType ? (
           <div className="field full"><label>Details</label><p className="job-meta" style={{ margin: 0 }}>
@@ -199,7 +226,7 @@ export default function ExtraStopRequestCard({ request, photoUrls, route, defaul
 
           {isLive && mode === 'window' ? (
             <form action={proposeRevisedWindowExtraStopAction.bind(null, request.id)} className="form-grid" style={{ marginTop: '1rem' }}>
-              <div className="field"><label htmlFor={`pd-${request.id}`}>New date</label><input id={`pd-${request.id}`} name="proposedDate" type="date" defaultValue={request.arrival_date || todayKey()} required /></div>
+              <div className="field"><label htmlFor={`pd-${request.id}`}>New date</label><input id={`pd-${request.id}`} name="proposedDate" type="date" defaultValue={request.arrival_date || request.requested_date || todayKey()} required /></div>
               <div className="field"><label htmlFor={`ps-${request.id}`}>Start</label><input id={`ps-${request.id}`} name="proposedStart" type="time" defaultValue={request.arrival_start ?? '08:00'} required /></div>
               <div className="field"><label htmlFor={`pe-${request.id}`}>End</label><input id={`pe-${request.id}`} name="proposedEnd" type="time" defaultValue={request.arrival_end ?? '20:00'} required /></div>
               <div className="field full" style={{ display: 'flex', gap: '.5rem' }}>
@@ -232,13 +259,13 @@ export default function ExtraStopRequestCard({ request, photoUrls, route, defaul
 
           {mode === 'offer' ? (
             <form action={createExtraStopOfferAction.bind(null, request.id)} className="form-grid" style={{ marginTop: '1rem' }}>
-              <div className="field"><label htmlFor={`ad-${request.id}`}>Arrival date</label><input id={`ad-${request.id}`} name="arrivalDate" type="date" defaultValue={request.arrival_date || todayKey()} required /></div>
+              <div className="field"><label htmlFor={`ad-${request.id}`}>Arrival date</label><input id={`ad-${request.id}`} name="arrivalDate" type="date" defaultValue={request.arrival_date || request.requested_date || todayKey()} required /></div>
               <div className="field"><label htmlFor={`vm-${request.id}`}>Visit minutes</label><input id={`vm-${request.id}`} name="visitMinutes" type="number" min="5" step="5" defaultValue={request.ai_visit_minutes ?? 30} /></div>
               <div className="field"><label htmlFor={`as-${request.id}`}>Window start</label><input id={`as-${request.id}`} name="arrivalStart" type="time" defaultValue={defaults.earliest} required /></div>
               <div className="field"><label htmlFor={`ae-${request.id}`}>Window end</label><input id={`ae-${request.id}`} name="arrivalEnd" type="time" defaultValue={defaults.latest} required /></div>
               <div className="field"><label htmlFor={`fee-${request.id}`}>Extra Stop fee ($)</label><input id={`fee-${request.id}`} name="fee" type="number" min={defaults.minFeeDollars} max={defaults.maxFeeDollars} step="5" defaultValue={defaults.minFeeDollars} required /><small className="field-hint">Allowed {money(defaults.minFeeDollars * 100)}–{money(defaults.maxFeeDollars * 100)}.</small></div>
               <div className="field"><label htmlFor={`df-${request.id}`}>Diagnostic fee ($, optional)</label><input id={`df-${request.id}`} name="diagnosticFee" type="number" min="0" step="5" placeholder="0" /></div>
-              <div className="field full"><label htmlFor={`note-${request.id}`}>Note to customer (optional)</label><textarea id={`note-${request.id}`} name="note" rows={2} placeholder="I can be there between 3 and 5 today." /></div>
+              <div className="field full"><label htmlFor={`note-${request.id}`}>Note to customer (optional)</label><textarea id={`note-${request.id}`} name="note" rows={2} placeholder="I can be there between 3 and 5." /></div>
               <div className="field full" style={{ display: 'flex', gap: '.5rem' }}>
                 <button type="submit" className="btn primary">Send Extra Stop Offer</button>
                 <button type="button" className="btn secondary" onClick={() => setMode('idle')}>Cancel</button>
@@ -258,7 +285,7 @@ export default function ExtraStopRequestCard({ request, photoUrls, route, defaul
 
           {mode === 'decline' ? (
             <form action={declineExtraStopAction.bind(null, request.id)} className="form-grid" style={{ marginTop: '1rem' }}>
-              <div className="field full"><label htmlFor={`dec-${request.id}`}>Reason (optional)</label><input id={`dec-${request.id}`} name="reason" placeholder="Too far off today's route" /></div>
+              <div className="field full"><label htmlFor={`dec-${request.id}`}>Reason (optional)</label><input id={`dec-${request.id}`} name="reason" placeholder="Too far off the route that day" /></div>
               <div className="field full" style={{ display: 'flex', gap: '.5rem' }}>
                 <button type="submit" className="btn primary">Decline request</button>
                 <button type="button" className="btn secondary" onClick={() => setMode('idle')}>Cancel</button>

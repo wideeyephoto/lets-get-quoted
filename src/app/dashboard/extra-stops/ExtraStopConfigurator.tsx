@@ -245,6 +245,22 @@ export default function ExtraStopConfigurator({
                     </div>
 
                     <div className="field">
+                      <label htmlFor="extraStopDaysAhead">How far ahead they can ask</label>
+                      <select id="extraStopDaysAhead" name="extraStopDaysAhead" defaultValue={String(s.daysAhead)}>
+                        <option value="0">Today only</option>
+                        <option value="1">Today or tomorrow</option>
+                        <option value="2">Up to 2 days out</option>
+                        <option value="3">Up to 3 days out</option>
+                        <option value="7">Up to a week out</option>
+                      </select>
+                      <small className="field-hint">
+                        By mid-afternoon there is often no room left today, and a customer with a dripping tap is usually
+                        fine with tomorrow. Wider reach means more of these fit — and today drops off the list on its own
+                        once your last arrival time has passed.
+                      </small>
+                    </div>
+
+                    <div className="field">
                       <label htmlFor="extraStopMaxPerDay">Max Extra Stops per day</label>
                       <input id="extraStopMaxPerDay" name="extraStopMaxPerDay" type="number" min="1" max="50" step="1" inputMode="numeric" defaultValue={s.maxPerDay} />
                       <small className="field-hint">Its own limit — these don’t count against your normal daily booking cap.</small>

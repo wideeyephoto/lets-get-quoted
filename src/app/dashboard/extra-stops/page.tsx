@@ -78,7 +78,17 @@ export default async function ExtraStopsPage() {
     active.map(async (r) => {
       const offerable = r.status === 'awaiting_contractor' || r.status === 'more_information_requested';
       const target = r.lat != null && r.lng != null ? { lat: Number(r.lat), lng: Number(r.lng) } : null;
-      const route = offerable ? await computeExtraStopRoute(supabase, accountId, target, { arrivalDate: null, visitMinutes: r.ai_visit_minutes, driveTime, timezone }) : null;
+      // The day THEY asked for, not today. Routing a tomorrow request against
+      // today's stops answers a question nobody asked and can talk the owner out
+      // of a job that fits perfectly well tomorrow.
+      const route = offerable
+        ? await computeExtraStopRoute(supabase, accountId, target, {
+            arrivalDate: r.requested_date ?? r.arrival_date ?? null,
+            visitMinutes: r.ai_visit_minutes,
+            driveTime,
+            timezone,
+          })
+        : null;
       const photoUrls = r.photo_paths?.length ? await createLeadPhotoUrls(accountId, r.photo_paths).catch(() => []) : [];
       return { r, route, photoUrls };
     }),

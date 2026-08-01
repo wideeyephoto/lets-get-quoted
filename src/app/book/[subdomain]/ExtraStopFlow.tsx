@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { submitExtraStopRequestAction } from './actions';
+import type { ExtraStopDayOption } from '@/lib/extra-stop';
 
 type Qualification = {
   enabled?: boolean;
@@ -25,10 +26,15 @@ export default function ExtraStopFlow({
   subdomain,
   siteId,
   businessName,
+  days,
 }: {
   subdomain: string;
   siteId: string;
   businessName: string;
+  /** The days actually on offer — computed server-side from the owner's
+   *  weekdays, how far ahead they accept, and whether today's window has
+   *  already closed. Never assume "today": at 9pm it isn't one. */
+  days: ExtraStopDayOption[];
 }) {
   const [open, setOpen] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -42,6 +48,7 @@ export default function ExtraStopFlow({
   const [worsening, setWorsening] = useState('');
   const [propertyType, setPropertyType] = useState('');
   const [availability, setAvailability] = useState('');
+  const [requestedDate, setRequestedDate] = useState(days[0]?.dateKey ?? '');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -92,6 +99,9 @@ export default function ExtraStopFlow({
       fd.set('worsening', worsening);
       fd.set('propertyType', propertyType);
       fd.set('availability', availability);
+      // Which day they picked. Re-validated server-side against the same rules
+      // that produced the buttons — this is a public form.
+      fd.set('requestedDate', requestedDate);
       fd.set('name', name);
       fd.set('phone', phone);
       fd.set('email', email);
@@ -153,8 +163,9 @@ export default function ExtraStopFlow({
         <h2>Tell us about the job</h2>
       </div>
       <p className="workspace-details-copy" style={{ marginTop: '.5rem', marginBottom: '1rem' }}>
-        Answer a few quick questions so {businessName} can decide if they can squeeze you in today. All fields
-        help — the clearer the job, the faster they can respond.
+        Answer a few quick questions so {businessName} can decide if they can fit you in
+        {days.length > 1 ? ' today or in the next day or two' : ' today'}. All fields help — the clearer the job, the
+        faster they can respond.
       </p>
 
       <div className="form-grid">
@@ -225,8 +236,33 @@ export default function ExtraStopFlow({
             ✓ This looks like a fit{verdict?.visitMinutes ? ` — roughly a ${verdict.visitMinutes}-minute visit` : ''}. Add your details and acceptable times below.
           </p>
           <div className="form-grid" style={{ marginTop: '1rem' }}>
+            {days.length > 1 ? (
+              <div className="field full">
+                <label htmlFor="es-day">Which day suits you?</label>
+                <div className="es-day-row" role="radiogroup" aria-label="Which day suits you">
+                  {days.map((day) => (
+                    <button
+                      key={day.dateKey}
+                      type="button"
+                      role="radio"
+                      aria-checked={requestedDate === day.dateKey}
+                      className={`es-day-chip${requestedDate === day.dateKey ? ' is-on' : ''}`}
+                      onClick={() => setRequestedDate(day.dateKey)}
+                    >
+                      {day.label}
+                    </button>
+                  ))}
+                </div>
+                <small className="field-hint">
+                  {businessName} is already out on these days — you&apos;re asking to be added to a route, not booking a
+                  fresh appointment.
+                </small>
+              </div>
+            ) : null}
             <div className="field full">
-              <label htmlFor="es-availability">When are you available today?</label>
+              <label htmlFor="es-availability">
+                What times work {days.length > 1 ? (days.find((d) => d.dateKey === requestedDate)?.label ?? 'that day').toLowerCase() : 'today'}?
+              </label>
               <textarea id="es-availability" rows={2} value={availability} onChange={(e) => setAvailability(e.target.value)} placeholder="Any time after 2pm, or early evening." />
               <small className="field-hint">Give a window that works — the contractor proposes an exact arrival time, they don&apos;t auto-book it.</small>
             </div>

@@ -143,6 +143,9 @@ export const DEFAULT_EXTRA_STOP_MAX_FEE_CENTS = 25000; // $250
 export const DEFAULT_EXTRA_STOP_RESPONSE_DEADLINE_MINS = 30;
 export const DEFAULT_EXTRA_STOP_PAYMENT_DEADLINE_MINS = 15;
 export const DEFAULT_EXTRA_STOP_REQUIRED_PHOTOS = 1;
+// Days BEYOND today a request may reach. 0 is same-day-only — the original
+// behaviour, and a real choice rather than a disabled state.
+export const DEFAULT_EXTRA_STOP_DAYS_AHEAD = 1;
 
 export type ExtraStopSettings = {
   enabled: boolean;
@@ -160,6 +163,8 @@ export type ExtraStopSettings = {
   paymentDeadlineMins: number;
   categories: string[]; // lowercased tags; empty = all allowed
   requiredPhotos: number;
+  /** Days beyond today a customer may ask for. 0 = today only. */
+  daysAhead: number;
   requireAiApproval: boolean;
   // Staff/auto lock (no-show escalation). lockedUntil is an ISO end time; locked
   // is whether that's still in the future; available is the real gate the /book
@@ -239,6 +244,7 @@ type AccountExtraStopRow =
       extra_stop_required_photos?: unknown;
       extra_stop_require_ai_approval?: unknown;
       extra_stop_locked_until?: unknown;
+      extra_stop_days_ahead?: unknown;
     }
   | null
   | undefined;
@@ -269,8 +275,97 @@ export function extraStopSettingsFromAccount(row: AccountExtraStopRow): ExtraSto
     paymentDeadlineMins: clampInt(row?.extra_stop_payment_deadline_mins, 1, 720, DEFAULT_EXTRA_STOP_PAYMENT_DEADLINE_MINS),
     categories: normalizeCategories(row?.extra_stop_categories),
     requiredPhotos: clampInt(row?.extra_stop_required_photos, 0, 6, DEFAULT_EXTRA_STOP_REQUIRED_PHOTOS),
+    daysAhead: clampInt(row?.extra_stop_days_ahead, 0, 7, DEFAULT_EXTRA_STOP_DAYS_AHEAD),
     requireAiApproval: row?.extra_stop_require_ai_approval !== false,
   };
+}
+
+// -- Which days a customer may ask for ---------------------------------------
+
+export type ExtraStopDayOption = {
+  dateKey: string;
+  /** "Today" / "Tomorrow" / "Wed, Aug 6" — the customer reads this, not a date. */
+  label: string;
+  isToday: boolean;
+};
+
+const DAY_MS = 86_400_000;
+
+function keyToUtc(dateKey: string): Date {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  return new Date(Date.UTC(year, (month || 1) - 1, day || 1));
+}
+
+function utcToKey(date: Date): string {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+}
+
+/** Wall-clock "YYYY-MM-DD" and "HH:MM" in the contractor's zone. */
+export function zonedNowParts(now: Date, timeZone: string): { dateKey: string; time: string } {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).formatToParts(now);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? '00';
+  // Intl renders midnight as 24 in some engines.
+  const hour = String(Number(get('hour')) % 24).padStart(2, '0');
+  return { dateKey: `${get('year')}-${get('month')}-${get('day')}`, time: `${hour}:${get('minute')}` };
+}
+
+/**
+ * The days a customer can actually ask for.
+ *
+ * Three gates, and all three have bitten something before:
+ *   1. The owner's working weekdays. Offering Sunday to somebody who doesn't
+ *      work Sundays wastes their time and the contractor's.
+ *   2. `daysAhead` — 0 is same-day only, which is where this feature started.
+ *   3. TODAY DROPS OFF once the day's last arrival time has passed. At 9pm,
+ *      "today" is not a thing you can be squeezed into, and offering it is the
+ *      difference between a request the contractor can answer and one they have
+ *      to apologise for.
+ *
+ * Pure: `now` is injectable, and every boundary is computed in the contractor's
+ * zone rather than the server's or the visitor's.
+ */
+export function extraStopDayOptions(
+  settings: Pick<ExtraStopSettings, 'weekdays' | 'daysAhead' | 'latestEnd'>,
+  opts: { now?: Date; timeZone: string },
+): ExtraStopDayOption[] {
+  const now = opts.now ?? new Date();
+  const { dateKey: todayKey, time } = zonedNowParts(now, opts.timeZone);
+  const horizon = Math.max(0, Math.min(7, Math.round(settings.daysAhead)));
+
+  const out: ExtraStopDayOption[] = [];
+  for (let offset = 0; offset <= horizon; offset++) {
+    const dateKey = utcToKey(new Date(keyToUtc(todayKey).getTime() + offset * DAY_MS));
+    if (!settings.weekdays.includes(keyToUtc(dateKey).getUTCDay())) continue;
+    if (offset === 0 && time >= settings.latestEnd) continue;
+    out.push({
+      dateKey,
+      label:
+        offset === 0
+          ? 'Today'
+          : offset === 1
+            ? 'Tomorrow'
+            : keyToUtc(dateKey).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }),
+      isToday: offset === 0,
+    });
+  }
+  return out;
+}
+
+/** Is this a day the customer was allowed to pick? Re-checked server-side. */
+export function isAllowedExtraStopDay(
+  dateKey: string,
+  settings: Pick<ExtraStopSettings, 'weekdays' | 'daysAhead' | 'latestEnd'>,
+  opts: { now?: Date; timeZone: string },
+): boolean {
+  return extraStopDayOptions(settings, opts).some((option) => option.dateKey === dateKey);
 }
 
 // The column set to select when loading settings — kept next to the builder so
@@ -280,7 +375,8 @@ export const EXTRA_STOP_SETTINGS_COLUMNS =
   'extra_stop_max_per_day, extra_stop_max_visit_minutes, extra_stop_max_detour_miles, ' +
   'extra_stop_max_detour_minutes, extra_stop_min_fee_cents, extra_stop_max_fee_cents, ' +
   'extra_stop_allow_after_capacity, extra_stop_response_deadline_mins, extra_stop_payment_deadline_mins, ' +
-  'extra_stop_categories, extra_stop_required_photos, extra_stop_require_ai_approval, extra_stop_locked_until';
+  'extra_stop_categories, extra_stop_required_photos, extra_stop_require_ai_approval, extra_stop_locked_until, ' +
+  'extra_stop_days_ahead';
 
 // No-show escalation ladder. Given the account's PRIOR verified no-show dates,
 // decide how long to lock Extra Stop after a fresh one:

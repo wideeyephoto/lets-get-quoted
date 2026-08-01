@@ -34,6 +34,7 @@ export type ExtraStopRequest = {
   detour_minutes: number | null;
   route_extension_minutes: number | null;
   arrival_date: string | null;
+  requested_date?: string | null;
   arrival_start: string | null;
   arrival_end: string | null;
   fee_cents: number | null;
@@ -142,7 +143,7 @@ export async function createExtraStopRequest(
   accountId: string,
   input: ExtraStopRequestInput,
   qualification: ExtraStopQualification,
-  opts: { responseDeadlineMins: number; lat: number | null; lng: number | null; businessName: string },
+  opts: { responseDeadlineMins: number; lat: number | null; lng: number | null; businessName: string; requestedDate?: string | null },
 ): Promise<ExtraStopRequest> {
   const phone = input.phone ? normalizeUsPhone(input.phone) : null;
   const email = input.email ? input.email.trim().toLowerCase() : null;
@@ -156,6 +157,10 @@ export async function createExtraStopRequest(
       account_id: accountId,
       client_id: clientId,
       status: 'awaiting_contractor',
+      // The day the CUSTOMER asked for. arrival_date stays null until the
+      // contractor commits to one in their offer — the two differ exactly when
+      // the negotiation is doing something.
+      requested_date: opts.requestedDate ?? null,
       client_name: input.name,
       client_phone: phone,
       client_email: email,

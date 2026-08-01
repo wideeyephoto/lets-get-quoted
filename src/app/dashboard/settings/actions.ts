@@ -293,6 +293,7 @@ export async function updateExtraStopSettingsAction(formData: FormData) {
     extra_stop_payment_deadline_mins: formData.get('extraStopPaymentDeadline'),
     extra_stop_categories: formData.get('extraStopCategories'),
     extra_stop_required_photos: formData.get('extraStopRequiredPhotos'),
+    extra_stop_days_ahead: formData.get('extraStopDaysAhead'),
     // ALWAYS ON. This used to be a checkbox the contractor could clear, which
     // meant an account could offer same-day, pre-paid, sight-unseen visits with
     // nothing screening out complex, unsafe or out-of-scope work. That is not a
@@ -328,6 +329,7 @@ export async function updateExtraStopSettingsAction(formData: FormData) {
       extra_stop_allow_after_capacity: s.allowAfterCapacity,
       extra_stop_response_deadline_mins: s.responseDeadlineMins,
       extra_stop_payment_deadline_mins: s.paymentDeadlineMins,
+      extra_stop_days_ahead: s.daysAhead,
       extra_stop_categories: s.categories.join(', '),
       extra_stop_required_photos: s.requiredPhotos,
       extra_stop_require_ai_approval: s.requireAiApproval,

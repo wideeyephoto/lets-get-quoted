@@ -22,7 +22,7 @@ import { driveDistances } from '@/lib/drive-time';
 import { rankByProximity, type RankedBookingDay } from '@/lib/route-density';
 import { evaluateBookingEligibility, bookingFallbackMessage, normalizeGeoMode, type BookingVerdict } from '@/lib/instant-booking';
 import { listServices } from '@/lib/services';
-import { extraStopSettingsFromAccount, EXTRA_STOP_SETTINGS_COLUMNS } from '@/lib/extra-stop';
+import { extraStopSettingsFromAccount, isAllowedExtraStopDay, EXTRA_STOP_SETTINGS_COLUMNS } from '@/lib/extra-stop';
 import { qualifyExtraStop, qualifyOptionsFromSettings } from '@/lib/extra-stop-qualify';
 import { recordExtraStopScreening } from '@/lib/extra-stop-screenings';
 import { createExtraStopRequest, hasActiveExtraStopRequest } from '@/lib/extra-stop-requests';
@@ -285,7 +285,7 @@ export async function submitExtraStopRequestAction(formData: FormData): Promise<
 
     const { data: accountRow } = await admin
       .from('accounts')
-      .select(`${EXTRA_STOP_SETTINGS_COLUMNS}, business_name`)
+      .select(`${EXTRA_STOP_SETTINGS_COLUMNS}, business_name, timezone`)
       .eq('id', site.account_id)
       .maybeSingle();
     const settings = extraStopSettingsFromAccount(accountRow as Parameters<typeof extraStopSettingsFromAccount>[0]);
@@ -303,6 +303,17 @@ export async function submitExtraStopRequestAction(formData: FormData): Promise<
 
     if (!name || (!phone && !email)) return { ok: false, error: 'Add your name and a phone or email so we can reach you.' };
     if (!issue) return { ok: false, error: 'Describe the issue first.' };
+
+    // Which day they asked for, re-checked here against the same rules that drew
+    // the buttons. A public form's choices are a suggestion, not a constraint —
+    // and an unchecked date would let somebody book a Sunday off a Mon–Fri
+    // contractor, or next month off a same-day feature.
+    const timeZone = (accountRow as { timezone?: string } | null)?.timezone || 'America/New_York';
+    const rawRequestedDate = (formData.get('requestedDate') ?? '').toString().trim();
+    const requestedDate = rawRequestedDate || null;
+    if (requestedDate && !isAllowedExtraStopDay(requestedDate, settings, { timeZone })) {
+      return { ok: false, error: 'That day isn’t available any more. Reload the page and pick another.' };
+    }
 
     // Photos are validated by type/size inside uploadLeadPhoto; count is gated here.
     const files = formData.getAll('photos').filter((f): f is File => f instanceof File && f.size > 0);
@@ -357,6 +368,7 @@ export async function submitExtraStopRequestAction(formData: FormData): Promise<
         lat: geo?.precise ? geo.lat : null,
         lng: geo?.precise ? geo.lng : null,
         businessName: (accountRow as { business_name?: string } | null)?.business_name || site.company_name || 'your contractor',
+        requestedDate,
       },
     );
 

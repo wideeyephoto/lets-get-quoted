@@ -6,6 +6,7 @@ import { formatMoney } from '@/lib/jobs';
 import { submitBookingAction } from './actions';
 import InstantBookFlow from './InstantBookFlow';
 import ExtraStopFlow from './ExtraStopFlow';
+import { extraStopDayOptions, extraStopSettingsFromAccount, EXTRA_STOP_SETTINGS_COLUMNS } from '@/lib/extra-stop';
 import SaveButton from '@/components/save-button';
 
 export const dynamic = 'force-dynamic';
@@ -77,13 +78,18 @@ export default async function BookingPage({
   // defensively so a pre-migration DB just serves the classic form.
   const { data: gate } = await admin
     .from('accounts')
-    .select('instant_book_enabled, extra_stop_enabled, extra_stop_locked_until')
+    .select(`instant_book_enabled, timezone, ${EXTRA_STOP_SETTINGS_COLUMNS}`)
     .eq('id', site.account_id)
     .maybeSingle();
   // Extra Stop is only offered when enabled AND not locked (no-show escalation).
-  const extraStopLockedUntil = typeof gate?.extra_stop_locked_until === 'string' ? gate.extra_stop_locked_until : null;
-  const extraStopLocked = extraStopLockedUntil ? new Date(extraStopLockedUntil).getTime() > Date.now() : false;
-  const extraStopEnabled = Boolean(gate?.extra_stop_enabled) && !extraStopLocked;
+  const extraStopSettings = extraStopSettingsFromAccount(gate as Parameters<typeof extraStopSettingsFromAccount>[0]);
+  // …and only when there is a day left to offer. A contractor who works Mon–Fri,
+  // asked at 9pm on a Friday with same-day only, has nothing to sell — showing
+  // the form there produces a request nobody can fill.
+  const extraStopDays = extraStopDayOptions(extraStopSettings, {
+    timeZone: (gate as { timezone?: string } | null)?.timezone || 'America/New_York',
+  });
+  const extraStopEnabled = extraStopSettings.available && extraStopDays.length > 0;
   if (gate?.instant_book_enabled) {
     return (
       <main className="wide-shell workspace-shell payment-shell">
@@ -95,7 +101,7 @@ export default async function BookingPage({
           </div>
         </section>
         <InstantBookFlow subdomain={params.subdomain} siteId={site.id} businessName={businessName} serviceArea={site.service_area ?? ''} />
-        {extraStopEnabled ? <ExtraStopFlow subdomain={params.subdomain} siteId={site.id} businessName={businessName} /> : null}
+        {extraStopEnabled ? <ExtraStopFlow subdomain={params.subdomain} siteId={site.id} businessName={businessName} days={extraStopDays} /> : null}
       </main>
     );
   }
@@ -217,7 +223,7 @@ export default async function BookingPage({
           </div>
         </form>
       )}
-      {extraStopEnabled ? <ExtraStopFlow subdomain={params.subdomain} siteId={site.id} businessName={businessName} /> : null}
+      {extraStopEnabled ? <ExtraStopFlow subdomain={params.subdomain} siteId={site.id} businessName={businessName} days={extraStopDays} /> : null}
     </main>
   );
 }
