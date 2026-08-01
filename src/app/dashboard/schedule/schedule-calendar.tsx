@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import SaveButton from '@/components/save-button';
 import FloatingPanel from '@/components/floating-panel';
 import CalendarDaysGear from './CalendarDaysGear';
-import { setCalendarWeekendAction } from '../view-actions';
-import type { WeekendDays } from '@/lib/dashboard-views';
+import { setCalendarViewAction, setCalendarWeekendAction } from '../view-actions';
+import type { CalendarView, WeekendDays } from '@/lib/dashboard-views';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
 import { removeJobScheduleAction, scheduleJobAction, textCrewJobDateAction, toggleJobCrewAction } from '../jobs/actions';
@@ -15,8 +15,6 @@ import { useScheduleDrag } from './ScheduleDragProvider';
 import { formatJobSchedule, formatJobTime } from '@/lib/jobs';
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-type CalendarView = 'month' | 'week' | 'year' | 'agenda' | 'timeline';
 
 // Five views is past what a segmented control can hold without shrinking every
 // label to an abbreviation, so the switcher is a menu with room to say what
@@ -214,6 +212,7 @@ export default function ScheduleCalendar({
   fullDates = [],
   monthNav,
   weekendDays = { sat: true, sun: true },
+  initialView = 'month',
 }: {
   weeks: CalendarCell[][];
   todayKey: string;
@@ -228,6 +227,8 @@ export default function ScheduleCalendar({
   monthNav?: ReactNode;
   /** Seeded from the cookie server-side so the grid never flashes 7 columns. */
   weekendDays?: WeekendDays;
+  /** Ditto for the shape of the calendar — see CALENDAR_VIEW_COOKIE. */
+  initialView?: CalendarView;
 }) {
   const fullSet = useMemo(() => new Set(fullDates), [fullDates]);
 
@@ -251,11 +252,19 @@ export default function ScheduleCalendar({
   const [openOccurrenceKey, setOpenOccurrenceKey] = useState<string | null>(null);
   const [isConfirmingRemove, setIsConfirmingRemove] = useState(false);
   const [pendingKey, setPendingKey] = useState<string | null>(null);
-  const [calendarView, setCalendarView] = useState<CalendarView>('month');
   // When true, adding a crew member to a job texts them the assignment. Toggled
   // per session from the crew popover; only affects assigns (never unassigns).
   const [notifyCrew, setNotifyCrew] = useState(true);
   const [, startTransition] = useTransition();
+  // Seeded from the cookie, not hardcoded to 'month'. Stepping a month is a
+  // real navigation, so a purely local view was thrown away on every arrow
+  // click. Local state still drives the UI instantly; the cookie write is
+  // fire-and-forget and decides what the NEXT load starts with.
+  const [calendarView, setCalendarViewState] = useState<CalendarView>(initialView);
+  const setCalendarView = (next: CalendarView) => {
+    setCalendarViewState(next);
+    startTransition(async () => { await setCalendarViewAction(next); });
+  };
   // Drag-to-schedule is coordinated by the shared provider so the (server-
   // rendered) unscheduled list and this calendar share one drag session.
   const { beginDrag, overDateKey, draggingJobId } = useScheduleDrag();

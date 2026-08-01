@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import { getMapPins } from '@/lib/map-pins';
-import { CALENDAR_WEEKEND_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeMapTheme, normalizeMapView, normalizeWeekendDays } from '@/lib/dashboard-views';
+import { CALENDAR_VIEW_COOKIE, CALENDAR_WEEKEND_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeCalendarView, normalizeMapTheme, normalizeMapView, normalizeWeekendDays } from '@/lib/dashboard-views';
 import { expandScheduledJobs, formatJobTime, formatMoney, listJobs, addDaysToDateKey, type Job } from '@/lib/jobs';
 import { computeHoursByDate } from '@/lib/booking';
 import { bookingAvailabilityFromAccount, normalizeBookingWeekdays } from '@/lib/booking-availability';
@@ -428,6 +428,9 @@ export default async function SchedulePage({
   const mapView = normalizeMapView(cookies().get(mapViewCookie('schedule'))?.value);
   const mapTheme = normalizeMapTheme(cookies().get(MAP_THEME_COOKIE)?.value);
   const weekendDays = normalizeWeekendDays(cookies().get(CALENDAR_WEEKEND_COOKIE)?.value);
+  // Read server-side so the calendar renders in the right shape on the first
+  // paint — and, more to the point, so stepping a month doesn't reset it.
+  const calendarView = normalizeCalendarView(cookies().get(CALENDAR_VIEW_COOKIE)?.value);
   const mapPins = mapView !== 'off' ? await getMapPins(supabase, accountId) : [];
 
   const { data: bookingSettings } = await supabase
@@ -514,6 +517,7 @@ export default async function SchedulePage({
             </div>
           }
           weekendDays={weekendDays}
+          initialView={calendarView}
           weeks={weeks}
           todayKey={todayKey}
           planned={plannedVisits}

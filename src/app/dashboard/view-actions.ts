@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
-import { CALENDAR_WEEKEND_COOKIE, CLIENTS_VIEW_COOKIE, CREW_ROSTER_VIEW_COOKIE, CREW_SKIN_COOKIE, CREW_THEME_COOKIE, CREW_VIEW_COOKIE, JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeClientsView, normalizeCrewSkin, normalizeCrewView, normalizeJobsView, normalizeMapTheme, normalizeCrewTheme, normalizeMapView, normalizeRosterView, serializeWeekendDays, type ClientsView, type CrewSkin, type CrewView, type JobsView, type MapSurface, type MapTheme, type MapView, type RosterView, type WeekendDays } from '@/lib/dashboard-views';
+import { CALENDAR_VIEW_COOKIE, CALENDAR_WEEKEND_COOKIE, CLIENTS_VIEW_COOKIE, CREW_ROSTER_VIEW_COOKIE, CREW_SKIN_COOKIE, CREW_THEME_COOKIE, CREW_VIEW_COOKIE, JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeCalendarView, normalizeClientsView, normalizeCrewSkin, normalizeCrewView, normalizeJobsView, normalizeMapTheme, normalizeCrewTheme, normalizeMapView, normalizeRosterView, serializeWeekendDays, type CalendarView, type ClientsView, type CrewSkin, type CrewView, type JobsView, type MapSurface, type MapTheme, type MapView, type RosterView, type WeekendDays } from '@/lib/dashboard-views';
 
 const YEAR = 60 * 60 * 24 * 365;
 
@@ -23,6 +23,14 @@ export async function setMapThemeAction(theme: MapTheme) {
 export async function setJobsViewAction(view: JobsView) {
   await requireOwnerContext();
   cookies().set(JOBS_VIEW_COOKIE, normalizeJobsView(view), { path: '/', maxAge: YEAR, sameSite: 'lax' });
+}
+
+// Remember the calendar's shape (Month / Week / Year / Agenda / Timeline).
+// Month navigation is a real navigation, so without this the view resets to
+// Month every time the owner steps a month forward.
+export async function setCalendarViewAction(view: CalendarView) {
+  await requireOwnerContext();
+  cookies().set(CALENDAR_VIEW_COOKIE, normalizeCalendarView(view), { path: '/', maxAge: YEAR, sameSite: 'lax' });
 }
 
 // Remember whether the schedule calendar shows Saturday and Sunday columns.

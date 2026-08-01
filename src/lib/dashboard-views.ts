@@ -41,6 +41,22 @@ export function serializeWeekendDays(days: WeekendDays): string {
   return kept || 'none';
 }
 
+// Which shape the schedule calendar is in (Month / Week / Year / Agenda /
+// Timeline).
+//
+// This HAS to be a cookie rather than component state. Month navigation is a
+// real navigation (`?month=…`), so a view held in useState was thrown away
+// every time someone clicked the arrow — pick Week, step forward a month, and
+// you are back in Month with no way to tell why.
+export const CALENDAR_VIEW_COOKIE = 'lgq_calendar_view';
+export type CalendarView = 'month' | 'week' | 'year' | 'agenda' | 'timeline';
+export const CALENDAR_VIEWS: CalendarView[] = ['month', 'week', 'year', 'agenda', 'timeline'];
+export function normalizeCalendarView(value: unknown): CalendarView {
+  // Month stays the default: it is what this page has always opened on, and an
+  // explicit choice is a cookie, so nobody who picked another one is moved off.
+  return CALENDAR_VIEWS.includes(value as CalendarView) ? (value as CalendarView) : 'month';
+}
+
 // Which Jobs layout the owner last used (List / Board / Table / Focus).
 export const JOBS_VIEW_COOKIE = 'lgq_jobs_view';
 export type JobsView = 'list' | 'board' | 'table' | 'focus';
