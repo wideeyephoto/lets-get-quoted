@@ -215,12 +215,12 @@ export default function ExtraStopConfigurator({
                     <div className="field">
                       <label htmlFor="extraStopMaxDetourMiles">Max detour off your route (miles)</label>
                       <input id="extraStopMaxDetourMiles" name="extraStopMaxDetourMiles" type="number" min="0" max="500" step="1" inputMode="numeric" defaultValue={s.maxDetourMiles} />
-                      <small className="field-hint">Measured from the stop you already have booked nearest the time.</small>
+                      <small className="field-hint">Checked against every stop you already have booked that day — whichever is closest. A job near your morning call counts as near, even if your last stop is across town.</small>
                     </div>
                     <div className="field">
                       <label htmlFor="extraStopMaxDetourMinutes">Max added drive time (minutes)</label>
                       <input id="extraStopMaxDetourMinutes" name="extraStopMaxDetourMinutes" type="number" min="0" max="600" step="5" inputMode="numeric" defaultValue={s.maxDetourMinutes} />
-                      <small className="field-hint">In traffic, twelve miles and twelve minutes are different questions — this is the one that costs you the day.</small>
+                      <small className="field-hint">In traffic, twelve miles and twelve minutes are different questions — this is the one that costs you the day. Measured from the same closest stop.</small>
                     </div>
                   </div>
                 ) : null}

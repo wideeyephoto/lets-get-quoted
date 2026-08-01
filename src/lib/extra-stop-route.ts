@@ -7,9 +7,12 @@ import { driveDistances } from '@/lib/drive-time';
 // their FINAL scheduled job that day, the extra drive time to reach it, and how
 // much the whole route grows once the visit is included.
 //
-// This is net-new: the existing booking code only measures distance to the
-// NEAREST same-day job (to flag "nearby"). Here we specifically anchor on the
-// last stop by time — the realistic insertion point for a squeeze-in.
+// MEASURED AGAINST EVERY STOP LEFT THAT DAY, not just the last one. It used to
+// anchor on the final stop by time, on the assumption that a squeeze-in goes on
+// the end — which quietly contradicted the rest of the feature: an Extra Stop
+// can land mid-day, and a job two streets from the 10am call was being judged on
+// how far it sits from the 4pm one. That rejected the cheapest stops to take.
+// The detour is now the SMALLEST of the day's stops, and the label names which.
 export type ExtraStopRoute = {
   detourMiles: number | null;
   detourMinutes: number | null;
@@ -46,8 +49,7 @@ export async function computeExtraStopRoute(
 
   const day = opts.arrivalDate || localDateKey(opts.timezone);
 
-  // The scheduled stops on that day that have coordinates. Order by time so the
-  // last one is the route's final stop.
+  // Every geocoded stop that day — all of them are candidate neighbours.
   const { data: stops } = await supabase
     .from('jobs')
     .select('scheduled_time, lat, lng, status')
@@ -57,14 +59,24 @@ export async function computeExtraStopRoute(
     .not('lat', 'is', null)
     .order('scheduled_time', { ascending: true });
 
-  let anchor: LatLng | null = null;
-  let anchorTimeLabel: string | null = null;
   const rows = (stops ?? []) as ScheduledStop[];
+  const candidates: Array<{ coord: LatLng; label: string | null }> = [];
   for (const row of rows) {
     const coord = coordOf(row);
-    if (coord) {
-      anchor = coord;
-      anchorTimeLabel = timeLabel(row.scheduled_time);
+    if (coord) candidates.push({ coord, label: timeLabel(row.scheduled_time) });
+  }
+
+  // Closest by straight line. That ordering is also what decides which single
+  // stop is worth spending a drive-time lookup on below.
+  let anchor: LatLng | null = null;
+  let anchorTimeLabel: string | null = null;
+  let bestMiles = Number.POSITIVE_INFINITY;
+  for (const candidate of candidates) {
+    const miles = haversineMiles(candidate.coord, target);
+    if (miles < bestMiles) {
+      bestMiles = miles;
+      anchor = candidate.coord;
+      anchorTimeLabel = candidate.label;
     }
   }
 
@@ -88,9 +100,27 @@ export async function computeExtraStopRoute(
   let miles = haversineMiles(anchor, target);
   let minutes = minutesFromMiles(miles);
 
-  // Real drive-time when the owner enabled it (one Distance Matrix leg). Falls
-  // back silently to the straight-line estimate above on any failure.
-  if (opts.driveTime) {
+  // Real drive-time when the owner enabled it. Still ONE Distance Matrix call:
+  // the requested job is the origin and every stop that day is a destination, so
+  // checking them all costs exactly what checking one used to. Roads reorder
+  // things straight lines get wrong — the nearest stop as the crow flies can be
+  // the far side of a river — so the winner is re-picked from the real legs.
+  // Falls back silently to the straight-line estimate on any failure.
+  if (opts.driveTime && candidates.length > 0) {
+    const legs = await driveDistances(target, candidates.map((candidate) => candidate.coord));
+    if (legs) {
+      let bestLeg = -1;
+      for (let index = 0; index < legs.length; index += 1) {
+        const leg = legs[index];
+        if (leg && (bestLeg === -1 || leg.minutes < legs[bestLeg]!.minutes)) bestLeg = index;
+      }
+      if (bestLeg !== -1) {
+        miles = legs[bestLeg]!.miles;
+        minutes = legs[bestLeg]!.minutes;
+        anchorLabel = candidates[bestLeg].label ? `your ${candidates[bestLeg].label} stop` : anchorLabel;
+      }
+    }
+  } else if (opts.driveTime) {
     const results = await driveDistances(anchor, [target]);
     const leg = results?.[0];
     if (leg) {
