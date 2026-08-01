@@ -686,6 +686,17 @@ export async function sendDailyDigestEmail(input: {
     d.privateFeedback > 0 ? row('Private feedback to review', String(d.privateFeedback), 'warn') : '',
   ].join('');
   const schedule = [
+    // The cash warning goes FIRST and loudest. Everything else in this email is
+    // a report; this is the only line that is a deadline.
+    d.cash
+      ? row(
+          d.cash.overdraft ? `Overdrawn ${d.cash.label}` : `Under your buffer ${d.cash.label}`,
+          d.cash.daysAway === 0
+            ? `Today · projected ${escapeHtml(formatMoney(d.cash.amount))}`
+            : `${d.cash.daysAway} day${d.cash.daysAway === 1 ? '' : 's'} away · projected ${escapeHtml(formatMoney(d.cash.amount))}`,
+          'warn',
+        )
+      : '',
     d.confirmations > 0 ? row('Appointments confirmed', String(d.confirmations), 'good') : '',
     d.rebookDue > 0 ? row('Past clients due to rebook', String(d.rebookDue)) : '',
     // Payday only appears when it is close and something is still outstanding —

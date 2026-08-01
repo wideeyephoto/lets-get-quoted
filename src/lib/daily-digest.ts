@@ -8,6 +8,9 @@ import { DEFAULT_LABOR_SETTINGS } from './labor-settings';
 import { resolvePayPeriod, zonedDateKey } from './labor';
 import { loadCrewPayContext } from './crew-pay-data';
 import { summarizePayTotals } from './crew-pay';
+import { buildForecast } from './cash-forecast';
+import { loadCashForecastSources, DEFAULT_HORIZON_DAYS } from './cash-forecast-data';
+import { cashWarningFrom, shouldForecastCash, type CashWarning } from './cash-warning';
 
 // Owner "here's your business today" digest — one email that ties together the
 // day's money, pipeline, schedule, and reputation so the app reads as one
@@ -46,6 +49,16 @@ export type DailyDigest = {
    * digest that mentions payday every single day is a digest nobody reads.
    */
   payday: { label: string; needsApproval: number; unpaid: number } | null;
+  /**
+   * The cash-flow warning, when there is one worth acting on. Null the rest of
+   * the time — same rule as payday: a line that appears every day is a line
+   * nobody reads.
+   *
+   * This is the one thing on the forecast page that is useless where it lives.
+   * "You go under your buffer on the 14th" is a warning, and a warning you have
+   * to go and look for isn't one.
+   */
+  cash: CashWarning | null;
 };
 
 function utcDateKey(d: Date): string {
@@ -117,9 +130,20 @@ export async function buildDailyDigest(supabase: SupabaseClient, accountId: stri
     payday = null;
   }
 
+  // Best-effort, like payday: a digest must not fail because the cash columns
+  // aren't there yet.
+  let cash: DailyDigest['cash'] = null;
+  try {
+    cash = await buildCashLine(supabase, accountId, now);
+  } catch {
+    cash = null;
+  }
+
   const hasSignal =
     moneyInCount > 0 || failedCount > 0 || newLeads > 0 || quotesApproved > 0 ||
-    confirmations > 0 || newReviews > 0 || privateFeedback > 0 || todaysJobsCount > 0;
+    confirmations > 0 || newReviews > 0 || privateFeedback > 0 || todaysJobsCount > 0 ||
+    // A quiet day with money running out is EXACTLY the day to send one.
+    cash !== null;
 
   const dateLabel = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
@@ -127,7 +151,7 @@ export async function buildDailyDigest(supabase: SupabaseClient, accountId: stri
     dateLabel, hasSignal,
     moneyInCount, moneyInTotal, openRequestsCount, openRequestsTotal, failedCount, failedTotal,
     newLeads, quotesApproved, confirmations, newReviews, newReviewsAvg, privateFeedback,
-    todaysJobs, todaysJobsCount, rebookDue, payday,
+    todaysJobs, todaysJobsCount, rebookDue, payday, cash,
   };
 }
 
@@ -265,4 +289,42 @@ async function buildPaydayLine(
     needsApproval: totals.needsReview + (totals.crewCount - totals.approved - totals.needsReview),
     unpaid: totals.unpaid,
   };
+}
+
+/**
+ * The cash warning, when it is close enough to act on.
+ *
+ * The judgement lives in cash-warning.ts, pure and tested. This part only
+ * fetches — and the cheap gate runs BEFORE the forecast build, because the
+ * alternative is a full forecast per account per night to discover there was
+ * nothing to say.
+ */
+async function buildCashLine(
+  supabase: SupabaseClient,
+  accountId: string,
+  now: Date,
+): Promise<DailyDigest['cash']> {
+  const { data: account } = await supabase
+    .from('accounts')
+    .select('cash_balance, cash_balance_at, cash_buffer')
+    .eq('id', accountId)
+    .maybeSingle();
+
+  const row = account as { cash_balance?: unknown; cash_balance_at?: unknown; cash_buffer?: unknown } | null;
+  const balance = row?.cash_balance == null ? null : Number(row.cash_balance);
+  const balanceAt = typeof row?.cash_balance_at === 'string' ? row.cash_balance_at : null;
+  if (!shouldForecastCash(balance, balanceAt, now)) return null;
+
+  const todayKey = utcDateKey(now);
+  const buffer = Number(row?.cash_buffer) || 0;
+  const sources = await loadCashForecastSources(supabase, accountId, { todayKey, days: DEFAULT_HORIZON_DAYS });
+  const forecast = buildForecast(sources.events, {
+    todayKey,
+    days: DEFAULT_HORIZON_DAYS,
+    startingBalance: balance as number,
+    buffer,
+    lateDays: 0,
+  });
+
+  return cashWarningFrom(forecast, { todayKey, buffer });
 }
