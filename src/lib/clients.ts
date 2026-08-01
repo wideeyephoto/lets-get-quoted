@@ -17,7 +17,18 @@ export type Client = {
 export type ClientWithStats = Client & {
   jobCount: number;
   totalValue: number;
+  /**
+   * When their most recent job was CREATED. Not when the work happened — every
+   * job imported or added in one sitting shares roughly this timestamp, which
+   * is why the two fields below exist rather than this one being reused.
+   */
   lastJobAt: string | null;
+  /** Soonest scheduled date still ahead of today, 'YYYY-MM-DD'. */
+  nextJobAt: string | null;
+  /** Most recent scheduled date already past, 'YYYY-MM-DD'. */
+  lastVisitAt: string | null;
+  /** Jobs with no date on them at all — quoted but never put on the calendar. */
+  unscheduledJobs: number;
 };
 
 function cleanEmail(email: string | null | undefined): string | null {
@@ -57,27 +68,50 @@ export async function findOrCreateClientId(
   return data.id as string;
 }
 
-export async function listClientsWithStats(supabase: SupabaseClient, accountId: string): Promise<ClientWithStats[]> {
+export async function listClientsWithStats(
+  supabase: SupabaseClient,
+  accountId: string,
+  options?: { todayKey?: string },
+): Promise<ClientWithStats[]> {
   const [{ data: clients }, { data: jobs }] = await Promise.all([
     supabase.from('clients').select('*').eq('account_id', accountId),
-    supabase.from('jobs').select('client_id, quoted_amount, created_at').eq('account_id', accountId).not('client_id', 'is', null),
+    supabase
+      .from('jobs')
+      .select('client_id, quoted_amount, created_at, scheduled_for')
+      .eq('account_id', accountId)
+      .not('client_id', 'is', null),
   ]);
 
-  const stats = new Map<string, { jobCount: number; totalValue: number; lastJobAt: string | null }>();
+  // The caller passes today so the split between "booked" and "been" is made
+  // in the owner's zone rather than the server's — on UTC Vercel an Eastern
+  // evening would otherwise roll tomorrow's jobs into the past.
+  const todayKey = options?.todayKey ?? new Date().toISOString().slice(0, 10);
+
+  type Entry = Omit<ClientWithStats, keyof Client>;
+  const blank = (): Entry => ({ jobCount: 0, totalValue: 0, lastJobAt: null, nextJobAt: null, lastVisitAt: null, unscheduledJobs: 0 });
+
+  const stats = new Map<string, Entry>();
   for (const job of jobs ?? []) {
     const key = job.client_id as string;
-    const entry = stats.get(key) ?? { jobCount: 0, totalValue: 0, lastJobAt: null };
+    const entry = stats.get(key) ?? blank();
     entry.jobCount += 1;
     entry.totalValue += Number(job.quoted_amount) || 0;
     if (!entry.lastJobAt || job.created_at > entry.lastJobAt) entry.lastJobAt = job.created_at;
+
+    const scheduled = (job.scheduled_for as string | null)?.slice(0, 10) ?? null;
+    if (!scheduled) {
+      entry.unscheduledJobs += 1;
+    } else if (scheduled >= todayKey) {
+      // Soonest upcoming, not latest — "when are we next there" is the question.
+      if (!entry.nextJobAt || scheduled < entry.nextJobAt) entry.nextJobAt = scheduled;
+    } else if (!entry.lastVisitAt || scheduled > entry.lastVisitAt) {
+      entry.lastVisitAt = scheduled;
+    }
     stats.set(key, entry);
   }
 
   return (clients ?? [])
-    .map((client) => {
-      const entry = stats.get(client.id) ?? { jobCount: 0, totalValue: 0, lastJobAt: null };
-      return { ...(client as Client), ...entry };
-    })
+    .map((client) => ({ ...(client as Client), ...(stats.get(client.id) ?? blank()) }))
     // Most recently active first; clients with jobs above those without.
     .sort((a, b) => {
       const aKey = a.lastJobAt ?? a.created_at;

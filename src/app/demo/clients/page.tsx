@@ -49,6 +49,12 @@ function buildDemoClients(): ClientWithStats[] {
         jobCount: 1,
         totalValue: job.quoted_amount,
         lastJobAt: job.created_at,
+        // The scheduled-date rollup Follow-up reads. The demo page renders its
+        // own markup rather than ClientsWorkspace, so these stay null — better
+        // an honest gap than invented dates in a shape that claims to be real.
+        nextJobAt: null,
+        lastVisitAt: null,
+        unscheduledJobs: 0,
       });
     }
   }

@@ -48,6 +48,9 @@ export default async function ClientsPage({ searchParams }: { searchParams: { cr
     lastJobAt: client.lastJobAt,
     lastLabel: formatDate(client.lastJobAt),
     search: [client.name, client.phone, client.email, client.address].filter(Boolean).join(' ').toLowerCase(),
+    nextJobAt: client.nextJobAt,
+    lastVisitAt: client.lastVisitAt,
+    unscheduledJobs: client.unscheduledJobs,
   }));
 
   return (

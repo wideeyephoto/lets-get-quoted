@@ -6,14 +6,19 @@ import ViewGear, { type ViewOption } from '@/components/view-gear';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import SaveButton from '@/components/save-button';
 import { setClientsViewAction } from '@/app/dashboard/view-actions';
+import { followUpHeadline, groupByFollowUp } from '@/lib/client-followup';
 import type { ClientsView } from '@/lib/dashboard-views';
 import { createClientAction } from './actions';
 
-// The customer list, four ways.
+// The customer list, five ways.
 //
-// One dataset, four shapes, because "who are my customers" is four different
+// One dataset, five shapes, because "who are my customers" is several different
 // questions: skim the whole book (List), recognise a face (Cards), compare and
 // sort (Table), or work one person while keeping the list to hand (Focus).
+//
+// Follow-up is the odd one out and earns its place by not answering that
+// question at all. The other four order by name or by money, which makes a
+// customer drifting away look exactly like a happy one. It orders by silence.
 //
 // Selecting somebody does something in every view — that's the point of the
 // selection state. In Focus it opens them beside the list; everywhere else it
@@ -36,6 +41,11 @@ export type ClientRow = {
   lastJobAt: string | null;
   lastLabel: string;
   search: string;
+  // Follow-up reads the SCHEDULED dates, not lastJobAt — that one is when the
+  // job record was created, so an imported book gives everybody the same value.
+  nextJobAt: string | null;
+  lastVisitAt: string | null;
+  unscheduledJobs: number;
 };
 
 const VIEWS: ViewOption<ClientsView>[] = [
@@ -43,6 +53,7 @@ const VIEWS: ViewOption<ClientsView>[] = [
   { id: 'cards', label: 'Cards', hint: 'Bigger, with initials and totals' },
   { id: 'table', label: 'Table', hint: 'Sort & compare' },
   { id: 'focus', label: 'Focus', hint: 'One customer open, list beside it' },
+  { id: 'followup', label: 'Follow up', hint: 'Who has gone quiet' },
 ];
 
 type SortKey = 'name' | 'jobs' | 'total' | 'last';
@@ -296,8 +307,86 @@ export default function ClientsWorkspace({
         </div>
       ) : null}
 
+      {matches.length > 0 && view === 'followup' ? <FollowUpBoard clients={matches} /> : null}
+
       {adding ? <AddClientDialog onClose={() => setAdding(false)} /> : null}
     </>
+  );
+}
+
+/**
+ * Customers banded by how long they have been quiet.
+ *
+ * Today is resolved in the browser rather than passed from the server: this is
+ * a display grouping, and the person reading it is standing in their own
+ * timezone. Nothing here is written or paid against, so a boundary that follows
+ * the reader is the right one.
+ */
+function FollowUpBoard({ clients }: { clients: ClientRow[] }) {
+  const groups = useMemo(() => {
+    const todayKey = new Date().toLocaleDateString('en-CA'); // 'YYYY-MM-DD', local
+    return groupByFollowUp(
+      clients.map((client) => ({
+        id: client.id,
+        name: client.name,
+        phone: client.phone,
+        email: client.email,
+        jobCount: client.jobCount,
+        totalValue: client.totalValue,
+        nextJobAt: client.nextJobAt,
+        lastVisitAt: client.lastVisitAt,
+        unscheduledJobs: client.unscheduledJobs,
+      })),
+      todayKey,
+    );
+  }, [clients]);
+
+  const byId = useMemo(() => new Map(clients.map((client) => [client.id, client])), [clients]);
+  const headline = followUpHeadline(groups);
+
+  return (
+    <div className="client-followup">
+      {headline ? <p className="client-followup-headline">{headline}</p> : null}
+
+      <div className="client-followup-board">
+        {groups.map((group) => (
+          <section key={group.band} className="client-band" data-band={group.band}>
+            <header className="client-band-head">
+              <h3>{group.label}</h3>
+              <span>{group.clients.length}</span>
+            </header>
+            <p className="client-band-note">{group.note}</p>
+
+            {group.clients.length === 0 ? (
+              <p className="client-band-empty">
+                {group.band === 'drifting' ? 'Nobody has gone quiet. Good.' : 'Nobody here.'}
+              </p>
+            ) : (
+              <div className="client-band-stack">
+                {group.clients.map((client) => {
+                  const row = byId.get(client.id);
+                  return (
+                    <Link key={client.id} href={`/dashboard/clients/${client.id}`} className="client-band-card">
+                      <span className="client-avatar small" aria-hidden="true">{row?.initials ?? '?'}</span>
+                      <span className="client-band-who">
+                        <strong>{client.name}</strong>
+                        <small>{client.when}</small>
+                        {client.flags.map((flag) => (
+                          <em key={flag.text} className="client-band-flag" data-tone={flag.tone}>{flag.text}</em>
+                        ))}
+                      </span>
+                      <span className={`client-band-total${client.totalValue > 0 ? '' : ' is-zero'}`}>
+                        {row?.totalLabel ?? '—'}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        ))}
+      </div>
+    </div>
   );
 }
 

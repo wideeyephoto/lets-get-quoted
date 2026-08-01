@@ -52,10 +52,12 @@ export function normalizeJobsView(value: unknown): JobsView {
   return JOBS_VIEWS.includes(value as JobsView) ? (value as JobsView) : 'focus';
 }
 
-// Which Clients layout the owner last used (List / Cards / Table / Focus).
+// Which Clients layout the owner last used.
+// List / Cards / Table / Focus all answer "show me my customers" and order by
+// name or money. Follow-up orders by silence, which is a different question.
 export const CLIENTS_VIEW_COOKIE = 'lgq_clients_view';
-export type ClientsView = 'list' | 'cards' | 'table' | 'focus';
-export const CLIENTS_VIEWS: ClientsView[] = ['list', 'cards', 'table', 'focus'];
+export type ClientsView = 'list' | 'cards' | 'table' | 'focus' | 'followup';
+export const CLIENTS_VIEWS: ClientsView[] = ['list', 'cards', 'table', 'focus', 'followup'];
 export function normalizeClientsView(value: unknown): ClientsView {
   // List stays the default: it's what this page has always been, and an
   // explicit choice is a cookie, so nobody gets moved off what they picked.

@@ -12131,6 +12131,125 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 .client-focus-address { margin: 0 0 0.9rem; font-size: 0.85rem; color: rgba(247, 245, 239, 0.7); }
 .client-focus-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
+/* --- Follow up: banded by silence ---------------------------------------- */
+/* The band colours are SEMANTIC and deliberately not the orange accent, which
+   on this page already means money. Green/amber/rose carry state so a column
+   reads as "fine" or "chase this" before any of the words are read. */
+
+.client-followup { display: grid; gap: 0.8rem; }
+
+.client-followup-headline {
+  margin: 0;
+  padding: 0.55rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid rgba(217, 164, 65, 0.3);
+  background: rgba(217, 164, 65, 0.08);
+  font-size: 0.86rem;
+  color: #f0d49a;
+}
+
+/* Explicit column counts rather than auto-fit: there are exactly four bands and
+   they read as a sequence, so a wrap that leaves three up and one orphaned
+   below a column of dead space breaks the shape. */
+.client-followup-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.8rem;
+  align-items: start;
+}
+@media (min-width: 42rem) {
+  .client-followup-board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 64rem) {
+  .client-followup-board { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+.client-band { --band: rgba(255, 255, 255, 0.22); min-width: 0; }
+.client-band[data-band='booked'] { --band: #7fb583; }
+.client-band[data-band='recent'] { --band: rgba(200, 208, 220, 0.55); }
+.client-band[data-band='drifting'] { --band: #d9a441; }
+.client-band[data-band='unbooked'] { --band: #d2757c; }
+
+.client-band-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--band);
+}
+.client-band-head h3 {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--band);
+  font-weight: 800;
+}
+.client-band-head span { font-size: 0.78rem; color: rgba(247, 245, 239, 0.55); font-variant-numeric: tabular-nums; }
+
+.client-band-note { margin: 0.5rem 0 0.6rem; font-size: 0.76rem; line-height: 1.45; color: rgba(247, 245, 239, 0.5); }
+.client-band-empty { margin: 0; font-size: 0.8rem; color: rgba(247, 245, 239, 0.4); font-style: italic; }
+
+.client-band-stack { display: grid; gap: 0.4rem; }
+
+.client-band-card {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-left: 3px solid var(--band);
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  text-decoration: none;
+}
+.client-band-card:hover, .client-band-card:focus-visible {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.16);
+  border-left-color: var(--band);
+  outline: none;
+}
+.client-band-card:focus-visible { box-shadow: 0 0 0 2px rgba(255, 122, 33, 0.55); }
+
+.client-band-who { min-width: 0; flex: 1; }
+.client-band-who strong {
+  display: block;
+  font-size: 0.87rem;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.client-band-who small { display: block; font-size: 0.74rem; color: rgba(247, 245, 239, 0.55); font-variant-numeric: tabular-nums; }
+
+.client-band-flag {
+  display: inline-block;
+  margin-top: 0.25rem;
+  margin-right: 0.25rem;
+  padding: 0.06rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-style: normal;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(247, 245, 239, 0.6);
+}
+.client-band-flag[data-tone='warn'] {
+  border-color: rgba(210, 117, 124, 0.38);
+  background: rgba(210, 117, 124, 0.14);
+  color: #eda3a8;
+}
+
+.client-band-total {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.client-band-total.is-zero { color: rgba(247, 245, 239, 0.35); font-weight: 500; }
+
 /* --- Add client dialog --- */
 .client-modal-backdrop {
   position: fixed;
