@@ -13871,46 +13871,29 @@ a.bset-card { color: inherit; text-decoration: none; }
 /* Markers: filled means confirmed, hollow means we worked it out. */
 .cash-marker { cursor: pointer; }
 .cash-marker:focus { outline: none; }
-.cash-marker-hit { fill: transparent; }
-.cash-marker > path,
-.cash-marker > circle,
-.cash-marker > rect { stroke-width: 2; stroke: #08131f; }
-.cash-marker > circle.cash-marker-hit { stroke: none; }
 
-.cash-marker.tone-in > path,
-.cash-marker.tone-in > circle,
-.cash-marker.tone-in > rect { fill: var(--cash-in); }
-.cash-marker.tone-out > path,
-.cash-marker.tone-out > circle,
-.cash-marker.tone-out > rect { fill: var(--cash-out); }
-.cash-marker.tone-unfunded > path,
-.cash-marker.tone-unfunded > circle,
-.cash-marker.tone-unfunded > rect { fill: #ff4d4d; stroke: #ffd9d9; }
+/* The touch target. It has its own class and NOTHING paints it — as a bare
+   <circle> the tone/estimated rules below reached it (they were more specific
+   than the reset that was meant to hide it) and drew a 24px ring around every
+   marker. A month of those overlapped into a chain, which is the "bulky mess"
+   this replaced. */
+.cash-marker .cash-marker-hit { fill: transparent; stroke: none; pointer-events: all; }
 
-.cash-marker.is-estimated > path,
-.cash-marker.is-estimated > circle,
-.cash-marker.is-estimated > rect { fill: #0a1523; }
-.cash-marker.is-estimated.tone-in > path,
-.cash-marker.is-estimated.tone-in > circle,
-.cash-marker.is-estimated.tone-in > rect { stroke: var(--cash-in); }
-.cash-marker.is-estimated.tone-out > path,
-.cash-marker.is-estimated.tone-out > circle,
-.cash-marker.is-estimated.tone-out > rect { stroke: var(--cash-out); }
-.cash-marker.is-estimated.tone-unfunded > path,
-.cash-marker.is-estimated.tone-unfunded > circle,
-.cash-marker.is-estimated.tone-unfunded > rect { stroke: #ff4d4d; }
+/* Everything visible is .cash-marker-shape, so the paint rules can never widen
+   to something that isn't a marker again. */
+.cash-marker .cash-marker-shape { stroke-width: 1.5; stroke: #08131f; }
 
-.cash-marker.is-estimated > circle.cash-marker-hit,
-.cash-marker > circle.cash-marker-hit { fill: transparent; }
+.cash-marker.tone-in .cash-marker-shape { fill: var(--cash-in); }
+.cash-marker.tone-out .cash-marker-shape { fill: var(--cash-out); }
+.cash-marker.tone-unfunded .cash-marker-shape { fill: #ff4d4d; stroke: #ffd9d9; }
 
-.cash-marker.is-selected > path,
-.cash-marker.is-selected > circle,
-.cash-marker.is-selected > rect,
-.cash-marker:focus-visible > path,
-.cash-marker:focus-visible > circle,
-.cash-marker:focus-visible > rect { stroke: #fff; }
-.cash-marker.is-selected > circle.cash-marker-hit,
-.cash-marker:focus-visible > circle.cash-marker-hit { stroke: none; }
+/* Hollow means we worked the number out rather than being told it. */
+.cash-marker.is-estimated .cash-marker-shape { fill: #0a1523; }
+.cash-marker.is-estimated.tone-in .cash-marker-shape { stroke: var(--cash-in); }
+.cash-marker.is-estimated.tone-out .cash-marker-shape { stroke: var(--cash-out); }
+.cash-marker.is-estimated.tone-unfunded .cash-marker-shape { stroke: #ff4d4d; }
+
+.cash-marker.is-selected .cash-marker-shape { stroke: #fff; stroke-width: 2; }
 
 .cash-readout {
   display: flex;
@@ -13950,9 +13933,11 @@ a.bset-card { color: inherit; text-decoration: none; }
 .cash-swatch.worst { border-color: var(--cash-worst); border-top-style: dashed; }
 .cash-swatch.buffer { border-color: var(--cash-buffer); border-top-style: dashed; }
 
-.cash-marker-key { display: inline-block; width: 11px; height: 11px; border-radius: 3px; }
+/* Sized to the markers themselves, which got smaller. A legend key bigger than
+   the thing it explains reads as a different symbol. */
+.cash-marker-key { display: inline-block; width: 9px; height: 9px; border-radius: 2.5px; }
 .cash-marker-key.solid { background: var(--cash-in); }
-.cash-marker-key.hollow { background: #0a1523; border: 2px solid var(--cash-in); }
+.cash-marker-key.hollow { background: #0a1523; border: 1.5px solid var(--cash-in); }
 
 .cash-line-toggles { margin-top: 1rem; }
 .cash-line-toggles > summary {
@@ -14226,4 +14211,28 @@ a.bset-card { color: inherit; text-decoration: none; }
 .cash-hero .cash-chart-wrap { background: rgba(4, 11, 19, 0.72); }
 
 .cash-hero .insight-window-tabs { margin-top: 0.9rem; }
+
+
+/* "Plan my day" in the rail, directly above "+ New".
+   Keeps the button's own skin (.action-btn--plan) and takes the rail's
+   geometry from .sidenav-new, so the three stacked controls â€” Plan, New,
+   Website â€” line up at one width and one radius instead of three. */
+.sidenav .sidenav-plan {
+  width: 100%;
+  min-height: 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 12px;
+  gap: 0.45rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.sidenav .sidenav-plan .action-btn-ic { width: 1.05rem; height: 1.05rem; }
+
+/* Already there: drop the glow to a quiet outline so the rail isn't shouting
+   about the page you are standing on. */
+.sidenav .sidenav-plan.active {
+  box-shadow: inset 0 0 0 1px rgba(233, 219, 255, 0.55);
+}
+.sidenav .sidenav-plan.active::after { animation: none; opacity: 0; }
 

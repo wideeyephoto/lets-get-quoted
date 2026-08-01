@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { useAppShell } from './app-shell-provider';
 import { NavIcon } from './nav-icons';
+import ActionIcon from './action-icon';
 import { supabase } from '@/lib/supabase';
 
 // Order follows the pipeline (Leads -> Jobs -> Schedule) with Crew, a resource,
@@ -419,6 +420,18 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
 
           <div className="sidenav-lead">
             {businessName ? <p className="sidenav-bizname" title={businessName}>{businessName}</p> : null}
+            {/* The one thing a contractor does before anything else in the
+                morning, so it sits above "+ New" rather than three clicks into
+                Schedule. Same skin as the button on the schedule bar — two
+                different-looking buttons for one destination is two buttons. */}
+            <Link
+              href="/dashboard/schedule/plan"
+              className={`action-btn action-btn--plan sidenav-plan${pathname.startsWith('/dashboard/schedule/plan') ? ' active' : ''}`}
+              title="Order today's stops into the shortest sensible route"
+            >
+              <ActionIcon name="plan" />
+              Plan my day
+            </Link>
             <div className="sidenav-new-wrap" ref={newMenuRef}>
               <button
                 type="button"

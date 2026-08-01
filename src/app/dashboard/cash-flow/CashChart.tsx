@@ -208,6 +208,12 @@ export default function CashChart({
   const active = selected ?? hover;
   const activeDay = active === null ? null : days[active];
 
+  // A fat invisible target is generous on a wide chart and counter-productive on
+  // a narrow one: at 90 days on a phone, neighbouring targets overlap so badly
+  // that the day you tap is whichever one happened to render last. Scaled to the
+  // spacing actually available, floored at a thumb-sized 6px.
+  const hitRadius = Math.max(6, Math.min(11, plotW / lastIndex / 1.5));
+
   const bufferY = yFor(buffer);
   const zeroY = yFor(0);
   const startY = yFor(days[0]?.projected ?? 0);
@@ -285,7 +291,10 @@ export default function CashChart({
             const step = Math.max(1, Math.round(days.length / (width < 560 ? 4 : 7)));
             return days.map((day, index) => {
               const isLast = index === lastIndex;
-              const onTick = index % step === 0 && lastIndex - index >= Math.ceil(step / 2);
+              // A full step of clearance, not half. Half was enough at desktop
+              // widths and still let "Aug 25" and "Aug 30" overprint on a phone,
+              // where the same five days are 40px apart.
+              const onTick = index % step === 0 && lastIndex - index >= step;
               if (!isLast && !onTick) return null;
               return (
                 <text
@@ -393,12 +402,17 @@ export default function CashChart({
                 onClick={() => onSelect(selected === index ? null : index)}
               >
                 <title>{label}</title>
-                <circle className="cash-marker-hit" r={12} />
-                {shape === 'diamond' ? <path d="M0,-7 L7,0 L0,7 L-7,0 Z" /> : null}
-                {shape === 'up' ? <path d="M0,-7 L6,4 L-6,4 Z" /> : null}
-                {shape === 'down' ? <path d="M0,7 L6,-4 L-6,-4 Z" /> : null}
-                {shape === 'circle' ? <circle r={5.5} /> : null}
-                {shape === 'cluster' ? <rect x={-6} y={-6} width={12} height={12} rx={3} /> : null}
+                {/* The touch target, and nothing else. It carries its own class
+                    so no paint rule can reach it — as a bare <circle> it was
+                    picked up by the tone/estimated strokes and drawn as a fat
+                    ring around every marker, which is what made a month of them
+                    look like a chain. */}
+                <circle className="cash-marker-hit" r={hitRadius} />
+                {shape === 'diamond' ? <path className="cash-marker-shape" d="M0,-5 L5,0 L0,5 L-5,0 Z" /> : null}
+                {shape === 'up' ? <path className="cash-marker-shape" d="M0,-5 L4.4,2.8 L-4.4,2.8 Z" /> : null}
+                {shape === 'down' ? <path className="cash-marker-shape" d="M0,5 L4.4,-2.8 L-4.4,-2.8 Z" /> : null}
+                {shape === 'circle' ? <circle className="cash-marker-shape" r={4} /> : null}
+                {shape === 'cluster' ? <rect className="cash-marker-shape" x={-4.5} y={-4.5} width={9} height={9} rx={2.5} /> : null}
               </g>
             );
           })}
