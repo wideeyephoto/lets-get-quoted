@@ -95,14 +95,14 @@ export default function ExtraStopExplainer({
       label: 'Choose the days you can take extra stops',
       done: weekdayCount > 0,
       detail: weekdayCount > 0 ? `${weekdayCount} day${weekdayCount === 1 ? '' : 's'} a week` : 'None picked yet',
-      href: '/dashboard/settings#extra-stop',
+      href: '/dashboard/extra-stops#extra-stop-setup',
       cta: 'Choose',
     },
     {
       label: 'Set how many you’ll take in a day',
       done: maxPerDay > 0,
       detail: maxPerDay > 0 ? `Up to ${maxPerDay} a day` : 'No limit set',
-      href: '/dashboard/settings#extra-stop',
+      href: '/dashboard/extra-stops#extra-stop-setup',
       cta: 'Set',
     },
     {
@@ -145,7 +145,7 @@ export default function ExtraStopExplainer({
           </ul>
 
           <div className="es-hero-cta">
-            <Link href="/dashboard/settings#extra-stop" className="btn primary es-cta-btn">
+            <Link href="/dashboard/extra-stops#extra-stop-setup" className="btn primary es-cta-btn">
               Set up Extra Stop <span aria-hidden="true">→</span>
             </Link>
             <p>

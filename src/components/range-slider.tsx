@@ -96,6 +96,15 @@ export default function RangeSlider({
         />
       </div>
 
+      {/* The chosen numbers sit UNDER their own handle, not only in the header.
+          One combined "$175 – $745" up top makes you work out which end you are
+          dragging; a number that travels with the thumb does not. aria-hidden
+          because each input already announces its own value. */}
+      <div className="range-slider-bubbles" aria-hidden="true">
+        <span className="range-slider-bubble" style={{ left: `${lowPct}%` }}>{format(low)}</span>
+        <span className="range-slider-bubble" style={{ left: `${highPct}%` }}>{format(high)}</span>
+      </div>
+
       <div className="range-slider-ends" aria-hidden="true">
         <span>{format(min)}</span>
         <span>{format(max)}</span>

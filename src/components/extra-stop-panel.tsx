@@ -60,11 +60,11 @@ export default function ExtraStopPanel({
           {!configured ? (
             // Nothing to switch on yet: an on/off toggle over an unset fee band
             // and no detour limits would offer work on rules nobody chose.
-            <Link href="/dashboard/settings#extra-stop" className="btn primary">
+            <Link href="/dashboard/extra-stops#extra-stop-setup" className="btn primary">
               Set up Extra Stops
             </Link>
           ) : locked ? (
-            <Link href="/dashboard/settings#extra-stop" className="btn secondary">
+            <Link href="/dashboard/extra-stops#extra-stop-setup" className="btn secondary">
               Why is this paused?
             </Link>
           ) : (
@@ -78,7 +78,7 @@ export default function ExtraStopPanel({
                   {enabled ? 'Turn off for now' : 'Turn on'}
                 </SaveButton>
               </form>
-              <Link href="/dashboard/settings#extra-stop" className="btn ghost">
+              <Link href="/dashboard/extra-stops#extra-stop-setup" className="btn ghost">
                 Set up
               </Link>
             </>

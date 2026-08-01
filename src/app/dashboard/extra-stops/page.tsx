@@ -150,19 +150,47 @@ export default async function ExtraStopsPage() {
         </section>
       )}
 
-      {/* Always shown, on purpose. This is the only place that explains what
-          Extra Stop is, what it earns, and what it costs a customer — hiding it
-          the moment the switch flips left an owner who turned it on with no way
-          back to the explanation, and nothing to send a customer to. */}
-      <ExtraStopExplainer
-        weekdayCount={settings.weekdays.length}
-        maxPerDay={settings.maxPerDay}
-        maxFeeDollars={defaults.maxFeeDollars}
-        minFeeDollars={defaults.minFeeDollars}
-        stripeConnected={stripeConnected}
-        bookingUrl={bookingUrl}
-        businessName={businessName}
-      />
+      {/* STILL ON THE PAGE ONCE IT'S RUNNING, just folded away. This is the only
+          place that explains what Extra Stop is, what it earns and what it costs
+          a customer, so removing it when the switch flips would leave an owner
+          who turned it on with no way back to the explanation and nothing to
+          send a customer to — which is why it used to be permanently open. A
+          closed drawer keeps all of that and stops the pitch sitting on top of
+          the queue you actually came here to read.
+          Left OPEN while it's off: with the feature switched off, the pitch is
+          the page. */}
+      {settings.enabled ? (
+        <details className="panel workspace-section-card es-how">
+          <summary className="es-how-summary">
+            <span className="es-how-copy">
+              <strong>How &ldquo;Extra Stops&rdquo; works</strong>
+              <small>The flow start to finish, what the customer sees, and what it adds up to</small>
+            </span>
+            <span className="es-how-chev" aria-hidden="true">⌄</span>
+          </summary>
+          <div className="es-how-body">
+            <ExtraStopExplainer
+              weekdayCount={settings.weekdays.length}
+              maxPerDay={settings.maxPerDay}
+              maxFeeDollars={defaults.maxFeeDollars}
+              minFeeDollars={defaults.minFeeDollars}
+              stripeConnected={stripeConnected}
+              bookingUrl={bookingUrl}
+              businessName={businessName}
+            />
+          </div>
+        </details>
+      ) : (
+        <ExtraStopExplainer
+          weekdayCount={settings.weekdays.length}
+          maxPerDay={settings.maxPerDay}
+          maxFeeDollars={defaults.maxFeeDollars}
+          minFeeDollars={defaults.minFeeDollars}
+          stripeConnected={stripeConnected}
+          bookingUrl={bookingUrl}
+          businessName={businessName}
+        />
+      )}
 
       {/* The configurator lives HERE now, not in Account > Automations. It is
           thirty controls about Extra Stops; a settings tab about everything else

@@ -508,10 +508,6 @@ export default async function SchedulePage({
             </a>
           </div>
 
-          <Link href="/dashboard/schedule/plan" className="action-btn action-btn--plan schedule-bar-cta">
-            <ActionIcon name="plan" />
-            Plan my day
-          </Link>
         </header>
 
         <ScheduleCalendar
@@ -527,6 +523,14 @@ export default async function SchedulePage({
           }
           weekendDays={weekendDays}
           initialView={calendarView}
+          /* Beside the view switcher rather than under the stats: both decide
+             what you do with the month you are looking at. */
+          toolbarActions={
+            <Link href="/dashboard/schedule/plan" className="action-btn action-btn--plan schedule-bar-cta">
+              <ActionIcon name="plan" />
+              Plan my day
+            </Link>
+          }
           weeks={weeks}
           todayKey={todayKey}
           planned={plannedVisits}
@@ -574,7 +578,11 @@ export default async function SchedulePage({
                 .map((crewId) => crewById.get(crewId))
                 .filter((member): member is typeof crew[number] => Boolean(member));
               return (
-                <div className="sign-in-method-row schedule-method-row" key={job.id}>
+                /* Tinted with the colour this job will BE once it lands on a
+                   date — the calendar chips key off status, so an unscheduled
+                   card and its future chip now agree. Dragging it becomes a
+                   thing moving rather than a grey row turning into a gold one. */
+                <div className={`sign-in-method-row schedule-method-row status-${job.status}`} key={job.id}>
                   <div className="method-info">
                     <div>
                       <Link className="method-name" href={`/dashboard/jobs/${job.id}`}>{job.client_name}</Link>

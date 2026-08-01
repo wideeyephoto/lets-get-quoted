@@ -69,7 +69,7 @@ function Icon({ name, className }: { name: string; className?: string }) {
 // card's own id gets scrolled to and expanded by the settings deep-link handler
 // — #automations left you at the top of a dozen collapsed cards, which is why
 // these read as buttons that did nothing.
-const SETTINGS_HREF = '/dashboard/settings#extra-stop';
+const SETTINGS_HREF = '/dashboard/extra-stops#extra-stop-setup';
 
 /** Where the request queue lives on this page. */
 const QUEUE_ANCHOR = '#extra-stop-requests';

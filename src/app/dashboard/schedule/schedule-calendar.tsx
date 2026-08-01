@@ -211,6 +211,7 @@ export default function ScheduleCalendar({
   blocks = [],
   fullDates = [],
   monthNav,
+  toolbarActions,
   weekendDays = { sat: true, sun: true },
   initialView = 'month',
 }: {
@@ -225,6 +226,9 @@ export default function ScheduleCalendar({
   fullDates?: string[];
   /** Server-rendered month arrows + label, so they share the toolbar row. */
   monthNav?: ReactNode;
+  /** Sits beside the view switcher — Plan my day belongs with the controls that
+      decide what you're looking at, not floating under the stats. */
+  toolbarActions?: ReactNode;
   /** Seeded from the cookie server-side so the grid never flashes 7 columns. */
   weekendDays?: WeekendDays;
   /** Ditto for the shape of the calendar — see CALENDAR_VIEW_COOKIE. */
@@ -489,7 +493,10 @@ export default function ScheduleCalendar({
           looking at. */}
       <div className="calendar-toolbar">
         {monthNav}
-        <CalendarViewMenu value={calendarView} onChange={setCalendarView} />
+        <div className="calendar-toolbar-actions">
+          {toolbarActions}
+          <CalendarViewMenu value={calendarView} onChange={setCalendarView} />
+        </div>
       </div>
       {calendarView === 'agenda' ? (
         agendaDays.length === 0 ? (

@@ -13209,61 +13209,109 @@ a.bset-card { color: inherit; text-decoration: none; }
 
 /* ---------------------------------------------------------------------------
    Two-handle range (components/range-slider.tsx)
-   Two stacked native range inputs. The top one is transparent and only its
-   THUMB takes pointer events, so the handle underneath stays grabbable — the
-   usual trick, and the reason this can keep native keyboard behaviour.
+   Two stacked native range inputs. Only the THUMBS take pointer events, so the
+   handle underneath stays grabbable — the usual trick, and the reason this can
+   keep native keyboard behaviour.
 --------------------------------------------------------------------------- */
-.range-slider { display: grid; gap: 0.5rem; }
+.range-slider {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.9rem 1.05rem 0.8rem;
+  border: 1px solid rgba(255, 122, 33, 0.5);
+  border-radius: 14px;
+  background: rgba(255, 122, 33, 0.055);
+}
+
+/* A slow shimmer across the card, so the control reads as live rather than a
+   flat box. Long and low-contrast on purpose: this sits beside form fields you
+   are trying to read, and anything faster would compete with them. */
+.range-slider::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 170, 100, 0.14) 50%, transparent 62%);
+  transform: translateX(-140%);
+  animation: rangeShimmer 6.5s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+}
+
+@keyframes rangeShimmer {
+  0%, 58% { transform: translateX(-140%); }
+  92%, 100% { transform: translateX(140%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .range-slider::before { animation: none; opacity: 0; }
+}
 
 .range-slider-head {
   display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
 }
 .range-slider-label {
-  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em;
-  text-transform: uppercase; color: rgba(247, 245, 239, 0.62);
+  font-size: 0.72rem; font-weight: 800; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--accent);
 }
 .range-slider-value {
   font-size: 1rem; font-weight: 800; color: var(--accent);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 
-.range-slider-track { position: relative; height: 2.1rem; }
+/* 3rem tall, not 2.1. The whole row is the grab area, and a thumb you have to
+   hit within a couple of pixels vertically is the difference between dragging a
+   fee and nudging the page. */
+.range-slider-track { position: relative; height: 3rem; }
 
-/* The rail and the selected span. */
 .range-slider-track::before {
   content: ''; position: absolute; left: 0; right: 0; top: 50%;
-  height: 5px; margin-top: -2.5px; border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
+  height: 7px; margin-top: -3.5px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
 }
 .range-slider-fill {
-  position: absolute; top: 50%; height: 5px; margin-top: -2.5px;
+  position: absolute; top: 50%; height: 7px; margin-top: -3.5px;
   left: var(--low); right: calc(100% - var(--high));
   border-radius: 999px;
   background: linear-gradient(90deg, #ff5a1f, #ff9a52);
 }
 
 .range-slider-input {
-  position: absolute; inset: 0; width: 100%; height: 2.1rem;
+  position: absolute; inset: 0; width: 100%; height: 3rem;
   margin: 0; padding: 0; background: none; -webkit-appearance: none; appearance: none;
   pointer-events: none; /* only the thumbs are grabbable */
 }
 .range-slider-input:focus { outline: none; }
 
+/* 2rem handles. They were 1.35rem, which is under the 44px touch target every
+   guideline asks for and felt fiddly with a mouse too. */
 .range-slider-input::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none; pointer-events: auto;
-  width: 1.35rem; height: 1.35rem; border-radius: 999px; cursor: grab;
-  border: 2px solid #180c02; background: #ff8a3d;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+  width: 2rem; height: 2rem; border-radius: 999px; cursor: grab;
+  border: 2px solid #180c02;
+  background: radial-gradient(circle at 35% 30%, #ffab63, #ff7a21 62%, #f06a12);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6), 0 0 14px rgba(255, 122, 33, 0.5);
 }
 .range-slider-input::-moz-range-thumb {
   pointer-events: auto;
-  width: 1.35rem; height: 1.35rem; border-radius: 999px; cursor: grab;
-  border: 2px solid #180c02; background: #ff8a3d;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+  width: 2rem; height: 2rem; border-radius: 999px; cursor: grab;
+  border: 2px solid #180c02;
+  background: radial-gradient(circle at 35% 30%, #ffab63, #ff7a21 62%, #f06a12);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6), 0 0 14px rgba(255, 122, 33, 0.5);
 }
-.range-slider-input:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px rgba(255, 122, 33, 0.5); }
-.range-slider-input:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px rgba(255, 122, 33, 0.5); }
+.range-slider-input:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgba(255, 122, 33, 0.55); }
+.range-slider-input:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 4px rgba(255, 122, 33, 0.55); }
 .range-slider-input:active::-webkit-slider-thumb { cursor: grabbing; }
+
+/* The value that travels with its handle. */
+.range-slider-bubbles { position: relative; height: 1.1rem; }
+.range-slider-bubble {
+  position: absolute; top: 0; transform: translateX(-50%);
+  font-size: 0.92rem; font-weight: 800; color: #fff;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
+}
 
 .range-slider-ends {
   display: flex; justify-content: space-between;
@@ -13291,3 +13339,80 @@ a.bset-card { color: inherit; text-decoration: none; }
    form action, or saving would write blanks over whatever you couldn't see.
    .bset-section-body sets a display, which would otherwise beat [hidden]. */
 .bset-section-body[hidden] { display: none; }
+
+/* "How Extra Stops works" — the pitch, folded away once the feature is live.
+   A native <details>, so it needs no client JS on a server-rendered page and
+   Ctrl+F still finds what is inside it. */
+.es-how { padding: 0; overflow: hidden; }
+.es-how-summary {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 1rem 1.15rem; cursor: pointer; list-style: none;
+  -webkit-user-select: none; user-select: none;
+}
+.es-how-summary::-webkit-details-marker { display: none; }
+.es-how-summary:hover { background: rgba(255, 122, 33, 0.05); }
+.es-how-summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.es-how-copy { display: grid; gap: 0.15rem; flex: 1; min-width: 0; }
+.es-how-copy strong { color: #fff; font-size: 1.02rem; }
+.es-how-copy small { color: rgba(247, 245, 239, 0.55); font-size: 0.8rem; }
+.es-how-chev {
+  flex: none; color: var(--accent); font-size: 1.1rem; line-height: 1;
+  transition: transform 0.18s ease;
+}
+.es-how[open] .es-how-chev { transform: rotate(180deg); }
+.es-how-body { padding: 0 1.15rem 1.15rem; }
+/* The explainer brings its own panels; inside the drawer they'd be a panel in a
+   panel, so flatten the outer chrome. */
+.es-how-body > * { margin-top: 0; }
+@media (prefers-reduced-motion: reduce) { .es-how-chev { transition: none; } }
+
+/* Plan my day sits with the view switcher; they wrap together on narrow. */
+.calendar-toolbar-actions {
+  display: flex; align-items: center; gap: 0.6rem;
+  flex-wrap: wrap; margin-left: auto;
+}
+@media (max-width: 620px) {
+  .calendar-toolbar-actions { width: 100%; margin-left: 0; }
+  .calendar-toolbar-actions > * { flex: 1 1 10rem; }
+}
+
+/* ---------------------------------------------------------------------------
+   Unscheduled job cards, coloured by where they're going
+   Same status keys the calendar chips use (.calendar-job-chip.status-*), so a
+   card and the chip it becomes are the same colour. The stripe down the left is
+   the part that reads at a glance in a narrow rail.
+--------------------------------------------------------------------------- */
+.schedule-method-row {
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.schedule-method-row::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--job-tone, rgba(255, 255, 255, 0.18));
+}
+
+.schedule-method-row.status-new_lead { --job-tone: #ffd166; border-color: rgba(255, 209, 102, 0.34); background: rgba(255, 209, 102, 0.07); }
+.schedule-method-row.status-in_progress { --job-tone: #ff8a3d; border-color: rgba(255, 138, 61, 0.34); background: rgba(255, 138, 61, 0.075); }
+.schedule-method-row.status-complete { --job-tone: #78dc96; border-color: rgba(120, 220, 150, 0.32); background: rgba(120, 220, 150, 0.07); }
+
+.schedule-method-row:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px -16px rgba(0, 0, 0, 0.9), 0 0 0 1px var(--job-tone);
+}
+
+/* A card being dragged should look like it has left the stack. */
+.schedule-method-row:has(.schedule-drag-handle.armed) {
+  border-color: var(--job-tone);
+  background: color-mix(in srgb, var(--job-tone) 14%, transparent);
+  box-shadow: 0 0 0 1px var(--job-tone), 0 0 26px -8px var(--job-tone);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .schedule-method-row { transition: none; }
+  .schedule-method-row:hover { transform: none; }
+}
