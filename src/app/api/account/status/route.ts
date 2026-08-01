@@ -27,7 +27,7 @@ export async function GET() {
 
   const admin = createAdminClient();
   await expireStaleLeads(admin, membership.accountId);
-  const [{ data: account }, { data: site }, { data: newLeadRows }, jobs] = await Promise.all([
+  const [{ data: account }, { data: site }, { data: newLeadRows }, { count: openLeadCount }, jobs] = await Promise.all([
     admin
       .from('accounts')
       .select(
@@ -48,6 +48,15 @@ export async function GET() {
       .eq('status', 'new')
       .order('created_at', { ascending: false })
       .limit(50),
+    // Pipeline inventory, not "needs you": every lead still being worked.
+    // 'won' is excluded alongside 'lost' — a won lead IS the job sitting in the
+    // Jobs total right beside it, so counting it here would bill the same work
+    // to both circles.
+    admin
+      .from('leads')
+      .select('id', { count: 'exact', head: true })
+      .eq('account_id', membership.accountId)
+      .not('status', 'in', '("won","lost")'),
       listJobs(admin, membership.accountId),
   ]);
       // Badges mean "needs YOUR attention", not inventory. Jobs = quotes still
@@ -56,6 +65,8 @@ export async function GET() {
       // lights up both badges.
       const jobsNeedingAttentionCount = jobs.filter((job) => job.status === 'new_lead').length;
       const unscheduledJobCount = jobs.filter((job) => job.status === 'in_progress' && !job.scheduled_for).length;
+      // Inventory to the attention badge's "needs you": everything not archived.
+      const activeJobCount = jobs.filter((job) => job.status !== 'archived').length;
 
       // Muting low-quality leads (default on) keeps them off the dashboard nag —
       // the badge/banner only counts leads that actually deserve a response.
@@ -97,6 +108,8 @@ export async function GET() {
     newQuoteRequestCount,
     jobsNeedingAttentionCount,
     unscheduledJobCount,
+    openLeadCount: openLeadCount ?? 0,
+    activeJobCount,
     newestQuoteRequestId: newestLead?.id ?? null,
     newestQuoteRequestCreatedAt: newestLead?.created_at ?? null,
     newestQuoteRequestHighValue,

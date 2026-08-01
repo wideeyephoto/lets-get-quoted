@@ -153,6 +153,19 @@
 .sendQuoteActions button[type="submit"] { flex: 1; }
 .sendQuoteActions :global(a.btn.primary) { flex: 1; }
 .stripeGateNote { margin: .35rem 0 0; font-size: .8rem; font-weight: 600; color: #ffb27a; }
+
+/* Top-of-form gate. Amber, not red: nothing has gone wrong and nothing is lost —
+   there's just a prerequisite, and the form below it still works. */
+.stripeGateBanner {
+  display: grid; gap: .45rem; margin: 0 0 .3rem; padding: .85rem .95rem;
+  border: 1px solid rgba(255, 178, 122, .42); border-left: 4px solid #ffb27a;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255, 178, 122, .14), rgba(255, 178, 122, .03) 66%), rgba(255, 255, 255, .03);
+}
+.stripeGateBanner strong { font-size: .92rem; color: #ffd0ab; }
+.stripeGateBanner p { margin: 0; font-size: .8rem; line-height: 1.45; color: rgba(247, 245, 239, .72); }
+.stripeGateActions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .15rem; }
+.stripeGateActions .btn { font-size: .82rem; }
 .previewQuoteBtn { flex: 0 0 auto; display: inline-flex; align-items: center; gap: .4rem; font-weight: 800; }
 .quoteItemsField { display: grid; gap: .55rem; padding: .85rem; border: 1px solid rgba(255,209,102,.3); border-radius: 14px; background: radial-gradient(circle at top right, rgba(255,209,102,.14), transparent 46%), rgba(255,255,255,.03); }
 .quoteItemsField > label { color: #ffd166; font-size: .86rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }

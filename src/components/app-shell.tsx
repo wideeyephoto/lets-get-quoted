@@ -76,6 +76,10 @@ type AccountStatus = {
   newQuoteRequestCount: number;
   jobsNeedingAttentionCount: number;
   unscheduledJobCount: number;
+  /** Leads still being worked — excludes won (now a job) and lost. */
+  openLeadCount: number;
+  /** Every job that isn't archived. */
+  activeJobCount: number;
   newestQuoteRequestId: string | null;
   newestQuoteRequestCreatedAt: string | null;
   newestQuoteRequestHighValue: boolean;
@@ -112,6 +116,11 @@ function navState(value: unknown): NavState {
   return value === 'on' || value === 'off' || value === 'paused' ? value : 'unknown';
 }
 
+// Both Stripe pills land on the Payments tab, not the top of Settings. Settings
+// opens on its first tab, so "Connect Stripe" used to drop you on a page of
+// unrelated cards with no Stripe in sight and leave you to find the right tab.
+export const STRIPE_SETUP_HREF = '/dashboard/settings#payments';
+
 const QUOTE_REQUEST_ALERT_DISMISSED_KEY = 'lgq-dismissed-quote-request-alert';
 
 function getPrimaryAction() {
@@ -131,6 +140,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [newQuoteRequestCount, setNewQuoteRequestCount] = useState(0);
   const [jobsNeedingAttentionCount, setJobsNeedingAttentionCount] = useState(0);
   const [unscheduledJobCount, setUnscheduledJobCount] = useState(0);
+  const [openLeadCount, setOpenLeadCount] = useState(0);
+  const [activeJobCount, setActiveJobCount] = useState(0);
   const [newestQuoteRequestId, setNewestQuoteRequestId] = useState<string | null>(null);
   const [newestQuoteRequestCreatedAt, setNewestQuoteRequestCreatedAt] = useState<string | null>(null);
   const [newestLeadHighValue, setNewestLeadHighValue] = useState(false);
@@ -248,6 +259,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       setNewQuoteRequestCount(0);
       setJobsNeedingAttentionCount(0);
       setUnscheduledJobCount(0);
+      setOpenLeadCount(0);
+      setActiveJobCount(0);
       setNewestQuoteRequestId(null);
       setNewestQuoteRequestCreatedAt(null);
       setNewestLeadHighValue(false);
@@ -270,6 +283,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             setNewQuoteRequestCount(Number(data.newQuoteRequestCount ?? 0));
             setJobsNeedingAttentionCount(Number(data.jobsNeedingAttentionCount ?? 0));
             setUnscheduledJobCount(Number(data.unscheduledJobCount ?? 0));
+            setOpenLeadCount(Number(data.openLeadCount ?? 0));
+            setActiveJobCount(Number(data.activeJobCount ?? 0));
             setNewestQuoteRequestId(data.newestQuoteRequestId ?? null);
             setNewestQuoteRequestCreatedAt(data.newestQuoteRequestCreatedAt ?? null);
             setNewestLeadHighValue(Boolean(data.newestQuoteRequestHighValue));
@@ -336,11 +351,20 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       '/dashboard/jobs': jobsNeedingAttentionCount,
       '/dashboard/schedule': unscheduledJobCount,
     };
+    // Inventory beside attention. The filled circle has always meant "these
+    // need you today" and stays that way; the hollow one is simply how much is
+    // in the pipeline, so a quiet day reads as 0 needing you out of 12 open
+    // rather than as an empty rail.
+    const totalByHref: Record<string, { count: number; title: string }> = {
+      '/dashboard/leads': { count: openLeadCount, title: `${openLeadCount} open lead${openLeadCount === 1 ? '' : 's'} (won and lost not counted)` },
+      '/dashboard/jobs': { count: activeJobCount, title: `${activeJobCount} active job${activeJobCount === 1 ? '' : 's'} (archived not counted)` },
+    };
     const renderSideLink = (href: string, extraClass = '') => {
       const item = byHref.get(href);
       if (!item) return null;
       const active = isActiveNav(pathname, href);
       const count = countByHref[href] ?? 0;
+      const total = totalByHref[href];
       const state =
         href === '/dashboard/extra-stops' ? extraStopState : href === '/dashboard/schedule/booking' ? bookingState : 'unknown';
       return (
@@ -361,6 +385,9 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             </span>
           ) : null}
           {count > 0 ? <span className="sidenav-count">{count}</span> : null}
+          {total && total.count > 0 ? (
+            <span className="sidenav-total" title={total.title}>{total.count}</span>
+          ) : null}
         </Link>
       );
     };
@@ -464,7 +491,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               </Link>
             </div>
             <Link
-              href="/dashboard/settings"
+              href={STRIPE_SETUP_HREF}
               className={`stripe-status-pill sidenav-stripe${stripeOnboarded === null ? ' checking' : stripeOnboarded ? ' connected' : ' warning'}`}
               title={stripeOnboarded ? 'Stripe payouts connected' : 'Stripe payouts not connected — click to finish setup'}
             >
@@ -648,8 +675,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
 
           {isDashboard && isLoggedIn ? (
             <Link
-              href="/dashboard/settings"
-              className={`stripe-status-pill${stripeOnboarded === null ? ' checking' : stripeOnboarded ? ' connected' : ' warning'}`}
+              href={STRIPE_SETUP_HREF}
+              className={`stripe-status-pill topbar-stripe${stripeOnboarded === null ? ' checking' : stripeOnboarded ? ' connected' : ' warning'}`}
               title={stripeOnboarded ? 'Stripe payouts connected' : 'Stripe payouts not connected — click to finish setup'}
             >
               {/* A constant "$" mark — the state is carried by the tile colour AND

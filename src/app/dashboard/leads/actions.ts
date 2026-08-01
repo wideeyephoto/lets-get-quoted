@@ -213,10 +213,19 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
     }
   }
   const amount = quoteItems.length ? computeQuoteTotal(quoteItems) : Number(formData.get('quotedAmount'));
-  if (!Number.isFinite(amount) || amount < 1) {
-    throw new Error('Add at least one line item totaling $1 or more before sending the quote.');
+  // Recurring plans are deliberately outside the one-off total (they bill on
+  // their own cadence), which meant a quote made ONLY of a plan — "$99/mo
+  // maintenance, no upfront work" — computed to $0 and was rejected as empty.
+  // A plan is a real thing to quote, so it satisfies the "something to bill for"
+  // check on its own; the job's one-off amount is genuinely $0 in that case.
+  const recurringTotal = quoteItems.reduce(
+    (sum, item) => (item.kind === 'subscription' ? sum + (Number(item.amount) || 0) : sum),
+    0,
+  );
+  if (!Number.isFinite(amount) || (amount < 1 && recurringTotal < 1)) {
+    throw new Error('Add at least one line item or recurring plan worth $1 or more before sending the quote.');
   }
-  const quotedAmount = amount;
+  const quotedAmount = Number.isFinite(amount) ? Math.max(0, amount) : 0;
   const estimatedHours = optionalAmount(formData.get('estimatedHours'));
   const showHoursToClient = formData.get('showHoursToClient') === 'on';
   const sendClientText = formData.get('sendClientText') === 'on';

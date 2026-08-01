@@ -20,6 +20,7 @@ import LeadAvailabilityScheduler from './LeadAvailabilityScheduler';
 import QuoteStartDateCalendar from './QuoteStartDateCalendar';
 import SaveButton, { ScrollTopOnSaveProvider } from '@/components/save-button';
 import QuickFillButtons from '@/components/quick-fill-buttons';
+import StripeQuoteGate from './StripeQuoteGate';
 import styles from '../leads.module.css';
 
 function extractCity(address: string | null): string {
@@ -453,6 +454,8 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
               <div className="section-heading workspace-section-heading"><p className="eyebrow">Step 2</p><h2>Send the quote</h2></div>
               <p>Enter the amount and text the client their quote. Job start options can stay tucked away until you need them.</p>
               <form id="send-quote-form" action={convertLead} className={styles.actionForm}>
+                {/* Before the work, not after it. */}
+                <StripeQuoteGate connected={stripeConnected} />
                 <div className={styles.quoteItemsField}>
                   <label>Quote line items</label>
                   <LeadQuoteFields initialItems={quoteSeedItems} />
@@ -502,14 +505,16 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
                     businessName={quoteBusinessName}
                     clientName={lead.name ?? ''}
                   />
-                  {stripeConnected ? (
-                    <SaveButton>Send quote</SaveButton>
-                  ) : (
-                    <Link className="btn primary" href="/dashboard/settings">🔒 Connect Stripe to send</Link>
-                  )}
+                  {/* Disabled rather than swapped for a link. The link navigated
+                      away, which threw the half-built quote out — and the button
+                      moving position between states made the form re-flow the
+                      moment Stripe connected. */}
+                  <SaveButton disabled={!stripeConnected}>
+                    {stripeConnected ? 'Send quote' : '🔒 Connect Stripe to send'}
+                  </SaveButton>
                 </div>
                 {!stripeConnected ? (
-                  <p className={styles.stripeGateNote}>Quotes collect payment through Stripe — connect it first so clients can pay and deposits work.</p>
+                  <p className={styles.stripeGateNote}>Nothing is lost while you connect — this stays as you left it.</p>
                 ) : null}
               </form>
             </section>

@@ -21,6 +21,10 @@ type Props = {
   // server actions — e.g. "Save & text" vs "Save, no text".
   formAction?: (formData: FormData) => void | Promise<void>;
   'aria-label'?: string;
+  // Blocked for a reason other than "already submitting" — e.g. a prerequisite
+  // the owner has to go and set up first. Kept separate from `pending` so the
+  // label and the busy state don't have to lie about which one it is.
+  disabled?: boolean;
 };
 
 // Submit button for a Server Action form. Shows a pending state while the
@@ -32,6 +36,7 @@ export default function SaveButton({
   className = 'btn primary',
   formAction,
   'aria-label': ariaLabel,
+  disabled = false,
 }: Props) {
   const { pending } = useFormStatus();
   const scrollTopOnSave = useContext(ScrollTopOnSaveContext);
@@ -49,7 +54,7 @@ export default function SaveButton({
   }, [pending, scrollTopOnSave]);
 
   return (
-    <button type="submit" className={className} disabled={pending} aria-busy={pending} formAction={formAction} aria-label={ariaLabel}>
+    <button type="submit" className={className} disabled={pending || disabled} aria-busy={pending} formAction={formAction} aria-label={ariaLabel}>
       {pending ? pendingLabel : showSaved ? savedLabel : children}
     </button>
   );
