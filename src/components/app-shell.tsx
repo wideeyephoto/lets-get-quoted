@@ -21,6 +21,7 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard/schedule/booking', label: 'Online Booking', hint: 'Your public booking page & availability' },
   { href: '/dashboard/extra-stops', label: 'Extra Stops', hint: 'Same-day route add-ons' },
   { href: '/dashboard/recurring', label: 'Recurring', hint: 'Repeating jobs & auto-billing' },
+  { href: '/dashboard/cash-flow', label: 'Cash flow', hint: 'Upcoming bills, payroll & projected balance' },
   { href: '/dashboard/services', label: 'Price book', hint: 'Saved services & prices' },
   // Crew and hours are one destination, not two. They were split across a
   // "Crew" page and a "Payroll" page that could only be reached from a link
@@ -64,7 +65,7 @@ const FLOW_CLASS: Record<string, string> = {
 const NAV_GROUPS: { label: string; hrefs: string[] }[] = [
   { label: 'Work', hrefs: ['/dashboard/leads', '/dashboard/jobs', '/dashboard/schedule', '/dashboard/schedule/booking', '/dashboard/extra-stops', '/dashboard/clients'] },
   { label: 'Team', hrefs: ['/dashboard/crew'] },
-  { label: 'Money', hrefs: ['/dashboard/recurring', '/dashboard/services', '/dashboard/insights'] },
+  { label: 'Money', hrefs: ['/dashboard/cash-flow', '/dashboard/recurring', '/dashboard/services', '/dashboard/insights'] },
   { label: 'Grow', hrefs: ['/dashboard/messages', '/dashboard/campaigns', '/dashboard/rebook', '/dashboard/reviews'] },
 ];
 

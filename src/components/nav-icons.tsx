@@ -14,6 +14,9 @@ export const NAV_ICON_PATHS: Record<string, string> = {
   '/dashboard/extra-stops': '<path d="M20 10c0 5-8 11-8 11s-8-6-8-11a8 8 0 0 1 16 0z"/><path d="M12.5 5.5l-3 4h3l-1 4 3.2-4.4h-2.9z"/>',
   '/dashboard/crew': '<path d="M2.6 17.5h18.8"/><path d="M4.5 17.5a7.5 7.5 0 0 1 15 0"/><path d="M9.4 8.6V6.4A1.6 1.6 0 0 1 11 4.8h2a1.6 1.6 0 0 1 1.6 1.6v2.2"/>',
   '/dashboard/recurring': '<path d="M17 3l3.2 3.2L17 9.4"/><path d="M20.2 6.2H8.5a4.3 4.3 0 0 0-4.3 4.3v.6"/><path d="M7 21l-3.2-3.2L7 14.6"/><path d="M3.8 17.8h11.7a4.3 4.3 0 0 0 4.3-4.3v-.6"/>',
+  // A balance line riding over a dashed floor — deliberately not the Insights
+  // icon, which is a line going cleanly up. This one dips.
+  '/dashboard/cash-flow': '<path d="M3.5 7.8l4.2 4.6 3.4-2.8 3.6 5.2 5.8-7.4"/><path d="M3.5 18.8h17" stroke-dasharray="2.5 2.5"/>',
   '/dashboard/services': '<path d="M11.5 3.5H5a1.5 1.5 0 0 0-1.5 1.5v6.5a1.5 1.5 0 0 0 .44 1.06l7.5 7.5a1.5 1.5 0 0 0 2.12 0l6.5-6.5a1.5 1.5 0 0 0 0-2.12l-7.5-7.5A1.5 1.5 0 0 0 11.5 3.5z"/><circle cx="8" cy="8" r="1.3"/>',
   '/dashboard/insights': '<path d="M3.5 17.5l5.5-5.5 3.5 3.5 7.5-7.5"/><path d="M15 7.5h5.5V13"/>',
   '/dashboard/messages': '<path d="M3.6 6.6A2 2 0 0 1 5.6 4.6h12.8a2 2 0 0 1 2 2v6.6a2 2 0 0 1-2 2H9l-4.2 3.6v-3.6H5.6a2 2 0 0 1-2-2z"/>',
