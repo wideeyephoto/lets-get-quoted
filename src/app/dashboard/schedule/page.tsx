@@ -462,6 +462,14 @@ export default async function SchedulePage({
   return (
     <main className="wide-shell workspace-shell">
       <ScheduleDragProvider unavailable={unavailableDays}>
+      {/* CALENDAR AND THE JOBS THAT NEED A DATE, SIDE BY SIDE.
+          Dragging is resolved by hit-testing whatever is under the pointer
+          (ScheduleDragProvider), and nothing auto-scrolls — so the job and the
+          date it is going onto have to be on screen together or the gesture is
+          impossible. Stacked, they never were: the calendar ran ~700px, the map
+          another ~400, and the list of unscheduled jobs started a screen and a
+          half below the grid it was meant to be dragged into. */}
+      <div className="schedule-workbench">
       <section className="panel workspace-section-card schedule-calendar-panel">
         {/* Two rows, not six. The page used to spend ~470px on desktop and
             ~640px on mobile introducing itself — an eyebrow, a title, a lead
@@ -537,11 +545,11 @@ export default async function SchedulePage({
         </div>
       </section>
 
-      {/* Under the calendar, not above it. The map is context for the month
-          you're looking at — leading with it meant the page opened on a picture
-          of Michigan before it said which page you were on. */}
-      <ScheduleMap pins={mapPins} mapView={mapView} mapTheme={mapTheme} />
-
+      {/* The rail. Jobs first because that is the drag source and it wants to
+          be level with the top of the grid; the map sits under it as context
+          for the month rather than a working surface — the real map work is
+          Plan my day. */}
+      <aside className="schedule-rail">
       {unscheduledJobs.length > 0 ? (
         <section className="panel workspace-section-card" id="unscheduled-jobs">
           <div className="section-heading workspace-section-heading">
@@ -712,6 +720,9 @@ export default async function SchedulePage({
         </section>
       ) : null}
 
+      <ScheduleMap pins={mapPins} mapView={mapView} mapTheme={mapTheme} />
+      </aside>
+      </div>
 
       {/* Everything below is configured once and then rarely touched. Folded by
           default and mutually exclusive, so the page ends with a short list of

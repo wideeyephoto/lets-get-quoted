@@ -10442,6 +10442,120 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
    Schedule map, now below the calendar
 --------------------------------------------------------------------------- */
 
+/* ---------------------------------------------------------------------------
+   The schedule workbench: calendar + a rail of everything you drag from
+--------------------------------------------------------------------------- */
+
+/* Single column by default — this is the phone, and three surfaces cannot share
+   a phone screen. Two columns only once there is genuinely room for a 7-column
+   grid AND a readable rail beside it. */
+.schedule-workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.9rem;
+  align-items: start;
+}
+
+@media (min-width: 1100px) {
+  .schedule-workbench {
+    grid-template-columns: minmax(0, 1fr) minmax(21rem, 24rem);
+  }
+
+  /* Sticky, so the jobs stay level with the grid however far down the month you
+     scroll.
+     THE HEIGHT CAP IS WHAT MAKES STICKY WORK. Measured without it, the rail came
+     out 1155px against a 950px viewport, and an element taller than the screen
+     cannot stick — it just scrolls until its bottom arrives. Capped to the
+     viewport, the jobs list takes the slack and scrolls inside itself while the
+     map stays pinned beneath it, so both are on screen at every scroll position.
+     Safe to scroll internally only because the rail's popovers are laid out
+     inline (below) rather than floating — an overflow ancestor would have
+     clipped an absolutely positioned panel. */
+  .schedule-rail {
+    position: sticky;
+    top: 1rem;
+    max-height: calc(100vh - 2rem);
+  }
+
+  .schedule-rail > #unscheduled-jobs {
+    flex: 1 1 auto;
+    min-height: 8rem;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .schedule-rail > #unscheduled-jobs .sign-in-methods-list {
+    overflow-y: auto;
+    min-height: 0;
+    padding-right: 0.3rem;
+  }
+}
+
+.schedule-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+.schedule-rail > * { flex: 0 0 auto; min-width: 0; }
+
+/* The heading was sized for a full-width panel: at 21rem "Unscheduled jobs" ran
+   to two lines and ate the space the jobs themselves need. */
+.schedule-rail .workspace-section-card { padding: 0.9rem 0.85rem; }
+.schedule-rail .workspace-section-heading { margin-bottom: 0.6rem; }
+.schedule-rail .workspace-section-heading h2 { font-size: 1.15rem; letter-spacing: -0.01em; }
+.schedule-rail .schedule-drag-hint { font-size: 0.76rem; line-height: 1.4; }
+
+/* --- the rail's compact job card ---
+   Same markup as the full-width list; only the shape changes. At 21rem the
+   row's name-beside-buttons layout has nowhere to go, so it stacks. */
+.schedule-rail .sign-in-method-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.6rem;
+  padding: 0.7rem 0.75rem;
+}
+
+.schedule-rail .schedule-method-row .method-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.schedule-rail .method-detail { font-size: 0.74rem; line-height: 1.35; }
+
+.schedule-rail .schedule-action-buttons {
+  justify-content: stretch;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.schedule-rail .schedule-action-buttons > * { flex: 1 1 8rem; }
+.schedule-rail .schedule-action-buttons .btn { min-width: 0; width: 100%; font-size: 0.8rem; }
+.schedule-rail .schedule-drag-handle { justify-content: center; width: 100%; }
+
+/* In the rail the popovers open INLINE rather than floating. A 720px floating
+   panel anchored to a 21rem column would hang across the calendar and cover the
+   dates you are trying to read. */
+.schedule-rail .schedule-popover-panel {
+  position: static;
+  width: auto;
+  max-height: none;
+  margin-top: 0.5rem;
+  box-shadow: none;
+}
+
+.schedule-rail .schedule-popover-panel::before { display: none; }
+
+/* The map is context here, not a work surface, so it takes a fixed slice of the
+   rail rather than the 46vh it claims full-width — at that height it alone
+   would fill the rail and push the jobs off screen, which is the exact problem
+   this layout exists to solve. */
+.schedule-rail .pin-map { height: 15rem; }
+.schedule-rail .pin-map-shell { margin-top: 0.6rem; }
+.schedule-rail .pin-map-legend { gap: 0.35rem 0.6rem; font-size: 0.78rem; }
+
 .schedule-map { margin-bottom: 0; }
 
 /* Map switched off: the gear still has to be reachable, or there'd be no way
