@@ -13624,6 +13624,9 @@ a.bset-card { color: inherit; text-decoration: none; }
    it cannot be mistaken for a data series.
    =========================================================================== */
 
+/* The chart lives in the hero, so .cash-hero MUST carry these — every stroke
+   colour on the plot resolves against them. */
+.cash-hero,
 .cash-controls,
 .cash-chart-card,
 .cash-events-card,
@@ -13698,8 +13701,8 @@ a.bset-card { color: inherit; text-decoration: none; }
 .cash-range {
   width: 100%;
   height: 22px;
-  appearance: none;
   -webkit-appearance: none;
+  appearance: none;
   background: none;
   cursor: pointer;
 }
@@ -14180,3 +14183,47 @@ a.bset-card { color: inherit; text-decoration: none; }
 .cash-start-tick { stroke: var(--cash-projected); stroke-width: 1.5; stroke-dasharray: 2 3; opacity: 0.7; }
 .cash-handle-start:hover .cash-start-tick,
 .cash-handle-start:focus-visible .cash-start-tick { opacity: 1; }
+
+/* --- The chart in the hero -------------------------------------------------
+   Between the lead paragraph and the window tabs, full width. The hero's usual
+   two-column grid is dropped (workspace-hero-solo) because a 340px plot in a
+   1.3fr text column is a sparkline, not a forecast.
+   -------------------------------------------------------------------------- */
+
+/* `1fr` is `minmax(auto, 1fr)`, and that `auto` floor is the column's MIN-CONTENT
+   width — which the chart's fixed-width <svg> sets to whatever it was last
+   measured at. On a phone the hero blew out to 773px inside a 430px viewport and
+   took the whole page sideways with it. minmax(0, …) lets the column shrink, and
+   min-width: 0 does the same for the flex/block chain underneath it. */
+.workspace-hero.cash-hero { grid-template-columns: minmax(0, 1fr); }
+.cash-hero .workspace-hero-copy { justify-content: flex-start; min-width: 0; }
+.cash-hero-chart { min-width: 0; }
+
+/* 14ch is right for a title beside a visual; here the visual is underneath, so
+   the headline gets the room it was already sitting in. */
+.cash-hero .workspace-title { max-width: 24ch; }
+
+.cash-hero-chart { margin: 1.15rem 0 0.25rem; }
+
+.cash-hero-chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.55rem;
+}
+
+.cash-hero-chart-label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(247, 245, 239, 0.56);
+}
+
+/* The hero's own tint sits behind the plot, so the chart panel needs a solid
+   ground of its own or the orange wash bleeds through the overdraft band. */
+.cash-hero .cash-chart-wrap { background: rgba(4, 11, 19, 0.72); }
+
+.cash-hero .insight-window-tabs { margin-top: 0.9rem; }
+

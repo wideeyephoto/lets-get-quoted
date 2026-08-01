@@ -34,31 +34,13 @@ export default async function CashFlowPage({ searchParams }: { searchParams: { w
 
   return (
     <main className="wide-shell workspace-shell">
-      <section className="workspace-hero panel">
-        <div className="workspace-hero-copy">
-          <p className="eyebrow">Cash flow</p>
-          <h1 className="workspace-title">Will the money be there?</h1>
-          <p className="workspace-lead">
-            Payroll, bills and materials going out; deposits, invoices and plans coming in. Put in what&rsquo;s actually in the
-            bank and this shows you the balance day by day — and the first day it gets uncomfortable.
-          </p>
-          <div className="insight-window-tabs" role="tablist" aria-label="Forecast window">
-            {WINDOWS.map((option) => (
-              <Link
-                key={option.key}
-                href={`/dashboard/cash-flow?window=${option.key}`}
-                className={`insight-window-tab${option.key === selected.key ? ' is-active' : ''}`}
-                aria-selected={option.key === selected.key}
-                role="tab"
-              >
-                {option.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
+      {/* The hero is rendered by the board, not here: the chart lives inside it,
+          and the chart is client state. Splitting the hero across a server and a
+          client component to keep two static paragraphs up here would buy
+          nothing. */}
       <CashFlowBoard
+        windows={WINDOWS}
+        selectedKey={selected.key}
         events={sources.events}
         todayKey={todayKey}
         horizonDays={selected.days}

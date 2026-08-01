@@ -14,6 +14,8 @@ import CashChart, { type LineKey } from './CashChart';
 // a dial rather than a page load.
 
 type Props = {
+  windows: { key: string; label: string; days: number }[];
+  selectedKey: string;
   events: CashEvent[];
   todayKey: string;
   horizonDays: number;
@@ -70,6 +72,8 @@ function daysAgo(iso: string): number {
 }
 
 export default function CashFlowBoard({
+  windows,
+  selectedKey,
   events,
   todayKey,
   horizonDays,
@@ -128,8 +132,113 @@ export default function CashFlowBoard({
       ? { tone: 'warn', text: `Dips into your buffer ${dayLabel(forecast.firstBelowBuffer.dateKey)}` }
       : { tone: 'ok', text: 'Stays above your buffer' };
 
+  const chart = (
+    <>
+      <CashChart
+        forecast={forecast}
+        buffer={buffer}
+        creditLine={creditLine}
+        lines={lines}
+        lateDays={lateDays || LATE_DAYS_DEFAULT}
+        onBufferChange={setBuffer}
+        onBalanceChange={setBalance}
+        selected={selected}
+        onSelect={setSelected}
+      />
+
+      <div className="cash-legend">
+        <span className="cash-legend-item">
+          <i className="cash-swatch projected" /> Projected balance
+        </span>
+        <span className="cash-legend-item">
+          <i className="cash-swatch confirmed" /> Confirmed money only
+        </span>
+        {worstLine ? (
+          <span className="cash-legend-item">
+            <i className="cash-swatch worst" /> Payments {lateDays || LATE_DAYS_DEFAULT} days late
+          </span>
+        ) : null}
+        <span className="cash-legend-item">
+          <i className="cash-swatch buffer" /> Safety buffer
+        </span>
+        <span className="cash-legend-item">
+          <i className="cash-marker-key solid" /> Confirmed event
+        </span>
+        <span className="cash-legend-item">
+          <i className="cash-marker-key hollow" /> Estimated event
+        </span>
+      </div>
+
+      <details className="cash-line-toggles">
+        <summary>Add more lines</summary>
+        <div className="cash-toggle-grid">
+          <label className="cash-toggle">
+            <input
+              type="checkbox"
+              checked={lines.confirmed}
+              onChange={(event) => setLines((current) => ({ ...current, confirmed: event.target.checked }))}
+            />
+            <span>
+              <strong>Confirmed money only</strong>
+              <small>Ignores every estimate. The gap between the two lines is how much of this forecast is a guess.</small>
+            </span>
+          </label>
+          {OPTIONAL_LINES.map((option) => (
+            <label className="cash-toggle" key={option.key}>
+              <input
+                type="checkbox"
+                checked={lines[option.key]}
+                disabled={option.key === 'credit' && creditLine <= 0}
+                onChange={(event) => setLines((current) => ({ ...current, [option.key]: event.target.checked }))}
+              />
+              <span>
+                <strong>{option.label}</strong>
+                <small>{option.key === 'credit' && creditLine <= 0 ? 'Set a credit line above to use this.' : option.hint}</small>
+              </span>
+            </label>
+          ))}
+        </div>
+      </details>
+    </>
+  );
+
   return (
     <>
+      {/* Single column, not the usual two: the chart is the hero, and a 340px
+          plot squeezed into a 1.3fr text column is a sparkline. */}
+      <section className="workspace-hero panel workspace-hero-solo cash-hero">
+        <div className="workspace-hero-copy">
+          <p className="eyebrow">Cash flow</p>
+          <h1 className="workspace-title">Will the money be there?</h1>
+          <p className="workspace-lead">
+            Payroll, bills and materials going out; deposits, invoices and plans coming in. Put in what&rsquo;s actually in the
+            bank and this shows you the balance day by day — and the first day it gets uncomfortable.
+          </p>
+
+          <div className="cash-hero-chart">
+            <div className="cash-hero-chart-head">
+              <span className="cash-hero-chart-label">Projected account balance</span>
+              <span className={`cash-status-pill tone-${status.tone}`}>{status.text}</span>
+            </div>
+            {chart}
+          </div>
+
+          <div className="insight-window-tabs" role="tablist" aria-label="Forecast window">
+            {windows.map((option) => (
+              <Link
+                key={option.key}
+                href={`/dashboard/cash-flow?window=${option.key}`}
+                className={`insight-window-tab${option.key === selectedKey ? ' is-active' : ''}`}
+                aria-selected={option.key === selectedKey}
+                role="tab"
+              >
+                {option.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <form action={saveSettings} className="panel cash-controls">
         <div className="cash-control-grid">
           <div className="cash-control">
@@ -319,82 +428,6 @@ export default function CashFlowBoard({
           </p>
         </article>
       </div>
-
-      <section className="panel workspace-section-card cash-chart-card">
-        <div className="section-heading workspace-section-heading cash-chart-heading">
-          <div>
-            <p className="eyebrow">Projected account balance</p>
-            <h2>What the bank should say each day</h2>
-          </div>
-          <span className={`cash-status-pill tone-${status.tone}`}>{status.text}</span>
-        </div>
-
-        <CashChart
-          forecast={forecast}
-          buffer={buffer}
-          creditLine={creditLine}
-          lines={lines}
-          lateDays={lateDays || LATE_DAYS_DEFAULT}
-          onBufferChange={setBuffer}
-          onBalanceChange={setBalance}
-          selected={selected}
-          onSelect={setSelected}
-        />
-
-        <div className="cash-legend">
-          <span className="cash-legend-item">
-            <i className="cash-swatch projected" /> Projected balance
-          </span>
-          <span className="cash-legend-item">
-            <i className="cash-swatch confirmed" /> Confirmed money only
-          </span>
-          {worstLine ? (
-            <span className="cash-legend-item">
-              <i className="cash-swatch worst" /> Payments {lateDays || LATE_DAYS_DEFAULT} days late
-            </span>
-          ) : null}
-          <span className="cash-legend-item">
-            <i className="cash-swatch buffer" /> Safety buffer
-          </span>
-          <span className="cash-legend-item">
-            <i className="cash-marker-key solid" /> Confirmed event
-          </span>
-          <span className="cash-legend-item">
-            <i className="cash-marker-key hollow" /> Estimated event
-          </span>
-        </div>
-
-        <details className="cash-line-toggles">
-          <summary>Add more lines</summary>
-          <div className="cash-toggle-grid">
-            <label className="cash-toggle">
-              <input
-                type="checkbox"
-                checked={lines.confirmed}
-                onChange={(event) => setLines((current) => ({ ...current, confirmed: event.target.checked }))}
-              />
-              <span>
-                <strong>Confirmed money only</strong>
-                <small>Ignores every estimate. The gap between the two lines is how much of this forecast is a guess.</small>
-              </span>
-            </label>
-            {OPTIONAL_LINES.map((option) => (
-              <label className="cash-toggle" key={option.key}>
-                <input
-                  type="checkbox"
-                  checked={lines[option.key]}
-                  disabled={option.key === 'credit' && creditLine <= 0}
-                  onChange={(event) => setLines((current) => ({ ...current, [option.key]: event.target.checked }))}
-                />
-                <span>
-                  <strong>{option.label}</strong>
-                  <small>{option.key === 'credit' && creditLine <= 0 ? 'Set a credit line above to use this.' : option.hint}</small>
-                </span>
-              </label>
-            ))}
-          </div>
-        </details>
-      </section>
 
       <section className="panel workspace-section-card cash-events-card">
         <div className="section-heading workspace-section-heading">
