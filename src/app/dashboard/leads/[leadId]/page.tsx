@@ -15,6 +15,7 @@ import DepositField from './DepositField';
 import LeadActionDeck from './LeadActionDeck';
 import LeadQuoteFields from './LeadQuoteFields';
 import QuotePreviewButton from './QuotePreviewButton';
+import UnsavedGuard from '@/components/unsaved-guard';
 import LeadAvailabilityScheduler from './LeadAvailabilityScheduler';
 import QuoteStartDateCalendar from './QuoteStartDateCalendar';
 import SaveButton, { ScrollTopOnSaveProvider } from '@/components/save-button';
@@ -439,9 +440,19 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
 
           {!lead.converted_job ? (
             <section id="lead-estimate" className={`panel workspace-section-card ${styles.sendQuoteSection} ${hasScheduledEstimate ? styles.primaryActionCard : ''}`}>
+              {/* A half-built quote is the most expensive thing on this page to
+                  lose, and the way it goes is a click on the sidebar — which
+                  fires no beforeunload at all. */}
+              <UnsavedGuard
+                formId="send-quote-form"
+                title="Leave without sending this quote?"
+                body="You've started a quote for this lead. Line items, hours and payment terms are not saved until you send it — leave now and they're gone."
+                stayLabel="Keep building it"
+                leaveLabel="Leave and lose it"
+              />
               <div className="section-heading workspace-section-heading"><p className="eyebrow">Step 2</p><h2>Send the quote</h2></div>
               <p>Enter the amount and text the client their quote. Job start options can stay tucked away until you need them.</p>
-              <form action={convertLead} className={styles.actionForm}>
+              <form id="send-quote-form" action={convertLead} className={styles.actionForm}>
                 <div className={styles.quoteItemsField}>
                   <label>Quote line items</label>
                   <LeadQuoteFields initialItems={quoteSeedItems} />
