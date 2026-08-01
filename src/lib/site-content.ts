@@ -506,14 +506,17 @@ export function getEstimateButtonLabel(
 export type SiteEstimateRangesContent = {
   enabled: boolean;
   emailField: 'off' | 'optional' | 'required';
-  // Optional intro video shown on the "request sent" screen, AFTER the lead is
-  // in. It is deliberately not offered anywhere earlier in the intake: a video
-  // in front of the estimate is a toll gate on the one thing the visitor came
-  // for. Here the ask is already answered, so the dwell time is a bonus rather
-  // than a cost.
-  introVideo: SiteIntroVideoContent;
 };
 
+// Optional intro video shown on the "request sent" screen, AFTER the lead is in.
+// It is deliberately not offered anywhere earlier: a video in front of the
+// estimate is a toll gate on the one thing the visitor came for. Here the ask is
+// already answered, so the dwell time is a bonus rather than a cost.
+//
+// Top-level, not under estimateRanges, because it belongs to BOTH intake
+// methods — Smart Intake's result screen and the classic form's thank-you.
+// Filing a shared setting under the smart-intake config would imply the classic
+// form couldn't have one.
 export type SiteIntroVideoContent = {
   enabled: boolean;
   /** Whatever the owner pasted; parsed to a video id at render (lib/youtube). */
@@ -567,6 +570,8 @@ export type NormalizedSiteContent = {
   testimonials: SiteTestimonialsContent;
   quoteForm: SiteQuoteFormContent;
   estimateRanges: SiteEstimateRangesContent;
+  /** Post-submit intro video — applies to whichever intake is active. */
+  introVideo: SiteIntroVideoContent;
   leadFilters: SiteLeadFiltersContent;
   // Whether the contractor's phone number appears anywhere on the public site
   // (call buttons, headers, footers, "or call" links). Off = every contact
@@ -919,7 +924,14 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const testimonials = isRecord(root.testimonials) ? root.testimonials : {};
   const quoteForm = isRecord(root.quoteForm) ? root.quoteForm : {};
   const estimateRanges = isRecord(root.estimateRanges) ? root.estimateRanges : {};
-  const introVideo = isRecord(estimateRanges.introVideo) ? estimateRanges.introVideo : {};
+  // Promoted from estimateRanges.introVideo once it applied to both intakes;
+  // the nested location is still read so sites saved before the move keep
+  // their video instead of silently losing it.
+  const introVideo = isRecord(root.introVideo)
+    ? root.introVideo
+    : isRecord(estimateRanges.introVideo)
+      ? estimateRanges.introVideo
+      : {};
   const leadFilters = isRecord(root.leadFilters) ? root.leadFilters : {};
   const fullyBooked = isRecord(leadFilters.fullyBooked) ? leadFilters.fullyBooked : {};
   const stickyCallBar = isRecord(root.stickyCallBar) ? root.stickyCallBar : {};
@@ -995,16 +1007,16 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       // is off". A legacy site that had both off now resolves to Smart Intake.
       enabled: quoteForm.enabled !== true,
       emailField: estimateRanges.emailField === 'off' || estimateRanges.emailField === 'required' ? estimateRanges.emailField : 'optional',
-      introVideo: {
-        // `enabled` is the owner's switch, kept raw. Folding "has a usable link"
-        // into it here would mean ticking the box in the builder immediately
-        // un-ticked itself — there's no link yet at that point, which is exactly
-        // when the URL field needs to appear. Whether it actually renders is
-        // isIntroVideoLive(), asked at the point of render.
-        enabled: toBoolean(introVideo.enabled),
-        url: toString(introVideo.url).slice(0, 300),
-        title: toString(introVideo.title, DEFAULT_INTRO_VIDEO_TITLE).slice(0, 60),
-      },
+    },
+    introVideo: {
+      // `enabled` is the owner's switch, kept raw. Folding "has a usable link"
+      // into it would mean ticking the box in the builder immediately un-ticked
+      // itself — there's no link yet at that point, which is exactly when the
+      // URL field needs to appear. Whether it actually renders is
+      // isIntroVideoLive(), asked at the point of render.
+      enabled: toBoolean(introVideo.enabled),
+      url: toString(introVideo.url).slice(0, 300),
+      title: toString(introVideo.title, DEFAULT_INTRO_VIDEO_TITLE).slice(0, 60),
     },
     phonePublic: root.phonePublic !== false,
     leadFilters: {

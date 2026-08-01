@@ -82,7 +82,7 @@ describe('youTubeEmbedSrc', () => {
 
 describe('intro video content', () => {
   it('defaults to off with no link', () => {
-    const video = getSiteContent({}).estimateRanges.introVideo;
+    const video = getSiteContent({}).introVideo;
     expect(video.enabled).toBe(false);
     expect(isIntroVideoLive(video)).toBe(false);
   });
@@ -90,21 +90,49 @@ describe('intro video content', () => {
   it('keeps the owner switch raw so ticking it in the builder sticks', () => {
     // Switched on before a link is pasted: `enabled` must survive, or the
     // builder's checkbox un-ticks itself and the URL field never appears.
-    const video = getSiteContent({ estimateRanges: { introVideo: { enabled: true } } }).estimateRanges.introVideo;
+    const video = getSiteContent({ introVideo: { enabled: true } }).introVideo;
     expect(video.enabled).toBe(true);
     expect(isIntroVideoLive(video)).toBe(false);
   });
 
   it('goes live only once the link actually parses', () => {
-    const good = getSiteContent({ estimateRanges: { introVideo: { enabled: true, url: `https://youtu.be/${ID}` } } });
-    expect(isIntroVideoLive(good.estimateRanges.introVideo)).toBe(true);
+    const good = getSiteContent({ introVideo: { enabled: true, url: `https://youtu.be/${ID}` } });
+    expect(isIntroVideoLive(good.introVideo)).toBe(true);
 
-    const bad = getSiteContent({ estimateRanges: { introVideo: { enabled: true, url: 'https://vimeo.com/123' } } });
-    expect(isIntroVideoLive(bad.estimateRanges.introVideo)).toBe(false);
+    const bad = getSiteContent({ introVideo: { enabled: true, url: 'https://vimeo.com/123' } });
+    expect(isIntroVideoLive(bad.introVideo)).toBe(false);
   });
 
   it('never renders when the owner has switched it off, link or not', () => {
-    const off = getSiteContent({ estimateRanges: { introVideo: { enabled: false, url: `https://youtu.be/${ID}` } } });
-    expect(isIntroVideoLive(off.estimateRanges.introVideo)).toBe(false);
+    const off = getSiteContent({ introVideo: { enabled: false, url: `https://youtu.be/${ID}` } });
+    expect(isIntroVideoLive(off.introVideo)).toBe(false);
+  });
+
+  it('still reads sites saved at the old nested location', () => {
+    // It shipped briefly under estimateRanges before it applied to both intake
+    // methods. Those sites must not silently lose their video.
+    const legacy = getSiteContent({ estimateRanges: { introVideo: { enabled: true, url: `https://youtu.be/${ID}`, title: 'Meet the owner' } } });
+    expect(isIntroVideoLive(legacy.introVideo)).toBe(true);
+    expect(legacy.introVideo.title).toBe('Meet the owner');
+  });
+
+  it('prefers the new location when a site somehow has both', () => {
+    const both = getSiteContent({
+      introVideo: { enabled: true, url: `https://youtu.be/${ID}`, title: 'Current' },
+      estimateRanges: { introVideo: { enabled: true, url: `https://youtu.be/${ID}`, title: 'Stale' } },
+    });
+    expect(both.introVideo.title).toBe('Current');
+  });
+
+  it('is independent of which intake method is active', () => {
+    // Same setting, both intakes — the classic form shows it on its thank-you
+    // screen just as Smart Intake shows it under the estimate.
+    const classic = getSiteContent({ quoteForm: { enabled: true }, introVideo: { enabled: true, url: `https://youtu.be/${ID}` } });
+    expect(classic.estimateRanges.enabled).toBe(false);
+    expect(isIntroVideoLive(classic.introVideo)).toBe(true);
+
+    const smart = getSiteContent({ quoteForm: { enabled: false }, introVideo: { enabled: true, url: `https://youtu.be/${ID}` } });
+    expect(smart.estimateRanges.enabled).toBe(true);
+    expect(isIntroVideoLive(smart.introVideo)).toBe(true);
   });
 });

@@ -6,6 +6,7 @@ import { getEstimateButtonLabel, getSiteContent } from '@/lib/site-content';
 import type { Site } from '@/lib/sites';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import HeroQuickForm from '@/lib/templates/HeroQuickForm';
+import IntroVideo from '@/lib/templates/IntroVideo';
 import styles from './quote-request-form.module.css';
 
 const MAX_PHOTOS = 6;
@@ -33,7 +34,8 @@ function QuoteRequestFormFull({ site }: QuoteRequestFormProps) {
   const contactStepRef = useRef<HTMLDivElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const shouldFocusStepRef = useRef(false);
-  const quoteForm = getSiteContent(site.content).quoteForm;
+  const siteContent = getSiteContent(site.content);
+  const quoteForm = siteContent.quoteForm;
   const emailRequired = quoteForm.emailRequired;
   const estimateLabel = getEstimateButtonLabel(quoteForm);
   const [step, setStep] = useState(0);
@@ -242,6 +244,11 @@ function QuoteRequestFormFull({ site }: QuoteRequestFormProps) {
       </div>
 
       {message && <p className={`${styles.message} ${message.type === 'success' ? styles.success : styles.error}`} role={message.type === 'error' ? 'alert' : 'status'}>{message.text}</p>}
+      {/* Same rule as the AI intake's result screen: only once the lead is
+          actually in, and never in front of the thing they came for. The classic
+          form has no estimate to sit under, so the confirmation message is what
+          it follows. */}
+      {message?.type === 'success' && <IntroVideo video={siteContent.introVideo} />}
     </form>
   );
 }

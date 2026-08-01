@@ -1616,8 +1616,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
                   <label className={styles.formField}><span>What visitors see it called</span><select value={siteContent.quoteForm.estimateLabel} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, estimateLabel: event.target.value as SiteQuoteFormContent['estimateLabel'] })}><option value="instant">&quot;Instant Estimate&quot;</option><option value="quick">&quot;Instant Quote&quot;</option></select><small>The heading + button on the AI intake card.</small></label>
                   <div className={styles.contentSubhead}><strong>Thank-you video</strong><small>optional</small></div>
                   <IntroVideoField
-                    video={siteContent.estimateRanges.introVideo}
-                    onChange={(introVideo) => updateEstimateRanges({ ...siteContent.estimateRanges, introVideo })}
+                    video={siteContent.introVideo}
+                    onChange={(introVideo) => updateSiteContent({ introVideo })}
                   />
                   <div className={styles.contentSubhead}><strong>Website-wide phone visibility</strong></div>
                   <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.phonePublic} onChange={(event) => updateSiteContent({ phonePublic: event.target.checked })} /><span><strong>Show phone number</strong><small>This controls whether your phone number and call buttons appear anywhere on your website.</small></span></label>
@@ -1673,6 +1673,14 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
                   <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.phonePublic} onChange={(event) => updateSiteContent({ phonePublic: event.target.checked })} /><span><strong>Show my phone number on my website</strong><small>Off = no call buttons anywhere — visitors reach you through the form instead. Texting still works either way. Site-wide setting.</small></span></label>
                   <label className={styles.formField}><span>What visitors see it called</span><input type="text" maxLength={40} value={siteContent.quoteForm.formHeading} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, formHeading: event.target.value })} placeholder="Request an Estimate" /><small className={styles.fieldHint}>The heading on the hero capture and the button in your header. The classic form replies later rather than pricing on the spot, so avoid wording that promises an instant number.</small></label>
                   <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.quoteForm.emailRequired} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, emailRequired: event.target.checked })} /><span><strong>Require email on quote form</strong><small>Ask homeowners for an email address on every request so future email campaigns have clean contact data.</small></span></label>
+                  {/* The same setting as the Smart Intake card, on the same
+                      content key — whichever intake is switched on can offer the
+                      video, and switching between them keeps whatever is set. */}
+                  <div className={styles.contentSubhead}><strong>Thank-you video</strong><small>optional</small></div>
+                  <IntroVideoField
+                    video={siteContent.introVideo}
+                    onChange={(introVideo) => updateSiteContent({ introVideo })}
+                  />
                 </SectionCard>
                 )}
 

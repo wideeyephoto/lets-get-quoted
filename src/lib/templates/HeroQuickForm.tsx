@@ -169,7 +169,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   // screen to hang the intro video off. The lead is in either way, which is the
   // condition the video is actually keyed on.
   const [sentWithoutEstimate, setSentWithoutEstimate] = useState(false);
-  const introVideo = siteContent.estimateRanges.introVideo;
+  const introVideo = siteContent.introVideo;
 
   const [chatQuestion, setChatQuestion] = useState('');
   const [chatAnswer, setChatAnswer] = useState('');
