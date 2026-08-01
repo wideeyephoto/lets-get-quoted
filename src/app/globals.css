@@ -10647,6 +10647,135 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 
 .schedule-bar-cta { flex: none; white-space: nowrap; }
 
+/* ---- Action buttons -------------------------------------------------------
+   The squared-off, glyph-led button that started on the job pane's hero and now
+   has to look the same wherever it turns up. It lives HERE rather than in
+   focus.module.css because it is no longer one pane's furniture — Plan my day
+   sits on the schedule bar, and a second copy of these rules would drift from
+   the first the moment either got a tweak.
+
+   Shape and type are borrowed from "Skip to quote" on the lead deck: .85rem/800
+   over a 13px radius rather than the app's default 999px pill.
+
+   Tone carries meaning and is the only thing a variant changes:
+     lead      orange, solid   — open the record this panel is describing
+     money-in  green,  solid   — collect money
+     money-out red,    hairline— spend money
+     plan      purple, solid   — go somewhere that decides your day
+   Colour is never the ONLY signal: every one of these is also labelled. */
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 3.15rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 13px;
+  border: 1px solid rgba(255, 122, 33, 0.5);
+  background: rgba(255, 122, 33, 0.11);
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 800;
+  white-space: nowrap;
+  text-align: center;
+  text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.action-btn:hover {
+  border-color: rgba(255, 122, 33, 0.85);
+  background: rgba(255, 122, 33, 0.19);
+  box-shadow: 0 10px 24px -12px var(--accent);
+  transform: translateY(-1px);
+}
+
+.action-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.action-btn--lead {
+  border-color: transparent;
+  background: linear-gradient(135deg, #ff5a1f 0%, #ff8a3d 100%);
+  color: #fff;
+  box-shadow: 0 12px 30px -14px rgba(255, 122, 33, 0.95);
+}
+
+.action-btn--lead:hover {
+  border-color: transparent;
+  background: linear-gradient(135deg, #ff5a1f 0%, #ff9a52 100%);
+  box-shadow: 0 16px 36px -14px rgba(255, 122, 33, 1);
+}
+
+/* The lead deck's "win" gradient — getting paid is the point of the software,
+   so this is the loudest button in any row it appears in. */
+.action-btn--money-in {
+  border-color: transparent;
+  background: linear-gradient(135deg, #2f9e5c 0%, #46c08d 100%);
+  color: #fff;
+  box-shadow: 0 12px 32px -12px rgba(63, 191, 139, 0.95);
+}
+
+.action-btn--money-in:hover {
+  border-color: transparent;
+  background: linear-gradient(135deg, #35b269 0%, #56d29d 100%);
+  box-shadow: 0 18px 40px -12px rgba(63, 191, 139, 1);
+}
+
+/* Outlined, not solid: a filled red button is this app's delete/void signal
+   (.btn.danger, the job danger zone), and spending money is neither. */
+.action-btn--money-out {
+  border-color: rgba(255, 101, 101, 0.5);
+  background: rgba(255, 101, 101, 0.12);
+  color: #ff8f8f;
+}
+
+.action-btn--money-out:hover {
+  border-color: rgba(255, 101, 101, 0.85);
+  background: rgba(255, 101, 101, 0.2);
+  box-shadow: 0 10px 24px -12px rgba(255, 101, 101, 0.9);
+}
+
+/* Purple is the one hue on this palette that isn't already spoken for — orange
+   is the brand, green is paid, red is spend, amber is a warning. That makes it
+   free to mean "planning", which is a mode rather than a money event. */
+.action-btn--plan {
+  border-color: transparent;
+  background: linear-gradient(135deg, #6d28d9 0%, #a855f7 100%);
+  color: #fff;
+  box-shadow: 0 12px 32px -12px rgba(147, 51, 234, 0.95);
+}
+
+.action-btn--plan:hover {
+  border-color: transparent;
+  background: linear-gradient(135deg, #7c3aed 0%, #b871fb 100%);
+  box-shadow: 0 18px 40px -12px rgba(147, 51, 234, 1);
+}
+
+/* 24-grid stroke glyphs, same drawing style as the sidebar rail. */
+.action-btn-ic {
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* An outlined glyph sits on the panel's own dark ground and needs the lift; on
+   a solid fill it already has all the contrast it can use, and a halo there
+   just smears the stroke. Set per variant so a colour added later can't
+   silently inherit the wrong one. */
+.action-btn .action-btn-ic { filter: drop-shadow(0 0 4px rgba(255, 122, 33, 0.65)); }
+.action-btn--money-out .action-btn-ic { filter: drop-shadow(0 0 4px rgba(255, 101, 101, 0.65)); }
+.action-btn--lead .action-btn-ic,
+.action-btn--money-in .action-btn-ic,
+.action-btn--plan .action-btn-ic { filter: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .action-btn { transition: none; }
+  .action-btn:hover { transform: none; }
+}
+
 /* Primary actions inside the dashboard glow. Scoped to the workspace shell on
    purpose — .btn.primary is also the button on every contractor's public site
    and on the marketing pages, and those are not this theme. */

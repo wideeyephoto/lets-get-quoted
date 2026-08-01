@@ -10,6 +10,7 @@ import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { deriveJobListBadge } from '@/lib/job-badges';
 import type { Invoice } from '@/lib/invoices';
 import type { Payment } from '@/lib/payments';
+import ActionIcon from '@/components/action-icon';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
 import { scheduleJobAction, sendClientScheduleOptionsAction, updateJobCrewAction } from '../jobs/actions';
@@ -495,8 +496,9 @@ export default async function SchedulePage({
             </a>
           </div>
 
-          <Link href="/dashboard/schedule/plan" className="btn primary schedule-bar-cta">
-            🧭 Plan my day
+          <Link href="/dashboard/schedule/plan" className="action-btn action-btn--plan schedule-bar-cta">
+            <ActionIcon name="plan" />
+            Plan my day
           </Link>
         </header>
 
