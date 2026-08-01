@@ -193,6 +193,99 @@
 
 .heroActions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
 
+/* --- job pane actions ---------------------------------------------------
+   Three fixed actions, so they get equal columns rather than widths set by
+   how long each label happens to be — "Request payment" was coming out 45%
+   wider than "Open job" and the row read as an accident.
+
+   Kept SEPARATE from .heroActions because the leads pane puts four buttons in
+   that row (Call, Text, Send quote, Open full lead) and thirds would break it.
+
+   The treatment comes from "Skip to quote" on the lead deck: an orange
+   hairline over a translucent orange wash, accent-coloured label, and a soft
+   radius instead of the app's default pill. What is NOT borrowed is that
+   button's sheen sweep — it earns attention there because it appears once, on
+   one lead, as a nudge. Three of them sweeping forever under every job you
+   click is a fidget, not a signal. */
+/* Flex with a floor, NOT three fixed columns. The copy column is only ~390px
+   on a 1500px laptop once the job list sits beside it, and a hard third of that
+   is 118px — every label wrapped to two lines and the row looked broken. A
+   10.5rem basis is the width "Request payment" actually needs, so three sit as
+   equal thirds when there's room (a wide desktop, the state the mockup shows)
+   and otherwise fall to two-then-one, each still filling its row. No sliver,
+   no wrapped label. */
+.heroActionsJob {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1.1rem;
+}
+
+.heroActionsJob > * { flex: 1 1 10.5rem; }
+
+.heroBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 3.15rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 13px;
+  border: 1px solid rgba(255, 122, 33, 0.5);
+  background: rgba(255, 122, 33, 0.11);
+  color: var(--accent);
+  /* .85rem/800 are Skip to quote's own values. */
+  font-size: 0.85rem;
+  font-weight: 800;
+  white-space: nowrap;
+  text-align: center;
+  text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.heroBtn:hover {
+  border-color: rgba(255, 122, 33, 0.85);
+  background: rgba(255, 122, 33, 0.19);
+  box-shadow: 0 10px 24px -12px var(--accent);
+  transform: translateY(-1px);
+}
+
+.heroBtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* The one action that opens the record it is describing stays solid, so the
+   row still has a first choice to make. */
+.heroBtnLead {
+  border-color: transparent;
+  background: linear-gradient(135deg, #ff5a1f 0%, #ff8a3d 100%);
+  color: #fff;
+  box-shadow: 0 12px 30px -14px rgba(255, 122, 33, 0.95);
+}
+
+.heroBtnLead:hover {
+  border-color: transparent;
+  background: linear-gradient(135deg, #ff5a1f 0%, #ff9a52 100%);
+  box-shadow: 0 16px 36px -14px rgba(255, 122, 33, 1);
+}
+
+/* 24px stroke glyphs, same house style as the sidebar rail. */
+.heroBtnIcon {
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.heroBtn:not(.heroBtnLead) .heroBtnIcon { filter: drop-shadow(0 0 4px rgba(255, 122, 33, 0.65)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .heroBtn { transition: none; }
+  .heroBtn:hover { transform: none; }
+}
+
 /* --- tabs --- */
 
 .tabs {
@@ -588,6 +681,8 @@
   .moneyStrip { padding: 0.75rem 1rem; gap: 0.5rem 1.1rem; }
   .moneyStripEnd { margin-left: 0; text-align: left; }
   .heroActions > * { flex: 1 1 100%; justify-content: center; }
+  /* On a phone, stack outright rather than let two squeeze onto a row. */
+  .heroActionsJob > * { flex: 1 1 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
