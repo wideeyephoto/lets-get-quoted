@@ -13552,3 +13552,64 @@ a.bset-card { color: inherit; text-decoration: none; }
   .schedule-method-row { transition: none; }
   .schedule-method-row:hover { transform: none; }
 }
+
+/* ---- Accepting a recurring plan on the owner's side ------------------- */
+/* Teal, matching the subscription line items in the quote builder, so the plan
+   reads as the same object in both places. */
+.accept-plan-list { display: grid; gap: 0.75rem; }
+.accept-plan-card {
+  display: grid; gap: 0.7rem; padding: 0.95rem;
+  border: 1px solid rgba(45, 190, 210, 0.4); border-left: 4px solid #2dbed2; border-radius: 12px;
+  background: linear-gradient(135deg, rgba(45, 190, 210, 0.12), rgba(45, 190, 210, 0.02) 62%), rgba(255, 255, 255, 0.03);
+}
+.accept-plan-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+.accept-plan-head strong { font-size: 0.98rem; color: #f7f5ef; }
+.accept-plan-head span { font-size: 0.84rem; font-weight: 700; color: #7fe0ef; }
+.accept-plan-field { display: grid; gap: 0.3rem; max-width: 20rem; }
+.accept-plan-field > span { font-size: 0.78rem; font-weight: 700; color: rgba(247, 245, 239, 0.85); }
+.accept-plan-field input {
+  width: 100%; min-height: 44px; padding: 0.55rem 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25); color: inherit; font: inherit;
+}
+.accept-plan-field small { font-size: 0.72rem; color: rgba(247, 245, 239, 0.5); }
+.accept-plan-modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 0.5rem; }
+.accept-plan-modes button {
+  display: grid; gap: 0.15rem; padding: 0.6rem 0.75rem; text-align: left; cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 10px;
+  background: rgba(0, 0, 0, 0.2); color: inherit;
+}
+.accept-plan-modes button.on { border-color: rgba(45, 190, 210, 0.75); background: rgba(45, 190, 210, 0.14); }
+.accept-plan-modes strong { font-size: 0.86rem; }
+.accept-plan-modes small { font-size: 0.72rem; color: rgba(247, 245, 239, 0.55); }
+.accept-plan-toggle { display: flex; align-items: flex-start; gap: 0.6rem; cursor: pointer; }
+.accept-plan-toggle input { width: 18px; height: 18px; margin-top: 0.15rem; accent-color: #2dbed2; }
+.accept-plan-toggle span { display: grid; gap: 0.15rem; }
+.accept-plan-toggle strong { font-size: 0.86rem; }
+.accept-plan-toggle small { font-size: 0.74rem; line-height: 1.4; color: rgba(247, 245, 239, 0.55); }
+.accept-plan-card .btn { justify-self: start; }
+/* The client's own signup row, now that it carries a date field too. */
+.client-sub-start { display: grid; gap: 0.25rem; }
+.client-sub-start > span { font-size: 0.76rem; font-weight: 700; }
+.client-sub-start input { min-height: 44px; padding: 0.5rem 0.6rem; border: 1px solid rgba(255,255,255,.18); border-radius: 8px; background: rgba(0,0,0,.2); color: inherit; font: inherit; }
+
+/* ---- Editing a live recurring plan ----------------------------------- */
+.plan-edit { display: grid; gap: 0.65rem; width: 100%; padding: 0.85rem; margin-top: 0.4rem; border: 1px solid rgba(45, 190, 210, 0.35); border-radius: 12px; background: rgba(45, 190, 210, 0.06); }
+.plan-edit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: 0.6rem; }
+.plan-edit-grid label { display: grid; gap: 0.28rem; min-width: 0; }
+.plan-edit-grid span { font-size: 0.75rem; font-weight: 700; color: rgba(247, 245, 239, 0.85); }
+.plan-edit-grid input, .plan-edit-grid select {
+  width: 100%; min-height: 42px; padding: 0.5rem 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25); color: inherit; font: inherit;
+}
+.plan-edit-grid select option { background: #101c2b; }
+.plan-edit-note, .plan-edit-warn { margin: 0; font-size: 0.75rem; line-height: 1.45; }
+.plan-edit-note { color: rgba(247, 245, 239, 0.55); }
+.plan-edit-warn { padding: 0.5rem 0.65rem; border-radius: 8px; border-left: 3px solid #ffd166; background: rgba(255, 209, 102, 0.1); color: #ffe0a3; }
+.plan-edit-confirm { display: flex; align-items: flex-start; gap: 0.55rem; padding: 0.6rem 0.7rem; border-radius: 8px; border: 1px solid rgba(255, 101, 101, 0.4); background: rgba(255, 101, 101, 0.08); cursor: pointer; }
+.plan-edit-confirm input { width: 18px; height: 18px; margin-top: 0.15rem; accent-color: #ff6565; }
+.plan-edit-confirm span { display: grid; gap: 0.15rem; }
+.plan-edit-confirm strong { font-size: 0.84rem; color: #ffc9c9; }
+.plan-edit-confirm small { font-size: 0.73rem; line-height: 1.4; color: rgba(247, 245, 239, 0.6); }
+.plan-edit-actions { display: flex; align-items: center; gap: 0.7rem; }

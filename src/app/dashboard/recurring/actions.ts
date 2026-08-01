@@ -11,6 +11,8 @@ import {
   deleteRecurringPlan,
   runRecurringPlanNow,
   todayDateKey,
+  updateRecurringPlan,
+  requiresReconsent,
   type RecurringFrequency,
 } from '@/lib/recurring';
 import { createCardSetupSession } from '@/lib/card-on-file';
@@ -175,4 +177,33 @@ async function sendCardLink(
   if (!anySent) {
     throw new Error('Could not send the card link (no email, and the phone isn’t opted in to texts).');
   }
+}
+
+/**
+ * Edit a live plan's price, cadence, or next visit date.
+ *
+ * A price rise on a plan that auto-charges is refused unless the owner confirms
+ * the client agreed to the new amount — the card on file is permission to take
+ * an agreed figure, not whatever the plan later says.
+ */
+export async function updatePlanAction(planId: string, formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const plan = await getRecurringPlan(supabase, accountId, planId);
+  if (!plan) throw new Error('Plan not found.');
+
+  const rawAmount = Number(formData.get('amount'));
+  const amount = Number.isFinite(rawAmount) && rawAmount >= 0 ? Math.round(rawAmount * 100) / 100 : plan.amount;
+  const rawFrequency = (formData.get('frequency') ?? '').toString();
+  const frequency = rawFrequency === 'weekly' || rawFrequency === 'biweekly' || rawFrequency === 'monthly' ? rawFrequency : plan.frequency;
+  const nextRunDate = (formData.get('nextRunDate') ?? '').toString().trim() || plan.next_run_date;
+
+  if (requiresReconsent(plan, amount) && formData.get('confirmIncrease') !== 'on') {
+    throw new Error(
+      `This plan charges a card on file. Confirm ${plan.client_name} agreed to the increase before raising it from $${plan.amount} to $${amount}.`,
+    );
+  }
+
+  await updateRecurringPlan(supabase, accountId, planId, { amount, frequency, nextRunDate });
+  revalidatePath('/dashboard/recurring');
+  revalidatePath('/dashboard/schedule');
 }

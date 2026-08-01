@@ -31,7 +31,10 @@ export async function startSubscriptionAction(token: string, formData: FormData)
   const itemId = (formData.get('itemId') ?? '').toString();
   if (!itemId) throw new Error('Missing plan.');
   const mode: SubscriptionSignupMode = formData.get('mode') === 'prepay' ? 'prepay' : 'cycle';
-  const { redirectUrl } = await startSubscriptionSignup(token, itemId, mode);
+  // The client picks when the plan starts. It used to begin the day they
+  // clicked, which silently anchored every future visit to that date.
+  const startDate = (formData.get('startDate') ?? '').toString().trim();
+  const { redirectUrl } = await startSubscriptionSignup(token, itemId, mode, startDate);
   revalidatePath(`/client/jobs/${token}`);
   redirect(redirectUrl);
 }

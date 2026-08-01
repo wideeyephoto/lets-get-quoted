@@ -9,7 +9,8 @@ import RecurringComposer from './RecurringComposer';
 import RecurringPlanCard from '@/components/recurring-plan-card';
 import RecurringHowItWorks from '@/components/recurring-how-it-works';
 import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
-import { setPlanActiveAction, deletePlanAction, resendCardLinkAction, runPlanNowAction } from './actions';
+import { setPlanActiveAction, deletePlanAction, resendCardLinkAction, runPlanNowAction, updatePlanAction } from './actions';
+import EditPlanPanel from './EditPlanPanel';
 
 const FLASH_MESSAGES: Record<string, { tone: 'success' | 'info' | 'warn'; text: string }> = {
   created: { tone: 'success', text: 'Recurring plan created — the next visits are on your calendar already. Each one is invoiced on the day it happens, not before.' },
@@ -137,6 +138,7 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
                       Run next visit now
                     </ConfirmActionButton>
                   ) : null}
+                  <EditPlanPanel plan={plan} today={today} action={updatePlanAction.bind(null, plan.id)} />
                   <form action={setPlanActiveAction.bind(null, plan.id, paused)}>
                     <button type="submit" className="btn secondary">{paused ? 'Resume' : 'Pause'}</button>
                   </form>

@@ -59,6 +59,9 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
   const formatPlanDay = (value: string | null) => (value ? new Date(`${value}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '');
   const pendingSubscriptions = dashboard.job.quote_items.filter((item) => item.kind === 'subscription' && !item.signedUp);
   const FREQ_LABEL: Record<string, string> = { weekly: '/wk', biweekly: '/2wk', monthly: '/mo' };
+  // Today, in the viewer's own terms. A plan can start today but never earlier —
+  // a back-dated first visit would generate visits that are already overdue.
+  const earliestStart = new Date().toISOString().slice(0, 10);
   const selectedScheduleOption = dashboard.scheduleRequest?.selected_index == null ? null : dashboard.scheduleRequest.options[dashboard.scheduleRequest.selected_index];
 
   return (
@@ -275,20 +278,22 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
                     <span className="cost-item-desc">{item.label}</span>
                     <span className="cost-item-sub">{formatMoney(item.amount)}{freq}{term > 0 ? ` · ${term} payments` : ''}</span>
                   </div>
-                  <div className="client-sub-signup-actions">
-                    <form action={startSubscriptionAction.bind(null, params.token)}>
-                      <input type="hidden" name="itemId" value={item.id} />
-                      <input type="hidden" name="mode" value="cycle" />
-                      <SaveButton className="btn secondary" pendingLabel="Starting...">Pay {formatMoney(item.amount)}{freq}</SaveButton>
-                    </form>
+                  {/* ONE form, two submit buttons. The date has to be shared:
+                      split across two forms, whichever button they didn't use
+                      would submit its own stale copy, and paying up front would
+                      quietly start the plan on a different day than paying per
+                      cycle. The pressed button carries `mode`. */}
+                  <form className="client-sub-signup-actions" action={startSubscriptionAction.bind(null, params.token)}>
+                    <input type="hidden" name="itemId" value={item.id} />
+                    <label className="client-sub-start">
+                      <span>First visit</span>
+                      <input type="date" name="startDate" defaultValue={earliestStart} min={earliestStart} required />
+                    </label>
+                    <SaveButton className="btn secondary" pendingLabel="Starting..." name="mode" value="cycle">Pay {formatMoney(item.amount)}{freq}</SaveButton>
                     {term > 0 ? (
-                      <form action={startSubscriptionAction.bind(null, params.token)}>
-                        <input type="hidden" name="itemId" value={item.id} />
-                        <input type="hidden" name="mode" value="prepay" />
-                        <SaveButton className="btn primary" pendingLabel="Starting...">Pay {formatMoney(prepaidTotal)} up front{discount > 0 ? ` · save ${discount}%` : ''}</SaveButton>
-                      </form>
+                      <SaveButton className="btn primary" pendingLabel="Starting..." name="mode" value="prepay">Pay {formatMoney(prepaidTotal)} up front{discount > 0 ? ` · save ${discount}%` : ''}</SaveButton>
                     ) : null}
-                  </div>
+                  </form>
                 </div>
               );
             })}

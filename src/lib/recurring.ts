@@ -271,6 +271,77 @@ export async function setRecurringPlanActive(
   return { visitsChanged: plan ? await ensurePlanVisits(createAdminClient(), plan) : 0 };
 }
 
+/**
+ * Change a live plan: price, cadence, or the day it next runs.
+ *
+ * Anything that moves the schedule has to take the already-generated future
+ * visits with it. Those jobs exist only because the plan said they would, so
+ * leaving them behind after a cadence change puts work on the calendar on the
+ * OLD rhythm — visible, assignable, and wrong.
+ *
+ * `amount` alone doesn't move anything, so its visits are left exactly as they
+ * are (crew, notes and any rescheduling the owner did survive). It does still
+ * update the future jobs' quoted amount, or the calendar would keep quoting the
+ * old price for work that will bill at the new one.
+ *
+ * Raising the price on a plan that charges a card on file is deliberately NOT
+ * silent — see requiresReconsent.
+ */
+export async function updateRecurringPlan(
+  supabase: SupabaseClient,
+  accountId: string,
+  planId: string,
+  patch: { amount?: number; frequency?: RecurringFrequency; nextRunDate?: string },
+): Promise<{ plan: RecurringPlan; visitsRebuilt: number }> {
+  const current = await getRecurringPlan(supabase, accountId, planId);
+  if (!current) throw new Error('Plan not found.');
+
+  const amount = typeof patch.amount === 'number' && Number.isFinite(patch.amount) ? Math.max(0, patch.amount) : current.amount;
+  const frequency = patch.frequency ?? current.frequency;
+  const nextRunDate = patch.nextRunDate ?? current.next_run_date;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(nextRunDate)) throw new Error('Choose a valid next visit date.');
+
+  const scheduleMoved = frequency !== current.frequency || nextRunDate !== current.next_run_date;
+
+  const { data, error } = await supabase
+    .from('recurring_plans')
+    .update({ amount, frequency, next_run_date: nextRunDate, updated_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('id', planId)
+    .select('*')
+    .single();
+  if (error || !data) throw error ?? new Error('Unable to update the plan.');
+  const plan = data as RecurringPlan;
+
+  if (!scheduleMoved) {
+    if (amount !== current.amount) {
+      await supabase
+        .from('jobs')
+        .update({ quoted_amount: amount })
+        .eq('account_id', accountId)
+        .eq('recurring_plan_id', planId)
+        .gt('recurring_visit_date', todayDateKey());
+    }
+    return { plan, visitsRebuilt: 0 };
+  }
+
+  await removeFuturePlanVisits(supabase, accountId, planId);
+  const visitsRebuilt = plan.active ? await ensurePlanVisits(createAdminClient(), plan) : 0;
+  return { plan, visitsRebuilt };
+}
+
+/**
+ * Whether this edit needs the client to agree again before it takes effect.
+ *
+ * A card on file is permission to charge an agreed amount, not a blank cheque.
+ * Raising the price on a plan set to auto-charge would take more money on the
+ * next cycle under a mandate given at the old price, without the client ever
+ * being told. Decreases and cadence changes don't have that problem.
+ */
+export function requiresReconsent(plan: RecurringPlan, nextAmount: number): boolean {
+  return plan.auto_charge && nextAmount > plan.amount + 0.005;
+}
+
 export async function deleteRecurringPlan(supabase: SupabaseClient, accountId: string, planId: string): Promise<{ visitsRemoved: number }> {
   // Before the plan goes, so the jobs can still be found by their link to it.
   const visitsRemoved = await removeFuturePlanVisits(supabase, accountId, planId);

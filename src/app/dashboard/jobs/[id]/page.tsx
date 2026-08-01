@@ -30,7 +30,9 @@ import {
   addJobTaskAction,
   setJobTaskDoneAction,
   deleteJobTaskAction,
+  acceptSubscriptionAction,
 } from '../actions';
+import AcceptPlanCard from './AcceptPlanCard';
 import { createDepositRequestAction, refundPaymentAction, markPaymentFailedAction, markPaymentPaidManuallyAction, retryPaymentAction, retryPaymentTextAction, cancelPaymentRequestAction } from '../payments-actions';
 import { cancelInvoiceAction, createInvoiceAction } from '../invoices-actions';
 import DeleteJobButton from './DeleteJobButton';
@@ -119,6 +121,8 @@ export default async function JobDetailPage({
   const boundRequestReview = requestJobReviewAction.bind(null, job.id);
   const boundSaveQuoteItems = saveQuoteItemsAction.bind(null, job.id);
   const quoteItems = parseQuoteItems(job.quote_items);
+  const pendingPlans = quoteItems.filter((item) => item.kind === 'subscription' && !item.signedUp);
+  const todayKey = new Date().toISOString().slice(0, 10);
   // appointment_confirmed_at is selected via getJob's `*` but isn't on the Job
   // type yet — read it off the row without widening the shared type.
   const appointmentConfirmedAt = (job as { appointment_confirmed_at?: string | null }).appointment_confirmed_at ?? null;
@@ -292,6 +296,27 @@ export default async function JobDetailPage({
         </p>
         <QuoteBuilder action={boundSaveQuoteItems} initialItems={quoteItems} services={priceBook} />
       </section>
+
+      {/* Recurring plans on this quote that nobody has started yet. The client
+          can accept these from their own quote page; this is the same decision
+          for the far more common case where they said yes on the phone. */}
+      {pendingPlans.length > 0 ? (
+        <section id="recurring-plans" className="panel workspace-section-card">
+          <div className="section-heading workspace-section-heading compact-heading">
+            <p className="eyebrow">Recurring</p>
+            <h2>{pendingPlans.length === 1 ? 'Plan on this quote' : 'Plans on this quote'}</h2>
+          </div>
+          <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+            Not started yet. Accept one here when the client agrees in person or over the phone — you pick the day
+            it starts, and it repeats on the cadence already quoted.
+          </p>
+          <div className="accept-plan-list">
+            {pendingPlans.map((item) => (
+              <AcceptPlanCard key={item.id} item={item} today={todayKey} action={acceptSubscriptionAction.bind(null, job.id)} />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section id="checklist" className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading compact-heading">

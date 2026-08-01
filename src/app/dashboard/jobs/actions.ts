@@ -23,6 +23,7 @@ import {
   getActiveClientAccessCount,
   revokeClientJobAccess,
 } from '@/lib/job-feed';
+import { acceptSubscriptionForClient } from '@/lib/subscription-signup';
 import { uploadJobPhoto } from '@/lib/job-photo-storage';
 import { listCrew, listCrewIdsForJob, setJobCrewAssignments, toggleJobCrewAssignment } from '@/lib/crew';
 import { normalizeUsPhone } from '@/lib/phone';
@@ -847,4 +848,33 @@ export async function deleteJobTaskAction(jobId: string, taskId: string) {
   const { supabase, accountId } = await requireOwnerContext();
   await deleteJobTask(supabase, accountId, taskId);
   revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
+/**
+ * The client said yes to a recurring plan, in person or on the phone.
+ *
+ * Until this existed the only way a subscription line item became a live plan
+ * was the client tapping through their own quote page — so a plan agreed
+ * verbally had nowhere to be recorded, and the job's status dropdown didn't
+ * touch it.
+ */
+export async function acceptSubscriptionAction(jobId: string, formData: FormData) {
+  const { accountId } = await requireOwnerContext();
+  const itemId = (formData.get('itemId') ?? '').toString().trim();
+  if (!itemId) throw new Error('Missing plan.');
+  const startDate = (formData.get('startDate') ?? '').toString().trim();
+  const mode = formData.get('mode') === 'prepay' ? 'prepay' : 'cycle';
+  // Off unless the owner explicitly says the client has agreed to be charged
+  // automatically — accepting on someone's behalf is not the same as holding
+  // their card.
+  const autoCharge = formData.get('autoCharge') === 'on';
+
+  const { planId } = await acceptSubscriptionForClient(accountId, jobId, itemId, { startDate, mode, autoCharge });
+
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+  revalidatePath('/dashboard/recurring');
+  revalidatePath('/dashboard/schedule');
+  // Straight to the plan: whatever they do next — send the card link, adjust the
+  // cadence, check the projected visits — is on that page.
+  redirect(`/dashboard/recurring?plan=${planId}`);
 }

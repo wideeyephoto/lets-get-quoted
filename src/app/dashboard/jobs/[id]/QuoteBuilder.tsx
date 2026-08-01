@@ -118,6 +118,8 @@ export default function QuoteBuilder({
     .filter((row) => row.kind === 'addon')
     .reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
   const subscriptionRows = rows.filter((row) => row.kind === 'subscription' && row.label.trim());
+  // Nothing billable today, but a real recurring commitment.
+  const planOnly = total === 0 && subscriptionRows.length > 0;
 
   function save() {
     if (!action) return;
@@ -272,8 +274,11 @@ export default function QuoteBuilder({
       </div>
 
       <div className="quote-builder-summary">
+        {/* A plan-only quote genuinely has nothing due up front, so the total is
+            $0 — but labelled "Quote total" that reads as an empty, broken quote
+            rather than "$99/mo, nothing today". Name what the number IS. */}
         <div className="quote-builder-total">
-          <span>Quote total</span>
+          <span>{planOnly ? 'Due up front' : 'Quote total'}</span>
           <strong>{formatUsd(total)}</strong>
         </div>
         {addonTotal > 0 ? (
@@ -281,7 +286,9 @@ export default function QuoteBuilder({
         ) : null}
         {subscriptionRows.length > 0 ? (
           <p className="quote-builder-note quote-builder-sub-note">
-            Plus {subscriptionRows.map((row) => `${formatUsd(Number(row.amount) || 0)}${FREQ_LABEL[row.frequency ?? 'monthly']}`).join(' + ')} in recurring plans, billed separately.
+            {planOnly ? '' : 'Plus '}
+            {subscriptionRows.map((row) => `${formatUsd(Number(row.amount) || 0)}${FREQ_LABEL[row.frequency ?? 'monthly']}`).join(' + ')}
+            {planOnly ? ' on a recurring plan — nothing is charged today.' : ' in recurring plans, billed separately.'}
           </p>
         ) : null}
       </div>

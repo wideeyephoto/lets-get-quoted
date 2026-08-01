@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { advanceDate, projectPlanVisits } from '@/lib/recurring';
+import { advanceDate, projectPlanVisits, requiresReconsent } from '@/lib/recurring';
 
 describe('advanceDate — weekly', () => {
   it('adds 7 days', () => {
@@ -143,5 +143,50 @@ describe('projectPlanVisits — beside visits that are already real jobs', () =>
     const materialized = new Set(['other-plan:2026-08-05']);
     const visits = projectPlanVisits([base], { fromKey: '2026-08-01', toKey: '2026-08-31' }, undefined, materialized);
     expect(visits[0].dateKey).toBe('2026-08-05');
+  });
+});
+
+describe('requiresReconsent', () => {
+  const base = { amount: 100, auto_charge: true } as Parameters<typeof requiresReconsent>[0];
+
+  it('blocks a rise on a plan that charges a card on file', () => {
+    // The card is permission to take an agreed figure, not whatever the plan
+    // later says. A silent increase bills more under the old mandate.
+    expect(requiresReconsent(base, 120)).toBe(true);
+  });
+
+  it('lets a cut through untouched', () => {
+    expect(requiresReconsent(base, 80)).toBe(false);
+  });
+
+  it('ignores float noise rather than nagging about a cent', () => {
+    expect(requiresReconsent(base, 100.001)).toBe(false);
+    expect(requiresReconsent(base, 100)).toBe(false);
+  });
+
+  it('never asks when no card is on file — nothing charges itself', () => {
+    const manual = { amount: 100, auto_charge: false } as Parameters<typeof requiresReconsent>[0];
+    expect(requiresReconsent(manual, 500)).toBe(false);
+  });
+});
+
+describe('advanceDate month-end behaviour', () => {
+  it('clamps into short months instead of rolling over', () => {
+    expect(advanceDate('2026-01-31', 'monthly')).toBe('2026-02-28');
+    expect(advanceDate('2026-03-31', 'monthly')).toBe('2026-04-30');
+  });
+
+  it('is lossy once clamped — a known limitation, not an accident', () => {
+    // Jan 31 -> Feb 28 -> Mar 28. The original day-of-month is gone, so a plan
+    // sold as "the 31st" quietly becomes "the 28th" forever. Recovering it needs
+    // an anchor day stored on the plan; this test pins the CURRENT behaviour so
+    // the change is deliberate when someone fixes it.
+    const feb = advanceDate('2026-01-31', 'monthly');
+    expect(advanceDate(feb, 'monthly')).toBe('2026-03-28');
+  });
+
+  it('crosses a year boundary', () => {
+    expect(advanceDate('2026-12-15', 'monthly')).toBe('2027-01-15');
+    expect(advanceDate('2026-12-30', 'weekly')).toBe('2027-01-06');
   });
 });
