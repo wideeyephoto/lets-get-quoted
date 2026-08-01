@@ -32,10 +32,13 @@ function GearIcon() {
 // `views` is optional: a surface with only one layout (the schedule calendar)
 // still wants the map on/off and theme controls, and should get them from the
 // same menu in the same place rather than a second bespoke control.
-export default function ViewGear<T extends string>({
+export default function ViewGear<T extends string, S extends string = string>({
   views,
   activeView,
   onPickView,
+  skins,
+  activeSkin,
+  onPickSkin,
   mapView,
   onSetMapView,
   mapTheme,
@@ -45,6 +48,14 @@ export default function ViewGear<T extends string>({
   views?: ViewOption<T>[];
   activeView?: T;
   onPickView?: (next: T) => void;
+  /**
+   * How the page LOOKS, as opposed to how it's laid out. Its own section
+   * because the two are independent — picking a colour must not rearrange the
+   * page, and rearranging the page must not change its colour.
+   */
+  skins?: ViewOption<S>[];
+  activeSkin?: S;
+  onPickSkin?: (next: S) => void;
   mapView?: MapView; // omit to hide the map options
   onSetMapView?: (next: MapView) => void;
   mapTheme?: MapTheme;
@@ -66,6 +77,7 @@ export default function ViewGear<T extends string>({
 
   const showViews = Boolean(views && views.length > 0);
   const current = views?.find((v) => v.id === activeView) ?? views?.[0];
+  const showSkins = Boolean(skins && skins.length > 0 && onPickSkin);
   const showMapOptions = typeof mapView === 'string' && Boolean(onSetMapView);
   const showMapTheme = showMapOptions && mapView !== 'off' && typeof mapTheme === 'string' && Boolean(onSetMapTheme);
 
@@ -108,9 +120,29 @@ export default function ViewGear<T extends string>({
               ))}
             </>
           )}
-          {showMapOptions && (
+          {showSkins && (
             <>
               {showViews && <div className={styles.sep} />}
+              <p>Theme</p>
+              {skins!.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={activeSkin === s.id}
+                  className={styles.opt}
+                  onClick={() => { onPickSkin?.(s.id); setOpen(false); }}
+                >
+                  <strong>{s.label}</strong>
+                  {activeSkin === s.id && <span className={styles.check} aria-hidden="true">✓</span>}
+                  <small>{s.hint}</small>
+                </button>
+              ))}
+            </>
+          )}
+          {showMapOptions && (
+            <>
+              {(showViews || showSkins) && <div className={styles.sep} />}
               <p>Map</p>
               {MAP_OPTIONS.map((m) => (
                 <button

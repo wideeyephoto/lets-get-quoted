@@ -23,7 +23,7 @@ import {
   summarizePayTotals,
   type CrewPayRow,
 } from '@/lib/crew-pay';
-import { CREW_ROSTER_VIEW_COOKIE, CREW_THEME_COOKIE, CREW_VIEW_COOKIE, normalizeCrewTheme, normalizeCrewView, normalizeRosterView } from '@/lib/dashboard-views';
+import { CREW_ROSTER_VIEW_COOKIE, CREW_SKIN_COOKIE, CREW_THEME_COOKIE, CREW_VIEW_COOKIE, normalizeCrewSkin, normalizeCrewTheme, normalizeCrewView, normalizeRosterView } from '@/lib/dashboard-views';
 import { listOutstandingPeriods, listPayEvents, listPeriodEntryLines, loadCrewPayContext } from '@/lib/crew-pay-data';
 import { PAY_DAY_COLUMNS, payDaySettingsFromAccount, payDayView, type PayDaySettings } from '@/lib/pay-day';
 import { payBasisFromCrew, payRateLabel } from '@/lib/pay-types';
@@ -262,6 +262,9 @@ export default async function CrewLaborPage({
   // all three tabs — including Labor by job, which has no picker — look like one
   // page rather than changing character as you move across them.
   const crewTheme = normalizeCrewTheme(cookies().get(CREW_THEME_COOKIE)?.value);
+  // The skin is independent of the theme above: one decides how the page looks,
+  // the other how it is laid out, and they compose.
+  const crewSkin = normalizeCrewSkin(cookies().get(CREW_SKIN_COOKIE)?.value);
 
   // The period before this one, for the "vs last period" comparison and the
   // second series on the hours chart. Only the grouped layout shows either, so
@@ -322,6 +325,11 @@ export default async function CrewLaborPage({
         'wide-shell',
         'workspace-shell',
         crewTheme === 'focus' ? 'crew-focus' : '',
+        // Two classes: one generic hook the structural rules hang off, one
+        // per-skin so the tokens can differ. Standard adds neither, so the
+        // untouched page is byte-identical to what it was.
+        crewSkin !== 'standard' ? 'crew-skin' : '',
+        crewSkin !== 'standard' ? `crew-skin-${crewSkin}` : '',
         // Focus's rail, the board columns and the nine-column table all need the
         // shell to stop capping content at 1100px.
         crewTheme === 'focus' ||
@@ -368,6 +376,7 @@ export default async function CrewLaborPage({
             periodLabel={period.rangeLabel}
             initialStatus={searchParams.status === 'archived' ? 'archived' : 'active'}
             initialView={rosterView}
+            initialSkin={crewSkin}
             openAdd={searchParams.add === '1' || crew.length === 0}
           />
         ) : null}
@@ -398,6 +407,7 @@ export default async function CrewLaborPage({
             todayKey={todayKey}
             progress={periodProgress(period, now)}
             initialView={crewView}
+            initialSkin={crewSkin}
             comparison={payTotals ? comparePeriods(payTotals.estimatedPay, previousPay) : null}
             payDay={payDay}
             payDue={payDue}

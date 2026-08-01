@@ -2605,3 +2605,136 @@ button.goAction.goAction:disabled {
 .mdEntries tbody tr[data-gone] { opacity: 0.7; }
 .mdEntries tbody tr[data-gone] td { text-decoration: line-through; }
 .mdEntries tbody tr[data-gone] small { text-decoration: none; }
+
+/* ==========================================================================
+   SKINS — Daylight and Blueprint.
+
+   A skin changes how the page LOOKS. It never changes how it is laid out, so
+   these compose with Focus rather than replacing it: Focus in Blueprint is a
+   real combination, and picking a colour must not throw away somebody's
+   master-detail.
+
+   Structure lives here once, against the container classes the page already
+   has. The values come from custom properties set on the shell in globals.css,
+   which is where the two skins actually differ. Scoped with :global() for the
+   same reason the Focus block above is — these are module class names and the
+   shell that carries the skin class is rendered by the page.
+   ========================================================================== */
+
+/* .row is first on purpose: it is the roster line, the surface somebody
+   actually reads down. A skin that dressed the panels and left the rows alone
+   would be a theme you can only see in the margins. */
+:global(.crew-skin) .row,
+:global(.crew-skin) .card,
+:global(.crew-skin) .tableWrap,
+:global(.crew-skin) .boardCol,
+:global(.crew-skin) .focusCard,
+:global(.crew-skin) .railCard,
+:global(.crew-skin) .periodCard,
+:global(.crew-skin) .addPanel,
+:global(.crew-skin) .mdList,
+:global(.crew-skin) .mdRail,
+:global(.crew-skin) .mdDetail,
+:global(.crew-skin) .toolbar,
+:global(.crew-skin) .payToolbar {
+  background: var(--skin-surface);
+  border-color: var(--skin-line);
+  border-radius: var(--skin-radius);
+}
+
+/* The small controls that repeat on every row. Left out, they stay the
+   standard theme's blue-grey and read as unstyled against a skinned row. */
+:global(.crew-skin) .rowBtn,
+:global(.crew-skin) .filter,
+:global(.crew-skin) .search {
+  border-color: var(--skin-line);
+  border-radius: var(--skin-radius);
+  background: var(--skin-surface);
+}
+:global(.crew-skin) .rowBtn { color: var(--skin-muted); }
+:global(.crew-skin) .rowBtn:hover { color: var(--skin-ink); }
+:global(.crew-skin) .avatar { border-radius: var(--skin-avatar-radius, 50%); }
+:global(.crew-skin) .rowNames strong { color: var(--skin-ink); }
+:global(.crew-skin) .dim { color: var(--skin-muted); }
+
+:global(.crew-skin) .tab {
+  border: 1px solid var(--skin-line);
+  border-radius: var(--skin-radius);
+  background: var(--skin-surface);
+  color: var(--skin-muted);
+}
+:global(.crew-skin) .tabOn {
+  border-color: var(--skin-accent);
+  background: var(--skin-accent-soft);
+  color: var(--skin-ink);
+}
+
+/* Column headers and the small caps labels: the skin's voice is loudest here,
+   because they repeat on every table and every card. */
+:global(.crew-skin) .payTable thead th,
+:global(.crew-skin) .hoursTable thead th,
+:global(.crew-skin) .rosterTable thead th,
+:global(.crew-skin) .rowHead,
+:global(.crew-skin) .mdGroupHead {
+  color: var(--skin-head);
+  font-family: var(--skin-label-font, inherit);
+  letter-spacing: var(--skin-head-track, 0.08em);
+}
+
+:global(.crew-skin) .periodStat { border-radius: var(--skin-radius); }
+:global(.crew-skin) .periodStat strong { font-family: var(--skin-figure-font, inherit); }
+
+/* Figures — hours, money, rates. Blueprint sets these monospaced; Daylight
+   leaves them alone. A single hook rather than one per table. */
+:global(.crew-skin) .payTable td,
+:global(.crew-skin) .hoursTable td,
+:global(.crew-skin) .rosterTable td {
+  font-family: var(--skin-figure-font, inherit);
+}
+
+:global(.crew-skin) .mdAvatar,
+:global(.crew-skin) .mdAvatarLg {
+  border-radius: var(--skin-avatar-radius, 50%);
+  border-color: var(--skin-line);
+}
+
+/* --- Blueprint only: the marks that make it a drawing sheet ------------- */
+
+/* A register tick in the corner of every panel, the way a drawing sheet is
+   cropped. One pseudo-element, no extra markup. */
+/* Roster rows read as ruled lines on a sheet rather than as floating cards. */
+:global(.crew-skin-blueprint) .rows { gap: 0; }
+:global(.crew-skin-blueprint) .row { border-radius: 0; border-bottom-width: 0; }
+:global(.crew-skin-blueprint) .rows li:last-child .row { border-bottom-width: 1px; }
+
+:global(.crew-skin-blueprint) .card,
+:global(.crew-skin-blueprint) .railCard,
+:global(.crew-skin-blueprint) .periodCard,
+:global(.crew-skin-blueprint) .boardCol,
+:global(.crew-skin-blueprint) .mdList,
+:global(.crew-skin-blueprint) .mdRail {
+  position: relative;
+}
+:global(.crew-skin-blueprint) .card::before,
+:global(.crew-skin-blueprint) .railCard::before,
+:global(.crew-skin-blueprint) .periodCard::before,
+:global(.crew-skin-blueprint) .boardCol::before,
+:global(.crew-skin-blueprint) .mdList::before,
+:global(.crew-skin-blueprint) .mdRail::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 7px;
+  height: 7px;
+  border-top: 2px solid var(--skin-accent);
+  border-left: 2px solid var(--skin-accent);
+  pointer-events: none;
+}
+
+/* Job references read as drawing numbers. */
+:global(.crew-skin-blueprint) .jobRef,
+:global(.crew-skin-blueprint) .payRef {
+  font-family: var(--skin-figure-font);
+  color: var(--skin-accent);
+}

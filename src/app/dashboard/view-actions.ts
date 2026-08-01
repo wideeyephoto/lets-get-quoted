@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
-import { CALENDAR_WEEKEND_COOKIE, CLIENTS_VIEW_COOKIE, CREW_ROSTER_VIEW_COOKIE, CREW_THEME_COOKIE, CREW_VIEW_COOKIE, JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeClientsView, normalizeCrewView, normalizeJobsView, normalizeMapTheme, normalizeCrewTheme, normalizeMapView, normalizeRosterView, serializeWeekendDays, type ClientsView, type CrewView, type JobsView, type MapSurface, type MapTheme, type MapView, type RosterView, type WeekendDays } from '@/lib/dashboard-views';
+import { CALENDAR_WEEKEND_COOKIE, CLIENTS_VIEW_COOKIE, CREW_ROSTER_VIEW_COOKIE, CREW_SKIN_COOKIE, CREW_THEME_COOKIE, CREW_VIEW_COOKIE, JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, mapViewCookie, normalizeClientsView, normalizeCrewSkin, normalizeCrewView, normalizeJobsView, normalizeMapTheme, normalizeCrewTheme, normalizeMapView, normalizeRosterView, serializeWeekendDays, type ClientsView, type CrewSkin, type CrewView, type JobsView, type MapSurface, type MapTheme, type MapView, type RosterView, type WeekendDays } from '@/lib/dashboard-views';
 
 const YEAR = 60 * 60 * 24 * 365;
 
@@ -68,4 +68,14 @@ export async function setRosterViewAction(view: RosterView) {
   const next = normalizeRosterView(view);
   write(CREW_ROSTER_VIEW_COOKIE, next);
   syncCrewFocus(next === 'focus', 'roster');
+}
+
+// Remember the Crew & Labor skin (Standard / Daylight / Blueprint).
+//
+// Deliberately does NOT touch the Focus cookies the way the two above do: a
+// skin says nothing about layout, so picking one must leave whatever layout
+// the owner is in exactly where it was.
+export async function setCrewSkinAction(skin: CrewSkin) {
+  await requireOwnerContext();
+  write(CREW_SKIN_COOKIE, normalizeCrewSkin(skin));
 }

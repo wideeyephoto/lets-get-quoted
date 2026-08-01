@@ -64,8 +64,9 @@ import {
   type PayActionState,
 } from './pay-actions';
 import ViewGear, { type ViewOption } from '@/components/view-gear';
-import { setCrewViewAction } from '@/app/dashboard/view-actions';
-import type { CrewView } from '@/lib/dashboard-views';
+import { setCrewSkinAction, setCrewViewAction } from '@/app/dashboard/view-actions';
+import type { CrewSkin, CrewView } from '@/lib/dashboard-views';
+import { CREW_SKIN_OPTIONS, applyCrewSkin } from './crew-skins';
 import { PaymentConfirmDialog, ReasonDialog } from './PaymentDialogs';
 import styles from './crew.module.css';
 
@@ -220,6 +221,7 @@ export default function HoursAndPay({
   timeClockAvailable,
   openShifts,
   initialView,
+  initialSkin,
   comparison,
   payDay,
   payDue,
@@ -258,6 +260,7 @@ export default function HoursAndPay({
   timeClockAvailable: boolean;
   openShifts: OpenShiftView[];
   initialView: CrewView;
+  initialSkin: CrewSkin;
   /** This period against the one before. Only the grouped layout shows it. */
   comparison: PeriodComparison | null;
   /** How this account decides when a period is due. Null on the other tabs. */
@@ -273,6 +276,7 @@ export default function HoursAndPay({
   previousPayLabel: string;
 }) {
   const [view, setView] = useState<CrewView>(initialView);
+  const [skin, setSkin] = useState<CrewSkin>(initialSkin);
   const [, startViewSave] = useTransition();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
@@ -281,6 +285,15 @@ export default function HoursAndPay({
     // Remembered for next time; the width below doesn't wait for it.
     startViewSave(() => {
       void setCrewViewAction(next).catch(() => {});
+    });
+  }
+
+  // Colour only — the layout this tab is in stays exactly as it was.
+  function pickSkin(next: CrewSkin) {
+    setSkin(next);
+    applyCrewSkin(next);
+    startViewSave(() => {
+      void setCrewSkinAction(next).catch(() => {});
     });
   }
 
@@ -582,7 +595,15 @@ export default function HoursAndPay({
           </span>
           {/* The same gear the Leads, Jobs, Schedule and Clients pages use, so
               it's a control that's already learned. */}
-          <ViewGear views={CREW_VIEW_OPTIONS} activeView={view} onPickView={pickView} label="View" />
+          <ViewGear
+            views={CREW_VIEW_OPTIONS}
+            activeView={view}
+            onPickView={pickView}
+            skins={CREW_SKIN_OPTIONS}
+            activeSkin={skin}
+            onPickSkin={pickSkin}
+            label="View"
+          />
         </div>
       </div>
 

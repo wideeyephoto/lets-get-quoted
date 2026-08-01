@@ -12652,6 +12652,82 @@ a.bset-card { color: inherit; text-decoration: none; }
 .crew-focus .stat-ticker { border-radius: 16px; border-color: rgba(148, 176, 214, 0.2); }
 .crew-focus .stat-ticker-value { font-size: 1.45rem; letter-spacing: -0.02em; }
 
+/* ==========================================================================
+   Crew & Labor SKINS.
+
+   Two token sets. Everything structural is in crew.module.css against the
+   page's existing containers; this file only says what colour the tokens are
+   and dresses the shell furniture that lives outside the module.
+
+   Both stay on a dark ground. A light Crew & Labor inside an otherwise dark
+   dashboard would be one bright page in a dark app, which reads as a bug
+   rather than a choice — a light theme is a site-wide job, not a page one.
+   ========================================================================== */
+
+/* --- Daylight: the standard palette, but crisper -------------------------
+   Brighter surfaces, a stronger edge and higher text contrast, for reading in
+   a lit cab or through a windscreen's glare. Not the light theme it started
+   as: same ground, more separation. */
+.crew-skin-daylight {
+  --skin-surface: rgba(255, 255, 255, 0.085);
+  --skin-line: rgba(190, 208, 230, 0.34);
+  --skin-ink: #ffffff;
+  --skin-muted: #e4e9f0;
+  --skin-head: rgba(228, 233, 240, 0.92);
+  --skin-accent: #ff9440;
+  --skin-accent-soft: rgba(255, 148, 64, 0.18);
+  --skin-radius: 12px;
+  --skin-head-track: 0.09em;
+}
+/* Secondary text is the first thing to disappear in bright light, so the
+   muted greys the standard page uses get pulled up rather than left alone. */
+.crew-skin-daylight .workspace-section-card { border-color: rgba(190, 208, 230, 0.3); }
+.crew-skin-daylight .stat-ticker { border-color: rgba(190, 208, 230, 0.3); background: rgba(255, 255, 255, 0.07); }
+.crew-skin-daylight .stat-ticker-label { color: rgba(232, 238, 246, 0.8); }
+.crew-skin-daylight .eyebrow { color: rgba(232, 238, 246, 0.85); }
+
+/* --- Blueprint: a drawing sheet ------------------------------------------
+   Cyan for everything structural, monospaced figures, a faint grid and a
+   register tick on each panel. One rule holds it honest: money stays orange,
+   because a figure that means dollars has to keep meaning dollars whichever
+   skin it is wearing. */
+.crew-skin-blueprint {
+  --skin-surface: rgba(94, 200, 240, 0.05);
+  --skin-line: rgba(94, 200, 240, 0.26);
+  --skin-ink: #e6f3fa;
+  --skin-muted: #a8ccdf;
+  --skin-head: #5ec8f0;
+  --skin-accent: #5ec8f0;
+  --skin-accent-soft: rgba(94, 200, 240, 0.14);
+  --skin-radius: 3px;
+  --skin-head-track: 0.12em;
+  --skin-figure-font: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, monospace;
+  --skin-label-font: var(--skin-figure-font);
+  --skin-avatar-radius: 3px;
+
+  background-color: #06192c;
+  background-image:
+    linear-gradient(rgba(94, 200, 240, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(94, 200, 240, 0.05) 1px, transparent 1px);
+  background-size: 26px 26px;
+  /* Pinned to the top-left of the shell so the grid doesn't crawl as the page
+     scrolls — a drawing sheet's grid belongs to the sheet, not the window. */
+  background-attachment: local;
+}
+.crew-skin-blueprint .workspace-section-card {
+  border-color: rgba(94, 200, 240, 0.26);
+  border-radius: 3px;
+  background: rgba(6, 25, 44, 0.72);
+}
+.crew-skin-blueprint .stat-ticker {
+  border-color: rgba(94, 200, 240, 0.26);
+  border-radius: 3px;
+  background: rgba(94, 200, 240, 0.05);
+}
+.crew-skin-blueprint .stat-ticker-label { color: #7fb8d4; letter-spacing: 0.12em; }
+.crew-skin-blueprint .stat-ticker-value { font-family: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, monospace; }
+.crew-skin-blueprint .eyebrow { color: #5ec8f0; letter-spacing: 0.16em; }
+
 /* A summary card with nowhere to go. It keeps the shape of its siblings so
    the row stays even, but drops the affordances that promise a click. */
 .bset-card.is-static { cursor: default; }

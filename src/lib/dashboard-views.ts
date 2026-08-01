@@ -90,6 +90,21 @@ export function normalizeCrewTheme(value: unknown): CrewTheme {
   return value === 'focus' ? 'focus' : 'standard';
 }
 
+// The page's SKIN — its colours and surfaces — kept in its own cookie rather
+// than folded into CrewTheme above.
+//
+// CrewTheme decides the SHAPE of the page: 'focus' switches Hours & pay to
+// master-detail and widens the shell. A skin decides nothing about layout. Put
+// them in one enum and picking Blueprint would silently throw away somebody's
+// master-detail, which is not what choosing a colour should do. Separate, they
+// compose: Focus in Blueprint is a real combination.
+export const CREW_SKIN_COOKIE = 'lgq_crew_skin';
+export type CrewSkin = 'standard' | 'daylight' | 'blueprint';
+export const CREW_SKINS: CrewSkin[] = ['standard', 'daylight', 'blueprint'];
+export function normalizeCrewSkin(value: unknown): CrewSkin {
+  return CREW_SKINS.includes(value as CrewSkin) ? (value as CrewSkin) : 'standard';
+}
+
 // Which "Crew members" roster layout the owner last used. Its own cookie, not
 // the one above: the roster and the pay table answer different questions, and
 // picking a board on one is no reason to change the other.

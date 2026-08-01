@@ -7,10 +7,11 @@ import SaveButton from '@/components/save-button';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import ViewGear, { type ViewOption } from '@/components/view-gear';
 import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
-import { setRosterViewAction } from '@/app/dashboard/view-actions';
-import type { RosterView } from '@/lib/dashboard-views';
+import { setCrewSkinAction, setRosterViewAction } from '@/app/dashboard/view-actions';
+import type { CrewSkin, RosterView } from '@/lib/dashboard-views';
 import { rosterNextStep, rosterTotals } from '@/lib/crew-roster';
 import type { PayType } from '@/lib/pay-types';
+import { CREW_SKIN_OPTIONS, applyCrewSkin } from './crew-skins';
 import CrewPhotoUpload from './CrewPhotoUpload';
 import PayTypeFields from './PayTypeFields';
 import {
@@ -105,6 +106,7 @@ export default function CrewRoster({
   periodLabel,
   initialStatus,
   initialView,
+  initialSkin,
   openAdd,
 }: {
   rows: CrewRow[];
@@ -112,6 +114,7 @@ export default function CrewRoster({
   periodLabel: string;
   initialStatus: 'active' | 'archived';
   initialView: RosterView;
+  initialSkin: CrewSkin;
   openAdd: boolean;
 }) {
   const [query, setQuery] = useState('');
@@ -123,6 +126,7 @@ export default function CrewRoster({
   const [openId, setOpenId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(openAdd);
   const [view, setView] = useState<RosterView>(initialView);
+  const [skin, setSkin] = useState<CrewSkin>(initialSkin);
   const [, startViewSave] = useTransition();
 
   // The layout changes immediately; remembering it is a background write. A
@@ -131,6 +135,17 @@ export default function CrewRoster({
     setView(next);
     startViewSave(() => {
       void setRosterViewAction(next).catch(() => {});
+    });
+  }
+
+  // The skin is worn by the shell, which the page above renders — so the class
+  // is swapped here and the cookie caught up in the background, the same shape
+  // as pickView. Layout is deliberately untouched.
+  function pickSkin(next: CrewSkin) {
+    setSkin(next);
+    applyCrewSkin(next);
+    startViewSave(() => {
+      void setCrewSkinAction(next).catch(() => {});
     });
   }
 
@@ -288,7 +303,15 @@ export default function CrewRoster({
           {/* The same gear the Leads, Jobs, Schedule, Clients and Hours & pay
               screens carry — in the same place, doing the same thing. */}
           <div className={styles.filterGear}>
-            <ViewGear views={ROSTER_VIEW_OPTIONS} activeView={view} onPickView={pickView} label="View" />
+            <ViewGear
+              views={ROSTER_VIEW_OPTIONS}
+              activeView={view}
+              onPickView={pickView}
+              skins={CREW_SKIN_OPTIONS}
+              activeSkin={skin}
+              onPickSkin={pickSkin}
+              label="View"
+            />
           </div>
         </div>
       </div>
