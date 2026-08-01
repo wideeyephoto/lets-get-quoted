@@ -30,6 +30,12 @@ type Props = {
 
 const LATE_DAYS_DEFAULT = 7;
 
+// A fixed ceiling, not one derived from the account's own numbers. A track that
+// re-scales to whatever you last saved moves under the thumb as you drag it, and
+// a shop holding half a million in the bank shouldn't hit the end of the slider.
+// The dollar box beside it is there for anything the track is too coarse for.
+const BALANCE_SLIDER_MAX = 500_000;
+
 const OPTIONAL_LINES: { key: LineKey; label: string; hint: string }[] = [
   { key: 'worst', label: 'Late-payment scenario', hint: 'Customer money arrives late and estimated costs run 10% over.' },
   { key: 'required', label: 'Minimum cash needed', hint: 'What you need on each day to cover everything still ahead.' },
@@ -113,11 +119,6 @@ export default function CashFlowBoard({
 
   // The slider's ceiling is fixed on first render. Deriving it from the current
   // balance would make the track grow under the thumb as you drag it right.
-  const sliderMax = useMemo(() => {
-    const basis = Math.max(savedBalance ?? 0, forecast.totals.outgoing * 1.5, 10000);
-    return Math.ceil((basis * 2) / 1000) * 1000;
-  }, [savedBalance, forecast.totals.outgoing]);
-
   const activeDays = forecast.days.filter((day) => day.events.length > 0);
   const worstLine = lines.worst;
 
@@ -150,9 +151,9 @@ export default function CashFlowBoard({
               className="cash-range"
               type="range"
               min={0}
-              max={sliderMax}
+              max={BALANCE_SLIDER_MAX}
               step={100}
-              value={Math.min(balance, sliderMax)}
+              value={Math.min(balance, BALANCE_SLIDER_MAX)}
               aria-label="Starting bank balance"
               aria-valuetext={money(balance)}
               onChange={(event) => setBalance(Number(event.target.value))}
