@@ -22,8 +22,15 @@ import { addDays, daysBetween, payDayFor, payDaySettingsFromAccount, PAY_DAY_COL
 import { laborRulesFromAccount, LABOR_RULE_COLUMNS } from '@/lib/labor-settings';
 import { resolvePayPeriod, type PeriodMode } from '@/lib/labor';
 import { periodEndKey, periodStartKey, payPeriodKey } from '@/lib/crew-pay';
-import { projectPlanVisits } from '@/lib/recurring';
-import { planSchedulePreview } from '@/lib/payment-plan-math';
+import {
+  buildIncomingEvents,
+  type ForecastJobRow,
+  type IncomingResult,
+  type PendingPaymentRow,
+  type PendingPlanRow,
+  type RecurringPlanRow,
+  type SettledRow,
+} from '@/lib/cash-forecast-incoming';
 
 const MISSING_TABLE = '42P01';
 const MISSING_COLUMN = '42703';
@@ -453,21 +460,27 @@ function periodPayroll(
 
 // -- Incoming ----------------------------------------------------------------
 
-type IncomingResult = { events: CashEvent[]; unbilled: { count: number; total: number } };
-
+/**
+ * Fetch the rows the incoming half needs, then hand them to the pure builder.
+ *
+ * Everything that decides an AMOUNT lives in cash-forecast-incoming.ts, and
+ * nothing here does. That split is the point: the netting rules — four separate
+ * "subtract this or it counts twice" cases — are the part that goes silently
+ * wrong, and they are now reachable from a test.
+ */
 async function loadIncomingEvents(
   supabase: SupabaseClient,
   accountId: string,
   options: { todayKey: string; horizonKey: string; lagDays: number },
 ): Promise<IncomingResult> {
-  const { todayKey, horizonKey, lagDays } = options;
+  const { todayKey, horizonKey } = options;
 
   const [pendingResult, jobsResult, plansResult] = await Promise.all([
     // `failed` is in here on purpose. A declined auto-charge with a retry
     // scheduled is money arriving on a known date; leaving it out made it vanish
     // from the forecast until it recovered, which is precisely the month you
-    // most need to know about it. Which failures actually count is decided
-    // below — an exhausted one never arrives, and one waiting on a new card
+    // most need to know about it. Which failures actually count is decided by
+    // isRetrying — an exhausted one never arrives, and one waiting on a new card
     // arrives when the client gets round to it, which is not a date.
     supabase
       .from('payments')
@@ -486,7 +499,7 @@ async function loadIncomingEvents(
       .lte('scheduled_for', horizonKey),
     supabase
       .from('recurring_plans')
-      .select('id, title, client_name, amount, frequency, next_run_date, active, remaining_cycles, auto_charge, card_last4')
+      .select('id, title, client_name, amount, frequency, next_run_date, active, remaining_cycles, anchor_day, auto_charge, card_last4')
       .eq('account_id', accountId)
       .eq('active', true),
   ]);
@@ -494,278 +507,40 @@ async function loadIncomingEvents(
   if (pendingResult.error) throw new Error(pendingResult.error.message);
   if (jobsResult.error) throw new Error(jobsResult.error.message);
 
-  const allPending = (pendingResult.data ?? []) as Array<{
-    id: string;
-    job_id: string | null;
-    kind: string;
-    label: string | null;
-    amount: unknown;
-    status: string;
-    due_date: string | null;
-    requested_at: string;
-    payment_plan_id: string | null;
-    dunning_state: string | null;
-    next_retry_at: string | null;
-    failure_message: string | null;
-  }>;
-
-  // A failed payment only earns a place on the curve when a retry is actually
-  // scheduled. 'needs_card' waits on the client to enter a new one and
-  // 'exhausted' has given up — both are real money with no date, and the rule
-  // this whole file runs on is that undated money doesn't get drawn.
-  const isRetrying = (row: (typeof allPending)[number]) =>
-    row.status === 'failed' && row.dunning_state === 'scheduled' && Boolean(row.next_retry_at);
-  const pending = allPending.filter((row) => row.status !== 'failed' || isRetrying(row));
-
-  const jobs = (jobsResult.data ?? []) as Array<{
-    id: string;
-    ref: string;
-    client_name: string;
-    quoted_amount: unknown;
-    status: string;
-    scheduled_for: string | null;
-    scheduled_until: string | null;
-    recurring_plan_id: string | null;
-    recurring_visit_date: string | null;
-  }>;
-
-  // What's already been collected or asked for per job, so a quote that's half
-  // paid only contributes the half that isn't.
+  const jobs = (jobsResult.data ?? []) as ForecastJobRow[];
   const jobIds = jobs.map((job) => job.id);
-  const settledByJob = new Map<string, number>();
-  if (jobIds.length > 0) {
-    const { data: settled } = await supabase
-      .from('payments')
-      .select('job_id, amount, status')
-      .eq('account_id', accountId)
-      .in('job_id', jobIds)
-      .in('status', ['paid', 'processing', 'requested']);
-    for (const row of (settled ?? []) as Array<{ job_id: string; amount: unknown; status: string }>) {
-      settledByJob.set(row.job_id, (settledByJob.get(row.job_id) ?? 0) + num(row.amount));
-    }
-  }
-  // Retries are drawn as their own event, so they have to count as "already
-  // accounted for" against the job as well — otherwise the same money appears
-  // once as the retry and again inside the job's remaining balance.
-  for (const row of pending) {
-    if (!isRetrying(row) || !row.job_id) continue;
-    settledByJob.set(row.job_id, (settledByJob.get(row.job_id) ?? 0) + num(row.amount));
-  }
 
-  // A payment plan whose deposit hasn't cleared has no installment rows yet —
-  // they're written in one go the moment the deposit is confirmed. Until then
-  // the whole balance landed as a single lump on the job's end date, which for
-  // a six-month plan is the wrong month by five of them. Project the schedule
-  // the client was actually shown.
-  const pendingPlans = jobIds.length
-    ? (
-        await supabase
+  const [settled, pendingPlans] = await Promise.all([
+    jobIds.length
+      ? supabase
+          .from('payments')
+          .select('job_id, amount')
+          .eq('account_id', accountId)
+          .in('job_id', jobIds)
+          .in('status', ['paid', 'processing', 'requested'])
+          .then(({ data }) => (data ?? []) as SettledRow[])
+      : Promise.resolve([] as SettledRow[]),
+    jobIds.length
+      ? supabase
           .from('payment_plans')
           .select('id, job_id, total_cents, deposit_cents, installment_count, frequency, first_installment_date')
           .eq('account_id', accountId)
           .in('job_id', jobIds)
           .eq('status', 'pending_deposit')
-      ).data ?? []
-    : [];
+          .then(({ data }) => (data ?? []) as PendingPlanRow[])
+      : Promise.resolve([] as PendingPlanRow[]),
+  ]);
 
-  const events: CashEvent[] = [];
-
-  // 1. Money already asked for.
-  const jobById = new Map(jobs.map((job) => [job.id, job] as const));
-  for (const row of pending) {
-    const amount = num(row.amount);
-    if (amount <= 0) continue;
-    const job = row.job_id ? jobById.get(row.job_id) : null;
-    const who = job?.client_name ?? 'Customer';
-    // A plan installment has a real scheduled charge date. Anything else is a
-    // link somebody has to click, so it lands a typical payment lag after it
-    // was sent, not the day it was sent.
-    const retrying = isRetrying(row);
-    const expected = retrying
-      ? String(row.next_retry_at).slice(0, 10)
-      : row.due_date ?? addDays(String(row.requested_at).slice(0, 10), lagDays);
-    // The expected day can already be in the past, and the forecast will pull it
-    // onto today. Say so: a detail line still reading "expected Thu, Jul 30" on a
-    // row drawn in August is the page contradicting itself.
-    const late = daysBetween(todayKey, expected) < 0;
-    const dateKey = late ? todayKey : expected;
-    const lateBy = late ? daysBetween(expected, todayKey) : 0;
-    // A retry is never "confirmed" however firmly it's scheduled — the card has
-    // already said no once.
-    const confirmed = !retrying && (row.status === 'processing' || (row.kind === 'plan_installment' && Boolean(row.due_date)));
-    events.push({
-      id: `pay:${row.id}`,
-      dateKey,
-      label: `${who} — ${row.label || PAYMENT_KIND_WORD[row.kind] || 'payment'}`,
-      detail: retrying
-        ? `Card declined${row.failure_message ? ` (${row.failure_message})` : ''} · retrying ${dayLabel(dateKey)}`
-        : row.status === 'processing'
-          ? `Payment in flight · ${dayLabel(dateKey)}`
-          : late
-            ? `Asked for, still unpaid · ${lateBy} ${lateBy === 1 ? 'day' : 'days'} past when you'd expect it`
-            : row.due_date
-              ? `Scheduled charge · ${dayLabel(dateKey)}`
-              : `Requested, unpaid · expected ${dayLabel(dateKey)}`,
-      amount,
-      kind: (PAYMENT_KIND_MAP[row.kind] ?? 'final') as CashEventKind,
-      confirmed,
-      slips: true,
-      repeating: row.kind === 'plan_installment',
-      href: row.job_id ? `/dashboard/jobs/${row.job_id}` : null,
-    });
-  }
-
-  // 1b. Installments of a plan that is still waiting on its deposit.
-  for (const plan of pendingPlans as Array<{
-    id: string;
-    job_id: string;
-    total_cents: number;
-    deposit_cents: number;
-    installment_count: number;
-    frequency: 'weekly' | 'biweekly' | 'monthly';
-    first_installment_date: string;
-  }>) {
-    const job = jobById.get(plan.job_id);
-    const schedule = planSchedulePreview(plan);
-    let projected = 0;
-    for (const entry of schedule) {
-      const amount = Math.round(entry.amountCents) / 100;
-      if (amount <= 0) continue;
-      projected += amount;
-      if (entry.dueDate > horizonKey) continue;
-      events.push({
-        id: `planned:${plan.id}:${entry.seq}`,
-        dateKey: entry.dueDate,
-        label: `${job?.client_name ?? 'Customer'} — installment ${entry.seq} of ${schedule.length}`,
-        // Every word of this is load-bearing: none of it happens unless the
-        // deposit is paid first, and a forecast that quietly assumes it was is
-        // the kind of optimism this page exists to remove.
-        detail: `Payment plan — none of these charge until the deposit clears · ${dayLabel(entry.dueDate)}`,
-        amount,
-        kind: 'installment',
-        confirmed: false,
-        slips: true,
-        repeating: true,
-        href: `/dashboard/jobs/${plan.job_id}`,
-      });
-    }
-    // Drawn above, so it must not also land inside the job's remaining balance.
-    // The whole projected total, not just the part inside the window: an
-    // installment falling after the horizon hasn't arrived in this window
-    // either, and adding it back as a lump on the job's end date would date it
-    // even more wrongly than leaving it out.
-    if (projected > 0) settledByJob.set(plan.job_id, (settledByJob.get(plan.job_id) ?? 0) + projected);
-  }
-
-  // 2. Quoted work on the calendar, net of anything already requested or paid.
-  const unbilled = { count: 0, total: 0 };
-  for (const job of jobs) {
-    const quoted = num(job.quoted_amount);
-    if (quoted <= 0) continue;
-    const settled = settledByJob.get(job.id) ?? 0;
-    const remaining = Math.round((quoted - settled) * 100) / 100;
-    if (remaining <= 0.5) continue;
-
-    const endKey = job.scheduled_until || job.scheduled_for;
-    if (!endKey) continue;
-
-    if (job.status === 'complete') {
-      // Finished, still owed, nobody has been asked for it. We have no date for
-      // this — see the note at the top of the file. Counted, not drawn.
-      unbilled.count += 1;
-      unbilled.total = Math.round((unbilled.total + remaining) * 100) / 100;
-      continue;
-    }
-
-    if (endKey < todayKey) continue;
-    events.push({
-      id: `job:${job.id}`,
-      dateKey: addDays(endKey, lagDays),
-      label: `${job.client_name} — ${job.ref}`,
-      detail: `Quoted work, finishes ${dayLabel(endKey)}${settled > 0 ? ' · balance after deposits' : ''}`,
-      amount: remaining,
-      kind: 'job',
-      confirmed: false,
-      slips: true,
-      repeating: false,
-      href: `/dashboard/jobs/${job.id}`,
-    });
-  }
-
-  // 3. Recurring visits that haven't become jobs yet. The ones that HAVE are
-  // already above as jobs — projecting them too would bill the same visit twice.
-  const materialized = new Set(
-    jobs
-      .filter((job) => job.recurring_plan_id && job.recurring_visit_date)
-      .map((job) => `${job.recurring_plan_id}:${job.recurring_visit_date}`),
-  );
-  const plans = (plansResult.error ? [] : plansResult.data ?? []) as Array<{
-    id: string;
-    title: string;
-    client_name: string;
-    amount: unknown;
-    frequency: 'weekly' | 'biweekly' | 'monthly';
-    next_run_date: string;
-    active: boolean;
-    remaining_cycles: number | null;
-    auto_charge: boolean;
-    card_last4: string | null;
-  }>;
-  const planById = new Map(plans.map((plan) => [plan.id, plan] as const));
-  const visits = projectPlanVisits(
-    plans.map((plan) => ({
-      id: plan.id,
-      title: plan.title,
-      client_name: plan.client_name,
-      amount: num(plan.amount),
-      frequency: plan.frequency,
-      next_run_date: plan.next_run_date,
-      active: plan.active,
-      remaining_cycles: plan.remaining_cycles,
-    })) as Parameters<typeof projectPlanVisits>[0],
-    { fromKey: todayKey, toKey: horizonKey },
-    60,
-    materialized,
-  );
-
-  for (const visit of visits) {
-    if (visit.amount <= 0) continue;
-    const plan = planById.get(visit.planId);
-    const autoCharged = Boolean(plan?.auto_charge && plan?.card_last4);
-    events.push({
-      id: `visit:${visit.planId}:${visit.dateKey}`,
-      // A saved card is taken on the day. An invoice has to be paid, so it
-      // lands a typical lag later.
-      dateKey: autoCharged ? visit.dateKey : addDays(visit.dateKey, lagDays),
-      label: `${visit.clientName} — ${visit.planTitle}`,
-      detail: autoCharged
-        ? `Card on file, charged ${dayLabel(visit.dateKey)}`
-        : `Invoiced on the visit, ${dayLabel(visit.dateKey)}`,
-      amount: visit.amount,
-      kind: 'recurring',
-      confirmed: autoCharged,
-      slips: true,
-      repeating: true,
-      href: '/dashboard/recurring',
-    });
-  }
-
-  return { events, unbilled };
+  return buildIncomingEvents({
+    payments: (pendingResult.data ?? []) as PendingPaymentRow[],
+    jobs,
+    settled,
+    pendingPlans,
+    // A plans read failure is not fatal: the rest of the forecast is still true.
+    recurringPlans: (plansResult.error ? [] : plansResult.data ?? []) as RecurringPlanRow[],
+    ...options,
+  });
 }
-
-const PAYMENT_KIND_MAP: Record<string, CashEventKind> = {
-  deposit: 'deposit',
-  stage: 'final',
-  final: 'final',
-  plan_installment: 'installment',
-};
-
-const PAYMENT_KIND_WORD: Record<string, string> = {
-  deposit: 'deposit',
-  stage: 'stage payment',
-  final: 'final payment',
-  plan_installment: 'plan installment',
-};
 
 // -- How long this account actually waits to get paid ------------------------
 
