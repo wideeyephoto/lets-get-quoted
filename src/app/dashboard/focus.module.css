@@ -267,6 +267,41 @@
   box-shadow: 0 16px 36px -14px rgba(255, 122, 33, 1);
 }
 
+/* Money in / money out, coloured the way a contractor already reads a ledger.
+   Both hues are ones the app already owns — the green is the lead deck's "win"
+   gradient, the red is .btn.danger's — so nothing new enters the palette.
+
+   Getting paid is the point of the software, so it is the loudest thing in the
+   row: solid fill and a wider glow than Open job's. */
+.heroBtnMoneyIn {
+  border-color: transparent;
+  background: linear-gradient(135deg, #2f9e5c 0%, #46c08d 100%);
+  color: #fff;
+  box-shadow: 0 12px 32px -12px rgba(63, 191, 139, 0.95);
+}
+
+.heroBtnMoneyIn:hover {
+  border-color: transparent;
+  background: linear-gradient(135deg, #35b269 0%, #56d29d 100%);
+  box-shadow: 0 18px 40px -12px rgba(63, 191, 139, 1);
+}
+
+/* Spending stays outlined rather than solid. Red on a filled button is this
+   app's delete/void signal (.btn.danger, the job danger zone), and "Add
+   expense" is neither — the hairline keeps the ledger meaning without asking
+   anyone to hesitate over a routine entry. */
+.heroBtnMoneyOut {
+  border-color: rgba(255, 101, 101, 0.5);
+  background: rgba(255, 101, 101, 0.12);
+  color: #ff8f8f;
+}
+
+.heroBtnMoneyOut:hover {
+  border-color: rgba(255, 101, 101, 0.85);
+  background: rgba(255, 101, 101, 0.2);
+  box-shadow: 0 10px 24px -12px rgba(255, 101, 101, 0.9);
+}
+
 /* 24px stroke glyphs, same house style as the sidebar rail. */
 .heroBtnIcon {
   flex: none;
@@ -279,7 +314,14 @@
   stroke-linejoin: round;
 }
 
-.heroBtn:not(.heroBtnLead) .heroBtnIcon { filter: drop-shadow(0 0 4px rgba(255, 122, 33, 0.65)); }
+/* An outlined glyph sits on the panel's own dark ground and needs the lift; on
+   a solid fill it already has all the contrast it can use, and a glow there
+   just smears the stroke. Per-variant rather than a :not() chain so adding a
+   colour later can't silently inherit the wrong halo. */
+.heroBtn .heroBtnIcon { filter: drop-shadow(0 0 4px rgba(255, 122, 33, 0.65)); }
+.heroBtnMoneyOut .heroBtnIcon { filter: drop-shadow(0 0 4px rgba(255, 101, 101, 0.65)); }
+.heroBtnLead .heroBtnIcon,
+.heroBtnMoneyIn .heroBtnIcon { filter: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .heroBtn { transition: none; }

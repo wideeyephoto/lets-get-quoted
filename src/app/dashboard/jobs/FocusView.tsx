@@ -349,11 +349,11 @@ export default function FocusView({
                   <ActionIcon name="job" />
                   Open job →
                 </Link>
-                <Link className={styles.heroBtn} href={`/dashboard/jobs/${selected.id}?open=payment#request-payment`}>
+                <Link className={`${styles.heroBtn} ${styles.heroBtnMoneyIn}`} href={`/dashboard/jobs/${selected.id}?open=payment#request-payment`}>
                   <ActionIcon name="payment" />
                   Request payment
                 </Link>
-                <Link className={styles.heroBtn} href={`/dashboard/jobs/${selected.id}?open=costs`}>
+                <Link className={`${styles.heroBtn} ${styles.heroBtnMoneyOut}`} href={`/dashboard/jobs/${selected.id}?open=costs`}>
                   <ActionIcon name="expense" />
                   Add expense
                 </Link>
