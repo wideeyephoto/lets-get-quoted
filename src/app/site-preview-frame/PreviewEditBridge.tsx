@@ -52,6 +52,9 @@ function labelFor(match: Editable): string {
   if (match.key === 'logo') return `${CAMERA} Replace logo`;
   if (match.key === 'header') return `${PENCIL} Edit header`;
   if (match.key === 'brandIcon') return `${PENCIL} Edit logo & icon`;
+  // The video band contains a poster <img>, so the generic image test fires on
+  // it — but the thing you'd be editing is the section, not that still frame.
+  if (match.key === 'video') return `${PENCIL} Edit video section`;
   if (match.isImage) return `${CAMERA} Replace photo`;
   return `${PENCIL} Click to edit`;
 }
@@ -76,6 +79,7 @@ const SECTION_SELECTORS: Record<string, string> = {
   blog: '#blog',
   serviceAreas: '#areas',
   projectShowcase: '#project-showcase, [data-edit="projectShowcase"]',
+  video: '#video, [data-edit="video"]',
   quoteForm: '[data-edit="quoteForm"], #contact',
   estimate: '[data-edit="estimate"], #contact',
   footer: 'footer',

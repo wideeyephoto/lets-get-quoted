@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import { deleteSiteImage, importJobPhotoAsSiteImage, uploadSiteImage } from '@/lib/site-image-storage';
+import { createSignedVideoUpload, deleteSiteVideo, siteVideoStoragePath, type SignedVideoUpload } from '@/lib/site-video-storage';
 import { createJobPhotoUrls } from '@/lib/job-photo-storage';
 import type { Site } from '@/lib/sites';
 import { SERVICE_ICON_GLYPHS } from '@/lib/templates/service-icons.data';
@@ -496,6 +497,25 @@ export async function uploadSiteImageAction(formData: FormData) {
   }
 
   return uploadSiteImage(accountId, file);
+}
+
+// Videos never travel through a server action — a Vercel action body caps at
+// 4.5 MB and the smallest real phone clip is bigger than that. The server hands
+// back a signed URL scoped to this account's folder and the browser uploads
+// straight to storage.
+export async function createSiteVideoUploadAction(fileName: string, contentType: string): Promise<SignedVideoUpload> {
+  const { accountId } = await requireOwnerContext();
+  return createSignedVideoUpload(accountId, String(fileName || 'video'), String(contentType || ''));
+}
+
+// Best-effort cleanup when an owner removes a video from the page. A failure
+// here leaves an orphaned file, which is far better than refusing to let them
+// take a video down — so the caller ignores the result.
+export async function deleteSiteVideoAction(url: string) {
+  const { accountId } = await requireOwnerContext();
+  const path = siteVideoStoragePath(String(url || ''), accountId);
+  if (!path) return;
+  await deleteSiteVideo(accountId, path);
 }
 
 export type JobPhotoImportOption = {

@@ -251,6 +251,100 @@ const PROJECT_SHOWCASE_STYLE_KEYS = new Set<string>(PROJECT_SHOWCASE_STYLES.map(
 export const MAX_PROJECT_SHOWCASE_ITEMS = 10;
 export const DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS = 5;
 
+// ── Video section ──────────────────────────────────────────────────────────
+//
+// One band of video on the page, presented in one of six arrangements. The
+// architecture that matters here is the split between the three things an owner
+// changes independently:
+//
+//   CONTENT  — the videos, headline, description, CTA, the testimonial words,
+//              the project details. Every style reads from this ONE set.
+//   STYLE    — which arrangement renders it (`style`).
+//   BEHAVIOR — autoplay / loop / controls / overlay / mobile fallback.
+//
+// So switching style REARRANGES the same content instead of asking for it
+// again, and a field the new style doesn't render is still saved — swap back and
+// it's exactly where it was. Nothing an owner typed is ever thrown away by a
+// layout choice, which is the whole reason these are three fields and not one
+// blob per style.
+export type SiteVideoStyle = 'hero' | 'split' | 'story' | 'reel' | 'testimonial' | 'process';
+
+// One video. Every per-item field any style might want lives here, for the same
+// reason as above: the reel's tile label and the testimonial's quote sit side by
+// side on the same item, so re-styling never drops one of them.
+export type SiteVideoItem = {
+  id: string;
+  /** An uploaded file's public URL, or a YouTube link. See lib/video-source. */
+  url: string;
+  /** Still frame — captured from the upload, or YouTube's own thumbnail. */
+  posterUrl: string;
+  /** Tile caption in the reel gallery; the play label elsewhere. */
+  label: string;
+  /** Seconds, 0 when unknown. Shown as "0:42" on the tile. */
+  duration: number;
+  // Testimonial fields — carried per video so a carousel can hold several
+  // customers, each with their own words.
+  quote: string;
+  author: string;
+  authorLabel: string;
+};
+
+export type SiteVideoSectionContent = {
+  enabled: boolean;
+  style: SiteVideoStyle;
+  // Content — shared by every style.
+  eyebrow: string;
+  headline: string;
+  body: string;
+  ctaLabel: string;
+  ctaHref: string;
+  videos: SiteVideoItem[];
+  // Project-story details (kept when another style is showing).
+  location: string;
+  timeline: string;
+  service: string;
+  // Process steps — title only; the number comes from position.
+  steps: SiteProcessStep[];
+  // Behavior.
+  autoplay: boolean;
+  loop: boolean;
+  controls: boolean;
+  /** 0–100 — how dark the scrim over the video is, for text legibility. */
+  overlay: number;
+  /** On phones, show the still frame with a play button instead of autoplaying. */
+  mobilePoster: boolean;
+};
+
+export const VIDEO_SECTION_STYLES: { key: SiteVideoStyle; label: string; desc: string }[] = [
+  { key: 'hero', label: 'Hero', desc: 'Full-width background video with your headline over it.' },
+  { key: 'split', label: 'Video + text', desc: 'Video beside your message and a button — the safe all-rounder.' },
+  { key: 'story', label: 'Project story', desc: 'One finished job as a mini case study: place, timeline, service.' },
+  { key: 'reel', label: 'Reel gallery', desc: 'A row of tall phone-shot clips — a browsable portfolio.' },
+  { key: 'testimonial', label: 'Testimonial', desc: 'A customer on camera with their words beside them.' },
+  { key: 'process', label: 'Process', desc: 'One video plus the numbered steps of what happens next.' },
+];
+const VIDEO_STYLE_KEYS = new Set<string>(VIDEO_SECTION_STYLES.map((style) => style.key));
+
+export const MAX_VIDEO_ITEMS = 6;
+export const MAX_VIDEO_STEPS = 4;
+
+// How many videos a style actually shows. The rest stay saved — trimming the
+// list to fit a style would delete an upload on a layout change.
+export function videoStyleCapacity(style: SiteVideoStyle): number {
+  return style === 'reel' || style === 'testimonial' ? MAX_VIDEO_ITEMS : 1;
+}
+
+export const DEFAULT_VIDEO_EYEBROW = 'Meet the owner';
+export const DEFAULT_VIDEO_HEADLINE = 'See what quality craftsmanship looks like.';
+export const DEFAULT_VIDEO_BODY = 'A quick hello, what we believe, and what homeowners can expect.';
+export const DEFAULT_VIDEO_CTA = 'Get a free estimate';
+export const DEFAULT_VIDEO_STEPS: SiteProcessStep[] = [
+  { id: 'vstep-1', title: 'Free estimate', description: '' },
+  { id: 'vstep-2', title: 'Approve quote', description: '' },
+  { id: 'vstep-3', title: 'We get to work', description: '' },
+  { id: 'vstep-4', title: 'Final walkthrough', description: '' },
+];
+
 // Icon service-card grid — the centerpiece of the home-services aesthetic.
 // `icon` is a key into ServiceIcon's set (falls back to a generic mark).
 export type SiteServiceItem = {
@@ -613,6 +707,8 @@ export type NormalizedSiteContent = {
   // Company-name wordmark display treatment ('' = plain). See WORDMARK_STYLES.
   wordmarkStyle: string;
   projectShowcase: SiteProjectShowcaseContent;
+  /** The video band — one set of content, six arrangements. */
+  videoSection: SiteVideoSectionContent;
   services: SiteServicesContent;
   howItWorks: SiteHowItWorksContent;
   blog: SiteBlogContent;
@@ -875,6 +971,21 @@ function parseServices(value: unknown): SiteServiceItem[] {
   }));
 }
 
+function parseVideoItems(value: unknown): SiteVideoItem[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.filter(isRecord).slice(0, MAX_VIDEO_ITEMS).map((item, index) => ({
+    id: toString(item.id, `vid-${index + 1}`),
+    url: toString(item.url).slice(0, 500),
+    posterUrl: toString(item.posterUrl).slice(0, 500),
+    label: toString(item.label).slice(0, 60),
+    duration: Math.max(0, Math.round(toPositiveNumber(item.duration, 0))),
+    quote: toString(item.quote).slice(0, 400),
+    author: toString(item.author).slice(0, 60),
+    authorLabel: toString(item.authorLabel).slice(0, 60),
+  }));
+}
+
 function parseProcessSteps(value: unknown): SiteProcessStep[] {
   if (!Array.isArray(value)) return [];
 
@@ -948,6 +1059,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const workGallery = isRecord(root.workGallery) ? root.workGallery : {};
   const introBlock = isRecord(root.introBlock) ? root.introBlock : {};
   const projectShowcase = isRecord(root.projectShowcase) ? root.projectShowcase : {};
+  const videoSection = isRecord(root.videoSection) ? root.videoSection : {};
   const services = isRecord(root.services) ? root.services : {};
   const howItWorks = isRecord(root.howItWorks) ? root.howItWorks : {};
   const blog = isRecord(root.blog) ? root.blog : {};
@@ -1109,6 +1221,30 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       title: toString(projectShowcase.title, DEFAULT_PROJECT_SHOWCASE_TITLE).slice(0, 80),
       style: PROJECT_SHOWCASE_STYLE_KEYS.has(toString(projectShowcase.style)) ? (toString(projectShowcase.style) as SiteProjectShowcaseStyle) : 'coverflow',
       items: parseShowcaseItems(projectShowcase.items).slice(0, MAX_PROJECT_SHOWCASE_ITEMS),
+    },
+    videoSection: {
+      // On by default, but it publishes nothing until a video is actually
+      // attached (getPublishedVideoSection) — so an owner who never adds one
+      // sees the control without ever shipping an empty band.
+      enabled: videoSection.enabled !== false,
+      style: VIDEO_STYLE_KEYS.has(toString(videoSection.style)) ? (toString(videoSection.style) as SiteVideoStyle) : 'split',
+      eyebrow: toString(videoSection.eyebrow, DEFAULT_VIDEO_EYEBROW).slice(0, 40),
+      headline: toString(videoSection.headline, DEFAULT_VIDEO_HEADLINE).slice(0, 120),
+      body: toString(videoSection.body, DEFAULT_VIDEO_BODY).slice(0, 400),
+      ctaLabel: toString(videoSection.ctaLabel, DEFAULT_VIDEO_CTA).slice(0, 40),
+      ctaHref: toString(videoSection.ctaHref, '#contact').slice(0, 200),
+      videos: parseVideoItems(videoSection.videos),
+      location: toString(videoSection.location).slice(0, 60),
+      timeline: toString(videoSection.timeline).slice(0, 40),
+      service: toString(videoSection.service).slice(0, 40),
+      steps: videoSection.steps === undefined
+        ? DEFAULT_VIDEO_STEPS.map((step) => ({ ...step }))
+        : parseProcessSteps(videoSection.steps).slice(0, MAX_VIDEO_STEPS),
+      autoplay: videoSection.autoplay !== false,
+      loop: videoSection.loop !== false,
+      controls: toBoolean(videoSection.controls),
+      overlay: Math.min(90, Math.max(0, Math.round(toPositiveNumber(videoSection.overlay, 55)))),
+      mobilePoster: videoSection.mobilePoster !== false,
     },
     services: {
       enabled: services.enabled !== false,
@@ -1348,6 +1484,21 @@ export function getPublishedServiceAreas(content: Record<string, unknown> | null
   return serviceAreas.enabled && cities.length > 0 ? { ...serviceAreas, cities } : null;
 }
 
+// The video band is live only once there is something to play. A style is a
+// layout, not content — an owner who picks "Reel gallery" and never uploads gets
+// nothing on the page rather than three empty frames.
+//
+// The returned `videos` are trimmed to what the chosen style shows, so the extra
+// clips a reel had never leak into the DOM after a switch to a single-video
+// style. They stay in storage untouched.
+export function getPublishedVideoSection(content: Record<string, unknown> | null | undefined): SiteVideoSectionContent | null {
+  const videoSection = getSiteContent(content).videoSection;
+  if (!videoSection.enabled) return null;
+  const playable = videoSection.videos.filter((item) => item.url.trim());
+  if (playable.length === 0) return null;
+  return { ...videoSection, videos: playable.slice(0, videoStyleCapacity(videoSection.style)) };
+}
+
 export function getPublishedCertifications(content: Record<string, unknown> | null | undefined): SiteCertificationsContent | null {
   const certifications = getSiteContent(content).certifications;
   const items = certifications.items.filter((item) => item.label.trim() || item.imageUrl.trim());
@@ -1488,6 +1639,7 @@ export function getSlotImage(content: Record<string, unknown> | null | undefined
 export const REORDERABLE_SECTIONS = [
   { key: 'services', label: 'Services' },
   { key: 'showcase', label: 'Showcase gallery' },
+  { key: 'video', label: 'Video' },
   { key: 'testimonials', label: 'Testimonials' },
   { key: 'stats', label: 'Animated stats' },
   { key: 'faqs', label: 'FAQs' },

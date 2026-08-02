@@ -6,7 +6,7 @@ import { getSiteContent, REORDERABLE_SECTIONS } from '@/lib/site-content';
 describe('default section order', () => {
   it('is the intended top-to-bottom order', () => {
     expect(getSiteContent({}).sectionOrder).toEqual([
-      'services', 'showcase', 'testimonials', 'stats', 'faqs',
+      'services', 'showcase', 'video', 'testimonials', 'stats', 'faqs',
       'beforeAfter', 'projectShowcase', 'howItWorks', 'blog', 'serviceAreas',
     ]);
   });
@@ -26,6 +26,8 @@ describe('default section on/off', () => {
     expect(c.projectShowcase.enabled).toBe(true);
     expect(c.blog.enabled).toBe(true);
     expect(c.serviceAreas.enabled).toBe(true);
+    // On, but gated on having a video — see test/video-section.test.ts.
+    expect(c.videoSection.enabled).toBe(true);
   });
   it('these sections default OFF', () => {
     expect(c.beforeAfter.enabled).toBe(false);

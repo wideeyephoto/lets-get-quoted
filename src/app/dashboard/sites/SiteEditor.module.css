@@ -644,3 +644,142 @@
 .aiSuite h2 { font-size: 1rem; line-height: 1.3; margin: .1rem 0 0; letter-spacing: 0; max-width: none; }
 .aiSuite :global(.eyebrow) { font-size: .62rem; }
 .aiSuite :global(.workspace-details-copy) { font-size: .84rem; line-height: 1.5; }
+
+/* --- Video studio ------------------------------------------------------- */
+/* Wider than the photo picker because the choice being made is a layout, and
+   layouts only compare side by side. Preview left, fields right. */
+.videoStudio { width: min(1020px, 100%); max-height: min(92vh, 880px); }
+.vsBody { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(320px, .85fr); gap: 1rem; overflow: hidden; padding: 1rem 1.15rem 1.15rem; }
+
+/* Style strip */
+.vsStyleStrip { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .5rem; padding: .85rem 1.15rem; border-bottom: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.02); }
+.vsStyleBtn { display: grid; justify-items: center; gap: .4rem; padding: .55rem .3rem; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; background: rgba(255,255,255,.03); color: #9ca8b8; font-size: .74rem; font-weight: 700; cursor: pointer; transition: border-color .14s ease, background .14s ease, color .14s ease; }
+.vsStyleBtn:hover { border-color: rgba(255,255,255,.3); color: #f7f5ef; }
+.vsStyleBtnOn { border-color: #ff7a21; background: color-mix(in srgb, #ff7a21 14%, transparent); color: #ff7a21; }
+.vsStyleBtn > span { text-align: center; line-height: 1.15; }
+
+/* The block diagram inside each style button. Children are plain <i>/<span>
+   boxes; the layout of the glyph IS the description. */
+.vsGlyph { display: flex; gap: 3px; align-items: stretch; width: 100%; max-width: 62px; aspect-ratio: 16 / 10; padding: 4px; border-radius: 5px; background: rgba(255,255,255,.08); }
+.vsGlyph[data-glyph='hero'], .vsGlyph[data-glyph='process'] { flex-direction: column; }
+.vsGlyph i, .vsGlyph span { display: block; border-radius: 2px; background: currentColor; opacity: .55; }
+.vsGlyph span { display: flex; flex-direction: column; justify-content: center; gap: 3px; flex: 1; background: none; opacity: 1; }
+.vsGlyph[data-glyph='process'] span { flex-direction: row; align-items: stretch; }
+.vsGlyphFill { flex: 1; }
+.vsGlyphHalf { flex: 1; }
+.vsGlyphTall { flex: 1; }
+.vsGlyphBar { height: 4px; }
+.vsGlyphBarWide { flex: 1.6; }
+.vsGlyphDash { flex: 1; }
+.vsStyleBtnOn .vsGlyph { background: color-mix(in srgb, #ff7a21 20%, transparent); }
+
+/* Preview pane. The caption follows the stage immediately (rows auto/auto) and
+   the leftover height falls off the bottom — a note floating alone at the base
+   of a tall column reads as belonging to nothing. */
+.vsPreviewPane { display: grid; grid-template-rows: auto auto auto 1fr; gap: .6rem; min-width: 0; overflow-y: auto; }
+.vsPreviewHead { display: flex; align-items: center; justify-content: space-between; gap: .75rem; color: #9ca8b8; font-size: .82rem; }
+.vsDeviceToggle { display: flex; gap: .3rem; padding: .2rem; border-radius: 999px; background: rgba(255,255,255,.06); }
+.vsDeviceToggle button { min-height: 30px; padding: .25rem .8rem; border: 0; border-radius: 999px; background: none; color: #9ca8b8; font-size: .78rem; font-weight: 700; cursor: pointer; }
+.vsDeviceOn { background: #f7f5ef; color: #11161d; }
+.vsPreviewStage { align-self: start; padding: 1rem; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; background: #10161f; }
+.vsPreviewMobile { width: min(300px, 100%); margin: 0 auto; padding: .75rem; }
+.vsPreviewNote { margin: 0; color: #8895a6; font-size: .78rem; line-height: 1.45; }
+
+/* Preview building blocks. A "shot" is one video: its poster if there is one,
+   otherwise a flat placeholder — never a fake photo. */
+.vsShot { position: relative; display: grid; place-items: center; overflow: hidden; border-radius: 7px; background: linear-gradient(140deg, #6ea8f5, #4f86e0); }
+.vsShot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.vsShotPlay { position: relative; width: 26px; height: 26px; border-radius: 50%; border: 2px solid rgba(255,255,255,.9); }
+.vsShotPlay::before { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-38%, -50%); border: 5px solid transparent; border-left-color: #fff; border-right-width: 0; }
+.vsShot em { position: absolute; left: 0; right: 0; bottom: 0; padding: .3rem .45rem; background: linear-gradient(transparent, rgba(6,10,16,.65)); color: #fff; font-size: .68rem; font-style: normal; font-weight: 700; text-align: center; }
+.vsShot b { position: absolute; left: .35rem; bottom: .3rem; color: #fff; font-size: .66rem; font-variant-numeric: tabular-nums; }
+.vsShotFill { position: absolute; inset: 0; border-radius: 0; }
+.vsShotEmpty { background: rgba(255,255,255,.05); border: 1px dashed rgba(255,255,255,.16); }
+.vsShotEmpty .vsShotPlay { opacity: .32; }
+.vsShotHalf { aspect-ratio: 4 / 3; }
+.vsShotWide { aspect-ratio: 16 / 8; }
+.vsShotTall { aspect-ratio: 9 / 16; }
+
+.vsPreviewBlock { display: grid; gap: .55rem; }
+.vsEyebrow { color: #9ca8b8; font-size: .72rem; font-weight: 700; }
+.vsHeading, .vsPreviewCopy strong, .vsHeroCopy strong { color: #f7f5ef; font-size: 1.02rem; font-weight: 800; line-height: 1.25; }
+.vsPreviewCopy { display: grid; align-content: center; gap: .4rem; min-width: 0; }
+.vsPreviewCopy p, .vsHeroCopy p { margin: 0; color: #9ca8b8; font-size: .8rem; line-height: 1.5; }
+.vsSplitPreview { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .85rem; align-items: center; }
+.vsPreviewMobile .vsSplitPreview { grid-template-columns: minmax(0, 1fr); }
+.vsBtn { justify-self: start; padding: .35rem .7rem; border: 1px solid rgba(255,255,255,.3); border-radius: 5px; color: #f7f5ef; font-size: .74rem; font-weight: 700; }
+.vsQuoteMark { color: #6ea8f5; font-size: 1.5rem; line-height: .6; }
+.vsPreviewAuthor { display: grid; gap: .05rem; }
+.vsPreviewAuthor b { color: #f7f5ef; font-size: .82rem; }
+.vsPreviewAuthor span { color: #8895a6; font-size: .74rem; }
+.vsFactsRow { display: flex; gap: 1.2rem; padding-top: .45rem; border-top: 1px solid rgba(255,255,255,.14); }
+.vsFactsRow span { display: grid; gap: .05rem; color: #8895a6; font-size: .7rem; }
+.vsFactsRow b { color: #f7f5ef; font-size: .9rem; }
+.vsReelRow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; }
+.vsPreviewMobile .vsReelRow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.vsReelCell { display: grid; }
+.vsStepsRow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .6rem; }
+.vsPreviewMobile .vsStepsRow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.vsStepsRow span { display: grid; gap: .2rem; padding-top: .4rem; border-top: 2px solid #6ea8f5; color: #c7d0dc; font-size: .72rem; line-height: 1.3; }
+.vsStepsRow em { color: #8895a6; font-size: .8rem; font-style: normal; font-weight: 800; }
+.vsHeroPreview { position: relative; display: grid; align-items: end; min-height: 190px; padding: .9rem; overflow: hidden; border-radius: 8px; }
+/* The band is short enough that the copy reaches into the top of the gradient,
+   so the scrim starts tinted rather than fully clear — otherwise the eyebrow
+   lands unreadable on a bright frame. */
+.vsHeroPreview::after { content: ''; position: absolute; inset: 0; background: linear-gradient(rgba(6,10,16,.18), rgba(6,10,16, calc(var(--vs-scrim, .55) + .25))); }
+.vsHeroCopy { position: relative; z-index: 1; display: grid; gap: .35rem; text-shadow: 0 1px 10px rgba(4,8,14,.85); }
+.vsHeroCopy .vsEyebrow { color: rgba(255,255,255,.82); }
+/* A background video has no play button in the design, so the preview's ring
+   would just be a circle sitting on the headline. */
+.vsHeroPreview .vsShotPlay { display: none; }
+
+/* Controls column */
+.vsControls { display: grid; align-content: start; gap: .75rem; min-width: 0; overflow-y: auto; padding-right: .25rem; }
+.vsControlsHead strong { display: block; color: #f7f5ef; font-size: 1rem; }
+.vsControlsHead small { display: block; margin-top: .1rem; color: #9ca8b8; font-size: .78rem; }
+.vsError { margin: 0; padding: .6rem .7rem; border: 1px solid rgba(255,140,120,.4); border-radius: 8px; background: rgba(255,90,70,.1); color: #ffb4a7; font-size: .8rem; line-height: 1.45; }
+
+.vsVideoRow { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: .6rem; padding: .55rem; border: 1px solid rgba(255,255,255,.12); border-radius: 9px; background: rgba(255,255,255,.03); }
+.vsThumb { position: relative; display: grid; place-items: center; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 6px; background: #0d1620; color: rgba(255,255,255,.4); font-size: 1rem; }
+.vsThumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.vsThumb em { position: absolute; right: .2rem; bottom: .15rem; padding: 0 .2rem; border-radius: 3px; background: rgba(6,10,16,.75); color: #fff; font-size: .64rem; font-style: normal; font-variant-numeric: tabular-nums; }
+.vsVideoMeta { display: grid; gap: .35rem; min-width: 0; }
+.vsVideoMeta > strong { color: #f7f5ef; font-size: .8rem; }
+.vsRowActions { display: flex; flex-wrap: wrap; gap: .35rem; }
+.vsRowActions button, .vsRowUpload { position: relative; display: inline-flex; align-items: center; justify-content: center; min-height: 30px; padding: .25rem .6rem; border: 1px solid rgba(255,255,255,.16); border-radius: 6px; background: rgba(255,255,255,.05); color: #f7f5ef; font-size: .74rem; font-weight: 700; cursor: pointer; }
+.vsRowActions button:hover, .vsRowUpload:hover { background: rgba(255,255,255,.11); }
+.vsRowUpload input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.vsRowRemove { color: #ffb4a7; }
+.vsLinkRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .35rem; }
+.vsLinkRow input { min-width: 0; min-height: 34px; padding: .4rem .55rem; border: 1px solid rgba(255,255,255,.16); border-radius: 6px; background: rgba(255,255,255,.05); color: #f7f5ef; font-size: .78rem; }
+.vsLinkRow button { min-height: 34px; padding: .3rem .8rem; border: 0; border-radius: 6px; background: #ff7a21; color: #14110b; font-weight: 800; font-size: .78rem; cursor: pointer; }
+.vsInlineInput { width: 100%; min-width: 0; min-height: 32px; padding: .35rem .5rem; border: 1px solid rgba(255,255,255,.14); border-radius: 6px; background: rgba(6,12,20,.5); color: #f7f5ef; font-size: .78rem; font-family: inherit; resize: vertical; }
+.vsInlineInput::placeholder { color: rgba(247,245,239,.4); }
+.vsInlinePair { display: grid; grid-template-columns: 1fr 1fr; gap: .35rem; }
+.vsAddRow { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+
+.vsSwitchRow { display: flex; align-items: flex-start; gap: .6rem; color: #f7f5ef; font-size: .86rem; font-weight: 700; cursor: pointer; }
+.vsSwitchRow input { flex: none; width: 18px; height: 18px; margin-top: .1rem; accent-color: #ff7a21; }
+.vsSwitchRow span { display: grid; gap: .15rem; min-width: 0; }
+.vsSwitchRow small { color: #9ca8b8; font-size: .76rem; font-weight: 400; line-height: 1.45; }
+.vsRange { width: 100%; accent-color: #ff7a21; }
+
+.vsAdvancedToggle { justify-self: start; padding: .3rem 0; border: 0; background: none; color: #ff9b54; font-size: .82rem; font-weight: 800; cursor: pointer; }
+.vsAdvanced { display: grid; gap: .75rem; padding: .8rem; border: 1px solid rgba(255,255,255,.1); border-radius: 9px; background: rgba(0,0,0,.18); }
+.vsUses { margin: 0; color: #8895a6; font-size: .76rem; line-height: 1.5; }
+.vsUses strong { color: #c7d0dc; }
+.vsFooter { display: flex; justify-content: flex-end; padding-top: .3rem; }
+.vsDone { min-height: 42px; padding: .5rem 1.4rem; border: 0; border-radius: 9px; background: #ff7a21; color: #14110b; font-weight: 800; font-size: .9rem; cursor: pointer; }
+.vsDone:hover { filter: brightness(1.06); }
+
+/* The card button that opens the studio. */
+.vsOpenBtn { display: flex; align-items: center; justify-content: center; gap: .5rem; width: 100%; min-height: 46px; padding: .6rem 1rem; border: 1px dashed rgba(255,122,33,.5); border-radius: 10px; background: rgba(255,122,33,.08); color: #ff9b54; font-size: .92rem; font-weight: 800; cursor: pointer; transition: background .16s ease, border-color .16s ease; }
+.vsOpenBtn:hover { background: rgba(255,122,33,.16); border-color: #ff7a21; }
+.vsSummary { display: flex; flex-wrap: wrap; gap: .4rem; }
+.vsSummary span { padding: .22rem .55rem; border: 1px solid rgba(255,255,255,.14); border-radius: 999px; background: rgba(255,255,255,.04); color: #c7d0dc; font-size: .74rem; font-weight: 700; }
+
+@media (max-width: 900px) {
+  .vsBody { grid-template-columns: minmax(0, 1fr); overflow-y: auto; }
+  .vsPreviewPane, .vsControls { overflow: visible; }
+  .vsStyleStrip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

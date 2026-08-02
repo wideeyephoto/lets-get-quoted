@@ -80,7 +80,13 @@ export function parseYouTubeUrl(input: string | null | undefined): YouTubeVideo 
 // never starts. Muted-then-unmute-on-tap is the only version that actually
 // plays. rel=0 keeps the end-screen suggestions on the owner's own channel, and
 // playsinline stops iOS from yanking the video fullscreen over the estimate.
-export function youTubeEmbedSrc(video: YouTubeVideo, opts: { autoplay: boolean }): string {
+// `loop` and `controls` are optional so the intro-video caller is unchanged;
+// omitted, the player keeps its own defaults (play once, show controls).
+//
+// YouTube's loop=1 does nothing on its own — a single-video loop only works when
+// the video is also its own one-item playlist, which is why playlist is set to
+// the same id.
+export function youTubeEmbedSrc(video: YouTubeVideo, opts: { autoplay: boolean; loop?: boolean; controls?: boolean }): string {
   const params = new URLSearchParams({
     rel: '0',
     modestbranding: '1',
@@ -89,6 +95,11 @@ export function youTubeEmbedSrc(video: YouTubeVideo, opts: { autoplay: boolean }
     autoplay: opts.autoplay ? '1' : '0',
     mute: opts.autoplay ? '1' : '0',
   });
+  if (opts.loop) {
+    params.set('loop', '1');
+    params.set('playlist', video.id);
+  }
+  if (opts.controls === false) params.set('controls', '0');
   if (video.start > 0) params.set('start', String(video.start));
   return `https://www.youtube-nocookie.com/embed/${video.id}?${params.toString()}`;
 }

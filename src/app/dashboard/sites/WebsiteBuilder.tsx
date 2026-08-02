@@ -6,7 +6,7 @@ import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getSiteContent, getTradeGlyphOptions, glyphForContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES,
   MENU_BUTTON_STYLES,
-  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
+  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, VIDEO_SECTION_STYLES, videoStyleCapacity, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
 import { generatePrivacyPolicy, generateTermsOfService } from '@/lib/legal/legal-copy';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
@@ -22,6 +22,7 @@ import IntroVideoField from './IntroVideoField';
 import LivePreview from './LivePreview';
 import SectionCard from './SectionCard';
 import ThemeIcon from './ThemeIcon';
+import VideoStudio from './VideoStudio';
 import styles from './SiteEditor.module.css';
 
 type BuilderTab = 'business' | 'page' | 'design' | 'publish';
@@ -369,6 +370,9 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
     | { label: string; kind: 'hero' | 'logo' | 'slot' | 'beforeAfter' | 'showcase' | 'project' | 'heroExtra'; slot?: string; baItemId?: string; baSide?: 'before' | 'after'; scItemId?: string | null; pjItemId?: string | null; heroExtraIndex?: number }
     | null
   >(null);
+  // The video studio popup — the section's style, videos and behavior all live
+  // in there because a layout choice can't be judged from a 480px rail.
+  const [videoStudioOpen, setVideoStudioOpen] = useState(false);
   // The section key currently being dragged in the "Page order" reorder list.
   const [dragKey, setDragKey] = useState<string | null>(null);
   // The card the pointer is currently over — shows the "lands here" indicator.
@@ -595,6 +599,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
       trustBadges: 'trustBadges',
       ratingBadge: 'rating',
       projectShowcase: 'projectShowcase',
+      video: 'video',
     };
 
     function onEditRequest(event: MessageEvent) {
@@ -1254,6 +1259,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
     updateSiteContent({ projectShowcase });
   }, [updateSiteContent]);
 
+  const updateVideoSection = useCallback((videoSection: SiteVideoSectionContent) => {
+    updateSiteContent({ videoSection });
+  }, [updateSiteContent]);
+
   // The editable project photos: the owner's own set once they've touched it,
   // otherwise the SAME gallery fallback the template shows (so every photo on
   // screen is an editable tile — Replace via upload/stock, caption). The first
@@ -1315,6 +1324,13 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
       ? { hint: 'using placeholder photos', hintTone: 'ok' }
       : { hint: "empty — won't show yet", hintTone: 'warn' };
   })();
+
+  // Video card hint. A section switched on with nothing to play publishes
+  // nothing, so it says so rather than showing a confident "On".
+  const videoClips = siteContent.videoSection.videos.filter((item) => item.url.trim());
+  const videoStyleLabel = VIDEO_SECTION_STYLES.find((style) => style.key === siteContent.videoSection.style)?.label ?? 'Video';
+  const videoShown = Math.min(videoClips.length, videoStyleCapacity(siteContent.videoSection.style));
+  const videoHint: { hint?: string; hintTone?: 'ok' | 'warn' } = contentHint(siteContent.videoSection.enabled, videoClips.length, 'video');
 
   const checkSubdomain = useCallback(() => {
     const subdomain = site.subdomain?.trim().toLowerCase();
@@ -2012,6 +2028,22 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
                   })()}
                 </SectionCard>
 
+                <SectionCard reorder={reorderProps('video', 'Video')} title="Video" description="A band of video on your page. Pick one of six arrangements — a full-width backdrop, a video beside your message, a project story, a row of phone clips, a customer on camera, or your process." evidence="A homeowner who watches you speak has already met you. Video on a service page is the closest thing to a first visit before the first visit." enabled={siteContent.videoSection.enabled} onToggleEnabled={(value) => updateVideoSection({ ...siteContent.videoSection, enabled: value })} {...videoHint} open={openSection === 'video'} onToggleOpen={() => toggleSection('video')}>
+                  <div className={styles.vsSummary}>
+                    <span>{videoStyleLabel}</span>
+                    <span>{videoClips.length === 0 ? 'No video yet' : `${videoShown} showing`}</span>
+                    <span>{siteContent.videoSection.autoplay ? 'Autoplay muted' : 'Tap to play'}</span>
+                    {siteContent.videoSection.loop && <span>Loops</span>}
+                    {siteContent.videoSection.controls && <span>Controls on</span>}
+                  </div>
+                  <button type="button" className={styles.vsOpenBtn} onClick={() => setVideoStudioOpen(true)}>
+                    🎬 {videoClips.length === 0 ? 'Add a video' : 'Open the video studio'}
+                  </button>
+                  <p className={styles.fieldHint}>
+                    Upload a clip (up to 50 MB — about 45 seconds of phone video) or paste a YouTube link. Switching arrangements never loses what you&apos;ve written: every layout reads the same headline, description, and button.
+                  </p>
+                </SectionCard>
+
                 <SectionCard reorder={reorderProps('testimonials', 'Customer reviews')} title="Customer reviews" description="Show quotes from real customers on your public site." evidence="97% of homeowners read reviews before hiring a local pro, and the first few weigh the most." enabled={siteContent.testimonials.enabled} onToggleEnabled={(value) => updateTestimonials({ ...siteContent.testimonials, enabled: value })} {...contentHint(siteContent.testimonials.enabled, reviewCount, 'review')} open={openSection === 'testimonials'} onToggleOpen={() => toggleSection('testimonials')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.testimonials.title} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, title: event.target.value })} /></label>
                   {reviewCount === 0 && (
@@ -2476,6 +2508,14 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
             if (picker.kind !== 'logo') recordPickedStock(picker, image, pexels);
             setPicker(null);
           }}
+        />
+      )}
+
+      {videoStudioOpen && (
+        <VideoStudio
+          content={siteContent.videoSection}
+          onChange={updateVideoSection}
+          onClose={() => setVideoStudioOpen(false)}
         />
       )}
     </main>

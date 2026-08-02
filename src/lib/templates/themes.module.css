@@ -2443,3 +2443,240 @@
     inset: -0.75rem -0.6rem;
   }
 }
+
+/* ── Video section ───────────────────────────────────────────────────────────
+   Six arrangements of one video band (SiteVideoSection.tsx). Everything here is
+   token-driven (--c-*, --theme-accent, --theme-display) so the band inherits
+   whichever theme and color scheme the site is on — there is no per-theme copy
+   of this block to keep in sync.
+
+   --video-scrim is the owner's "text overlay" slider, 0-1. It only darkens
+   surfaces that have words over them; a video nobody has to read through is
+   left alone. */
+
+.videoSection { display: grid; gap: 2rem; }
+
+/* The frame every style plays inside: a rounded box that clips the media and
+   stacks poster / player / controls. */
+.videoFrame {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--theme-radius, 14px);
+  background: #0b1119;
+  aspect-ratio: 16 / 9;
+  isolation: isolate;
+}
+.videoFrame > video,
+.videoFrame > iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  object-fit: cover;
+  background: #0b1119;
+}
+/* The hero's backdrop fills the band instead of holding its own shape. */
+.videoFrameCover { position: absolute; inset: 0; border-radius: 0; aspect-ratio: auto; }
+/* A <video> crops itself with object-fit. An iframe cannot: YouTube's player
+   letterboxes a 16:9 video inside whatever box it is given, so a wide, short
+   band gets black bars and the player's own title bar instead of a backdrop.
+   The fix is to oversize the frame past the viewport in both directions and
+   center it, so the picture covers and the chrome sits outside the band.
+   pointer-events go to the copy on top, never through to YouTube. */
+.videoFrameCover > iframe {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100vw, 177.78vh);
+  height: max(56.25vw, 100vh);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* Click-to-play still frame. A button, not a div with a handler, so it is
+   reachable by keyboard and announces itself. */
+.videoPoster {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #fff;
+  cursor: pointer;
+}
+.videoPoster > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.videoPosterBlank { position: absolute; inset: 0; background: linear-gradient(140deg, #24303f, #131b25); }
+.videoPoster::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(6,10,16,.05), rgba(6,10,16,.45));
+}
+/* The play glyph — a ring with a triangle inside it, drawn rather than shipped
+   as an asset so it tints to the accent on hover. */
+.videoPlay {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: clamp(52px, 7vw, 74px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.85);
+  background: rgba(10,16,24,.35);
+  transition: transform .22s cubic-bezier(.34, 1.56, .64, 1), background .22s ease, border-color .22s ease;
+}
+.videoPlay::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-40%, -50%);
+  border-style: solid;
+  border-width: .55em 0 .55em .92em;
+  border-color: transparent transparent transparent #fff;
+  font-size: clamp(13px, 1.6vw, 18px);
+}
+.videoPoster:hover .videoPlay,
+.videoPoster:focus-visible .videoPlay { transform: scale(1.09); background: var(--theme-accent); border-color: var(--theme-accent); }
+.videoPoster:hover .videoPlay::before,
+.videoPoster:focus-visible .videoPlay::before { border-left-color: var(--theme-on-accent, #111); }
+
+.videoPosterLabel {
+  position: absolute;
+  z-index: 1;
+  left: 1rem;
+  bottom: .9rem;
+  max-width: calc(100% - 2rem);
+  font-size: .92rem;
+  font-weight: 700;
+  text-shadow: 0 2px 12px rgba(0,0,0,.55);
+}
+.videoDuration {
+  position: absolute;
+  z-index: 1;
+  right: 1rem;
+  bottom: .9rem;
+  padding: .12rem .45rem;
+  border-radius: 4px;
+  background: rgba(6,10,16,.62);
+  font-size: .78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Sound toggle for a muted autoplaying clip with no player controls. Without
+   it the video is decoration nobody can choose to hear. */
+.videoSound {
+  position: absolute;
+  z-index: 2;
+  right: .75rem;
+  bottom: .75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  min-height: 36px;
+  padding: .35rem .7rem;
+  border: 1px solid rgba(255,255,255,.4);
+  border-radius: 999px;
+  background: rgba(6,10,16,.6);
+  color: #fff;
+  font-size: .78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .18s ease, border-color .18s ease;
+}
+.videoSound:hover { background: rgba(6,10,16,.85); border-color: rgba(255,255,255,.75); }
+
+/* ── Hero: full-bleed video with the copy over it ── */
+.videoHeroBand {
+  position: relative;
+  display: grid;
+  align-items: end;
+  min-height: clamp(420px, 68vh, 720px);
+  padding: clamp(2.5rem, 7vw, 5.5rem) 5vw;
+  overflow: hidden;
+  background: #0b1119;
+  color: #fff;
+  isolation: isolate;
+}
+/* The scrim is the readability layer, so it sits above the video and below the
+   words. Its strength is the owner's slider. */
+.videoHeroBand::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(6,10,16,.12), rgba(6,10,16,calc(var(--video-scrim, .55) + .18)));
+  pointer-events: none;
+}
+.videoHeroMedia { z-index: 0; }
+.videoHeroCopy { position: relative; z-index: 2; display: grid; gap: .75rem; max-width: 760px; justify-items: start; }
+.videoHeroCopy h2 { margin: 0; font-family: var(--theme-display); font-size: clamp(2.2rem, 5.4vw, 4.4rem); line-height: .98; }
+.videoHeroCopy .videoBody { margin: 0; max-width: 56ch; font-size: 1.05rem; line-height: 1.6; color: rgba(255,255,255,.86); }
+/* The hero's poster button covers the whole band, so its play control is pushed
+   clear of the copy underneath instead of centering on top of it — and the
+   sound toggle moves to the top edge, out from behind the bottom-aligned copy. */
+.videoHeroBand .videoPoster { align-items: start; padding-top: 12vh; }
+.videoHeroBand .videoSound { top: .9rem; bottom: auto; }
+
+/* ── Split / Story / Testimonial: media beside copy ── */
+.videoSplit { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: clamp(1.5rem, 4vw, 3.5rem); align-items: center; }
+.videoCopy { display: grid; gap: .8rem; justify-items: start; min-width: 0; }
+.videoCopy h2 { margin: 0; font-family: var(--theme-display); font-size: clamp(1.9rem, 3.6vw, 3.2rem); line-height: 1.02; }
+.videoBody { margin: 0; max-width: 52ch; line-height: 1.65; color: color-mix(in srgb, currentColor 74%, transparent); }
+.videoCta { margin-top: .4rem; }
+.videoCtaRow { display: flex; justify-content: center; }
+
+.videoLocation { margin: 0; font-size: .88rem; font-weight: 700; letter-spacing: .04em; color: color-mix(in srgb, currentColor 66%, transparent); }
+
+/* Project-story facts — a small definition list, not a stat grid: two labeled
+   details about one job. The value is ordered above its label. */
+.videoFacts { display: flex; flex-wrap: wrap; gap: 1.6rem; margin: .4rem 0 0; padding-top: .9rem; border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent); }
+.videoFacts div { display: grid; gap: .15rem; }
+.videoFacts dt { order: 2; font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: color-mix(in srgb, currentColor 60%, transparent); }
+.videoFacts dd { order: 1; margin: 0; font-size: 1.25rem; font-weight: 800; font-family: var(--theme-display); }
+
+/* ── Testimonial ── */
+.videoQuote { margin: 0; padding: 0; font-size: clamp(1.05rem, 1.6vw, 1.25rem); line-height: 1.6; }
+.videoQuote::before {
+  content: '\201D';
+  display: block;
+  margin-bottom: -.4em;
+  font-family: var(--theme-display);
+  font-size: 2.6rem;
+  line-height: 1;
+  color: var(--theme-accent);
+}
+.videoAuthor { display: grid; gap: .1rem; margin: 0; }
+.videoAuthor span { font-size: .88rem; color: color-mix(in srgb, currentColor 65%, transparent); }
+.videoDots { display: flex; justify-content: center; gap: .5rem; }
+.videoDot { width: 10px; height: 10px; padding: 0; border: 0; border-radius: 999px; background: color-mix(in srgb, currentColor 28%, transparent); cursor: pointer; transition: width .2s ease, background .2s ease; }
+.videoDotOn { width: 26px; background: var(--theme-accent); }
+
+/* ── Reel gallery: a row of vertical phone clips ── */
+.videoReel { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr)); gap: clamp(.8rem, 2vw, 1.4rem); }
+.videoReelTile { aspect-ratio: 9 / 16; }
+
+/* ── Process: one wide video over numbered steps ── */
+.videoWide { width: 100%; }
+.videoSteps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+  gap: 1.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.videoSteps li { display: grid; gap: .3rem; align-content: start; padding-top: .9rem; border-top: 2px solid color-mix(in srgb, var(--theme-accent) 70%, transparent); }
+.videoStepNum { font-family: var(--theme-display); font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; color: color-mix(in srgb, currentColor 55%, transparent); }
+.videoSteps strong { font-size: 1.05rem; }
+.videoStepDesc { font-size: .88rem; line-height: 1.55; color: color-mix(in srgb, currentColor 68%, transparent); }
+
+@media (max-width: 860px) {
+  .videoSplit { grid-template-columns: minmax(0, 1fr); }
+  .videoHeroBand { min-height: clamp(360px, 60vh, 520px); }
+  .videoFacts { gap: 1.1rem; }
+}

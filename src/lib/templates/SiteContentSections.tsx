@@ -16,6 +16,7 @@ import {
   getPublishedStats,
   getPublishedStickyCallBar,
   getPublishedTestimonials,
+  getPublishedVideoSection,
   getSiteContent,
   getSlotImage,
 } from '@/lib/site-content';
@@ -25,6 +26,7 @@ import ProjectShowcase from './ProjectShowcase';
 import TestimonialSlider from './TestimonialSlider';
 import SiteServices from './SiteServices';
 import SiteProcess from './SiteProcess';
+import SiteVideoSection from './SiteVideoSection';
 import StatCounters from './StatCounters';
 import styles from './themes.module.css';
 
@@ -54,6 +56,7 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
   const stats = getPublishedStats(site.content);
   const beforeAfter = getPublishedBeforeAfter(site.content);
   const blog = getPublishedBlog(site.content);
+  const videoSection = getPublishedVideoSection(site.content);
   const stickyCallBar = getPublishedStickyCallBar(site.content, site.phone);
 
   // The Photo gallery renders in-flow (and reorderable) on every template. It was
@@ -80,7 +83,7 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
           .map((item) => ({ id: item.id, url: item.url, alt: item.alt }))
       : [];
 
-  const hasInFlowSections = Boolean(services || howItWorks || showcase || testimonials || faqs || serviceAreas || stats || beforeAfter || blog || projectShowcase);
+  const hasInFlowSections = Boolean(services || howItWorks || showcase || testimonials || faqs || serviceAreas || stats || beforeAfter || blog || projectShowcase || videoSection);
 
   if (!hasInFlowSections && !stickyCallBar) return null;
 
@@ -105,6 +108,7 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
       </section>
     ),
     howItWorks: howItWorks && <SiteProcess title={howItWorks.title} intro={howItWorks.intro} steps={howItWorks.steps} />,
+    video: videoSection && <SiteVideoSection content={videoSection} />,
     showcase: showcase && (() => {
       // The visible tile title must ADVERTISE a service, never describe the
       // photo. Stock tiles saved without a caption (older generations, picker
