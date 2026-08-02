@@ -10654,19 +10654,48 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
     max-height: calc(100vh - 2rem);
   }
 
-  .schedule-rail > #unscheduled-jobs {
+  /* THE FLEX ITEM IS .schedule-dock-body, NOT the section inside it.
+     The jobs section is wrapped twice: .schedule-dock (the phone bottom-sheet,
+     `display: contents` up here) and .schedule-dock-body inside it. Because the
+     dock is display:contents, the BODY is what becomes a flex item of the rail
+     — the section is its child and has no say in the rail's layout at all.
+     This rule used to read `.schedule-rail > #unscheduled-jobs`, which matched
+     nothing twice over: wrong element, and a child combinator that cannot cross
+     a display:contents wrapper anyway (selectors match the DOM tree, the box
+     tree is a separate thing).
+     So nothing in the rail could shrink and its max-height was a lie. Measured:
+     1229px of content inside an 868px box, 361px of it the map and its legend,
+     spilling out under `overflow: visible` with the setup link and Working
+     hours panel painting straight over the top. */
+  .schedule-rail .schedule-dock-body {
     flex: 1 1 auto;
+    /* Both halves matter. A flex item defaults to min-height:auto, which refuses
+       to shrink below its content — that alone reintroduces the whole bug. */
     min-height: 8rem;
     overflow: hidden;
     display: flex;
     flex-direction: column;
   }
 
-  .schedule-rail > #unscheduled-jobs .sign-in-methods-list {
+  .schedule-rail #unscheduled-jobs {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .schedule-rail #unscheduled-jobs .sign-in-methods-list {
     overflow-y: auto;
     min-height: 0;
     padding-right: 0.3rem;
   }
+
+  /* The map is the one thing that must never be the item that gets squeezed
+     out — its legend is how you filter the pins, and a legend below the fold of
+     an overflowing rail is a control nobody can reach. Explicit rather than
+     relying on the jobs list above always yielding enough. */
+  .schedule-rail .schedule-map { flex: 0 0 auto; }
 }
 
 .schedule-rail {
