@@ -69,6 +69,11 @@ export async function GET() {
       // Counting 'complete' too meant the number only ever grew, so after a busy
       // season it would read 300-odd and stop meaning anything at a glance.
       const activeJobCount = jobs.filter((job) => job.status === 'new_lead' || job.status === 'in_progress').length;
+      // When the newest job arrived, for the rail's "New" badge. Live work only,
+      // matching activeJobCount: a job completed and archived months ago is not
+      // something to go and look at. listJobs already sorts newest-first.
+      const newestJobCreatedAt =
+        jobs.find((job) => job.status === 'new_lead' || job.status === 'in_progress')?.created_at ?? null;
 
       // Muting low-quality leads (default on) keeps them off the dashboard nag —
       // the badge/banner only counts leads that actually deserve a response.
@@ -115,6 +120,7 @@ export async function GET() {
     newestQuoteRequestId: newestLead?.id ?? null,
     newestQuoteRequestCreatedAt: newestLead?.created_at ?? null,
     newestQuoteRequestHighValue,
+    newestJobCreatedAt,
     quickStopState,
     // Online booking, judged the same way its own setup page judges it: the
     // switch being on is not the same as the page being able to take a booking.

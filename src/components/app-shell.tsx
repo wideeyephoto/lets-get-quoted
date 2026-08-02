@@ -8,6 +8,7 @@ import { useAppShell } from './app-shell-provider';
 import { NavIcon } from './nav-icons';
 import ActionIcon from './action-icon';
 import { supabase } from '@/lib/supabase';
+import { isSectionNew, markNavSeen, parseNavSeen, NAV_SEEN_STORAGE_KEY, type NavSeenMap } from '@/lib/nav-helpers';
 
 // Order follows the pipeline (Leads -> Jobs -> Schedule) with Crew, a resource,
 // after the stages instead of splitting them. `hint` surfaces the vocabulary
@@ -85,6 +86,8 @@ type AccountStatus = {
   newestQuoteRequestId: string | null;
   newestQuoteRequestCreatedAt: string | null;
   newestQuoteRequestHighValue: boolean;
+  /** When the newest live job arrived — drives the rail's "New" badge. */
+  newestJobCreatedAt: string | null;
   /** Whether Quick Stop is accepting same-day work right now. */
   quickStopState: NavState;
   /** Whether the public booking page is actually live. */
@@ -147,6 +150,11 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [newestQuoteRequestId, setNewestQuoteRequestId] = useState<string | null>(null);
   const [newestQuoteRequestCreatedAt, setNewestQuoteRequestCreatedAt] = useState<string | null>(null);
   const [newestLeadHighValue, setNewestLeadHighValue] = useState(false);
+  const [newestJobCreatedAt, setNewestJobCreatedAt] = useState<string | null>(null);
+  // Per-section "you've looked at this" marks, read from localStorage after
+  // mount. Empty on the server and on the first client render, which is what we
+  // want: the badge appears a beat later rather than hydrating wrong.
+  const [navSeen, setNavSeen] = useState<NavSeenMap>({});
   // 'unknown' until the first status check answers — a pill that guessed OFF for
   // a second on every page load would be worse than one that waits.
   const [quickStopState, setQuickStopState] = useState<NavState>('unknown');
@@ -290,6 +298,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             setNewestQuoteRequestId(data.newestQuoteRequestId ?? null);
             setNewestQuoteRequestCreatedAt(data.newestQuoteRequestCreatedAt ?? null);
             setNewestLeadHighValue(Boolean(data.newestQuoteRequestHighValue));
+            setNewestJobCreatedAt(data.newestJobCreatedAt ?? null);
             setQuickStopState(navState(data.quickStopState));
             setBookingState(navState(data.bookingState));
           }
@@ -313,6 +322,39 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     if (!isDashboard || !isLoggedIn) return;
     setDismissedQuoteRequestId(window.localStorage.getItem(QUOTE_REQUEST_ALERT_DISMISSED_KEY));
   }, [isDashboard, isLoggedIn, newestQuoteRequestId]);
+
+  // Read the seen marks once, after mount.
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    setNavSeen(parseNavSeen(window.localStorage.getItem(NAV_SEEN_STORAGE_KEY)));
+  }, [isLoggedIn]);
+
+  // Landing on a section clears its badge. It runs on the newest-arrival value
+  // too, not just the pathname: sitting on Leads while a lead comes in should
+  // clear that one as well — it arrived on a screen that was already showing it,
+  // so it has been seen by any reasonable meaning of the word.
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const newestFor: Record<string, string | null> = {
+      '/dashboard/leads': newestQuoteRequestCreatedAt,
+      '/dashboard/jobs': newestJobCreatedAt,
+    };
+    const href = Object.keys(newestFor).find((section) => isActiveNav(pathname, section));
+    if (!href) return;
+    setNavSeen((current) => {
+      const next = markNavSeen(current, href, newestFor[href]);
+      // markNavSeen returns the same object when nothing moved forward, so this
+      // never writes storage or re-renders on every poll.
+      if (next === current) return current;
+      try {
+        window.localStorage.setItem(NAV_SEEN_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // Private mode / storage full. The badge just stays until the next
+        // visit — not worth failing a navigation over.
+      }
+      return next;
+    });
+  }, [isLoggedIn, pathname, newestQuoteRequestCreatedAt, newestJobCreatedAt]);
 
   if (isStandaloneSite) {
     return <>{children}</>;
@@ -361,12 +403,26 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       '/dashboard/leads': { count: openLeadCount, title: `${openLeadCount} open lead${openLeadCount === 1 ? '' : 's'} (won and lost not counted)` },
       '/dashboard/jobs': { count: activeJobCount, title: `${activeJobCount} live job${activeJobCount === 1 ? '' : 's'} (completed and archived not counted)` },
     };
+    // "Something arrived here that you haven't opened yet." The numbers say how
+    // much; this says whether any of it is news. It clears on the visit, so it
+    // is only ever pointing at the gap between the two.
+    const newestByHref: Record<string, string | null> = {
+      '/dashboard/leads': newestQuoteRequestCreatedAt,
+      '/dashboard/jobs': newestJobCreatedAt,
+    };
+    const newLabelByHref: Record<string, string> = {
+      '/dashboard/leads': 'New leads have come in since you last opened Leads',
+      '/dashboard/jobs': 'New work has landed since you last opened Jobs',
+    };
     const renderSideLink = (href: string, extraClass = '') => {
       const item = byHref.get(href);
       if (!item) return null;
       const active = isActiveNav(pathname, href);
       const count = countByHref[href] ?? 0;
       const total = totalByHref[href];
+      // Never on the page you're standing on — the effect above marks it seen
+      // the moment you arrive, but the badge shouldn't flicker in the gap.
+      const isNew = !active && isSectionNew(newestByHref[href], navSeen[href]);
       const state =
         href === '/dashboard/quick-stops' ? quickStopState : href === '/dashboard/schedule/booking' ? bookingState : 'unknown';
       // Quick Stops wears its logo instead of an icon and a word. The wordmark
@@ -406,6 +462,9 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               {NAV_STATE_PILL[href][state].label}
             </span>
           ) : null}
+          {/* Ahead of the numbers, so the badge cluster reads left to right as
+              "is there news, then how much". */}
+          {isNew ? <span className="sidenav-unseen" title={newLabelByHref[href]}>New</span> : null}
           {count > 0 ? <span className="sidenav-count">{count}</span> : null}
           {total && total.count > 0 ? (
             <span className="sidenav-total" title={total.title}>{total.count}</span>

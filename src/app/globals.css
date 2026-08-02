@@ -491,7 +491,14 @@ h3 {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.55rem 0.6rem;
+  /* The row's height is pinned by min-height, not by whatever happens to be the
+     tallest thing inside it. That's what lets the number boxes below grow: the
+     vertical padding pays for their extra height, and rows WITHOUT a number
+     don't shrink to match, so the rail's rhythm is identical either way.
+     2.3rem is exactly the height these rows already had (0.55rem × 2 padding +
+     a 1.2rem badge) — this is a redistribution, not a resize. */
+  min-height: 2.3rem;
+  padding: 0.45rem 0.6rem;
   border-radius: 12px;
   color: rgba(247, 245, 239, 0.72);
   font-size: 0.92rem;
@@ -589,50 +596,84 @@ h3 {
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+/* --- the badge cluster -----------------------------------------------------
+   One box, three tones. The numbers now sit in hollow square-cornered boxes as
+   tall as the row allows, because a 2-digit count in a 1.2rem circle is a thing
+   you squint at, and these are meant to be read at a glance from across a desk.
+
+   1.4rem tall against the row's 0.45rem padding lands on exactly the 2.3rem the
+   rows already measured — the height was redistributed from padding into the
+   box, not added. .sidenav-link's min-height holds every OTHER row at that same
+   2.3rem so the rail's rhythm is untouched.
+
+   Hollow for both numbers, per the ask. What used to separate them (one filled,
+   one outlined) is now colour alone, which is the more honest split anyway:
+   they are the same kind of fact — a quantity — and the accent one is the one
+   that wants you today. Border and wash both derive from currentColor, so each
+   tone is a single colour declaration. */
+.sidenav-unseen,
+.sidenav-count,
+.sidenav-total {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  height: 1.4rem;
+  border-radius: 4px;
+  border: 1px solid currentColor;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* "Something landed here that you haven't opened." A word, not a dot — a dot
+   has to be learned, and this has to work the first time it's seen. It clears
+   itself the moment the page is visited, so it can only ever be pointing at a
+   real gap. */
+.sidenav-unseen {
+  /* Sized down to what four letters actually need. It is the third thing on an
+     already-full row — "Leads · New · 3 · 9" in 190px — and every pixel it
+     takes comes off the label, which ellipsizes first. */
+  padding: 0 0.32rem;
+  color: var(--accent);
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 /* Count sits right beside its label (not pushed to the far edge) so the number
    reads as belonging to that item. The margin-right:auto absorbs the leftover
    space after it instead. */
 .sidenav-count {
-  margin-left: -0.15rem;
+  margin-left: -0.05rem;
   margin-right: auto;
-  display: inline-grid;
-  place-items: center;
-  min-width: 1.2rem;
-  height: 1.2rem;
-  padding: 0 0.34rem;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #180c02;
-  font-size: 0.68rem;
+  min-width: 1.4rem;
+  padding: 0 0.3rem;
+  color: var(--accent);
+  font-size: 0.78rem;
   font-weight: 800;
-  box-shadow: 0 5px 12px -5px rgba(255, 122, 33, 0.75);
 }
 
-/* Pipeline inventory, beside the filled "needs you" badge. Hollow on purpose:
-   the solid circle is a call to action and this one isn't, so they must not read
-   as the same kind of number at a glance. */
+/* Pipeline inventory, beside the "needs you" badge. Same box, quieter colour:
+   this one isn't a call to action, so it must not read as the same kind of
+   number at a glance. */
 .sidenav-total {
   margin-right: auto;
-  display: inline-grid;
-  place-items: center;
-  min-width: 1.2rem;
-  height: 1.2rem;
-  padding: 0 0.32rem;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.32);
-  background: transparent;
-  color: rgba(247, 245, 239, 0.72);
-  font-size: 0.66rem;
+  min-width: 1.4rem;
+  padding: 0 0.3rem;
+  color: rgba(247, 245, 239, 0.6);
+  font-size: 0.76rem;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
 }
 
-/* The filled badge claims the leftover space on its own; when a hollow one
+/* The accent badge claims the leftover space on its own; when the hollow one
    follows, that auto margin would fling it to the far edge instead of leaving
-   the pair together. */
+   the pair together. Same for the New tag ahead of either. */
 .sidenav-count:has(+ .sidenav-total) { margin-right: 0.3rem; }
+.sidenav-unseen:has(+ .sidenav-count),
+.sidenav-unseen:has(+ .sidenav-total) { margin-right: 0.3rem; }
+.sidenav-unseen:not(:has(+ .sidenav-count)):not(:has(+ .sidenav-total)) { margin-right: auto; }
 
-.sidenav-link.active .sidenav-total { border-color: rgba(255, 255, 255, 0.42); color: rgba(247, 245, 239, 0.9); }
+.sidenav-link.active .sidenav-total { color: rgba(247, 245, 239, 0.85); }
 
 .sidenav-foot {
   flex: none;
