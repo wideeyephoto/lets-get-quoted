@@ -206,27 +206,61 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     setNewMenuOpen(false);
   }, [pathname, closeNav]);
 
-  // Freeze the page behind the open drawer — the same thing every other overlay
-  // in this app already does (AddExpenseModal, PayModal, ImagePickerModal, the
-  // crew drawer, …). The nav drawer was the one that didn't, and an unlocked
-  // page under a fixed panel is how a drag meant for the nav ends up moving the
-  // dashboard instead: you pull on the menu and nothing in it moves.
+  // Freeze the page behind the open drawer.
+  //
+  // `body { overflow: hidden }` is the usual way and it is NOT enough here.
+  // Measured in WebKit with the drawer open: document.scrollingElement is
+  // <html>, body computes to overflow:hidden, and window.scrollTo(0, 400) still
+  // puts the page at 400. So the page goes on being the scroller under your
+  // finger, and the first drag on the nav moves the dashboard instead — until
+  // you tap the rail once and WebKit latches the gesture onto it.
+  //
+  // Pinning the body is the version that actually holds: a fixed element cannot
+  // scroll, whatever the engine thinks of the overflow rules. The offset has to
+  // be carried across by hand (top: -scrollY, then scroll back on release) or
+  // opening the menu would throw the page back to the top.
   //
   // Only below the breakpoint. Above it the rail is docked furniture, not a
-  // drawer, and isNavOpen means nothing — so a stale `true` from a resize must
-  // not leave the page frozen. The media listener releases it if that happens.
+  // drawer, and isNavOpen means nothing — so a stale `true` carried in by a
+  // resize must not leave the page pinned. The media listener releases it.
   useEffect(() => {
     if (!isNavOpen) return;
-    const previous = document.body.style.overflow;
+    const body = document.body;
     const drawer = window.matchMedia('(max-width: 900px)');
-    const apply = () => {
-      document.body.style.overflow = drawer.matches ? 'hidden' : previous;
+    const saved = {
+      overflow: body.style.overflow,
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
     };
-    apply();
-    drawer.addEventListener('change', apply);
+    let offset = 0;
+    let locked = false;
+
+    const lock = () => {
+      if (locked) return;
+      offset = window.scrollY;
+      body.style.overflow = 'hidden';
+      body.style.position = 'fixed';
+      body.style.top = `-${offset}px`;
+      // Without these the pinned body shrinks to fit its content.
+      body.style.left = '0';
+      body.style.right = '0';
+      locked = true;
+    };
+    const release = () => {
+      if (!locked) return;
+      Object.assign(body.style, saved);
+      window.scrollTo(0, offset);
+      locked = false;
+    };
+    const sync = () => (drawer.matches ? lock() : release());
+
+    sync();
+    drawer.addEventListener('change', sync);
     return () => {
-      drawer.removeEventListener('change', apply);
-      document.body.style.overflow = previous;
+      drawer.removeEventListener('change', sync);
+      release();
     };
   }, [isNavOpen]);
 
