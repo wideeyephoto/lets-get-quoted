@@ -1428,7 +1428,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
         <div className={styles.builderActions}>
           <button type="button" className="btn secondary" onClick={undo} disabled={historyRef.current.past.length === 0} title="Undo (Ctrl+Z)" aria-label="Undo last change">↩ Undo</button>
           <button type="button" className="btn secondary" onClick={redo} disabled={historyRef.current.future.length === 0} title="Redo (Ctrl+Shift+Z)" aria-label="Redo change">↪ Redo</button>
-          <a href="/dashboard/sites/preview" target="_blank" rel="noopener noreferrer" className="btn secondary">Open full preview</a>
+          <a href="/dashboard/sites/preview" target="_blank" rel="noopener noreferrer" className="btn secondary">Site Preview</a>
           <button type="button" className="btn primary" onClick={handleSave} disabled={isPending || !isDirty}>{isPending ? 'Saving...' : 'Save changes'}</button>
         </div>
       </header>

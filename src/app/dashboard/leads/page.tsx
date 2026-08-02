@@ -4,7 +4,8 @@ import { requireOwnerContext } from '@/lib/auth';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadSource, getAverageRequestResponseMs, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, LEADS_VIEW_COOKIE, listLeads, normalizeLeadsView } from '@/lib/leads';
 import { estimateRangeLabel, leadCityLabel, leadScoreLabel, leadStageLabel } from '@/lib/lead-detail-labels';
-import { archiveLeadAction, createLeadAction, unsnoozeLeadAction } from './actions';
+import { archiveLeadAction, createLeadAction, deleteLeadAction, unsnoozeLeadAction } from './actions';
+import DeleteLeadButton from './DeleteLeadButton';
 import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
 import SaveButton from '@/components/save-button';
 import { getMapPins } from '@/lib/map-pins';
@@ -100,11 +101,21 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
                     {triage.archived ? 'Archived' : `Snoozed until ${new Date(triage.snoozedUntil!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
                     {triage.declinedReason ? ' · declined' : ''}
                   </span>
-                  {triage.archived ? (
-                    <form action={archiveLeadAction.bind(null, lead.id, false)}><button type="submit" className="btn ghost">Restore</button></form>
-                  ) : (
-                    <form action={unsnoozeLeadAction.bind(null, lead.id)}><button type="submit" className="btn ghost">Wake up</button></form>
-                  )}
+                  <div className={styles.setAsideActions}>
+                    {triage.archived ? (
+                      <form action={archiveLeadAction.bind(null, lead.id, false)}><button type="submit" className="btn ghost">Restore</button></form>
+                    ) : (
+                      <form action={unsnoozeLeadAction.bind(null, lead.id)}><button type="submit" className="btn ghost">Wake up</button></form>
+                    )}
+                    {/* The only permanent delete on this page, and it is here
+                        because this is the one list where a lead has already
+                        been judged not worth keeping. Everything else archives
+                        or snoozes, which is why this drawer could only grow. */}
+                    <DeleteLeadButton
+                      action={deleteLeadAction.bind(null, lead.id)}
+                      name={lead.name || 'this request'}
+                    />
+                  </div>
                 </div>
               ))}
             </div>

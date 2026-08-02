@@ -474,6 +474,9 @@
 .setAsideRow { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; padding: .5rem .75rem; border: 1px solid rgba(255,255,255,.09); border-radius: 8px; background: rgba(255,255,255,.03); }
 .setAsideName { font-weight: 700; color: inherit; }
 .setAsideWhy { color: #9ca8b8; font-size: .8rem; flex: 1; }
+/* Restore/Wake up and Delete travel together, so the pair wraps as one block
+   instead of the delete dropping onto its own line under the reason text. */
+.setAsideActions { display: flex; align-items: center; gap: .4rem; }
 
 /* --- View switcher (Board / Priority inbox / Table / Split) --- */
 .viewSwitch { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; }

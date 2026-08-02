@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { compressImage } from '@/lib/client-images';
 import { classifyEmail, suggestEmailFix } from '@/lib/email-quality';
 import { normalizeUsPhone } from '@/lib/phone';
@@ -31,6 +31,72 @@ function formatReplyTime(ms: number): string {
 }
 
 const MAX_PHOTOS = 6;
+
+/* --- the contact fields ----------------------------------------------------
+   This is the step the whole intake has been walking toward, and it used to be
+   three unlabelled boxes with grey placeholder text — indistinguishable from
+   every form anyone has ever abandoned. A homeowner who has just answered four
+   questions about their broken faucet is asked to hand over a phone number, and
+   nothing on screen acknowledges that or shows them getting anywhere.
+
+   So each field is named, carries an icon, shows an EXAMPLE rather than
+   repeating its own label, and ticks when it's filled. The ticks are the point:
+   three of them is visible progress toward a price, on a step that otherwise
+   gives you nothing back until you submit. */
+
+const FIELD_ICONS = {
+  user: '<circle cx="12" cy="8" r="3.4"/><path d="M5 20a7 7 0 0 1 14 0"/>',
+  phone: '<path d="M7 3.5h3l1.4 4-2 1.4a12 12 0 0 0 5.7 5.7l1.4-2 4 1.4v3a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 5 5.7 2 2 0 0 1 7 3.5Z"/>',
+  pin: '<path d="M19 10c0 5.2-7 11-7 11s-7-5.8-7-11a7 7 0 0 1 14 0Z"/><circle cx="12" cy="10" r="2.6"/>',
+  mail: '<rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="m3.5 7 8.5 6 8.5-6"/>',
+} as const;
+
+// Drawn rather than typed. Emoji render differently on every platform and read
+// as decoration; these have to read as part of the field.
+function FieldIcon({ name }: { name: keyof typeof FIELD_ICONS }) {
+  return (
+    <svg
+      className={styles.heroFieldIcon}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      dangerouslySetInnerHTML={{ __html: FIELD_ICONS[name] }}
+    />
+  );
+}
+
+/**
+ * A named field. The <label> wraps the input, which is what associates the two
+ * — so the inputs inside deliberately carry NO aria-label: it would win over
+ * the visible text and a screen reader would hear a different name from the one
+ * on screen.
+ */
+function Field({
+  icon,
+  label,
+  filled,
+  children,
+}: {
+  icon: keyof typeof FIELD_ICONS;
+  label: string;
+  filled: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <label className={styles.heroField} data-filled={filled || undefined}>
+      <span className={styles.heroFieldLabel}>{label}</span>
+      <span className={styles.heroFieldBox}>
+        <FieldIcon name={icon} />
+        {children}
+        <span className={styles.heroFieldTick} aria-hidden="true">✓</span>
+      </span>
+    </label>
+  );
+}
 
 type EstimateRange = { min: number; max: number; basis?: string };
 
@@ -130,6 +196,10 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   const [estimate, setEstimate] = useState<EstimateRange | null>(null);
   const [timeline, setTimeline] = useState<'asap' | 'month' | 'researching'>('asap');
   const [location, setLocation] = useState('');
+  // Everything the submit will actually insist on. Drives the button's lit
+  // state only — never a disabled attribute, so the real check still runs and
+  // still says which field is wrong.
+  const contactReady = Boolean(name.trim() && contact.trim() && (!askLocation || location.trim()));
   // How the homeowner wants the follow-up: some people never answer calls.
   const [contactPref, setContactPref] = useState<'any' | 'text'>('any');
   // Soft fit signals from the AI (out-of-area / excluded work) — shown as
@@ -559,29 +629,54 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
       {step === 'contact' && (
         <div className={styles.heroFormStep} key="contact">
           <h2>{estimateLabel}</h2>
-          <p className={styles.heroFormNote}>{wizardEnabled && estimate ? `Add your info to see your range. Free & no obligation — ${replyPromise}.` : `Free & no obligation — ${replyPromise}.`}</p>
+          {/* The price already exists at this point — it is deliberately held
+              back until the details are in. Saying so plainly, and once, turns
+              the form from a toll gate into the last step of something. */}
+          {wizardEnabled && estimate ? (
+            <div className={styles.heroFormReady}>
+              <span className={styles.heroFormReadyMark} aria-hidden="true">✓</span>
+              <span>
+                <strong>Your estimate is ready.</strong>
+                <small>Fill these in and it&rsquo;s on the next screen — free, no obligation, {replyPromise}.</small>
+              </span>
+            </div>
+          ) : (
+            <p className={styles.heroFormNote}>Free &amp; no obligation — {replyPromise}.</p>
+          )}
           <div className={styles.heroQuickFormRow}>
-            <input name="name" aria-label="Your name" placeholder="Your name" autoComplete="name" maxLength={100} required value={name} onChange={(event) => setName(event.target.value)} />
-            <input
-              name="contact"
-              aria-label={wizardEnabled ? 'Phone number' : emailRequired ? 'Email' : 'Phone or email'}
-              type={wizardEnabled ? 'tel' : emailRequired ? 'email' : 'text'}
-              placeholder={wizardEnabled ? 'Phone number' : emailRequired ? 'Email' : 'Phone or email'}
-              autoComplete={wizardEnabled ? 'tel' : emailRequired ? 'email' : 'tel'}
-              maxLength={160}
-              required
-              value={contact}
-              onChange={(event) => {
-                setContact(event.target.value);
-                if (wizardEnabled) {
-                  setVerify(null);
-                  setVerifyCode('');
-                }
-              }}
-            />
+            <Field icon="user" label="Your name" filled={Boolean(name.trim())}>
+              <input name="name" placeholder="Jane Homeowner" autoComplete="name" maxLength={100} required value={name} onChange={(event) => setName(event.target.value)} />
+            </Field>
+            <Field
+              icon={wizardEnabled || !emailRequired ? 'phone' : 'mail'}
+              label={wizardEnabled ? 'Mobile number' : emailRequired ? 'Email' : 'Phone or email'}
+              filled={Boolean(contact.trim())}
+            >
+              <input
+                name="contact"
+                type={wizardEnabled ? 'tel' : emailRequired ? 'email' : 'text'}
+                // An example, not the label again. A placeholder that repeats
+                // the field name is a wasted line and tells nobody what shape
+                // the answer should be.
+                placeholder={wizardEnabled ? '(248) 555-0199' : emailRequired ? 'you@email.com' : '(248) 555-0199'}
+                autoComplete={wizardEnabled ? 'tel' : emailRequired ? 'email' : 'tel'}
+                maxLength={160}
+                required
+                value={contact}
+                onChange={(event) => {
+                  setContact(event.target.value);
+                  if (wizardEnabled) {
+                    setVerify(null);
+                    setVerifyCode('');
+                  }
+                }}
+              />
+            </Field>
           </div>
           {askLocation && (
-            <input aria-label="Your ZIP code or town" placeholder="ZIP code or town" maxLength={80} required value={location} onChange={(event) => setLocation(event.target.value)} />
+            <Field icon="pin" label="Where the work is" filled={Boolean(location.trim())}>
+              <input placeholder="48067 or Royal Oak" maxLength={80} required value={location} onChange={(event) => setLocation(event.target.value)} />
+            </Field>
           )}
           {askTimeline && (
             <div className={styles.heroFormChoice} role="group" aria-label="When do you need this done?">
@@ -649,16 +744,21 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
           )}
           {wizardEnabled && wizardEmailField !== 'off' && (
             <>
-              <input
-                aria-label={wizardEmailField === 'required' ? 'Email' : 'Email (optional)'}
-                type="email"
-                placeholder={wizardEmailField === 'required' ? 'Email' : 'Email (optional)'}
-                autoComplete="email"
-                maxLength={160}
-                required={wizardEmailField === 'required'}
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-              />
+              <Field
+                icon="mail"
+                label={wizardEmailField === 'required' ? 'Email' : 'Email (optional)'}
+                filled={Boolean(email.trim())}
+              >
+                <input
+                  type="email"
+                  placeholder="you@email.com"
+                  autoComplete="email"
+                  maxLength={160}
+                  required={wizardEmailField === 'required'}
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                />
+              </Field>
               {/* "Did you mean gmail.com?" — a typo'd domain is the single most
                   common way a dead address gets collected, and the only one the
                   person would fix themselves if anyone asked. Offered, never
@@ -713,7 +813,13 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
           <small className={styles.heroFormConsent}>
             By submitting, you agree to be contacted by phone, text, or email about your request. Message &amp; data rates may apply.{siteContent.legal.privacyEnabled && <> See our <a href="/privacy">Privacy Policy</a>.</>}
           </small>
-          <button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Sending...' : wizardEnabled && estimate ? 'See My Free Estimate' : 'Get My Free Estimate'}</button>
+          {/* Lights up once everything required is in. The button is never
+              disabled — a dead button explains nothing and the real validation
+              is on submit, with a message — but it should look like the next
+              thing to do the moment it actually is. */}
+          <button type="submit" data-ready={contactReady || undefined} disabled={isSubmitting}>
+            {isSubmitting ? 'Sending...' : wizardEnabled && estimate ? 'See My Free Estimate' : 'Get My Free Estimate'}
+          </button>
           {site.phone && <a className={styles.heroFormOrCall} href={`tel:${site.phone}`}>or call <strong>{site.phone}</strong> — free quote</a>}
           {wizardEnabled && <button type="button" className={styles.heroFormRestart} onClick={restartWizard}>← Start over</button>}
         </div>

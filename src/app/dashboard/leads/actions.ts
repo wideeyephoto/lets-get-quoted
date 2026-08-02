@@ -10,7 +10,7 @@ import { computeQuoteTotal, formatJobQuoteSummary, parseQuoteItems, saveQuoteIte
 import { createDepositRequest } from '@/lib/payments';
 import { createPaymentPlan } from '@/lib/payment-plans';
 import { clearLeadQuoteVisit, convertLeadToJob, createLead, getLead, getLeadTriage, LEAD_DECLINE_REASONS, LEAD_LAYOUT_COOKIE, LEADS_VIEW_COOKIE, normalizeLeadsView, scheduleLeadQuoteVisit, unconvertLeadFromJob, updateLeadDetails, updateLeadStatus, type LeadsView, type LeadStatus, type LeadTriage } from '@/lib/leads';
-import { uploadLeadPhoto } from '@/lib/lead-photo-storage';
+import { deleteLeadPhotos, uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
 import { createAndSendScheduleRequest, createScheduleRequest, formatScheduleOption, type ScheduleOption } from '@/lib/scheduling';
 import { isPhoneOptedOut, recordSmsConsent, sendClientJobDashboardSms, sendLeadDeclineSms, sendLeadQuoteVisitOptionsSms, sendLeadQuoteVisitSms } from '@/lib/sms';
@@ -535,6 +535,39 @@ export async function unsnoozeLeadAction(leadId: string) {
 
 export async function archiveLeadAction(leadId: string, archived: boolean) {
   await patchLeadTriage(leadId, { archived });
+}
+
+/**
+ * Delete a lead for good.
+ *
+ * Set aside was a one-way street: archive and snooze both hide a lead and both
+ * keep it forever, so a list of junk — test submissions, bots that got past the
+ * honeypot, the same person three times — only ever grew. This is the way out,
+ * and it lives only in that drawer because that is the one place a lead has
+ * already been judged not worth keeping.
+ *
+ * Refuses a lead that became a job. Nothing in the Set aside drawer can be one
+ * (it filters won and lost out), but the action is callable on its own and a
+ * deleted lead would silently strip a job of where it came from.
+ *
+ * Photos go with it. They are the only thing a lead owns outside its row, and
+ * leaving them behind is billed storage nobody can reach.
+ */
+export async function deleteLeadAction(leadId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const lead = await getLead(supabase, accountId, leadId);
+  if (!lead) throw new Error('Lead not found.');
+  if (lead.converted_job) throw new Error('This lead became a job — open the job to delete it instead.');
+
+  // Storage first: if the row goes and this then fails, the files are orphaned
+  // with nothing left pointing at them. This way a failure leaves the lead
+  // intact and the owner can try again.
+  await deleteLeadPhotos(accountId, lead.photo_paths || []);
+
+  const { error } = await supabase.from('leads').delete().eq('account_id', accountId).eq('id', leadId);
+  if (error) throw error;
+
+  revalidatePath('/dashboard/leads');
 }
 
 // Decline: mark the lead lost + archived. When notify is true and the lead

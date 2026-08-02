@@ -231,6 +231,52 @@
 .heroFormChipRow { display: flex; gap: .4rem; }
 .heroQuickForm .heroFormChip:hover:not([data-selected='true']) { border-color: color-mix(in srgb, var(--theme-accent) 55%, #d8d3c6); background: color-mix(in srgb, var(--theme-accent) 8%, #fff); }
 .heroQuickForm input { width: 100%; min-height: 44px; padding: .6rem .7rem; border: 1px solid #d8d3c6; border-radius: calc(var(--theme-radius, 8px) * .6); font-size: .84rem; color: #17140f; background: #fff; font-family: inherit; }
+
+/* --- named contact fields -------------------------------------------------
+   The last step before a price, and it used to be three unlabelled boxes. Each
+   one is now named, carries an icon, and ticks when it's filled — three ticks
+   is visible progress on a step that gives nothing back until you submit.
+   The <label> wraps the input, so clicking anywhere on the field focuses it. */
+.heroField { display: grid; gap: .22rem; min-width: 0; }
+.heroFieldLabel { font-size: .68rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: #6b675e; transition: color .15s ease; }
+.heroFieldBox { position: relative; display: block; }
+/* The input owns the border; the icon and tick sit inside its padding. */
+.heroQuickForm .heroFieldBox input { padding-left: 2.1rem; padding-right: 1.9rem; }
+.heroFieldIcon { position: absolute; left: .62rem; top: 50%; transform: translateY(-50%); width: 1.05rem; height: 1.05rem; color: #9c968a; pointer-events: none; transition: color .15s ease; }
+/* Hidden until the field has something in it — that reveal IS the feedback. */
+.heroFieldTick { position: absolute; right: .6rem; top: 50%; transform: translateY(-50%) scale(.7); font-size: .8rem; font-weight: 900; color: var(--theme-accent); opacity: 0; transition: opacity .16s ease, transform .16s ease; pointer-events: none; }
+.heroField[data-filled] .heroFieldTick { opacity: 1; transform: translateY(-50%) scale(1); }
+.heroField[data-filled] .heroFieldIcon { color: var(--theme-accent); }
+.heroField[data-filled] .heroFieldLabel { color: #4b463d; }
+.heroQuickForm .heroFieldBox input:focus { outline: none; border-color: var(--theme-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-accent) 22%, transparent); }
+.heroField:focus-within .heroFieldIcon { color: var(--theme-accent); }
+.heroField:focus-within .heroFieldLabel { color: #17140f; }
+@media (prefers-reduced-motion: reduce) {
+  .heroFieldTick, .heroFieldIcon, .heroFieldLabel { transition: none; }
+}
+
+/* "Your estimate is ready" — the price exists by now and is deliberately held
+   back until the details are in. Saying so once, in the accent, turns the form
+   from a toll gate into the last step of something. */
+.heroFormReady { display: flex; align-items: flex-start; gap: .55rem; padding: .55rem .7rem; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--theme-accent) 45%, #d8d3c6); background: color-mix(in srgb, var(--theme-accent) 10%, #fff); }
+.heroFormReadyMark { flex: none; display: grid; place-items: center; width: 1.15rem; height: 1.15rem; margin-top: .05rem; border-radius: 50%; background: var(--theme-accent); color: var(--theme-on-accent, #fff); font-size: .68rem; font-weight: 900; }
+.heroFormReady strong { display: block; font-size: .82rem; font-weight: 800; color: #17140f; }
+.heroFormReady small { display: block; margin-top: .1rem; font-size: .72rem; line-height: 1.4; color: #6b675e; }
+
+/* The submit, once everything required is in. Deliberately transform + filter
+   and nothing else: the button's FILL belongs to whichever data-button style
+   the site picked (solid / outline / ghost / glow / double / gloss), and a
+   background or box-shadow here would fight all six. drop-shadow composes with
+   every one of them. */
+.heroQuickForm button[type='submit'] { transition: transform .18s ease, filter .18s ease; }
+.heroQuickForm button[type='submit'][data-ready] {
+  transform: translateY(-1px);
+  filter: drop-shadow(0 7px 18px color-mix(in srgb, var(--theme-accent) 42%, transparent));
+}
+@media (prefers-reduced-motion: reduce) {
+  .heroQuickForm button[type='submit'] { transition: none; }
+  .heroQuickForm button[type='submit'][data-ready] { transform: none; }
+}
 .heroQuickForm select { width: 100%; min-height: 44px; padding: .6rem .7rem; border: 1px solid #d8d3c6; border-radius: calc(var(--theme-radius, 8px) * .6); font-size: .84rem; color: #17140f; background: #fff; font-family: inherit; }
 /* Capacity note (fully-booked mode) + soft fit warnings (out of area, below
    minimum, excluded work) — literal inks: the card is always white. */
