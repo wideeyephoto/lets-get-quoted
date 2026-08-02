@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
 import { quickStopSettingsFromAccount, QUICK_STOP_SETTINGS_COLUMNS } from '@/lib/quick-stop';
-import { qualifyQuickStop, qualifyOptionsFromSettings } from '@/lib/quick-stop-qualify';
+import { qualifyQuickStop, qualifyOptionsFromSettings, quickStopFollowUps } from '@/lib/quick-stop-qualify';
 import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
@@ -78,5 +78,10 @@ export async function POST(request: NextRequest) {
     qualifyOptionsFromSettings(settings),
   );
 
-  return NextResponse.json({ enabled: true, ...qualification });
+  // A "no" that came from the AI on a half-filled form isn't final — name the
+  // boxes that were left blank so the flow can go back for them instead of
+  // dead-ending someone who was one answer short.
+  const followUps = quickStopFollowUps(qualification, { startedWhen, worsening, propertyType });
+
+  return NextResponse.json({ enabled: true, ...qualification, followUps });
 }

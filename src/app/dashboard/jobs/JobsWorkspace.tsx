@@ -40,11 +40,13 @@ export type JobViewItem = {
   photoCount: number;
 };
 
+// Focus leads, because it's the default — the list in the menu should open on
+// the layout you are already looking at rather than making you find it.
 const VIEWS = [
+  { id: 'focus' as const, label: 'Focus', hint: 'One job open, list beside it' },
   { id: 'list' as const, label: 'List', hint: 'The classic stacked list' },
   { id: 'board' as const, label: 'Board', hint: 'Kanban by stage' },
   { id: 'table' as const, label: 'Table', hint: 'Sort & scan' },
-  { id: 'focus' as const, label: 'Focus', hint: 'One job open, list beside it' },
 ];
 
 const STATUS_FILTERS: { value: JobStatus | 'all'; label: string }[] = [

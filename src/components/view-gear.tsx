@@ -6,10 +6,11 @@ import styles from './view-gear.module.css';
 
 export type ViewOption<T extends string> = { id: T; label: string; hint: string };
 
+// Shown first because it's the default (see normalizeMapView). Not "under the
+// header" — on the schedule page the map sits under the calendar.
 const MAP_OPTIONS: { id: MapView; label: string; hint: string }[] = [
-  { id: 'off', label: 'None', hint: 'Hide the map' },
-  // Not "under the header" — on the schedule page it sits under the calendar.
   { id: 'large', label: 'Map', hint: 'Show your jobs on a map' },
+  { id: 'off', label: 'None', hint: 'Hide the map' },
 ];
 
 const MAP_THEME_OPTIONS: { id: MapTheme; label: string; hint: string }[] = [

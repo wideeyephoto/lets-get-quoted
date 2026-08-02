@@ -98,6 +98,12 @@ export function deriveJobListBadge(
   if (signedInvoice && !paidPayment) return { label: 'Client signed invoice', tone: 'in_progress' };
   if (sentInvoice) return { label: 'Invoice sent · Awaiting sign-off', tone: 'in_progress' };
   if (paidPayment && !job.scheduled_for) return { label: 'Paid · Schedule work', tone: 'in_progress' };
+  // Pressing "Job started" has to move this badge. It sat below the
+  // scheduled_for branch and so kept reading "Work scheduled" with a crew
+  // already on site — the exact ambiguity the start button exists to remove.
+  // Same wording as the pipeline's schedule step, which already commits to
+  // "Work underway" once there's a start time, so the two can't disagree.
+  if (job.started_at) return { label: 'Work underway', tone: 'in_progress', title: formatStartedOn(job.started_at) ?? undefined };
   if (job.scheduled_for) return { label: 'Work scheduled', tone: 'in_progress' };
   if (job.status === 'in_progress') return { label: 'Ready for invoice', tone: 'in_progress' };
   // Three consecutive states, named for the thing that's actually missing.

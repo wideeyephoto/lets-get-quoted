@@ -38,14 +38,18 @@ export const LEAD_PRUNE_FLAGS = new Set(['out_of_area', 'excluded_work', 'below_
 // Cookie that remembers each user's chosen Lead Details action layout.
 export const LEAD_LAYOUT_COOKIE = 'lgq_lead_layout';
 
-// Cookie that remembers the Leads board view (board / inbox / table / split /
-// focus). Unknown values fall back to the board, so an old cookie from before a
+// Cookie that remembers the Leads board view (focus / board / inbox / table /
+// split). Unknown values fall back to Focus, so an old cookie from before a
 // view existed — or a hand-edited one — never renders a blank workspace.
 export const LEADS_VIEW_COOKIE = 'lgq_leads_view';
 export type LeadsView = 'board' | 'inbox' | 'table' | 'split' | 'focus';
 export const LEADS_VIEWS: LeadsView[] = ['board', 'inbox', 'table', 'split', 'focus'];
 export function normalizeLeadsView(value: unknown): LeadsView {
-  return LEADS_VIEWS.includes(value as LeadsView) ? (value as LeadsView) : 'board';
+  // Focus is the default for anyone who hasn't chosen, matching the Jobs page:
+  // it answers "who do I call next and what did they ask for" without a page
+  // load per lead. An explicit choice is a cookie, so nobody who picked the
+  // board gets moved off it.
+  return LEADS_VIEWS.includes(value as LeadsView) ? (value as LeadsView) : 'focus';
 }
 
 // One-tap decline templates — the key is stored on triage.declinedReason and

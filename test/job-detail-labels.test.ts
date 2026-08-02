@@ -4,6 +4,7 @@ import {
   FEED_KIND_LABEL,
   INVOICE_STATUS_LABEL,
   PAYMENT_STATUS_LABEL,
+  completeJobConfirmMessage,
   getFeedDisplayBody,
   getFeedDisplayTitle,
   marginTier,
@@ -71,5 +72,70 @@ describe('scheduled time formatting', () => {
     expect(formatJobTime('12:00')).toBe('12:00 PM');
     expect(formatJobTime(null)).toBeNull();
     expect(formatJobTime('nonsense')).toBeNull();
+  });
+});
+
+describe('the "Mark Job Completed" confirmation', () => {
+  // Completing a job is undoable from the feed. The review request it can
+  // trigger is a text to a customer, and is not. So the dialog has to describe
+  // what THIS account's settings will actually do — a warning that fires when
+  // nothing will happen teaches people to click straight through warnings.
+  const base = {
+    clientName: 'Dana Whitfield',
+    autoReviewRequest: true,
+    reviewUrlConfigured: true,
+    alreadyRequested: false,
+    channel: 'text' as const,
+  };
+
+  it('always names the job closing out and the way back', () => {
+    for (const over of [{}, { autoReviewRequest: false }, { reviewUrlConfigured: false }, { alreadyRequested: true }]) {
+      const message = completeJobConfirmMessage({ ...base, ...over });
+      expect(message).toContain('Mark this job complete?');
+      expect(message.toLowerCase()).toContain('undo');
+    }
+  });
+
+  it('warns that a review request goes out, and by which channel', () => {
+    const texted = completeJobConfirmMessage(base);
+    expect(texted).toContain('Dana Whitfield');
+    expect(texted).toContain('texted');
+    expect(texted.toLowerCase()).toContain("can't be recalled");
+
+    const emailed = completeJobConfirmMessage({ ...base, channel: 'email' });
+    expect(emailed).toContain('emailed');
+    expect(emailed).not.toContain('texted');
+  });
+
+  it('does not threaten a text when automatic asks are off', () => {
+    const message = completeJobConfirmMessage({ ...base, autoReviewRequest: false });
+    expect(message).toContain('No review request goes out');
+    expect(message).not.toMatch(/will be (texted|emailed)/);
+  });
+
+  it('does not promise a send that the missing review link would swallow', () => {
+    // deliverJobReviewRequest bails before sending anything when no Google
+    // review URL is saved, so the dialog must not say a text is coming.
+    const message = completeJobConfirmMessage({ ...base, reviewUrlConfigured: false });
+    expect(message).toContain('nothing will be sent');
+    expect(message).not.toMatch(/will be (texted|emailed)/);
+  });
+
+  it('knows the ask only fires once per job', () => {
+    const message = completeJobConfirmMessage({ ...base, alreadyRequested: true });
+    expect(message).toMatch(/already been asked/);
+    expect(message).not.toMatch(/will be (texted|emailed)/);
+  });
+
+  it('says so when there is nowhere to send it', () => {
+    const message = completeJobConfirmMessage({ ...base, channel: null });
+    expect(message).toMatch(/no mobile or email/);
+    expect(message).not.toMatch(/will be (texted|emailed)/);
+  });
+
+  it('does not leave a hole where the name goes', () => {
+    const message = completeJobConfirmMessage({ ...base, clientName: '   ' });
+    expect(message).toContain('the customer');
+    expect(message).not.toContain('  will be');
   });
 });

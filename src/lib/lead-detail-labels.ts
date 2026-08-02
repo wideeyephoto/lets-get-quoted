@@ -68,3 +68,88 @@ export function formatLeadDate(value: string): string {
   if (Number.isNaN(date.getTime())) return '';
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
+
+/* --- which town is this? ---------------------------------------------------
+   A name alone doesn't tell a contractor whether a lead is ten minutes away or
+   across the county, and that decides who gets called back first. The town is
+   already sitting inside the address string; it just has to be found.
+
+   Everything below RETURNS NULL rather than guessing. A wrong town is worse
+   than no town: it's the number that decides the drive, and "Royal Oak" printed
+   next to a Livonia address would be believed. */
+
+const COUNTRY_WORDS = new Set(['us', 'usa', 'united states', 'united states of america', 'canada']);
+
+const US_STATE_NAMES = new Set([
+  'alabama', 'alaska', 'arizona', 'arkansas', 'california', 'colorado', 'connecticut', 'delaware',
+  'district of columbia', 'florida', 'georgia', 'hawaii', 'idaho', 'illinois', 'indiana', 'iowa',
+  'kansas', 'kentucky', 'louisiana', 'maine', 'maryland', 'massachusetts', 'michigan', 'minnesota',
+  'mississippi', 'missouri', 'montana', 'nebraska', 'nevada', 'new hampshire', 'new jersey',
+  'new mexico', 'new york', 'north carolina', 'north dakota', 'ohio', 'oklahoma', 'oregon',
+  'pennsylvania', 'rhode island', 'south carolina', 'south dakota', 'tennessee', 'texas', 'utah',
+  'vermont', 'virginia', 'washington', 'west virginia', 'wisconsin', 'wyoming',
+]);
+
+const STREET_SUFFIX =
+  /\b(st|street|ave|avenue|rd|road|dr|drive|ln|lane|blvd|boulevard|ct|court|way|pl|place|ter|terrace|cir|circle|hwy|highway|pkwy|parkway|trl|trail|route|rt|apt|unit|suite|ste)\.?$/i;
+
+function isPostalCode(part: string): boolean {
+  return /^\d{5}(?:-\d{4})?$/.test(part);
+}
+
+/** "MI", "Michigan", "MI 48067" — the tail of a US address, never its town. */
+function isStateish(part: string): boolean {
+  const bare = part.replace(/\.$/, '').trim().toLowerCase();
+  if (/^[a-z]{2}$/.test(bare)) return true; // no US city has a two-letter name
+  if (US_STATE_NAMES.has(bare)) return true;
+  const withZip = part.match(/^(.+?)\s+\d{5}(?:-\d{4})?$/);
+  return withZip ? isStateish(withZip[1]) : false;
+}
+
+function looksLikeStreet(part: string): boolean {
+  return /^\d/.test(part) || /^p\.?\s?o\.?\s*box/i.test(part) || STREET_SUFFIX.test(part);
+}
+
+/**
+ * "1418 Maplewood Ave, Royal Oak, MI 48067, USA" → "Royal Oak".
+ *
+ * Works backwards from the end, peeling off country and state/ZIP, because
+ * that tail is the predictable part of a US address — the number of segments
+ * in front of it is not (apartment lines, business names, missing street).
+ * Whatever is left standing at the end is the town.
+ */
+export function cityFromAddress(address: string | null | undefined): string | null {
+  const parts = (address ?? '')
+    .toString()
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  while (parts.length > 0) {
+    const last = parts[parts.length - 1];
+    if (COUNTRY_WORDS.has(last.replace(/\.$/, '').toLowerCase()) || isPostalCode(last) || isStateish(last)) {
+      parts.pop();
+      continue;
+    }
+    break;
+  }
+
+  const candidate = parts[parts.length - 1];
+  if (!candidate) return null;
+  // A single un-punctuated line is usually a street, not a town. Any digit at
+  // all rules it out too: "Suite 200" and "48067 Royal Oak" are not places.
+  if (looksLikeStreet(candidate) || /\d/.test(candidate)) return null;
+  return candidate.length <= 40 ? candidate : null;
+}
+
+/**
+ * The town for a lead — from the address if there is one, otherwise from
+ * whatever the estimator recorded as their location.
+ *
+ * That second field is frequently a bare ZIP ("Location given: 48072"), which
+ * `cityFromAddress` declines rather than printing "(48072)" where a town is
+ * promised. The full ZIP still shows on the Where row.
+ */
+export function leadCityLabel(address: string | null | undefined, location?: string | null): string | null {
+  return cityFromAddress(address) ?? cityFromAddress(location);
+}

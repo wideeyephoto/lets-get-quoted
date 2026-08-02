@@ -179,6 +179,46 @@ describe('the schedule step stops hedging once work has started', () => {
   });
 });
 
+describe('the header badge moves when work starts', () => {
+  // The reported bug: press "Job started" and the status card carried on saying
+  // "Work scheduled", because the badge only ever looked at scheduled_for.
+  const scheduled = job({ quoted_amount: 11800, scheduled_for: '2026-08-04' });
+  const started = { ...scheduled, status: 'in_progress' as const, started_at: '2026-08-04T14:20:00.000Z' };
+
+  it('says scheduled while it is only scheduled', () => {
+    expect(badge(scheduled).label).toBe('Work scheduled');
+  });
+
+  it('stops saying scheduled once there is a start time', () => {
+    expect(badge(started).label).not.toBe('Work scheduled');
+    expect(badge(started).label).toBe('Work underway');
+  });
+
+  it('says the same thing the pipeline step beside it says', () => {
+    // The two sit inches apart on the job header; disagreeing is the whole
+    // defect class this module exists to prevent.
+    expect(badge(started).label).toBe(checklist(started)[2].label);
+  });
+
+  it('names the day it started on hover', () => {
+    expect(badge(started).title).toMatch(/^Started /);
+  });
+
+  it('covers a job started without ever being put on the calendar', () => {
+    // Used to fall through to "Ready for invoice" — a job with a crew on site
+    // is not waiting to be invoiced.
+    const noDate = job({ quoted_amount: 11800, status: 'in_progress', started_at: '2026-08-04T14:20:00.000Z' });
+    expect(badge(noDate).label).toBe('Work underway');
+  });
+
+  it('still lets money states outrank it', () => {
+    // An invoice awaiting payment is the more urgent fact, and completion ends
+    // the story regardless of when it started.
+    expect(badge(started, [requested()]).label).toBe('Invoice sent · Awaiting payment');
+    expect(badge({ ...started, status: 'complete' }).label).toBe('Complete');
+  });
+});
+
 describe('formatStartedOn', () => {
   it('is null when nobody pressed the button — never "started when it was created"', () => {
     expect(formatStartedOn(null)).toBeNull();

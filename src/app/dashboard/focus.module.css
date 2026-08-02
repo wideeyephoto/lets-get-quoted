@@ -146,6 +146,17 @@
   line-height: 1.1;
 }
 
+/* The town, riding with the name. Sized in `em` so it tracks the heading's own
+   clamp instead of drifting apart from it at one window width, and quiet
+   enough that the name still reads first. */
+.heroCity {
+  font-size: 0.58em;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: rgba(147, 164, 184, 0.95);
+  white-space: nowrap;
+}
+
 .heroMeta {
   display: flex;
   flex-wrap: wrap;
@@ -531,6 +542,10 @@
 .listColsLead { grid-template-columns: max-content minmax(6.5rem, 1fr) max-content; }
 
 .rowDot { align-self: center; }
+
+/* Inside the row's <strong>, so the name/town pair truncates as one string —
+   the town is what should be lost first on a narrow list, not half a surname. */
+.rowCity { font-weight: 550; color: rgba(147, 164, 184, 0.9); }
 
 /* Est. value over age, right-aligned and tabular so a column of amounts lines
    up on the decimal rather than wandering. */

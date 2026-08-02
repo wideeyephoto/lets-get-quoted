@@ -2,9 +2,11 @@ import { describe, it, expect } from 'vitest';
 import {
   JOB_STATUS_LABEL,
   LEAD_STATUS_LABEL,
+  cityFromAddress,
   estimateRangeLabel,
   formatLeadClock,
   formatLeadDate,
+  leadCityLabel,
   leadScoreLabel,
   leadStageLabel,
 } from '@/lib/lead-detail-labels';
@@ -95,9 +97,91 @@ describe('leads view cookie', () => {
     expect(normalizeLeadsView('split')).toBe('split');
   });
 
-  it('falls back to the board for anything it does not recognise', () => {
-    // An old cookie, or a hand-edited one, must not render a blank workspace.
-    expect(normalizeLeadsView('kanban')).toBe('board');
-    expect(normalizeLeadsView(undefined)).toBe('board');
+  it('opens on Focus for anyone who has not chosen', () => {
+    // An old cookie, or a hand-edited one, must not render a blank workspace —
+    // and a browser with no cookie at all gets the default layout, not the one
+    // that happens to be first in the enum.
+    expect(normalizeLeadsView('kanban')).toBe('focus');
+    expect(normalizeLeadsView(undefined)).toBe('focus');
+    expect(normalizeLeadsView('')).toBe('focus');
+  });
+
+  it('leaves an explicit choice alone', () => {
+    // Changing the default must not move anyone who already picked a layout.
+    expect(normalizeLeadsView('board')).toBe('board');
+    expect(normalizeLeadsView('table')).toBe('table');
+  });
+});
+
+describe('cityFromAddress', () => {
+  it('reads the town out of a full US address', () => {
+    expect(cityFromAddress('1418 Maplewood Ave, Royal Oak, MI 48067, USA')).toBe('Royal Oak');
+  });
+
+  it('handles the shapes Google Places actually returns', () => {
+    expect(cityFromAddress('1418 Maplewood Ave, Royal Oak, MI, USA')).toBe('Royal Oak');
+    expect(cityFromAddress('1418 Maplewood Ave, Royal Oak, MI 48067')).toBe('Royal Oak');
+    expect(cityFromAddress('1418 Maplewood Ave, Royal Oak')).toBe('Royal Oak');
+    expect(cityFromAddress('Royal Oak, MI')).toBe('Royal Oak');
+    expect(cityFromAddress('Royal Oak')).toBe('Royal Oak');
+  });
+
+  it('peels a spelled-out state and a ZIP+4', () => {
+    expect(cityFromAddress('22 Elm St, Ann Arbor, Michigan 48104-1234')).toBe('Ann Arbor');
+    expect(cityFromAddress('22 Elm St, Ann Arbor, Michigan, United States')).toBe('Ann Arbor');
+  });
+
+  it('survives an apartment line in front of the street', () => {
+    expect(cityFromAddress('Apt 4B, 1418 Maplewood Ave, Royal Oak, MI 48067')).toBe('Royal Oak');
+  });
+
+  it('keeps two-word and hyphenated towns whole', () => {
+    expect(cityFromAddress('900 Woodward Ave, Grosse Pointe Farms, MI')).toBe('Grosse Pointe Farms');
+    expect(cityFromAddress('5 Main St, Wilkes-Barre, PA 18701')).toBe('Wilkes-Barre');
+  });
+
+  it('would rather say nothing than name a street as a town', () => {
+    // The failure that matters: printing "(Maplewood Ave)" next to a name reads
+    // as a place and would be believed.
+    expect(cityFromAddress('1418 Maplewood Ave')).toBeNull();
+    expect(cityFromAddress('PO Box 214')).toBeNull();
+    expect(cityFromAddress('Maplewood Ave')).toBeNull();
+  });
+
+  it('gives nothing back for a bare state, ZIP or empty value', () => {
+    expect(cityFromAddress('MI')).toBeNull();
+    expect(cityFromAddress('48067')).toBeNull();
+    expect(cityFromAddress('48067-1234')).toBeNull();
+    expect(cityFromAddress('')).toBeNull();
+    expect(cityFromAddress(null)).toBeNull();
+    expect(cityFromAddress(undefined)).toBeNull();
+  });
+
+  it('refuses anything carrying a digit', () => {
+    // "Suite 200" and "48067 Royal Oak" are not towns.
+    expect(cityFromAddress('1418 Maplewood Ave, Suite 200')).toBeNull();
+    expect(cityFromAddress('48067 Royal Oak')).toBeNull();
+  });
+});
+
+describe('leadCityLabel', () => {
+  it('prefers the address', () => {
+    expect(leadCityLabel('1418 Maplewood Ave, Royal Oak, MI 48067', 'Ferndale')).toBe('Royal Oak');
+  });
+
+  it('falls back to what the estimator recorded', () => {
+    expect(leadCityLabel(null, 'Ferndale, MI')).toBe('Ferndale');
+    expect(leadCityLabel('', 'Ferndale')).toBe('Ferndale');
+  });
+
+  it('does not print a ZIP where a town was promised', () => {
+    // The estimator often stores "Location given: 48072". "(48072)" after a
+    // name looks like a bug; the Where row still shows it in full.
+    expect(leadCityLabel(null, '48072')).toBeNull();
+  });
+
+  it('is null when neither field says where they are', () => {
+    expect(leadCityLabel(null, null)).toBeNull();
+    expect(leadCityLabel('1418 Maplewood Ave', undefined)).toBeNull();
   });
 });

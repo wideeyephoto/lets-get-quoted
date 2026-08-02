@@ -285,7 +285,14 @@ export default function LeadFocusView({
                 <div className={styles.heroCopy}>
                   <p className={styles.heroTag}>Selected lead</p>
                   <div className={styles.heroTop}>
-                    <h2>{selected.name}</h2>
+                    {/* The town rides with the name everywhere it appears. Two
+                        leads called Brennan on one screen are told apart by
+                        where they are, and it's also what decides which one is
+                        worth driving to first. */}
+                    <h2>
+                      {selected.name}
+                      {selected.city ? <span className={styles.heroCity}> ({selected.city})</span> : null}
+                    </h2>
                   </div>
 
                   <div className={styles.chips}>
@@ -454,7 +461,10 @@ export default function LeadFocusView({
               >
                 <span className={`${leadStyles.heatDot} ${styles.rowDot}`} data-score={lead.score} aria-hidden="true" />
                 <span className={styles.rowMain}>
-                  <strong>{lead.name}</strong>
+                  <strong>
+                    {lead.name}
+                    {lead.city ? <span className={styles.rowCity}> ({lead.city})</span> : null}
+                  </strong>
                   <small>{lead.detail}</small>
                 </span>
                 <span className={styles.rowValue}>

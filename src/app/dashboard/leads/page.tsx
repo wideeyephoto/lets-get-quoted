@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadSource, getAverageRequestResponseMs, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, LEADS_VIEW_COOKIE, listLeads, normalizeLeadsView } from '@/lib/leads';
-import { estimateRangeLabel, leadScoreLabel, leadStageLabel } from '@/lib/lead-detail-labels';
+import { estimateRangeLabel, leadCityLabel, leadScoreLabel, leadStageLabel } from '@/lib/lead-detail-labels';
 import { archiveLeadAction, createLeadAction, unsnoozeLeadAction } from './actions';
 import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
 import SaveButton from '@/components/save-button';
@@ -67,6 +67,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
       estimateLabel: estimateRangeLabel(estimate),
       timeline: triage.timeline ?? null,
       location: triage.location ?? null,
+      city: leadCityLabel(lead.address, triage.location ?? null),
       contactLog: triage.contactLog ?? [],
       isUrgent: lead.status === 'new' && lead.source === 'website_form',
       projectType: lead.project_type,

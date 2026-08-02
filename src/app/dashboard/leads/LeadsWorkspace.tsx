@@ -39,6 +39,8 @@ export type LeadViewItem = {
   estimateLabel: string | null;
   timeline: string | null;
   location: string | null;
+  /** Just the town, pulled out of the address — null when it can't be read. */
+  city: string | null;
   contactLog: { at: string; label: string; note?: string }[];
   isUrgent: boolean;
   // Enough to draw a lead's cover before any detail request: what they asked
@@ -57,12 +59,14 @@ const COLUMNS: { status: LeadStatus; label: string }[] = [
 
 const SCORE_RANK: Record<LeadScore, number> = { hot: 0, warm: 1, low: 2 };
 
+// Focus leads, because it's the default — the list in the menu should open on
+// the layout you are already looking at rather than making you find it.
 const VIEWS: { id: LeadsView; label: string; hint: string }[] = [
+  { id: 'focus', label: 'Focus', hint: 'One lead open, list beside it' },
   { id: 'board', label: 'Board', hint: 'Kanban by stage' },
   { id: 'inbox', label: 'Priority inbox', hint: 'Hottest first' },
   { id: 'table', label: 'Table', hint: 'Sort & scan' },
   { id: 'split', label: 'Split view', hint: 'List + detail' },
-  { id: 'focus', label: 'Focus', hint: 'One lead open, list beside it' },
 ];
 
 function scoreText(item: LeadViewItem) {

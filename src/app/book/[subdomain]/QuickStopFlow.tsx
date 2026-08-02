@@ -14,6 +14,8 @@ type Qualification = {
   visitMinutes?: number | null;
   safety?: string | null;
   reason?: string | null;
+  /** Scoping questions left blank that could still change a "no". */
+  followUps?: { key: string; label: string }[];
   error?: string;
 };
 
@@ -56,6 +58,13 @@ export default function QuickStopFlow({
   const [photos, setPhotos] = useState<File[]>([]);
 
   const eligible = verdict?.eligible === true;
+
+  // The server names the scoping questions that could still change this verdict;
+  // this narrows them to the ones STILL blank, so a box filled in after the
+  // check stops being asked for the moment it's typed into.
+  const answered: Record<string, string> = { startedWhen, worsening, propertyType };
+  const followUps = (verdict?.followUps ?? []).filter((question) => !(answered[question.key] ?? '').trim());
+  const wanted = (key: string) => (followUps.some((question) => question.key === key) ? ' es-field-wanted' : '');
 
   async function checkEligibility() {
     setError(null);
@@ -173,11 +182,11 @@ export default function QuickStopFlow({
           <label htmlFor="es-issue">What&apos;s the exact issue?</label>
           <textarea id="es-issue" rows={3} value={issue} onChange={(e) => setIssue(e.target.value)} placeholder="Kitchen faucet is dripping steadily and won't shut off all the way." required />
         </div>
-        <div className="field">
+        <div className={`field${wanted('startedWhen')}`}>
           <label htmlFor="es-started">When did it start?</label>
           <input id="es-started" value={startedWhen} onChange={(e) => setStartedWhen(e.target.value)} placeholder="This morning" />
         </div>
-        <div className="field">
+        <div className={`field${wanted('worsening')}`}>
           <label htmlFor="es-worse">Is it getting worse?</label>
           <select id="es-worse" value={worsening} onChange={(e) => setWorsening(e.target.value)}>
             <option value="">Not sure</option>
@@ -185,7 +194,7 @@ export default function QuickStopFlow({
             <option value="no">No, stable</option>
           </select>
         </div>
-        <div className="field">
+        <div className={`field${wanted('propertyType')}`}>
           <label htmlFor="es-property">Property type</label>
           <select id="es-property" value={propertyType} onChange={(e) => setPropertyType(e.target.value)}>
             <option value="">Choose…</option>
@@ -208,7 +217,10 @@ export default function QuickStopFlow({
         </div>
       </div>
 
-      {!eligible ? (
+      {/* Hidden while the follow-up block is up — that block carries its own
+          "Check again", and two buttons doing the same thing on one screen is
+          two chances to press the wrong one. */}
+      {!eligible && followUps.length === 0 ? (
         <div className="field full" style={{ marginTop: '1rem' }}>
           <button type="button" className="btn secondary" onClick={checkEligibility} disabled={checking}>
             {checking ? 'Checking…' : 'Check if this qualifies'}
@@ -225,9 +237,35 @@ export default function QuickStopFlow({
         <p className="payment-banner muted" style={{ marginTop: '1rem' }}>{verdict.reason}</p>
       ) : null}
       {verdict && !verdict.unsafe && !verdict.needsPhotos && verdict.eligible === false ? (
-        <p className="payment-banner muted" style={{ marginTop: '1rem' }}>
-          {verdict.reason || 'This job isn’t a fit for a Quick Stop.'} You can still request a regular booking above.
-        </p>
+        followUps.length > 0 ? (
+          // One answer short, not turned away. The questions above are optional,
+          // so a blank one reaches the screener as "(unknown)" — and being told
+          // "not a fit" because you skipped a dropdown is a lost job for the
+          // contractor and a dead end for the customer. Only ever shown for
+          // questions that genuinely feed the verdict.
+          <div className="payment-banner muted es-followups" style={{ marginTop: '1rem' }}>
+            <p>
+              {verdict.reason || 'This one’s hard to call from what’s here.'}{' '}
+              <strong>
+                Before you give up: {followUps.length === 1 ? 'one question above is' : `${followUps.length} questions above are`} still
+                blank.
+              </strong>{' '}
+              {followUps.length === 1 ? 'It often changes the answer.' : 'They often change the answer.'}
+            </p>
+            <ul className="es-followup-list">
+              {followUps.map((question) => (
+                <li key={question.key}>{question.label}</li>
+              ))}
+            </ul>
+            <button type="button" className="btn secondary" onClick={checkEligibility} disabled={checking}>
+              {checking ? 'Checking…' : 'Check again'}
+            </button>
+          </div>
+        ) : (
+          <p className="payment-banner muted" style={{ marginTop: '1rem' }}>
+            {verdict.reason || 'This job isn’t a fit for a Quick Stop.'} You can still request a regular booking above.
+          </p>
+        )
       ) : null}
 
       {eligible ? (

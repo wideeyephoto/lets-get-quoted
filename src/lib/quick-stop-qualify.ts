@@ -151,6 +151,12 @@ export type QuickStopQualification = {
   exclusions: string[]; // human labels of what disqualified it
   safety: string | null; // safety instructions when unsafe
   reason: string | null; // plain-language why-not (non-safety)
+  /**
+   * Which layer produced this verdict. Not decoration: it decides whether
+   * answering more questions could change the outcome. A screener verdict
+   * never can — see quickStopFollowUps.
+   */
+  decidedBy: 'screener' | 'ai' | 'unavailable';
 };
 
 function shortSummary(issue: string): string {
@@ -193,6 +199,7 @@ export async function qualifyQuickStop(
       exclusions: screen.labels,
       safety: screen.safety,
       reason: null,
+      decidedBy: 'screener',
     };
   }
   if (screen.matched.length) {
@@ -206,6 +213,7 @@ export async function qualifyQuickStop(
       exclusions: screen.labels,
       safety: null,
       reason: `This looks like ${screen.labels[0].toLowerCase()}, which is outside what a Quick Stop covers.`,
+      decidedBy: 'screener',
     };
   }
 
@@ -223,6 +231,7 @@ export async function qualifyQuickStop(
       exclusions: [],
       safety: null,
       reason: opts.requireAiApproval ? 'Couldn’t verify this job automatically.' : null,
+      decidedBy: 'unavailable',
     };
   }
 
@@ -299,6 +308,7 @@ export async function qualifyQuickStop(
       exclusions,
       safety: null,
       reason: eligible ? null : (typeof parsed.reason === 'string' && parsed.reason.trim() ? parsed.reason.trim().slice(0, 160) : exclusions[0]),
+      decidedBy: 'ai',
     };
   } catch (error) {
     console.error('Quick Stop qualification failed:', error);
@@ -313,8 +323,56 @@ export async function qualifyQuickStop(
       exclusions: [],
       safety: null,
       reason: opts.requireAiApproval ? 'Couldn’t verify this job automatically.' : null,
+      decidedBy: 'unavailable',
     };
   }
+}
+
+/* --- asking for the answer that would have qualified them ------------------
+   The scoping questions are optional, and a blank one reaches the model as
+   "(unknown)". So a request could be turned away for being ambiguous when the
+   ambiguity was three empty boxes, and the customer was told "not a fit" with
+   no hint that answering them might change it.
+
+   These name the questions that are actually IN the AI's prompt (see
+   `inputText` below — `availability` is deliberately absent, it only feeds the
+   deterministic screener), so the flow can never point at a box that wouldn't
+   have made a difference. */
+
+export type QuickStopScopeAnswers = {
+  startedWhen?: string | null;
+  worsening?: string | null;
+  propertyType?: string | null;
+};
+
+export const QUICK_STOP_SCOPE_QUESTIONS: { key: keyof QuickStopScopeAnswers; label: string }[] = [
+  { key: 'startedWhen', label: 'When did it start?' },
+  { key: 'worsening', label: 'Is it getting worse?' },
+  { key: 'propertyType', label: 'Property type' },
+];
+
+export function unansweredScopeQuestions(answers: QuickStopScopeAnswers): { key: keyof QuickStopScopeAnswers; label: string }[] {
+  return QUICK_STOP_SCOPE_QUESTIONS.filter((question) => !(answers[question.key] ?? '').toString().trim());
+}
+
+/**
+ * The questions worth going back for, given a verdict that said no.
+ *
+ * Empty in three cases, each for its own reason:
+ *   · eligible — there is nothing to fix.
+ *   · unsafe — a gas leak stays a gas leak. The safety instructions are the
+ *     answer, and inviting another attempt at the form would undermine them.
+ *   · decided by the screener — it matches patterns in the combined text, and
+ *     more text can only ADD matches, never clear one. Offering a retry there
+ *     would be offering something that cannot work.
+ */
+export function quickStopFollowUps(
+  qualification: Pick<QuickStopQualification, 'eligible' | 'unsafe' | 'decidedBy'>,
+  answers: QuickStopScopeAnswers,
+): { key: keyof QuickStopScopeAnswers; label: string }[] {
+  if (qualification.eligible || qualification.unsafe) return [];
+  if (qualification.decidedBy !== 'ai') return [];
+  return unansweredScopeQuestions(answers);
 }
 
 // Convenience: pull the qualify options straight off a normalized settings object.

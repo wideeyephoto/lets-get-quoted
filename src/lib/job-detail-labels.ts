@@ -107,6 +107,51 @@ export function formatFeedTime(value: string): string {
   return new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
+export type CompleteJobWarningInput = {
+  clientName: string;
+  /** Automations → "Ask for a review automatically". */
+  autoReviewRequest: boolean;
+  /** A Google review link is saved. Without one the auto-ask sends nothing. */
+  reviewUrlConfigured: boolean;
+  /** This job already has a review_requested feed entry — the ask fires once. */
+  alreadyRequested: boolean;
+  /** How the ask would reach them: SMS when there's a mobile, else email. */
+  channel: 'text' | 'email' | null;
+};
+
+/**
+ * What marking a job complete is actually going to do, as a confirm dialog.
+ *
+ * Completing is undoable from the feed. The review request it can trigger is
+ * NOT — it's a text to a customer, and the contractor should know it's about to
+ * leave before they press the button, not after. So this states the outcome of
+ * THIS account's settings rather than a generic "a review request may be sent":
+ * a warning that fires when nothing will happen trains people to click through
+ * warnings, which is worse than not warning at all.
+ *
+ * Every branch below is a real state the send path can be in — see
+ * deliverJobReviewRequest, which bails on a missing review URL and is gated on
+ * both the account toggle and a once-per-job check.
+ */
+export function completeJobConfirmMessage(input: CompleteJobWarningInput): string {
+  const who = input.clientName?.trim() || 'the customer';
+  const head = `Mark this job complete?\n\n${who} sees it close out on their job feed. You can undo it from the feed if you press it early.`;
+
+  if (!input.autoReviewRequest) {
+    return `${head}\n\nNo review request goes out — automatic review asks are off, so that stays a button you press yourself.`;
+  }
+  if (!input.reviewUrlConfigured) {
+    return `${head}\n\nAutomatic review asks are on, but there's no Google review link saved yet, so nothing will be sent.`;
+  }
+  if (input.alreadyRequested) {
+    return `${head}\n\n${who} has already been asked for a review on this job, so another one won't be sent.`;
+  }
+  if (!input.channel) {
+    return `${head}\n\nAutomatic review asks are on, but ${who} has no mobile or email on file, so the review request can't be sent.`;
+  }
+  return `${head}\n\n⭐ ${who} will be ${input.channel === 'text' ? 'texted' : 'emailed'} a review request straight away. That send can't be recalled.`;
+}
+
 export function getFeedDisplayTitle(event: Pick<JobFeedEvent, 'kind' | 'title'>): string {
   if (event.kind === 'job_created') return 'Quote sent';
   if (event.kind === 'client_link_created') return 'Client view link created';
