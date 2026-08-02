@@ -329,6 +329,23 @@ h3 {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Quick Stops wears its wordmark where the other rows carry an icon and a word.
+   Sized by HEIGHT so it sits on the same rhythm as the text rows either side of
+   it — width follows the 4.4:1 artwork, and `auto` keeps it from being squashed
+   when the ON/OFF pill takes its share of the row. */
+.sidenav-brandmark {
+  height: 1.35rem;
+  width: auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  object-fit: contain;
+  object-position: left center;
+}
+/* The row's normal gap exists to separate an icon from its label; with one
+   image there is nothing to separate, so the pill just needs pushing right. */
+.sidenav-link-brand { gap: 0.4rem; }
+.sidenav-link-brand .sidenav-state { margin-left: auto; }
+
 /* Plan my day and + New, side by side.
    NOT two equal halves. The rail is 244px wide, which leaves ~218px of content,
    and "Plan my day" needs an icon plus three words while "+ New" needs one —
@@ -11690,6 +11707,20 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   font-size: clamp(1.5rem, 2.4vw, 2rem);
   letter-spacing: -0.02em;
   white-space: nowrap;
+}
+
+/* Quick Stops' heading is its badge. Scaled off the same clamp the type uses so
+   it grows and shrinks with the headings on every neighbouring page instead of
+   being one fixed lump that is too big on a laptop and too small on a monitor.
+   max-width keeps it inside a narrow column rather than forcing the flex row to
+   wrap the "View booking page" button onto its own line. */
+.qs-logo-head { line-height: 0; }
+.qs-logo-badge {
+  height: clamp(2.5rem, 4.4vw, 3.4rem);
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: left center;
 }
 
 .bset-head h1 svg { width: 1.4rem; height: 1.4rem; color: var(--bset-accent); }

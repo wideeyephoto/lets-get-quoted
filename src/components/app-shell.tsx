@@ -369,15 +369,31 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       const total = totalByHref[href];
       const state =
         href === '/dashboard/quick-stops' ? quickStopState : href === '/dashboard/schedule/booking' ? bookingState : 'unknown';
+      // Quick Stops wears its logo instead of an icon and a word. The wordmark
+      // carries its own pin, so the line icon goes with the text — side by side
+      // the row would show two pins in 150px.
+      const brand = href === '/dashboard/quick-stops';
       return (
         <Link
           href={href}
           key={href}
-          className={`sidenav-link${extraClass ? ` ${extraClass}` : ''}${active ? ' active' : ''}`}
+          className={`sidenav-link${brand ? ' sidenav-link-brand' : ''}${extraClass ? ` ${extraClass}` : ''}${active ? ' active' : ''}`}
           title={item.hint}
         >
-          <NavIcon href={href} />
-          <span>{item.label}</span>
+          {brand ? (
+            <Image
+              src="/brand/quick-stops-wordmark.png"
+              alt={item.label}
+              width={440}
+              height={100}
+              className="sidenav-brandmark"
+            />
+          ) : (
+            <>
+              <NavIcon href={href} />
+              <span>{item.label}</span>
+            </>
+          )}
           {/* The two automations that can put work on your calendar without you
               touching anything. Both switches are pages deep, so the rail says
               which way they are set from wherever you happen to be. */}

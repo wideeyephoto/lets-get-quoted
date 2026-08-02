@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
@@ -238,8 +239,19 @@ export function QuickStopHead({ bookingUrl }: { bookingUrl: string | null }) {
   return (
     <header className="bset-head">
       <div>
-        <h1>
-          Quick Stops <Icon name="pin" />
+        {/* The logo IS the heading, so it stays inside the h1 rather than
+            replacing it: the alt text carries the page name for a screen reader
+            and for the document outline, which an <img> beside a removed h1
+            would have thrown away. */}
+        <h1 className="qs-logo-head">
+          <Image
+            src="/brand/quick-stops-badge.png"
+            alt="Quick Stops"
+            width={300}
+            height={77}
+            priority
+            className="qs-logo-badge"
+          />
         </h1>
         <p>Let customers pay to be squeezed into a day you&apos;re already working near them.</p>
       </div>
