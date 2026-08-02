@@ -274,10 +274,20 @@ function ScheduledPaymentForm({
   onCancel: () => void;
 }) {
   const [recurrence, setRecurrence] = useState<Recurrence>(row?.recurrence ?? draft?.recurrence ?? 'monthly');
+  // Tracked so the inbound tick can explain itself. It is one checkbox away
+  // from the "this amount is certain" one, and getting it wrong turns a bill
+  // into income — which reads as a healthier month rather than as a mistake.
+  const [incoming, setIncoming] = useState(row?.direction === 'in');
 
   return (
     <form action={saveScheduledPaymentAction} className="cash-bill-form">
       {row ? <input type="hidden" name="id" value={row.id} /> : null}
+      {/* The two forms ask identical questions, so without this the only way to
+          tell "changing the truck payment" from "adding a second truck payment"
+          is to remember which button you pressed. */}
+      <p className="cash-bill-form-head">
+        {row ? <>Editing <strong>{row.label}</strong></> : <>New scheduled payment</>}
+      </p>
       <div className="cash-bill-form-grid">
         <label className="cash-bill-field wide">
           <span>What is it</span>
@@ -327,11 +337,21 @@ function ScheduledPaymentForm({
         </span>
       </label>
 
-      <label className="cash-bill-check">
-        <input type="checkbox" name="direction" value="in" defaultChecked={row?.direction === 'in'} />
+      <label className={`cash-bill-check${incoming ? ' is-flipped' : ''}`}>
+        <input
+          type="checkbox"
+          name="direction"
+          value="in"
+          checked={incoming}
+          onChange={(event) => setIncoming(event.target.checked)}
+        />
         <span>
           <strong>This is money coming IN</strong>
-          <small>A financing draw, an equipment sale, money you&rsquo;re putting in yourself — anything the system can&rsquo;t see as a customer payment.</small>
+          <small>
+            {incoming
+              ? 'This will ADD to your balance every time it lands, not take away from it. Right for a financing draw or an equipment sale — wrong for anything you pay.'
+              : 'A financing draw, an equipment sale, money you’re putting in yourself — anything the system can’t see as a customer payment.'}
+          </small>
         </span>
       </label>
 

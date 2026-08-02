@@ -23,6 +23,7 @@ import type { CashSnapshot } from '@/lib/cash-accuracy';
 import { laborRulesFromAccount, LABOR_RULE_COLUMNS } from '@/lib/labor-settings';
 import { resolvePayPeriod, type PeriodMode } from '@/lib/labor';
 import { periodEndKey, periodStartKey, payPeriodKey } from '@/lib/crew-pay';
+import { buildPayrollEvents, type LaborRow, type PayEntry } from '@/lib/cash-forecast-payroll';
 import {
   buildIncomingEvents,
   type ForecastJobRow,
@@ -269,7 +270,7 @@ const RECURRENCE_WORD: Record<Recurrence, string> = {
   monthly: 'Monthly',
 };
 
-function expandScheduled(rows: ScheduledPayment[], window: { fromKey: string; toKey: string }): CashEvent[] {
+export function expandScheduled(rows: ScheduledPayment[], window: { fromKey: string; toKey: string }): CashEvent[] {
   const events: CashEvent[] = [];
   for (const row of rows) {
     if (!row.active || row.amount <= 0) continue;
@@ -372,118 +373,36 @@ async function loadPayrollEvents(
     period: { period_key: string } | { period_key: string }[] | null;
   }>;
 
-  type EntryInfo = { status: string; approved: number };
-  const entriesByPeriod = new Map<string, Map<string, EntryInfo>>();
+  const entriesByPeriod = new Map<string, Map<string, PayEntry>>();
   for (const row of entryRows) {
     const period = Array.isArray(row.period) ? row.period[0] : row.period;
     if (!period?.period_key) continue;
-    const bucket = entriesByPeriod.get(period.period_key) ?? new Map<string, EntryInfo>();
+    const bucket = entriesByPeriod.get(period.period_key) ?? new Map<string, PayEntry>();
     bucket.set(row.crew_id, { status: String(row.status), approved: num(row.approved_amount) });
     entriesByPeriod.set(period.period_key, bucket);
   }
 
-  const labor = (laborRows ?? []) as Array<{ crew_id: string | null; amount: unknown; created_at: string }>;
-
-  // The average recent payroll, for periods nobody has worked yet. Built from
-  // whole periods that are already over, so a half-finished week can't drag it
-  // down.
-  const history: number[] = [];
-  for (const entry of periods) {
-    if (entry.period.open || entry.endKey >= todayKey) continue;
-    const total = periodPayroll(entry, labor, entriesByPeriod.get(entry.key));
-    if (total.amount > 0) history.push(total.amount);
-  }
-  const average = history.length > 0 ? history.reduce((sum, value) => sum + value, 0) / history.length : 0;
-
-  const events: CashEvent[] = [];
-  for (const entry of relevant) {
-    const { amount, confirmed, approvedCount, crewCount } = periodPayroll(entry, labor, entriesByPeriod.get(entry.key));
-
-    if (amount > 0) {
-      events.push({
-        id: `payroll:${entry.key}`,
-        dateKey: entry.payDayKey,
-        label: 'Crew payroll',
-        detail: confirmed
-          ? `Approved · ${entry.period.rangeLabel}`
-          : approvedCount > 0
-            ? `${approvedCount} of ${crewCount} approved · ${entry.period.rangeLabel}`
-            : `From logged hours · ${entry.period.rangeLabel}`,
-        amount: -Math.round(amount * 100) / 100,
-        kind: 'payroll',
-        confirmed,
-        slips: false,
-        repeating: true,
-        href: '/dashboard/crew?tab=pay',
-      });
-      continue;
-    }
-
-    // Nothing logged yet, but the period is in the future and this account does
-    // run payroll — so a payroll is coming, even though no hours exist for it.
-    if (average > 0 && entry.startKey > todayKey) {
-      events.push({
-        id: `payroll:${entry.key}:projected`,
-        dateKey: entry.payDayKey,
-        label: 'Crew payroll',
-        detail: `Projected from recent periods · ${entry.period.rangeLabel}`,
-        amount: -Math.round(average * 100) / 100,
-        kind: 'payroll',
-        confirmed: false,
-        slips: false,
-        repeating: true,
-        href: '/dashboard/crew?tab=pay',
-      });
-    }
-  }
-
-  return events;
+  return buildPayrollEvents({
+    periods,
+    relevant,
+    labor: (laborRows ?? []) as LaborRow[],
+    entriesByPeriod,
+    todayKey,
+  });
 }
 
-/** What one period still owes, and how much of it is a number somebody approved. */
-function periodPayroll(
-  entry: { period: { startIso: string; endIso: string } },
-  labor: Array<{ crew_id: string | null; amount: unknown; created_at: string }>,
-  entries: Map<string, { status: string; approved: number }> | undefined,
-): { amount: number; confirmed: boolean; approvedCount: number; crewCount: number } {
-  const inPeriod = labor.filter(
-    (row) => row.crew_id && row.created_at >= entry.period.startIso && row.created_at < entry.period.endIso,
-  );
-
-  const loggedByCrew = new Map<string, number>();
-  for (const row of inPeriod) {
-    const crewId = row.crew_id as string;
-    loggedByCrew.set(crewId, (loggedByCrew.get(crewId) ?? 0) + num(row.amount));
-  }
-
-  // Somebody can be owed for a period they logged no hours in — a salaried crew
-  // member's approved entry is the only record of it.
-  const crewIds = new Set<string>([...loggedByCrew.keys(), ...(entries?.keys() ?? [])]);
-
-  let amount = 0;
-  let approvedCount = 0;
-  let unapproved = 0;
-  for (const crewId of crewIds) {
-    const record = entries?.get(crewId);
-    if (record?.status === 'paid') continue; // Already out the door.
-    if (record && (record.status === 'approved' || record.status === 'sent')) {
-      amount += record.approved > 0 ? record.approved : (loggedByCrew.get(crewId) ?? 0);
-      approvedCount += 1;
-      continue;
-    }
-    // No entry, or one still in review: the logged hours are the best we have.
-    const logged = loggedByCrew.get(crewId) ?? 0;
-    if (logged <= 0) continue;
-    amount += logged;
-    unapproved += 1;
-  }
-
-  return {
-    amount: Math.round(amount * 100) / 100,
-    confirmed: amount > 0 && unapproved === 0,
-    approvedCount,
-    crewCount: approvedCount + unapproved,
-  };
+/**
+ * Days from asking for money to getting it, from a list of observed gaps.
+ *
+ * Median rather than mean: one customer who paid four months late would drag a
+ * mean out far enough to make every forecast useless. Clamped, because a lag of
+ * zero says money arrives before it is asked for and a lag of 180 is not a
+ * forecast input, it is a different business.
+ */
+export function medianLagDays(gaps: number[], fallback: number): number {
+  const usable = gaps.filter((gap) => Number.isFinite(gap) && gap >= 0 && gap <= 180).sort((a, b) => a - b);
+  if (usable.length < 3) return fallback;
+  return Math.max(1, Math.min(30, Math.round(usable[Math.floor(usable.length / 2)])));
 }
 
 // -- Incoming ----------------------------------------------------------------
@@ -605,7 +524,6 @@ async function measurePaymentLag(
   }
   if (gaps.length < 3) return { days: FALLBACK_PAYMENT_LAG_DAYS, measured: false };
 
-  gaps.sort((a, b) => a - b);
-  const median = gaps[Math.floor(gaps.length / 2)];
-  return { days: Math.max(1, Math.min(30, Math.round(median))), measured: true };
+  const days = medianLagDays(gaps, FALLBACK_PAYMENT_LAG_DAYS);
+  return { days, measured: days !== FALLBACK_PAYMENT_LAG_DAYS || gaps.length >= 3 };
 }

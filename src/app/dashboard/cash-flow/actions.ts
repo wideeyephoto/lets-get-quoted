@@ -125,6 +125,26 @@ export async function saveScheduledPaymentAction(formData: FormData) {
   if (endsOn && endsOn < dueDate) throw new Error('The end date can’t be before the first payment.');
   if (recurrence === 'once' && endsOn) throw new Error('A one-off payment doesn’t repeat, so it has no end date.');
 
+  // Two rows with the same name is how a $400 bill quietly becomes $4,400: the
+  // Add form and the Edit form ask the same questions, so meaning to change one
+  // and adding a second is an easy mistake to make and an invisible one to
+  // spot — the forecast just runs richer or poorer than the truth.
+  const clash = await supabase
+    .from('scheduled_payments')
+    .select('id, amount, direction')
+    .eq('account_id', accountId)
+    .eq('active', true)
+    .ilike('label', label)
+    .limit(2);
+  const duplicate = (clash.data ?? []).find((row) => row.id !== id);
+  if (duplicate) {
+    const existing = `$${Number(duplicate.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+    throw new Error(
+      `You already have one called “${label}” for ${existing} ${duplicate.direction === 'in' ? 'coming in' : 'going out'}. ` +
+        'Edit that one instead of adding a second, or give this a different name.',
+    );
+  }
+
   const row = {
     account_id: accountId,
     label,
