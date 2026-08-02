@@ -150,7 +150,10 @@
   --info: #a9c8ff;
   --gold-ink: #ffd166;
   --accent-ink: #ff9d5c;
-  --on-active: #cfe8fa;
+  /* White, exactly as in dark. The active row's wash is still the brand orange
+     out here — the canvas did not change the accent, only the ground — so its
+     ink must not drift blue. */
+  --on-active: #fff;
   --fresh: #4fd39a;
 }
 
@@ -523,17 +526,18 @@ h3 {
 
 /* HARBOUR — the Plate mark.
    The wordmark carries its own slate chip rather than standing on whatever is
-   behind it. On the canvas that plate is a shade deeper than the rail, so the
-   mark still reads as an object; if it ever lands on a sheet it is unchanged,
-   which is the point — one mark, one rendering, no light variant to maintain
-   and no repeat of the Quick Stops problem. */
+   behind it: one mark, one rendering, no light variant to maintain and no
+   repeat of the Quick Stops problem, where white artwork vanished the moment
+   the ground went light.
+
+   The plate is the ONLY thing this adds. The double rule and "Quoted" stay the
+   brand orange, inherited from the rule above — the logo is the one place the
+   theme's accent does not get a say, because it is the same company in both
+   themes and a mark that changes colour with a display setting is not a mark. */
 :root[data-theme='light'] .sidenav-wordmark {
   background: #16202b;
-  border-color: #7cc4f0;
-  color: #f0f4f8;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
 }
-:root[data-theme='light'] .sidenav-wordmark span { color: #7cc4f0; }
 
 /* Marketing rail: the "Create Free Account" CTA fills the foot, matching the
    full-width dashboard rail controls. */
