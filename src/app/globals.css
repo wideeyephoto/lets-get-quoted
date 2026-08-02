@@ -51,6 +51,19 @@ button, input, select, textarea { font: inherit; }
 .chrome-shell { min-height: 100vh; }
 .app-main { padding-top: 5.5rem; }
 
+/* The lead alert is fixed to the bottom-right corner, so it sits ON TOP of
+   whatever the last row of the page happens to be. That was harmless while
+   pages ended in text; it is not harmless now that they end in buttons —
+   elementFromPoint at the button's centre returns the alert, so the click goes
+   to the alert instead. Reserve the alert's own height at the foot of the
+   scroll so the last row can always be scrolled clear of it. Only applied
+   while the alert is actually up: an owner with nothing waiting gets no gap. */
+.app-main-alerted { padding-bottom: 14rem; }
+@media (max-width: 900px) {
+  /* Narrow: the alert spans nearly the full width and is taller for it. */
+  .app-main-alerted { padding-bottom: 17rem; }
+}
+
 .topbar {
   position: fixed;
   inset: 0 0 auto;
@@ -11954,11 +11967,27 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 .bset-pause { display: inline-flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
 .bset-pause svg { width: 0.9rem; height: 0.9rem; }
 
-/* The master switch's buttons, kept together so they wrap as a pair rather than
-   the second one dropping under the status text on its own. */
+/* The master switch's buttons, kept together so they wrap as a group rather
+   than one at a time dropping under the status text on its own. */
 .bset-master-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
-.bset-how { display: inline-flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
-.bset-how svg { width: 0.95rem; height: 0.95rem; }
+.bset-how,
+.bset-setup { display: inline-flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
+.bset-how svg,
+.bset-setup svg { width: 0.95rem; height: 0.95rem; }
+
+/* The foot of the page: the way back up, since every path through this page
+   runs downhill and the longest panel is the last one. */
+.qs-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+.qs-foot-copy { display: grid; gap: 0.2rem; min-width: 0; flex: 1 1 20rem; }
+.qs-foot-copy strong { font-size: 1.02rem; font-weight: 700; }
+.qs-foot-copy p { margin: 0; font-size: 0.86rem; line-height: 1.5; color: var(--muted, #93a4b8); }
+.qs-foot-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 
 /* Both jump targets clear the sticky top bar rather than landing under it. */
 #quick-stop-earn-more,

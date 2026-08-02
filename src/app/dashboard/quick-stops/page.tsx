@@ -9,6 +9,7 @@ import QuickStopExplainer from './QuickStopExplainer';
 import QuickStopStatus, { QuickStopHead } from './QuickStopStatus';
 import QuickStopConfigurator from './QuickStopConfigurator';
 import QuickStopCandidates from './QuickStopCandidates';
+import QuickStopPageFooter from './QuickStopPageFooter';
 import { customerWords, screenQuickStopCandidates, type CandidateInput } from '@/lib/quick-stop-candidates';
 import { loadScreeningSummary } from '@/lib/quick-stop-screenings';
 import { loadRecipients, matchesAudience } from '@/lib/campaigns';
@@ -316,6 +317,12 @@ export default async function QuickStopsPage() {
         maxVisitMinutes={settings.maxVisitMinutes}
         enabled={settings.enabled}
       />
+
+      {/* Every route through this page runs downhill — the header sends you to
+          the pitch, the pitch sends you to the demand panel, and the demand
+          panel is the longest thing here. Without this, reading to the end
+          leaves you at the one place with nothing to press. */}
+      <QuickStopPageFooter enabled={settings.enabled} />
     </main>
   );
 }

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { setQuickStopEnabledAction } from '@/app/dashboard/settings/actions';
+import { jumpToHowItWorks } from './quick-stop-jump';
 
 // The master switch for Quick Stop, and what it currently means.
 //
@@ -126,18 +127,6 @@ export default function QuickStopStatus(props: QuickStopStatusProps) {
 
   const lockDate = lockedUntil ? new Date(lockedUntil).toLocaleDateString('en-US', { dateStyle: 'medium' }) : null;
 
-  // Jumps to the pitch section further down. It can't be a plain #anchor: once
-  // Quick Stops is switched ON the explainer is folded into a closed <details>,
-  // and an anchor into a collapsed element scrolls to a zero-height box (or, in
-  // the browsers that do auto-open it, arrives before the layout settles). So
-  // open the drawer first, then scroll on the next frame.
-  function showHowItWorks() {
-    const drawer = document.getElementById('quick-stop-how');
-    if (drawer instanceof HTMLDetailsElement) drawer.open = true;
-    requestAnimationFrame(() => {
-      document.getElementById('quick-stop-earn-more')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  }
 
   return (
     <>
@@ -182,7 +171,14 @@ export default function QuickStopStatus(props: QuickStopStatusProps) {
               {pending ? 'Saving…' : enabled ? 'Pause Quick Stops' : 'Turn on Quick Stops'}
             </button>
           )}
-          <button type="button" className="btn ghost bset-how" onClick={showHowItWorks}>
+          {/* Between the switch and the explanation, because that is the order
+              the questions arrive in: turn it on, set it up, and — if any of
+              that raised a question — read what it actually does. */}
+          <Link href={SETTINGS_HREF} className="btn primary bset-setup">
+            <Icon name="cash" />
+            Set up Quick Stop
+          </Link>
+          <button type="button" className="btn ghost bset-how" onClick={jumpToHowItWorks}>
             <Icon name="help" />
             How it works
           </button>

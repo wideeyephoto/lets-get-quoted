@@ -559,7 +559,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           </aside>
         ) : null}
 
-        <div className="app-main app-main-sidenav">{children}</div>
+        <div className={`app-main app-main-sidenav${showQuoteRequestAlert ? " app-main-alerted" : ""}`}>{children}</div>
       </div>
     );
   }
@@ -677,7 +677,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           </div>
         </aside>
 
-        <div className="app-main app-main-sidenav">{children}</div>
+        <div className={`app-main app-main-sidenav${showQuoteRequestAlert ? " app-main-alerted" : ""}`}>{children}</div>
       </div>
     );
   }
@@ -789,7 +789,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
         </aside>
       ) : null}
 
-      <div className="app-main">{children}</div>
+      <div className={`app-main${showQuoteRequestAlert ? " app-main-alerted" : ""}`}>{children}</div>
     </div>
   );
 }
