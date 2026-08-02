@@ -21,8 +21,8 @@ import {
   DEFAULT_WORKDAY_END,
 } from '@/lib/booking-availability';
 import { normalizeInstantBookMinAmount, normalizeInstantBookRadiusMiles, normalizeGeoMode } from '@/lib/instant-booking';
-import { extraStopSettingsFromAccount, dollarsToCents } from '@/lib/extra-stop';
-import { mergeRefundTiers } from '@/lib/extra-stop-refunds';
+import { quickStopSettingsFromAccount, dollarsToCents } from '@/lib/quick-stop';
+import { mergeRefundTiers } from '@/lib/quick-stop-refunds';
 import { geocodeAddress } from '@/lib/geocode';
 import { normalizeUsPhone } from '@/lib/phone';
 
@@ -266,39 +266,39 @@ export async function updateBookingAvailabilityAction(formData: FormData) {
   revalidatePath('/dashboard/schedule/booking');
 }
 
-// Extra Stop config. Normalizes every field through the shared builder (feeding
+// Quick Stop config. Normalizes every field through the shared builder (feeding
 // it a column-shaped row) so the same clamps/guards used everywhere apply here,
 // then writes the account columns. Fees arrive in dollars, stored in cents.
-export async function updateExtraStopSettingsAction(formData: FormData) {
+export async function updateQuickStopSettingsAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
 
-  const s = extraStopSettingsFromAccount({
-    extra_stop_enabled: formData.get('extraStopEnabled') === 'on',
-    extra_stop_weekdays: formData.getAll('extraStopWeekday').map(String),
-    extra_stop_earliest_time: formData.get('extraStopEarliest'),
-    extra_stop_latest_end: formData.get('extraStopLatestEnd'),
-    extra_stop_max_per_day: formData.get('extraStopMaxPerDay'),
-    extra_stop_max_visit_minutes: formData.get('extraStopMaxVisitMinutes'),
-    extra_stop_max_detour_miles: formData.get('extraStopMaxDetourMiles'),
-    extra_stop_max_detour_minutes: formData.get('extraStopMaxDetourMinutes'),
-    extra_stop_min_fee_cents: dollarsToCents(formData.get('extraStopMinFee')),
-    extra_stop_max_fee_cents: dollarsToCents(formData.get('extraStopMaxFee')),
-    // ALWAYS ON, for the same reason the checkbox is gone: an Extra Stop is a
+  const s = quickStopSettingsFromAccount({
+    extra_stop_enabled: formData.get('quickStopEnabled') === 'on',
+    extra_stop_weekdays: formData.getAll('quickStopWeekday').map(String),
+    extra_stop_earliest_time: formData.get('quickStopEarliest'),
+    extra_stop_latest_end: formData.get('quickStopLatestEnd'),
+    extra_stop_max_per_day: formData.get('quickStopMaxPerDay'),
+    extra_stop_max_visit_minutes: formData.get('quickStopMaxVisitMinutes'),
+    extra_stop_max_detour_miles: formData.get('quickStopMaxDetourMiles'),
+    extra_stop_max_detour_minutes: formData.get('quickStopMaxDetourMinutes'),
+    extra_stop_min_fee_cents: dollarsToCents(formData.get('quickStopMinFee')),
+    extra_stop_max_fee_cents: dollarsToCents(formData.get('quickStopMaxFee')),
+    // ALWAYS ON, for the same reason the checkbox is gone: a Quick Stop is a
     // paid squeeze-in on a day that is otherwise full. Turning this off leaves
     // the feature switched on but unable to do the thing it exists for, and
     // nothing on screen would explain why no requests were coming through. Max
-    // Extra Stops per day is the control that actually limits volume.
+    // Quick Stops per day is the control that actually limits volume.
     extra_stop_allow_after_capacity: true,
-    extra_stop_response_deadline_mins: formData.get('extraStopResponseDeadline'),
-    extra_stop_payment_deadline_mins: formData.get('extraStopPaymentDeadline'),
-    extra_stop_categories: formData.get('extraStopCategories'),
-    extra_stop_required_photos: formData.get('extraStopRequiredPhotos'),
-    extra_stop_days_ahead: formData.get('extraStopDaysAhead'),
+    extra_stop_response_deadline_mins: formData.get('quickStopResponseDeadline'),
+    extra_stop_payment_deadline_mins: formData.get('quickStopPaymentDeadline'),
+    extra_stop_categories: formData.get('quickStopCategories'),
+    extra_stop_required_photos: formData.get('quickStopRequiredPhotos'),
+    extra_stop_days_ahead: formData.get('quickStopDaysAhead'),
     // ALWAYS ON. This used to be a checkbox the contractor could clear, which
     // meant an account could offer same-day, pre-paid, sight-unseen visits with
     // nothing screening out complex, unsafe or out-of-scope work. That is not a
     // preference, so it is no longer offered as one. The setting stays in the
-    // column (and in extra-stop-qualify) so nothing downstream changes shape.
+    // column (and in quick-stop-qualify) so nothing downstream changes shape.
     extra_stop_require_ai_approval: true,
   });
 
@@ -309,9 +309,9 @@ export async function updateExtraStopSettingsAction(formData: FormData) {
   // THE MASTER SWITCH IS NOT PART OF THIS FORM ANYMORE, and absence has to mean
   // "leave it alone" rather than "off". An unchecked checkbox and a field that
   // was never rendered are indistinguishable in FormData, so a settings save
-  // from a form without it would have quietly switched Extra Stop off. The
+  // from a form without it would have quietly switched Quick Stop off. The
   // switch lives on the Automations card and on this page's own status header.
-  const enabledField = formData.has('extraStopEnabled');
+  const enabledField = formData.has('quickStopEnabled');
 
   const { error } = await supabase
     .from('accounts')
@@ -348,7 +348,7 @@ export async function updateExtraStopSettingsAction(formData: FormData) {
     afterArrived: formData.get('refundAfterArrived'),
   });
   const { error: tierError } = await supabase.from('accounts').update({ extra_stop_refund_tiers: tiers }).eq('id', accountId);
-  if (tierError) console.error('Extra Stop refund tiers save skipped:', tierError.message);
+  if (tierError) console.error('Quick Stop refund tiers save skipped:', tierError.message);
 
   revalidatePath('/dashboard/settings');
   revalidatePath('/dashboard/schedule');
@@ -491,14 +491,14 @@ export async function deleteAccountAction() {
 // The on/off switch on its own, for the Plan my day panel.
 //
 // Deliberately narrow: it flips one boolean and touches nothing else. Reusing
-// updateExtraStopSettingsAction would mean the day page posting a whole config
+// updateQuickStopSettingsAction would mean the day page posting a whole config
 // form, and any field it failed to include would be silently reset to a default.
-const EXTRA_STOP_TOGGLE_SOURCE: Record<string, string> = {
+const QUICK_STOP_TOGGLE_SOURCE: Record<string, string> = {
   plan_my_day: 'Plan my day',
-  extra_stops_page: 'the Extra Stops page',
+  extra_stops_page: 'the Quick Stops page',
 };
 
-export async function setExtraStopEnabledAction(enabled: boolean, source = 'plan_my_day') {
+export async function setQuickStopEnabledAction(enabled: boolean, source = 'plan_my_day') {
   const { supabase, accountId, userEmail } = await requireOwnerContext();
 
   const { error } = await supabase.from('accounts').update({ extra_stop_enabled: enabled }).eq('id', accountId);
@@ -511,7 +511,7 @@ export async function setExtraStopEnabledAction(enabled: boolean, source = 'plan
   await recordAccountEvent({
     accountId,
     kind: 'automation_toggled',
-    summary: `Extra Stop turned ${enabled ? 'on' : 'off'} from ${EXTRA_STOP_TOGGLE_SOURCE[source] ?? source}.`,
+    summary: `Quick Stop turned ${enabled ? 'on' : 'off'} from ${QUICK_STOP_TOGGLE_SOURCE[source] ?? source}.`,
     actorEmail: userEmail,
     meta: { automation: 'extra-stop', enabled, source },
   });
@@ -519,5 +519,5 @@ export async function setExtraStopEnabledAction(enabled: boolean, source = 'plan
   revalidatePath('/dashboard/settings');
   revalidatePath('/dashboard/schedule');
   revalidatePath('/dashboard/schedule/plan');
-  revalidatePath('/dashboard/extra-stops');
+  revalidatePath('/dashboard/quick-stops');
 }

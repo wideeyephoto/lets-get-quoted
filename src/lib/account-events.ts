@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/auth';
 
 // Audit trail for account-level settings changes.
 //
-// Flipping Online booking, Extra Stop or missed-call text-back off stops money
+// Flipping Online booking, Quick Stop or missed-call text-back off stops money
 // arriving, and until now those changes were silent and unattributable — "our
 // bookings dried up last Tuesday" had nothing to check. Jobs get job_feed, staff
 // actions get admin_actions; this is the equivalent for settings.

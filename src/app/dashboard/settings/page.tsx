@@ -16,7 +16,7 @@ import { updateReviewSettingsAction, updateFollowupSettingsAction, updateReminde
 import { ESTIMATE_POSTURES, normalizeEstimatePosture } from '@/lib/estimate-posture';
 import { getSiteContent } from '@/lib/site-content';
 import { WEEKDAY_LABELS, BOOKING_WINDOW_PRESETS, TIMEZONE_OPTIONS, bookingAvailabilityFromAccount } from '@/lib/booking-availability';
-import { EXTRA_STOP_SETTINGS_COLUMNS } from '@/lib/extra-stop';
+import { QUICK_STOP_SETTINGS_COLUMNS } from '@/lib/quick-stop';
 import { getTrailingVolume } from '@/lib/payments';
 import { getTierInfo } from '@/lib/stripe';
 import { formatMoney } from '@/lib/jobs';
@@ -133,9 +133,9 @@ export default async function SettingsPage({
     .maybeSingle();
   const booking = bookingAvailabilityFromAccount(bookingSettings);
 
-  const { data: extraStopSettings } = await supabase
+  const { data: quickStopSettings } = await supabase
     .from('accounts')
-    .select(EXTRA_STOP_SETTINGS_COLUMNS)
+    .select(QUICK_STOP_SETTINGS_COLUMNS)
     .eq('id', accountId)
     .single();
   // Platform fee tier, shown on the Payments tab so a contractor can see the rate
@@ -143,7 +143,7 @@ export default async function SettingsPage({
   const trailingVolume = await getTrailingVolume(accountId);
   const feeTier = getTierInfo(trailingVolume);
   // At-a-glance status for the Automations accordion cards.
-  const extraStopEnabled = Boolean((extraStopSettings as { extra_stop_enabled?: boolean } | null)?.extra_stop_enabled);
+  const quickStopEnabled = Boolean((quickStopSettings as { extra_stop_enabled?: boolean } | null)?.extra_stop_enabled);
   const bookingActive = booking.weekdays.length > 0;
   const bookingEnabled = booking.enabled;
   // Intake AI isn't "always on" — enabling the classic quote form in the website
@@ -546,23 +546,23 @@ export default async function SettingsPage({
                   </form>
                 </AutomationCard>
 
-                <AutomationCard group="booking-intake" id="extra-stop" title="Extra Stop" subtitle="Same-day &ldquo;add me to your route&rdquo;" toggle={{ on: extraStopEnabled, action: toggleAutomationAction.bind(null, 'extra-stop') }}>
+                <AutomationCard group="booking-intake" id="extra-stop" title="Quick Stop" subtitle="Same-day &ldquo;add me to your route&rdquo;" toggle={{ on: quickStopEnabled, action: toggleAutomationAction.bind(null, 'extra-stop') }}>
                   {!account?.connect_onboarded ? (
                     <div className="automation-prereq" style={{ marginBottom: '0.9rem' }}>
                       <span aria-hidden="true">💳</span>
-                      <span>Extra Stop collects a fee before the visit — <Link href="/dashboard/settings#payments">connect Stripe</Link> to get paid. You can still set it up now.</span>
+                      <span>Quick Stop collects a fee before the visit — <Link href="/dashboard/settings#payments">connect Stripe</Link> to get paid. You can still set it up now.</span>
                     </div>
                   ) : null}
                   {/* The thirty-odd settings that used to live here moved to the
-                      Extra Stops page, where the requests they govern are. What
+                      Quick Stops page, where the requests they govern are. What
                       belongs on an Automations tab is the switch and the way in. */}
                   <p className="workspace-details-copy" style={{ marginTop: 0 }}>
                     A customer asks to be fitted in today — mid-day or at the end of your route. You review
                     the job, propose an arrival window and set a one-off fee; they pay before it&apos;s
                     booked.
                   </p>
-                  <Link className="btn secondary" href="/dashboard/extra-stops#extra-stop-setup">
-                    Adjust Extra Stop settings →
+                  <Link className="btn secondary" href="/dashboard/quick-stops#quick-stop-setup">
+                    Adjust Quick Stop settings →
                   </Link>
                 </AutomationCard>
 

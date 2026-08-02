@@ -25,7 +25,7 @@ function bool(v: unknown): boolean {
 
 const FEATURE_FLAGS: { key: string; label: string }[] = [
   { key: 'instant_book_enabled', label: 'Instant booking' },
-  { key: 'extra_stop_enabled', label: 'Extra Stop' },
+  { key: 'extra_stop_enabled', label: 'Quick Stop' },
   { key: 'deposit_on_approval', label: 'Deposit on approval' },
   { key: 'quote_followups_enabled', label: 'Quote follow-ups' },
   { key: 'appointment_reminders_enabled', label: 'Appointment reminders' },
@@ -68,7 +68,7 @@ export default async function AdminAccountDetailPage({
           {suspended ? <span className={`${styles.pill} ${styles.bad}`}>Suspended</span> : <span className={`${styles.pill} ${styles.good}`}>Active</span>}
           <span className={`${styles.pill} ${styles.neutral}`}>{String(a.plan ?? 'free')}</span>
           {paypaused ? <span className={`${styles.pill} ${styles.bad}`}>Payouts paused</span> : connected ? <span className={`${styles.pill} ${styles.good}`}>Payouts connected</span> : <span className={`${styles.pill} ${styles.neutral}`}>Payouts not set up</span>}
-          {lockedUntil ? <span className={`${styles.pill} ${styles.warn}`}>Extra Stop locked</span> : null}
+          {lockedUntil ? <span className={`${styles.pill} ${styles.warn}`}>Quick Stop locked</span> : null}
         </div>
       </header>
 
@@ -134,9 +134,9 @@ export default async function AdminAccountDetailPage({
             <dl className={styles.kv}>
               <dt>New leads</dt><dd>{detail.activity.leads30d}</dd>
               <dt>Active jobs</dt><dd>{detail.activity.jobsActive}</dd>
-              <dt>Extra Stops (active)</dt><dd>{detail.extraStop.active}</dd>
-              <dt>Extra Stops (all-time)</dt><dd>{detail.extraStop.total}</dd>
-              <dt>No-shows</dt><dd>{detail.extraStop.noShows > 0 ? <span className={`${styles.pill} ${styles.warn}`}>{detail.extraStop.noShows}</span> : '0'}</dd>
+              <dt>Quick Stops (active)</dt><dd>{detail.quickStop.active}</dd>
+              <dt>Quick Stops (all-time)</dt><dd>{detail.quickStop.total}</dd>
+              <dt>No-shows</dt><dd>{detail.quickStop.noShows > 0 ? <span className={`${styles.pill} ${styles.warn}`}>{detail.quickStop.noShows}</span> : '0'}</dd>
             </dl>
           </section>
 
@@ -155,7 +155,7 @@ export default async function AdminAccountDetailPage({
           <AccountActions
             accountId={params.id}
             suspended={suspended}
-            extraStopLockedUntil={lockedUntil}
+            quickStopLockedUntil={lockedUntil}
             businessName={displayName}
           />
 
@@ -184,8 +184,8 @@ const DONE_MESSAGES: Record<string, string> = {
   suspended: 'Account suspended. The owner is now blocked from the dashboard.',
   unsuspended: 'Suspension lifted. The owner has access again.',
   credit: 'Account credit issued.',
-  es_locked: 'Extra Stop locked for this account.',
-  es_unlocked: 'Extra Stop lock cleared.',
+  es_locked: 'Quick Stop locked for this account.',
+  es_unlocked: 'Quick Stop lock cleared.',
   exported: 'Account data exported.',
 };
 const ERROR_MESSAGES: Record<string, string> = {

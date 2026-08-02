@@ -3,7 +3,7 @@ import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { createAdminClient, getCurrentMembership } from '@/lib/auth';
 import { expireStaleLeads, getLeadTriage } from '@/lib/leads';
 import { listJobs } from '@/lib/jobs';
-import { EXTRA_STOP_SETTINGS_COLUMNS, extraStopSettingsFromAccount } from '@/lib/extra-stop';
+import { QUICK_STOP_SETTINGS_COLUMNS, quickStopSettingsFromAccount } from '@/lib/quick-stop';
 import { bookingAvailabilityFromAccount } from '@/lib/booking-availability';
 
 // Lightweight status check used by the app shell to show persistent dashboard
@@ -31,7 +31,7 @@ export async function GET() {
     admin
       .from('accounts')
       .select(
-        `connect_onboarded, business_name, mute_low_quality_leads, booking_enabled, booking_weekdays, booking_windows, ${EXTRA_STOP_SETTINGS_COLUMNS}`,
+        `connect_onboarded, business_name, mute_low_quality_leads, booking_enabled, booking_weekdays, booking_windows, ${QUICK_STOP_SETTINGS_COLUMNS}`,
       )
       .eq('id', membership.accountId)
       .maybeSingle(),
@@ -80,13 +80,13 @@ export async function GET() {
       const newestLead = attentionLeads[0] ?? null;
       const newestQuoteRequestHighValue = newestLead ? newestLead.triage.flags.includes('high_value') : false;
 
-  // Extra Stop is the one automation that puts a stranger on today's route, and
+  // Quick Stop is the one automation that puts a stranger on today's route, and
   // its switch lived three clicks deep in Settings. Whether it's ON is a thing
   // the owner should be able to see from anywhere in the app, so it rides along
   // with the rest of the shell state. 'paused' is support's lock, which
   // overrides `enabled` — showing green there would say the opposite of the truth.
-  const extraStop = extraStopSettingsFromAccount((account ?? {}) as Parameters<typeof extraStopSettingsFromAccount>[0]);
-  const extraStopState: 'on' | 'off' | 'paused' = extraStop.locked ? 'paused' : extraStop.enabled ? 'on' : 'off';
+  const quickStop = quickStopSettingsFromAccount((account ?? {}) as Parameters<typeof quickStopSettingsFromAccount>[0]);
+  const quickStopState: 'on' | 'off' | 'paused' = quickStop.locked ? 'paused' : quickStop.enabled ? 'on' : 'off';
   const bookingAvailability = bookingAvailabilityFromAccount(
     (account ?? {}) as Parameters<typeof bookingAvailabilityFromAccount>[0],
   );
@@ -115,7 +115,7 @@ export async function GET() {
     newestQuoteRequestId: newestLead?.id ?? null,
     newestQuoteRequestCreatedAt: newestLead?.created_at ?? null,
     newestQuoteRequestHighValue,
-    extraStopState,
+    quickStopState,
     // Online booking, judged the same way its own setup page judges it: the
     // switch being on is not the same as the page being able to take a booking.
     // Without a published site, or with no open days or no arrival windows,

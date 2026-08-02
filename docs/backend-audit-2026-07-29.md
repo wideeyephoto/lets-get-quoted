@@ -23,13 +23,13 @@ rate-limiting on public write paths, and (3) missing HTTP security headers.
 `src/lib/payments.ts:383-469` (`refundPayment`). It's the one money-moving op with **no Stripe `idempotencyKey`** and a non-atomic read-modify-write of `refunded_amount` (plain `.eq('id',…)`, no compare-and-set). A retry after a lost DB write, or a double-click / concurrent call, can issue a second refund. Bounded by the captured amount (Stripe blocks over-refund) but still real money out and refunds more than intended.
 **Fix:** deterministic `idempotencyKey` on `stripe.refunds.create` (e.g. `refund_${paymentId}_${alreadyCents}_${requestedCents}`) + compare-and-set on the DB write (`.eq('refunded_amount', prior)`), reload on 0 rows.
 
-### P1-b. Extra Stop cancellation refunds *before* claiming the status
-`src/lib/extra-stop-refunds.ts:96-128` — calls `refundPayment` then runs the idempotency claim. Two concurrent resolutions (customer-cancel racing admin-resolve, or a double-submit) both refund before one loses the claim. Same ordering in `confirmExtraStopPayment` (`extra-stop-payments.ts:127-134`). Compounds P1-a.
+### P1-b. Quick Stop cancellation refunds *before* claiming the status
+`src/lib/quick-stop-refunds.ts:96-128` — calls `refundPayment` then runs the idempotency claim. Two concurrent resolutions (customer-cancel racing admin-resolve, or a double-submit) both refund before one loses the claim. Same ordering in `confirmQuickStopPayment` (`quick-stop-payments.ts:127-134`). Compounds P1-a.
 **Fix:** claim the terminal status with the compare-and-set **first**; only the winner calls `refundPayment`.
 
 ### P1-c. Public write paths have no real abuse control (cost DoS / SMS pumping / email amplification)
 Turnstile + durable limiting exist but are wired **only to the marketing `/contact` form**. These revenue-path endpoints have only per-instance in-memory `Map` counters (useless on Vercel — reset on cold start, per-lambda):
-- `/api/public/leads` + `submitBookingAction` / `submitExtraStopRequestAction` / `submitCallbackAction` (`book/[subdomain]/actions.ts`) — scripted spam burns **paid OpenAI + Google geocoding**, fills the DB, floods the owner inbox.
+- `/api/public/leads` + `submitBookingAction` / `submitQuickStopRequestAction` / `submitCallbackAction` (`book/[subdomain]/actions.ts`) — scripted spam burns **paid OpenAI + Google geocoding**, fills the DB, floods the owner inbox.
 - `/api/public/leads/verify-phone` — sends an SMS code to an **attacker-supplied number** → SMS pumping / toll fraud / text-bombing.
 - Photo uploads: 6 × 6MB = 36MB per unauth request → storage/bandwidth DoS.
 - `submitBookingAction` → `sendBookingConfirmationEmail` sends a branded email to an **attacker-chosen recipient** (booking.ts:309-318) → phishing amplification + sender-reputation damage.
@@ -63,8 +63,8 @@ Turnstile + durable limiting exist but are wired **only to the marketing `/conta
 - **Refund application-fee split** on destination charges relies on Stripe defaults (platform is losses_collector) — make the intended behavior explicit rather than default (`refundPayment`).
 - **Notification idempotency** (reminders/followups/digest) is read-then-write, not atomic — a double-send window only under truly concurrent cron runs. Harden with a unique guard / compare-and-set stamp.
 - **Timezone date math** in scheduled sends is UTC-only and ignores the existing `accounts.timezone` — correct-by-luck for the continental US at current cron hours; fragile for HI/dateline/DST. (reminders.ts, daily-digest.ts, followups.ts)
-- **Extra Stop auto-complete** parses `arrival_end` as UTC not owner-local (`extra-stop-sweep.ts:117`) → premature auto-complete (status-only, no money).
-- **`.or()` filter injection** via `email` in the lead blocklist (`api/public/leads/route.ts:131-142`) — `EMAIL_REGEX` allows commas, so a crafted "email" injects extra OR conditions. Stays account-scoped (no cross-tenant read), but a malformed condition errors the query → `blocked` is null → **the blocklist check fails open** (a blocklisted contact can slip a lead through). Use separate `.eq()` queries (as `hasActiveExtraStopRequest` already does) and tighten the regex.
+- **Quick Stop auto-complete** parses `arrival_end` as UTC not owner-local (`quick-stop-sweep.ts:117`) → premature auto-complete (status-only, no money).
+- **`.or()` filter injection** via `email` in the lead blocklist (`api/public/leads/route.ts:131-142`) — `EMAIL_REGEX` allows commas, so a crafted "email" injects extra OR conditions. Stays account-scoped (no cross-tenant read), but a malformed condition errors the query → `blocked` is null → **the blocklist check fails open** (a blocklisted contact can slip a lead through). Use separate `.eq()` queries (as `hasActiveQuickStopRequest` already does) and tighten the regex.
 - **Review-invite tokens** are stored in **plaintext** (`review_invites.token`), never expire, and the rating is overwritable — unlike the schedule/client-job flows which hash tokens (`reviews.ts:116-146`, `review/[token]/actions.ts`). Low (needs the unguessable 144-bit token) but a DB/backup/log leak exposes live tokens. Fix: store a SHA-256 `token_hash`, add `expires_at`, gate acceptance on `responded_at is null`.
 - **Invoice signing** is keyed only on the raw invoice UUID and mutates state (invoice→signed, lead→won, job→in_progress) for any holder of the id (`invoice/[id]/actions.ts`, `invoices.ts:379-422`). Correctly idempotent (can't overwrite a real signature) and the id is unguessable, so low — but prefer routing it through the hashed `client_job_access` token like the other client flows.
 - **Unescaped TwiML** reflection of DB strings (`api/twilio/inbound/route.ts:48`) — malforms XML on `&`/`<`; escape before interpolation.
@@ -81,8 +81,8 @@ Turnstile + durable limiting exist but are wired **only to the marketing `/conta
 
 **Fixed & deployed** (schema migrations applied):
 - ✅ P1-a refund idempotency key + compare-and-set (`3f179fe`)
-- ✅ P1-b claim-before-refund in `resolveExtraStopCancellation` (`3f179fe`)
-- ✅ P1-c durable Postgres rate limiter on verify-phone / classify-estimate / extra-stop-qualify / lead + booking actions, with per-number daily cap (`1c581ff`)
+- ✅ P1-b claim-before-refund in `resolveQuickStopCancellation` (`3f179fe`)
+- ✅ P1-c durable Postgres rate limiter on verify-phone / classify-estimate / quick-stop-qualify / lead + booking actions, with per-number daily cap (`1c581ff`)
 - ✅ P1-d security headers — X-Frame-Options, CSP frame-ancestors, HSTS, nosniff, Referrer-Policy, Permissions-Policy (`bddff8d`)
 - ✅ P2-a invoice only marked paid when collected ≥ total (`3f179fe`)
 - ✅ P2-b trailing volume = Stripe-settled only (`3f179fe`)
@@ -92,7 +92,7 @@ Turnstile + durable limiting exist but are wired **only to the marketing `/conta
 **Deliberately deferred** (low severity; need schema/behavior changes best done with care):
 - Full content-CSP (script-src/style-src) — needs per-route nonces/allowlists + testing (only `frame-ancestors` shipped).
 - Review-invite token hashing + expiry — token is already 144-bit unguessable; hashing needs a schema change + read-path rewrite.
-- Cron UTC→owner-timezone date math (reminders/digest/followups) + Extra Stop auto-complete UTC parse — correct-by-luck for the continental US; needs tz plumbing.
+- Cron UTC→owner-timezone date math (reminders/digest/followups) + Quick Stop auto-complete UTC parse — correct-by-luck for the continental US; needs tz plumbing.
 - `getPublicPayment` `select('*')` narrowing — not leaked today; narrowing risks dropping a needed column.
 - DB-error passthrough in server actions — owner-scoped, low; broad refactor.
 - Notification (reminders/followups/digest) atomic-claim idempotency — only bites under truly concurrent cron runs (Vercel doesn't).

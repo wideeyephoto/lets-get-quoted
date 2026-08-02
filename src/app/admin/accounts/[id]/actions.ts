@@ -41,7 +41,7 @@ export async function issueAccountCreditAction(accountId: string, formData: Form
   backTo(accountId, 'done=credit');
 }
 
-export async function lockExtraStopAction(accountId: string, formData: FormData) {
+export async function lockQuickStopAction(accountId: string, formData: FormData) {
   const { admin, adminEmail } = await requireAdmin();
   const days = Math.max(1, Math.min(365, Math.round(Number(formData.get('days') ?? 10)) || 10));
   const reason = String(formData.get('reason') ?? '').trim() || 'No-show penalty';
@@ -52,7 +52,7 @@ export async function lockExtraStopAction(accountId: string, formData: FormData)
   backTo(accountId, 'done=es_locked');
 }
 
-export async function unlockExtraStopAction(accountId: string) {
+export async function unlockQuickStopAction(accountId: string) {
   const { admin, adminEmail } = await requireAdmin();
   await admin.from('accounts').update({ extra_stop_locked_until: null, extra_stop_lock_reason: null }).eq('id', accountId);
   await logAdminAction(admin, adminEmail, { action: 'extra_stop_unlock', accountId, targetType: 'account', targetId: accountId });

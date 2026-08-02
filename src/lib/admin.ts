@@ -75,7 +75,7 @@ export async function getAccountCreditBalanceCents(
 }
 
 // Issue (or reverse, with a negative amount) an account credit and log it. Used
-// for the Extra Stop no-show goodwill credit and manual staff comps.
+// for the Quick Stop no-show goodwill credit and manual staff comps.
 export async function issueAccountCredit(
   admin: SupabaseClient,
   adminEmail: string,

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { listAdminActions } from '@/lib/admin';
-import { EXTRA_STOP_ACTIVE_STATUSES } from '@/lib/extra-stop';
+import { QUICK_STOP_ACTIVE_STATUSES } from '@/lib/quick-stop';
 import styles from './admin.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -22,7 +22,7 @@ export default async function AdminOverviewPage() {
     admin.from('accounts').select('id', { count: 'exact', head: true }).gte('created_at', new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString()),
     admin.from('accounts').select('id', { count: 'exact', head: true }).eq('connect_onboarded', true),
     admin.from('accounts').select('id', { count: 'exact', head: true }).not('connect_disabled_at', 'is', null),
-    admin.from('extra_stop_requests').select('id', { count: 'exact', head: true }).in('status', EXTRA_STOP_ACTIVE_STATUSES as unknown as string[]),
+    admin.from('extra_stop_requests').select('id', { count: 'exact', head: true }).in('status', QUICK_STOP_ACTIVE_STATUSES as unknown as string[]),
     admin.from('payments').select('id', { count: 'exact', head: true }).eq('status', 'disputed'),
     listAdminActions(admin, { limit: 6 }),
   ]);
@@ -32,7 +32,7 @@ export default async function AdminOverviewPage() {
     { label: 'New in last 30 days', value: accountsNew.count ?? 0 },
     { label: 'Payouts connected', value: onboarded.count ?? 0 },
     { label: 'Payouts paused', value: payoutsPaused.count ?? 0, tone: (payoutsPaused.count ?? 0) > 0 ? 'warn' : undefined },
-    { label: 'Active Extra Stops', value: esActive.count ?? 0, href: '/admin/extra-stops' },
+    { label: 'Active Quick Stops', value: esActive.count ?? 0, href: '/admin/quick-stops' },
     { label: 'Open disputes', value: disputes.count ?? 0, href: '/admin/money', tone: (disputes.count ?? 0) > 0 ? 'bad' : undefined },
   ];
 
@@ -41,7 +41,7 @@ export default async function AdminOverviewPage() {
       <header className={styles.pageHead}>
         <p className={styles.eyebrow}>Staff console</p>
         <h1 className={styles.title}>Overview</h1>
-        <p className={styles.lead}>Cross-account operations for letsgetquoted.com — support lookups, Extra Stop governance, money oversight, and an audit trail of every staff action.</p>
+        <p className={styles.lead}>Cross-account operations for letsgetquoted.com — support lookups, Quick Stop governance, money oversight, and an audit trail of every staff action.</p>
       </header>
 
       <section className={styles.cardGrid} style={{ marginBottom: '1.4rem' }}>

@@ -820,7 +820,7 @@ h3 {
 .automation-prereq a { color: #ffd166; text-decoration: underline; }
 
 /* Contextual entry point to an automation's settings, dropped onto the page that
-   automation affects (Extra Stops, Schedule, …). Live on/off pill + deep link. */
+   automation affects (Quick Stops, Schedule, …). Live on/off pill + deep link. */
 .automation-link {
   display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.75rem;
   border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 999px;
@@ -851,12 +851,12 @@ h3 {
 /* Compact "log out" footer folded into the sign-in methods card. */
 .signout-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255, 255, 255, 0.08); }
 
-/* Inviting empty/off state for the Extra Stops page (instead of a barren line). */
-.extra-stop-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.7rem; padding: 2.6rem 1rem 2.2rem; margin-top: 1rem; }
-.extra-stop-empty-mark { font-size: 1.9rem; line-height: 1; opacity: 0.9; }
-.extra-stop-empty h3 { margin: 0; font-size: 1.15rem; text-wrap: balance; }
-.extra-stop-empty p { margin: 0; max-width: 54ch; color: rgba(200, 210, 224, 0.8); line-height: 1.5; }
-.extra-stop-empty .btn { margin-top: 0.5rem; }
+/* Inviting empty/off state for the Quick Stops page (instead of a barren line). */
+.quick-stop-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.7rem; padding: 2.6rem 1rem 2.2rem; margin-top: 1rem; }
+.quick-stop-empty-mark { font-size: 1.9rem; line-height: 1; opacity: 0.9; }
+.quick-stop-empty h3 { margin: 0; font-size: 1.15rem; text-wrap: balance; }
+.quick-stop-empty p { margin: 0; max-width: 54ch; color: rgba(200, 210, 224, 0.8); line-height: 1.5; }
+.quick-stop-empty .btn { margin-top: 0.5rem; }
 
 /* Blocked-off (time-off) day on the schedule calendar. */
 .calendar-cell.blocked { position: relative; background: repeating-linear-gradient(135deg, rgba(255, 122, 33, 0.06) 0 7px, transparent 7px 15px); }
@@ -10167,8 +10167,8 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   .pipeline-step strong { line-height: 1.25; }
 }
 
-/* ---- Extra Stop explainer (shown while it's switched off) ------------ */
-/* This page has one job: explain Extra Stop fast enough that a contractor turns
+/* ---- Quick Stop explainer (shown while it's switched off) ------------ */
+/* This page has one job: explain Quick Stop fast enough that a contractor turns
    it on. Icons carry the meaning at a glance, the flow reads as a connected
    sequence rather than four loose boxes, and the primary action sits in the hero
    where the pitch lands — not at the bottom past everything else. */
@@ -12947,7 +12947,7 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   vertical-align: middle;
 }
 
-/* Extra Stops, under the day it would land in. Same condensed shape as the
+/* Quick Stops, under the day it would land in. Same condensed shape as the
    working-hours panel beside it. */
 .extrastop-panel { margin-top: 1rem; padding: 0.85rem 1.1rem; }
 .extrastop-main {
@@ -13213,7 +13213,7 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 
 .calendar-days-row { gap: 0.75rem; align-items: center; }
 
-/* Extra Stop's on/off state, in the sidebar.
+/* Quick Stop's on/off state, in the sidebar.
    It is the one automation that can put a stranger on today's route, and its
    switch is three clicks deep in Settings — so the rail says which way it's set
    from every page in the app. The WORD carries the state; the colour only
@@ -13248,14 +13248,14 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 /* A count and a state pill on the same row would both claim the right edge. */
 .sidenav-link .sidenav-state + .sidenav-count { margin-left: 0.3rem; margin-right: 0; }
 
-/* Extra Stops reuses the booking summary cards, but as links rather than
+/* Quick Stops reuses the booking summary cards, but as links rather than
    in-page jumps — an anchor would otherwise pick up the global link colour and
    underline and stop matching the buttons beside it. */
 a.bset-card { color: inherit; text-decoration: none; }
 
 /* The empty queue now sits in a panel of its own rather than under a heading,
    so it no longer needs to clear one — the panel padding is the only padding. */
-.extra-stop-empty-panel .extra-stop-empty { margin-top: 0; padding: 1.2rem 1rem; }
+.quick-stop-empty-panel .quick-stop-empty { margin-top: 0; padding: 1.2rem 1rem; }
 
 /* Crew & Labor Focus theme — the page-level furniture that is not in the crew
    CSS module. The panel surfaces lift slightly so the bordered cards inside
@@ -13478,7 +13478,7 @@ a.bset-card { color: inherit; text-decoration: none; }
    .bset-section-body sets a display, which would otherwise beat [hidden]. */
 .bset-section-body[hidden] { display: none; }
 
-/* "How Extra Stops works" — the pitch, folded away once the feature is live.
+/* "How Quick Stops works" — the pitch, folded away once the feature is live.
    A native <details>, so it needs no client JS on a server-rendered page and
    Ctrl+F still finds what is inside it. */
 .es-how { padding: 0; overflow: hidden; }
@@ -14320,7 +14320,7 @@ a.bset-card { color: inherit; text-decoration: none; }
 }
 
 
-/* ---- Extra Stops: the demand panel ---------------------------------------
+/* ---- Quick Stops: the demand panel ---------------------------------------
    Two columns that only mean anything beside each other â€” "would have
    qualified" reads as an arbitrary list until "wouldn't have" is next to it
    with the reason attached.
@@ -14484,7 +14484,7 @@ a.bset-card { color: inherit; text-decoration: none; }
 }
 
 
-/* The "people actually asked" block inside the Extra Stops demand panel. */
+/* The "people actually asked" block inside the Quick Stops demand panel. */
 .es-demand-asked {
   margin-top: 0.9rem;
   padding: 0.75rem 0.9rem;
@@ -14505,7 +14505,7 @@ a.bset-card { color: inherit; text-decoration: none; }
 }
 .es-demand-asked-list em { font-style: normal; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(247, 245, 239, 0.42); }
 
-/* Extra Stop: which day the customer is asking for. Chips rather than a date
+/* Quick Stop: which day the customer is asking for. Chips rather than a date
    input — the choice is two or three named days, and a calendar widget makes a
    two-option question look like an open one. */
 .es-day-row { display: flex; flex-wrap: wrap; gap: 0.4rem; }

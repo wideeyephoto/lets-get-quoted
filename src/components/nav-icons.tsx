@@ -11,7 +11,7 @@ export const NAV_ICON_PATHS: Record<string, string> = {
   // A calendar with a tick: the schedule icon, but the slot is already taken —
   // which is what a customer booking themselves in actually does.
   '/dashboard/schedule/booking': '<rect x="3.5" y="4.8" width="17" height="15.7" rx="2"/><path d="M3.5 9.4h17M8 2.6v4M16 2.6v4"/><path d="m8.6 14.6 2.4 2.4 4.4-4.6"/>',
-  '/dashboard/extra-stops': '<path d="M20 10c0 5-8 11-8 11s-8-6-8-11a8 8 0 0 1 16 0z"/><path d="M12.5 5.5l-3 4h3l-1 4 3.2-4.4h-2.9z"/>',
+  '/dashboard/quick-stops': '<path d="M20 10c0 5-8 11-8 11s-8-6-8-11a8 8 0 0 1 16 0z"/><path d="M12.5 5.5l-3 4h3l-1 4 3.2-4.4h-2.9z"/>',
   '/dashboard/crew': '<path d="M2.6 17.5h18.8"/><path d="M4.5 17.5a7.5 7.5 0 0 1 15 0"/><path d="M9.4 8.6V6.4A1.6 1.6 0 0 1 11 4.8h2a1.6 1.6 0 0 1 1.6 1.6v2.2"/>',
   '/dashboard/recurring': '<path d="M17 3l3.2 3.2L17 9.4"/><path d="M20.2 6.2H8.5a4.3 4.3 0 0 0-4.3 4.3v.6"/><path d="M7 21l-3.2-3.2L7 14.6"/><path d="M3.8 17.8h11.7a4.3 4.3 0 0 0 4.3-4.3v-.6"/>',
   // A balance line riding over a dashed floor — deliberately not the Insights

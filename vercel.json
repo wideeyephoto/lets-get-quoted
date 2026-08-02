@@ -29,7 +29,7 @@
       "schedule": "0 15 * * *"
     },
     {
-      "path": "/api/cron/extra-stop-sweep",
+      "path": "/api/cron/quick-stop-sweep",
       "schedule": "*/15 * * * *"
     },
     {

@@ -129,10 +129,10 @@ export async function sendOwnerEstimateAcceptedSms(input: { alertPhone: string; 
   }
 }
 
-// Extra Stop offer → customer: the pay link + arrival window + fee + the
+// Quick Stop offer → customer: the pay link + arrival window + fee + the
 // hard 15-minute reservation deadline. Transactional (the customer gave their
 // number to request this), account-scoped, mirrored to the inbox. Best-effort.
-export async function sendExtraStopOfferSms(input: {
+export async function sendQuickStopOfferSms(input: {
   accountId: string;
   toPhone: string;
   businessName: string;
@@ -145,16 +145,16 @@ export async function sendExtraStopOfferSms(input: {
     if (!twilioConfiguration()) return;
     const to = normalizeUsPhone(input.toPhone);
     if (!to || (await isPhoneOptedOut(input.accountId, to))) return;
-    const body = `Your Extra Stop Offer from ${input.businessName}: arrive ${input.whenLabel} for ${input.feeLabel}. Complete payment within ${input.minutes} min to reserve this window: ${input.payUrl}. Reply STOP to opt out.`;
+    const body = `Your Quick Stop Offer from ${input.businessName}: arrive ${input.whenLabel} for ${input.feeLabel}. Complete payment within ${input.minutes} min to reserve this window: ${input.payUrl}. Reply STOP to opt out.`;
     const sid = await sendTwilioMessage(to, body);
     await logOutboundToInbox(input.accountId, to, body, sid);
   } catch (error) {
-    console.error('Extra Stop offer SMS failed:', error instanceof Error ? error.message : error);
+    console.error('Quick Stop offer SMS failed:', error instanceof Error ? error.message : error);
   }
 }
 
-// Extra Stop confirmed (payment cleared) → customer.
-export async function sendExtraStopConfirmedSms(input: {
+// Quick Stop confirmed (payment cleared) → customer.
+export async function sendQuickStopConfirmedSms(input: {
   accountId: string;
   toPhone: string;
   businessName: string;
@@ -170,13 +170,13 @@ export async function sendExtraStopConfirmedSms(input: {
     const sid = await sendTwilioMessage(to, body);
     await logOutboundToInbox(input.accountId, to, body, sid);
   } catch (error) {
-    console.error('Extra Stop confirmed SMS failed:', error instanceof Error ? error.message : error);
+    console.error('Quick Stop confirmed SMS failed:', error instanceof Error ? error.message : error);
   }
 }
 
-// Generic Extra Stop status text → customer (en route / arrived / canceled /
+// Generic Quick Stop status text → customer (en route / arrived / canceled /
 // refunded). One helper keeps the M6 lifecycle texts consistent.
-export async function sendExtraStopStatusSms(input: {
+export async function sendQuickStopStatusSms(input: {
   accountId: string;
   toPhone: string;
   message: string;
@@ -189,7 +189,7 @@ export async function sendExtraStopStatusSms(input: {
     const sid = await sendTwilioMessage(to, body);
     await logOutboundToInbox(input.accountId, to, body, sid);
   } catch (error) {
-    console.error('Extra Stop status SMS failed:', error instanceof Error ? error.message : error);
+    console.error('Quick Stop status SMS failed:', error instanceof Error ? error.message : error);
   }
 }
 

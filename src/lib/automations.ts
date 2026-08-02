@@ -30,7 +30,7 @@ export function isAutomationKey(value: string): value is AutomationKey {
 // "Online booking turned off" rather than leaking a column name at the owner.
 export const AUTOMATION_LABELS: Record<AutomationKey, string> = {
   booking: 'Online booking',
-  'extra-stop': 'Extra Stop',
+  'extra-stop': 'Quick Stop',
   'missed-call': 'Missed-call text-back',
   reviews: 'Review requests',
   followups: 'Quote follow-ups',

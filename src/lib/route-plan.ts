@@ -6,7 +6,7 @@ import { haversineMiles, minutesFromMiles, type LatLng } from '@/lib/distance';
 // Pure and I/O-free so it can be unit tested and so the distance source is
 // swappable: pass a `matrix` (real Distance-Matrix legs) and it uses that,
 // otherwise it falls back to straight-line haversine at ~30 mph — the same
-// assumption Extra Stop detours use.
+// assumption Quick Stop detours use.
 //
 // Two promises shape the whole design:
 //   1. A stop the customer already CONFIRMED never gets moved. Those are

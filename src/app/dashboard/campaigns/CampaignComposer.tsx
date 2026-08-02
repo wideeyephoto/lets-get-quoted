@@ -10,7 +10,7 @@ type Props = {
   audiences: { id: string; label: string; hint: string }[];
   reach: Record<string, Reach>;
   /**
-   * A draft handed over from somewhere else — today, the Extra Stops page,
+   * A draft handed over from somewhere else — today, the Quick Stops page,
    * which knows why the message is worth sending and how many people it
    * reaches, but has no business owning how a campaign is sent.
    */

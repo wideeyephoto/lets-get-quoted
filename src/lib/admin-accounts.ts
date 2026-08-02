@@ -6,7 +6,7 @@ import { getAccountCreditBalanceCents } from '@/lib/admin';
 
 // Data layer for the admin console's account views. All reads use the passed-in
 // service-role client (RLS is owner-scoped, so a session client can't cross
-// tenants). Kept defensive: newer columns (suspension, extra-stop lock) degrade
+// tenants). Kept defensive: newer columns (suspension, quick-stop lock) degrade
 // gracefully so the console works before the migration is applied everywhere.
 
 export type AdminAccountRow = {
@@ -116,7 +116,7 @@ export type AdminAccountDetail = {
   activity: AdminActivity;
   recentPayments: AdminPaymentRow[];
   creditBalanceCents: number;
-  extraStop: { active: number; total: number; noShows: number };
+  quickStop: { active: number; total: number; noShows: number };
 };
 
 const THIRTY_DAYS = 30 * 24 * 3600 * 1000;
@@ -163,6 +163,6 @@ export async function getAccountAdminDetail(admin: SupabaseClient, id: string): 
     },
     recentPayments: (recentPayments.data ?? []) as AdminPaymentRow[],
     creditBalanceCents,
-    extraStop: { active: esActive.count ?? 0, total: esTotal.count ?? 0, noShows: esNoShows.count ?? 0 },
+    quickStop: { active: esActive.count ?? 0, total: esTotal.count ?? 0, noShows: esNoShows.count ?? 0 },
   };
 }

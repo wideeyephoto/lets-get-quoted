@@ -132,7 +132,7 @@ it. Recording is best-effort and can never fail the change it describes.
   crew" → "11 schedul…". Short labels now wrap below 640px. Desktop unchanged.
 - **Undersized tap targets** (`19368b7`): public-site nav links were 350×16, the
   lead-alert dismiss 27×27 and overlapping "View lead".
-- **Five pages had no `<h1>`** (`3b6a416`) — Dashboard, Leads, Jobs, Extra Stops,
+- **Five pages had no `<h1>`** (`3b6a416`) — Dashboard, Leads, Jobs, Quick Stops,
   Crew all opened at `<h2>`.
 - **Booking forms enforced an unstated rule** (`3b6a416`): the server requires a
   phone or email, two of four forms said nothing, two mentioned it below the

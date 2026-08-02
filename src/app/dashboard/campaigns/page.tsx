@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { AUDIENCE_DEFS, listCampaigns, loadRecipients, matchesAudience, type Campaign } from '@/lib/campaigns';
 import CampaignComposer from './CampaignComposer';
-import { buildExtraStopPitch } from '@/lib/extra-stop-pitch';
+import { buildQuickStopPitch } from '@/lib/quick-stop-pitch';
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -48,7 +48,7 @@ export default async function CampaignsPage({
     }),
   );
 
-  // A draft handed over from the Extra Stops page. Built here rather than
+  // A draft handed over from the Quick Stops page. Built here rather than
   // passed through the URL: the message depends on the account's fee band and
   // how far ahead it takes requests, and a querystring carrying prose is a
   // querystring somebody can rewrite.
@@ -59,7 +59,7 @@ export default async function CampaignsPage({
       supabase.from('sites').select('published, subdomain, company_name').eq('account_id', accountId).maybeSingle(),
     ]);
     const origin = (process.env.NEXT_PUBLIC_APP_URL || `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'}`).replace(/\/$/, '');
-    const pitch = buildExtraStopPitch({
+    const pitch = buildQuickStopPitch({
       businessName: (site?.company_name as string) || (account as { business_name?: string } | null)?.business_name || 'us',
       bookingUrl: site?.published && site?.subdomain ? `${origin}/book/${site.subdomain}` : origin,
       minFeeCents: Number((account as { extra_stop_min_fee_cents?: number } | null)?.extra_stop_min_fee_cents) || 0,

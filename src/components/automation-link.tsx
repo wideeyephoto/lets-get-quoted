@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 // A compact contextual entry point to an automation's settings, shown on the page
-// where that automation's effect is felt (Extra Stop on the Extra Stops page,
+// where that automation's effect is felt (Quick Stop on the Quick Stops page,
 // reminders on the Schedule, …). It surfaces the live on/off state and deep-links
 // into the matching Automations card, which auto-opens on arrival — so settings
 // stay in one place while becoming discoverable in context.

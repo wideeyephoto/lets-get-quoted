@@ -20,7 +20,7 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard/clients', label: 'Clients', hint: 'Customer profiles & history' },
   { href: '/dashboard/schedule', label: 'Schedule', hint: 'Calendar & unscheduled work' },
   { href: '/dashboard/schedule/booking', label: 'Online Booking', hint: 'Your public booking page & availability' },
-  { href: '/dashboard/extra-stops', label: 'Extra Stops', hint: 'Same-day route add-ons' },
+  { href: '/dashboard/quick-stops', label: 'Quick Stops', hint: 'Same-day route add-ons' },
   { href: '/dashboard/recurring', label: 'Recurring', hint: 'Repeating jobs & auto-billing' },
   { href: '/dashboard/cash-flow', label: 'Cash flow', hint: 'Upcoming bills, payroll & projected balance' },
   { href: '/dashboard/services', label: 'Price book', hint: 'Saved services & prices' },
@@ -64,7 +64,7 @@ const FLOW_CLASS: Record<string, string> = {
 // list. Dashboard (home) sits above the groups; Website is promoted to its own
 // badge and Account drops to the sidebar footer, so neither appears here.
 const NAV_GROUPS: { label: string; hrefs: string[] }[] = [
-  { label: 'Work', hrefs: ['/dashboard/leads', '/dashboard/jobs', '/dashboard/schedule', '/dashboard/schedule/booking', '/dashboard/extra-stops', '/dashboard/clients'] },
+  { label: 'Work', hrefs: ['/dashboard/leads', '/dashboard/jobs', '/dashboard/schedule', '/dashboard/schedule/booking', '/dashboard/quick-stops', '/dashboard/clients'] },
   { label: 'Team', hrefs: ['/dashboard/crew'] },
   { label: 'Money', hrefs: ['/dashboard/cash-flow', '/dashboard/recurring', '/dashboard/services', '/dashboard/insights'] },
   { label: 'Grow', hrefs: ['/dashboard/messages', '/dashboard/campaigns', '/dashboard/rebook', '/dashboard/reviews'] },
@@ -85,8 +85,8 @@ type AccountStatus = {
   newestQuoteRequestId: string | null;
   newestQuoteRequestCreatedAt: string | null;
   newestQuoteRequestHighValue: boolean;
-  /** Whether Extra Stop is accepting same-day work right now. */
-  extraStopState: NavState;
+  /** Whether Quick Stop is accepting same-day work right now. */
+  quickStopState: NavState;
   /** Whether the public booking page is actually live. */
   bookingState: NavState;
 };
@@ -100,10 +100,10 @@ export type NavState = 'on' | 'off' | 'paused' | 'unknown';
 // Nav entries that carry their own on/off state. The WORD is the state and the
 // colour only agrees with it, so it still reads without colour vision.
 const NAV_STATE_PILL: Record<string, Record<Exclude<NavState, 'unknown'>, { label: string; title: string }>> = {
-  '/dashboard/extra-stops': {
-    on: { label: 'ON', title: 'Extra Stops is ON — customers can ask to be squeezed into today' },
-    off: { label: 'OFF', title: 'Extra Stops is OFF — nobody can ask to be added to today' },
-    paused: { label: 'PAUSED', title: 'Extra Stops is paused by support — nothing new can be added to a day' },
+  '/dashboard/quick-stops': {
+    on: { label: 'ON', title: 'Quick Stops is ON — customers can ask to be squeezed into today' },
+    off: { label: 'OFF', title: 'Quick Stops is OFF — nobody can ask to be added to today' },
+    paused: { label: 'PAUSED', title: 'Quick Stops is paused by support — nothing new can be added to a day' },
   },
   '/dashboard/schedule/booking': {
     on: { label: 'ON', title: 'Online booking is live — customers can grab an open slot from your website' },
@@ -149,7 +149,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [newestLeadHighValue, setNewestLeadHighValue] = useState(false);
   // 'unknown' until the first status check answers — a pill that guessed OFF for
   // a second on every page load would be worse than one that waits.
-  const [extraStopState, setExtraStopState] = useState<NavState>('unknown');
+  const [quickStopState, setQuickStopState] = useState<NavState>('unknown');
   const [bookingState, setBookingState] = useState<NavState>('unknown');
   const [dismissedQuoteRequestId, setDismissedQuoteRequestId] = useState<string | null>(null);
   const isDashboard = pathname.startsWith('/dashboard');
@@ -266,7 +266,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       setNewestQuoteRequestId(null);
       setNewestQuoteRequestCreatedAt(null);
       setNewestLeadHighValue(false);
-      setExtraStopState('unknown');
+      setQuickStopState('unknown');
       setBookingState('unknown');
       setSiteUrl(null);
       setBusinessName(null);
@@ -290,7 +290,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             setNewestQuoteRequestId(data.newestQuoteRequestId ?? null);
             setNewestQuoteRequestCreatedAt(data.newestQuoteRequestCreatedAt ?? null);
             setNewestLeadHighValue(Boolean(data.newestQuoteRequestHighValue));
-            setExtraStopState(navState(data.extraStopState));
+            setQuickStopState(navState(data.quickStopState));
             setBookingState(navState(data.bookingState));
           }
         })
@@ -368,7 +368,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       const count = countByHref[href] ?? 0;
       const total = totalByHref[href];
       const state =
-        href === '/dashboard/extra-stops' ? extraStopState : href === '/dashboard/schedule/booking' ? bookingState : 'unknown';
+        href === '/dashboard/quick-stops' ? quickStopState : href === '/dashboard/schedule/booking' ? bookingState : 'unknown';
       return (
         <Link
           href={href}

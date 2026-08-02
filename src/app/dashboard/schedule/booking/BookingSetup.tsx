@@ -668,7 +668,7 @@ export default function BookingSetup({
                     ? 'A long lead time turns away urgent work. “From tomorrow” books more jobs.'
                     : 'Keep a weekday free and it shows up here as an open window automatically.'}
               </p>
-              <Link href="/dashboard/extra-stops">Learn more <Icon name="external" /></Link>
+              <Link href="/dashboard/quick-stops">Learn more <Icon name="external" /></Link>
             </div>
           </section>
 

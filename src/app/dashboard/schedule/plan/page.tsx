@@ -18,8 +18,8 @@ import { listUpcomingBlocks } from '@/lib/availability-blocks';
 import type { DayPlanPayload, DriveMatrixPayload } from '@/lib/day-plan-view';
 import SaveButton from '@/components/save-button';
 import WorkingHoursPanel from '@/components/working-hours-panel';
-import ExtraStopPanel from '@/components/extra-stop-panel';
-import { EXTRA_STOP_SETTINGS_COLUMNS, extraStopSettingsFromAccount } from '@/lib/extra-stop';
+import QuickStopPanel from '@/components/quick-stop-panel';
+import { QUICK_STOP_SETTINGS_COLUMNS, quickStopSettingsFromAccount } from '@/lib/quick-stop';
 import { loadOfferContext, offerDisplay } from '@/lib/estimate-offers-data';
 import { DEFAULT_ESTIMATE_MINUTES, draftOfferBody, rankOfferSuggestions, timeFromMinutes } from '@/lib/estimate-offers';
 import DayPlanner from './DayPlanner';
@@ -154,17 +154,17 @@ export default async function PlanDayPage({
   const preferredLastId =
     prefs.preferredLastId && routable.some((stop) => stop.id === prefs.preferredLastId) ? prefs.preferredLastId : null;
 
-  // Extra Stop, for the panel under the route. Read here rather than guessed:
+  // Quick Stop, for the panel under the route. Read here rather than guessed:
   // whether it's on, whether support has paused it, and whether it was ever set
   // up at all are three different answers and the panel says which.
-  const { data: extraStopRow } = await supabase
+  const { data: quickStopRow } = await supabase
     .from('accounts')
-    .select(`${EXTRA_STOP_SETTINGS_COLUMNS}, business_name`)
+    .select(`${QUICK_STOP_SETTINGS_COLUMNS}, business_name`)
     .eq('id', accountId)
     .maybeSingle();
-  const extraStop = extraStopSettingsFromAccount((extraStopRow ?? {}) as Parameters<typeof extraStopSettingsFromAccount>[0]);
-  const businessName = ((extraStopRow as { business_name?: string } | null)?.business_name || "Let's Get Quoted").trim();
-  const { count: extraStopToday } = await supabase
+  const quickStop = quickStopSettingsFromAccount((quickStopRow ?? {}) as Parameters<typeof quickStopSettingsFromAccount>[0]);
+  const businessName = ((quickStopRow as { business_name?: string } | null)?.business_name || "Let's Get Quoted").trim();
+  const { count: quickStopToday } = await supabase
     .from('extra_stop_requests')
     .select('id', { count: 'exact', head: true })
     .eq('account_id', accountId)
@@ -483,14 +483,14 @@ export default async function PlanDayPage({
       ) : null}
       {/* Every arrival time above is derived from these, so this is where they
           belong — not two clicks deep in Settings. */}
-      <ExtraStopPanel
-        enabled={extraStop.enabled}
-        locked={extraStop.locked}
-        lockedUntil={extraStop.lockedUntil}
+      <QuickStopPanel
+        enabled={quickStop.enabled}
+        locked={quickStop.locked}
+        lockedUntil={quickStop.lockedUntil}
         // Never configured looks exactly like "off" on a boolean, and offering a
         // switch over an unset fee band would put work on rules nobody chose.
-        configured={extraStop.maxFeeCents > 0 && extraStop.weekdays.length > 0}
-        todayCount={extraStopToday ?? 0}
+        configured={quickStop.maxFeeCents > 0 && quickStop.weekdays.length > 0}
+        todayCount={quickStopToday ?? 0}
       />
 
       <WorkingHoursPanel

@@ -6,20 +6,20 @@ import {
   suspendAccountAction,
   unsuspendAccountAction,
   issueAccountCreditAction,
-  lockExtraStopAction,
-  unlockExtraStopAction,
+  lockQuickStopAction,
+  unlockQuickStopAction,
   deleteAccountAction,
 } from './actions';
 
 export default function AccountActions({
   accountId,
   suspended,
-  extraStopLockedUntil,
+  quickStopLockedUntil,
   businessName,
 }: {
   accountId: string;
   suspended: boolean;
-  extraStopLockedUntil: string | null;
+  quickStopLockedUntil: string | null;
   businessName: string;
 }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -42,19 +42,19 @@ export default function AccountActions({
 
         <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1rem 0' }} />
 
-        {extraStopLockedUntil ? (
-          <form action={unlockExtraStopAction.bind(null, accountId)} className={styles.formStack}>
-            <label>Extra Stop is locked until {new Date(extraStopLockedUntil).toLocaleDateString('en-US', { dateStyle: 'medium' })}</label>
-            <button type="submit" className="btn secondary">Clear Extra Stop lock</button>
+        {quickStopLockedUntil ? (
+          <form action={unlockQuickStopAction.bind(null, accountId)} className={styles.formStack}>
+            <label>Quick Stop is locked until {new Date(quickStopLockedUntil).toLocaleDateString('en-US', { dateStyle: 'medium' })}</label>
+            <button type="submit" className="btn secondary">Clear Quick Stop lock</button>
           </form>
         ) : (
-          <form action={lockExtraStopAction.bind(null, accountId)} className={styles.formStack}>
-            <label>Lock Extra Stop (no-show penalty)</label>
+          <form action={lockQuickStopAction.bind(null, accountId)} className={styles.formStack}>
+            <label>Lock Quick Stop (no-show penalty)</label>
             <div className={styles.searchRow} style={{ margin: 0 }}>
               <input className={styles.input} name="days" type="number" min={1} max={365} defaultValue={10} style={{ minWidth: 0, flex: '0 0 90px' }} />
               <input className={styles.input} name="reason" placeholder="Reason" />
             </div>
-            <button type="submit" className="btn secondary">Lock Extra Stop</button>
+            <button type="submit" className="btn secondary">Lock Quick Stop</button>
           </form>
         )}
 

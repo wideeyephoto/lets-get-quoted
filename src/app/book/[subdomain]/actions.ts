@@ -22,13 +22,13 @@ import { driveDistances } from '@/lib/drive-time';
 import { rankByProximity, type RankedBookingDay } from '@/lib/route-density';
 import { evaluateBookingEligibility, bookingFallbackMessage, normalizeGeoMode, type BookingVerdict } from '@/lib/instant-booking';
 import { listServices } from '@/lib/services';
-import { extraStopSettingsFromAccount, isAllowedExtraStopDay, EXTRA_STOP_SETTINGS_COLUMNS } from '@/lib/extra-stop';
-import { qualifyExtraStop, qualifyOptionsFromSettings } from '@/lib/extra-stop-qualify';
-import { recordExtraStopScreening } from '@/lib/extra-stop-screenings';
-import { createExtraStopRequest, hasActiveExtraStopRequest } from '@/lib/extra-stop-requests';
+import { quickStopSettingsFromAccount, isAllowedQuickStopDay, QUICK_STOP_SETTINGS_COLUMNS } from '@/lib/quick-stop';
+import { qualifyQuickStop, qualifyOptionsFromSettings } from '@/lib/quick-stop-qualify';
+import { recordQuickStopScreening } from '@/lib/quick-stop-screenings';
+import { createQuickStopRequest, hasActiveQuickStopRequest } from '@/lib/quick-stop-requests';
 import { uploadLeadPhoto } from '@/lib/lead-photo-storage';
 
-export type ExtraStopSubmitResult =
+export type QuickStopSubmitResult =
   | { ok: true }
   | { ok: false; unsafe?: boolean; safety?: string | null; error: string };
 
@@ -266,12 +266,12 @@ export async function submitBookingAction(subdomain: string, formData: FormData)
   redirect(`/book/${subdomain}?booked=1`);
 }
 
-// Create an Extra Stop request from the public Book flow. Called with JS (not a
+// Create a Quick Stop request from the public Book flow. Called with JS (not a
 // form redirect) so the client can render the verdict inline. ALWAYS re-runs the
 // qualification server-side — the client verdict is advisory and never trusted:
 // an unsafe or ineligible job cannot be forced through by a tampered request.
 // Returns a small serializable result; never throws to the caller.
-export async function submitExtraStopRequestAction(formData: FormData): Promise<ExtraStopSubmitResult> {
+export async function submitQuickStopRequestAction(formData: FormData): Promise<QuickStopSubmitResult> {
   try {
     const admin = createAdminClient();
     const ip = clientIpFrom(headers());
@@ -285,11 +285,11 @@ export async function submitExtraStopRequestAction(formData: FormData): Promise<
 
     const { data: accountRow } = await admin
       .from('accounts')
-      .select(`${EXTRA_STOP_SETTINGS_COLUMNS}, business_name, timezone`)
+      .select(`${QUICK_STOP_SETTINGS_COLUMNS}, business_name, timezone`)
       .eq('id', site.account_id)
       .maybeSingle();
-    const settings = extraStopSettingsFromAccount(accountRow as Parameters<typeof extraStopSettingsFromAccount>[0]);
-    if (!settings.available) return { ok: false, error: 'Extra Stop isn’t available right now.' };
+    const settings = quickStopSettingsFromAccount(accountRow as Parameters<typeof quickStopSettingsFromAccount>[0]);
+    if (!settings.available) return { ok: false, error: 'Quick Stop isn’t available right now.' };
 
     const name = (formData.get('name') ?? '').toString().trim();
     const phone = normalizeUsPhone((formData.get('phone') ?? '').toString());
@@ -311,7 +311,7 @@ export async function submitExtraStopRequestAction(formData: FormData): Promise<
     const timeZone = (accountRow as { timezone?: string } | null)?.timezone || 'America/New_York';
     const rawRequestedDate = (formData.get('requestedDate') ?? '').toString().trim();
     const requestedDate = rawRequestedDate || null;
-    if (requestedDate && !isAllowedExtraStopDay(requestedDate, settings, { timeZone })) {
+    if (requestedDate && !isAllowedQuickStopDay(requestedDate, settings, { timeZone })) {
       return { ok: false, error: 'That day isn’t available any more. Reload the page and pick another.' };
     }
 
@@ -322,12 +322,12 @@ export async function submitExtraStopRequestAction(formData: FormData): Promise<
     }
 
     // Duplicate guard before doing any real work.
-    if (await hasActiveExtraStopRequest(admin, site.account_id, phone, email)) {
-      return { ok: false, error: 'You already have an Extra Stop request in progress with this contractor.' };
+    if (await hasActiveQuickStopRequest(admin, site.account_id, phone, email)) {
+      return { ok: false, error: 'You already have a Quick Stop request in progress with this contractor.' };
     }
 
     // Server-authoritative qualification. Unsafe ⇒ safety copy, never a booking.
-    const qualification = await qualifyExtraStop(
+    const qualification = await qualifyQuickStop(
       { issue, startedWhen: startedWhen ?? '', worsening: worsening ?? '', propertyType: propertyType ?? '', availability: availability ?? '', businessName: site.company_name || '', serviceArea: site.service_area ?? '' },
       qualifyOptionsFromSettings(settings),
     );
@@ -335,8 +335,8 @@ export async function submitExtraStopRequestAction(formData: FormData): Promise<
     // no trace at all, so an owner staring at an empty queue couldn't tell
     // "nobody asked" from "everybody asked and we turned them all away" — two
     // problems with opposite fixes. Records what was asked and why, never who
-    // asked; see migrations/2026-08-01-extra-stop-screenings.sql.
-    await recordExtraStopScreening(admin, site.account_id, {
+    // asked; see migrations/2026-08-01-quick-stop-screenings.sql.
+    await recordQuickStopScreening(admin, site.account_id, {
       outcome: qualification.unsafe ? 'unsafe' : qualification.eligible ? 'accepted' : 'not_a_fit',
       exclusions: qualification.exclusions,
       reason: qualification.reason,
@@ -345,7 +345,7 @@ export async function submitExtraStopRequestAction(formData: FormData): Promise<
     });
 
     if (qualification.unsafe) return { ok: false, unsafe: true, safety: qualification.safety, error: 'This needs urgent attention, not an online booking.' };
-    if (!qualification.eligible) return { ok: false, error: qualification.reason || 'This job isn’t a fit for an Extra Stop. You can request a regular booking instead.' };
+    if (!qualification.eligible) return { ok: false, error: qualification.reason || 'This job isn’t a fit for a Quick Stop. You can request a regular booking instead.' };
 
     // Upload photos (best-effort per file) and geocode the address (precise-only).
     const photoPaths: string[] = [];
@@ -353,12 +353,12 @@ export async function submitExtraStopRequestAction(formData: FormData): Promise<
       try {
         photoPaths.push(await uploadLeadPhoto(site.account_id, file));
       } catch (error) {
-        console.error('Extra Stop photo upload failed:', error instanceof Error ? error.message : error);
+        console.error('Quick Stop photo upload failed:', error instanceof Error ? error.message : error);
       }
     }
     const geo = await geocodeAddress(address);
 
-    await createExtraStopRequest(
+    await createQuickStopRequest(
       admin,
       site.account_id,
       { name, phone, email, address, issue, startedWhen, worsening, propertyType, availability, photoPaths },
@@ -374,7 +374,7 @@ export async function submitExtraStopRequestAction(formData: FormData): Promise<
 
     return { ok: true };
   } catch (error) {
-    console.error('submitExtraStopRequestAction failed:', error instanceof Error ? error.message : error);
+    console.error('submitQuickStopRequestAction failed:', error instanceof Error ? error.message : error);
     return { ok: false, error: 'Something went wrong creating your request. Please try again.' };
   }
 }

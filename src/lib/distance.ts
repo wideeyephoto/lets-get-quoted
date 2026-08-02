@@ -30,7 +30,7 @@ export function nearestMiles(from: LatLng, anchors: LatLng[]): number | null {
 
 // City-driving fallback when real drive-time isn't enabled: ~30 mph door-to-door.
 // Shared so every straight-line estimate in the app tells the contractor the same
-// story (Extra Stop detours, day-route planning).
+// story (Quick Stop detours, day-route planning).
 export function minutesFromMiles(miles: number): number {
   return Math.round(miles * 2);
 }

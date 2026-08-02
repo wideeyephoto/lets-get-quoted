@@ -45,7 +45,27 @@ const nextConfig = {
   // /features folded into the homepage — keep the old URL alive for inbound
   // links, the footer, and any indexed pages.
   async redirects() {
-    return [{ source: '/features', destination: '/', permanent: true }];
+    return [
+      { source: '/features', destination: '/', permanent: true },
+      // "Extra Stops" became "Quick Stops". These sources are the OLD paths and
+      // must stay spelled that way — a find-and-replace over this file turns
+      // every rule below into a redirect to itself.
+      //
+      // The first one is not tidiness: it is live in customers' phones. Every
+      // status link this product has ever texted points at /extra-stop/<id>, and
+      // a sent message cannot be edited, so that path has to resolve forever.
+      //
+      // `permanent: true` is a 308, which preserves the METHOD. That matters for
+      // the qualify endpoint: a browser still running a cached copy of the old
+      // booking page would POST to the old path, and a 308 forwards the POST
+      // instead of turning it into a GET and dropping the body.
+      { source: '/extra-stop/:id', destination: '/quick-stop/:id', permanent: true },
+      { source: '/dashboard/extra-stops', destination: '/dashboard/quick-stops', permanent: true },
+      { source: '/admin/extra-stops', destination: '/admin/quick-stops', permanent: true },
+      { source: '/admin/extra-stops/:id', destination: '/admin/quick-stops/:id', permanent: true },
+      { source: '/api/public/leads/extra-stop-qualify', destination: '/api/public/leads/quick-stop-qualify', permanent: true },
+      { source: '/api/cron/extra-stop-sweep', destination: '/api/cron/quick-stop-sweep', permanent: true },
+    ];
   },
   images: {
     formats: ['image/avif', 'image/webp'],
