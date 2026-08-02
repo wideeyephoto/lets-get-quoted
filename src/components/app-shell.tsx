@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, 
 import { useAppShell } from './app-shell-provider';
 import { NavIcon } from './nav-icons';
 import ActionIcon from './action-icon';
+import ThemeToggle from './theme-toggle';
 import { supabase } from '@/lib/supabase';
 import { isSectionNew, markNavSeen, parseNavSeen, NAV_SEEN_STORAGE_KEY, type NavSeenMap } from '@/lib/nav-helpers';
 
@@ -591,6 +592,10 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                 the top it took the first slot from Leads — which is where the
                 day actually starts. */}
             {renderSideLink('/dashboard', 'sidenav-bottom')}
+            {/* Under Dashboard, inside the scrolling list rather than pinned to
+                the footer: it is a preference, not a destination, and the footer
+                is for the account and its billing state. */}
+            <ThemeToggle />
           </nav>
 
           <div className="sidenav-foot">

@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from 'next';
 import { Anton, Barlow, Bebas_Neue, DM_Sans, Fraunces, IBM_Plex_Sans, Instrument_Sans, Inter, JetBrains_Mono, Manrope, Montserrat, Oswald, Outfit, Plus_Jakarta_Sans, Poppins, Sora, Space_Grotesk, Urbanist, Work_Sans } from 'next/font/google';
 import { GeistSans } from 'geist/font/sans';
-import { headers } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import type { ReactNode } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { AppShellProvider } from '@/components/app-shell-provider';
+import { resolveTheme, THEME_COOKIE } from '@/lib/theme';
 import './globals.css';
 
 const bodyFont = IBM_Plex_Sans({
@@ -113,9 +114,18 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   const isStandaloneSite = headers().get('x-lgq-standalone-site') === '1';
+  // Stamped during the render, not corrected afterwards by a script: the first
+  // paint is already the right theme, so there is no dark flash on the way to
+  // light. This layout already reads headers(), so the cookie costs nothing —
+  // the route was dynamic either way.
+  //
+  // A contractor's PUBLIC site renders through this same layout and must not
+  // inherit the owner's preference: their homeowners get the palette the site
+  // was designed with, not whatever the plumber likes at 6am.
+  const theme = isStandaloneSite ? 'dark' : resolveTheme(cookies().get(THEME_COOKIE)?.value);
 
   return (
-    <html lang="en">
+    <html lang="en" data-theme={theme}>
       <body className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable} ${forgeDisplayFont.variable} ${forgeBodyFont.variable} ${guildDisplayFont.variable} ${guildBodyFont.variable} ${vistaBodyFont.variable} ${careFont.variable} ${manropeFont.variable} ${jakartaFont.variable} ${dmSansFont.variable} ${GeistSans.variable} ${instrumentFont.variable} ${outfitFont.variable} ${soraFont.variable} ${urbanistFont.variable} ${montserratFont.variable} ${oswaldFont.variable} ${bebasFont.variable}`}>
         <AppShellProvider>
           <AppShell forceStandaloneSite={isStandaloneSite}>{children}</AppShell>
