@@ -34,6 +34,10 @@ const SECURITY_HEADERS = [
 ];
 
 const nextConfig = {
+  // Lets a verification build go somewhere other than `.next`. Building into the
+  // running dev server's `.next` leaves it holding a production bundle, and the
+  // dev server then 500s on every route until it is deleted and restarted.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   reactStrictMode: true,
   async headers() {
     return [{ source: '/:path*', headers: SECURITY_HEADERS }];

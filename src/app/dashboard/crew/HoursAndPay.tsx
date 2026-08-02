@@ -64,7 +64,8 @@ import {
   type PayActionState,
 } from './pay-actions';
 import ViewGear, { type ViewOption } from '@/components/view-gear';
-import { setCrewSkinAction, setCrewViewAction } from '@/app/dashboard/view-actions';
+import OverviewBoard, { overviewOption, type OverviewItem } from './OverviewBoard';
+import { setCrewOverviewAction, setCrewSkinAction, setCrewViewAction } from '@/app/dashboard/view-actions';
 import type { CrewSkin, CrewView } from '@/lib/dashboard-views';
 import { CREW_SKIN_OPTIONS, applyCrewSkin } from './crew-skins';
 import { PaymentConfirmDialog, ReasonDialog } from './PaymentDialogs';
@@ -99,11 +100,19 @@ type StatusFilter = 'all' | 'needs_review' | 'approved' | 'draft';
 type PaymentFilter = 'all' | 'unpaid' | 'sent' | 'paid';
 type SortKey = 'name' | 'hours' | 'pay' | 'review' | 'payment';
 
-const CREW_VIEW_OPTIONS: ViewOption<CrewView>[] = [
+// 'overview' is not a CrewView — it is the whole page's mode, and picking it
+// here puts the other two tabs in it as well. It rides in this list because
+// that's where somebody looks for a layout, not because it is one of these.
+type CrewPick = CrewView | 'overview';
+/** What is actually on screen: the page mode when it's on, this tab's layout otherwise. */
+type Layout = CrewPick;
+
+const CREW_VIEW_OPTIONS: ViewOption<CrewPick>[] = [
   { id: 'table', label: 'Table', hint: 'Every crew member in one list' },
   { id: 'grouped', label: 'Grouped', hint: 'Sections by what needs doing' },
   { id: 'rail', label: 'Review', hint: 'Table with the actions pinned beside it' },
   { id: 'focus', label: 'Focus', hint: 'One person at a time — their timesheet, approval and pay' },
+  overviewOption<CrewPick>('Everyone in a list, one open beside it — all three tabs'),
 ];
 
 // Views that put the rail beside the table rather than under it. They need the
@@ -222,6 +231,7 @@ export default function HoursAndPay({
   openShifts,
   initialView,
   initialSkin,
+  initialOverview,
   comparison,
   payDay,
   payDue,
@@ -261,6 +271,8 @@ export default function HoursAndPay({
   openShifts: OpenShiftView[];
   initialView: CrewView;
   initialSkin: CrewSkin;
+  /** Whether the whole page is in Overview. Outranks initialView while it's on. */
+  initialOverview: boolean;
   /** This period against the one before. Only the grouped layout shows it. */
   comparison: PeriodComparison | null;
   /** How this account decides when a period is due. Null on the other tabs. */
@@ -276,11 +288,28 @@ export default function HoursAndPay({
   previousPayLabel: string;
 }) {
   const [view, setView] = useState<CrewView>(initialView);
+  const [overview, setOverview] = useState(initialOverview);
   const [skin, setSkin] = useState<CrewSkin>(initialSkin);
   const [, startViewSave] = useTransition();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
-  function pickView(next: CrewView) {
+  // Everything below branches on THIS, not on `view`. Overview leaves the stored
+  // layout alone so it comes back when you leave — which means `view` still says
+  // 'grouped' while Overview is on, and anything reading it directly would draw
+  // the grouped sections underneath.
+  const layout: Layout = overview ? 'overview' : view;
+
+  function pickView(next: CrewPick) {
+    if (next === 'overview') {
+      setOverview(true);
+      startViewSave(() => {
+        void setCrewOverviewAction(true).catch(() => {});
+      });
+      return;
+    }
+    // Leaving Overview is implicit in picking a layout: setCrewViewAction clears
+    // the page mode, so the cookie and the screen never disagree.
+    setOverview(false);
     setView(next);
     // Remembered for next time; the width below doesn't wait for it.
     startViewSave(() => {
@@ -304,14 +333,17 @@ export default function HoursAndPay({
   useEffect(() => {
     const main = document.querySelector('main.wide-shell');
     if (!main) return;
-    main.classList.toggle('crew-wide', isRailView(view) || view === 'focus');
+    // Overview stays at the standard width: a 21rem list beside one open person
+    // does not need 1600px, and letting it have it strands the pane's buttons a
+    // screen-width away from the list.
+    main.classList.toggle('crew-wide', layout !== 'overview' && isRailView(view));
     // Focus is a page theme, not just this tab's layout.
-    main.classList.toggle('crew-focus', view === 'focus');
+    main.classList.toggle('crew-focus', layout === 'focus');
     return () => {
       main.classList.remove('crew-wide');
       main.classList.remove('crew-focus');
     };
-  }, [view]);
+  }, [view, layout]);
   const [selected, setSelected] = useState<string[]>([]);
   // Which person the master-detail layout is showing. Null until one is picked;
   // the component then falls back to whoever most needs looking at.
@@ -580,6 +612,80 @@ export default function HoursAndPay({
     </button>
   );
 
+  // The period as Overview rows. The three stats are the three numbers a pay
+  // period is argued about — what they worked, what that comes to, and whether
+  // it has moved since somebody agreed it.
+  //
+  // The actions are the same two the row menu already offers, wired to the same
+  // handlers, so Overview can never approve or pay by a different route than the
+  // table does. The pay dialog and its confirmation still apply.
+  const overviewItems: OverviewItem[] = visible.map((row) => {
+    const id = rowKey(row);
+    const worst = [...row.blockers, ...row.warnings][0] ?? null;
+    return {
+      id,
+      initials: row.name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || '?',
+      name: row.name,
+      sub: [row.roleLabel, PAY_TYPE_LABEL[row.payType]].filter(Boolean).join(' · ') || PAY_TYPE_LABEL[row.payType],
+      amount: payMoney(row.estimatedPay),
+      amountTitle: row.payBasis,
+      badge: {
+        label: PAY_STATUS_LABEL[row.review === 'approved' ? 'approved' : row.status],
+        tone: row.review === 'needs_review' ? 'alert' : row.payment === 'paid' ? 'ok' : row.review === 'approved' ? 'warn' : 'muted',
+        title: PAY_STATUS_HELP[row.status],
+      },
+      headline: row.payProblem
+        ? row.payProblem
+        : `${hoursLabel(row.hours)} across ${row.entryCount} ${row.entryCount === 1 ? 'entry' : 'entries'} · ${PAYMENT_STATE_LABEL[row.payment]}`,
+      stats: [
+        { label: 'Hours', value: hoursLabel(row.hours), title: row.overtimeHours > 0 ? `Includes ${hoursLabel(row.overtimeHours)} over the threshold.` : undefined },
+        { label: 'Est. pay', value: payMoney(row.estimatedPay), title: row.payBasis },
+        {
+          label: row.payment === 'paid' ? 'Paid' : row.review === 'approved' ? 'Approved' : 'Agreed',
+          value: row.payment === 'paid' ? payMoney(row.paidAmount ?? 0) : row.approvedAmount === null ? '—' : payMoney(row.approvedAmount),
+          title: row.paymentDetail ?? row.paymentLabel ?? undefined,
+        },
+      ],
+      // The adjustment is the one thing on this row that changes what you owe,
+      // so it gets said in words rather than left as two figures to subtract.
+      note:
+        row.adjustment !== 0 ? (
+          <span className={styles.mdMoved}>
+            {payMoney(Math.abs(row.adjustment))} {row.adjustment > 0 ? 'more' : 'less'} than was{' '}
+            {row.payment === 'paid' ? 'paid' : 'approved'} — the hours have changed since.
+          </span>
+        ) : worst ? (
+          // The chip alone is a table's shorthand — on its own line "Overtime"
+          // is a word, not a warning. The pane has room to say what it means.
+          <>
+            <span className={styles.flagChip} data-severity={PAY_WARNING_SEVERITY[worst]}>
+              {PAY_WARNING_LABEL[worst]}
+            </span>
+            <span className={styles.dim}>{PAY_WARNING_HELP[worst]}</span>
+          </>
+        ) : row.paymentLabel ? (
+          <span className={styles.dim}>{[row.paymentLabel, row.paymentDetail].filter(Boolean).join(' · ')}</span>
+        ) : null,
+      actions: (
+        <>
+          <button type="button" className="btn primary" onClick={() => setDrawer({ mode: 'crew', crewId: id })}>
+            Open timesheet
+          </button>
+          {row.eligible && row.review !== 'approved' && row.hours > 0 ? (
+            <button type="button" className={`btn secondary ${styles.goAction}`} disabled={busy('approve')} onClick={() => arm({ kind: 'approve', crewIds: [id] })}>
+              {busy('approve') ? 'Approving…' : 'Approve hours'}
+            </button>
+          ) : null}
+          {payAvailable && row.review === 'approved' && row.payment !== 'paid' ? (
+            <button type="button" className="btn secondary" onClick={() => setDialog({ kind: 'pay', ids: [id] })}>
+              Mark paid
+            </button>
+          ) : null}
+        </>
+      ),
+    };
+  });
+
   return (
     <>
       <div className={styles.hpHead}>
@@ -597,7 +703,7 @@ export default function HoursAndPay({
               it's a control that's already learned. */}
           <ViewGear
             views={CREW_VIEW_OPTIONS}
-            activeView={view}
+            activeView={layout}
             onPickView={pickView}
             skins={CREW_SKIN_OPTIONS}
             activeSkin={skin}
@@ -711,7 +817,7 @@ export default function HoursAndPay({
       ) : null}
 
       {/* --- the pay period, and the one thing to do with it --- */}
-      <section className={styles.periodCard} data-view={view} aria-label="Pay period summary">
+      <section className={styles.periodCard} data-view={layout} aria-label="Pay period summary">
         <div className={styles.periodCardMain}>
           <div className={styles.periodCardHead}>
             <small>Pay period</small>
@@ -809,7 +915,7 @@ export default function HoursAndPay({
         {/* Focus moves this into the rail, where it stays in view while you
             scroll the crew. Leaving a copy here as well would be two equally
             loud buttons for one decision. */}
-        {payAvailable && primaryAction && view !== 'focus' ? (
+        {payAvailable && primaryAction && layout !== 'focus' ? (
           <div className={styles.periodActions}>
             {primaryActionButton}
             <small>{primaryAction.help}</small>
@@ -820,7 +926,7 @@ export default function HoursAndPay({
       {/* Grouped opens with the shape of the period rather than the list: what
           it comes to, how that compares with last time, where it sits by
           payment status, and which days the hours landed on. */}
-      {view === 'grouped' ? (
+      {layout === 'grouped' ? (
         <div className={styles.groupTopRow}>
           <div className={styles.compareCard}>
             <small>Total est. pay</small>
@@ -1005,7 +1111,7 @@ export default function HoursAndPay({
           </div>
         </div>
       ) : (
-        <div className={styles.payLayout} data-view={view}>
+        <div className={styles.payLayout} data-view={layout}>
           <div className={styles.payMain}>
             {/* --- toolbar --- */}
             <div className={styles.payToolbar}>
@@ -1105,7 +1211,7 @@ export default function HoursAndPay({
               </div>
             ) : null}
 
-            {view === 'grouped' ? (
+            {layout === 'grouped' ? (
               <GroupedCrew
                 rows={visible}
                 collapsed={collapsed}
@@ -1129,7 +1235,7 @@ export default function HoursAndPay({
             ) : null}
 
             {/* --- the crew --- */}
-            {view === 'focus' ? (
+            {layout === 'focus' ? (
               <PayMasterDetail
                 rows={visible}
                 groups={groupCrewRows(visible)}
@@ -1158,7 +1264,11 @@ export default function HoursAndPay({
               />
             ) : null}
 
-            <div className={styles.tableWrap} hidden={view === 'grouped' || view === 'focus'}>
+            {layout === 'overview' ? (
+              <OverviewBoard items={overviewItems} listLabel="Crew members" empty="No crew members match those filters." />
+            ) : null}
+
+            <div className={styles.tableWrap} hidden={layout !== 'table' && layout !== 'rail'}>
               <table className={styles.payTable}>
                 <thead>
                   <tr>
@@ -1377,7 +1487,7 @@ export default function HoursAndPay({
             {/* Master-detail pages nothing — the left list is the whole filtered
                 crew, because paging a list you are stepping through one at a
                 time would hide the person you were about to click. */}
-            {view !== 'grouped' && view !== 'focus' && visible.length > pageSize ? (
+            {(layout === 'table' || layout === 'rail') && visible.length > pageSize ? (
               <div className={styles.pager}>
                 <small>
                   Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, visible.length)} of {visible.length} crew members
@@ -1415,8 +1525,8 @@ export default function HoursAndPay({
             {/* The caveat that keeps "Paid" honest. In Focus it becomes the bar
                 that closes the page, because that's the last thing you read
                 before recording a payment. */}
-            <p className={styles.hpNote} data-view={view}>
-              {view === 'focus' ? <span className={styles.hpNoteMark} aria-hidden="true">i</span> : null}
+            <p className={styles.hpNote} data-view={layout}>
+              {layout === 'focus' ? <span className={styles.hpNoteMark} aria-hidden="true">i</span> : null}
               Estimated pay is each entry&apos;s hours × the rate it was logged at. Periods are cut on when time was logged — a labor
               entry has no separate &ldquo;worked on&rdquo; date. Marking someone paid records that you paid them: no tax is
               calculated or withheld here and no money moves.
@@ -1427,7 +1537,7 @@ export default function HoursAndPay({
               Not rendered under Focus: master-detail carries its own, beside the
               person it is about, and two rails on one screen is two places to
               look for the same button. */}
-          <aside className={styles.payRail} hidden={view === 'focus'}>
+          <aside className={styles.payRail} hidden={layout === 'focus' || layout === 'overview'}>
 
             <section className={styles.railCard}>
               <h3>Pay period summary</h3>

@@ -2738,3 +2738,219 @@ button.goAction.goAction:disabled {
   font-family: var(--skin-figure-font);
   color: var(--skin-accent);
 }
+
+/* ==========================================================================
+   OVERVIEW — the Clients page's Focus shape, worn by all three tabs.
+
+   Deliberately NOT the .client-focus-* rules from globals.css. Those are the
+   Clients page's, they hardcode the dark palette, and a crew page wearing them
+   would ignore Daylight and Blueprint entirely — a layout that only looks right
+   in one skin is a layout that is broken in the other two. Same proportions,
+   same movement, this page's tokens.
+   ========================================================================== */
+
+.ovLayout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.8rem; align-items: start; }
+@media (min-width: 900px) {
+  .ovLayout { grid-template-columns: minmax(0, 21rem) minmax(0, 1fr); }
+}
+
+.ovList {
+  display: grid;
+  gap: 0.3rem;
+  align-content: start;
+  /* Capped so the pane beside it stays on screen. Past this the list scrolls
+     rather than pushing the thing you opened below the fold. */
+  max-height: 34rem;
+  overflow-y: auto;
+  padding: 0.15rem;
+}
+
+.ovRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.55rem 0.6rem;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.02);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.15s cubic-bezier(0.2, 0.9, 0.3, 1.2), background 0.15s ease, border-color 0.15s ease;
+}
+.ovRow:hover { background: rgba(255, 255, 255, 0.05); transform: translateX(2px); }
+.ovRowOn {
+  border-color: rgba(255, 138, 61, 0.55);
+  background: rgba(255, 138, 61, 0.1);
+  transform: translateX(4px);
+}
+.ovRow:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.8); outline-offset: 2px; }
+
+.ovWho { display: grid; gap: 0.05rem; min-width: 0; }
+.ovWho strong { font-size: 0.87rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ovWho small { font-size: 0.72rem; color: rgba(147, 164, 184, 0.92); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ovAmount { font-size: 0.82rem; font-weight: 800; color: #ffb27d; font-variant-numeric: tabular-nums; }
+
+.ovAvatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid rgba(148, 176, 214, 0.3);
+  background: rgba(255, 122, 33, 0.16);
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #ffb27d;
+}
+.ovAvatarLg { width: 3.4rem; height: 3.4rem; font-size: 1.05rem; }
+.ovAvatar img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Remounted on every selection (keyed by id), so this entrance plays each time
+   — the movement is what tells you the click landed. */
+.ovPane {
+  padding: 1.1rem 1.2rem;
+  border: 1px solid rgba(255, 138, 61, 0.28);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 138, 61, 0.07), rgba(255, 255, 255, 0.02));
+  animation: ov-in 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.05);
+}
+@keyframes ov-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.995); }
+  to { opacity: 1; transform: none; }
+}
+
+.ovHead { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.9rem; }
+.ovHead h3 { margin: 0; font-size: 1.15rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.ovHead p { margin: 0.15rem 0 0; font-size: 0.85rem; color: rgba(147, 164, 184, 0.95); }
+
+.ovBadge {
+  padding: 0.14rem 0.44rem;
+  border: 1px solid rgba(148, 176, 214, 0.35);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(203, 214, 228, 0.95);
+}
+.ovBadge[data-tone='ok'] { border-color: rgba(72, 199, 142, 0.45); background: rgba(72, 199, 142, 0.1); color: #7fe0b2; }
+.ovBadge[data-tone='warn'] { border-color: rgba(255, 209, 102, 0.45); background: rgba(255, 209, 102, 0.1); color: #ffd591; }
+.ovBadge[data-tone='alert'] { border-color: rgba(255, 107, 107, 0.5); background: rgba(255, 107, 107, 0.1); color: #ffb4a7; }
+
+.ovStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0 0 0.9rem;
+}
+.ovStats div {
+  padding: 0.6rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  min-width: 0;
+}
+.ovStats dt {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(147, 164, 184, 0.9);
+}
+.ovStats dd {
+  margin: 0.1rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ovNote {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.9rem;
+  font-size: 0.85rem;
+  color: rgba(203, 214, 228, 0.85);
+}
+.ovNote p { margin: 0; }
+
+/* Deeper detail than the stats — the entries behind a job's labor cost. Capped
+   and scrollable so a job with forty entries can't push the actions off the
+   bottom of a pane that is meant to be read at a glance. */
+.ovDetail {
+  margin: 0 0 0.9rem;
+  max-height: 15rem;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.ovDetail .entryHead, .ovDetail .entryRow { padding-inline: 0.7rem; }
+:global(.crew-skin) .ovDetail { border-color: var(--skin-line); border-radius: var(--skin-radius); background: var(--skin-surface); }
+
+.ovActions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+/* The tabs hand in whatever button each action needs — a link, a form, a
+   confirm. They all have to sit on one line together. */
+.ovActions form { display: contents; }
+
+@media (max-width: 640px) {
+  .ovList { max-height: 18rem; }
+  .ovStats { grid-template-columns: minmax(0, 1fr); }
+  .ovPane { padding: 0.9rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ovRow { transition: none; }
+  .ovRow:hover, .ovRowOn { transform: none; }
+  .ovPane { animation: none; }
+}
+
+/* --- Overview in a skin ---------------------------------------------------
+   The list rows and the pane are the two surfaces somebody reads, so they take
+   the skin's tokens the same way .row and .railCard do. */
+:global(.crew-skin) .ovRow,
+:global(.crew-skin) .ovStats div {
+  background: var(--skin-surface);
+  border-color: var(--skin-line);
+  border-radius: var(--skin-radius);
+}
+:global(.crew-skin) .ovRowOn { border-color: var(--skin-accent); background: var(--skin-accent-soft); }
+:global(.crew-skin) .ovPane { border-color: var(--skin-line); border-radius: var(--skin-radius); }
+:global(.crew-skin) .ovWho strong { color: var(--skin-ink); }
+:global(.crew-skin) .ovWho small { color: var(--skin-muted); }
+:global(.crew-skin) .ovHead p { color: var(--skin-muted); }
+:global(.crew-skin) .ovStats dt { color: var(--skin-head); font-family: var(--skin-label-font, inherit); letter-spacing: var(--skin-head-track, 0.08em); }
+:global(.crew-skin) .ovStats dd { font-family: var(--skin-figure-font, inherit); }
+:global(.crew-skin) .ovAvatar { border-radius: var(--skin-avatar-radius, 50%); border-color: var(--skin-line); }
+/* Money stays orange in every skin — a figure that means dollars has to keep
+   meaning dollars whichever skin it is wearing. */
+:global(.crew-skin) .ovAmount { font-family: var(--skin-figure-font, inherit); }
+
+:global(.crew-skin-blueprint) .ovList { gap: 0; }
+:global(.crew-skin-blueprint) .ovRow { border-radius: 0; border-bottom-width: 0; }
+:global(.crew-skin-blueprint) .ovRow:last-child { border-bottom-width: 1px; }
+:global(.crew-skin-blueprint) .ovRow:hover,
+:global(.crew-skin-blueprint) .ovRowOn { transform: none; }
+:global(.crew-skin-blueprint) .ovPane { position: relative; }
+:global(.crew-skin-blueprint) .ovPane::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 7px;
+  height: 7px;
+  border-top: 2px solid var(--skin-accent);
+  border-left: 2px solid var(--skin-accent);
+  pointer-events: none;
+}

@@ -332,9 +332,12 @@ export default async function CrewLaborPage({
         crewSkin !== 'standard' ? `crew-skin-${crewSkin}` : '',
         // Focus's rail, the board columns and the nine-column table all need the
         // shell to stop capping content at 1100px.
-        crewTheme === 'focus' ||
-        (tab === 'hours' && crewView === 'rail') ||
-        (tab === 'crew' && (rosterView === 'board' || rosterView === 'table'))
+        // Overview is capped at the standard width whatever layout is stored
+        // underneath it: a list beside one open thing does not need 1600px.
+        crewTheme !== 'overview' &&
+        (crewTheme === 'focus' ||
+          (tab === 'hours' && crewView === 'rail') ||
+          (tab === 'crew' && (rosterView === 'board' || rosterView === 'table')))
           ? 'crew-wide'
           : '',
       ]
@@ -377,6 +380,7 @@ export default async function CrewLaborPage({
             initialStatus={searchParams.status === 'archived' ? 'archived' : 'active'}
             initialView={rosterView}
             initialSkin={crewSkin}
+            initialOverview={crewTheme === 'overview'}
             openAdd={searchParams.add === '1' || crew.length === 0}
           />
         ) : null}
@@ -408,6 +412,7 @@ export default async function CrewLaborPage({
             progress={periodProgress(period, now)}
             initialView={crewView}
             initialSkin={crewSkin}
+            initialOverview={crewTheme === 'overview'}
             comparison={payTotals ? comparePeriods(payTotals.estimatedPay, previousPay) : null}
             payDay={payDay}
             payDue={payDue}
@@ -430,6 +435,8 @@ export default async function CrewLaborPage({
           <LaborByJob
             rows={jobRows}
             period={period}
+            initialSkin={crewSkin}
+            initialOverview={crewTheme === 'overview'}
             crewOptions={crew.map((member) => ({ id: member.id, name: member.name }))}
             entries={laborEntries.map((entry) => ({
               id: entry.id,

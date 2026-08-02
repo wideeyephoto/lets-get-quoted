@@ -100,10 +100,20 @@ export function normalizeCrewView(value: unknown): CrewView {
 //
 // Picking Focus in EITHER tab's gear switches the theme on, and picking any
 // other layout switches it off, so there is one Focus and not two.
+//
+// 'overview' is the third: the Clients page's Focus shape — a scrolling list on
+// the left, one thing open beside it — worn by all THREE tabs at once. It lives
+// here rather than in the per-tab enums for exactly the reason above, and
+// because Labor by job has no layout cookie of its own to put it in.
+//
+// Overview deliberately does NOT overwrite the per-tab layout cookies when it
+// is switched on, so turning it off puts you back in the layout you were in
+// rather than in that tab's default.
 export const CREW_THEME_COOKIE = 'lgq_crew_theme';
-export type CrewTheme = 'standard' | 'focus';
+export type CrewTheme = 'standard' | 'focus' | 'overview';
+export const CREW_THEMES: CrewTheme[] = ['standard', 'focus', 'overview'];
 export function normalizeCrewTheme(value: unknown): CrewTheme {
-  return value === 'focus' ? 'focus' : 'standard';
+  return CREW_THEMES.includes(value as CrewTheme) ? (value as CrewTheme) : 'standard';
 }
 
 // The page's SKIN — its colours and surfaces — kept in its own cookie rather

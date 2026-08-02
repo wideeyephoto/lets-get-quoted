@@ -7,11 +7,12 @@ import SaveButton from '@/components/save-button';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import ViewGear, { type ViewOption } from '@/components/view-gear';
 import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
-import { setCrewSkinAction, setRosterViewAction } from '@/app/dashboard/view-actions';
+import { setCrewOverviewAction, setCrewSkinAction, setRosterViewAction } from '@/app/dashboard/view-actions';
 import type { CrewSkin, RosterView } from '@/lib/dashboard-views';
 import { rosterNextStep, rosterTotals } from '@/lib/crew-roster';
 import type { PayType } from '@/lib/pay-types';
 import { CREW_SKIN_OPTIONS, applyCrewSkin } from './crew-skins';
+import OverviewBoard, { overviewOption, type OverviewItem } from './OverviewBoard';
 import CrewPhotoUpload from './CrewPhotoUpload';
 import PayTypeFields from './PayTypeFields';
 import {
@@ -76,12 +77,18 @@ type SortId = (typeof SORTS)[number]['id'];
 // that's already learned. Each one answers a different question about the crew:
 // who are they, what do they look like, who's free, and how do twenty of them
 // compare line by line.
-const ROSTER_VIEW_OPTIONS: ViewOption<RosterView>[] = [
+// 'overview' is not a RosterView — it is the whole page's mode, and picking it
+// here puts the other two tabs in it as well. It rides in this list because
+// that's where somebody looks for a layout, not because it is one of these.
+type RosterPick = RosterView | 'overview';
+
+const ROSTER_VIEW_OPTIONS: ViewOption<RosterPick>[] = [
   { id: 'rows', label: 'Rows', hint: 'One line each, the everyday roster' },
   { id: 'cards', label: 'Cards', hint: 'Photos and details, a card per person' },
   { id: 'board', label: 'Board', hint: "Split by who's free and who's out on a job" },
   { id: 'table', label: 'Table', hint: 'Dense columns for a big crew' },
   { id: 'focus', label: 'Focus', hint: 'The roster, with what needs doing pinned beside it' },
+  overviewOption<RosterPick>('One person open beside the list — all three tabs'),
 ];
 
 function money(amount: number): string {
@@ -107,6 +114,7 @@ export default function CrewRoster({
   initialStatus,
   initialView,
   initialSkin,
+  initialOverview,
   openAdd,
 }: {
   rows: CrewRow[];
@@ -115,6 +123,8 @@ export default function CrewRoster({
   initialStatus: 'active' | 'archived';
   initialView: RosterView;
   initialSkin: CrewSkin;
+  /** Whether the whole page is in Overview. Outranks initialView while it's on. */
+  initialOverview: boolean;
   openAdd: boolean;
 }) {
   const [query, setQuery] = useState('');
@@ -126,12 +136,24 @@ export default function CrewRoster({
   const [openId, setOpenId] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(openAdd);
   const [view, setView] = useState<RosterView>(initialView);
+  const [overview, setOverview] = useState(initialOverview);
   const [skin, setSkin] = useState<CrewSkin>(initialSkin);
   const [, startViewSave] = useTransition();
 
   // The layout changes immediately; remembering it is a background write. A
   // cookie that fails to save is a worse view tomorrow, not a broken page now.
-  function pickView(next: RosterView) {
+  function pickView(next: RosterPick) {
+    if (next === 'overview') {
+      setOverview(true);
+      startViewSave(() => {
+        void setCrewOverviewAction(true).catch(() => {});
+      });
+      return;
+    }
+    // Leaving Overview is implicit in picking a layout: setRosterViewAction
+    // clears the page mode, so there is never a moment where the cookie says
+    // Overview and the screen shows Rows.
+    setOverview(false);
     setView(next);
     startViewSave(() => {
       void setRosterViewAction(next).catch(() => {});
@@ -154,7 +176,10 @@ export default function CrewRoster({
   // server sets the class from the cookie so the first paint is right; this
   // keeps it in step the moment the view changes rather than making a layout
   // change wait on a round trip.
-  const wide = view === 'board' || view === 'table' || view === 'focus';
+  // Overview is capped at the standard width on purpose: a 21rem list beside one
+  // open person does not need 1600px, and letting it have it strands the pane's
+  // buttons a screen-width away from the list.
+  const wide = !overview && (view === 'board' || view === 'table' || view === 'focus');
   useEffect(() => {
     const main = document.querySelector('main.wide-shell');
     if (!main) return;
@@ -162,12 +187,12 @@ export default function CrewRoster({
     // Focus is a page theme, so the shell wears it too — toggled here as well as
     // set server-side from the cookie, or switching view would leave the page
     // half-dressed until the next navigation.
-    main.classList.toggle('crew-focus', view === 'focus');
+    main.classList.toggle('crew-focus', !overview && view === 'focus');
     return () => {
       main.classList.remove('crew-wide');
       main.classList.remove('crew-focus');
     };
-  }, [wide, view]);
+  }, [wide, view, overview]);
 
   const roles = useMemo(
     () => [...new Set(rows.map((row) => row.roleLabel).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
@@ -221,6 +246,64 @@ export default function CrewRoster({
   // wrong with the crew doesn't change because you searched for someone.
   const nextStep = useMemo(() => rosterNextStep(rows), [rows]);
   const totals = useMemo(() => rosterTotals(rows), [rows]);
+
+  // The roster as Overview rows. The three stats are the three facts a roster
+  // exists to answer — what they cost you this period, what they're paid, and
+  // whether they're out on something — and the actions are the ones that were
+  // already on every row, so Overview adds no power the other layouts lack.
+  const overviewItems = useMemo<OverviewItem[]>(
+    () =>
+      visible.map((row) => ({
+        id: row.id,
+        initials: row.initials,
+        photoUrl: row.photoUrl,
+        name: row.name,
+        sub: row.roleLabel ? `${row.roleLabel} · ${row.rateLabel}` : row.rateLabel,
+        amount: row.periodPayLabel,
+        amountTitle: periodTitle(periodLabel),
+        badge: !row.active
+          ? { label: 'Archived', tone: 'muted' as const }
+          : row.jobs.length > 0
+            ? { label: 'On a job', tone: 'warn' as const, title: row.jobs.map((job) => `${job.ref} · ${job.clientName}`).join('\n') }
+            : { label: 'Available', tone: 'ok' as const },
+        headline: [row.phoneLabel, row.email].filter(Boolean).join(' · ') || 'No contact on file',
+        stats: [
+          { label: periodLabel, value: `${row.periodHours} hrs`, title: periodTitle(periodLabel) },
+          { label: 'Est. pay', value: row.periodPayLabel, title: periodTitle(periodLabel) },
+          { label: 'Rate', value: row.rateLabel },
+        ],
+        note: (
+          <>
+            <span className={styles.appChip} data-state={row.fieldApp} title={FIELD_APP_TITLE[row.fieldApp]}>
+              {FIELD_APP_LABEL[row.fieldApp]}
+            </span>
+            {row.jobs.length > 0 ? (
+              <>
+                {row.jobs.map((job) => (
+                  <Link key={job.id} href={`/dashboard/jobs/${job.id}`} className={styles.jobChip}>
+                    {job.ref} · {job.clientName}
+                  </Link>
+                ))}
+              </>
+            ) : (
+              <span className={styles.dim}>{row.active ? 'Not on a job right now.' : 'Not on the crew right now.'}</span>
+            )}
+          </>
+        ),
+        actions: (
+          <>
+            <button type="button" className="btn primary" onClick={() => setOpenId(row.id)}>
+              Open profile
+            </button>
+            {row.phone ? (
+              <a href={`tel:${row.phone}`} className="btn secondary">Call {row.phoneLabel}</a>
+            ) : null}
+            <Link href={hoursHrefFor(row)} className="btn secondary">View hours</Link>
+          </>
+        ),
+      })),
+    [visible, periodLabel],
+  );
 
   // The board's whole point: who could you send somewhere right now. Archived
   // people get their own column rather than being called "available", which
@@ -305,7 +388,7 @@ export default function CrewRoster({
           <div className={styles.filterGear}>
             <ViewGear
               views={ROSTER_VIEW_OPTIONS}
-              activeView={view}
+              activeView={overview ? 'overview' : view}
               onPickView={pickView}
               skins={CREW_SKIN_OPTIONS}
               activeSkin={skin}
@@ -322,6 +405,14 @@ export default function CrewRoster({
           <p>Add the people who work with you — then assign them jobs and their hours roll up here.</p>
           <button type="button" className="btn primary" onClick={() => setAddOpen(true)}>+ Add crew member</button>
         </div>
+      ) : overview ? (
+        <OverviewBoard
+          items={overviewItems}
+          listLabel="Crew members"
+          empty={
+            status === 'archived' ? 'No archived crew members match those filters.' : 'No crew members match those filters.'
+          }
+        />
       ) : visible.length === 0 && view !== 'focus' ? (
         // Focus keeps its layout even when nothing matches: the rail is about
         // the crew, not the filter, and searching for a name nobody has should

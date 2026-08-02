@@ -62,6 +62,24 @@ function syncCrewFocus(focus: boolean, keep: 'hours' | 'roster'): void {
   if (keep !== 'roster') write(CREW_ROSTER_VIEW_COOKIE, focus ? 'focus' : 'rows');
 }
 
+/**
+ * Overview on or off, for the whole page.
+ *
+ * Writes the page mode and NOTHING else, which is the difference between this
+ * and the two actions below. Overview is not a layout any one tab owns — all
+ * three wear it together — so there is no per-tab cookie to keep in step, and
+ * leaving the ones that exist untouched is what lets turning Overview off put
+ * somebody back in the Board or the Review rail they were in before.
+ *
+ * Turning it off is only ever done from the Labor by job gear, which has no
+ * layout of its own to fall back to. The other two tabs clear it by picking one
+ * of their own layouts, which goes through syncCrewFocus above.
+ */
+export async function setCrewOverviewAction(on: boolean) {
+  await requireOwnerContext();
+  write(CREW_THEME_COOKIE, on ? 'overview' : 'standard');
+}
+
 // Remember the owner's chosen Hours & pay layout (Table / Grouped / Rail / Focus).
 export async function setCrewViewAction(view: CrewView) {
   await requireOwnerContext();
