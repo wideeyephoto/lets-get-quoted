@@ -378,6 +378,10 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           href={href}
           key={href}
           className={`sidenav-link${brand ? ' sidenav-link-brand' : ''}${extraClass ? ` ${extraClass}` : ''}${active ? ' active' : ''}`}
+          // Also on the row, not just the pill inside it, so the row can carry
+          // the state's colour without CSS having to reach into a child with
+          // :has() — which not every browser this ships to supports.
+          data-state={state !== 'unknown' && NAV_STATE_PILL[href] ? state : undefined}
           title={item.hint}
         >
           {brand ? (

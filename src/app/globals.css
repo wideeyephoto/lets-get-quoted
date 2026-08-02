@@ -244,11 +244,20 @@ h3 {
 
 .sidenav-mobilebar { display: none; }
 
+/* One source of truth for the rail's width, and it is in REM on purpose.
+   As 244px it was the only fixed thing in a rail whose padding, gaps, icons and
+   labels are all rem — so at a browser minimum-font-size, or Windows display
+   scaling above 100%, everything inside grew and the rail did not. The longest
+   label that also carries a pill ("Online Booking") wrapped under its own icon
+   and the row went to two lines. In rem the rail grows with its contents and
+   the row stays exactly as tight as it is at 16px. */
+:root { --sidenav-w: 15.25rem; } /* 244px at a 16px root */
+
 .sidenav {
   position: fixed;
   inset: 0 auto 0 0;
   z-index: 30;
-  width: 244px;
+  width: var(--sidenav-w);
   display: flex;
   flex-direction: column;
   padding: 1.1rem 0.8rem 1rem;
@@ -360,7 +369,7 @@ h3 {
 .sidenav-link-brand .sidenav-state { margin-left: auto; }
 
 /* Plan my day and + New, side by side.
-   NOT two equal halves. The rail is 244px wide, which leaves ~218px of content,
+   NOT two equal halves. The rail is --sidenav-w, leaving ~218px of content,
    and "Plan my day" needs an icon plus three words while "+ New" needs one —
    split down the middle, the left button wraps and the right one sits in a pool
    of its own padding. So Plan takes the slack and New is sized to its content. */
@@ -649,7 +658,7 @@ h3 {
    regardless of source order. */
 .app-main.app-main-sidenav {
   padding-top: 1.6rem;
-  padding-left: calc(244px + 1.4rem);
+  padding-left: calc(var(--sidenav-w) + 1.4rem);
   padding-right: 1.4rem;
 }
 
@@ -13527,6 +13536,39 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 }
 /* A count and a state pill on the same row would both claim the right edge. */
 .sidenav-link .sidenav-state + .sidenav-count { margin-left: 0.3rem; margin-right: 0; }
+
+/* A row carrying a state gets it in the row itself, not only in the pill: a
+   green edge and a green icon read across the rail at a glance, where a 0.6rem
+   pill has to be looked for. ON only — "live and taking work" is the fact worth
+   a colour, and painting every OFF automation red would turn the rail into a
+   wall of alarms for someone who has simply not switched them on. The pill is
+   still the thing that SAYS which way it is set, in either direction. */
+.sidenav-link[data-state='on'] { box-shadow: inset 3px 0 0 #3fbf87; }
+.sidenav-link[data-state='on'] .sidenav-ic { color: #4fd39a; }
+.sidenav-link[data-state='on']:hover .sidenav-ic { color: #6fe4b3; }
+
+/* "You are here" outranks "this is on". One channel, one meaning — and the
+   pill goes on saying ON regardless, so nothing is lost by the active row
+   keeping the accent. Specificity, not source order, decides it. */
+.sidenav-link.active[data-state] {
+  box-shadow: inset 3px 0 0 var(--accent), inset 0 0 0 1px rgba(255, 122, 33, 0.22);
+}
+.sidenav-link.active[data-state] .sidenav-ic { color: var(--accent); }
+
+/* One line, always. The row is a fixed width while the label is not — at a
+   larger browser font or an OS display scale above 100%, "Online Booking" (the
+   longest label that also carries a pill) wrapped under its own icon. The label
+   truncates instead; the pill and the icon never give up their space. */
+.sidenav-link > span:not([class]) {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.sidenav-link .sidenav-ic,
+.sidenav-link .sidenav-state,
+.sidenav-link .sidenav-count,
+.sidenav-link .sidenav-total { flex: none; }
 
 /* Quick Stops reuses the booking summary cards, but as links rather than
    in-page jumps — an anchor would otherwise pick up the global link colour and
