@@ -329,6 +329,15 @@ h3 {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Plan my day and + New, side by side.
+   NOT two equal halves. The rail is 244px wide, which leaves ~218px of content,
+   and "Plan my day" needs an icon plus three words while "+ New" needs one —
+   split down the middle, the left button wraps and the right one sits in a pool
+   of its own padding. So Plan takes the slack and New is sized to its content. */
+.sidenav-actions { display: flex; align-items: stretch; gap: 0.4rem; }
+.sidenav-actions .sidenav-plan { flex: 1 1 auto; min-width: 0; }
+.sidenav-actions .sidenav-new-wrap { flex: 0 0 auto; }
+
 .sidenav-new-wrap { position: relative; }
 .sidenav-new {
   width: 100%;
@@ -356,8 +365,13 @@ h3 {
 .sidenav-new-menu {
   position: absolute;
   top: calc(100% + 0.35rem);
-  left: 0;
+  /* Anchored to the button's RIGHT edge and grown leftward. Stretching to the
+     wrapper (left:0; right:0) was fine when the button was the full width of the
+     rail; beside Plan my day the wrapper is ~80px and "New job" would have had
+     to wrap under its own icon. */
   right: 0;
+  left: auto;
+  min-width: 10.5rem;
   z-index: 40;
   display: flex;
   flex-direction: column;
@@ -14244,21 +14258,30 @@ a.bset-card { color: inherit; text-decoration: none; }
 .cash-hero .insight-window-tabs { margin-top: 0.9rem; }
 
 
-/* "Plan my day" in the rail, directly above "+ New".
-   Keeps the button's own skin (.action-btn--plan) and takes the rail's
-   geometry from .sidenav-new, so the three stacked controls â€” Plan, New,
-   Website â€” line up at one width and one radius instead of three. */
-.sidenav .sidenav-plan {
-  width: 100%;
+/* "Plan my day" in the rail, beside "+ New".
+   Keeps the button's own skin (.action-btn--plan) and takes the rail's geometry
+   from .sidenav-new so the pair reads as one control split in two rather than
+   two buttons that happen to be adjacent.
+   The type and padding are tighter than the stacked version was: two buttons in
+   218px is genuinely tight, and the alternative to trimming a little here is
+   "Plan my day" wrapping onto two lines. */
+/* Scoped to the ROW, not to .sidenav. The demo rail carries a "+ New" with no
+   Plan beside it, and it should keep the full-size button — the tighter type
+   here is the price of fitting two controls, not a new house style. */
+.sidenav-actions .sidenav-plan,
+.sidenav-actions .sidenav-new {
+  width: auto;
   min-height: 0;
-  padding: 0.6rem 0.75rem;
+  padding: 0.6rem 0.5rem;
   border-radius: 12px;
-  gap: 0.45rem;
-  font-size: 0.92rem;
+  font-size: 0.85rem;
   font-weight: 700;
+  white-space: nowrap;
 }
+.sidenav-actions .sidenav-plan { gap: 0.35rem; justify-content: center; }
+.sidenav-actions .sidenav-new { gap: 0.28rem; }
 
-.sidenav .sidenav-plan .action-btn-ic { width: 1.05rem; height: 1.05rem; }
+.sidenav-actions .sidenav-plan .action-btn-ic { width: 1rem; height: 1rem; flex: none; }
 
 /* Already there: drop the glow to a quiet outline so the rail isn't shouting
    about the page you are standing on. */

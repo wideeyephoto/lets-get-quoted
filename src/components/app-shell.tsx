@@ -420,42 +420,44 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
 
           <div className="sidenav-lead">
             {businessName ? <p className="sidenav-bizname" title={businessName}>{businessName}</p> : null}
-            {/* The one thing a contractor does before anything else in the
-                morning, so it sits above "+ New" rather than three clicks into
-                Schedule. Same skin as the button on the schedule bar — two
-                different-looking buttons for one destination is two buttons. */}
-            <Link
-              href="/dashboard/schedule/plan"
-              className={`action-btn action-btn--plan sidenav-plan${pathname.startsWith('/dashboard/schedule/plan') ? ' active' : ''}`}
-              title="Order today's stops into the shortest sensible route"
-            >
-              <ActionIcon name="plan" />
-              Plan my day
-            </Link>
-            <div className="sidenav-new-wrap" ref={newMenuRef}>
-              <button
-                type="button"
-                className="sidenav-new"
-                aria-haspopup="menu"
-                aria-expanded={newMenuOpen}
-                aria-controls="sidenav-new-menu"
-                onClick={() => setNewMenuOpen((open) => !open)}
+            {/* The two things a contractor starts the day with, on one row.
+                Plan my day is the wider of the two because it carries three
+                words; "+ New" only ever says one, so it takes what it needs and
+                gives the rest back rather than both being forced to half. */}
+            <div className="sidenav-actions">
+              <Link
+                href="/dashboard/schedule/plan"
+                className={`action-btn action-btn--plan sidenav-plan${pathname.startsWith('/dashboard/schedule/plan') ? ' active' : ''}`}
+                title="Order today's stops into the shortest sensible route"
               >
-                <span className="sidenav-new-plus" aria-hidden="true">+</span> New
-                <span className={`sidenav-new-caret${newMenuOpen ? ' open' : ''}`} aria-hidden="true">▾</span>
-              </button>
-              {newMenuOpen ? (
-                <div className="sidenav-new-menu" id="sidenav-new-menu" role="menu" onKeyDown={onNewMenuKeyDown}>
-                  <Link href="/dashboard/jobs?new=1#new-job" role="menuitem" className="sidenav-new-item" onClick={() => setNewMenuOpen(false)}>
-                    <NavIcon href="/dashboard/jobs" />
-                    New job
-                  </Link>
-                  <Link href="/dashboard/leads?add=1#add-lead" role="menuitem" className="sidenav-new-item" onClick={() => setNewMenuOpen(false)}>
-                    <NavIcon href="/dashboard/leads" />
-                    New lead
-                  </Link>
-                </div>
-              ) : null}
+                <ActionIcon name="plan" />
+                Plan my day
+              </Link>
+              <div className="sidenav-new-wrap" ref={newMenuRef}>
+                <button
+                  type="button"
+                  className="sidenav-new"
+                  aria-haspopup="menu"
+                  aria-expanded={newMenuOpen}
+                  aria-controls="sidenav-new-menu"
+                  onClick={() => setNewMenuOpen((open) => !open)}
+                >
+                  <span className="sidenav-new-plus" aria-hidden="true">+</span> New
+                  <span className={`sidenav-new-caret${newMenuOpen ? ' open' : ''}`} aria-hidden="true">▾</span>
+                </button>
+                {newMenuOpen ? (
+                  <div className="sidenav-new-menu" id="sidenav-new-menu" role="menu" onKeyDown={onNewMenuKeyDown}>
+                    <Link href="/dashboard/jobs?new=1#new-job" role="menuitem" className="sidenav-new-item" onClick={() => setNewMenuOpen(false)}>
+                      <NavIcon href="/dashboard/jobs" />
+                      New job
+                    </Link>
+                    <Link href="/dashboard/leads?add=1#add-lead" role="menuitem" className="sidenav-new-item" onClick={() => setNewMenuOpen(false)}>
+                      <NavIcon href="/dashboard/leads" />
+                      New lead
+                    </Link>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
 
