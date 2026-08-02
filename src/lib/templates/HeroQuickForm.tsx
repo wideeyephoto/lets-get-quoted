@@ -198,8 +198,9 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   const [location, setLocation] = useState('');
   // Everything the submit will actually insist on. Drives the button's lit
   // state only — never a disabled attribute, so the real check still runs and
-  // still says which field is wrong.
-  const contactReady = Boolean(name.trim() && contact.trim() && (!askLocation || location.trim()));
+  // still says which field is wrong. In the preview it is always lit, because
+  // in the preview the button always works.
+  const contactReady = demo || Boolean(name.trim() && contact.trim() && (!askLocation || location.trim()));
   // How the homeowner wants the follow-up: some people never answer calls.
   const [contactPref, setContactPref] = useState<'any' | 'text'>('any');
   // Soft fit signals from the AI (out-of-area / excluded work) — shown as
@@ -409,6 +410,18 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
 
   function handleContactSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    // The preview exists to show the owner the screens, so nothing on this one
+    // is enforced there. Making a contractor invent a name and a phone number
+    // to reach their own last screen tests our validation, not their intake —
+    // and the fields are still on show, just not gates. The live form is
+    // untouched: every check below still runs for a real homeowner.
+    if (demo) {
+      setStatus(null);
+      submitLead(wizardEnabled ? { description } : undefined);
+      return;
+    }
+
     const trimmedContact = contact.trim();
     if (!name.trim() || !trimmedContact) return;
 
@@ -453,12 +466,28 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   }
 
   async function submitLead(details?: { description: string }) {
-    // The preview stops here. Checked before the published/iframe guard so the
-    // message is the true one — "this was a preview", not "publish your site".
+    // The preview creates no lead — but it does show the last screen, because
+    // the screen before it just promised a price "on the next screen" and
+    // stopping short of the number makes the preview end on the one thing the
+    // owner most wants to see. The number is the real one the estimator
+    // returned for what they typed; only the send is skipped.
+    //
+    // Checked before the published/iframe guard so the message is the true one:
+    // "this was a preview", not "publish your site".
     if (demo) {
+      if (details && estimate) {
+        setStep('result');
+        setStatus({
+          tone: 'success',
+          text: 'That’s the whole journey, price and all — and because this is a preview, nothing was sent and no lead was created.',
+        });
+        return;
+      }
       setStatus({
         tone: 'success',
-        text: 'That’s the whole journey — and because this is a preview, nothing was sent and no lead was created.',
+        text: estimate === null && details
+          ? 'That’s the whole journey. There’s no price screen this time because the estimator didn’t return a range — a real customer would land on the "we’ll be in touch" message instead. Nothing was sent and no lead was created.'
+          : 'That’s the whole journey — and because this is a preview, nothing was sent and no lead was created.',
       });
       return;
     }
@@ -645,7 +674,11 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
           )}
           <div className={styles.heroQuickFormRow}>
             <Field icon="user" label="Your name" filled={Boolean(name.trim())}>
-              <input name="name" placeholder="Jane Homeowner" autoComplete="name" maxLength={100} required value={name} onChange={(event) => setName(event.target.value)} />
+              {/* `required` is dropped in the preview along with the JS checks.
+                  Leaving it would hand the block to the BROWSER, which refuses
+                  to submit before onSubmit ever runs — the owner would click
+                  and get "Please fill out this field" with no way past it. */}
+              <input name="name" placeholder="Jane Homeowner" autoComplete="name" maxLength={100} required={!demo} value={name} onChange={(event) => setName(event.target.value)} />
             </Field>
             <Field
               icon={wizardEnabled || !emailRequired ? 'phone' : 'mail'}
@@ -661,7 +694,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
                 placeholder={wizardEnabled ? '(248) 555-0199' : emailRequired ? 'you@email.com' : '(248) 555-0199'}
                 autoComplete={wizardEnabled ? 'tel' : emailRequired ? 'email' : 'tel'}
                 maxLength={160}
-                required
+                required={!demo}
                 value={contact}
                 onChange={(event) => {
                   setContact(event.target.value);
@@ -675,7 +708,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
           </div>
           {askLocation && (
             <Field icon="pin" label="Where the work is" filled={Boolean(location.trim())}>
-              <input placeholder="48067 or Royal Oak" maxLength={80} required value={location} onChange={(event) => setLocation(event.target.value)} />
+              <input placeholder="48067 or Royal Oak" maxLength={80} required={!demo} value={location} onChange={(event) => setLocation(event.target.value)} />
             </Field>
           )}
           {askTimeline && (
@@ -713,7 +746,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
                   autoComplete="one-time-code"
                   placeholder="6-digit code"
                   maxLength={6}
-                  required
+                  required={!demo}
                   value={verifyCode}
                   onChange={(event) => setVerifyCode(event.target.value.replace(/\D/g, ''))}
                 />
@@ -754,7 +787,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
                   placeholder="you@email.com"
                   autoComplete="email"
                   maxLength={160}
-                  required={wizardEmailField === 'required'}
+                  required={!demo && wizardEmailField === 'required'}
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                 />
@@ -830,7 +863,10 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
           <h2>Your estimated range</h2>
           <div className={styles.heroFormResultPanel}>
             <p className={styles.heroFormResult}>{formatCurrency(estimate.min)} – {formatCurrency(estimate.max)}</p>
-            <span className={styles.heroFormResultBadge}>✓ Request sent</span>
+            {/* The badge is a statement of fact about a request. In the preview
+                no request exists, so it must not claim one — the price is real,
+                the send is the part that didn't happen. */}
+            <span className={styles.heroFormResultBadge}>{demo ? 'Preview — nothing sent' : '✓ Request sent'}</span>
           </div>
           <p className={styles.heroFormBasis}>{estimate.basis ? `Based on ${estimate.basis}. ` : ''}A rough estimate, not a final quote.</p>
           {/* Below the number, never over it. The range is what the visitor
@@ -846,7 +882,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
             </div>
           )}
           <ol className={styles.heroFormSteps}>
-            <li><strong>Request sent</strong><span>We got your details.</span></li>
+            <li><strong>Request sent</strong><span>{demo ? 'What a real customer sees here — yours wasn’t sent.' : 'We got your details.'}</span></li>
             <li><strong>We {contactPref === 'text' ? 'text' : 'reach'} you</strong><span>Within a few hours to confirm exact pricing.</span></li>
             <li><strong>Book your job</strong><span>Or a free in-person estimate — your call.</span></li>
           </ol>
