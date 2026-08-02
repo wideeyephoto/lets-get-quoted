@@ -434,6 +434,11 @@
    opens from paper is paper. */
 :root[data-theme='light'] .panel,
 :root[data-theme='light'] .feature-card,
+:root[data-theme='light'] .bset-master,
+:root[data-theme='light'] .bset-card,
+:root[data-theme='light'] .bset-section,
+:root[data-theme='light'] .bset-preview,
+:root[data-theme='light'] .bset-recurring,
 :root[data-theme='light'] .schedule-popover-panel,
 :root[data-theme='light'] .schedule-crew-picker-panel,
 :root[data-theme='light'] .schedule-crew-card-panel,
@@ -5010,6 +5015,9 @@ li + li { margin-top: 0.45rem; }
 .week-glance-job strong { font-size: .78rem; line-height: 1.25; }
 .week-glance-job span { font-size: .68rem; color: var(--mute-t55); }
 .week-glance-job .week-glance-crew { flex-shrink: 0; min-width: 1.35rem; padding: .12rem .28rem; border: 1px solid rgba(120,220,150,.45); border-radius: 999px; background: rgba(120,220,150,.14); color: var(--ink-green-1); font-size: .58rem; font-weight: 800; line-height: 1.2; text-align: center; letter-spacing: .02em; }
+/* 9px initials on a green pill — the smallest text in the product, so the family
+   ink is not deep enough for it and it takes the next value down. */
+:root[data-theme='light'] .week-glance-job .week-glance-crew { border-color: #1f9d63; background: #e4f4ea; color: #0c5c34; }
 .week-glance-empty { margin: 0; font-size: .72rem; color: var(--mute-t35); }
 @media (max-width: 900px) {
   .week-glance-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
@@ -5162,6 +5170,12 @@ li + li { margin-top: 0.45rem; }
    "dimmed" on navy reads as "nearly gone" on white. Disabled controls are
    exempt from the contrast rule, but they still have to be findable. */
 :root[data-theme='light'] .btn:disabled { opacity: 0.72; }
+/* .btn.secondary and .btn.ghost never declare a colour, so they ride the UA's
+   `buttontext` — which is correct until the button is disabled, at which point
+   the UA substitutes its own grey. Under `color-scheme: light` that grey is
+   rgba(16,16,16,.3), landing at 1.98:1 BEFORE the opacity above is applied.
+   Give it the app's ink and let the opacity be the only thing dimming it. */
+:root[data-theme='light'] .btn:disabled:not(.primary):not(.qb):not(.fun) { color: var(--text); }
 button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 
 .panel {
@@ -7611,6 +7625,15 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
   font-family: inherit;
 }
 .status-tab.active, .tab.active { background: #f7f7f2; color: var(--bg-2); border-color: transparent; }
+/* The selected tab is an INVERSION — a pale pill carrying the ground's colour as
+   its text. `--bg-2` is what makes that work, and on a light sheet --bg-2 is
+   white, so the pill went cream-on-white with white text at 1.07:1: the one tab
+   you cannot read is the one you are on. Invert it the other way instead. */
+:root[data-theme='light'] .status-tab.active,
+:root[data-theme='light'] .tab.active {
+  background: #16202b;
+  color: #ffffff;
+}
 
 .job-list { display: flex; flex-direction: column; gap: 0.7rem; margin-top: 1rem; }
 .job-row {
@@ -11386,6 +11409,12 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   background: rgba(3, 10, 18, 0.62);
   text-align: center;
 }
+/* A near-black fill inside a white sheet is a slab, not a lift — and the label
+   on it is the sheet's own near-black ink. */
+:root[data-theme='light'] .es-earnings {
+  border-color: #e6d0b4;
+  background: #fff8f0;
+}
 .es-earnings-glow {
   position: absolute; inset: -40% -20% auto; height: 150px; pointer-events: none;
   background: radial-gradient(closest-side, rgba(255, 122, 33, 0.32), transparent 70%);
@@ -12900,6 +12929,19 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
    uses it, or "on" stops meaning anything.
 =========================================================================== */
 
+/* Booking and Quick Stops declare their own surface palette, which is why they
+   were the last two screens still dark under Harbour: a local --bset-card:
+   rgba(10,20,33,.92) wins over anything the flip has to say. The cards
+   themselves are in THE FLIP's selector list above, so they carry the sheet's
+   tokens; these are the inner surfaces and rules that sit on top of them. */
+:root[data-theme='light'] .bset {
+  --bset-page: #eef2f7;
+  --bset-card: #ffffff;
+  --bset-inner: rgba(17, 27, 41, 0.035);
+  --bset-line: #dfe4ea;
+  --bset-line-strong: #c9d2de;
+}
+
 .bset {
   --bset-page: #050b14;
   --bset-card: rgba(10, 20, 33, 0.92);
@@ -13090,6 +13132,10 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 .bset-card {
   display: grid;
   gap: 0.25rem;
+  /* The card holds a hostname, and a hostname has no spaces to break on — a
+     long subdomain ran straight out of the card and onto the page. */
+  min-width: 0;
+  overflow-wrap: anywhere;
   padding: 1.1rem 1.15rem 0.9rem;
   border: 1px solid var(--bset-line);
   border-radius: 16px;

@@ -6,6 +6,8 @@
 import { computeMargin, type Cost, type Job, type JobStatus } from '@/lib/jobs';
 import type { CrewMember } from '@/lib/crew';
 import type { Lead, LeadSource, LeadStatus } from '@/lib/leads';
+import type { CashEvent } from '@/lib/cash-forecast';
+import type { ScheduledPayment } from '@/lib/cash-forecast-data';
 
 export const DEMO_ACCOUNT_ID = 'demo-account';
 export const DEMO_COMPANY_NAME = 'Evergreen Lawn & Landscape';
@@ -230,4 +232,192 @@ export const DEMO_NAV_COUNTS = {
   leads: DEMO_LEADS.filter((lead) => lead.source === 'website_form' && lead.status === 'new').length,
   jobs: DEMO_JOBS.filter((job) => job.status === 'new_lead').length,
   schedule: DEMO_JOBS.filter((job) => job.status !== 'archived' && !job.scheduled_for).length,
+} as const;
+
+// --- Cash flow ----------------------------------------------------------------
+// The forecast page is handed a list of dated money movements and does the rest
+// in the browser, so the demo only has to supply the list. Wherever a number can
+// be DERIVED from the jobs above it is, for the same reason DEMO_NAV_COUNTS is
+// derived: a demo whose pages quietly disagree with each other is worse than one
+// with fewer pages.
+
+/** Payroll for five crew across a 40-hour week, at the rates on the roster. */
+const DEMO_WEEKLY_PAYROLL = Math.round(
+  DEMO_CREW.filter((member) => member.active).reduce((sum, member) => sum + (member.hourly_rate ?? 0) * 38, 0),
+);
+
+export const DEMO_CASH_BILLS: ScheduledPayment[] = [
+  { id: 'bill-1', label: 'Shop rent', amount: 2400, direction: 'out', category: 'bill', dueDate: dateKeyFromNow(6), recurrence: 'monthly', endsOn: null, confirmed: true, active: true, note: null },
+  { id: 'bill-2', label: 'Truck & equipment loan', amount: 1180, direction: 'out', category: 'loan', dueDate: dateKeyFromNow(12), recurrence: 'monthly', endsOn: null, confirmed: true, active: true, note: '2022 F-350 and the mini skid' },
+  { id: 'bill-3', label: 'General liability insurance', amount: 640, direction: 'out', category: 'bill', dueDate: dateKeyFromNow(19), recurrence: 'monthly', endsOn: null, confirmed: true, active: true, note: null },
+  { id: 'bill-4', label: 'Quarterly sales tax', amount: 3150, direction: 'out', category: 'tax', dueDate: dateKeyFromNow(27), recurrence: 'once', endsOn: null, confirmed: true, active: true, note: 'Q3 filing' },
+  { id: 'bill-5', label: 'Fuel & yard waste disposal', amount: 890, direction: 'out', category: 'materials', dueDate: dateKeyFromNow(9), recurrence: 'monthly', endsOn: null, confirmed: false, active: true, note: 'Averaged from the last three months' },
+  { id: 'bill-6', label: 'Winter equipment storage', amount: 450, direction: 'out', category: 'bill', dueDate: dateKeyFromNow(40), recurrence: 'monthly', endsOn: null, confirmed: true, active: false, note: 'Paused until November' },
+];
+
+function cashEvent(
+  id: string,
+  offset: number,
+  label: string,
+  detail: string,
+  amount: number,
+  kind: CashEvent['kind'],
+  extra: Partial<Pick<CashEvent, 'confirmed' | 'slips' | 'repeating' | 'href'>> = {},
+): CashEvent {
+  return {
+    id,
+    dateKey: dateKeyFromNow(offset),
+    label,
+    detail,
+    amount,
+    kind,
+    confirmed: extra.confirmed ?? true,
+    slips: extra.slips ?? false,
+    repeating: extra.repeating ?? false,
+    href: extra.href ?? null,
+  };
+}
+
+/** Payroll every second Friday, which is what DEMO_PAYROLL_MODE says happens. */
+const DEMO_PAYROLL_EVENTS: CashEvent[] = [3, 17, 31, 45].map((offset, index) =>
+  cashEvent(
+    `payroll-${index}`,
+    offset,
+    'Crew payroll',
+    index === 0 ? 'Approved hours · 4 crew' : 'Projected from your recent periods',
+    -DEMO_WEEKLY_PAYROLL * 2,
+    'payroll',
+    { confirmed: index === 0, repeating: true, href: '/demo/payroll' },
+  ),
+);
+
+/** Money in from the jobs already on the calendar, less the deposit collected. */
+const DEMO_JOB_INCOME: CashEvent[] = DEMO_JOBS.filter(
+  (job) => job.scheduled_for && (job.status === 'in_progress' || job.status === 'complete'),
+)
+  .filter((job) => {
+    const offset = Math.round((new Date(job.scheduled_for as string).getTime() - Date.now()) / 86400000);
+    return offset >= -2 && offset <= 60;
+  })
+  .map((job, index) => {
+    const offset = Math.round((new Date(job.scheduled_for as string).getTime() - Date.now()) / 86400000);
+    const balance = job.quoted_amount - Math.round(job.quoted_amount * 0.3);
+    return cashEvent(
+      `job-in-${index}`,
+      offset + 9,
+      `${job.client_name} — final`,
+      `${job.ref} · balance after deposit`,
+      balance,
+      'final',
+      { confirmed: false, slips: true, href: `/demo/jobs/${job.id}` },
+    );
+  });
+
+export const DEMO_CASH_EVENTS: CashEvent[] = [
+  ...DEMO_PAYROLL_EVENTS,
+  ...DEMO_JOB_INCOME,
+  cashEvent('bill-rent', 6, 'Shop rent', 'Bill · monthly', -2400, 'bill', { repeating: true }),
+  cashEvent('bill-loan', 12, 'Truck & equipment loan', 'Loan · monthly', -1180, 'loan', { repeating: true }),
+  cashEvent('bill-ins', 19, 'General liability insurance', 'Bill · monthly', -640, 'bill', { repeating: true }),
+  cashEvent('bill-tax', 27, 'Quarterly sales tax', 'Tax · Q3 filing', -3150, 'tax'),
+  cashEvent('bill-fuel', 9, 'Fuel & yard waste disposal', 'Materials · averaged', -890, 'materials', { confirmed: false, repeating: true }),
+  cashEvent('mat-1', 1, 'Green Valley Landscape Supply', 'Materials · Patterson patio', -5580, 'materials'),
+  cashEvent('mat-2', 8, 'Stone & paver order', 'Materials · Alvarez walkway', -2960, 'materials', { confirmed: false }),
+  cashEvent('rec-1', 4, 'Maintenance plans', 'Recurring · 34 properties', 4420, 'recurring', { repeating: true, href: '/demo/recurring' }),
+  cashEvent('rec-2', 18, 'Maintenance plans', 'Recurring · 34 properties', 4420, 'recurring', { repeating: true, href: '/demo/recurring' }),
+  cashEvent('rec-3', 32, 'Maintenance plans', 'Recurring · 34 properties', 4420, 'recurring', { repeating: true, href: '/demo/recurring' }),
+  cashEvent('dep-1', 2, 'Harmon deposit', 'J-1013 · 30% to start', 6840, 'deposit', { confirmed: false, slips: true, href: '/demo/jobs/job-13' }),
+  cashEvent('dep-2', 11, 'Bishop deposit', 'J-1012 · 30% to start', 1620, 'deposit', { confirmed: false, slips: true, href: '/demo/jobs/job-12' }),
+  cashEvent('inst-1', 14, 'Sutton payment plan', '2 of 3 · $1,200 each', 1200, 'installment', { repeating: true }),
+  cashEvent('inst-2', 44, 'Sutton payment plan', '3 of 3 · $1,200 each', 1200, 'installment', { repeating: true }),
+].sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+
+export const DEMO_CASH_SETTINGS = {
+  balance: 18_400,
+  buffer: 5_000,
+  creditLine: 10_000,
+  /** Days between sending a payment request and the money landing. */
+  paymentLagDays: 6,
+} as const;
+
+// --- Instant online booking ---------------------------------------------------
+export const DEMO_BOOKING = {
+  enabled: true,
+  weekdays: [1, 2, 3, 4, 5],
+  windows: ['08:00', '11:00', '14:00'],
+  maxPerDay: 3,
+  leadDays: 1,
+  timezone: 'America/Detroit',
+  url: `https://${DEMO_SITE_HOST}/book`,
+  openDayCount: 5,
+  openWindowCount: 11,
+  /** Value gate — small jobs still come through as a request to price. */
+  instantBookMinAmount: 400,
+  radiusMiles: 15,
+  blocks: [
+    { id: 'blk-1', dateKey: dateKeyFromNow(4), reason: 'Equipment service day' },
+    { id: 'blk-2', dateKey: dateKeyFromNow(23), reason: 'Crew training' },
+  ],
+  pending: [
+    { id: 'bk-1', name: 'Alicia Moreno', address: '212 Sheffield Ave, Royal Oak, MI', service: 'Spring cleanup & mulch', requestedFor: dateKeyFromNow(3), window: '8:00 – 10:00 AM', requestedHoursAgo: 4, estimate: 780 },
+    { id: 'bk-2', name: 'Devin Walsh', address: '77 Kenwood St, Berkley, MI', service: 'Sod repair, side yard', requestedFor: dateKeyFromNow(6), window: '2:00 – 4:00 PM', requestedHoursAgo: 19, estimate: 1450 },
+  ],
+} as const;
+
+// --- Quick Stops --------------------------------------------------------------
+export const DEMO_QUICK_STOPS = {
+  enabled: true,
+  /** Cents, like the real thing — Stripe never sees a float. */
+  feeCents: 4900,
+  radiusMiles: 6,
+  cutoffTime: '14:00',
+  maxPerDay: 2,
+  todayTaken: 1,
+  requests: [
+    {
+      id: 'qs-1', name: 'Priya Shah', phone: '(248) 555-0223', address: '6 Willowbrook Ln, Ferndale, MI',
+      what: 'Mower threw a belt into the hedge — need it cleared before a showing at 5.',
+      status: 'accepted' as const, minutesAgo: 38, detourMinutes: 7, feeCents: 4900, slot: '3:15 – 3:45 PM',
+    },
+    {
+      id: 'qs-2', name: 'Nathan Boyd', phone: '(248) 555-0288', address: '431 Lincoln Ave, Royal Oak, MI',
+      what: 'One dead shrub replaced — same street as your Rosewood job.',
+      status: 'waiting' as const, minutesAgo: 11, detourMinutes: 3, feeCents: 4900, slot: null,
+    },
+    {
+      id: 'qs-3', name: 'Colleen Barr', phone: '(248) 555-0291', address: '18 Farnum Rd, Madison Heights, MI',
+      what: 'Full backyard regrade, wants it started today.',
+      status: 'declined' as const, minutesAgo: 96, detourMinutes: 21, feeCents: 4900, slot: null,
+      declineReason: 'Too big for a stop — sent back as a normal quote request',
+    },
+  ],
+  /** The two halves of the demand panel: what you screened, and what you turned away. */
+  demand: {
+    windowDays: 90,
+    asked: 42,
+    accepted: 27,
+    declined: 15,
+    earned: 132_300,
+    refusedReasons: [
+      { reason: 'Outside your radius', count: 6 },
+      { reason: 'Asked after your cutoff', count: 5 },
+      { reason: 'Day was already full', count: 3 },
+      { reason: 'Too big for a stop', count: 1 },
+    ],
+  },
+} as const;
+
+// --- Plan my day --------------------------------------------------------------
+export const DEMO_ROUTE = {
+  dateKey: dateKeyFromNow(0),
+  startAddress: '4820 Coolidge Hwy, Royal Oak, MI',
+  workdayStart: '07:30',
+  totalDriveMinutes: 47,
+  totalMiles: 21.4,
+  stops: [
+    { id: 'job-9', order: 1, client: 'Renee Patterson', address: '5 Rosewood Ct, Berkley, MI', arrive: '7:30 AM', hours: 6, driveMinutes: 9, miles: 3.8, kind: 'job' as const, crew: ['Mike Torres', 'Jamal Reed'] },
+    { id: 'qs-1', order: 2, client: 'Priya Shah', address: '6 Willowbrook Ln, Ferndale, MI', arrive: '3:15 PM', hours: 0.5, driveMinutes: 12, miles: 5.1, kind: 'quick-stop' as const, crew: ['Mike Torres'] },
+    { id: 'supply-1', order: 3, client: 'Green Valley Landscape Supply', address: '2900 Hilton Rd, Ferndale, MI', arrive: '4:05 PM', hours: 0.4, driveMinutes: 8, miles: 3.2, kind: 'supply' as const, crew: [] },
+    { id: 'job-10', order: 4, client: 'Diego Alvarez', address: '88 Cloverdale Dr, Clawson, MI', arrive: '4:45 PM', hours: 1.5, driveMinutes: 18, miles: 9.3, kind: 'job' as const, crew: ['Sam Whitaker'] },
+  ],
 } as const;

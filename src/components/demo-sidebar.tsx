@@ -1,7 +1,10 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import ActionIcon from './action-icon';
+import ThemeToggle from './theme-toggle';
 import { useAppShell } from './app-shell-provider';
 import { NavIcon } from './nav-icons';
 import { DEMO_COMPANY_NAME, DEMO_SITE_HOST, DEMO_NAV_COUNTS } from '@/lib/demo-data';
@@ -15,6 +18,20 @@ const COUNT_BY_HREF: Record<string, number> = {
   '/demo/schedule': DEMO_NAV_COUNTS.schedule,
 };
 
+// The two automations that can put work on the calendar without the owner
+// touching anything. The live rail says which way each is set from wherever you
+// are standing; the sample account has both on, so the demo says so too.
+const STATE_BY_HREF: Record<string, { label: string; title: string }> = {
+  '/demo/schedule/booking': {
+    label: 'ON',
+    title: 'Online booking is live — customers can grab an open slot from your website',
+  },
+  '/demo/quick-stops': {
+    label: 'ON',
+    title: 'Quick Stops is ON — customers can ask to be squeezed into today',
+  },
+};
+
 type DemoItem = {
   // `icon` is the /dashboard/* key into the shared icon set; `href` is where the
   // row actually links. Every row now has a real demo page — the whole app is
@@ -23,8 +40,12 @@ type DemoItem = {
   label: string;
   href: string;
   preview?: boolean;
+  /** Quick Stops wears its own wordmark in the rail rather than an icon + label. */
+  brand?: boolean;
 };
 
+// Mirrors NAV_GROUPS in app-shell.tsx. A row that sits somewhere else here would
+// be showing a prospect a product that does not exist.
 const GROUPS: { label: string; items: DemoItem[] }[] = [
   {
     label: 'Work',
@@ -32,19 +53,23 @@ const GROUPS: { label: string; items: DemoItem[] }[] = [
       { icon: '/dashboard/leads', label: 'Leads', href: '/demo/leads' },
       { icon: '/dashboard/jobs', label: 'Jobs', href: '/demo/jobs' },
       { icon: '/dashboard/schedule', label: 'Schedule', href: '/demo/schedule' },
+      { icon: '/dashboard/schedule/booking', label: 'Online Booking', href: '/demo/schedule/booking' },
+      { icon: '/dashboard/quick-stops', label: 'Quick Stops', href: '/demo/quick-stops', brand: true },
       { icon: '/dashboard/clients', label: 'Clients', href: '/demo/clients' },
     ],
   },
   {
     label: 'Team',
+    // Hours & pay is a TAB inside Crew & Labor in the live app, not its own rail
+    // row — /demo/payroll still exists and the Crew page links to it.
     items: [
       { icon: '/dashboard/crew', label: 'Crew & Labor', href: '/demo/crew' },
-      { icon: '/dashboard/crew', label: 'Hours & pay', href: '/demo/payroll' },
     ],
   },
   {
     label: 'Money',
     items: [
+      { icon: '/dashboard/cash-flow', label: 'Cash flow', href: '/demo/cash-flow' },
       { icon: '/dashboard/recurring', label: 'Recurring', href: '/demo/recurring' },
       { icon: '/dashboard/services', label: 'Price book', href: '/demo/services' },
       { icon: '/dashboard/insights', label: 'Insights', href: '/demo/insights' },
@@ -74,21 +99,49 @@ export default function DemoSidebar() {
   const pathname = usePathname();
   const { isNavOpen, closeNav, toggleNav } = useAppShell();
 
-  const isActive = (href: string) => (href === '/demo' ? pathname === '/demo' : pathname.startsWith(href));
+  // `/demo/schedule` would otherwise light up for /demo/schedule/booking and
+  // /demo/schedule/plan as well, so its children have to be excluded by name.
+  const SCHEDULE_CHILDREN = ['/demo/schedule/booking', '/demo/schedule/plan'];
+  const isActive = (href: string) => {
+    if (href === '/demo') return pathname === '/demo';
+    if (href === '/demo/schedule') {
+      return pathname.startsWith(href) && !SCHEDULE_CHILDREN.some((child) => pathname.startsWith(child));
+    }
+    return pathname.startsWith(href);
+  };
 
-  const renderItem = (item: DemoItem, extraClass = '') => (
-    <Link
-      key={item.label}
-      href={item.href}
-      className={`sidenav-link${extraClass ? ` ${extraClass}` : ''}${item.preview ? ' preview' : ''}${!item.preview && isActive(item.href) ? ' active' : ''}`}
-      title={item.preview ? 'Available in the full app — create a free account to use it' : undefined}
-    >
-      <NavIcon href={item.icon} />
-      <span>{item.label}</span>
-      {COUNT_BY_HREF[item.href] ? <span className="sidenav-count">{COUNT_BY_HREF[item.href]}</span> : null}
-      {item.preview ? <LockGlyph /> : null}
-    </Link>
-  );
+  const renderItem = (item: DemoItem, extraClass = '') => {
+    const state = STATE_BY_HREF[item.href];
+    return (
+      <Link
+        key={item.label}
+        href={item.href}
+        className={`sidenav-link${extraClass ? ` ${extraClass}` : ''}${item.preview ? ' preview' : ''}${!item.preview && isActive(item.href) ? ' active' : ''}`}
+        // On the row as well as the pill, so the row can carry the state's
+        // colour without CSS reaching into a child with :has().
+        data-state={state ? 'on' : undefined}
+        title={item.preview ? 'Available in the full app — create a free account to use it' : undefined}
+      >
+        {item.brand ? (
+          <Image
+            src="/brand/quick-stops-wordmark.png"
+            alt={item.label}
+            width={440}
+            height={100}
+            className="sidenav-brandmark"
+          />
+        ) : (
+          <>
+            <NavIcon href={item.icon} />
+            <span>{item.label}</span>
+          </>
+        )}
+        {state ? <span className="sidenav-state" data-state="on" title={state.title}>{state.label}</span> : null}
+        {COUNT_BY_HREF[item.href] ? <span className="sidenav-count">{COUNT_BY_HREF[item.href]}</span> : null}
+        {item.preview ? <LockGlyph /> : null}
+      </Link>
+    );
+  };
 
   const brand = (
     <span className="sidenav-wordmark">
@@ -117,9 +170,21 @@ export default function DemoSidebar() {
 
         <div className="sidenav-lead">
           <p className="sidenav-bizname">{DEMO_COMPANY_NAME}</p>
-          <Link href="/login" className="sidenav-new" title="Create a free account to add work">
-            <span className="sidenav-new-plus" aria-hidden="true">+</span> New
-          </Link>
+          {/* The two things a contractor starts the day with, on one row — same
+              pairing and same widths as the live rail. */}
+          <div className="sidenav-actions">
+            <Link
+              href="/demo/schedule/plan"
+              className={`action-btn action-btn--plan sidenav-plan${pathname.startsWith('/demo/schedule/plan') ? ' active' : ''}`}
+              title="Order today's stops into the shortest sensible route"
+            >
+              <ActionIcon name="plan" />
+              Plan my day
+            </Link>
+            <Link href="/login" className="sidenav-new" title="Create a free account to add work">
+              <span className="sidenav-new-plus" aria-hidden="true">+</span> New
+            </Link>
+          </div>
         </div>
 
         <Link href="/demo/sites" className="website-nav-badge sidenav-website live" title="This contractor's website is live">
@@ -144,6 +209,10 @@ export default function DemoSidebar() {
               the app as, so a row sitting somewhere else here would be showing
               them a product that does not exist. */}
           {renderItem({ icon: '/dashboard', label: 'Dashboard', href: '/demo' }, 'sidenav-bottom')}
+          {/* The theme is a real setting, not a demo prop — the cookie it writes
+              is the same one the app reads, so a prospect who prefers light can
+              see the whole product that way before signing up. */}
+          <ThemeToggle />
         </nav>
 
         <div className="sidenav-foot">
