@@ -53,6 +53,12 @@
      genuinely different greens here — a green bright enough to read on navy is
      a highlighter pen on white. */
   --fresh: #4fd39a;
+  /* The counterpart to --tint. Where --tint is "the colour that lifts a surface
+     off this theme's ground", --shade is "the colour that pushes one behind it"
+     — shadows, scrims, wells. On a dark ground that is black; on a light one
+     black reads as soot, so it becomes the palette's own deep navy, which at
+     the same alpha lands as a shadow rather than a smudge. */
+  --shade: 0, 0, 0;
   --shadow-strong: rgba(0, 0, 0, 0.55);
   --shadow-soft: rgba(0, 0, 0, 0.32);
   /* The page ground, and the chrome (rail / top bar) that sits a shade apart
@@ -93,6 +99,7 @@
   --muted: #47566a;
   --muted-2: #5c6b80;
   --fresh: #0d7a52;
+  --shade: 24, 36, 54;
   --shadow-strong: rgba(17, 27, 41, 0.18);
   --shadow-soft: rgba(17, 27, 41, 0.1);
   --ground-1: #eef1f7;
@@ -1551,7 +1558,7 @@ p { line-height: 1.6; color: var(--muted); }
   box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
 }
 .btn.fun:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 6px 20px rgba(236, 72, 153, 0.45); }
-ul { padding-left: 1.2rem; color: #d8deeb; }
+ul { padding-left: 1.2rem; color: var(--muted); }
 li + li { margin-top: 0.45rem; }
 
 .hero-panel {

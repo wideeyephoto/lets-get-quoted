@@ -20,7 +20,7 @@
   min-height: 34rem;
   border: 2px solid rgba(255, 122, 41, 0.32);
   border-radius: 18px;
-  background: rgba(10, 20, 33, 0.92);
+  background: rgba(var(--panel-rgb), 0.92);
   overflow: hidden;
 }
 
@@ -28,7 +28,7 @@
   padding: 1.15rem 1.3rem 1.1rem;
   background:
     radial-gradient(120% 140% at 0% 0%, rgba(255, 122, 41, 0.1), transparent 55%),
-    rgba(255, 255, 255, 0.015);
+    rgba(var(--tint), 0.015);
 }
 
 /* --- cover photo --- */
@@ -49,8 +49,8 @@
   border: 5px solid #000;
   border-radius: 18px;
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
-    0 18px 34px rgba(0, 0, 0, 0.5);
+    inset 0 0 0 1px rgba(var(--tint), 0.12),
+    0 18px 34px rgba(var(--shade), 0.5);
   background: #05080d;
 }
 
@@ -73,7 +73,7 @@
   inset: 0;
   background: repeating-linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.05) 0 2px,
+    rgba(var(--tint), 0.05) 0 2px,
     transparent 2px 11px
   );
 }
@@ -82,8 +82,8 @@
   position: relative;
   width: 42%;
   height: 42%;
-  color: rgba(255, 255, 255, 0.82);
-  filter: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.45));
+  color: rgba(var(--tint), 0.82);
+  filter: drop-shadow(0 3px 10px rgba(var(--shade), 0.45));
 }
 
 .coverImg {
@@ -107,6 +107,12 @@
   50% { opacity: 0.72; }
 }
 
+/* Literal black and literal white, in BOTH themes, on purpose: this badge sits
+   on the job's photo, not on the page. A photo is whatever the camera saw, so
+   the only reliable way to keep a count readable over it is a dark scrim and
+   white ink — and a scrim that lightened with the theme would leave white text
+   on a pale wash over a bright photo. The surface it belongs to is the picture,
+   which does not have a light mode. */
 .coverCount {
   position: absolute;
   right: 0.45rem;
@@ -153,7 +159,7 @@
   font-size: 0.58em;
   font-weight: 600;
   letter-spacing: 0;
-  color: rgba(147, 164, 184, 0.95);
+  color: rgba(var(--grey-5), 0.95);
   white-space: nowrap;
 }
 
@@ -170,7 +176,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(147, 164, 184, 0.9);
+  color: rgba(var(--grey-5), 0.9);
 }
 .heroMeta dd { margin: 0.1rem 0 0; font-size: 0.92rem; font-weight: 600; }
 
@@ -186,9 +192,9 @@
   gap: 0.1rem;
   flex: 1 1 6.2rem;
   padding: 0.55rem 0.7rem;
-  border: 1px solid rgba(148, 176, 214, 0.16);
+  border: 1px solid rgba(var(--grey-1), 0.16);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--tint), 0.03);
 }
 
 .heroStats small {
@@ -196,7 +202,7 @@
   font-weight: 650;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: rgba(147, 164, 184, 0.9);
+  color: rgba(var(--grey-5), 0.9);
 }
 
 .heroStats strong { font-size: 1.05rem; font-weight: 750; letter-spacing: -0.01em; }
@@ -235,8 +241,8 @@
   gap: 0.15rem;
   padding: 0 1.3rem;
   overflow-x: auto;
-  border-bottom: 1px solid rgba(148, 176, 214, 0.16);
-  background: rgba(255, 255, 255, 0.012);
+  border-bottom: 1px solid rgba(var(--grey-1), 0.16);
+  background: rgba(var(--tint), 0.012);
 }
 
 .tab {
@@ -245,7 +251,7 @@
   border: 0;
   border-bottom: 2px solid transparent;
   background: none;
-  color: rgba(147, 164, 184, 0.9);
+  color: rgba(var(--grey-5), 0.9);
   font: inherit;
   font-size: 0.86rem;
   font-weight: 650;
@@ -254,9 +260,9 @@
   transition: color 0.15s ease, border-color 0.15s ease;
 }
 
-.tab:hover { color: #e8eef6; }
+.tab:hover { color: var(--muted); }
 .tab:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.7); outline-offset: -2px; }
-.tabOn { color: #fff; border-bottom-color: #ff7a29; }
+.tabOn { color: var(--text); border-bottom-color: #ff7a29; }
 
 .tabBody { padding: 1.1rem 1.3rem; min-height: 12rem; }
 
@@ -269,9 +275,9 @@
 
 .card {
   padding: 0.9rem 1rem;
-  border: 1px solid rgba(148, 176, 214, 0.14);
+  border: 1px solid rgba(var(--grey-1), 0.14);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.025);
+  background: rgba(var(--tint), 0.025);
   min-width: 0;
 }
 
@@ -281,7 +287,7 @@
   font-weight: 700;
   letter-spacing: 0.11em;
   text-transform: uppercase;
-  color: rgba(147, 164, 184, 0.95);
+  color: rgba(var(--grey-5), 0.95);
 }
 
 .cardLink {
@@ -296,11 +302,11 @@
 
 .defs { display: grid; gap: 0.45rem; margin: 0; }
 .defs > div { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); gap: 0.5rem; align-items: baseline; }
-.defs dt { font-size: 0.76rem; color: rgba(147, 164, 184, 0.9); }
+.defs dt { font-size: 0.76rem; color: rgba(var(--grey-5), 0.9); }
 .defs dd { margin: 0; font-size: 0.87rem; font-weight: 600; overflow-wrap: anywhere; }
 
 .scope { margin: 0; font-size: 0.87rem; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
-.muted { margin: 0; font-size: 0.85rem; color: rgba(147, 164, 184, 0.9); line-height: 1.5; }
+.muted { margin: 0; font-size: 0.85rem; color: rgba(var(--grey-5), 0.9); line-height: 1.5; }
 .muted a { color: #ff7a29; text-decoration: none; }
 .error { margin: 0; font-size: 0.86rem; color: #ff9a8a; }
 
@@ -317,8 +323,8 @@
   width: 1.55rem;
   height: 1.55rem;
   border-radius: 50%;
-  border: 1px solid rgba(148, 176, 214, 0.22);
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(var(--grey-1), 0.22);
+  background: rgba(var(--tint), 0.04);
   font-size: 0.72rem;
   font-weight: 750;
   color: #ff9d5c;
@@ -326,13 +332,13 @@
 
 .feed li > span:last-child { display: grid; gap: 0.05rem; min-width: 0; }
 .feed strong { font-size: 0.85rem; font-weight: 650; }
-.feed small { font-size: 0.74rem; color: rgba(147, 164, 184, 0.85); }
+.feed small { font-size: 0.74rem; color: rgba(var(--grey-5), 0.85); }
 
 .timeline { gap: 0.8rem; }
 .timelineBody { display: grid; gap: 0.15rem; min-width: 0; }
 .timelineBody strong { font-size: 0.9rem; font-weight: 650; }
-.timelineBody p { margin: 0; font-size: 0.83rem; color: rgba(200, 212, 226, 0.85); line-height: 1.5; overflow-wrap: anywhere; }
-.timelineBody small { font-size: 0.72rem; color: rgba(147, 164, 184, 0.85); }
+.timelineBody p { margin: 0; font-size: 0.83rem; color: rgba(var(--grey-4), 0.85); line-height: 1.5; overflow-wrap: anywhere; }
+.timelineBody small { font-size: 0.72rem; color: rgba(var(--grey-5), 0.85); }
 
 /* --- checklist --- */
 
@@ -341,7 +347,7 @@
   height: 1.5rem;
   margin: 0 0 0.8rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--tint), 0.05);
   overflow: hidden;
 }
 .progress > span { position: absolute; inset: 0 auto 0 0; background: rgba(52, 199, 123, 0.28); }
@@ -363,10 +369,10 @@
   width: 1.15rem;
   height: 1.15rem;
   border-radius: 5px;
-  border: 1px solid rgba(148, 176, 214, 0.35);
+  border: 1px solid rgba(var(--grey-1), 0.35);
   font-size: 0.72rem;
 }
-.taskDone { color: rgba(147, 164, 184, 0.75); text-decoration: line-through; }
+.taskDone { color: rgba(var(--grey-5), 0.75); text-decoration: line-through; }
 .taskDone > span { background: rgba(52, 199, 123, 0.9); border-color: transparent; color: #08131f; }
 
 /* --- photos --- */
@@ -383,7 +389,7 @@
   aspect-ratio: 4 / 3;
   object-fit: cover;
   border-radius: 10px;
-  border: 1px solid rgba(148, 176, 214, 0.16);
+  border: 1px solid rgba(var(--grey-1), 0.16);
 }
 
 /* --- money strip --- */
@@ -393,8 +399,8 @@
   flex-wrap: wrap;
   gap: 0.5rem 1.75rem;
   padding: 0.8rem 1.3rem;
-  border-top: 1px solid rgba(148, 176, 214, 0.16);
-  background: rgba(255, 255, 255, 0.022);
+  border-top: 1px solid rgba(var(--grey-1), 0.16);
+  background: rgba(var(--tint), 0.022);
 }
 
 .moneyStrip > span { display: grid; gap: 0.05rem; }
@@ -403,7 +409,7 @@
   font-weight: 650;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: rgba(147, 164, 184, 0.9);
+  color: rgba(var(--grey-5), 0.9);
 }
 .moneyStrip strong { font-size: 0.98rem; font-weight: 750; }
 .moneyStripEnd { margin-left: auto; text-align: right; }
@@ -415,9 +421,9 @@
   grid-template-rows: auto auto 1fr;
   min-width: 0;
   max-height: 42rem;
-  border: 1px solid rgba(148, 176, 214, 0.16);
+  border: 1px solid rgba(var(--grey-1), 0.16);
   border-radius: 18px;
-  background: rgba(8, 18, 31, 0.82);
+  background: rgba(var(--panel-rgb), 0.82);
   overflow: hidden;
 }
 
@@ -433,10 +439,10 @@
 .listHead span {
   padding: 0.1rem 0.5rem;
   border-radius: 999px;
-  border: 1px solid rgba(148, 176, 214, 0.24);
+  border: 1px solid rgba(var(--grey-1), 0.24);
   font-size: 0.74rem;
   font-weight: 650;
-  color: rgba(147, 164, 184, 0.95);
+  color: rgba(var(--grey-5), 0.95);
 }
 
 .listCols {
@@ -444,12 +450,12 @@
   grid-template-columns: minmax(6.5rem, 1fr) minmax(0, 8.5rem) max-content;
   gap: 0.6rem;
   padding: 0 1rem 0.5rem;
-  border-bottom: 1px solid rgba(148, 176, 214, 0.12);
+  border-bottom: 1px solid rgba(var(--grey-1), 0.12);
   font-size: 0.64rem;
   font-weight: 700;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: rgba(147, 164, 184, 0.8);
+  color: rgba(var(--grey-5), 0.8);
 }
 .listCols > span:last-child { text-align: right; }
 
@@ -472,7 +478,7 @@
   transition: background 0.14s ease, border-color 0.14s ease;
 }
 
-.row:hover { background: rgba(255, 255, 255, 0.04); }
+.row:hover { background: rgba(var(--tint), 0.04); }
 .row:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.7); outline-offset: -2px; }
 
 .rowOn {
@@ -482,7 +488,7 @@
 
 .rowMain { display: grid; gap: 0.1rem; min-width: 0; }
 .rowMain strong { font-size: 0.88rem; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rowMain small { font-size: 0.74rem; color: rgba(147, 164, 184, 0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rowMain small { font-size: 0.74rem; color: rgba(var(--grey-5), 0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .row :global(.status-badge) {
   min-width: 0;
@@ -493,7 +499,7 @@
 }
 
 .rowMoney { display: grid; gap: 0.05rem; text-align: right; font-size: 0.85rem; font-weight: 700; }
-.rowMoney small { font-size: 0.66rem; font-weight: 600; color: rgba(147, 164, 184, 0.85); }
+.rowMoney small { font-size: 0.66rem; font-weight: 600; color: rgba(var(--grey-5), 0.85); }
 
 /* --- leads pipeline ---
    Same pane, same list, same tabs. What differs is what a lead is: no money
@@ -512,15 +518,15 @@
   gap: 0.4rem;
   margin-top: 0.6rem;
   padding-top: 0.7rem;
-  border-top: 1px dashed rgba(148, 176, 214, 0.18);
+  border-top: 1px dashed rgba(var(--grey-1), 0.18);
 }
 
 .quietBtn {
   padding: 0.34rem 0.65rem;
-  border: 1px solid rgba(148, 176, 214, 0.22);
+  border: 1px solid rgba(var(--grey-1), 0.22);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.03);
-  color: rgba(200, 212, 226, 0.9);
+  background: rgba(var(--tint), 0.03);
+  color: rgba(var(--grey-4), 0.9);
   font: inherit;
   font-size: 0.78rem;
   font-weight: 650;
@@ -528,7 +534,7 @@
   transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
 }
 
-.quietBtn:hover { background: rgba(255, 255, 255, 0.07); color: #f0f4f9; }
+.quietBtn:hover { background: rgba(var(--tint), 0.07); color: #f0f4f9; }
 .quietBtn:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.7); outline-offset: 1px; }
 .quietBtn:disabled { opacity: 0.5; cursor: default; }
 
@@ -545,7 +551,7 @@
 
 /* Inside the row's <strong>, so the name/town pair truncates as one string —
    the town is what should be lost first on a narrow list, not half a surname. */
-.rowCity { font-weight: 550; color: rgba(147, 164, 184, 0.9); }
+.rowCity { font-weight: 550; color: rgba(var(--grey-5), 0.9); }
 
 /* Est. value over age, right-aligned and tabular so a column of amounts lines
    up on the decimal rather than wandering. */
@@ -558,7 +564,7 @@
   color: #ffd591;
   font-variant-numeric: tabular-nums;
 }
-.rowValue small { font-size: 0.66rem; font-weight: 600; color: rgba(147, 164, 184, 0.85); }
+.rowValue small { font-size: 0.66rem; font-weight: 600; color: rgba(var(--grey-5), 0.85); }
 
 /* The homeowner's own words. Quoted, because paraphrasing a customer in a CRM
    is how details get lost. */
@@ -592,7 +598,7 @@
 .skeleton > span {
   height: 1.1rem;
   border-radius: 6px;
-  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 37%, rgba(255,255,255,0.04) 63%);
+  background: linear-gradient(90deg, rgba(var(--tint), 0.04) 25%, rgba(var(--tint), 0.08) 37%, rgba(var(--tint), 0.04) 63%);
   background-size: 400% 100%;
   animation: focusShimmer 1.3s ease infinite;
 }
