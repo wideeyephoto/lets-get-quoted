@@ -143,6 +143,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [businessName, setBusinessName] = useState<string | null>(null);
   const [newMenuOpen, setNewMenuOpen] = useState(false);
   const newMenuRef = useRef<HTMLDivElement>(null);
+  const railRef = useRef<HTMLElement>(null);
   const [newQuoteRequestCount, setNewQuoteRequestCount] = useState(0);
   const [jobsNeedingAttentionCount, setJobsNeedingAttentionCount] = useState(0);
   const [unscheduledJobCount, setUnscheduledJobCount] = useState(0);
@@ -204,6 +205,17 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     closeNav();
     setNewMenuOpen(false);
   }, [pathname, closeNav]);
+
+  // In a short viewport the whole rail scrolls rather than just the nav list
+  // (see the max-height rule in globals.css), and the rail is never unmounted —
+  // it is translated off-screen. So a drawer left scrolled halfway down reopens
+  // halfway down, with the wordmark and the business name off the top, which
+  // reads as a broken panel rather than as a remembered position. Opening it is
+  // a fresh look at the whole nav; start at the top. A no-op on tall viewports,
+  // where the rail itself never scrolls.
+  useEffect(() => {
+    if (isNavOpen) railRef.current?.scrollTo({ top: 0 });
+  }, [isNavOpen]);
 
   // Escape closes the mobile nav drawer (it already closes on scrim tap and on
   // navigation) — the keyboard equivalent of tapping the scrim.
@@ -493,7 +505,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
 
         {isNavOpen ? <div className="sidenav-scrim" onClick={closeNav} aria-hidden="true" /> : null}
 
-        <aside id="primary-nav" className={`sidenav${isNavOpen ? ' open' : ''}`} aria-label="Primary">
+        <aside id="primary-nav" ref={railRef} className={`sidenav${isNavOpen ? ' open' : ''}`} aria-label="Primary">
           <Link href={brandHref} className="sidenav-brand" aria-label="Let&apos;s Get Quoted home">
             <span className="sidenav-wordmark">Let&apos;s Get <span>Quoted</span></span>
           </Link>
@@ -686,7 +698,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
 
         {isNavOpen ? <div className="sidenav-scrim" onClick={closeNav} aria-hidden="true" /> : null}
 
-        <aside id="primary-nav" className={`sidenav${isNavOpen ? ' open' : ''}${!isLoggedIn ? ' marketing-locked' : ''}`} aria-label="Primary">
+        <aside id="primary-nav" ref={railRef} className={`sidenav${isNavOpen ? ' open' : ''}${!isLoggedIn ? ' marketing-locked' : ''}`} aria-label="Primary">
           <Link href={brandHref} className="sidenav-brand" aria-label="Let&apos;s Get Quoted home">{brand}</Link>
 
           {/* Openly accessible — try before you sign up. */}

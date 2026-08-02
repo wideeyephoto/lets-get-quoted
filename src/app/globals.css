@@ -883,6 +883,48 @@ h3 {
   .app-main-sidenav .wide-shell { min-height: calc(100vh - 4.4rem); }
 }
 
+/* A SHORT viewport — a phone held sideways, or a laptop window dragged down —
+   leaves the nav list almost nothing. The rail pins four things around it (the
+   wordmark, the business name + Plan my day / New, the Website chip, and the
+   Account / Stripe footer) and they cost ~330px whatever the screen does.
+   Measured on the real rail:
+
+     852x393 landscape drawer   list gets  32px — NOT ONE full row of sixteen
+     932x430 landscape rail     list gets 106px — one row of sixteen
+     430x932 portrait           list gets 559px — eleven rows
+
+   Height, not width, is the thing that decides this, so it is deliberately not
+   folded into the 900px breakpoint above: a landscape phone can land either
+   side of that line, and a short laptop window is on the far side of it.
+
+   Below 660px the pinned chrome is more than half the rail — at which point it
+   has stopped being chrome and become the content. There the rail scrolls as
+   ONE piece: the header scrolls up out of the way, the footer rises from below,
+   and the whole nav is reachable in a single gesture. Above 660px nothing
+   changes at all — brand and account footer stay exactly where they were. */
+@media (max-height: 660px) {
+  .sidenav {
+    overflow-y: auto;
+    /* The "+ New" menu is 12.5rem inside a 15.25rem rail, so losing the
+       horizontal axis costs it nothing — and overflow-y alone would compute
+       overflow-x to `auto` anyway, which is a phantom scrollbar. */
+    overflow-x: hidden;
+    /* The drawer sits over a scrollable page; without this, flicking past the
+       end of the nav starts scrolling the dashboard behind it. */
+    overscroll-behavior: contain;
+  }
+  /* Nothing shrinks to fit — the rail scrolls instead. Listed twice so the
+     second selector outranks `.sidenav-nav`'s own `flex: 1 1 auto`, which is
+     what was making the list absorb the squeeze and pin everything else. */
+  .sidenav > * { flex: none; }
+  /* `min-height: 0` up there can stay — it only ever mattered because the list
+     was allowed to shrink, and `flex: none` is what stops that. */
+  .sidenav > .sidenav-nav {
+    flex: none;
+    overflow: visible;
+  }
+}
+
 /* ===== Settings tabbed sub-nav ("submenus") =====
    A sticky segmented bar over the settings sections. Panels stay mounted and
    toggle via the [hidden] attribute, so the server-action forms inside keep
