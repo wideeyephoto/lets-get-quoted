@@ -134,13 +134,16 @@ export default function DemoSidebar() {
         </Link>
 
         <nav className="sidenav-nav" aria-label="Demo dashboard">
-          {renderItem({ icon: '/dashboard', label: 'Dashboard', href: '/demo' }, 'sidenav-top')}
           {GROUPS.map((group) => (
             <div className="sidenav-group" key={group.label}>
               <p className="sidenav-glabel">{group.label}</p>
               {group.items.map((item) => renderItem(item))}
             </div>
           ))}
+          {/* Last, matching the real rail. The demo is what a prospect is shown
+              the app as, so a row sitting somewhere else here would be showing
+              them a product that does not exist. */}
+          {renderItem({ icon: '/dashboard', label: 'Dashboard', href: '/demo' }, 'sidenav-bottom')}
         </nav>
 
         <div className="sidenav-foot">

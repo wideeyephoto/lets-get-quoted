@@ -487,13 +487,17 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           </Link>
 
           <nav className="sidenav-nav" aria-label="Dashboard">
-            {renderSideLink('/dashboard', 'sidenav-top')}
             {NAV_GROUPS.map((group) => (
               <div className="sidenav-group" key={group.label}>
                 <p className="sidenav-glabel">{group.label}</p>
                 {group.hrefs.map((href) => renderSideLink(href))}
               </div>
             ))}
+            {/* Dashboard closes the rail rather than opening it. It is the
+                summary of everything above, not a step before any of it, and at
+                the top it took the first slot from Leads — which is where the
+                day actually starts. */}
+            {renderSideLink('/dashboard', 'sidenav-bottom')}
           </nav>
 
           <div className="sidenav-foot">
@@ -607,7 +611,6 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             ) : (
               <p className="sidenav-glabel sidenav-lockhdr"><span aria-hidden="true">🔒</span> Locked — sign in to unlock</p>
             )}
-            {renderAppLink('/dashboard', 'sidenav-top')}
             {NAV_GROUPS.map((group) => (
               <div className="sidenav-group" key={group.label}>
                 <p className="sidenav-glabel">{group.label}</p>
@@ -618,6 +621,10 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               <p className="sidenav-glabel">Site</p>
               {renderAppLink('/dashboard/sites')}
             </div>
+            {/* Last here too — this rail is grouped exactly like the backend
+                one on purpose, and a Dashboard row in a different place would
+                be the one thing that did not match. */}
+            {renderAppLink('/dashboard', 'sidenav-bottom')}
           </nav>
 
           <div className="sidenav-foot">

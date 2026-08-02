@@ -446,8 +446,10 @@ h3 {
 }
 .sidenav-link.active .sidenav-ic { color: var(--accent); }
 
-/* Dashboard is now an ordinary row (just a little breathing room below it). */
-.sidenav-top { margin-bottom: 0.5rem; }
+/* Dashboard is an ordinary row, and it now CLOSES the rail rather than opening
+   it. The space goes above rather than below: it has to separate the row from
+   the Grow card, and there is nothing under it to be spaced from. */
+.sidenav-bottom { margin-top: 0.55rem; }
 
 /* Demo rail: "preview" rows are features without a demo page — dimmed, with a
    small lock, and they link to sign-up rather than dead-ending. */
