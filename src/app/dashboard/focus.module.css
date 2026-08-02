@@ -135,7 +135,7 @@
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #ff9d5c;
+  color: var(--accent-ink);
 }
 
 .heroTop {
@@ -308,7 +308,7 @@
 .scope { margin: 0; font-size: 0.87rem; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 .muted { margin: 0; font-size: 0.85rem; color: rgba(var(--grey-5), 0.9); line-height: 1.5; }
 .muted a { color: #ff7a29; text-decoration: none; }
-.error { margin: 0; font-size: 0.86rem; color: #ff9a8a; }
+.error { margin: 0; font-size: 0.86rem; color: var(--bad); }
 
 /* --- feed / timeline --- */
 
@@ -327,7 +327,7 @@
   background: rgba(var(--tint), 0.04);
   font-size: 0.72rem;
   font-weight: 750;
-  color: #ff9d5c;
+  color: var(--accent-ink);
 }
 
 .feed li > span:last-child { display: grid; gap: 0.05rem; min-width: 0; }
@@ -540,7 +540,7 @@
 
 /* A website request nobody has answered — the age is the story, so it's the
    thing that changes colour. */
-.waiting { color: #ffd166; }
+.waiting { color: var(--gold-ink); }
 
 /* Rows carry a heat dot in front of the name, so the list scans by temperature
    before you read a word of it. */
@@ -561,7 +561,7 @@
   text-align: right;
   font-size: 0.85rem;
   font-weight: 700;
-  color: #ffd591;
+  color: var(--warn);
   font-variant-numeric: tabular-nums;
 }
 .rowValue small { font-size: 0.66rem; font-weight: 600; color: rgba(var(--grey-5), 0.85); }
@@ -589,7 +589,7 @@
   background: rgba(72, 199, 142, 0.12);
   font-size: 0.74rem;
   font-weight: 700;
-  color: #7fe0b2;
+  color: var(--good);
 }
 
 /* --- skeleton --- */

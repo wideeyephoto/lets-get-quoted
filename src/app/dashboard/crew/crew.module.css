@@ -113,7 +113,7 @@
 .filter select option, .addLabor select option, .settings select option { background: var(--bg-3); color: var(--text); }
 
 .rangeNote { align-self: end; font-size: 0.78rem; color: rgba(var(--grey-5), 0.95); }
-.rangeNote a { color: #ff9d5c; }
+.rangeNote a { color: var(--accent-ink); }
 
 /* --- roster rows --- */
 
@@ -180,7 +180,7 @@
   background: var(--avatar-bg, rgba(255, 122, 33, 0.16));
   font-size: 0.76rem;
   font-weight: 800;
-  color: var(--avatar-fg, #ffb27d);
+  color: var(--avatar-fg, var(--accent-ink));
 }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
 
@@ -195,7 +195,7 @@
 
 .rowPeriod { display: grid; gap: 0.05rem; text-align: right; }
 .rowPeriod strong { font-size: 0.9rem; font-weight: 750; font-variant-numeric: tabular-nums; }
-.rowPeriod small { font-size: 0.72rem; color: #ffd591; font-variant-numeric: tabular-nums; }
+.rowPeriod small { font-size: 0.72rem; color: var(--warn); font-variant-numeric: tabular-nums; }
 
 .dim { color: rgba(var(--grey-5), 0.75); }
 
@@ -209,8 +209,8 @@
   color: rgba(var(--grey-4), 0.9);
 }
 /* Green only for a state that's genuinely done. */
-.appChip[data-state='linked'] { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.13); color: #7fe0b2; }
-.appChip[data-state='invitable'] { border-color: rgba(255, 209, 102, 0.45); background: rgba(255, 209, 102, 0.1); color: #ffd591; }
+.appChip[data-state='linked'] { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.13); color: var(--good); }
+.appChip[data-state='invitable'] { border-color: rgba(255, 209, 102, 0.45); background: rgba(255, 209, 102, 0.1); color: var(--warn); }
 
 .availablePill {
   justify-self: start;
@@ -220,7 +220,7 @@
   background: rgba(72, 199, 142, 0.12);
   font-size: 0.7rem;
   font-weight: 700;
-  color: #7fe0b2;
+  color: var(--good);
 }
 
 .rowActions { display: flex; align-items: center; gap: 0.3rem; }
@@ -273,7 +273,7 @@
 
 /* Archive is separated from the everyday actions by a rule, not just by order. */
 .menuDanger { margin-top: 0.2rem; padding-top: 0.25rem; border-top: 1px solid rgba(var(--grey-1), 0.2); }
-.menuDanger button { color: #ffb4a7; }
+.menuDanger button { color: var(--bad); }
 .menuDanger button:hover { background: rgba(255, 101, 101, 0.14); }
 
 .assignForm {
@@ -369,8 +369,8 @@
   text-transform: uppercase;
 }
 .periodStatus[data-status='open'] { border-color: rgba(var(--grey-1), 0.4); color: var(--muted); }
-.periodStatus[data-status='needs-review'] { border-color: rgba(255, 209, 102, 0.55); background: rgba(255, 209, 102, 0.12); color: #ffd591; }
-.periodStatus[data-status='ready'] { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.12); color: #7fe0b2; }
+.periodStatus[data-status='needs-review'] { border-color: rgba(255, 209, 102, 0.55); background: rgba(255, 209, 102, 0.12); color: var(--warn); }
+.periodStatus[data-status='ready'] { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.12); color: var(--good); }
 
 .periodBar {
   display: flex;
@@ -418,7 +418,7 @@
   cursor: pointer;
 }
 .periodMode:hover { background: rgba(var(--tint), 0.09); color: var(--text); }
-.periodModeOn { border-color: rgba(255, 122, 33, 0.6); background: rgba(255, 122, 33, 0.16); color: #ffb27d; }
+.periodModeOn { border-color: rgba(255, 122, 33, 0.6); background: rgba(255, 122, 33, 0.16); color: var(--accent-ink); }
 
 .customRange { display: flex; align-items: center; gap: 0.3rem; }
 .customRange input {
@@ -444,7 +444,7 @@
   text-decoration: none;
 }
 .quick:hover { background: rgba(var(--tint), 0.07); color: var(--text); }
-.quickOn { border-color: rgba(255, 122, 33, 0.55); background: rgba(255, 122, 33, 0.14); color: #ffb27d; }
+.quickOn { border-color: rgba(255, 122, 33, 0.55); background: rgba(255, 122, 33, 0.14); color: var(--accent-ink); }
 
 .crewFilterChip {
   margin-left: auto;
@@ -454,7 +454,7 @@
   background: rgba(94, 158, 255, 0.12);
   font-size: 0.76rem;
   font-weight: 650;
-  color: #a9c8ff;
+  color: var(--info);
   text-decoration: none;
 }
 
@@ -470,15 +470,15 @@
   border-radius: 13px;
   background: rgba(255, 209, 102, 0.09);
 }
-.reviewBanner strong { display: block; font-size: 0.92rem; color: #ffd591; }
+.reviewBanner strong { display: block; font-size: 0.92rem; color: var(--warn); }
 .reviewBanner span span, .reviewBanner div span { font-size: 0.83rem; color: rgba(var(--grey-4), 0.86); }
 
 /* Tone carries meaning, so it never travels alone — each of these banners
    also states its case in words. */
 .reviewBanner[data-tone='ok'] { border-color: rgba(72, 199, 142, 0.45); background: rgba(72, 199, 142, 0.08); }
-.reviewBanner[data-tone='ok'] strong { color: #7fe0b2; }
+.reviewBanner[data-tone='ok'] strong { color: var(--good); }
 .reviewBanner[data-tone='alert'] { border-color: rgba(255, 101, 101, 0.5); background: rgba(255, 101, 101, 0.09); }
-.reviewBanner[data-tone='alert'] strong { color: #ffb4a7; }
+.reviewBanner[data-tone='alert'] strong { color: var(--bad); }
 
 /* --- open shifts --- */
 
@@ -495,8 +495,8 @@
 .shiftBanner[data-flagged] { border-color: rgba(255, 209, 102, 0.5); background: rgba(255, 209, 102, 0.08); }
 
 .shiftHead { display: grid; gap: 0.1rem; margin-bottom: 0.55rem; }
-.shiftHead strong { font-size: 0.92rem; color: #a9c8ff; }
-.shiftBanner[data-flagged] .shiftHead strong { color: #ffd591; }
+.shiftHead strong { font-size: 0.92rem; color: var(--info); }
+.shiftBanner[data-flagged] .shiftHead strong { color: var(--warn); }
 .shiftHead span { font-size: 0.82rem; color: rgba(var(--grey-4), 0.86); }
 
 .shiftList { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
@@ -528,9 +528,9 @@
   cursor: help;
   border: 1px solid rgba(255, 209, 102, 0.5);
   background: rgba(255, 209, 102, 0.12);
-  color: #ffd591;
+  color: var(--warn);
 }
-.shiftFlag[data-level='implausible'] { border-color: rgba(255, 101, 101, 0.55); background: rgba(255, 101, 101, 0.12); color: #ffb4a7; }
+.shiftFlag[data-level='implausible'] { border-color: rgba(255, 101, 101, 0.55); background: rgba(255, 101, 101, 0.12); color: var(--bad); }
 
 .shiftClose { display: flex; align-items: center; gap: 0.35rem; }
 .shiftClose input {
@@ -627,7 +627,7 @@
 }
 .addLaborWide { grid-column: span 2; }
 .settingsLead, .settingsNote { grid-column: 1 / -1; margin: 0; font-size: 0.82rem; color: rgba(var(--grey-4), 0.82); line-height: 1.5; }
-.settingsNote a { color: #ff9d5c; }
+.settingsNote a { color: var(--accent-ink); }
 
 /* --- tables --- */
 
@@ -674,15 +674,15 @@
 .expandBtn strong { font-size: 0.9rem; font-weight: 700; }
 .expandBtn small { font-size: 0.72rem; color: rgba(var(--grey-5), 0.9); }
 
-.otCell { color: #ffd591; font-weight: 700; }
+.otCell { color: var(--warn); font-weight: 700; }
 .payCell { font-weight: 750; }
 .payCell small { display: block; font-size: 0.68rem; font-weight: 600; color: rgba(var(--grey-5), 0.9); }
 .crewCell { font-size: 0.82rem; color: rgba(var(--grey-4), 0.9); }
 
-.varianceOver { color: #ff9a8a; font-weight: 750; }
-.varianceOk { color: #7fe0b2; font-weight: 700; }
+.varianceOver { color: var(--bad); font-weight: 750; }
+.varianceOk { color: var(--good); font-weight: 700; }
 .overRow { box-shadow: inset 3px 0 0 rgba(255, 101, 101, 0.8); }
-.overNote { margin: 0 0 0.6rem; font-size: 0.84rem; color: #ff9a8a; }
+.overNote { margin: 0 0 0.6rem; font-size: 0.84rem; color: var(--bad); }
 
 .entryStatus {
   display: inline-block;
@@ -695,8 +695,8 @@
   white-space: nowrap;
   cursor: help;
 }
-.entryStatus[data-state='ok'] { border-color: rgba(72, 199, 142, 0.45); background: rgba(72, 199, 142, 0.1); color: #7fe0b2; }
-.entryStatus[data-state='warn'] { border-color: rgba(255, 209, 102, 0.5); background: rgba(255, 209, 102, 0.1); color: #ffd591; }
+.entryStatus[data-state='ok'] { border-color: rgba(72, 199, 142, 0.45); background: rgba(72, 199, 142, 0.1); color: var(--good); }
+.entryStatus[data-state='warn'] { border-color: rgba(255, 209, 102, 0.5); background: rgba(255, 209, 102, 0.1); color: var(--warn); }
 
 .detailRow td { padding: 0; background: rgba(var(--shade), 0.22); }
 
@@ -725,7 +725,7 @@
 .entryRow { padding: 0.4rem 0; border-bottom: 1px solid rgba(var(--grey-1), 0.08); font-size: 0.82rem; }
 .entryRow > span { display: grid; gap: 0.05rem; min-width: 0; }
 .entryRow small { font-size: 0.7rem; color: rgba(var(--grey-5), 0.85); overflow: hidden; text-overflow: ellipsis; }
-.entryRow a { color: #ff9d5c; text-decoration: none; }
+.entryRow a { color: var(--accent-ink); text-decoration: none; }
 .entryRow a:hover { text-decoration: underline; }
 
 .entryAction { display: flex !important; align-items: center; justify-content: flex-end; gap: 0.4rem; }
@@ -734,7 +734,7 @@
   border: 1px solid rgba(255, 101, 101, 0.4);
   border-radius: 7px;
   background: rgba(255, 101, 101, 0.08);
-  color: #ffb4a7;
+  color: var(--bad);
   font: inherit;
   font-size: 0.72rem;
   cursor: pointer;
@@ -742,7 +742,7 @@
 .entryDelete:hover { background: rgba(255, 101, 101, 0.18); }
 
 .entryFoot { margin: 0.5rem 0 0; font-size: 0.78rem; color: rgba(var(--grey-5), 0.9); }
-.entryFoot a { color: #ff9d5c; text-decoration: none; }
+.entryFoot a { color: var(--accent-ink); text-decoration: none; }
 
 .hpNote { margin: 0.8rem 0 0; font-size: 0.78rem; color: rgba(var(--grey-5), 0.9); line-height: 1.55; max-width: 52rem; }
 
@@ -808,7 +808,7 @@
 }
 .drawerSummary small { display: block; font-size: 0.64rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(var(--grey-5), 0.95); }
 .drawerSummary strong { display: block; font-size: 1.15rem; font-weight: 780; }
-.drawerSummary span { font-size: 0.85rem; color: #ffb27d; font-weight: 650; }
+.drawerSummary span { font-size: 0.85rem; color: var(--accent-ink); font-weight: 650; }
 .drawerSummary em { display: block; margin-top: 0.15rem; font-style: normal; font-size: 0.72rem; color: rgba(var(--grey-5), 0.9); }
 
 .drawerJobs { margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
@@ -827,7 +827,7 @@
 
 .drawerSection { margin-top: 1.1rem; padding-top: 1rem; border-top: 1px solid rgba(var(--grey-1), 0.18); }
 .drawerSection summary { cursor: pointer; font-size: 0.88rem; font-weight: 650; }
-.drawerSection summary::marker { color: #ff9d5c; }
+.drawerSection summary::marker { color: var(--accent-ink); }
 .drawerSection form { margin-top: 0.9rem; }
 
 .drawerFoot { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid rgba(var(--grey-1), 0.18); }
@@ -890,7 +890,7 @@
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #ff5a1f, #ffb27d);
+  background: linear-gradient(90deg, #ff5a1f, var(--accent-ink));
 }
 .periodProgress small { font-size: 0.74rem; color: rgba(var(--grey-5), 0.95); }
 
@@ -928,10 +928,10 @@
 .periodStat em { font-style: normal; font-size: 0.68rem; color: rgba(var(--grey-5), 0.9); }
 
 .periodStat[data-tone='pay'] { border-color: rgba(255, 122, 33, 0.35); background: rgba(255, 122, 33, 0.07); }
-.periodStat[data-tone='pay'] strong { color: #ffb27d; }
-.periodStat[data-tone='warn'] strong { color: #ffd591; }
-.periodStat[data-tone='alert'] strong { color: #ffb4a7; }
-.periodStat[data-tone='ok'] strong { color: #7fe0b2; }
+.periodStat[data-tone='pay'] strong { color: var(--accent-ink); }
+.periodStat[data-tone='warn'] strong { color: var(--warn); }
+.periodStat[data-tone='alert'] strong { color: var(--bad); }
+.periodStat[data-tone='ok'] strong { color: var(--good); }
 
 /* One primary action, and a line saying what it will do. */
 .periodActions { display: grid; gap: 0.35rem; justify-items: stretch; }
@@ -940,10 +940,10 @@
 
 .periodStatus[data-status='empty'] { border-color: rgba(var(--grey-1), 0.35); color: rgba(var(--grey-4), 0.8); }
 .periodStatus[data-status='ready'],
-.periodStatus[data-status='approved'] { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.12); color: #7fe0b2; }
-.periodStatus[data-status='partially-paid'] { border-color: rgba(255, 122, 33, 0.5); background: rgba(255, 122, 33, 0.12); color: #ffb27d; }
+.periodStatus[data-status='approved'] { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.12); color: var(--good); }
+.periodStatus[data-status='partially-paid'] { border-color: rgba(255, 122, 33, 0.5); background: rgba(255, 122, 33, 0.12); color: var(--accent-ink); }
 .periodStatus[data-status='paid'] { border-color: rgba(72, 199, 142, 0.6); background: rgba(72, 199, 142, 0.18); color: #8fe9c0; }
-.periodStatus[data-status='reopened'] { border-color: rgba(169, 200, 255, 0.5); background: rgba(169, 200, 255, 0.12); color: #a9c8ff; }
+.periodStatus[data-status='reopened'] { border-color: rgba(169, 200, 255, 0.5); background: rgba(169, 200, 255, 0.12); color: var(--info); }
 
 /* --- toolbar + layout --- */
 
@@ -993,7 +993,7 @@
 }
 .bulkCount { display: grid; gap: 0.05rem; }
 .bulkCount strong { font-size: 0.92rem; font-weight: 750; }
-.bulkCount small { font-size: 0.76rem; color: #ffb27d; font-variant-numeric: tabular-nums; }
+.bulkCount small { font-size: 0.76rem; color: var(--accent-ink); font-variant-numeric: tabular-nums; }
 .bulkActions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
 
 /* --- the table --- */
@@ -1104,12 +1104,12 @@
   font-weight: 700;
   white-space: nowrap;
 }
-.payBadge[data-state='needs_review'] { border-color: rgba(255, 209, 102, 0.55); background: rgba(255, 209, 102, 0.12); color: #ffd591; }
-.payBadge[data-state='approved'] { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.12); color: #7fe0b2; }
+.payBadge[data-state='needs_review'] { border-color: rgba(255, 209, 102, 0.55); background: rgba(255, 209, 102, 0.12); color: var(--warn); }
+.payBadge[data-state='approved'] { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.12); color: var(--good); }
 .payBadge[data-state='draft'] { color: rgba(var(--grey-4), 0.85); }
-.payBadge[data-payment='paid'] { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.14); color: #7fe0b2; }
-.payBadge[data-payment='sent'] { border-color: rgba(169, 200, 255, 0.5); background: rgba(169, 200, 255, 0.12); color: #a9c8ff; }
-.payBadge[data-payment='unpaid'] { border-color: rgba(255, 122, 33, 0.4); background: rgba(255, 122, 33, 0.08); color: #ffb27d; }
+.payBadge[data-payment='paid'] { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.14); color: var(--good); }
+.payBadge[data-payment='sent'] { border-color: rgba(169, 200, 255, 0.5); background: rgba(169, 200, 255, 0.12); color: var(--info); }
+.payBadge[data-payment='unpaid'] { border-color: rgba(255, 122, 33, 0.4); background: rgba(255, 122, 33, 0.08); color: var(--accent-ink); }
 
 .paySub { display: block; margin-top: 0.15rem; font-size: 0.68rem; color: rgba(var(--grey-5), 0.9); }
 
@@ -1119,14 +1119,14 @@
   border-radius: 999px;
   border: 1px solid rgba(255, 209, 102, 0.45);
   background: rgba(255, 209, 102, 0.1);
-  color: #ffd591;
+  color: var(--warn);
   font-size: 0.63rem;
   font-weight: 700;
   cursor: help;
 }
-.flagChip[data-severity='block'] { border-color: rgba(255, 101, 101, 0.5); background: rgba(255, 101, 101, 0.1); color: #ffb4a7; }
+.flagChip[data-severity='block'] { border-color: rgba(255, 101, 101, 0.5); background: rgba(255, 101, 101, 0.1); color: var(--bad); }
 
-.adjust { display: block; font-size: 0.66rem; font-weight: 650; color: #ffd591; cursor: help; }
+.adjust { display: block; font-size: 0.66rem; font-weight: 650; color: var(--warn); cursor: help; }
 
 /* Overtime is a second line, not a suffix — "45h 00mOT 5h 00m" is one number
    pretending to be two. */
@@ -1158,7 +1158,7 @@
   font-size: 0.78rem;
   cursor: pointer;
 }
-.pagerBtns button[data-on] { border-color: rgba(255, 122, 33, 0.6); background: rgba(255, 122, 33, 0.16); color: #ffb27d; }
+.pagerBtns button[data-on] { border-color: rgba(255, 122, 33, 0.6); background: rgba(255, 122, 33, 0.16); color: var(--accent-ink); }
 .pagerBtns button:disabled { opacity: 0.4; cursor: not-allowed; }
 .pagerSize select {
   padding: 0.24rem 0.4rem;
@@ -1352,7 +1352,7 @@
   color: rgba(var(--grey-5), 0.95);
 }
 .paySummaryStrip strong { font-size: 1.05rem; font-weight: 780; font-variant-numeric: tabular-nums; }
-.payTotalCell strong { color: #ffb27d; }
+.payTotalCell strong { color: var(--accent-ink); }
 
 .payNotice {
   padding: 0.6rem 0.75rem;
@@ -1473,7 +1473,7 @@
   border-radius: 12px;
   background: rgba(72, 199, 142, 0.08);
 }
-.drawerPayment strong { display: block; font-size: 0.8rem; color: #7fe0b2; }
+.drawerPayment strong { display: block; font-size: 0.8rem; color: var(--good); }
 .drawerPayment p { margin: 0.25rem 0 0; font-size: 0.82rem; line-height: 1.45; }
 .drawerPayment .btn { margin-top: 0.55rem; }
 
@@ -1488,7 +1488,7 @@
 .historyHead strong { font-size: 0.8rem; }
 .historyHead small { font-size: 0.7rem; color: rgba(var(--grey-5), 0.9); white-space: nowrap; }
 .historyList p { margin: 0.2rem 0 0; font-size: 0.8rem; color: rgba(var(--grey-4), 0.88); line-height: 1.45; }
-.historyReason { color: #ffd591 !important; font-style: italic; }
+.historyReason { color: var(--warn) !important; font-style: italic; }
 
 /* --- the rail sits under the table, not beside it ---
    The dashboard shell caps its content column at about 976px. A 17rem rail
@@ -1618,11 +1618,11 @@
   text-transform: uppercase;
   color: rgba(var(--grey-5), 0.95);
 }
-.compareCard strong { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; color: #7fe0b2; font-variant-numeric: tabular-nums; }
+.compareCard strong { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; color: var(--good); font-variant-numeric: tabular-nums; }
 
 .compareDelta { font-style: normal; font-size: 0.82rem; font-weight: 750; }
-.compareDelta[data-dir='up'] { color: #7fe0b2; }
-.compareDelta[data-dir='down'] { color: #ffb4a7; }
+.compareDelta[data-dir='up'] { color: var(--good); }
+.compareDelta[data-dir='down'] { color: var(--bad); }
 .compareDelta[data-dir='flat'] { color: rgba(var(--grey-5), 0.95); }
 .compareWas { font-size: 0.74rem; color: rgba(var(--grey-5), 0.9); font-variant-numeric: tabular-nums; }
 
@@ -1637,7 +1637,7 @@
 .chartDay { display: grid; gap: 0.25rem; justify-items: center; }
 .chartPair { display: flex; align-items: flex-end; gap: 2px; height: 3.6rem; width: 100%; justify-content: center; }
 .chartNow, .chartWas { width: 40%; min-height: 2px; border-radius: 3px 3px 0 0; }
-.chartNow { background: linear-gradient(180deg, #ffb27d, #ff7a21); }
+.chartNow { background: linear-gradient(180deg, var(--accent-ink), #ff7a21); }
 .chartWas { background: rgba(var(--grey-1), 0.4); }
 .chartDay small { font-size: 0.62rem; color: rgba(var(--grey-5), 0.9); }
 
@@ -1662,9 +1662,9 @@
 }
 .countsCard button:hover { background: rgba(var(--tint), 0.06); color: var(--text); }
 .countsCard button span { width: 0.55rem; height: 0.55rem; border-radius: 50%; }
-.countsCard button span[data-tone='alert'] { background: #ff8f8f; }
+.countsCard button span[data-tone='alert'] { background: var(--bad); }
 .countsCard button span[data-tone='warn'] { background: #ff8a3d; }
-.countsCard button span[data-tone='ok'] { background: #48c78e; }
+.countsCard button span[data-tone='ok'] { background: var(--good); }
 .countsCard button span[data-tone='muted'] { background: rgba(var(--grey-1), 0.5); }
 .countsCard button b { font-variant-numeric: tabular-nums; }
 .countsCard p {
@@ -1688,9 +1688,9 @@
 }
 /* The stripe is the only thing carrying tone, and every section says its name
    in words beside it. */
-.group[data-tone='alert'] { box-shadow: inset 3px 0 0 #ff8f8f; }
+.group[data-tone='alert'] { box-shadow: inset 3px 0 0 var(--bad); }
 .group[data-tone='warn'] { box-shadow: inset 3px 0 0 #ff8a3d; }
-.group[data-tone='ok'] { box-shadow: inset 3px 0 0 #48c78e; }
+.group[data-tone='ok'] { box-shadow: inset 3px 0 0 var(--good); }
 .group[data-tone='muted'] { box-shadow: inset 3px 0 0 rgba(var(--grey-1), 0.5); }
 
 .groupHead {
@@ -1718,9 +1718,9 @@
 .groupTitle strong { font-size: 0.95rem; font-weight: 750; }
 .groupTitle small { font-size: 0.78rem; color: rgba(var(--grey-5), 0.95); font-variant-numeric: tabular-nums; }
 .groupDot { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: currentColor; opacity: 0.75; }
-.group[data-tone='alert'] .groupDot { color: #ff8f8f; }
+.group[data-tone='alert'] .groupDot { color: var(--bad); }
 .group[data-tone='warn'] .groupDot { color: #ff8a3d; }
-.group[data-tone='ok'] .groupDot { color: #48c78e; }
+.group[data-tone='ok'] .groupDot { color: var(--good); }
 .group[data-tone='muted'] .groupDot { color: rgba(var(--grey-1), 0.6); }
 
 .groupCount {
@@ -1778,7 +1778,7 @@
 .memberHours { display: grid; justify-items: end; gap: 0.02rem; text-align: right; }
 .memberHours strong { font-size: 0.82rem; font-variant-numeric: tabular-nums; }
 .memberHours small { font-size: 0.58rem; letter-spacing: 0.07em; text-transform: uppercase; color: rgba(var(--grey-5), 0.9); }
-.memberHours b { font-size: 0.86rem; font-weight: 800; color: #ffb27d; font-variant-numeric: tabular-nums; }
+.memberHours b { font-size: 0.86rem; font-weight: 800; color: var(--accent-ink); font-variant-numeric: tabular-nums; }
 
 .memberFoot { display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: center; }
 
@@ -1858,7 +1858,7 @@
   background: var(--avatar-bg, rgba(255, 122, 33, 0.16));
   font-size: 1rem;
   font-weight: 800;
-  color: var(--avatar-fg, #ffb27d);
+  color: var(--avatar-fg, var(--accent-ink));
 }
 .cardAvatar img { width: 100%; height: 100%; object-fit: cover; }
 
@@ -1926,7 +1926,7 @@
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
-.boardCol[data-col='free'] .boardCount { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.13); color: #7fe0b2; }
+.boardCol[data-col='free'] .boardCount { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.13); color: var(--good); }
 
 .boardCol > ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
 .boardEmpty { margin: 0; font-size: 0.8rem; color: rgba(var(--grey-5), 0.75); }
@@ -2009,7 +2009,7 @@
   text-align: left;
   cursor: pointer;
 }
-.tableName:hover { color: #ffb27d; }
+.tableName:hover { color: var(--accent-ink); }
 .tableName:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.75); outline-offset: 2px; border-radius: 6px; }
 
 .avatarSm {
@@ -2024,7 +2024,7 @@
   background: var(--avatar-bg, rgba(255, 122, 33, 0.16));
   font-size: 0.62rem;
   font-weight: 800;
-  color: var(--avatar-fg, #ffb27d);
+  color: var(--avatar-fg, var(--accent-ink));
 }
 .avatarSm img { width: 100%; height: 100%; object-fit: cover; }
 
@@ -2070,7 +2070,7 @@
   border-color: rgba(255, 122, 33, 0.42);
   background: rgba(255, 122, 33, 0.06);
 }
-.railAction[data-tone='todo'] h3 { color: #ffc79a; }
+.railAction[data-tone='todo'] h3 { color: var(--accent-ink); }
 .railActionHelp {
   display: block;
   margin-top: 0.5rem;
@@ -2179,11 +2179,11 @@ button.goAction.goAction:disabled {
 /* The instruction card is toned by how much the gap costs if it's left. Only
    the one that corrupts the pay numbers gets the alert colour. */
 .focusCard[data-tone='alert'] { border-color: rgba(255, 107, 107, 0.45); background: rgba(255, 107, 107, 0.06); }
-.focusCard[data-tone='alert'] > strong { color: #ffb4a7; }
+.focusCard[data-tone='alert'] > strong { color: var(--bad); }
 .focusCard[data-tone='warn'] { border-color: rgba(255, 209, 102, 0.42); background: rgba(255, 209, 102, 0.05); }
-.focusCard[data-tone='warn'] > strong { color: #ffd591; }
+.focusCard[data-tone='warn'] > strong { color: var(--warn); }
 .focusCard[data-tone='ok'] { border-color: rgba(72, 199, 142, 0.35); background: rgba(72, 199, 142, 0.05); }
-.focusCard[data-tone='ok'] > strong { color: #7fe0b2; }
+.focusCard[data-tone='ok'] > strong { color: var(--good); }
 
 .focusBig { font-size: 1.5rem !important; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 
@@ -2360,11 +2360,11 @@ button.goAction.goAction:disabled {
   border: 1px solid rgba(var(--grey-1), 0.3);
   font-size: 0.66rem;
 }
-.mdGroupHead[data-tone='alert'] { color: #ffb4a7; }
+.mdGroupHead[data-tone='alert'] { color: var(--bad); }
 .mdGroupHead[data-tone='alert'] span { border-color: rgba(255, 107, 107, 0.5); background: rgba(255, 107, 107, 0.14); }
-.mdGroupHead[data-tone='warn'] { color: #ffd591; }
+.mdGroupHead[data-tone='warn'] { color: var(--warn); }
 .mdGroupHead[data-tone='warn'] span { border-color: rgba(255, 209, 102, 0.45); background: rgba(255, 209, 102, 0.12); }
-.mdGroupHead[data-tone='ok'] { color: #7fe0b2; }
+.mdGroupHead[data-tone='ok'] { color: var(--good); }
 .mdGroupHead[data-tone='ok'] span { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.13); }
 
 .mdPerson {
@@ -2399,7 +2399,7 @@ button.goAction.goAction:disabled {
   border: 1px solid var(--avatar-line, rgba(var(--grey-1), 0.3));
   background: var(--avatar-bg, rgba(255, 122, 33, 0.16));
   font-weight: 800;
-  color: var(--avatar-fg, #ffb27d);
+  color: var(--avatar-fg, var(--accent-ink));
 }
 .mdAvatar { width: 1.7rem; height: 1.7rem; font-size: 0.62rem; }
 .mdAvatarLg { width: 2.7rem; height: 2.7rem; font-size: 0.86rem; }
@@ -2409,7 +2409,7 @@ button.goAction.goAction:disabled {
 .mdPersonNames small { font-size: 0.68rem; color: rgba(var(--grey-5), 0.9); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mdPersonFigures { display: grid; gap: 0.02rem; text-align: right; font-variant-numeric: tabular-nums; }
 .mdPersonFigures b { font-size: 0.76rem; font-weight: 750; }
-.mdPersonFigures i { font-style: normal; font-size: 0.68rem; color: #ffd591; }
+.mdPersonFigures i { font-style: normal; font-size: 0.68rem; color: var(--warn); }
 
 /* --- detail --- */
 
@@ -2440,9 +2440,9 @@ button.goAction.goAction:disabled {
   color: rgba(var(--tint), 0.7);
   white-space: nowrap;
 }
-.mdBadge[data-state='approved'] { border-color: rgba(72, 199, 142, 0.55); background: rgba(72, 199, 142, 0.14); color: #7fe0b2; }
-.mdBadge[data-state='needs_review'] { border-color: rgba(255, 209, 102, 0.55); background: rgba(255, 209, 102, 0.12); color: #ffd591; }
-.mdBadge[data-state='paid'] { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.12); color: #7fe0b2; }
+.mdBadge[data-state='approved'] { border-color: rgba(72, 199, 142, 0.55); background: rgba(72, 199, 142, 0.14); color: var(--good); }
+.mdBadge[data-state='needs_review'] { border-color: rgba(255, 209, 102, 0.55); background: rgba(255, 209, 102, 0.12); color: var(--warn); }
+.mdBadge[data-state='paid'] { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.12); color: var(--good); }
 
 .mdFlags { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.3rem; }
 .mdFlags li {
@@ -2451,8 +2451,8 @@ button.goAction.goAction:disabled {
   border: 1px solid rgba(var(--grey-1), 0.3);
   font-size: 0.72rem;
 }
-.mdFlags li[data-severity='block'] { border-color: rgba(255, 107, 107, 0.5); background: rgba(255, 107, 107, 0.12); color: #ffb4a7; }
-.mdFlags li[data-severity='warn'] { border-color: rgba(255, 209, 102, 0.45); background: rgba(255, 209, 102, 0.1); color: #ffd591; }
+.mdFlags li[data-severity='block'] { border-color: rgba(255, 107, 107, 0.5); background: rgba(255, 107, 107, 0.12); color: var(--bad); }
+.mdFlags li[data-severity='warn'] { border-color: rgba(255, 209, 102, 0.45); background: rgba(255, 209, 102, 0.1); color: var(--warn); }
 
 .mdFacts {
   display: grid;
@@ -2507,7 +2507,7 @@ button.goAction.goAction:disabled {
 }
 .mdApproval li[data-done] { border-color: rgba(72, 199, 142, 0.35); background: rgba(72, 199, 142, 0.05); }
 .mdApproval li > span { display: grid; place-items: center; font-size: 0.95rem; color: rgba(var(--grey-5), 0.8); }
-.mdApproval li[data-done] > span { color: #7fe0b2; }
+.mdApproval li[data-done] > span { color: var(--good); }
 .mdApproval strong { display: block; font-size: 0.85rem; font-weight: 700; }
 .mdApproval small { display: block; font-size: 0.74rem; color: rgba(var(--grey-5), 0.95); }
 
@@ -2547,8 +2547,8 @@ button.goAction.goAction:disabled {
 /* Tone follows how close it is, and never carries the meaning alone — the
    sentence says "in 3 days" or "4 days ago" either way. */
 .payDue[data-tone='ok'] strong { color: var(--muted); }
-.payDue[data-tone='warn'] strong { color: #ffd591; }
-.payDue[data-tone='alert'] strong { color: #ffb4a7; }
+.payDue[data-tone='warn'] strong { color: var(--warn); }
+.payDue[data-tone='alert'] strong { color: var(--bad); }
 .payDue[data-tone='muted'] { color: rgba(var(--grey-5), 0.8); }
 .payDue button { font-size: 0.78rem; }
 
@@ -2566,7 +2566,7 @@ button.goAction.goAction:disabled {
   background: rgba(255, 107, 107, 0.07);
 }
 .owedStrip > div { display: grid; gap: 0.15rem; min-width: 0; }
-.owedStrip strong { font-size: 0.92rem; font-weight: 750; color: #ffb4a7; }
+.owedStrip strong { font-size: 0.92rem; font-weight: 750; color: var(--bad); }
 .owedStrip small { font-size: 0.8rem; color: rgba(var(--grey-4), 0.85); }
 
 .owedLinks { display: flex; gap: 0.4rem; flex-wrap: wrap; }
@@ -2585,11 +2585,11 @@ button.goAction.goAction:disabled {
   white-space: nowrap;
 }
 .owedLinks a:hover { border-color: rgba(255, 122, 41, 0.55); background: rgba(255, 122, 41, 0.12); color: var(--text); }
-.owedLinks em { font-style: normal; font-weight: 800; color: #ffd591; font-variant-numeric: tabular-nums; }
+.owedLinks em { font-style: normal; font-weight: 800; color: var(--warn); font-variant-numeric: tabular-nums; }
 
 /* An unpaid row that has been unpaid a while says so. Under a week it is just
    information; past that it is the thing the row is about. */
-.paySub[data-late] { color: #ffb4a7 !important; font-weight: 700; }
+.paySub[data-late] { color: var(--bad) !important; font-weight: 700; }
 
 /* The two selects read as one sentence, so they sit on one line. */
 .payDayRow { display: flex; gap: 0.4rem; flex-wrap: wrap; }
@@ -2602,7 +2602,7 @@ button.goAction.goAction:disabled {
 
 /* An entry that has changed since the amount was agreed says so where it is
    read, not only as a total that moved. */
-.mdMoved { display: block; font-size: 0.68rem; color: #ffd591; }
+.mdMoved { display: block; font-size: 0.68rem; color: var(--warn); }
 .mdEntries tbody tr[data-moved] { background: rgba(255, 209, 102, 0.09); }
 .mdEntries tbody tr[data-gone] { opacity: 0.7; }
 .mdEntries tbody tr[data-gone] td { text-decoration: line-through; }
@@ -2794,7 +2794,7 @@ button.goAction.goAction:disabled {
 .ovWho { display: grid; gap: 0.05rem; min-width: 0; }
 .ovWho strong { font-size: 0.87rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ovWho small { font-size: 0.72rem; color: rgba(var(--grey-5), 0.92); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ovAmount { font-size: 0.82rem; font-weight: 800; color: #ffb27d; font-variant-numeric: tabular-nums; }
+.ovAmount { font-size: 0.82rem; font-weight: 800; color: var(--accent-ink); font-variant-numeric: tabular-nums; }
 
 .ovAvatar {
   flex: none;
@@ -2808,7 +2808,7 @@ button.goAction.goAction:disabled {
   background: var(--avatar-bg, rgba(255, 122, 33, 0.16));
   font-size: 0.7rem;
   font-weight: 800;
-  color: var(--avatar-fg, #ffb27d);
+  color: var(--avatar-fg, var(--accent-ink));
 }
 .ovAvatarLg { width: 3.4rem; height: 3.4rem; font-size: 1.05rem; }
 .ovAvatar img { width: 100%; height: 100%; object-fit: cover; }
@@ -2842,9 +2842,9 @@ button.goAction.goAction:disabled {
   text-transform: uppercase;
   color: rgba(203, 214, 228, 0.95);
 }
-.ovBadge[data-tone='ok'] { border-color: rgba(72, 199, 142, 0.45); background: rgba(72, 199, 142, 0.1); color: #7fe0b2; }
-.ovBadge[data-tone='warn'] { border-color: rgba(255, 209, 102, 0.45); background: rgba(255, 209, 102, 0.1); color: #ffd591; }
-.ovBadge[data-tone='alert'] { border-color: rgba(255, 107, 107, 0.5); background: rgba(255, 107, 107, 0.1); color: #ffb4a7; }
+.ovBadge[data-tone='ok'] { border-color: rgba(72, 199, 142, 0.45); background: rgba(72, 199, 142, 0.1); color: var(--good); }
+.ovBadge[data-tone='warn'] { border-color: rgba(255, 209, 102, 0.45); background: rgba(255, 209, 102, 0.1); color: var(--warn); }
+.ovBadge[data-tone='alert'] { border-color: rgba(255, 107, 107, 0.5); background: rgba(255, 107, 107, 0.1); color: var(--bad); }
 
 .ovStats {
   display: grid;

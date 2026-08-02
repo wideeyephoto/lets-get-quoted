@@ -12,8 +12,8 @@
 .column { min-height: 260px; padding: .8rem; border: 1px solid rgba(var(--tint), .1); border-radius: 10px; background: rgba(var(--tint), .025); }
 .col_new_lead { border-top: 3px solid #ff7a21; border-color: rgba(255,122,33,.28); background: linear-gradient(180deg, rgba(255,122,33,.09), rgba(var(--tint), .02) 44%); }
 .col_in_progress { border-top: 3px solid #60a5fa; border-color: rgba(96,165,250,.24); background: linear-gradient(180deg, rgba(96,165,250,.09), rgba(var(--tint), .02) 44%); }
-.col_complete { border-top: 3px solid #4ade80; border-color: rgba(74,222,128,.26); background: linear-gradient(180deg, rgba(74,222,128,.1), rgba(var(--tint), .02) 44%); }
-.col_archived { border-top: 3px solid #94a3b8; border-color: rgba(148,163,184,.24); background: linear-gradient(180deg, rgba(148,163,184,.08), rgba(var(--tint), .02) 44%); }
+.col_complete { border-top: 3px solid var(--good); border-color: rgba(74,222,128,.26); background: linear-gradient(180deg, rgba(74,222,128,.1), rgba(var(--tint), .02) 44%); }
+.col_archived { border-top: 3px solid var(--muted-2); border-color: rgba(148,163,184,.24); background: linear-gradient(180deg, rgba(148,163,184,.08), rgba(var(--tint), .02) 44%); }
 .columnHeader { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: 0 .2rem .75rem; }
 .columnHeader h3 { margin: 0; font-size: .82rem; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
 .columnHeader span { display: grid; min-width: 24px; height: 24px; place-items: center; border-radius: 50%; background: rgba(var(--tint), .08); color: rgba(var(--tint), .7); font-size: .72rem; }
@@ -29,7 +29,7 @@
 .cardRef { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .72rem; color: rgba(var(--tint), .5); }
 .cardAddr { display: -webkit-box; overflow: hidden; margin: 0; color: rgba(var(--tint), .62); font-size: .78rem; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .cardFoot { display: flex; align-items: center; justify-content: space-between; gap: .5rem; font-size: .74rem; color: rgba(var(--tint), .55); }
-.cardMoney { color: #ffd166; font-weight: 800; font-variant-numeric: tabular-nums; }
+.cardMoney { color: var(--gold-ink); font-weight: 800; font-variant-numeric: tabular-nums; }
 .empty { margin: .4rem 0; color: rgba(var(--tint), .36); font-size: .78rem; }
 
 /* table */
@@ -44,7 +44,7 @@
 .tMono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--muted-2); }
 .tName { font-weight: 700; color: var(--text); }
 .tMuted { color: var(--muted-2); }
-.tOpen { color: #ffb27d; font-weight: 700; white-space: nowrap; }
+.tOpen { color: var(--accent-ink); font-weight: 700; white-space: nowrap; }
 
 @media (max-width: 640px) { .board { grid-template-columns: 1fr; } }
 

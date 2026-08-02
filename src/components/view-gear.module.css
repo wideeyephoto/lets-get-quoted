@@ -12,6 +12,6 @@
 .opt small { grid-column: 1 / -1; font-size: .72rem; color: rgba(var(--tint), .5); }
 .opt:hover { background: rgba(var(--tint), .05); }
 .opt[aria-checked="true"] { background: rgba(255,122,33,.12); border-color: rgba(255,122,33,.4); }
-.opt[aria-checked="true"] strong { color: #ffb27d; }
+.opt[aria-checked="true"] strong { color: var(--accent-ink); }
 .check { color: var(--accent); font-weight: 900; }
 .sep { height: 1px; margin: 5px 4px; background: rgba(var(--tint), .1); }
