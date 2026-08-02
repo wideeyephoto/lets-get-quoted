@@ -103,7 +103,68 @@
    dark ground, so the greys it makes read as part of this app rather than as
    a generic grey scale. Shadows go much softer, because a dark shadow that
    looked like depth on a dark ground looks like dirt on a light one. */
+/* HARBOUR — the canvas.
+   ---------------------------------------------------------------------------
+   Not a light theme in the usual sense: the PAGE stays dark and the CONTAINERS
+   flip to light. Paper on a workbench. The rail, the page titles and the rest
+   of the chrome keep their light-on-dark treatment untouched; only the content
+   sheets invert, in the block below this one.
+
+   So this half is still a dark theme and its tokens say so — --tint is white,
+   because a lift on the canvas is still a white lift. `color-scheme: dark`
+   because the scrollbars and form controls out here sit on the canvas. */
 :root[data-theme='light'] {
+  color-scheme: dark;
+  --tint: 255, 255, 255;
+  --ink-rgb: 240, 244, 248;
+  --grey-1: 157, 171, 189;
+  --grey-2: 175, 187, 202;
+  --grey-3: 168, 181, 197;
+  --grey-4: 183, 195, 210;
+  --grey-5: 157, 171, 189;
+  --grey-6: 222, 231, 240;
+  --bg: #1e2733;
+  --bg-2: #202a37;
+  --bg-3: #26313f;
+  --bg-elevated: rgba(32, 42, 55, 0.86);
+  --text: #f0f4f8;
+  --muted: #b7c3d0;
+  --muted-2: #9dabbd;
+  --shade: 0, 0, 0;
+  --shadow-strong: rgba(0, 0, 0, 0.5);
+  --shadow-soft: rgba(0, 0, 0, 0.3);
+  --ground-1: #1a222d;
+  --ground-2: #242e3b;
+  --panel-rgb: 32, 42, 55;
+  --chrome-rgb: 26, 34, 45;
+  --chrome: rgba(26, 34, 45, 0.9);
+  --chrome-soft: rgba(26, 34, 45, 0.8);
+  --chrome-solid: rgba(26, 34, 45, 0.96);
+  --glow-a: 0.05;
+  --glow-b: 0.04;
+  /* Status and ink ON THE CANVAS take the bright values — same meanings, the
+     dark theme's rendering of them. The sheets take the deep ones below. */
+  --good: #7fe0b2;
+  --warn: #ffd591;
+  --bad: #ffb4a7;
+  --info: #a9c8ff;
+  --gold-ink: #ffd166;
+  --accent-ink: #ff9d5c;
+  --on-active: #cfe8fa;
+  --fresh: #4fd39a;
+}
+
+/* THE FLIP. One block re-themes every container's entire subtree.
+   ---------------------------------------------------------------------------
+   Custom properties inherit, so redeclaring the surface tokens here re-points
+   every `rgba(var(--tint), α)`, every `var(--text)` and every `var(--muted)`
+   inside a card — about two thousand declarations — without a single component
+   rule knowing that it happened. This is the whole mechanism.
+
+   `color-scheme: light` matters as much as the colours: it is what makes a
+   <select>, a date picker and a scrollbar inside a sheet render light. */
+:root[data-theme='light'] .panel,
+:root[data-theme='light'] .feature-card {
   color-scheme: light;
   --tint: 17, 27, 41;
   --ink-rgb: 15, 26, 40;
@@ -134,8 +195,11 @@
   --bad: #a8331f;
   --info: #1d4ed8;
   --gold-ink: #7a5200;
-  --accent-ink: #b34700;
-  --on-active: #8a3b00;
+  /* Harbour's blue, in its deep value — the accent has to change value between
+     the canvas and a sheet for the same reason --good does. The HUE is the
+     brand; the value is just how it lands on what it is standing on. */
+  --accent-ink: #0369a1;
+  --on-active: #0b5680;
   --shadow-strong: rgba(17, 27, 41, 0.18);
   --shadow-soft: rgba(17, 27, 41, 0.1);
   --ground-1: #eef1f7;
@@ -147,6 +211,17 @@
   --chrome-solid: rgba(255, 255, 255, 0.95);
   --glow-a: 0.07;
   --glow-b: 0.05;
+  /* Paint the sheet itself. --bg-elevated already resolves to white above, but
+     stating it here means the sheet does not depend on which of the several
+     panel rules in this file happens to win. */
+  background: #ffffff;
+  color: var(--text);
+  border-color: #dfe4ea;
+  /* Lifted off the canvas rather than sitting flush on it. Black, not the ink:
+     this shadow falls on the DARK side of the boundary. */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.28), 0 14px 34px -14px rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
 /* Scroll-reveal — ScrollReveal.tsx toggles data-reveal-state on below-fold
@@ -445,6 +520,20 @@ h3 {
   color: rgba(var(--ink-rgb), 0.92);
 }
 .sidenav-wordmark span { color: var(--accent); }
+
+/* HARBOUR — the Plate mark.
+   The wordmark carries its own slate chip rather than standing on whatever is
+   behind it. On the canvas that plate is a shade deeper than the rail, so the
+   mark still reads as an object; if it ever lands on a sheet it is unchanged,
+   which is the point — one mark, one rendering, no light variant to maintain
+   and no repeat of the Quick Stops problem. */
+:root[data-theme='light'] .sidenav-wordmark {
+  background: #16202b;
+  border-color: #7cc4f0;
+  color: #f0f4f8;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+:root[data-theme='light'] .sidenav-wordmark span { color: #7cc4f0; }
 
 /* Marketing rail: the "Create Free Account" CTA fills the foot, matching the
    full-width dashboard rail controls. */
@@ -11744,6 +11833,31 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
     0 0 0 1px rgba(255, 200, 158, 0.75),
     0 0 26px rgba(255, 122, 33, 0.6),
     0 8px 22px rgba(0, 0, 0, 0.4);
+}
+
+/* HARBOUR — raised primary, Deep Ocean.
+   ---------------------------------------------------------------------------
+   A top-lit gradient, a 1px inner highlight, and a shadow tinted with the
+   button's OWN darker stop rather than with black. That last part is the whole
+   difference: a black shadow reads as an object sitting on the page, a
+   self-tinted one reads as the button being lit.
+
+   Scoped to .workspace-shell for the same reason the rule above it is —
+   .btn.primary is also the button on every contractor's public website, and
+   that is their brand, not ours. */
+:root[data-theme='light'] .workspace-shell .btn.primary {
+  background: linear-gradient(180deg, #2f7fd8, #1c56a8);
+  color: #fff;
+  border-color: transparent;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.26) inset,
+    0 6px 14px -6px rgba(28, 86, 168, 0.78);
+}
+:root[data-theme='light'] .workspace-shell .btn.primary:hover {
+  background: linear-gradient(180deg, #4a92e0, #2f7fd8);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.3) inset,
+    0 10px 22px -7px rgba(28, 86, 168, 0.88);
 }
 
 @media (prefers-reduced-motion: reduce) {
