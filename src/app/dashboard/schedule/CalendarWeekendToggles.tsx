@@ -60,7 +60,12 @@ export default function CalendarWeekendToggles({
             onClick={() => onChange({ ...days, [item.key]: !item.on })}
           >
             <span className="calendar-days-chip-dot" aria-hidden="true" />
-            <span>{item.label}</span>
+            {/* The word carries the strike-through when the column is off; the
+                count never does. It needs its own class to be targeted, because
+                a strike set on the BUTTON is drawn across every descendant and
+                a child cannot take it back off — `text-decoration: none` on the
+                count is silently ignored. */}
+            <span className="calendar-days-chip-label">{item.label}</span>
             <b>{item.count}</b>
             {/* The pressed state is on the button, but the consequence is not:
                 a screen reader should hear what clicking does, not just "on". */}

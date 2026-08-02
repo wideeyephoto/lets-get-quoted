@@ -11717,7 +11717,12 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   background: rgba(56, 189, 248, 0.14);
   color: #a5e2ff;
 }
-.calendar-days-chip[data-day='sat']:hover {
+/* :not([data-hiding]) is load-bearing. A bare :hover here is (0,3,0) and the
+   amber warning below is (0,2,0), so hovering a chip that was warning "there
+   are jobs on a day you can't see" repainted it back to the ordinary day blue
+   — while its text stayed amber. Hover is also the moment right before the
+   click, so the warning was disappearing exactly when it was being read. */
+.calendar-days-chip[data-day='sat']:not([data-hiding]):hover {
   border-color: rgba(56, 189, 248, 0.65);
   background: rgba(56, 189, 248, 0.22);
 }
@@ -11726,17 +11731,24 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   background: rgba(147, 197, 253, 0.11);
   color: #cfe0ff;
 }
-.calendar-days-chip[data-day='sun']:hover {
+.calendar-days-chip[data-day='sun']:not([data-hiding]):hover {
   border-color: rgba(147, 197, 253, 0.62);
   background: rgba(147, 197, 253, 0.19);
 }
 
-/* Off: dimmed and struck through, the same shape the map legend uses, so "this
-   is switched off" reads the same way in both places. The dot goes hollow so
-   the state survives without colour vision. */
-.calendar-days-chip[data-off] { opacity: 0.45; text-decoration: line-through; text-decoration-thickness: 1px; }
+/* Off: dimmed, with the DAY NAME struck through — the same shape the map legend
+   uses, so "this is switched off" reads the same way in both places. The dot
+   goes hollow so the state survives without colour vision.
+
+   The strike is on the label, not the button. A text-decoration set on an
+   ancestor is painted across every descendant inline box and a child CANNOT
+   remove it — `.calendar-days-chip[data-off] b { text-decoration: none }` sat
+   here doing nothing, and the count was struck through with the word. The count
+   is the whole reason the chip exists ("8 Saturday jobs you can't see"), so it
+   is the one thing that must stay readable when the day is switched off. */
+.calendar-days-chip[data-off] { opacity: 0.45; }
+.calendar-days-chip[data-off] .calendar-days-chip-label { text-decoration: line-through; text-decoration-thickness: 1px; }
 .calendar-days-chip[data-off] .calendar-days-chip-dot { background: transparent; box-shadow: inset 0 0 0 2px currentColor; }
-.calendar-days-chip[data-off] b { text-decoration: none; }
 
 /* Off AND holding work. This is the state the old gear buried behind a click:
    jobs are booked on a day that is not on screen. Amber rather than dimmed —
@@ -11748,6 +11760,10 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   color: #ffc65c;
 }
 .calendar-days-chip[data-hiding] b { opacity: 1; }
+.calendar-days-chip[data-hiding]:hover {
+  border-color: rgba(255, 176, 32, 0.7);
+  background: rgba(255, 176, 32, 0.2);
+}
 
 @media (prefers-reduced-motion: reduce) {
   .calendar-days-chip { transition: none; }
