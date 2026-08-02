@@ -127,7 +127,7 @@
   color: #fff;
 }
 
-.coverCount[data-empty] { font-weight: 600; color: rgba(255, 255, 255, 0.65); }
+.coverCount[data-empty] { font-weight: 600; color: var(--ink-mod-grey-16); }
 
 .heroTag {
   margin: 0 0 0.45rem;
@@ -206,7 +206,7 @@
 }
 
 .heroStats strong { font-size: 1.05rem; font-weight: 750; letter-spacing: -0.01em; }
-.owed { color: #ffc65c; }
+.owed { color: var(--ink-amber-1); }
 
 .heroActions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
 
@@ -295,7 +295,7 @@
   margin-top: 0.7rem;
   font-size: 0.82rem;
   font-weight: 650;
-  color: #ff7a29;
+  color: var(--ink-orange-8);
   text-decoration: none;
 }
 .cardLink:hover { text-decoration: underline; }
@@ -307,7 +307,7 @@
 
 .scope { margin: 0; font-size: 0.87rem; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 .muted { margin: 0; font-size: 0.85rem; color: rgba(var(--grey-5), 0.9); line-height: 1.5; }
-.muted a { color: #ff7a29; text-decoration: none; }
+.muted a { color: var(--ink-orange-8); text-decoration: none; }
 .error { margin: 0; font-size: 0.86rem; color: var(--bad); }
 
 /* --- feed / timeline --- */
@@ -372,7 +372,7 @@
   border: 1px solid rgba(var(--grey-1), 0.35);
   font-size: 0.72rem;
 }
-.taskDone { color: rgba(var(--grey-5), 0.75); text-decoration: line-through; }
+.taskDone { color: var(--mute-g575); text-decoration: line-through; }
 .taskDone > span { background: rgba(52, 199, 123, 0.9); border-color: transparent; color: #08131f; }
 
 /* --- photos --- */
@@ -455,7 +455,7 @@
   font-weight: 700;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: rgba(var(--grey-5), 0.8);
+  color: var(--mute-g580);
 }
 .listCols > span:last-child { text-align: right; }
 
@@ -534,7 +534,7 @@
   transition: background 0.14s ease, border-color 0.14s ease, color 0.14s ease;
 }
 
-.quietBtn:hover { background: rgba(var(--tint), 0.07); color: #f0f4f9; }
+.quietBtn:hover { background: rgba(var(--tint), 0.07); color: var(--ink-mod-grey-15); }
 .quietBtn:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.7); outline-offset: 1px; }
 .quietBtn:disabled { opacity: 0.5; cursor: default; }
 

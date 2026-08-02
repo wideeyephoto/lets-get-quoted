@@ -1,7 +1,7 @@
 .form { display: grid; gap: 1.1rem; max-width: 560px; }
 .field { display: grid; gap: 0.4rem; }
 .field label { font-size: 0.9rem; font-weight: 600; color: rgba(var(--tint), 0.82); }
-.opt { font-weight: 400; color: rgba(var(--tint), 0.5); }
+.opt { font-weight: 400; color: var(--mute-t50); }
 .field input,
 .field textarea {
   width: 100%; font: inherit; color: var(--text); background: rgba(var(--tint), 0.04);
@@ -12,9 +12,9 @@
 .field input:focus,
 .field textarea:focus { border-color: #ff7a21; box-shadow: 0 0 0 3px rgba(255, 122, 33, 0.2); }
 .turnstile { min-height: 65px; }
-.err { margin: 0; color: #ff9e57; font-size: 0.9rem; }
+.err { margin: 0; color: var(--ink-mod-orange-1); font-size: 0.9rem; }
 .done { border: 1px solid rgba(190, 242, 100, 0.4); background: rgba(190, 242, 100, 0.08); border-radius: 12px; padding: 1.25rem 1.4rem; }
 .doneH { margin: 0 0 0.3rem; font-weight: 700; font-size: 1.05rem; color: var(--text); }
 .done p { margin: 0; color: rgba(var(--tint), 0.75); }
-.done a { color: #ffd166; text-decoration: underline; text-underline-offset: 3px; }
+.done a { color: var(--ink-mod-amber-1); text-decoration: underline; text-underline-offset: 3px; }
 .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }

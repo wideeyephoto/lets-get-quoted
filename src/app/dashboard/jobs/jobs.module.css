@@ -26,11 +26,11 @@
 .jobCard:hover { border-color: rgba(255,138,61,.55); transform: translateY(-1px); }
 .cardTop { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; }
 .cardTop strong { font-size: .9rem; }
-.cardRef { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .72rem; color: rgba(var(--tint), .5); }
-.cardAddr { display: -webkit-box; overflow: hidden; margin: 0; color: rgba(var(--tint), .62); font-size: .78rem; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.cardFoot { display: flex; align-items: center; justify-content: space-between; gap: .5rem; font-size: .74rem; color: rgba(var(--tint), .55); }
+.cardRef { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .72rem; color: var(--mute-t50); }
+.cardAddr { display: -webkit-box; overflow: hidden; margin: 0; color: var(--mute-t62); font-size: .78rem; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.cardFoot { display: flex; align-items: center; justify-content: space-between; gap: .5rem; font-size: .74rem; color: var(--mute-t55); }
 .cardMoney { color: var(--gold-ink); font-weight: 800; font-variant-numeric: tabular-nums; }
-.empty { margin: .4rem 0; color: rgba(var(--tint), .36); font-size: .78rem; }
+.empty { margin: .4rem 0; color: var(--mute-t36); font-size: .78rem; }
 
 /* table */
 .tableWrap { overflow-x: auto; border: 1px solid rgba(var(--tint), .08); border-radius: 12px; }

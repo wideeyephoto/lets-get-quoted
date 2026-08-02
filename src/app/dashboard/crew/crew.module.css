@@ -130,7 +130,7 @@
   font-weight: 700;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: rgba(var(--grey-5), 0.8);
+  color: var(--mute-g580);
 }
 
 .rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
@@ -197,7 +197,7 @@
 .rowPeriod strong { font-size: 0.9rem; font-weight: 750; font-variant-numeric: tabular-nums; }
 .rowPeriod small { font-size: 0.72rem; color: var(--warn); font-variant-numeric: tabular-nums; }
 
-.dim { color: rgba(var(--grey-5), 0.75); }
+.dim { color: var(--mute-g575); }
 
 .appChip {
   justify-self: start;
@@ -568,7 +568,7 @@
   border-left: 3px solid rgba(255, 101, 101, 0.7);
   background: rgba(255, 101, 101, 0.07);
   font-size: 0.83rem;
-  color: rgba(255, 200, 190, 0.95);
+  color: var(--ink-mod-red-2);
 }
 
 /* What the payroll export actually did — who's in the file, who isn't and why,
@@ -719,7 +719,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(var(--grey-5), 0.8);
+  color: var(--mute-g580);
 }
 
 .entryRow { padding: 0.4rem 0; border-bottom: 1px solid rgba(var(--grey-1), 0.08); font-size: 0.82rem; }
@@ -942,7 +942,7 @@
 .periodStatus[data-status='ready'],
 .periodStatus[data-status='approved'] { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.12); color: var(--good); }
 .periodStatus[data-status='partially-paid'] { border-color: rgba(255, 122, 33, 0.5); background: rgba(255, 122, 33, 0.12); color: var(--accent-ink); }
-.periodStatus[data-status='paid'] { border-color: rgba(72, 199, 142, 0.6); background: rgba(72, 199, 142, 0.18); color: #8fe9c0; }
+.periodStatus[data-status='paid'] { border-color: rgba(72, 199, 142, 0.6); background: rgba(72, 199, 142, 0.18); color: var(--ink-mod-green-2); }
 .periodStatus[data-status='reopened'] { border-color: rgba(169, 200, 255, 0.5); background: rgba(169, 200, 255, 0.12); color: var(--info); }
 
 /* --- toolbar + layout --- */
@@ -1385,7 +1385,7 @@
   border: 1px solid rgba(var(--grey-1), 0.3);
   border-radius: 10px;
   background: rgba(var(--tint), 0.05);
-  color: #f2f6fb;
+  color: var(--ink-mod-grey-9);
   font: inherit;
   font-size: 0.86rem;
 }
@@ -1719,9 +1719,9 @@
 .groupTitle small { font-size: 0.78rem; color: rgba(var(--grey-5), 0.95); font-variant-numeric: tabular-nums; }
 .groupDot { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: currentColor; opacity: 0.75; }
 .group[data-tone='alert'] .groupDot { color: var(--bad); }
-.group[data-tone='warn'] .groupDot { color: #ff8a3d; }
+.group[data-tone='warn'] .groupDot { color: var(--ink-orange-2); }
 .group[data-tone='ok'] .groupDot { color: var(--good); }
-.group[data-tone='muted'] .groupDot { color: rgba(var(--grey-1), 0.6); }
+.group[data-tone='muted'] .groupDot { color: var(--mute-g160); }
 
 .groupCount {
   padding: 0.1rem 0.5rem;
@@ -1873,7 +1873,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(var(--grey-5), 0.8);
+  color: var(--mute-g580);
 }
 .cardFacts dd {
   margin: 0;
@@ -1929,7 +1929,7 @@
 .boardCol[data-col='free'] .boardCount { border-color: rgba(72, 199, 142, 0.5); background: rgba(72, 199, 142, 0.13); color: var(--good); }
 
 .boardCol > ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
-.boardEmpty { margin: 0; font-size: 0.8rem; color: rgba(var(--grey-5), 0.75); }
+.boardEmpty { margin: 0; font-size: 0.8rem; color: var(--mute-g575); }
 
 .boardCard {
   display: grid;
@@ -2065,7 +2065,7 @@
   border-color: rgba(72, 199, 142, 0.42);
   background: rgba(72, 199, 142, 0.06);
 }
-.railAction[data-tone='go'] h3 { color: #cdf3e0; }
+.railAction[data-tone='go'] h3 { color: var(--ink-mod-grey-10); }
 .railAction[data-tone='todo'] {
   border-color: rgba(255, 122, 33, 0.42);
   background: rgba(255, 122, 33, 0.06);
@@ -2097,7 +2097,7 @@ button.goAction.goAction:hover:not(:disabled) { background: linear-gradient(180d
 button.goAction.goAction:disabled {
   background: rgba(72, 199, 142, 0.16);
   border-color: rgba(72, 199, 142, 0.3);
-  color: rgba(205, 243, 224, 0.55);
+  color: var(--ink-mod-grey-11);
   box-shadow: none;
 }
 
@@ -2125,7 +2125,7 @@ button.goAction.goAction:disabled {
   font-size: 0.68rem;
   font-weight: 800;
   font-style: italic;
-  color: rgba(200, 214, 230, 0.95);
+  color: var(--ink-mod-grey-12);
 }
 
 /* The KPI strip is the page's headline in Focus, so its numbers get the size
@@ -2506,7 +2506,7 @@ button.goAction.goAction:disabled {
   border-radius: 12px;
 }
 .mdApproval li[data-done] { border-color: rgba(72, 199, 142, 0.35); background: rgba(72, 199, 142, 0.05); }
-.mdApproval li > span { display: grid; place-items: center; font-size: 0.95rem; color: rgba(var(--grey-5), 0.8); }
+.mdApproval li > span { display: grid; place-items: center; font-size: 0.95rem; color: var(--mute-g580); }
 .mdApproval li[data-done] > span { color: var(--good); }
 .mdApproval strong { display: block; font-size: 0.85rem; font-weight: 700; }
 .mdApproval small { display: block; font-size: 0.74rem; color: rgba(var(--grey-5), 0.95); }
@@ -2521,7 +2521,7 @@ button.goAction.goAction:disabled {
 .mdAudit li:last-child { border-bottom: 0; padding-bottom: 0; }
 .mdAudit strong { font-size: 0.79rem; font-weight: 700; }
 .mdAudit small { font-size: 0.7rem; color: rgba(var(--grey-5), 0.9); }
-.mdAudit em { font-style: normal; font-size: 0.72rem; color: rgba(200, 210, 224, 0.85); }
+.mdAudit em { font-style: normal; font-size: 0.72rem; color: var(--ink-mod-grey-4); }
 
 /* ==========================================================================
    When crew get paid.
@@ -2549,7 +2549,7 @@ button.goAction.goAction:disabled {
 .payDue[data-tone='ok'] strong { color: var(--muted); }
 .payDue[data-tone='warn'] strong { color: var(--warn); }
 .payDue[data-tone='alert'] strong { color: var(--bad); }
-.payDue[data-tone='muted'] { color: rgba(var(--grey-5), 0.8); }
+.payDue[data-tone='muted'] { color: var(--mute-g580); }
 .payDue button { font-size: 0.78rem; }
 
 /* Being caught up should be visible, not remembered. */
@@ -2840,7 +2840,7 @@ button.goAction.goAction:disabled {
   font-weight: 800;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: rgba(203, 214, 228, 0.95);
+  color: var(--ink-mod-grey-13);
 }
 .ovBadge[data-tone='ok'] { border-color: rgba(72, 199, 142, 0.45); background: rgba(72, 199, 142, 0.1); color: var(--good); }
 .ovBadge[data-tone='warn'] { border-color: rgba(255, 209, 102, 0.45); background: rgba(255, 209, 102, 0.1); color: var(--warn); }
@@ -2883,7 +2883,7 @@ button.goAction.goAction:disabled {
   gap: 0.4rem;
   margin: 0 0 0.9rem;
   font-size: 0.85rem;
-  color: rgba(203, 214, 228, 0.85);
+  color: var(--ink-mod-grey-14);
 }
 .ovNote p { margin: 0; }
 
