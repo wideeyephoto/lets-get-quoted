@@ -69,6 +69,7 @@ export const LEAD_FLAG_LABELS: Record<string, string> = {
   while_booked: 'Came in while booked',
   repeat: 'Repeat request',
   phone_verified: 'Phone verified',
+  junk_email: 'Email looks fake',
 };
 
 export function getLeadTriage(lead: Pick<Lead, 'triage'>): LeadTriage {

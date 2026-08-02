@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendLeadNotificationEmail } from '@/lib/email';
+import { classifyEmail } from '@/lib/email-quality';
 import { createLead, getLeadTriage, LEAD_PRUNE_FLAGS, type Lead, type LeadTriage } from '@/lib/leads';
 import { deleteLeadPhotos, uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { isLeadVerificationValid } from '@/lib/lead-verification';
@@ -12,7 +13,9 @@ import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// Structural validation lives in email-quality.ts now. The regex this replaced
+// accepted "a@b.c" and "a..b@c.com" — undeliverable strings that went straight
+// into the send list and bounced, which is what costs sending reputation.
 
 function text(data: FormData, key: string, maxLength: number) {
   return String(data.get(key) ?? '').trim().slice(0, maxLength);
@@ -91,8 +94,13 @@ export async function POST(request: NextRequest) {
   if (phone && !normalizeUsPhone(phone)) {
     return NextResponse.json({ error: 'Enter a valid phone number.' }, { status: 400 });
   }
-  if (email && !EMAIL_REGEX.test(email)) {
-    return NextResponse.json({ error: 'Enter a valid email address.' }, { status: 400 });
+  // Refused only when the string CANNOT deliver. A junk-but-deliverable address
+  // (test@test.com, a burner inbox) is kept and flagged below — losing a real
+  // enquiry over a typed-in filler address is the worse trade, and the phone
+  // number is usually how this work gets won anyway.
+  const emailVerdict = classifyEmail(email);
+  if (email && !emailVerdict.valid) {
+    return NextResponse.json({ error: emailVerdict.note ?? 'Enter a valid email address.' }, { status: 400 });
   }
 
   const admin = createAdminClient();
@@ -179,6 +187,12 @@ export async function POST(request: NextRequest) {
   const flags: string[] = [];
   if (text(data, 'inArea', 8) === 'false') flags.push('out_of_area');
   if (text(data, 'excluded', 8) === 'true') flags.push('excluded_work');
+  // Deliverable-looking but not worth mailing. NOT a prune flag — it says
+  // nothing about whether the job is real, only that the address isn't. It
+  // keeps the address out of every automated send, which is the whole point:
+  // one dead address isn't one bounce, it's a bounce on the quote, the invoice,
+  // the reminder, the review ask and every campaign after it.
+  if (emailVerdict.junk) flags.push('junk_email');
   if (filters.minJobAmount > 0 && estimate && estimate.max < filters.minJobAmount) flags.push('below_minimum');
   if (timeline === 'researching') flags.push('just_researching');
   if (isFullyBookedActive(filters)) flags.push('while_booked');

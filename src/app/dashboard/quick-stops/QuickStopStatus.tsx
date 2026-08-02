@@ -53,6 +53,7 @@ const ICONS: Record<string, string> = {
   pause: '<rect x="7" y="5" width="3.5" height="14" rx="1"/><rect x="13.5" y="5" width="3.5" height="14" rx="1"/>',
   play: '<path d="M7 4.5 19 12 7 19.5Z"/>',
   chevronRight: '<path d="m9 6 6 6-6 6"/>',
+  help: '<circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.9.8c0 1.7-2.5 2.1-2.5 3.7"/><path d="M12 17.3h.01"/>',
   external: '<path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/>',
 };
 
@@ -125,6 +126,19 @@ export default function QuickStopStatus(props: QuickStopStatusProps) {
 
   const lockDate = lockedUntil ? new Date(lockedUntil).toLocaleDateString('en-US', { dateStyle: 'medium' }) : null;
 
+  // Jumps to the pitch section further down. It can't be a plain #anchor: once
+  // Quick Stops is switched ON the explainer is folded into a closed <details>,
+  // and an anchor into a collapsed element scrolls to a zero-height box (or, in
+  // the browsers that do auto-open it, arrives before the layout settles). So
+  // open the drawer first, then scroll on the next frame.
+  function showHowItWorks() {
+    const drawer = document.getElementById('quick-stop-how');
+    if (drawer instanceof HTMLDetailsElement) drawer.open = true;
+    requestAnimationFrame(() => {
+      document.getElementById('quick-stop-earn-more')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+
   return (
     <>
       {/* Master switch + what it currently means, side by side: the switch says
@@ -155,18 +169,24 @@ export default function QuickStopStatus(props: QuickStopStatusProps) {
           </small>
         </div>
 
-        {/* Support's lock is not the owner's to undo, so it offers an explanation
-            rather than a button that would not work. */}
-        {locked ? (
-          <Link href={SETTINGS_HREF} className="btn secondary bset-pause">
-            Why is this paused?
-          </Link>
-        ) : (
-          <button type="button" className="btn secondary bset-pause" onClick={() => setEnabled(!enabled)} disabled={pending}>
-            <Icon name={enabled ? 'pause' : 'play'} />
-            {pending ? 'Saving…' : enabled ? 'Pause Quick Stops' : 'Turn on Quick Stops'}
+        <div className="bset-master-actions">
+          {/* Support's lock is not the owner's to undo, so it offers an explanation
+              rather than a button that would not work. */}
+          {locked ? (
+            <Link href={SETTINGS_HREF} className="btn secondary bset-pause">
+              Why is this paused?
+            </Link>
+          ) : (
+            <button type="button" className="btn secondary bset-pause" onClick={() => setEnabled(!enabled)} disabled={pending}>
+              <Icon name={enabled ? 'pause' : 'play'} />
+              {pending ? 'Saving…' : enabled ? 'Pause Quick Stops' : 'Turn on Quick Stops'}
+            </button>
+          )}
+          <button type="button" className="btn ghost bset-how" onClick={showHowItWorks}>
+            <Icon name="help" />
+            How it works
           </button>
-        )}
+        </div>
       </section>
 
       <div className="bset-cards">

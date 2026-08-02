@@ -17,6 +17,7 @@ import { compressImage } from '@/lib/client-images';
 import ImagePickerModal from './ImagePickerModal';
 import DomainConnector from './DomainConnector';
 import GoogleReviewImport from './GoogleReviewImport';
+import IntakePreviewModal from './IntakePreviewModal';
 import IntroVideoField from './IntroVideoField';
 import LivePreview from './LivePreview';
 import SectionCard from './SectionCard';
@@ -1664,6 +1665,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
                 <SectionCard variant="linked" title="3. Estimate strategy &amp; lead alerts" description="Control how your ballpark estimates are positioned and which leads get your immediate attention." open={openSection === 'intakeAi'} onToggleOpen={() => toggleSection('intakeAi')}>
                   {intakeSlot}
                 </SectionCard>
+
+                {/* Closes the loop on the three cards above. Everything in them
+                    is a decision about a conversation the owner has never seen —
+                    this is the conversation, running on the draft, before any of
+                    it is published. */}
+                <IntakePreviewModal site={site} />
                 </div>
                 )}
 

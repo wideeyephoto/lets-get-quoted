@@ -233,19 +233,6 @@ export default async function QuickStopsPage() {
         </section>
       )}
 
-      {/* Sits directly under the queue. With no requests in yet, the queue is
-          empty and this is the answer to the question that empty state raises:
-          is this thing working, or does my trade just not produce this work? */}
-      <QuickStopCandidates
-        report={demand}
-        screenings={screenings}
-        reachable={reachable}
-        windowDays={DEMAND_WINDOW_DAYS}
-        minFeeCents={settings.minFeeCents}
-        maxVisitMinutes={settings.maxVisitMinutes}
-        enabled={settings.enabled}
-      />
-
       {/* STILL ON THE PAGE ONCE IT'S RUNNING, just folded away. This is the only
           place that explains what Quick Stop is, what it earns and what it costs
           a customer, so removing it when the switch flips would leave an owner
@@ -256,7 +243,7 @@ export default async function QuickStopsPage() {
           Left OPEN while it's off: with the feature switched off, the pitch is
           the page. */}
       {settings.enabled ? (
-        <details className="panel workspace-section-card es-how">
+        <details className="panel workspace-section-card es-how" id="quick-stop-how">
           <summary className="es-how-summary">
             <span className="es-how-copy">
               <strong>How &ldquo;Quick Stops&rdquo; works</strong>
@@ -311,6 +298,24 @@ export default async function QuickStopsPage() {
           </div>
         </section>
       ) : null}
+
+      {/* Last on the page, and reached by the "See your own past jobs that fit"
+          button in the pitch above. It used to sit directly under the queue,
+          where it was the answer to the question an empty queue raises — but it
+          is a long panel of history, and reading it is a decision ("is this
+          worth switching on?") rather than a thing to do today. Moving it to the
+          foot leaves the queue, the pitch and the settings — the three things
+          you actually came here for — above it, and the button carries anyone
+          who wants the evidence straight down to it. */}
+      <QuickStopCandidates
+        report={demand}
+        screenings={screenings}
+        reachable={reachable}
+        windowDays={DEMAND_WINDOW_DAYS}
+        minFeeCents={settings.minFeeCents}
+        maxVisitMinutes={settings.maxVisitMinutes}
+        enabled={settings.enabled}
+      />
     </main>
   );
 }

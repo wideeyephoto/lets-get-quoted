@@ -126,7 +126,8 @@ export default function QuickStopExplainer({
 
   return (
     <div className="es-explainer">
-      <section className="es-hero">
+      {/* The id the header's "How it works" button scrolls to. */}
+      <section className="es-hero" id="quick-stop-earn-more">
         <div className="es-hero-copy">
           <p className="es-kicker"><Icon name="spark" /> Matched to the route you&apos;re already driving</p>
           <h2>
@@ -148,6 +149,14 @@ export default function QuickStopExplainer({
             <Link href="/dashboard/quick-stops#quick-stop-setup" className="btn primary es-cta-btn">
               Set up Quick Stop <span aria-hidden="true">→</span>
             </Link>
+            {/* The evidence, next to the ask. The pitch above is an argument;
+                this is the same argument made out of the owner's own last 90
+                days, which is the more persuasive one — so it sits in the row
+                where they're deciding, and the panel itself lives at the foot
+                of the page rather than interrupting the queue. */}
+            <a href="#quick-stop-demand" className="btn secondary es-cta-btn">
+              See your own past jobs that fit
+            </a>
             <p>
               {remaining > 0
                 ? `${remaining} thing${remaining === 1 ? '' : 's'} left to set up · pause or change it whenever you like`

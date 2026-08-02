@@ -236,6 +236,11 @@
    minimum, excluded work) — literal inks: the card is always white. */
 .heroFormBooked { margin: 0; padding: .5rem .7rem; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--theme-accent) 45%, #d8d3c6); background: color-mix(in srgb, var(--theme-accent) 12%, #fff); color: #17140f; font-size: .78rem; line-height: 1.45; }
 .heroFormFitNote { margin: 0; padding: .45rem .65rem; border-radius: 8px; background: #fdf6e3; border: 1px solid #ecd9a0; color: #7a5f17; font-size: .76rem; line-height: 1.45; }
+/* "Did you mean gmail.com?" — sits tight under the email field it corrects.
+   Amber, not red: nothing is wrong yet, and the address may well be right. */
+.heroFormEmailFix { justify-self: start; margin: -.35rem 0 0; padding: .3rem .6rem; border: 1px solid #ecd9a0; border-radius: 8px; background: #fdf6e3; color: #7a5f17; font-size: .74rem; font-weight: 600; line-height: 1.35; text-align: left; cursor: pointer; }
+.heroFormEmailFix strong { font-weight: 800; }
+.heroFormEmailFix:hover { border-color: #d9bf6d; background: #fbf0d2; }
 /* Trust microcopy + earned response-time badge on the intake. */
 .heroFormPrivacy { color: #6b7280; font-size: .72rem; line-height: 1.4; }
 .heroFormConsent { color: #7b8494; font-size: .68rem; line-height: 1.4; }

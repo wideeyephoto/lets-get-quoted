@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { compressImage } from '@/lib/client-images';
+import { classifyEmail, suggestEmailFix } from '@/lib/email-quality';
 import { normalizeUsPhone } from '@/lib/phone';
 import { DEFAULT_FULLY_BOOKED_MESSAGE, getEstimateButtonLabel, getPublishedRatingBadge, getSiteContent, isFullyBookedActive } from '@/lib/site-content';
 import type { Site } from '@/lib/sites';
@@ -10,6 +11,13 @@ import styles from './themes.module.css';
 
 type HeroQuickFormProps = {
   site: Pick<Site, 'id' | 'published' | 'content' | 'company_name' | 'tagline' | 'headline' | 'service_area' | 'phone' | 'avg_response_ms'>;
+  /**
+   * Rendered for the owner to try, not for a customer to use — the builder's
+   * "Preview your AI Intake". Everything behaves normally, including the AI
+   * questions, right up to the submit, which stops rather than creating a lead.
+   * A contractor testing their own form must not end up in their own pipeline.
+   */
+  demo?: boolean;
 };
 
 // "within 25 minutes" / "within 2 hours" — always rounded UP so the claim is
@@ -22,7 +30,6 @@ function formatReplyTime(ms: number): string {
   return hours === 1 ? '1 hour' : `${hours} hours`;
 }
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_PHOTOS = 6;
 
 type EstimateRange = { min: number; max: number; basis?: string };
@@ -38,7 +45,7 @@ function formatCurrency(value: number): string {
 // and shows a rough $ range client-side only after contact info is given,
 // submitting a single lead with everything included. Otherwise it's just the
 // two-field quick capture, submitted immediately.
-export default function HeroQuickForm({ site }: HeroQuickFormProps) {
+export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const startedAt = useRef(Date.now());
@@ -115,6 +122,9 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   // Wizard-only extra email field (the wizard's main contact field is always a
   // phone number — the promised follow-up is a text or call).
   const [email, setEmail] = useState('');
+  // Derived, not stored: recomputed as they type, so it disappears the moment
+  // the address is fixed — by the button or by hand.
+  const emailFix = suggestEmailFix(email.trim());
   // The AI-priced range for the described job; null when the AI couldn't
   // price it (the lead still submits, just without a shown number).
   const [estimate, setEstimate] = useState<EstimateRange | null>(null);
@@ -348,11 +358,11 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
         return;
       }
       const trimmedEmail = email.trim();
-      if (wizardEmailField === 'required' && !EMAIL_REGEX.test(trimmedEmail)) {
+      if (wizardEmailField === 'required' && !classifyEmail(trimmedEmail).valid) {
         setStatus({ tone: 'error', text: 'Enter a valid email address.' });
         return;
       }
-      if (wizardEmailField === 'optional' && trimmedEmail && !EMAIL_REGEX.test(trimmedEmail)) {
+      if (wizardEmailField === 'optional' && trimmedEmail && !classifyEmail(trimmedEmail).valid) {
         setStatus({ tone: 'error', text: 'That email address doesn’t look right — fix it or leave it blank.' });
         return;
       }
@@ -362,7 +372,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
     }
 
     const isEmail = emailRequired || trimmedContact.includes('@');
-    const valid = isEmail ? EMAIL_REGEX.test(trimmedContact) : Boolean(normalizeUsPhone(trimmedContact));
+    const valid = isEmail ? classifyEmail(trimmedContact).valid : Boolean(normalizeUsPhone(trimmedContact));
     if (!valid) {
       setStatus({ tone: 'error', text: isEmail ? 'Enter a valid email address.' : 'Enter a valid phone number.' });
       return;
@@ -373,6 +383,15 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
   }
 
   async function submitLead(details?: { description: string }) {
+    // The preview stops here. Checked before the published/iframe guard so the
+    // message is the true one — "this was a preview", not "publish your site".
+    if (demo) {
+      setStatus({
+        tone: 'success',
+        text: 'That’s the whole journey — and because this is a preview, nothing was sent and no lead was created.',
+      });
+      return;
+    }
     if (!site.published || window.self !== window.top) {
       setStatus({ tone: 'error', text: `${estimateLabel} requests become active when this website is published.` });
       return;
@@ -629,16 +648,32 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
             </div>
           )}
           {wizardEnabled && wizardEmailField !== 'off' && (
-            <input
-              aria-label={wizardEmailField === 'required' ? 'Email' : 'Email (optional)'}
-              type="email"
-              placeholder={wizardEmailField === 'required' ? 'Email' : 'Email (optional)'}
-              autoComplete="email"
-              maxLength={160}
-              required={wizardEmailField === 'required'}
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
+            <>
+              <input
+                aria-label={wizardEmailField === 'required' ? 'Email' : 'Email (optional)'}
+                type="email"
+                placeholder={wizardEmailField === 'required' ? 'Email' : 'Email (optional)'}
+                autoComplete="email"
+                maxLength={160}
+                required={wizardEmailField === 'required'}
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+              {/* "Did you mean gmail.com?" — a typo'd domain is the single most
+                  common way a dead address gets collected, and the only one the
+                  person would fix themselves if anyone asked. Offered, never
+                  applied: silently correcting an address that was right sends
+                  somebody's quote to a stranger. */}
+              {emailFix && (
+                <button
+                  type="button"
+                  className={styles.heroFormEmailFix}
+                  onClick={() => setEmail(emailFix)}
+                >
+                  Did you mean <strong>{emailFix}</strong>? <span aria-hidden="true">↩</span>
+                </button>
+              )}
+            </>
           )}
           <small className={styles.heroFormPrivacy}><span aria-hidden="true">🔒</span> Your request goes only to {site.company_name} — never sold or shared.</small>
           <div className={styles.heroFormPhotoRow}>

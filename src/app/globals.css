@@ -7114,6 +7114,71 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 .app-modal-head h2 { margin: 0; font-size: 1.15rem; }
 .app-modal-body { padding: 1.25rem; }
 
+/* ---- "Preview your AI Intake" --------------------------------------------
+   Sits under the three intake tuner cards in the builder's Page tab. Styled as
+   a full-width strip rather than a button on a row: it is the conclusion of the
+   three cards above it, not a fourth option among them. */
+
+.intake-preview-trigger {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  width: 100%;
+  margin-top: 0.6rem;
+  padding: 0.8rem 1rem;
+  border: 1px dashed rgba(255, 122, 41, 0.45);
+  border-radius: 12px;
+  background: rgba(255, 122, 41, 0.07);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.intake-preview-trigger:hover { border-color: rgba(255, 122, 41, 0.8); background: rgba(255, 122, 41, 0.12); }
+.intake-preview-trigger:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.85); outline-offset: 2px; }
+.intake-preview-trigger small { font-weight: 500; color: rgba(247, 245, 239, 0.62); }
+
+/* Wider than a normal dialog — this one holds a whole intake card, and the
+   wizard's question step gets cramped at 560px. */
+.intake-preview-modal { max-width: 620px; }
+
+.intake-preview-note { margin: 0 0 0.9rem; font-size: 0.9rem; line-height: 1.55; color: rgba(247, 245, 239, 0.75); }
+.intake-preview-warn {
+  margin: 0 0 0.9rem;
+  padding: 0.6rem 0.8rem;
+  border-left: 3px solid #ffb454;
+  border-radius: 0 10px 10px 0;
+  background: rgba(255, 180, 84, 0.1);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+/* The intake renders with the site's own theme classes, which expect a light
+   card sitting on a hero photo. Give it that ground rather than the dashboard's
+   dark panel, or the form's own borders vanish into the background. */
+.intake-preview-stage {
+  padding: 1rem;
+  border-radius: 14px;
+  background: linear-gradient(160deg, #1b2a3d 0%, #131f2e 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* The template wrapper inside carries `min-height: 100vh`, which is right for a
+   whole web page and absurd for a card in a dialog — it left the form floating
+   at the top of a screen-tall empty box. Undone here rather than in
+   themes.module.css, which is the live site's and should stay that way. */
+.intake-preview-stage > :first-child { min-height: 0; }
+
+.intake-preview-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
 @keyframes app-modal-fade {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -10244,6 +10309,10 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   transition: transform 0.16s ease, box-shadow 0.16s ease;
 }
 .es-cta-btn:hover { transform: translateY(-1px); box-shadow: 0 16px 42px rgba(255, 122, 33, 0.44); }
+/* The second button in this row is the same SIZE but not the same weight — the
+   orange glow belongs to the one action the section is asking for. */
+.btn.secondary.es-cta-btn { box-shadow: none; }
+.btn.secondary.es-cta-btn:hover { box-shadow: none; border-color: rgba(255, 255, 255, 0.4); }
 
 .es-earnings {
   position: relative;
@@ -11879,6 +11948,16 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 
 .bset-pause { display: inline-flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
 .bset-pause svg { width: 0.9rem; height: 0.9rem; }
+
+/* The master switch's buttons, kept together so they wrap as a pair rather than
+   the second one dropping under the status text on its own. */
+.bset-master-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.bset-how { display: inline-flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
+.bset-how svg { width: 0.95rem; height: 0.95rem; }
+
+/* Both jump targets clear the sticky top bar rather than landing under it. */
+#quick-stop-earn-more,
+#quick-stop-demand { scroll-margin-top: 1.25rem; }
 
 /* --- summary cards --- */
 .bset-cards {

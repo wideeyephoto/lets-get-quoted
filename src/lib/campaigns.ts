@@ -4,6 +4,7 @@ import { listClientsWithStats } from '@/lib/clients';
 import { sendCampaignSms } from '@/lib/sms';
 import { sendCampaignEmail } from '@/lib/email';
 import { loadSuppressedEmails } from '@/lib/email-suppression';
+import { isMailable } from '@/lib/email-quality';
 
 export type CampaignChannel = 'email' | 'sms' | 'both';
 export type CampaignAudience = 'all' | 'past' | 'repeat' | 'lapsed';
@@ -101,7 +102,18 @@ export async function loadRecipients(supabase: SupabaseClient, accountId: string
       phone,
       email,
       smsReady: Boolean(phone && optedIn.has(phone)),
-      emailReady: Boolean(email) && !suppressed.has((email as string).trim().toLowerCase()),
+      // Three gates, and the third is new: an address that cannot deliver, or
+      // is a placeholder someone typed to get past a required field, must not
+      // go into a BULK send. A campaign is where junk addresses do their real
+      // damage — a hundred at once is a bounce spike, and a bounce spike is
+      // what mailbox providers act on. Judged at send time rather than trusted
+      // from intake, so addresses collected before the intake check, imported
+      // from another CRM, or typed straight into a client record are all
+      // covered by the same rule.
+      emailReady:
+        Boolean(email) &&
+        !suppressed.has((email as string).trim().toLowerCase()) &&
+        isMailable(email),
       jobCount: client.jobCount,
       lastJobAt: client.lastJobAt,
     };
