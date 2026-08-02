@@ -11440,7 +11440,12 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 .schedule-setup-go { flex: none; color: #ff7a29; font-weight: 700; }
 
 /* ---------------------------------------------------------------------------
-   Weekend-column gear, bottom-right of the calendar
+   Weekend-column chips, bottom-right of the calendar
+
+   Replaced a gear + popover holding two switches. Modelled on the map legend —
+   a pill you click to show or hide a slice of what is drawn, carrying its own
+   count — but written here rather than sharing .pin-map-legend-item, whose
+   rules belong to the map and carry its pin colours.
 --------------------------------------------------------------------------- */
 
 .calendar-days-row {
@@ -11449,146 +11454,65 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   margin-top: 0.45rem;
 }
 
-.calendar-days-gear { position: relative; }
+.calendar-days-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
 
-.calendar-days-gear-btn {
+.calendar-days-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  padding: 0.3rem 0.45rem;
+  gap: 0.4rem;
+  padding: 0.3rem 0.6rem;
   border-radius: 999px;
-  border: 1px solid rgba(148, 176, 214, 0.18);
-  background: rgba(255, 255, 255, 0.03);
-  color: rgba(147, 164, 184, 0.75);
-  cursor: pointer;
-  /* Quiet until you go looking for it — it's a preference, not an action. */
-  opacity: 0.6;
-  transition: opacity 0.16s ease, color 0.16s ease, border-color 0.16s ease;
-}
-
-.calendar-days-gear-btn:hover,
-.calendar-days-gear-btn[aria-expanded='true'] {
-  opacity: 1;
-  color: #ff7a29;
-  border-color: rgba(255, 122, 41, 0.45);
-}
-
-.calendar-days-gear-btn:focus-visible {
-  opacity: 1;
-  outline: 2px solid rgba(255, 122, 41, 0.7);
-  outline-offset: 2px;
-}
-
-.calendar-days-gear-btn svg { width: 0.95rem; height: 0.95rem; }
-
-/* "5" when two columns are hidden — explains a short week at a glance. */
-.calendar-days-gear-count {
-  font-size: 0.68rem;
-  font-weight: 750;
-  letter-spacing: 0.02em;
-}
-
-.calendar-days-pop {
-  position: absolute;
-  right: 0;
-  bottom: calc(100% + 0.4rem);
-  z-index: 40;
-  width: 16rem;
-  padding: 0.7rem;
-  border-radius: 14px;
   border: 1px solid rgba(148, 176, 214, 0.2);
-  background: #0d1a2b;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
-  display: grid;
-  gap: 0.15rem;
-  text-align: left;
-}
-
-.calendar-days-pop > p {
-  margin: 0 0 0.25rem;
-  font-size: 0.66rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted, #93a4b8);
-}
-
-.calendar-days-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.4rem 0.35rem;
-  border-radius: 10px;
-  cursor: pointer;
-}
-
-.calendar-days-toggle:hover { background: rgba(255, 255, 255, 0.04); }
-.calendar-days-toggle input { position: absolute; opacity: 0; pointer-events: none; }
-
-.calendar-days-track {
-  flex: none;
-  width: 2.1rem;
-  height: 1.2rem;
-  border-radius: 999px;
-  background: rgba(148, 176, 214, 0.22);
-  padding: 0.15rem;
-  transition: background 0.16s ease;
-}
-
-.calendar-days-track > span {
-  display: block;
-  width: 0.9rem;
-  height: 0.9rem;
-  border-radius: 50%;
-  background: #fff;
-  transition: transform 0.16s ease;
-}
-
-.calendar-days-toggle input:checked + .calendar-days-track { background: #ff7a29; }
-.calendar-days-toggle input:checked + .calendar-days-track > span { transform: translateX(0.9rem); }
-.calendar-days-toggle input:focus-visible + .calendar-days-track {
-  outline: 2px solid rgba(255, 122, 41, 0.7);
-  outline-offset: 2px;
-}
-
-.calendar-days-copy { display: grid; gap: 0.05rem; min-width: 0; }
-.calendar-days-copy strong { font-size: 0.86rem; font-weight: 650; color: var(--text, #e8eef6); }
-.calendar-days-copy small { font-size: 0.74rem; color: var(--muted, #93a4b8); }
-
-/* Work is hidden right now — worth seeing without opening the menu. */
-.calendar-days-gear-warn {
-  display: inline-grid;
-  place-items: center;
-  width: 0.95rem;
-  height: 0.95rem;
-  border-radius: 50%;
-  background: rgba(255, 176, 32, 0.9);
-  color: #1a1207;
-  font-size: 0.66rem;
-  font-weight: 800;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(232, 238, 246, 0.9);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 650;
   line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+.calendar-days-chip:hover { background: rgba(255, 255, 255, 0.09); border-color: rgba(255, 255, 255, 0.28); }
+.calendar-days-chip:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.85); outline-offset: 2px; }
+
+/* The count is the reason the chip exists, so it stays legible when the rest
+   of the chip dims — tabular so Sat and Sun line up at any width. */
+.calendar-days-chip b {
+  font-size: 0.74rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
 }
 
-.calendar-days-note.warn {
+.calendar-days-chip-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.85;
+  flex: none;
+}
+
+/* Off: dimmed and struck through, the same shape the map legend uses, so "this
+   is switched off" reads the same way in both places. The dot goes hollow so
+   the state survives without colour vision. */
+.calendar-days-chip[data-off] { opacity: 0.45; text-decoration: line-through; text-decoration-thickness: 1px; }
+.calendar-days-chip[data-off] .calendar-days-chip-dot { background: transparent; box-shadow: inset 0 0 0 2px currentColor; }
+.calendar-days-chip[data-off] b { text-decoration: none; }
+
+/* Off AND holding work. This is the state the old gear buried behind a click:
+   jobs are booked on a day that is not on screen. Amber rather than dimmed —
+   it is not "off", it is "off and you are missing something". */
+.calendar-days-chip[data-hiding] {
+  opacity: 1;
+  border-color: rgba(255, 176, 32, 0.45);
+  background: rgba(255, 176, 32, 0.12);
   color: #ffc65c;
-  border-top-color: rgba(255, 176, 32, 0.3);
 }
-
-.calendar-days-note {
-  margin: 0.35rem 0 0 !important;
-  padding-top: 0.5rem;
-  border-top: 1px solid rgba(148, 176, 214, 0.12);
-  font-size: 0.72rem !important;
-  font-weight: 400 !important;
-  letter-spacing: 0 !important;
-  text-transform: none !important;
-  line-height: 1.4;
-}
+.calendar-days-chip[data-hiding] b { opacity: 1; }
 
 @media (prefers-reduced-motion: reduce) {
-  .calendar-days-track,
-  .calendar-days-track > span,
-  .calendar-days-gear-btn { transition: none; }
+  .calendar-days-chip { transition: none; }
 }
 
 /* Hint + setup shortcuts, under the grid */

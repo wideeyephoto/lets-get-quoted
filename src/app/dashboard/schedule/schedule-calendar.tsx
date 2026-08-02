@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import SaveButton from '@/components/save-button';
 import FloatingPanel from '@/components/floating-panel';
-import CalendarDaysGear from './CalendarDaysGear';
+import CalendarWeekendToggles from './CalendarWeekendToggles';
 import { setCalendarViewAction, setCalendarWeekendAction } from '../view-actions';
 import type { CalendarView, WeekendDays } from '@/lib/dashboard-views';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
@@ -369,21 +369,26 @@ export default function ScheduleCalendar({
     );
   }, [jobs, monthDays]);
 
-  // Hiding a column hides any work booked on it. Silently dropping a scheduled
-  // job off the calendar is how you miss it, so the gear says when that's
-  // happening in the month you're looking at.
-  const hiddenJobCount = useMemo(() => {
-    const hidden = [!days.sun ? 0 : null, !days.sat ? 6 : null].filter((d): d is number => d !== null);
-    if (hidden.length === 0) return 0;
-    let count = 0;
+  // Work booked on each weekend day in the month on screen.
+  //
+  // Counted whether the column is shown or not — that is the whole point. The
+  // old version only counted HIDDEN days, which meant the number existed only
+  // while it was too late to be useful; a chip has to be able to say "6" before
+  // you hide the day as well as after.
+  //
+  // Indexes are real weekday numbers (0=Sun … 6=Sat) because `weeks` keeps all
+  // seven columns and hiding is a render-time concern, not a data one.
+  const weekendJobCounts = useMemo(() => {
+    let sun = 0;
+    let sat = 0;
     for (const week of visibleWeeks) {
-      for (const dayIndex of hidden) {
-        const cell = week[dayIndex];
-        if (cell) count += jobsByDate.get(cell.dateKey)?.length ?? 0;
-      }
+      const sunday = week[0];
+      const saturday = week[6];
+      if (sunday) sun += jobsByDate.get(sunday.dateKey)?.length ?? 0;
+      if (saturday) sat += jobsByDate.get(saturday.dateKey)?.length ?? 0;
     }
-    return count;
-  }, [visibleWeeks, days, jobsByDate]);
+    return { sun, sat };
+  }, [visibleWeeks, jobsByDate]);
 
   const visibleWeekLayouts = useMemo(() => {
     return visibleWeeks.map((week) => {
@@ -817,7 +822,7 @@ export default function ScheduleCalendar({
               <Link href="/dashboard/recurring">Manage plans</Link>
             </p>
           ) : null}
-          <CalendarDaysGear days={days} onChange={updateDays} hiddenJobCount={hiddenJobCount} />
+          <CalendarWeekendToggles days={days} onChange={updateDays} counts={weekendJobCounts} />
         </div>
       )}
 
