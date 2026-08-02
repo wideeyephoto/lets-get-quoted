@@ -47,6 +47,12 @@
   --on-accent: #180c02;
   --accent: #ff7a21;
   --accent-2: #ffd166;
+  /* "Newly arrived", as distinct from the accent's "this wants you today". Two
+     oranges on one rail row make neither of them urgent, so the news badge steps
+     out of the accent's way and the count keeps it. Dark and light need
+     genuinely different greens here — a green bright enough to read on navy is
+     a highlighter pen on white. */
+  --fresh: #4fd39a;
   --shadow-strong: rgba(0, 0, 0, 0.55);
   --shadow-soft: rgba(0, 0, 0, 0.32);
   /* The page ground, and the chrome (rail / top bar) that sits a shade apart
@@ -86,6 +92,7 @@
   --text: #0f1a28;
   --muted: #47566a;
   --muted-2: #5c6b80;
+  --fresh: #0d7a52;
   --shadow-strong: rgba(17, 27, 41, 0.18);
   --shadow-soft: rgba(17, 27, 41, 0.1);
   --ground-1: #eef1f7;
@@ -685,27 +692,34 @@ h3 {
 }
 
 /* --- the badge cluster -----------------------------------------------------
-   One box, three tones. The numbers now sit in hollow square-cornered boxes as
-   tall as the row allows, because a 2-digit count in a 1.2rem circle is a thing
-   you squint at, and these are meant to be read at a glance from across a desk.
-
-   1.4rem tall against the row's 0.45rem padding lands on exactly the 2.3rem the
-   rows already measured — the height was redistributed from padding into the
-   box, not added. .sidenav-link's min-height holds every OTHER row at that same
-   2.3rem so the rail's rhythm is untouched.
-
-   Hollow for both numbers, per the ask. What used to separate them (one filled,
-   one outlined) is now colour alone, which is the more honest split anyway:
-   they are the same kind of fact — a quantity — and the accent one is the one
-   that wants you today. Border and wash both derive from currentColor, so each
-   tone is a single colour declaration. */
+   Two kinds of fact share these rows, and they must not look like three of the
+   same thing. QUANTITIES sit in hollow square boxes as tall as the row allows,
+   because a 2-digit count in a 1.2rem circle is a thing you squint at and these
+   are meant to be read at a glance from across a desk. NEWS is a smaller, softer
+   lozenge that lives inside their height. */
 .sidenav-unseen,
 .sidenav-count,
 .sidenav-total {
   display: inline-grid;
   place-items: center;
   flex: none;
+}
+
+/* 1.4rem tall against the row's 0.45rem padding lands on exactly the 2.3rem the
+   rows already measured — the height was redistributed from padding into the
+   box, not added. .sidenav-link's min-height holds every OTHER row at that same
+   2.3rem so the rail's rhythm is untouched.
+
+   Hollow for both numbers. What used to separate them (one filled, one
+   outlined) is now colour alone, which is the more honest split anyway: they
+   are the same kind of fact — a quantity — and the accent one is the one that
+   wants you today. Border and wash both derive from currentColor, so each tone
+   is a single colour declaration. */
+.sidenav-count,
+.sidenav-total {
   height: 1.4rem;
+  min-width: 1.4rem;
+  padding: 0 0.3rem;
   border-radius: 4px;
   border: 1px solid currentColor;
   background: color-mix(in srgb, currentColor 14%, transparent);
@@ -715,16 +729,22 @@ h3 {
 /* "Something landed here that you haven't opened." A word, not a dot — a dot
    has to be learned, and this has to work the first time it's seen. It clears
    itself the moment the page is visited, so it can only ever be pointing at a
-   real gap. */
+   real gap.
+
+   Deliberately the smallest thing on the row: soft-filled instead of outlined,
+   a lozenge instead of a box, and short enough to sit inside the numbers rather
+   than beside them. As a third full-height box in the accent colour it read as
+   a third number competing with the two real ones — and it is not a number, it
+   is a yes/no. Green says that without shouting over the count. */
 .sidenav-unseen {
-  /* Sized down to what four letters actually need. It is the third thing on an
-     already-full row — "Leads · New · 3 · 9" in 190px — and every pixel it
-     takes comes off the label, which ellipsizes first. */
-  padding: 0 0.32rem;
-  color: var(--accent);
-  font-size: 0.58rem;
-  font-weight: 900;
-  letter-spacing: 0.04em;
+  height: 1.05rem;
+  padding: 0 0.28rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fresh) 18%, transparent);
+  color: var(--fresh);
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
@@ -734,8 +754,6 @@ h3 {
 .sidenav-count {
   margin-left: -0.05rem;
   margin-right: auto;
-  min-width: 1.4rem;
-  padding: 0 0.3rem;
   color: var(--accent);
   font-size: 0.78rem;
   font-weight: 800;
@@ -746,19 +764,27 @@ h3 {
    number at a glance. */
 .sidenav-total {
   margin-right: auto;
-  min-width: 1.4rem;
-  padding: 0 0.3rem;
   color: rgba(var(--ink-rgb), 0.6);
   font-size: 0.76rem;
   font-weight: 700;
 }
 
-/* The accent badge claims the leftover space on its own; when the hollow one
-   follows, that auto margin would fling it to the far edge instead of leaving
-   the pair together. Same for the New tag ahead of either. */
-.sidenav-count:has(+ .sidenav-total) { margin-right: 0.3rem; }
+/* The row's 0.6rem gap is there to hold the icon off the label. Between the
+   badges it lands on TOP of their own margins, so every adjacent pair was
+   paying 0.9rem — and on a three-badge row that is 1.8rem of air taken straight
+   off the label, which is what pushed "Leads" and "Jobs" into an ellipsis. The
+   cluster cancels most of the gap it inherits and keeps 0.2rem: the boxes are
+   outlined, so they read as separate without needing daylight between them. */
+.sidenav-unseen + .sidenav-count,
+.sidenav-unseen + .sidenav-total,
+.sidenav-count + .sidenav-total { margin-left: -0.4rem; }
+
+/* Whichever badge is LAST claims the leftover space, so the cluster stays beside
+   its label instead of drifting to the far edge. The ones ahead of it must not,
+   or the pair gets flung apart. */
+.sidenav-count:has(+ .sidenav-total) { margin-right: 0; }
 .sidenav-unseen:has(+ .sidenav-count),
-.sidenav-unseen:has(+ .sidenav-total) { margin-right: 0.3rem; }
+.sidenav-unseen:has(+ .sidenav-total) { margin-right: 0; }
 .sidenav-unseen:not(:has(+ .sidenav-count)):not(:has(+ .sidenav-total)) { margin-right: auto; }
 
 .sidenav-link.active .sidenav-total { color: rgba(var(--ink-rgb), 0.85); }
