@@ -4,7 +4,7 @@ import { listUpcomingBlocks } from '@/lib/availability-blocks';
 import { getAvailableBookingDays } from '@/lib/booking';
 import BookingSetup from './BookingSetup';
 
-export const metadata = { title: 'Booking & availability' };
+export const metadata = { title: 'Instant Online Booking and Availability' };
 
 // Everything that governs the public /book page, on one screen: whether it's
 // open at all, which days and arrival windows it offers, how much it will take,

@@ -289,7 +289,7 @@ export default function BookingSetup({
       <header className="bset-head">
         <div>
           <h1>
-            Booking &amp; availability <Icon name="calendar" />
+            Instant Online Booking and Availability <Icon name="calendar" />
           </h1>
           <p>Control when customers can book and how your time is managed.</p>
         </div>

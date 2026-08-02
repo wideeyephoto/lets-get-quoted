@@ -114,6 +114,31 @@ export async function sendEstimateOfferSms(input: {
   return providerId;
 }
 
+// Booking confirmed / declined by the contractor → customer.
+//
+// Transactional and expected: this person chose a slot on the booking page and
+// was told the time was not locked in until the contractor confirmed. This is
+// that answer arriving, so it is account-scoped and mirrored to the inbox like
+// any other customer conversation.
+//
+// Best-effort by design. A text that fails to send must not roll back the
+// confirmation — the appointment is real either way, and the alternative is an
+// owner who pressed Confirm, saw an error, and has no idea whether the job is on
+// their calendar.
+export async function sendBookingDecisionSms(input: {
+  accountId: string;
+  toPhone: string;
+  message: string;
+}): Promise<void> {
+  try {
+    if (await isPhoneOptedOut(input.accountId, input.toPhone)) return;
+    const providerId = await sendTwilioMessage(input.toPhone, `${input.message} Reply STOP to opt out.`);
+    await logOutboundToInbox(input.accountId, input.toPhone, input.message, providerId);
+  } catch (error) {
+    console.error('Booking decision SMS failed:', error instanceof Error ? error.message : error);
+  }
+}
+
 // Tells the contractor, on their own mobile, that a lead answered. A self-alert
 // to the number they entered in settings — not a customer conversation, so it
 // skips the inbox and the consent ledger, exactly like the high-value lead

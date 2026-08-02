@@ -111,13 +111,30 @@ export async function getAvailableBookingDays(admin: SupabaseClient, accountId: 
       .not('scheduled_for', 'is', null)
       .neq('status', 'archived');
 
-  const [withEndDate, { data: blocks }] = await Promise.all([
+  // A booking waiting on the contractor still HOLDS ITS SLOT.
+  //
+  // Without this the confirmation step would manufacture the exact problem it
+  // exists to prevent: two customers request Thursday 9am, neither is on the
+  // calendar so neither blocks the other, and confirming both double-books the
+  // day. A requested window is provisionally taken until it is confirmed (when
+  // it becomes a real scheduled job) or declined (when it frees).
+  const pendingRequests = admin
+    .from('jobs')
+    .select('booking_requested_date, booking_requested_time')
+    .eq('account_id', accountId)
+    .not('booking_requested_date', 'is', null)
+    .is('booking_confirmed_at', null)
+    .is('booking_declined_at', null)
+    .neq('status', 'archived');
+
+  const [withEndDate, { data: blocks }, { data: pending, error: pendingError }] = await Promise.all([
     scheduledJobs(`${SPAN_COLUMNS}, scheduled_time`),
     admin
       .from('availability_blocks')
       .select('start_date, end_date')
       .eq('account_id', accountId)
       .gte('end_date', utcDateKey(new Date())),
+    pendingRequests,
   ]);
 
   // Before the end-date migration, asking for scheduled_until fails the select
@@ -141,6 +158,24 @@ export async function getAvailableBookingDays(admin: SupabaseClient, accountId: 
     if (time) {
       const set = takenByDate.get(key) ?? new Set<string>();
       set.add(time.slice(0, 5));
+      takenByDate.set(key, set);
+    }
+  }
+
+  // Fold the pending requests in beside the real bookings. If the columns are
+  // missing (migration not run yet) PostgREST errors rather than returning rows,
+  // and the right behaviour is to carry on offering slots as before rather than
+  // to take the whole booking page down.
+  if (pendingError) {
+    console.error(`Pending booking lookup failed for account ${accountId}:`, pendingError.message);
+  }
+  for (const row of (pending ?? []) as Array<{ booking_requested_date: string | null; booking_requested_time: string | null }>) {
+    const key = row.booking_requested_date;
+    if (!key) continue;
+    countByDate.set(key, (countByDate.get(key) ?? 0) + 1);
+    if (row.booking_requested_time) {
+      const set = takenByDate.get(key) ?? new Set<string>();
+      set.add(row.booking_requested_time.slice(0, 5));
       takenByDate.set(key, set);
     }
   }
@@ -303,11 +338,23 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
     triage: { score: 'warm', flags: [], timeline: requested, contactPreference: 'any' },
   });
 
-  // Auto-calendar the requested window as a job — the self-serve promise. Abuse
-  // guard: skip if this contact already has a job on that date (blocks repeat/
-  // spam bookings of the same day). Best-effort: a failure leaves the lead as a
-  // plain request rather than failing the booking. createJob links the same
-  // client profile the lead just got (deduped by phone/email).
+  // Record the requested window as a job that is NOT on the calendar.
+  //
+  // This used to write scheduled_for straight away, which meant a stranger could
+  // put work on a contractor's calendar with nobody agreeing to it. The customer
+  // email has always said "this time isn't locked in until they confirm"; the
+  // behaviour was the part that disagreed.
+  //
+  // scheduled_for stays NULL and the chosen slot is parked on booking_requested_*
+  // instead. That is deliberate and load-bearing: every calendar, capacity count,
+  // Plan my day, reminder and digest query already filters on scheduled_for, so
+  // an unconfirmed booking cannot leak into any of them through a query somebody
+  // forgot to update. confirmBookingAction is the one place that promotes it.
+  //
+  // Abuse guard: skip if this contact already has a job on that date — including
+  // one still awaiting confirmation, or the same person could queue up a dozen
+  // requests for the same day. Best-effort: a failure leaves the lead as a plain
+  // request rather than failing the booking.
   try {
     let alreadyBooked = false;
     if (input.phone) {
@@ -316,7 +363,7 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
         .select('id')
         .eq('account_id', accountId)
         .eq('client_phone', input.phone)
-        .eq('scheduled_for', input.dateKey)
+        .or(`scheduled_for.eq.${input.dateKey},booking_requested_date.eq.${input.dateKey}`)
         .limit(1)
         .maybeSingle();
       alreadyBooked = Boolean(dupe);
@@ -330,10 +377,14 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
         address: input.address,
         scope: jobScope,
         status: 'new_lead',
-        scheduledFor: input.dateKey,
-        scheduledTime: input.time,
+        scheduledFor: null,
+        scheduledTime: null,
         quotedAmount: 0,
       });
+      await admin
+        .from('jobs')
+        .update({ booking_requested_date: input.dateKey, booking_requested_time: input.time })
+        .eq('id', job.id);
       await admin.from('leads').update({ converted_job: job.id }).eq('id', lead.id);
     }
   } catch (error) {

@@ -11440,6 +11440,112 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 .schedule-setup-go { flex: none; color: #ff7a29; font-weight: 700; }
 
 /* ---------------------------------------------------------------------------
+   Online bookings waiting on the contractor
+
+   Amber, not the brand orange. Orange on this page means "do the thing" (Plan
+   my day, + New, Set booking availability). This panel is not an action the
+   owner chose to take — it is somebody waiting on them — and it has to read as
+   a held state rather than as another button to press.
+--------------------------------------------------------------------------- */
+
+.booking-requests {
+  border-color: rgba(255, 176, 32, 0.35);
+  background: linear-gradient(180deg, rgba(255, 176, 32, 0.07), rgba(255, 255, 255, 0.02));
+}
+
+.booking-requests-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.booking-requests-head .eyebrow { color: #ffc65c; }
+.booking-requests-head h2 { margin: 0.1rem 0 0; font-size: 1.15rem; letter-spacing: -0.01em; }
+
+/* States the thing the panel exists to say, where the eye lands first. */
+.booking-requests-pill {
+  flex: none;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 176, 32, 0.5);
+  background: rgba(255, 176, 32, 0.14);
+  color: #ffc65c;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.booking-requests-lead {
+  margin: 0.75rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: rgba(232, 238, 246, 0.86);
+}
+.booking-requests-lead strong { color: #ffd591; }
+
+.booking-requests-overdue {
+  margin: 0.6rem 0 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 107, 107, 0.4);
+  background: rgba(255, 107, 107, 0.09);
+  color: #ffb4a7;
+  font-size: 0.83rem;
+  line-height: 1.5;
+}
+
+.booking-requests-list { list-style: none; margin: 0.85rem 0 0; padding: 0; display: grid; gap: 0.55rem; }
+
+.booking-request {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid rgba(148, 176, 214, 0.2);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.booking-request[data-past] { border-color: rgba(255, 107, 107, 0.35); }
+
+.booking-request-main { min-width: 0; display: grid; gap: 0.3rem; }
+.booking-request-who { display: flex; align-items: baseline; gap: 0.55rem; flex-wrap: wrap; }
+.booking-request-who strong { font-size: 0.98rem; font-weight: 750; }
+.booking-request-when { font-size: 0.86rem; font-weight: 700; color: #ffd591; }
+.booking-request-past {
+  margin-left: 0.4rem;
+  font-style: normal;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #ffb4a7;
+}
+.booking-request-detail { display: grid; gap: 0.12rem; min-width: 0; font-size: 0.8rem; color: rgba(203, 214, 228, 0.82); }
+.booking-request-detail > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.booking-request-address, .booking-request-contact { color: rgba(147, 164, 184, 0.95); }
+
+.booking-request-actions { display: flex; align-items: flex-start; gap: 0.4rem; flex-wrap: wrap; }
+/* Confirm stays the standard orange .btn.primary — deliberately NOT green.
+   Green in this app means money agreed or money recorded (approving hours,
+   marking paid), and it only keeps that meaning if nothing else borrows it.
+   Confirming an appointment is a promise about time, not about money. */
+
+.booking-request-foot {
+  grid-column: 1 / -1;
+  margin: 0.15rem 0 0;
+  font-size: 0.74rem;
+  color: rgba(147, 164, 184, 0.85);
+}
+
+@media (max-width: 720px) {
+  .booking-request { grid-template-columns: minmax(0, 1fr); }
+  .booking-request-actions > * { flex: 1 1 9rem; }
+  .booking-request-actions .btn { width: 100%; }
+}
+
+/* ---------------------------------------------------------------------------
    Weekend-column chips, bottom-right of the calendar
 
    Replaced a gear + popover holding two switches. Modelled on the map legend —

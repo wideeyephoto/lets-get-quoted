@@ -27,6 +27,8 @@ import ScheduleDragProvider from './ScheduleDragProvider';
 import AutomationLink from '@/components/automation-link';
 import { listUpcomingBlocks } from '@/lib/availability-blocks';
 import WorkingHoursPanel from '@/components/working-hours-panel';
+import BookingRequests from './BookingRequests';
+import { listPendingBookings, toPendingBookings } from '@/lib/booking-requests';
 
 const STATUS_LABEL: Record<Job['status'], string> = {
   new_lead: 'New request',
@@ -214,6 +216,11 @@ export default async function SchedulePage({
   const crewInitialsById = new Map(crew.map((member) => [member.id, crewInitials(member.name)]));
   const crewById = new Map(crew.map((member) => [member.id, member]));
   const scheduleRequestByJob = await listActiveScheduleRequests(supabase, accountId, unscheduledJobs.map((job) => job.id));
+
+  // Self-serve bookings that have not been answered. These are NOT in
+  // unscheduledJobs above and must never be: they are not work waiting for a
+  // date, they are a customer waiting for a yes.
+  const pendingBookingRows = await listPendingBookings(supabase, accountId);
 
   const { year, monthIndex } = parseMonthParam(searchParams.month);
   const firstWeekday = new Date(year, monthIndex, 1).getDay();
@@ -470,6 +477,12 @@ export default async function SchedulePage({
           impossible. Stacked, they never were: the calendar ran ~700px, the map
           another ~400, and the list of unscheduled jobs started a screen and a
           half below the grid it was meant to be dragged into. */}
+      {/* Above the calendar on purpose. Somebody chose a time and is waiting to
+          hear back; that outranks looking at the month. */}
+      <BookingRequests
+        requests={toPendingBookings(pendingBookingRows, Date.now(), todayKey)}
+      />
+
       <div className="schedule-workbench">
       <section className="panel workspace-section-card schedule-calendar-panel">
         {/* Two rows, not six. The page used to spend ~470px on desktop and
@@ -746,7 +759,7 @@ export default async function SchedulePage({
       <Link className="schedule-setup-link" href="/dashboard/schedule/booking" id="booking-availability">
         <span className="schedule-setup-link-copy">
           <span className="eyebrow">Setup</span>
-          <strong>Booking &amp; availability</strong>
+          <strong>Instant Online Booking and Availability</strong>
           <span>
             {bookingStatus === 'Not live'
               ? 'Publish your website to let customers book themselves.'
