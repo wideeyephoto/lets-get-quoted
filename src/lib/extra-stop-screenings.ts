@@ -93,14 +93,28 @@ export async function loadScreeningSummary(
     throw new Error(error.message);
   }
 
-  const rows = (data ?? []) as Array<{
-    outcome: string;
-    exclusions: string[] | null;
-    reason: string | null;
-    issue: string | null;
-    created_at: string;
-  }>;
+  const rows = (data ?? []) as ScreeningRow[];
 
+  return summariseScreenings(rows);
+}
+
+export type ScreeningRow = {
+  outcome: string;
+  exclusions: string[] | null;
+  reason?: string | null;
+  issue: string | null;
+  created_at: string;
+};
+
+/**
+ * Turn the raw rows into the numbers the panel states.
+ *
+ * Pure, and split out because the counting has an easy mistake in it: an
+ * accepted request is not a refusal with no reason, and a refusal with no
+ * exclusions still needs a reason to be counted under. Both were only reachable
+ * through the database before this.
+ */
+export function summariseScreenings(rows: ScreeningRow[]): ScreeningSummary {
   const counts = new Map<string, number>();
   const examples: ScreeningSummary['examples'] = [];
   let accepted = 0;
@@ -113,13 +127,15 @@ export async function loadScreeningSummary(
     }
     if (row.outcome === 'unsafe') unsafe += 1;
 
-    // An unsafe refusal is its own reason whatever else matched — it's the one
-    // outcome where the customer was told to call 911 rather than shown a price.
-    const labels = row.outcome === 'unsafe'
-      ? ['Unsafe — sent to emergency help']
-      : row.exclusions?.length
-        ? row.exclusions
-        : ['Not a short single-visit job'];
+    // An unsafe refusal is its own reason whatever else matched — it is the one
+    // outcome where the customer was told to call 911 rather than shown a price,
+    // and filing it under "large replacement" would lose that.
+    const labels =
+      row.outcome === 'unsafe'
+        ? ['Unsafe — sent to emergency help']
+        : row.exclusions?.length
+          ? row.exclusions
+          : ['Not a short single-visit job'];
     for (const label of labels) counts.set(label, (counts.get(label) ?? 0) + 1);
 
     if (row.issue && examples.length < 4) {
@@ -127,12 +143,11 @@ export async function loadScreeningSummary(
     }
   }
 
-  const turnedAway = rows.length - accepted;
   return {
     available: true,
     asked: rows.length,
     accepted,
-    turnedAway,
+    turnedAway: rows.length - accepted,
     unsafe,
     reasons: [...counts.entries()]
       .map(([label, count]) => ({ label, count }))
