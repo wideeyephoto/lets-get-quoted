@@ -23,7 +23,7 @@ function initialsFor(name: string): string {
   );
 }
 
-export default async function ClientsPage({ searchParams }: { searchParams: { created?: string; existing?: string } }) {
+export default async function ClientsPage({ searchParams }: { searchParams: { created?: string; existing?: string; add?: string } }) {
   const { supabase, accountId } = await requireOwnerContext();
   const clients = await listClientsWithStats(supabase, accountId);
   const repeatCount = clients.filter((client) => client.jobCount > 1).length;
@@ -83,7 +83,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: { cr
         ) : null}
         {/* Rendered even with an empty book: the Add button lives in here, and a
             list you can't add to is the problem this page had. */}
-        <ClientsWorkspace clients={rows} initialView={view} />
+        <ClientsWorkspace clients={rows} initialView={view} openAdd={searchParams.add === '1'} />
       </section>
 
       <div className="actions" style={{ marginTop: '1.25rem' }}>

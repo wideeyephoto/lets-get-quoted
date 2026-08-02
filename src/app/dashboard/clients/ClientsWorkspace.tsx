@@ -61,16 +61,26 @@ type SortKey = 'name' | 'jobs' | 'total' | 'last';
 export default function ClientsWorkspace({
   clients,
   initialView,
+  openAdd = false,
 }: {
   clients: ClientRow[];
   initialView: ClientsView;
+  /**
+   * Arrived from the nav's "+ New → New client", so open the dialog rather than
+   * landing on the list and making them find the button.
+   *
+   * INITIAL state only. Adding a client runs a server action, which revalidates
+   * this page — synced to the prop, the dialog would spring back open the
+   * instant it was used.
+   */
+  openAdd?: boolean;
 }) {
   const [view, setView] = useState<ClientsView>(initialView);
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'name', dir: 'asc' });
   const [repeatOnly, setRepeatOnly] = useState(false);
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(openAdd);
   const [, startSaveView] = useTransition();
   const listRef = useRef<HTMLDivElement>(null);
 

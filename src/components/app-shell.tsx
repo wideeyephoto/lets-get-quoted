@@ -471,6 +471,18 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                       <NavIcon href="/dashboard/leads" />
                       New lead
                     </Link>
+                    {/* The two records you create without a job in front of you:
+                        a customer you met, and somebody you hired. Both land on
+                        their own page with the add form already open, the same
+                        way the two above do. */}
+                    <Link href="/dashboard/clients?add=1" role="menuitem" className="sidenav-new-item" onClick={() => setNewMenuOpen(false)}>
+                      <NavIcon href="/dashboard/clients" />
+                      New client
+                    </Link>
+                    <Link href="/dashboard/crew?add=1" role="menuitem" className="sidenav-new-item" onClick={() => setNewMenuOpen(false)}>
+                      <NavIcon href="/dashboard/crew" />
+                      New crew member
+                    </Link>
                   </div>
                 ) : null}
               </div>

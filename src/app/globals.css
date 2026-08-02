@@ -388,7 +388,9 @@ h3 {
      to wrap under its own icon. */
   right: 0;
   left: auto;
-  min-width: 10.5rem;
+  /* Sized for the longest item ("New crew member"), which wrapped under its own
+     icon at 10.5rem. The rail is 15rem, so the menu still opens well inside it. */
+  min-width: 12.5rem;
   z-index: 40;
   display: flex;
   flex-direction: column;
@@ -407,6 +409,9 @@ h3 {
   border-radius: 9px;
   color: rgba(247, 245, 239, 0.82);
   font-size: 0.9rem;
+  /* One line each. A wrapped label leaves its second line hanging under the
+     icon, which reads as two items rather than one. */
+  white-space: nowrap;
   transition: background 0.15s ease, color 0.15s ease;
 }
 .sidenav-new-item:hover { background: rgba(255, 122, 33, 0.14); color: #fff; }
