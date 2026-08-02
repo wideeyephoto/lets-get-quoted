@@ -214,22 +214,18 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
     setStatus(null);
     setIsClassifying(true);
     try {
-      const response = await fetch('/api/public/leads/classify-estimate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          siteId: site.id,
-          description: trimmedDescription,
-          turn: 0,
-          businessName: site.company_name,
-          businessSummary: site.tagline || site.headline || '',
-          serviceArea: site.service_area || '',
-        }),
+      const result = await classify({
+        siteId: site.id,
+        description: trimmedDescription,
+        turn: 0,
+        businessName: site.company_name,
+        businessSummary: site.tagline || site.headline || '',
+        serviceArea: site.service_area || '',
       });
-      const result = await response.json().catch(() => null);
       applyChatResult(result);
     } catch {
-      // AI is a convenience, not a requirement — fall back to contact info silently.
+      // AI is a convenience, not a requirement — fall back to contact info
+      // silently. Also where a timed-out or skipped call lands.
       setStep('contact');
     } finally {
       setIsClassifying(false);
@@ -242,12 +238,7 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
     if (!trimmedAnswer) return;
     setIsClassifying(true);
     try {
-      const response = await fetch('/api/public/leads/classify-estimate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ siteId: site.id, previousResponseId: chatResponseId, answer: trimmedAnswer, turn: chatTurn }),
-      });
-      const result = await response.json().catch(() => null);
+      const result = await classify({ siteId: site.id, previousResponseId: chatResponseId, answer: trimmedAnswer, turn: chatTurn });
       applyChatResult(result);
     } catch {
       setStep('contact');
@@ -262,23 +253,64 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
     setIsClassifying(true);
     setStatus(null);
     try {
-      const response = await fetch('/api/public/leads/classify-estimate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          siteId: site.id,
-          previousResponseId: chatResponseId,
-          answer: 'Please skip the remaining questions and give your best-judgment estimate from what you already know.',
-          turn: 99,
-        }),
+      const result = await classify({
+        siteId: site.id,
+        previousResponseId: chatResponseId,
+        answer: 'Please skip the remaining questions and give your best-judgment estimate from what you already know.',
+        turn: 99,
       });
-      const result = await response.json().catch(() => null);
       applyChatResult(result);
     } catch {
       setStep('contact');
     } finally {
       setIsClassifying(false);
     }
+  }
+
+  /* --- the estimator must never be the reason a lead is lost ---------------
+     Nothing below this point needs the AI: submitLead posts to
+     /api/public/leads, which makes no AI call at all and scores the lead from
+     the form fields. So a DOWN estimator is already survivable — every call
+     site falls through to the contact step.
+
+     SLOW is the shape that actually loses people. fetch has no deadline of its
+     own, so a hanging request leaves a homeowner watching "Thinking…" with no
+     way forward, and the catch never fires because nothing threw. Eight
+     seconds is longer than a good answer takes and shorter than anyone will
+     wait for one. On timeout the abort throws, the existing catch runs, and
+     they land on the contact fields exactly as if the estimator had errored. */
+  const CLASSIFY_TIMEOUT_MS = 8000;
+  const classifyAbortRef = useRef<AbortController | null>(null);
+
+  async function classify(body: Record<string, unknown>): Promise<Record<string, unknown> | null> {
+    classifyAbortRef.current?.abort();
+    const controller = new AbortController();
+    classifyAbortRef.current = controller;
+    const deadline = setTimeout(() => controller.abort(), CLASSIFY_TIMEOUT_MS);
+    try {
+      const response = await fetch('/api/public/leads/classify-estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      return await response.json().catch(() => null);
+    } finally {
+      clearTimeout(deadline);
+      if (classifyAbortRef.current === controller) classifyAbortRef.current = null;
+    }
+  }
+
+  // The manual way out, and the only control here that touches no network.
+  // Aborting the in-flight call matters: without it a late reply could answer
+  // with a question and drag someone back out of the form they were filling in.
+  // What they already typed still travels with the lead — submitLead carries
+  // the description — they just don't get a price first.
+  function skipTheEstimate() {
+    classifyAbortRef.current?.abort();
+    setStatus(null);
+    setEstimate(null);
+    setStep('contact');
   }
 
   // Restart the wizard from the description (kept, so it can be edited).
@@ -468,6 +500,11 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
             }}
           />
           <button type="submit" disabled={isClassifying}>{isClassifying ? thinking : 'Continue'}</button>
+          {/* The plain way through. Never disabled while classifying — being
+              usable mid-wait is the entire point of it. */}
+          <button type="button" className={styles.heroFormRestart} onClick={skipTheEstimate}>
+            {isClassifying ? 'Taking too long? Just send my details →' : 'Skip the estimate — just send my details →'}
+          </button>
         </div>
       )}
 
@@ -485,7 +522,17 @@ export default function HeroQuickForm({ site }: HeroQuickFormProps) {
             onChange={(event) => setChatAnswer(event.target.value)}
           />
           <button type="submit" disabled={isClassifying}>{isClassifying ? thinking : 'Next'}</button>
+          {/* Two different asks. This one still wants a number, so it costs an
+              AI call and is disabled while one is running. */}
           <button type="button" className={styles.heroFormRestart} onClick={skipToEstimate} disabled={isClassifying}>Skip the questions — show my ballpark →</button>
+          {/* This one wants out. No network, and deliberately only surfaced
+              while a call is in flight — that's when the wait it answers is
+              actually happening, and the step has enough buttons otherwise. */}
+          {isClassifying && (
+            <button type="button" className={styles.heroFormRestart} onClick={skipTheEstimate}>
+              Taking too long? Just send my details →
+            </button>
+          )}
           <button type="button" className={styles.heroFormRestart} onClick={restartWizard}>← Start over</button>
         </div>
       )}

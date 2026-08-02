@@ -21,6 +21,10 @@ type EstimatorResponse =
 
 const money = (n: number) => '$' + Math.round(n).toLocaleString();
 
+// Longer than a good answer takes, shorter than anyone will wait for one.
+// Matches the hero intake's deadline so the two behave the same under load.
+const ESTIMATOR_TIMEOUT_MS = 8000;
+
 export default function InstantBookFlow({ subdomain, siteId, businessName, serviceArea }: Props) {
   const [phase, setPhase] = useState<Phase>('describe');
   const [description, setDescription] = useState('');
@@ -36,13 +40,24 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
   const submitCallback = submitCallbackAction.bind(null, subdomain);
 
   async function callEstimator(payload: Record<string, unknown>): Promise<EstimatorResponse> {
-    const res = await fetch('/api/public/leads/classify-estimate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ siteId, businessName, serviceArea, location: address, ...payload }),
-    });
-    if (!res.ok) throw new Error('estimator');
-    return res.json();
+    // A deadline of its own, because fetch has none. The callers below already
+    // recover from a throw by treating the value as unknown and carrying on —
+    // this is what makes a SLOW estimator throw instead of leaving somebody on
+    // the "thinking" screen indefinitely. Down was handled; hanging was not.
+    const controller = new AbortController();
+    const deadline = setTimeout(() => controller.abort(), ESTIMATOR_TIMEOUT_MS);
+    try {
+      const res = await fetch('/api/public/leads/classify-estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ siteId, businessName, serviceArea, location: address, ...payload }),
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error('estimator');
+      return await res.json();
+    } finally {
+      clearTimeout(deadline);
+    }
   }
 
   async function evaluate(estimateMax: number | null, inArea: boolean | null, excluded: boolean) {
