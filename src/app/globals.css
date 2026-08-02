@@ -260,7 +260,15 @@ h3 {
   width: var(--sidenav-w);
   display: flex;
   flex-direction: column;
-  padding: 1.1rem 0.8rem 1rem;
+  /* Horizontal padding is deliberately tighter than it looks like it wants to
+     be. Three boxes nest inside the rail — rail, group card, row — and each one
+     charges its padding twice, so a comfortable-looking 0.8rem here costs the
+     row's LABEL nearly 5rem of the 15.25rem rail. The widest label that also
+     carries a pill ("Online Booking" + OFF) had ~5px of slack left, which is
+     not a margin: a fallback font before IBM Plex Sans loads, or a different
+     platform's text metrics, eats it and the label ellipsizes. See the matching
+     trims on .sidenav-group and .sidenav-link. */
+  padding: 1.1rem 0.65rem 1rem;
   /* visible (not hidden) so the "+ New" dropdown can overflow the rail; the nav
      list owns its own scroll, so the footer still stays pinned. */
   overflow: visible;
@@ -482,8 +490,8 @@ h3 {
 .sidenav-link {
   display: flex;
   align-items: center;
-  gap: 0.68rem;
-  padding: 0.55rem 0.7rem;
+  gap: 0.6rem;
+  padding: 0.55rem 0.6rem;
   border-radius: 12px;
   color: rgba(247, 245, 239, 0.72);
   font-size: 0.92rem;
@@ -531,7 +539,10 @@ h3 {
    as distinct blocks rather than one long list. */
 .sidenav-group {
   margin-top: 0.55rem;
-  padding: 0.4rem 0.4rem 0.45rem;
+  /* Tighter left/right than top/bottom on purpose — see .sidenav. The vertical
+     padding is what makes the card read as a card; the horizontal padding is
+     just width taken off every label inside it. */
+  padding: 0.4rem 0.32rem 0.45rem;
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.05);
@@ -551,7 +562,9 @@ h3 {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.42rem 0.7rem 0.42rem 1.55rem;
+  /* Shifted left by the same 0.1rem the parent row lost, so the L-bracket keeps
+     its exact relationship to the icon it hangs under. */
+  padding: 0.42rem 0.6rem 0.42rem 1.45rem;
   border-radius: 10px;
   color: rgba(247, 245, 239, 0.58);
   font-size: 0.86rem;
