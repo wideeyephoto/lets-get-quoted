@@ -12780,6 +12780,43 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 .clients-repeat-toggle input { accent-color: #ff7a21; width: 1rem; height: 1rem; }
 
 /* --- the initials chip, shared by every view --- */
+/* ---------------------------------------------------------------------------
+   Initials-circle palette, shared by Clients and Crew & Labor
+
+   Every avatar being the same orange meant the circle carried no information:
+   in a list of thirty-odd people you read two letters to find a row you had
+   already scrolled past. See lib/avatar-tone.ts for how a person gets a tone —
+   the short version is that it is stable, so the same person is the same colour
+   everywhere and after a refresh.
+
+   The palette lives here, not in the component, so a tone is one number
+   crossing the wire and so the Crew skins keep overriding what they already
+   override. It is one hue per tone with fixed saturation and lightness, which
+   is what stops twelve colours looking like twelve accidents.
+
+   Hues deliberately skip the app's signal bands: orange is the brand accent,
+   amber means a warning, red means danger and green means money agreed. An
+   avatar is an identity, never a status, and must not be mistaken for one.
+--------------------------------------------------------------------------- */
+
+[data-avatar-tone] {
+  --avatar-bg: hsl(var(--avatar-h) 48% 24%);
+  --avatar-fg: hsl(var(--avatar-h) 86% 80%);
+  --avatar-line: hsl(var(--avatar-h) 46% 44%);
+}
+[data-avatar-tone='0'] { --avatar-h: 168; }
+[data-avatar-tone='1'] { --avatar-h: 246; }
+[data-avatar-tone='2'] { --avatar-h: 202; }
+[data-avatar-tone='3'] { --avatar-h: 312; }
+[data-avatar-tone='4'] { --avatar-h: 188; }
+[data-avatar-tone='5'] { --avatar-h: 274; }
+[data-avatar-tone='6'] { --avatar-h: 330; }
+[data-avatar-tone='7'] { --avatar-h: 216; }
+[data-avatar-tone='8'] { --avatar-h: 292; }
+[data-avatar-tone='9'] { --avatar-h: 348; }
+[data-avatar-tone='10'] { --avatar-h: 230; }
+[data-avatar-tone='11'] { --avatar-h: 258; }
+
 .client-avatar {
   display: grid;
   place-items: center;
@@ -12787,9 +12824,12 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   width: 2.6rem;
   height: 2.6rem;
   border-radius: 50%;
-  border: 1px solid rgba(255, 138, 61, 0.35);
-  background: linear-gradient(135deg, rgba(255, 122, 33, 0.3), rgba(255, 209, 102, 0.14));
-  color: #ffd7b8;
+  /* Falls back to the original orange, so any avatar that never gets a tone —
+     an empty state, a row built somewhere this hasn't reached — looks exactly
+     as it did rather than losing its colour entirely. */
+  border: 1px solid var(--avatar-line, rgba(255, 138, 61, 0.35));
+  background: var(--avatar-bg, linear-gradient(135deg, rgba(255, 122, 33, 0.3), rgba(255, 209, 102, 0.14)));
+  color: var(--avatar-fg, #ffd7b8);
   font-size: 0.82rem;
   font-weight: 800;
   letter-spacing: 0.02em;

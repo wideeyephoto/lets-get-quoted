@@ -16,6 +16,7 @@ import {
 } from '@/lib/crew-pay';
 import type { PayEntryLine } from '@/lib/crew-pay-data';
 import { PAY_TYPE_LABEL } from '@/lib/pay-types';
+import { avatarTone } from '@/lib/avatar-tone';
 import styles from './crew.module.css';
 
 // Hours & pay as master-detail: pick one person on the left, see everything
@@ -165,7 +166,7 @@ export default function PayMasterDetail({
                         aria-current={id === selectedId ? 'true' : undefined}
                         onClick={() => onSelect(id)}
                       >
-                        <span className={styles.mdAvatar} aria-hidden="true">{initialsOf(row.name)}</span>
+                        <span className={styles.mdAvatar} data-avatar-tone={avatarTone(row.name)} aria-hidden="true">{initialsOf(row.name)}</span>
                         <span className={styles.mdPersonNames}>
                           <strong>{row.name}</strong>
                           <small>{[row.roleLabel, row.rate != null ? `${payMoney(row.rate)}/hr` : row.rateVaries ? 'Mixed rates' : 'No rate'].filter(Boolean).join(' · ')}</small>
@@ -187,7 +188,7 @@ export default function PayMasterDetail({
       {/* --- detail: everything about the one person --- */}
       <section className={styles.mdDetail} aria-label={`${selected.name} this period`}>
         <header className={styles.mdHead}>
-          <span className={styles.mdAvatarLg} aria-hidden="true">{initialsOf(selected.name)}</span>
+          <span className={styles.mdAvatarLg} data-avatar-tone={avatarTone(selected.name)} aria-hidden="true">{initialsOf(selected.name)}</span>
           <div className={styles.mdHeadNames}>
             <strong>{selected.name}</strong>
             <small>{[selected.roleLabel, selected.rate != null ? `${payMoney(selected.rate)}/hr` : null].filter(Boolean).join(' · ') || 'No role set'}</small>

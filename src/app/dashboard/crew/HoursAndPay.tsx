@@ -69,6 +69,7 @@ import { setCrewOverviewAction, setCrewSkinAction, setCrewViewAction } from '@/a
 import type { CrewSkin, CrewView } from '@/lib/dashboard-views';
 import { CREW_SKIN_OPTIONS, applyCrewSkin } from './crew-skins';
 import { PaymentConfirmDialog, ReasonDialog } from './PaymentDialogs';
+import { avatarTone } from '@/lib/avatar-tone';
 import styles from './crew.module.css';
 
 // Hours & pay.
@@ -1318,7 +1319,7 @@ export default function HoursAndPay({
                         </td>
                         <td>
                           <button type="button" className={styles.whoBtn} onClick={() => row.crewId && setDrawer({ mode: 'crew', crewId: row.crewId })}>
-                            <span className={styles.miniAvatar} aria-hidden="true">
+                            <span className={styles.miniAvatar} data-avatar-tone={avatarTone(row.name)} aria-hidden="true">
                               {row.name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || '?'}
                             </span>
                             <span className={styles.whoNames}>
@@ -2172,7 +2173,7 @@ function GroupedCrew({
                           ) : (
                             <span className={styles.memberCheckSpacer} aria-hidden="true" />
                           )}
-                          <span className={styles.miniAvatar} aria-hidden="true">{initials}</span>
+                          <span className={styles.miniAvatar} data-avatar-tone={avatarTone(row.name)} aria-hidden="true">{initials}</span>
                           <button type="button" className={styles.memberName} onClick={() => row.crewId && onOpenCrew(row.crewId)}>
                             <strong>{row.name}</strong>
                             <small>

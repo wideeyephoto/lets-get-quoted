@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { ViewOption } from '@/components/view-gear';
+import { avatarTone } from '@/lib/avatar-tone';
 import styles from './crew.module.css';
 
 // Overview — the Clients page's Focus shape, worn by all three Crew & Labor tabs.
@@ -101,7 +102,7 @@ export default function OverviewBoard({
             onClick={() => setSelectedId(item.id)}
             aria-current={selected?.id === item.id ? 'true' : undefined}
           >
-            <span className={styles.ovAvatar} aria-hidden="true">
+            <span className={styles.ovAvatar} data-avatar-tone={avatarTone(item.name)} aria-hidden="true">
               {item.photoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={item.photoUrl} alt="" />
@@ -123,7 +124,7 @@ export default function OverviewBoard({
         // thing that makes a click feel like it landed.
         <div className={styles.ovPane} key={selected.id}>
           <div className={styles.ovHead}>
-            <span className={`${styles.ovAvatar} ${styles.ovAvatarLg}`} aria-hidden="true">
+            <span className={`${styles.ovAvatar} ${styles.ovAvatarLg}`} data-avatar-tone={avatarTone(selected.name)} aria-hidden="true">
               {selected.photoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={selected.photoUrl} alt="" />

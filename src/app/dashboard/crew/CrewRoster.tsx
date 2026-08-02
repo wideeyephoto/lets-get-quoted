@@ -24,6 +24,7 @@ import {
   updateCrewAction,
   updateCrewPhotoAction,
 } from './actions';
+import { avatarTone } from '@/lib/avatar-tone';
 import styles from './crew.module.css';
 
 // The roster, as rows rather than cards.
@@ -834,7 +835,7 @@ function CrewRowItem({
           handlers and stop the click, so nothing here swallows them. */}
       <button type="button" className={styles.rowOpen} onClick={onOpen} aria-label={`Open ${row.name}'s profile`}>
         <span className={styles.rowIdentity}>
-          <span className={styles.avatar} aria-hidden="true">
+          <span className={styles.avatar} data-avatar-tone={avatarTone(row.name)} aria-hidden="true">
             {row.photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={row.photoUrl} alt="" />
@@ -892,7 +893,7 @@ function CrewCardItem({
   return (
     <li className={`${styles.card}${row.active ? '' : ` ${styles.rowArchived}`}`}>
       <button type="button" className={styles.cardOpen} onClick={onOpen} aria-label={`Open ${row.name}'s profile`}>
-        <span className={styles.cardAvatar} aria-hidden="true">
+        <span className={styles.cardAvatar} data-avatar-tone={avatarTone(row.name)} aria-hidden="true">
           {row.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={row.photoUrl} alt="" />
@@ -953,7 +954,7 @@ function CrewBoardItem({
   return (
     <li className={styles.boardCard}>
       <button type="button" className={styles.boardOpen} onClick={onOpen} aria-label={`Open ${row.name}'s profile`}>
-        <span className={styles.avatar} aria-hidden="true">
+        <span className={styles.avatar} data-avatar-tone={avatarTone(row.name)} aria-hidden="true">
           {row.photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={row.photoUrl} alt="" />
@@ -998,7 +999,7 @@ function CrewTableRow({
       <tr className={row.active ? undefined : styles.rowArchived}>
         <th scope="row">
           <button type="button" className={styles.tableName} onClick={onOpen}>
-            <span className={styles.avatarSm} aria-hidden="true">
+            <span className={styles.avatarSm} data-avatar-tone={avatarTone(row.name)} aria-hidden="true">
               {row.photoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={row.photoUrl} alt="" />

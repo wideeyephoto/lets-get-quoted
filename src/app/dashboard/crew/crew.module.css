@@ -176,11 +176,11 @@
   height: 2.2rem;
   border-radius: 50%;
   overflow: hidden;
-  border: 1px solid rgba(148, 176, 214, 0.3);
-  background: rgba(255, 122, 33, 0.16);
+  border: 1px solid var(--avatar-line, rgba(148, 176, 214, 0.3));
+  background: var(--avatar-bg, rgba(255, 122, 33, 0.16));
   font-size: 0.76rem;
   font-weight: 800;
-  color: #ffb27d;
+  color: var(--avatar-fg, #ffb27d);
 }
 .avatar img { width: 100%; height: 100%; object-fit: cover; }
 
@@ -1076,8 +1076,10 @@
   width: 1.9rem;
   height: 1.9rem;
   border-radius: 50%;
-  border: 1px solid rgba(148, 176, 214, 0.3);
-  background: linear-gradient(135deg, rgba(255, 122, 33, 0.28), rgba(255, 209, 102, 0.16));
+  border: 1px solid var(--avatar-line, rgba(148, 176, 214, 0.3));
+  background: var(--avatar-bg, linear-gradient(135deg, rgba(255, 122, 33, 0.28), rgba(255, 209, 102, 0.16)));
+  /* Inherited the row's ink before it had a fill of its own to sit on. */
+  color: var(--avatar-fg, inherit);
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.02em;
@@ -1852,11 +1854,11 @@
   height: 3rem;
   border-radius: 50%;
   overflow: hidden;
-  border: 1px solid rgba(148, 176, 214, 0.3);
-  background: rgba(255, 122, 33, 0.16);
+  border: 1px solid var(--avatar-line, rgba(148, 176, 214, 0.3));
+  background: var(--avatar-bg, rgba(255, 122, 33, 0.16));
   font-size: 1rem;
   font-weight: 800;
-  color: #ffb27d;
+  color: var(--avatar-fg, #ffb27d);
 }
 .cardAvatar img { width: 100%; height: 100%; object-fit: cover; }
 
@@ -2018,11 +2020,11 @@
   height: 1.7rem;
   border-radius: 50%;
   overflow: hidden;
-  border: 1px solid rgba(148, 176, 214, 0.3);
-  background: rgba(255, 122, 33, 0.16);
+  border: 1px solid var(--avatar-line, rgba(148, 176, 214, 0.3));
+  background: var(--avatar-bg, rgba(255, 122, 33, 0.16));
   font-size: 0.62rem;
   font-weight: 800;
-  color: #ffb27d;
+  color: var(--avatar-fg, #ffb27d);
 }
 .avatarSm img { width: 100%; height: 100%; object-fit: cover; }
 
@@ -2394,10 +2396,10 @@ button.goAction.goAction:disabled {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  border: 1px solid rgba(148, 176, 214, 0.3);
-  background: rgba(255, 122, 33, 0.16);
+  border: 1px solid var(--avatar-line, rgba(148, 176, 214, 0.3));
+  background: var(--avatar-bg, rgba(255, 122, 33, 0.16));
   font-weight: 800;
-  color: #ffb27d;
+  color: var(--avatar-fg, #ffb27d);
 }
 .mdAvatar { width: 1.7rem; height: 1.7rem; font-size: 0.62rem; }
 .mdAvatarLg { width: 2.7rem; height: 2.7rem; font-size: 0.86rem; }
@@ -2802,11 +2804,11 @@ button.goAction.goAction:disabled {
   height: 2.1rem;
   border-radius: 50%;
   overflow: hidden;
-  border: 1px solid rgba(148, 176, 214, 0.3);
-  background: rgba(255, 122, 33, 0.16);
+  border: 1px solid var(--avatar-line, rgba(148, 176, 214, 0.3));
+  background: var(--avatar-bg, rgba(255, 122, 33, 0.16));
   font-size: 0.7rem;
   font-weight: 800;
-  color: #ffb27d;
+  color: var(--avatar-fg, #ffb27d);
 }
 .ovAvatarLg { width: 3.4rem; height: 3.4rem; font-size: 1.05rem; }
 .ovAvatar img { width: 100%; height: 100%; object-fit: cover; }

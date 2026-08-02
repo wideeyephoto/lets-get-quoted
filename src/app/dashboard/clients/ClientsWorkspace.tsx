@@ -8,6 +8,7 @@ import SaveButton from '@/components/save-button';
 import { setClientsViewAction } from '@/app/dashboard/view-actions';
 import { followUpHeadline, groupByFollowUp } from '@/lib/client-followup';
 import type { ClientsView } from '@/lib/dashboard-views';
+import { avatarTone } from '@/lib/avatar-tone';
 import { createClientAction } from './actions';
 
 // The customer list, five ways.
@@ -196,7 +197,7 @@ export default function ClientsWorkspace({
               onFocus={() => setSelectedId(client.id)}
             >
               <span className="client-card-top">
-                <span className="client-avatar" aria-hidden="true">{client.initials}</span>
+                <span className="client-avatar" data-avatar-tone={avatarTone(client.name)} aria-hidden="true">{client.initials}</span>
                 {client.isRepeat ? <span className="client-repeat-badge">Repeat</span> : null}
               </span>
               <strong className="client-card-name">{client.name}</strong>
@@ -232,7 +233,7 @@ export default function ClientsWorkspace({
                 >
                   <td>
                     <Link href={`/dashboard/clients/${client.id}`} className="client-table-name">
-                      <span className="client-avatar small" aria-hidden="true">{client.initials}</span>
+                      <span className="client-avatar small" data-avatar-tone={avatarTone(client.name)} aria-hidden="true">{client.initials}</span>
                       <span>
                         {client.name}
                         {client.isRepeat ? <span className="client-repeat-badge">Repeat</span> : null}
@@ -261,7 +262,7 @@ export default function ClientsWorkspace({
                 onClick={() => setSelectedId(client.id)}
                 aria-current={selected?.id === client.id ? 'true' : undefined}
               >
-                <span className="client-avatar small" aria-hidden="true">{client.initials}</span>
+                <span className="client-avatar small" data-avatar-tone={avatarTone(client.name)} aria-hidden="true">{client.initials}</span>
                 <span className="client-focus-who">
                   <strong>{client.name}</strong>
                   <small>{client.contactLine}</small>
@@ -276,7 +277,7 @@ export default function ClientsWorkspace({
             // animation is the thing that makes a click feel like it landed.
             <div className="client-focus-pane" key={selected.id}>
               <div className="client-focus-head">
-                <span className="client-avatar large" aria-hidden="true">{selected.initials}</span>
+                <span className="client-avatar large" data-avatar-tone={avatarTone(selected.name)} aria-hidden="true">{selected.initials}</span>
                 <div>
                   <h3>
                     {selected.name}
@@ -377,7 +378,7 @@ function FollowUpBoard({ clients }: { clients: ClientRow[] }) {
                   const row = byId.get(client.id);
                   return (
                     <Link key={client.id} href={`/dashboard/clients/${client.id}`} className="client-band-card">
-                      <span className="client-avatar small" aria-hidden="true">{row?.initials ?? '?'}</span>
+                      <span className="client-avatar small" data-avatar-tone={avatarTone(row?.name)} aria-hidden="true">{row?.initials ?? '?'}</span>
                       <span className="client-band-who">
                         <strong>{client.name}</strong>
                         <small>{client.when}</small>
@@ -440,7 +441,7 @@ function ClientRowLink({
       onMouseEnter={() => onSelect(client.id)}
       onFocus={() => onSelect(client.id)}
     >
-      <span className="client-avatar small" aria-hidden="true">{client.initials}</span>
+      <span className="client-avatar small" data-avatar-tone={avatarTone(client.name)} aria-hidden="true">{client.initials}</span>
       <div className="client-row-main">
         <div className="client-row-name">
           <strong>{client.name}</strong>
