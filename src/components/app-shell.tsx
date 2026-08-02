@@ -206,6 +206,30 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     setNewMenuOpen(false);
   }, [pathname, closeNav]);
 
+  // Freeze the page behind the open drawer — the same thing every other overlay
+  // in this app already does (AddExpenseModal, PayModal, ImagePickerModal, the
+  // crew drawer, …). The nav drawer was the one that didn't, and an unlocked
+  // page under a fixed panel is how a drag meant for the nav ends up moving the
+  // dashboard instead: you pull on the menu and nothing in it moves.
+  //
+  // Only below the breakpoint. Above it the rail is docked furniture, not a
+  // drawer, and isNavOpen means nothing — so a stale `true` from a resize must
+  // not leave the page frozen. The media listener releases it if that happens.
+  useEffect(() => {
+    if (!isNavOpen) return;
+    const previous = document.body.style.overflow;
+    const drawer = window.matchMedia('(max-width: 900px)');
+    const apply = () => {
+      document.body.style.overflow = drawer.matches ? 'hidden' : previous;
+    };
+    apply();
+    drawer.addEventListener('change', apply);
+    return () => {
+      drawer.removeEventListener('change', apply);
+      document.body.style.overflow = previous;
+    };
+  }, [isNavOpen]);
+
   // In a short viewport the whole rail scrolls rather than just the nav list
   // (see the max-height rule in globals.css), and the rail is never unmounted —
   // it is translated off-screen. So a drawer left scrolled halfway down reopens

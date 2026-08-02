@@ -859,8 +859,29 @@ h3 {
     transform: translateX(-100%);
     transition: transform 0.24s ease;
     box-shadow: 0 22px 60px rgba(0, 0, 0, 0.55);
+    /* Genuinely opaque — `rgb()` of the chrome tokens, not --chrome-solid,
+       which is still 8% see-through. On the docked rail that 8% is a texture
+       you never notice against the page gutter; over a full dashboard it is the
+       dashboard, legible straight through the nav.
+
+       And with the panel opaque, backdrop-filter has nothing left to blur, so
+       dropping it costs nothing and buys a lot: it is the property that hands
+       this subtree to WebKit's compositor, which this codebase has already been
+       bitten by once (the quote preview on iPad). A panel you scroll with a
+       finger is the last place to spend that risk. */
+    background: rgb(var(--chrome-rgb));
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
   .sidenav.open { transform: translateX(0); }
+
+  /* The drawer is modal — it comes with a scrim — so everything that is page
+     furniture belongs underneath it. The lead alert is fixed at z-index 30, the
+     same layer as the rail, and being later in the DOM it won it: on a phone it
+     spans the full width and landed square over Account / Automations / Stripe
+     at the foot of the open nav. */
+  .sidenav-scrim { z-index: 40; }
+  .sidenav { z-index: 41; }
 
   .sidenav-scrim {
     display: block;
@@ -883,26 +904,40 @@ h3 {
   .app-main-sidenav .wide-shell { min-height: calc(100vh - 4.4rem); }
 }
 
-/* A SHORT viewport — a phone held sideways, or a laptop window dragged down —
-   leaves the nav list almost nothing. The rail pins four things around it (the
-   wordmark, the business name + Plan my day / New, the Website chip, and the
-   Account / Stripe footer) and they cost ~330px whatever the screen does.
-   Measured on the real rail:
+/* ONE SCROLLER, NO LID.
+   ---------------------------------------------------------------------------
+   The rail pins four things around the nav list (the wordmark, the business
+   name + Plan my day / New, the Website chip, and the Account / Stripe footer)
+   and they cost ~330px whatever the screen does. On a tall desktop that is a
+   sixth of the rail and pinning is a kindness. In the two cases below it is
+   not, and the nested scroller in the middle becomes the whole problem.
+
+   PHONE (any orientation). The tail of the nav sat under the footer with no
+   way to reach it — the list would clip mid-row and the Account card read as a
+   lid over it. Worse, an inner overflow region inside a panel that is
+   transformed AND backdrop-filtered is exactly the compositing case iOS is
+   bad at, so the one gesture that could have rescued it was the one least
+   likely to work. The drawer is a thing you open, scan and dismiss; it should
+   scroll like a sheet of paper, not like a window with a stuck sash.
+
+   SHORT VIEWPORT (a phone held sideways, a laptop window dragged down).
+   Measured on the real rail, with the account status settled:
 
      852x393 landscape drawer   list gets  32px — NOT ONE full row of sixteen
-     932x430 landscape rail     list gets 106px — one row of sixteen
-     430x932 portrait           list gets 559px — eleven rows
+     932x430 landscape rail     list gets  69px — none of sixteen
+     1280x620 short window      list gets 259px — five of sixteen
+     430x932 portrait           list gets 559px — eleven of sixteen
 
-   Height, not width, is the thing that decides this, so it is deliberately not
-   folded into the 900px breakpoint above: a landscape phone can land either
-   side of that line, and a short laptop window is on the far side of it.
+   Height, not width, decides that second case, which is why it is a separate
+   condition rather than a wider breakpoint: a landscape phone lands either
+   side of 900px depending on Display Zoom, and a short laptop window is on the
+   far side of it entirely.
 
-   Below 660px the pinned chrome is more than half the rail — at which point it
-   has stopped being chrome and become the content. There the rail scrolls as
-   ONE piece: the header scrolls up out of the way, the footer rises from below,
-   and the whole nav is reachable in a single gesture. Above 660px nothing
-   changes at all — brand and account footer stay exactly where they were. */
-@media (max-height: 660px) {
+   In both, the rail scrolls as ONE piece: the header scrolls up out of the
+   way, the footer rises from below, and the whole nav is reachable in a single
+   gesture. A tall desktop window is untouched — brand and account footer stay
+   exactly where they were. */
+@media (max-width: 900px), (max-height: 660px) {
   .sidenav {
     overflow-y: auto;
     /* The "+ New" menu is 12.5rem inside a 15.25rem rail, so losing the
