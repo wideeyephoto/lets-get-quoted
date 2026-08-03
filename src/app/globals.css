@@ -1525,31 +1525,54 @@ h3 {
 .sidenav-unseen + .sidenav-total,
 .sidenav-count + .sidenav-total { margin-left: -0.4rem; }
 
-/* THE FLAG.
+/* NEON.
    ---------------------------------------------------------------------------
-   The count stops being a box and becomes a pennant with its point aimed at the
-   label it belongs to. Two things follow from that.
+   Back to two boxes, but lit rather than printed. A neon tube is three things
+   at once and it reads as flat if any of them is missing: a saturated stroke,
+   an INNER glow bleeding off that stroke into the fill, and an OUTER glow
+   spilling onto what it is mounted on. The ring is what sells it — the second
+   inset line just inside the border is the glass around the gas.
 
-   It is DIRECTIONAL, which is the fact the old pair of matching boxes could not
-   express: a shape that points has a subject, and "3" pointing at "Leads" reads
-   as three leads rather than as a number that happens to be nearby.
+   The ink is deliberately LIGHTER than the stroke. A tube's brightest point is
+   its centre, so a numeral in the same orange as its border reads as printed
+   on a box, while one a step brighter reads as the thing that is lit.
 
-   It is SOLID while the total stays hollow, so the two are no longer the same
-   object in two colours. Filled-versus-outlined was the split this cluster used
-   to have and gave up; it comes back here carried by shape as well, which means
-   it still works for anyone who cannot separate the orange from the grey.
-
-   The point costs nothing: clip-path cuts INTO the box's own left padding, so
-   the flag occupies exactly the width the box did. */
+   Note this cannot be a clip-path shape: clip-path cuts box-shadow too, which
+   takes the outer glow with it. A pointed version has to spend `filter:
+   drop-shadow` instead — real, but a different and more expensive effect. */
 .sidenav-count {
-  border: 0;
-  background: var(--accent);
-  /* The rail's own ground, so the numeral reads as punched out of the flag
-     rather than printed on it. 5.8:1 on the orange. */
-  color: #17202b;
-  padding: 0 0.34rem 0 0.5rem;
-  border-radius: 0 4px 4px 0;
-  clip-path: polygon(5px 0, 100% 0, 100% 100%, 5px 100%, 0 50%);
+  border-color: var(--accent);
+  background: rgba(255, 122, 33, 0.13);
+  color: #ffc08a;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 122, 33, 0.32),
+    inset 0 0 7px -2px rgba(255, 122, 33, 0.9),
+    0 0 9px -2px rgba(255, 122, 33, 0.75);
+  /* Small and bold already; a wider blur than this eats the counter of an 8. */
+  text-shadow: 0 0 7px rgba(255, 176, 113, 0.7);
+}
+
+/* The same tube in a cooler gas, dimmer because it is inventory rather than a
+   call to action — it has to look lit by the same hand, not lit as brightly. */
+.sidenav-total {
+  border-color: rgba(150, 175, 210, 0.6);
+  background: rgba(150, 175, 210, 0.1);
+  color: #d3e0f2;
+  box-shadow:
+    inset 0 0 0 1px rgba(150, 175, 210, 0.24),
+    inset 0 0 6px -2px rgba(150, 175, 210, 0.65),
+    0 0 7px -3px rgba(150, 175, 210, 0.5);
+  text-shadow: 0 0 6px rgba(211, 224, 242, 0.45);
+}
+
+/* On the active row the ground is already an orange wash, so the count's own
+   outer glow lands on its own colour and disappears. The grey tube takes the
+   row's ink instead of competing with it. */
+.sidenav-link.active .sidenav-count {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 122, 33, 0.4),
+    inset 0 0 7px -2px rgba(255, 176, 113, 0.95),
+    0 0 10px -1px rgba(255, 122, 33, 0.5);
 }
 
 /* Whichever badge is LAST claims the leftover space, so the cluster stays beside
