@@ -195,7 +195,28 @@ export async function createInvoice(
     throw new Error('Job not found for this account.');
   }
 
-  return insertInvoiceWithRef(supabase, accountId, { job_id: jobId, status, total: 0 });
+  return insertInvoiceWithRef(supabase, accountId, {
+    job_id: jobId,
+    status,
+    total: 0,
+    // A discount the customer already agreed to, carried onto the bill without
+    // anybody having to remember it. This is the whole point of recording it on
+    // the job: the offer was made weeks ago on the Plan my day screen, and the
+    // person raising the invoice is reading the job and nothing else.
+    // Still editable on the invoice — it seeds the field, it doesn't lock it.
+    discount_percent: rescheduleDiscountOf(job),
+  });
+}
+
+/**
+ * The reschedule discount on a job, or 0.
+ *
+ * Read defensively: the column arrives with a migration, and an invoice must
+ * still be creatable on a database that hasn't had it yet.
+ */
+export function rescheduleDiscountOf(job: unknown): number {
+  const percent = Number((job as { reschedule_discount_percent?: unknown } | null)?.reschedule_discount_percent);
+  return Number.isFinite(percent) && percent > 0 ? percent : 0;
 }
 
 // Create a one-line invoice in a single shot — used by the recurring engine to

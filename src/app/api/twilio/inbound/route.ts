@@ -5,6 +5,7 @@ import { validateTwilioSignature } from '@/lib/sms';
 import { logInboundMessage } from '@/lib/messages';
 import { confirmUpcomingAppointment } from '@/lib/reminders';
 import { resolveOfferReply } from '@/lib/estimate-offers-data';
+import { resolveRescheduleReply } from '@/lib/reschedule-offers-data';
 
 export const runtime = 'nodejs';
 
@@ -54,6 +55,20 @@ export async function POST(request: Request) {
   if (phone && rawBody && !OPT_OUT.has(keyword) && !OPT_IN.has(keyword) && keyword !== 'HELP') {
     const outcome = await resolveOfferReply(phone, rawBody);
     if (outcome.handled) return twiml(outcome.reply ?? undefined);
+
+    // Then an outstanding "can we move you" — same argument, one step weaker.
+    // It also shares YES with appointment confirmation, and it has to win for
+    // the same reason: we asked this person a direct question and are waiting on
+    // the answer. It sits BELOW estimate offers because an estimate offer holds
+    // a slot on a clock, so if somehow both are open, the one with a deadline
+    // gets the yes.
+    //
+    // Ordering matters against CONFIRM below in the other direction too: read as
+    // a confirmation, a "yes" meant for this would tell the customer their
+    // ORIGINAL appointment is confirmed — the exact opposite of what they just
+    // agreed to, and they would not find out until nobody turned up.
+    const moved = await resolveRescheduleReply(phone, rawBody);
+    if (moved.handled) return twiml(moved.reply ?? undefined);
   }
 
   // Appointment confirmation: "C"/"confirm"/"yes" marks the client's upcoming

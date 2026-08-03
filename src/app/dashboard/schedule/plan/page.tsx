@@ -21,6 +21,7 @@ import WorkingHoursPanel from '@/components/working-hours-panel';
 import QuickStopPanel from '@/components/quick-stop-panel';
 import { QUICK_STOP_SETTINGS_COLUMNS, quickStopSettingsFromAccount } from '@/lib/quick-stop';
 import { loadOfferContext, offerDisplay } from '@/lib/estimate-offers-data';
+import { loadRescheduleContext } from '@/lib/reschedule-offers-data';
 import { DEFAULT_ESTIMATE_MINUTES, draftOfferBody, rankOfferSuggestions, timeFromMinutes } from '@/lib/estimate-offers';
 import DayPlanner from './DayPlanner';
 import PlanDayControls from './PlanDayControls';
@@ -177,6 +178,9 @@ export default async function PlanDayPage({
   // proposal: a window we promise a homeowner has to exist in the day that is
   // actually booked, not in one the contractor may never apply.
   const offerContext = routable.length > 0 ? await loadOfferContext(supabase, accountId, dateKey) : null;
+  // The mirror of the above: who we have already asked to move OFF this day, so
+  // the row can say 'waiting on reply' rather than offering to ask them twice.
+  const rescheduleContext = await loadRescheduleContext(supabase, accountId, dateKey);
   const now = new Date();
   let offerSuggestions: OfferSuggestionView[] = [];
   let offerViews: OfferView[] = [];
@@ -279,6 +283,9 @@ export default async function PlanDayPage({
     lockedCount: routable.filter((stop) => stop.locked).length,
     filteredOutCount,
     preferredLastId,
+    businessName,
+    rescheduleAvailable: rescheduleContext.available,
+    pendingRescheduleJobIds: [...rescheduleContext.pendingJobIds],
   };
 
   const crewQuery = crewId ? `&crew=${crewId}` : '';

@@ -16880,3 +16880,180 @@ a.bset-card { color: inherit; text-decoration: none; }
 .calendar-job-item > .calendar-job-chip:has(+ .calendar-crew-toggle) .calendar-job-chip-main {
   padding-right: 2.55rem;
 }
+
+
+/* ==========================================================================
+   ASK THEM TO MOVE DAY  (Plan my day → a stop's ⋮ menu)
+   --------------------------------------------------------------------------
+   Sits under the stop list, not in the 232px row menu: this carries a day
+   picker, a discount picker and the text itself, and a popover is not where
+   somebody should be deciding to give away several hundred dollars.
+   ========================================================================== */
+
+.resched-panel {
+  margin-top: 1rem;
+  padding: 1.15rem 1.25rem 1.25rem;
+  border: 1px solid rgba(255, 138, 61, 0.3);
+  border-radius: 16px;
+  background: rgba(var(--panel-rgb), 0.9);
+  display: grid;
+  gap: 0.9rem;
+}
+
+.resched-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.resched-head h3 { margin: 0.15rem 0 0; font-size: 1.05rem; }
+
+.resched-close {
+  flex: none;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: 1px solid rgba(var(--tint), 0.16);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.resched-close:hover { border-color: rgba(var(--tint), 0.32); }
+
+/* The case for doing this at all, and the first thing on the panel. */
+.resched-saving {
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.05);
+  font-size: 0.9rem;
+  color: rgba(var(--tint), 0.78);
+}
+
+.resched-saving strong { color: var(--text); font-variant-numeric: tabular-nums; }
+
+.resched-loading { margin: 0; font-size: 0.88rem; color: var(--mute-t55); }
+.resched-alert { margin: 0; }
+.resched-form { display: grid; gap: 0.9rem; }
+
+.resched-days,
+.resched-discount {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.resched-days legend,
+.resched-discount legend,
+.resched-body span {
+  padding: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mute-t55);
+}
+
+.resched-day {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.35rem 0.9rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid rgba(var(--tint), 0.14);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.resched-day:hover { border-color: rgba(255, 138, 61, 0.42); }
+
+.resched-day.is-on {
+  border-color: #ff8a3d;
+  background: rgba(255, 138, 61, 0.1);
+}
+
+/* Radios carry the state through :checked for the keyboard and the screen
+   reader; the visible state is the row. Hidden, not display:none — a removed
+   input is not focusable and the group stops being reachable by tab. */
+.resched-day input,
+.resched-chip input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.resched-day:focus-within,
+.resched-chip:focus-within { box-shadow: 0 0 0 2px rgba(255, 138, 61, 0.55); }
+
+.resched-day-main { display: grid; gap: 0.1rem; min-width: 0; }
+.resched-day-main strong { font-size: 0.95rem; }
+.resched-day-main small { font-size: 0.8rem; color: rgba(var(--tint), 0.6); }
+
+.resched-day-near {
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--ink-green-11, #3fbf87);
+  text-align: right;
+}
+
+.resched-discount-row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+.resched-chip {
+  padding: 0.42rem 0.9rem;
+  border: 1px solid rgba(var(--tint), 0.16);
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.resched-chip.is-on { border-color: #ff8a3d; background: rgba(255, 138, 61, 0.14); color: var(--text); }
+
+/* What it costs in the money it comes off. A percent alone is easy to agree
+   to; the dollar figure is the thing being decided. */
+.resched-cost { margin: 0.1rem 0 0; font-size: 0.85rem; color: rgba(var(--tint), 0.66); }
+.resched-cost strong { color: var(--text); font-variant-numeric: tabular-nums; }
+
+.resched-body { display: grid; gap: 0.35rem; }
+
+.resched-body textarea {
+  border: 1px solid rgba(var(--tint), 0.16);
+  border-radius: 10px;
+  padding: 0.65rem 0.8rem;
+  background: rgba(var(--tint), 0.06);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.92rem;
+  resize: vertical;
+}
+
+/* The exact string that gets sent. Monospaced and quiet: it is a receipt of
+   what will happen, not another thing to read. */
+.resched-preview {
+  margin: 0;
+  padding: 0.65rem 0.8rem;
+  border-radius: 10px;
+  border: 1px dashed rgba(var(--tint), 0.16);
+  background: rgba(var(--tint), 0.03);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: rgba(var(--tint), 0.62);
+}
+
+.resched-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.resched-note { margin: 0; font-size: 0.8rem; color: var(--mute-t55); }
+
+@media (max-width: 620px) {
+  .resched-day { grid-template-columns: minmax(0, 1fr); }
+  .resched-day-near { text-align: left; }
+}

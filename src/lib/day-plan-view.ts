@@ -52,6 +52,12 @@ export type DayPlanPayload = {
    * since left the day.
    */
   preferredLastId: string | null;
+  /** The name on the reschedule text, so the preview shows what really goes out. */
+  businessName: string;
+  /** False before the reschedule migration lands — the menu item hides itself. */
+  rescheduleAvailable: boolean;
+  /** Jobs already asked to move and still waiting on an answer. Never ask twice. */
+  pendingRescheduleJobIds: string[];
 };
 
 export function planInputFrom(payload: DayPlanPayload): PlanInput {

@@ -8,8 +8,11 @@ import ServiceIcon from '@/lib/templates/ServiceIcon';
 import { isRouteStopId, KIND_GLYPH, KIND_LABEL, routeStopUuid, type RouteStop } from '@/lib/route-stops';
 import RouteMap, { type MapStop, type NearbyPlace } from './RouteMap';
 import AddRouteStop from './AddRouteStop';
+import RescheduleOffer from './RescheduleOffer';
 import { applyDayPlanAction, deleteRouteStopAction, setPreferredLastAction } from './actions';
 import { formatTimeLabel, formatTimeMinutes, parseTimeMinutes, type PlannedStop } from '@/lib/route-plan';
+import { coordOf } from '@/lib/distance';
+import { isWorthMoving, savingFromRemoving } from '@/lib/reschedule-offers';
 import {
   costOrder,
   endOn,
@@ -83,6 +86,8 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
   const [preferredLastId, setPreferredLastId] = useState<string | null>(payload.preferredLastId);
   const [, startPrefSave] = useTransition();
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  // The stop the contractor is offering to move, if any.
+  const [offerFor, setOfferFor] = useState<string | null>(null);
   // A supply store picked off the map, waiting to be turned into a real stop.
   const [prefill, setPrefill] = useState<NearbyPlace | null>(null);
   const [overtimeDismissed, setOvertimeDismissed] = useState(false);
@@ -164,6 +169,43 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
   );
 
   const movableCount = plan.planned.filter((entry) => !entry.stop.locked && !pinned.has(entry.stop.id)).length;
+
+  // -- Offering a customer a discount to take a different day -----------------
+  //
+  // What today gets back is computed HERE, off the order on screen, not on the
+  // server. The whole page works this way — the arrangement in front of the
+  // contractor is a proposal that has not been saved — so the saving quoted in
+  // the offer has to be measured against the same proposal. Reading it from the
+  // calendar would quote a number for a route they can see they have changed.
+  const pendingOfferJobIds = useMemo(() => new Set(payload.pendingRescheduleJobIds ?? []), [payload.pendingRescheduleJobIds]);
+
+  const savingByStopId = useMemo(() => {
+    const saved = new Map<string, { miles: number; minutes: number }>();
+    plan.planned.forEach((entry, index) => {
+      const previous = index === 0 ? payload.homeBase : coordOf(plan.planned[index - 1].stop);
+      const next = index === plan.planned.length - 1 ? payload.homeBase : coordOf(plan.planned[index + 1].stop);
+      saved.set(entry.stop.id, savingFromRemoving({ stop: coordOf(entry.stop), previous, next }));
+    });
+    return saved;
+  }, [plan.planned, payload.homeBase]);
+
+  // A supply run has no customer to ask, and a locked stop is a time the
+  // customer already confirmed — the honest move there is to ring them, not to
+  // text an offer about an appointment they have already agreed to. Both are
+  // excluded rather than shown and then refused.
+  const canOfferMove = useCallback(
+    (stopId: string) => {
+      if (!payload.rescheduleAvailable) return false;
+      if (isRouteStopId(stopId)) return false;
+      const stop = byId.get(stopId);
+      if (!stop || stop.locked) return false;
+      const saving = savingByStopId.get(stopId);
+      return Boolean(saving && isWorthMoving(saving));
+    },
+    [payload.rescheduleAvailable, byId, savingByStopId],
+  );
+
+  const openOffer = useCallback((stopId: string) => setOfferFor(stopId), []);
 
   const canDrag = useCallback(
     (stopId: string) => {
@@ -454,6 +496,8 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
                 onTogglePin={() => togglePin(entry.stop.id)}
                 onTogglePreferredLast={() => togglePreferredLast(entry.stop.id)}
                 onMoveToEnd={() => moveToEnd(entry.stop.id)}
+                onOfferMove={canOfferMove(entry.stop.id) ? () => openOffer(entry.stop.id) : null}
+                offerPending={pendingOfferJobIds.has(entry.stop.id)}
                 onNudge={(direction) => nudge(index, direction)}
                 onDragStart={() => handleDragStart(entry.stop.id)}
                 onDragEnd={handleDragEnd}
@@ -462,6 +506,22 @@ export default function DayPlanner({ payload, mapsApiKey }: Props) {
               />
             ))}
           </ol>
+
+          {/* Sits under the list rather than inside the row's menu: it carries a
+              day picker, a discount picker and the text itself, and a 232px
+              popover is not where somebody should be deciding to give away
+              money. */}
+          {offerFor && byId.get(offerFor) ? (
+            <RescheduleOffer
+              jobId={offerFor}
+              stopLabel={byId.get(offerFor)!.label}
+              dateKey={payload.dateKey}
+              crewId={payload.crewId}
+              businessName={payload.businessName}
+              saved={savingByStopId.get(offerFor) ?? { miles: 0, minutes: 0 }}
+              onClose={() => setOfferFor(null)}
+            />
+          ) : null}
 
           <AddRouteStop
             dateKey={payload.dateKey}
@@ -766,6 +826,8 @@ function StopRow({
   onTogglePin,
   onTogglePreferredLast,
   onMoveToEnd,
+  onOfferMove,
+  offerPending,
   onNudge,
   onDragStart,
   onDragEnd,
@@ -796,6 +858,10 @@ function StopRow({
   onTogglePin: () => void;
   onTogglePreferredLast: () => void;
   onMoveToEnd: () => void;
+  /** Null when this stop can't be offered a move — a supply run, or no phone. */
+  onOfferMove: (() => void) | null;
+  /** An ask is already out on this stop and we are waiting on the answer. */
+  offerPending: boolean;
   onNudge: (direction: -1 | 1) => void;
   onDragStart: () => void;
   onDragEnd: () => void;
@@ -969,6 +1035,23 @@ function StopRow({
               <Link href={`/dashboard/jobs/${stop.id}`} className="plan-stop-menu-item" onClick={() => onMenu(false)}>
                 Change arrival time
               </Link>
+              {/* Was a bare link to the job page, which is where you move a job
+                  when the customer has already agreed. This is the other case,
+                  and the common one on this screen: the day is overloaded, this
+                  stop is the one dragging it sideways, and the customer has no
+                  reason to move unless you give them one. */}
+              {onOfferMove ? (
+                <button
+                  type="button"
+                  className="plan-stop-menu-item"
+                  onClick={() => {
+                    onMenu(false);
+                    onOfferMove();
+                  }}
+                >
+                  {offerPending ? 'Move offer — waiting on reply' : 'Ask them to move day…'}
+                </button>
+              ) : null}
               <Link href={`/dashboard/jobs/${stop.id}`} className="plan-stop-menu-item" onClick={() => onMenu(false)}>
                 Move to another day
               </Link>
