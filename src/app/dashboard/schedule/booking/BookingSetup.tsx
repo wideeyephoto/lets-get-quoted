@@ -5,14 +5,26 @@ import { flushSync } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  BOOKING_WINDOW_PRESETS,
+  BOOKING_WINDOW_PRESET_TIMES,
   MAX_BOOKING_WINDOWS,
   WEEKDAY_LABELS,
-  formatWindowClock,
+  formatWindowRange,
   isWindowTime,
-  labelForWindowTime,
+  overlappingWindowTimes,
+  windowPartName,
   type BookingAvailability,
 } from '@/lib/booking-availability';
+
+// What an owner can promise. Shorter is a better customer experience and a worse
+// day when a job runs long — so the trade-off is named on the control rather
+// than left for them to discover from an angry phone call.
+const WINDOW_LENGTHS: { minutes: number; label: string; note: string }[] = [
+  { minutes: 60, label: '1 hour', note: 'Tightest promise. Only if you run a very predictable book.' },
+  { minutes: 120, label: '2 hours', note: 'Tight. Good for short, well-understood visits.' },
+  { minutes: 180, label: '3 hours', note: 'A comfortable half-morning.' },
+  { minutes: 240, label: '4 hours', note: 'What utilities use. Survives an ordinary bad morning.' },
+  { minutes: 360, label: '6 hours', note: 'Very loose. Customers will ask you to narrow it.' },
+];
 import type { AvailabilityBlock } from '@/lib/availability-blocks';
 import { updateBookingAvailabilityAction } from '../../settings/actions';
 import {
@@ -114,6 +126,7 @@ export default function BookingSetup({
 
   const [weekdays, setWeekdays] = useState<number[]>(availability.weekdays);
   const [windowTimes, setWindowTimes] = useState<string[]>(availability.windowTimes);
+  const [windowMinutes, setWindowMinutes] = useState(availability.windowMinutes);
   const [maxPerDay, setMaxPerDay] = useState(availability.maxPerDay);
   const [leadDays, setLeadDays] = useState(availability.leadDays);
   const [timezone, setTimezone] = useState(availability.timezone);
@@ -138,6 +151,7 @@ export default function BookingSetup({
     return (
       !sameList([...weekdays].sort(), [...availability.weekdays].sort()) ||
       !sameList([...windowTimes].sort(), [...availability.windowTimes].sort()) ||
+      windowMinutes !== availability.windowMinutes ||
       maxPerDay !== availability.maxPerDay ||
       leadDays !== availability.leadDays ||
       timezone !== availability.timezone ||
@@ -147,7 +161,7 @@ export default function BookingSetup({
       instant.geoMode !== instantBook.geoMode ||
       instant.driveTime !== instantBook.driveTime
     );
-  }, [weekdays, windowTimes, maxPerDay, leadDays, timezone, instant, availability, instantBook]);
+  }, [weekdays, windowTimes, windowMinutes, maxPerDay, leadDays, timezone, instant, availability, instantBook]);
 
   // Leaving with unsaved settings loses them silently otherwise.
   useEffect(() => {
@@ -209,6 +223,7 @@ export default function BookingSetup({
     data.set('timezone', timezone);
     for (const d of weekdays) data.append('bookingWeekday', String(d));
     for (const t of windowTimes) data.append('bookingWindow', t);
+    data.set('bookingWindowMinutes', String(windowMinutes));
     data.set('bookingMaxPerDay', String(maxPerDay));
     data.set('bookingLeadDays', String(leadDays));
     if (instant.enabled) data.set('instantBookEnabled', 'on');
@@ -232,6 +247,7 @@ export default function BookingSetup({
   function discard() {
     setWeekdays(availability.weekdays);
     setWindowTimes(availability.windowTimes);
+    setWindowMinutes(availability.windowMinutes);
     setMaxPerDay(availability.maxPerDay);
     setLeadDays(availability.leadDays);
     setTimezone(availability.timezone);
@@ -277,9 +293,13 @@ export default function BookingSetup({
   // Deduped: a 7am and an 8am window are both "Morning", and listing it twice
   // reads as a mistake rather than as two options.
   const windowNames = useMemo(
-    () => [...new Set(windowTimes.map((t) => labelForWindowTime(t).split(' · ')[0]))].join(', ') || 'None',
+    () => [...new Set(windowTimes.map(windowPartName))].join(', ') || 'None',
     [windowTimes],
   );
+
+  // Windows that swallow the next one at the current length. Recomputed with the
+  // length so the warning appears the moment they widen past a clash.
+  const overlaps = useMemo(() => overlappingWindowTimes(windowTimes, windowMinutes), [windowTimes, windowMinutes]);
 
   const nextBlock = blocks[0] ?? null;
   const live = enabled && Boolean(bookingUrl) && weekdays.length > 0 && windowTimes.length > 0;
@@ -423,13 +443,35 @@ export default function BookingSetup({
                 <div className="bset-divider" />
 
                 <div className="bset-field-group">
+                  <p className="bset-group-title">How long a window runs</p>
+                  <p className="bset-group-hint">
+                    Customers are shown a span, not a time. Promising &ldquo;8:00 AM&rdquo; makes you late the first
+                    morning a job runs over.
+                  </p>
+                  <div className="bset-lengths" role="radiogroup" aria-label="Arrival window length">
+                    {WINDOW_LENGTHS.map((option) => (
+                      <button
+                        type="button"
+                        key={option.minutes}
+                        role="radio"
+                        aria-checked={windowMinutes === option.minutes}
+                        className={`bset-length${windowMinutes === option.minutes ? ' on' : ''}`}
+                        onClick={() => setWindowMinutes(option.minutes)}
+                      >
+                        <strong>{option.label}</strong>
+                        <small>{option.note}</small>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bset-field-group">
                   <p className="bset-group-title">Arrival time options</p>
-                  <p className="bset-group-hint">Customers choose a window. You confirm the exact time.</p>
+                  <p className="bset-group-hint">Pick the windows you offer. You set the exact time when you confirm.</p>
                   <div className="bset-windows" role="group" aria-label="Arrival time options">
-                    {[...new Set([...BOOKING_WINDOW_PRESETS.map((w) => w.time), ...windowTimes])].sort().map((time) => {
+                    {[...new Set([...BOOKING_WINDOW_PRESET_TIMES, ...windowTimes])].sort().map((time) => {
                       const on = windowTimes.includes(time);
-                      const label = labelForWindowTime(time);
-                      const custom = !BOOKING_WINDOW_PRESETS.some((w) => w.time === time);
+                      const custom = !BOOKING_WINDOW_PRESET_TIMES.includes(time);
                       return (
                         <button
                           type="button"
@@ -440,17 +482,23 @@ export default function BookingSetup({
                         >
                           <span className="bset-window-icon"><Icon name={Number(time.slice(0, 2)) < 12 ? 'sunrise' : 'sun'} /></span>
                           <span className="bset-window-copy">
-                            <strong>{label.split(' · ')[0]}{custom ? <em>Custom</em> : null}</strong>
-                            <small>Around {formatWindowClock(time)}</small>
+                            <strong>{windowPartName(time)}{custom ? <em>Custom</em> : null}</strong>
+                            <small>{formatWindowRange(time, windowMinutes)}</small>
                           </span>
                           <span className="bset-window-check" aria-hidden="true">{on ? <Icon name="check" /> : null}</span>
                         </button>
                       );
                     })}
                   </div>
+                  {overlaps.length > 0 ? (
+                    <p className="bset-window-warn">
+                      <Icon name="alert" /> {overlaps.map((t) => windowPartName(t)).join(' and ')} run into the next
+                      window at this length. Customers will see two options covering the same hours.
+                    </p>
+                  ) : null}
                   <AddWindow
                     disabled={windowTimes.length >= MAX_BOOKING_WINDOWS}
-                    existing={[...new Set([...BOOKING_WINDOW_PRESETS.map((w) => w.time), ...windowTimes])]}
+                    existing={[...new Set([...BOOKING_WINDOW_PRESET_TIMES, ...windowTimes])]}
                     onAdd={(time) => setWindowTimes((w) => [...w, time].sort())}
                   />
                 </div>
@@ -645,8 +693,8 @@ export default function BookingSetup({
                     <span className={`bset-phone-window${i === 0 ? ' on' : ''}`} key={time}>
                       <Icon name={Number(time.slice(0, 2)) < 12 ? 'sunrise' : 'sun'} />
                       <span>
-                        <strong>{labelForWindowTime(time).split(' · ')[0]}</strong>
-                        <small>Around {formatWindowClock(time)}</small>
+                        <strong>{windowPartName(time)}</strong>
+                        <small>{formatWindowRange(time, windowMinutes)}</small>
                       </span>
                       <span className="bset-phone-check" aria-hidden="true">{i === 0 ? <Icon name="check" /> : null}</span>
                     </span>

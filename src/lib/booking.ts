@@ -20,7 +20,10 @@ const LOOKAHEAD_DAYS = 21;
 const MAX_OFFERED_DAYS = 8;
 const DAY_MS = 86_400_000;
 
-export type BookingSlot = { time: string; label: string };
+// endTime is carried through from the availability engine so a booking records
+// the window the customer was actually shown, rather than one re-derived later
+// from settings that may have changed since.
+export type BookingSlot = { time: string; endTime: string; label: string };
 export type BookingDay = { dateKey: string; dayLabel: string; slots: BookingSlot[] };
 
 // Today's calendar date IN the given IANA timezone. The old code used the server's
@@ -59,7 +62,7 @@ export function computeBookingDays(opts: {
   // Only offer windows that start within the working-hours span.
   const dayStart = timeToMinutes(availability.workdayStart);
   const dayEnd = timeToMinutes(availability.workdayEnd);
-  const windows = windowsForTimes(availability.windowTimes).filter((w) => {
+  const windows = windowsForTimes(availability.windowTimes, availability.windowMinutes).filter((w) => {
     const t = timeToMinutes(w.time);
     return t >= dayStart && t < dayEnd;
   });
@@ -314,7 +317,11 @@ export type BookingInput = {
   dateKey: string;
   dateLabel: string;
   time: string;
+  /** The window's close. Snapshotted so a later settings change can't rewrite it. */
+  endTime: string | null;
   timeLabel: string;
+  /** "Gate code is 1234, dog in the back" — for the person at the door, not for sales. */
+  note: string | null;
 };
 
 // A self-serve booking becomes a warm, pre-scheduled lead the owner confirms —
@@ -324,7 +331,12 @@ export type BookingInput = {
 export async function createBooking(admin: SupabaseClient, accountId: string, input: BookingInput): Promise<Lead> {
   const requested = `${input.dateLabel} — ${input.timeLabel}`;
   const serviceLine = input.serviceName ? `Service: ${input.serviceName}.\n` : '';
-  const message = `📅 Online booking request for ${requested}.\n${serviceLine}${input.description ? `\n${input.description}` : ''}`.trimEnd();
+  // The homeowner's note goes in the lead message too. It's the kind of thing
+  // ("there's a dog", "use the side gate") that changes how the first visit
+  // goes, and burying it only on the job record means whoever reads the lead
+  // email never sees it.
+  const noteLine = input.note ? `\n\nThey added: ${input.note}` : '';
+  const message = `📅 Online booking request for ${requested}.\n${serviceLine}${input.description ? `\n${input.description}` : ''}${noteLine}`.trimEnd();
 
   const lead = await createLead(admin, accountId, {
     source: 'website_form',
@@ -383,7 +395,12 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
       });
       await admin
         .from('jobs')
-        .update({ booking_requested_date: input.dateKey, booking_requested_time: input.time })
+        .update({
+          booking_requested_date: input.dateKey,
+          booking_requested_time: input.time,
+          booking_requested_end_time: input.endTime,
+          booking_note: input.note,
+        })
         .eq('id', job.id);
       await admin.from('leads').update({ converted_job: job.id }).eq('id', lead.id);
     }
@@ -435,9 +452,11 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
 export async function createBookingRequestLead(
   admin: SupabaseClient,
   accountId: string,
-  input: { name: string; phone: string | null; email: string | null; address: string | null; description: string | null },
+  input: { name: string; phone: string | null; email: string | null; address: string | null; description: string | null; note?: string | null },
 ): Promise<Lead> {
-  const message = `📋 Booking request — needs scheduling.${input.description ? `\n${input.description}` : ''}`;
+  const message = `📋 Booking request — needs scheduling.${input.description ? `\n${input.description}` : ''}${
+    input.note ? `\n\nThey added: ${input.note}` : ''
+  }`;
   const lead = await createLead(admin, accountId, {
     source: 'website_form',
     name: input.name,

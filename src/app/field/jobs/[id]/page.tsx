@@ -43,7 +43,7 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
 
   const { data: job } = await supabase
     .from('jobs')
-    .select('id, ref, client_name, client_phone, address, scope, status, scheduled_for, scheduled_time, lat, lng')
+    .select('id, ref, client_name, client_phone, address, scope, booking_note, status, scheduled_for, scheduled_time, lat, lng')
     .eq('account_id', accountId)
     .eq('id', params.id)
     .maybeSingle();
@@ -165,6 +165,17 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
           <section className="field-block">
             <h2 className="field-block-title">Customer</h2>
             <p>{formatPhoneDashes(job.client_phone)}</p>
+          </section>
+        ) : null}
+
+        {/* Above the scope on purpose. "There's a dog in the back" and "use the
+            side gate" are the things you need BEFORE you get out of the van, and
+            burying them under the work description is how someone walks into a
+            locked yard. Only rendered when the customer actually wrote something. */}
+        {job.booking_note ? (
+          <section className="field-block field-block-note">
+            <h2 className="field-block-title">From the customer</h2>
+            <p className="field-scope-body">{job.booking_note}</p>
           </section>
         ) : null}
 

@@ -88,7 +88,7 @@ export async function confirmBookingRequestAction(jobId: string) {
 
   const { data: job, error: readError } = await supabase
     .from('jobs')
-    .select('id, client_name, client_phone, booking_requested_date, booking_requested_time, booking_confirmed_at, booking_declined_at')
+    .select('id, client_name, client_phone, booking_requested_date, booking_requested_time, booking_requested_end_time, booking_confirmed_at, booking_declined_at')
     .eq('id', jobId)
     .eq('account_id', accountId)
     .maybeSingle();
@@ -119,7 +119,7 @@ export async function confirmBookingRequestAction(jobId: string) {
     await sendBookingDecisionSms({
       accountId,
       toPhone: job.client_phone,
-      message: confirmedSmsBody(businessName, requestedWhenLabel(job.booking_requested_date, job.booking_requested_time)),
+      message: confirmedSmsBody(businessName, requestedWhenLabel(job.booking_requested_date, job.booking_requested_time, job.booking_requested_end_time)),
     });
   }
 
@@ -140,7 +140,7 @@ export async function declineBookingRequestAction(jobId: string) {
 
   const { data: job, error: readError } = await supabase
     .from('jobs')
-    .select('id, client_phone, booking_requested_date, booking_requested_time, booking_confirmed_at, booking_declined_at')
+    .select('id, client_phone, booking_requested_date, booking_requested_time, booking_requested_end_time, booking_confirmed_at, booking_declined_at')
     .eq('id', jobId)
     .eq('account_id', accountId)
     .maybeSingle();
@@ -166,7 +166,7 @@ export async function declineBookingRequestAction(jobId: string) {
     await sendBookingDecisionSms({
       accountId,
       toPhone: job.client_phone,
-      message: declinedSmsBody(businessName, requestedWhenLabel(job.booking_requested_date, job.booking_requested_time)),
+      message: declinedSmsBody(businessName, requestedWhenLabel(job.booking_requested_date, job.booking_requested_time, job.booking_requested_end_time)),
     });
   }
 

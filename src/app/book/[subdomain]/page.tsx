@@ -358,9 +358,18 @@ export default async function BookingPage({
                 <label htmlFor="address">Address</label>
                 <input id="address" name="address" required placeholder="1418 Maplewood Ave, Royal Oak, MI" autoComplete="street-address" />
               </div>
+              {/* This field was labelled "Anything else we should know?" while
+                  its answer became the job's SCOPE. The question and the
+                  destination disagreed, so people wrote access notes into the
+                  scope of work. Two fields now, each asking for what it stores. */}
               <div className="field full">
-                <label htmlFor="description">Anything else we should know?</label>
+                <label htmlFor="description">What&apos;s the job?</label>
                 <textarea id="description" name="description" rows={3} placeholder="Roof looks worn after the last storm — would like an estimate." />
+              </div>
+              <div className="field full">
+                <label htmlFor="note">Anything we should know? (optional)</label>
+                <textarea id="note" name="note" rows={2} maxLength={500} placeholder="Gate code, where to park, a dog in the yard, which door to use…" />
+                <small className="field-hint">This goes to whoever turns up, not just the office.</small>
               </div>
               <div className="field full">
                 <SaveButton className="btn primary book-submit" pendingLabel="Sending…" savedLabel="Sent ✓">Request this time</SaveButton>

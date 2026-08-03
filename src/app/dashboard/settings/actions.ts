@@ -13,6 +13,7 @@ import {
   normalizeTimezone,
   normalizeBookingWeekdays,
   normalizeBookingWindowTimes,
+  normalizeWindowMinutes,
   normalizeMaxPerDay,
   normalizeLeadDays,
   normalizeWorkdayTime,
@@ -231,6 +232,11 @@ export async function updateBookingAvailabilityAction(formData: FormData) {
   const timezone = normalizeTimezone(formData.get('timezone'));
   const weekdays = normalizeBookingWeekdays(formData.getAll('bookingWeekday').map(String));
   const windowTimes = normalizeBookingWindowTimes(formData.getAll('bookingWindow').map(String));
+  // Absent means "this form doesn't edit the length" (the older settings screen),
+  // not "set it to the default" — reading a missing field as 240 would silently
+  // reset an owner's chosen window every time they saved from the other page.
+  const rawWindowMinutes = formData.get('bookingWindowMinutes');
+  const windowMinutes = rawWindowMinutes === null ? null : normalizeWindowMinutes(rawWindowMinutes);
   const maxPerDay = normalizeMaxPerDay(formData.get('bookingMaxPerDay'));
   const leadDays = normalizeLeadDays(formData.get('bookingLeadDays'));
   const instantBookEnabled = formData.get('instantBookEnabled') === 'on';
@@ -249,6 +255,7 @@ export async function updateBookingAvailabilityAction(formData: FormData) {
       timezone,
       booking_weekdays: weekdays.join(','),
       booking_windows: windowTimes,
+      ...(windowMinutes === null ? {} : { booking_window_minutes: windowMinutes }),
       booking_max_per_day: maxPerDay,
       booking_lead_days: leadDays,
       instant_book_enabled: instantBookEnabled,

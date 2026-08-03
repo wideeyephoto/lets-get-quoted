@@ -186,6 +186,10 @@ function readContact(formData: FormData) {
     email: (formData.get('email') ?? '').toString().trim().toLowerCase() || null,
     address: (formData.get('address') ?? '').toString().trim() || null,
     description: (formData.get('description') ?? '').toString().trim() || null,
+    // Public free text, so it's capped here rather than trusted to the textarea's
+    // maxLength — a direct POST ignores that, and this string ends up in an email
+    // and on a job screen.
+    note: (formData.get('note') ?? '').toString().trim().slice(0, 500) || null,
   };
 }
 
@@ -198,7 +202,7 @@ export async function submitBookingAction(subdomain: string, formData: FormData)
   const site = await getPublicSiteBySubdomain(admin, subdomain);
   if (!site) redirect(`/book/${subdomain}?error=unavailable`);
 
-  const { name, phone, email, address, description } = readContact(formData);
+  const { name, phone, email, address, description, note } = readContact(formData);
   const slot = (formData.get('slot') ?? '').toString();
   const [dateKey, time] = slot.split('|');
 
@@ -226,7 +230,7 @@ export async function submitBookingAction(subdomain: string, formData: FormData)
     .maybeSingle();
   const floor = Number(gate?.instant_book_min_amount) || 0;
   if (gate?.instant_book_enabled && floor > 0 && estimateMax != null && estimateMax < floor) {
-    await createBookingRequestLead(admin, site.account_id, { name, phone, email, address, description });
+    await createBookingRequestLead(admin, site.account_id, { name, phone, email, address, description, note });
     redirect(`/book/${subdomain}?requested=1`);
   }
 
@@ -266,7 +270,11 @@ export async function submitBookingAction(subdomain: string, formData: FormData)
     dateKey,
     dateLabel: offered.day.dayLabel,
     time,
+    // From the server's own matched window, never from the post. The client
+    // could otherwise name the end of its own arrival window.
+    endTime: offered.slot.endTime,
     timeLabel: offered.slot.label,
+    note,
   });
 
   // The id, not the window. The confirmation page reads the requested time back
@@ -403,13 +411,13 @@ export async function submitCallbackAction(subdomain: string, formData: FormData
   const site = await getPublicSiteBySubdomain(admin, subdomain);
   if (!site) redirect(`/book/${subdomain}?error=unavailable`);
 
-  const { name, phone, email, address, description } = readContact(formData);
+  const { name, phone, email, address, description, note } = readContact(formData);
   // Same rule as a booking — see submitBookingAction. A callback lead without an
   // address is one the owner cannot price, route or quote without ringing back.
   if (!name || (!phone && !email) || !address) {
     redirect(`/book/${subdomain}?error=incomplete`);
   }
 
-  await createBookingRequestLead(admin, site.account_id, { name, phone, email, address, description });
+  await createBookingRequestLead(admin, site.account_id, { name, phone, email, address, description, note });
   redirect(`/book/${subdomain}?requested=1`);
 }

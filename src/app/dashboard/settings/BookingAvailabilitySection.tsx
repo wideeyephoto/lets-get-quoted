@@ -1,5 +1,5 @@
 import { updateBookingAvailabilityAction } from './actions';
-import { WEEKDAY_LABELS, BOOKING_WINDOW_PRESETS, TIMEZONE_OPTIONS, bookingAvailabilityFromAccount } from '@/lib/booking-availability';
+import { WEEKDAY_LABELS, bookingWindowPresets, TIMEZONE_OPTIONS, bookingAvailabilityFromAccount } from '@/lib/booking-availability';
 import SaveButton from '@/components/save-button';
 
 // The Instant-booking availability form, shared by Settings → Automations and the
@@ -71,14 +71,17 @@ export default function BookingAvailabilitySection({ bookingSettings }: { bookin
             <div className="field full">
               <label>Arrival windows you offer</label>
               <div className="checkbox-grid">
-                {BOOKING_WINDOW_PRESETS.map((window) => (
+                {bookingWindowPresets(booking.windowMinutes).map((window) => (
                   <label className="checkbox-chip" key={window.time}>
                     <input type="checkbox" name="bookingWindow" value={window.time} defaultChecked={booking.windowTimes.includes(window.time)} />
                     <span>{window.label}</span>
                   </label>
                 ))}
               </div>
-              <small className="field-hint">Coarse on purpose &mdash; a customer picks a part of the day, and you set the exact time when you confirm.</small>
+              <small className="field-hint">
+                A customer picks a span of the day, and you set the exact time when you confirm. Change how long a
+                window runs on the booking setup page.
+              </small>
             </div>
           </div>
         </fieldset>

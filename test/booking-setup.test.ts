@@ -38,12 +38,14 @@ describe('custom arrival windows', () => {
     expect(normalizeBookingWindowTimes(many)).toHaveLength(MAX_BOOKING_WINDOWS);
   });
 
+  // A label is a SPAN now, not a clock time — see test/booking-windows.test.ts.
+  // The part-of-day naming these cases were written for is unchanged.
   it('labels a custom time by where it falls in the day', () => {
-    expect(labelForWindowTime('08:00')).toBe('Morning · 8:00 AM'); // preset keeps its label
-    expect(labelForWindowTime('06:30')).toBe('Morning · 6:30 AM');
-    expect(labelForWindowTime('12:30')).toBe('Midday · 12:30 PM');
-    expect(labelForWindowTime('14:45')).toBe('Afternoon · 2:45 PM');
-    expect(labelForWindowTime('19:00')).toBe('Evening · 7:00 PM');
+    expect(labelForWindowTime('08:00', 240)).toBe('Morning · 8:00 AM – 12:00 PM');
+    expect(labelForWindowTime('06:30', 120)).toBe('Morning · 6:30 AM – 8:30 AM');
+    expect(labelForWindowTime('12:30', 120)).toBe('Midday · 12:30 PM – 2:30 PM');
+    expect(labelForWindowTime('14:45', 120)).toBe('Afternoon · 2:45 PM – 4:45 PM');
+    expect(labelForWindowTime('19:00', 120)).toBe('Evening · 7:00 PM – 9:00 PM');
   });
 
   it('formats midnight and noon the way a person reads a clock', () => {
@@ -52,9 +54,9 @@ describe('custom arrival windows', () => {
   });
 
   it('resolves custom times for the public page instead of dropping them', () => {
-    expect(windowsForTimes(['06:30', '13:00'])).toEqual([
-      { time: '06:30', label: 'Morning · 6:30 AM' },
-      { time: '13:00', label: 'Afternoon · 1:00 PM' },
+    expect(windowsForTimes(['06:30', '13:00'], 240)).toEqual([
+      { time: '06:30', endTime: '10:30', label: 'Morning · 6:30 AM – 10:30 AM' },
+      { time: '13:00', endTime: '17:00', label: 'Afternoon · 1:00 PM – 5:00 PM' },
     ]);
   });
 });

@@ -65,6 +65,10 @@ export default function BookingRequests({ requests }: { requests: PendingBooking
               <div className="booking-request-detail">
                 {request.scope ? <span>{request.scope}</span> : null}
                 {request.address ? <span className="booking-request-address">{request.address}</span> : null}
+                {/* Shown before you decide, not after. "There's no side access"
+                    is exactly the thing that changes whether you can take the
+                    job at all. */}
+                {request.note ? <span className="booking-request-note">“{request.note}”</span> : null}
                 <span className="booking-request-contact">
                   {[request.phone, request.email].filter(Boolean).join(' · ') || 'No contact on file'}
                 </span>

@@ -17,7 +17,7 @@ import { arrivalSettingsFromAccount } from '@/lib/arrival';
 import { updateArrivalSettingsAction, updateReviewSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBookingAvailabilityAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, updateCallTextbackSettingsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
 import { ESTIMATE_POSTURES, normalizeEstimatePosture } from '@/lib/estimate-posture';
 import { getSiteContent } from '@/lib/site-content';
-import { WEEKDAY_LABELS, BOOKING_WINDOW_PRESETS, TIMEZONE_OPTIONS, bookingAvailabilityFromAccount } from '@/lib/booking-availability';
+import { WEEKDAY_LABELS, bookingWindowPresets, TIMEZONE_OPTIONS, bookingAvailabilityFromAccount } from '@/lib/booking-availability';
 import { QUICK_STOP_SETTINGS_COLUMNS } from '@/lib/quick-stop';
 import { getTrailingVolume } from '@/lib/payments';
 import { getTierInfo } from '@/lib/stripe';
@@ -493,14 +493,17 @@ export default async function SettingsPage({
                     <div className="field full">
                       <label>Arrival windows you offer</label>
                       <div className="checkbox-grid">
-                        {BOOKING_WINDOW_PRESETS.map((window) => (
+                        {bookingWindowPresets(booking.windowMinutes).map((window) => (
                           <label className="checkbox-chip" key={window.time}>
                             <input type="checkbox" name="bookingWindow" value={window.time} defaultChecked={booking.windowTimes.includes(window.time)} />
                             <span>{window.label}</span>
                           </label>
                         ))}
                       </div>
-                      <small className="field-hint">Coarse on purpose &mdash; a customer picks a part of the day, and you set the exact time when you confirm.</small>
+                      <small className="field-hint">
+                        A customer picks a span of the day, and you set the exact time when you confirm. Change how
+                        long a window runs on the booking setup page.
+                      </small>
                     </div>
 
                     <details className="advanced-settings">

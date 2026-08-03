@@ -262,6 +262,10 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
             <input id="cb-address" name="address" required defaultValue={address} placeholder="1418 Maplewood Ave, Royal Oak, MI" autoComplete="street-address" />
           </div>
           <div className="field full">
+            <label htmlFor="cb-note">Anything we should know? (optional)</label>
+            <textarea id="cb-note" name="note" rows={2} maxLength={500} placeholder="Gate code, where to park, a dog in the yard, which door to use…" />
+          </div>
+          <div className="field full">
             <SaveButton className="btn primary book-submit" pendingLabel="Sending…" savedLabel="Sent ✓">Request a callback</SaveButton>
           </div>
         </div>
@@ -301,6 +305,10 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
           <div className="field full">
             <label htmlFor="nw-address">Address</label>
             <input id="nw-address" name="address" required defaultValue={address} placeholder="1418 Maplewood Ave, Royal Oak, MI" autoComplete="street-address" />
+          </div>
+          <div className="field full">
+            <label htmlFor="nw-note">Anything we should know? (optional)</label>
+            <textarea id="nw-note" name="note" rows={2} maxLength={500} placeholder="Gate code, where to park, a dog in the yard, which door to use…" />
           </div>
           <div className="field full">
             <SaveButton className="btn primary book-submit" pendingLabel="Sending…" savedLabel="Sent ✓">Request a callback</SaveButton>
@@ -366,6 +374,11 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
         <div className="field full">
           <label htmlFor="bk-address">Address</label>
           <input id="bk-address" name="address" required defaultValue={address} placeholder="1418 Maplewood Ave, Royal Oak, MI" autoComplete="street-address" />
+        </div>
+        <div className="field full">
+          <label htmlFor="bk-note">Anything we should know? (optional)</label>
+          <textarea id="bk-note" name="note" rows={2} maxLength={500} placeholder="Gate code, where to park, a dog in the yard, which door to use…" />
+          <small className="field-hint">This goes to whoever turns up, not just the office.</small>
         </div>
         <div className="field full">
           <SaveButton className="btn primary book-submit" pendingLabel="Sending…" savedLabel="Sent ✓">Request this time</SaveButton>

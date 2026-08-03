@@ -4,19 +4,62 @@
 // engine (src/lib/booking.ts). Defaults reproduce the previously-hardcoded
 // behavior (Mon–Fri, 08:00/13:00, 4 jobs/day, from tomorrow).
 
-export type BookingWindow = { time: string; label: string };
+export type BookingWindow = { time: string; endTime: string; label: string };
 
-// The arrival windows an owner can offer. Coarse on purpose — a contractor
+/**
+ * How long an arrival window runs. A booking page that says "8:00 AM" is making
+ * a promise no trade can keep — the job before yours runs long, and now you're
+ * late on a commitment you never meant to make. A window says what's actually
+ * true: someone will be there between these two times.
+ *
+ * Four hours is the span utilities and cable companies use, and it's wide enough
+ * that a contractor arrives inside it on an ordinary bad day.
+ */
+export const DEFAULT_WINDOW_MINUTES = 240;
+export const MIN_WINDOW_MINUTES = 30;
+export const MAX_WINDOW_MINUTES = 600;
+
+// The window start times an owner can offer. Coarse on purpose — a contractor
 // commits to a part of the day, not a to-the-minute slot. Ordered earliest-first;
 // offered windows always render in this order.
-export const BOOKING_WINDOW_PRESETS: BookingWindow[] = [
-  { time: '08:00', label: 'Morning · 8:00 AM' },
-  { time: '10:00', label: 'Late morning · 10:00 AM' },
-  { time: '13:00', label: 'Afternoon · 1:00 PM' },
-  { time: '15:00', label: 'Late afternoon · 3:00 PM' },
-  { time: '17:00', label: 'Evening · 5:00 PM' },
+const WINDOW_PART_NAMES: { time: string; part: string }[] = [
+  { time: '08:00', part: 'Morning' },
+  { time: '10:00', part: 'Late morning' },
+  { time: '13:00', part: 'Afternoon' },
+  { time: '15:00', part: 'Late afternoon' },
+  { time: '17:00', part: 'Evening' },
 ];
-const WINDOW_BY_TIME = new Map(BOOKING_WINDOW_PRESETS.map((w) => [w.time, w]));
+const PART_BY_TIME = new Map(WINDOW_PART_NAMES.map((w) => [w.time, w.part]));
+
+export function normalizeWindowMinutes(value: unknown): number {
+  // null/undefined/'' mean "not configured" and must reach the default. Going
+  // straight to Number() turns all three into 0, which then clamps to the 30-min
+  // FLOOR — so an un-migrated account would silently start offering half-hour
+  // arrival windows it could never hit. Same trap as the weekday parser below.
+  if (value === null || value === undefined || value === '') return DEFAULT_WINDOW_MINUTES;
+  const n = Math.round(Number(value));
+  if (!Number.isFinite(n)) return DEFAULT_WINDOW_MINUTES;
+  return Math.min(MAX_WINDOW_MINUTES, Math.max(MIN_WINDOW_MINUTES, n));
+}
+
+function minutesToTime(minutes: number): string {
+  const clamped = Math.max(0, Math.min(23 * 60 + 59, Math.round(minutes)));
+  return `${String(Math.floor(clamped / 60)).padStart(2, '0')}:${String(clamped % 60).padStart(2, '0')}`;
+}
+
+/**
+ * Where a window closes. Clamped to 23:59 rather than rolling past midnight: a
+ * 5 PM start with a long window should read "5:00 PM – 11:59 PM", not spill onto
+ * a date the customer never picked.
+ */
+export function windowEndTime(startTime: string, minutes: number): string {
+  return minutesToTime(timeToMinutes(startTime) + normalizeWindowMinutes(minutes));
+}
+
+/** "8:00 AM – 12:00 PM". An en dash, because this is a span and not a subtraction. */
+export function formatWindowRange(startTime: string, minutes: number): string {
+  return `${formatWindowClock(startTime)} – ${formatWindowClock(windowEndTime(startTime, minutes))}`;
+}
 
 // An owner can also add their own arrival time. The presets cover the common
 // shape of a day, but "we start at 7" and "evenings from 6" are real and were
@@ -38,23 +81,50 @@ export function formatWindowClock(time: string): string {
   return `${hour12}:${String(m).padStart(2, '0')} ${suffix}`;
 }
 
-// Preset times keep their written label; a custom time gets one derived from
-// where it falls in the day, so the public page never shows a bare "14:45".
-export function labelForWindowTime(time: string): string {
-  const preset = WINDOW_BY_TIME.get(time);
-  if (preset) return preset.label;
+/** "Morning", "Late afternoon" — the part of the day a start time falls in. */
+export function windowPartName(time: string): string {
+  const preset = PART_BY_TIME.get(time);
+  if (preset) return preset;
   const hour = Number(time.slice(0, 2));
-  const part =
-    hour < 11 ? 'Morning'
+  return hour < 11 ? 'Morning'
     : hour < 13 ? 'Midday'
     : hour < 16 ? 'Afternoon'
     : hour < 18 ? 'Late afternoon'
     : 'Evening';
-  return `${part} · ${formatWindowClock(time)}`;
 }
 
-export function windowsForTimes(times: string[]): BookingWindow[] {
-  return times.map((time) => ({ time, label: labelForWindowTime(time) }));
+// "Morning · 8:00 AM – 12:00 PM". The part name is kept ahead of a " · " because
+// it's how a customer thinks about the day, and callers that only want the part
+// split on that separator.
+export function labelForWindowTime(time: string, minutes: number = DEFAULT_WINDOW_MINUTES): string {
+  return `${windowPartName(time)} · ${formatWindowRange(time, minutes)}`;
+}
+
+export function windowsForTimes(times: string[], minutes: number = DEFAULT_WINDOW_MINUTES): BookingWindow[] {
+  return times.map((time) => ({ time, endTime: windowEndTime(time, minutes), label: labelForWindowTime(time, minutes) }));
+}
+
+/** The start times an owner can pick from, as windows of their configured length. */
+export const BOOKING_WINDOW_PRESET_TIMES = WINDOW_PART_NAMES.map((w) => w.time);
+export function bookingWindowPresets(minutes: number = DEFAULT_WINDOW_MINUTES): BookingWindow[] {
+  return windowsForTimes(BOOKING_WINDOW_PRESET_TIMES, minutes);
+}
+
+/**
+ * Start times whose windows run into the next one. Not an error — an owner may
+ * genuinely want overlapping offers — but a public page showing "8:00 AM – 12:00
+ * PM" next to "10:00 AM – 2:00 PM" reads as a mistake, so the settings screen
+ * says so rather than letting them find out from a confused customer.
+ */
+export function overlappingWindowTimes(times: string[], minutes: number): string[] {
+  const sorted = [...times].sort();
+  const clashing: string[] = [];
+  for (let i = 0; i < sorted.length - 1; i += 1) {
+    if (timeToMinutes(windowEndTime(sorted[i], minutes)) > timeToMinutes(sorted[i + 1])) {
+      clashing.push(sorted[i]);
+    }
+  }
+  return clashing;
 }
 
 export const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -89,6 +159,7 @@ export type BookingAvailability = {
   timezone: string;
   weekdays: number[]; // 0 (Sun) … 6 (Sat)
   windowTimes: string[]; // subset of preset times, always in preset order
+  windowMinutes: number; // how long each arrival window runs
   maxPerDay: number;
   leadDays: number;
   // Availability engine additions:
@@ -181,6 +252,7 @@ type AccountAvailabilityRow = {
   timezone?: unknown;
   booking_weekdays?: unknown;
   booking_windows?: unknown;
+  booking_window_minutes?: unknown;
   booking_enabled?: unknown;
   booking_max_per_day?: unknown;
   booking_lead_days?: unknown;
@@ -200,6 +272,7 @@ export function bookingAvailabilityFromAccount(row: AccountAvailabilityRow): Boo
     timezone: normalizeTimezone(row?.timezone),
     weekdays: normalizeBookingWeekdays(row?.booking_weekdays),
     windowTimes: normalizeBookingWindowTimes(row?.booking_windows),
+    windowMinutes: normalizeWindowMinutes(row?.booking_window_minutes),
     maxPerDay: normalizeMaxPerDay(row?.booking_max_per_day),
     leadDays: normalizeLeadDays(row?.booking_lead_days),
     workdayStart: normalizeWorkdayTime(row?.workday_start, DEFAULT_WORKDAY_START),

@@ -21,6 +21,8 @@ export type PendingBookingRow = {
   scope: string | null;
   booking_requested_date: string;
   booking_requested_time: string | null;
+  booking_requested_end_time: string | null;
+  booking_note: string | null;
   created_at: string;
 };
 
@@ -33,7 +35,10 @@ export type PendingBooking = {
   scope: string | null;
   dateKey: string;
   time: string | null;
-  /** "Thu, Aug 6 at 9:00 AM" — one string, used in the panel and the SMS alike. */
+  endTime: string | null;
+  /** What the homeowner asked us to know before turning up. */
+  note: string | null;
+  /** "Thu, Aug 6, 8:00 AM – 12:00 PM" — one string, used in the panel and the SMS alike. */
   whenLabel: string;
   /** How long they have been waiting, in words. */
   waitedLabel: string;
@@ -41,13 +46,22 @@ export type PendingBooking = {
   isPast: boolean;
 };
 
-/** "Thu, Aug 6 at 9:00 AM". The one place a requested slot becomes words. */
-export function requestedWhenLabel(dateKey: string, time: string | null): string {
+/**
+ * "Thu, Aug 6, 8:00 AM – 12:00 PM". The one place a requested slot becomes words.
+ *
+ * The end time is optional because requests taken before windows existed only
+ * ever stored a start. Those still read as "Thu, Aug 6 at 9:00 AM" rather than
+ * having an end invented for them — the customer was told a time, so that's what
+ * the contractor should see.
+ */
+export function requestedWhenLabel(dateKey: string, time: string | null, endTime?: string | null): string {
   const date = new Date(`${dateKey}T00:00:00`);
   if (Number.isNaN(date.getTime())) return dateKey;
   const day = date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   const timeLabel = formatJobTime(time);
-  return timeLabel ? `${day} at ${timeLabel}` : day;
+  if (!timeLabel) return day;
+  const endLabel = formatJobTime(endTime ?? null);
+  return endLabel ? `${day}, ${timeLabel} – ${endLabel}` : `${day} at ${timeLabel}`;
 }
 
 /**
@@ -97,7 +111,9 @@ export function toPendingBookings(rows: PendingBookingRow[], nowMs: number, toda
     scope: row.scope,
     dateKey: row.booking_requested_date,
     time: row.booking_requested_time,
-    whenLabel: requestedWhenLabel(row.booking_requested_date, row.booking_requested_time),
+    endTime: row.booking_requested_end_time,
+    note: row.booking_note,
+    whenLabel: requestedWhenLabel(row.booking_requested_date, row.booking_requested_time, row.booking_requested_end_time),
     waitedLabel: waitedLabel(row.created_at, nowMs),
     isPast: row.booking_requested_date < todayKey,
   }));
@@ -116,7 +132,7 @@ export async function listPendingBookings(
 ): Promise<PendingBookingRow[]> {
   const { data, error } = await supabase
     .from('jobs')
-    .select('id, client_name, client_phone, client_email, address, scope, booking_requested_date, booking_requested_time, created_at')
+    .select('id, client_name, client_phone, client_email, address, scope, booking_requested_date, booking_requested_time, booking_requested_end_time, booking_note, created_at')
     .eq('account_id', accountId)
     .not('booking_requested_date', 'is', null)
     .is('booking_confirmed_at', null)

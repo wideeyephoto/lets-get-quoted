@@ -10221,6 +10221,14 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 }
 .field-block p { margin: 0; line-height: 1.55; }
 .field-scope-body { white-space: pre-wrap; color: rgba(var(--tint), 0.85); }
+/* What the customer asked us to know. Tinted so it's findable at a glance on a
+   phone in daylight — this is the block you check before you get out of the van. */
+.field-block-note {
+  padding: 0.8rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid var(--ink-amber-3);
+  background: rgba(255, 179, 122, 0.1);
+}
 .field-complete-note { color: var(--ink-lime-1); font-weight: 600; }
 
 .field-update-form { display: flex; flex-direction: column; gap: 0.7rem; }
@@ -13388,6 +13396,9 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 .booking-request-detail { display: grid; gap: 0.12rem; min-width: 0; font-size: 0.8rem; color: var(--dim-grey-2); }
 .booking-request-detail > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .booking-request-address, .booking-request-contact { color: rgba(var(--grey-5), 0.95); }
+/* The homeowner's own words, quoted. Italic so it reads as theirs rather than as
+   another field the system filled in. */
+.booking-request-note { font-style: italic; color: rgba(var(--grey-5), 0.95); }
 
 .booking-request-actions { display: flex; align-items: flex-start; gap: 0.4rem; flex-wrap: wrap; }
 /* Confirm stays the standard orange .btn.primary — deliberately NOT green.
@@ -13991,6 +14002,39 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
   gap: 0.6rem;
+}
+
+/* How long an arrival window runs. Each option carries its trade-off, because
+   "1 hour" and "4 hours" are the same click and very different promises. */
+.bset-lengths {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.55rem;
+}
+.bset-length {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--bset-line);
+  border-radius: 14px;
+  background: var(--bset-inner);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease;
+}
+.bset-length strong { font-size: 0.95rem; }
+.bset-length small { font-size: 0.74rem; line-height: 1.35; color: var(--mute-t55); }
+.bset-length.on { border-color: var(--ink-amber-3); background: rgba(255, 179, 122, 0.12); }
+
+.bset-window-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin: 0.6rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--ink-amber-1, var(--mute-t55));
 }
 
 .bset-window {
