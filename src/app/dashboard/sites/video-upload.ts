@@ -1,7 +1,13 @@
 'use client';
 
 import { supabase } from '@/lib/supabase';
-import { ALLOWED_VIDEO_TYPES, MAX_VIDEO_BYTES } from '@/lib/video-source';
+import {
+  ALLOWED_VIDEO_TYPES,
+  CODEC_SNIFF_BYTES,
+  MAX_VIDEO_BYTES,
+  sniffVideoCodec,
+  videoPlaybackWarning,
+} from '@/lib/video-source';
 import { createSiteVideoUploadAction, uploadSiteImageAction } from './actions';
 
 // Browser side of a website-video upload.
@@ -24,6 +30,8 @@ export type UploadedVideo = {
   url: string;
   posterUrl: string;
   duration: number;
+  /** '' when the clip should play everywhere. See videoPlaybackWarning. */
+  playbackWarning: string;
 };
 
 export function videoUploadError(file: File): string | null {
@@ -89,13 +97,34 @@ function readVideoFrame(file: File): Promise<{ frame: Blob | null; duration: num
   });
 }
 
+// What the container says the codec is. Reads only the head of the file.
+//
+// This is the check that catches the case the decode probe never can: Safari
+// plays HEVC, so an owner uploading straight off their iPhone gets a flawless
+// preview while their Chrome and Android visitors get a blank player. Their
+// browser is the one browser that works, so asking it proves nothing.
+async function readCodec(file: File): Promise<ReturnType<typeof sniffVideoCodec>> {
+  try {
+    const head = await file.slice(0, CODEC_SNIFF_BYTES).arrayBuffer();
+    return sniffVideoCodec(new Uint8Array(head));
+  } catch {
+    // Unreadable head — fall through to whatever the decode probe found.
+    return 'unknown';
+  }
+}
+
 export async function uploadSiteVideo(file: File): Promise<UploadedVideo> {
   const problem = videoUploadError(file);
   if (problem) throw new Error(problem);
 
   // Read the frame first: it works on the local file, so a browser that can't
   // decode the container is discovered before anything is uploaded.
-  const { frame, duration } = await readVideoFrame(file);
+  const [{ frame, duration }, codec] = await Promise.all([readVideoFrame(file), readCodec(file)]);
+
+  // The decode probe already knew this and used to throw it away. A null frame
+  // means this browser could not play the file, which is the cheapest warning
+  // there is that the owner's visitors won't be able to either.
+  const playbackWarning = videoPlaybackWarning({ codec, decoded: frame !== null });
 
   const signed = await createSiteVideoUploadAction(file.name, file.type);
   const { error } = await supabase.storage
@@ -118,5 +147,5 @@ export async function uploadSiteVideo(file: File): Promise<UploadedVideo> {
     }
   }
 
-  return { url: signed.publicUrl, posterUrl, duration };
+  return { url: signed.publicUrl, posterUrl, duration, playbackWarning };
 }

@@ -282,6 +282,17 @@ export type SiteVideoItem = {
   label: string;
   /** Seconds, 0 when unknown. Shown as "0:42" on the tile. */
   duration: number;
+  /**
+   * Why this clip may not play for visitors, or '' when it should play
+   * everywhere. Decided at upload from the container's codec plus whether the
+   * owner's own browser could decode it — see videoPlaybackWarning.
+   *
+   * Stored rather than recomputed because it can only be worked out in the
+   * browser holding the file. By the time the owner comes back to the studio,
+   * all that exists is a URL, and re-downloading every clip to re-check would
+   * cost more than the warning is worth. It never blocks publishing.
+   */
+  playbackWarning: string;
   // Testimonial fields — carried per video so a carousel can hold several
   // customers, each with their own words.
   quote: string;
@@ -995,6 +1006,9 @@ function parseVideoItems(value: unknown): SiteVideoItem[] {
     posterUrl: toString(item.posterUrl).slice(0, 500),
     label: toString(item.label).slice(0, 60),
     duration: Math.max(0, Math.round(toPositiveNumber(item.duration, 0))),
+    // Absent on every clip uploaded before this existed, which reads as '' —
+    // "nothing known against it" — rather than a false alarm on old sites.
+    playbackWarning: toString(item.playbackWarning).slice(0, 400),
     quote: toString(item.quote).slice(0, 400),
     author: toString(item.author).slice(0, 60),
     authorLabel: toString(item.authorLabel).slice(0, 60),

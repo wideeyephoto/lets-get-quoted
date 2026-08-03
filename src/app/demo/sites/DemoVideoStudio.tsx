@@ -31,7 +31,7 @@ const POSTER = (seed: string) =>
   `https://images.unsplash.com/${seed}?auto=format&fit=crop&w=480&q=60`;
 
 function clip(over: Partial<SiteVideoItem> & { id: string }): SiteVideoItem {
-  return { url: 'demo://clip', posterUrl: '', label: '', duration: 0, quote: '', author: '', authorLabel: '', ...over };
+  return { url: 'demo://clip', posterUrl: '', label: '', duration: 0, playbackWarning: '', quote: '', author: '', authorLabel: '', ...over };
 }
 
 // Three sections, deliberately three DIFFERENT jobs a video can do on a page:

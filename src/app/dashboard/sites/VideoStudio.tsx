@@ -70,7 +70,7 @@ function newVideoId() {
 }
 
 function blankVideo(): SiteVideoItem {
-  return { id: newVideoId(), url: '', posterUrl: '', label: '', duration: 0, quote: '', author: '', authorLabel: '' };
+  return { id: newVideoId(), url: '', posterUrl: '', label: '', duration: 0, playbackWarning: '', quote: '', author: '', authorLabel: '' };
 }
 
 export default function VideoStudio({ content, onChange, onClose }: VideoStudioProps) {
@@ -122,7 +122,15 @@ export default function VideoStudio({ content, onChange, onClose }: VideoStudioP
     try {
       const uploaded = await uploadSiteVideo(file);
       if (replaceId) {
-        patchVideo(replaceId, { url: uploaded.url, posterUrl: uploaded.posterUrl, duration: uploaded.duration });
+        // playbackWarning has to be carried through a REPLACE too, or swapping a
+        // bad clip for a good one would leave the old warning sitting on it (and
+        // swapping a good one for a bad one would show none at all).
+        patchVideo(replaceId, {
+          url: uploaded.url,
+          posterUrl: uploaded.posterUrl,
+          duration: uploaded.duration,
+          playbackWarning: uploaded.playbackWarning,
+        });
       } else {
         setVideos([...content.videos, { ...blankVideo(), ...uploaded }]);
       }
@@ -140,7 +148,9 @@ export default function VideoStudio({ content, onChange, onClose }: VideoStudioP
       return;
     }
     setError(null);
-    if (id) patchVideo(id, { url, posterUrl: '', duration: 0 });
+    // A pasted YouTube link carries no warning: YouTube transcodes for us, so
+    // whatever the owner uploaded there already plays everywhere.
+    if (id) patchVideo(id, { url, posterUrl: '', duration: 0, playbackWarning: '' });
     else setVideos([...content.videos, { ...blankVideo(), url }]);
     setLinkFor(null);
     setLinkDraft('');
@@ -243,6 +253,18 @@ export default function VideoStudio({ content, onChange, onClose }: VideoStudioP
                         <input value={linkDraft} onChange={(event) => setLinkDraft(event.target.value)} placeholder="https://www.youtube.com/watch?v=…" aria-label="YouTube link" />
                         <button type="button" onClick={() => applyLink(item.id)}>Use</button>
                       </div>
+                    )}
+                    {/* Sits on the clip it's about, not in the popup's error slot
+                        at the top: with six clips in a reel, "one of these won't
+                        play" is not an actionable sentence. It's a warning, not
+                        an error — the clip publishes either way, because plenty
+                        of these are genuinely fine for a given audience and a
+                        false positive that blocked a working video would be the
+                        worse failure. */}
+                    {item.playbackWarning && (
+                      <p className={styles.vsWarn}>
+                        <strong>May not play for some visitors.</strong> {item.playbackWarning}
+                      </p>
                     )}
                     {content.style === 'reel' && (
                       <input className={styles.vsInlineInput} value={item.label} maxLength={60} placeholder="Caption on the tile — e.g. Roof reveal" onChange={(event) => patchVideo(item.id, { label: event.target.value })} />
