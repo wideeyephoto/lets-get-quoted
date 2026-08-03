@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { createAdminClient } from '@/lib/auth';
-import { getTrackingByToken, type PublicTracking } from '@/lib/job-tracking';
+import { getTrackingByToken, recordTrackingView, type PublicTracking } from '@/lib/job-tracking';
 import {
   ARRIVAL_STATUS_HEADLINE, HOMEOWNER_REPLIES, homeownerReply, isClosedStatus,
 } from '@/lib/arrival';
@@ -60,6 +60,13 @@ export default async function TrackPage({
 
   const closed = isClosedStatus(visit.status);
   const said = searchParams.said ? homeownerReply(searchParams.said) : null;
+
+  // "Did they open it" is the number that says whether any of this reached a
+  // human. Recorded here rather than in the token read, so tapping a reply
+  // button doesn't also count as opening the link. Throttled, and awaited only
+  // because a Next server component has nowhere to put a floating promise —
+  // it's a single indexed update on a page that is already dynamic.
+  await recordTrackingView(admin, visit.viewState);
 
   const pins: MapPin[] = [];
   if (visit.dest) pins.push({ id: 'dest', lat: visit.dest.lat, lng: visit.dest.lng, kind: 'scheduled', label: visit.destLabel || 'Your address', href: '#' });

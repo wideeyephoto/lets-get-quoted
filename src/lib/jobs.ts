@@ -141,6 +141,14 @@ export type CostInput =
       supplier?: string | null;
       hours: number;
       rate: number;
+      /**
+       * Override the derived category. Used only by travel time, which is real
+       * labor cost (it belongs in margin) but has to be separable from time
+       * spent on the work — "keep travel and labor apart for costing". A free
+       * label rather than a new cost_type, because the enum is read by every
+       * report, export and margin calculation in the app.
+       */
+      category?: string;
     }
   | {
       type: Exclude<CostType, 'labor'>;
@@ -995,7 +1003,7 @@ export async function createCost(
     throw new Error('Job not found for this account.');
   }
 
-  const category = COST_TYPE_CATEGORY[input.type];
+  const category = (input.type === 'labor' && input.category) || COST_TYPE_CATEGORY[input.type];
   // Snapshot the crew member (name/role) for ANY cost type that's attributed to
   // one — labor always, and materials logged from the field app. Doing it here
   // (instead of a post-insert update on materials) means the crew_id is present

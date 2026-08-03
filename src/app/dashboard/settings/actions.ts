@@ -552,6 +552,8 @@ export async function updateArrivalSettingsAction(formData: FormData) {
       arrival_window_minutes: clamp(formData.get('windowMinutes'), 0, 120, 30),
       arrival_link_hours: clamp(formData.get('linkHours'), 1, 24, 12),
       arrival_message_template: template || null,
+      arrival_morning_confirmation: formData.get('morningConfirmation') === 'on',
+      arrival_clock_travel: formData.get('clockTravel') === 'on',
     })
     .eq('id', accountId);
 

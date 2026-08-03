@@ -176,6 +176,29 @@ export function nearestEtaChoice(minutes: number): number {
     Math.abs(choice - minutes) < Math.abs(best - minutes) ? choice : best);
 }
 
+export function metersBetween(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  return haversineMiles(a, b) * 1609.344;
+}
+
+/**
+ * Close enough to ask "are you there?".
+ *
+ * 150m rather than something tight: phone GPS in a street of houses is good to
+ * roughly this, and a geofence smaller than its own error never fires. The cost
+ * of asking slightly early is one dismissed prompt; the cost of never asking is
+ * a feature nobody notices exists.
+ */
+export const ARRIVAL_GEOFENCE_METERS = 150;
+
+export function withinArrivalGeofence(
+  tech: { lat: number; lng: number } | null,
+  dest: { lat: number; lng: number } | null,
+  radius = ARRIVAL_GEOFENCE_METERS,
+): boolean {
+  if (!tech || !dest) return false;
+  return metersBetween(tech, dest) <= radius;
+}
+
 // -- The window ---------------------------------------------------------------
 
 export type ArrivalWindowTimes = { start: Date; end: Date };
@@ -200,6 +223,32 @@ export function arrivalWindowTimes(
     ? clampInt(settings.windowMinutes, MIN_WINDOW_MINUTES, MAX_WINDOW_MINUTES, DEFAULT_WINDOW_MINUTES)
     : 0;
   return { start, end: new Date(start.getTime() + width * 60_000) };
+}
+
+/**
+ * The real instant of a wall-clock time in a given zone.
+ *
+ * Parsing "2026-08-03" + "08:00" with `new Date(...)` uses the SERVER's
+ * timezone, which is how an 8 AM appointment becomes a 3 AM text message on a
+ * UTC host. This converts through the zone properly, DST included.
+ */
+export function zonedInstant(day: string, hhmm: string, timeZone: string): Date | null {
+  const [hours, minutes] = hhmm.split(':').map(Number);
+  if (!Number.isFinite(hours) || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  const asUtc = new Date(`${day}T${String(hours).padStart(2, '0')}:${String(minutes || 0).padStart(2, '0')}:00Z`);
+  if (Number.isNaN(asUtc.getTime())) return null;
+  return new Date(asUtc.getTime() + zoneOffsetMs(asUtc, timeZone));
+}
+
+/** How far a zone sits from UTC at a given instant. */
+export function zoneOffsetMs(instant: Date, timeZone: string): number {
+  try {
+    const zoned = new Date(instant.toLocaleString('en-US', { timeZone }));
+    const utc = new Date(instant.toLocaleString('en-US', { timeZone: 'UTC' }));
+    return utc.getTime() - zoned.getTime();
+  } catch {
+    return 0;
+  }
 }
 
 export function formatClockTime(date: Date, timeZone: string): string {

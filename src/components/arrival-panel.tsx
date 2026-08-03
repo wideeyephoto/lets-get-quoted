@@ -163,6 +163,7 @@ export default function ArrivalPanel(props: Props) {
     setSendError(null);
     const form = new FormData();
     form.set('eta', String(eta));
+    if (suggested != null) form.set('suggested', String(suggested));
     if (edited) form.set('message', message);
     if (share && geo) {
       form.set('share', 'on');

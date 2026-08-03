@@ -9,8 +9,9 @@ import { isJobAssignedToCrew } from '@/lib/crew';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { createCost } from '@/lib/jobs';
 import { createJobTask, setJobTaskDone } from '@/lib/job-tasks';
-import { arrivalPermissionsFromCrew, MAX_ETA_MINUTES, MIN_ETA_MINUTES, type ArrivalStatus } from '@/lib/arrival';
+import { arrivalPermissionsFromCrew, arrivalSettingsFromAccount, MAX_ETA_MINUTES, MIN_ETA_MINUTES, type ArrivalStatus } from '@/lib/arrival';
 import { applyArrivalStatus, sendArrival } from '@/lib/arrival-send';
+import { getActiveTracking, updateTechPosition } from '@/lib/job-tracking';
 import { clockIn, clockOut, getOpenShift, getTimeClockMode } from '@/lib/time-clock-data';
 
 async function assertAssigned(supabase: SupabaseClient, accountId: string, jobId: string, crewId: string) {
@@ -61,6 +62,7 @@ export async function sendArrivalFieldAction(jobId: string, formData: FormData) 
     redirect(`/field/jobs/${jobId}?arrival=bad-eta`);
   }
 
+  const suggestedRaw = Number(formData.get('suggested'));
   const override = String(formData.get('message') ?? '').trim();
   const result = await sendArrival(createAdminClient(), {
     accountId,
@@ -68,6 +70,7 @@ export async function sendArrivalFieldAction(jobId: string, formData: FormData) 
     actor: { crewId: crew.id, name: crew.name },
     permissions: arrivalPermissionsFromCrew(crew as unknown as Record<string, unknown>),
     etaMinutes,
+    suggestedMinutes: Number.isFinite(suggestedRaw) && suggestedRaw > 0 ? Math.round(suggestedRaw) : null,
     shareLocation: formData.get('share') === 'on',
     techLoc,
     override: override || null,
@@ -79,6 +82,30 @@ export async function sendArrivalFieldAction(jobId: string, formData: FormData) 
   // The delivery outcome rides back in the URL because it is the single thing
   // the tech needs to read before they start driving.
   redirect(`/field/jobs/${jobId}?arrival=${result.mode}&sms=${result.sms.status}`);
+}
+
+// Move the tech's pin while they're actually driving.
+//
+// Called only from the open job screen, only on a trip they already consented
+// to share, and it returns nothing — a position update is not worth a redirect
+// or a re-render. There is no background tracking behind this: close the page
+// and the pin stops moving, then lapses on its own.
+export async function updateArrivalPositionAction(jobId: string, lat: number, lng: number): Promise<void> {
+  const { supabase, accountId, crew } = await requireCrewContext();
+  await assertAssigned(supabase, accountId, jobId, crew.id);
+  if (!arrivalPermissionsFromCrew(crew as unknown as Record<string, unknown>).shareLocation) return;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+  const admin = createAdminClient();
+  const [{ data: account }, active] = await Promise.all([
+    admin.from('accounts').select('*').eq('id', accountId).maybeSingle(),
+    getActiveTracking(admin, accountId, jobId),
+  ]);
+  if (!active) return;
+
+  const settings = arrivalSettingsFromAccount(account as Record<string, unknown> | null);
+  if (settings.locationPolicy === 'off') return;
+  await updateTechPosition(admin, active, { lat, lng }, settings.locationPrecision);
 }
 
 // Arrived / couldn't get in / rescheduled / cancelled. One action, because they

@@ -6,11 +6,13 @@ import { formatPhoneDashes } from '@/lib/phone';
 import { listJobTasks, taskProgress } from '@/lib/job-tasks';
 import SaveButton from '@/components/save-button';
 import FieldHeader from '../../FieldHeader';
-import { setFieldJobStatusAction, postFieldUpdateAction, logFieldTimeAction, logFieldMaterialAction, toggleFieldTaskAction, addFieldTaskAction, sendArrivalFieldAction, setArrivalStatusFieldAction, clockInFieldAction, clockOutFieldAction } from './actions';
+import { setFieldJobStatusAction, postFieldUpdateAction, logFieldTimeAction, logFieldMaterialAction, toggleFieldTaskAction, addFieldTaskAction, sendArrivalFieldAction, setArrivalStatusFieldAction, updateArrivalPositionAction, clockInFieldAction, clockOutFieldAction } from './actions';
 import { getOpenShift, getTimeClockMode } from '@/lib/time-clock-data';
 import { formatClock, formatElapsed } from '@/lib/time-clock';
 import FieldClock from './FieldClock';
 import ArrivalPanel from '@/components/arrival-panel';
+import NavigateButton from '@/components/navigate-button';
+import ArrivalTracker from '@/components/arrival-tracker';
 import {
   arrivalPermissionsFromCrew, arrivalSettingsFromAccount, canShareLocation, describeArrivalOutcome,
   formatArrivalWindow, locationDefaultsOn, DEFAULT_ARRIVAL_TEMPLATE,
@@ -115,7 +117,6 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
   // send" lead to different behaviour at the door.
   const arrivalFlash = describeArrivalOutcome(searchParams.arrival, searchParams.sms);
 
-  const mapUrl = job.address ? `https://maps.google.com/?q=${encodeURIComponent(job.address)}` : null;
   const isComplete = job.status === 'complete';
 
   return (
@@ -138,7 +139,19 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
               <a className="field-chip" href={`sms:${job.client_phone}`}>💬 Text</a>
             </>
           ) : null}
-          {mapUrl ? <a className="field-chip" href={mapUrl} target="_blank" rel="noopener noreferrer">🧭 Navigate</a> : null}
+          {job.address || job.lat ? (
+            <NavigateButton
+              className="field-chip"
+              target={{
+                address: job.address,
+                // Coordinates beat the address string when we have them: a
+                // geocoded point can't be mis-parsed by a map app, and Waze in
+                // particular strands you on a search screen without them.
+                lat: Number.isFinite(Number(job.lat)) ? Number(job.lat) : null,
+                lng: Number.isFinite(Number(job.lng)) ? Number(job.lng) : null,
+              }}
+            />
+          ) : null}
         </div>
 
         {job.address ? (
@@ -159,6 +172,25 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
           <h2 className="field-block-title">Scope of work</h2>
           <p className="field-scope-body">{job.scope || 'No scope notes added yet.'}</p>
         </section>
+
+        {/* Only mounted while a trip is actually in flight — no live trip, no
+            geolocation watch, no battery cost. */}
+        {activeTrip && (activeTrip.status === 'en_route' || activeTrip.status === 'delayed') ? (
+          <ArrivalTracker
+            jobId={job.id}
+            dest={Number.isFinite(Number(job.lat)) && Number.isFinite(Number(job.lng))
+              ? { lat: Number(job.lat), lng: Number(job.lng) }
+              : null}
+            sharing={Boolean(activeTrip.share_location)}
+            updatePosition={updateArrivalPositionAction.bind(null, job.id)}
+            arrivedForm={(
+              <form action={setArrivalStatusFieldAction.bind(null, job.id)}>
+                <input type="hidden" name="status" value="arrived" />
+                <button type="submit" className="btn primary">✓ Mark arrived</button>
+              </form>
+            )}
+          />
+        ) : null}
 
         {!isComplete ? (
           <ArrivalPanel

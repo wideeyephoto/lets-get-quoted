@@ -89,7 +89,7 @@ export default async function SettingsPage({
     await Promise.all([
       supabase.auth.getUser(),
       supabase.auth.getUserIdentities(),
-      supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded, connect_disabled_at, schedule_day_hours, workday_start, workday_end, job_buffer_minutes, call_textback_enabled, call_forward_number, call_tracking_number, timezone, arrival_location_policy, arrival_location_precision, arrival_window_style, arrival_window_minutes, arrival_link_hours, arrival_message_template').eq('id', accountId).single(),
+      supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded, connect_disabled_at, schedule_day_hours, workday_start, workday_end, job_buffer_minutes, call_textback_enabled, call_forward_number, call_tracking_number, timezone, arrival_location_policy, arrival_location_precision, arrival_window_style, arrival_window_minutes, arrival_link_hours, arrival_message_template, arrival_morning_confirmation, arrival_clock_travel, time_clock_mode').eq('id', accountId).single(),
       supabase.from('sites').select('id, company_name, content').eq('account_id', accountId).maybeSingle(),
       getAvailableTaxYears(supabase, accountId),
       supabase
@@ -722,6 +722,9 @@ export default async function SettingsPage({
                     windowMinutes={arrivalSettings.windowMinutes}
                     linkHours={arrivalSettings.linkHours}
                     messageTemplate={arrivalSettings.messageTemplate}
+                    morningConfirmation={account?.arrival_morning_confirmation === true}
+                    clockTravel={account?.arrival_clock_travel === true}
+                    timeClockOn={account?.time_clock_mode !== 'off'}
                   />
                 </AutomationCard>
 

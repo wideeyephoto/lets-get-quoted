@@ -7,6 +7,7 @@ import {
   ARRIVAL_STATUS_LABEL, DEFAULT_ARRIVAL_TEMPLATE, DEFAULT_UPDATE_TEMPLATE,
   type ArrivalPermissions, type ArrivalSettings, type ArrivalStatus, type DuplicateVerdict,
 } from '@/lib/arrival';
+import { closeTravelShift, openTravelShift, travelClockEnabled } from '@/lib/arrival-clock';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import {
   getActiveTracking, recordHomeownerNote, recordSmsOutcome, reviseArrival,
@@ -42,6 +43,8 @@ export type ArrivalContext = {
   active: TrackingRow | null;
   businessName: string;
   jobLoc: { lat: number; lng: number } | null;
+  /** Whether this account clocks drive time from "on my way" to "arrived". */
+  clockTravel: boolean;
 };
 
 /** Everything the send sheet needs, in one round trip. */
@@ -66,6 +69,7 @@ export async function loadArrivalContext(
     active,
     businessName: (site?.company_name as string | undefined) || (account?.business_name as string | undefined) || 'Your contractor',
     jobLoc: Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null,
+    clockTravel: travelClockEnabled(account as Record<string, unknown> | null),
   };
 }
 
@@ -75,6 +79,8 @@ export type SendArrivalInput = {
   actor: { crewId: string | null; name: string };
   permissions: ArrivalPermissions;
   etaMinutes: number;
+  /** The GPS suggestion the tech was shown, whether or not they took it. */
+  suggestedMinutes?: number | null;
   shareLocation: boolean;
   techLoc: { lat: number; lng: number } | null;
   /** The tech's own words, when they edited the preview. */
@@ -164,6 +170,7 @@ export async function sendArrival(
       crewId: input.actor.crewId,
       sentBy: input.actor.name,
       etaMinutes: input.etaMinutes,
+      suggestedMinutes: input.suggestedMinutes ?? null,
       times,
       techLoc: input.techLoc,
       shareLocation: share,
@@ -205,6 +212,18 @@ export async function sendArrival(
   const sms = await sendArrivalSms({ accountId: input.accountId, phone: job.client_phone, message });
   await recordSmsOutcome(admin, trackingId, { status: sms.status, sid: sms.sid, error: sms.error });
 
+  // Start the clock on the drive, when the account asked for that. Only on a
+  // NEW trip — a revised ETA is the same journey, and restarting the clock
+  // would bill the drive twice.
+  if (!revising && context.clockTravel && input.actor.crewId) {
+    await openTravelShift(admin, {
+      accountId: input.accountId,
+      crewId: input.actor.crewId,
+      jobId: input.jobId,
+      rate: await crewCostingRate(admin, input.actor.crewId),
+    });
+  }
+
   // Remember what they picked, so next time it's already selected. Last-used
   // rather than a true mode: a contractor's habit changes when their patch or
   // their van does, and an average would take weeks to catch up. Best-effort —
@@ -231,6 +250,18 @@ export async function sendArrival(
   });
 
   return { ok: true, mode: revising ? 'revised' : 'started', windowLabel, sms, trackingUrl };
+}
+
+/**
+ * What an hour of this person's time costs a job.
+ *
+ * `crew.hourly_rate` is already the derived costing figure for salaried and
+ * day-rate staff (see lib/pay-types), so travel costs out on the same basis as
+ * every other hour they work — not on a second, drifting number.
+ */
+async function crewCostingRate(admin: SupabaseClient, crewId: string): Promise<number> {
+  const { data } = await admin.from('crew').select('hourly_rate').eq('id', crewId).maybeSingle();
+  return Number(data?.hourly_rate) || 0;
 }
 
 /** Plain English for the timeline about whether the customer actually heard. */
@@ -278,6 +309,23 @@ export async function applyArrivalStatus(
 
   await setArrivalStatus(admin, active, input.status, now);
 
+  // The drive is over the moment the trip ends, however it ended — arriving,
+  // giving up at a locked gate, or turning around. An open travel shift left
+  // behind blocks the tech's next clock-in for reasons they can't see.
+  let travelHours: number | null = null;
+  if (input.actor.crewId) {
+    const { data: account } = await admin
+      .from('accounts').select('arrival_clock_travel').eq('id', input.accountId).maybeSingle();
+    if (travelClockEnabled(account as Record<string, unknown> | null)) {
+      travelHours = await closeTravelShift(admin, {
+        accountId: input.accountId,
+        crewId: input.actor.crewId,
+        crewName: input.actor.name,
+        endedAt: now.toISOString(),
+      });
+    }
+  }
+
   // The default lives HERE, not in each caller. It was in both action files
   // once, which is two places to forget it and one of them serving the person
   // standing on the doorstep.
@@ -309,9 +357,10 @@ export async function applyArrivalStatus(
       `${input.actor.name} marked this visit: ${ARRIVAL_STATUS_LABEL[input.status]}.`,
       input.note ? `“${input.note}”` : null,
       sms ? deliveryLine(sms.status, null) : null,
+      travelHours ? `Drive time logged: ${travelHours} hr.` : null,
     ].filter(Boolean).join(' '),
     author: input.actor.name,
-    meta: { status: input.status, notified: notify },
+    meta: { status: input.status, notified: notify, travelHours },
   });
 
   return { ok: true, sms };

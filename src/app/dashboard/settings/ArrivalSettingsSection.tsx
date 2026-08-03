@@ -21,6 +21,9 @@ type Props = {
   windowMinutes: number;
   linkHours: number;
   messageTemplate: string | null;
+  morningConfirmation: boolean;
+  clockTravel: boolean;
+  timeClockOn: boolean;
 };
 
 export default function ArrivalSettingsSection(props: Props) {
@@ -142,6 +145,28 @@ export default function ArrivalSettingsSection(props: Props) {
         <summary>What your customer gets</summary>
         <p className="automation-preview-bubble">{preview}</p>
       </details>
+
+      <fieldset className="field full crew-permissions">
+        <legend>Extras</legend>
+        <label className="checkbox-row" htmlFor="morningConfirmation">
+          <input id="morningConfirmation" name="morningConfirmation" type="checkbox" defaultChecked={props.morningConfirmation} />
+          <span>
+            <strong>Text today&rsquo;s customers their window each morning.</strong> Sent around 7am, before anyone
+            sets off &mdash; and skipped for anyone your crew has already messaged. Different from the day-before
+            appointment reminder: this one gives a time, not just a date.
+          </span>
+        </label>
+        <label className="checkbox-row" htmlFor="clockTravel">
+          <input id="clockTravel" name="clockTravel" type="checkbox" defaultChecked={props.clockTravel} />
+          <span>
+            <strong>Clock drive time from &ldquo;on my way&rdquo; to &ldquo;arrived&rdquo;.</strong> Logs it against
+            the job under <em>Travel</em>, kept separate from time spent on the work.{' '}
+            {props.timeClockOn
+              ? 'This adds real cost to jobs, so your margins will drop by whatever the driving actually costs you.'
+              : 'Your time clock is currently off — turn it on under Crew & Labor first, or this does nothing.'}
+          </span>
+        </label>
+      </fieldset>
 
       <div className="form-actions">
         <SaveButton>Save arrival settings</SaveButton>

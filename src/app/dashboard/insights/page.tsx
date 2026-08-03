@@ -1,7 +1,9 @@
 import Link from 'next/link';
-import { requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import { formatMoney } from '@/lib/jobs';
 import { buildInsights, type Delta } from '@/lib/insights';
+import { loadArrivalAnalytics } from '@/lib/arrival-analytics-data';
+import ArrivalPerformance from './ArrivalPerformance';
 
 const WINDOWS: { key: string; label: string; days: number }[] = [
   { key: '30', label: '30 days', days: 30 },
@@ -30,6 +32,10 @@ export default async function InsightsPage({ searchParams }: { searchParams: { w
 
   const selected = WINDOWS.find((option) => option.key === searchParams.window) ?? WINDOWS[1];
   const insights = await buildInsights(supabase, accountId, selected.days);
+  // job_tracking is owner-scoped by RLS; this page is already inside
+  // requireOwnerContext. "All time" caps at two years — arrival habits from
+  // three years ago say nothing about this week's crew.
+  const arrivals = await loadArrivalAnalytics(createAdminClient(), accountId, selected.days || 730);
 
   const leadsTop = Math.max(1, insights.funnel[0].count);
   const marginPct = Math.round(insights.margin * 100);
@@ -270,6 +276,8 @@ export default async function InsightsPage({ searchParams }: { searchParams: { w
           </div>
         )}
       </section>
+
+      <ArrivalPerformance analytics={arrivals} />
     </main>
   );
 }

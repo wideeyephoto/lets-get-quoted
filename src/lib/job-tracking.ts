@@ -53,12 +53,18 @@ export type TrackingRow = {
   en_route_at: string;
   arrived_at: string | null;
   expires_at: string;
+  first_viewed_at: string | null;
+  last_viewed_at: string | null;
+  view_count: number | null;
+  late_notified_at: string | null;
+  suggested_minutes: number | null;
 };
 
 const ROW_FIELDS =
   'id, account_id, job_id, crew_id, sent_by, status, tech_lat, tech_lng, eta_minutes, arrival_start, arrival_end, ' +
   'share_location, location_expires_at, message_body, sms_status, sms_sid, sms_error, homeowner_note, ' +
-  'homeowner_note_at, revision_count, last_sent_at, en_route_at, arrived_at, expires_at';
+  'homeowner_note_at, revision_count, last_sent_at, en_route_at, arrived_at, expires_at, ' +
+  'first_viewed_at, last_viewed_at, view_count, late_notified_at, suggested_minutes';
 
 /**
  * The live trip on this job, if any.
@@ -91,6 +97,10 @@ export type StartArrivalInput = {
   crewId: string | null;
   sentBy: string;
   etaMinutes: number;
+  /** What GPS suggested, when it could. Kept alongside what the tech actually
+   *  promised so analytics can tell "the estimate was wrong" apart from "the
+   *  tech overrode a good estimate" — different problems, different fixes. */
+  suggestedMinutes?: number | null;
   times: ArrivalWindowTimes | null;
   techLoc: LatLng;
   shareLocation: boolean;
@@ -133,6 +143,7 @@ export async function startArrival(
       tech_lat: point?.lat ?? null,
       tech_lng: point?.lng ?? null,
       eta_minutes: input.etaMinutes,
+      suggested_minutes: input.suggestedMinutes ?? null,
       arrival_start: input.times?.start.toISOString() ?? null,
       arrival_end: input.times?.end.toISOString() ?? null,
       share_location: input.shareLocation && Boolean(point),
@@ -209,6 +220,37 @@ export async function setArrivalStatus(
     .eq('id', row.id);
 }
 
+/**
+ * Move the tech's pin on a trip already in flight.
+ *
+ * Only ever called while the field app's job screen is OPEN and the tech has
+ * already consented to sharing on this trip — there is no background tracking
+ * here, by choice. It re-arms the location expiry, so the share stays alive
+ * while they're actively driving and lapses on its own the moment they stop
+ * looking at it.
+ */
+export async function updateTechPosition(
+  admin: SupabaseClient,
+  row: TrackingRow,
+  point: { lat: number; lng: number },
+  precision: ArrivalSettings['locationPrecision'],
+  now = new Date(),
+): Promise<void> {
+  if (!row.share_location) return;
+  if (row.status !== 'en_route' && row.status !== 'delayed') return;
+  const blurred = applyPrecision(point, precision);
+  if (!blurred) return;
+  await admin
+    .from('job_tracking')
+    .update({
+      tech_lat: blurred.lat,
+      tech_lng: blurred.lng,
+      location_expires_at: locationExpiry(now).toISOString(),
+      updated_at: now.toISOString(),
+    })
+    .eq('id', row.id);
+}
+
 /** Record what actually happened to the text, so the tech is told the truth. */
 export async function recordSmsOutcome(
   admin: SupabaseClient,
@@ -224,6 +266,43 @@ export async function recordSmsOutcome(
       updated_at: new Date().toISOString(),
     })
     .eq('id', trackingId);
+}
+
+/**
+ * The homeowner opened their status page.
+ *
+ * Throttled to one counted visit per 10 minutes, because the page refreshes
+ * itself every 30 seconds — an untrottled counter would report a phone left
+ * face-up on a kitchen counter as an extremely engaged customer, and the number
+ * would be quietly useless.
+ *
+ * first_viewed_at is set once and never moved: "did this text get read at all"
+ * is the question worth answering, and it's the one the open rate is built on.
+ */
+const VIEW_THROTTLE_MS = 10 * 60_000;
+
+export async function recordTrackingView(
+  admin: SupabaseClient,
+  row: Pick<TrackingRow, 'id' | 'first_viewed_at'> & { last_viewed_at?: string | null; view_count?: number | null },
+  now = new Date(),
+): Promise<void> {
+  const last = row.last_viewed_at ? new Date(row.last_viewed_at).getTime() : 0;
+  const fresh = !Number.isFinite(last) || now.getTime() - last > VIEW_THROTTLE_MS;
+  if (!fresh && row.first_viewed_at) return;
+
+  try {
+    await admin
+      .from('job_tracking')
+      .update({
+        ...(row.first_viewed_at ? {} : { first_viewed_at: now.toISOString() }),
+        last_viewed_at: now.toISOString(),
+        view_count: (row.view_count ?? 0) + (fresh ? 1 : 0),
+      })
+      .eq('id', row.id);
+  } catch (error) {
+    // A metric must never take down the page it measures.
+    console.error('Recording a tracking view failed:', error instanceof Error ? error.message : error);
+  }
 }
 
 /** The homeowner tapped one of the reply buttons on their status page. */
@@ -263,6 +342,9 @@ export type PublicTracking = {
   destLabel: string | null;
   contactPhone: string | null;
   expired: boolean;
+  /** Enough to record a throttled view. Read by the page, not the reply action,
+   *  so tapping a button doesn't also count as opening the link. */
+  viewState: { id: string; first_viewed_at: string | null; last_viewed_at: string | null; view_count: number | null };
 };
 
 /**
@@ -341,6 +423,12 @@ export async function getTrackingByToken(
     destLabel: (job?.address as string | undefined) ?? null,
     contactPhone: (site?.phone as string | null) ?? null,
     expired: new Date(row.expires_at).getTime() < now.getTime(),
+    viewState: {
+      id: row.id,
+      first_viewed_at: row.first_viewed_at,
+      last_viewed_at: row.last_viewed_at,
+      view_count: row.view_count,
+    },
   };
 }
 

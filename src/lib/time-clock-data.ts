@@ -138,6 +138,9 @@ export async function clockOut(
     note?: string | null;
     closedByOwner?: boolean;
     round?: (hours: number) => number;
+    /** Cost category override — travel shifts cost out under 'Travel' so they
+     *  stay separable from time spent on the work itself. */
+    category?: string;
   },
 ): Promise<{ hours: number }> {
   const hours = shiftHours(entry.started_at, options.endedAt, options.round);
@@ -156,6 +159,7 @@ export async function clockOut(
       crewId: entry.crew_id,
       hours,
       rate,
+      ...(options.category ? { category: options.category } : {}),
     });
     costId = cost.id;
   }

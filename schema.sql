@@ -2608,3 +2608,44 @@ alter table crew add column if not exists can_reschedule boolean not null defaul
 -- which is this index.
 create index if not exists job_tracking_active_idx
   on job_tracking (account_id, job_id, status) where status not in ('done', 'cancelled');
+
+-- ============================================================================
+-- ARRIVAL MANAGEMENT, ROUND TWO — the feedback loop and the proactive half.
+-- See migrations/2026-08-03-arrival-phase-two.sql for the reasoning.
+-- ============================================================================
+
+-- Did the homeowner open the link? Open RATE is the honest headline; view_count
+-- is throttled to one per 10 minutes, because the page auto-refreshes and a raw
+-- render count would report a phone on a kitchen counter as an engaged customer.
+alter table job_tracking add column if not exists first_viewed_at timestamptz;
+alter table job_tracking add column if not exists last_viewed_at timestamptz;
+alter table job_tracking add column if not exists view_count integer not null default 0;
+
+-- Nudged-once marker, so a tech who is genuinely stuck isn't told every
+-- fifteen minutes for an hour.
+alter table job_tracking add column if not exists late_notified_at timestamptz;
+-- What the GPS suggested at the moment of sending, so analytics can separate
+-- "the ETA was wrong" from "the tech was late leaving".
+alter table job_tracking add column if not exists suggested_minutes integer;
+create index if not exists job_tracking_late_sweep_idx
+  on job_tracking (arrival_end) where status in ('en_route', 'delayed');
+
+-- Travel time vs labor. kind lives here because the existing
+-- one-open-shift-per-crew index is exactly the guard we want: travel closes as
+-- labor opens, so nobody is ever both driving and working. A travel shift still
+-- costs out as labor (it is real money) but under category 'Travel', which
+-- keeps the split without touching the cost_type enum every report reads.
+alter table time_entries add column if not exists kind text not null default 'labor';
+do $$ begin
+  alter table time_entries add constraint time_entries_kind_check
+    check (kind in ('labor', 'travel'));
+exception when duplicate_object then null; end $$;
+alter table accounts add column if not exists arrival_clock_travel boolean not null default false;
+
+-- Morning-of confirmation. Separate from the day-before reminder on purpose:
+-- that one says "you have an appointment tomorrow", this says "today, between
+-- 9 and 11". Stamped per job as the idempotency key.
+alter table accounts add column if not exists arrival_morning_confirmation boolean not null default false;
+alter table jobs add column if not exists arrival_confirm_sent_at timestamptz;
+create index if not exists jobs_morning_confirm_idx
+  on jobs (account_id, scheduled_for) where arrival_confirm_sent_at is null;

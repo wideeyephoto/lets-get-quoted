@@ -2,12 +2,13 @@ import Link from 'next/link';
 import { requireCrewContext } from '@/lib/crew-auth';
 import { listJobIdsForCrew } from '@/lib/crew';
 import { formatJobSchedule, formatJobTime } from '@/lib/jobs';
+import { createAdminClient } from '@/lib/auth';
+import { arrivalSettingsFromAccount, formatClockTime } from '@/lib/arrival';
+import { accountToday } from '@/lib/route-plan-day';
+import { departurePlans, type DeparturePlan } from '@/lib/departure-plan';
+import NavigateButton from '@/components/navigate-button';
 import FieldHeader from './FieldHeader';
 import FieldPwa from './FieldPwa';
-
-function mapUrl(address: string): string {
-  return `https://maps.google.com/?q=${encodeURIComponent(address)}`;
-}
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +21,8 @@ type FieldJob = {
   status: string;
   scheduled_for: string | null;
   scheduled_time: string | null;
+  lat: number | null;
+  lng: number | null;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -51,7 +54,12 @@ function JobCard({ job }: { job: FieldJob }) {
 
 // A numbered stop in today's route: tap the body to open the job, tap Navigate
 // to launch turn-by-turn to the address.
-function RouteStop({ job, index }: { job: FieldJob; index: number }) {
+//
+// The "leave by" line only appears when it's actionable — imminent or already
+// missed. A departure time on every row is a wall of numbers; on the one row
+// that matters it's the most useful thing on the screen.
+function RouteStop({ job, index, plan, timeZone }: { job: FieldJob; index: number; plan?: DeparturePlan; timeZone: string }) {
+  const showLeave = plan?.leaveBy && (plan.overdue || plan.soon);
   return (
     <div className="field-route-stop">
       <span className="field-route-num">{index + 1}</span>
@@ -61,10 +69,19 @@ function RouteStop({ job, index }: { job: FieldJob; index: number }) {
           <span className="field-route-time">{formatJobTime(job.scheduled_time) || 'Anytime'}</span>
         </div>
         {job.address ? <p className="field-route-addr">{job.address}</p> : <p className="field-route-addr muted">No address on file</p>}
+        {showLeave ? (
+          <p className={`field-route-leave${plan.overdue ? ' is-overdue' : ''}`}>
+            {plan.overdue ? '⚠ Should have left by' : 'Leave by'} {formatClockTime(plan.leaveBy as Date, timeZone)}
+            {plan.driveMinutes ? ` · ~${plan.driveMinutes} min drive` : ''}
+          </p>
+        ) : null}
         <span className={`field-status field-status-${job.status}`}>{STATUS_LABEL[job.status] ?? job.status}</span>
       </Link>
-      {job.address ? (
-        <a className="field-route-nav" href={mapUrl(job.address)} target="_blank" rel="noopener noreferrer" aria-label={`Navigate to ${job.client_name}`}>🧭</a>
+      {job.address || job.lat ? (
+        <NavigateButton
+          className="field-route-nav"
+          target={{ address: job.address, lat: job.lat, lng: job.lng }}
+        />
       ) : null}
     </div>
   );
@@ -78,13 +95,19 @@ export default async function FieldHomePage() {
   if (jobIds.length > 0) {
     const { data } = await supabase
       .from('jobs')
-      .select('id, ref, client_name, address, scope, status, scheduled_for, scheduled_time')
+      .select('id, ref, client_name, address, scope, status, scheduled_for, scheduled_time, lat, lng')
       .eq('account_id', accountId)
       .in('id', jobIds);
     jobs = (data ?? []) as FieldJob[];
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  // The account's own timezone, not the server's — a tech in Detroit planning at
+  // 11pm should see tomorrow's route, not a day that ended hours ago on a UTC
+  // host. Read with the admin client because crew RLS doesn't reach `accounts`.
+  const { data: accountRow } = await createAdminClient()
+    .from('accounts').select('timezone, job_buffer_minutes').eq('id', accountId).maybeSingle();
+  const arrivalSettings = arrivalSettingsFromAccount(accountRow as Record<string, unknown> | null);
+  const today = accountToday(arrivalSettings.timeZone);
   const open = jobs.filter((job) => job.status !== 'archived' && job.status !== 'complete');
   const todayJobs = open.filter((job) => job.scheduled_for === today).sort(byScheduleAsc);
   const upcoming = open.filter((job) => job.scheduled_for && job.scheduled_for > today).sort(byScheduleAsc);
@@ -92,6 +115,22 @@ export default async function FieldHomePage() {
   const completed = jobs.filter((job) => job.status === 'complete').sort(byScheduleAsc).reverse().slice(0, 10);
 
   const firstName = crew.name.trim().split(/\s+/)[0] || crew.name;
+
+  // When to set off for each of today's stops. Anchored at this crew member's
+  // own start address when they have one — Plan my day already uses it, and a
+  // route measured from the shop is wrong for anybody who leaves from home.
+  const plans = departurePlans(
+    todayJobs.map((job) => ({ id: job.id, scheduledTime: job.scheduled_time, lat: job.lat, lng: job.lng })),
+    {
+      day: today,
+      timeZone: arrivalSettings.timeZone,
+      bufferMinutes: Number((accountRow as { job_buffer_minutes?: number } | null)?.job_buffer_minutes) || 0,
+      origin: Number.isFinite(Number(crew.start_lat)) && Number.isFinite(Number(crew.start_lng))
+        ? { lat: Number(crew.start_lat), lng: Number(crew.start_lng) }
+        : null,
+    },
+  );
+  const planById = new Map(plans.map((plan) => [plan.id, plan]));
 
   return (
     <>
@@ -118,7 +157,9 @@ export default async function FieldHomePage() {
               <section className="field-section">
                 <h2 className="field-section-title">Today&apos;s route · {todayJobs.length} stop{todayJobs.length === 1 ? '' : 's'}</h2>
                 <div className="field-route">
-                  {todayJobs.map((job, index) => <RouteStop key={job.id} job={job} index={index} />)}
+                  {todayJobs.map((job, index) => (
+                    <RouteStop key={job.id} job={job} index={index} plan={planById.get(job.id)} timeZone={arrivalSettings.timeZone} />
+                  ))}
                 </div>
               </section>
             ) : null}

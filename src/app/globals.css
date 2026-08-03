@@ -10155,6 +10155,33 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 .workspace-section-card .arrival-sheet { background: transparent; border: 0; padding: 0; margin-top: 0; }
 .workspace-section-card .arrival-eta-grid { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
 
+/* "Leave by" on a route stop. Only rendered when it's imminent or missed, so
+   it can afford to be loud. */
+.field-route-leave {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ink-sky-1);
+}
+.field-route-leave.is-overdue { color: var(--ink-orange-1); }
+
+/* The geofence prompt. Asks, never announces — see arrival-tracker. */
+.arrival-geofence {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  margin: 0 0 1.2rem;
+  padding: 1rem 1.05rem;
+  border-radius: 14px;
+  background: rgba(163, 230, 53, 0.09);
+  border: 1px solid rgba(163, 230, 53, 0.32);
+}
+.arrival-geofence-copy { display: flex; flex-direction: column; gap: 0.25rem; }
+.arrival-geofence-copy strong { font-size: 1.05rem; }
+.arrival-geofence-copy span { font-size: 0.88rem; line-height: 1.5; color: rgba(var(--tint), 0.75); }
+.arrival-geofence-actions { display: flex; align-items: center; gap: 0.9rem; }
+.arrival-geofence-actions form { flex: 1; }
+
 .arrival-controls { display: flex; flex-direction: column; gap: 0.7rem; margin-top: 0.9rem; }
 .arrival-secondary { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .arrival-outcome {
@@ -10701,6 +10728,85 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 .workspace-preview-table tr:last-child td { border-bottom: 0; }
 .workspace-preview-table .muted { color: var(--mute-t32); }
 
+
+/* Navigate, with a choice of map app. Anchored to its trigger and above the
+   field app's own stacking so it isn't clipped by the chip row. */
+.nav-picker { position: relative; display: inline-flex; }
+.nav-picker-menu {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  z-index: 30;
+  min-width: 10rem;
+  display: flex;
+  flex-direction: column;
+  padding: 0.3rem;
+  border-radius: 12px;
+  /* --ground-2 rather than a hard-coded panel colour: it flips with the theme,
+     so the menu stays readable on paper as well as on navy. */
+  background: var(--ground-2);
+  border: 1px solid rgba(var(--tint), 0.16);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+.nav-picker-menu a {
+  padding: 0.65rem 0.8rem;
+  border-radius: 9px;
+  color: var(--ink-neutral-1);
+  text-decoration: none;
+  font-size: 0.92rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.nav-picker-menu a:hover { background: rgba(var(--tint), 0.08); }
+
+/* ---- Arrival performance (Insights) ---------------------------------
+   "Are you there when you said you'd be?" — one headline number with the
+   three that explain it. Semantic colour is deliberately absent: an on-time
+   rate is a fact about the business, and painting it red is a judgement the
+   owner hasn't asked for. */
+.arrival-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.8rem;
+  margin-top: 1rem;
+}
+.arrival-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.95rem 1rem;
+  border-radius: 13px;
+  background: rgba(var(--tint), 0.04);
+  border: 1px solid rgba(var(--tint), 0.1);
+}
+.arrival-metric.is-headline {
+  background: rgba(56, 189, 248, 0.09);
+  border-color: rgba(56, 189, 248, 0.28);
+}
+.arrival-metric-value {
+  font-size: 1.9rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.arrival-metric.is-headline .arrival-metric-value { color: var(--ink-sky-1); }
+.arrival-metric-label { font-size: 0.86rem; font-weight: 600; }
+.arrival-metric-note { font-size: 0.76rem; line-height: 1.45; color: var(--mute-t55); }
+
+.arrival-bias { margin: 1rem 0 0; font-size: 0.9rem; line-height: 1.6; color: var(--mute-t55); }
+.arrival-advice {
+  margin: 0.9rem 0 0;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  background: rgba(251, 191, 36, 0.09);
+  border: 1px solid rgba(251, 191, 36, 0.26);
+}
+/* The table is the only thing here that can outgrow a phone, so it scrolls
+   inside its own box rather than pushing the page sideways. */
+.arrival-crew-scroll { margin-top: 1.1rem; overflow-x: auto; }
 
 /* ---- Plan my day (route optimization) -------------------------------
    Rebuilt around one idea: the day is a route, so the map, the numbers, and the
