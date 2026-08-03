@@ -22,6 +22,9 @@ import { listChangeOrders } from '@/lib/change-orders-data';
 import { changeOrderTotals } from '@/lib/change-orders';
 import ChangeOrderPanel from './ChangeOrderPanel';
 import WarrantyPanel from './WarrantyPanel';
+import SelectionBoard from './SelectionBoard';
+import { listSelections } from '@/lib/selections-data';
+import { boardStatus } from '@/lib/selections';
 import { listWarranties, listClaims } from '@/lib/warranties-data';
 import { listJobTasks, taskProgress } from '@/lib/job-tasks';
 import { createJobPhotoLinks } from '@/lib/job-photo-storage';
@@ -115,6 +118,8 @@ export default async function JobDetailPage({
   const costs = await listCosts(supabase, accountId, job.id);
   const margin = computeMargin(job, costs);
   const changeOrders = await listChangeOrders(supabase, accountId, job.id);
+  const selections = await listSelections(supabase, accountId, job.id);
+  const selectionStatus = boardStatus(selections);
   const [warranties, warrantyClaims, { data: warrantyDefaults }] = await Promise.all([
     listWarranties(supabase, accountId, job.id),
     listClaims(supabase, accountId, job.id),
@@ -1127,6 +1132,22 @@ export default async function JobDetailPage({
           </div>
 
           <div>
+            {/* Open when the job is waiting on the customer. A stalled job is
+                the thing an owner most needs to see, and it's the whole reason
+                "waiting on homeowner" is a status rather than a feeling. */}
+            <details className="panel workspace-section-card workspace-details job-action-details" open={selectionStatus.overdue > 0}>
+              <summary className="workspace-details-summary job-action-summary">
+                <div className="section-heading workspace-section-heading compact-heading">
+                  <p className="eyebrow">Selections</p>
+                  <h2>Colours, materials &amp; fixtures</h2>
+                </div>
+                <span className={`workspace-details-copy${selectionStatus.overdue > 0 ? ' is-overdue' : ''}`}>
+                  {selectionStatus.label || 'What the customer has to choose, and what it costs.'}
+                </span>
+              </summary>
+              <SelectionBoard jobId={job.id} selections={selections} />
+            </details>
+
             {/* Open by default once the work is done: that is the moment a
                 warranty is worth starting, and the moment it gets forgotten. */}
             <details className="panel workspace-section-card workspace-details job-action-details" open={job.status === 'complete' && warranties.length === 0}>

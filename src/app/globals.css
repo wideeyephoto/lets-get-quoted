@@ -9650,6 +9650,91 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 .field-milestone-phase { display: flex; gap: 1rem; font-size: 0.85rem; }
 .field-milestone-phase label { display: flex; align-items: center; gap: 0.3rem; }
 
+/* Selection board — owner side. */
+.selection-board { display: flex; flex-direction: column; gap: 1rem; margin-top: 0.6rem; }
+.selection-summary { display: flex; justify-content: space-between; gap: 0.8rem; flex-wrap: wrap; font-size: 0.85rem; color: var(--mute-t55); }
+.selection-summary .is-overdue { color: var(--ink-orange-1); font-weight: 600; }
+.selection-list { display: flex; flex-direction: column; gap: 0.8rem; }
+.selection-card {
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--tint), 0.16);
+  background: rgba(var(--tint), 0.04);
+}
+.selection-card.is-overdue { border-color: var(--ink-orange-1); background: rgba(255, 138, 61, 0.1); }
+.selection-card.is-decided { border-color: var(--ink-lime-1); }
+.selection-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; }
+.selection-allowance { margin-left: 0.5rem; font-size: 0.76rem; color: var(--mute-t45); }
+.selection-deadline { font-size: 0.78rem; color: var(--mute-t50); }
+.selection-deadline.is-overdue { color: var(--ink-orange-1); font-weight: 600; }
+.selection-desc { margin: 0.4rem 0 0; font-size: 0.85rem; line-height: 1.5; color: var(--mute-t55); }
+.selection-options { list-style: none; padding: 0; margin: 0.6rem 0 0; display: flex; flex-direction: column; gap: 0.3rem; }
+.selection-options li { display: flex; justify-content: space-between; gap: 0.6rem; font-size: 0.86rem; }
+.selection-option-cost { display: inline-flex; align-items: center; gap: 0.4rem; font-variant-numeric: tabular-nums; }
+/* The product code, monospaced so a code reads as a code and not as prose. */
+.selection-ref {
+  margin-left: 0.45rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 5px;
+  background: rgba(var(--tint), 0.09);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.76rem;
+  font-style: normal;
+}
+.selection-chosen { margin-top: 0.6rem; padding: 0.6rem 0.75rem; border-radius: 10px; background: rgba(var(--tint), 0.06); }
+.selection-chosen-meta { display: block; margin-top: 0.2rem; font-size: 0.78rem; color: var(--mute-t50); }
+.selection-option-form { display: grid; grid-template-columns: 1.6fr 1fr 0.8fr auto; gap: 0.4rem; margin-top: 0.7rem; }
+.selection-new-form { display: flex; flex-direction: column; gap: 0.5rem; }
+.selection-new-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 0.6rem; }
+@media (max-width: 640px) {
+  .selection-option-form { grid-template-columns: 1fr; }
+}
+
+/* Selection board — homeowner side. Options as cards, because choosing a tap
+   from a table of rows is not how anybody chooses a tap. */
+.client-selection-list { display: flex; flex-direction: column; gap: 0.9rem; margin-top: 0.6rem; }
+.client-selection {
+  padding: 1rem 1.1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--tint), 0.16);
+  background: rgba(var(--tint), 0.04);
+}
+.client-selection.is-overdue { border-color: var(--ink-amber-3); background: rgba(255, 179, 122, 0.1); }
+.client-selection-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; }
+.client-selection-allowance { font-size: 0.8rem; color: var(--mute-t50); }
+.client-selection-desc { margin: 0.45rem 0 0; line-height: 1.55; }
+.client-selection-deadline { margin: 0.45rem 0 0; font-size: 0.85rem; color: var(--mute-t55); }
+.client-selection-chosen { margin-top: 0.7rem; padding: 0.7rem 0.85rem; border-radius: 12px; background: rgba(var(--tint), 0.06); }
+.client-selection-ref {
+  margin-left: 0.45rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 5px;
+  background: rgba(var(--tint), 0.1);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+}
+.client-selection-meta { display: block; margin-top: 0.25rem; font-size: 0.8rem; color: var(--mute-t50); }
+.client-selection-form { display: flex; flex-direction: column; gap: 0.45rem; margin-top: 0.8rem; }
+.client-selection-form label { font-size: 0.8rem; color: var(--mute-t50); }
+.client-option-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 0.6rem; }
+.client-option {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--tint), 0.18);
+  background: rgba(var(--tint), 0.03);
+  cursor: pointer;
+}
+.client-option.is-picked { border-color: var(--ink-amber-4); background: rgba(255, 179, 122, 0.14); }
+.client-option-body { display: flex; flex-direction: column; gap: 0.15rem; }
+.client-option-ref { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.76rem; color: var(--mute-t50); }
+.client-option-desc { font-size: 0.82rem; line-height: 1.45; color: var(--mute-t55); }
+.client-option-cost { margin-top: 0.2rem; font-weight: 700; font-size: 0.88rem; }
+.client-option-cost.is-included { font-weight: 600; color: var(--mute-t55); }
+.client-selection-foot { margin: 0.8rem 0 0; font-size: 0.8rem; line-height: 1.5; color: var(--mute-t45); }
+.client-selection-error { margin: 0.6rem 0 0; font-size: 0.83rem; color: var(--ink-orange-1); }
+
 /* Weather risk. Amber and orange only — never red. Nothing here has gone wrong
    yet, and a forecast styled as an emergency gets dismissed as one. */
 .weather-risk-list { display: flex; flex-direction: column; gap: 0.8rem; margin-top: 0.6rem; }

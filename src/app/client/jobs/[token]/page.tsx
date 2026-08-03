@@ -13,6 +13,9 @@ import { resolveJobAccess } from '@/lib/change-order-client';
 import Warranties from './Warranties';
 import { listWarranties } from '@/lib/warranties-data';
 import { toClientWarranties } from '@/lib/warranties';
+import Selections from './Selections';
+import { loadClientSelections } from '@/lib/selections-data';
+import { toClientSelections } from '@/lib/selections';
 
 const STATUS_LABEL: Record<string, string> = {
   new_lead: 'New request',
@@ -54,6 +57,9 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
     : [];
   const clientWarranties = access
     ? toClientWarranties(await listWarranties(admin, access.accountId, access.jobId))
+    : [];
+  const clientSelections = access
+    ? toClientSelections(await loadClientSelections(admin, access.accountId, access.jobId))
     : [];
 
   if (!dashboard) {
@@ -356,6 +362,10 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
 
       {/* Above the stages: a decision the homeowner has to make outranks a
           progress report they only have to read. */}
+      {/* Above change orders: a choice the customer has to make holds the job
+          up, where a change order is a decision they can take their time over. */}
+      <Selections token={params.token} selections={clientSelections} />
+
       <ChangeOrders token={params.token} orders={clientChangeOrders} />
 
       {/* Cover, and the way back to the contractor. Placed with the rest of the
