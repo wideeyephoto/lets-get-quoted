@@ -202,8 +202,14 @@ export async function submitBookingAction(subdomain: string, formData: FormData)
   const slot = (formData.get('slot') ?? '').toString();
   const [dateKey, time] = slot.split('|');
 
-  // Need a name, a way to reach them, and a chosen slot.
-  if (!name || (!phone && !email) || !dateKey || !time) {
+  // Need a name, a way to reach them, somewhere to go, and a chosen slot.
+  //
+  // The address is enforced HERE and not only by the `required` attribute on
+  // the input. This is a public endpoint: `required` is a browser courtesy that
+  // any direct POST skips, and a booking with no address is a van with nowhere
+  // to drive — the owner has to phone the customer back to ask, which is the
+  // phone tag this page exists to remove.
+  if (!name || (!phone && !email) || !address || !dateKey || !time) {
     redirect(`/book/${subdomain}?error=incomplete`);
   }
 
@@ -305,6 +311,10 @@ export async function submitQuickStopRequestAction(formData: FormData): Promise<
     const availability = (formData.get('availability') ?? '').toString().trim() || null;
 
     if (!name || (!phone && !email)) return { ok: false, error: 'Add your name and a phone or email so we can reach you.' };
+    // A Quick Stop is a request to be slotted into a route that is already
+    // running. Without an address there is no route position to work out, so
+    // the screener cannot answer the one question it exists to answer.
+    if (!address) return { ok: false, error: 'Add the service address — the contractor needs somewhere to go.' };
     if (!issue) return { ok: false, error: 'Describe the issue first.' };
 
     // Which day they asked for, re-checked here against the same rules that drew
@@ -394,7 +404,9 @@ export async function submitCallbackAction(subdomain: string, formData: FormData
   if (!site) redirect(`/book/${subdomain}?error=unavailable`);
 
   const { name, phone, email, address, description } = readContact(formData);
-  if (!name || (!phone && !email)) {
+  // Same rule as a booking — see submitBookingAction. A callback lead without an
+  // address is one the owner cannot price, route or quote without ringing back.
+  if (!name || (!phone && !email) || !address) {
     redirect(`/book/${subdomain}?error=incomplete`);
   }
 

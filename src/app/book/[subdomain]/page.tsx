@@ -273,7 +273,7 @@ export default async function BookingPage({
             <BookingSteps steps={steps} />
             {searchParams.error === 'incomplete' ? (
               <p className="payment-banner muted book-alert" role="status">
-                Please pick a time and give us your name plus a phone or email.
+                Please pick a time and fill in your name, address, and a phone or email.
               </p>
             ) : null}
             {searchParams.error === 'slot_taken' ? (
@@ -356,7 +356,7 @@ export default async function BookingPage({
               </p>
               <div className="field full">
                 <label htmlFor="address">Address</label>
-                <input id="address" name="address" placeholder="1418 Maplewood Ave, Royal Oak, MI" autoComplete="street-address" />
+                <input id="address" name="address" required placeholder="1418 Maplewood Ave, Royal Oak, MI" autoComplete="street-address" />
               </div>
               <div className="field full">
                 <label htmlFor="description">Anything else we should know?</label>

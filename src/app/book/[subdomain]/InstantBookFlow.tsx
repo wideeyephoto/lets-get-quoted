@@ -106,7 +106,7 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
 
   async function onDescribe(e: React.FormEvent) {
     e.preventDefault();
-    if (!description.trim()) return;
+    if (!description.trim() || !address.trim()) return;
     setPhase('thinking');
     try {
       handle(await callEstimator({ description: description.trim(), turn: 0 }));
@@ -186,9 +186,9 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
             <textarea id="describe" rows={3} required value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. My kitchen faucet drips and the shut-off valve is stuck." />
           </div>
           <div className="field full">
-            <label htmlFor="flow-address">Address (optional)</label>
-            <input id="flow-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="1418 Maplewood Ave, Royal Oak, MI" autoComplete="street-address" />
-            <small className="field-hint">Helps price the job and spot days {businessName} is already near you.</small>
+            <label htmlFor="flow-address">Address</label>
+            <input id="flow-address" required value={address} onChange={(e) => setAddress(e.target.value)} placeholder="1418 Maplewood Ave, Royal Oak, MI" autoComplete="street-address" />
+            <small className="field-hint">Prices the job and finds days {businessName} is already near you.</small>
           </div>
           <div className="field full">
             <button type="submit" className="btn primary book-submit">Get my estimate</button>
@@ -259,7 +259,7 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
           <p className="field-hint booking-contact-hint">Add a mobile <strong>or</strong> an email &mdash; {businessName} needs one to get back to you.</p>
           <div className="field full">
             <label htmlFor="cb-address">Address</label>
-            <input id="cb-address" name="address" defaultValue={address} placeholder="1418 Maplewood Ave, Royal Oak, MI" autoComplete="street-address" />
+            <input id="cb-address" name="address" required defaultValue={address} placeholder="1418 Maplewood Ave, Royal Oak, MI" autoComplete="street-address" />
           </div>
           <div className="field full">
             <SaveButton className="btn primary book-submit" pendingLabel="Sending…" savedLabel="Sent ✓">Request a callback</SaveButton>
@@ -300,7 +300,7 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
           <p className="field-hint booking-contact-hint">Add a mobile <strong>or</strong> an email &mdash; {businessName} needs one to get back to you.</p>
           <div className="field full">
             <label htmlFor="nw-address">Address</label>
-            <input id="nw-address" name="address" defaultValue={address} placeholder="1418 Maplewood Ave, Royal Oak, MI" autoComplete="street-address" />
+            <input id="nw-address" name="address" required defaultValue={address} placeholder="1418 Maplewood Ave, Royal Oak, MI" autoComplete="street-address" />
           </div>
           <div className="field full">
             <SaveButton className="btn primary book-submit" pendingLabel="Sending…" savedLabel="Sent ✓">Request a callback</SaveButton>
@@ -365,7 +365,7 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
         <p className="field-hint booking-contact-hint">Add a mobile <strong>or</strong> an email &mdash; {businessName} needs one to get back to you.</p>
         <div className="field full">
           <label htmlFor="bk-address">Address</label>
-          <input id="bk-address" name="address" defaultValue={address} placeholder="1418 Maplewood Ave, Royal Oak, MI" autoComplete="street-address" />
+          <input id="bk-address" name="address" required defaultValue={address} placeholder="1418 Maplewood Ave, Royal Oak, MI" autoComplete="street-address" />
         </div>
         <div className="field full">
           <SaveButton className="btn primary book-submit" pendingLabel="Sending…" savedLabel="Sent ✓">Request this time</SaveButton>

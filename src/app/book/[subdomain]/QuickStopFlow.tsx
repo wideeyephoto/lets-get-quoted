@@ -99,6 +99,14 @@ export default function QuickStopFlow({
 
   async function submit() {
     setError(null);
+    // This one submits through JS, not a form submit, so the `required` on the
+    // input never fires — the browser only enforces it on a real submit event.
+    // Without this check the button silently posted a Quick Stop with nowhere
+    // to send anybody.
+    if (!address.trim()) {
+      setError('Add the service address — the contractor needs somewhere to go.');
+      return;
+    }
     setSubmitting(true);
     try {
       const fd = new FormData();
@@ -323,7 +331,7 @@ export default function QuickStopFlow({
             <p className="field-hint booking-contact-hint">Add a mobile <strong>or</strong> an email &mdash; {businessName} needs one to get back to you.</p>
             <div className="field full">
               <label htmlFor="es-address">Address</label>
-              <input id="es-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="1418 Maplewood Ave, Royal Oak, MI" />
+              <input id="es-address" required value={address} onChange={(e) => setAddress(e.target.value)} placeholder="1418 Maplewood Ave, Royal Oak, MI" />
             </div>
           </div>
           <div className="field full" style={{ marginTop: '.5rem' }}>
