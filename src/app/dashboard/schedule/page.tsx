@@ -29,6 +29,8 @@ import { listUpcomingBlocks } from '@/lib/availability-blocks';
 import WorkingHoursPanel from '@/components/working-hours-panel';
 import BookingRequests from './BookingRequests';
 import { listPendingBookings, toPendingBookings } from '@/lib/booking-requests';
+import WeatherPanel from './WeatherPanel';
+import { weatherSettings } from '@/lib/weather-data';
 
 const STATUS_LABEL: Record<Job['status'], string> = {
   new_lead: 'New request',
@@ -221,6 +223,9 @@ export default async function SchedulePage({
   // unscheduledJobs above and must never be: they are not work waiting for a
   // date, they are a customer waiting for a yes.
   const pendingBookingRows = await listPendingBookings(supabase, accountId);
+  // Settings only. The forecast itself is fetched on demand — two requests to a
+  // free public service per location is not something to spend on every page load.
+  const weather = await weatherSettings(supabase, accountId);
 
   const { year, monthIndex } = parseMonthParam(searchParams.month);
   const firstWeekday = new Date(year, monthIndex, 1).getDay();
@@ -482,6 +487,11 @@ export default async function SchedulePage({
       <BookingRequests
         requests={toPendingBookings(pendingBookingRows, Date.now(), todayKey)}
       />
+
+      {/* Under the booking requests: somebody waiting to hear back outranks a
+          forecast. Above the calendar, because a day the weather will ruin is
+          worth knowing before you look at the month. */}
+      <WeatherPanel enabled={weather.enabled} profile={weather.sensitivity.label} />
 
       <div className="schedule-workbench">
       <section className="panel workspace-section-card schedule-calendar-panel">

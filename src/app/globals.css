@@ -9650,6 +9650,30 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 .field-milestone-phase { display: flex; gap: 1rem; font-size: 0.85rem; }
 .field-milestone-phase label { display: flex; align-items: center; gap: 0.3rem; }
 
+/* Weather risk. Amber and orange only — never red. Nothing here has gone wrong
+   yet, and a forecast styled as an emergency gets dismissed as one. */
+.weather-risk-list { display: flex; flex-direction: column; gap: 0.8rem; margin-top: 0.6rem; }
+.weather-risk {
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  border: 1px solid var(--ink-amber-3);
+  background: rgba(255, 179, 122, 0.1);
+}
+.weather-risk.level-unworkable { border-color: var(--ink-orange-1); background: rgba(255, 138, 61, 0.14); }
+.weather-risk-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; }
+.weather-risk-level { margin-left: 0.5rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--mute-t50); }
+.weather-risk-job { font-size: 0.85rem; }
+.weather-risk-why { margin: 0.4rem 0 0; font-size: 0.88rem; line-height: 1.5; }
+.weather-risk-alts { margin: 0.35rem 0 0; font-size: 0.82rem; color: var(--mute-t55); }
+.weather-risk-draft {
+  margin-top: 0.7rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.06);
+}
+.weather-risk-draft p { margin: 0 0 0.5rem; font-size: 0.84rem; line-height: 1.5; }
+.weather-risk-foot { margin: 0.4rem 0 0; font-size: 0.79rem; color: var(--mute-t45); }
+
 /* Client portal — the homeowner's own way back in. */
 .portal-request-form { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1.2rem; max-width: 26rem; }
 .portal-request-form label { font-size: 0.85rem; color: var(--mute-t55); }
