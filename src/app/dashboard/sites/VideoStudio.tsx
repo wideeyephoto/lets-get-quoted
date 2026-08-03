@@ -399,7 +399,11 @@ export default function VideoStudio({ content, onChange, onClose }: VideoStudioP
 
 // The little diagram on each style button — the shape that style makes, drawn
 // in blocks. A name alone ("Process") doesn't tell you what you'd get.
-function StyleGlyph({ style }: { style: SiteVideoStyle }) {
+// Exported so the logged-out demo draws the SAME six shapes and the same
+// section preview as the real studio. A prospect comparing layouts is looking
+// at the product; a hand-copied set of glyphs would be a picture of it, and
+// would stop matching the first time a style changed.
+export function StyleGlyph({ style }: { style: SiteVideoStyle }) {
   return (
     <span className={styles.vsGlyph} data-glyph={style} aria-hidden="true">
       {style === 'hero' && <><i className={styles.vsGlyphFill} /><i className={styles.vsGlyphBarWide} /></>}
@@ -415,7 +419,7 @@ function StyleGlyph({ style }: { style: SiteVideoStyle }) {
 // A scale model of the section, using the owner's real words and real poster
 // frames. Not the live site — the point is to compare arrangements at a glance,
 // which a real player at real size can't do inside a dialog.
-function StylePreview({ content, videos }: { content: SiteVideoSectionContent; videos: SiteVideoItem[] }) {
+export function StylePreview({ content, videos }: { content: SiteVideoSectionContent; videos: SiteVideoItem[] }) {
   const primary = videos[0];
   const media = (item: SiteVideoItem | undefined, className: string, label?: string) => {
     const poster = item ? videoPoster(item) : '';

@@ -17057,3 +17057,95 @@ a.bset-card { color: inherit; text-decoration: none; }
   .resched-day { grid-template-columns: minmax(0, 1fr); }
   .resched-day-near { text-align: left; }
 }
+
+
+/* ==========================================================================
+   THE DEMO'S VIDEO STUDIO  (/demo/sites)
+   --------------------------------------------------------------------------
+   Only the bits the real studio doesn't already own. The style strip, the
+   preview stage and the video rows all come from SiteEditor.module.css via the
+   real component, so this is the section shell and the fake uploader's
+   progress bar — nothing that would drift if the studio changed.
+   ========================================================================== */
+
+.demo-vstudio { display: grid; gap: 1rem; }
+
+.demo-vstudio-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.demo-vstudio-tab {
+  display: grid;
+  gap: 0.08rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid rgba(var(--tint), 0.16);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.demo-vstudio-tab small { font-size: 0.72rem; color: rgba(var(--tint), 0.55); }
+.demo-vstudio-tab.is-on { border-color: #ff8a3d; background: rgba(255, 138, 61, 0.12); }
+.demo-vstudio-tab.is-on small { color: rgba(var(--tint), 0.75); }
+
+.demo-vstudio-cap {
+  margin-left: auto;
+  font-size: 0.78rem;
+  color: var(--mute-t55);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The uploader's own state. The real one shows a spinner on a button; this
+   shows the bar, because the bar IS the demo — a prospect needs to watch a
+   file they chose become a clip in the layout they picked. */
+.demo-upload {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.6rem 0;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid rgba(255, 138, 61, 0.34);
+  border-radius: 12px;
+  background: rgba(255, 138, 61, 0.07);
+}
+
+.demo-upload-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.85rem;
+}
+
+.demo-upload-top span { font-variant-numeric: tabular-nums; color: rgba(var(--tint), 0.7); }
+
+.demo-upload-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.12);
+  overflow: hidden;
+}
+
+.demo-upload-track i {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ff5a1f, #ff8a3d);
+  transition: width 0.22s ease;
+}
+
+.demo-upload small {
+  font-size: 0.76rem;
+  color: var(--mute-t55);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-upload-track i { transition: none; }
+}

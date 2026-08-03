@@ -6,6 +6,7 @@ import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import { COLOR_SCHEMES } from '@/lib/site-content';
 import ThemeIcon from '@/app/dashboard/sites/ThemeIcon';
 import themeStyles from '@/app/dashboard/sites/SiteEditor.module.css';
+import DemoVideoStudio from './DemoVideoStudio';
 
 // Preset accent swatches — mirrors the website builder's palette so the demo
 // customizer feels identical to the real thing.
@@ -166,6 +167,10 @@ export default function DemoSitesPage() {
           ) : null}
         </div>
       </section>
+
+      {/* Under the customizer, because it is the next thing you would do:
+          the colours make it yours, the video makes it convincing. */}
+      <DemoVideoStudio />
     </main>
   );
 }
