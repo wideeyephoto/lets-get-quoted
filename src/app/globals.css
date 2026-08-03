@@ -16871,3 +16871,12 @@ a.bset-card { color: inherit; text-decoration: none; }
     display: none;
   }
 }
+
+/* The crew badge sits ON the chip (absolutely positioned), so the name has to
+   stop before it. The existing reservation is 1.25rem, sized for the '+' badge
+   — a pair of initials like 'MT ER' is nearer 2.5rem, and the ellipsis ended up
+   touching it. The other reservation rule keys on the badge coming BEFORE the
+   chip; here it comes after, so this matches on that order instead. */
+.calendar-job-item > .calendar-job-chip:has(+ .calendar-crew-toggle) .calendar-job-chip-main {
+  padding-right: 2.55rem;
+}

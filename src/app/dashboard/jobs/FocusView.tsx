@@ -54,11 +54,19 @@ export default function FocusView({
   onSelect,
   openRequest,
   details,
+  basePath = '/dashboard',
 }: {
   jobs: JobViewItem[];
   onSelect?: (jobId: string | null) => void;
   /** A pin on the map asking for a job; the nonce lets the same one repeat. */
   openRequest?: { id: string; nonce: number } | null;
+  /**
+   * Where this pane's links point. The logged-out demo renders this very
+   * component, and every link in here used to be hardcoded to /dashboard — so a
+   * prospect clicking "Open job", "Request payment" or "Add expense" was thrown
+   * onto the login wall, mid-demo, with no explanation. It passes '/demo'.
+   */
+  basePath?: string;
   /**
    * Pre-loaded detail, keyed by job id. Supplying it makes the pane read from
    * memory instead of calling the API — which is what lets the logged-out demo
@@ -66,6 +74,7 @@ export default function FocusView({
    */
   details?: Record<string, JobDetailDto>;
 }) {
+  const base = basePath;
   const [selectedId, setSelectedId] = useState<string | null>(jobs[0]?.id ?? null);
   const [detail, setDetail] = useState<JobDetailDto | null>(null);
   const [loading, setLoading] = useState(false);
@@ -335,15 +344,15 @@ export default function FocusView({
               </div>
 
               <div className={styles.heroActionsJob}>
-                <Link className="action-btn action-btn--lead" href={`/dashboard/jobs/${selected.id}`}>
+                <Link className="action-btn action-btn--lead" href={`${base}/jobs/${selected.id}`}>
                   <ActionIcon name="job" />
                   Open job →
                 </Link>
-                <Link className="action-btn action-btn--money-in" href={`/dashboard/jobs/${selected.id}?open=payment#request-payment`}>
+                <Link className="action-btn action-btn--money-in" href={`${base}/jobs/${selected.id}?open=payment#request-payment`}>
                   <ActionIcon name="payment" />
                   Request payment
                 </Link>
-                <Link className="action-btn action-btn--money-out" href={`/dashboard/jobs/${selected.id}?open=costs`}>
+                <Link className="action-btn action-btn--money-out" href={`${base}/jobs/${selected.id}?open=costs`}>
                   <ActionIcon name="expense" />
                   Add expense
                 </Link>
@@ -373,7 +382,7 @@ export default function FocusView({
               ) : loading || !fresh ? (
                 <Skeleton />
               ) : (
-                <TabPanel tab={tab} detail={fresh} job={selected} />
+                <TabPanel tab={tab} detail={fresh} job={selected} base={base} />
               )}
             </div>
 
@@ -423,7 +432,7 @@ export default function FocusView({
             <li key={job.id}>
               <a
                 id={`focus-row-${job.id}`}
-                href={`/dashboard/jobs/${job.id}`}
+                href={`${base}/jobs/${job.id}`}
                 className={`${styles.row}${job.id === selectedId ? ` ${styles.rowOn}` : ''}`}
                 aria-current={job.id === selectedId ? 'true' : undefined}
                 onClick={(event) => rowClick(event, job.id)}
@@ -462,7 +471,7 @@ function Skeleton() {
   );
 }
 
-function TabPanel({ tab, detail, job }: { tab: TabId; detail: JobDetailDto; job: JobViewItem }) {
+function TabPanel({ tab, detail, job, base }: { tab: TabId; detail: JobDetailDto; job: JobViewItem; base: string }) {
   if (tab === 'overview') {
     return (
       <div className={styles.grid}>
@@ -491,7 +500,7 @@ function TabPanel({ tab, detail, job }: { tab: TabId; detail: JobDetailDto; job:
           ) : (
             <p className={styles.muted}>Nothing written down yet.</p>
           )}
-          <Link className={styles.cardLink} href={`/dashboard/jobs/${detail.id}`}>Edit on the job page →</Link>
+          <Link className={styles.cardLink} href={`${base}/jobs/${detail.id}`}>Edit on the job page →</Link>
         </section>
 
         <section className={styles.card}>
@@ -538,7 +547,7 @@ function TabPanel({ tab, detail, job }: { tab: TabId; detail: JobDetailDto; job:
   if (tab === 'checklist') {
     return detail.tasks.total === 0 ? (
       <p className={styles.muted}>
-        No checklist on this job yet. <Link href={`/dashboard/jobs/${detail.id}`}>Add one →</Link>
+        No checklist on this job yet. <Link href={`${base}/jobs/${detail.id}`}>Add one →</Link>
       </p>
     ) : (
       <>
@@ -563,7 +572,7 @@ function TabPanel({ tab, detail, job }: { tab: TabId; detail: JobDetailDto; job:
     // this doesn't pretend to be a file manager.
     return detail.photos.length === 0 ? (
       <p className={styles.muted}>
-        No photos on this job. <Link href={`/dashboard/jobs/${detail.id}`}>Upload some →</Link>
+        No photos on this job. <Link href={`${base}/jobs/${detail.id}`}>Upload some →</Link>
       </p>
     ) : (
       <>
@@ -576,7 +585,7 @@ function TabPanel({ tab, detail, job }: { tab: TabId; detail: JobDetailDto; job:
         {detail.photoCount > detail.photos.length && (
           <p className={styles.muted}>
             Showing {detail.photos.length} of {detail.photoCount}.{' '}
-            <Link href={`/dashboard/jobs/${detail.id}`}>See all →</Link>
+            <Link href={`${base}/jobs/${detail.id}`}>See all →</Link>
           </p>
         )}
       </>
@@ -594,7 +603,7 @@ function TabPanel({ tab, detail, job }: { tab: TabId; detail: JobDetailDto; job:
           <div><dt>Still owed</dt><dd className={styles.owed}>{detail.money.outstandingLabel}</dd></div>
           <div><dt>Payment</dt><dd>{detail.paymentStatusLabel ?? 'None requested'}</dd></div>
         </dl>
-        <Link className={styles.cardLink} href={`/dashboard/jobs/${detail.id}?open=payment#request-payment`}>
+        <Link className={styles.cardLink} href={`${base}/jobs/${detail.id}?open=payment#request-payment`}>
           Request payment →
         </Link>
       </section>
@@ -612,7 +621,7 @@ function TabPanel({ tab, detail, job }: { tab: TabId; detail: JobDetailDto; job:
             <dd className={marginClass(detail.money.marginPct)}>{detail.money.marginLabel}</dd>
           </div>
         </dl>
-        <Link className={styles.cardLink} href={`/dashboard/jobs/${detail.id}?open=costs`}>
+        <Link className={styles.cardLink} href={`${base}/jobs/${detail.id}?open=costs`}>
           Add an expense →
         </Link>
       </section>

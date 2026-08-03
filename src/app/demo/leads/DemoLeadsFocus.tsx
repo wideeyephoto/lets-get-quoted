@@ -10,14 +10,19 @@ import type { LeadDetailDto } from '@/lib/lead-detail';
 export default function DemoLeadsFocus({
   leads,
   details,
+  initialLeadId,
 }: {
   leads: LeadViewItem[];
   details: Record<string, LeadDetailDto>;
+  initialLeadId?: string;
 }) {
   return (
     <LeadFocusView
       leads={leads}
       details={details}
+      // Keeps the pane's links inside the demo — see DemoJobsFocus.
+      basePath="/demo"
+      initialLeadId={initialLeadId}
       // Every action in the pane routes through this. Swallowing them is what
       // makes the demo read-only without disabling controls one at a time —
       // a prospect can click anything and nothing is written anywhere.

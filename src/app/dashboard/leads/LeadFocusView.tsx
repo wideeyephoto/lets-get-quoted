@@ -50,12 +50,18 @@ export default function LeadFocusView({
   onSelect,
   openRequest,
   details,
+  basePath = '/dashboard',
+  initialLeadId,
 }: {
   leads: LeadViewItem[];
   run: (fn: () => Promise<unknown>) => void;
   onSelect?: (leadId: string | null) => void;
   /** A pin on the map asking for a lead; the nonce lets the same one repeat. */
   openRequest?: { id: string; nonce: number } | null;
+  /** See FocusView — the logged-out demo passes '/demo' so its links stay inside it. */
+  basePath?: string;
+  /** Which row to open on. Lets /demo/leads/<id> land on the lead it names. */
+  initialLeadId?: string;
   /**
    * Pre-loaded detail, keyed by lead id. Supplying it makes the pane read from
    * memory instead of calling the API — which is what lets the logged-out demo
@@ -64,7 +70,10 @@ export default function LeadFocusView({
    */
   details?: Record<string, LeadDetailDto>;
 }) {
-  const [selectedId, setSelectedId] = useState<string | null>(leads[0]?.id ?? null);
+  const base = basePath;
+  const [selectedId, setSelectedId] = useState<string | null>(
+    (initialLeadId && leads.some((lead) => lead.id === initialLeadId) ? initialLeadId : leads[0]?.id) ?? null,
+  );
   const [detail, setDetail] = useState<LeadDetailDto | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -362,10 +371,10 @@ export default function LeadFocusView({
                         💬 Text
                       </a>
                     )}
-                    <Link className="btn secondary" href={`/dashboard/leads/${selected.id}#lead-estimate`}>
+                    <Link className="btn secondary" href={`${base}/leads/${selected.id}#lead-estimate`}>
                       Send quote
                     </Link>
-                    <Link className="btn ghost" href={`/dashboard/leads/${selected.id}`}>
+                    <Link className="btn ghost" href={`${base}/leads/${selected.id}`}>
                       Open full lead →
                     </Link>
                   </div>
@@ -415,7 +424,7 @@ export default function LeadFocusView({
               ) : loading || !fresh ? (
                 <Skeleton />
               ) : (
-                <TabPanel tab={tab} detail={fresh} lead={selected} />
+                <TabPanel tab={tab} detail={fresh} lead={selected} base={base} />
               )}
             </div>
 
@@ -463,7 +472,7 @@ export default function LeadFocusView({
             <li key={lead.id}>
               <a
                 id={`lead-row-${lead.id}`}
-                href={`/dashboard/leads/${lead.id}`}
+                href={`${base}/leads/${lead.id}`}
                 className={`${styles.row} ${styles.rowLead}${lead.id === selectedId ? ` ${styles.rowOn}` : ''}`}
                 aria-current={lead.id === selectedId ? 'true' : undefined}
                 onClick={(event) => rowClick(event, lead.id)}
@@ -499,7 +508,7 @@ function Skeleton() {
   );
 }
 
-function TabPanel({ tab, detail, lead }: { tab: TabId; detail: LeadDetailDto; lead: LeadViewItem }) {
+function TabPanel({ tab, detail, lead, base }: { tab: TabId; detail: LeadDetailDto; lead: LeadViewItem; base: string }) {
   if (tab === 'overview') {
     return (
       <div className={styles.grid}>
@@ -565,7 +574,7 @@ function TabPanel({ tab, detail, lead }: { tab: TabId; detail: LeadDetailDto; le
           ) : (
             <p className={styles.muted}>They didn&rsquo;t write anything beyond the project type.</p>
           )}
-          <Link className={styles.cardLink} href={`/dashboard/leads/${detail.id}?edit=client#lead-edit-modal`}>
+          <Link className={styles.cardLink} href={`${base}/leads/${detail.id}?edit=client#lead-edit-modal`}>
             Edit the details →
           </Link>
         </section>
@@ -587,7 +596,7 @@ function TabPanel({ tab, detail, lead }: { tab: TabId; detail: LeadDetailDto; le
     return detail.contactLog.length === 0 ? (
       <p className={styles.muted}>
         Nobody has reached out yet.{' '}
-        <Link href={`/dashboard/leads/${detail.id}#lead-activity`}>Log a call or text →</Link>
+        <Link href={`${base}/leads/${detail.id}#lead-activity`}>Log a call or text →</Link>
       </p>
     ) : (
       <>
@@ -606,7 +615,7 @@ function TabPanel({ tab, detail, lead }: { tab: TabId; detail: LeadDetailDto; le
         {detail.contactCount > detail.contactLog.length && (
           <p className={styles.muted} style={{ marginTop: '0.7rem' }}>
             Showing the last {detail.contactLog.length} of {detail.contactCount}.{' '}
-            <Link href={`/dashboard/leads/${detail.id}#lead-activity`}>See all →</Link>
+            <Link href={`${base}/leads/${detail.id}#lead-activity`}>See all →</Link>
           </p>
         )}
       </>
@@ -629,7 +638,7 @@ function TabPanel({ tab, detail, lead }: { tab: TabId; detail: LeadDetailDto; le
         {detail.photoCount > detail.photos.length && (
           <p className={styles.muted}>
             Showing {detail.photos.length} of {detail.photoCount}.{' '}
-            <Link href={`/dashboard/leads/${detail.id}?details=photos#lead-photos-modal`}>See all →</Link>
+            <Link href={`${base}/leads/${detail.id}?details=photos#lead-photos-modal`}>See all →</Link>
           </p>
         )}
       </>
@@ -650,7 +659,7 @@ function TabPanel({ tab, detail, lead }: { tab: TabId; detail: LeadDetailDto; le
         ) : (
           <p className={styles.muted}>No visit booked.</p>
         )}
-        <Link className={styles.cardLink} href={`/dashboard/leads/${detail.id}#availability-snapshot`}>
+        <Link className={styles.cardLink} href={`${base}/leads/${detail.id}#availability-snapshot`}>
           {detail.quoteVisit ? 'Change the visit →' : 'Book a visit →'}
         </Link>
       </section>
@@ -674,7 +683,7 @@ function TabPanel({ tab, detail, lead }: { tab: TabId; detail: LeadDetailDto; le
         )}
         <Link
           className={styles.cardLink}
-          href={detail.convertedJob ? `/dashboard/jobs/${detail.convertedJob.id}` : `/dashboard/leads/${detail.id}#lead-estimate`}
+          href={detail.convertedJob ? `${base}/jobs/${detail.convertedJob.id}` : `${base}/leads/${detail.id}#lead-estimate`}
         >
           {detail.convertedJob ? 'Open the job →' : 'Send a quote →'}
         </Link>

@@ -17,6 +17,9 @@ type Props = {
   savedCreditLine: number;
   paymentLagDays: number;
   billsPanel: ReactNode;
+  /** Which of the 30/60/90 tabs the URL asked for. */
+  windowKey: string;
+  horizonDays: number;
 };
 
 const WINDOWS = [
@@ -33,14 +36,16 @@ export default function DemoCashBoard({
   savedCreditLine,
   paymentLagDays,
   billsPanel,
+  windowKey,
+  horizonDays,
 }: Props) {
   return (
     <CashFlowBoard
       windows={WINDOWS}
-      selectedKey="30"
+      selectedKey={windowKey}
       events={events}
       todayKey={todayKey}
-      horizonDays={30}
+      horizonDays={horizonDays}
       savedBalance={savedBalance}
       savedBuffer={savedBuffer}
       savedCreditLine={savedCreditLine}
@@ -52,6 +57,8 @@ export default function DemoCashBoard({
       settingsAvailable
       saveSettings={() => {}}
       billsPanel={billsPanel}
+      // Keeps the window tabs inside the demo instead of the login wall.
+      basePath="/demo"
     />
   );
 }

@@ -13,5 +13,8 @@ export default function DemoJobsFocus({
   jobs: JobViewItem[];
   details: Record<string, JobDetailDto>;
 }) {
-  return <FocusView jobs={jobs} details={details} />;
+  // basePath keeps every link in the pane inside the demo. Without it "Open
+  // job", "Request payment" and "Add expense" all pointed at /dashboard, so the
+  // most interesting thing on the page was a trapdoor to the login wall.
+  return <FocusView jobs={jobs} details={details} basePath="/demo" />;
 }

@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 // demo used to show a Kanban board — a view a real owner has to go and choose —
 // so the first thing a prospect saw was not the product's own answer to "who do
 // I call next and what did they ask for".
-export default function DemoLeadsPage() {
+export default function DemoLeadsPage({ initialLeadId }: { initialLeadId?: string } = {}) {
   const leads = DEMO_LEADS;
   const websiteRequests = leads.filter((lead) => lead.source === 'website_form').length;
   const openRequests = leads.filter((lead) => !['won', 'lost'].includes(lead.status)).length;
@@ -25,7 +25,7 @@ export default function DemoLeadsPage() {
           <p className="eyebrow">Pipeline</p>
           <h2>Current leads</h2>
         </div>
-        <DemoLeadsFocus leads={demoLeadViews()} details={demoLeadDetails()} />
+        <DemoLeadsFocus leads={demoLeadViews()} details={demoLeadDetails()} initialLeadId={initialLeadId} />
       </section>
 
       <div className={`stat-ticker panel ${styles.requestStats}`}>

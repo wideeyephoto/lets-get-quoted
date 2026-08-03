@@ -38,6 +38,12 @@ type Props = {
    * can't move out of here because it's built from the same forecast state.
    */
   billsPanel?: ReactNode;
+  /**
+   * Where the 30/60/90 tabs point. Hardcoded to /dashboard, they were the one
+   * broken control on the demo's forecast: a prospect changing the window got
+   * the login wall instead of a different chart. The demo passes '/demo'.
+   */
+  basePath?: string;
 };
 
 const LATE_DAYS_DEFAULT = 7;
@@ -98,7 +104,9 @@ export default function CashFlowBoard({
   settingsAvailable,
   saveSettings,
   billsPanel,
+  basePath = '/dashboard',
 }: Props) {
+  const base = basePath;
   const [balance, setBalance] = useState<number>(savedBalance ?? 0);
   const [buffer, setBuffer] = useState<number>(savedBuffer);
   const [creditLine, setCreditLine] = useState<number>(savedCreditLine);
@@ -252,7 +260,7 @@ export default function CashFlowBoard({
             {windows.map((option) => (
               <Link
                 key={option.key}
-                href={`/dashboard/cash-flow?window=${option.key}`}
+                href={`${base}/cash-flow?window=${option.key}`}
                 className={`insight-window-tab${option.key === selectedKey ? ' is-active' : ''}`}
                 aria-selected={option.key === selectedKey}
                 role="tab"
@@ -475,7 +483,7 @@ export default function CashFlowBoard({
             <p className="cash-source-warn">
               <strong>{money(unbilled.total)}</strong> of finished work has never been invoiced
               {unbilled.count > 1 ? ` across ${unbilled.count} jobs` : ' on 1 job'}. It&rsquo;s left off this forecast on
-              purpose — there&rsquo;s no date to put it on until you ask for it. <Link href="/dashboard/jobs">Send those invoices →</Link>
+              purpose — there&rsquo;s no date to put it on until you ask for it. <Link href={`${base}/jobs`}>Send those invoices →</Link>
             </p>
           ) : null}
         </div>

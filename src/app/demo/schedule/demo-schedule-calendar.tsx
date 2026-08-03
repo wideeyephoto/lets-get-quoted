@@ -151,7 +151,19 @@ export default function DemoScheduleCalendar({
                           className={`calendar-job-chip status-${job.status}`}
                           title={job.client_name}
                         >
-                          {formatJobTime(job.scheduled_time) ? `${formatJobTime(job.scheduled_time)} ` : ''}{job.client_name}
+                          {/* The .calendar-job-chip-main wrapper is not
+                              decoration. The crew badge beside it is absolutely
+                              positioned OVER the chip, and the rule that
+                              reserves room for it (globals.css, ~4803) targets
+                              this class — which the demo's markup didn't have,
+                              so long client names ran underneath the badge.
+                              Only showed up once the calendar had real names on
+                              it. Matches the live calendar's markup, which is
+                              what stops the two drifting again. */}
+                          <span className="calendar-job-chip-main">
+                            {formatJobTime(job.scheduled_time) ? `${formatJobTime(job.scheduled_time)} ` : ''}
+                            {job.client_name}
+                          </span>
                         </Link>
                         <button
                           type="button"

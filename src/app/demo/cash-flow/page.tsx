@@ -104,14 +104,23 @@ function DemoBillsPanel({ todayKey }: { todayKey: string }) {
   );
 }
 
-export default function DemoCashFlowPage() {
+// The 30/60/90 tabs are real links, so the page has to honour the one it is
+// given. It didn't: the board was hardcoded to a 30-day horizon, so the tabs
+// changed the URL and the chart stayed put — the one visibly broken control in
+// the whole demo. Unknown values fall back to 30 rather than rendering nothing.
+const HORIZONS: Record<string, number> = { '30': 30, '60': 60, '90': 90 };
+
+export default function DemoCashFlowPage({ searchParams }: { searchParams: { window?: string } }) {
   const todayKey = dateKeyFromNow(0);
+  const windowKey = searchParams.window && HORIZONS[searchParams.window] ? searchParams.window : '30';
 
   return (
     <main className="wide-shell workspace-shell">
       <DemoCashBoard
         events={[...DEMO_CASH_EVENTS]}
         todayKey={todayKey}
+        windowKey={windowKey}
+        horizonDays={HORIZONS[windowKey]}
         savedBalance={DEMO_CASH_SETTINGS.balance}
         savedBuffer={DEMO_CASH_SETTINGS.buffer}
         savedCreditLine={DEMO_CASH_SETTINGS.creditLine}
