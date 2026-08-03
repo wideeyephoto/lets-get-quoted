@@ -177,12 +177,12 @@ export default async function SettingsPage({
   const instantBookGeoMode = bookingSettings?.instant_book_geo_mode === 'restrict' ? 'restrict' : 'prefer';
   const instantBookDriveTime = Boolean(bookingSettings?.instant_book_drive_time);
 
-  const { data: gatingSettings } = await supabase
+  const { data: reviewPageSettings } = await supabase
     .from('accounts')
-    .select('review_gating_enabled')
+    .select('review_feedback_page_enabled')
     .eq('id', accountId)
     .maybeSingle();
-  const reviewGatingEnabled = Boolean(gatingSettings?.review_gating_enabled);
+  const reviewFeedbackPageEnabled = Boolean(reviewPageSettings?.review_feedback_page_enabled);
 
   const { data: followupSettings } = await supabase
     .from('accounts')
@@ -616,18 +616,23 @@ export default async function SettingsPage({
                       />
                       <span>Ask for a review automatically when I mark a job complete</span>
                     </label>
-                    <label className="checkbox-row" htmlFor="reviewGating">
+                    <label className="checkbox-row" htmlFor="reviewFeedbackPage">
                       <input
-                        id="reviewGating"
-                        name="reviewGating"
+                        id="reviewFeedbackPage"
+                        name="reviewFeedbackPage"
                         type="checkbox"
-                        defaultChecked={reviewGatingEnabled}
+                        defaultChecked={reviewFeedbackPageEnabled}
                       />
                       <span>
-                        Screen reviews first — clients tap a rating; 4–5★ go to Google, 1–3★ come back to you as private
-                        feedback instead of a public review
+                        Ask how it went first — clients land on a short page where they rate the job, then choose to
+                        review you publicly, send you a private note, or both. Turn this off to link straight to Google.
                       </span>
                     </label>
+                    <p className="review-policy-note">
+                      Either way, every client is offered the public review link. Screening by rating — sending only
+                      happy clients to Google — is against Google&apos;s review policy and puts your Business Profile at
+                      risk, so letsgetquoted.com doesn&apos;t do it.
+                    </p>
                     <div className="automation-prereq">
                       <span aria-hidden="true">🔗</span>
                       <span>Reviews need a Google Business Profile to point to — <Link href="/dashboard/sites">link yours in the Website builder</Link> so the ask has somewhere to go.</span>

@@ -183,11 +183,11 @@ export async function updateCallTextbackSettingsAction(formData: FormData) {
 export async function updateReviewSettingsAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
   const autoReviewRequest = formData.get('autoReviewRequest') === 'on';
-  const reviewGating = formData.get('reviewGating') === 'on';
+  const reviewFeedbackPage = formData.get('reviewFeedbackPage') === 'on';
 
   const { error } = await supabase
     .from('accounts')
-    .update({ auto_review_request: autoReviewRequest, review_gating_enabled: reviewGating })
+    .update({ auto_review_request: autoReviewRequest, review_feedback_page_enabled: reviewFeedbackPage })
     .eq('id', accountId);
 
   if (error) throw new Error(error.message);

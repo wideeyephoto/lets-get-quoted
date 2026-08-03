@@ -855,17 +855,19 @@ async function deliverJobReviewRequest(
   const mailingAddress = resolveMarketingMailingAddress(addressRow?.mailing_address as string | null);
   const clientFirstName = (job.client_name || 'there').trim().split(/\s+/)[0] || 'there';
 
-  // Optionally route the ask through the "how'd we do?" gate so 4-5★ go to
-  // Google and 1-3★ come back as private feedback. Falls back to the direct
-  // Google link if gating is off/unavailable or the invite can't be created.
+  // Optionally route the ask through the "how did we do?" page, which records a
+  // rating for the owner and then offers BOTH a public review and a private
+  // note. It is not a gate: the Google link is on that page for every rating.
+  // Falls back to the direct Google link if it's switched off or the invite
+  // can't be created — a fallback that can only ever widen access, never narrow it.
   let linkUrl = reviewUrl;
-  const { data: gate } = await supabase.from('accounts').select('review_gating_enabled').eq('id', accountId).maybeSingle();
-  if (gate?.review_gating_enabled) {
+  const { data: pref } = await supabase.from('accounts').select('review_feedback_page_enabled').eq('id', accountId).maybeSingle();
+  if (pref?.review_feedback_page_enabled) {
     try {
       const token = await createReviewInvite(supabase, accountId, job.id, job.client_name, reviewUrl);
       linkUrl = `${(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '')}/review/${token}`;
     } catch (error) {
-      console.error(`Review gate invite failed for job ${job.id}; sending direct link:`, error instanceof Error ? error.message : error);
+      console.error(`Review invite failed for job ${job.id}; sending direct link:`, error instanceof Error ? error.message : error);
     }
   }
 

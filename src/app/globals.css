@@ -9614,7 +9614,7 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 }
 
 /* ---------------------------------------------------------------------------
-   REVIEW GATE — public "how'd we do?" page
+   REVIEW PAGE — public "how did we do?" page
    --------------------------------------------------------------------------- */
 .review-gate .review-stars {
   display: flex;
@@ -9635,6 +9635,51 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 .review-star.is-on { color: var(--ink-amber-4); }
 .review-star:hover { transform: scale(1.08); }
 .review-gate-fine { margin: 0.2rem 0 0; font-size: 0.8rem; color: var(--mute-t45); }
+.review-gate-fine a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+
+/* Why the owner's review numbers look the way they do. Worth the space: a
+   contractor who had rating-screening switched on will notice their private
+   feedback drop and their public reviews get more varied, and deserves to know
+   that was us removing something that put their profile at risk. */
+.review-policy-note {
+  margin: 0.6rem 0 0;
+  max-width: 44rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--mute-t55);
+}
+
+/* The two review routes. Laid out as equal columns on purpose: the public route
+   and the private one are offered to every customer at the same size, in the
+   same order, whatever they rated. Steering an unhappy customer away from the
+   public option is review gating even when the link is technically on the page. */
+.review-routes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 0.7rem;
+  margin-top: 1.4rem;
+  max-width: 40rem;
+}
+.review-route {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  padding: 1rem 1.15rem;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--tint), 0.16);
+  background: rgba(var(--tint), 0.05);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+.review-route:hover { border-color: rgba(var(--tint), 0.3); background: rgba(var(--tint), 0.09); transform: translateY(-1px); }
+.review-route.is-public { border-color: var(--ink-amber-3); background: rgba(255, 179, 122, 0.12); }
+.review-route.is-public:hover { border-color: var(--ink-amber-4); background: rgba(255, 179, 122, 0.2); }
+.review-route-title { font-weight: 700; font-size: 1rem; }
+.review-route-note { font-size: 0.82rem; line-height: 1.4; color: var(--mute-t55); }
+@media (prefers-reduced-motion: reduce) {
+  .review-route:hover { transform: none; }
+}
 .review-feedback-form { display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1.2rem; max-width: 440px; }
 .review-feedback-form textarea {
   width: 100%;

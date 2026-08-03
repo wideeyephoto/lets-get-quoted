@@ -160,9 +160,9 @@ export const FEATURE_CATEGORIES: FeatureCategory[] = [
     num: '10',
     slug: 'reviews',
     title: 'Reviews & reputation',
-    intro: 'More 5-star reviews on Google, unhappy ones caught privately first.',
+    intro: 'More reviews on Google, and a private line for anything that went wrong.',
     features: [
-      { id: 'review-routing', name: 'Smart review routing', desc: '4–5 star reviews go to Google; 1–3 star come to you privately so you can make it right.', favorite: true },
+      { id: 'review-routing', name: 'Honest review requests', desc: 'Every customer is offered the same two things: post a public review, or tell you privately. No screening by star rating — that breaks Google’s rules and risks your profile.', favorite: true },
       { id: 'auto-reviews', name: 'Auto review requests', desc: 'Sent automatically after a job wraps.' },
       { id: 'reviews-dashboard', name: 'Reviews dashboard', desc: 'Invites, response rate, average, star distribution, and private feedback.' },
       { id: 'google-import', name: 'Google review import', desc: 'Pull your Google reviews onto your site with proper attribution.' },

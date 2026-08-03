@@ -4,8 +4,9 @@ import { useState } from 'react';
 import { rateReviewAction } from './actions';
 
 // Five star buttons that each submit their rating to the server. Hover fills the
-// stars up to the pointer for a familiar rating feel; the click routes 4-5★ to
-// Google and 1-3★ to private feedback (decided server-side).
+// stars up to the pointer for a familiar rating feel. Every star goes to the
+// same next screen — the rating is the contractor's own service signal, not a
+// decision about which review route the customer is allowed to take.
 export default function StarPicker({ token }: { token: string }) {
   const [hover, setHover] = useState(0);
 

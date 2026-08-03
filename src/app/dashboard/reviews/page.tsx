@@ -29,8 +29,13 @@ export default async function ReviewsPage() {
           <p className="eyebrow">Reviews</p>
           <h1 className="workspace-title">Reputation &amp; feedback</h1>
           <p className="workspace-lead">
-            Every gated review ask in one place — the happy customers you sent to Google, and the private feedback
-            that came back to you instead of a public 1-star.
+            Every review ask in one place — how customers rated the work, who went on to review you publicly, and what
+            came back privately.
+          </p>
+          <p className="review-policy-note">
+            Every customer is offered both routes: a public review and a private word with you. We don&apos;t screen by
+            rating — Google prohibits sending only happy customers to a review page, and it&apos;s your Business Profile
+            that gets restricted for it, not ours.
           </p>
           <div style={{ marginTop: '0.75rem' }}>
             <AutomationLink id="reviews" label="Auto review requests" on={reviewsOn} />
@@ -41,8 +46,8 @@ export default async function ReviewsPage() {
       {summary.totalInvites === 0 ? (
         <section className="panel workspace-section-card">
           <p className="empty-state">
-            No gated review asks yet. With review-gating on, every review request routes through a &ldquo;how&apos;d we
-            do?&rdquo; page and the results show up here.
+            No review asks yet. Every request routes through a &ldquo;how did we do?&rdquo; page that offers a public
+            review and a private note, and the results show up here.
           </p>
         </section>
       ) : (
@@ -54,14 +59,17 @@ export default async function ReviewsPage() {
               <p className="workspace-metric-note">{summary.avgRating !== null ? stars(Math.round(summary.avgRating)) : 'No ratings yet'} · {summary.responded} rated</p>
             </article>
             <article className="workspace-metric-card">
-              <span className="workspace-metric-label">Sent to Google</span>
+              <span className="workspace-metric-label">Went to Google</span>
               <strong className="workspace-metric-value">{summary.googleCount}</strong>
-              <p className="workspace-metric-note">Happy customers routed to a public review.</p>
+              <p className="workspace-metric-note">Took the public route. Whether they posted is between them and Google.</p>
             </article>
             <article className="workspace-metric-card">
               <span className="workspace-metric-label">Private feedback</span>
               <strong className="workspace-metric-value">{summary.privateCount}</strong>
-              <p className="workspace-metric-note">Kept off Google so you can make it right.</p>
+              <p className="workspace-metric-note">
+                Straight to you, not published.
+                {summary.bothCount > 0 ? ` ${summary.bothCount} of them also went public.` : ''}
+              </p>
             </article>
             <article className="workspace-metric-card">
               <span className="workspace-metric-label">Response rate</span>
@@ -92,7 +100,7 @@ export default async function ReviewsPage() {
               <p className="eyebrow">Private feedback{summary.privateCount > 0 ? ` · ${summary.privateCount}` : ''}</p>
             </div>
             {summary.recentPrivate.length === 0 ? (
-              <p className="empty-state">No private feedback yet — that&apos;s a good thing. Anything 3★ or under lands here instead of Google.</p>
+              <p className="empty-state">No private feedback yet. Anyone who&apos;d rather tell you directly than post publicly lands here.</p>
             ) : (
               <div className="review-feedback-list">
                 {summary.recentPrivate.map((item) => (

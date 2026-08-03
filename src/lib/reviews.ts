@@ -2,8 +2,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { randomBytes } from 'crypto';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
+import { summariseReviewInvites, type ReviewInviteRow, type ReviewsSummary } from '@/lib/review-routing';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
+
+const INVITE_FIELDS =
+  'id, account_id, job_id, token, client_name, google_url, rating, feedback, routed_to, google_clicked_at, feedback_at, created_at, responded_at';
 
 export type ReviewInvite = {
   id: string;
@@ -15,97 +19,42 @@ export type ReviewInvite = {
   rating: number | null;
   feedback: string | null;
   routed_to: 'google' | 'private' | null;
+  google_clicked_at: string | null;
+  feedback_at: string | null;
   created_at: string;
   responded_at: string | null;
 };
 
-export type ReviewFeedbackItem = {
-  id: string;
-  jobId: string | null;
-  clientName: string | null;
-  rating: number | null;
-  feedback: string;
-  respondedAt: string | null;
-};
+export type { ReviewFeedbackItem, ReviewsSummary } from '@/lib/review-routing';
 
-export type ReviewsSummary = {
-  totalInvites: number;
-  responded: number;
-  responseRate: number; // 0..1
-  avgRating: number | null;
-  starCounts: Record<1 | 2 | 3 | 4 | 5, number>;
-  googleCount: number;
-  privateCount: number;
-  recentPrivate: ReviewFeedbackItem[];
-};
-
-// Owner-facing rollup of gated review outcomes. Defensive: an un-migrated DB
-// (no review_invites table) degrades to an empty summary rather than throwing.
+// Owner-facing rollup. Defensive: an un-migrated DB (no review_invites table)
+// degrades to an empty summary rather than throwing.
 export async function getReviewsSummary(supabase: SupabaseClient, accountId: string): Promise<ReviewsSummary> {
   const { data, error } = await supabase
     .from('review_invites')
-    .select('id, job_id, client_name, rating, feedback, routed_to, responded_at, created_at')
+    .select('id, job_id, client_name, rating, feedback, routed_to, google_clicked_at, feedback_at, responded_at, created_at')
     .eq('account_id', accountId)
     .order('created_at', { ascending: false });
 
-  const rows = error ? [] : data ?? [];
-  const starCounts: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-  let ratingSum = 0;
-  let responded = 0;
-  let googleCount = 0;
-  let privateCount = 0;
-  const recentPrivate: ReviewFeedbackItem[] = [];
-
-  for (const row of rows) {
-    const rating = row.rating as number | null;
-    if (rating && rating >= 1 && rating <= 5) {
-      starCounts[rating as 1 | 2 | 3 | 4 | 5] += 1;
-      ratingSum += rating;
-      responded += 1;
-    }
-    if (row.routed_to === 'google') googleCount += 1;
-    if (row.routed_to === 'private') {
-      privateCount += 1;
-      if (recentPrivate.length < 25 && row.feedback) {
-        recentPrivate.push({
-          id: row.id as string,
-          jobId: (row.job_id as string | null) ?? null,
-          clientName: (row.client_name as string | null) ?? null,
-          rating,
-          feedback: row.feedback as string,
-          respondedAt: (row.responded_at as string | null) ?? null,
-        });
-      }
-    }
-  }
-
-  return {
-    totalInvites: rows.length,
-    responded,
-    responseRate: rows.length > 0 ? responded / rows.length : 0,
-    avgRating: responded > 0 ? Math.round((ratingSum / responded) * 10) / 10 : null,
-    starCounts,
-    googleCount,
-    privateCount,
-    recentPrivate,
-  };
+  return summariseReviewInvites(error ? [] : ((data ?? []) as ReviewInviteRow[]));
 }
 
-// Count of private (1-3★) feedback submitted in the window — for a dashboard
-// "needs attention" nudge.
+// Count of private feedback in the window — for a dashboard "needs attention"
+// nudge. Reads the new timestamp with the legacy routed_to as a fallback so
+// pre-migration rows still count.
 export async function countRecentPrivateFeedback(supabase: SupabaseClient, accountId: string, days = 30): Promise<number> {
   const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
   const { count, error } = await supabase
     .from('review_invites')
     .select('id', { count: 'exact', head: true })
     .eq('account_id', accountId)
-    .eq('routed_to', 'private')
-    .gte('responded_at', cutoff);
+    .not('feedback', 'is', null)
+    .or(`feedback_at.gte.${cutoff},and(feedback_at.is.null,responded_at.gte.${cutoff})`);
   return error ? 0 : count ?? 0;
 }
 
-// Mint a gated review invite and return its token. The Google destination is
-// snapshotted so the public gate page never has to re-resolve site content.
+// Mint a review invite and return its token. The public destination is
+// snapshotted so the review page never has to re-resolve site content.
 export async function createReviewInvite(
   supabase: SupabaseClient,
   accountId: string,
@@ -121,8 +70,11 @@ export async function createReviewInvite(
   return token;
 }
 
-export async function getReviewInviteByToken(admin: SupabaseClient, token: string): Promise<(ReviewInvite & { business_name: string }) | null> {
-  const { data } = await admin.from('review_invites').select('*').eq('token', token).maybeSingle();
+export async function getReviewInviteByToken(
+  admin: SupabaseClient,
+  token: string,
+): Promise<(ReviewInvite & { business_name: string }) | null> {
+  const { data } = await admin.from('review_invites').select(INVITE_FIELDS).eq('token', token).maybeSingle();
   if (!data) return null;
   const invite = data as ReviewInvite;
   const [{ data: account }, { data: site }] = await Promise.all([
@@ -132,28 +84,72 @@ export async function getReviewInviteByToken(admin: SupabaseClient, token: strin
   return { ...invite, business_name: site?.company_name || account?.business_name || 'your contractor' };
 }
 
-// Record the star rating. 4-5★ routes to Google (marks responded); 1-3★ records
-// the rating but stays open until the client submits their private feedback.
-export async function recordReviewRating(admin: SupabaseClient, token: string, rating: number): Promise<{ routeToGoogle: boolean; googleUrl: string | null }> {
-  const { data: invite } = await admin.from('review_invites').select('google_url').eq('token', token).maybeSingle();
+/**
+ * Record the star rating — and nothing else. It used to decide whether the
+ * customer was allowed to see the Google link; now it's the owner's own service
+ * signal and every rating leads to the same place. See src/lib/review-routing.ts.
+ */
+export async function recordReviewRating(admin: SupabaseClient, token: string, rating: number): Promise<void> {
+  const now = new Date().toISOString();
+  const { data: invite } = await admin
+    .from('review_invites')
+    .select('id, responded_at')
+    .eq('token', token)
+    .maybeSingle();
   if (!invite) throw new Error('Review link not found.');
-  const routeToGoogle = rating >= 4;
+
   await admin
     .from('review_invites')
-    .update({ rating, ...(routeToGoogle ? { routed_to: 'google', responded_at: new Date().toISOString() } : {}) })
+    .update({ rating, ...(invite.responded_at ? {} : { responded_at: now }) })
     .eq('token', token);
-  return { routeToGoogle, googleUrl: (invite.google_url as string | null) ?? null };
 }
 
-// Store the client's private (1-3★) feedback and alert the owner — job feed +
-// email. Never posted publicly; this is the whole point of gating.
+/**
+ * Stamp that the customer took the public route, and hand back where to send
+ * them. Best-effort by design: the caller redirects to Google whether or not the
+ * write lands, because a failed analytics write must never become a closed door.
+ */
+export async function recordGoogleClick(admin: SupabaseClient, token: string): Promise<string | null> {
+  const { data: invite } = await admin
+    .from('review_invites')
+    .select('google_url, responded_at, google_clicked_at')
+    .eq('token', token)
+    .maybeSingle();
+  if (!invite) return null;
+
+  const googleUrl = (invite.google_url as string | null) ?? null;
+  const now = new Date().toISOString();
+  try {
+    await admin
+      .from('review_invites')
+      .update({
+        google_clicked_at: (invite.google_clicked_at as string | null) ?? now,
+        ...(invite.responded_at ? {} : { responded_at: now }),
+      })
+      .eq('token', token);
+  } catch (error) {
+    console.error('Review Google click stamp failed:', error instanceof Error ? error.message : error);
+  }
+  return googleUrl;
+}
+
+/**
+ * Store the customer's private note and alert the owner — job feed + email.
+ * This is an additional channel, never a substitute: the public route stays
+ * open before, during and after leaving one.
+ */
 export async function submitPrivateFeedback(admin: SupabaseClient, token: string, feedback: string): Promise<void> {
-  const { data: invite } = await admin.from('review_invites').select('account_id, job_id, client_name, rating').eq('token', token).maybeSingle();
+  const { data: invite } = await admin
+    .from('review_invites')
+    .select('account_id, job_id, client_name, rating, responded_at')
+    .eq('token', token)
+    .maybeSingle();
   if (!invite) throw new Error('Review link not found.');
 
+  const now = new Date().toISOString();
   await admin
     .from('review_invites')
-    .update({ feedback, routed_to: 'private', responded_at: new Date().toISOString() })
+    .update({ feedback, feedback_at: now, routed_to: 'private', ...(invite.responded_at ? {} : { responded_at: now }) })
     .eq('token', token);
 
   const rating = invite.rating as number | null;
@@ -183,7 +179,11 @@ export async function submitPrivateFeedback(admin: SupabaseClient, token: string
         businessName: account?.business_name || "Let's Get Quoted",
         subject: `New private feedback${rating ? ` (${rating}★)` : ''}`,
         heading: `${clientName} left you private feedback`,
-        bodyLines: [`Rating: ${rating ?? '—'} of 5`, feedback, 'This was kept private — not posted to Google. Reach out to make it right.'],
+        bodyLines: [
+          `Rating: ${rating ?? '—'} of 5`,
+          feedback,
+          'They were also offered the public review link, so reach out quickly — this is your chance to put it right.',
+        ],
         ctaLabel: invite.job_id ? 'Open the job' : 'Open dashboard',
         ctaUrl: invite.job_id ? `${APP_ORIGIN}/dashboard/jobs/${invite.job_id}` : `${APP_ORIGIN}/dashboard`,
         tone: 'warning',

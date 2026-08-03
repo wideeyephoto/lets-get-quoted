@@ -85,7 +85,9 @@ const DEMO_PUBLIC_REVIEWS: ReviewFeedbackItem[] = [
   },
 ];
 
-// 1-3★ that gated to private feedback instead of Google.
+// Customers who chose to say it to the owner rather than in public. They were
+// offered the Google link too — a private note is an extra channel, not a
+// diversion away from one.
 const DEMO_PRIVATE_FEEDBACK: ReviewFeedbackItem[] = [
   {
     id: 'fb-1',
@@ -107,14 +109,19 @@ const DEMO_PRIVATE_FEEDBACK: ReviewFeedbackItem[] = [
   },
 ];
 
+// A believable spread rather than a suspiciously perfect one. The old numbers
+// here — 35 five-stars, zero ones and twos, a 4.9 average — were what a GATED
+// profile looks like, and showing that as the goal was advertising the thing we
+// just removed. A real contractor with 40 asks has a couple of bad days in there.
 const DEMO_SUMMARY: ReviewsSummary = {
   totalInvites: 40,
-  responded: 38,
-  responseRate: 38 / 40,
-  avgRating: 4.9,
-  starCounts: { 1: 0, 2: 0, 3: 2, 4: 1, 5: 35 },
-  googleCount: 36,
+  responded: 34,
+  responseRate: 34 / 40,
+  avgRating: 4.5,
+  starCounts: { 1: 1, 2: 1, 3: 2, 4: 6, 5: 24 },
+  googleCount: 31,
   privateCount: 2,
+  bothCount: 1,
   recentPrivate: DEMO_PRIVATE_FEEDBACK,
 };
 
@@ -131,9 +138,13 @@ export default function DemoReviewsPage() {
           <p className="eyebrow">Reviews</p>
           <h1 className="workspace-title">Reputation &amp; feedback</h1>
           <p className="workspace-lead">
-            Every gated review ask in one place — the happy customers Evergreen Lawn &amp; Landscape sent to
-            Google, and the private feedback that came back instead of a public 1-star. Turn review-gating on in
-            Settings.
+            Every review ask in one place — how customers rated Evergreen Lawn &amp; Landscape, who went on to review
+            them publicly, and what came back privately.
+          </p>
+          <p className="review-policy-note">
+            Every customer is offered both routes: a public review and a private word with the owner. No screening by
+            rating — Google prohibits sending only happy customers to a review page, and it&apos;s the contractor&apos;s
+            Business Profile that gets restricted for it.
           </p>
         </div>
       </section>
@@ -145,14 +156,17 @@ export default function DemoReviewsPage() {
           <p className="workspace-metric-note">{summary.avgRating !== null ? stars(Math.round(summary.avgRating)) : 'No ratings yet'} · {summary.responded} rated</p>
         </article>
         <article className="workspace-metric-card">
-          <span className="workspace-metric-label">Sent to Google</span>
+          <span className="workspace-metric-label">Went to Google</span>
           <strong className="workspace-metric-value">{summary.googleCount}</strong>
-          <p className="workspace-metric-note">Happy customers routed to a public review.</p>
+          <p className="workspace-metric-note">Took the public route. Whether they posted is between them and Google.</p>
         </article>
         <article className="workspace-metric-card">
           <span className="workspace-metric-label">Private feedback</span>
           <strong className="workspace-metric-value">{summary.privateCount}</strong>
-          <p className="workspace-metric-note">Kept off Google so you can make it right.</p>
+          <p className="workspace-metric-note">
+            Straight to the owner, not published.
+            {summary.bothCount > 0 ? ` ${summary.bothCount} of them also went public.` : ''}
+          </p>
         </article>
         <article className="workspace-metric-card">
           <span className="workspace-metric-label">Response rate</span>
@@ -222,8 +236,9 @@ export default function DemoReviewsPage() {
           <h2>Ask for a review</h2>
         </div>
         <p className="workspace-card-copy">
-          Send a gated review link after every job — happy customers go straight to Google, and anything under
-          4★ comes back to you privately so you can make it right. This demo account is read-only.
+          Send a review link after every job. Customers rate the work, then choose to post publicly, tell you
+          privately, or both — so problems reach you fast without your Google profile looking screened. This demo
+          account is read-only.
         </p>
         <Link href="/login" className="btn primary">
           Create free account

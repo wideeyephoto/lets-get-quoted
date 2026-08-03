@@ -743,7 +743,10 @@ export async function sendReviewRequestSms(params: {
   reviewUrl: string;
   accountId?: string;
 }) {
-  const message = `Let's Get Quoted: Hi ${params.clientName}, thanks for choosing ${params.businessName}! If we earned it, a quick review means the world to a small business: ${params.reviewUrl}. Reply STOP to opt out.`;
+  // Ask everyone the same way. "If we earned it" reads as a nudge that only
+  // happy customers should bother, which is the same selective solicitation
+  // Google's review policy prohibits — just worded politely.
+  const message = `Let's Get Quoted: Hi ${params.clientName}, thanks for choosing ${params.businessName}! An honest review helps a small business a lot: ${params.reviewUrl}. Reply STOP to opt out.`;
   const providerId = await sendTwilioMessage(params.phone, message);
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;
