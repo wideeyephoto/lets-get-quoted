@@ -157,7 +157,19 @@ export default function LeadsWorkspace({ leads, initialView, mapView, mapTheme, 
   // The view/map settings gear. Lives on the map's legend row when the map is
   // shown; falls back to a small bar when the map is off, so it's always reachable.
   const gear = (
-    <ViewGear views={VIEW_OPTIONS} activeView={view} onPickView={pickView} mapView={mapView} onSetMapView={setMap} mapTheme={mapTheme} onSetMapTheme={setTheme} label="View" />
+    <ViewGear
+      views={VIEW_OPTIONS}
+      activeView={view}
+      onPickView={pickView}
+      mapView={mapView}
+      onSetMapView={setMap}
+      mapTheme={mapTheme}
+      onSetMapTheme={setTheme}
+      label="View"
+      // Mirrors normalizeLeadsView / normalizeMapView / normalizeMapTheme — the
+      // values this page renders for someone with no cookies at all.
+      defaults={{ view: 'focus', mapView: 'large', mapTheme: 'dark' }}
+    />
   );
 
   return (

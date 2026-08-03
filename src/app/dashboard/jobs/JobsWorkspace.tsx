@@ -123,7 +123,18 @@ export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme, ma
   const gear = (
     <div className={styles.gearRow}>
       {toolbarAccessory}
-      <ViewGear views={VIEWS} activeView={view} onPickView={pickView} mapView={mapView} onSetMapView={setMap} mapTheme={mapTheme} onSetMapTheme={setTheme} label="View" />
+      <ViewGear
+        views={VIEWS}
+        activeView={view}
+        onPickView={pickView}
+        mapView={mapView}
+        onSetMapView={setMap}
+        mapTheme={mapTheme}
+        onSetMapTheme={setTheme}
+        label="View"
+        // Mirrors normalizeJobsView / normalizeMapView / normalizeMapTheme.
+        defaults={{ view: 'focus', mapView: 'large', mapTheme: 'dark' }}
+      />
     </div>
   );
 

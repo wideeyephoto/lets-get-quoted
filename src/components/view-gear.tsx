@@ -45,6 +45,7 @@ export default function ViewGear<T extends string, S extends string = string>({
   mapTheme,
   onSetMapTheme,
   label,
+  defaults,
 }: {
   views?: ViewOption<T>[];
   activeView?: T;
@@ -62,6 +63,19 @@ export default function ViewGear<T extends string, S extends string = string>({
   mapTheme?: MapTheme;
   onSetMapTheme?: (next: MapTheme) => void;
   label?: string; // fixed button label; defaults to the active view's name
+  /**
+   * What this surface opens as for someone who has never chosen. Supplying it
+   * adds a "Reset to default" row, shown ONLY while something differs — there
+   * is otherwise no way back: every one of these controls writes a cookie, and
+   * once written the page can never show you the default again.
+   *
+   * Reset re-applies these through the same setters rather than deleting the
+   * cookies, so it needs no server action of its own. The cookie ends up
+   * holding today's default explicitly, which only matters if the default is
+   * ever changed under someone who reset — a trade worth one component instead
+   * of a bespoke action on every surface that uses this menu.
+   */
+  defaults?: { view?: T; skin?: S; mapView?: MapView; mapTheme?: MapTheme };
 }) {
   const [open, setOpen] = useState(false);
   const [openUp, setOpenUp] = useState(false);
@@ -81,6 +95,19 @@ export default function ViewGear<T extends string, S extends string = string>({
   const showSkins = Boolean(skins && skins.length > 0 && onPickSkin);
   const showMapOptions = typeof mapView === 'string' && Boolean(onSetMapView);
   const showMapTheme = showMapOptions && mapView !== 'off' && typeof mapTheme === 'string' && Boolean(onSetMapTheme);
+
+  // Only compare a setting this surface actually shows — the schedule page has
+  // no view list, and counting its absent view as "changed" would leave Reset
+  // permanently offered with nothing to reset.
+  const changed: (() => void)[] = [];
+  if (defaults) {
+    if (showViews && defaults.view !== undefined && activeView !== defaults.view) changed.push(() => onPickView?.(defaults.view as T));
+    if (showSkins && defaults.skin !== undefined && activeSkin !== defaults.skin) changed.push(() => onPickSkin?.(defaults.skin as S));
+    if (showMapOptions && defaults.mapView !== undefined && mapView !== defaults.mapView) changed.push(() => onSetMapView?.(defaults.mapView as MapView));
+    // Map theme is only reachable while the map is on, so resetting it when the
+    // map is off would write a cookie for a control the owner cannot even see.
+    if (showMapTheme && defaults.mapTheme !== undefined && mapTheme !== defaults.mapTheme) changed.push(() => onSetMapTheme?.(defaults.mapTheme as MapTheme));
+  }
 
   // Open the menu upward when there isn't room below, so it's never cut off.
   function toggle() {
@@ -179,6 +206,22 @@ export default function ViewGear<T extends string, S extends string = string>({
                   <small>{t.hint}</small>
                 </button>
               ))}
+            </>
+          )}
+          {changed.length > 0 && (
+            <>
+              <div className={styles.sep} />
+              <button
+                type="button"
+                role="menuitem"
+                className={styles.opt}
+                onClick={() => { for (const apply of changed) apply(); setOpen(false); }}
+              >
+                <strong>Reset to default</strong>
+                <small>
+                  {changed.length === 1 ? 'Put this back the way it opens' : 'Put all of these back the way they open'}
+                </small>
+              </button>
             </>
           )}
         </div>
