@@ -388,6 +388,10 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   // What they already typed still travels with the lead — submitLead carries
   // the description — they just don't get a price first.
   function skipTheEstimate() {
+    // Belt-and-braces on the render guard above. A lead with no description is
+    // a phone number and a shrug — the contractor has to ring back just to find
+    // out what the job is, which is the phone tag this form exists to remove.
+    if (!description.trim()) return;
     classifyAbortRef.current?.abort();
     setStatus(null);
     setEstimate(null);
@@ -618,11 +622,29 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
             }}
           />
           <button type="submit" disabled={isClassifying}>{isClassifying ? thinking : 'Continue'}</button>
-          {/* The plain way through. Never disabled while classifying — being
-              usable mid-wait is the entire point of it. */}
-          <button type="button" className={styles.heroFormRestart} onClick={skipTheEstimate}>
-            {isClassifying ? 'Taking too long? Just send my details →' : 'Skip the estimate — just send my details →'}
-          </button>
+          {/* The escape hatch exists ONLY while a classification is in flight.
+              It used to sit here permanently as "Skip the estimate — just send
+              my details", and that was wrong twice over.
+
+              It bypassed validation: this is a type="button", so it ignored the
+              `required` above and a visitor who clicked it with an empty box
+              arrived at the contact step with nowhere left to say what they
+              wanted. The contractor got a name, a number and an address for a
+              job nobody had described.
+
+              And it framed the estimate as friction. Offering to skip a step
+              says that step is for the customer's benefit and costs nothing to
+              drop — when the description is the single most useful thing on the
+              form for the person receiving it.
+
+              While classifying it's a different offer: a hung AI call must not
+              trap anybody, and by then they HAVE described the job, because
+              submitting is what started the call. */}
+          {isClassifying && (
+            <button type="button" className={styles.heroFormRestart} onClick={skipTheEstimate}>
+              Taking too long? Just send my details →
+            </button>
+          )}
         </div>
       )}
 

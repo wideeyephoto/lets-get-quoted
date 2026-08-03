@@ -91,6 +91,14 @@ export async function POST(request: NextRequest) {
   if (!siteId || !name) {
     return NextResponse.json({ error: 'Add your name to send this request.' }, { status: 400 });
   }
+  // What the work IS. Both forms mark this required, but `required` is a browser
+  // courtesy that any direct POST skips — and until now nothing here checked,
+  // so a lead could arrive as a name, a number and an address for a job nobody
+  // had described. That is a callback just to find out what someone wants,
+  // which is the phone tag this form exists to remove.
+  if (!message) {
+    return NextResponse.json({ error: 'Tell us what you need done so we can help.' }, { status: 400 });
+  }
   if (phone && !normalizeUsPhone(phone)) {
     return NextResponse.json({ error: 'Enter a valid phone number.' }, { status: 400 });
   }
