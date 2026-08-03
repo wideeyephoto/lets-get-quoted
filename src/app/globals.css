@@ -9650,6 +9650,49 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 .field-milestone-phase { display: flex; gap: 1rem; font-size: 0.85rem; }
 .field-milestone-phase label { display: flex; align-items: center; gap: 0.3rem; }
 
+/* Marketing calendar. */
+.marketing-context { margin: 0 0 1rem; font-size: 0.88rem; line-height: 1.55; color: var(--mute-t55); }
+.marketing-list { display: flex; flex-direction: column; gap: 0.9rem; }
+.marketing-beat {
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--tint), 0.16);
+  background: rgba(var(--tint), 0.04);
+}
+.marketing-beat-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; }
+.marketing-month {
+  display: inline-block;
+  margin-right: 0.55rem;
+  padding: 0.08rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.1);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.marketing-beat-meta { font-size: 0.76rem; color: var(--mute-t45); }
+.marketing-why { margin: 0.45rem 0 0; font-size: 0.85rem; line-height: 1.5; color: var(--mute-t55); }
+.marketing-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.7rem; }
+.marketing-error { font-size: 0.78rem; color: var(--ink-orange-1); flex: 1 1 14rem; }
+.marketing-draft {
+  margin-top: 0.7rem;
+  padding: 0.8rem 0.95rem;
+  border-radius: 12px;
+  border: 1px dashed rgba(var(--tint), 0.28);
+}
+.marketing-draft p { margin: 0.5rem 0 0; font-size: 0.88rem; line-height: 1.6; }
+.marketing-cta { font-weight: 600; }
+/* The reason there's no "text them" button, where somebody would look for it. */
+.marketing-sms-note {
+  margin: 1.2rem 0 0;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.05);
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: var(--mute-t55);
+}
+
 /* Selection board — owner side. */
 .selection-board { display: flex; flex-direction: column; gap: 1rem; margin-top: 0.6rem; }
 .selection-summary { display: flex; justify-content: space-between; gap: 0.8rem; flex-wrap: wrap; font-size: 0.85rem; color: var(--mute-t55); }
