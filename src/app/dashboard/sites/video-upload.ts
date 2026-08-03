@@ -62,8 +62,26 @@ export function videoUploadError(file: File, budget: VideoBudget = 'band'): stri
 // is a missing poster and nothing more.
 type FrameOutcome = 'ok' | 'error' | 'timeout';
 
+// 8 seconds was too tight. The whole thing completes in under a second on a
+// warm local file, but the first read of one living in OneDrive, iCloud or a
+// network share has to pull it down before a single byte reaches the decoder,
+// and that has no bound worth guessing at. A long ceiling only ever delays the
+// FAILURE case; a short one turns a slow disk into a missing poster.
+const FRAME_TIMEOUT_MS = 25000;
+// If a frame has decoded but the seek won't land, take the frame we already
+// have rather than waiting out the full ceiling for a prettier one.
+const SEEK_TIMEOUT_MS = 5000;
+
 function readVideoFrame(file: File): Promise<{ frame: Blob | null; duration: number; outcome: FrameOutcome }> {
   return new Promise((resolve) => {
+    const startedAt = Date.now();
+    // Which phases were actually reached. A bare "timeout" says nothing about
+    // whether the browser never opened the file, opened it and couldn't decode,
+    // or decoded it and wouldn't seek — three different problems that were all
+    // reported identically, and none of them reproduce on a developer machine.
+    const phases: string[] = [];
+    const mark = (phase: string) => phases.push(`${phase}@${Date.now() - startedAt}ms`);
+
     const objectUrl = URL.createObjectURL(file);
     const video = document.createElement('video');
     let settled = false;
@@ -76,11 +94,17 @@ function readVideoFrame(file: File): Promise<{ frame: Blob | null; duration: num
       if (settled) return;
       settled = true;
       URL.revokeObjectURL(objectUrl);
+      if (!result.frame) {
+        // Printed rather than stored: it is diagnostic detail for whoever is
+        // looking, not something to persist on a contractor's site content.
+        console.warn(
+          `[video] no still frame captured (${result.outcome}) for ${file.name} · ${(file.size / 1024 / 1024).toFixed(2)} MB · ${file.type || 'no type'} · phases: ${phases.join(' -> ') || 'none reached'}`,
+        );
+      }
       resolve(result);
     };
 
-    // A decode that never fires an event would otherwise hang the upload.
-    const timeout = window.setTimeout(() => finish({ frame: null, duration: knownDuration, outcome: 'timeout' }), 8000);
+    const timeout = window.setTimeout(() => { mark('gave-up'); finish({ frame: null, duration: knownDuration, outcome: 'timeout' }); }, FRAME_TIMEOUT_MS);
 
     // No crossOrigin: this is a blob: URL for a file the user just picked, so
     // there is no origin to negotiate and nothing that could taint the canvas.
@@ -88,19 +112,31 @@ function readVideoFrame(file: File): Promise<{ frame: Blob | null; duration: num
     video.muted = true;
     video.playsInline = true;
 
+    video.addEventListener('loadstart', () => mark('loadstart'));
+    video.addEventListener('stalled', () => mark('stalled'));
     video.addEventListener('loadedmetadata', () => {
+      mark('metadata');
       if (Number.isFinite(video.duration)) knownDuration = Math.round(video.duration);
     });
 
-    video.addEventListener('error', () => { window.clearTimeout(timeout); finish({ frame: null, duration: knownDuration, outcome: 'error' }); });
+    video.addEventListener('error', () => {
+      mark(`error(${video.error?.code ?? '?'})`);
+      window.clearTimeout(timeout);
+      finish({ frame: null, duration: knownDuration, outcome: 'error' });
+    });
 
     video.addEventListener('loadeddata', () => {
+      mark('decoded');
       const duration = Number.isFinite(video.duration) ? Math.round(video.duration) : knownDuration;
       // A frame from the very first moment is often a black fade-in, so take one
       // a little way in — but never past the end of a very short clip.
       const at = Math.min(1, Math.max(0, (video.duration || 0) / 10));
+      let drawn = false;
       const draw = () => {
+        if (drawn) return;
+        drawn = true;
         window.clearTimeout(timeout);
+        window.clearTimeout(seekTimer);
         try {
           const canvas = document.createElement('canvas');
           canvas.width = video.videoWidth || 1280;
@@ -110,12 +146,17 @@ function readVideoFrame(file: File): Promise<{ frame: Blob | null; duration: num
           // the browser has already decoded a frame to get this far.
           if (!ctx) return finish({ frame: null, duration, outcome: 'ok' });
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          mark('drawn');
           canvas.toBlob((blob) => finish({ frame: blob, duration, outcome: 'ok' }), 'image/jpeg', 0.82);
         } catch {
           finish({ frame: null, duration, outcome: 'ok' });
         }
       };
-      video.addEventListener('seeked', draw, { once: true });
+      // `loadeddata` means a frame IS decoded and drawable. So if the seek
+      // doesn't land, draw the frame already in hand — a poster from the first
+      // moment beats no poster, and beats waiting out the ceiling for one.
+      const seekTimer = window.setTimeout(() => { mark('seek-gave-up'); draw(); }, SEEK_TIMEOUT_MS);
+      video.addEventListener('seeked', () => { mark('seeked'); draw(); }, { once: true });
       try { video.currentTime = at; } catch { draw(); }
     });
 
@@ -145,7 +186,13 @@ export async function uploadSiteVideo(file: File, budget: VideoBudget = 'band'):
 
   // Read the frame first: it works on the local file, so a browser that can't
   // decode the container is discovered before anything is uploaded.
-  const [{ frame, duration, outcome }, codec] = await Promise.all([readVideoFrame(file), readCodec(file)]);
+  // Sequential, not Promise.all. These both read the same file, and the codec
+  // sniff is the cheap one — a 1 MB slice. Running it first means that if the
+  // file is a cloud placeholder (OneDrive, iCloud, a network share), it is the
+  // read that pays the hydration cost, and the video element then opens a file
+  // that is already local instead of the two of them contending over a download.
+  const codec = await readCodec(file);
+  const { frame, duration, outcome } = await readVideoFrame(file);
 
   // Only a genuine decode ERROR is evidence about playback. A timed-out frame
   // grab says nothing about whether the clip plays — treating it as though it
