@@ -439,10 +439,35 @@ export async function refundPayment(
     // write) or a double-click computes the SAME key (same paymentId + already +
     // requested), so Stripe returns the ORIGINAL refund instead of creating a second
     // one. A genuinely different slice yields a different key and a new refund.
+    //
+    // TAKE THE MONEY BACK FROM WHERE IT ACTUALLY WENT
+    //
+    // Every charge here is a DESTINATION charge: created on the platform with
+    // transfer_data.destination, so Stripe immediately moves (amount − fee) to
+    // the contractor's connected account (see createCheckoutSession, and the same
+    // shape in recurring, payment-plans and dunning).
+    //
+    // Both flags below default to FALSE. Without them a refund is funded entirely
+    // out of the PLATFORM balance while the contractor keeps their transfer — so
+    // refunding $1,000 sent $1,000 to the customer, left $987.50 with the
+    // contractor, and cost us $987.50 of our own money. Every time. Quick Stop
+    // cancellations refund automatically on a tier schedule, so this would have
+    // been a standing, self-service withdrawal from our balance.
+    //
+    //   reverse_transfer      pulls the contractor's share back, proportionally
+    //                         on a partial. This is the one that stops the loss.
+    //   refund_application_fee returns our platform fee too. We don't keep a cut
+    //                         of a transaction that got undone — and it lands
+    //                         everyone (customer, contractor, us) back at zero.
+    //
+    // Stripe only lets the application that created the charge set either, which
+    // is us. On a partial refund both are applied proportionally.
     const refund = await stripe.refunds.create(
       {
         payment_intent: payment.stripe_payment_intent,
         ...(isFull ? {} : { amount: requestedCents }),
+        reverse_transfer: true,
+        refund_application_fee: true,
         metadata: {
           payment_id: paymentId,
           reason: 'Refunded by contractor',

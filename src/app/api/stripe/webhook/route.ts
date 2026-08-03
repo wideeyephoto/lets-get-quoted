@@ -483,12 +483,24 @@ export async function POST(request: Request) {
             if (payment.invoice_id) {
               await admin.from('invoices').update({ status: 'void' }).eq('id', payment.invoice_id);
             }
-            await createDisputeFeedEvent(admin, payment.id, 'dispute_lost', 'Chargeback lost', 'The dispute was lost and the funds were withdrawn from your balance.');
+            // Says what is certainly true, and no more.
+            //
+            // These three strings used to tell the contractor the money came out
+            // of THEIR balance — while the comment on the dispute-created handler
+            // above says this platform is the losses_collector, i.e. it comes out
+            // of OURS. Both can't be right, and a message about whose money moved
+            // is exactly the kind a contractor will act on: reconciling against a
+            // balance that never changed, or chasing us about one that did.
+            //
+            // What holds either way is that the payment is no longer collected
+            // and the invoice is void. Whose balance settles it is a Connect
+            // controller setting, so it doesn't belong in a hardcoded sentence.
+            await createDisputeFeedEvent(admin, payment.id, 'dispute_lost', 'Chargeback lost', 'The dispute was resolved in the homeowner’s favour, so this payment no longer counts as collected.');
             await emailContractorAlert(admin, payment.account_id, {
-              subject: 'Chargeback lost — funds withdrawn',
+              subject: 'Chargeback lost',
               heading: 'A chargeback was resolved against you',
               bodyLines: [
-                'The payment dispute was lost, and the funds were withdrawn from your balance.',
+                'The homeowner’s bank decided the dispute in their favour, so this payment no longer counts as collected.',
                 'Any invoice linked to this payment has been voided.',
               ],
               ctaLabel: 'Open the job',
