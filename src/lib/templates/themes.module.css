@@ -2112,7 +2112,13 @@
 .mobileNavLinks a:hover, .mobileNavLinks a:active { background: color-mix(in srgb, #fff 8%, transparent); color: var(--theme-accent, #f0b429); }
 .mobileNavCall { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 44px; margin-top: .45rem; padding: .6rem 1rem; border-radius: 10px; background: var(--theme-accent, #f0b429); color: var(--theme-on-accent, #111); font-weight: 800; font-size: .95rem; text-decoration: none; }
 @media (max-width: 900px) {
-  .mobileNavToggle { display: inline-flex; }
+  /* justify-self is load-bearing, not a nicety.
+     The grid below is `auto 1fr auto` — brand | CTA | menu — but the CTA is
+     hidden on mobile two rules down, which leaves only TWO grid items. The
+     toggle then lands in the middle 1fr column and sits flush against the logo
+     with the whole header empty to its right. Ending it inside its own column
+     puts it top-right whether that column is the 1fr or the final auto. */
+  .mobileNavToggle { display: inline-flex; justify-self: end; }
   /* All template headers keep three mobile columns — brand | CTA | menu —
      so the toggle sits top-right without wrapping to a second row. */
   .forgeHeader, .guildHeader, .vistaHeader, .careHeader, .coatHeader, .fixitHeader, .renoHeader, .shineHeader { grid-template-columns: auto 1fr auto; }
