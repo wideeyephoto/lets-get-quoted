@@ -125,7 +125,12 @@ function VideoFrame({ item, behavior, neverAutoplay, className, playLabel, cover
         loop={behavior.loop}
         controls={behavior.controls && (started || wantsAutoplay)}
         playsInline
-        preload={wantsAutoplay ? 'auto' : 'metadata'}
+        // Never "auto". Whether it autoplays or waits for a click, the fetch is
+        // started by a play() call — preload only decides what to pull down
+        // BEFORE that, which on a band nobody scrolls to is the whole file for
+        // nothing. "metadata" keeps the duration and dimensions so the frame
+        // sizes correctly and the tile can say how long the clip is.
+        preload="metadata"
         // A silent looping backdrop is decoration, not content — announcing it
         // to a screen reader interrupts the copy it sits behind.
         aria-hidden={cover && !behavior.controls ? true : undefined}

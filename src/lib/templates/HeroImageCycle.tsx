@@ -106,7 +106,44 @@ function HeroVideoBackdrop({
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const small = window.matchMedia('(max-width: 720px)').matches;
     if (reduced || small) return;
-    setPlay(true);
+
+    // Same argument, asked directly rather than inferred from screen width: a
+    // browser in data-saver mode, or on a connection it knows is slow, is one
+    // where a decorative background clip is the wrong thing to spend on. Both
+    // are non-standard, hence the cautious read.
+    const connection = (navigator as Navigator & {
+      connection?: { saveData?: boolean; effectiveType?: string };
+    }).connection;
+    if (connection?.saveData) return;
+    if (connection?.effectiveType && /(^|-)2g$/.test(connection.effectiveType)) return;
+
+    // WAIT FOR THE PAGE TO FINISH BEFORE PULLING DOWN A VIDEO.
+    //
+    // The clip can be tens of megabytes, and the hero POSTER is the largest
+    // contentful paint — the thing the page is measured on. Starting the video
+    // during load puts the two in a fight for the same bandwidth that the
+    // decoration wins, because it is bigger. Deferring past `load` costs a
+    // second of still frame, which is what a poster is for, and keeps the
+    // measured paint the image.
+    let idle = 0;
+    const begin = () => {
+      const requestIdle = window.requestIdleCallback;
+      // Idle if the browser offers it, with a timeout so a busy page still
+      // starts; a plain timeout otherwise.
+      idle = requestIdle
+        ? requestIdle(() => setPlay(true), { timeout: 2000 })
+        : window.setTimeout(() => setPlay(true), 200);
+    };
+
+    if (document.readyState === 'complete') {
+      begin();
+      return () => { if (idle) (window.cancelIdleCallback ?? window.clearTimeout)(idle); };
+    }
+    window.addEventListener('load', begin, { once: true });
+    return () => {
+      window.removeEventListener('load', begin);
+      if (idle) (window.cancelIdleCallback ?? window.clearTimeout)(idle);
+    };
   }, []);
 
   useEffect(() => {
@@ -145,7 +182,11 @@ function HeroVideoBackdrop({
       muted
       loop
       playsInline
-      preload="auto"
+      // NOT "auto". preload is a hint about what to fetch BEFORE anyone asks —
+      // and nobody has to ask here, because the play() below starts the fetch
+      // itself. So "auto" bought nothing except a head start against the hero
+      // image during the critical window, on a file that can be 50 MB.
+      preload="none"
       aria-hidden
       tabIndex={-1}
       draggable={false}
