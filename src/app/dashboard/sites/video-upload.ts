@@ -32,6 +32,9 @@ export type UploadedVideo = {
   duration: number;
   /** '' when the clip should play everywhere. See videoPlaybackWarning. */
   playbackWarning: string;
+  /** Stamped here because this is the only moment anyone knows it. Feeds
+      VideoObject's required uploadDate — see lib/seo/video-seo. */
+  uploadedAt: string;
 };
 
 export function videoUploadError(file: File): string | null {
@@ -147,5 +150,5 @@ export async function uploadSiteVideo(file: File): Promise<UploadedVideo> {
     }
   }
 
-  return { url: signed.publicUrl, posterUrl, duration, playbackWarning };
+  return { url: signed.publicUrl, posterUrl, duration, playbackWarning, uploadedAt: new Date().toISOString() };
 }

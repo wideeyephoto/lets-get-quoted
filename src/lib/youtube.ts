@@ -109,3 +109,18 @@ export function youTubeEmbedSrc(video: YouTubeVideo, opts: { autoplay: boolean; 
 export function youTubeThumbnail(video: YouTubeVideo): string {
   return `https://i.ytimg.com/vi/${video.id}/mqdefault.jpg`;
 }
+
+// The thumbnail for structured data, where bigger is better and a missing image
+// costs the whole rich result. hqdefault (480x360) is the largest size YouTube
+// generates for EVERY video — maxresdefault only exists for HD uploads, so using
+// it would 404 on exactly the older phone-shot clips a contractor is most likely
+// to have on their channel.
+export function youTubeSchemaThumbnail(video: YouTubeVideo): string {
+  return `https://i.ytimg.com/vi/${video.id}/hqdefault.jpg`;
+}
+
+// The canonical page for a video, for schema's `url` — where a person would land
+// if they clicked the result, as opposed to embedUrl's player.
+export function youTubeWatchUrl(video: YouTubeVideo): string {
+  return `https://www.youtube.com/watch?v=${video.id}`;
+}

@@ -293,6 +293,13 @@ export type SiteVideoItem = {
    * cost more than the warning is worth. It never blocks publishing.
    */
   playbackWarning: string;
+  /**
+   * ISO date the clip was added, for VideoObject's `uploadDate` — which Google
+   * requires for a video rich result. Stamped at upload; '' on anything added
+   * before this existed, where the schema falls back to the site's own
+   * updated_at rather than inventing a date. See lib/seo/video-seo.
+   */
+  uploadedAt: string;
   // Testimonial fields — carried per video so a carousel can hold several
   // customers, each with their own words.
   quote: string;
@@ -1009,6 +1016,7 @@ function parseVideoItems(value: unknown): SiteVideoItem[] {
     // Absent on every clip uploaded before this existed, which reads as '' —
     // "nothing known against it" — rather than a false alarm on old sites.
     playbackWarning: toString(item.playbackWarning).slice(0, 400),
+    uploadedAt: toString(item.uploadedAt).slice(0, 40),
     quote: toString(item.quote).slice(0, 400),
     author: toString(item.author).slice(0, 60),
     authorLabel: toString(item.authorLabel).slice(0, 60),

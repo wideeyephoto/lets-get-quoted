@@ -766,6 +766,8 @@
 .vsLinkRow button { min-height: 34px; padding: .3rem .8rem; border: 0; border-radius: 6px; background: #ff7a21; color: #14110b; font-weight: 800; font-size: .78rem; cursor: pointer; }
 .vsInlineInput { width: 100%; min-width: 0; min-height: 32px; padding: .35rem .5rem; border: 1px solid rgba(var(--tint), .14); border-radius: 6px; background: rgba(var(--panel-rgb), .5); color: var(--text); font-size: .78rem; font-family: inherit; resize: vertical; }
 .vsInlineInput::placeholder { color: var(--ink-mod-grey-29); }
+/* Quiet nudge under a field — not a warning, just a reason to fill it in. */
+.vsHint { display: block; margin: -.1rem 0 0; color: var(--mute-t60); font-size: .7rem; line-height: 1.45; }
 .vsInlinePair { display: grid; grid-template-columns: 1fr 1fr; gap: .35rem; }
 .vsAddRow { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 

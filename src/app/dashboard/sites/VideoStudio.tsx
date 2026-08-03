@@ -70,7 +70,7 @@ function newVideoId() {
 }
 
 function blankVideo(): SiteVideoItem {
-  return { id: newVideoId(), url: '', posterUrl: '', label: '', duration: 0, playbackWarning: '', quote: '', author: '', authorLabel: '' };
+  return { id: newVideoId(), url: '', posterUrl: '', label: '', duration: 0, playbackWarning: '', uploadedAt: '', quote: '', author: '', authorLabel: '' };
 }
 
 export default function VideoStudio({ content, onChange, onClose }: VideoStudioProps) {
@@ -130,6 +130,7 @@ export default function VideoStudio({ content, onChange, onClose }: VideoStudioP
           posterUrl: uploaded.posterUrl,
           duration: uploaded.duration,
           playbackWarning: uploaded.playbackWarning,
+          uploadedAt: uploaded.uploadedAt,
         });
       } else {
         setVideos([...content.videos, { ...blankVideo(), ...uploaded }]);
@@ -266,8 +267,26 @@ export default function VideoStudio({ content, onChange, onClose }: VideoStudioP
                         <strong>May not play for some visitors.</strong> {item.playbackWarning}
                       </p>
                     )}
-                    {content.style === 'reel' && (
-                      <input className={styles.vsInlineInput} value={item.label} maxLength={60} placeholder="Caption on the tile — e.g. Roof reveal" onChange={(event) => patchVideo(item.id, { label: event.target.value })} />
+                    {/* Shown for every style, not just reel.
+                        The reel is the only layout that PRINTS this caption, so
+                        it used to be the only one that asked for it — but every
+                        clip, including the ones a single-video layout parks, is
+                        listed on /videos and described in that page's structured
+                        data. Unnamed, they all inherit the band's headline, so a
+                        band with three clips published three identically-named
+                        videos to Google. The owner had no field to fix it with. */}
+                    <input
+                      className={styles.vsInlineInput}
+                      value={item.label}
+                      maxLength={60}
+                      placeholder={content.style === 'reel' ? 'Caption on the tile — e.g. Roof reveal' : 'Name this clip — e.g. Roof reveal'}
+                      aria-label="Clip name"
+                      onChange={(event) => patchVideo(item.id, { label: event.target.value })}
+                    />
+                    {index > 0 && !item.label.trim() && index >= capacity && (
+                      <small className={styles.vsHint}>
+                        Parked clips still appear on your Videos page — give this one a name so it isn’t listed under the same title as the others.
+                      </small>
                     )}
                     {content.style === 'testimonial' && (
                       <>
