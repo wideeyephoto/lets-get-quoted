@@ -53,11 +53,18 @@ export default function FocusView({
   jobs,
   onSelect,
   openRequest,
+  details,
 }: {
   jobs: JobViewItem[];
   onSelect?: (jobId: string | null) => void;
   /** A pin on the map asking for a job; the nonce lets the same one repeat. */
   openRequest?: { id: string; nonce: number } | null;
+  /**
+   * Pre-loaded detail, keyed by job id. Supplying it makes the pane read from
+   * memory instead of calling the API — which is what lets the logged-out demo
+   * render THIS component rather than a replica of it that drifts.
+   */
+  details?: Record<string, JobDetailDto>;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(jobs[0]?.id ?? null);
   const [detail, setDetail] = useState<JobDetailDto | null>(null);
@@ -120,6 +127,9 @@ export default function FocusView({
 
   const fetchDetail = useCallback(
     async (id: string, signal?: AbortSignal): Promise<JobDetailDto | null> => {
+      // Pre-loaded wins outright: there is no endpoint to fall back to when the
+      // caller supplied its own data, and a miss here means the id is unknown.
+      if (details) return details[id] ?? null;
       const response = await fetch(`/api/jobs/${id}/detail`, { cache: 'no-store', signal });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body?.error || 'Could not load that job.');
@@ -128,7 +138,7 @@ export default function FocusView({
       writeCache(id, value);
       return value;
     },
-    [writeCache],
+    [details, writeCache],
   );
 
   // Selection -> detail. Debounced so holding ArrowDown through the list fires

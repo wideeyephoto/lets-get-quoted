@@ -49,12 +49,20 @@ export default function LeadFocusView({
   run,
   onSelect,
   openRequest,
+  details,
 }: {
   leads: LeadViewItem[];
   run: (fn: () => Promise<unknown>) => void;
   onSelect?: (leadId: string | null) => void;
   /** A pin on the map asking for a lead; the nonce lets the same one repeat. */
   openRequest?: { id: string; nonce: number } | null;
+  /**
+   * Pre-loaded detail, keyed by lead id. Supplying it makes the pane read from
+   * memory instead of calling the API — which is what lets the logged-out demo
+   * render THIS component rather than a replica of it that drifts. Absent in
+   * the real app, where the detail is far too big to ship with the list.
+   */
+  details?: Record<string, LeadDetailDto>;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(leads[0]?.id ?? null);
   const [detail, setDetail] = useState<LeadDetailDto | null>(null);
@@ -118,6 +126,9 @@ export default function LeadFocusView({
 
   const fetchDetail = useCallback(
     async (id: string, signal?: AbortSignal): Promise<LeadDetailDto | null> => {
+      // Pre-loaded wins outright: there is no endpoint to fall back to when the
+      // caller supplied its own data, and a miss here means the id is unknown.
+      if (details) return details[id] ?? null;
       const response = await fetch(`/api/leads/${id}/detail`, { cache: 'no-store', signal });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body?.error || 'Could not load that lead.');
@@ -126,7 +137,7 @@ export default function LeadFocusView({
       writeCache(id, value);
       return value;
     },
-    [writeCache],
+    [details, writeCache],
   );
 
   // Selection -> detail. Debounced so holding ArrowDown through the list fires
