@@ -66,18 +66,28 @@
      bright and desaturated on the dark ground, deep and saturated on the light
      one. The MEANING is the token; the hex is just how it lands.
      Fills and gradients keep their own literals — a green chip's wash is not
-     its text. */
-  --good: var(--good);
-  --warn: var(--warn);
-  --bad: var(--bad);
-  --info: var(--info);
+     its text.
+
+     THESE FIVE WERE WRITTEN AS `--good: var(--good)` AND SHIPPED THAT WAY. A
+     custom property that references itself is invalid, so every one of them
+     resolved to nothing on the DEFAULT theme — the token existed only under
+     [data-theme='light'] below. Anything using `color: var(--good)` silently
+     inherited its parent's colour instead, which is why "Website: Live" in the
+     top bar stopped being green: the same commit that introduced the tokens
+     also swapped that label from #34d399 over to var(--good).
+     Nothing errors, nothing logs, and a status colour just quietly stops
+     meaning anything — check a computed value, not the stylesheet. */
+  --good: #7fe0b2;
+  --warn: #ffd591;
+  --bad: #ffb4a7;
+  --info: #a9c8ff;
   /* The gold used as a label/eyebrow. --accent-2 stays hue for gradients and
      washes; this is the same idea when it has to be read as words. */
   --gold-ink: #ffd166;
   /* The accent when it has to be READ rather than filled: 'Selected lead',
      'Hot', a highlighted figure. Orange tints that glow on navy sit at 2:1 on
      paper, so light gets a burnt version at the same meaning. */
-  --accent-ink: var(--accent-ink);
+  --accent-ink: #ff9d5c;
   /* Ink on the active nav row, which is an accent WASH rather than a solid
      accent — so --on-accent (built for solid orange) is wrong here. */
   --on-active: #fff;

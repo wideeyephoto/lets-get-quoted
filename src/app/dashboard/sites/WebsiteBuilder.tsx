@@ -6,7 +6,7 @@ import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getSiteContent, getTradeGlyphOptions, glyphForContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES,
   MENU_BUTTON_STYLES,
-  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
+  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, DEFAULT_VIDEOS_NAV_LABEL, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
 import { generatePrivacyPolicy, generateTermsOfService } from '@/lib/legal/legal-copy';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
@@ -1384,6 +1384,12 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
 
   // Video card hint. A section switched on with nothing to play publishes
   // nothing, so it says so rather than showing a confident "On".
+  // Every clip across every section — what decides whether offering a link to
+  // the /videos page makes sense at all.
+  const allVideoClipCount = siteContent.videoSections.reduce(
+    (total, section) => total + section.videos.filter((clip) => clip.url.trim()).length, 0,
+  );
+
   const videoCards = siteContent.videoSections.map((section, index) => {
     const clips = section.videos.filter((item) => item.url.trim());
     return {
@@ -1393,7 +1399,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
       shown: Math.min(clips.length, videoStyleCapacity(section.style)),
       hint: contentHint(section.enabled, clips.length, 'video') as { hint?: string; hintTone?: 'ok' | 'warn' },
       // Numbered only once there is more than one, matching reorderableSectionsFor.
-      label: siteContent.videoSections.length === 1 ? 'Video' : `Video ${index + 1}`,
+      label: siteContent.videoSections.length === 1 ? 'Video Section' : `Video Section ${index + 1}`,
       key: videoSectionKey(section.id),
     };
   });
@@ -2129,7 +2135,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
                     key={card.key}
                     reorder={reorderProps(card.key, card.label)}
                     title={card.label}
-                    description="A band of video on your page. Pick one of six arrangements — a full-width backdrop, a video beside your message, a project story, a row of phone clips, a customer on camera, or your process."
+                    description="A section of video on your page. Pick one of six arrangements — a full-width backdrop, a video beside your message, a project story, a row of phone clips, a customer on camera, or your process."
                     evidence="A homeowner who watches you speak has already met you. Video on a service page is the closest thing to a first visit before the first visit."
                     enabled={card.section.enabled}
                     onToggleEnabled={(value) => updateVideoSection({ ...card.section, enabled: value })}
@@ -2152,15 +2158,63 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
                     </p>
                     {siteContent.videoSections.length > 1 && (
                       <button type="button" className={styles.dangerAction} onClick={() => removeVideoSection(card.section.id)}>
-                        Remove this band
+                        Remove this section
                       </button>
                     )}
                   </SectionCard>
                 ))}
 
+                {/* The standalone /videos page's menu link. Sits with the video
+                    sections at the bottom of the list, and only appears once
+                    there are clips — offering to link an empty page would be
+                    offering a broken menu item. */}
+                {allVideoClipCount > 0 && (
+                  <div className={styles.videosNavBlock} style={{ order: 9998 }}>
+                    <label className={styles.toggleRow}>
+                      <input
+                        type="checkbox"
+                        checked={siteContent.videosPage.navEnabled}
+                        onChange={(event) => updateSiteContent({ videosPage: { ...siteContent.videosPage, navEnabled: event.target.checked } })}
+                      />
+                      <span>
+                        <strong>Add a video gallery page to your menu</strong>
+                        <small>
+                          Your clips already have their own page — this puts a link to it in your
+                          header menu. Off by default, because a menu is short and this is your call.
+                        </small>
+                      </span>
+                    </label>
+                    {siteContent.videosPage.navEnabled && (
+                      <label className={styles.formField}>
+                        <span>Menu link label</span>
+                        <input
+                          value={siteContent.videosPage.navLabel}
+                          maxLength={24}
+                          placeholder={DEFAULT_VIDEOS_NAV_LABEL}
+                          onChange={(event) => updateSiteContent({ videosPage: { ...siteContent.videosPage, navLabel: event.target.value } })}
+                        />
+                        <small className={styles.fieldHint}>
+                          What the link is called in your header menu — e.g. &ldquo;Our work on
+                          video&rdquo;, &ldquo;Watch&rdquo;, &ldquo;See the job&rdquo;.
+                        </small>
+                      </label>
+                    )}
+                  </div>
+                )}
+
                 {siteContent.videoSections.length < MAX_VIDEO_SECTIONS && (
-                  <button type="button" className={styles.secondaryAction} onClick={addVideoSection}>
-                    + Add another video band
+                  // `order` explicitly, because .formSection is a grid and every
+                  // SectionCard sets its own order from sectionOrder. Without
+                  // one this button inherits order:0 and jumps to the TOP of the
+                  // list — which is where it was, sitting between Services and
+                  // whatever came next rather than under the sections it adds to.
+                  <button
+                    type="button"
+                    className={styles.secondaryAction}
+                    style={{ order: 9999 }}
+                    onClick={addVideoSection}
+                  >
+                    + Add another Video Section
                   </button>
                 )}
 

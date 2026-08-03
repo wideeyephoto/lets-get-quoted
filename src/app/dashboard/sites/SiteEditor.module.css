@@ -1031,3 +1031,8 @@
 .consentPreviewButtons span, .consentPreviewButtons strong { padding: .4rem .9rem; border-radius: 999px; font-size: .78rem; font-weight: 700; }
 .consentPreviewButtons span { border: 1px solid rgba(var(--tint), .3); color: var(--muted-2); }
 .consentPreviewButtons strong { background: #ff7a21; color: #17120c; }
+
+/* The /videos menu-link setting, grouped with the video sections at the
+ * bottom of the Page list rather than buried in the Header card — an owner
+ * thinking about their clips is who decides whether they get a menu item. */
+.videosNavBlock { display: grid; gap: .8rem; padding: .95rem 1rem; border: 1px solid rgba(var(--tint), .14); border-radius: 10px; background: rgba(var(--tint), .035); }

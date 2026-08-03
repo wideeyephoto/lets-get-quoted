@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import type { Site } from '@/lib/sites';
-import { getAllPublishedVideos, getPublishedBlog, getPublishedFaqs, getPublishedShowcase, getPublishedTestimonials } from '@/lib/site-content';
+import {
+  DEFAULT_VIDEOS_NAV_LABEL, getAllPublishedVideos, getPublishedBlog, getPublishedFaqs,
+  getPublishedShowcase, getPublishedTestimonials, getSiteContent,
+} from '@/lib/site-content';
 import styles from './themes.module.css';
 
 type SiteNavLink = {
@@ -55,10 +58,17 @@ export default function SiteNavLinks({ site, links, className }: SiteNavLinksPro
   const dynamicLinks: SiteNavLink[] = [];
   const showcase = getPublishedShowcase(site.content);
   if (showcase) dynamicLinks.push({ href: '#showcase', label: showcase.navLabel.trim() || 'Gallery' });
-  // A real page rather than an anchor: with several bands an anchor can only
+  // A real page rather than an anchor: with several sections an anchor can only
   // ever point at one of them, and the clips are worth a URL that can be sent
   // to a customer and indexed on its own.
-  if (getAllPublishedVideos(site.content).length > 0) dynamicLinks.push({ href: '/videos', label: 'Videos' });
+  //
+  // Opt-in, and it used to be automatic. A nav is a short list, and spending a
+  // menu item on it should be the owner's call — the page itself is unaffected
+  // either way, since it stays in the sitemap and keeps its own markup.
+  const videosPage = getSiteContent(site.content).videosPage;
+  if (videosPage.navEnabled && getAllPublishedVideos(site.content).length > 0) {
+    dynamicLinks.push({ href: '/videos', label: videosPage.navLabel.trim() || DEFAULT_VIDEOS_NAV_LABEL });
+  }
   if (getPublishedTestimonials(site.content)) dynamicLinks.push({ href: '#reviews', label: 'Reviews' });
   if (getPublishedFaqs(site.content)) dynamicLinks.push({ href: '#faqs', label: 'FAQs' });
   if (getPublishedBlog(site.content)) dynamicLinks.push({ href: '#blog', label: 'Blog' });

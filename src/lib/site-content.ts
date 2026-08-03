@@ -110,6 +110,23 @@ export type SiteStickyCallBarContent = {
   quoteLabel: string;
 };
 
+// The standalone /videos page's presence in the site nav.
+//
+// The PAGE always exists once there are clips — it is in the sitemap and
+// carries its own VideoObject markup, which is the reason it is a real URL
+// rather than an anchor. This only controls whether the header menu links to
+// it, because a nav is a short list and an owner with one clip may not want a
+// whole menu item spent on it.
+export type SiteVideosPageContent = {
+  /** Show the link in the header menu. OFF by default. */
+  navEnabled: boolean;
+  /** Menu label. Empty renders DEFAULT_VIDEOS_NAV_LABEL. */
+  navLabel: string;
+};
+
+/** What the videos link is called when the owner hasn't renamed it. */
+export const DEFAULT_VIDEOS_NAV_LABEL = 'Video Gallery';
+
 // The contractor's OWN measurement tags. Both empty = no tags, no consent
 // banner, no third-party request of any kind. See lib/analytics.
 export type SiteAnalyticsContent = {
@@ -764,6 +781,7 @@ export type NormalizedSiteContent = {
   stickyCallBar: SiteStickyCallBarContent;
   chatButton: SiteChatButtonContent;
   analytics: SiteAnalyticsContent;
+  videosPage: SiteVideosPageContent;
   ratingBadge: SiteRatingBadgeContent;
   trustBadges: SiteTrustBadgesContent;
   financing: SiteFinancingContent;
@@ -1245,6 +1263,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const stickyCallBar = isRecord(root.stickyCallBar) ? root.stickyCallBar : {};
   const chatButton = isRecord(root.chatButton) ? root.chatButton : {};
   const analytics = isRecord(root.analytics) ? root.analytics : {};
+  const videosPage = isRecord(root.videosPage) ? root.videosPage : {};
   const ratingBadge = isRecord(root.ratingBadge) ? root.ratingBadge : {};
   const trustBadges = isRecord(root.trustBadges) ? root.trustBadges : {};
   const financing = isRecord(root.financing) ? root.financing : {};
@@ -1317,6 +1336,14 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       // Roomy enough for a real opener, short enough that a phone's compose
       // window doesn't open already scrolled.
       greeting: toString(chatButton.greeting).slice(0, 160),
+    },
+    videosPage: {
+      // OFF unless explicitly turned on — including for the sites that already
+      // had this link appear automatically. Losing a nav item they never chose
+      // is the smaller surprise; keeping a menu entry an owner cannot remove is
+      // the bigger one.
+      navEnabled: toBoolean(videosPage.navEnabled),
+      navLabel: toString(videosPage.navLabel).slice(0, 24),
     },
     analytics: {
       // Stored as typed, NOT normalized.
