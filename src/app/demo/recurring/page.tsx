@@ -119,7 +119,7 @@ export default function DemoRecurringPage() {
               resendLink={<button type="button" className="linklike" disabled>Resend link</button>}
             >
               {plan.active ? (
-                <button type="button" className="btn secondary" disabled>Run next visit now</button>
+                <button type="button" className="btn secondary" disabled>Create the next visit early</button>
               ) : null}
               <button type="button" className="btn secondary" disabled>{plan.active ? 'Pause' : 'Resume'}</button>
               <button type="button" className="linklike danger" disabled>Cancel plan</button>

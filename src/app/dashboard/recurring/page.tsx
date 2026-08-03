@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { formatMoney } from '@/lib/jobs';
 import { listRecurringPlans, todayDateKey } from '@/lib/recurring';
-import { planMonthlyValue, visitCountdown } from '@/lib/recurring-display';
+import { planMonthlyValue, shortDate, visitCountdown } from '@/lib/recurring-display';
 import { listServices } from '@/lib/services';
 import { listClientsWithStats } from '@/lib/clients';
 import RecurringComposer from './RecurringComposer';
@@ -39,7 +39,7 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
   }));
   const today = todayDateKey();
   const flash = searchParams.flash ? FLASH_MESSAGES[searchParams.flash] : null;
-  // "Run next visit now" passes the created job id so we can link straight to it.
+  // Creating a visit early passes the created job id so we can link straight to it.
   const flashJobId = flash && searchParams.flash?.startsWith('ran-') ? searchParams.job ?? null : null;
 
   const activePlans = plans.filter((plan) => plan.active);
@@ -128,14 +128,21 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
                       action={runPlanNowAction.bind(null, plan.id)}
                       confirmMessage={
                         plan.auto_charge && plan.card_last4
-                          ? `Create the next visit now and charge the card on file (•••• ${plan.card_last4}) ${plan.amount > 0 ? formatMoney(plan.amount) : ''}? This bills the customer immediately and moves the schedule forward.`
-                          : 'Create the next scheduled visit now and move the schedule forward?'
+                          ? `Create this visit today instead of ${shortDate(plan.next_run_date)}, and charge the card on file (•••• ${plan.card_last4}) ${plan.amount > 0 ? formatMoney(plan.amount) : ''}? The customer is billed immediately and the plan moves on to the visit after this one.`
+                          : `Create this visit today instead of ${shortDate(plan.next_run_date)}? The plan then moves on to the visit after this one.`
                       }
                       className="btn secondary"
-                      pendingLabel="Running…"
-                      savedLabel="Done ✓"
+                      pendingLabel="Creating…"
+                      savedLabel="Created ✓"
                     >
-                      Run next visit now
+                      {/* "Run next visit now" was engineer's language — a plan
+                          "runs" in a scheduler, not in a yard. What actually
+                          happens is a visit gets created early and the plan
+                          points at the one after, so the button says that, in
+                          the same words the confirmation dialog uses one click
+                          later. The card already says when the next visit is
+                          due right beside this, so "early" is the whole idea. */}
+                      Create the next visit early
                     </ConfirmActionButton>
                   ) : null}
                   <EditPlanPanel plan={plan} today={today} action={updatePlanAction.bind(null, plan.id)} />
