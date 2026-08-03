@@ -60,23 +60,39 @@ export type CspOptions = {
 // /site-preview-frame, /demo, /resources. Dev-only eval violations from Next's
 // HMR were ignored; production never serves them.
 //
-// STILL NOT FLIPPED, and here is the honest reason:
+// GOOGLE MAPS — MEASURED, AND COVERED. This was the last open question, and the
+// suspicion was wrong in an instructive way. `connect-src` lists
+// maps.googleapis.com but not maps.gstatic.com, which looked like a gap. It
+// isn't: gstatic is only ever contacted for map TILES, which are images, and
+// img-src already allows https:. The SDK never XHRs there.
 //
-//   1. Google Maps is untested. It only renders on /dashboard/schedule/plan,
-//      and in the harness it never injected its script at all, so CSP had
-//      nothing to block and the run proves nothing about it. connect-src lists
-//      maps.googleapis.com but NOT maps.gstatic.com, which is a plausible gap
-//      nobody has measured. Check this before flipping.
-//   2. A dev server is still not production. Vercel's CLI only tails live logs,
-//      so the `[csp-report]` history the endpoint writes (see api/csp-report)
-//      can't be read back here — the reports go to console.warn on purpose,
-//      since persisting an unauthenticated browser-driven endpoint's input
-//      would be attacker-controllable storage.
+// Loading the SDK for real — map built, tiles loaded, places imported,
+// DirectionsService returning OK, which is what the day planner routes with —
+// contacts exactly six host/type pairs, all covered:
 //
-// So: ship the media-src fix, let real traffic run against the corrected policy,
-// confirm a contractor's map and a published site with embeds both behave, then
-// flip. The dry run moved this from "unknown" to "one known unknown".
-export const CSP_REPORT_ONLY = true;
+//   maps.googleapis.com  script      -> script-src   (strict-dynamic)
+//   maps.googleapis.com  xhr         -> connect-src  (listed)
+//   maps.googleapis.com  image       -> img-src      (https:)
+//   maps.gstatic.com     image       -> img-src      (https:)
+//   fonts.googleapis.com stylesheet  -> style-src    (listed)
+//   fonts.gstatic.com    font        -> font-src     (listed)
+//
+// NOW ENFORCING (2026-08-03). The earlier note here said flipping on the
+// strength of a dev server would be the mistake this flag exists to prevent.
+// That was right while the third-party surface was unknown; it is now
+// enumerated rather than assumed. There are also no production-only injected
+// scripts to be surprised by — no Vercel Analytics, Sentry, or similar in the
+// dependency tree — so the gap between what dev serves and what production
+// serves is Next's own chunks, which are same-origin and nonced either way.
+//
+// It is also simply the right window: no live contractors, so the blast radius
+// of being wrong is a site nobody is looking at, and enforcing before customers
+// arrive beats retrofitting it after.
+//
+// IF SOMETHING BREAKS: set this back to true. That is the whole revert — the
+// header name is derived from it, nothing else changes, and the reports keep
+// flowing to /api/csp-report either way.
+export const CSP_REPORT_ONLY = false;
 export const CSP_REPORT_PATH = '/api/csp-report';
 
 export function cspHeaderName(): string {

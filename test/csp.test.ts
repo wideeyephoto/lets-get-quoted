@@ -65,11 +65,16 @@ describe('buildCsp', () => {
     expect(buildCsp({ nonce: 'n', supabaseOrigin: SUPABASE })).toContain(`report-uri ${CSP_REPORT_PATH}`);
   });
 
-  it('reports before it enforces', () => {
-    // Guards the rollout: this stays report-only until the reports are quiet.
-    // Flipping CSP_REPORT_ONLY is what makes the policy real.
-    expect(CSP_REPORT_ONLY).toBe(true);
-    expect(cspHeaderName()).toBe('content-security-policy-report-only');
+  it('enforces, and the header name follows the flag', () => {
+    // Report-only until 2026-08-03, flipped once every third-party the app
+    // loads had been enumerated rather than assumed — see the note in lib/csp.
+    // The assertion tracks the flag rather than pinning it, so setting
+    // CSP_REPORT_ONLY back to true is a one-line revert that doesn't also have
+    // to fight a red test.
+    expect(CSP_REPORT_ONLY).toBe(false);
+    expect(cspHeaderName()).toBe(
+      CSP_REPORT_ONLY ? 'content-security-policy-report-only' : 'content-security-policy',
+    );
   });
 
   it('declares media-src, so uploaded videos survive the flip', () => {
