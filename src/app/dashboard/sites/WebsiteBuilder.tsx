@@ -6,7 +6,7 @@ import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getSiteContent, getTradeGlyphOptions, glyphForContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES,
   MENU_BUTTON_STYLES,
-  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
+  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
 import { generatePrivacyPolicy, generateTermsOfService } from '@/lib/legal/legal-copy';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
@@ -24,6 +24,7 @@ import LivePreview from './LivePreview';
 import BuilderTabStrip from './BuilderTabStrip';
 import SectionCard from './SectionCard';
 import SocialsField from './SocialsField';
+import ChatButtonField from './ChatButtonField';
 import ThemeIcon from './ThemeIcon';
 import VideoStudio from './VideoStudio';
 import styles from './SiteEditor.module.css';
@@ -605,6 +606,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
       ratingBadge: 'rating',
       projectShowcase: 'projectShowcase',
       video: 'video',
+      chatButton: 'chatButton',
     };
 
     function onEditRequest(event: MessageEvent) {
@@ -1154,6 +1156,11 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
 
   const updateTestimonials = useCallback((testimonials: SiteTestimonialsContent) => {
     updateSiteContent({ testimonials });
+  }, [updateSiteContent]);
+
+  const updateChatButton = useCallback((chatButton: SiteChatButtonContent) => {
+    updateSiteContent({ chatButton });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [updateSiteContent]);
 
   const updateStickyCallBar = useCallback((stickyCallBar: SiteStickyCallBarContent) => {
@@ -2439,6 +2446,23 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
                   {siteContent.stickyCallBar.showQuote && <label className={styles.formField}><span>Second button label</span><input value={siteContent.stickyCallBar.quoteLabel} maxLength={30} onChange={(event) => updateStickyCallBar({ ...siteContent.stickyCallBar, quoteLabel: event.target.value })} placeholder="Free quote" /></label>}
                   {siteContent.stickyCallBar.enabled && !site.phone && <p className={styles.emptyHelper}>Add a phone number in your intake section to make this button appear.</p>}
                   {siteContent.stickyCallBar.enabled && site.phone && !siteContent.phonePublic && <p className={styles.emptyHelper}>Your phone number is set to hidden — this button won&apos;t appear until you turn &quot;Show my phone number&quot; back on.</p>}
+                </SectionCard>
+
+                <SectionCard
+                  title="Message button"
+                  description="A floating button that opens a text or WhatsApp message to you, already addressed."
+                  evidence="Plenty of homeowners will text about a job they wouldn't phone about — especially outside working hours."
+                  enabled={siteContent.chatButton.enabled}
+                  onToggleEnabled={(value) => updateChatButton({ ...siteContent.chatButton, enabled: value })}
+                  open={openSection === 'chatButton'}
+                  onToggleOpen={() => toggleSection('chatButton')}
+                >
+                  <ChatButtonField
+                    chatButton={siteContent.chatButton}
+                    sitePhone={site.phone}
+                    companyName={site.company_name}
+                    onChange={updateChatButton}
+                  />
                 </SectionCard>
 
 

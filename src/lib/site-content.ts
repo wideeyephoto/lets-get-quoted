@@ -1,6 +1,10 @@
 import type { SiteImage } from '@/lib/site-images';
 import type { WebsiteImageAssignment } from '@/lib/stock/types';
 import { SERVICE_ICON_GLYPHS } from '@/lib/templates/service-icons.data';
+import {
+  isChatChannel, resolveChatButton,
+  type ChatButtonConfig, type ChatChannel,
+} from '@/lib/chat-button';
 import { isSocialPlatformId, normalizeSocialUrl } from '@/lib/socials';
 import { parseVideoSource } from '@/lib/video-source';
 import { parseYouTubeUrl } from '@/lib/youtube';
@@ -104,6 +108,18 @@ export type SiteStickyCallBarContent = {
   // Custom button labels for the sticky mobile button.
   callLabel: string;
   quoteLabel: string;
+};
+
+// The floating "Message us" button. Opens the homeowner's own messaging app —
+// see lib/chat-button for why this is a link rather than a hosted chat widget.
+// Off by default; `number` empty means "use the site's phone number".
+export type SiteChatButtonContent = {
+  enabled: boolean;
+  /** 'sms' | 'whatsapp' — validated on parse, see isChatChannel. */
+  channel: string;
+  number: string;
+  label: string;
+  greeting: string;
 };
 
 export type SiteRatingBadgeContent = {
@@ -737,6 +753,7 @@ export type NormalizedSiteContent = {
   // routes through the forms; texting/SMS features still use the real number.
   phonePublic: boolean;
   stickyCallBar: SiteStickyCallBarContent;
+  chatButton: SiteChatButtonContent;
   ratingBadge: SiteRatingBadgeContent;
   trustBadges: SiteTrustBadgesContent;
   financing: SiteFinancingContent;
@@ -1216,6 +1233,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const leadFilters = isRecord(root.leadFilters) ? root.leadFilters : {};
   const fullyBooked = isRecord(leadFilters.fullyBooked) ? leadFilters.fullyBooked : {};
   const stickyCallBar = isRecord(root.stickyCallBar) ? root.stickyCallBar : {};
+  const chatButton = isRecord(root.chatButton) ? root.chatButton : {};
   const ratingBadge = isRecord(root.ratingBadge) ? root.ratingBadge : {};
   const trustBadges = isRecord(root.trustBadges) ? root.trustBadges : {};
   const financing = isRecord(root.financing) ? root.financing : {};
@@ -1277,6 +1295,17 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       showQuote: stickyCallBar.showQuote !== false,
       callLabel: toString(stickyCallBar.callLabel, 'Call now').slice(0, 30),
       quoteLabel: toString(stickyCallBar.quoteLabel, 'Free quote').slice(0, 30),
+    },
+    chatButton: {
+      // OFF by default, unlike the sticky call bar. An existing site should not
+      // sprout a floating button because it got redeployed.
+      enabled: toBoolean(chatButton.enabled),
+      channel: isChatChannel(toString(chatButton.channel)) ? toString(chatButton.channel) : 'sms',
+      number: toString(chatButton.number).slice(0, 24),
+      label: toString(chatButton.label).slice(0, 30),
+      // Roomy enough for a real opener, short enough that a phone's compose
+      // window doesn't open already scrolled.
+      greeting: toString(chatButton.greeting).slice(0, 160),
     },
     ratingBadge: {
       enabled: toBoolean(ratingBadge.enabled),
@@ -1612,6 +1641,21 @@ export function getPublishedStickyCallBar(
 ): SiteStickyCallBarContent | null {
   const stickyCallBar = getSiteContent(content).stickyCallBar;
   return stickyCallBar.enabled && Boolean(phone && phone.trim()) ? stickyCallBar : null;
+}
+
+/**
+ * The chat button as the page should render it, or null.
+ *
+ * Resolution (which number, which app, what the message says) lives in
+ * lib/chat-button so it stays pure and testable; this only supplies the stored
+ * config and the site's own phone as the fallback.
+ */
+export function getPublishedChatButton(
+  content: Record<string, unknown> | null | undefined,
+  phone: string | null | undefined,
+  companyName: string,
+): { href: string; label: string; channel: ChatChannel } | null {
+  return resolveChatButton(getSiteContent(content).chatButton as ChatButtonConfig, phone, companyName);
 }
 
 export function getPublishedRatingBadge(content: Record<string, unknown> | null | undefined): SiteRatingBadgeContent | null {

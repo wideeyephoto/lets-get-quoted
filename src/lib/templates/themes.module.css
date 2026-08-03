@@ -848,6 +848,42 @@
    safe-area inset, rather than a hard value that falls short on notched phones. */
 @media (max-width: 767px) { .site:has(.stickyCallBar) { padding-bottom: calc(50px + 1.1rem + env(safe-area-inset-bottom, 0px)); } }
 
+/* Floating "Message us" button — SiteChatButton.tsx.
+   Desktop: a labelled pill in the bottom-right corner, which nothing else uses.
+   Phone: a round bubble, because the sticky call bar owns the bottom edge and a
+   wide pill would compete with "Call now" instead of sitting beside it. */
+.chatButton {
+  position: fixed; right: 1.15rem; z-index: 55;
+  bottom: calc(1.15rem + env(safe-area-inset-bottom, 0px));
+  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+  width: 54px; height: 54px; padding: 0; border-radius: 999px;
+  background: var(--theme-accent); color: var(--theme-on-accent, #14110b);
+  box-shadow: 0 14px 30px -10px rgba(0,0,0,.55);
+  text-decoration: none; font-weight: 800; font-size: .9rem;
+  transition: transform .18s ease, box-shadow .22s ease;
+}
+.chatButton:hover, .chatButton:focus-visible { transform: translateY(-2px); box-shadow: 0 20px 40px -12px rgba(0,0,0,.6); }
+.chatButtonIcon { display: inline-flex; }
+.chatButtonIcon svg { width: 24px; height: 24px; display: block; }
+/* Hidden on phones, not removed — the accessible name still carries it. */
+.chatButtonLabel { display: none; }
+/* Clear of the sticky call bar. Same arithmetic the bar's own spacer uses
+   (48px min-height + 1.1rem padding), so the two can't drift apart. */
+@media (max-width: 767px) {
+  .chatButtonLifted { bottom: calc(50px + 1.1rem + .7rem + env(safe-area-inset-bottom, 0px)); }
+}
+@media (min-width: 768px) {
+  .chatButton { width: auto; height: auto; padding: .78rem 1.25rem; }
+  .chatButtonLabel { display: inline; }
+  .chatButtonIcon svg { width: 19px; height: 19px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chatButton { transition: none; }
+  .chatButton:hover, .chatButton:focus-visible { transform: none; }
+}
+/* Print: a fixed button repeats on every page and links to nothing on paper. */
+@media print { .chatButton { display: none; } }
+
 /* Persistent desktop CTA (fixed bottom-right; mobile handled by header/sticky bar) */
 .desktopCta { display: none; }
 @media (min-width: 768px) { .desktopCta { position: fixed; right: 1.5rem; bottom: 1.5rem; z-index: 50; display: flex; gap: .6rem; } }

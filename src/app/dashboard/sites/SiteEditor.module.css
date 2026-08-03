@@ -1011,3 +1011,13 @@
 .socialFieldError { color: #ff9b6a; font-weight: 500; }
 .socialField input[aria-invalid="true"] { border-color: rgba(255,155,106,.55); }
 @media (max-width: 700px) { .socialGrid { grid-template-columns: 1fr; } }
+
+/* Page → Message button (ChatButtonField.tsx). Two channel cards side by side;
+ * stacked on a phone, where the builder form is already narrow. */
+.chatChannelRow { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin-top: .6rem; }
+.chatChannelOption { display: grid; gap: .25rem; text-align: left; padding: .7rem .8rem; border: 1px solid rgba(var(--tint), .16); border-radius: 8px; background: rgba(var(--tint), .045); color: var(--text); cursor: pointer; }
+.chatChannelOption strong { font-size: .88rem; font-weight: 800; }
+.chatChannelOption small { color: var(--muted-2); font-size: .76rem; font-weight: 400; line-height: 1.4; }
+.chatChannelOption:hover { border-color: rgba(var(--tint), .3); }
+.chatChannelOn { border-color: #ff9b54; background: rgba(255,122,33,.1); box-shadow: 0 0 0 3px rgba(255,122,33,.12); }
+@media (max-width: 700px) { .chatChannelRow { grid-template-columns: 1fr; } }

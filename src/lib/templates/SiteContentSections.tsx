@@ -15,6 +15,7 @@ import {
   getPublishedShowcase,
   getPublishedStats,
   getPublishedStickyCallBar,
+  getPublishedChatButton,
   getPublishedTestimonials,
   getPublishedVideoSections,
   videoSectionKey,
@@ -28,6 +29,7 @@ import TestimonialSlider from './TestimonialSlider';
 import SiteServices from './SiteServices';
 import SiteProcess from './SiteProcess';
 import SiteVideoSection from './SiteVideoSection';
+import SiteChatButton from './SiteChatButton';
 import StatCounters from './StatCounters';
 import styles from './themes.module.css';
 
@@ -86,7 +88,12 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
 
   const hasInFlowSections = Boolean(services || howItWorks || showcase || testimonials || faqs || serviceAreas || stats || beforeAfter || blog || projectShowcase || videoSections.length > 0);
 
-  if (!hasInFlowSections && !stickyCallBar) return null;
+  // The chat button has to be in this test too. It renders at the end of this
+  // component, so a site with no in-flow sections and no sticky bar — a brand
+  // new one, mostly — would bail out above it and the button would silently
+  // never appear.
+  const chatButton = getPublishedChatButton(site.content, site.phone, site.company_name);
+  if (!hasInFlowSections && !stickyCallBar && !chatButton) return null;
 
   // Rating + credential proof now render in <SiteProofStrip> directly beside the
   // hero and contact forms (where proof converts), not mid-page. Financing stays
@@ -329,6 +336,8 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
           )}
         </div>
       )}
+
+      <SiteChatButton site={site} />
 
     </>
   );
