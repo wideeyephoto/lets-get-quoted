@@ -17149,3 +17149,16 @@ a.bset-card { color: inherit; text-decoration: none; }
 @media (prefers-reduced-motion: reduce) {
   .demo-upload-track i { transition: none; }
 }
+
+
+/* The way out of a capped summary card on the demo dashboard. Reads as a
+   continuation of the list rather than a button, because that is what it is. */
+.demo-seeall {
+  display: inline-block;
+  margin-top: 0.85rem;
+  font-size: 0.88rem;
+  font-weight: 650;
+  color: var(--accent-ink);
+}
+
+.demo-seeall:hover { text-decoration: underline; text-underline-offset: 3px; }

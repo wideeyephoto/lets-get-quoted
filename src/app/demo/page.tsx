@@ -72,11 +72,32 @@ export default function DemoDashboardPage() {
     };
   });
 
-  const clients = [...DEMO_JOBS].sort((a, b) => {
+  // Who needs you next — one row per PERSON, and only the first handful.
+  //
+  // This card used to render every job in the book. That was fine at thirteen
+  // and became eighty-four rows of scrolling on a page whose whole job is to be
+  // a snapshot. Two things were wrong once the data got real:
+  //
+  //   It is headed Clients and was listing JOBS, so a repeat customer appeared
+  //   three times — on the one card that claims to put each client in one place.
+  //   Deduped by person, keeping whichever of their jobs is most pressing.
+  //
+  //   A summary that runs longer than the screen is not a summary. Six, then a
+  //   link to the page that IS the full list.
+  const ranked = [...DEMO_JOBS].sort((a, b) => {
     const statusDiff = JOB_STATUS_ORDER[a.status] - JOB_STATUS_ORDER[b.status];
     if (statusDiff !== 0) return statusDiff;
     return b.quoted_amount - a.quoted_amount;
   });
+  const seenClients = new Set<string>();
+  const byClient = ranked.filter((job) => {
+    const name = job.client_name || job.ref;
+    if (seenClients.has(name)) return false;
+    seenClients.add(name);
+    return true;
+  });
+  const clients = byClient.slice(0, 6);
+  const clientCount = seenClients.size;
 
   return (
     <main className="wide-shell workspace-shell">
@@ -154,7 +175,10 @@ export default function DemoDashboardPage() {
         <section className="panel workspace-section-card">
           <div className="section-heading workspace-section-heading">
             <p className="eyebrow">Clients</p>
-            <h2>Every client, one place</h2>
+            {/* Was "Every client, one place", which stopped being true the
+                moment this was capped — and the promise it was making belongs
+                to the Clients page anyway, which is where the link goes. */}
+            <h2>Who needs you next</h2>
           </div>
           <div className="job-list">
             {clients.map((job) => (
@@ -171,6 +195,9 @@ export default function DemoDashboardPage() {
               </Link>
             ))}
           </div>
+          <Link href="/demo/clients" className="demo-seeall">
+            See all {clientCount} clients →
+          </Link>
         </section>
 
         <section className="panel workspace-section-card">
