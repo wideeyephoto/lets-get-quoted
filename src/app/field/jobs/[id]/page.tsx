@@ -8,6 +8,7 @@ import SaveButton from '@/components/save-button';
 import FieldHeader from '../../FieldHeader';
 import { setFieldJobStatusAction, postFieldUpdateAction, logFieldTimeAction, logFieldMaterialAction, toggleFieldTaskAction, addFieldTaskAction, sendArrivalFieldAction, setArrivalStatusFieldAction, updateArrivalPositionAction, clockInFieldAction, clockOutFieldAction } from './actions';
 import { raiseFieldChangeOrderAction } from './change-order-actions';
+import { addFieldMilestonePhotoAction } from './milestone-actions';
 import { getOpenShift, getTimeClockMode } from '@/lib/time-clock-data';
 import { formatClock, formatElapsed } from '@/lib/time-clock';
 import FieldClock from './FieldClock';
@@ -113,6 +114,18 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
   const jobTasks = await listJobTasks(supabase, accountId, params.id);
   const taskStats = taskProgress(jobTasks);
 
+  // Stages, so proof can be attached to the right one. Title only — amounts and
+  // payment state are the owner's business, and crew RLS only exposes the read.
+  // Defensive: an un-migrated DB shows no stage form rather than breaking the
+  // page a crew member needs to do their actual job.
+  const { data: milestoneRows } = await supabase
+    .from('job_milestones')
+    .select('id, title, sort_order')
+    .eq('account_id', accountId)
+    .eq('job_id', params.id)
+    .order('sort_order', { ascending: true });
+  const fieldMilestones = (milestoneRows ?? []).map((row) => ({ id: row.id as string, title: (row.title as string) ?? 'Stage' }));
+
   // What the tech is told after an arrival action. The delivery outcome is
   // spelled out rather than reduced to a tick, because "sent" and "we tried to
   // send" lead to different behaviour at the door.
@@ -184,6 +197,40 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
           <h2 className="field-block-title">Scope of work</h2>
           <p className="field-scope-body">{job.scope || 'No scope notes added yet.'}</p>
         </section>
+
+        {/* Proof for a stage payment. Above the change-order form because this
+            is routine end-of-stage work, where finding extra work is not. */}
+        {fieldMilestones.length > 0 ? (
+          <section className="field-block">
+            <h2 className="field-block-title">Stage photos</h2>
+            <p className="field-block-lead">
+              Before and after shots for the stages on this job. The office can&apos;t bill a stage until the proof is
+              on it — and you&apos;re the one standing in front of it.
+            </p>
+            {fieldMilestones.map((milestone) => (
+              <form
+                key={milestone.id}
+                action={addFieldMilestonePhotoAction.bind(null, job.id, milestone.id)}
+                className="field-update-form field-milestone-form"
+              >
+                <strong className="field-milestone-title">{milestone.title}</strong>
+                <div className="field-milestone-phase">
+                  <label>
+                    <input type="radio" name="phase" value="before" defaultChecked /> Before
+                  </label>
+                  <label>
+                    <input type="radio" name="phase" value="after" /> After
+                  </label>
+                </div>
+                <input name="caption" maxLength={160} placeholder="What this shows (optional)" aria-label="Caption" />
+                <input type="file" name="photos" accept="image/*" capture="environment" multiple required aria-label="Photos" />
+                <SaveButton className="btn secondary" pendingLabel="Uploading…" savedLabel="Added ✓">
+                  Attach to this stage
+                </SaveButton>
+              </form>
+            ))}
+          </section>
+        ) : null}
 
         {/* Found something that isn't in the job? Write it up here.
             No price field on purpose: what to charge is the owner's call, and

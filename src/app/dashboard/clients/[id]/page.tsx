@@ -5,6 +5,9 @@ import { formatMoney, type JobStatus } from '@/lib/jobs';
 import { formatPhoneDashes } from '@/lib/phone';
 import SaveButton from '@/components/save-button';
 import { updateClientAction } from '../actions';
+import ConfirmActionButton from '../../jobs/[id]/ConfirmActionButton';
+import { listPortalLinks } from '@/lib/client-portal-data';
+import { revokeClientPortalAction } from './portal-actions';
 
 const STATUS_LABEL: Record<JobStatus, string> = {
   new_lead: 'New',
@@ -31,6 +34,8 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
       </main>
     );
   }
+
+  const portalLinks = await listPortalLinks(supabase, accountId, client.id);
 
   const [{ data: jobRows }, { data: leadRows }] = await Promise.all([
     supabase
@@ -126,6 +131,46 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
         </div>
 
         <div>
+          {portalLinks.length > 0 ? (
+            <div className="panel workspace-section-card">
+              <div className="section-heading workspace-section-heading compact-heading">
+                <p className="eyebrow">Portal access</p>
+                <h2>Links this client holds</h2>
+              </div>
+              <ul className="portal-link-list">
+                {portalLinks.map((link) => {
+                  const live = !link.revoked_at && String(link.expires_at) > new Date().toISOString();
+                  return (
+                    <li key={link.id} className={live ? 'is-live' : 'is-dead'}>
+                      <span>{link.sent_to}</span>
+                      <span className="portal-link-meta">
+                        {link.revoked_at
+                          ? 'Revoked'
+                          : String(link.expires_at) < new Date().toISOString()
+                            ? 'Expired'
+                            : `Works until ${String(link.expires_at).slice(0, 10)}`}
+                        {link.last_used_at ? ` · last opened ${String(link.last_used_at).slice(0, 10)}` : ' · never opened'}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+              {/* One button, not one per link. Somebody asking for this wants the
+                  door shut, not a list to work through. */}
+              {portalLinks.some((link) => !link.revoked_at && String(link.expires_at) > new Date().toISOString()) ? (
+                <ConfirmActionButton
+                  action={revokeClientPortalAction.bind(null, client.id)}
+                  confirmMessage={`Cut off ${client.name}'s access?\n\nEvery link they hold stops working immediately. They can request a new one from your website.`}
+                  className="btn ghost"
+                  pendingLabel="Revoking…"
+                  savedLabel="Revoked ✓"
+                >
+                  Revoke access
+                </ConfirmActionButton>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="panel workspace-section-card sticky-card">
             <div className="section-heading workspace-section-heading">
               <p className="eyebrow">Profile</p>

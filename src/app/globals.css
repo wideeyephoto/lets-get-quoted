@@ -9641,6 +9641,15 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
    contractor who had rating-screening switched on will notice their private
    feedback drop and their public reviews get more varied, and deserves to know
    that was us removing something that put their profile at risk. */
+.portal-link-list { list-style: none; padding: 0; margin: 0.6rem 0 0.8rem; display: flex; flex-direction: column; gap: 0.4rem; }
+.portal-link-list li { display: flex; flex-direction: column; gap: 0.1rem; font-size: 0.85rem; }
+.portal-link-list li.is-dead { opacity: 0.55; }
+.portal-link-meta { font-size: 0.76rem; color: var(--mute-t45); }
+.field-milestone-form { padding: 0.7rem 0.8rem; border-radius: 12px; background: rgba(var(--tint), 0.05); margin-top: 0.6rem; }
+.field-milestone-title { font-size: 0.9rem; }
+.field-milestone-phase { display: flex; gap: 1rem; font-size: 0.85rem; }
+.field-milestone-phase label { display: flex; align-items: center; gap: 0.3rem; }
+
 /* Client portal — the homeowner's own way back in. */
 .portal-request-form { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1.2rem; max-width: 26rem; }
 .portal-request-form label { font-size: 0.85rem; color: var(--mute-t55); }
