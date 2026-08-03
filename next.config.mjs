@@ -48,6 +48,18 @@ const nextConfig = {
   // dev server then 500s on every route until it is deleted and restarted.
   distDir: process.env.NEXT_DIST_DIR || '.next',
   reactStrictMode: true,
+  experimental: {
+    // pdfkit reads its standard fonts from .afm files on disk at runtime
+    // (js/data/Helvetica.afm and friends). Webpack bundles the JS and leaves the
+    // font data behind, so every PDF threw ENOENT the moment it tried to set a
+    // font — which is every PDF. Marking it external keeps it in node_modules
+    // where it can find its own files.
+    //
+    // This broke BOTH the "Download PDF" link and the PDF attached to invoice
+    // emails; the email path caught the failure and sent without an attachment,
+    // so it looked like it was working.
+    serverComponentsExternalPackages: ['pdfkit'],
+  },
   async headers() {
     return [{ source: '/:path*', headers: SECURITY_HEADERS }];
   },
