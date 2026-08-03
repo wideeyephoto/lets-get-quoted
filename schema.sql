@@ -2649,3 +2649,87 @@ alter table accounts add column if not exists arrival_morning_confirmation boole
 alter table jobs add column if not exists arrival_confirm_sent_at timestamptz;
 create index if not exists jobs_morning_confirm_idx
   on jobs (account_id, scheduled_for) where arrival_confirm_sent_at is null;
+
+-- ============================================================================
+-- PROOF-TO-PAY MILESTONES
+--
+-- A job gets paid in stages. Until now a contractor could request a stage
+-- payment at any moment for any amount, and the homeowner's only way to know
+-- whether the work behind it happened was to walk outside and look. That
+-- asymmetry breaks both ways: homeowners refuse legitimate draws because they
+-- can't see progress, and contractors chase money for work they genuinely did
+-- with nothing to point at.
+--
+-- A milestone carries what was PROMISED, the checklist that proves it, the
+-- before/after photos, and the amount — and the payment request is gated on
+-- that proof existing. See migrations/2026-08-03-proof-to-pay-milestones.sql.
+-- ============================================================================
+
+create table if not exists job_milestones (
+  id            uuid primary key default gen_random_uuid(),
+  account_id    uuid not null references accounts(id) on delete cascade,
+  job_id        uuid not null references jobs(id) on delete cascade,
+
+  title         text not null,
+  -- The promise, in the contractor's words, written before the work rather
+  -- than justified after it.
+  scope         text,
+
+  amount        numeric(12,2) not null default 0,
+  sort_order    integer not null default 0,
+  -- Reuses payment_kind so a deposit milestone creates a real deposit payment
+  -- and lands in every rollup that already understands one.
+  kind          payment_kind not null default 'stage',
+
+  -- 0 means not required. A deposit taken before anyone is on site has nothing
+  -- to photograph, and demanding a picture of an empty driveway would only
+  -- teach people to upload noise.
+  require_before_photos integer not null default 0,
+  require_after_photos  integer not null default 0,
+
+  -- When the proof gate was passed. Distinct from the payment's requested_at:
+  -- this survives a cancelled payment, so re-requesting doesn't reset the record.
+  submitted_at  timestamptz,
+  payment_id    uuid references payments(id) on delete set null,
+
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
+);
+
+create index if not exists job_milestones_job_idx on job_milestones (account_id, job_id, sort_order);
+create index if not exists job_milestones_payment_idx on job_milestones (payment_id) where payment_id is not null;
+alter table job_milestones enable row level security;
+drop policy if exists job_milestones_owner on job_milestones;
+create policy job_milestones_owner on job_milestones
+  for all using ( is_owner(account_id) ) with check ( is_owner(account_id) );
+
+-- The crew's existing checklist becomes the evidence. Pointing a task at a
+-- milestone turns the same tick they already do in the field into the proof
+-- behind a payment — no second list to learn, and no chance of the "real" list
+-- and the "billing" list disagreeing. Null = an ordinary job task, as before.
+alter table job_tasks add column if not exists milestone_id uuid references job_milestones(id) on delete set null;
+create index if not exists job_tasks_milestone_idx on job_tasks (milestone_id) where milestone_id is not null;
+
+-- Before/after photos. A separate table rather than more entries in
+-- jobs.photo_paths, because these carry a role and belong to one stage —
+-- flattening them into the job gallery would lose both, and the whole point is
+-- showing a homeowner these two pictures next to this one amount.
+create table if not exists milestone_photos (
+  id            uuid primary key default gen_random_uuid(),
+  account_id    uuid not null references accounts(id) on delete cascade,
+  milestone_id  uuid not null references job_milestones(id) on delete cascade,
+  job_id        uuid not null references jobs(id) on delete cascade,
+  path          text not null,
+  phase         text not null,
+  caption       text,
+  created_at    timestamptz not null default now()
+);
+do $$ begin
+  alter table milestone_photos add constraint milestone_photos_phase_check
+    check (phase in ('before', 'after'));
+exception when duplicate_object then null; end $$;
+create index if not exists milestone_photos_milestone_idx on milestone_photos (milestone_id, phase, created_at);
+alter table milestone_photos enable row level security;
+drop policy if exists milestone_photos_owner on milestone_photos;
+create policy milestone_photos_owner on milestone_photos
+  for all using ( is_owner(account_id) ) with check ( is_owner(account_id) );

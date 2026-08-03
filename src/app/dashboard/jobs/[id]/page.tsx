@@ -4,6 +4,13 @@ import ArrivalPanel from '@/components/arrival-panel';
 import { arrivalSettingsFromAccount, describeArrivalOutcome, formatArrivalWindow, DEFAULT_ARRIVAL_TEMPLATE } from '@/lib/arrival';
 import { getActiveTracking } from '@/lib/job-tracking';
 import { sendArrivalOwnerAction, setArrivalStatusOwnerAction } from './arrival-actions';
+import Milestones from './Milestones';
+import { flattenMilestone } from './milestone-view';
+import { listMilestones } from '@/lib/milestones-data';
+import {
+  addMilestoneTaskAction, attachMilestonePhotoAction, createMilestoneAction, deleteMilestoneAction,
+  removeMilestonePhotoAction, requestMilestonePaymentAction, seedMilestonesAction, updateMilestoneAction,
+} from './milestone-actions';
 import PhotoGallery from '@/components/photo-gallery';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import { deriveJobListBadge, buildPipelineChecklist } from '@/lib/job-badges';
@@ -133,6 +140,9 @@ export default async function JobDetailPage({
     homeownerNote: activeArrival.homeowner_note,
   } : null;
   const arrivalFlash = describeArrivalOutcome(searchParams.arrival, searchParams.sms);
+
+  // Proof-to-Pay stages, flattened for the client component.
+  const milestoneViews = (await listMilestones(supabase, accountId, job.id)).map(flattenMilestone);
   const assignedCrewIds = await listCrewIdsForJob(supabase, accountId, job.id);
   const jobInvoice = selectPrimaryInvoice(invoices);
   const invoicePaidTotal = jobInvoice
@@ -390,6 +400,33 @@ export default async function JobDetailPage({
           />
         </>
       ) : null}
+
+      {/* Proof-to-Pay. Directly under the quote, because stages are how the
+          quote gets collected — and above the checklist, because the checklist
+          is now partly evidence for these. */}
+      <section id="milestones" className="panel workspace-section-card">
+        <div className="section-heading workspace-section-heading">
+          <div>
+            <p className="eyebrow">Getting paid</p>
+            <h2>Stages &amp; proof</h2>
+          </div>
+        </div>
+        <Milestones
+          entries={milestoneViews}
+          quotedAmount={Number(job.quoted_amount) || 0}
+          clientPhone={job.client_phone}
+          actions={{
+            seed: seedMilestonesAction.bind(null, job.id),
+            create: createMilestoneAction.bind(null, job.id),
+            update: updateMilestoneAction.bind(null, job.id),
+            remove: deleteMilestoneAction.bind(null, job.id),
+            addTask: addMilestoneTaskAction.bind(null, job.id),
+            attachPhoto: attachMilestonePhotoAction.bind(null, job.id),
+            removePhoto: removeMilestonePhotoAction.bind(null, job.id),
+            requestPayment: requestMilestonePaymentAction.bind(null, job.id),
+          }}
+        />
+      </section>
 
       <section id="quote-breakdown" className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading">

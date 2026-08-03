@@ -9,6 +9,8 @@ import { createDepositRequest, type Payment } from '@/lib/payments';
 import { planSchedulePreview } from '@/lib/payment-plan-math';
 import { sendPaymentSmsEvent } from '@/lib/sms';
 import { normalizeUsPhone } from '@/lib/phone';
+import { loadClientMilestones } from '@/lib/milestones-data';
+import type { MilestoneStatus } from '@/lib/milestones';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
@@ -33,6 +35,30 @@ export type JobFeedEvent = {
   created_at: string;
 };
 
+/**
+ * A milestone as the HOMEOWNER sees it.
+ *
+ * Deliberately not the owner's shape. It carries the promise, the evidence and
+ * the amount — and none of the contractor's own machinery: no "ready to bill",
+ * no blocker list, no photo requirements. A customer being told "2 of 3
+ * checklist items still to tick off" is being shown a contractor's to-do list
+ * and invited to police it.
+ */
+export type ClientMilestone = {
+  id: string;
+  title: string;
+  scope: string | null;
+  amount: number;
+  status: MilestoneStatus;
+  statusLabel: string;
+  progressPct: number;
+  tasks: Array<{ title: string; done: boolean }>;
+  photos: Array<{ id: string; phase: 'before' | 'after'; caption: string | null; url: string }>;
+  /** Present only once payment has actually been requested. */
+  payHref: string | null;
+  paidAt: string | null;
+};
+
 export type ClientJobDashboard = {
   businessName: string;
   job: {
@@ -50,6 +76,8 @@ export type ClientJobDashboard = {
   payments: Payment[];
   invoices: Invoice[];
   tasks: { title: string; done: boolean }[];
+  /** Proof-to-Pay stages, with the evidence behind each one. */
+  milestones: ClientMilestone[];
   scheduleRequest: {
     id: string;
     options: Array<{ date: string; time: string | null }>;
@@ -354,6 +382,11 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
     .order('created_at', { ascending: true });
   const tasks = taskError ? [] : (taskRows ?? []).map((task) => ({ title: task.title as string, done: Boolean(task.done) }));
 
+  // Proof-to-Pay stages. Only ones that have actually been billed OR started
+  // are shown: a customer does not need to see a contractor's private plan for
+  // how they intend to invoice, and an untouched stage is exactly that.
+  const milestones = await loadClientMilestones(admin, access.account_id, access.job_id);
+
   const feed = sortJobFeed([
     ...feedResult,
     ...createLinkedFeedItems(feedResult, (payments ?? []) as Payment[], (invoices ?? []) as Invoice[], access.account_id, access.job_id),
@@ -422,6 +455,7 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
     payments: (payments ?? []) as Payment[],
     invoices: (invoices ?? []) as Invoice[],
     tasks,
+    milestones,
     scheduleRequest: scheduleRequest as ClientJobDashboard['scheduleRequest'],
     quoteApproved,
     depositBlocksScheduling,

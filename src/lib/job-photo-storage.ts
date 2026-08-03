@@ -18,6 +18,11 @@ async function ensureJobPhotosBucket() {
   if (error && !error.message.toLowerCase().includes('already exists')) throw error;
 }
 
+/** A real, non-empty file from a multipart form — an empty file input still submits. */
+export function isJobPhotoFile(value: FormDataEntryValue | null): value is File {
+  return value instanceof File && value.size > 0;
+}
+
 export async function uploadJobPhoto(accountId: string, file: File): Promise<string> {
   if (!ALLOWED_TYPES.has(file.type)) throw new Error('Photos must be JPG, PNG, WebP, or AVIF.');
   if (file.size > MAX_PHOTO_BYTES) throw new Error('Each photo must be 6 MB or smaller.');

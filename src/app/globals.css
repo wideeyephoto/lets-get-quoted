@@ -5470,6 +5470,174 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   gap: 1rem;
 }
 
+/* ---- Proof-to-Pay milestones ----------------------------------------
+   Owner side. A payment request is not a form to fill in, it's a thing that
+   becomes possible — so the card's job is to show what's still missing, by
+   name, and let the Request button appear when nothing is. */
+.milestone-empty { display: flex; flex-direction: column; gap: 0.9rem; }
+.milestone-empty-actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.milestone-list { display: flex; flex-direction: column; gap: 0.8rem; }
+
+.milestone-totals {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 1.3rem;
+  padding: 0.85rem 1rem;
+  border-radius: 13px;
+  background: rgba(var(--tint), 0.04);
+  border: 1px solid rgba(var(--tint), 0.1);
+  font-size: 0.86rem;
+  color: var(--mute-t55);
+}
+.milestone-totals strong { font-size: 1.05rem; color: var(--ink-neutral-1); font-variant-numeric: tabular-nums; }
+/* Finished, proven, and nobody has asked to be paid for it. */
+.milestone-totals .is-ready strong { color: var(--ink-lime-1); }
+.milestone-totals-planned { margin-left: auto; }
+.milestone-coverage {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border-radius: 11px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  background: rgba(251, 191, 36, 0.09);
+  border: 1px solid rgba(251, 191, 36, 0.26);
+}
+
+.milestone-card {
+  border-radius: 14px;
+  border: 1px solid rgba(var(--tint), 0.12);
+  background: rgba(var(--tint), 0.03);
+  overflow: hidden;
+}
+.milestone-card.status-ready { border-color: rgba(163, 230, 53, 0.4); }
+.milestone-card.status-paid { opacity: 0.82; }
+.milestone-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.95rem 1.05rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.milestone-head-main { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.milestone-title { font-size: 1rem; font-weight: 700; }
+.milestone-scope { font-size: 0.86rem; line-height: 1.5; color: var(--mute-t55); }
+.milestone-head-side { display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem; flex: 0 0 auto; }
+.milestone-amount { font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.milestone-status {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(var(--tint), 0.09);
+  color: var(--mute-t55);
+  white-space: nowrap;
+}
+.milestone-status.status-ready { background: rgba(163, 230, 53, 0.16); color: var(--ink-lime-1); }
+.milestone-status.status-awaiting_payment { background: rgba(56, 189, 248, 0.16); color: var(--ink-sky-1); }
+.milestone-status.status-paid { background: rgba(163, 230, 53, 0.14); color: var(--ink-lime-1); }
+.milestone-status.status-refunded,
+.milestone-status.status-failed { background: rgba(255, 122, 33, 0.14); color: var(--ink-orange-1); }
+
+.milestone-progress { height: 3px; background: rgba(var(--tint), 0.08); }
+.milestone-progress span { display: block; height: 100%; background: var(--ink-lime-1); transition: width 0.3s ease; }
+
+.milestone-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding: 1rem 1.05rem 1.15rem;
+  border-top: 1px solid rgba(var(--tint), 0.08);
+}
+.milestone-proof { display: flex; flex-direction: column; gap: 0.5rem; }
+.milestone-proof-title { margin: 0; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mute-t50); font-weight: 700; }
+.milestone-hint { margin: 0; font-size: 0.84rem; line-height: 1.5; color: var(--mute-t50); }
+.milestone-tasks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+.milestone-tasks li { font-size: 0.9rem; }
+.milestone-tasks li.is-done { color: var(--mute-t50); text-decoration: line-through; }
+.milestone-add-task { display: flex; gap: 0.5rem; }
+.milestone-add-task input { flex: 1; padding: 0.55rem 0.75rem; border-radius: 9px; border: 1px solid rgba(var(--tint), 0.14); background: rgba(var(--tint), 0.04); color: inherit; font: inherit; font-size: 0.9rem; }
+
+.milestone-phase { display: flex; flex-direction: column; gap: 0.4rem; }
+.milestone-phase-title { margin: 0; font-size: 0.84rem; font-weight: 600; }
+.milestone-phase-title span { color: var(--mute-t50); font-weight: 400; }
+.milestone-photo-grid,
+.client-milestone-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.5rem; }
+.milestone-photo-grid figure,
+.client-milestone-grid figure { margin: 0; display: flex; flex-direction: column; gap: 0.25rem; }
+.milestone-photo-grid img,
+.client-milestone-grid img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 10px; border: 1px solid rgba(var(--tint), 0.12); }
+.milestone-photo-grid figcaption { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; font-size: 0.74rem; color: var(--mute-t50); }
+.milestone-photo-missing { display: grid; place-items: center; aspect-ratio: 4 / 3; border-radius: 10px; background: rgba(var(--tint), 0.05); font-size: 0.76rem; color: var(--mute-t45); }
+.milestone-photo-form { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.milestone-photo-form input[type='text'] { flex: 1; min-width: 140px; padding: 0.5rem 0.7rem; border-radius: 9px; border: 1px solid rgba(var(--tint), 0.14); background: rgba(var(--tint), 0.04); color: inherit; font: inherit; font-size: 0.86rem; }
+.milestone-photo-form input[type='file'] { font-size: 0.82rem; max-width: 100%; }
+
+/* The blocker list is the heart of the owner side: specific, and never a
+   flat "not ready". */
+.milestone-blockers {
+  padding: 0.85rem 1rem;
+  border-radius: 11px;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.24);
+}
+.milestone-blockers p { margin: 0 0 0.4rem; font-size: 0.84rem; font-weight: 700; }
+.milestone-blockers ul { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.25rem; }
+.milestone-blockers li { font-size: 0.86rem; line-height: 1.5; }
+.milestone-request { display: flex; flex-direction: column; gap: 0.6rem; }
+.milestone-note { margin: 0; font-size: 0.88rem; color: var(--mute-t55); }
+.milestone-note.is-paid { color: var(--ink-lime-1); }
+.milestone-card-actions { display: flex; gap: 1rem; }
+.milestone-form { margin: 0; }
+
+/* ---- Proof-to-Pay, homeowner side -----------------------------------
+   Same evidence, none of the contractor's machinery: no blockers, no photo
+   quotas, no "ready to bill". */
+.client-milestones { display: flex; flex-direction: column; gap: 1rem; margin-top: 0.9rem; }
+.client-milestone {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.05rem 1.1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--tint), 0.12);
+  background: rgba(var(--tint), 0.03);
+}
+.client-milestone.status-awaiting_payment { border-color: rgba(56, 189, 248, 0.36); }
+.client-milestone.status-paid { opacity: 0.85; }
+.client-milestone-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.client-milestone-head h3 { margin: 0; font-size: 1.05rem; }
+.client-milestone-scope { margin: 0.25rem 0 0; font-size: 0.9rem; line-height: 1.55; color: var(--mute-t55); }
+.client-milestone-money { display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem; }
+.client-milestone-amount { font-size: 1.1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.client-milestone-status {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(var(--tint), 0.09);
+  color: var(--mute-t55);
+  white-space: nowrap;
+}
+.client-milestone-status.status-awaiting_payment { background: rgba(56, 189, 248, 0.16); color: var(--ink-sky-1); }
+.client-milestone-status.status-paid { background: rgba(163, 230, 53, 0.16); color: var(--ink-lime-1); }
+.client-milestone-tasks { margin-top: 0.2rem; }
+.client-milestone-photos { display: flex; flex-direction: column; gap: 0.7rem; }
+.client-milestone-phase { margin: 0 0 0.35rem; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mute-t50); font-weight: 700; }
+.client-milestone-grid figcaption { font-size: 0.76rem; color: var(--mute-t50); }
+.client-milestone-pay { align-self: flex-start; }
+
 /* ---- AI quote drafting ----------------------------------------------
    The panel answers one question before it asks for trust: whose number is
    this? So provenance is per line, and the lines that AREN'T the owner's

@@ -334,6 +334,80 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
         </div>
       </section>
 
+      {/* Proof-to-Pay stages. Above the general checklist because a stage
+          carries its own evidence AND the amount attached to it — this is the
+          part a homeowner opens the page to see. */}
+      {dashboard.milestones.length > 0 ? (
+        <section className="panel workspace-section-card">
+          <div className="section-heading workspace-section-heading compact-heading">
+            <p className="eyebrow">Your job, stage by stage</p>
+            <h2>What&rsquo;s been done</h2>
+          </div>
+          <div className="client-milestones">
+            {dashboard.milestones.map((milestone) => (
+              <article key={milestone.id} className={`client-milestone status-${milestone.status}`}>
+                <div className="client-milestone-head">
+                  <div>
+                    <h3>{milestone.title}</h3>
+                    {milestone.scope ? <p className="client-milestone-scope">{milestone.scope}</p> : null}
+                  </div>
+                  <div className="client-milestone-money">
+                    <span className="client-milestone-amount">{formatMoney(milestone.amount)}</span>
+                    <span className={`client-milestone-status status-${milestone.status}`}>{milestone.statusLabel}</span>
+                  </div>
+                </div>
+
+                {milestone.status !== 'paid' ? (
+                  <div className="task-progress" aria-hidden="true">
+                    <div className="task-progress-fill" style={{ width: `${milestone.progressPct}%` }} />
+                  </div>
+                ) : null}
+
+                {milestone.tasks.length > 0 ? (
+                  <ul className="client-task-list client-milestone-tasks">
+                    {milestone.tasks.map((task, index) => (
+                      <li key={index} className={`client-task${task.done ? ' is-done' : ''}`}>
+                        <span className="client-task-check" aria-hidden="true">{task.done ? '✓' : '○'}</span>
+                        <span>{task.title}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+
+                {milestone.photos.length > 0 ? (
+                  <div className="client-milestone-photos">
+                    {(['before', 'after'] as const).map((phase) => {
+                      const shots = milestone.photos.filter((photo) => photo.phase === phase);
+                      if (shots.length === 0) return null;
+                      return (
+                        <div key={phase}>
+                          <p className="client-milestone-phase">{phase === 'before' ? 'Before' : 'After'}</p>
+                          <div className="client-milestone-grid">
+                            {shots.map((photo) => (
+                              <figure key={photo.id}>
+                                {/* eslint-disable-next-line @next/next/no-img-element -- signed URL, one-hour life */}
+                                <img src={photo.url} alt={photo.caption || `${phase} photo`} loading="lazy" />
+                                {photo.caption ? <figcaption>{photo.caption}</figcaption> : null}
+                              </figure>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                {milestone.payHref ? (
+                  <a className="btn primary client-milestone-pay" href={milestone.payHref}>
+                    Pay {formatMoney(milestone.amount)}
+                  </a>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       {dashboard.tasks.length > 0 ? (() => {
         const doneCount = dashboard.tasks.filter((task) => task.done).length;
         const pct = Math.round((doneCount / dashboard.tasks.length) * 100);
