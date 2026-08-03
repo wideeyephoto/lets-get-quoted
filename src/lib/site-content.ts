@@ -318,6 +318,9 @@ export type SiteHeroVideo = {
   posterUrl: string;
   /** Why it may not play for visitors, or ''. Same check as a band's clips. */
   playbackWarning: string;
+  /** Seconds, 0 when unknown. Only so the builder can keep advising on a long
+      loop after a reload — never rendered to a visitor. */
+  duration: number;
 };
 
 export type SiteVideoSectionContent = {
@@ -1030,6 +1033,7 @@ function parseHeroVideo(value: unknown): SiteHeroVideo {
     url: toString(raw.url).slice(0, 500),
     posterUrl: toString(raw.posterUrl).slice(0, 500),
     playbackWarning: toString(raw.playbackWarning).slice(0, 400),
+    duration: Math.max(0, Math.round(toPositiveNumber(raw.duration, 0))),
   };
 }
 

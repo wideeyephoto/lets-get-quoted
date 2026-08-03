@@ -28,6 +28,58 @@ export type VideoSource =
 // rather than by an opaque platform rejection at the end of a long upload.
 export const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 
+// A HERO clip gets a much smaller budget, because it is a different job.
+//
+//   A band clip is CONTENT. Somebody read a headline, decided they wanted to
+//   watch, and pressed play. 50 MB buys a 90-second walkthrough and they asked
+//   for it.
+//
+//   A hero clip is DECORATION — a silent loop behind a headline. Nobody chose
+//   it, most visitors scroll past within seconds, and it downloads on every
+//   first desktop visit whether or not anyone looks at it. Spending 50 MB of
+//   somebody else's connection on that is not a trade they were offered.
+//
+// 12 MB is a comfortable 10-15 seconds at 720p, which is what a background loop
+// should be anyway. The cap is on BYTES rather than seconds because bytes are
+// what costs the visitor and the bill; a long clip at a low bitrate is fine, and
+// a short one at a huge bitrate is not.
+export const MAX_HERO_VIDEO_BYTES = 12 * 1024 * 1024;
+
+// Length is a matter of taste, not cost, so it ADVISES rather than blocks — the
+// same warn-don't-refuse line the codec check draws. A 40-second background loop
+// is a design smell, not a broken page, and refusing one would be us overruling
+// an owner about their own site.
+export const IDEAL_HERO_VIDEO_SECONDS = 15;
+
+/** Which budget a clip is being uploaded against. */
+export type VideoBudget = 'band' | 'hero';
+
+export function maxBytesFor(budget: VideoBudget): number {
+  return budget === 'hero' ? MAX_HERO_VIDEO_BYTES : MAX_VIDEO_BYTES;
+}
+
+/**
+ * Why this file is too big for where it's going, or null.
+ *
+ * Says what to DO, not just what's wrong. "Too large" leaves an owner with a
+ * phone full of clips and no idea which part to change.
+ */
+export function videoSizeProblem(budget: VideoBudget, bytes: number): string | null {
+  const limit = maxBytesFor(budget);
+  if (bytes <= limit) return null;
+  const mb = Math.round(bytes / (1024 * 1024));
+  const limitMb = Math.round(limit / (1024 * 1024));
+  return budget === 'hero'
+    ? `That video is ${mb} MB — a hero background has a ${limitMb} MB limit, because it loads for every visitor whether they watch it or not. Trim it to about 10 seconds, or export it at 720p. Longer clips belong in a video section further down the page, which allows up to ${Math.round(MAX_VIDEO_BYTES / (1024 * 1024))} MB.`
+    : `That video is ${mb} MB — the limit is ${limitMb} MB (about 45 seconds of phone video). Trim it, or export at a lower resolution.`;
+}
+
+/** Gentle advice about a long hero loop, or null. Never blocks. */
+export function heroDurationAdvice(seconds: number): string | null {
+  if (seconds <= IDEAL_HERO_VIDEO_SECONDS) return null;
+  return `This loop is ${Math.round(seconds)} seconds. A background clip reads better under ${IDEAL_HERO_VIDEO_SECONDS} — most visitors have scrolled past before it gets going.`;
+}
+
 export const ALLOWED_VIDEO_TYPES = [
   'video/mp4',
   'video/quicktime', // .mov — what every iPhone records

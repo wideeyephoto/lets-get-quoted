@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { sniffVideoCodec, videoPlaybackWarning, type VideoCodec } from '@/lib/video-source';
+import {
+  heroDurationAdvice,
+  MAX_HERO_VIDEO_BYTES,
+  MAX_VIDEO_BYTES,
+  sniffVideoCodec,
+  videoPlaybackWarning,
+  videoSizeProblem,
+  type VideoCodec,
+} from '@/lib/video-source';
 
 // Real ISO base-media boxes, built byte by byte. The sniffer's whole job is to
 // read a container correctly, so testing it against a hand-rolled mock of itself
@@ -93,6 +101,60 @@ describe('sniffVideoCodec', () => {
     view.setUint32(8, 0); // size 0 = "to end of file"
     for (let i = 0; i < 4; i += 1) evil[12 + i] = 'moov'.charCodeAt(i);
     expect(sniffVideoCodec(evil)).toBe('unknown');
+  });
+});
+
+// A hero clip is decoration that downloads for everyone; a band clip is content
+// somebody chose to watch. Different jobs, so different ceilings.
+describe('videoSizeProblem', () => {
+  const MB = 1024 * 1024;
+
+  it('lets a band clip run to 50 MB', () => {
+    expect(videoSizeProblem('band', 40 * MB)).toBeNull();
+    expect(videoSizeProblem('band', MAX_VIDEO_BYTES)).toBeNull();
+    expect(videoSizeProblem('band', MAX_VIDEO_BYTES + 1)).not.toBeNull();
+  });
+
+  it('holds a hero clip to a much smaller budget', () => {
+    expect(videoSizeProblem('hero', 8 * MB)).toBeNull();
+    expect(videoSizeProblem('hero', MAX_HERO_VIDEO_BYTES)).toBeNull();
+    expect(videoSizeProblem('hero', MAX_HERO_VIDEO_BYTES + 1)).not.toBeNull();
+  });
+
+  it('rejects for the hero a file the band would happily take', () => {
+    const thirty = 30 * MB;
+    expect(videoSizeProblem('band', thirty)).toBeNull();
+    expect(videoSizeProblem('hero', thirty)).not.toBeNull();
+  });
+
+  // The message has to leave someone able to act. "Too large" leaves an owner
+  // with a phone full of clips and no idea which part to change.
+  it('tells a hero upload what to do and where a long clip belongs', () => {
+    const message = videoSizeProblem('hero', 30 * MB)!;
+    expect(message).toContain('30 MB');
+    expect(message).toMatch(/720p|10 seconds/);
+    expect(message).toContain('video section');
+  });
+
+  it('names the actual size in both messages', () => {
+    expect(videoSizeProblem('band', 60 * MB)).toContain('60 MB');
+    expect(videoSizeProblem('hero', 20 * MB)).toContain('20 MB');
+  });
+});
+
+describe('heroDurationAdvice', () => {
+  it('says nothing about a short loop', () => {
+    expect(heroDurationAdvice(8)).toBeNull();
+    expect(heroDurationAdvice(15)).toBeNull();
+    expect(heroDurationAdvice(0)).toBeNull();
+  });
+
+  it('advises on a long one without ever blocking it', () => {
+    // Advice, not a veto — length is taste, and it returns a STRING, which no
+    // caller treats as an error. The size cap is the only thing that refuses.
+    const advice = heroDurationAdvice(45)!;
+    expect(advice).toContain('45 seconds');
+    expect(videoSizeProblem('hero', 1024)).toBeNull();
   });
 });
 

@@ -4,9 +4,10 @@ import { supabase } from '@/lib/supabase';
 import {
   ALLOWED_VIDEO_TYPES,
   CODEC_SNIFF_BYTES,
-  MAX_VIDEO_BYTES,
   sniffVideoCodec,
   videoPlaybackWarning,
+  videoSizeProblem,
+  type VideoBudget,
 } from '@/lib/video-source';
 import { createSiteVideoUploadAction, uploadSiteImageAction } from './actions';
 
@@ -37,13 +38,11 @@ export type UploadedVideo = {
   uploadedAt: string;
 };
 
-export function videoUploadError(file: File): string | null {
+// Defaults to the band budget so every existing caller keeps its 50 MB ceiling;
+// the hero passes 'hero' for the much smaller one. See videoSizeProblem.
+export function videoUploadError(file: File, budget: VideoBudget = 'band'): string | null {
   if (!ALLOWED_TYPES.has(file.type)) return 'That file type won’t play on a website. Use an MP4, MOV, WebM, or OGV.';
-  if (file.size > MAX_VIDEO_BYTES) {
-    const mb = Math.round(file.size / (1024 * 1024));
-    return `That video is ${mb} MB — the limit is 50 MB (about 45 seconds of phone video). Trim it, or export at a lower resolution.`;
-  }
-  return null;
+  return videoSizeProblem(budget, file.size);
 }
 
 // Pull a still frame and the duration out of the file itself, in the browser,
@@ -116,8 +115,8 @@ async function readCodec(file: File): Promise<ReturnType<typeof sniffVideoCodec>
   }
 }
 
-export async function uploadSiteVideo(file: File): Promise<UploadedVideo> {
-  const problem = videoUploadError(file);
+export async function uploadSiteVideo(file: File, budget: VideoBudget = 'band'): Promise<UploadedVideo> {
+  const problem = videoUploadError(file, budget);
   if (problem) throw new Error(problem);
 
   // Read the frame first: it works on the local file, so a browser that can't

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { SiteHeroVideo } from '@/lib/site-content';
-import { VIDEO_FILE_ACCEPT } from '@/lib/video-source';
+import { heroDurationAdvice, MAX_HERO_VIDEO_BYTES, VIDEO_FILE_ACCEPT } from '@/lib/video-source';
 import { uploadSiteVideo, videoUploadError } from './video-upload';
 import styles from './SiteEditor.module.css';
 
@@ -34,12 +34,15 @@ export default function HeroVideoField({
   const [error, setError] = useState<string | null>(null);
 
   const upload = async (file: File) => {
-    const problem = videoUploadError(file);
+    // 'hero' — a much smaller ceiling than a band clip's, because this one
+    // downloads for every first-time desktop visitor whether they watch it or
+    // not. See videoSizeProblem.
+    const problem = videoUploadError(file, 'hero');
     if (problem) { setError(problem); return; }
     setError(null);
     setBusy(true);
     try {
-      const uploaded = await uploadSiteVideo(file);
+      const uploaded = await uploadSiteVideo(file, 'hero');
       onChange({
         url: uploaded.url,
         // The captured frame is what a phone, a reduced-motion visitor and the
@@ -47,6 +50,7 @@ export default function HeroVideoField({
         // the largest thing on the page.
         posterUrl: uploaded.posterUrl,
         playbackWarning: uploaded.playbackWarning,
+        duration: uploaded.duration,
       });
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'The upload didn’t finish. Try again.');
@@ -82,7 +86,7 @@ export default function HeroVideoField({
               <button
                 type="button"
                 className={styles.secondaryAction}
-                onClick={() => onChange({ url: '', posterUrl: '', playbackWarning: '' })}
+                onClick={() => onChange({ url: '', posterUrl: '', playbackWarning: '', duration: 0 })}
               >
                 Remove
               </button>
@@ -92,6 +96,12 @@ export default function HeroVideoField({
             <p className={styles.vsWarn}>
               <strong>May not play for some visitors.</strong> {video.playbackWarning}
             </p>
+          )}
+          {/* Advice, not a warning, and never a block: a long loop is a matter
+              of taste, and refusing one would be overruling an owner about their
+              own site. Kept out of .vsWarn's tones for that reason. */}
+          {heroDurationAdvice(video.duration) && (
+            <small className={styles.vsHint}>{heroDurationAdvice(video.duration)}</small>
           )}
         </>
       ) : (
@@ -114,7 +124,15 @@ export default function HeroVideoField({
       <small className={styles.fieldHint}>
         Plays silently on a loop behind your headline, in place of the hero photo. Phones and anyone
         who prefers reduced motion see the still frame instead, so keep a good hero photo set — it’s
-        the fallback. Best under 15 seconds, and shot wide: every template crops it differently.
+        the fallback. Shoot it wide, since every template crops it differently.
+      </small>
+      {/* The number, and the reason for it. A limit without a reason reads as an
+          arbitrary rule to work around; this one is somebody else's data plan. */}
+      <small className={styles.fieldHint}>
+        Keep it under {Math.round(MAX_HERO_VIDEO_BYTES / (1024 * 1024))} MB — about 10 seconds at 720p.
+        A background loop downloads for every visitor whether they watch it or not, so a big one makes
+        your page slow for people who never look at it. Got a longer video worth watching? Add it as a
+        video section further down the page instead, where people choose to press play.
       </small>
     </div>
   );

@@ -47,7 +47,7 @@ describe('getHeroVideo', () => {
   });
 
   it('parses to a stable empty shape so the builder always has fields to bind', () => {
-    expect(getSiteContent({}).heroVideo).toEqual({ url: '', posterUrl: '', playbackWarning: '' });
+    expect(getSiteContent({}).heroVideo).toEqual({ url: '', posterUrl: '', playbackWarning: '', duration: 0 });
   });
 
   it('keeps the playback warning through a round trip', () => {
