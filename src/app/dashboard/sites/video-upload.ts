@@ -93,6 +93,9 @@ function readVideoFrame(file: File): Promise<{ frame: Blob | null; duration: num
     const finish = (result: { frame: Blob | null; duration: number; outcome: FrameOutcome }) => {
       if (settled) return;
       settled = true;
+      video.pause();
+      video.removeAttribute('src');
+      video.remove();
       URL.revokeObjectURL(objectUrl);
       if (!result.frame) {
         // Printed rather than stored: it is diagnostic detail for whoever is
@@ -108,9 +111,32 @@ function readVideoFrame(file: File): Promise<{ frame: Blob | null; duration: num
 
     // No crossOrigin: this is a blob: URL for a file the user just picked, so
     // there is no origin to negotiate and nothing that could taint the canvas.
-    video.preload = 'metadata';
+    //
+    // THE REST OF THIS IS ALL iOS SAFARI.
+    //
+    // Videos recorded on an iPhone are the ones most likely to be uploaded from
+    // an iPhone, and iOS is the one platform where "load the file and read a
+    // frame" does not work. It refuses to decode anything for a video that is
+    // merely loaded — preload is a suggestion it ignores, `loadeddata` never
+    // arrives, and the grab times out with no error. Which is exactly the
+    // signature seen on both real uploads.
+    //
+    // muted + playsInline are not cosmetic here: a muted inline video is the one
+    // kind iOS permits to start WITHOUT a user gesture, and starting it is the
+    // only way to make it decode. Both are also set as attributes because Safari
+    // has historically honoured the attribute where it ignored the property.
+    video.preload = 'auto';
     video.muted = true;
+    video.defaultMuted = true;
     video.playsInline = true;
+    video.setAttribute('muted', '');
+    video.setAttribute('playsinline', '');
+    video.setAttribute('webkit-playsinline', '');
+
+    // iOS also won't paint a detached element into a canvas. Off-screen but in
+    // the document, sized to a pixel so it can never affect layout.
+    video.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none';
+    document.body.appendChild(video);
 
     video.addEventListener('loadstart', () => mark('loadstart'));
     video.addEventListener('stalled', () => mark('stalled'));
@@ -127,6 +153,9 @@ function readVideoFrame(file: File): Promise<{ frame: Blob | null; duration: num
 
     video.addEventListener('loadeddata', () => {
       mark('decoded');
+      // A frame exists now, so stop consuming battery and bandwidth playing a
+      // clip nobody is watching. Seeking works fine on a paused element.
+      video.pause();
       const duration = Number.isFinite(video.duration) ? Math.round(video.duration) : knownDuration;
       // A frame from the very first moment is often a black fade-in, so take one
       // a little way in — but never past the end of a very short clip.
@@ -161,6 +190,10 @@ function readVideoFrame(file: File): Promise<{ frame: Blob | null; duration: num
     });
 
     video.src = objectUrl;
+    // The line that makes iOS work. Everywhere else this is redundant — the
+    // frame would decode from the load alone — and harmless, because it is
+    // muted and gets paused the moment a frame is in hand.
+    video.play().catch(() => { mark('play-refused'); });
   });
 }
 
@@ -186,13 +219,20 @@ export async function uploadSiteVideo(file: File, budget: VideoBudget = 'band'):
 
   // Read the frame first: it works on the local file, so a browser that can't
   // decode the container is discovered before anything is uploaded.
-  // Sequential, not Promise.all. These both read the same file, and the codec
-  // sniff is the cheap one — a 1 MB slice. Running it first means that if the
-  // file is a cloud placeholder (OneDrive, iCloud, a network share), it is the
-  // read that pays the hydration cost, and the video element then opens a file
-  // that is already local instead of the two of them contending over a download.
+  // Started, deliberately, BEFORE the first await in this function.
+  //
+  // readVideoFrame calls play() synchronously in its executor, so kicking it off
+  // here puts that call in the same task as the file-picker event that led here.
+  // That matters on iOS: muted inline video is normally allowed to start without
+  // a user gesture, but Low Power Mode blocks even that, and gesture proximity
+  // is the difference between a poster and a blank frame for anyone whose phone
+  // is low on battery — which is a real share of people filming a job all day.
+  //
+  // The codec sniff is awaited around it rather than before it for the same
+  // reason: an await first would spend the gesture on a 1 MB slice read.
+  const framePromise = readVideoFrame(file);
   const codec = await readCodec(file);
-  const { frame, duration, outcome } = await readVideoFrame(file);
+  const { frame, duration, outcome } = await framePromise;
 
   // Only a genuine decode ERROR is evidence about playback. A timed-out frame
   // grab says nothing about whether the clip plays — treating it as though it
