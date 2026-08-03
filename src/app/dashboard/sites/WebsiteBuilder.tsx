@@ -424,7 +424,9 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
     if (card) setOpenSection(card);
     requestAnimationFrame(() => requestAnimationFrame(() => {
       const el = (fieldId ? document.getElementById(fieldId) : document.querySelector(`.${styles.sectionCardOpen}`)) as HTMLElement | null;
-      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // A field is centred; a whole card goes to its top so you can see what
+      // you opened. Centring a tall card leaves its heading off-screen above.
+      el?.scrollIntoView({ behavior: 'smooth', block: fieldId ? 'center' : 'start' });
       if (fieldId) el?.focus({ preventScroll: true });
     }));
   }, []);
@@ -623,6 +625,22 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
         }));
       };
 
+      // Cards scroll to their TOP, not their middle.
+      //
+      // These are tall — the Header card runs well past a screen — so
+      // block:'center' put the card's midpoint at the viewport's midpoint and
+      // pushed its heading off above. Clicking "Edit header" landed you in the
+      // middle of the header controls with no title in sight, which reads as
+      // having been dropped somewhere random rather than taken somewhere.
+      //
+      // Fields keep block:'center' (see focusField): one input can sit anywhere
+      // inside a long card, and centring it is exactly right.
+      const scrollCardToTop = () => {
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          document.querySelector(`.${styles.sectionCardOpen}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }));
+      };
+
       const flashCard = (fieldKey: string, scrollId: string) => {
         setFlashField(fieldKey);
         setTimeout(() => setFlashField((current) => (current === fieldKey ? null : current)), 1600);
@@ -639,10 +657,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
       if (target === 'bizHours') { setActiveTab('page'); setOpenSection('footer'); focusField('bf-hours'); return; }
       if (target === 'bizPhone') { setActiveTab('page'); setOpenSection('estimate'); focusField('bf-phone'); return; }
       if (target === 'bizLicense') { setActiveTab('page'); setOpenSection('footer'); focusField('bf-license'); return; }
-      if (target === 'legal') { setActiveTab('business'); setOpenSection('legal'); requestAnimationFrame(() => requestAnimationFrame(() => document.querySelector(`.${styles.sectionCardOpen}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }))); return; }
+      if (target === 'legal') { setActiveTab('business'); setOpenSection('legal'); scrollCardToTop(); return; }
       // Socials live on Setup, not Page — so they're routed here rather than
       // falling through to SECTION_TARGETS, which assumes the Page tab.
-      if (target === 'socials') { setActiveTab('business'); setOpenSection('socials'); requestAnimationFrame(() => requestAnimationFrame(() => document.querySelector(`.${styles.sectionCardOpen}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }))); return; }
+      if (target === 'socials') { setActiveTab('business'); setOpenSection('socials'); scrollCardToTop(); return; }
       if (target === 'heroBadge') { setActiveTab('page'); setOpenSection('hero'); flashCard('heroBadge', 'design-hero-badge'); return; }
       // The logo + auto trade-icon jump to the Header section's "Your logo" card
       // (Page tab), where the glyph picker, transparent toggle, and upload live.
@@ -671,7 +689,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
         // ever moves to another tab, route it explicitly above instead.
         setActiveTab('page');
         setOpenSection(section);
-        requestAnimationFrame(() => requestAnimationFrame(() => document.querySelector(`.${styles.sectionCardOpen}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })));
+        scrollCardToTop();
       }
     }
 

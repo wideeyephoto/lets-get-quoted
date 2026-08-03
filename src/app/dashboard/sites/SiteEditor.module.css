@@ -111,7 +111,11 @@
 .contentCard { display: grid; gap: .9rem; padding: 1rem; border: 1px solid rgba(var(--tint), .12); border-radius: 8px; background: rgba(var(--tint), .035); }
 
 /* Collapsible section (accordion) */
-.sectionCard { min-width: 0; border: 1px solid rgba(var(--tint), .12); border-radius: 8px; background: rgba(var(--tint), .035); }
+/* scroll-margin-top so scrollIntoView({ block: 'start' }) stops short of the
+   very top instead of jamming the card's heading against the edge of the pane —
+   and clear of anything sticky above it. Without this, "take me to the top of
+   this card" lands the title exactly at y=0, which reads as clipped. */
+.sectionCard { min-width: 0; scroll-margin-top: 1rem; border: 1px solid rgba(var(--tint), .12); border-radius: 8px; background: rgba(var(--tint), .035); }
 .sectionCardOpen { border-color: rgba(var(--tint), .22); background: rgba(var(--tint), .05); }
 .sectionCardHead { display: flex; align-items: stretch; }
 .sectionCardSwitch { display: inline-flex; align-items: center; padding: 0 .1rem 0 .95rem; cursor: pointer; }
