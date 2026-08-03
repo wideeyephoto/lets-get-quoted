@@ -1045,7 +1045,21 @@
    centered nav) rather than clipping — the full business name still shows. */
 .guildBrand strong { display: block; min-width: 0; overflow-wrap: break-word; line-height: 1.12; font-family: var(--brand-font, var(--theme-display)); font-size: 1.35rem; font-weight: 600; letter-spacing: -.01em; }
 .guildBrand small { font-family: var(--font-mono); margin-top: .2rem; color: var(--c-muted); font-size: .64rem; letter-spacing: .1em; text-transform: uppercase; }
-.guildQuote { justify-self: end; white-space: nowrap; padding-bottom: .35rem; border-bottom: 2px solid var(--theme-accent); font-weight: 700; letter-spacing: .02em; transition: color .2s ease; }
+/* Sized like the other templates' header CTAs (vistaMenu, coatHeaderCta,
+   careBtn) rather than as bare underlined text, which is what it used to be.
+   Two reasons it had to change:
+
+   Six of the seven button styles an owner can pick — outline, ring, glow,
+   gloss, double, sweep — draw a border or a ring around this whole element.
+   With no horizontal or top padding, that box closed right onto the words and
+   "Instant Estimate" sat wedged inside its own outline.
+
+   And the tap target was about 24px tall (text plus .35rem), well under the
+   44px minimum, on what is the primary call to action in the header.
+
+   The bottom padding stays tighter than the top so the default underline still
+   sits close to the text instead of floating away from it. */
+.guildQuote { justify-self: end; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; white-space: nowrap; padding: .55rem 1.15rem .4rem; border-bottom: 2px solid var(--theme-accent); font-weight: 700; letter-spacing: .02em; transition: color .2s ease; }
 .guildQuote:hover { color: var(--theme-accent); }
 .guildHero { min-height: 700px; display: grid; grid-template-columns: .95fr 1.05fr; gap: clamp(1.5rem, 4vw, 3.5rem); align-items: stretch; padding-right: 4vw; }
 .guildHeroCopy { display: flex; flex-direction: column; justify-content: center; padding: 6vw 0 6vw 6vw; }
@@ -2117,11 +2131,29 @@
      hidden on mobile two rules down, which leaves only TWO grid items. The
      toggle then lands in the middle 1fr column and sits flush against the logo
      with the whole header empty to its right. Ending it inside its own column
-     puts it top-right whether that column is the 1fr or the final auto. */
-  .mobileNavToggle { display: inline-flex; justify-self: end; }
+     puts it top-right whether that column is the 1fr or the final auto.
+
+     align-self is the other half of the same problem. The button is a fixed
+     42px tall, so in a grid row taller than that it pins to the top of its
+     cell and floats above the wordmark. justify-self handles the inline axis;
+     this handles the block one. */
+  .mobileNavToggle { display: inline-flex; justify-self: end; align-self: center; }
   /* All template headers keep three mobile columns — brand | CTA | menu —
      so the toggle sits top-right without wrapping to a second row. */
-  .forgeHeader, .guildHeader, .vistaHeader, .careHeader, .coatHeader, .fixitHeader, .renoHeader, .shineHeader { grid-template-columns: auto 1fr auto; }
+  .forgeHeader, .guildHeader, .vistaHeader, .careHeader, .coatHeader, .fixitHeader, .renoHeader, .shineHeader { grid-template-columns: minmax(0, auto) 1fr auto; }
+  /* minmax(0, auto) above, and min-width: 0 here, for the same reason: a grid
+     item's default minimum is its MIN-CONTENT, so a long business name refuses
+     to shrink and spills out of its own column — straight underneath the menu
+     button, which now sits over exactly that spot. "Chelsea's Cleaning Service"
+     was running through the hamburger on a 390px screen.
+     Letting the cell shrink and the name ellipsis is the fix; the full name is
+     still on screen everywhere it has room, and in the menu when it doesn't. */
+  .guildBrand, .careBrand, .coatBrand, .fixitBrand, .renoBrand, .shineBrand, .vistaBrand { min-width: 0; }
+  .guildBrand > span, .careBrand > span, .coatBrand > span, .fixitBrand > span, .renoBrand > span, .shineBrand > span { min-width: 0; }
+  .guildBrand strong, .careBrand strong, .coatBrand strong, .fixitBrand strong, .renoBrand strong, .shineBrand strong,
+  .guildBrand small, .careBrand small, .coatBrand small, .fixitBrand small, .renoBrand small, .shineBrand small {
+    display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
   .forgeHeader .headerPhone, .guildHeader .guildQuote, .vistaHeader .vistaActions { grid-column: auto; justify-self: end; }
   /* No CTA button in the mobile header — the dropdown menu carries the actions,
      so the bar stays just logo + hamburger. */
