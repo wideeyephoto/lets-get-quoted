@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getEstimateButtonLabel, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getSiteContent, glyphForContent } from '@/lib/site-content';
+import { getColorScheme, getEstimateButtonLabel, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroVideo, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getSiteContent, glyphForContent } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
 import SiteFooter from './SiteFooter';
 import WordmarkName from './WordmarkName';
@@ -78,7 +78,7 @@ export default function FixitTemplate({ site, galleryImages = [] }: TemplateProp
         <div className={styles.fixitHeroMedia}>
           <span className={styles.fixitHeroBlob} aria-hidden="true" />
           <span className={styles.fixitHeroShape} data-parallax="0.07" aria-hidden="true" />
-          <HeroImageCycle images={getHeroImages(site.content, heroImage)} className={styles.fixitHeroImg} alt="Professional handyman ready to help" />
+          <HeroImageCycle images={getHeroImages(site.content, heroImage)} video={getHeroVideo(site.content)} className={styles.fixitHeroImg} alt="Professional handyman ready to help" />
           {heroBadge && (
             <div className={styles.fixitHeroCard} data-parallax="0.14" data-edit="heroBadge">
               <span className={styles.fixitHeroCardIcon} aria-hidden="true">{heroBadge.icon}</span>

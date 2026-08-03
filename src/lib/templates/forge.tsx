@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getEstimateButtonLabel, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getSiteContent, glyphForContent } from '@/lib/site-content';
+import { getColorScheme, getEstimateButtonLabel, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroVideo, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getSiteContent, glyphForContent } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
 import SiteFooter from './SiteFooter';
 import WordmarkName from './WordmarkName';
@@ -55,7 +55,7 @@ export default function ForgeTemplate({ site }: TemplateProps) {
             <a className={styles.forgeHeaderCta} data-edit="quoteForm" href="#contact">{getEstimateButtonLabel(content.quoteForm)}</a>
           </div>
         </header>
-        <HeroImageCycle images={getHeroImages(site.content, heroImage)} className={styles.heroImage} alt="Home construction work" />
+        <HeroImageCycle images={getHeroImages(site.content, heroImage)} video={getHeroVideo(site.content)} className={styles.heroImage} alt="Home construction work" />
         <div className={styles.forgeScrim} />
         <div className={styles.forgeHeroCopy}>
           <p className={styles.kicker} data-edit="heroEyebrow">{heroEyebrow || 'Done right. Every time.'}</p>

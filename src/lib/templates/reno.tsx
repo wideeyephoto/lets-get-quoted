@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getEstimateButtonLabel, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getSiteContent, glyphForContent } from '@/lib/site-content';
+import { getColorScheme, getEstimateButtonLabel, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroVideo, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getSiteContent, glyphForContent } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
 import SiteFooter from './SiteFooter';
 import WordmarkName from './WordmarkName';
@@ -71,7 +71,7 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
           <SiteProofStrip site={site} />
         </div>
         <div className={styles.renoHeroMedia}>
-          <HeroImageCycle images={getHeroImages(site.content, heroImage)} className={styles.renoHeroImg} alt="Home renovation work" />
+          <HeroImageCycle images={getHeroImages(site.content, heroImage)} video={getHeroVideo(site.content)} className={styles.renoHeroImg} alt="Home renovation work" />
           {heroBadge ? (
             <div className={styles.renoBadge} data-parallax="0.16" data-edit="heroBadge">
               <span className={styles.renoBadgeHex} aria-hidden="true">{heroBadge.icon}</span>

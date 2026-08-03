@@ -19,6 +19,7 @@ import DomainConnector from './DomainConnector';
 import GoogleReviewImport from './GoogleReviewImport';
 import IntakePreviewModal from './IntakePreviewModal';
 import IntroVideoField from './IntroVideoField';
+import HeroVideoField from './HeroVideoField';
 import LivePreview from './LivePreview';
 import SectionCard from './SectionCard';
 import ThemeIcon from './ThemeIcon';
@@ -1940,6 +1941,11 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
                     {siteContent.heroImages.length < MAX_EXTRA_HERO_IMAGES && <button type="button" className={styles.secondaryAction} onClick={() => setPicker({ label: 'an extra hero photo', kind: 'heroExtra' })}>Add hero photo</button>}
                     <small className={styles.fieldHint}>Add up to {MAX_EXTRA_HERO_IMAGES} more. They cross-fade with your hero image and reappear as parallax bands further down the page.</small>
                   </div>
+                  <HeroVideoField
+                    video={siteContent.heroVideo}
+                    heroImage={site.hero_url}
+                    onChange={(heroVideo) => updateSiteContent({ heroVideo })}
+                  />
                   <div className={styles.stockBlock}>
                     <div>
                       <strong>Stock photos</strong>

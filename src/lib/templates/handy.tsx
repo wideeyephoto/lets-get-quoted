@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getEstimateButtonLabel, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getPublishedTrustBadges, getPublishedWhyUs, getSiteContent, getSlotImage, glyphForContent } from '@/lib/site-content';
+import { getColorScheme, getEstimateButtonLabel, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroVideo, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getPublishedTrustBadges, getPublishedWhyUs, getSiteContent, getSlotImage, glyphForContent } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
 import SiteFooter from './SiteFooter';
 import WordmarkName from './WordmarkName';
@@ -110,7 +110,7 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
           <span className={styles.careDot1} aria-hidden="true" />
           <span className={styles.careDot2} aria-hidden="true" />
           <div className={styles.careHeroCircle}>
-            <HeroImageCycle images={getHeroImages(site.content, heroImage)} alt="A friendly professional ready to help" />
+            <HeroImageCycle images={getHeroImages(site.content, heroImage)} video={getHeroVideo(site.content)} alt="A friendly professional ready to help" />
           </div>
         </div>
       </section>

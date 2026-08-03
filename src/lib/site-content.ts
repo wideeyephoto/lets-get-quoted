@@ -1,6 +1,7 @@
 import type { SiteImage } from '@/lib/site-images';
 import type { WebsiteImageAssignment } from '@/lib/stock/types';
 import { SERVICE_ICON_GLYPHS } from '@/lib/templates/service-icons.data';
+import { parseVideoSource } from '@/lib/video-source';
 import { parseYouTubeUrl } from '@/lib/youtube';
 
 export type SiteSectionKey = 'showcase' | 'testimonials' | 'faqs';
@@ -305,6 +306,18 @@ export type SiteVideoItem = {
   quote: string;
   author: string;
   authorLabel: string;
+};
+
+// The hero's background clip. Separate from a video BAND: a band is a section
+// in the page's flow with its own words and layout, this replaces the hero
+// photo behind the headline every template already has.
+export type SiteHeroVideo = {
+  /** Uploaded file URL. Empty means "use the hero photos". */
+  url: string;
+  /** Still frame — shown before playback, on phones, and under reduced motion. */
+  posterUrl: string;
+  /** Why it may not play for visitors, or ''. Same check as a band's clips. */
+  playbackWarning: string;
 };
 
 export type SiteVideoSectionContent = {
@@ -759,6 +772,10 @@ export type NormalizedSiteContent = {
   // (cross-fade) in the hero; the extras also render as parallax bands further
   // down the page. See getHeroImages / getHeroBandImages.
   heroImages: string[];
+  // A silent looping clip that replaces the hero PHOTO — not a video band, which
+  // is a section further down the page. Empty url means "use the photos", which
+  // is every site that exists. See getHeroVideo and HeroImageCycle.
+  heroVideo: SiteHeroVideo;
   // How the header/footer logo is framed so a boxy logo blends in:
   // 'plain' | 'rounded' | 'framed' | 'circle'. Set on the template root as
   // data-logo-style; one CSS block styles every template's logo.
@@ -1002,6 +1019,18 @@ function parseServices(value: unknown): SiteServiceItem[] {
     title: toString(item.title),
     description: toString(item.description),
   }));
+}
+
+// Absent on every site that exists, which parses to an empty url — "use the
+// photos" — so nothing about the eight templates' heroes changes until an owner
+// deliberately sets one.
+function parseHeroVideo(value: unknown): SiteHeroVideo {
+  const raw = isRecord(value) ? value : {};
+  return {
+    url: toString(raw.url).slice(0, 500),
+    posterUrl: toString(raw.posterUrl).slice(0, 500),
+    playbackWarning: toString(raw.playbackWarning).slice(0, 400),
+  };
 }
 
 function parseVideoItems(value: unknown): SiteVideoItem[] {
@@ -1353,6 +1382,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     heroImages: Array.isArray(root.heroImages)
       ? root.heroImages.filter((url): url is string => typeof url === 'string' && url.trim().length > 0).map((url) => url.trim()).slice(0, MAX_EXTRA_HERO_IMAGES)
       : [],
+    heroVideo: parseHeroVideo(root.heroVideo),
     logoStyle: LOGO_STYLE_KEYS.has(toString(root.logoStyle)) ? toString(root.logoStyle) : 'plain',
     logoSize: LOGO_SIZE_KEYS.has(toString(root.logoSize)) ? toString(root.logoSize) : 'medium',
     footerStyle: FOOTER_STYLE_KEYS.has(toString(root.footerStyle)) ? toString(root.footerStyle) : 'columns',
@@ -1804,4 +1834,28 @@ export function getHeroImages(content: Record<string, unknown> | null | undefine
 // The extra hero photos rendered as full-width parallax bands lower down.
 export function getHeroBandImages(content: Record<string, unknown> | null | undefined): string[] {
   return getSiteContent(content).heroImages;
+}
+
+/**
+ * The hero's background video, or null to use the photos.
+ *
+ * FILE SOURCES ONLY, and that is not an oversight. A hero fills a shaped box,
+ * so its media has to be croppable — object-fit: cover. A YouTube iframe cannot
+ * be: it letterboxes the video inside whatever box it is given and paints its
+ * own title bar over the top. The video BANDS work around that with a
+ * viewport-sized transform (see themes.module.css .videoFrameCover), which is
+ * affordable on a full-bleed band and not on a hero that every one of the eight
+ * templates shapes differently.
+ *
+ * So a pasted YouTube link is rejected here rather than shipped as a letterboxed
+ * black rectangle behind the headline of somebody's homepage.
+ */
+export function getHeroVideo(
+  content: Record<string, unknown> | null | undefined,
+): { url: string; posterUrl: string } | null {
+  const video = getSiteContent(content).heroVideo;
+  const url = video.url.trim();
+  if (!url) return null;
+  const source = parseVideoSource(url);
+  return source?.kind === 'file' ? { url: source.url, posterUrl: video.posterUrl.trim() } : null;
 }

@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getEstimateButtonLabel, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getSiteContent, glyphForContent } from '@/lib/site-content';
+import { getColorScheme, getEstimateButtonLabel, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroVideo, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getSiteContent, glyphForContent } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
 import SiteFooter from './SiteFooter';
 import WordmarkName from './WordmarkName';
@@ -52,7 +52,7 @@ export default function VistaTemplate({ site }: TemplateProps) {
       </header>
 
       <section className={styles.vistaHero} id="top">
-        <HeroImageCycle images={getHeroImages(site.content, heroImage)} className={styles.heroImage} alt="Featured completed project" />
+        <HeroImageCycle images={getHeroImages(site.content, heroImage)} video={getHeroVideo(site.content)} className={styles.heroImage} alt="Featured completed project" />
         <div className={styles.vistaHeroCopy}>
           <span className={styles.vistaBigType} data-parallax="0.1" aria-hidden="true">{site.company_name}</span>
           <p className={styles.kicker} data-edit="heroEyebrow">{heroEyebrow || 'Diagnose / Repair / Deliver'}</p>

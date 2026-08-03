@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getEstimateButtonLabel, getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getSiteContent, getSlotImage, glyphForContent, getWorkBand } from '@/lib/site-content';
+import { getEstimateButtonLabel, getColorScheme, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroVideo, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getSiteContent, getSlotImage, glyphForContent, getWorkBand } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
 import SiteFooter from './SiteFooter';
 import WordmarkName from './WordmarkName';
@@ -83,7 +83,7 @@ export default function GuildTemplate({ site }: TemplateProps) {
         </div>
         <div className={styles.guildHeroMedia}>
           <div className={styles.guildHeroFrame}>
-            <HeroImageCycle images={getHeroImages(site.content, heroImage)} alt="" />
+            <HeroImageCycle images={getHeroImages(site.content, heroImage)} video={getHeroVideo(site.content)} alt="" />
           </div>
           <figure className={styles.guildHeroInset} data-edit="image-heroSecondary">
             <img src={secondImage} alt="Close-up detail of service work" loading="lazy" decoding="async" />

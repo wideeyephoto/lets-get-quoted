@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getEstimateButtonLabel, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getSiteContent, getSlotImage, glyphForContent } from '@/lib/site-content';
+import { getColorScheme, getEstimateButtonLabel, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroVideo, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getSiteContent, getSlotImage, glyphForContent } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
 import SiteFooter from './SiteFooter';
 import WordmarkName from './WordmarkName';
@@ -92,7 +92,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
         <div className={styles.shineHeroMedia}>
           {/* Aligned 2x2 grid (Purely): photo · card / card · photo. */}
           <figure className={`${styles.shinePhotoCard} ${styles.shinePhotoMain}`}>
-            <HeroImageCycle images={getHeroImages(site.content, heroImage)} className={styles.shinePhoto} alt="Home cleaning work" />
+            <HeroImageCycle images={getHeroImages(site.content, heroImage)} video={getHeroVideo(site.content)} className={styles.shinePhoto} alt="Home cleaning work" />
           </figure>
           {heroBadge ? (
             <div className={`${styles.shineBadge} ${styles.shineBadgeSupport}`} data-edit="heroBadge">

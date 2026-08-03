@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { STOCK_SITE_IMAGES } from '@/lib/site-images';
-import { getColorScheme, getEstimateButtonLabel, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getSiteContent, getSlotImage, glyphForContent } from '@/lib/site-content';
+import { getColorScheme, getEstimateButtonLabel, getHeaderStyle, getWordmarkStyle, getHeroBadge, getHeroBadgeStyle, getHeroImages, getHeroVideo, getHeroSecondBadge, getLogoStyle, getLogoSize, getPublishedServices, getSiteContent, getSlotImage, glyphForContent } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
 import SiteFooter from './SiteFooter';
 import WordmarkName from './WordmarkName';
@@ -86,7 +86,7 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
           <SiteProofStrip site={site} />
         </div>
         <div className={styles.coatHeroMedia}>
-          <HeroImageCycle images={getHeroImages(site.content, heroImage)} className={styles.coatHeroImg} alt="Home painting work" />
+          <HeroImageCycle images={getHeroImages(site.content, heroImage)} video={getHeroVideo(site.content)} className={styles.coatHeroImg} alt="Home painting work" />
           <figure className={styles.coatPhotoSide} data-parallax="0.13" data-edit="image-heroSecondary">
             <img src={secondImage} alt="A freshly finished interior" loading="lazy" decoding="async" />
           </figure>
