@@ -76,8 +76,9 @@ function LoginInner() {
 
   async function sendEmailLink(value: string) {
     try {
-      const redirectUrl = `${window.location.origin}/auth/callback?next=/dashboard`;
-      await sendMagicLinkAction(value, redirectUrl);
+      // Where to land after sign-in, as a path. The host is the server's own —
+      // it stopped taking one from here on purpose (see lib/app-origin).
+      await sendMagicLinkAction(value, '/dashboard');
       setMessage('Check your inbox for the magic-link sign-in email.');
       setIdentifier('');
     } catch (error) {

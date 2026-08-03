@@ -1,13 +1,21 @@
 import { createAdminClient } from '@/lib/auth';
 import { Resend } from 'resend';
+import { APP_ORIGIN, safeNextPath } from '@/lib/app-origin';
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const TOKEN_EXPIRY_MINUTES = 60;
 
 /**
- * Send magic link email via Resend
+ * Send magic link email via Resend.
+ *
+ * Takes only where to land the user AFTER sign-in, never which host to sign
+ * them in on. This used to accept a full redirectUrl and read `origin` off it,
+ * which meant the caller chose the host in a link carrying a live one-time
+ * token — and the caller of a server action is anybody with curl. See
+ * lib/app-origin. `next` is still caller-supplied, so it is sanitised to a
+ * same-site path before it goes anywhere near the email.
  */
-export async function sendMagicLinkEmail(email: string, redirectUrl: string): Promise<void> {
+export async function sendMagicLinkEmail(email: string, next = '/dashboard'): Promise<void> {
   if (!RESEND_API_KEY) {
     throw new Error('RESEND_API_KEY is not configured');
   }
@@ -23,11 +31,9 @@ export async function sendMagicLinkEmail(email: string, redirectUrl: string): Pr
     throw new Error(linkError?.message || 'Failed to generate magic link');
   }
 
-  const redirect = new URL(redirectUrl);
-  const next = redirect.searchParams.get('next') || '/dashboard';
-  const verifyUrl = new URL('/auth/magic-link-callback', redirect.origin);
+  const verifyUrl = new URL('/auth/magic-link-callback', APP_ORIGIN);
   verifyUrl.searchParams.set('token_hash', linkData.properties.hashed_token);
-  verifyUrl.searchParams.set('next', next);
+  verifyUrl.searchParams.set('next', safeNextPath(next));
 
   // Send email via Resend
   const resend = new Resend(RESEND_API_KEY);

@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { Resend } from 'resend';
+import { APP_ORIGIN } from '@/lib/app-origin';
 import { createAdminClient } from '@/lib/auth';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { getCrewByUserId, type CrewMember } from '@/lib/crew';
@@ -10,7 +11,12 @@ const TOKEN_EXPIRY_MINUTES = 60;
 // magic-link flow, but routes to /auth/crew-callback (which links the auth user
 // to their crew record instead of provisioning a brand-new owner account) and
 // lands them on /field.
-export async function sendCrewMagicLink(email: string, businessName: string, origin: string): Promise<void> {
+//
+// The host comes from config, never from a caller. This took an `origin`
+// argument that /field/login passed straight through from the browser — and a
+// server action answers anyone, so that argument let a stranger aim a live
+// sign-in token at their own server. See lib/app-origin.
+export async function sendCrewMagicLink(email: string, businessName: string): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
   }
@@ -22,7 +28,7 @@ export async function sendCrewMagicLink(email: string, businessName: string, ori
     throw new Error(linkError?.message || 'Failed to generate the sign-in link.');
   }
 
-  const verifyUrl = new URL('/auth/crew-callback', origin);
+  const verifyUrl = new URL('/auth/crew-callback', APP_ORIGIN);
   verifyUrl.searchParams.set('token_hash', linkData.properties.hashed_token);
 
   const resend = new Resend(process.env.RESEND_API_KEY);

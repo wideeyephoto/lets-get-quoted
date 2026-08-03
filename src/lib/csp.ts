@@ -25,6 +25,27 @@ export type CspOptions = {
 
 // Flip to 'content-security-policy' to enforce. Keep the two names in one place so
 // enforcing is a single edit rather than a hunt through middleware.
+//
+// STILL REPORT-ONLY, AND HERE IS WHAT CHANGED (2026-08-03)
+//
+// The flip had a live blocker that report-only was never going to make obvious.
+// script-src governs EVERY script element, `application/ld+json` included, and
+// Next stamps the nonce only onto scripts it emits itself. Measured against the
+// running app: 19 of 20 scripts on the homepage were nonced and the one that
+// wasn't was the structured data — same on /pricing, /faq, /resources/[slug],
+// the blog article template, and SiteStructuredData, which renders on every
+// published contractor site.
+//
+// Enforcing then would have stripped LocalBusiness markup from every customer's
+// site without changing a single pixel. Nothing would error; Google would just
+// stop seeing it, and we'd have found out in the rankings weeks later. All six
+// now read the nonce back via lib/csp-nonce — a contractor site measures 44/44.
+//
+// What's left before flipping is the part only production can answer: watch the
+// Vercel logs for `[csp-report]` lines (see api/csp-report) across a few days of
+// real traffic, including a contractor publishing a site with embeds. Flipping
+// on the strength of a dev server would be the exact mistake this flag exists to
+// prevent — dev serves scripts prod doesn't, and vice versa.
 export const CSP_REPORT_ONLY = true;
 export const CSP_REPORT_PATH = '/api/csp-report';
 

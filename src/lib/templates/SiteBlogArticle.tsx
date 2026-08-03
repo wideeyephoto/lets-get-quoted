@@ -6,6 +6,7 @@ import ServiceIcon from './ServiceIcon';
 import SiteFooter from './SiteFooter';
 import { readableOnAccent } from './theme-color';
 import styles from './themes.module.css';
+import { cspNonce } from '@/lib/csp-nonce';
 
 // Maps the stored template id to its themes.module.css skin class, so the blog
 // article can borrow the same palette tokens (--c-deep etc.) the header and
@@ -71,7 +72,7 @@ export default function SiteBlogArticle({ site, post }: { site: Site; post: Site
 
   return (
     <main className={`${styles.site} ${styles[themeClass] || ''}`} style={themeStyle} data-mode={scheme ? undefined : site.portal_mode} data-logo-style={content.logoStyle}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" nonce={cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <BlogReadingProgress />
       <header className={styles.blogChromeHeader}>
         <a className={styles.blogChromeBrand} href="/" aria-label={`${site.company_name} home`}>

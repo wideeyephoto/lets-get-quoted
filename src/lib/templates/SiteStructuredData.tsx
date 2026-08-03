@@ -1,4 +1,5 @@
 import type { Site } from '@/lib/sites';
+import { cspNonce } from '@/lib/csp-nonce';
 import { buildLocalBusinessJsonLd } from '@/lib/seo/site-seo';
 
 // Serialize JSON-LD safely for an inline <script>: escape the one sequence that
@@ -18,5 +19,8 @@ function jsonLdSafe(data: unknown): string {
 export default function SiteStructuredData({ site }: { site: Site }) {
   const data = buildLocalBusinessJsonLd(site);
   if (!data) return null;
-  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdSafe(data) }} />;
+  // nonce: script-src covers ld+json too, and Next only stamps its own scripts.
+  // Without this, enforcing the CSP would drop this tag from every contractor
+  // site — invisibly, since nothing on the page changes. See lib/csp-nonce.
+  return <script type="application/ld+json" nonce={cspNonce()} dangerouslySetInnerHTML={{ __html: jsonLdSafe(data) }} />;
 }

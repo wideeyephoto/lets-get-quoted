@@ -25,8 +25,6 @@ import { createJobFeedEvent } from '@/lib/job-feed';
 import { ensureSmsConsentBaseline, sendCrewAssignmentSms } from '@/lib/sms';
 import { sendCrewMagicLink } from '@/lib/crew-auth';
 
-const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
-
 function optionalText(value: FormDataEntryValue | null): string | undefined {
   const text = (value ?? '').toString().trim();
   return text.length > 0 ? text : undefined;
@@ -203,7 +201,7 @@ export async function inviteCrewAction(crewId: string) {
   ]);
   const businessName = site?.company_name || account?.business_name || "Let's Get Quoted contractor";
 
-  await sendCrewMagicLink(member.email as string, businessName, APP_ORIGIN);
+  await sendCrewMagicLink(member.email as string, businessName);
   revalidatePath('/dashboard/crew');
 }
 

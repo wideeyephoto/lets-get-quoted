@@ -1,18 +1,36 @@
 'use server';
 
 import { headers } from 'next/headers';
+import { createAdminClient } from '@/lib/auth';
 import { sendContactMessageEmail } from '@/lib/email';
+import { checkRateLimitStrict, clientIpFrom } from '@/lib/rate-limit';
 
 export type ContactState = { ok: boolean; error?: string };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// A ceiling that holds whether or not Turnstile is configured.
+//
+// passesTurnstile returns true when TURNSTILE_SECRET is unset, which is a
+// reasonable "don't break the form before it's wired up" default — except the
+// widget still RENDERS, because that's driven by the separate public site key.
+// Set one and not the other and the page shows an "I'm human" check that
+// verifies nothing, which reads as protected while being an open relay into a
+// staff inbox. The limiter doesn't care how the captcha is configured.
+const CONTACT_LIMIT = 5;
+const CONTACT_WINDOW_SECONDS = 60 * 60;
 
 // Canonical Cloudflare Turnstile siteverify. Only enforced when TURNSTILE_SECRET
 // is set, so the form keeps working before the secret is configured; once set, a
 // missing or invalid token is rejected. Fails closed on any network/parse error.
 async function passesTurnstile(token: string, remoteip: string | undefined): Promise<boolean> {
   const secret = process.env.TURNSTILE_SECRET;
-  if (!secret) return true; // not configured yet — skip
+  if (!secret) {
+    // Say so out loud. Silently skipping meant the only signal that the check
+    // was doing nothing was the absence of a signal.
+    console.warn('[contact] TURNSTILE_SECRET is unset — captcha not verified, rate limit only.');
+    return true;
+  }
   if (!token) return false;
   try {
     const body = new URLSearchParams({ secret, response: token });
@@ -54,9 +72,17 @@ export async function submitContactMessage(formData: FormData): Promise<ContactS
     return { ok: false, error: 'That message is a bit long — please keep it under 5,000 characters.' };
   }
 
-  const captchaToken = ((formData.get('cf-turnstile-response') as string | null) ?? '').trim();
   const h = await headers();
-  const clientIp = (h.get('x-forwarded-for')?.split(',')[0] ?? h.get('x-real-ip') ?? '').trim() || undefined;
+  const ip = clientIpFrom(h);
+
+  // Before the captcha, so a flood costs one cheap DB call rather than a
+  // round-trip to Cloudflare per attempt.
+  if (!(await checkRateLimitStrict(createAdminClient(), `contact:ip:${ip}`, CONTACT_LIMIT, CONTACT_WINDOW_SECONDS))) {
+    return { ok: false, error: 'You’ve sent a few messages already — we’ll reply to those first. Try again a bit later.' };
+  }
+
+  const captchaToken = ((formData.get('cf-turnstile-response') as string | null) ?? '').trim();
+  const clientIp = ip === 'unknown' ? undefined : ip;
   if (!(await passesTurnstile(captchaToken, clientIp))) {
     return { ok: false, error: 'Please complete the “I’m human” check and try again.' };
   }

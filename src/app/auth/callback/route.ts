@@ -2,13 +2,17 @@ import { NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { ensureAccountMembership } from '@/lib/auth';
+import { safeNextPath } from '@/lib/app-origin';
 import { normalizeSupabaseUrl } from '@/lib/supabase-url';
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
-  const next = requestUrl.searchParams.get('next') ?? '/dashboard';
-  const redirectUrl = new URL(next, requestUrl.origin);
+  // `next` was passed to the URL constructor unfiltered, so an absolute one
+  // simply won: /auth/callback?next=https://evil.example redirected there, with
+  // the session cookie already set. This is the OAuth landing spot, which makes
+  // it the most credible link in the app to hand somebody.
+  const redirectUrl = new URL(safeNextPath(requestUrl.searchParams.get('next')), requestUrl.origin);
 
   if (code) {
     const cookieStore = cookies();

@@ -8,6 +8,13 @@ yarn-error.log*
 
 # Next.js build output and local TypeScript cache
 .next/
+# next.config's distDir override (NEXT_DIST_DIR) exists so a verification build
+# doesn't clobber the running dev server's .next — but only ".next/" was ignored,
+# so every alternate dist dir it produced showed up as untracked build output
+# waiting to be committed by a stray `git add -A`. "undefined/" is the same thing
+# after an unset NEXT_DIST_DIR got stringified into the path.
+.next-*/
+undefined/
 out/
 build/
 *.tsbuildinfo

@@ -4,6 +4,7 @@ import { FEE_TIERS, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import { FEATURE_COUNT } from '@/lib/features';
 import PricingCalculator from './PricingCalculator';
 import SiteFooter from '@/components/site-footer';
+import { cspNonce } from '@/lib/csp-nonce';
 
 export const metadata: Metadata = {
   title: 'Pricing — Let’s Get Quoted',
@@ -58,7 +59,7 @@ const pricingJsonLd = {
 export default function PricingPage() {
   return (
     <main className="marketing-shell">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingJsonLd) }} />
+      <script type="application/ld+json" nonce={cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(pricingJsonLd) }} />
       <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
 
       <section className="section-block features-hero">

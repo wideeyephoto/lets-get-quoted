@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ARTICLES, getArticle, formatArticleDate } from '@/lib/resources';
 import SiteFooter from '@/components/site-footer';
+import { cspNonce } from '@/lib/csp-nonce';
 
 export function generateStaticParams() {
   return ARTICLES.map((article) => ({ slug: article.slug }));
@@ -42,7 +43,7 @@ export default function ArticlePage({ params }: { params: { slug: string } }) {
 
   return (
     <main className="marketing-shell">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" nonce={cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
 
       <article className="section-block article">

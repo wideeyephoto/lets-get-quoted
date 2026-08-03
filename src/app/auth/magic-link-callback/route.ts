@@ -2,13 +2,16 @@ import { NextResponse } from 'next/server';
 import { ensureAccountMembership } from '@/lib/auth';
 import { cookies } from 'next/headers';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { safeNextPath } from '@/lib/app-origin';
 import { normalizeSupabaseUrl } from '@/lib/supabase-url';
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const tokenHash = requestUrl.searchParams.get('token_hash');
-  const next = requestUrl.searchParams.get('next') ?? '/dashboard';
-  const safeNext = next.startsWith('/') ? next : '/dashboard';
+  // The old guard here was `next.startsWith('/')`, which passes //evil.example —
+  // the URL parser reads that as protocol-relative and resolves it clean off our
+  // domain, landing a freshly signed-in contractor on somebody else's page.
+  const safeNext = safeNextPath(requestUrl.searchParams.get('next'));
 
   try {
     if (!tokenHash) {

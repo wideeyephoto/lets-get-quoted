@@ -5,6 +5,7 @@ import HeroDashboard from '@/components/hero-dashboard';
 import StickyCta from '@/components/sticky-cta';
 import HomeFeeCalculator from '@/components/home-fee-calculator';
 import FeatureWheelStory from './features/FeatureWheelStory';
+import { cspNonce } from '@/lib/csp-nonce';
 
 function QuoteIcon() {
   return (
@@ -315,7 +316,7 @@ const jsonLd = {
 export default function HomePage() {
   return (
     <main className="fx-page">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" nonce={cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
       <div className="ambient-glow ambient-glow-b" aria-hidden="true" />
 

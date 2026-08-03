@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import SiteFooter from '@/components/site-footer';
+import { cspNonce } from '@/lib/csp-nonce';
 
 export const metadata: Metadata = {
   title: 'FAQ — Let’s Get Quoted',
@@ -113,7 +114,7 @@ const faqJsonLd = {
 export default function FaqPage() {
   return (
     <main className="marketing-shell">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+      <script type="application/ld+json" nonce={cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
       <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
 
       <section className="section-block features-hero">

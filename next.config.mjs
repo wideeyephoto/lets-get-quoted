@@ -21,15 +21,24 @@ function supabaseImageHost() {
 // Baseline security headers applied to every response. Deliberately conservative:
 // clickjacking (X-Frame-Options + CSP frame-ancestors 'self' — the builder frames
 // its own preview same-origin, so 'self' is safe), MIME-sniff, transport, and
-// referrer. A full content CSP (script-src/style-src) is intentionally NOT set
-// here — it needs per-route nonces/allowlists (Stripe.js, Google Maps, Next inline)
-// and testing before it can go on without breaking rendering.
+// referrer.
+//
+// The full content CSP (script-src/style-src) is NOT here, and the reason has
+// changed since this was written: it isn't "not yet built", it's that it needs a
+// per-request nonce, which static config can't produce. It lives in lib/csp.ts
+// and is set by middleware.ts. The frame-ancestors line below is the
+// belt-and-braces copy covering any response the middleware matcher skips.
 const SECURITY_HEADERS = [
   { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
   { key: 'Content-Security-Policy', value: "frame-ancestors 'self'" },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-  { key: 'Strict-Transport-Security', value: 'max-age=31536000' },
+  // includeSubDomains is load-bearing, not decorative: every contractor site is
+  // a subdomain of the root domain, and one subdomain reachable over plain HTTP
+  // is enough to plant a cookie the parent domain will read. Vercel already
+  // serves all of these over HTTPS, so this only closes a downgrade path we
+  // never use.
+  { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=()' },
 ];
 

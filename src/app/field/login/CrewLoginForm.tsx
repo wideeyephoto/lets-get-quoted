@@ -19,7 +19,7 @@ export default function CrewLoginForm({ initialError }: { initialError: string |
     setLoading(true);
     setMessage('');
     try {
-      await sendCrewMagicLinkAction(value, window.location.origin);
+      await sendCrewMagicLinkAction(value);
       setSent(true);
       setMessage('Check your email for a sign-in link. It expires in 60 minutes.');
     } catch (error) {
