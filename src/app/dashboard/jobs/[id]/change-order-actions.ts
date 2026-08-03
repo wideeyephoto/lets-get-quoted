@@ -18,6 +18,7 @@ import {
   voidChangeOrder,
 } from '@/lib/change-orders-data';
 import { createJobPhotoLinks } from '@/lib/job-photo-storage';
+import { createDepositRequest } from '@/lib/payments';
 
 /**
  * Draft the write-up and the lines from what the crew member found.
@@ -146,6 +147,48 @@ export async function voidChangeOrderAction(jobId: string, changeOrderId: string
   const result = await voidChangeOrder(supabase, accountId, changeOrderId);
   if (result.ok) revalidatePath(`/dashboard/jobs/${jobId}`);
   return result;
+}
+
+/**
+ * Ask to be paid for an approved change order.
+ *
+ * Explicit, never automatic — the same rule as a Proof-to-Pay stage. Turning an
+ * approval into an instant payment request surprises a customer who has just
+ * done you a favour by saying yes, and the contractor is usually the one who
+ * knows whether to bill it now or roll it into the final invoice.
+ */
+export async function requestChangeOrderPaymentAction(
+  jobId: string,
+  changeOrderId: string,
+): Promise<{ ok: boolean; message?: string }> {
+  const { supabase, accountId } = await requireOwnerContext();
+  const order = await getChangeOrder(supabase, accountId, changeOrderId);
+  if (!order) return { ok: false, message: 'That change order could not be found.' };
+  if (order.status !== 'approved') return { ok: false, message: 'Only approved change orders can be billed.' };
+  if (order.paymentId) return { ok: false, message: 'A payment has already been requested for this.' };
+  if (!(order.amount > 0)) return { ok: false, message: 'This has no amount on it.' };
+
+  const job = await getJob(supabase, accountId, jobId);
+  if (!job) return { ok: false, message: 'That job could not be found.' };
+
+  const payment = await createDepositRequest(supabase, accountId, jobId, {
+    // The change order's title verbatim, so the bank statement, the pay page and
+    // the job all name the same thing.
+    label: order.title,
+    amount: order.amount,
+    kind: 'stage',
+    homeownerPhone: job.client_phone,
+    smsConsent: Boolean(job.client_phone),
+  });
+
+  await supabase
+    .from('change_orders')
+    .update({ payment_id: payment.id, updated_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('id', changeOrderId);
+
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+  return { ok: true };
 }
 
 /** What approving the drafts on this job would do to its margin. Owner-only. */

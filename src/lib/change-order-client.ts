@@ -67,6 +67,27 @@ export async function respondAsClient(
   const order = result.order;
   const approved = order.status === 'approved';
 
+  // Approving raises the price of the job, because that is what the customer
+  // just agreed to. Done here rather than derived at read time so every existing
+  // reader — invoices, margin, the client's own quote total — sees the new
+  // number without knowing change orders exist.
+  //
+  // Billing is deliberately NOT automatic. The owner asks for the money when
+  // they're ready, the same as a Proof-to-Pay stage: turning an approval into an
+  // instant payment request would surprise a customer who has just done the
+  // contractor a favour by saying yes.
+  if (approved) {
+    try {
+      const { data: job } = await admin.from('jobs').select('quoted_amount').eq('id', access.jobId).maybeSingle();
+      const updated = Math.round(((Number(job?.quoted_amount) || 0) + order.amount) * 100) / 100;
+      await admin.from('jobs').update({ quoted_amount: updated }).eq('account_id', access.accountId).eq('id', access.jobId);
+    } catch (error) {
+      // The decision is recorded either way. A job total that didn't move is a
+      // visible, fixable problem; losing the approval would not be.
+      console.error('Change order job total update failed:', error instanceof Error ? error.message : error);
+    }
+  }
+
   // On the job's own timeline, and visible to both sides. A decision about money
   // that only one party can see is the thing this feature exists to stop.
   try {

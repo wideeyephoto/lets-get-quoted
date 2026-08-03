@@ -14,6 +14,7 @@ import {
   draftChangeOrderAction,
   saveChangeOrderAction,
   sendChangeOrderAction,
+  requestChangeOrderPaymentAction,
   voidChangeOrderAction,
 } from './change-order-actions';
 
@@ -105,6 +106,15 @@ export default function ChangeOrderPanel({ jobId, orders }: { jobId: string; ord
         text: result.ok ? 'Sent to the customer.' : (result.blockers ?? ['Could not send.']).join(' '),
         ok: result.ok,
       });
+      setBusyId(null);
+    });
+  }
+
+  function requestPayment(order: ChangeOrder) {
+    setBusyId(order.id);
+    startTransition(async () => {
+      const result = await requestChangeOrderPaymentAction(jobId, order.id);
+      setMessage({ id: order.id, text: result.ok ? 'Payment requested.' : result.message ?? 'Could not request payment.', ok: Boolean(result.ok) });
       setBusyId(null);
     });
   }
@@ -249,6 +259,24 @@ export default function ChangeOrderPanel({ jobId, orders }: { jobId: string; ord
                     <button type="button" className="btn ghost" onClick={() => withdraw(order)} disabled={busy}>
                       Withdraw
                     </button>
+                  </div>
+                ) : null}
+
+                {/* Billing is the owner's call, not an automatic consequence of
+                    approval. Some of these get invoiced at the end; asking for
+                    money the second somebody says yes is a poor thank-you. */}
+                {order.status === 'approved' ? (
+                  <div className="change-order-actions">
+                    {order.paymentId ? (
+                      <small>Already billed. {money(order.amount)} was added to this job&apos;s total when they approved it.</small>
+                    ) : (
+                      <>
+                        <small>{money(order.amount)} was added to this job&apos;s total. Bill it now, or leave it for the final invoice.</small>
+                        <button type="button" className="btn secondary" onClick={() => requestPayment(order)} disabled={busy}>
+                          Request payment
+                        </button>
+                      </>
+                    )}
                   </div>
                 ) : null}
               </>

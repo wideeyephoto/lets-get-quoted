@@ -10,6 +10,9 @@ import { createAdminClient } from '@/lib/auth';
 import { loadClientChangeOrders } from '@/lib/change-orders-data';
 import { toClientChangeOrders } from '@/lib/change-orders';
 import { resolveJobAccess } from '@/lib/change-order-client';
+import Warranties from './Warranties';
+import { listWarranties } from '@/lib/warranties-data';
+import { toClientWarranties } from '@/lib/warranties';
 
 const STATUS_LABEL: Record<string, string> = {
   new_lead: 'New request',
@@ -45,8 +48,12 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
   // database (no change_orders table) shows the job as it always did rather
   // than blanking the whole page.
   const access = await resolveJobAccess(params.token);
+  const admin = createAdminClient();
   const clientChangeOrders = access
-    ? toClientChangeOrders(await loadClientChangeOrders(createAdminClient(), access.accountId, access.jobId))
+    ? toClientChangeOrders(await loadClientChangeOrders(admin, access.accountId, access.jobId))
+    : [];
+  const clientWarranties = access
+    ? toClientWarranties(await listWarranties(admin, access.accountId, access.jobId))
     : [];
 
   if (!dashboard) {
@@ -350,6 +357,11 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
       {/* Above the stages: a decision the homeowner has to make outranks a
           progress report they only have to read. */}
       <ChangeOrders token={params.token} orders={clientChangeOrders} />
+
+      {/* Cover, and the way back to the contractor. Placed with the rest of the
+          job rather than in a separate portal, because this page is the link a
+          homeowner still has in their inbox two years later. */}
+      <Warranties token={params.token} warranties={clientWarranties} />
 
       {/* Proof-to-Pay stages. Above the general checklist because a stage
           carries its own evidence AND the amount attached to it — this is the

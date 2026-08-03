@@ -21,6 +21,8 @@ import { getMinMarginPct } from '@/lib/cost-truth-data';
 import { listChangeOrders } from '@/lib/change-orders-data';
 import { changeOrderTotals } from '@/lib/change-orders';
 import ChangeOrderPanel from './ChangeOrderPanel';
+import WarrantyPanel from './WarrantyPanel';
+import { listWarranties, listClaims } from '@/lib/warranties-data';
 import { listJobTasks, taskProgress } from '@/lib/job-tasks';
 import { createJobPhotoLinks } from '@/lib/job-photo-storage';
 import { listPayments } from '@/lib/payments';
@@ -113,6 +115,12 @@ export default async function JobDetailPage({
   const costs = await listCosts(supabase, accountId, job.id);
   const margin = computeMargin(job, costs);
   const changeOrders = await listChangeOrders(supabase, accountId, job.id);
+  const [warranties, warrantyClaims, { data: warrantyDefaults }] = await Promise.all([
+    listWarranties(supabase, accountId, job.id),
+    listClaims(supabase, accountId, job.id),
+    supabase.from('accounts').select('default_warranty_months').eq('id', accountId).maybeSingle(),
+  ]);
+  const defaultWarrantyMonths = Number(warrantyDefaults?.default_warranty_months) || 0;
   // How defensible this job's cost figure is, and whether it's worth saying
   // anything about the margin. Both stay quiet on a job with nothing recorded.
   const confidence = costConfidence(
@@ -1119,6 +1127,25 @@ export default async function JobDetailPage({
           </div>
 
           <div>
+            {/* Open by default once the work is done: that is the moment a
+                warranty is worth starting, and the moment it gets forgotten. */}
+            <details className="panel workspace-section-card workspace-details job-action-details" open={job.status === 'complete' && warranties.length === 0}>
+              <summary className="workspace-details-summary job-action-summary">
+                <div className="section-heading workspace-section-heading compact-heading">
+                  <p className="eyebrow">After the work</p>
+                  <h2>Warranty</h2>
+                </div>
+                <span className="workspace-details-copy">
+                  {warranties.length === 0
+                    ? 'What you stand behind, and for how long.'
+                    : `${warranties.length} warranty${warranties.length === 1 ? '' : ' records'} on this job${
+                        warrantyClaims.length > 0 ? ` · ${warrantyClaims.length} customer request${warrantyClaims.length === 1 ? '' : 's'}` : ''
+                      }.`}
+                </span>
+              </summary>
+              <WarrantyPanel jobId={job.id} warranties={warranties} claims={warrantyClaims} defaultMonths={defaultWarrantyMonths} />
+            </details>
+
             {changeOrders.length > 0 ? (
               <details className="panel workspace-section-card workspace-details job-action-details" open={changeOrderTotals(changeOrders).unsent > 0}>
                 <summary className="workspace-details-summary job-action-summary">
