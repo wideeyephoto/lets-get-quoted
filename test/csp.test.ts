@@ -71,6 +71,24 @@ describe('buildCsp', () => {
     expect(CSP_REPORT_ONLY).toBe(true);
     expect(cspHeaderName()).toBe('content-security-policy-report-only');
   });
+
+  it('declares media-src, so uploaded videos survive the flip', () => {
+    // REGRESSION. There was no media-src at all, so it fell back to
+    // default-src 'self' and the enforcing policy blocked every uploaded video
+    // on every contractor site — hero backdrops and video bands alike. Found by
+    // running the enforcing policy against a real contractor site; unfindable by
+    // reading the policy, because a missing directive shows up as a silent
+    // fallback rather than as anything wrong on the page.
+    const policy = buildCsp({ nonce: 'n', supabaseOrigin: SUPABASE });
+    expect(policy).toContain('media-src');
+    const mediaSrc = policy.split('; ').find((d) => d.startsWith('media-src '))!;
+    // Supabase storage is where uploads live; blob: is the builder reading a
+    // just-picked file to grab its poster; https: because a contractor may link
+    // a clip they host elsewhere, exactly as img-src already allows for photos.
+    expect(mediaSrc).toContain("'self'");
+    expect(mediaSrc).toContain('blob:');
+    expect(mediaSrc).toContain('https:');
+  });
 });
 
 describe('generateNonce', () => {

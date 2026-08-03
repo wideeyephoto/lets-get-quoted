@@ -41,11 +41,41 @@ export type CspOptions = {
 // stop seeing it, and we'd have found out in the rankings weeks later. All six
 // now read the nonce back via lib/csp-nonce — a contractor site measures 44/44.
 //
-// What's left before flipping is the part only production can answer: watch the
-// Vercel logs for `[csp-report]` lines (see api/csp-report) across a few days of
-// real traffic, including a contractor publishing a site with embeds. Flipping
-// on the strength of a dev server would be the exact mistake this flag exists to
-// prevent — dev serves scripts prod doesn't, and vice versa.
+// WHAT A FULL ENFORCING DRY RUN FOUND (2026-08-03)
+//
+// Rather than reading the policy again, the enforcing header was applied to the
+// running app in a real browser — the report-only header rewritten in flight, so
+// the exact shipped policy was enforced for real — and every route crawled with
+// a securitypolicyviolation listener attached.
+//
+// It found one, and it was serious: there was NO media-src, so it fell back to
+// default-src 'self' and every uploaded video on every contractor site was
+// blocked. The whole video suite, killed silently, on the one directive nobody
+// had thought to write. That is the shape of this bug class — a missing
+// directive is invisible on the page, because the fallback does something that
+// looks deliberate. Now fixed and covered by a test.
+//
+// Clean afterwards, under enforcement: /, /pricing, /faq, /features, /contact
+// (Turnstile), /book, /login, /site/<contractor> (JSON-LD + YouTube embeds),
+// /site-preview-frame, /demo, /resources. Dev-only eval violations from Next's
+// HMR were ignored; production never serves them.
+//
+// STILL NOT FLIPPED, and here is the honest reason:
+//
+//   1. Google Maps is untested. It only renders on /dashboard/schedule/plan,
+//      and in the harness it never injected its script at all, so CSP had
+//      nothing to block and the run proves nothing about it. connect-src lists
+//      maps.googleapis.com but NOT maps.gstatic.com, which is a plausible gap
+//      nobody has measured. Check this before flipping.
+//   2. A dev server is still not production. Vercel's CLI only tails live logs,
+//      so the `[csp-report]` history the endpoint writes (see api/csp-report)
+//      can't be read back here — the reports go to console.warn on purpose,
+//      since persisting an unauthenticated browser-driven endpoint's input
+//      would be attacker-controllable storage.
+//
+// So: ship the media-src fix, let real traffic run against the corrected policy,
+// confirm a contractor's map and a published site with embeds both behave, then
+// flip. The dry run moved this from "unknown" to "one known unknown".
 export const CSP_REPORT_ONLY = true;
 export const CSP_REPORT_PATH = '/api/csp-report';
 
@@ -77,6 +107,21 @@ export function buildCsp({ nonce, supabaseOrigin }: CspOptions): string {
     // fonts.gstatic.com is where the Maps SDK fetches the font files for its own
     // labels and controls — same story as style-src above.
     ['font-src', ["'self'", 'data:', 'https://fonts.gstatic.com']],
+    // MEDIA. Without this, media-src falls back to default-src 'self' and every
+    // uploaded video on every contractor site is blocked — the hero background
+    // clip and every video band alike. Caught by running the enforcing policy
+    // against a real contractor site rather than by reading the policy, which is
+    // exactly the failure this directive list is prone to: what's missing is
+    // invisible, because a fallback silently does something reasonable-looking.
+    //
+    // Same reasoning as img-src: `parseVideoSource` accepts any absolute https
+    // URL ending in a video extension, so a contractor can link a clip they host
+    // elsewhere just as they can link a photo. Nothing executes from a video, so
+    // the tight version of this would be noise rather than defence.
+    //
+    // blob: is the builder — readVideoFrame plays the picked file from an object
+    // URL to grab its poster before anything is uploaded.
+    ['media-src', ["'self'", 'blob:', 'data:', 'https:']],
     ['connect-src', connect],
     // Turnstile renders in an iframe; the builder previews our own pages; the
     // post-intake intro video is a YouTube embed (nocookie host — see
