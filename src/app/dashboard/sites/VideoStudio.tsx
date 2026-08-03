@@ -11,7 +11,7 @@ import {
   type SiteVideoSectionContent,
   type SiteVideoStyle,
 } from '@/lib/site-content';
-import { formatVideoDuration, isPlayableVideoUrl, parseVideoSource, videoPoster, VIDEO_FILE_ACCEPT } from '@/lib/video-source';
+import { formatVideoDuration, isPlayableVideoUrl, parseVideoSource, videoPoster, videoPosterAdvice, VIDEO_FILE_ACCEPT } from '@/lib/video-source';
 import { deleteSiteVideoAction } from './actions';
 import { uploadSiteVideo, videoUploadError } from './video-upload';
 import styles from './SiteEditor.module.css';
@@ -313,6 +313,15 @@ export default function VideoStudio({ content, onChange, onClose }: VideoStudioP
                       <p className={styles.vsWarn}>
                         <strong>May not play for some visitors.</strong> {item.playbackWarning}
                       </p>
+                    )}
+                    {/* A missing poster is its own problem, not a playback one.
+                        Kept in hint tones and separate from the warning above,
+                        because conflating the two is what put a false "won't
+                        play" on a perfectly good clip. */}
+                    {videoPosterAdvice({ hasPoster: Boolean(poster), isFile: source?.kind === 'file' }) && (
+                      <small className={styles.vsHint}>
+                        {videoPosterAdvice({ hasPoster: Boolean(poster), isFile: source?.kind === 'file' })}
+                      </small>
                     )}
                     {/* Shown for every style, not just reel.
                         The reel is the only layout that PRINTS this caption, so

@@ -204,19 +204,41 @@ export const CODEC_SNIFF_BYTES = 1024 * 1024;
  * than a warning that gets ignored. It names the fix, because "unsupported
  * codec" is not something a roofer should have to go and look up.
  */
-export function videoPlaybackWarning(input: { codec: VideoCodec; decoded: boolean }): string {
+export function videoPlaybackWarning(input: { codec: VideoCodec; decode: 'ok' | 'error' | 'timeout' }): string {
   if (input.codec === 'hevc') {
     return 'This clip is HEVC (H.265) — it plays on iPhones and Macs, but not for most Chrome, Windows and Android visitors, who would see a blank player. On iPhone: Settings → Camera → Formats → Most Compatible, then re-record or re-export. Or export it as H.264 MP4 from any editor.';
   }
   if (input.codec === 'av1') {
     return 'This clip is AV1. Newer browsers play it, but older phones can’t and would see a blank player. Exporting as H.264 MP4 plays everywhere.';
   }
-  // The decode probe is the backstop: whatever the container claimed, this
-  // browser could not actually play the file.
-  if (!input.decoded) {
-    return 'This browser couldn’t play the file, which usually means your visitors’ browsers can’t either. Re-exporting it as H.264 MP4 is the reliable fix.';
+  // The decode probe is the backstop — but only a real refusal counts.
+  //
+  // This used to fire whenever no still frame came back, which is a different
+  // and much weaker fact. The first real upload this app ever took was a healthy
+  // H.264 clip that Chrome plays fine, and it was labelled unplayable because
+  // the frame grab timed out. A warning that cries wolf on a good file is worse
+  // than no warning: the next one gets ignored too.
+  //
+  // A timeout deliberately returns '' — the missing poster is surfaced on its
+  // own terms, where it can be acted on, rather than dressed up as a playback
+  // problem the owner can do nothing about.
+  if (input.decode === 'error') {
+    return 'This browser refused to play the file, which usually means your visitors’ browsers will too. Re-exporting it as H.264 MP4 is the reliable fix.';
   }
   return '';
+}
+
+/**
+ * A note about a clip with no still frame, or ''.
+ *
+ * Separate from the playback warning on purpose: no poster is a real problem —
+ * it is what phones, reduced-motion visitors and the first paint all show, and
+ * Google needs a thumbnail before it will treat the clip as a video result — but
+ * it says nothing about whether the video plays.
+ */
+export function videoPosterAdvice(input: { hasPoster: boolean; isFile: boolean }): string {
+  if (input.hasPoster || !input.isFile) return '';
+  return 'No still frame could be read from this clip. Phones and anyone who prefers reduced motion see the still instead of the video, so this will show as a blank frame — pick a poster image, or re-save the clip and upload it again.';
 }
 
 export function parseVideoSource(input: string | null | undefined): VideoSource | null {

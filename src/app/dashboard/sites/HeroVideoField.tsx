@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { SiteHeroVideo } from '@/lib/site-content';
-import { heroDurationAdvice, MAX_HERO_VIDEO_BYTES, VIDEO_FILE_ACCEPT } from '@/lib/video-source';
+import { heroDurationAdvice, MAX_HERO_VIDEO_BYTES, videoPosterAdvice, VIDEO_FILE_ACCEPT } from '@/lib/video-source';
 import { uploadSiteVideo, videoUploadError } from './video-upload';
 import styles from './SiteEditor.module.css';
 
@@ -102,6 +102,12 @@ export default function HeroVideoField({
               own site. Kept out of .vsWarn's tones for that reason. */}
           {heroDurationAdvice(video.duration) && (
             <small className={styles.vsHint}>{heroDurationAdvice(video.duration)}</small>
+          )}
+          {/* The still matters more here than anywhere: it IS what phones and
+              reduced-motion visitors see, so a hero with no poster is a blank
+              box for a large share of traffic. */}
+          {videoPosterAdvice({ hasPoster: Boolean(video.posterUrl), isFile: true }) && (
+            <small className={styles.vsHint}>{videoPosterAdvice({ hasPoster: Boolean(video.posterUrl), isFile: true })}</small>
           )}
         </>
       ) : (

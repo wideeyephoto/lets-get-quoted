@@ -5,6 +5,7 @@ import {
   MAX_VIDEO_BYTES,
   sniffVideoCodec,
   videoPlaybackWarning,
+  videoPosterAdvice,
   videoSizeProblem,
   type VideoCodec,
 } from '@/lib/video-source';
@@ -160,23 +161,52 @@ describe('heroDurationAdvice', () => {
 
 describe('videoPlaybackWarning', () => {
   it('warns about HEVC even when the owner’s browser played it fine', () => {
-    // The whole point: Safari decodes HEVC, so `decoded` is true and the owner
+    // The whole point: Safari decodes HEVC, so the decode succeeds and the owner
     // sees a perfect preview. Their Chrome visitors would not.
-    const warning = videoPlaybackWarning({ codec: 'hevc', decoded: true });
+    const warning = videoPlaybackWarning({ codec: 'hevc', decode: 'ok' });
     expect(warning).toContain('HEVC');
     expect(warning).toMatch(/Most Compatible|H\.264/);
   });
 
   it('says nothing about an H.264 clip that played', () => {
-    expect(videoPlaybackWarning({ codec: 'h264', decoded: true })).toBe('');
+    expect(videoPlaybackWarning({ codec: 'h264', decode: 'ok' })).toBe('');
   });
 
-  it('falls back to the decode result when the container was unreadable', () => {
-    expect(videoPlaybackWarning({ codec: 'unknown', decoded: false })).not.toBe('');
-    expect(videoPlaybackWarning({ codec: 'unknown', decoded: true })).toBe('');
+  it('warns when the browser genuinely refused the file', () => {
+    expect(videoPlaybackWarning({ codec: 'unknown', decode: 'error' })).not.toBe('');
+  });
+
+  // The regression this whole split exists for. The first real upload was a
+  // healthy H.264 clip that Chrome plays fine; the still-frame grab timed out,
+  // and the owner was told their visitors couldn't see it. A timeout is a
+  // missing POSTER, and says nothing at all about playback.
+  it('stays silent when the frame grab merely timed out', () => {
+    expect(videoPlaybackWarning({ codec: 'h264', decode: 'timeout' })).toBe('');
+    expect(videoPlaybackWarning({ codec: 'unknown', decode: 'timeout' })).toBe('');
+  });
+
+  it('still calls out a bad codec even if the grab timed out', () => {
+    // The container is evidence in its own right, independent of the probe.
+    expect(videoPlaybackWarning({ codec: 'hevc', decode: 'timeout' })).toContain('HEVC');
   });
 
   it('never warns for a codec that plays everywhere, whatever the container said', () => {
-    expect(videoPlaybackWarning({ codec: 'other', decoded: true })).toBe('');
+    expect(videoPlaybackWarning({ codec: 'other', decode: 'ok' })).toBe('');
+  });
+});
+
+describe('videoPosterAdvice', () => {
+  it('says nothing when there is a poster', () => {
+    expect(videoPosterAdvice({ hasPoster: true, isFile: true })).toBe('');
+  });
+
+  it('says nothing for a YouTube clip, which brings its own thumbnail', () => {
+    expect(videoPosterAdvice({ hasPoster: false, isFile: false })).toBe('');
+  });
+
+  it('explains what a missing still actually costs, and what to do', () => {
+    const advice = videoPosterAdvice({ hasPoster: false, isFile: true });
+    expect(advice).toMatch(/phone/i);
+    expect(advice).toMatch(/poster image|upload it again/i);
   });
 });

@@ -46,16 +46,33 @@ export function videoUploadError(file: File, budget: VideoBudget = 'band'): stri
 }
 
 // Pull a still frame and the duration out of the file itself, in the browser,
-// before anything is uploaded. Returns a null frame rather than throwing when
-// the browser can't decode the container (some .mov files): a missing poster is
-// a small cosmetic loss, a failed upload is not.
-function readVideoFrame(file: File): Promise<{ frame: Blob | null; duration: number }> {
+// before anything is uploaded.
+//
+// WHY THE OUTCOME MATTERS AND NOT JUST THE FRAME
+//
+// This used to return a bare null frame, and the caller read "no frame" as "this
+// browser can't play the file" — which then told the owner their visitors would
+// see nothing. Those are different claims, and the gap between them produced a
+// false alarm on the first real upload this app ever took: a healthy H.264 clip
+// that plays fine in Chrome was reported as broken because a still could not be
+// grabbed from it.
+//
+// So the outcome is reported honestly. Only a real `error` event means the
+// browser refused the file; a timeout means the frame grab didn't finish, which
+// is a missing poster and nothing more.
+type FrameOutcome = 'ok' | 'error' | 'timeout';
+
+function readVideoFrame(file: File): Promise<{ frame: Blob | null; duration: number; outcome: FrameOutcome }> {
   return new Promise((resolve) => {
     const objectUrl = URL.createObjectURL(file);
     const video = document.createElement('video');
     let settled = false;
+    // Captured as soon as metadata lands, so a later timeout still knows how
+    // long the clip is. Losing the duration too meant a tile that couldn't say
+    // "0:42" on a video whose length we had already read.
+    let knownDuration = 0;
 
-    const finish = (result: { frame: Blob | null; duration: number }) => {
+    const finish = (result: { frame: Blob | null; duration: number; outcome: FrameOutcome }) => {
       if (settled) return;
       settled = true;
       URL.revokeObjectURL(objectUrl);
@@ -63,17 +80,22 @@ function readVideoFrame(file: File): Promise<{ frame: Blob | null; duration: num
     };
 
     // A decode that never fires an event would otherwise hang the upload.
-    const timeout = window.setTimeout(() => finish({ frame: null, duration: 0 }), 8000);
+    const timeout = window.setTimeout(() => finish({ frame: null, duration: knownDuration, outcome: 'timeout' }), 8000);
 
+    // No crossOrigin: this is a blob: URL for a file the user just picked, so
+    // there is no origin to negotiate and nothing that could taint the canvas.
     video.preload = 'metadata';
     video.muted = true;
     video.playsInline = true;
-    video.crossOrigin = 'anonymous';
 
-    video.addEventListener('error', () => { window.clearTimeout(timeout); finish({ frame: null, duration: 0 }); });
+    video.addEventListener('loadedmetadata', () => {
+      if (Number.isFinite(video.duration)) knownDuration = Math.round(video.duration);
+    });
+
+    video.addEventListener('error', () => { window.clearTimeout(timeout); finish({ frame: null, duration: knownDuration, outcome: 'error' }); });
 
     video.addEventListener('loadeddata', () => {
-      const duration = Number.isFinite(video.duration) ? Math.round(video.duration) : 0;
+      const duration = Number.isFinite(video.duration) ? Math.round(video.duration) : knownDuration;
       // A frame from the very first moment is often a black fade-in, so take one
       // a little way in — but never past the end of a very short clip.
       const at = Math.min(1, Math.max(0, (video.duration || 0) / 10));
@@ -84,11 +106,13 @@ function readVideoFrame(file: File): Promise<{ frame: Blob | null; duration: num
           canvas.width = video.videoWidth || 1280;
           canvas.height = video.videoHeight || 720;
           const ctx = canvas.getContext('2d');
-          if (!ctx) return finish({ frame: null, duration });
+          // Everything from here on is a POSTER problem, never a playback one:
+          // the browser has already decoded a frame to get this far.
+          if (!ctx) return finish({ frame: null, duration, outcome: 'ok' });
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          canvas.toBlob((blob) => finish({ frame: blob, duration }), 'image/jpeg', 0.82);
+          canvas.toBlob((blob) => finish({ frame: blob, duration, outcome: 'ok' }), 'image/jpeg', 0.82);
         } catch {
-          finish({ frame: null, duration });
+          finish({ frame: null, duration, outcome: 'ok' });
         }
       };
       video.addEventListener('seeked', draw, { once: true });
@@ -121,12 +145,13 @@ export async function uploadSiteVideo(file: File, budget: VideoBudget = 'band'):
 
   // Read the frame first: it works on the local file, so a browser that can't
   // decode the container is discovered before anything is uploaded.
-  const [{ frame, duration }, codec] = await Promise.all([readVideoFrame(file), readCodec(file)]);
+  const [{ frame, duration, outcome }, codec] = await Promise.all([readVideoFrame(file), readCodec(file)]);
 
-  // The decode probe already knew this and used to throw it away. A null frame
-  // means this browser could not play the file, which is the cheapest warning
-  // there is that the owner's visitors won't be able to either.
-  const playbackWarning = videoPlaybackWarning({ codec, decoded: frame !== null });
+  // Only a genuine decode ERROR is evidence about playback. A timed-out frame
+  // grab says nothing about whether the clip plays — treating it as though it
+  // did is what put a "your visitors can't see this" warning on a healthy H.264
+  // file the browser plays perfectly well.
+  const playbackWarning = videoPlaybackWarning({ codec, decode: outcome });
 
   const signed = await createSiteVideoUploadAction(file.name, file.type);
   const { error } = await supabase.storage
