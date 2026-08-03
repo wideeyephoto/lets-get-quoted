@@ -126,8 +126,8 @@ export default function DemoSidebar() {
           <Image
             src="/brand/quick-stops-wordmark.png"
             alt={item.label}
-            width={440}
-            height={100}
+            width={287}
+            height={50}
             className="sidenav-brandmark"
           />
         ) : (
