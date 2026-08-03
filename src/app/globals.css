@@ -14737,13 +14737,20 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 /* A count and a state pill on the same row would both claim the right edge. */
 .sidenav-link .sidenav-state + .sidenav-count { margin-left: 0.3rem; margin-right: 0; }
 
-/* A row carrying a state gets it in the row itself, not only in the pill: a
-   green edge and a green icon read across the rail at a glance, where a 0.6rem
-   pill has to be looked for. ON only — "live and taking work" is the fact worth
-   a colour, and painting every OFF automation red would turn the rail into a
-   wall of alarms for someone who has simply not switched them on. The pill is
-   still the thing that SAYS which way it is set, in either direction. */
-.sidenav-link[data-state='on'] { box-shadow: inset 3px 0 0 #3fbf87; }
+/* A row carrying a state gets it in the row itself, not only in the pill: an
+   outlined row and a green icon read across the rail at a glance, where a
+   0.6rem pill has to be looked for. ON only — "live and taking work" is the
+   fact worth a colour, and painting every OFF automation red would turn the
+   rail into a wall of alarms for someone who has simply not switched them on.
+   The pill is still the thing that SAYS which way it is set, in either
+   direction.
+
+   A full ring rather than the left bar this used to be. The bar wanted the same
+   three pixels the ACTIVE row uses for a different meaning, so the two could
+   never be told apart when they sat next to each other — and they do, because
+   Schedule is directly above Online Booking. An outline is a shape the active
+   row never takes. */
+.sidenav-link[data-state='on'] { box-shadow: inset 0 0 0 1px rgba(63, 191, 135, 0.5); }
 .sidenav-link[data-state='on'] .sidenav-ic { color: var(--ink-green-11); }
 .sidenav-link[data-state='on']:hover .sidenav-ic { color: var(--ink-green-12); }
 
