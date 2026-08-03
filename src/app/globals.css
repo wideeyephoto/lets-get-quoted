@@ -10633,6 +10633,32 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
    Everything sits along the TOP edge — Google's logo and terms own the bottom of
    the canvas, and covering either is both ugly and against their terms. */
 .plan-map-busy,
+/* The demo's drawn stand-in for the route map. The holder is the real one, so
+   it sits in exactly the space Google would occupy — the point of the demo is
+   that the layout is the product's, only the data is invented. */
+/* The live planner fills this column with controls, so it stretches to the
+   map. The demo's is read-only and short, and stretching it leaves half a
+   card of empty white beside the route. */
+.demo-route-grid { align-items: start; }
+.demo-map { min-height: 340px; }
+.demo-map .plan-map-canvas { width: 100%; height: 100%; }
+.demo-map-note {
+  position: absolute;
+  left: 0.7rem;
+  bottom: 0.7rem;
+  margin: 0;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(10, 20, 33, 0.86);
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 0.74rem;
+  font-weight: 650;
+}
+/* The holder is chrome-dark in both themes; on a light sheet its own note has
+   to stay light-on-dark with it rather than following the sheet's ink. */
+:root[data-theme='light'] .demo-map-note { color: rgba(255, 255, 255, 0.78); }
+
 .plan-map-note {
   position: absolute;
   top: 0.7rem;

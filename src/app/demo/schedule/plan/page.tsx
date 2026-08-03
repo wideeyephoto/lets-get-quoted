@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { DEMO_ROUTE } from '@/lib/demo-data';
+import DemoRouteMap from './DemoRouteMap';
 
 export const metadata = { title: 'Plan my day — demo' };
 export const dynamic = 'force-dynamic';
@@ -39,30 +40,35 @@ export default function DemoPlanPage() {
         </div>
       </header>
 
-      <section className="panel workspace-section-card">
-        <dl className="plan-stat-row">
-          <div className="plan-stat">
-            <dt>Stops</dt>
-            <dd>{stops.length}</dd>
-          </div>
-          <div className="plan-stat">
-            <dt>Total distance</dt>
-            <dd>{DEMO_ROUTE.totalMiles} mi</dd>
-          </div>
-          <div className="plan-stat">
-            <dt>Driving time</dt>
-            <dd>{DEMO_ROUTE.totalDriveMinutes} min</dd>
-          </div>
-          <div className="plan-stat">
-            <dt>Finish around</dt>
-            <dd>{finish ? finish.arrive : '—'}</dd>
-          </div>
-        </dl>
-        <p className="plan-drag-hint">
-          Ordered by drive time between the addresses, not by distance — a three-mile hop across a highway can cost more
-          than a six-mile run down the road you are already on.
-        </p>
-      </section>
+      {/* Map beside the numbers, as the live planner has it: the figures are the
+          answer and the map is how you check it. */}
+      <div className="plan-route-grid demo-route-grid">
+        <DemoRouteMap />
+        <section className="panel workspace-section-card">
+          <dl className="plan-stat-row">
+            <div className="plan-stat">
+              <dt>Stops</dt>
+              <dd>{stops.length}</dd>
+            </div>
+            <div className="plan-stat">
+              <dt>Total distance</dt>
+              <dd>{DEMO_ROUTE.totalMiles} mi</dd>
+            </div>
+            <div className="plan-stat">
+              <dt>Driving time</dt>
+              <dd>{DEMO_ROUTE.totalDriveMinutes} min</dd>
+            </div>
+            <div className="plan-stat">
+              <dt>Finish around</dt>
+              <dd>{finish ? finish.arrive : '—'}</dd>
+            </div>
+          </dl>
+          <p className="plan-drag-hint">
+            Ordered by drive time between the addresses, not by distance — a three-mile hop across a highway can cost
+            more than a six-mile run down the road you are already on.
+          </p>
+        </section>
+      </div>
 
       <div className="plan-body">
         <section className="panel plan-panel plan-stops-panel">
