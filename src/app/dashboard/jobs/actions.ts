@@ -1,7 +1,17 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { resolveCrewBurdenPct } from '@/lib/cost-truth-data';
+import { resolveCrewBurdenPct, getMinMarginPct, accountLoadedHourlyRate } from '@/lib/cost-truth-data';
+import {
+  billableLines,
+  deterministicFindings,
+  mergeFindings,
+  normalizeLabel,
+  type GuardLine,
+  type QuoteFinding,
+} from '@/lib/quote-guard';
+import { findOmissions } from '@/lib/quote-guard-ai';
+import { listServices } from '@/lib/services';
 import { normalizeCostSource } from '@/lib/cost-truth';
 import { readReceipt, type ReceiptRead } from '@/lib/receipt-ocr';
 import { redirect } from 'next/navigation';
@@ -16,6 +26,7 @@ import {
   deleteJob,
   getJob,
   formatJobQuoteSummary,
+  parseQuoteItems,
   saveQuoteItems,
   updateJob,
   updateJobSchedule,
@@ -795,6 +806,79 @@ export async function saveQuoteItemsAction(jobId: string, items: QuoteItem[]): P
 // owner presses Save like they always did. Rate-limited because it spends money
 // per call, and idempotent in the only sense that matters: running it twice
 // costs two calls and changes nothing.
+/**
+ * Read a quote before it goes out. Saves nothing and changes nothing.
+ *
+ * Runs the arithmetic first and unconditionally, then asks the model what looks
+ * absent. If the model can't run — no key, provider down — the contractor still
+ * gets their margin and history checks rather than an error.
+ */
+export async function reviewQuoteAction(
+  jobId: string,
+  lines: { id: string; label: string; amount: number; kind: 'base' | 'addon' | 'subscription'; selected: boolean }[],
+): Promise<{ ok: true; findings: QuoteFinding[]; aiRan: boolean } | { ok: false; message: string }> {
+  const { supabase, accountId } = await requireOwnerContext();
+  if (!(await checkRateLimit(createAdminClient(), `quote-guard:${accountId}`, 30, 3600))) {
+    return { ok: false, message: 'That is a lot of reviews in an hour — give it a few minutes.' };
+  }
+
+  const job = await getJob(supabase, accountId, jobId);
+  if (!job) return { ok: false, message: 'That job could not be found.' };
+
+  const [services, { data: site }, minMarginPct, loadedRate] = await Promise.all([
+    listServices(supabase, accountId, { activeOnly: false }),
+    supabase.from('sites').select('content').eq('account_id', accountId).maybeSingle(),
+    getMinMarginPct(supabase, accountId),
+    accountLoadedHourlyRate(supabase, accountId),
+  ]);
+
+  // Match each quote label back to the price book so its COST is known. The
+  // model is never involved in this: money comes from the book, exactly as it
+  // does in the drafter.
+  const byLabel = new Map(services.map((service) => [normalizeLabel(service.name), service]));
+  const guardLines: GuardLine[] = lines.map((line) => {
+    const match = byLabel.get(normalizeLabel(line.label));
+    return {
+      ...line,
+      unitCost: match ? (match.unit_cost === null ? null : Number(match.unit_cost)) : null,
+      unit: match?.unit ?? null,
+    };
+  });
+
+  // Past quotes, for "you usually also include…". Labels only.
+  const { data: past } = await supabase
+    .from('jobs')
+    .select('quote_items')
+    .eq('account_id', accountId)
+    .neq('id', jobId)
+    .not('quote_items', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(60);
+  const history = (past ?? []).map((row) => ({
+    labels: parseQuoteItems(row.quote_items).filter((item) => item.kind !== 'subscription').map((item) => item.label),
+  }));
+
+  const scope = (job.scope ?? '').trim();
+  const input = {
+    lines: guardLines,
+    scope,
+    estimatedHours: job.estimated_hours == null ? null : Number(job.estimated_hours),
+    loadedHourlyRate: loadedRate,
+    minMarginPct,
+    history,
+  };
+
+  const deterministic = deterministicFindings(input);
+  const ai = await findOmissions({
+    trade: getSiteContent(site?.content as Record<string, unknown> | null).trade.trim() || null,
+    scope,
+    labels: billableLines(guardLines).map((line) => line.label),
+    estimatedHours: input.estimatedHours,
+  });
+
+  return { ok: true, findings: mergeFindings(deterministic, ai), aiRan: Boolean(process.env.OPENAI_API_KEY) && Boolean(scope) };
+}
+
 export async function draftQuoteAction(jobId: string): Promise<
   | { ok: true; draft: SerializedDraft }
   | { ok: false; reason: 'no-scope' | 'unavailable' | 'busy'; message: string }

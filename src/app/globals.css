@@ -9641,6 +9641,31 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
    contractor who had rating-screening switched on will notice their private
    feedback drop and their public reviews get more varied, and deserves to know
    that was us removing something that put their profile at risk. */
+/* Quote Guard. Nothing here blocks sending, so nothing here is styled like an
+   error — a panel that looks like a failure gets closed instead of read. */
+.quote-review {
+  margin: 0.8rem 0;
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--tint), 0.16);
+  background: rgba(var(--tint), 0.04);
+}
+.quote-review.is-stop { border-color: var(--ink-amber-3); background: rgba(255, 179, 122, 0.1); }
+.quote-review-head { display: flex; align-items: center; justify-content: space-between; gap: 0.6rem; }
+.quote-review-list { list-style: none; padding: 0; margin: 0.7rem 0 0; display: flex; flex-direction: column; gap: 0.6rem; }
+.quote-review-item {
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.05);
+  border-left: 3px solid rgba(var(--tint), 0.2);
+}
+.quote-review-item.is-high { border-left-color: var(--ink-orange-1); }
+.quote-review-item.is-medium { border-left-color: var(--ink-amber-3); }
+.quote-review-item p { margin: 0.2rem 0 0; font-size: 0.83rem; line-height: 1.45; color: var(--mute-t55); }
+.quote-review-item-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; }
+.quote-review-source { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--mute-t45); white-space: nowrap; }
+.quote-review-foot { margin: 0.7rem 0 0; font-size: 0.78rem; color: var(--mute-t45); }
+
 /* Job costing. Amber rather than red throughout: these are things to look at,
    not errors — a duplicate flag that shouts turns into a flag nobody reads. */
 .cost-item-duplicate {

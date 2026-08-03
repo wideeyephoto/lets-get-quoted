@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import type { QuoteItem, QuoteItemKind, QuoteSubscriptionFrequency } from '@/lib/jobs';
 import type { DraftSource, SerializedDraft } from '@/lib/quote-draft';
+import { guardSummary, type FindingSource, type QuoteFinding } from '@/lib/quote-guard';
 
 type Row = QuoteItem;
 
@@ -27,6 +28,7 @@ function formatUsd(amount: number): string {
 export default function QuoteBuilder({
   action,
   draftAction,
+  reviewAction,
   initialItems,
   services = [],
   onItemsChange,
@@ -39,6 +41,11 @@ export default function QuoteBuilder({
   draftAction?: () => Promise<
     { ok: true; draft: SerializedDraft } | { ok: false; reason: string; message: string }
   >;
+  // Reads the quote as it stands right now. Saves nothing — so it can be run
+  // over unsaved edits, which is the only moment it's actually useful.
+  reviewAction?: (
+    lines: { id: string; label: string; amount: number; kind: QuoteItemKind; selected: boolean }[],
+  ) => Promise<{ ok: true; findings: QuoteFinding[]; aiRan: boolean } | { ok: false; message: string }>;
   initialItems: QuoteItem[];
   services?: PriceBookItem[];
   onItemsChange?: (items: QuoteItem[]) => void;
@@ -53,6 +60,9 @@ export default function QuoteBuilder({
   const [draft, setDraft] = useState<SerializedDraft | null>(null);
   const [drafting, setDrafting] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
+  const [review, setReview] = useState<{ findings: QuoteFinding[]; aiRan: boolean } | null>(null);
+  const [reviewing, setReviewing] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   // Report every edit up to a parent in live mode, without re-firing when the
   // parent hands us a new callback identity.
@@ -151,6 +161,35 @@ export default function QuoteBuilder({
     }
   }
 
+  // Read the quote AS IT STANDS, including edits that haven't been saved. The
+  // moment worth checking a quote is just before it goes out, not after it's
+  // been persisted — so this deliberately sends the rows rather than a job id.
+  async function runReview() {
+    if (!reviewAction) return;
+    setReviewing(true);
+    setReviewError(null);
+    setReview(null);
+    try {
+      const result = await reviewAction(
+        rows
+          .filter((row) => row.label.trim())
+          .map((row) => ({
+            id: row.id,
+            label: row.label.trim(),
+            amount: Math.max(0, Number(row.amount) || 0),
+            kind: row.kind,
+            selected: row.selected,
+          })),
+      );
+      if (result.ok) setReview({ findings: result.findings, aiRan: result.aiRan });
+      else setReviewError(result.message);
+    } catch {
+      setReviewError('Could not run the check. Try again in a moment.');
+    } finally {
+      setReviewing(false);
+    }
+  }
+
   // Applying is an explicit act with two explicit shapes — add to what's there,
   // or replace it. There is no third, quieter option.
   function applyDraft(mode: 'append' | 'replace') {
@@ -187,6 +226,22 @@ export default function QuoteBuilder({
       ) : null}
 
       {draftError ? <p className="quote-draft-error">{draftError}</p> : null}
+
+      {reviewAction && rows.length > 0 ? (
+        <div className="quote-draft-bar">
+          <button type="button" className="btn secondary" onClick={runReview} disabled={reviewing}>
+            {reviewing ? 'Checking…' : '🔍 Check before sending'}
+          </button>
+          <small>
+            Checks the margin against your floor, compares it to similar jobs you&rsquo;ve done, and looks for work
+            the description mentions that isn&rsquo;t priced here.
+          </small>
+        </div>
+      ) : null}
+
+      {reviewError ? <p className="quote-draft-error">{reviewError}</p> : null}
+
+      {review ? <QuoteReview review={review} onDismiss={() => setReview(null)} /> : null}
 
       {draft ? (
         <DraftReview
@@ -375,6 +430,56 @@ const SOURCE_LABEL: Record<DraftSource, string> = {
   history: 'From past jobs',
   estimate: 'Check this price',
 };
+
+// Where a finding came from, named on the finding itself. "Your margin is 8%"
+// and "this might need a permit" deserve different amounts of trust, and a
+// contractor can only weigh them if the panel says which is which.
+const FINDING_SOURCE_LABEL: Record<FindingSource, string> = {
+  math: 'From your numbers',
+  history: 'From your past jobs',
+  ai: 'Suggestion — check it',
+};
+
+function QuoteReview({
+  review,
+  onDismiss,
+}: {
+  review: { findings: QuoteFinding[]; aiRan: boolean };
+  onDismiss: () => void;
+}) {
+  const summary = guardSummary(review.findings);
+  return (
+    <section className={`quote-review is-${summary.tone}`} aria-label="Quote check">
+      <div className="quote-review-head">
+        <strong>{summary.message}</strong>
+        <button type="button" className="btn ghost" onClick={onDismiss}>
+          Dismiss
+        </button>
+      </div>
+
+      {review.findings.length > 0 ? (
+        <ul className="quote-review-list">
+          {review.findings.map((finding) => (
+            <li key={finding.id} className={`quote-review-item is-${finding.severity}`}>
+              <div className="quote-review-item-head">
+                <strong>{finding.title}</strong>
+                <span className="quote-review-source">{FINDING_SOURCE_LABEL[finding.source]}</span>
+              </div>
+              <p>{finding.detail}</p>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {/* Nothing here is a blocker, and saying so is the honest framing: this
+          catches what it can check, which is not the same as everything. */}
+      <p className="quote-review-foot">
+        Nothing here stops you sending the quote.
+        {review.aiRan ? '' : ' The description check didn’t run — add a scope of work to include it.'}
+      </p>
+    </section>
+  );
+}
 
 // The draft, held for review.
 //

@@ -39,6 +39,7 @@ import {
   resolveAccountReviewUrl,
   saveQuoteItemsAction,
   draftQuoteAction,
+  reviewQuoteAction,
   sendClientScheduleOptionsAction,
   undoJobCompleteAction,
   undoJobStartedAction,
@@ -468,6 +469,7 @@ export default async function JobDetailPage({
         <QuoteBuilder
           action={boundSaveQuoteItems}
           draftAction={draftQuoteAction.bind(null, job.id)}
+          reviewAction={reviewQuoteAction.bind(null, job.id)}
           initialItems={quoteItems}
           services={priceBook}
         />
