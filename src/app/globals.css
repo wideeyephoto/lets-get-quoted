@@ -1525,6 +1525,33 @@ h3 {
 .sidenav-unseen + .sidenav-total,
 .sidenav-count + .sidenav-total { margin-left: -0.4rem; }
 
+/* THE FLAG.
+   ---------------------------------------------------------------------------
+   The count stops being a box and becomes a pennant with its point aimed at the
+   label it belongs to. Two things follow from that.
+
+   It is DIRECTIONAL, which is the fact the old pair of matching boxes could not
+   express: a shape that points has a subject, and "3" pointing at "Leads" reads
+   as three leads rather than as a number that happens to be nearby.
+
+   It is SOLID while the total stays hollow, so the two are no longer the same
+   object in two colours. Filled-versus-outlined was the split this cluster used
+   to have and gave up; it comes back here carried by shape as well, which means
+   it still works for anyone who cannot separate the orange from the grey.
+
+   The point costs nothing: clip-path cuts INTO the box's own left padding, so
+   the flag occupies exactly the width the box did. */
+.sidenav-count {
+  border: 0;
+  background: var(--accent);
+  /* The rail's own ground, so the numeral reads as punched out of the flag
+     rather than printed on it. 5.8:1 on the orange. */
+  color: #17202b;
+  padding: 0 0.34rem 0 0.5rem;
+  border-radius: 0 4px 4px 0;
+  clip-path: polygon(5px 0, 100% 0, 100% 100%, 5px 100%, 0 50%);
+}
+
 /* Whichever badge is LAST claims the leftover space, so the cluster stays beside
    its label instead of drifting to the far edge. The ones ahead of it must not,
    or the pair gets flung apart. */
