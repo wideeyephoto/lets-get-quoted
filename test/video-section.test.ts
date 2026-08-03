@@ -16,7 +16,7 @@ function video(overrides: Partial<SiteVideoItem> = {}): SiteVideoItem {
 }
 
 describe('video section defaults', () => {
-  const content = getSiteContent({}).videoSection;
+  const content = getSiteContent({}).videoSections[0];
 
   it('starts on the safest arrangement with sane playback', () => {
     expect(content.style).toBe('split');
@@ -38,19 +38,47 @@ describe('video section defaults', () => {
   });
 
   it('respects an explicitly emptied step list instead of re-seeding it', () => {
-    expect(getSiteContent({ videoSection: { steps: [] } }).videoSection.steps).toEqual([]);
+    expect(getSiteContent({ videoSection: { steps: [] } }).videoSections[0].steps).toEqual([]);
   });
 
   it('clamps the overlay slider and falls back when it is nonsense', () => {
-    expect(getSiteContent({ videoSection: { overlay: 200 } }).videoSection.overlay).toBe(90);
-    expect(getSiteContent({ videoSection: { overlay: -5 } }).videoSection.overlay).toBe(55);
-    expect(getSiteContent({ videoSection: { overlay: 'dark' } }).videoSection.overlay).toBe(55);
-    expect(getSiteContent({ videoSection: { overlay: 0 } }).videoSection.overlay).toBe(0);
+    expect(getSiteContent({ videoSection: { overlay: 200 } }).videoSections[0].overlay).toBe(90);
+    expect(getSiteContent({ videoSection: { overlay: -5 } }).videoSections[0].overlay).toBe(55);
+    expect(getSiteContent({ videoSection: { overlay: 'dark' } }).videoSections[0].overlay).toBe(55);
+    expect(getSiteContent({ videoSection: { overlay: 0 } }).videoSections[0].overlay).toBe(0);
   });
 
   it('falls back to a known style when the saved one is unrecognized', () => {
-    expect(getSiteContent({ videoSection: { style: 'carousel' } }).videoSection.style).toBe('split');
-    expect(getSiteContent({ videoSection: { style: 'reel' } }).videoSection.style).toBe('reel');
+    expect(getSiteContent({ videoSection: { style: 'carousel' } }).videoSections[0].style).toBe('split');
+    expect(getSiteContent({ videoSection: { style: 'reel' } }).videoSections[0].style).toBe('reel');
+  });
+});
+
+// One band became a list, and these tests kept reading the old single object.
+// getSiteContent() returns undefined for it, so twelve of them died on
+// "Cannot read properties of undefined" — which is not a failure that tells you
+// the shape changed, and left the migration below covered by nothing at all.
+describe('the single-band shape still loads', () => {
+  it('reads a site saved before there could be more than one video band', () => {
+    // Legacy on disk: a `videoSection` OBJECT, no `videoSections` array. Nothing
+    // rewrites it until the owner next saves, so this has to keep working for
+    // as long as any unsaved site exists — which is every site, until it doesn't.
+    const legacy = getSiteContent({
+      videoSection: { style: 'reel', headline: 'Twenty years on these roofs', videos: [video({ id: 'a' })] },
+    });
+    expect(legacy.videoSections).toHaveLength(1);
+    expect(legacy.videoSections[0].style).toBe('reel');
+    expect(legacy.videoSections[0].headline).toBe('Twenty years on these roofs');
+    expect(legacy.videoSections[0].videos).toHaveLength(1);
+  });
+
+  it('prefers the array when a site has been saved since', () => {
+    const migrated = getSiteContent({
+      videoSection: { headline: 'the old one' },
+      videoSections: [{ id: 'video-1', headline: 'the new one' }],
+    });
+    expect(migrated.videoSections).toHaveLength(1);
+    expect(migrated.videoSections[0].headline).toBe('the new one');
   });
 });
 
@@ -98,7 +126,7 @@ describe('style capacity', () => {
     // The page gets one...
     expect(getPublishedVideoSection(saved)?.videos.map((item) => item.id)).toEqual(['a']);
     // ...and all three are still saved, so switching back brings them home.
-    expect(getSiteContent(saved).videoSection.videos).toHaveLength(3);
+    expect(getSiteContent(saved).videoSections[0].videos).toHaveLength(3);
   });
 });
 
@@ -126,7 +154,7 @@ describe('switching style keeps every field', () => {
 
   for (const style of ['hero', 'split', 'story', 'reel', 'testimonial', 'process'] as const) {
     it(`keeps testimonial words, project details and reel captions under "${style}"`, () => {
-      const switched = getSiteContent({ ...authored, videoSection: { ...authored.videoSection, style } }).videoSection;
+      const switched = getSiteContent({ ...authored, videoSection: { ...authored.videoSection, style } }).videoSections[0];
       expect(switched.style).toBe(style);
       expect(switched.headline).toBe('Twenty years on these roofs');
       expect(switched.location).toBe('Royal Oak, MI');

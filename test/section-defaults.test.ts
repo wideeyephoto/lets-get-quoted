@@ -27,7 +27,8 @@ describe('default section on/off', () => {
     expect(c.blog.enabled).toBe(true);
     expect(c.serviceAreas.enabled).toBe(true);
     // On, but gated on having a video — see test/video-section.test.ts.
-    expect(c.videoSection.enabled).toBe(true);
+    // A single band became a list; the first one carries the default.
+    expect(c.videoSections[0].enabled).toBe(true);
   });
   it('these sections default OFF', () => {
     expect(c.beforeAfter.enabled).toBe(false);
