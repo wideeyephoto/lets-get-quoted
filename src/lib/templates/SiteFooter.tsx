@@ -78,6 +78,10 @@ export default function SiteFooter({ site }: { site: Site }) {
           {legal.terms && <a href="/terms">Terms of Service</a>}
         </nav>
       )}
+      {/* No customer-portal link here on purpose. Adding one to every template
+          would put it on eleven sites whose owners never asked for it — the URL
+          is given to them in Settings and they place it where it suits: footer,
+          email signature, or the bottom of an invoice. */}
       <small>Powered by Let&apos;s Get Quoted</small>
     </div>
   );

@@ -119,6 +119,9 @@ export default function SelectionBoard({ jobId, selections }: { jobId: string; s
                         <input name="name" required placeholder="Accessible Beige" aria-label="Option name" />
                         <input name="reference" placeholder="SW7036" aria-label="Product code" />
                         <input name="price" type="number" min="0" step="0.01" required placeholder="Price" aria-label="Price" />
+                        {/* Nobody picks a tile from a product code. The picture
+                            makes the choice possible; the code settles it later. */}
+                        <input type="file" name="photo" accept="image/*" aria-label="Photo of this option" />
                         <SaveButton className="btn secondary" pendingLabel="Adding…" savedLabel="Added ✓">
                           Add option
                         </SaveButton>

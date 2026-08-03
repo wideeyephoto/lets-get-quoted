@@ -191,7 +191,14 @@ export type ClientSelectionOption = {
   name: string;
   description: string;
   reference: string;
-  photoPath: string | null;
+  /**
+   * A signed URL, filled in by the data layer — never a storage path.
+   *
+   * The job-photos bucket is private, so a raw path renders as a broken image.
+   * It's typed as the URL rather than the path so a caller that forgets to sign
+   * gets null and no picture, instead of a 404 in front of a customer.
+   */
+  photoUrl: string | null;
   costLabel: string;
   upgrade: number;
   credit: number;
@@ -247,7 +254,8 @@ export function toClientSelections(selections: Selection[], today = todayKey()):
             name: option.name,
             description: option.description,
             reference: option.reference,
-            photoPath: option.photoPath,
+            // Signed later. See the note on the type.
+            photoUrl: null,
             costLabel: describeOptionCost(cost),
             upgrade: cost.upgrade,
             credit: cost.credit,

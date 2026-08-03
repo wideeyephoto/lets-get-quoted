@@ -84,6 +84,23 @@ export async function updateCostSettingsAction(formData: FormData) {
   revalidatePath('/dashboard/insights');
 }
 
+/**
+ * The customer portal switch.
+ *
+ * Off by default and turned on deliberately: this publishes a page that emails a
+ * link to anyone who types a matching address, and that is a decision a
+ * contractor makes rather than discovers.
+ */
+export async function updateClientPortalAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const { error } = await supabase
+    .from('accounts')
+    .update({ client_portal_enabled: formData.get('clientPortal') === 'on' })
+    .eq('id', accountId);
+  if (error) throw new Error(error.message);
+  revalidatePath('/dashboard/settings');
+}
+
 export async function updateScheduleDayHoursAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
   const scheduleDayHours = parseScheduleDayHours(formData.get('scheduleDayHours'));

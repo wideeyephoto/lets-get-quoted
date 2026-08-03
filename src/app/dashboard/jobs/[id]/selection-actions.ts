@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireOwnerContext } from '@/lib/auth';
 import { addOption, createSelection, deleteOption, setSelectionStatus, updateSelection } from '@/lib/selections-data';
+import { isJobPhotoFile, uploadJobPhoto } from '@/lib/job-photo-storage';
 
 function num(value: FormDataEntryValue | null): number {
   const n = Number(String(value ?? '').trim());
@@ -38,6 +39,21 @@ export async function updateSelectionAction(jobId: string, selectionId: string, 
 
 export async function addSelectionOptionAction(jobId: string, selectionId: string, formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
+
+  // A photo is most of the decision. Nobody picks a tile from a product code —
+  // the code is what settles the argument afterwards, the picture is what makes
+  // the choice possible in the first place.
+  let photoPath: string | null = null;
+  const photo = formData.get('photo');
+  if (isJobPhotoFile(photo)) {
+    try {
+      photoPath = await uploadJobPhoto(accountId, photo);
+    } catch (error) {
+      // A failed upload must not lose the option. They can add the picture after.
+      console.error('Selection option photo failed:', error instanceof Error ? error.message : error);
+    }
+  }
+
   await addOption(supabase, accountId, {
     selectionId,
     jobId,
@@ -47,6 +63,7 @@ export async function addSelectionOptionAction(jobId: string, selectionId: strin
     // The thing that actually gets ordered. "SW7036" ends an argument that
     // "beige" starts.
     reference: String(formData.get('reference') ?? ''),
+    photoPath,
   });
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }

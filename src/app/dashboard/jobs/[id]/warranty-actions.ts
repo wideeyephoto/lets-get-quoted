@@ -5,6 +5,7 @@ import { requireOwnerContext } from '@/lib/auth';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { todayKey } from '@/lib/warranties';
 import { createWarranty, deleteWarranty, recordService, updateClaim, updateWarranty } from '@/lib/warranties-data';
+import { isJobPhotoFile, uploadJobPhoto } from '@/lib/job-photo-storage';
 import type { ClaimStatus } from '@/lib/warranties';
 
 function num(value: FormDataEntryValue | null): number | null {
@@ -52,6 +53,45 @@ export async function createWarrantyAction(jobId: string, formData: FormData) {
   } catch (error) {
     console.error('Warranty feed event failed:', error instanceof Error ? error.message : error);
   }
+
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
+/**
+ * Attach manufacturer paperwork to a warranty.
+ *
+ * Separate from the contractor's own labour warranty, which is what the title
+ * and covers text usually describe. This is the shingle manufacturer's document
+ * — the one that gets asked for years later and that nobody can ever find,
+ * because it went home in a folder that went in a drawer.
+ */
+export async function addWarrantyDocumentAction(jobId: string, warrantyId: string, formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const { data: existing } = await supabase
+    .from('warranties')
+    .select('document_paths')
+    .eq('account_id', accountId)
+    .eq('id', warrantyId)
+    .maybeSingle();
+  if (!existing) return;
+
+  const paths = [...((existing.document_paths as string[] | null) ?? [])];
+  for (const entry of formData.getAll('documents').slice(0, 6)) {
+    if (!isJobPhotoFile(entry)) continue;
+    try {
+      paths.push(await uploadJobPhoto(accountId, entry));
+    } catch (error) {
+      // One bad upload must not lose the others.
+      console.error('Warranty document upload failed:', error instanceof Error ? error.message : error);
+    }
+  }
+
+  await supabase
+    .from('warranties')
+    .update({ document_paths: paths, updated_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('id', warrantyId);
 
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }

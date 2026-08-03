@@ -14,8 +14,7 @@ import Warranties from './Warranties';
 import { listWarranties } from '@/lib/warranties-data';
 import { toClientWarranties } from '@/lib/warranties';
 import Selections from './Selections';
-import { loadClientSelections } from '@/lib/selections-data';
-import { toClientSelections } from '@/lib/selections';
+import { loadClientSelections, toSignedClientSelections } from '@/lib/selections-data';
 
 const STATUS_LABEL: Record<string, string> = {
   new_lead: 'New request',
@@ -59,7 +58,7 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
     ? toClientWarranties(await listWarranties(admin, access.accountId, access.jobId))
     : [];
   const clientSelections = access
-    ? toClientSelections(await loadClientSelections(admin, access.accountId, access.jobId))
+    ? await toSignedClientSelections(admin, access.accountId, await loadClientSelections(admin, access.accountId, access.jobId))
     : [];
 
   if (!dashboard) {

@@ -10,7 +10,7 @@ import {
   type Warranty,
 } from '@/lib/warranties';
 import type { WarrantyClaim } from '@/lib/warranties-data';
-import { createWarrantyAction, deleteWarrantyAction, recordServiceAction } from './warranty-actions';
+import { addWarrantyDocumentAction, createWarrantyAction, deleteWarrantyAction, recordServiceAction } from './warranty-actions';
 
 /**
  * Warranties on a job, and anything the customer has reported against them.
@@ -79,6 +79,21 @@ export default function WarrantyPanel({
                     </form>
                   </div>
                 ) : null}
+
+                {/* The manufacturer's paperwork — the document that gets asked
+                    for years later and that nobody can ever find, because it
+                    went home in a folder that went in a drawer. */}
+                <form action={addWarrantyDocumentAction.bind(null, jobId, warranty.id)} className="warranty-doc-form">
+                  <span>
+                    {warranty.documentPaths.length > 0
+                      ? `${warranty.documentPaths.length} document${warranty.documentPaths.length === 1 ? '' : 's'} on file`
+                      : 'No manufacturer paperwork on file'}
+                  </span>
+                  <input type="file" name="documents" accept="image/*" multiple aria-label="Manufacturer documents" />
+                  <SaveButton className="btn secondary" pendingLabel="Uploading…" savedLabel="Added ✓">
+                    Attach
+                  </SaveButton>
+                </form>
 
                 {own.length > 0 ? (
                   <ul className="warranty-claims">

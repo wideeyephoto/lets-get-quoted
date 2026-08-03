@@ -15,7 +15,7 @@ import DeleteAccountButton from './DeleteAccountButton';
 import ArrivalSettingsSection from './ArrivalSettingsSection';
 import { arrivalSettingsFromAccount } from '@/lib/arrival';
 import { updateArrivalSettingsAction, updateReviewSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBookingAvailabilityAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, updateCallTextbackSettingsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
-import { updateCostSettingsAction } from './actions';
+import { updateCostSettingsAction, updateClientPortalAction } from './actions';
 import { loadedHourlyRate } from '@/lib/cost-truth';
 import { ESTIMATE_POSTURES, normalizeEstimatePosture } from '@/lib/estimate-posture';
 import { getSiteContent } from '@/lib/site-content';
@@ -92,7 +92,7 @@ export default async function SettingsPage({
       supabase.auth.getUser(),
       supabase.auth.getUserIdentities(),
       supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded, connect_disabled_at, schedule_day_hours, workday_start, workday_end, job_buffer_minutes, call_textback_enabled, call_forward_number, call_tracking_number, timezone, arrival_location_policy, arrival_location_precision, arrival_window_style, arrival_window_minutes, arrival_link_hours, arrival_message_template, arrival_morning_confirmation, arrival_clock_travel, time_clock_mode').eq('id', accountId).single(),
-      supabase.from('sites').select('id, company_name, content').eq('account_id', accountId).maybeSingle(),
+      supabase.from('sites').select('id, company_name, content, subdomain').eq('account_id', accountId).maybeSingle(),
       getAvailableTaxYears(supabase, accountId),
       supabase
         .from('payments')
@@ -178,6 +178,15 @@ export default async function SettingsPage({
   const instantBookRadius = bookingSettings?.instant_book_radius_miles ? Number(bookingSettings.instant_book_radius_miles) : 15;
   const instantBookGeoMode = bookingSettings?.instant_book_geo_mode === 'restrict' ? 'restrict' : 'prefer';
   const instantBookDriveTime = Boolean(bookingSettings?.instant_book_drive_time);
+
+  const { data: portalSettings } = await supabase
+    .from('accounts')
+    .select('client_portal_enabled')
+    .eq('id', accountId)
+    .maybeSingle();
+  const clientPortalEnabled = Boolean(portalSettings?.client_portal_enabled);
+  const siteSubdomain = (site?.subdomain as string | null) ?? null;
+  const portalOrigin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
   const { data: costSettings } = await supabase
     .from('accounts')
@@ -877,6 +886,44 @@ export default async function SettingsPage({
             content: (
               <>
                 <p className="automation-group">Business info</p>
+                <section className="panel workspace-section-card" id="client-portal">
+                  <div className="section-heading workspace-section-heading compact-heading">
+                    <p className="eyebrow">Customer portal</p>
+                    <h2>Let past customers look up their own jobs</h2>
+                  </div>
+                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                    Two years after you finish a job, a customer has a problem and can&apos;t remember who did it or
+                    what&apos;s still covered — so they call somebody else. This gives them a page that answers both.
+                    They type the email you have for them and get a link; no password to forget.
+                  </p>
+                  <form action={updateClientPortalAction} className="form-grid compact-form">
+                    <label className="checkbox-row" htmlFor="clientPortal">
+                      <input id="clientPortal" name="clientPortal" type="checkbox" defaultChecked={clientPortalEnabled} />
+                      <span>Turn on job lookup for my past customers</span>
+                    </label>
+                    <div className="form-actions">
+                      <SaveButton>Save</SaveButton>
+                    </div>
+                  </form>
+                  {clientPortalEnabled && siteSubdomain ? (
+                    <>
+                      {/* Given rather than auto-placed. A footer link on every
+                          template would be a decision made on their behalf; this
+                          is theirs to put in a signature, an invoice, or nowhere. */}
+                      <p className="review-policy-note">
+                        Your link — put it wherever suits: your website footer, your email signature, the bottom of an
+                        invoice.
+                      </p>
+                      <p className="portal-share-url">{portalOrigin}/portal/{siteSubdomain}</p>
+                    </>
+                  ) : null}
+                  <p className="review-policy-note">
+                    The page never says whether an email is on your list, whatever somebody types — otherwise it would
+                    tell a stranger which of their neighbours used you. You can cut off any customer&apos;s access from
+                    their page under Clients.
+                  </p>
+                </section>
+
                 <section className="panel workspace-section-card" id="job-costing">
                   <div className="section-heading workspace-section-heading compact-heading">
                     <p className="eyebrow">Job costing</p>

@@ -82,6 +82,10 @@ export default function Selections({ token, selections }: { token: string; selec
                         checked={picked[selection.id] === option.id}
                         onChange={() => setPicked((current) => ({ ...current, [selection.id]: option.id }))}
                       />
+                      {/* eslint-disable-next-line @next/next/no-img-element --
+                          a signed storage URL is not a static asset and can't
+                          be run through the image optimiser. */}
+                      {option.photoUrl ? <img className="client-option-photo" src={option.photoUrl} alt={option.name} /> : null}
                       <span className="client-option-body">
                         <strong>{option.name}</strong>
                         {option.reference ? <span className="client-option-ref">{option.reference}</span> : null}

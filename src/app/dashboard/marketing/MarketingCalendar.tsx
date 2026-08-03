@@ -93,6 +93,15 @@ export default function MarketingCalendar({ view }: { view: CalendarView }) {
                       <button type="button" className="btn ghost" onClick={() => write(entry.beatId, entry.channel)} disabled={working}>
                         {working ? 'Writing…' : 'Write another'}
                       </button>
+                      {/* Hands the topic over, not the text. The composer writes
+                          it again server-side — a querystring carrying prose is
+                          one somebody can rewrite, and this goes out to a whole
+                          list under the contractor's name. */}
+                      {entry.channel === 'email' ? (
+                        <a className="btn secondary" href={`/dashboard/campaigns?draft=beat:${entry.beatId}`}>
+                          Send it as a campaign
+                        </a>
+                      ) : null}
                     </div>
                   </div>
                 ) : (

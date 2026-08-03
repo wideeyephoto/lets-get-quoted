@@ -3,6 +3,7 @@ import { requireOwnerContext } from '@/lib/auth';
 import { AUDIENCE_DEFS, listCampaigns, loadRecipients, matchesAudience, type Campaign } from '@/lib/campaigns';
 import CampaignComposer from './CampaignComposer';
 import { buildQuickStopPitch } from '@/lib/quick-stop-pitch';
+import { campaignDraftForBeat } from '@/lib/marketing-draft-data';
 
 function formatDate(value: string): string {
   return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -22,6 +23,7 @@ export default async function CampaignsPage({
   searchParams,
 }: {
   searchParams: { sent?: string; recipients?: string; skipped?: string; failed?: string; test?: string; draft?: string };
+  // `draft` is 'extra-stop' or 'beat:<id>'. Both are looked up server-side.
 }) {
   const { supabase, accountId } = await requireOwnerContext();
 
@@ -67,6 +69,12 @@ export default async function CampaignsPage({
     });
     // Past customers, because they already know whether they liked the work.
     draft = { channel: 'email', audience: 'past', subject: pitch.subject, body: pitch.body };
+  } else if (searchParams.draft?.startsWith('beat:')) {
+    // A seasonal topic handed over from the marketing calendar. Written HERE
+    // for the same reason as above — a querystring carrying prose is a
+    // querystring somebody can rewrite, and this one would go out under the
+    // contractor's name to their whole list.
+    draft = await campaignDraftForBeat(supabase, accountId, searchParams.draft.slice('beat:'.length));
   }
 
   const sentCount = searchParams.sent ? Number(searchParams.sent) : null;

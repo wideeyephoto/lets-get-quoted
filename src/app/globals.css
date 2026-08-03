@@ -9641,6 +9641,29 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
    contractor who had rating-screening switched on will notice their private
    feedback drop and their public reviews get more varied, and deserves to know
    that was us removing something that put their profile at risk. */
+/* The contractor's own portal URL, given to them to place. Monospaced and
+   selectable, because the only thing anybody does with it is copy it. */
+.portal-share-url {
+  margin: 0.35rem 0 0.9rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.07);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+  -webkit-user-select: all;
+  user-select: all;
+}
+.warranty-doc-form { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.7rem; font-size: 0.82rem; color: var(--mute-t55); }
+.client-option-photo {
+  width: 4.5rem;
+  height: 4.5rem;
+  flex: 0 0 auto;
+  object-fit: cover;
+  border-radius: 8px;
+  background: rgba(var(--tint), 0.08);
+}
+
 .portal-link-list { list-style: none; padding: 0; margin: 0.6rem 0 0.8rem; display: flex; flex-direction: column; gap: 0.4rem; }
 .portal-link-list li { display: flex; flex-direction: column; gap: 0.1rem; font-size: 0.85rem; }
 .portal-link-list li.is-dead { opacity: 0.55; }
@@ -9726,7 +9749,8 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 }
 .selection-chosen { margin-top: 0.6rem; padding: 0.6rem 0.75rem; border-radius: 10px; background: rgba(var(--tint), 0.06); }
 .selection-chosen-meta { display: block; margin-top: 0.2rem; font-size: 0.78rem; color: var(--mute-t50); }
-.selection-option-form { display: grid; grid-template-columns: 1.6fr 1fr 0.8fr auto; gap: 0.4rem; margin-top: 0.7rem; }
+.selection-option-form { display: grid; grid-template-columns: 1.4fr 0.9fr 0.7fr 1fr auto; gap: 0.4rem; margin-top: 0.7rem; }
+.selection-option-form input[type='file'] { font-size: 0.78rem; }
 .selection-new-form { display: flex; flex-direction: column; gap: 0.5rem; }
 .selection-new-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 0.6rem; }
 @media (max-width: 640px) {

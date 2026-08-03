@@ -106,6 +106,36 @@ describe('selectionTotals', () => {
   });
 });
 
+describe('what a choice does to the job total', () => {
+  // chooseOption applies optionCost(...).net to jobs.quoted_amount. These pin
+  // the arithmetic that does it, including the direction a credit moves.
+  it('adds an upgrade to the job', () => {
+    expect(optionCost(option({ price: 650 }), selection()).net).toBe(250);
+  });
+
+  it('takes a credit OFF the job', () => {
+    // A job total that only ever goes up would quietly pocket the difference
+    // on every under-spend, which is the opposite of what an allowance means.
+    expect(optionCost(option({ price: 250 }), selection()).net).toBe(-150);
+  });
+
+  it('moves nothing when the pick matches the allowance', () => {
+    expect(optionCost(option({ price: 400 }), selection()).net).toBe(0);
+  });
+
+  it('moves nothing when the contractor keeps the difference', () => {
+    expect(optionCost(option({ price: 250 }), selection({ creditUnderspend: false })).net).toBe(0);
+  });
+
+  it('nets a board of decisions to one number', () => {
+    const totals = selectionTotals([
+      selection({ id: 'a', status: 'chosen', chosenSnapshot: snapshotOption(option({ price: 650 })) }),
+      selection({ id: 'b', status: 'chosen', chosenSnapshot: snapshotOption(option({ price: 250 })) }),
+    ]);
+    expect(totals.net).toBe(100);
+  });
+});
+
 describe('deadlineState', () => {
   it('counts down inside the chase window', () => {
     expect(deadlineState(selection({ decideBy: '2026-08-08' }), TODAY)).toMatchObject({ due: true, overdue: false, daysLeft: 5 });

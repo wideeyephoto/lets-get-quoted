@@ -1,5 +1,15 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { snapshotOption, type ChosenSnapshot, type Selection, type SelectionOption, type SelectionStatus } from '@/lib/selections';
+import {
+  optionCost,
+  snapshotOption,
+  toClientSelections,
+  type ChosenSnapshot,
+  type ClientSelection,
+  type Selection,
+  type SelectionOption,
+  type SelectionStatus,
+} from '@/lib/selections';
+import { createJobPhotoLinks } from '@/lib/job-photo-storage';
 
 type Row = Record<string, unknown>;
 
@@ -232,10 +242,88 @@ export async function chooseOption(
 
   if (error) return { ok: false, message: error.message };
   if (!data) return { ok: false, message: 'That choice has already been made.' };
+
+  // The choice moves the price of the job, because that is what the customer
+  // just agreed to. Done here rather than derived at read time so every existing
+  // reader — invoices, margin, the client's own total — sees the new number
+  // without knowing selections exist.
+  //
+  // A credit moves it DOWN. That is not a bug: picking under the allowance is
+  // meant to give the money back, and a job total that only ever goes up would
+  // quietly pocket the difference.
+  try {
+    const { data: selectionRow } = await admin
+      .from('job_selections')
+      .select('allowance, credit_underspend')
+      .eq('account_id', accountId)
+      .eq('id', input.selectionId)
+      .maybeSingle();
+    const net = optionCost(
+      { price: snapshot.price },
+      { allowance: Number(selectionRow?.allowance) || 0, creditUnderspend: selectionRow?.credit_underspend !== false },
+    ).net;
+
+    if (net !== 0) {
+      const { data: job } = await admin.from('jobs').select('quoted_amount').eq('id', input.jobId).maybeSingle();
+      // Never below zero. A stack of credits bigger than the quote means
+      // somebody has mis-set an allowance, and a negative job total is a worse
+      // way to find that out than a zero one.
+      const updated = Math.max(0, Math.round(((Number(job?.quoted_amount) || 0) + net) * 100) / 100);
+      await admin.from('jobs').update({ quoted_amount: updated }).eq('account_id', accountId).eq('id', input.jobId);
+    }
+  } catch (error) {
+    // The decision is recorded either way. A job total that didn't move is a
+    // visible, fixable problem; losing the choice would not be.
+    console.error('Selection job total update failed:', error instanceof Error ? error.message : error);
+  }
+
   return { ok: true, snapshot };
 }
 
 /** Everything on a job's board, for the client-facing page. */
 export async function loadClientSelections(admin: SupabaseClient, accountId: string, jobId: string): Promise<Selection[]> {
   return listSelections(admin, accountId, jobId);
+}
+
+/**
+ * The client view with its photos signed.
+ *
+ * The job-photos bucket is private, so a raw path renders as a broken image in
+ * front of a customer. Signing happens here rather than in the pure module
+ * because it needs storage and a network call.
+ *
+ * Best effort: a photo that won't sign becomes no photo, which is a worse-looking
+ * option list but a working page.
+ */
+export async function toSignedClientSelections(
+  admin: SupabaseClient,
+  accountId: string,
+  selections: Selection[],
+): Promise<ClientSelection[]> {
+  const client = toClientSelections(selections);
+
+  const paths = new Map<string, string>();
+  for (const selection of selections) {
+    for (const option of selection.options) {
+      if (option.photoPath) paths.set(option.id, option.photoPath);
+    }
+  }
+  if (paths.size === 0) return client;
+
+  const signed = new Map<string, string>();
+  try {
+    const links = await createJobPhotoLinks(accountId, [...new Set(paths.values())]);
+    const byPath = new Map(links.map((link) => [link.path, link.url]));
+    for (const [optionId, path] of paths) {
+      const url = byPath.get(path);
+      if (url) signed.set(optionId, url);
+    }
+  } catch (error) {
+    console.error('Selection photo signing failed:', error instanceof Error ? error.message : error);
+  }
+
+  return client.map((selection) => ({
+    ...selection,
+    options: selection.options.map((option) => ({ ...option, photoUrl: signed.get(option.id) ?? null })),
+  }));
 }
