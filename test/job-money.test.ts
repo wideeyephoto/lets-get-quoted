@@ -18,12 +18,34 @@ describe('computeMargin', () => {
     expect(margin).toEqual({
       revenue: 10000,
       materialsCost: 1000,
+      // Labour now reports the wage and the employer burden on it separately.
+      // laborCost is their sum and is what the total is built from.
+      laborWages: 2000,
+      laborBurden: 0,
       laborCost: 2000,
       otherCost: 500,
       totalCost: 3500,
       profit: 6500,
       margin: 0.65,
     });
+  });
+
+  it('adds employer burden to labour cost without touching the wage', () => {
+    // The split is the safety property: crew pay reads the wage, and only
+    // margin is allowed to add burden on top of it.
+    const margin = computeMargin({ quoted_amount: 10000 }, [{ ...cost('labor', 2000), burden_amount: 500 }]);
+    expect(margin.laborWages).toBe(2000);
+    expect(margin.laborBurden).toBe(500);
+    expect(margin.laborCost).toBe(2500);
+    expect(margin.totalCost).toBe(2500);
+  });
+
+  it('treats a pre-burden cost row as zero burden rather than NaN', () => {
+    const legacy = { ...cost('labor', 2000) } as Record<string, unknown>;
+    delete legacy.burden_amount;
+    const margin = computeMargin({ quoted_amount: 10000 }, [legacy as never]);
+    expect(margin.laborBurden).toBe(0);
+    expect(margin.laborCost).toBe(2000);
   });
 
   it('counts subcontractors and receipts as materials, not as nothing', () => {

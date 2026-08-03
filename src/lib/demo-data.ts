@@ -268,17 +268,19 @@ function buildCosts(job: Job): Cost[] {
     {
       id: `${job.id}-cost-materials`, account_id: DEMO_ACCOUNT_ID, job_id: job.id, type: 'material',
       category: 'Materials', description: 'Plants, sod, mulch, pavers & stone', amount: materials,
-      supplier: 'Green Valley Landscape Supply', receipt_url: null, client_charge_payment_id: null, client_charge_requested_at: null, crew_id: null, crew_name: null, crew_role_label: null, hours: null, rate: null, created_at: job.created_at,
+      supplier: 'Green Valley Landscape Supply', receipt_url: null, client_charge_payment_id: null, client_charge_requested_at: null, crew_id: null, crew_name: null, crew_role_label: null, hours: null, rate: null, burden_amount: 0, cost_source: 'supplier_invoice', created_at: job.created_at,
     },
     {
       id: `${job.id}-cost-labor`, account_id: DEMO_ACCOUNT_ID, job_id: job.id, type: 'labor',
       category: 'Labor', description: 'Crew labor', amount: laborAmount,
-      supplier: null, receipt_url: null, client_charge_payment_id: null, client_charge_requested_at: null, crew_id: DEMO_CREW[0].id, crew_name: DEMO_CREW[0].name, crew_role_label: DEMO_CREW[0].role_label, hours: laborHours, rate: 26, created_at: job.created_at,
+      // 22% burden on the wage — a plausible landscaping figure, and shown so
+      // the demo's margin reflects what labour actually costs an employer.
+      supplier: null, receipt_url: null, client_charge_payment_id: null, client_charge_requested_at: null, crew_id: DEMO_CREW[0].id, crew_name: DEMO_CREW[0].name, crew_role_label: DEMO_CREW[0].role_label, hours: laborHours, rate: 26, burden_amount: Math.round(laborAmount * 0.22), cost_source: 'clocked', created_at: job.created_at,
     },
     {
       id: `${job.id}-cost-sub`, account_id: DEMO_ACCOUNT_ID, job_id: job.id, type: 'sub',
       category: 'Subcontractor', description: 'Irrigation subcontractor', amount: subAmount,
-      supplier: 'AquaFlow Irrigation', receipt_url: null, client_charge_payment_id: null, client_charge_requested_at: null, crew_id: null, crew_name: null, crew_role_label: null, hours: null, rate: null, created_at: job.created_at,
+      supplier: 'AquaFlow Irrigation', receipt_url: null, client_charge_payment_id: null, client_charge_requested_at: null, crew_id: null, crew_name: null, crew_role_label: null, hours: null, rate: null, burden_amount: 0, cost_source: 'supplier_invoice', created_at: job.created_at,
     },
   ];
 }

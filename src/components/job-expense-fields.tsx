@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { CrewMember } from '@/lib/crew';
 import type { CostType } from '@/lib/jobs';
+import { COST_SOURCE_LABEL, COST_SOURCE_NOTE, SELECTABLE_COST_SOURCES, type CostSource } from '@/lib/cost-truth';
 
 type JobExpenseFieldsProps = {
   crew: CrewMember[];
@@ -30,6 +31,13 @@ export default function JobExpenseFields({ crew }: JobExpenseFieldsProps) {
   const [type, setType] = useState<CostType>('material');
   const [description, setDescription] = useState('');
   const isLabor = type === 'labor';
+  // Hours typed after the fact are a recollection; a material spend usually has
+  // a receipt behind it. Defaulting each to its likely truth means the honest
+  // answer is also the one that takes no clicks.
+  const [source, setSource] = useState<CostSource>('receipt');
+  useEffect(() => {
+    setSource(isLabor ? 'estimated' : 'receipt');
+  }, [isLabor]);
 
   return (
     <>
@@ -42,6 +50,27 @@ export default function JobExpenseFields({ crew }: JobExpenseFieldsProps) {
             </option>
           ))}
         </select>
+      </div>
+
+      {/* Where the number came from, asked at the moment it's entered rather
+          than reconstructed later. "Receipt" and "I think it was about $400"
+          are both legitimate ways to record a cost — what isn't legitimate is a
+          margin that can't tell you which one it was built from. */}
+      <div className="field">
+        <label htmlFor="cost-source">Where this figure came from</label>
+        <select
+          id="cost-source"
+          name="costSource"
+          value={source}
+          onChange={(event) => setSource(event.currentTarget.value as CostSource)}
+        >
+          {SELECTABLE_COST_SOURCES.map((option) => (
+            <option key={option} value={option}>
+              {COST_SOURCE_LABEL[option]}
+            </option>
+          ))}
+        </select>
+        <small className="field-hint">{COST_SOURCE_NOTE[source]}</small>
       </div>
 
       <div className="field">

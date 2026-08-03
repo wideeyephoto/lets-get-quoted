@@ -6,6 +6,13 @@ export type Service = {
   name: string;
   description: string | null;
   unit_price: number;
+  /**
+   * What this line costs YOU. Nullable and with no default on purpose: a
+   * missing cost is UNKNOWN, not zero. Defaulting it to 0 would show every
+   * un-costed line at a perfect 100% margin — wrong and flattering at the same
+   * time, which is exactly how a bad number gets believed.
+   */
+  unit_cost: number | null;
   unit: string;
   active: boolean;
   sort_order: number;
@@ -22,12 +29,26 @@ export type ServiceInput = {
   name: string;
   description?: string | null;
   unitPrice: number;
+  /** undefined = leave alone; null = explicitly unknown; a number = the cost. */
+  unitCost?: number | null;
   unit?: string;
 };
 
 function cleanUnit(unit: string | null | undefined): string {
   const value = (unit ?? '').trim().toLowerCase();
   return (SERVICE_UNITS as readonly string[]).includes(value) ? value : 'each';
+}
+
+/**
+ * An empty cost field means "I don't know", and that has to survive the trip to
+ * the database as NULL. Coercing '' through Number() gives 0, which the margin
+ * code would then read as a real, free-to-deliver line.
+ */
+function cleanUnitCost(value: number | null | undefined): number | null {
+  if (value === null || value === undefined) return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return Math.round(n * 100) / 100;
 }
 
 // The account's price book. Defensive: an un-migrated DB (no services table)
@@ -59,6 +80,7 @@ export async function createService(supabase: SupabaseClient, accountId: string,
       name: input.name.trim(),
       description: input.description?.trim() || null,
       unit_price: Math.max(0, Math.round((Number(input.unitPrice) || 0) * 100) / 100),
+      unit_cost: cleanUnitCost(input.unitCost),
       unit: cleanUnit(input.unit),
     })
     .select('*')
@@ -74,6 +96,10 @@ export async function updateService(supabase: SupabaseClient, accountId: string,
       name: input.name.trim(),
       description: input.description?.trim() || null,
       unit_price: Math.max(0, Math.round((Number(input.unitPrice) || 0) * 100) / 100),
+      // Only written when the caller actually said something about it. An
+      // `undefined` here means "this form doesn't edit cost", and writing NULL
+      // for it would erase a figure the owner entered on a different screen.
+      ...(input.unitCost === undefined ? {} : { unit_cost: cleanUnitCost(input.unitCost) }),
       unit: cleanUnit(input.unit),
       updated_at: new Date().toISOString(),
     })

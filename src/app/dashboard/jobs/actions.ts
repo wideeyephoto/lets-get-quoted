@@ -1,6 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { resolveCrewBurdenPct } from '@/lib/cost-truth-data';
+import { normalizeCostSource } from '@/lib/cost-truth';
 import { redirect } from 'next/navigation';
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
@@ -607,6 +609,11 @@ export async function createCostAction(jobId: string, formData: FormData) {
 
   const type = (formData.get('type') as CostType) || 'material';
   const description = (formData.get('description') ?? '').toString().trim() || 'Cost item';
+  // Where the number came from. Falls back to 'estimated' rather than
+  // 'unspecified': a cost entered today by a person had SOME basis, and
+  // 'unspecified' is reserved for rows recorded before the question was asked.
+  const rawSource = normalizeCostSource(formData.get('costSource'));
+  const source = rawSource === 'unspecified' ? 'estimated' : rawSource;
 
   if (type === 'labor') {
     const hours = parseAmount(formData.get('hours'));
@@ -616,13 +623,16 @@ export async function createCostAction(jobId: string, formData: FormData) {
       throw new Error('Labor costs require both hours and an hourly rate greater than 0.');
     }
 
+    const crewId = optionalText(formData.get('crewId'));
     const cost = await createCost(supabase, accountId, jobId, {
       type: 'labor',
       description,
-      crewId: optionalText(formData.get('crewId')),
+      crewId,
       supplier: optionalText(formData.get('supplier')),
       hours,
       rate,
+      source,
+      burdenPct: await resolveCrewBurdenPct(supabase, accountId, crewId),
     });
     await createJobFeedEvent(supabase, accountId, jobId, {
       kind: 'cost_added',
@@ -645,6 +655,7 @@ export async function createCostAction(jobId: string, formData: FormData) {
       description,
       amount,
       supplier: optionalText(formData.get('supplier')),
+      source,
     });
     await createJobFeedEvent(supabase, accountId, jobId, {
       kind: 'cost_added',

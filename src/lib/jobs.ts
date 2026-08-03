@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { findOrCreateClientId } from '@/lib/clients';
 import { normalizeUsPhone } from '@/lib/phone';
+import { loadedLabourCost, normalizeCostSource, type CostSource } from '@/lib/cost-truth';
 
 export type JobStatus = 'new_lead' | 'in_progress' | 'complete' | 'archived';
 export type CostType = 'material' | 'labor' | 'sub' | 'receipt' | 'other';
@@ -111,6 +112,14 @@ export type Cost = {
   crew_role_label: string | null;
   hours: number | null;
   rate: number | null;
+  /**
+   * Employer burden on a labour cost — payroll taxes, comp, PTO. Deliberately
+   * NOT rolled into `amount`: crew pay is computed from `amount`, so folding
+   * burden in would inflate every hourly paycheque. Only margin adds the two.
+   */
+  burden_amount: number;
+  /** Where this number came from. See src/lib/cost-truth.ts. */
+  cost_source: CostSource;
   created_at: string;
 };
 
@@ -142,6 +151,14 @@ export type CostInput =
       hours: number;
       rate: number;
       /**
+       * Where the figure came from. Required so that adding a cost forces the
+       * question — a margin built from numbers of unknown provenance is a
+       * number nobody can defend when a customer disputes an invoice.
+       */
+      source: CostSource;
+      /** Employer burden % applied to this shift, resolved at the time it closed. */
+      burdenPct?: number;
+      /**
        * Override the derived category. Used only by travel time, which is real
        * labor cost (it belongs in margin) but has to be separable from time
        * spent on the work — "keep travel and labor apart for costing". A free
@@ -160,6 +177,7 @@ export type CostInput =
       crewId?: string | null;
       supplier?: string | null;
       receiptUrl?: string | null;
+      source: CostSource;
     };
 
 const COST_TYPE_CATEGORY: Record<CostType, string> = {
@@ -176,6 +194,11 @@ const COST_TYPE_CATEGORY: Record<CostType, string> = {
 export type Margin = {
   revenue: number;
   materialsCost: number;
+  /** What crew earn. The figure payroll pays out. */
+  laborWages: number;
+  /** What the business additionally spends on those hours. */
+  laborBurden: number;
+  /** wages + burden. What the job actually cost in labour. */
   laborCost: number;
   otherCost: number;
   totalCost: number;
@@ -188,13 +211,18 @@ export function computeMargin(job: Pick<Job, 'quoted_amount'>, costs: Cost[]): M
   const materialsCost = costs
     .filter((c) => c.type === 'material' || c.type === 'sub' || c.type === 'receipt')
     .reduce((sum, c) => sum + Number(c.amount), 0);
-  const laborCost = costs.filter((c) => c.type === 'labor').reduce((sum, c) => sum + Number(c.amount), 0);
+  // Labour costs the business the wage PLUS the burden on it. This is the one
+  // place the two are added together — payroll reads `amount` alone, and mixing
+  // them at the source would inflate what crew get paid.
+  const laborWages = costs.filter((c) => c.type === 'labor').reduce((sum, c) => sum + Number(c.amount), 0);
+  const laborBurden = costs.filter((c) => c.type === 'labor').reduce((sum, c) => sum + (Number(c.burden_amount) || 0), 0);
+  const laborCost = laborWages + laborBurden;
   const otherCost = costs.filter((c) => c.type === 'other').reduce((sum, c) => sum + Number(c.amount), 0);
   const totalCost = materialsCost + laborCost + otherCost;
   const profit = revenue - totalCost;
   const margin = revenue ? profit / revenue : 0;
 
-  return { revenue, materialsCost, laborCost, otherCost, totalCost, profit, margin };
+  return { revenue, materialsCost, laborWages, laborBurden, laborCost, otherCost, totalCost, profit, margin };
 }
 
 export function formatMoney(n: number): string {
@@ -1019,24 +1047,35 @@ export async function createCost(
 
   if (crewSnapshot?.error) throw crewSnapshot.error;
 
+  const source = normalizeCostSource(input.source);
+
   const row: Record<string, unknown> =
     input.type === 'labor'
-      ? {
-          account_id: accountId,
-          job_id: jobId,
-          type: 'labor' as const,
-          category,
-          description: input.description,
-          crew_id: input.crewId ?? null,
-          crew_name: crewSnapshot?.data?.name ?? null,
-          crew_role_label: crewSnapshot?.data?.role_label ?? null,
-          supplier: input.supplier ?? null,
-          hours: input.hours,
-          rate: input.rate,
-          // Labor amount is always server-computed as hours × rate — never
-          // trust a client-supplied amount for labor line items.
-          amount: Math.round(input.hours * input.rate * 100) / 100,
-        }
+      ? (() => {
+          // Wages and burden are computed together but stored apart. `amount`
+          // remains exactly what it always was — what the crew member earns,
+          // and what crew pay reads — while burden_amount carries the
+          // employer-side cost that only margin is allowed to add on.
+          const { wages, burden } = loadedLabourCost(input.hours, input.rate, input.burdenPct ?? 0);
+          return {
+            account_id: accountId,
+            job_id: jobId,
+            type: 'labor' as const,
+            category,
+            description: input.description,
+            crew_id: input.crewId ?? null,
+            crew_name: crewSnapshot?.data?.name ?? null,
+            crew_role_label: crewSnapshot?.data?.role_label ?? null,
+            supplier: input.supplier ?? null,
+            hours: input.hours,
+            rate: input.rate,
+            // Labor amount is always server-computed as hours × rate — never
+            // trust a client-supplied amount for labor line items.
+            amount: wages,
+            burden_amount: burden,
+            cost_source: source,
+          };
+        })()
       : {
           account_id: accountId,
           job_id: jobId,
@@ -1049,6 +1088,7 @@ export async function createCost(
           crew_role_label: crewSnapshot?.data?.role_label ?? null,
           supplier: input.supplier ?? null,
           receipt_url: input.receiptUrl ?? null,
+          cost_source: source,
         };
 
   const { data, error } = await supabase.from('costs').insert(row).select('*').single();

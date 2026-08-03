@@ -1,6 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { resolveCrewBurdenPct } from '@/lib/cost-truth-data';
+import { normalizeCostSource } from '@/lib/cost-truth';
 import { redirect } from 'next/navigation';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { requireCrewContext } from '@/lib/crew-auth';
@@ -200,7 +202,18 @@ export async function logFieldTimeAction(jobId: string, formData: FormData) {
   const note = String(formData.get('description') ?? '').trim();
   const description = note || `${crew.name} — labor`;
 
-  await createCost(supabase, accountId, jobId, { type: 'labor', description, crewId: crew.id, hours, rate });
+  // 'estimated': hours typed in after the fact are a recollection. Time the
+  // clock measured is recorded as 'clocked' instead — the distinction is the
+  // point of the field, and calling both "measured" would erase it.
+  await createCost(supabase, accountId, jobId, {
+    type: 'labor',
+    description,
+    crewId: crew.id,
+    hours,
+    rate,
+    source: 'estimated',
+    burdenPct: await resolveCrewBurdenPct(supabase, accountId, crew.id),
+  });
 
   revalidatePath(`/field/jobs/${jobId}`);
   redirect(`/field/jobs/${jobId}?logged=time`);
@@ -218,7 +231,16 @@ export async function logFieldMaterialAction(jobId: string, formData: FormData) 
 
   // Attribute to the crew member inline (createCost snapshots their name) — no
   // follow-up update, so the row satisfies the crew "own rows only" cost RLS.
-  await createCost(supabase, accountId, jobId, { type: 'material', description, amount, crewId: crew.id });
+  // A crew member logging a material spend is standing at the counter with the
+  // receipt in their hand, so 'receipt' is the honest default here — unlike the
+  // owner's form, where the figure could have come from anywhere.
+  await createCost(supabase, accountId, jobId, {
+    type: 'material',
+    description,
+    amount,
+    crewId: crew.id,
+    source: normalizeCostSource(formData.get('costSource')) === 'estimated' ? 'estimated' : 'receipt',
+  });
 
   revalidatePath(`/field/jobs/${jobId}`);
   redirect(`/field/jobs/${jobId}?logged=material`);

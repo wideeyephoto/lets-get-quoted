@@ -130,6 +130,21 @@ function ServiceFields({ prefix, service }: { prefix: string; service?: Service 
           <input id={`${prefix}-price`} name="unitPrice" type="number" min="0" step="0.01" defaultValue={service?.unit_price ?? ''} placeholder="180" />
         </div>
         <div className="field">
+          <label htmlFor={`${prefix}-cost`}>Your cost</label>
+          <input
+            id={`${prefix}-cost`}
+            name="unitCost"
+            type="number"
+            min="0"
+            step="0.01"
+            defaultValue={service?.unit_cost ?? ''}
+            placeholder="Optional"
+          />
+          {/* Leaving it blank is a real answer. An un-costed line shows margin
+              as "—" rather than as 100%, which is what a $0 cost would imply. */}
+          <small className="field-hint">Materials and labour this line costs you. Leave blank if you don&apos;t know yet.</small>
+        </div>
+        <div className="field">
           <label htmlFor={`${prefix}-unit`}>Per</label>
           <select id={`${prefix}-unit`} name="unit" defaultValue={service?.unit ?? 'each'}>
             {SERVICE_UNITS.map((u) => (

@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { resolveCrewBurdenPct } from '@/lib/cost-truth-data';
 import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import { LABOR_SETTINGS_COOKIE, normalizeLaborSettings, roundHours } from '@/lib/labor-settings';
@@ -306,7 +307,15 @@ export async function addLaborEntryAction(formData: FormData) {
   if (!job) throw new Error('Job not found.');
 
   const description = optionalText(formData.get('description')) ?? 'Labor added by owner';
-  const cost = await createCost(supabase, accountId, jobId, { type: 'labor', description, crewId, hours, rate });
+  const cost = await createCost(supabase, accountId, jobId, {
+    type: 'labor',
+    description,
+    crewId,
+    hours,
+    rate,
+    source: 'estimated',
+    burdenPct: await resolveCrewBurdenPct(supabase, accountId, crewId),
+  });
 
   await createJobFeedEvent(supabase, accountId, jobId, {
     kind: 'cost_added',

@@ -59,6 +59,31 @@ export async function updateBusinessBasicsAction(formData: FormData) {
   revalidatePath('/dashboard/sites');
 }
 
+/**
+ * The two numbers that decide what a job is really worth: what an hour of crew
+ * time costs the business, and the margin below which the owner wants telling.
+ */
+export async function updateCostSettingsAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const pct = (value: FormDataEntryValue | null, max: number): number => {
+    const n = Number(String(value ?? '').trim());
+    return Number.isFinite(n) ? Math.min(max, Math.max(0, Math.round(n * 100) / 100)) : 0;
+  };
+
+  const { error } = await supabase
+    .from('accounts')
+    .update({
+      default_burden_pct: pct(formData.get('defaultBurdenPct'), 200),
+      min_margin_pct: pct(formData.get('minMarginPct'), 100),
+    })
+    .eq('id', accountId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/insights');
+}
+
 export async function updateScheduleDayHoursAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
   const scheduleDayHours = parseScheduleDayHours(formData.get('scheduleDayHours'));

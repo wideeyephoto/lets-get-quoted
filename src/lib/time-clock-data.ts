@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createCost } from './jobs';
+import { resolveCrewBurdenPct } from './cost-truth-data';
 import { normalizeTimeClockMode, shiftHours, type OpenShift, type TimeClockMode } from './time-clock';
 
 // Server side of the time clock.
@@ -153,12 +154,19 @@ export async function clockOut(
   let costId: string | null = null;
   if (hours > 0) {
     const description = options.note?.trim() || `${options.crewName} — clocked shift`;
+    // Burden is resolved HERE and snapshotted onto the cost row. Deriving it at
+    // read time from whatever the settings say later would move the margin on
+    // every job already closed.
+    const burdenPct = await resolveCrewBurdenPct(supabase, accountId, entry.crew_id);
     const cost = await createCost(supabase, accountId, entry.job_id, {
       type: 'labor',
       description,
       crewId: entry.crew_id,
       hours,
       rate,
+      // The only source that means "the app watched this happen".
+      source: 'clocked',
+      burdenPct,
       ...(options.category ? { category: options.category } : {}),
     });
     costId = cost.id;

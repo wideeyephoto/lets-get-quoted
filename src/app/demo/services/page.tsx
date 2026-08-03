@@ -13,6 +13,9 @@ function demoService(
   unit: string,
   description: string | null,
   sort_order: number,
+  // Left off most lines on purpose: a real price book is part-costed, and the
+  // demo showing every line with a cost would hide what the "—" margin means.
+  unit_cost: number | null = null,
 ): Service {
   return {
     id,
@@ -20,6 +23,7 @@ function demoService(
     name,
     description,
     unit_price,
+    unit_cost,
     unit,
     active: true,
     sort_order,

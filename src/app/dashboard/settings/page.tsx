@@ -15,6 +15,8 @@ import DeleteAccountButton from './DeleteAccountButton';
 import ArrivalSettingsSection from './ArrivalSettingsSection';
 import { arrivalSettingsFromAccount } from '@/lib/arrival';
 import { updateArrivalSettingsAction, updateReviewSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBookingAvailabilityAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, updateCallTextbackSettingsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
+import { updateCostSettingsAction } from './actions';
+import { loadedHourlyRate } from '@/lib/cost-truth';
 import { ESTIMATE_POSTURES, normalizeEstimatePosture } from '@/lib/estimate-posture';
 import { getSiteContent } from '@/lib/site-content';
 import { WEEKDAY_LABELS, bookingWindowPresets, TIMEZONE_OPTIONS, bookingAvailabilityFromAccount } from '@/lib/booking-availability';
@@ -176,6 +178,14 @@ export default async function SettingsPage({
   const instantBookRadius = bookingSettings?.instant_book_radius_miles ? Number(bookingSettings.instant_book_radius_miles) : 15;
   const instantBookGeoMode = bookingSettings?.instant_book_geo_mode === 'restrict' ? 'restrict' : 'prefer';
   const instantBookDriveTime = Boolean(bookingSettings?.instant_book_drive_time);
+
+  const { data: costSettings } = await supabase
+    .from('accounts')
+    .select('default_burden_pct, min_margin_pct')
+    .eq('id', accountId)
+    .maybeSingle();
+  const defaultBurdenPct = Number(costSettings?.default_burden_pct) || 0;
+  const minMarginPct = Number(costSettings?.min_margin_pct) || 0;
 
   const { data: reviewPageSettings } = await supabase
     .from('accounts')
@@ -867,6 +877,53 @@ export default async function SettingsPage({
             content: (
               <>
                 <p className="automation-group">Business info</p>
+                <section className="panel workspace-section-card" id="job-costing">
+                  <div className="section-heading workspace-section-heading compact-heading">
+                    <p className="eyebrow">Job costing</p>
+                    <h2>What an hour really costs, and when to warn you</h2>
+                  </div>
+                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                    Somebody on {formatMoney(30)}/hr doesn&apos;t cost you {formatMoney(30)}/hr. Payroll taxes,
+                    workers&apos; comp, unemployment and paid time off land on you, and quoting off the bare wage is how
+                    a job loses money without you ever seeing where. Set the extra as a percentage and every clocked
+                    hour gets costed with it.
+                  </p>
+                  <form action={updateCostSettingsAction} className="form-grid compact-form">
+                    <div className="field">
+                      <label htmlFor="defaultBurdenPct">Labour burden (%)</label>
+                      <input
+                        id="defaultBurdenPct"
+                        name="defaultBurdenPct"
+                        type="number"
+                        min="0"
+                        max="200"
+                        step="0.5"
+                        defaultValue={defaultBurdenPct}
+                      />
+                      <small className="field-hint">
+                        A {formatMoney(30)}/hr wage costs you {formatMoney(loadedHourlyRate(30, defaultBurdenPct))}/hr at
+                        this rate. Most trades land between 20% and 40%; a single crew member can be set differently on
+                        their own record.
+                      </small>
+                    </div>
+                    <div className="field">
+                      <label htmlFor="minMarginPct">Warn me below (%)</label>
+                      <input id="minMarginPct" name="minMarginPct" type="number" min="0" max="100" step="1" defaultValue={minMarginPct} />
+                      <small className="field-hint">
+                        Flags a job whose margin falls under this. Leave at 0 to never be warned &mdash; a warning that
+                        shows on everything gets ignored on everything.
+                      </small>
+                    </div>
+                    <div className="form-actions">
+                      <SaveButton>Save job costing</SaveButton>
+                    </div>
+                  </form>
+                  <p className="review-policy-note">
+                    Changing these never rewrites work already recorded. Burden is stamped onto each cost as it happens,
+                    so a job you closed last month keeps the margin it closed at.
+                  </p>
+                </section>
+
                 <section className="panel workspace-section-card" id="business-basics">
                   <div className="section-heading workspace-section-heading compact-heading">
                     <p className="eyebrow">Business basics</p>
