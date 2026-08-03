@@ -622,20 +622,38 @@ export async function sendAppointmentReminderSms(params: {
   return providerId;
 }
 
-// "On my way" — texts the customer a live tracking link when the tech heads out.
-// Caller resolves consent; mirrored into the two-way inbox like other texts.
-export async function sendOnMyWaySms(params: {
-  phone: string;
-  businessName: string;
-  trackingUrl: string;
-  etaMinutes?: number | null;
-  accountId?: string;
-}) {
-  const eta = params.etaMinutes ? ` — about ${params.etaMinutes} min away` : '';
-  const message = `Let's Get Quoted: ${params.businessName} is on the way${eta}! Track live here: ${params.trackingUrl}. Reply STOP to opt out.`;
-  const providerId = await sendTwilioMessage(params.phone, message);
-  if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
-  return providerId;
+/**
+ * Arrival texts — "on my way", a revised ETA, arrived, cancelled.
+ *
+ * Returns an OUTCOME instead of throwing or silently swallowing, because the
+ * one thing a tech about to knock on a door needs to know is whether the
+ * customer was actually told they were coming. "It says sent" and "it sent"
+ * are different claims; every branch below is one the field app renders
+ * differently.
+ *
+ * The body is composed by the caller (see buildArrivalMessage) — nothing is
+ * written on the fly here, so what the tech approved in the preview is what
+ * goes out, verbatim.
+ */
+export async function sendArrivalSms(params: {
+  accountId: string;
+  phone: string | null;
+  message: string;
+}): Promise<{ status: 'sent' | 'failed' | 'no_phone' | 'opted_out' | 'not_configured'; sid?: string; error?: string }> {
+  if (!params.phone) return { status: 'no_phone' };
+  const to = normalizeUsPhone(params.phone);
+  if (!to) return { status: 'no_phone' };
+  if (!twilioConfiguration()) return { status: 'not_configured' };
+  if (await isPhoneOptedOut(params.accountId, to)) return { status: 'opted_out' };
+  try {
+    const sid = await sendTwilioMessage(to, params.message);
+    await logOutboundToInbox(params.accountId, to, params.message, sid);
+    return { status: 'sent', sid };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Arrival SMS failed:', message);
+    return { status: 'failed', error: message };
+  }
 }
 
 // Tells a customer their arrival time shifted — sent only when the contractor

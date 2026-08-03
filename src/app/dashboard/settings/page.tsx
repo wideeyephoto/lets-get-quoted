@@ -12,7 +12,9 @@ import AddressAutocomplete from '@/components/address-autocomplete';
 import AutomationSwitch from '@/components/automation-switch';
 import { listAccountEvents } from '@/lib/account-events';
 import DeleteAccountButton from './DeleteAccountButton';
-import { updateReviewSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBookingAvailabilityAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, updateCallTextbackSettingsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
+import ArrivalSettingsSection from './ArrivalSettingsSection';
+import { arrivalSettingsFromAccount } from '@/lib/arrival';
+import { updateArrivalSettingsAction, updateReviewSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBookingAvailabilityAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, updateCallTextbackSettingsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
 import { ESTIMATE_POSTURES, normalizeEstimatePosture } from '@/lib/estimate-posture';
 import { getSiteContent } from '@/lib/site-content';
 import { WEEKDAY_LABELS, BOOKING_WINDOW_PRESETS, TIMEZONE_OPTIONS, bookingAvailabilityFromAccount } from '@/lib/booking-availability';
@@ -87,7 +89,7 @@ export default async function SettingsPage({
     await Promise.all([
       supabase.auth.getUser(),
       supabase.auth.getUserIdentities(),
-      supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded, connect_disabled_at, schedule_day_hours, workday_start, workday_end, job_buffer_minutes, call_textback_enabled, call_forward_number, call_tracking_number').eq('id', accountId).single(),
+      supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded, connect_disabled_at, schedule_day_hours, workday_start, workday_end, job_buffer_minutes, call_textback_enabled, call_forward_number, call_tracking_number, timezone, arrival_location_policy, arrival_location_precision, arrival_window_style, arrival_window_minutes, arrival_link_hours, arrival_message_template').eq('id', accountId).single(),
       supabase.from('sites').select('id, company_name, content').eq('account_id', accountId).maybeSingle(),
       getAvailableTaxYears(supabase, accountId),
       supabase
@@ -99,6 +101,7 @@ export default async function SettingsPage({
 
   const providers = (identityData?.identities ?? []).map((identity) => identity.provider);
   const businessName = site?.company_name || account?.business_name || 'My Business';
+  const arrivalSettings = arrivalSettingsFromAccount(account as Record<string, unknown> | null);
 
   // Read the auto-review toggle separately and defensively: on a DB where the
   // migration hasn't been applied yet the column is missing, so this degrades
@@ -340,7 +343,7 @@ export default async function SettingsPage({
           {
             id: 'automations',
             label: 'Automations',
-            anchors: ['intake-ai', 'booking-availability', 'extra-stop', 'missed-call', 'reviews', 'followups', 'reminders', 'daily-digest'],
+            anchors: ['intake-ai', 'booking-availability', 'extra-stop', 'missed-call', 'reviews', 'followups', 'reminders', 'arrival', 'daily-digest'],
             content: (
               <div className="automation-list">
                 {allEssentialsOn ? (
@@ -689,6 +692,37 @@ export default async function SettingsPage({
                       <SaveButton>Save reminder settings</SaveButton>
                     </div>
                   </form>
+                </AutomationCard>
+
+                {/* Not a toggle: there is nothing to switch off, because
+                    nothing here fires on its own. A person taps a button and a
+                    customer is told — these are the rules that shapes. */}
+                <AutomationCard
+                  group="follow-through"
+                  id="arrival"
+                  title="Arrival updates"
+                  subtitle="What &ldquo;on my way&rdquo; says and shows"
+                  status={{ label: arrivalSettings.windowStyle === 'window' ? `${arrivalSettings.windowMinutes}-min window` : 'Exact time', tone: 'neutral' }}
+                >
+                  <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
+                    When your crew taps <strong>I&rsquo;m on my way</strong> in the field app, the customer gets a
+                    text with an arrival time and a private link showing who&rsquo;s coming and when. They can
+                    reply from that page &mdash; &ldquo;gate is locked&rdquo;, &ldquo;use the side entrance&rdquo;
+                    &mdash; and it lands in the job&rsquo;s timeline before your tech reaches the door. Who is
+                    allowed to send these is set per person on{' '}
+                    <Link href="/dashboard/crew">Crew &amp; Labor</Link>.
+                  </p>
+                  <ArrivalSettingsSection
+                    action={updateArrivalSettingsAction}
+                    businessName={businessName}
+                    timeZone={arrivalSettings.timeZone}
+                    locationPolicy={arrivalSettings.locationPolicy}
+                    locationPrecision={arrivalSettings.locationPrecision}
+                    windowStyle={arrivalSettings.windowStyle}
+                    windowMinutes={arrivalSettings.windowMinutes}
+                    linkHours={arrivalSettings.linkHours}
+                    messageTemplate={arrivalSettings.messageTemplate}
+                  />
                 </AutomationCard>
 
                 <p className="automation-group">Confirmations to you</p>

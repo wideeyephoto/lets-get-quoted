@@ -521,3 +521,41 @@ export async function setQuickStopEnabledAction(enabled: boolean, source = 'plan
   revalidatePath('/dashboard/schedule/plan');
   revalidatePath('/dashboard/quick-stops');
 }
+
+// Arrival updates — how "on my way" behaves for this business.
+//
+// The window style and width are the ones that change what a customer is
+// PROMISED, so they're validated here rather than trusted from the form: a
+// stray value would turn every arrival window in the account into nonsense.
+export async function updateArrivalSettingsAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const policy = String(formData.get('locationPolicy') ?? 'ask');
+  const precision = String(formData.get('locationPrecision') ?? 'street');
+  const style = String(formData.get('windowStyle') ?? 'window');
+  const clamp = (value: FormDataEntryValue | null, min: number, max: number, fallback: number) => {
+    const parsed = Math.round(Number(value));
+    return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
+  };
+
+  // An empty template means "use the built-in wording", which is a real choice
+  // and has to survive a save — so it's stored as NULL, not as an empty string
+  // that would render as a blank text message.
+  const template = String(formData.get('messageTemplate') ?? '').trim();
+
+  const { error } = await supabase
+    .from('accounts')
+    .update({
+      arrival_location_policy: ['ask', 'on', 'off'].includes(policy) ? policy : 'ask',
+      arrival_location_precision: ['exact', 'street'].includes(precision) ? precision : 'street',
+      arrival_window_style: ['exact', 'window'].includes(style) ? style : 'window',
+      arrival_window_minutes: clamp(formData.get('windowMinutes'), 0, 120, 30),
+      arrival_link_hours: clamp(formData.get('linkHours'), 1, 24, 12),
+      arrival_message_template: template || null,
+    })
+    .eq('id', accountId);
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/dashboard/settings');
+}

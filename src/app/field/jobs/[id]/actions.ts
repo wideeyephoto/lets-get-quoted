@@ -9,11 +9,9 @@ import { isJobAssignedToCrew } from '@/lib/crew';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { createCost } from '@/lib/jobs';
 import { createJobTask, setJobTaskDone } from '@/lib/job-tasks';
-import { startJobEnRoute, markJobArrivedTracking } from '@/lib/job-tracking';
-import { isPhoneOptedOut, sendOnMyWaySms } from '@/lib/sms';
+import { arrivalPermissionsFromCrew, MAX_ETA_MINUTES, MIN_ETA_MINUTES, type ArrivalStatus } from '@/lib/arrival';
+import { applyArrivalStatus, sendArrival } from '@/lib/arrival-send';
 import { clockIn, clockOut, getOpenShift, getTimeClockMode } from '@/lib/time-clock-data';
-
-const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
 async function assertAssigned(supabase: SupabaseClient, accountId: string, jobId: string, crewId: string) {
   if (!(await isJobAssignedToCrew(supabase, accountId, jobId, crewId))) {
@@ -41,11 +39,14 @@ export async function setFieldJobStatusAction(jobId: string, status: 'in_progres
   redirect(`/field/jobs/${jobId}`);
 }
 
-// "On my way" — the tech taps this when heading to the job. Texts the customer a
-// live tracking link (respecting opt-out) with a rough ETA from the tech's shared
-// location. Uses the admin client for the owner-scoped tracking row + the send,
-// after verifying the crew member is assigned via the RLS client.
-export async function onMyWayFieldAction(jobId: string, formData: FormData) {
+// "On my way" — the tech announces a specific arrival time and the customer gets
+// a status link. Everything real happens in lib/arrival-send so the owner's
+// dashboard runs identical code; this layer is authentication, input validation
+// and telling the tech what happened.
+//
+// Uses the admin client for the owner-scoped tracking row and the send, after
+// verifying via the RLS client that this crew member is actually on this job.
+export async function sendArrivalFieldAction(jobId: string, formData: FormData) {
   const { supabase, accountId, crew } = await requireCrewContext();
   await assertAssigned(supabase, accountId, jobId, crew.id);
 
@@ -53,43 +54,60 @@ export async function onMyWayFieldAction(jobId: string, formData: FormData) {
   const lng = Number(formData.get('lng'));
   const techLoc = Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
 
-  const admin = createAdminClient();
-  const { data: job } = await admin.from('jobs').select('client_phone, client_name, lat, lng').eq('id', jobId).eq('account_id', accountId).maybeSingle();
-  const jobLoc = job && Number.isFinite(Number(job.lat)) && Number.isFinite(Number(job.lng)) ? { lat: Number(job.lat), lng: Number(job.lng) } : null;
-
-  const { token, etaMinutes } = await startJobEnRoute(admin, accountId, jobId, techLoc, jobLoc);
-
-  const phone = (job?.client_phone as string | null) ?? null;
-  if (phone && !(await isPhoneOptedOut(accountId, phone))) {
-    const { data: site } = await admin.from('sites').select('company_name').eq('account_id', accountId).maybeSingle();
-    const { data: account } = await admin.from('accounts').select('business_name').eq('id', accountId).maybeSingle();
-    const businessName = (site?.company_name as string | undefined) || (account?.business_name as string | undefined) || 'Your contractor';
-    try {
-      await sendOnMyWaySms({ phone, businessName, trackingUrl: `${APP_ORIGIN}/track/${token}`, etaMinutes, accountId });
-    } catch (error) {
-      console.error('On-my-way SMS failed:', error instanceof Error ? error.message : error);
-    }
+  // The ETA is the tech's promise, so it is validated rather than trusted: a
+  // fat-fingered "600" becomes a window nobody can keep.
+  const etaMinutes = Math.round(Number(formData.get('eta')));
+  if (!Number.isFinite(etaMinutes) || etaMinutes < MIN_ETA_MINUTES || etaMinutes > MAX_ETA_MINUTES) {
+    redirect(`/field/jobs/${jobId}?arrival=bad-eta`);
   }
 
-  await createJobFeedEvent(supabase, accountId, jobId, {
-    kind: 'job_update',
-    title: 'On the way',
-    body: `${crew.name} is en route${etaMinutes ? ` (~${etaMinutes} min)` : ''}. The customer got a live tracking link.`,
-    visibility: 'internal',
-    author: crew.name,
+  const override = String(formData.get('message') ?? '').trim();
+  const result = await sendArrival(createAdminClient(), {
+    accountId,
+    jobId,
+    actor: { crewId: crew.id, name: crew.name },
+    permissions: arrivalPermissionsFromCrew(crew as unknown as Record<string, unknown>),
+    etaMinutes,
+    shareLocation: formData.get('share') === 'on',
+    techLoc,
+    override: override || null,
+    confirmedResend: formData.get('confirm') === 'on',
   });
 
   revalidatePath(`/field/jobs/${jobId}`);
-  redirect(`/field/jobs/${jobId}?onmyway=1`);
+  if (!result.ok) redirect(`/field/jobs/${jobId}?arrival=${result.reason}`);
+  // The delivery outcome rides back in the URL because it is the single thing
+  // the tech needs to read before they start driving.
+  redirect(`/field/jobs/${jobId}?arrival=${result.mode}&sms=${result.sms.status}`);
 }
 
-// Tech arrived — flips the tracking link to "arrived".
-export async function markArrivedFieldAction(jobId: string) {
+// Arrived / couldn't get in / rescheduled / cancelled. One action, because they
+// are the same decision — how did this visit end — and splitting them into four
+// would mean four places to forget to close the location share.
+export async function setArrivalStatusFieldAction(jobId: string, formData: FormData) {
   const { supabase, accountId, crew } = await requireCrewContext();
   await assertAssigned(supabase, accountId, jobId, crew.id);
-  await markJobArrivedTracking(createAdminClient(), accountId, jobId);
+
+  const status = String(formData.get('status') ?? '') as ArrivalStatus;
+  if (!['arrived', 'no_access', 'rescheduled', 'cancelled'].includes(status)) {
+    redirect(`/field/jobs/${jobId}`);
+  }
+
+  const result = await applyArrivalStatus(createAdminClient(), {
+    accountId,
+    jobId,
+    actor: { crewId: crew.id, name: crew.name },
+    permissions: arrivalPermissionsFromCrew(crew as unknown as Record<string, unknown>),
+    status: status as 'arrived' | 'no_access' | 'rescheduled' | 'cancelled',
+    note: String(formData.get('note') ?? '').trim() || null,
+    // Undefined when the box wasn't ticked (or wasn't offered) — the per-status
+    // default lives in applyArrivalStatus so both send paths share it.
+    notify: formData.get('notify') === 'on' ? true : undefined,
+  });
+
   revalidatePath(`/field/jobs/${jobId}`);
-  redirect(`/field/jobs/${jobId}?arrived=1`);
+  if (!result.ok) redirect(`/field/jobs/${jobId}?arrival=${result.reason}`);
+  redirect(`/field/jobs/${jobId}?arrival=${status}`);
 }
 
 // Start a shift. The rate is snapshotted now, so a rate change later doesn't

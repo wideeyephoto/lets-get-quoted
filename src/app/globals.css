@@ -5402,6 +5402,28 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   accent-color: #ff8a3d;
 }
 
+/* Grouped permissions inside a form-grid — a real <fieldset> so the legend is
+   announced with each checkbox, which is the difference between "Reschedule"
+   and "Reschedule: what they can do on a visit". */
+.crew-permissions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(var(--tint), 0.12);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.03);
+}
+.crew-permissions legend {
+  padding: 0 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mute-t55);
+}
+
 /* ---- Chip-style checkbox group (e.g. booking availability days/windows) ---- */
 .checkbox-grid {
   display: flex;
@@ -9977,6 +9999,178 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 
 .field-main .btn { width: 100%; }
 .field-actions-row form { flex: 1; min-width: 140px; }
+
+/* -- Field: arrival ("on my way") --------------------------------- */
+/* Tapped one-handed, in a van, in sunlight. Targets are large, the    */
+/* customer's name outranks every control, and anything that says a    */
+/* message did NOT send is the loudest thing on screen.                */
+
+.arrival-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.3rem;
+  padding: 0.95rem;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--tint), 0.14);
+  background: rgba(var(--tint), 0.04);
+}
+
+/* Wrong-job protection: who is about to be texted, before any control. */
+.arrival-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: 12px;
+  background: rgba(56, 189, 248, 0.09);
+  border: 1px solid rgba(56, 189, 248, 0.26);
+}
+.arrival-confirm-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--mute-t55); }
+.arrival-confirm strong { font-size: 1.15rem; line-height: 1.3; }
+.arrival-confirm span { font-size: 0.88rem; color: rgba(var(--tint), 0.72); line-height: 1.45; }
+.arrival-confirm .arrival-warn { color: var(--ink-amber-3); }
+
+.arrival-warn-box {
+  margin: 0;
+  padding: 0.7rem 0.85rem;
+  border-radius: 11px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  color: var(--ink-amber-3);
+}
+
+.arrival-field-label {
+  margin: 0.2rem 0 -0.35rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mute-t50);
+}
+
+.arrival-suggested { text-transform: none; letter-spacing: 0; color: var(--ink-sky-1); font-weight: 600; }
+.arrival-eta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 0.5rem; }
+.arrival-eta {
+  padding: 0.85rem 0.4rem;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--tint), 0.16);
+  background: rgba(var(--tint), 0.05);
+  color: var(--ink-neutral-1);
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+.arrival-eta.is-on { background: rgba(56, 189, 248, 0.2); border-color: rgba(56, 189, 248, 0.55); color: var(--ink-sky-1); }
+
+.arrival-custom { display: flex; flex-direction: column; gap: 0.3rem; }
+.arrival-custom span { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--mute-t50); }
+.arrival-custom input,
+.arrival-message,
+.arrival-outcome-form input {
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  border-radius: 11px;
+  border: 1px solid rgba(var(--tint), 0.14);
+  background: rgba(var(--tint), 0.05);
+  color: var(--ink-neutral-1);
+  font-size: 1rem;
+  font-family: inherit;
+}
+.arrival-message { line-height: 1.5; resize: vertical; }
+
+.arrival-window { margin: 0; font-size: 0.95rem; line-height: 1.5; }
+.arrival-window strong { color: var(--ink-sky-1); }
+.arrival-window span { color: var(--mute-t55); font-size: 0.86rem; }
+
+.arrival-share { margin-top: 0.1rem; }
+.arrival-hint { margin: -0.3rem 0 0; font-size: 0.8rem; line-height: 1.5; color: var(--mute-t55); }
+.arrival-link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: inherit;
+  color: var(--ink-sky-1);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.arrival-error {
+  margin: 0;
+  padding: 0.7rem 0.85rem;
+  border-radius: 11px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.5;
+  background: rgba(255, 122, 33, 0.12);
+  border: 1px solid rgba(255, 179, 122, 0.4);
+  color: var(--ink-orange-1);
+}
+.arrival-actions { margin-top: 0.2rem; }
+
+/* The trip already in flight. */
+.arrival-live {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 0.9rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 13px;
+  background: rgba(var(--tint), 0.04);
+  border: 1px solid rgba(var(--tint), 0.12);
+}
+.arrival-live-top { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.arrival-live-top strong { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.arrival-pill {
+  padding: 0.28rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: rgba(56, 189, 248, 0.16);
+  color: var(--ink-sky-1);
+}
+.arrival-pill.is-late { background: rgba(251, 191, 36, 0.18); color: var(--ink-amber-3); }
+.arrival-pill.is-done { background: rgba(163, 230, 53, 0.16); color: var(--ink-lime-1); }
+.arrival-delivery { margin: 0; font-size: 0.86rem; line-height: 1.5; color: rgba(var(--tint), 0.72); }
+.arrival-delivery.is-bad { color: var(--ink-orange-1); font-weight: 600; }
+.arrival-note {
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  background: rgba(163, 230, 53, 0.1);
+  border: 1px solid rgba(163, 230, 53, 0.28);
+  color: var(--ink-lime-1);
+}
+
+/* The same panel on the owner's job screen. Only the heading differs — the
+   sheet, the safeguards and the controls are the component's own. */
+.arrival-card-title { margin: 0 0 0.9rem; font-size: 1.05rem; font-weight: 700; letter-spacing: -0.01em; }
+.workspace-section-card .arrival-sheet { background: transparent; border: 0; padding: 0; margin-top: 0; }
+.workspace-section-card .arrival-eta-grid { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
+
+.arrival-controls { display: flex; flex-direction: column; gap: 0.7rem; margin-top: 0.9rem; }
+.arrival-secondary { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.arrival-outcome {
+  flex: 1;
+  min-width: 128px;
+  padding: 0.65rem 0.7rem;
+  border-radius: 11px;
+  border: 1px solid rgba(var(--tint), 0.14);
+  background: rgba(var(--tint), 0.04);
+  color: rgba(var(--tint), 0.78);
+  font-size: 0.86rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.arrival-outcome-form { display: flex; flex-direction: column; gap: 0.6rem; }
 
 /* -- Field: my pay ------------------------------------------------ */
 /* The crew member's own hours and money. Reuses the field shell, so  */

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
+import { arrivalPermissionsFromCrew } from '@/lib/arrival';
 import { createCrewPhotoUrls } from '@/lib/crew-photo-storage';
 import { formatMoney, listJobs } from '@/lib/jobs';
 import { formatPhoneDashes } from '@/lib/phone';
@@ -168,6 +169,7 @@ export default async function CrewLaborPage({
       phoneLabel: member.phone ? formatPhoneDashes(member.phone) : null,
       email: member.email,
       startAddress: member.start_address ?? null,
+      permissions: arrivalPermissionsFromCrew(member as unknown as Record<string, unknown>),
       active: member.active,
       fieldApp: member.user_id ? 'linked' : member.email ? 'invitable' : 'no-email',
       jobs: jobsByCrew[member.id] ?? [],

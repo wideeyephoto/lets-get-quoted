@@ -6,11 +6,17 @@ import { formatPhoneDashes } from '@/lib/phone';
 import { listJobTasks, taskProgress } from '@/lib/job-tasks';
 import SaveButton from '@/components/save-button';
 import FieldHeader from '../../FieldHeader';
-import { setFieldJobStatusAction, postFieldUpdateAction, logFieldTimeAction, logFieldMaterialAction, toggleFieldTaskAction, addFieldTaskAction, markArrivedFieldAction, clockInFieldAction, clockOutFieldAction } from './actions';
+import { setFieldJobStatusAction, postFieldUpdateAction, logFieldTimeAction, logFieldMaterialAction, toggleFieldTaskAction, addFieldTaskAction, sendArrivalFieldAction, setArrivalStatusFieldAction, clockInFieldAction, clockOutFieldAction } from './actions';
 import { getOpenShift, getTimeClockMode } from '@/lib/time-clock-data';
 import { formatClock, formatElapsed } from '@/lib/time-clock';
 import FieldClock from './FieldClock';
-import OnMyWayButton from './OnMyWayButton';
+import ArrivalPanel from '@/components/arrival-panel';
+import {
+  arrivalPermissionsFromCrew, arrivalSettingsFromAccount, canShareLocation, describeArrivalOutcome,
+  formatArrivalWindow, locationDefaultsOn, DEFAULT_ARRIVAL_TEMPLATE,
+} from '@/lib/arrival';
+import { getActiveTracking } from '@/lib/job-tracking';
+import { createAdminClient } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +31,8 @@ function formatTime(value: string): string {
   return new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-export default async function FieldJobPage({ params, searchParams }: { params: { id: string }; searchParams: { logged?: string; clocked?: string; clock?: string; hours?: string } }) {
+
+export default async function FieldJobPage({ params, searchParams }: { params: { id: string }; searchParams: { logged?: string; clocked?: string; clock?: string; hours?: string; arrival?: string; sms?: string } }) {
   const { supabase, accountId, crew, businessName } = await requireCrewContext();
 
   if (!(await isJobAssignedToCrew(supabase, accountId, params.id, crew.id))) {
@@ -34,11 +41,23 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
 
   const { data: job } = await supabase
     .from('jobs')
-    .select('id, ref, client_name, client_phone, address, scope, status, scheduled_for, scheduled_time')
+    .select('id, ref, client_name, client_phone, address, scope, status, scheduled_for, scheduled_time, lat, lng')
     .eq('account_id', accountId)
     .eq('id', params.id)
     .maybeSingle();
   if (!job) redirect('/field');
+
+  // Arrival state. The account row and the live trip are read with the admin
+  // client: crew RLS deliberately doesn't reach `accounts` (billing) or the
+  // owner-scoped tracking table, and the assignment check above is what makes
+  // this safe.
+  const admin = createAdminClient();
+  const [{ data: accountRow }, activeTrip] = await Promise.all([
+    admin.from('accounts').select('*').eq('id', accountId).maybeSingle(),
+    getActiveTracking(admin, accountId, params.id),
+  ]);
+  const arrivalSettings = arrivalSettingsFromAccount(accountRow as Record<string, unknown> | null);
+  const arrivalPermissions = arrivalPermissionsFromCrew(crew as unknown as Record<string, unknown>);
 
   const [{ data: feed }, { data: myCosts }] = await Promise.all([
     supabase
@@ -91,6 +110,11 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
   const jobTasks = await listJobTasks(supabase, accountId, params.id);
   const taskStats = taskProgress(jobTasks);
 
+  // What the tech is told after an arrival action. The delivery outcome is
+  // spelled out rather than reduced to a tick, because "sent" and "we tried to
+  // send" lead to different behaviour at the door.
+  const arrivalFlash = describeArrivalOutcome(searchParams.arrival, searchParams.sms);
+
   const mapUrl = job.address ? `https://maps.google.com/?q=${encodeURIComponent(job.address)}` : null;
   const isComplete = job.status === 'complete';
 
@@ -98,6 +122,7 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
     <>
       <FieldHeader businessName={businessName} crewName={crew.name} backHref="/field" />
       <main className="field-main">
+        {arrivalFlash ? <div className={`field-flash${arrivalFlash.error ? ' is-error' : ''}`}>{arrivalFlash.text}</div> : null}
         {loggedFlash ? <div className={`field-flash${loggedFlashError ? ' is-error' : ''}`}>{loggedFlash}</div> : null}
         {clockFlash ? <div className={`field-flash${searchParams.clock ? ' is-error' : ''}`}>{clockFlash}</div> : null}
         <div className="field-detail-head">
@@ -107,7 +132,7 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
         <p className="field-detail-ref">{job.ref} · {formatJobSchedule(job.scheduled_for, job.scheduled_time)}</p>
 
         <div className="field-actions-row">
-          {job.client_phone ? (
+          {job.client_phone && arrivalPermissions.viewContact ? (
             <>
               <a className="field-chip" href={`tel:${job.client_phone}`}>📞 Call</a>
               <a className="field-chip" href={`sms:${job.client_phone}`}>💬 Text</a>
@@ -123,7 +148,7 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
           </section>
         ) : null}
 
-        {job.client_phone ? (
+        {job.client_phone && arrivalPermissions.viewContact ? (
           <section className="field-block">
             <h2 className="field-block-title">Customer</h2>
             <p>{formatPhoneDashes(job.client_phone)}</p>
@@ -136,16 +161,48 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
         </section>
 
         {!isComplete ? (
-          <section className="field-block">
-            <h2 className="field-block-title">Heading over?</h2>
-            <p style={{ margin: '0 0 0.6rem', fontSize: '0.9rem', opacity: 0.75 }}>Text {job.client_name?.split(' ')[0] || 'the customer'} a live tracking link so they know you&rsquo;re on the way.</p>
-            <div className="field-actions-row">
-              <OnMyWayButton jobId={job.id} alreadyEnRoute={false} />
-              <form action={markArrivedFieldAction.bind(null, job.id)}>
-                <SaveButton className="btn secondary" pendingLabel="Saving…" savedLabel="Arrived ✓">I&rsquo;ve arrived</SaveButton>
-              </form>
-            </div>
-          </section>
+          <ArrivalPanel
+            job={{
+              id: job.id,
+              clientName: job.client_name,
+              address: job.address,
+              scheduleLabel: formatJobSchedule(job.scheduled_for, job.scheduled_time),
+              // First line of the scope, as the "what am I here for" check.
+              jobType: job.scope ? job.scope.split('\n')[0].slice(0, 60) : null,
+              hasPhone: Boolean(job.client_phone),
+              lat: Number.isFinite(Number(job.lat)) ? Number(job.lat) : null,
+              lng: Number.isFinite(Number(job.lng)) ? Number(job.lng) : null,
+            }}
+            trip={activeTrip ? {
+              status: activeTrip.status,
+              windowLabel: activeTrip.arrival_start
+                ? formatArrivalWindow(
+                    { start: new Date(activeTrip.arrival_start), end: new Date(activeTrip.arrival_end ?? activeTrip.arrival_start) },
+                    arrivalSettings.timeZone,
+                  )
+                : null,
+              sentAgoMinutes: activeTrip.last_sent_at
+                ? Math.max(0, Math.round((Date.now() - new Date(activeTrip.last_sent_at).getTime()) / 60000))
+                : null,
+              smsStatus: activeTrip.sms_status,
+              shareLocation: Boolean(activeTrip.share_location),
+              sentBy: activeTrip.sent_by,
+              homeownerNote: activeTrip.homeowner_note,
+            } : null}
+            business={businessName}
+            crewName={crew.name}
+            template={arrivalSettings.messageTemplate || DEFAULT_ARRIVAL_TEMPLATE}
+            timeZone={arrivalSettings.timeZone}
+            windowStyle={arrivalSettings.windowStyle}
+            windowMinutes={arrivalSettings.windowMinutes}
+            defaultMinutes={arrivalSettings.defaultMinutes}
+            canShareLocation={canShareLocation(arrivalSettings, arrivalPermissions)}
+            shareDefaultsOn={locationDefaultsOn(arrivalSettings, arrivalPermissions)}
+            canReschedule={arrivalPermissions.reschedule}
+            canSend={arrivalPermissions.send}
+            sendAction={sendArrivalFieldAction.bind(null, job.id)}
+            statusAction={setArrivalStatusFieldAction.bind(null, job.id)}
+          />
         ) : null}
 
         <section className="field-block">

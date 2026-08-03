@@ -53,6 +53,8 @@ export type CrewRow = {
   email: string | null;
   // Where their day starts, for Plan my day. Null = start from the shop.
   startAddress: string | null;
+  // What this person may do around an arrival — see lib/arrival.
+  permissions: { send: boolean; shareLocation: boolean; viewContact: boolean; reschedule: boolean };
   active: boolean;
   fieldApp: 'linked' | 'invitable' | 'no-email';
   jobs: { id: string; ref: string; clientName: string }[];
@@ -1138,6 +1140,30 @@ function CrewDrawer({ row, onClose, periodLabel }: { row: CrewRow; onClose: () =
                 Leave blank to start their day from the business address like everyone else.
               </small>
             </div>
+
+            {/* Arrival permissions. Deliberately spelled out rather than rolled
+                into a "role", because these four are the ones with a customer
+                or an employee on the other end of them. */}
+            <fieldset className="field full crew-permissions">
+              <legend>What they can do on a visit</legend>
+              <label className="checkbox-row" htmlFor={`canSendArrival-${row.id}`}>
+                <input id={`canSendArrival-${row.id}`} name="canSendArrival" type="checkbox" defaultChecked={row.permissions.send} />
+                <span>Send &ldquo;on my way&rdquo; updates to customers</span>
+              </label>
+              <label className="checkbox-row" htmlFor={`canShareLocation-${row.id}`}>
+                <input id={`canShareLocation-${row.id}`} name="canShareLocation" type="checkbox" defaultChecked={row.permissions.shareLocation} />
+                <span>Share their location on the customer&rsquo;s status page</span>
+              </label>
+              <label className="checkbox-row" htmlFor={`canViewClientContact-${row.id}`}>
+                <input id={`canViewClientContact-${row.id}`} name="canViewClientContact" type="checkbox" defaultChecked={row.permissions.viewContact} />
+                <span>See the customer&rsquo;s phone number in the field app</span>
+              </label>
+              <label className="checkbox-row" htmlFor={`canReschedule-${row.id}`}>
+                <input id={`canReschedule-${row.id}`} name="canReschedule" type="checkbox" defaultChecked={row.permissions.reschedule} />
+                <span>Mark a visit rescheduled from the field</span>
+              </label>
+            </fieldset>
+
             <div className="field full">
               <SaveButton>Save crew member</SaveButton>
             </div>

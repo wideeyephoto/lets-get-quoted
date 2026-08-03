@@ -34,6 +34,13 @@ export type CrewMember = {
   // one payroll employee is a double payment, which a partial unique index
   // refuses.
   payroll_id?: string | null;
+  // What this person may do around an arrival. Optional for the same
+  // pre-migration reason; arrivalPermissionsFromCrew() resolves an absent
+  // column to the behaviour that shipped before permissions existed.
+  can_send_arrival?: boolean | null;
+  can_share_location?: boolean | null;
+  can_view_client_contact?: boolean | null;
+  can_reschedule?: boolean | null;
 };
 
 export type CrewInput = {
@@ -482,4 +489,32 @@ export async function toggleJobCrewAssignment(
     .insert({ account_id: accountId, job_id: jobId, crew_id: crewId });
   if (error) throw error;
   return { assigned: true };
+}
+
+/**
+ * What this person may do around an arrival.
+ *
+ * Written separately from updateCrewMember rather than threaded through
+ * CrewInput: these columns arrive with the arrival-management migration, and a
+ * database that hasn't taken it should quietly ignore the permission save
+ * instead of failing the whole "save crew member" form underneath it.
+ */
+export async function setCrewArrivalPermissions(
+  supabase: SupabaseClient,
+  accountId: string,
+  crewId: string,
+  permissions: { send: boolean; shareLocation: boolean; viewContact: boolean; reschedule: boolean },
+): Promise<void> {
+  const { error } = await supabase
+    .from('crew')
+    .update({
+      can_send_arrival: permissions.send,
+      can_share_location: permissions.shareLocation,
+      can_view_client_contact: permissions.viewContact,
+      can_reschedule: permissions.reschedule,
+    })
+    .eq('account_id', accountId)
+    .eq('id', crewId)
+    .is('deleted_at', null);
+  if (error && !isMissingColumn(error)) throw error;
 }

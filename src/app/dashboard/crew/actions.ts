@@ -14,6 +14,7 @@ import {
   listCrewIdsForJob,
   saveCrewStartAddress,
   setCrewActive,
+  setCrewArrivalPermissions,
   setJobCrewAssignments,
   updateCrewPhoto,
   updateCrewMember,
@@ -110,6 +111,16 @@ export async function updateCrewAction(crewId: string, formData: FormData) {
   // so a vague address stores the text and no coordinates, and the plan keeps
   // falling back to the shop.
   await saveCrewStartAddress(supabase, accountId, crewId, optionalText(formData.get('startAddress')) ?? null);
+
+  // What they may do around an arrival. Read as plain absent/present: the edit
+  // form always renders all four boxes, so an unticked one is a real "no"
+  // rather than a field that wasn't on screen.
+  await setCrewArrivalPermissions(supabase, accountId, crewId, {
+    send: formData.get('canSendArrival') === 'on',
+    shareLocation: formData.get('canShareLocation') === 'on',
+    viewContact: formData.get('canViewClientContact') === 'on',
+    reschedule: formData.get('canReschedule') === 'on',
+  });
 
   // Keep a baseline consent row in step with the (possibly new) phone number.
   await ensureSmsConsentBaseline(accountId, phone).catch(() => {});

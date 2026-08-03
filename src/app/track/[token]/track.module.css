@@ -1,0 +1,162 @@
+/* The homeowner's arrival page.
+ *
+ * Opened once, on a phone, by somebody who is waiting — often at the door,
+ * often with one hand. So: no account, no chrome, one screenful, and the answer
+ * to "when" above the fold. It carries the CONTRACTOR's branding, not ours;
+ * the accent is injected as --brand from their site settings.
+ *
+ * Deliberately its own stylesheet rather than the dashboard's shell classes —
+ * this page is seen by more people than any other in the product and shares no
+ * layout with the app. */
+
+.page {
+  --brand: #38bdf8;
+  --paper: #ffffff;
+  --ink: #101828;
+  --ink-soft: #5a6472;
+  --line: rgba(16, 24, 40, 0.1);
+  min-height: 100dvh;
+  padding: 1.1rem 1rem 3rem;
+  background: #f4f6f9;
+  color: var(--ink);
+  font-family: inherit;
+}
+
+@media (prefers-color-scheme: dark) {
+  .page {
+    --paper: #151b23;
+    --ink: #eef2f7;
+    --ink-soft: #9aa6b5;
+    --line: rgba(255, 255, 255, 0.11);
+    background: #0d1218;
+  }
+}
+
+.shell { max-width: 34rem; margin: 0 auto; display: flex; flex-direction: column; gap: 0.9rem; }
+
+/* -- Header: whose visit this is ------------------------------------ */
+.brand { display: flex; align-items: center; gap: 0.7rem; padding: 0.2rem 0.2rem 0.1rem; }
+.brandLogo { height: 2.4rem; width: auto; max-width: 9rem; object-fit: contain; }
+.brandName { margin: 0; font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; }
+
+.card {
+  padding: 1.15rem 1.15rem 1.25rem;
+  border-radius: 18px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+
+/* -- The answer to "when" -------------------------------------------- */
+.status { display: flex; flex-direction: column; gap: 0.5rem; }
+.statusPill {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: color-mix(in srgb, var(--brand) 15%, transparent);
+  color: var(--brand);
+}
+.statusPill.late { background: rgba(217, 119, 6, 0.14); color: #b45309; }
+.statusPill.done { background: rgba(22, 163, 74, 0.14); color: #15803d; }
+.statusPill.stopped { background: rgba(100, 116, 139, 0.16); color: #475569; }
+
+@media (prefers-color-scheme: dark) {
+  .statusPill.late { color: #fbbf24; }
+  .statusPill.done { color: #4ade80; }
+  .statusPill.stopped { color: #cbd5e1; }
+}
+
+.headline { margin: 0; font-size: 1.55rem; line-height: 1.2; letter-spacing: -0.02em; }
+.window {
+  margin: 0.15rem 0 0;
+  font-size: 2.1rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--brand);
+}
+.lead { margin: 0.35rem 0 0; font-size: 0.98rem; line-height: 1.55; color: var(--ink-soft); }
+
+/* -- Who is coming ---------------------------------------------------- */
+.tech { display: flex; align-items: center; gap: 0.85rem; margin-top: 1.05rem; padding-top: 1.05rem; border-top: 1px solid var(--line); }
+.techPhoto { width: 3.1rem; height: 3.1rem; border-radius: 50%; object-fit: cover; border: 2px solid var(--paper); box-shadow: 0 0 0 1px var(--line); }
+.techInitial {
+  width: 3.1rem;
+  height: 3.1rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1.3rem;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--brand) 16%, transparent);
+  color: var(--brand);
+}
+.techName { margin: 0; font-size: 1.02rem; font-weight: 700; }
+.techRole { margin: 0.1rem 0 0; font-size: 0.85rem; color: var(--ink-soft); }
+
+/* -- Map: only ever shown while the share is genuinely live ----------- */
+.map { border-radius: 16px; overflow: hidden; border: 1px solid var(--line); min-height: 300px; }
+.mapNote { margin: 0.55rem 0 0; font-size: 0.8rem; line-height: 1.5; color: var(--ink-soft); }
+
+/* -- Contact ---------------------------------------------------------- */
+.contactRow { display: flex; gap: 0.6rem; }
+.contact {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.9rem 1rem;
+  border-radius: 13px;
+  font-size: 0.98rem;
+  font-weight: 700;
+  text-decoration: none;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+}
+.contact.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+
+/* -- What the homeowner can say back ---------------------------------- */
+.sectionTitle { margin: 0 0 0.7rem; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-soft); font-weight: 700; }
+.replies { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.55rem; }
+.reply {
+  padding: 0.85rem 0.9rem;
+  border-radius: 13px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 600;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  width: 100%;
+}
+.reply:hover { border-color: color-mix(in srgb, var(--brand) 50%, transparent); }
+.reply:active { background: color-mix(in srgb, var(--brand) 8%, transparent); }
+.replyForm { display: contents; }
+
+.ack {
+  margin: 0;
+  padding: 0.8rem 0.95rem;
+  border-radius: 13px;
+  font-size: 0.93rem;
+  font-weight: 600;
+  line-height: 1.5;
+  background: rgba(22, 163, 74, 0.1);
+  border: 1px solid rgba(22, 163, 74, 0.28);
+  color: #15803d;
+}
+@media (prefers-color-scheme: dark) { .ack { color: #4ade80; } }
+
+.foot { margin: 0.2rem 0 0; text-align: center; font-size: 0.76rem; line-height: 1.6; color: var(--ink-soft); }
+.foot a { color: inherit; }

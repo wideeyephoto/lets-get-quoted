@@ -1,5 +1,9 @@
 import Link from 'next/link';
-import { requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import ArrivalPanel from '@/components/arrival-panel';
+import { arrivalSettingsFromAccount, describeArrivalOutcome, formatArrivalWindow, DEFAULT_ARRIVAL_TEMPLATE } from '@/lib/arrival';
+import { getActiveTracking } from '@/lib/job-tracking';
+import { sendArrivalOwnerAction, setArrivalStatusOwnerAction } from './arrival-actions';
 import PhotoGallery from '@/components/photo-gallery';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import { deriveJobListBadge, buildPipelineChecklist } from '@/lib/job-badges';
@@ -72,7 +76,7 @@ export default async function JobDetailPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { tab?: string; clientToken?: string; edit?: string; open?: string; delivery?: string };
+  searchParams: { tab?: string; clientToken?: string; edit?: string; open?: string; delivery?: string; arrival?: string; sms?: string };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
 
@@ -98,6 +102,36 @@ export default async function JobDetailPage({
   const feed = await listJobFeed(supabase, accountId, job.id);
   const activeClientLinkCount = await getActiveClientAccessCount(supabase, accountId, job.id);
   const crew = await listCrew(supabase, accountId, { activeOnly: true });
+
+  // Arrival. The live trip and the account's arrival rules — read with the
+  // admin client because job_tracking is owner-scoped by RLS and this page is
+  // already inside requireOwnerContext.
+  const arrivalAdmin = createAdminClient();
+  const [{ data: arrivalAccount }, { data: arrivalSite }, activeArrival] = await Promise.all([
+    arrivalAdmin.from('accounts').select('*').eq('id', accountId).maybeSingle(),
+    arrivalAdmin.from('sites').select('company_name').eq('account_id', accountId).limit(1).maybeSingle(),
+    getActiveTracking(arrivalAdmin, accountId, job.id),
+  ]);
+  const arrivalSettings = arrivalSettingsFromAccount(arrivalAccount as Record<string, unknown> | null);
+  const jobBusinessName =
+    (arrivalSite?.company_name as string | undefined) || (arrivalAccount?.business_name as string | undefined) || 'Your contractor';
+  const arrivalTrip = activeArrival ? {
+    status: activeArrival.status,
+    windowLabel: activeArrival.arrival_start
+      ? formatArrivalWindow(
+          { start: new Date(activeArrival.arrival_start), end: new Date(activeArrival.arrival_end ?? activeArrival.arrival_start) },
+          arrivalSettings.timeZone,
+        )
+      : null,
+    sentAgoMinutes: activeArrival.last_sent_at
+      ? Math.max(0, Math.round((Date.now() - new Date(activeArrival.last_sent_at).getTime()) / 60000))
+      : null,
+    smsStatus: activeArrival.sms_status,
+    shareLocation: Boolean(activeArrival.share_location),
+    sentBy: activeArrival.sent_by,
+    homeownerNote: activeArrival.homeowner_note,
+  } : null;
+  const arrivalFlash = describeArrivalOutcome(searchParams.arrival, searchParams.sms);
   const assignedCrewIds = await listCrewIdsForJob(supabase, accountId, job.id);
   const jobInvoice = selectPrimaryInvoice(invoices);
   const invoicePaidTotal = jobInvoice
@@ -312,6 +346,49 @@ export default async function JobDetailPage({
         </aside>
 
       </section>
+
+      {/* Arrival. Only on a job with a date — "on my way" to something
+          unscheduled is a message with no visit behind it. Sits high on the
+          page because on the day itself it is the only thing on this screen
+          anybody needs. */}
+      {job.scheduled_for && job.status !== 'complete' && job.status !== 'archived' ? (
+        <>
+          {arrivalFlash ? (
+            <p className={`payment-banner ${arrivalFlash.error ? 'warning' : 'success'}`}>{arrivalFlash.text}</p>
+          ) : null}
+          <ArrivalPanel
+            surface="dashboard"
+            job={{
+              id: job.id,
+              clientName: job.client_name,
+              address: job.address,
+              scheduleLabel: formatJobSchedule(job.scheduled_for, job.scheduled_time),
+              jobType: job.scope ? job.scope.split('\n')[0].slice(0, 60) : null,
+              hasPhone: Boolean(job.client_phone),
+              // Sent from a desk, so there's no "here" to measure from — the
+              // GPS suggestion is a field-app affordance only.
+              lat: null,
+              lng: null,
+            }}
+            trip={arrivalTrip}
+            business={jobBusinessName}
+            crewName={arrivalTrip?.sentBy || jobBusinessName}
+            template={arrivalSettings.messageTemplate || DEFAULT_ARRIVAL_TEMPLATE}
+            timeZone={arrivalSettings.timeZone}
+            windowStyle={arrivalSettings.windowStyle}
+            windowMinutes={arrivalSettings.windowMinutes}
+            defaultMinutes={arrivalSettings.defaultMinutes}
+            // Sending from a desk: the office's coordinates are not the tech's,
+            // so there is nothing honest to put on a map from here.
+            canShareLocation={false}
+            shareDefaultsOn={false}
+            canReschedule
+            canSend
+            sendAction={sendArrivalOwnerAction.bind(null, job.id)}
+            statusAction={setArrivalStatusOwnerAction.bind(null, job.id)}
+          />
+        </>
+      ) : null}
 
       <section id="quote-breakdown" className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading">
