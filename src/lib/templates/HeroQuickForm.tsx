@@ -603,7 +603,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
 
       {step === 'describe' && (
         <div className={styles.heroFormStep} key="describe">
-          <h2>{estimateLabel}</h2>
+          <h2 className={styles.heroFormTitle}>{estimateLabel}</h2>
           <p className={styles.heroFormNote}>Tell us what you need done — a couple quick questions, then we&apos;ll show your range.</p>
           {avgReplyMs && <span className={styles.heroFormReplyChip}><span aria-hidden="true">⚡</span> Typically replies within {formatReplyTime(avgReplyMs)}</span>}
           <textarea
@@ -650,7 +650,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
 
       {step === 'qa' && (
         <div className={styles.heroFormStep} key="qa">
-          <h2>{estimateLabel}</h2>
+          <h2 className={styles.heroFormTitle}>{estimateLabel}</h2>
           <p className={styles.heroFormQaMeta}>Question {chatTurn} <span>· just a few quick ones</span></p>
           <p id="hqf-question" className={styles.heroFormQuestion}>{chatQuestion}</p>
           <input
@@ -679,7 +679,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
 
       {step === 'contact' && (
         <div className={styles.heroFormStep} key="contact">
-          <h2>{estimateLabel}</h2>
+          <h2 className={styles.heroFormTitle}>{estimateLabel}</h2>
           {/* The price already exists at this point — it is deliberately held
               back until the details are in. Saying so plainly, and once, turns
               the form from a toll gate into the last step of something. */}
@@ -882,7 +882,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
 
       {step === 'result' && estimate && (
         <div className={styles.heroFormStep} key="result">
-          <h2>Your estimated range</h2>
+          <h2 className={styles.heroFormTitle}>Your estimated range</h2>
           <div className={styles.heroFormResultPanel}>
             <p className={styles.heroFormResult}>{formatCurrency(estimate.min)} – {formatCurrency(estimate.max)}</p>
             {/* The badge is a statement of fact about a request. In the preview
