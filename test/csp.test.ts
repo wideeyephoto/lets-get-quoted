@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { buildCsp, cspHeaderName, generateNonce, CSP_REPORT_ONLY, CSP_REPORT_PATH } from '@/lib/csp';
 
 const parse = (policy: string) => {
@@ -33,8 +33,42 @@ describe('buildCsp', () => {
 
   it('omits Supabase rather than emitting a broken directive when the origin is unknown', () => {
     const connect = parse(buildCsp({ nonce: 'n', supabaseOrigin: null })).get('connect-src')!;
-    expect(connect).toEqual(["'self'", 'https://maps.googleapis.com']);
+    // Asserts the INTENT — no Supabase entry, and nothing stringified from a
+    // missing value — rather than pinning the whole list. Pinning it meant that
+    // adding an unrelated endpoint failed this test for a reason that had
+    // nothing to do with Supabase.
+    expect(connect).toContain("'self'");
+    expect(connect.some((v) => v.includes('supabase'))).toBe(false);
+    expect(connect.some((v) => v.includes('wss:'))).toBe(false);
     expect(connect.some((v) => v.includes('undefined') || v.includes('null'))).toBe(false);
+  });
+
+  it('never ships unsafe-eval in a production build', () => {
+    // Development needs it — Next's Fast Refresh evaluates modules as strings,
+    // and without it the dev server throws EvalError on every hot update. It
+    // must not follow the code to production, which ships no eval at all.
+    try {
+      vi.stubEnv('NODE_ENV', 'production');
+      expect(buildCsp({ nonce: 'n', supabaseOrigin: SUPABASE })).not.toContain("'unsafe-eval'");
+      vi.stubEnv('NODE_ENV', 'development');
+      expect(buildCsp({ nonce: 'n', supabaseOrigin: SUPABASE })).toContain("'unsafe-eval'");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('lets a contractor’s own analytics tags report home, once consented', () => {
+    // script-src needs no entry — the tags are injected by our own nonced
+    // bundle, so 'strict-dynamic' covers them. These are only where they SEND.
+    const connect = parse(buildCsp({ nonce: 'n', supabaseOrigin: SUPABASE })).get('connect-src')!;
+    for (const host of [
+      'https://www.googletagmanager.com',
+      'https://www.google-analytics.com',
+      'https://*.google-analytics.com',
+      'https://connect.facebook.net',
+    ]) {
+      expect(connect).toContain(host);
+    }
   });
 
   it('allows the Google Maps SDK its own fonts and stylesheets', () => {

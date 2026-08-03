@@ -99,17 +99,49 @@ export function cspHeaderName(): string {
   return CSP_REPORT_ONLY ? 'content-security-policy-report-only' : 'content-security-policy';
 }
 
+// Where a contractor's OWN measurement tags send their data, once a visitor has
+// consented (see lib/analytics — nothing loads before that).
+//
+// connect-src only. script-src needs no entry: the tags are injected by our own
+// nonced bundle, so 'strict-dynamic' already extends trust to them — which is
+// the same mechanism Turnstile and Google Maps rely on. img-src https: covers
+// the pixel beacons both platforms still fall back to.
+//
+// Listed for every site rather than only the ones with analytics configured:
+// the policy is built in Edge middleware, which would have to read the site's
+// content from the database on every request to know the difference. Permission
+// to POST to a Google or Meta endpoint is not what stops an attacker — script
+// execution is, and that is governed by script-src.
+const ANALYTICS_ENDPOINTS = [
+  'https://www.googletagmanager.com',
+  'https://www.google-analytics.com',
+  'https://analytics.google.com',
+  // GA4 shards its collection endpoint per region.
+  'https://*.google-analytics.com',
+  'https://*.analytics.google.com',
+  'https://connect.facebook.net',
+  'https://www.facebook.com',
+];
+
 export function buildCsp({ nonce, supabaseOrigin }: CspOptions): string {
-  const connect = ["'self'", 'https://maps.googleapis.com'];
+  const connect = ["'self'", 'https://maps.googleapis.com', ...ANALYTICS_ENDPOINTS];
   if (supabaseOrigin) {
     connect.push(supabaseOrigin);
     // Supabase realtime/auth refresh uses a websocket on the same host.
     connect.push(supabaseOrigin.replace(/^https:/, 'wss:'));
   }
 
+  // 'unsafe-eval' IN DEVELOPMENT ONLY. Next's Fast Refresh evaluates modules as
+  // strings, so enforcing without this throws EvalError on every hot update and
+  // the dev server stops refreshing — a real regression the moment report-only
+  // was switched off, and one that never touches production, which ships no
+  // eval at all. Gated on NODE_ENV rather than on the report-only flag, so it
+  // can't leak into a production build by someone toggling the wrong constant.
+  const devEval = process.env.NODE_ENV === 'production' ? [] : ["'unsafe-eval'"];
+
   const directives: Array<[string, string[]]> = [
     ['default-src', ["'self'"]],
-    ['script-src', ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", 'https:', "'unsafe-inline'"]],
+    ['script-src', ["'self'", `'nonce-${nonce}'`, "'strict-dynamic'", 'https:', "'unsafe-inline'", ...devEval]],
     // Next injects <style> tags and React writes inline style attributes, neither
     // of which a nonce covers. This is the standard, accepted compromise.
     // fonts.googleapis.com: the Google Maps SDK pulls its own stylesheets from

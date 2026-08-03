@@ -848,6 +848,40 @@
    safe-area inset, rather than a hard value that falls short on notched phones. */
 @media (max-width: 767px) { .site:has(.stickyCallBar) { padding-bottom: calc(50px + 1.1rem + env(safe-area-inset-bottom, 0px)); } }
 
+/* Cookie consent — SiteAnalytics.tsx. Sits above the sticky call bar (60) and
+   the message button (55) on purpose: it is asked once, it should be answered
+   before those are used, and it goes away for good afterwards. Not an overlay —
+   the site behind it stays readable and usable, because a visitor who wants to
+   read the privacy policy before deciding has to be able to. */
+.consentBanner {
+  position: fixed; z-index: 70;
+  left: .75rem; right: .75rem; bottom: calc(.75rem + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-wrap: wrap; align-items: center; gap: .85rem 1.25rem;
+  max-width: 46rem; margin-inline: auto;
+  padding: .95rem 1.1rem; border-radius: 12px;
+  background: #16181d; color: #f2f4f7;
+  border: 1px solid rgba(255,255,255,.14);
+  box-shadow: 0 22px 50px -18px rgba(0,0,0,.7);
+  font-size: .86rem; line-height: 1.5;
+}
+.consentBanner p { margin: 0; flex: 1 1 16rem; }
+.consentActions { display: flex; gap: .5rem; flex: 0 0 auto; }
+/* Same size, same weight, side by side. A decline that is smaller or quieter
+   than accept is the dark pattern this whole flow exists to avoid. */
+.consentActions button {
+  min-height: 40px; padding: .55rem 1.1rem; border-radius: 999px;
+  font-weight: 700; font-size: .85rem; cursor: pointer; border: 1px solid transparent;
+}
+.consentNo { background: transparent; color: #f2f4f7; border-color: rgba(255,255,255,.32); }
+.consentNo:hover { background: rgba(255,255,255,.08); }
+.consentYes { background: var(--theme-accent); color: var(--theme-on-accent, #14110b); }
+.consentYes:hover { filter: brightness(1.06); }
+@media (max-width: 560px) {
+  .consentActions { width: 100%; }
+  .consentActions button { flex: 1; }
+}
+@media print { .consentBanner { display: none; } }
+
 /* Floating "Message us" button — SiteChatButton.tsx.
    Desktop: a labelled pill in the bottom-right corner, which nothing else uses.
    Phone: a round bubble, because the sticky call bar owns the bottom edge and a

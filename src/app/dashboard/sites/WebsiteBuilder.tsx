@@ -6,7 +6,7 @@ import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getSiteContent, getTradeGlyphOptions, glyphForContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES,
   MENU_BUTTON_STYLES,
-  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
+  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
 import { generatePrivacyPolicy, generateTermsOfService } from '@/lib/legal/legal-copy';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
@@ -25,6 +25,7 @@ import BuilderTabStrip from './BuilderTabStrip';
 import SectionCard from './SectionCard';
 import SocialsField from './SocialsField';
 import ChatButtonField from './ChatButtonField';
+import AnalyticsField from './AnalyticsField';
 import ThemeIcon from './ThemeIcon';
 import VideoStudio from './VideoStudio';
 import styles from './SiteEditor.module.css';
@@ -1158,6 +1159,11 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
     updateSiteContent({ testimonials });
   }, [updateSiteContent]);
 
+  const updateAnalytics = useCallback((analytics: SiteAnalyticsContent) => {
+    updateSiteContent({ analytics });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [updateSiteContent]);
+
   const updateChatButton = useCallback((chatButton: SiteChatButtonContent) => {
     updateSiteContent({ chatButton });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1582,6 +1588,16 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
                     onChange={(socials) => updateSiteContent({ socials })}
                     onHeaderChange={(socialsInHeader) => updateSiteContent({ socialsInHeader })}
                   />
+                </SectionCard>
+
+                <SectionCard
+                  title="Visitor tracking"
+                  description="Connect your own Google Analytics or Facebook pixel, with a consent banner that actually waits for a yes."
+                  hint={siteContent.analytics.ga4.trim() || siteContent.analytics.metaPixel.trim() ? 'Connected' : undefined}
+                  open={openSection === 'analytics'}
+                  onToggleOpen={() => toggleSection('analytics')}
+                >
+                  <AnalyticsField analytics={siteContent.analytics} onChange={updateAnalytics} />
                 </SectionCard>
 
               </div>

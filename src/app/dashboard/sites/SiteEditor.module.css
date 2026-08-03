@@ -1021,3 +1021,13 @@
 .chatChannelOption:hover { border-color: rgba(var(--tint), .3); }
 .chatChannelOn { border-color: #ff9b54; background: rgba(255,122,33,.1); box-shadow: 0 0 0 3px rgba(255,122,33,.12); }
 @media (max-width: 700px) { .chatChannelRow { grid-template-columns: 1fr; } }
+
+/* Setup → Visitor tracking: a preview of the banner a visitor will actually
+ * read, because an owner pasting a pixel ID has just taken on responsibility
+ * for other people's data and should see what their site will say about it. */
+.consentPreview { margin-top: .9rem; padding: .85rem .9rem; border: 1px solid rgba(var(--tint), .16); border-radius: 8px; background: rgba(var(--tint), .04); display: grid; gap: .55rem; }
+.consentPreviewBody { margin: 0; color: var(--text); font-size: .84rem; line-height: 1.5; }
+.consentPreviewButtons { display: flex; gap: .5rem; }
+.consentPreviewButtons span, .consentPreviewButtons strong { padding: .4rem .9rem; border-radius: 999px; font-size: .78rem; font-weight: 700; }
+.consentPreviewButtons span { border: 1px solid rgba(var(--tint), .3); color: var(--muted-2); }
+.consentPreviewButtons strong { background: #ff7a21; color: #17120c; }

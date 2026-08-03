@@ -30,6 +30,8 @@ import SiteServices from './SiteServices';
 import SiteProcess from './SiteProcess';
 import SiteVideoSection from './SiteVideoSection';
 import SiteChatButton from './SiteChatButton';
+import SiteAnalytics from './SiteAnalytics';
+import { hasAnalytics } from '@/lib/analytics';
 import StatCounters from './StatCounters';
 import styles from './themes.module.css';
 
@@ -93,7 +95,11 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
   // new one, mostly — would bail out above it and the button would silently
   // never appear.
   const chatButton = getPublishedChatButton(site.content, site.phone, site.company_name);
-  if (!hasInFlowSections && !stickyCallBar && !chatButton) return null;
+  // Analytics counts too: consent has to be askable on a page that happens to
+  // have no in-flow sections, or a brand-new site measures nothing and never
+  // says why.
+  const measuring = hasAnalytics(getSiteContent(site.content).analytics);
+  if (!hasInFlowSections && !stickyCallBar && !chatButton && !measuring) return null;
 
   // Rating + credential proof now render in <SiteProofStrip> directly beside the
   // hero and contact forms (where proof converts), not mid-page. Financing stays
@@ -338,6 +344,7 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
       )}
 
       <SiteChatButton site={site} />
+      <SiteAnalytics config={getSiteContent(site.content).analytics} />
 
     </>
   );

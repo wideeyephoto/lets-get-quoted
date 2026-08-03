@@ -110,6 +110,15 @@ export type SiteStickyCallBarContent = {
   quoteLabel: string;
 };
 
+// The contractor's OWN measurement tags. Both empty = no tags, no consent
+// banner, no third-party request of any kind. See lib/analytics.
+export type SiteAnalyticsContent = {
+  /** Google Analytics 4 measurement id (G-…). */
+  ga4: string;
+  /** Meta (Facebook) pixel id — digits. */
+  metaPixel: string;
+};
+
 // The floating "Message us" button. Opens the homeowner's own messaging app —
 // see lib/chat-button for why this is a link rather than a hosted chat widget.
 // Off by default; `number` empty means "use the site's phone number".
@@ -754,6 +763,7 @@ export type NormalizedSiteContent = {
   phonePublic: boolean;
   stickyCallBar: SiteStickyCallBarContent;
   chatButton: SiteChatButtonContent;
+  analytics: SiteAnalyticsContent;
   ratingBadge: SiteRatingBadgeContent;
   trustBadges: SiteTrustBadgesContent;
   financing: SiteFinancingContent;
@@ -1234,6 +1244,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const fullyBooked = isRecord(leadFilters.fullyBooked) ? leadFilters.fullyBooked : {};
   const stickyCallBar = isRecord(root.stickyCallBar) ? root.stickyCallBar : {};
   const chatButton = isRecord(root.chatButton) ? root.chatButton : {};
+  const analytics = isRecord(root.analytics) ? root.analytics : {};
   const ratingBadge = isRecord(root.ratingBadge) ? root.ratingBadge : {};
   const trustBadges = isRecord(root.trustBadges) ? root.trustBadges : {};
   const financing = isRecord(root.financing) ? root.financing : {};
@@ -1306,6 +1317,21 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       // Roomy enough for a real opener, short enough that a phone's compose
       // window doesn't open already scrolled.
       greeting: toString(chatButton.greeting).slice(0, 160),
+    },
+    analytics: {
+      // Stored as typed, NOT normalized.
+      //
+      // The builder re-derives its state through this parser on every render, so
+      // normalizing here would fight the owner mid-keystroke: "G-" is not a
+      // valid measurement id, so it would blank the field before they could
+      // reach the third character.
+      //
+      // Safe because validation is at the point of use, where it has to be
+      // anyway — SiteAnalytics runs every id through normalizeGa4Id /
+      // normalizeMetaPixelId, and an unusable value resolves to '' and loads
+      // nothing. A malformed id sitting in the column is inert.
+      ga4: toString(analytics.ga4).slice(0, 24),
+      metaPixel: toString(analytics.metaPixel).slice(0, 40),
     },
     ratingBadge: {
       enabled: toBoolean(ratingBadge.enabled),
