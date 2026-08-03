@@ -16,6 +16,8 @@ import AddressAutocomplete from '@/components/address-autocomplete';
 import { deriveJobListBadge, buildPipelineChecklist } from '@/lib/job-badges';
 import { getJob, listCosts, computeMargin, formatJobQuoteSummary, formatJobSchedule, formatMoney, formatPercent, parseQuoteItems } from '@/lib/jobs';
 import { listServices } from '@/lib/services';
+import { COST_SOURCE_LABEL, costConfidence, describeDuplicate, duplicateCostIds, marginVerdict } from '@/lib/cost-truth';
+import { getMinMarginPct } from '@/lib/cost-truth-data';
 import { listJobTasks, taskProgress } from '@/lib/job-tasks';
 import { createJobPhotoLinks } from '@/lib/job-photo-storage';
 import { listPayments } from '@/lib/payments';
@@ -27,6 +29,7 @@ import { formatPhoneDashes } from '@/lib/phone';
 import {
   createClientJobLinkAction,
   createCostAction,
+  readReceiptAction,
   createManualJobFeedAction,
   deleteCostAction,
   deleteJobAction,
@@ -105,6 +108,28 @@ export default async function JobDetailPage({
 
   const costs = await listCosts(supabase, accountId, job.id);
   const margin = computeMargin(job, costs);
+  // How defensible this job's cost figure is, and whether it's worth saying
+  // anything about the margin. Both stay quiet on a job with nothing recorded.
+  const confidence = costConfidence(
+    costs.map((cost) => ({ amount: Number(cost.amount) || 0, burdenAmount: Number(cost.burden_amount) || 0, source: cost.cost_source })),
+  );
+  const marginWarning = marginVerdict({
+    revenue: margin.revenue,
+    totalCost: margin.totalCost,
+    minMarginPct: await getMinMarginPct(supabase, accountId),
+    evidencedPct: confidence.evidencedPct,
+  });
+  // Computed over the whole list, not just at entry: the duplicate worth
+  // catching is usually the one saved last week.
+  const duplicates = duplicateCostIds(
+    costs.map((cost) => ({
+      id: cost.id,
+      description: cost.description,
+      amount: Number(cost.amount) || 0,
+      supplier: cost.supplier,
+      createdAt: cost.created_at,
+    })),
+  );
   const payments = await listPayments(supabase, accountId, job.id);
   const invoices = await listInvoices(supabase, accountId, job.id);
   const feed = await listJobFeed(supabase, accountId, job.id);
@@ -289,7 +314,7 @@ export default async function JobDetailPage({
             <Link href={`/dashboard/jobs/${job.id}?open=payment#request-payment`} className="btn primary">Request payment</Link>
             <AddExpenseModal triggerClassName="btn secondary" triggerLabel="Add expense" title="Add expense" defaultOpen={searchParams.open === 'costs'}>
               <form action={boundCreateCost} className="cost-form">
-                <JobExpenseFields crew={crew} />
+                <JobExpenseFields crew={crew} onReadReceipt={readReceiptAction} />
                 <div style={{ marginTop: '0.8rem' }}>
                   <SaveButton pendingLabel="Adding…" savedLabel="Added ✓">+ Add expense</SaveButton>
                 </div>
@@ -1038,7 +1063,7 @@ export default async function JobDetailPage({
               <div className="cost-add-row" style={{ marginBottom: '0.9rem' }}>
                 <AddExpenseModal triggerClassName="btn secondary" triggerLabel="+ Add expense" title="Add expense">
                   <form action={boundCreateCost} className="cost-form">
-                    <JobExpenseFields crew={crew} />
+                    <JobExpenseFields crew={crew} onReadReceipt={readReceiptAction} />
                     <div style={{ marginTop: '0.8rem' }}>
                       <SaveButton pendingLabel="Adding…" savedLabel="Added ✓">+ Add expense</SaveButton>
                     </div>
@@ -1061,7 +1086,16 @@ export default async function JobDetailPage({
                           {cost.type === 'labor'
                             ? `${cost.hours} hrs × ${formatMoney(Number(cost.rate))}/hr${cost.crew_name ? ` · ${cost.crew_name}` : ''}${cost.supplier ? ` · ${cost.supplier}` : ''}`
                             : cost.supplier || cost.category}
+                          {cost.cost_source !== 'unspecified' ? ` · ${COST_SOURCE_LABEL[cost.cost_source]}` : ''}
                         </span>
+                        {/* A warning, never a block. A contractor really can buy
+                            the same $47 of PVC twice in a week, and refusing the
+                            second one just teaches them to type $47.01. */}
+                        {duplicates.has(cost.id) ? (
+                          <span className="cost-item-duplicate">
+                            Possible duplicate — {describeDuplicate(duplicates.get(cost.id)!)}
+                          </span>
+                        ) : null}
                       </div>
                       <div className="cost-item-actions">
                         <span className="cost-item-amount">−{formatMoney(Number(cost.amount))}</span>
@@ -1100,6 +1134,15 @@ export default async function JobDetailPage({
                   <span>Labor</span>
                   <span>−{formatMoney(margin.laborCost)}</span>
                 </div>
+                {/* Burden is shown on its own line rather than hidden inside
+                    "Labor". A contractor seeing $300 where they paid $240 needs
+                    to know the difference is taxes and comp, not an error. */}
+                {margin.laborBurden > 0 ? (
+                  <div className="margin-row sub muted">
+                    <span>&nbsp;&nbsp;of which taxes &amp; insurance</span>
+                    <span>−{formatMoney(margin.laborBurden)}</span>
+                  </div>
+                ) : null}
                 <div className="margin-row sub">
                   <span>Other</span>
                   <span>−{formatMoney(margin.otherCost)}</span>
@@ -1113,8 +1156,18 @@ export default async function JobDetailPage({
                   <div className="value">{formatPercent(margin.margin)}</div>
                 </div>
               </div>
+              {marginWarning?.message ? (
+                <p className={`margin-alert${marginWarning.losing ? ' is-loss' : ''}`}>{marginWarning.message}</p>
+              ) : null}
               <p className="margin-note">
                 Revenue is the job&apos;s quoted amount. ROI updates live as you log costs.
+                {confidence.total > 0 ? (
+                  <>
+                    {' '}
+                    {Math.round(confidence.evidencedPct * 100)}% of the cost here is backed by a receipt, an invoice or
+                    the time clock.
+                  </>
+                ) : null}
               </p>
             </details>
           </div>

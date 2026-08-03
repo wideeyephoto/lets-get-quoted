@@ -158,6 +158,120 @@ export function costConfidence(costs: { amount: number; burdenAmount?: number; s
   };
 }
 
+// -- Duplicate expenses -------------------------------------------------------
+
+export type ExistingCost = {
+  id: string;
+  description: string;
+  amount: number;
+  supplier: string | null;
+  createdAt: string;
+};
+
+export type DuplicateMatch = {
+  cost: ExistingCost;
+  /** Why we think it's the same spend. Shown to the person, not just scored. */
+  reasons: string[];
+  daysApart: number;
+};
+
+/** Two spends this far apart in time are a second trip, not a double entry. */
+export const DUPLICATE_WINDOW_DAYS = 14;
+/** Amounts within this fraction of each other count as the same figure. */
+export const DUPLICATE_AMOUNT_TOLERANCE = 0.02;
+
+function normalizeText(value: string | null | undefined): string {
+  return (value ?? '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function wordOverlap(a: string, b: string): number {
+  const left = new Set(normalizeText(a).split(' ').filter((w) => w.length > 2));
+  const right = new Set(normalizeText(b).split(' ').filter((w) => w.length > 2));
+  if (left.size === 0 || right.size === 0) return 0;
+  let shared = 0;
+  for (const word of left) if (right.has(word)) shared += 1;
+  return shared / Math.min(left.size, right.size);
+}
+
+/**
+ * Costs on this job that look like the one being added.
+ *
+ * WARNS, never blocks. A contractor genuinely can buy the same $47 of PVC twice
+ * in a week, and a system that refuses the second one teaches them to type
+ * "$47.01" — at which point the duplicate check has made the data worse.
+ *
+ * The SAME MONEY is required, plus at least one of: the same supplier, or a
+ * description that overlaps.
+ *
+ * Amount is necessary rather than merely one vote of three, because without it
+ * "same supplier + same description" flags a contractor buying PVC fittings from
+ * the same yard twice in a week — which is not a mistake, it's Tuesday. What
+ * makes a pair look like one spend entered twice is that the figure matches.
+ */
+export function findDuplicateCosts(
+  candidate: { description: string; amount: number; supplier?: string | null; at?: string },
+  existing: ExistingCost[],
+): DuplicateMatch[] {
+  const amount = Math.abs(Number(candidate.amount) || 0);
+  if (amount <= 0) return [];
+  const at = candidate.at ? Date.parse(candidate.at) : Date.now();
+  const supplier = normalizeText(candidate.supplier);
+
+  const matches: DuplicateMatch[] = [];
+  for (const cost of existing) {
+    const when = Date.parse(cost.createdAt);
+    if (!Number.isFinite(when)) continue;
+    const daysApart = Math.abs(at - when) / 86_400_000;
+    if (daysApart > DUPLICATE_WINDOW_DAYS) continue;
+
+    const other = Math.abs(Number(cost.amount) || 0);
+    const sameAmount = other > 0 && Math.abs(other - amount) / Math.max(other, amount) <= DUPLICATE_AMOUNT_TOLERANCE;
+    if (!sameAmount) continue; // necessary, not merely one vote
+
+    const reasons: string[] = [other === amount ? 'same amount' : 'almost the same amount'];
+    const otherSupplier = normalizeText(cost.supplier);
+    if (supplier && otherSupplier && supplier === otherSupplier) reasons.push('same supplier');
+    if (wordOverlap(candidate.description, cost.description) >= 0.6) reasons.push('similar description');
+
+    if (reasons.length >= 2) matches.push({ cost, reasons, daysApart: Math.round(daysApart) });
+  }
+
+  // Closest in time first: the most recent near-identical spend is the one most
+  // likely to be the accidental second entry.
+  return matches.sort((a, b) => a.daysApart - b.daysApart).slice(0, 3);
+}
+
+/**
+ * Every cost on a job that looks like another one already on it.
+ *
+ * Run over the whole list at render time rather than only at entry, because the
+ * duplicate a contractor most wants to know about is usually the one that got
+ * saved last week — catching it only at the moment of typing means the pair that
+ * already exists stays invisible forever.
+ *
+ * Keyed by cost id, and only the LATER of each pair is flagged: badging both
+ * sides makes it read as though two separate mistakes were made.
+ */
+export function duplicateCostIds(costs: ExistingCost[]): Map<string, DuplicateMatch> {
+  const byOldestFirst = [...costs].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+  const flags = new Map<string, DuplicateMatch>();
+  for (let i = 1; i < byOldestFirst.length; i += 1) {
+    const later = byOldestFirst[i];
+    const earlier = byOldestFirst.slice(0, i);
+    const [match] = findDuplicateCosts(
+      { description: later.description, amount: later.amount, supplier: later.supplier, at: later.createdAt },
+      earlier,
+    );
+    if (match) flags.set(later.id, match);
+  }
+  return flags;
+}
+
+export function describeDuplicate(match: DuplicateMatch): string {
+  const when = match.daysApart === 0 ? 'today' : match.daysApart === 1 ? 'yesterday' : `${match.daysApart} days ago`;
+  return `“${match.cost.description}” was logged ${when} — ${match.reasons.join(', ')}.`;
+}
+
 // -- Minimum margin -----------------------------------------------------------
 
 export type MarginVerdict = {

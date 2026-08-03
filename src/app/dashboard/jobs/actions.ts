@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { resolveCrewBurdenPct } from '@/lib/cost-truth-data';
 import { normalizeCostSource } from '@/lib/cost-truth';
+import { readReceipt, type ReceiptRead } from '@/lib/receipt-ocr';
 import { redirect } from 'next/navigation';
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import { checkRateLimit } from '@/lib/rate-limit';
@@ -602,6 +603,27 @@ export async function textCrewJobDateAction(jobId: string) {
   revalidatePath('/dashboard/schedule');
   revalidatePath('/dashboard/jobs');
   revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
+/**
+ * Read a receipt photo into a draft cost. Never saves anything.
+ *
+ * Rate-limited because it burns a paid vision call per tap, and the failure mode
+ * of an un-capped one is somebody's phone camera in burst mode.
+ */
+export async function readReceiptAction(dataUrl: string): Promise<{ ok: true; read: ReceiptRead } | { ok: false; error: string }> {
+  const { supabase, accountId } = await requireOwnerContext();
+  if (!(await checkRateLimit(supabase, `receipt:${accountId}`, 40, 60))) {
+    return { ok: false, error: 'That’s a lot of receipts at once — give it a minute and try again.' };
+  }
+  // ~8MB of base64 is roughly a 6MB photo. Above that it's not a receipt.
+  if (typeof dataUrl !== 'string' || dataUrl.length > 8_000_000) {
+    return { ok: false, error: 'That image is too large. Try a photo of just the receipt.' };
+  }
+
+  const read = await readReceipt({ dataUrl });
+  if (!read) return { ok: false, error: 'Couldn’t read that one. Enter the figures by hand.' };
+  return { ok: true, read };
 }
 
 export async function createCostAction(jobId: string, formData: FormData) {

@@ -9641,6 +9641,29 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
    contractor who had rating-screening switched on will notice their private
    feedback drop and their public reviews get more varied, and deserves to know
    that was us removing something that put their profile at risk. */
+/* Job costing. Amber rather than red throughout: these are things to look at,
+   not errors — a duplicate flag that shouts turns into a flag nobody reads. */
+.cost-item-duplicate {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.76rem;
+  line-height: 1.4;
+  color: var(--ink-amber-1, var(--mute-t55));
+}
+.margin-alert {
+  margin: 0.7rem 0 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  border: 1px solid var(--ink-amber-3);
+  background: rgba(255, 179, 122, 0.12);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+.margin-alert.is-loss { border-color: rgba(255, 101, 101, 0.55); background: rgba(255, 101, 101, 0.12); }
+.margin-row.muted { color: var(--mute-t55); font-size: 0.85em; }
+.receipt-scan input[type='file'] { font-size: 0.85rem; }
+.field-hint.is-error { color: var(--ink-amber-1, var(--bad)); }
+
 .review-policy-note {
   margin: 0.6rem 0 0;
   max-width: 44rem;
