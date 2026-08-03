@@ -2475,9 +2475,35 @@
   }
   .shine[data-header='editorial'] .shineHeader { padding-bottom: 0; }
   .shine[data-header='stacked'] .shineHeader { padding-top: .55rem; padding-bottom: .55rem; }
+  /* Utility bar and Brand tab joined HEADER_STYLES after the list above and were
+     never added to it, so on Shine both kept the edge block.
+       - Utility puts a full-width accent STRIP directly above the header. The
+         block is the same accent and hangs off its underside, so the two fuse
+         into a single shape in the corner and the CTA stops reading as a button.
+       - Brand tab claims the LEFT edge for the logo, so it keeps padding-left: 0
+         (that tab is meant to be flush) and only gets the right edge back. */
+  .shine[data-header='utility'] .shineHeader { align-items: center; padding: 0 clamp(1.25rem, 4vw, 3.5rem); }
+  .shine[data-header='brandtab'] .shineHeader { padding-right: clamp(1.25rem, 4vw, 3.5rem); }
+  /* The slab reads as a block because it is a solid plane of accent. Every other
+     button treatment assumes an object with edges — outline and double draw a
+     border, ring a detached frame, ghost an underline — and on a 58px-tall box
+     fused to the viewport edge those become a tall empty rectangle with one side
+     cropped off the screen. So anything that is not a plain solid fill gets the
+     ordinary inset button as well.
+     Shine declares the slab at (0,2,0) while the button-style rules land at
+     (0,3,0), which is why the FILL was being swapped out from under it while the
+     geometry stayed. 'cta' sidesteps that by declaring at (0,3,0) and winning
+     outright — it is the edge block on purpose — so it is not covered here. */
+  .shine[data-header='']:not([data-button='solid']) .shineHeader,
+  .shine[data-header='']:not([data-header-button='match']) .shineHeader {
+    align-items: center; padding: 0 clamp(1.25rem, 4vw, 3.5rem);
+  }
   .shine[data-header='balanced'] .shineHeaderCta, .shine[data-header='left'] .shineHeaderCta,
   .shine[data-header='refined'] .shineHeaderCta, .shine[data-header='editorial'] .shineHeaderCta,
-  .shine[data-header='chips'] .shineHeaderCta, .shine[data-header='glass'] .shineHeaderCta, .shine[data-header='stacked'] .shineHeaderCta {
+  .shine[data-header='chips'] .shineHeaderCta, .shine[data-header='glass'] .shineHeaderCta, .shine[data-header='stacked'] .shineHeaderCta,
+  .shine[data-header='utility'] .shineHeaderCta, .shine[data-header='brandtab'] .shineHeaderCta,
+  .shine[data-header='']:not([data-button='solid']) .shineHeaderCta,
+  .shine[data-header='']:not([data-header-button='match']) .shineHeaderCta {
     align-self: center; min-height: 44px; border-radius: 999px; padding: .6rem 1.3rem; font-weight: 800;
   }
 }
