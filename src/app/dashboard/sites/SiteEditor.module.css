@@ -995,3 +995,19 @@
   .vsPreviewPane, .vsControls { overflow: visible; }
   .vsStyleStrip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+/* Setup → Socials & listings (SocialsField.tsx). Two columns of platform
+ * fields; one column on a phone, where the builder already lives in ~50vh of
+ * form under the pinned preview and a 2-up grid would halve an already narrow
+ * input. */
+.socialGrid { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; margin-top: .6rem; }
+.socialField { min-width: 0; }
+.socialFieldLabel { display: flex; align-items: center; gap: .45rem; }
+.socialFieldIcon { width: 15px; height: 15px; flex: none; opacity: .75; }
+/* A tick beside the label rather than a colour change on the border: the input
+ * is already using colour for focus and for the invalid state, and a third
+ * meaning on the same surface stops any of them reading. */
+.socialFieldOn { margin-left: auto; color: #2f9e5e; font-weight: 800; }
+.socialFieldError { color: #ff9b6a; font-weight: 500; }
+.socialField input[aria-invalid="true"] { border-color: rgba(255,155,106,.55); }
+@media (max-width: 700px) { .socialGrid { grid-template-columns: 1fr; } }

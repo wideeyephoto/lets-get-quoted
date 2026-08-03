@@ -1,6 +1,7 @@
 import type { SiteImage } from '@/lib/site-images';
 import type { WebsiteImageAssignment } from '@/lib/stock/types';
 import { SERVICE_ICON_GLYPHS } from '@/lib/templates/service-icons.data';
+import { isSocialPlatformId, normalizeSocialUrl } from '@/lib/socials';
 import { parseVideoSource } from '@/lib/video-source';
 import { parseYouTubeUrl } from '@/lib/youtube';
 
@@ -60,6 +61,21 @@ export type SiteGoogleReview = {
   rating: number;
   text: string;
   relativeTime: string;
+  url: string;
+};
+
+// One social or review-platform profile link. `url` is always already
+// normalized — see lib/socials — so anything that renders or publishes it can
+// trust it is an https URL on that platform's own host.
+//
+// Held in SOCIAL_PLATFORMS order, not the order the owner filled the boxes in,
+// so the footer row reads the same on every site and doesn't silently reshuffle
+// when someone goes back and adds the profile they forgot. The footer and
+// `sameAs` read this one list.
+export type SiteSocialLink = {
+  /** A SocialPlatformId. Unknown ids are dropped at parse rather than rendered
+      as a blank icon, since the platform list can only ever grow. */
+  platform: string;
   url: string;
 };
 
@@ -779,6 +795,14 @@ export type NormalizedSiteContent = {
   // is a section further down the page. Empty url means "use the photos", which
   // is every site that exists. See getHeroVideo and HeroImageCycle.
   heroVideo: SiteHeroVideo;
+  // Social and review-platform profiles. Renders as an icon row in the footer
+  // (every layout) and feeds `sameAs` on the LocalBusiness JSON-LD, which is how
+  // Google ties this site to the business's other listings. See lib/socials.
+  socials: SiteSocialLink[];
+  // Show the same icon row in the header utility bar as well as the footer.
+  // Off by default: the footer is where people look for these, and the utility
+  // bar is already carrying phone/hours/licensed on the one style that has it.
+  socialsInHeader: boolean;
   // How the header/footer logo is framed so a boxy logo blends in:
   // 'plain' | 'rounded' | 'framed' | 'circle'. Set on the template root as
   // data-logo-style; one CSS block styles every template's logo.
@@ -943,6 +967,30 @@ function parseGoogleReviews(value: unknown): SiteGoogleReview[] {
     relativeTime: toString(item.relativeTime),
     url: toString(item.url),
   }));
+}
+
+// Re-normalizes on the way OUT of storage, not just on the way in.
+//
+// The stored value was normalized when the owner typed it, so this is usually a
+// no-op — but it is the last gate before a URL becomes an href on a public page
+// and a `sameAs` claim to Google, and content in this column has arrived from AI
+// seeding and site imports as well as the form. Anything that fails is dropped
+// rather than rendered: a missing icon is a smaller problem than a link
+// pointing somewhere its own logo says it doesn't.
+function parseSocials(value: unknown): SiteSocialLink[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  const out: SiteSocialLink[] = [];
+  for (const item of value) {
+    if (!isRecord(item)) continue;
+    const platform = toString(item.platform);
+    if (!isSocialPlatformId(platform) || seen.has(platform)) continue;
+    const url = normalizeSocialUrl(platform, toString(item.url));
+    if (!url) continue;
+    seen.add(platform);
+    out.push({ platform, url });
+  }
+  return out;
 }
 
 function parseTrustBadges(value: unknown): SiteTrustBadgeItem[] {
@@ -1387,6 +1435,8 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       ? root.heroImages.filter((url): url is string => typeof url === 'string' && url.trim().length > 0).map((url) => url.trim()).slice(0, MAX_EXTRA_HERO_IMAGES)
       : [],
     heroVideo: parseHeroVideo(root.heroVideo),
+    socials: parseSocials(root.socials),
+    socialsInHeader: root.socialsInHeader === true,
     logoStyle: LOGO_STYLE_KEYS.has(toString(root.logoStyle)) ? toString(root.logoStyle) : 'plain',
     logoSize: LOGO_SIZE_KEYS.has(toString(root.logoSize)) ? toString(root.logoSize) : 'medium',
     footerStyle: FOOTER_STYLE_KEYS.has(toString(root.footerStyle)) ? toString(root.footerStyle) : 'columns',
@@ -1854,6 +1904,19 @@ export function getHeroBandImages(content: Record<string, unknown> | null | unde
  * So a pasted YouTube link is rejected here rather than shipped as a letterboxed
  * black rectangle behind the headline of somebody's homepage.
  */
+/**
+ * The social links to render, in the owner's order.
+ *
+ * One accessor for the footer, the header bar and the JSON-LD alike, so a link
+ * can never appear in the markup Google reads without also appearing on the
+ * page a visitor sees — which is the whole basis on which `sameAs` is honest.
+ */
+export function getPublishedSocials(
+  content: Record<string, unknown> | null | undefined,
+): SiteSocialLink[] {
+  return getSiteContent(content).socials;
+}
+
 export function getHeroVideo(
   content: Record<string, unknown> | null | undefined,
 ): { url: string; posterUrl: string } | null {

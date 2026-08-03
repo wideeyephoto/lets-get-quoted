@@ -115,6 +115,18 @@ export function buildLocalBusinessJsonLd(site: Site): Record<string, unknown> | 
   const description = resolveSiteSeo(site).description;
   const type = resolveSchemaType(`${trimmed(content.trade)} ${trimmed(site.company_name)}`);
 
+  // `sameAs` is how Google connects this website to the same business's Google
+  // Business Profile, Facebook page and review listings — the cheapest local-SEO
+  // win available, and the reason the social links are worth validating as
+  // strictly as lib/socials does.
+  //
+  // Read from the SAME accessor the footer renders from, so a profile can never
+  // be claimed in the markup without also being linked on the page. A `sameAs`
+  // pointing at a profile that isn't really this business is not a missed
+  // opportunity, it's a false identity claim — which is exactly what a
+  // wrong-box paste would produce if the URL weren't host-checked first.
+  const sameAs = content.socials.map((s) => s.url);
+
   return {
     '@context': 'https://schema.org',
     '@type': type,
@@ -125,5 +137,6 @@ export function buildLocalBusinessJsonLd(site: Site): Record<string, unknown> | 
     ...(logo ? { logo } : {}),
     ...(areaServed ? { areaServed } : {}),
     ...(description ? { description } : {}),
+    ...(sameAs.length > 0 ? { sameAs } : {}),
   };
 }

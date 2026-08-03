@@ -5,6 +5,7 @@ import {
   getPublishedServices, getPublishedShowcase, getPublishedTestimonials, getPublishedFaqs, getPublishedBlog,
 } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
+import SocialLinks from './SocialLinks';
 import { siteLegalLinks } from '@/lib/legal/site-legal';
 import styles from './themes.module.css';
 
@@ -54,6 +55,9 @@ export default function SiteFooter({ site }: { site: Site }) {
   const tagline = <p className={styles.sfTagline} data-edit="bizTagline">{site.tagline || 'Trusted local service, done right.'}</p>;
   const quoteBtn = <a className={styles.sfBtn} href="#contact">Get a free quote</a>;
   const linkList = links.length > 0 ? <nav className={styles.sfLinks}>{links.map((l) => <a key={l.href} href={l.href}>{l.label}</a>)}</nav> : null;
+  // Renders null when the owner has added none, so every layout below can place
+  // it unconditionally without each one repeating the emptiness check.
+  const socials = <SocialLinks site={site} />;
 
   const contactLines = (
     <>
@@ -89,7 +93,7 @@ export default function SiteFooter({ site }: { site: Site }) {
         </div>
         <div className={styles.sfPad}>
           <div className={styles.sfTwo}>
-            <div className={styles.sfBrandCol}>{brand}{tagline}{linkList}</div>
+            <div className={styles.sfBrandCol}>{brand}{tagline}{linkList}{socials}</div>
             <div className={styles.sfCol}><h3>Get in touch</h3>{contactLines}</div>
           </div>
         </div>
@@ -111,12 +115,13 @@ export default function SiteFooter({ site }: { site: Site }) {
             {site.license && <span data-edit="bizLicense">{site.license}</span>}
           </nav>
         )}
+        {socials}
       </div>
     );
   } else if (style === 'grid') {
     body = (
       <div className={styles.sfPad}>
-        <div className={styles.sfTop}>{brand}{tagline}</div>
+        <div className={styles.sfTop}>{brand}{tagline}{socials}</div>
         <div className={styles.sfGrid}>
           {links.length > 0 && <div className={styles.sfCol}><h3>Explore</h3>{links.map((l) => <a key={l.href} href={l.href}>{l.label}</a>)}</div>}
           {areaLine && <div className={styles.sfCol}><h3>Areas served</h3><span data-edit="bizArea">{areaLine}</span></div>}
@@ -130,7 +135,7 @@ export default function SiteFooter({ site }: { site: Site }) {
     body = (
       <div className={styles.sfPad}>
         <div className={styles.sfThree}>
-          <div className={styles.sfBrandCol}>{brand}{tagline}{quoteBtn}</div>
+          <div className={styles.sfBrandCol}>{brand}{tagline}{quoteBtn}{socials}</div>
           {linkList}
           <div className={styles.sfCol}><h3>Get in touch</h3>{contactLines}</div>
         </div>

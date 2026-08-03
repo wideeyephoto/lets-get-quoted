@@ -23,6 +23,7 @@ import HeroVideoField from './HeroVideoField';
 import LivePreview from './LivePreview';
 import BuilderTabStrip from './BuilderTabStrip';
 import SectionCard from './SectionCard';
+import SocialsField from './SocialsField';
 import ThemeIcon from './ThemeIcon';
 import VideoStudio from './VideoStudio';
 import styles from './SiteEditor.module.css';
@@ -636,6 +637,9 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
       if (target === 'bizPhone') { setActiveTab('page'); setOpenSection('estimate'); focusField('bf-phone'); return; }
       if (target === 'bizLicense') { setActiveTab('page'); setOpenSection('footer'); focusField('bf-license'); return; }
       if (target === 'legal') { setActiveTab('business'); setOpenSection('legal'); requestAnimationFrame(() => requestAnimationFrame(() => document.querySelector(`.${styles.sectionCardOpen}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }))); return; }
+      // Socials live on Setup, not Page — so they're routed here rather than
+      // falling through to SECTION_TARGETS, which assumes the Page tab.
+      if (target === 'socials') { setActiveTab('business'); setOpenSection('socials'); requestAnimationFrame(() => requestAnimationFrame(() => document.querySelector(`.${styles.sectionCardOpen}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }))); return; }
       if (target === 'heroBadge') { setActiveTab('page'); setOpenSection('hero'); flashCard('heroBadge', 'design-hero-badge'); return; }
       // The logo + auto trade-icon jump to the Header section's "Your logo" card
       // (Page tab), where the glyph picker, transparent toggle, and upload live.
@@ -1557,6 +1561,21 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
                   <small className={styles.fieldHint}>Fills in your whole site — headline, services, FAQs, Google listing, and more — from these two fields. Watch it appear in the preview. Reviews and stats are filled with examples — swap in your real ones before you publish.</small>
                 </SectionCard>
 
+                <SectionCard
+                  title="Socials &amp; listings"
+                  description="Link your Facebook, Instagram, Google Business Profile and review listings."
+                  evidence="Homeowners check your reviews before they call — linking the listings you already have is the cheapest trust you can add."
+                  hint={siteContent.socials.length > 0 ? `${siteContent.socials.length} linked` : undefined}
+                  open={openSection === 'socials'}
+                  onToggleOpen={() => toggleSection('socials')}
+                >
+                  <SocialsField
+                    socials={siteContent.socials}
+                    socialsInHeader={siteContent.socialsInHeader}
+                    onChange={(socials) => updateSiteContent({ socials })}
+                    onHeaderChange={(socialsInHeader) => updateSiteContent({ socialsInHeader })}
+                  />
+                </SectionCard>
 
               </div>
             )}

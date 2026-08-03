@@ -2429,6 +2429,50 @@
 .sfLinksRow { display: flex; justify-content: center; gap: 1.4rem; flex-wrap: wrap; }
 .sfLinksRow a, .sfLinksRow span { font-size: .88rem; font-weight: 600; opacity: .8; color: inherit; text-decoration: none; }
 .sfLinksRow a:hover { opacity: 1; color: var(--theme-accent); }
+
+/* Social / review-platform icon row — SocialLinks.tsx. Shared by every footer
+   layout and the header utility bar, so it inherits colour rather than setting
+   one: the same markup sits on the footer's deep ground and the header bar's
+   accent strip, and only `color: inherit` looks right on both.
+
+   44px hit target, not the 24px the icon occupies. These are the smallest tap
+   targets on the whole page and they sit at the very bottom, where a thumb is
+   least accurate — the padding is the point, the border is just what makes it
+   visible. */
+.socialRow { display: flex; flex-wrap: wrap; gap: .6rem; list-style: none; margin: 1.2rem 0 0; padding: 0; }
+.socialRow a {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px;
+  border: 1px solid color-mix(in srgb, currentColor 16%, transparent);
+  border-radius: 999px;
+  color: inherit; opacity: .78;
+  transition: opacity .18s ease, border-color .18s ease, background-color .18s ease, transform .18s ease;
+}
+.socialRow a:hover, .socialRow a:focus-visible {
+  opacity: 1;
+  border-color: color-mix(in srgb, var(--theme-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--theme-accent) 12%, transparent);
+  transform: translateY(-2px);
+}
+.socialGlyph { width: 19px; height: 19px; flex: none; }
+/* The centered footer centers everything else; this has to follow or it hangs
+   off to the left under a centered wordmark. */
+.sfCenter .socialRow { justify-content: center; }
+.sfTop .socialRow { margin-top: 1rem; }
+
+/* In the header strip there is no room for a 44px ring, and the row is beside
+   text rather than under it — so it drops to a bare icon at text scale. The
+   utility bar is not a touch-first surface: it repeats the phone number that is
+   also a big button further down the page. */
+.socialRowHeader { margin: 0; gap: .15rem; }
+.socialRowHeader a { width: 26px; height: 26px; border: 0; }
+.socialRowHeader a:hover, .socialRowHeader a:focus-visible { background: none; transform: none; }
+.socialRowHeader .socialGlyph { width: 15px; height: 15px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .socialRow a { transition: none; }
+  .socialRow a:hover, .socialRow a:focus-visible { transform: none; }
+}
 .siteFooter[data-footer='centered'] .sfBar { justify-content: center; }
 /* grid */
 .sfTop { display: flex; align-items: flex-start; gap: 1.5rem; flex-wrap: wrap; padding-bottom: 1.6rem; margin-bottom: 1.6rem; border-bottom: 1px solid color-mix(in srgb, var(--c-on-deep) 12%, transparent); }
