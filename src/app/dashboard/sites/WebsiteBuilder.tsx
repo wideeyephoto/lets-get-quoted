@@ -21,7 +21,7 @@ import IntakePreviewModal from './IntakePreviewModal';
 import IntroVideoField from './IntroVideoField';
 import HeroVideoField from './HeroVideoField';
 import LivePreview from './LivePreview';
-import BuilderTabChip from './BuilderTabChip';
+import BuilderTabStrip from './BuilderTabStrip';
 import SectionCard from './SectionCard';
 import ThemeIcon from './ThemeIcon';
 import VideoStudio from './VideoStudio';
@@ -2553,10 +2553,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
         <LivePreview
           site={site}
           openSection={activeTab === 'page' ? openSection : null}
-          // On a phone the tab ROW below is hidden and this chip stands in for
-          // it, floating on the preview. Same goToTab, so a tab switch still
-          // opens that tab's default card exactly as the row does.
-          overlaySlot={<BuilderTabChip tabs={TABS} activeTab={activeTab} onSelect={(id) => goToTab(id as BuilderTab)} />}
+          // On a phone the tab ROW below is hidden and this strip stands in for
+          // it, riding the preview's bottom edge. Same goToTab, so a tab switch
+          // still opens that tab's default card exactly as the row does.
+          overlaySlot={<BuilderTabStrip tabs={TABS} activeTab={activeTab} onSelect={(id) => goToTab(id as BuilderTab)} />}
         />
       </div>
 

@@ -174,8 +174,8 @@ export default function LivePreview({ site, openSection, overlaySlot }: LivePrev
         {narrow && (
           <>
             {/* Hidden while expanded: the point of expanding is to look at the
-                site, and a tab menu floating over it is in the way. */}
-            {overlaySlot && !expanded && <div className={styles.previewChipsLeft}>{overlaySlot}</div>}
+                site, and a strip across it is in the way. */}
+            {overlaySlot && !expanded && overlaySlot}
             <div className={styles.previewChipsRight}>
               {/* Desktop/Mobile only in the expanded view. On a phone the
                   preview already defaults to Mobile, and checking the desktop

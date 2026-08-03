@@ -564,13 +564,35 @@
    rather than in a row above it. */
 .previewStage { position: relative; height: calc(100vh - 10rem); overflow: hidden; display: flex; justify-content: center; padding: .75rem; background: repeating-linear-gradient(45deg, var(--bg-3), var(--bg-3) 10px, var(--ground-2) 10px, var(--ground-2) 20px); }
 
-/* --- The tab switcher, as a chip on the preview (narrow screens only) ------ */
-.tabChipRoot { position: relative; }
-.tabChip { display: inline-flex; align-items: center; gap: .3rem; min-height: 30px; padding: .25rem .6rem; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; background: transparent; color: #fff; font-size: .72rem; font-weight: 800; cursor: pointer; }
-.tabChipMenu { position: absolute; top: calc(100% + .35rem); left: 0; z-index: 4; display: grid; min-width: 148px; padding: .25rem; border: 1px solid rgba(255,255,255,.14); border-radius: 12px; background: rgba(10,14,22,.94); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: 0 18px 44px -14px rgba(0,0,0,.85); }
-.tabChipMenu button { min-height: 40px; padding: .4rem .7rem; border: 0; border-radius: 8px; background: transparent; color: var(--text); font-size: .82rem; font-weight: 700; text-align: left; cursor: pointer; }
-.tabChipMenu button:hover { background: rgba(255,255,255,.08); }
-.tabChipMenu .tabChipActive { background: linear-gradient(180deg, #ff8a3d, #ff7a21); color: #fff; }
+/* --- The tab switcher, riding the preview's bottom edge (narrow screens) ----
+   Only ever rendered inside .previewStage on narrow screens; the desktop tab
+   row is untouched. Translucent with a blur so the site still reads as a
+   website underneath rather than being blanked out by a solid bar. */
+.tabStrip {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .25rem;
+  padding: .3rem;
+  border-top: 1px solid rgba(255,255,255,.1);
+  background: rgba(10,14,22,.78);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+.tabStrip button {
+  min-height: 32px;
+  padding: .25rem .2rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255,255,255,.72);
+  font-size: .72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.tabStrip .tabStripActive { background: linear-gradient(180deg, #ff8a3d, #ff7a21); color: #fff; box-shadow: 0 6px 16px -8px rgba(255,122,33,.7); }
 .previewFrame { width: 100%; height: 100%; border: 0; background: #fff; box-shadow: 0 15px 40px rgba(0,0,0,.35); transition: width .2s ease; }
 .mobileStage .previewFrame { width: min(390px, 100%); }
 .formSection .imageGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -666,19 +688,16 @@
      Both clusters ride the top corners, over the site's own header — the least
      information-dense band of any page. Translucent with a blur so what is
      underneath still reads as a website rather than being blanked out. */
-  .previewChipsLeft,
   .previewChipsRight {
     position: absolute;
     top: .5rem;
+    right: .5rem;
     z-index: 3;
     display: flex;
     align-items: center;
     gap: .3rem;
   }
-  .previewChipsLeft { left: .5rem; }
-  .previewChipsRight { right: .5rem; }
 
-  .previewChipsLeft > *,
   .previewChipsRight > * {
     border-radius: 999px;
     background: rgba(10, 14, 22, .72);
