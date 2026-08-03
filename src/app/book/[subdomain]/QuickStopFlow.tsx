@@ -149,7 +149,7 @@ export default function QuickStopFlow({
 
   if (!open) {
     return (
-      <section className="panel workspace-section-card" style={{ marginTop: '1rem' }}>
+      <section className="panel workspace-section-card book-aside" style={{ marginTop: '1rem' }}>
         <div className="section-heading workspace-section-heading compact-heading">
           <p className="eyebrow">Need it sooner?</p>
           <h2>Quick Stop</h2>
@@ -158,7 +158,11 @@ export default function QuickStopFlow({
           Get added to the contractor&apos;s route sooner. The contractor will review the job, propose an
           arrival window, and set the separate fee required to add another stop.
         </p>
-        <button type="button" className="btn primary" onClick={() => setOpen(true)}>
+        {/* Secondary, not primary. This sits directly under the booking form's
+            own submit, and two identical orange buttons on one screen is two
+            chances to press the wrong one — the alternative path shouldn't
+            shout louder than the main one. */}
+        <button type="button" className="btn secondary" onClick={() => setOpen(true)}>
           Request a Quick Stop
         </button>
       </section>

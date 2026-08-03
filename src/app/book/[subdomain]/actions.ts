@@ -250,7 +250,7 @@ export async function submitBookingAction(subdomain: string, formData: FormData)
     serviceName = services.find((s) => s.id === serviceId)?.name ?? null;
   }
 
-  await createBooking(admin, site.account_id, {
+  const lead = await createBooking(admin, site.account_id, {
     name,
     phone,
     email,
@@ -263,7 +263,10 @@ export async function submitBookingAction(subdomain: string, formData: FormData)
     timeLabel: offered.slot.label,
   });
 
-  redirect(`/book/${subdomain}?booked=1`);
+  // The id, not the window. The confirmation page reads the requested time back
+  // off this record — passing the label itself would put the text of a booking
+  // confirmation under the visitor's control.
+  redirect(`/book/${subdomain}?booked=${lead.id}`);
 }
 
 // Create a Quick Stop request from the public Book flow. Called with JS (not a

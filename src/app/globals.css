@@ -16242,3 +16242,632 @@ a.bset-card { color: inherit; text-decoration: none; }
   .theme-toggle-track,
   .theme-toggle-track i { transition: none; }
 }
+
+/* ==========================================================================
+   THE PUBLIC BOOKING PAGE  (/book/[subdomain])
+   --------------------------------------------------------------------------
+   The one screen in this whole product that a HOMEOWNER sees, and the only one
+   where our brand is the wrong brand. Everything below is scoped to
+   .book-scope, which carries the contractor's accent as `--accent` — so the
+   buttons, focus rings and selected slots that were already written against
+   that token come out in their colour without a single per-component override.
+
+   The chrome (top bar, fact rail, footer) sits OUTSIDE .panel on purpose, so it
+   reads the root tokens and stays dark in both themes: in the ink model the
+   desk stays dark and the cards are the paper. A white bar above a white card
+   would erase the boundary that makes the card read as a sheet.
+   ========================================================================== */
+
+.book-scope {
+  /* One spine. The top bar spans the viewport (a bar should), but the fact rail
+     and the cards share this column so nothing floats off on its own. */
+  --book-col: 780px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Every color-mix() below is paired with a flat fallback declared first. This
+   is the one page in the product whose audience is the general public rather
+   than a contractor who picked their own browser — an engine without color-mix
+   (Chrome <111, Safari <16.2) must still get a coloured control, not a
+   transparent one. */
+
+.book-scope > main {
+  flex: 1;
+}
+
+/* No contractor to brand it with, so nothing to align to either — centre the
+   one card rather than leave it hanging in the top-left of an empty screen. */
+.book-scope-lost {
+  --book-accent: var(--accent);
+  --book-on-accent: #fff;
+}
+
+.book-scope-lost > main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* --- the contractor's bar ------------------------------------------------- */
+
+.book-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.72rem clamp(1rem, 3vw, 2rem);
+  border-bottom: 1px solid rgba(var(--tint), 0.1);
+  background: var(--chrome-solid);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+.book-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.book-brand-logo {
+  display: block;
+  height: 2.3rem;
+  width: auto;
+  max-width: 13rem;
+  object-fit: contain;
+}
+
+/* No uploaded logo? The same trade glyph on the same accent tile the rest of
+   the brand system already draws (see lib/brand-mark) — never our wordmark. */
+.book-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 2.3rem;
+  height: 2.3rem;
+  flex: none;
+  border-radius: 9px;
+  background: var(--book-accent);
+  color: var(--book-on-accent);
+}
+
+.book-brand-glyph {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.book-brand-name {
+  font-family: var(--book-display, var(--font-display));
+  font-size: 1.06rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Two lines because the number is the point: "Call" alone makes somebody tap to
+   find out who they are calling, and on a desktop a tel: link that opens
+   nothing at least leaves the digits on screen to write down. */
+.book-call {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex: none;
+  padding: 0.42rem 0.9rem 0.42rem 0.72rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--tint), 0.18);
+  background: rgba(var(--tint), 0.05);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.book-call:hover {
+  border-color: var(--book-accent);
+  background: rgba(var(--tint), 0.09);
+}
+
+.book-call-ic {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex: none;
+  fill: var(--book-accent);
+}
+
+.book-call-text {
+  display: grid;
+  line-height: 1.15;
+}
+
+.book-call-label {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(var(--tint), 0.55);
+}
+
+.book-call-number {
+  font-size: 0.92rem;
+  font-weight: 750;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- what they can check before typing an address ------------------------- */
+
+/* Only facts the owner typed or that we measured — nothing here is a claim we
+   made up on their behalf. An empty rail is correct for a new contractor. */
+/* Aligned to the card column below it, not to the viewport — read as a subtitle
+   to the hero rather than as a stray line floating off the left edge. Matches
+   .wide-shell's max-width and gutter exactly. */
+.book-facts {
+  /* width:100% is load-bearing. .book-scope is a column flex container, and an
+     auto cross-axis margin makes a flex item shrink-to-fit instead of stretch —
+     so max-width alone left this sized to its own text and centred on the
+     viewport, 150px right of the card edge it is supposed to line up with. */
+  width: 100%;
+  max-width: var(--book-col);
+  margin: 0 auto;
+  padding: 1.5rem 2rem 0;
+}
+
+.book-facts ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.book-fact {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.82rem;
+  min-width: 0;
+}
+
+.book-fact-label {
+  color: rgba(var(--tint), 0.55);
+}
+
+.book-fact-value {
+  font-weight: 650;
+  color: rgba(var(--tint), 0.9);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.book-fact-stars {
+  color: var(--book-accent);
+  letter-spacing: 0.05em;
+  font-size: 0.86rem;
+}
+
+/* The rating reads "4.8 out of 5 · 126 reviews", so the number comes first. */
+.book-fact-rating .book-fact-label {
+  font-weight: 650;
+  color: rgba(var(--tint), 0.9);
+}
+
+.book-fact-rating .book-fact-value {
+  font-weight: 400;
+  color: rgba(var(--tint), 0.55);
+}
+
+/* --- the flow ------------------------------------------------------------- */
+
+.book-scope .wide-shell {
+  max-width: var(--book-col);
+  padding-top: 1.5rem;
+  /* .wide-shell reserves 5.5rem for the floating top bar that only exists in
+     the app shell. Here the bar is in normal flow, so that reservation is added
+     to a viewport the flex column already fills — which pushed the footer a
+     screen-and-a-half down under a field of nothing. */
+  min-height: 0;
+}
+
+.book-hero {
+  background: rgba(var(--panel-rgb), 0.88);
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--book-accent) 14%, transparent), transparent 34%),
+    rgba(var(--panel-rgb), 0.88);
+}
+
+.book-hero .workspace-title {
+  max-width: 18ch;
+}
+
+.book-scope .eyebrow {
+  color: var(--book-accent);
+}
+
+/* How far through this you are. Not a decoration: the estimate flow replaces
+   the whole card each turn, so without this "Quick question" could be the
+   second screen or the fifth and nothing on the page said which. */
+/* .booking-form is a grid with its own 1.4rem gap, so every child margin here
+   is spacing declared twice. Measured before this: 2.8rem between a heading and
+   the sentence under it, 3.4rem between that sentence and the first field — the
+   heading's 1rem, .form-grid's 1rem top and a pair of inline margins all
+   stacking ON the gap. One question read as three unrelated fragments. The gap
+   owns it; the margins go. */
+.book-scope .booking-form > .workspace-section-heading,
+.book-scope .booking-form > .workspace-details-copy {
+  margin-bottom: 0;
+}
+
+.book-scope .booking-form > .workspace-details-copy,
+.book-scope .booking-form > .form-grid,
+.book-scope .booking-form > .booking-days {
+  margin-top: 0;
+}
+
+.book-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.1rem;
+  margin: 0;
+  padding: 0 0 0.4rem;
+  border-bottom: 1px solid rgba(var(--tint), 0.09);
+  list-style: none;
+}
+
+.book-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: rgba(var(--tint), 0.42);
+}
+
+.book-step-n {
+  display: grid;
+  place-items: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  flex: none;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--tint), 0.22);
+  font-size: 0.74rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.book-step[data-state='now'] {
+  color: var(--text);
+}
+
+.book-step[data-state='now'] .book-step-n {
+  border-color: transparent;
+  background: var(--book-accent);
+  color: var(--book-on-accent);
+}
+
+.book-step[data-state='done'] {
+  color: rgba(var(--tint), 0.62);
+}
+
+.book-step[data-state='done'] .book-step-n {
+  border-color: var(--book-accent);
+  border-color: color-mix(in srgb, var(--book-accent) 55%, transparent);
+  color: var(--book-accent);
+}
+
+/* No step is "current" on the classic form, where all three are on one page —
+   there it is a contents list, and lighting one row would be a lie. */
+.book-step[data-state='idle'] {
+  color: rgba(var(--tint), 0.6);
+}
+
+.book-step-head .eyebrow {
+  color: var(--book-accent);
+}
+
+/* The contractor's colour, in both themes. The light-theme rule this overrides
+   is scoped to .workspace-shell and says in its own comment that .btn.primary
+   on a contractor's public surface is their brand and not ours — this page is
+   exactly that surface, so it has to be able to out-specify it. */
+.book-scope .btn.primary,
+:root[data-theme='light'] .book-scope .workspace-shell .btn.primary {
+  background: var(--book-accent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--book-accent) 88%, white), var(--book-accent));
+  color: var(--book-on-accent);
+  border-color: transparent;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.2) inset,
+    0 6px 16px -7px color-mix(in srgb, var(--book-accent) 85%, transparent);
+}
+
+.book-scope .btn.primary:hover,
+:root[data-theme='light'] .book-scope .workspace-shell .btn.primary:hover {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--book-accent) 74%, white), color-mix(in srgb, var(--book-accent) 94%, white));
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.24) inset,
+    0 10px 24px -8px color-mix(in srgb, var(--book-accent) 92%, transparent);
+}
+
+.book-submit {
+  width: 100%;
+}
+
+/* Said next to the button, not after the redirect. scheduled_for stays NULL
+   until the owner confirms, so anything that reads as "done" here — a green
+   tick, the word "Booked" — is the page promising something the system has
+   deliberately not done. */
+.book-reassure {
+  margin: 0.6rem 0 0;
+  text-align: center;
+  font-size: 0.8rem;
+  color: rgba(var(--tint), 0.55);
+}
+
+.book-escape {
+  margin: 1.15rem 0 0;
+  padding-top: 1.05rem;
+  border-top: 1px solid rgba(var(--tint), 0.08);
+  font-size: 0.85rem;
+  color: rgba(var(--tint), 0.6);
+}
+
+.book-escape a,
+.book-inline-call,
+.book-next-call a {
+  font-weight: 700;
+  color: var(--book-accent);
+  white-space: nowrap;
+}
+
+.book-escape a:hover,
+.book-inline-call:hover,
+.book-next-call a:hover {
+  text-decoration: underline;
+}
+
+/* The grid gap owns the space here too. The banner keeps its own semantic
+   colour rather than the contractor's accent on purpose: "that window was just
+   taken" has to read as a system state whatever hue the owner picked, and it
+   says so in words as well as colour. */
+.book-scope .book-alert {
+  margin: 0;
+}
+
+/* The alternative path, and quieter than the main one on purpose — see the
+   comment on the button itself. */
+.book-aside {
+  border-color: rgba(var(--tint), 0.1);
+  background: rgba(var(--panel-rgb), 0.62);
+}
+
+.book-empty-call {
+  margin-top: 1.1rem;
+}
+
+/* --- after they have asked ------------------------------------------------ */
+
+.book-done-hero .workspace-title {
+  max-width: 20ch;
+}
+
+.book-done-when {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.55rem;
+  margin: 0.9rem 0 0.2rem;
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--book-accent);
+  border-color: color-mix(in srgb, var(--book-accent) 42%, transparent);
+  background: rgba(var(--tint), 0.05);
+  background: color-mix(in srgb, var(--book-accent) 10%, transparent);
+}
+
+.book-done-when-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(var(--tint), 0.6);
+}
+
+.book-done-when strong {
+  font-size: 1.08rem;
+  font-weight: 750;
+  color: var(--text);
+}
+
+.book-next-list {
+  counter-reset: booknext;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.book-next-list li {
+  counter-increment: booknext;
+  display: grid;
+  grid-template-columns: 1.6rem minmax(0, 1fr);
+  gap: 0.1rem 0.75rem;
+  margin: 0;
+}
+
+.book-next-list li::before {
+  content: counter(booknext);
+  grid-row: 1 / span 2;
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.08);
+  background: color-mix(in srgb, var(--book-accent) 16%, transparent);
+  color: var(--book-accent);
+  font-size: 0.78rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.book-next-list strong {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.book-next-list span {
+  font-size: 0.86rem;
+  color: rgba(var(--tint), 0.62);
+}
+
+.book-next-call {
+  margin: 1.15rem 0 0;
+  padding-top: 1.05rem;
+  border-top: 1px solid rgba(var(--tint), 0.08);
+  font-size: 0.88rem;
+  color: rgba(var(--tint), 0.62);
+}
+
+/* A rule separates this from what is above it, so with nothing above it there
+   is nothing to separate — just a line floating over blank space. */
+.book-next-call:first-child,
+.book-escape:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.book-hero-call {
+  margin: 1rem 0 0;
+  font-size: 0.92rem;
+  color: rgba(var(--tint), 0.66);
+}
+
+.book-done-back {
+  margin: 0;
+  text-align: center;
+  font-size: 0.88rem;
+  font-weight: 650;
+  color: rgba(var(--tint), 0.6);
+}
+
+.book-done-back a:hover {
+  color: var(--book-accent);
+}
+
+/* --- the footer ----------------------------------------------------------- */
+
+.book-foot {
+  margin-top: auto;
+  display: grid;
+  gap: 0.25rem;
+  padding: 1.4rem clamp(1rem, 3vw, 2rem) 2rem;
+  border-top: 1px solid rgba(var(--tint), 0.08);
+  text-align: center;
+}
+
+.book-foot-biz {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: rgba(var(--tint), 0.78);
+}
+
+.book-foot-biz a:hover {
+  color: var(--book-accent);
+}
+
+/* Our entire presence on a contractor's booking page: one line, no link, no
+   sign-up. Their customer is not a lead of ours to poach. */
+.book-foot-plat {
+  margin: 0;
+  font-size: 0.76rem;
+  color: rgba(var(--tint), 0.38);
+}
+
+/* THE SIDEWAYS SCROLL.
+   ---------------------------------------------------------------------------
+   Measured on a 390px viewport before this: document.scrollWidth 433. The
+   booking form's content box is 302px and its min-content is 388, so the whole
+   page scrolled sideways on every phone made — on the one page in the product
+   whose traffic is almost entirely phones.
+
+   The cause is not here. globals.css already declares the fix at ~line 5157 —
+   `@media (max-width: 900px) { .form-grid { grid-template-columns: 1fr } }` —
+   but that block sits BEFORE `.form-grid { grid-template-columns: 1fr 1fr }` at
+   ~7891, and a media query adds no specificity. Equal weight, later wins: the
+   collapse has never fired, anywhere, for anyone. Verified live — at 390px
+   .form-grid still computes to two 187.6px tracks.
+
+   Repaired inside .book-scope rather than at the shared rule, because moving
+   that one changes every two-column form in the dashboard at once and deserves
+   its own mobile pass rather than riding along with this page.
+
+   min-width:0 belongs with it: a bare <input> refuses to shrink below its
+   default 20-character size, so one column alone would not have been enough. */
+@media (max-width: 720px) {
+  .book-scope .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.book-scope .field {
+  min-width: 0;
+}
+
+.book-scope .field input,
+.book-scope .field select,
+.book-scope .field textarea {
+  min-width: 0;
+  width: 100%;
+}
+
+@media (max-width: 620px) {
+  /* Only when there is a call button competing for the row. Dropped
+     unconditionally, a contractor who keeps their number private got a top bar
+     holding one 37px icon and nothing else — the page stopped saying whose it
+     was. Browsers without :has() keep the name, which is the safe way to be
+     wrong here. */
+  .book-topbar:has(.book-call) .book-brand-name {
+    display: none;
+  }
+
+  .book-brand-logo {
+    max-width: 9rem;
+  }
+
+  .book-facts ul {
+    gap: 0.3rem 1rem;
+  }
+
+  .book-fact {
+    font-size: 0.78rem;
+  }
+
+  .book-steps {
+    gap: 0.3rem 0.75rem;
+  }
+
+  .book-step-label {
+    font-size: 0.78rem;
+  }
+}
+
+@media (max-width: 420px) {
+  /* Below this the three step labels wrap to three lines and eat the top of
+     every card. The numbers alone still carry "3 of these, you're on 2". */
+  .book-step[data-state='todo'] .book-step-label,
+  .book-step[data-state='done'] .book-step-label {
+    display: none;
+  }
+}

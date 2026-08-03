@@ -443,6 +443,18 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     return <>{children}</>;
   }
 
+  // A contractor's public booking page wears THEIR brand, not ours (see
+  // book/[subdomain]/BookingChrome.tsx). This shell has no business around it:
+  // a homeowner was being shown the whole locked app nav — eighteen padlocked
+  // rows of a CRM they will never own — with "Create Free Account" as the
+  // largest button on the page, competing with the one that books the job. And
+  // a signed-in owner opening their own booking link (the dashboard's own
+  // Preview does exactly that) got the full dashboard rail, live lead counts
+  // and all, wrapped around their customer's page.
+  if (pathname.startsWith('/book/')) {
+    return <>{children}</>;
+  }
+
   const brandHref = isLoggedIn ? '/dashboard' : '/';
   const showQuoteRequestAlert = isDashboard && isLoggedIn && newQuoteRequestCount > 0 && newestQuoteRequestId && dismissedQuoteRequestId !== newestQuoteRequestId;
   const newestQuoteRequestAge = newestQuoteRequestCreatedAt

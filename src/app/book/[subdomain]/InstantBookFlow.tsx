@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import SaveButton from '@/components/save-button';
+import { phoneLink } from '@/lib/phone';
+import BookingSteps from './BookingSteps';
 import { evaluateBookingAction, submitBookingAction, submitCallbackAction, type BookingEvaluation } from './actions';
 
 type Props = {
@@ -9,7 +11,19 @@ type Props = {
   siteId: string;
   businessName: string;
   serviceArea: string;
+  /** Only set when the owner made it public — see withPublicContact. */
+  phone: string | null;
 };
+
+// The shape of the flow, so somebody on screen two knows there is a screen
+// three. The estimator may ask several questions or none, so the middle step
+// covers "answering questions" as one leg rather than pretending to know how
+// many there will be.
+const STEPS = [
+  { n: 1, label: 'The job' },
+  { n: 2, label: 'Your estimate' },
+  { n: 3, label: 'Pick a time' },
+];
 
 type Phase = 'describe' | 'asking' | 'thinking' | 'result';
 type Estimate = { min?: number; max?: number; basis?: string };
@@ -25,7 +39,7 @@ const money = (n: number) => '$' + Math.round(n).toLocaleString();
 // Matches the hero intake's deadline so the two behave the same under load.
 const ESTIMATOR_TIMEOUT_MS = 8000;
 
-export default function InstantBookFlow({ subdomain, siteId, businessName, serviceArea }: Props) {
+export default function InstantBookFlow({ subdomain, siteId, businessName, serviceArea, phone }: Props) {
   const [phase, setPhase] = useState<Phase>('describe');
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
@@ -122,9 +136,26 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
       </div>
     ) : null;
 
+  // Which leg of the rail we're on. 'asking' is still the estimate leg — the
+  // questions exist to produce the number, so they belong to step 2 rather than
+  // inventing a step of their own each time one is asked.
+  const stepNow = phase === 'describe' ? 1 : phase === 'result' && evaluation?.verdict.eligible ? 3 : 2;
+  const steps = <BookingSteps steps={STEPS} current={stepNow} />;
+
+  // Every screen carries the phone number when the owner publishes one. Anybody
+  // this flow can't help — bad estimate, wrong area, estimator down — used to
+  // reach the end of the page with nothing to do next.
+  const call = phone ? phoneLink(phone) : null;
+  const callOut = call ? (
+    <p className="book-escape">
+      Rather just talk to someone? Call <a href={call.href}>{call.text}</a>.
+    </p>
+  ) : null;
+
   if (phase === 'thinking') {
     return (
       <section className="panel workspace-section-card booking-form">
+        {steps}
         <div className="booking-thinking" role="status" aria-live="polite">
           <span className="booking-dots" aria-hidden="true"><i /><i /><i /></span>
           <p>Working out your estimate…</p>
@@ -136,11 +167,16 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
   if (phase === 'describe') {
     return (
       <form onSubmit={onDescribe} className="panel workspace-section-card booking-form">
-        <div className="section-heading workspace-section-heading">
-          <p className="eyebrow">Step 1</p>
+        {steps}
+        {/* No "Step 1 of 3" eyebrow. The rail is two centimetres above saying
+            exactly that, and a third statement of the same fact between the
+            rail and the question is noise, not emphasis. The screens that keep
+            an eyebrow keep it because it says something the rail can't — a
+            verdict ("You're good to book") or a frame for a bare question. */}
+        <div className="section-heading workspace-section-heading book-step-head">
           <h2>What do you need done?</h2>
         </div>
-        <p className="workspace-details-copy" style={{ marginTop: '0.4rem', marginBottom: '1rem' }}>
+        <p className="workspace-details-copy">
           Tell {businessName} about the job in a sentence or two — you&apos;ll get an instant ballpark, then pick a
           time.
         </p>
@@ -151,12 +187,14 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
           </div>
           <div className="field full">
             <label htmlFor="flow-address">Address (optional)</label>
-            <input id="flow-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="1418 Maplewood Ave, Royal Oak, MI" />
+            <input id="flow-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="1418 Maplewood Ave, Royal Oak, MI" autoComplete="street-address" />
+            <small className="field-hint">Helps price the job and spot days {businessName} is already near you.</small>
           </div>
           <div className="field full">
-            <button type="submit" className="btn primary">Get my estimate</button>
+            <button type="submit" className="btn primary book-submit">Get my estimate</button>
           </div>
         </div>
+        {callOut}
       </form>
     );
   }
@@ -164,7 +202,8 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
   if (phase === 'asking') {
     return (
       <form onSubmit={onAnswer} className="panel workspace-section-card booking-form">
-        <div className="section-heading workspace-section-heading">
+        {steps}
+        <div className="section-heading workspace-section-heading book-step-head">
           <p className="eyebrow">Quick question</p>
           <h2>{question}</h2>
         </div>
@@ -174,9 +213,10 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
             <input id="answer" required value={answer} onChange={(e) => setAnswer(e.target.value)} autoFocus placeholder="Type your answer…" />
           </div>
           <div className="field full">
-            <button type="submit" className="btn primary">Continue</button>
+            <button type="submit" className="btn primary book-submit">Continue</button>
           </div>
         </div>
+        {callOut}
       </form>
     );
   }
@@ -186,6 +226,7 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
     return (
       <section className="panel workspace-section-card booking-form">
         <p className="empty-state">Something went wrong. Please refresh and try again.</p>
+        {callOut}
       </section>
     );
   }
@@ -194,35 +235,37 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
   if (!evaluation.verdict.eligible) {
     return (
       <form action={submitCallback} className="panel workspace-section-card booking-form">
-        <div className="section-heading workspace-section-heading">
+        {steps}
+        <div className="section-heading workspace-section-heading book-step-head">
           <p className="eyebrow">Almost there</p>
           <h2>{evaluation.fallback.heading}</h2>
         </div>
         {estimateBanner}
-        <p className="workspace-details-copy" style={{ marginTop: '0.75rem', marginBottom: '1rem' }}>{evaluation.fallback.body}</p>
+        <p className="workspace-details-copy">{evaluation.fallback.body}</p>
         <input type="hidden" name="description" value={description} />
         <div className="form-grid">
           <div className="field full">
             <label htmlFor="cb-name">Full name</label>
-            <input id="cb-name" name="name" required placeholder="Jane Homeowner" />
+            <input id="cb-name" name="name" required placeholder="Jane Homeowner" autoComplete="name" />
           </div>
           <div className="field">
             <label htmlFor="cb-phone">Mobile</label>
-            <input id="cb-phone" name="phone" type="tel" placeholder="(248) 555-0199" />
+            <input id="cb-phone" name="phone" type="tel" placeholder="(248) 555-0199" autoComplete="tel" />
           </div>
           <div className="field">
             <label htmlFor="cb-email">Email</label>
-            <input id="cb-email" name="email" type="email" placeholder="jane@email.com" />
-          </div>
-          <div className="field full">
-            <label htmlFor="cb-address">Address</label>
-            <input id="cb-address" name="address" defaultValue={address} placeholder="1418 Maplewood Ave, Royal Oak, MI" />
+            <input id="cb-email" name="email" type="email" placeholder="jane@email.com" autoComplete="email" />
           </div>
           <p className="field-hint booking-contact-hint">Add a mobile <strong>or</strong> an email &mdash; {businessName} needs one to get back to you.</p>
           <div className="field full">
-            <SaveButton className="btn primary" pendingLabel="Sending…" savedLabel="Sent ✓">Request a callback</SaveButton>
+            <label htmlFor="cb-address">Address</label>
+            <input id="cb-address" name="address" defaultValue={address} placeholder="1418 Maplewood Ave, Royal Oak, MI" autoComplete="street-address" />
+          </div>
+          <div className="field full">
+            <SaveButton className="btn primary book-submit" pendingLabel="Sending…" savedLabel="Sent ✓">Request a callback</SaveButton>
           </div>
         </div>
+        {callOut}
       </form>
     );
   }
@@ -231,44 +274,47 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
   if (evaluation.days.length === 0) {
     return (
       <form action={submitCallback} className="panel workspace-section-card booking-form">
-        <div className="section-heading workspace-section-heading">
+        {steps}
+        <div className="section-heading workspace-section-heading book-step-head">
           <p className="eyebrow">You&apos;re qualified</p>
           <h2>No open windows online right now</h2>
         </div>
         {estimateBanner}
-        <p className="workspace-details-copy" style={{ marginTop: '0.75rem', marginBottom: '1rem' }}>
+        <p className="workspace-details-copy">
           Leave your details and {businessName} will reach out with the next opening.
         </p>
         <input type="hidden" name="description" value={description} />
         <div className="form-grid">
           <div className="field full">
             <label htmlFor="nw-name">Full name</label>
-            <input id="nw-name" name="name" required placeholder="Jane Homeowner" />
+            <input id="nw-name" name="name" required placeholder="Jane Homeowner" autoComplete="name" />
           </div>
           <div className="field">
             <label htmlFor="nw-phone">Mobile</label>
-            <input id="nw-phone" name="phone" type="tel" placeholder="(248) 555-0199" />
+            <input id="nw-phone" name="phone" type="tel" placeholder="(248) 555-0199" autoComplete="tel" />
           </div>
           <div className="field">
             <label htmlFor="nw-email">Email</label>
-            <input id="nw-email" name="email" type="email" placeholder="jane@email.com" />
+            <input id="nw-email" name="email" type="email" placeholder="jane@email.com" autoComplete="email" />
           </div>
           <p className="field-hint booking-contact-hint">Add a mobile <strong>or</strong> an email &mdash; {businessName} needs one to get back to you.</p>
           <div className="field full">
             <label htmlFor="nw-address">Address</label>
-            <input id="nw-address" name="address" defaultValue={address} placeholder="1418 Maplewood Ave, Royal Oak, MI" />
+            <input id="nw-address" name="address" defaultValue={address} placeholder="1418 Maplewood Ave, Royal Oak, MI" autoComplete="street-address" />
           </div>
           <div className="field full">
-            <SaveButton className="btn primary" pendingLabel="Sending…" savedLabel="Sent ✓">Request a callback</SaveButton>
+            <SaveButton className="btn primary book-submit" pendingLabel="Sending…" savedLabel="Sent ✓">Request a callback</SaveButton>
           </div>
         </div>
+        {callOut}
       </form>
     );
   }
 
   return (
     <form action={submitBooking} className="panel workspace-section-card booking-form">
-      <div className="section-heading workspace-section-heading">
+      {steps}
+      <div className="section-heading workspace-section-heading book-step-head">
         <p className="eyebrow">You&apos;re good to book</p>
         <h2>Pick your window</h2>
       </div>
@@ -276,7 +322,7 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
       <input type="hidden" name="description" value={description} />
       {estimate?.max != null ? <input type="hidden" name="estimateMax" value={estimate.max} /> : null}
 
-      <div className="booking-days" style={{ marginTop: '1rem' }}>
+      <div className="booking-days">
         {evaluation.days.map((day) => (
           <div className={`booking-day-group${day.nearby ? ' is-nearby' : ''}`} key={day.dateKey}>
             <p className="booking-day-heading">
@@ -299,32 +345,39 @@ export default function InstantBookFlow({ subdomain, siteId, businessName, servi
         ))}
       </div>
 
-      <div className="section-heading workspace-section-heading" style={{ marginTop: '1.5rem' }}>
+      <div className="section-heading workspace-section-heading book-step-head">
         <p className="eyebrow">Your details</p>
         <h2>Where should we go?</h2>
       </div>
       <div className="form-grid">
         <div className="field full">
           <label htmlFor="bk-name">Full name</label>
-          <input id="bk-name" name="name" required placeholder="Jane Homeowner" />
+          <input id="bk-name" name="name" required placeholder="Jane Homeowner" autoComplete="name" />
         </div>
         <div className="field">
           <label htmlFor="bk-phone">Mobile</label>
-          <input id="bk-phone" name="phone" type="tel" placeholder="(248) 555-0199" />
+          <input id="bk-phone" name="phone" type="tel" placeholder="(248) 555-0199" autoComplete="tel" />
         </div>
         <div className="field">
           <label htmlFor="bk-email">Email</label>
-          <input id="bk-email" name="email" type="email" placeholder="jane@email.com" />
+          <input id="bk-email" name="email" type="email" placeholder="jane@email.com" autoComplete="email" />
         </div>
         <p className="field-hint booking-contact-hint">Add a mobile <strong>or</strong> an email &mdash; {businessName} needs one to get back to you.</p>
         <div className="field full">
           <label htmlFor="bk-address">Address</label>
-          <input id="bk-address" name="address" defaultValue={address} placeholder="1418 Maplewood Ave, Royal Oak, MI" />
+          <input id="bk-address" name="address" defaultValue={address} placeholder="1418 Maplewood Ave, Royal Oak, MI" autoComplete="street-address" />
         </div>
         <div className="field full">
-          <SaveButton className="btn primary" pendingLabel="Booking…" savedLabel="Booked ✓">Request this time</SaveButton>
+          <SaveButton className="btn primary book-submit" pendingLabel="Sending…" savedLabel="Sent ✓">Request this time</SaveButton>
+          {/* "Booked ✓" was a lie the button told for the half-second before the
+              redirect: scheduled_for stays NULL until the owner confirms, which
+              is the whole safety property of this feature. */}
+          <p className="book-reassure">
+            This is a request, not a charge. {businessName} confirms before anything is booked.
+          </p>
         </div>
       </div>
+      {callOut}
     </form>
   );
 }
