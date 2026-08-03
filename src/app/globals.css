@@ -9641,6 +9641,72 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
    contractor who had rating-screening switched on will notice their private
    feedback drop and their public reviews get more varied, and deserves to know
    that was us removing something that put their profile at risk. */
+/* Change orders — owner side. */
+.change-order-list { display: flex; flex-direction: column; gap: 0.9rem; margin-top: 0.6rem; }
+.change-order {
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--tint), 0.16);
+  background: rgba(var(--tint), 0.04);
+}
+.change-order.status-draft { border-color: var(--ink-amber-3); background: rgba(255, 179, 122, 0.09); }
+.change-order.status-approved { border-color: var(--ink-lime-1); }
+.change-order-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; }
+.change-order-status { margin-left: 0.5rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--mute-t45); }
+.change-order-amount { font-weight: 700; font-variant-numeric: tabular-nums; }
+/* The crew member's own words. Quoted and set apart because this is the primary
+   record of the condition found on site, not a field the office filled in. */
+.change-order-note {
+  margin: 0.6rem 0 0;
+  padding: 0.55rem 0.8rem;
+  border-left: 3px solid rgba(var(--tint), 0.25);
+  font-style: italic;
+  line-height: 1.5;
+  color: rgba(var(--tint), 0.85);
+}
+.change-order-note cite { display: block; margin-top: 0.25rem; font-style: normal; font-size: 0.78rem; color: var(--mute-t45); }
+.change-order-photos, .change-order-scope, .change-order-signature { margin: 0.5rem 0 0; font-size: 0.83rem; color: var(--mute-t55); }
+.change-order-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.7rem; }
+.change-order-actions small { font-size: 0.76rem; color: var(--mute-t45); flex: 1 1 12rem; }
+.change-order-fields { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.7rem; }
+.change-order-fields label { font-size: 0.76rem; color: var(--mute-t50); margin-top: 0.4rem; }
+.change-order-draft {
+  margin-top: 0.7rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  border: 1px dashed rgba(var(--tint), 0.28);
+}
+.change-order-draft ul { list-style: none; padding: 0; margin: 0.5rem 0 0; display: flex; flex-direction: column; gap: 0.25rem; }
+.change-order-draft li { display: flex; justify-content: space-between; gap: 0.6rem; font-size: 0.85rem; }
+.change-order-assumptions { margin: 0.6rem 0 0; font-size: 0.79rem; line-height: 1.45; color: var(--mute-t55); }
+.change-order-blockers { margin: 0.6rem 0 0; padding-left: 1.1rem; font-size: 0.8rem; color: var(--ink-amber-1, var(--mute-t55)); }
+.change-order-message { margin: 0.6rem 0 0; font-size: 0.82rem; color: var(--ink-lime-1); }
+.change-order-message.is-error { color: var(--ink-orange-1); }
+
+/* Change orders — homeowner side. Approve and Decline are the SAME weight:
+   a page that makes yes a primary button and no a grey link is a page designed
+   to extract an answer, and the value of a written record is that it was free. */
+.client-co-list { display: flex; flex-direction: column; gap: 0.9rem; margin-top: 0.6rem; }
+.client-co {
+  padding: 1rem 1.1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--tint), 0.16);
+  background: rgba(var(--tint), 0.04);
+}
+.client-co.is-open { border-color: var(--ink-amber-3); background: rgba(255, 179, 122, 0.1); }
+.client-co-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; flex-wrap: wrap; }
+.client-co-status { margin-left: 0.5rem; font-size: 0.74rem; color: var(--mute-t50); }
+.client-co-amount { font-weight: 700; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.client-co-scope { margin: 0.55rem 0 0; line-height: 1.55; }
+.client-co-items { list-style: none; padding: 0; margin: 0.6rem 0 0; display: flex; flex-direction: column; gap: 0.25rem; }
+.client-co-items li { display: flex; justify-content: space-between; gap: 0.6rem; font-size: 0.86rem; color: var(--mute-t55); }
+.client-co-photos, .client-co-foot { margin: 0.6rem 0 0; font-size: 0.8rem; line-height: 1.45; color: var(--mute-t50); }
+.client-co-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.8rem; }
+.client-co-actions .btn { flex: 1 1 10rem; }
+.client-co-form { display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.8rem; }
+.client-co-form label { font-size: 0.78rem; color: var(--mute-t50); }
+.client-co-error { margin: 0.6rem 0 0; font-size: 0.83rem; color: var(--ink-orange-1); }
+
 /* Quote Guard. Nothing here blocks sending, so nothing here is styled like an
    error — a panel that looks like a failure gets closed instead of read. */
 .quote-review {

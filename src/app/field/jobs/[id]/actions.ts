@@ -16,7 +16,7 @@ import { applyArrivalStatus, sendArrival } from '@/lib/arrival-send';
 import { getActiveTracking, updateTechPosition } from '@/lib/job-tracking';
 import { clockIn, clockOut, getOpenShift, getTimeClockMode } from '@/lib/time-clock-data';
 
-async function assertAssigned(supabase: SupabaseClient, accountId: string, jobId: string, crewId: string) {
+export async function assertAssigned(supabase: SupabaseClient, accountId: string, jobId: string, crewId: string) {
   if (!(await isJobAssignedToCrew(supabase, accountId, jobId, crewId))) {
     throw new Error('You are not assigned to this job.');
   }

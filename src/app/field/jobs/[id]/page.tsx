@@ -7,6 +7,7 @@ import { listJobTasks, taskProgress } from '@/lib/job-tasks';
 import SaveButton from '@/components/save-button';
 import FieldHeader from '../../FieldHeader';
 import { setFieldJobStatusAction, postFieldUpdateAction, logFieldTimeAction, logFieldMaterialAction, toggleFieldTaskAction, addFieldTaskAction, sendArrivalFieldAction, setArrivalStatusFieldAction, updateArrivalPositionAction, clockInFieldAction, clockOutFieldAction } from './actions';
+import { raiseFieldChangeOrderAction } from './change-order-actions';
 import { getOpenShift, getTimeClockMode } from '@/lib/time-clock-data';
 import { formatClock, formatElapsed } from '@/lib/time-clock';
 import FieldClock from './FieldClock';
@@ -182,6 +183,34 @@ export default async function FieldJobPage({ params, searchParams }: { params: {
         <section className="field-block">
           <h2 className="field-block-title">Scope of work</h2>
           <p className="field-scope-body">{job.scope || 'No scope notes added yet.'}</p>
+        </section>
+
+        {/* Found something that isn't in the job? Write it up here.
+            No price field on purpose: what to charge is the owner's call, and
+            asking a crew member for a number either gets a guess sent to a
+            customer or gets nothing raised at all. Their job is the part only
+            they can do — documenting it while standing in front of it. */}
+        <section className="field-block">
+          <h2 className="field-block-title">Found extra work?</h2>
+          <p className="field-block-lead">
+            Photograph it and say what you found. Your office prices it and asks the customer — you don&apos;t have to
+            have that conversation.
+          </p>
+          <form action={raiseFieldChangeOrderAction.bind(null, job.id)} className="field-update-form">
+            <input name="title" maxLength={120} placeholder="Rotted sheathing over the garage" aria-label="What did you find?" />
+            <textarea
+              name="note"
+              rows={3}
+              required
+              maxLength={2000}
+              placeholder="Six sheets of decking are rotted through — won't hold a nail. Needs replacing before the new shingles go on."
+              aria-label="Describe what you found"
+            />
+            <input type="file" name="photos" accept="image/*" capture="environment" multiple aria-label="Photos of what you found" />
+            <SaveButton className="btn primary" pendingLabel="Sending…" savedLabel="Sent ✓">
+              Send to the office
+            </SaveButton>
+          </form>
         </section>
 
         {/* Only mounted while a trip is actually in flight — no live trip, no

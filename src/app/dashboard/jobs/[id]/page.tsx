@@ -18,6 +18,9 @@ import { getJob, listCosts, computeMargin, formatJobQuoteSummary, formatJobSched
 import { listServices } from '@/lib/services';
 import { COST_SOURCE_LABEL, costConfidence, describeDuplicate, duplicateCostIds, marginVerdict } from '@/lib/cost-truth';
 import { getMinMarginPct } from '@/lib/cost-truth-data';
+import { listChangeOrders } from '@/lib/change-orders-data';
+import { changeOrderTotals } from '@/lib/change-orders';
+import ChangeOrderPanel from './ChangeOrderPanel';
 import { listJobTasks, taskProgress } from '@/lib/job-tasks';
 import { createJobPhotoLinks } from '@/lib/job-photo-storage';
 import { listPayments } from '@/lib/payments';
@@ -109,6 +112,7 @@ export default async function JobDetailPage({
 
   const costs = await listCosts(supabase, accountId, job.id);
   const margin = computeMargin(job, costs);
+  const changeOrders = await listChangeOrders(supabase, accountId, job.id);
   // How defensible this job's cost figure is, and whether it's worth saying
   // anything about the margin. Both stay quiet on a job with nothing recorded.
   const confidence = costConfidence(
@@ -1115,6 +1119,29 @@ export default async function JobDetailPage({
           </div>
 
           <div>
+            {changeOrders.length > 0 ? (
+              <details className="panel workspace-section-card workspace-details job-action-details" open={changeOrderTotals(changeOrders).unsent > 0}>
+                <summary className="workspace-details-summary job-action-summary">
+                  <div className="section-heading workspace-section-heading compact-heading">
+                    <p className="eyebrow">Extra work</p>
+                    <h2>Change orders</h2>
+                  </div>
+                  <span className="workspace-details-copy">
+                    {(() => {
+                      const totals = changeOrderTotals(changeOrders);
+                      // The unsent figure leads because it's the actionable one:
+                      // work the crew documented that nobody has billed for.
+                      if (totals.unsent > 0) return `${formatMoney(totals.unsent)} written up and not sent yet.`;
+                      if (totals.awaiting > 0) return `${formatMoney(totals.awaiting)} waiting on the customer.`;
+                      if (totals.approved > 0) return `${formatMoney(totals.approved)} approved and added to this job.`;
+                      return 'Extra work found on site.';
+                    })()}
+                  </span>
+                </summary>
+                <ChangeOrderPanel jobId={job.id} orders={changeOrders} />
+              </details>
+            ) : null}
+
             <details className="panel workspace-section-card workspace-details job-action-details sticky-card">
               <summary className="workspace-details-summary job-action-summary">
                 <div className="section-heading workspace-section-heading compact-heading">

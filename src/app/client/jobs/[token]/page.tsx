@@ -5,6 +5,11 @@ import { formatMoney } from '@/lib/jobs';
 import { formatScheduleOption } from '@/lib/scheduling';
 import { approveClientJobQuoteAction, requestDifferentClientJobScheduleOptionsAction, selectClientJobScheduleOptionAction, startSubscriptionAction, authorizePaymentPlanAction, payPlanBalanceAction } from './actions';
 import QuoteDocument from './QuoteDocument';
+import ChangeOrders from './ChangeOrders';
+import { createAdminClient } from '@/lib/auth';
+import { loadClientChangeOrders } from '@/lib/change-orders-data';
+import { toClientChangeOrders } from '@/lib/change-orders';
+import { resolveJobAccess } from '@/lib/change-order-client';
 
 const STATUS_LABEL: Record<string, string> = {
   new_lead: 'New request',
@@ -35,6 +40,14 @@ function formatFeedTime(value: string): string {
 
 export default async function ClientJobDashboardPage({ params }: { params: { token: string } }) {
   const dashboard = await getClientJobDashboard(params.token);
+
+  // Loaded from the token independently of the dashboard so an un-migrated
+  // database (no change_orders table) shows the job as it always did rather
+  // than blanking the whole page.
+  const access = await resolveJobAccess(params.token);
+  const clientChangeOrders = access
+    ? toClientChangeOrders(await loadClientChangeOrders(createAdminClient(), access.accountId, access.jobId))
+    : [];
 
   if (!dashboard) {
     return (
@@ -333,6 +346,10 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
           <p className="workspace-lead">Schedule: {dashboard.job.schedule_label}</p>
         </div>
       </section>
+
+      {/* Above the stages: a decision the homeowner has to make outranks a
+          progress report they only have to read. */}
+      <ChangeOrders token={params.token} orders={clientChangeOrders} />
 
       {/* Proof-to-Pay stages. Above the general checklist because a stage
           carries its own evidence AND the amount attached to it — this is the
