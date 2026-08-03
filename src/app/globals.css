@@ -9641,6 +9641,23 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
    contractor who had rating-screening switched on will notice their private
    feedback drop and their public reviews get more varied, and deserves to know
    that was us removing something that put their profile at risk. */
+/* Client portal — the homeowner's own way back in. */
+.portal-request-form { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1.2rem; max-width: 26rem; }
+.portal-request-form label { font-size: 0.85rem; color: var(--mute-t55); }
+.portal-request-done { margin-top: 1.2rem; max-width: 30rem; }
+.portal-request-fine { margin: 0.5rem 0 0; font-size: 0.8rem; line-height: 1.5; color: var(--mute-t45); }
+.portal-job-list { list-style: none; padding: 0; margin: 0.6rem 0 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.portal-job {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 0.8rem; flex-wrap: wrap;
+  padding: 0.7rem 0.9rem; border-radius: 12px; background: rgba(var(--tint), 0.05);
+}
+.portal-job.status-complete { opacity: 0.9; }
+.portal-job-main { display: flex; flex-direction: column; gap: 0.15rem; flex: 1 1 16rem; }
+.portal-job-meta { font-size: 0.79rem; color: var(--mute-t50); }
+.portal-job-amount { font-weight: 700; font-variant-numeric: tabular-nums; }
+.portal-note, .portal-foot { margin: 0.8rem 0 0; font-size: 0.8rem; line-height: 1.5; color: var(--mute-t45); }
+.portal-foot { text-align: center; padding-bottom: 2rem; }
+
 /* Warranty — owner side. Green only for cover that is genuinely live: this app
    uses green for money agreed, and "still in warranty" is the same kind of fact. */
 .warranty-panel { display: flex; flex-direction: column; gap: 1rem; margin-top: 0.6rem; }

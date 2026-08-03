@@ -544,6 +544,37 @@ export async function sendBookingConfirmationEmail(input: {
 // Dunning: the client's saved card was declined on a recurring charge — ask them
 // to update it (same hosted setup flow, decline framing). Throws on provider
 // rejection so the caller can report it didn't send.
+/**
+ * The homeowner's way back into their own job history.
+ *
+ * Transactional, not marketing: it is only ever sent in direct response to
+ * somebody typing their address into the contractor's site and asking for it.
+ * That's why it carries no unsubscribe footer and no mailing address — it isn't
+ * a message they can be signed up for.
+ */
+export async function sendClientPortalLinkEmail(input: {
+  recipientEmail: string;
+  businessName: string;
+  linkUrl: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('Email provider is not configured.');
+  }
+
+  const result = await resend.emails.send({
+    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    to: input.recipientEmail,
+    subject: `Your jobs with ${input.businessName}`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><h1 style="font-size:24px;margin:0 0 12px">Here's your link</h1><p style="margin:0 0 20px;line-height:1.5">This opens everything ${escapeHtml(input.businessName)} has done for you — past jobs, what's covered by warranty, and how long you've got left on it.</p><p><a href="${escapeHtml(input.linkUrl)}" style="display:inline-block;padding:12px 18px;background:#172033;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">Open my jobs</a></p><p style="margin-top:18px;color:#6b7280;font-size:13px;line-height:1.5">The link works for 90 days and only opens your own records. Don't forward it — anyone with it can see your job history. If you didn't ask for this, you can ignore it; nothing has changed on your account.</p><p style="margin-top:24px;color:#6b7280;font-size:13px">${escapeHtml(input.businessName)} · Let's Get Quoted</p></div>`,
+    reply_to: 'hello@letsgetquoted.com',
+  });
+
+  if (result.error) {
+    console.error('Failed to send client portal link email:', result.error);
+    throw new Error(result.error.message);
+  }
+}
+
 export async function sendCardUpdateEmail(input: {
   recipientEmail: string;
   businessName: string;
