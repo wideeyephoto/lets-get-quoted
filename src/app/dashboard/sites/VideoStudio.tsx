@@ -102,6 +102,14 @@ export default function VideoStudio({ content, onChange, onClose }: VideoStudioP
   // point — so the owner is told where they went instead of wondering.
   const parked = content.videos.length - shown.length;
 
+  // Read off STYLE_FIELDS rather than a second hand-kept list, so the note under
+  // a field and the "uses" list on the style card can never disagree. Story
+  // leads with Location instead of an eyebrow; testimonial uses each clip's own
+  // quote instead of one shared description.
+  const styleUses = STYLE_FIELDS[content.style].uses;
+  const usesEyebrow = styleUses.includes('Small line above');
+  const usesBody = styleUses.includes('Description');
+
   const setVideos = (videos: SiteVideoItem[]) => onChange({ ...content, videos: videos.slice(0, MAX_VIDEO_ITEMS) });
 
   const patchVideo = (id: string, patch: Partial<SiteVideoItem>) =>
@@ -160,6 +168,45 @@ export default function VideoStudio({ content, onChange, onClose }: VideoStudioP
   if (!mounted) return null;
 
   const styleInfo = STYLE_FIELDS[content.style];
+
+  // Two field groups that are CONTENT for one layout and dead weight for the
+  // other five. Defined once and rendered in one of two places: up with the rest
+  // of the words when the current layout prints them, folded into Advanced when
+  // it doesn't — so they stay reachable (switching back must not lose them)
+  // without burying a Story owner's Location under a disclosure triangle.
+  const projectDetails = (
+    <>
+      <div className={styles.contentSubhead}>
+        <strong>Project details</strong>
+        {content.style !== 'story' && <small>shown by the Project story layout</small>}
+      </div>
+      <label className={styles.formField}><span>Location</span><input value={content.location} maxLength={60} onChange={(event) => onChange({ ...content, location: event.target.value })} placeholder="Royal Oak, MI" /></label>
+      <div className={styles.formColumns}>
+        <label className={styles.formField}><span>Timeline</span><input value={content.timeline} maxLength={40} onChange={(event) => onChange({ ...content, timeline: event.target.value })} placeholder="2 days" /></label>
+        <label className={styles.formField}><span>Service</span><input value={content.service} maxLength={40} onChange={(event) => onChange({ ...content, service: event.target.value })} placeholder="Roofing" /></label>
+      </div>
+    </>
+  );
+
+  const stepFields = (
+    <>
+      <div className={styles.contentSubhead}>
+        <strong>Steps</strong>
+        {content.style !== 'process' && <small>shown by the Process layout</small>}
+      </div>
+      {content.steps.slice(0, MAX_VIDEO_STEPS).map((step, index) => (
+        <label key={step.id} className={styles.formField}>
+          <span>Step {index + 1}</span>
+          <input
+            value={step.title}
+            maxLength={40}
+            placeholder={['Free estimate', 'Approve quote', 'We get to work', 'Final walkthrough'][index] || 'Step'}
+            onChange={(event) => onChange({ ...content, steps: content.steps.map((other) => (other.id === step.id ? { ...other, title: event.target.value } : other)) })}
+          />
+        </label>
+      ))}
+    </>
+  );
 
   return createPortal(
     <div className={styles.pickerOverlay} role="dialog" aria-modal="true" aria-label="Video section" onMouseDown={onClose}>
@@ -336,10 +383,36 @@ export default function VideoStudio({ content, onChange, onClose }: VideoStudioP
               </p>
             )}
 
+            {/* The words on the page, in the order they appear on it.
+                These two sat under "Advanced" while the playback switches and
+                the overlay slider — which are settings — sat above it. That is
+                backwards: an eyebrow and a description are the text a visitor
+                reads, and five of the six layouts print them. Configuration can
+                be folded away; content shouldn't be. */}
+            <label className={styles.formField}>
+              <span>Small line above the headline</span>
+              <input value={content.eyebrow} maxLength={40} onChange={(event) => onChange({ ...content, eyebrow: event.target.value })} placeholder="Meet the owner" />
+              {!usesEyebrow && (
+                <small className={styles.fieldHint}>Saved, but this layout leads with Location instead — switch layouts and it comes back.</small>
+              )}
+            </label>
+
             <label className={styles.formField}>
               <span>Headline</span>
               <input value={content.headline} maxLength={120} onChange={(event) => onChange({ ...content, headline: event.target.value })} placeholder="See what quality craftsmanship looks like." />
             </label>
+
+            <label className={styles.formField}>
+              <span>Description</span>
+              <textarea rows={3} value={content.body} maxLength={400} onChange={(event) => onChange({ ...content, body: event.target.value })} placeholder="A quick hello, what we believe, and what homeowners can expect." />
+              {!usesBody && (
+                <small className={styles.fieldHint}>Saved, but this layout uses each clip&apos;s quote instead of one description — switch layouts and it comes back.</small>
+              )}
+            </label>
+
+            {/* Up here only for the layout that actually renders them. */}
+            {content.style === 'story' && projectDetails}
+            {content.style === 'process' && stepFields}
 
             {content.style !== 'testimonial' && (
               <label className={styles.formField}>
@@ -384,38 +457,15 @@ export default function VideoStudio({ content, onChange, onClose }: VideoStudioP
             {advanced && (
               <div className={styles.vsAdvanced}>
                 <label className={styles.formField}>
-                  <span>Small line above the headline</span>
-                  <input value={content.eyebrow} maxLength={40} onChange={(event) => onChange({ ...content, eyebrow: event.target.value })} placeholder="Meet the owner" />
-                </label>
-                <label className={styles.formField}>
-                  <span>Description</span>
-                  <textarea rows={3} value={content.body} maxLength={400} onChange={(event) => onChange({ ...content, body: event.target.value })} placeholder="A quick hello, what we believe, and what homeowners can expect." />
-                </label>
-                <label className={styles.formField}>
                   <span>Button link</span>
                   <input value={content.ctaHref} maxLength={200} onChange={(event) => onChange({ ...content, ctaHref: event.target.value })} placeholder="#contact" />
                   <small className={styles.fieldHint}>#contact sends them to your request form. A full https:// address works too.</small>
                 </label>
 
-                <div className={styles.contentSubhead}><strong>Project details</strong><small>shown by the Project story layout</small></div>
-                <label className={styles.formField}><span>Location</span><input value={content.location} maxLength={60} onChange={(event) => onChange({ ...content, location: event.target.value })} placeholder="Royal Oak, MI" /></label>
-                <div className={styles.formColumns}>
-                  <label className={styles.formField}><span>Timeline</span><input value={content.timeline} maxLength={40} onChange={(event) => onChange({ ...content, timeline: event.target.value })} placeholder="2 days" /></label>
-                  <label className={styles.formField}><span>Service</span><input value={content.service} maxLength={40} onChange={(event) => onChange({ ...content, service: event.target.value })} placeholder="Roofing" /></label>
-                </div>
-
-                <div className={styles.contentSubhead}><strong>Steps</strong><small>shown by the Process layout</small></div>
-                {content.steps.slice(0, MAX_VIDEO_STEPS).map((step, index) => (
-                  <label key={step.id} className={styles.formField}>
-                    <span>Step {index + 1}</span>
-                    <input
-                      value={step.title}
-                      maxLength={40}
-                      placeholder={['Free estimate', 'Approve quote', 'We get to work', 'Final walkthrough'][index] || 'Step'}
-                      onChange={(event) => onChange({ ...content, steps: content.steps.map((other) => (other.id === step.id ? { ...other, title: event.target.value } : other)) })}
-                    />
-                  </label>
-                ))}
+                {/* Still reachable for every other layout, so switching back
+                    never loses what was typed here. */}
+                {content.style !== 'story' && projectDetails}
+                {content.style !== 'process' && stepFields}
 
                 <div className={styles.contentSubhead}><strong>On phones</strong></div>
                 <label className={styles.vsSwitchRow}>
