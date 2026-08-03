@@ -560,7 +560,17 @@
 .deviceToggle { display: inline-flex; padding: 3px; border: 1px solid rgba(var(--tint), .12); border-radius: 6px; background: rgba(var(--tint), .035); }
 .deviceToggle button { min-height: 32px; padding: .4rem .7rem; border: 0; border-radius: 4px; background: transparent; color: var(--muted-2); font-size: .72rem; cursor: pointer; }
 .deviceToggle .activeDevice { background: var(--text); color: var(--bg-3); }
-.previewStage { height: calc(100vh - 10rem); overflow: hidden; display: flex; justify-content: center; padding: .75rem; background: repeating-linear-gradient(45deg, var(--bg-3), var(--bg-3) 10px, var(--ground-2) 10px, var(--ground-2) 20px); }
+/* position: relative so the narrow-screen control chips can sit on the preview
+   rather than in a row above it. */
+.previewStage { position: relative; height: calc(100vh - 10rem); overflow: hidden; display: flex; justify-content: center; padding: .75rem; background: repeating-linear-gradient(45deg, var(--bg-3), var(--bg-3) 10px, var(--ground-2) 10px, var(--ground-2) 20px); }
+
+/* --- The tab switcher, as a chip on the preview (narrow screens only) ------ */
+.tabChipRoot { position: relative; }
+.tabChip { display: inline-flex; align-items: center; gap: .3rem; min-height: 30px; padding: .25rem .6rem; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; background: transparent; color: #fff; font-size: .72rem; font-weight: 800; cursor: pointer; }
+.tabChipMenu { position: absolute; top: calc(100% + .35rem); left: 0; z-index: 4; display: grid; min-width: 148px; padding: .25rem; border: 1px solid rgba(255,255,255,.14); border-radius: 12px; background: rgba(10,14,22,.94); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); box-shadow: 0 18px 44px -14px rgba(0,0,0,.85); }
+.tabChipMenu button { min-height: 40px; padding: .4rem .7rem; border: 0; border-radius: 8px; background: transparent; color: var(--text); font-size: .82rem; font-weight: 700; text-align: left; cursor: pointer; }
+.tabChipMenu button:hover { background: rgba(255,255,255,.08); }
+.tabChipMenu .tabChipActive { background: linear-gradient(180deg, #ff8a3d, #ff7a21); color: #fff; }
 .previewFrame { width: 100%; height: 100%; border: 0; background: #fff; box-shadow: 0 15px 40px rgba(0,0,0,.35); transition: width .2s ease; }
 .mobileStage .previewFrame { width: min(390px, 100%); }
 .formSection .imageGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -593,10 +603,11 @@
        bar sticks directly below it. Two hand-kept numbers would drift the
        moment either changed. */
     --preview-height: 48vh;
-    /* Matches .previewToolbar's real height at this width. Measured, not
-       assumed: it was wrapping to 119px and the tab bar stuck to the wrong
-       place because this said 58. */
-    --preview-toolbar: 58px;
+    /* Zero: below this width the toolbar row isn't rendered at all — its
+       controls float on the preview instead. Kept as a variable rather than
+       deleted, because the sticky offset and scroll-margin arithmetic still
+       reads it, and a name is easier to follow than a vanished term. */
+    --preview-toolbar: 0px;
     /* How far down the page anything sticky has to start. Zero here; the app's
        own mobile top bar only appears further down (see below). */
     --app-topbar: 0px;
@@ -648,18 +659,44 @@
      scroll-margin-top reserves exactly the chrome above it. */
   .sectionCard,
   .formField {
-    scroll-margin-top: calc(var(--app-topbar) + var(--preview-height) + var(--preview-toolbar) + 3.6rem);
+    scroll-margin-top: calc(var(--app-topbar) + var(--preview-height) + var(--preview-toolbar) + 1rem);
   }
 
-  /* The four tabs sit directly under the pinned preview rather than scrolling
-     away with the form — switching from Setup to Brand shouldn't mean scrolling
-     back to the top first. Opaque, because content now passes behind it. */
-  .builderTabs {
-    position: sticky;
-    top: calc(var(--app-topbar) + var(--preview-height) + var(--preview-toolbar));
-    z-index: 4;
-    background: var(--bg-3);
+  /* The controls, floating on the preview instead of sitting above it.
+     Both clusters ride the top corners, over the site's own header — the least
+     information-dense band of any page. Translucent with a blur so what is
+     underneath still reads as a website rather than being blanked out. */
+  .previewChipsLeft,
+  .previewChipsRight {
+    position: absolute;
+    top: .5rem;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: .3rem;
   }
+  .previewChipsLeft { left: .5rem; }
+  .previewChipsRight { right: .5rem; }
+
+  .previewChipsLeft > *,
+  .previewChipsRight > * {
+    border-radius: 999px;
+    background: rgba(10, 14, 22, .72);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 6px 18px -8px rgba(0, 0, 0, .8);
+  }
+  .previewChipsRight .deviceToggle { border-color: rgba(255, 255, 255, .16); padding: 2px; }
+  .previewChipsRight .deviceToggle button { min-height: 26px; padding: .2rem .5rem; font-size: .66rem; border-radius: 999px; }
+  /* Square while it is just the ⤢ glyph, so it reads as an icon button rather
+     than a stray character, and takes ~34px instead of ~100px. */
+  .previewChipsRight .previewExpandButton { min-width: 34px; min-height: 34px; padding: .25rem .5rem; justify-content: center; border-color: rgba(255, 255, 255, .16); font-size: .85rem; }
+
+  /* The tab ROW is gone here — BuilderTabChip stands in for it, floating on the
+     preview. As a row it was 63px of permanent chrome for navigation used once
+     a session; together with the preview's own toolbar that was 112px of a
+     664px screen, and the form was left with 162px, about two fields. */
+  .builderTabs { display: none; }
 
   .previewExpandButton {
     display: inline-flex;
@@ -725,16 +762,6 @@
   /* The preview toolbar wrapped to 119px at 390px wide — taller than a third of
      the preview it labels, and it threw off the tab bar's sticky offset, which
      is measured from it. Dropping the hint keeps it to one row. */
-  /* Every row of chrome here is a row of preview the owner doesn't get. The
-     label goes entirely: a panel showing the website, directly above the form
-     that edits it, does not need to be captioned "Live preview" on a 390px
-     screen. What's left is the three controls, on one row. */
-  .previewToolbar { min-height: 0; padding: .3rem .4rem; justify-content: flex-end; gap: .4rem; }
-  .previewToolbar > div:first-child { display: none; }
-  .deviceToggle button, .previewExpandButton { min-height: 30px; padding: .3rem .55rem; }
-  /* Kept in step with the compacted toolbar above — this is what the sticky tab
-     bar offsets itself by, so the two have to move together. */
-  .builderGrid { --preview-toolbar: 49px; }
   .builderTabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .builderTabs button { min-width: 0; padding-inline: .2rem; font-size: .64rem; }
   .formColumns { grid-template-columns: 1fr; }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Site } from '@/lib/sites';
 import styles from './SiteEditor.module.css';
 
@@ -10,9 +10,15 @@ type LivePreviewProps = {
   // matching region of the live preview into the center of the frame so the
   // owner sees the part they're editing without hunting for it.
   openSection?: string | null;
+  // Rendered into the narrow-screen control overlay. The builder puts its tab
+  // switcher here: on a phone the tab row costs 63px of permanent chrome for
+  // navigation used once a session, so it becomes a chip on the preview
+  // instead — but the tabs are the BUILDER's state, so it passes the control
+  // down rather than this component learning about them.
+  overlaySlot?: ReactNode;
 };
 
-export default function LivePreview({ site, openSection }: LivePreviewProps) {
+export default function LivePreview({ site, openSection, overlaySlot }: LivePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [loaded, setLoaded] = useState(false);
@@ -27,6 +33,22 @@ export default function LivePreview({ site, openSection }: LivePreviewProps) {
   // first client paint agree on 'desktop' and nothing flips mid-hydration.
   useEffect(() => {
     if (window.matchMedia('(max-width: 700px)').matches) setDevice('mobile');
+  }, []);
+
+  // Where the controls live. Above this width they are a toolbar row; below it
+  // that row is 49px of permanent chrome on a 664px screen, so they become chips
+  // floating on the preview instead.
+  //
+  // Rendered as one or the other, never both. Two copies would mean two sets of
+  // identically-labelled buttons in the accessibility tree, one of them
+  // invisible — which is worse than the row ever was.
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 1120px)');
+    const sync = () => setNarrow(query.matches);
+    sync();
+    query.addEventListener('change', sync);
+    return () => query.removeEventListener('change', sync);
   }, []);
 
   // Expanding takes over the screen, so Escape has to get out — a phone has no
@@ -84,47 +106,57 @@ export default function LivePreview({ site, openSection }: LivePreviewProps) {
     );
   }
 
+  const deviceToggle = (
+    <div className={styles.deviceToggle} aria-label="Preview size">
+      <button
+        type="button"
+        className={device === 'desktop' ? styles.activeDevice : undefined}
+        onClick={() => setDevice('desktop')}
+        aria-pressed={device === 'desktop'}
+      >
+        Desktop
+      </button>
+      <button
+        type="button"
+        className={device === 'mobile' ? styles.activeDevice : undefined}
+        onClick={() => setDevice('mobile')}
+        aria-pressed={device === 'mobile'}
+      >
+        Mobile
+      </button>
+    </div>
+  );
+
+  // Icon only while collapsed, worded once expanded. Three text chips side by
+  // side spanned nearly the whole 390px preview and sat across the site's own
+  // header, which is the opposite of showing somebody their website.
+  const expandButton = (
+    <button
+      type="button"
+      className={styles.previewExpandButton}
+      onClick={() => setExpanded(!expanded)}
+      aria-pressed={expanded}
+      aria-label={expanded ? 'Close the expanded preview' : 'Expand the preview'}
+      title={expanded ? 'Close' : 'Expand'}
+    >
+      {expanded ? '✕ Close' : '⤢'}
+    </button>
+  );
+
   return (
     <section
       className={`${styles.previewPanel} ${expanded ? styles.previewExpanded : ''}`}
       aria-label="Live website preview"
     >
-      <div className={styles.previewToolbar}>
-        <div>
-          <strong>Live preview</strong>
-          <span>Click any section or photo to edit it</span>
-        </div>
-        <div className={styles.previewToolbarActions}>
-          <div className={styles.deviceToggle} aria-label="Preview size">
-            <button
-              type="button"
-              className={device === 'desktop' ? styles.activeDevice : undefined}
-              onClick={() => setDevice('desktop')}
-              aria-pressed={device === 'desktop'}
-            >
-              Desktop
-            </button>
-            <button
-              type="button"
-              className={device === 'mobile' ? styles.activeDevice : undefined}
-              onClick={() => setDevice('mobile')}
-              aria-pressed={device === 'mobile'}
-            >
-              Mobile
-            </button>
+      {!narrow && (
+        <div className={styles.previewToolbar}>
+          <div>
+            <strong>Live preview</strong>
+            <span>Click any section or photo to edit it</span>
           </div>
-          {/* Only shown where the preview is actually pinned and short — on a
-              desktop it already fills the column and there is nothing to gain. */}
-          <button
-            type="button"
-            className={styles.previewExpandButton}
-            onClick={() => setExpanded(!expanded)}
-            aria-pressed={expanded}
-          >
-            {expanded ? '✕ Close' : '⤢ Expand'}
-          </button>
+          <div className={styles.previewToolbarActions}>{deviceToggle}</div>
         </div>
-      </div>
+      )}
 
       <div className={`${styles.previewStage} ${device === 'mobile' ? styles.mobileStage : ''}`}>
         <iframe
@@ -134,6 +166,26 @@ export default function LivePreview({ site, openSection }: LivePreviewProps) {
           title="Live contractor website preview"
           onLoad={sendDraft}
         />
+
+        {/* The controls, as chips on the preview rather than rows above it.
+            Two clusters at opposite top corners, over the site's own header —
+            the least information-dense band of any page, and the one an owner
+            is least likely to be reading while they edit something else. */}
+        {narrow && (
+          <>
+            {/* Hidden while expanded: the point of expanding is to look at the
+                site, and a tab menu floating over it is in the way. */}
+            {overlaySlot && !expanded && <div className={styles.previewChipsLeft}>{overlaySlot}</div>}
+            <div className={styles.previewChipsRight}>
+              {/* Desktop/Mobile only in the expanded view. On a phone the
+                  preview already defaults to Mobile, and checking the desktop
+                  layout is something you do while looking properly — not a
+                  control worth spending a third of the preview's width on. */}
+              {expanded && deviceToggle}
+              {expandButton}
+            </div>
+          </>
+        )}
       </div>
     </section>
   );
