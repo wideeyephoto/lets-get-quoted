@@ -2,7 +2,10 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { checkRateLimit } from '@/lib/rate-limit';
+import { draftQuote, loadDraftContext } from '@/lib/quote-draft-ai';
+import { draftConfidenceNote, draftToQuoteItems, draftTotal, type SerializedDraft } from '@/lib/quote-draft';
 import {
   createCost,
   createJob,
@@ -749,6 +752,60 @@ export async function saveQuoteItemsAction(jobId: string, items: QuoteItem[]): P
     const message = error instanceof Error ? error.message : 'Could not save the quote.';
     return { ok: false, total: 0, message };
   }
+}
+
+// Draft an itemized quote from the job's scope, the owner's price book and what
+// they've charged before.
+//
+// Returns the draft — it does NOT save. Nothing about a quote should reach a
+// customer because a machine suggested it, so this fills the builder and the
+// owner presses Save like they always did. Rate-limited because it spends money
+// per call, and idempotent in the only sense that matters: running it twice
+// costs two calls and changes nothing.
+export async function draftQuoteAction(jobId: string): Promise<
+  | { ok: true; draft: SerializedDraft }
+  | { ok: false; reason: 'no-scope' | 'unavailable' | 'busy'; message: string }
+> {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  // 20 drafts an hour per account. Generous for a person, and a ceiling on what
+  // a stuck retry loop can spend.
+  const allowed = await checkRateLimit(createAdminClient(), `quote-draft:${accountId}`, 20, 3600);
+  if (!allowed) {
+    return { ok: false, reason: 'busy', message: 'That is a lot of drafts in an hour — give it a few minutes.' };
+  }
+
+  const context = await loadDraftContext(supabase, accountId, jobId);
+  if (!context) return { ok: false, reason: 'unavailable', message: 'That job could not be found.' };
+  if (!context.scope) {
+    return {
+      ok: false,
+      reason: 'no-scope',
+      message: 'Add a scope of work first — the draft is built from your description of the job.',
+    };
+  }
+
+  const draft = await draftQuote(context);
+  if (!draft) {
+    return { ok: false, reason: 'unavailable', message: 'Could not draft a quote just now. Try again in a moment.' };
+  }
+
+  return {
+    ok: true,
+    draft: {
+      items: draftToQuoteItems(draft.lines),
+      // Provenance rides alongside the items rather than inside them: a
+      // QuoteItem is what gets saved and shown to a client, and where a price
+      // came from is between us and the contractor.
+      provenance: draft.lines.map((line) => ({ source: line.source, note: line.note })),
+      summary: draft.summary,
+      assumptions: draft.assumptions,
+      questions: draft.questions,
+      needsMoreInfo: draft.needsMoreInfo,
+      confidence: draftConfidenceNote(draft),
+      total: draftTotal(draft.lines),
+    },
+  };
 }
 
 // Where a review request should point. Built from the Google Business Profile the

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import type { QuoteItem, QuoteItemKind, QuoteSubscriptionFrequency } from '@/lib/jobs';
+import type { DraftSource, SerializedDraft } from '@/lib/quote-draft';
 
 type Row = QuoteItem;
 
@@ -25,6 +26,7 @@ function formatUsd(amount: number): string {
 // job's quoted amount server-side.
 export default function QuoteBuilder({
   action,
+  draftAction,
   initialItems,
   services = [],
   onItemsChange,
@@ -32,6 +34,11 @@ export default function QuoteBuilder({
   // Job page: persists on its own Save button. Lead form: omit action and pass
   // onItemsChange to feed a parent <form> (the form's submit does the saving).
   action?: (items: QuoteItem[]) => Promise<{ ok: boolean; total: number; message?: string }>;
+  // AI drafting, where a job's scope exists to draft from. Absent on the lead
+  // form, which has no saved job yet.
+  draftAction?: () => Promise<
+    { ok: true; draft: SerializedDraft } | { ok: false; reason: string; message: string }
+  >;
   initialItems: QuoteItem[];
   services?: PriceBookItem[];
   onItemsChange?: (items: QuoteItem[]) => void;
@@ -42,6 +49,10 @@ export default function QuoteBuilder({
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [subDraft, setSubDraft] = useState<{ open: boolean; label: string; amount: string; frequency: QuoteSubscriptionFrequency; term: string; discount: string }>({ open: false, label: '', amount: '', frequency: 'monthly', term: '', discount: '' });
+  // The AI draft, held for review. It is never applied on arrival — see runDraft.
+  const [draft, setDraft] = useState<SerializedDraft | null>(null);
+  const [drafting, setDrafting] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
 
   // Report every edit up to a parent in live mode, without re-firing when the
   // parent hands us a new callback identity.
@@ -121,6 +132,35 @@ export default function QuoteBuilder({
   // Nothing billable today, but a real recurring commitment.
   const planOnly = total === 0 && subscriptionRows.length > 0;
 
+  // Fetch a draft and hold it for review. Deliberately never writes into `rows`
+  // on its own: a quote is a number somebody sends to a customer, and it should
+  // only ever get there because a person put it there.
+  async function runDraft() {
+    if (!draftAction) return;
+    setDrafting(true);
+    setDraftError(null);
+    setDraft(null);
+    try {
+      const result = await draftAction();
+      if (result.ok) setDraft(result.draft);
+      else setDraftError(result.message);
+    } catch {
+      setDraftError('Could not reach the drafter. Try again in a moment.');
+    } finally {
+      setDrafting(false);
+    }
+  }
+
+  // Applying is an explicit act with two explicit shapes — add to what's there,
+  // or replace it. There is no third, quieter option.
+  function applyDraft(mode: 'append' | 'replace') {
+    if (!draft) return;
+    const incoming = draft.items.map((item, index) => ({ ...item, id: `${item.id}-${Date.now().toString(36)}-${index}` }));
+    setRows((current) => (mode === 'replace' ? incoming : [...current, ...incoming]));
+    setDraft(null);
+    setResult(null);
+  }
+
   function save() {
     if (!action) return;
     const clean = rows
@@ -134,6 +174,29 @@ export default function QuoteBuilder({
 
   return (
     <div className="quote-builder">
+      {draftAction ? (
+        <div className="quote-draft-bar">
+          <button type="button" className="btn secondary" onClick={runDraft} disabled={drafting}>
+            {drafting ? 'Drafting…' : '✨ Draft from the scope'}
+          </button>
+          <small>
+            Builds line items from this job&rsquo;s scope, priced from your price book. You review everything
+            before it goes anywhere.
+          </small>
+        </div>
+      ) : null}
+
+      {draftError ? <p className="quote-draft-error">{draftError}</p> : null}
+
+      {draft ? (
+        <DraftReview
+          draft={draft}
+          hasRows={rows.length > 0}
+          onApply={applyDraft}
+          onDiscard={() => setDraft(null)}
+        />
+      ) : null}
+
       {rows.length === 0 ? (
         <p className="empty-state">No line items yet. Add what&apos;s included, then optional add-ons the client can accept.</p>
       ) : (
@@ -303,6 +366,106 @@ export default function QuoteBuilder({
           ) : null}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+const SOURCE_LABEL: Record<DraftSource, string> = {
+  'price-book': 'Your price',
+  history: 'From past jobs',
+  estimate: 'Check this price',
+};
+
+// The draft, held for review.
+//
+// Built around one question the owner has before they'll trust any of it:
+// whose number is this? Every line says, and the ones that aren't theirs are
+// the ones that stand out — not the other way round.
+function DraftReview({
+  draft,
+  hasRows,
+  onApply,
+  onDiscard,
+}: {
+  draft: SerializedDraft;
+  hasRows: boolean;
+  onApply: (mode: 'append' | 'replace') => void;
+  onDiscard: () => void;
+}) {
+  // Nothing to price. Say what's missing instead of showing an empty quote,
+  // which would read as "this job is worth nothing".
+  if (draft.needsMoreInfo || draft.items.length === 0) {
+    return (
+      <div className="quote-draft-panel is-thin">
+        <p className="quote-draft-title">Not enough in the scope to draft a quote</p>
+        {draft.questions.length > 0 ? (
+          <>
+            <p className="quote-draft-sub">Worth asking the customer:</p>
+            <ul className="quote-draft-questions">
+              {draft.questions.map((question) => <li key={question}>{question}</li>)}
+            </ul>
+          </>
+        ) : (
+          <p className="quote-draft-sub">Add more detail to the scope of work and try again.</p>
+        )}
+        <div className="quote-draft-actions">
+          <button type="button" className="btn ghost" onClick={onDiscard}>Close</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="quote-draft-panel">
+      <div className="quote-draft-head">
+        <p className="quote-draft-title">Draft quote — {formatUsd(draft.total)}</p>
+        <p className="quote-draft-confidence">{draft.confidence}</p>
+      </div>
+
+      {draft.summary ? <p className="quote-draft-sub">{draft.summary}</p> : null}
+
+      <ul className="quote-draft-lines">
+        {draft.items.map((item, index) => {
+          const source = draft.provenance[index]?.source ?? 'estimate';
+          const note = draft.provenance[index]?.note;
+          return (
+            <li key={item.id} className={`quote-draft-line source-${source}`}>
+              <div className="quote-draft-line-top">
+                <span className="quote-draft-line-label">
+                  {item.label}
+                  {item.kind === 'addon' ? <em className="quote-draft-addon">optional</em> : null}
+                </span>
+                <span className="quote-draft-line-amount">{formatUsd(item.amount)}</span>
+              </div>
+              <span className={`quote-draft-source source-${source}`}>{SOURCE_LABEL[source]}</span>
+              {note ? <span className="quote-draft-note">{note}</span> : null}
+            </li>
+          );
+        })}
+      </ul>
+
+      {draft.assumptions.length > 0 ? (
+        <div className="quote-draft-assumptions">
+          {/* The most useful thing on the panel: what it had to guess. */}
+          <p className="quote-draft-sub">It assumed:</p>
+          <ul>
+            {draft.assumptions.map((assumption) => <li key={assumption}>{assumption}</li>)}
+          </ul>
+        </div>
+      ) : null}
+
+      <div className="quote-draft-actions">
+        <button type="button" className="btn primary" onClick={() => onApply(hasRows ? 'append' : 'replace')}>
+          {hasRows ? 'Add these lines' : 'Use these lines'}
+        </button>
+        {hasRows ? (
+          <button type="button" className="btn secondary" onClick={() => onApply('replace')}>
+            Replace what I have
+          </button>
+        ) : null}
+        <button type="button" className="btn ghost" onClick={onDiscard}>Discard</button>
+      </div>
+      <small className="quote-draft-foot">Nothing is saved until you press Save quote.</small>
     </div>
   );
 }

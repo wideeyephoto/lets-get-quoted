@@ -28,6 +28,7 @@ import {
   requestJobReviewAction,
   resolveAccountReviewUrl,
   saveQuoteItemsAction,
+  draftQuoteAction,
   sendClientScheduleOptionsAction,
   undoJobCompleteAction,
   undoJobStartedAction,
@@ -402,7 +403,12 @@ export default async function JobDetailPage({
           Itemize the work and offer optional add-ons the client can accept on their quote page. The
           quote total updates automatically. Leave this empty to keep the single quoted amount.
         </p>
-        <QuoteBuilder action={boundSaveQuoteItems} initialItems={quoteItems} services={priceBook} />
+        <QuoteBuilder
+          action={boundSaveQuoteItems}
+          draftAction={draftQuoteAction.bind(null, job.id)}
+          initialItems={quoteItems}
+          services={priceBook}
+        />
       </section>
 
       {/* Recurring plans on this quote that nobody has started yet. The client

@@ -5470,6 +5470,83 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   gap: 1rem;
 }
 
+/* ---- AI quote drafting ----------------------------------------------
+   The panel answers one question before it asks for trust: whose number is
+   this? So provenance is per line, and the lines that AREN'T the owner's
+   price are the ones that stand out — never the other way round. */
+.quote-draft-bar { display: flex; align-items: center; gap: 0.85rem; flex-wrap: wrap; }
+.quote-draft-bar small { flex: 1; min-width: 240px; font-size: 0.8rem; line-height: 1.5; color: var(--mute-t55); }
+.quote-draft-bar .btn { flex: 0 0 auto; }
+
+.quote-draft-error {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border-radius: 11px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  background: rgba(255, 122, 33, 0.1);
+  border: 1px solid rgba(255, 179, 122, 0.36);
+  color: var(--ink-orange-1);
+}
+
+.quote-draft-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.1rem;
+  border-radius: 15px;
+  background: rgba(var(--tint), 0.04);
+  border: 1px solid rgba(var(--tint), 0.14);
+}
+.quote-draft-head { display: flex; align-items: baseline; justify-content: space-between; gap: 0.8rem; flex-wrap: wrap; }
+.quote-draft-title { margin: 0; font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.quote-draft-confidence { margin: 0; font-size: 0.84rem; font-weight: 600; color: var(--ink-amber-3); }
+.quote-draft-sub { margin: 0; font-size: 0.88rem; line-height: 1.55; color: var(--mute-t55); }
+
+.quote-draft-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.quote-draft-line {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 11px;
+  background: rgba(var(--tint), 0.03);
+  border: 1px solid rgba(var(--tint), 0.09);
+  /* A left rail carries the provenance, so it reads down the list at a glance
+     without a badge column stealing width from the labels. */
+  border-left-width: 3px;
+}
+.quote-draft-line.source-price-book { border-left-color: rgba(163, 230, 53, 0.55); }
+.quote-draft-line.source-history { border-left-color: rgba(56, 189, 248, 0.55); }
+.quote-draft-line.source-estimate { border-left-color: rgba(251, 191, 36, 0.65); }
+.quote-draft-line-top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.7rem; }
+.quote-draft-line-label { font-size: 0.95rem; font-weight: 600; }
+.quote-draft-addon {
+  margin-left: 0.45rem;
+  font-size: 0.7rem;
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--mute-t50);
+}
+.quote-draft-line-amount { font-size: 0.98rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.quote-draft-source { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+.quote-draft-source.source-price-book { color: var(--ink-lime-1); }
+.quote-draft-source.source-history { color: var(--ink-sky-1); }
+.quote-draft-source.source-estimate { color: var(--ink-amber-3); }
+.quote-draft-note { font-size: 0.8rem; line-height: 1.5; color: var(--mute-t55); }
+
+.quote-draft-assumptions { padding-top: 0.2rem; }
+.quote-draft-assumptions ul,
+.quote-draft-questions { margin: 0.35rem 0 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.25rem; }
+.quote-draft-assumptions li,
+.quote-draft-questions li { font-size: 0.86rem; line-height: 1.5; color: rgba(var(--tint), 0.72); }
+
+.quote-draft-actions { display: flex; flex-wrap: wrap; gap: 0.55rem; margin-top: 0.2rem; }
+.quote-draft-actions .btn { flex: 0 0 auto; }
+.quote-draft-foot { font-size: 0.78rem; color: var(--mute-t50); }
+.quote-draft-panel.is-thin { background: rgba(251, 191, 36, 0.07); border-color: rgba(251, 191, 36, 0.28); }
+
 .quote-builder-rows {
   display: flex;
   flex-direction: column;
