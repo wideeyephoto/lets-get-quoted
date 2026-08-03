@@ -592,7 +592,7 @@
     /* One source of truth for the pinned height: the stage uses it, and the tab
        bar sticks directly below it. Two hand-kept numbers would drift the
        moment either changed. */
-    --preview-height: 38vh;
+    --preview-height: 48vh;
     /* Matches .previewToolbar's real height at this width. Measured, not
        assumed: it was wrapping to 119px and the tab bar stuck to the wrong
        place because this said 58. */
@@ -609,7 +609,20 @@
      the scrolling it replaced. dvh measures what is actually visible, so the
      preview shrinks as the keyboard opens and the focused input stays put. */
   @supports (height: 1dvh) {
-    .builderGrid { --preview-height: 38dvh; }
+    .builderGrid { --preview-height: 48dvh; }
+  }
+
+  /* TWO SIZES, BECAUSE THE TWO MOMENTS WANT DIFFERENT THINGS.
+     Reviewing the site, you want as much preview as the screen will give.
+     Typing into a field, you want to see the field — and dvh alone can't tell
+     the difference, because the keyboard shrinks both halves proportionally.
+     So the preview yields the moment a real input takes focus, and takes the
+     room back the moment it doesn't.
+     `:has` rather than a plain :focus-within on the grid: tapping Desktop /
+     Mobile / Expand in the preview's own toolbar shouldn't shrink the preview. */
+  .builderGrid:has(.tabContent :is(input, textarea, select):focus) { --preview-height: 30vh; }
+  @supports (height: 1dvh) {
+    .builderGrid:has(.tabContent :is(input, textarea, select):focus) { --preview-height: 30dvh; }
   }
 
   /* `order` is visual only — DOM order is untouched, so keyboard focus still
@@ -621,11 +634,22 @@
     top: var(--app-topbar);
     z-index: 5;
   }
-  .previewStage { height: var(--preview-height); min-height: 0; }
+  /* Transitioned so the give-and-take between the two sizes reads as the panel
+     making room, rather than the page jumping under a thumb. */
+  .previewStage { height: var(--preview-height); min-height: 0; transition: height .18s ease; }
 
   /* overflow: hidden here would make the panel a scroll container and trap the
      sticky tab bar inside it. `clip` clips identically without becoming one. */
   .editorPanel { overflow: clip; }
+
+  /* Anything scrolled to programmatically — the launch checklist's deep links,
+     click-to-edit from the preview — would otherwise land UNDERNEATH the pinned
+     preview and tab bar, which is a scroll to somewhere the owner can't see.
+     scroll-margin-top reserves exactly the chrome above it. */
+  .sectionCard,
+  .formField {
+    scroll-margin-top: calc(var(--app-topbar) + var(--preview-height) + var(--preview-toolbar) + 3.6rem);
+  }
 
   /* The four tabs sit directly under the pinned preview rather than scrolling
      away with the form — switching from Setup to Brand shouldn't mean scrolling
@@ -701,12 +725,16 @@
   /* The preview toolbar wrapped to 119px at 390px wide — taller than a third of
      the preview it labels, and it threw off the tab bar's sticky offset, which
      is measured from it. Dropping the hint keeps it to one row. */
-  .previewToolbar { min-height: 0; padding: .45rem .55rem; }
-  .previewToolbar > div:first-child span { display: none; }
-  .previewToolbar strong { font-size: .8rem; }
+  /* Every row of chrome here is a row of preview the owner doesn't get. The
+     label goes entirely: a panel showing the website, directly above the form
+     that edits it, does not need to be captioned "Live preview" on a 390px
+     screen. What's left is the three controls, on one row. */
+  .previewToolbar { min-height: 0; padding: .3rem .4rem; justify-content: flex-end; gap: .4rem; }
+  .previewToolbar > div:first-child { display: none; }
+  .deviceToggle button, .previewExpandButton { min-height: 30px; padding: .3rem .55rem; }
   /* Kept in step with the compacted toolbar above — this is what the sticky tab
      bar offsets itself by, so the two have to move together. */
-  .builderGrid { --preview-toolbar: 55px; }
+  .builderGrid { --preview-toolbar: 49px; }
   .builderTabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .builderTabs button { min-width: 0; padding-inline: .2rem; font-size: .64rem; }
   .formColumns { grid-template-columns: 1fr; }

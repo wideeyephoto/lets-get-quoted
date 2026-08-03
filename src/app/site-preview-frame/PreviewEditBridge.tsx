@@ -147,7 +147,20 @@ export default function PreviewEditBridge() {
       const tryScroll = () => {
         const target = document.querySelector(selector);
         if (target) {
-          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // NOT scrollIntoView. That scrolls every scrollable ancestor to bring
+          // the element into view — and this document is inside an iframe, so
+          // "every ancestor" includes the BUILDER PAGE. On desktop nobody
+          // noticed: the preview is tall and already fully visible, so there was
+          // nothing for the parent to scroll. On a phone the preview is a pinned
+          // 38dvh band, so opening any section yanked the whole builder up to it
+          // and away from the form the owner was working in.
+          //
+          // Scrolling this window directly moves the preview and stops there,
+          // which is all that was ever wanted.
+          const rect = target.getBoundingClientRect();
+          const centred = window.scrollY + rect.top - (window.innerHeight - rect.height) / 2;
+          const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+          window.scrollTo({ top: Math.max(0, Math.min(centred, Math.max(0, maxScroll))), behavior: 'smooth' });
           return;
         }
         if (scrollTries++ < 8) scrollTimer = setTimeout(tryScroll, 90);
