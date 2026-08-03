@@ -71,6 +71,9 @@ const FRAME_TIMEOUT_MS = 25000;
 // If a frame has decoded but the seek won't land, take the frame we already
 // have rather than waiting out the full ceiling for a prettier one.
 const SEEK_TIMEOUT_MS = 5000;
+// Longest edge of a captured poster, in pixels. See the capture for why this is
+// not the video's own resolution.
+const MAX_POSTER_EDGE = 1600;
 
 function readVideoFrame(file: File): Promise<{ frame: Blob | null; duration: number; outcome: FrameOutcome }> {
   return new Promise((resolve) => {
@@ -167,13 +170,40 @@ function readVideoFrame(file: File): Promise<{ frame: Blob | null; duration: num
         window.clearTimeout(timeout);
         window.clearTimeout(seekTimer);
         try {
+          // DOWNSCALED, not native. A phone shoots 4K: a frame grabbed at the
+          // video's own resolution came out 2160x3840 and 963 KB — measured on a
+          // real iPhone upload, which made the poster the single heaviest image
+          // on the site, heavier than the hero photo.
+          //
+          // That is not a rounding error in cost. `mobilePoster` swaps the video
+          // for its poster on phones, so on the connection that can least afford
+          // it the poster IS the asset — every visitor paying for 4K stills of a
+          // frame they see for a moment.
+          //
+          // 1600 on the long edge, measured on that same frame:
+          //   native 2160x3840  941 KB
+          //   1920               196 KB
+          //   1600               141 KB   <- 85% off
+          //
+          // It covers a video band at any width and a 430px phone at 3x with
+          // room to spare. The one case it doesn't cover natively is a
+          // full-bleed hero on a wide desktop, where it upscales slightly — and
+          // that is the right trade: a hero poster sits under a scrim and is
+          // replaced by the video within a second of load.
+          const nativeW = video.videoWidth || 1280;
+          const nativeH = video.videoHeight || 720;
+          const scale = Math.min(1, MAX_POSTER_EDGE / Math.max(nativeW, nativeH));
           const canvas = document.createElement('canvas');
-          canvas.width = video.videoWidth || 1280;
-          canvas.height = video.videoHeight || 720;
+          canvas.width = Math.round(nativeW * scale);
+          canvas.height = Math.round(nativeH * scale);
           const ctx = canvas.getContext('2d');
           // Everything from here on is a POSTER problem, never a playback one:
           // the browser has already decoded a frame to get this far.
           if (!ctx) return finish({ frame: null, duration, outcome: 'ok' });
+          // Downscaling a 4K frame in one step aliases badly on the high-contrast
+          // edges a job photo is full of — roof lines, siding, tile grout.
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           mark('drawn');
           canvas.toBlob((blob) => finish({ frame: blob, duration, outcome: 'ok' }), 'image/jpeg', 0.82);
