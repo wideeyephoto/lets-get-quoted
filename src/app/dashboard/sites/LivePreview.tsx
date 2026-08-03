@@ -16,6 +16,28 @@ export default function LivePreview({ site, openSection }: LivePreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [loaded, setLoaded] = useState(false);
+  // Pinned preview only: on a narrow screen it sits at ~38dvh, which is right
+  // for watching a change land and too small to judge a page by. Expanding
+  // hands it the screen for a proper look.
+  const [expanded, setExpanded] = useState(false);
+
+  // Someone editing on their phone is almost certainly checking how the site
+  // looks on a phone — and a desktop layout squeezed into 390px is unreadable
+  // either way. Decided in an effect, never during render, so the server and the
+  // first client paint agree on 'desktop' and nothing flips mid-hydration.
+  useEffect(() => {
+    if (window.matchMedia('(max-width: 700px)').matches) setDevice('mobile');
+  }, []);
+
+  // Expanding takes over the screen, so Escape has to get out — a phone has no
+  // obvious way back otherwise, and a trapped full-screen panel is worse than
+  // no expand button at all.
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setExpanded(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [expanded]);
 
   useEffect(() => {
     function handleReady(event: MessageEvent) {
@@ -63,28 +85,43 @@ export default function LivePreview({ site, openSection }: LivePreviewProps) {
   }
 
   return (
-    <section className={styles.previewPanel} aria-label="Live website preview">
+    <section
+      className={`${styles.previewPanel} ${expanded ? styles.previewExpanded : ''}`}
+      aria-label="Live website preview"
+    >
       <div className={styles.previewToolbar}>
         <div>
           <strong>Live preview</strong>
           <span>Click any section or photo to edit it</span>
         </div>
-        <div className={styles.deviceToggle} aria-label="Preview size">
+        <div className={styles.previewToolbarActions}>
+          <div className={styles.deviceToggle} aria-label="Preview size">
+            <button
+              type="button"
+              className={device === 'desktop' ? styles.activeDevice : undefined}
+              onClick={() => setDevice('desktop')}
+              aria-pressed={device === 'desktop'}
+            >
+              Desktop
+            </button>
+            <button
+              type="button"
+              className={device === 'mobile' ? styles.activeDevice : undefined}
+              onClick={() => setDevice('mobile')}
+              aria-pressed={device === 'mobile'}
+            >
+              Mobile
+            </button>
+          </div>
+          {/* Only shown where the preview is actually pinned and short — on a
+              desktop it already fills the column and there is nothing to gain. */}
           <button
             type="button"
-            className={device === 'desktop' ? styles.activeDevice : undefined}
-            onClick={() => setDevice('desktop')}
-            aria-pressed={device === 'desktop'}
+            className={styles.previewExpandButton}
+            onClick={() => setExpanded(!expanded)}
+            aria-pressed={expanded}
           >
-            Desktop
-          </button>
-          <button
-            type="button"
-            className={device === 'mobile' ? styles.activeDevice : undefined}
-            onClick={() => setDevice('mobile')}
-            aria-pressed={device === 'mobile'}
-          >
-            Mobile
+            {expanded ? '✕ Close' : '⤢ Expand'}
           </button>
         </div>
       </div>

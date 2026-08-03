@@ -552,6 +552,11 @@
 .previewToolbar > div:first-child { display: flex; flex-direction: column; gap: .1rem; }
 .previewToolbar strong { font-size: .88rem; }
 .previewToolbar span { color: var(--ink-mod-grey-24); font-size: .72rem; }
+.previewToolbarActions { display: flex; align-items: center; gap: .45rem; }
+/* Hidden where the preview already fills its own column — expanding a
+   full-height desktop preview gains nothing. Shown only where it is pinned and
+   deliberately short (see the narrow-screen block below). */
+.previewExpandButton { display: none; }
 .deviceToggle { display: inline-flex; padding: 3px; border: 1px solid rgba(var(--tint), .12); border-radius: 6px; background: rgba(var(--tint), .035); }
 .deviceToggle button { min-height: 32px; padding: .4rem .7rem; border: 0; border-radius: 4px; background: transparent; color: var(--muted-2); font-size: .72rem; cursor: pointer; }
 .deviceToggle .activeDevice { background: var(--text); color: var(--bg-3); }
@@ -574,16 +579,134 @@
   .imageSlots { grid-template-columns: 1fr; }
 }
 
+/* --- Narrow screens: the preview leads, the form scrolls under it ----------
+   Below this width the two columns stack, and the preview used to land AFTER
+   the entire form — so on a phone you scrolled past every field to reach the
+   thing you were changing, edited it blind, and scrolled back. The builder was
+   effectively desktop-only.
+   Now it pins to the top and the form runs beneath it, so a headline changes
+   under your thumb as you type it. */
 @media (max-width: 1120px) {
-  .builderGrid { grid-template-columns: 1fr; }
-  .previewPanel { position: static; }
-  .previewStage { height: 700px; }
+  .builderGrid {
+    grid-template-columns: 1fr;
+    /* One source of truth for the pinned height: the stage uses it, and the tab
+       bar sticks directly below it. Two hand-kept numbers would drift the
+       moment either changed. */
+    --preview-height: 38vh;
+    /* Matches .previewToolbar's real height at this width. Measured, not
+       assumed: it was wrapping to 119px and the tab bar stuck to the wrong
+       place because this said 58. */
+    --preview-toolbar: 58px;
+    /* How far down the page anything sticky has to start. Zero here; the app's
+       own mobile top bar only appears further down (see below). */
+    --app-topbar: 0px;
+  }
+
+  /* dvh, NOT vh, and this is the whole feature working or not.
+     With the on-screen keyboard up, a 390x844 phone has roughly 400px of usable
+     height. A preview sized against the FULL viewport would leave nothing for
+     the field being typed into — a pinned preview would make editing worse than
+     the scrolling it replaced. dvh measures what is actually visible, so the
+     preview shrinks as the keyboard opens and the focused input stays put. */
+  @supports (height: 1dvh) {
+    .builderGrid { --preview-height: 38dvh; }
+  }
+
+  /* `order` is visual only — DOM order is untouched, so keyboard focus still
+     runs form-first, which is the right order anyway: the preview is an iframe
+     of content nobody edits directly. */
+  .previewPanel {
+    order: -1;
+    position: sticky;
+    top: var(--app-topbar);
+    z-index: 5;
+  }
+  .previewStage { height: var(--preview-height); min-height: 0; }
+
+  /* overflow: hidden here would make the panel a scroll container and trap the
+     sticky tab bar inside it. `clip` clips identically without becoming one. */
+  .editorPanel { overflow: clip; }
+
+  /* The four tabs sit directly under the pinned preview rather than scrolling
+     away with the form — switching from Setup to Brand shouldn't mean scrolling
+     back to the top first. Opaque, because content now passes behind it. */
+  .builderTabs {
+    position: sticky;
+    top: calc(var(--app-topbar) + var(--preview-height) + var(--preview-toolbar));
+    z-index: 4;
+    background: var(--bg-3);
+  }
+
+  .previewExpandButton {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    padding: .4rem .6rem;
+    border: 1px solid rgba(var(--tint), .16);
+    border-radius: 6px;
+    background: rgba(var(--tint), .05);
+    color: var(--text);
+    font-size: .72rem;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  /* 38dvh is right for watching a change land and too small to judge a page by,
+     so expanding hands the preview the whole screen. Fixed rather than sticky:
+     it has to escape the grid entirely, and the form behind it is irrelevant
+     while it is open. */
+  .previewExpanded {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .previewExpanded .previewStage { flex: 1; height: auto; }
+}
+
+/* At this width the app grows its own FIXED top bar (.sidenav-mobilebar, which
+   .app-main already clears with 4.4rem). Anything sticky has to start below it
+   or it slides underneath — which is exactly what happened to the preview's own
+   toolbar: the layout measured perfectly and the "Live preview" header was
+   invisible behind the chrome. Same 4.4rem, so the two move together. */
+@media (max-width: 900px) {
+  .builderGrid { --app-topbar: 4.4rem; }
 }
 
 @media (max-width: 700px) {
   .builderShell { padding: 1rem; }
-  .builderHeader { align-items: stretch; flex-direction: column; }
-  .builderActions { display: grid; grid-template-columns: 1fr 1fr; }
+
+  /* The header was 549px on a 664px phone screen — more than half the display
+     spent on a title and four buttons, before a single field or any of the
+     preview. Everything here is still present, just at a size that leaves room
+     for the thing being built. */
+  .builderHeader { align-items: stretch; flex-direction: column; gap: .5rem; margin-bottom: .75rem; }
+  /* The base rule is `flex: 1 1 320px`, sized for the ROW direction where 320px
+     is a width. This block flips the container to `column`, and flex-basis then
+     applies to the HEIGHT — so the title block was reserving 320px of vertical
+     space it had no use for, and the header measured 426px on a 664px phone.
+     Nothing looked wrong; it just quietly ate half the screen. */
+  .builderHeader > div:first-child { flex: 0 0 auto; }
+  .builderHeader h1 { margin: .1rem 0 .2rem; font-size: 1.25rem; }
+  .builderEyebrow { display: none; }
+  .liveStatusLink { margin-top: .25rem; font-size: .8rem; }
+  .liveStatusDot { width: 9px; height: 9px; box-shadow: 0 0 0 3px rgba(74,222,128,.18); }
+  .saveStatus { font-size: .74rem; }
+  .builderActions { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; }
+  .builderActions button, .builderActions a { min-height: 40px; padding-inline: .5rem; font-size: .8rem; }
+
+  /* The preview toolbar wrapped to 119px at 390px wide — taller than a third of
+     the preview it labels, and it threw off the tab bar's sticky offset, which
+     is measured from it. Dropping the hint keeps it to one row. */
+  .previewToolbar { min-height: 0; padding: .45rem .55rem; }
+  .previewToolbar > div:first-child span { display: none; }
+  .previewToolbar strong { font-size: .8rem; }
+  /* Kept in step with the compacted toolbar above — this is what the sticky tab
+     bar offsets itself by, so the two have to move together. */
+  .builderGrid { --preview-toolbar: 55px; }
   .builderTabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .builderTabs button { min-width: 0; padding-inline: .2rem; font-size: .64rem; }
   .formColumns { grid-template-columns: 1fr; }
@@ -591,7 +714,9 @@
   .jobPhotoImport { align-items: stretch; flex-direction: column; }
   .integrationCard { align-items: stretch; flex-direction: column; }
   .formSection .imageGrid { grid-template-columns: 1fr; }
-  .previewStage { min-height: 560px; height: 70vh; padding: .4rem; }
+  /* Height comes from the pinned rule above; only the padding tightens here.
+     The old `min-height: 560px` was two thirds of a phone screen. */
+  .previewStage { padding: .4rem; }
 }
 /* --- Flagship AI suite: Smart Intake + Lead quality filters --- */
 /* Living gradient border: the card background is painted in padding-box and a
