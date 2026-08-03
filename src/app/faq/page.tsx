@@ -120,7 +120,9 @@ export default function FaqPage() {
       <section className="section-block features-hero">
         <div className="section-heading">
           <p className="eyebrow">Questions, answered</p>
-          <h2>Everything you’re wondering, before you sign up.</h2>
+          {/* The page's own title, so it's the h1 — every other heading here is
+              a section under it. Sized by .section-heading h1, not the global. */}
+          <h1>Everything you’re wondering, before you sign up.</h1>
           <p>No subscription, no catch — here’s exactly how Let’s Get Quoted works, what it costs, and how you get paid.</p>
         </div>
         <div className="actions">

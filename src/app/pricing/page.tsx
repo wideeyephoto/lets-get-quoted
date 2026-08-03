@@ -65,7 +65,10 @@ export default function PricingPage() {
       <section className="section-block features-hero">
         <div className="section-heading">
           <p className="eyebrow">Pricing</p>
-          <h2>No subscription. You only pay when you get paid.</h2>
+          {/* The page's own title, so it's the h1. Pricing is a page people
+              land on from search and navigate by heading; it started at h2,
+              which left it with no name at all. See .section-heading h1. */}
+          <h1>No subscription. You only pay when you get paid.</h1>
           <p>
             Every one of the {FEATURE_COUNT}+ features is included from day one. There&apos;s no setup fee and nothing to
             cancel — just a small platform fee when a homeowner actually pays you, and it drops as you grow.

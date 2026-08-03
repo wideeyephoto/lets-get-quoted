@@ -18,7 +18,8 @@ export default function ResourcesPage() {
       <section className="section-block features-hero">
         <div className="section-heading">
           <p className="eyebrow">Resources</p>
-          <h2>Straight-talk guides for running a contracting business.</h2>
+          {/* The page's own title, so it's the h1. See .section-heading h1. */}
+          <h1>Straight-talk guides for running a contracting business.</h1>
           <p>No fluff and no upsell — practical advice on pricing, leads, getting paid, and reputation that works whatever tools you use.</p>
         </div>
       </section>
