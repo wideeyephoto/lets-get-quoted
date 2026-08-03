@@ -132,7 +132,16 @@ export async function uploadSiteVideo(file: File): Promise<UploadedVideo> {
   const signed = await createSiteVideoUploadAction(file.name, file.type);
   const { error } = await supabase.storage
     .from(signed.bucket)
-    .uploadToSignedUrl(signed.path, signed.token, file, { contentType: file.type });
+    // cacheControl matches every other upload path in the app (job photos, lead
+    // photos, crew photos, site images all use a year). Videos were the one that
+    // set nothing and fell back to Supabase's one-hour default — so the LARGEST
+    // asset on a contractor's site was the only one expiring hourly, re-fetched
+    // from origin by the CDN and re-downloaded by returning visitors, while a
+    // 5 KB icon beside it was cached for a year.
+    //
+    // Safe because the path carries a UUID: a replaced video is a new URL, so
+    // nothing stale can be served.
+    .uploadToSignedUrl(signed.path, signed.token, file, { contentType: file.type, cacheControl: '31536000' });
   if (error) throw new Error(error.message || 'The upload didn’t finish. Check your connection and try again.');
 
   // The poster is small enough to go through a normal server action, and it
