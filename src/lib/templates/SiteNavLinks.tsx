@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import type { Site } from '@/lib/sites';
-import { getPublishedBlog, getPublishedFaqs, getPublishedShowcase, getPublishedTestimonials } from '@/lib/site-content';
+import { getAllPublishedVideos, getPublishedBlog, getPublishedFaqs, getPublishedShowcase, getPublishedTestimonials } from '@/lib/site-content';
 import styles from './themes.module.css';
 
 type SiteNavLink = {
@@ -26,6 +26,7 @@ const NAV_EDIT_TARGET: Record<string, string> = {
   '#reviews': 'reviews',
   '#faqs': 'faqs',
   '#blog': 'blog',
+  '/videos': 'video',
   '#contact': 'contact',
 };
 const navEditTarget = (href: string): string => NAV_EDIT_TARGET[href] || 'identity';
@@ -54,6 +55,10 @@ export default function SiteNavLinks({ site, links, className }: SiteNavLinksPro
   const dynamicLinks: SiteNavLink[] = [];
   const showcase = getPublishedShowcase(site.content);
   if (showcase) dynamicLinks.push({ href: '#showcase', label: showcase.navLabel.trim() || 'Gallery' });
+  // A real page rather than an anchor: with several bands an anchor can only
+  // ever point at one of them, and the clips are worth a URL that can be sent
+  // to a customer and indexed on its own.
+  if (getAllPublishedVideos(site.content).length > 0) dynamicLinks.push({ href: '/videos', label: 'Videos' });
   if (getPublishedTestimonials(site.content)) dynamicLinks.push({ href: '#reviews', label: 'Reviews' });
   if (getPublishedFaqs(site.content)) dynamicLinks.push({ href: '#faqs', label: 'FAQs' });
   if (getPublishedBlog(site.content)) dynamicLinks.push({ href: '#blog', label: 'Blog' });

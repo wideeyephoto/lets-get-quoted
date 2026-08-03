@@ -6,7 +6,7 @@ import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getSiteContent, getTradeGlyphOptions, glyphForContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES,
   MENU_BUTTON_STYLES,
-  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, VIDEO_SECTION_STYLES, videoStyleCapacity, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
+  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
 import { generatePrivacyPolicy, generateTermsOfService } from '@/lib/legal/legal-copy';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
@@ -372,7 +372,9 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
   >(null);
   // The video studio popup — the section's style, videos and behavior all live
   // in there because a layout choice can't be judged from a 480px rail.
-  const [videoStudioOpen, setVideoStudioOpen] = useState(false);
+  // Which band the studio is editing, or null. An id rather than a boolean —
+  // with several bands, "open" is no longer a complete answer.
+  const [videoStudioId, setVideoStudioId] = useState<string | null>(null);
   // The section key currently being dragged in the "Page order" reorder list.
   const [dragKey, setDragKey] = useState<string | null>(null);
   // The card the pointer is currently over — shows the "lands here" indicator.
@@ -1259,9 +1261,45 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
     updateSiteContent({ projectShowcase });
   }, [updateSiteContent]);
 
-  const updateVideoSection = useCallback((videoSection: SiteVideoSectionContent) => {
-    updateSiteContent({ videoSection });
-  }, [updateSiteContent]);
+  const updateVideoSectionsList = useCallback((videoSections: SiteVideoSectionContent[]) => {
+    const keys = new Set(videoSections.map((section) => videoSectionKey(section.id)));
+    updateSiteContent({
+      videoSections,
+      // Drop the keys of bands that no longer exist and let parseSectionOrder
+      // slot any new one in; leaving a dead key behind would silently reserve a
+      // position on the page for something that is gone.
+      sectionOrder: siteContent.sectionOrder.filter((key) => !key.startsWith('video') || keys.has(key)),
+    });
+  }, [siteContent.sectionOrder, updateSiteContent]);
+
+  // Bands are addressed by id, never by index: the "Page order" list can move
+  // them past each other, so a position is not a stable way to name one.
+  const updateVideoSection = useCallback((section: SiteVideoSectionContent) => {
+    updateSiteContent({
+      videoSections: siteContent.videoSections.map((item) => (item.id === section.id ? section : item)),
+    });
+  }, [siteContent.videoSections, updateSiteContent]);
+
+  const addVideoSection = useCallback(() => {
+    if (siteContent.videoSections.length >= MAX_VIDEO_SECTIONS) return;
+    // Highest existing number + 1, not length + 1: deleting the middle band of
+    // three and adding one back would otherwise reuse a live id, and ids are
+    // what sectionOrder holds.
+    const highest = siteContent.videoSections.reduce((max, item) => {
+      const n = Number(/^video-(\d+)$/.exec(item.id)?.[1] ?? 0);
+      return n > max ? n : max;
+    }, 0);
+    const id = `video-${highest + 1}`;
+    // Seeded off the first band so a second one inherits the site's voice, then
+    // cleared of its clips — inheriting those would publish the same video twice.
+    const seed = siteContent.videoSections[0];
+    updateVideoSectionsList([...siteContent.videoSections, { ...seed, id, videos: [], style: 'split' }]);
+  }, [siteContent.videoSections, updateVideoSectionsList]);
+
+  const removeVideoSection = useCallback((id: string) => {
+    if (siteContent.videoSections.length <= 1) return;
+    updateVideoSectionsList(siteContent.videoSections.filter((item) => item.id !== id));
+  }, [siteContent.videoSections, updateVideoSectionsList]);
 
   // The editable project photos: the owner's own set once they've touched it,
   // otherwise the SAME gallery fallback the template shows (so every photo on
@@ -1327,10 +1365,19 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
 
   // Video card hint. A section switched on with nothing to play publishes
   // nothing, so it says so rather than showing a confident "On".
-  const videoClips = siteContent.videoSection.videos.filter((item) => item.url.trim());
-  const videoStyleLabel = VIDEO_SECTION_STYLES.find((style) => style.key === siteContent.videoSection.style)?.label ?? 'Video';
-  const videoShown = Math.min(videoClips.length, videoStyleCapacity(siteContent.videoSection.style));
-  const videoHint: { hint?: string; hintTone?: 'ok' | 'warn' } = contentHint(siteContent.videoSection.enabled, videoClips.length, 'video');
+  const videoCards = siteContent.videoSections.map((section, index) => {
+    const clips = section.videos.filter((item) => item.url.trim());
+    return {
+      section,
+      clips,
+      styleLabel: VIDEO_SECTION_STYLES.find((style) => style.key === section.style)?.label ?? 'Video',
+      shown: Math.min(clips.length, videoStyleCapacity(section.style)),
+      hint: contentHint(section.enabled, clips.length, 'video') as { hint?: string; hintTone?: 'ok' | 'warn' },
+      // Numbered only once there is more than one, matching reorderableSectionsFor.
+      label: siteContent.videoSections.length === 1 ? 'Video' : `Video ${index + 1}`,
+      key: videoSectionKey(section.id),
+    };
+  });
 
   const checkSubdomain = useCallback(() => {
     const subdomain = site.subdomain?.trim().toLowerCase();
@@ -2028,21 +2075,45 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
                   })()}
                 </SectionCard>
 
-                <SectionCard reorder={reorderProps('video', 'Video')} title="Video" description="A band of video on your page. Pick one of six arrangements — a full-width backdrop, a video beside your message, a project story, a row of phone clips, a customer on camera, or your process." evidence="A homeowner who watches you speak has already met you. Video on a service page is the closest thing to a first visit before the first visit." enabled={siteContent.videoSection.enabled} onToggleEnabled={(value) => updateVideoSection({ ...siteContent.videoSection, enabled: value })} {...videoHint} open={openSection === 'video'} onToggleOpen={() => toggleSection('video')}>
-                  <div className={styles.vsSummary}>
-                    <span>{videoStyleLabel}</span>
-                    <span>{videoClips.length === 0 ? 'No video yet' : `${videoShown} showing`}</span>
-                    <span>{siteContent.videoSection.autoplay ? 'Autoplay muted' : 'Tap to play'}</span>
-                    {siteContent.videoSection.loop && <span>Loops</span>}
-                    {siteContent.videoSection.controls && <span>Controls on</span>}
-                  </div>
-                  <button type="button" className={styles.vsOpenBtn} onClick={() => setVideoStudioOpen(true)}>
-                    🎬 {videoClips.length === 0 ? 'Add a video' : 'Open the video studio'}
+                {videoCards.map((card) => (
+                  <SectionCard
+                    key={card.key}
+                    reorder={reorderProps(card.key, card.label)}
+                    title={card.label}
+                    description="A band of video on your page. Pick one of six arrangements — a full-width backdrop, a video beside your message, a project story, a row of phone clips, a customer on camera, or your process."
+                    evidence="A homeowner who watches you speak has already met you. Video on a service page is the closest thing to a first visit before the first visit."
+                    enabled={card.section.enabled}
+                    onToggleEnabled={(value) => updateVideoSection({ ...card.section, enabled: value })}
+                    {...card.hint}
+                    open={openSection === card.key}
+                    onToggleOpen={() => toggleSection(card.key)}
+                  >
+                    <div className={styles.vsSummary}>
+                      <span>{card.styleLabel}</span>
+                      <span>{card.clips.length === 0 ? 'No video yet' : `${card.shown} showing`}</span>
+                      <span>{card.section.autoplay ? 'Autoplay muted' : 'Tap to play'}</span>
+                      {card.section.loop && <span>Loops</span>}
+                      {card.section.controls && <span>Controls on</span>}
+                    </div>
+                    <button type="button" className={styles.vsOpenBtn} onClick={() => setVideoStudioId(card.section.id)}>
+                      🎬 {card.clips.length === 0 ? 'Add a video' : 'Open the video studio'}
+                    </button>
+                    <p className={styles.fieldHint}>
+                      Upload a clip (up to 50 MB — about 45 seconds of phone video) or paste a YouTube link. Switching arrangements never loses what you&apos;ve written: every layout reads the same headline, description, and button.
+                    </p>
+                    {siteContent.videoSections.length > 1 && (
+                      <button type="button" className={styles.dangerAction} onClick={() => removeVideoSection(card.section.id)}>
+                        Remove this band
+                      </button>
+                    )}
+                  </SectionCard>
+                ))}
+
+                {siteContent.videoSections.length < MAX_VIDEO_SECTIONS && (
+                  <button type="button" className={styles.secondaryAction} onClick={addVideoSection}>
+                    + Add another video band
                   </button>
-                  <p className={styles.fieldHint}>
-                    Upload a clip (up to 50 MB — about 45 seconds of phone video) or paste a YouTube link. Switching arrangements never loses what you&apos;ve written: every layout reads the same headline, description, and button.
-                  </p>
-                </SectionCard>
+                )}
 
                 <SectionCard reorder={reorderProps('testimonials', 'Customer reviews')} title="Customer reviews" description="Show quotes from real customers on your public site." evidence="97% of homeowners read reviews before hiring a local pro, and the first few weigh the most." enabled={siteContent.testimonials.enabled} onToggleEnabled={(value) => updateTestimonials({ ...siteContent.testimonials, enabled: value })} {...contentHint(siteContent.testimonials.enabled, reviewCount, 'review')} open={openSection === 'testimonials'} onToggleOpen={() => toggleSection('testimonials')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.testimonials.title} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, title: event.target.value })} /></label>
@@ -2511,13 +2582,19 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
         />
       )}
 
-      {videoStudioOpen && (
-        <VideoStudio
-          content={siteContent.videoSection}
-          onChange={updateVideoSection}
-          onClose={() => setVideoStudioOpen(false)}
-        />
-      )}
+      {(() => {
+        // Resolved from the live list, not captured when it opened: deleting the
+        // band being edited must close the studio rather than leave it editing a
+        // section that no longer exists.
+        const editing = siteContent.videoSections.find((section) => section.id === videoStudioId);
+        return editing ? (
+          <VideoStudio
+            content={editing}
+            onChange={updateVideoSection}
+            onClose={() => setVideoStudioId(null)}
+          />
+        ) : null;
+      })()}
     </main>
   );
 }

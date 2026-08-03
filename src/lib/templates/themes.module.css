@@ -611,6 +611,40 @@
 .blogCardMore { margin-top: .2rem; font-weight: 700; font-size: .9rem; color: var(--theme-accent); }
 .blogCardMore span { display: inline-block; transition: transform .3s ease; }
 .blogCard:hover .blogCardMore span { transform: translateX(4px); }
+
+/* --- /videos index tiles --------------------------------------------------
+   Reuses .blogCard for the frame so the two index pages are visibly the same
+   kind of page. Only the media area differs: a poster that becomes a player. */
+.videoIndexFrame { position: relative; aspect-ratio: 16 / 10; background: #0d1117; overflow: hidden; }
+.videoIndexFrame > iframe,
+.videoIndexFrame > video { display: block; width: 100%; height: 100%; border: 0; object-fit: cover; }
+.videoIndexPlay {
+  display: block; width: 100%; height: 100%; padding: 0;
+  border: 0; background: none; cursor: pointer; color: #fff;
+}
+.videoIndexPlay img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.videoIndexBlank { display: block; width: 100%; height: 100%; background: linear-gradient(140deg, #1d2735, #0d1117); }
+.videoIndexPlayMark {
+  position: absolute; inset: 0; margin: auto;
+  width: 3.1rem; height: 3.1rem;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  /* Its own scrim rather than one over the whole poster: the still frame is the
+     thing being advertised, and dimming all of it to float a triangle over it
+     sells the video worse than the video does. */
+  background: rgba(13, 17, 23, .62);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .38), 0 8px 24px -8px rgba(0, 0, 0, .7);
+  font-size: 1rem; line-height: 1; padding-left: .18rem;
+  transition: transform .2s ease, background .2s ease;
+}
+.videoIndexPlay:hover .videoIndexPlayMark { transform: scale(1.08); background: var(--theme-accent); }
+.videoIndexPlay:focus-visible { outline: 3px solid var(--theme-accent); outline-offset: -3px; }
+.videoIndexTime {
+  position: absolute; right: .5rem; bottom: .5rem;
+  padding: .1rem .38rem; border-radius: 4px;
+  background: rgba(13, 17, 23, .8);
+  font-size: .72rem; font-weight: 700; font-variant-numeric: tabular-nums;
+}
 /* Standalone article page — own full-bleed light shell (renders outside the
    template, and the SaaS body is dark, so it must set its own background). */
 .blogArticleShell { background: #fff; color: #1c2230; font-family: var(--font-body), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }

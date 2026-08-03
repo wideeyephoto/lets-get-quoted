@@ -290,6 +290,9 @@ export type SiteVideoItem = {
 };
 
 export type SiteVideoSectionContent = {
+  /** Stable per-section id. Also the suffix of its `video:<id>` order key, so
+      renaming one would move it in the page order — never regenerate these. */
+  id: string;
   enabled: boolean;
   style: SiteVideoStyle;
   // Content — shared by every style.
@@ -327,6 +330,18 @@ const VIDEO_STYLE_KEYS = new Set<string>(VIDEO_SECTION_STYLES.map((style) => sty
 
 export const MAX_VIDEO_ITEMS = 6;
 export const MAX_VIDEO_STEPS = 4;
+
+// Bands per page, not videos. Four is enough to open with a hero, break the
+// page with a project story and close with a testimonial, and few enough that
+// the page is still a page rather than a playlist — the /videos route is where
+// a long list belongs.
+export const MAX_VIDEO_SECTIONS = 4;
+
+/** A video section's key in `sectionOrder`. The first one keeps the bare
+    `video` key so every site saved before this existed keeps its position. */
+export function videoSectionKey(id: string): string {
+  return id === 'video-1' ? 'video' : `video:${id}`;
+}
 
 // How many videos a style actually shows. The rest stay saved — trimming the
 // list to fit a style would delete an upload on a layout change.
@@ -707,8 +722,8 @@ export type NormalizedSiteContent = {
   // Company-name wordmark display treatment ('' = plain). See WORDMARK_STYLES.
   wordmarkStyle: string;
   projectShowcase: SiteProjectShowcaseContent;
-  /** The video band — one set of content, six arrangements. */
-  videoSection: SiteVideoSectionContent;
+  /** The video bands. One set of content each, six arrangements each. */
+  videoSections: SiteVideoSectionContent[];
   services: SiteServicesContent;
   howItWorks: SiteHowItWorksContent;
   blog: SiteBlogContent;
@@ -986,6 +1001,58 @@ function parseVideoItems(value: unknown): SiteVideoItem[] {
   }));
 }
 
+// One video band. Split out of the content parser so the same shape can be read
+// from `videoSections[]` and from the single legacy `videoSection` object.
+function parseVideoSection(raw: unknown, index: number): SiteVideoSectionContent {
+  const section = isRecord(raw) ? raw : {};
+  return {
+    id: toString(section.id, `video-${index + 1}`).slice(0, 40),
+    // On by default, but it publishes nothing until a video is actually
+    // attached (getPublishedVideoSections) — so an owner who never adds one
+    // sees the control without ever shipping an empty band.
+    enabled: section.enabled !== false,
+    style: VIDEO_STYLE_KEYS.has(toString(section.style)) ? (toString(section.style) as SiteVideoStyle) : 'split',
+    eyebrow: toString(section.eyebrow, DEFAULT_VIDEO_EYEBROW).slice(0, 40),
+    headline: toString(section.headline, DEFAULT_VIDEO_HEADLINE).slice(0, 120),
+    body: toString(section.body, DEFAULT_VIDEO_BODY).slice(0, 400),
+    ctaLabel: toString(section.ctaLabel, DEFAULT_VIDEO_CTA).slice(0, 40),
+    ctaHref: toString(section.ctaHref, '#contact').slice(0, 200),
+    videos: parseVideoItems(section.videos),
+    location: toString(section.location).slice(0, 60),
+    timeline: toString(section.timeline).slice(0, 40),
+    service: toString(section.service).slice(0, 40),
+    steps: section.steps === undefined
+      ? DEFAULT_VIDEO_STEPS.map((step) => ({ ...step }))
+      : parseProcessSteps(section.steps).slice(0, MAX_VIDEO_STEPS),
+    autoplay: section.autoplay !== false,
+    loop: section.loop !== false,
+    controls: toBoolean(section.controls),
+    overlay: Math.min(90, Math.max(0, Math.round(toPositiveNumber(section.overlay, 55)))),
+    mobilePoster: section.mobilePoster !== false,
+  };
+}
+
+// Every site saved before there could be more than one band has a single
+// `videoSection` object and no `videoSections` array. Reading the old key when
+// the new one is absent is the whole migration — nothing is rewritten on disk
+// until the owner next saves, so a rollback loses nothing.
+function parseVideoSections(root: Record<string, unknown>): SiteVideoSectionContent[] {
+  const list = Array.isArray(root.videoSections)
+    ? root.videoSections.slice(0, MAX_VIDEO_SECTIONS).map(parseVideoSection)
+    : [parseVideoSection(root.videoSection, 0)];
+
+  // Ids are order keys, so a duplicate would make two bands fight for one slot.
+  const seen = new Set<string>();
+  return list.map((section, index) => {
+    if (!seen.has(section.id)) { seen.add(section.id); return section; }
+    let n = index + 1;
+    let id = `video-${n}`;
+    while (seen.has(id)) id = `video-${++n}`;
+    seen.add(id);
+    return { ...section, id };
+  });
+}
+
 function parseProcessSteps(value: unknown): SiteProcessStep[] {
   if (!Array.isArray(value)) return [];
 
@@ -1059,12 +1126,14 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const workGallery = isRecord(root.workGallery) ? root.workGallery : {};
   const introBlock = isRecord(root.introBlock) ? root.introBlock : {};
   const projectShowcase = isRecord(root.projectShowcase) ? root.projectShowcase : {};
-  const videoSection = isRecord(root.videoSection) ? root.videoSection : {};
   const services = isRecord(root.services) ? root.services : {};
   const howItWorks = isRecord(root.howItWorks) ? root.howItWorks : {};
   const blog = isRecord(root.blog) ? root.blog : {};
   const heroBadge = isRecord(root.heroBadge) ? root.heroBadge : {};
   const images = isRecord(root.images) ? root.images : {};
+  // Hoisted: sectionOrder is validated against these bands' own keys, so it
+  // cannot be parsed until we know how many bands there are.
+  const videoSections = parseVideoSections(root);
 
   return {
     showcase: {
@@ -1222,30 +1291,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       style: PROJECT_SHOWCASE_STYLE_KEYS.has(toString(projectShowcase.style)) ? (toString(projectShowcase.style) as SiteProjectShowcaseStyle) : 'coverflow',
       items: parseShowcaseItems(projectShowcase.items).slice(0, MAX_PROJECT_SHOWCASE_ITEMS),
     },
-    videoSection: {
-      // On by default, but it publishes nothing until a video is actually
-      // attached (getPublishedVideoSection) — so an owner who never adds one
-      // sees the control without ever shipping an empty band.
-      enabled: videoSection.enabled !== false,
-      style: VIDEO_STYLE_KEYS.has(toString(videoSection.style)) ? (toString(videoSection.style) as SiteVideoStyle) : 'split',
-      eyebrow: toString(videoSection.eyebrow, DEFAULT_VIDEO_EYEBROW).slice(0, 40),
-      headline: toString(videoSection.headline, DEFAULT_VIDEO_HEADLINE).slice(0, 120),
-      body: toString(videoSection.body, DEFAULT_VIDEO_BODY).slice(0, 400),
-      ctaLabel: toString(videoSection.ctaLabel, DEFAULT_VIDEO_CTA).slice(0, 40),
-      ctaHref: toString(videoSection.ctaHref, '#contact').slice(0, 200),
-      videos: parseVideoItems(videoSection.videos),
-      location: toString(videoSection.location).slice(0, 60),
-      timeline: toString(videoSection.timeline).slice(0, 40),
-      service: toString(videoSection.service).slice(0, 40),
-      steps: videoSection.steps === undefined
-        ? DEFAULT_VIDEO_STEPS.map((step) => ({ ...step }))
-        : parseProcessSteps(videoSection.steps).slice(0, MAX_VIDEO_STEPS),
-      autoplay: videoSection.autoplay !== false,
-      loop: videoSection.loop !== false,
-      controls: toBoolean(videoSection.controls),
-      overlay: Math.min(90, Math.max(0, Math.round(toPositiveNumber(videoSection.overlay, 55)))),
-      mobilePoster: videoSection.mobilePoster !== false,
-    },
+    videoSections,
     services: {
       enabled: services.enabled !== false,
       title: toString(services.title, DEFAULT_SERVICES_TITLE),
@@ -1281,7 +1327,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       secondCustomLabel: toString(heroBadge.secondCustomLabel).slice(0, 40),
     },
     images: parseImageSlots(images),
-    sectionOrder: parseSectionOrder(root.sectionOrder),
+    sectionOrder: parseSectionOrder(root.sectionOrder, videoSections),
     heroImages: Array.isArray(root.heroImages)
       ? root.heroImages.filter((url): url is string => typeof url === 'string' && url.trim().length > 0).map((url) => url.trim()).slice(0, MAX_EXTRA_HERO_IMAGES)
       : [],
@@ -1491,12 +1537,43 @@ export function getPublishedServiceAreas(content: Record<string, unknown> | null
 // The returned `videos` are trimmed to what the chosen style shows, so the extra
 // clips a reel had never leak into the DOM after a switch to a single-video
 // style. They stay in storage untouched.
+/** Every band that would actually render — enabled, and with a playable video. */
+export function getPublishedVideoSections(content: Record<string, unknown> | null | undefined): SiteVideoSectionContent[] {
+  return getSiteContent(content).videoSections.flatMap((section) => {
+    if (!section.enabled) return [];
+    const playable = section.videos.filter((item) => item.url.trim());
+    if (playable.length === 0) return [];
+    return [{ ...section, videos: playable.slice(0, videoStyleCapacity(section.style)) }];
+  });
+}
+
+/** The first published band. For callers that need one — the nav's "is there
+    any video at all" check, and the /videos page's own empty test. */
 export function getPublishedVideoSection(content: Record<string, unknown> | null | undefined): SiteVideoSectionContent | null {
-  const videoSection = getSiteContent(content).videoSection;
-  if (!videoSection.enabled) return null;
-  const playable = videoSection.videos.filter((item) => item.url.trim());
-  if (playable.length === 0) return null;
-  return { ...videoSection, videos: playable.slice(0, videoStyleCapacity(videoSection.style)) };
+  return getPublishedVideoSections(content)[0] ?? null;
+}
+
+/** Every playable video across every band, in page order, de-duplicated by URL —
+    one clip used in two bands is still one clip on the /videos page. */
+export function getAllPublishedVideos(
+  content: Record<string, unknown> | null | undefined,
+): { item: SiteVideoItem; section: SiteVideoSectionContent }[] {
+  const seen = new Set<string>();
+  const out: { item: SiteVideoItem; section: SiteVideoSectionContent }[] = [];
+  // Deliberately NOT getPublishedVideoSections: that trims each band's list to
+  // what its style can show, which is one clip for a hero. The owner may have
+  // five saved, and the index is the one place all of them belong — trimming
+  // here would hide uploads behind a layout choice made on the homepage.
+  for (const section of getSiteContent(content).videoSections) {
+    if (!section.enabled) continue;
+    for (const item of section.videos.filter((video) => video.url.trim())) {
+      const key = item.url.trim();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ item, section });
+    }
+  }
+  return out;
 }
 
 export function getPublishedCertifications(content: Record<string, unknown> | null | undefined): SiteCertificationsContent | null {
@@ -1652,11 +1729,28 @@ export const REORDERABLE_SECTIONS = [
 
 const DEFAULT_SECTION_ORDER = REORDERABLE_SECTIONS.map((section) => section.key);
 
+
 // Coerce a stored order into a full, deduped permutation of the known keys:
 // keep recognized keys in their saved order, drop anything unknown, then append
 // any missing keys in default order so every section still renders.
-function parseSectionOrder(value: unknown): string[] {
-  const known = new Set<string>(DEFAULT_SECTION_ORDER);
+//
+// The known set is not fixed, because video bands are INSTANCES: one `video`
+// key plus a `video:<id>` for each band after the first. That is what lets a
+// second band sit somewhere else on the page rather than always next to the
+// first. A band the owner deleted leaves an unknown key behind, which the drop
+// rule below already handles.
+function parseSectionOrder(value: unknown, videoSections: SiteVideoSectionContent[]): string[] {
+  const videoKeys = videoSections.map((section) => videoSectionKey(section.id));
+  // A newly-added band lands directly after the one before it rather than at
+  // the bottom of the page — appending it would put a second video below the
+  // footer CTA, which is never where someone adding one wants it.
+  const defaults: string[] = [];
+  for (const key of DEFAULT_SECTION_ORDER) {
+    defaults.push(key);
+    if (key === 'video') defaults.push(...videoKeys.filter((k) => k !== 'video'));
+  }
+
+  const known = new Set<string>(defaults);
   const seen = new Set<string>();
   const order: string[] = [];
   if (Array.isArray(value)) {
@@ -1667,7 +1761,7 @@ function parseSectionOrder(value: unknown): string[] {
       }
     }
   }
-  for (const key of DEFAULT_SECTION_ORDER) if (!seen.has(key)) order.push(key);
+  for (const key of defaults) if (!seen.has(key)) order.push(key);
   return order;
 }
 

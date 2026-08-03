@@ -16,7 +16,8 @@ import {
   getPublishedStats,
   getPublishedStickyCallBar,
   getPublishedTestimonials,
-  getPublishedVideoSection,
+  getPublishedVideoSections,
+  videoSectionKey,
   getSiteContent,
   getSlotImage,
 } from '@/lib/site-content';
@@ -56,7 +57,7 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
   const stats = getPublishedStats(site.content);
   const beforeAfter = getPublishedBeforeAfter(site.content);
   const blog = getPublishedBlog(site.content);
-  const videoSection = getPublishedVideoSection(site.content);
+  const videoSections = getPublishedVideoSections(site.content);
   const stickyCallBar = getPublishedStickyCallBar(site.content, site.phone);
 
   // The Photo gallery renders in-flow (and reorderable) on every template. It was
@@ -83,7 +84,7 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
           .map((item) => ({ id: item.id, url: item.url, alt: item.alt }))
       : [];
 
-  const hasInFlowSections = Boolean(services || howItWorks || showcase || testimonials || faqs || serviceAreas || stats || beforeAfter || blog || projectShowcase || videoSection);
+  const hasInFlowSections = Boolean(services || howItWorks || showcase || testimonials || faqs || serviceAreas || stats || beforeAfter || blog || projectShowcase || videoSections.length > 0);
 
   if (!hasInFlowSections && !stickyCallBar) return null;
 
@@ -108,7 +109,11 @@ export default function SiteContentSections({ site, galleryImages = [] }: SiteCo
       </section>
     ),
     howItWorks: howItWorks && <SiteProcess title={howItWorks.title} intro={howItWorks.intro} steps={howItWorks.steps} />,
-    video: videoSection && <SiteVideoSection content={videoSection} />,
+    // One slot per band, keyed the same way sectionOrder keys them — the first
+    // keeps the bare `video` key so sites saved before this kept their place.
+    ...Object.fromEntries(
+      videoSections.map((section) => [videoSectionKey(section.id), <SiteVideoSection key={section.id} content={section} />]),
+    ),
     showcase: showcase && (() => {
       // The visible tile title must ADVERTISE a service, never describe the
       // photo. Stock tiles saved without a caption (older generations, picker

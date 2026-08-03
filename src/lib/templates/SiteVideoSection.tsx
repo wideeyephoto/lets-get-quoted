@@ -200,7 +200,16 @@ export default function SiteVideoSection({ content }: { content: SiteVideoSectio
   }
 
   return (
-    <section className={`${styles.extraSection} ${styles.videoSection}`} id="video" data-edit="video" data-video-style={content.style} style={scrim}>
+    <section
+      className={`${styles.extraSection} ${styles.videoSection}`}
+      /* The FIRST band keeps the bare #video anchor so links written before
+         there could be more than one still land; the rest get their own id,
+         because two elements sharing one id makes the second unreachable. */
+      id={content.id === 'video-1' ? 'video' : `video-${content.id}`}
+      data-edit={content.id === 'video-1' ? 'video' : `video:${content.id}`}
+      data-video-style={content.style}
+      style={scrim}
+    >
       {content.style === 'split' && (
         <div className={styles.videoSplit}>
           <VideoFrame item={primary} behavior={behavior} playLabel={primary.label || 'Play video'} />
