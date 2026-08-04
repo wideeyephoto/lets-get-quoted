@@ -134,7 +134,7 @@ const AREA_FILLER = /\b(and\s+surrounding\s+(?:communities|areas|towns)|surround
 // Derive a specific city + region from the free-text service area when the
 // explicit fields are missing. "Dayton, OH and surrounding communities" ->
 // city "Dayton", region "OH".
-function deriveLocation(input: SeoContractorInput): { city: string; region: string; locationLabel: string } {
+export function deriveLocation(input: SeoContractorInput): { city: string; region: string; locationLabel: string } {
   let city = clean(input.city);
   let region = clean(input.region);
   const serviceArea = clean(input.serviceArea);
@@ -244,10 +244,73 @@ function buildTitleCandidates(n: NormalizedInput): { rich: string[]; fallback: s
   return { rich: dedupePreserveOrder(rich), fallback: dedupePreserveOrder(fallback) };
 }
 
+// Words in a trade phrase too generic to count as naming it. "Services" in a
+// title tells a searcher nothing about what the business does.
+const SERVICE_STOPWORDS = new Set([
+  'and', 'the', 'for', 'with', 'your', 'our',
+  'service', 'services', 'solutions', 'company', 'contractor', 'contractors',
+  'professional', 'quality', 'local', 'home', 'work',
+]);
+
+// The substantive words of a trade phrase, so "Landscaping and Lawns" is
+// recognised in a title that only says "Landscaping".
+function serviceTokens(service: string): string[] {
+  return clean(service)
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((word) => word.length >= 4 && !SERVICE_STOPWORDS.has(word));
+}
+
+/**
+ * How much local-search signal a title carries: does it name the city, and does
+ * it name the trade?
+ *
+ * These are the two terms a "<trade> in <city>" search is matched on, and a
+ * title can read perfectly well while carrying neither — "Northgate Gutter Co |
+ * Licensed & Insured" is a real one this product generated. Exported so the
+ * same measure can judge a title written by the AI site generator, not just the
+ * candidates built below.
+ *
+ * `cities` takes the whole service-area list, not just the primary city: a
+ * title naming any town the contractor actually serves is doing its job.
+ */
+export function localTitleSignal(
+  title: string,
+  cities: Array<string | null | undefined>,
+  service: string | null | undefined,
+): { hasCity: boolean; hasService: boolean; score: number } {
+  const value = clean(title).toLowerCase();
+  const hasCity = cities.some((entry) => {
+    const city = clean(entry).toLowerCase();
+    return Boolean(city) && value.includes(city);
+  });
+  const hasService = serviceTokens(service ?? '').some((token) => value.includes(token));
+  return { hasCity, hasService, score: (hasCity ? 1 : 0) + (hasService ? 1 : 0) };
+}
+
+// Rotate by seed WITHIN the highest-signal group rather than across every valid
+// candidate. Variation survives — it just happens among the titles that can
+// actually rank for a local search, instead of treating "Brand | Differentiator"
+// as interchangeable with "Trade in City | Brand".
+function pickByLocalSignal(candidates: string[], n: NormalizedInput, variantOffset: number): string {
+  let best = -1;
+  let group: string[] = [];
+  for (const title of candidates) {
+    const { score } = localTitleSignal(title, [n.city, n.locationLabel], n.service);
+    if (score > best) {
+      best = score;
+      group = [title];
+    } else if (score === best) {
+      group.push(title);
+    }
+  }
+  return group[(n.seedNumber + variantOffset) % group.length];
+}
+
 function selectTitle(n: NormalizedInput, variantOffset: number): string {
   const { rich, fallback } = buildTitleCandidates(n);
   const validRich = rich.filter((title) => isValidTitle(title, n.service));
-  if (validRich.length > 0) return validRich[(n.seedNumber + variantOffset) % validRich.length];
+  if (validRich.length > 0) return pickByLocalSignal(validRich, n, variantOffset);
   const validFallback = fallback.filter((title) => isValidTitle(title, n.service));
   if (validFallback.length > 0) return validFallback[(n.seedNumber + variantOffset) % validFallback.length];
   // Last-resort guaranteed-valid title, trimmed to a word boundary.

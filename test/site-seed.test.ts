@@ -114,6 +114,36 @@ describe('applyGeneratedSiteText', () => {
     expect(content.zip).toBe('64002');
   });
 
+  it('rewrites a generated SEO title that names neither the town nor the trade', () => {
+    // Measured from a real first-run: the model returned "Northgate Gutter Co |
+    // Licensed & Insured" for a gutter installer in Lee's Summit — no city, no
+    // trade, in the one field that ranks for "<trade> in <city>".
+    const next = applyGeneratedSiteText(
+      blankSite({ content: { trade: 'gutters' } }),
+      generated({ seo_title: 'Northgate Gutter Co | Licensed & Insured', cities: ["Lee's Summit", 'Blue Springs'] }),
+    );
+    expect(next.seo_title).not.toBe('Northgate Gutter Co | Licensed & Insured');
+    expect(next.seo_title!.toLowerCase()).toContain("lee's summit");
+  });
+
+  it('leaves a generated SEO title alone once it carries both', () => {
+    const strong = "Gutter Installation in Lee's Summit | Northgate";
+    const next = applyGeneratedSiteText(
+      blankSite({ content: { trade: 'gutters' } }),
+      generated({ seo_title: strong, cities: ["Lee's Summit"], services: [{ icon: 'droplets', title: 'Gutter Installation', description: 'x' }] }),
+    );
+    expect(next.seo_title).toBe(strong);
+  });
+
+  it('never judges a title the OWNER wrote', () => {
+    // When the model returns no title the field falls through to the saved one,
+    // and a person's own words about their own business are not a heuristic's
+    // business to second-guess.
+    const current = blankSite({ seo_title: 'My Own Careful Title' });
+    const next = applyGeneratedSiteText(current, generated({ seo_title: '' }));
+    expect(next.seo_title).toBe('My Own Careful Title');
+  });
+
   it('formats stat values with a thousands separator and suffix', () => {
     const next = applyGeneratedSiteText(blankSite(), generated({ stats: [{ value: 1450, suffix: '+', label: 'Jobs' }] }));
     expect(getSiteContent(next.content).stats.items[0].value).toBe('1,450+');

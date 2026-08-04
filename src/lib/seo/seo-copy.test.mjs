@@ -8,6 +8,7 @@ import {
   generateSeoCopy,
   resolveSeoCopy,
   resolveSchemaType,
+  localTitleSignal,
   SEO_TITLE_MAX,
   SEO_DESC_MAX,
 } from './seo-copy.ts';
@@ -197,6 +198,46 @@ test('description never repeats an instant-quote phrase (no duplicate lead)', ()
       const quotes = description.toLowerCase().split('an instant quote').length - 1;
       assert.ok(quotes <= 1, `"an instant quote" repeated in "${description}" (seed ${c.seed})`);
     }
+  }
+});
+
+test('localTitleSignal measures the city and the trade independently', () => {
+  const cities = ['Blue Springs', 'Raytown'];
+  assert.deepEqual(localTitleSignal('Plumbing in Raytown | BrokePipes', cities, 'plumbing'), { hasCity: true, hasService: true, score: 2 });
+  assert.deepEqual(localTitleSignal('BrokePipes | Raytown', cities, 'plumbing'), { hasCity: true, hasService: false, score: 1 });
+  assert.deepEqual(localTitleSignal('BrokePipes Plumbing', cities, 'plumbing'), { hasCity: false, hasService: true, score: 1 });
+  // The real failure this exists to catch.
+  assert.deepEqual(localTitleSignal('Northgate Gutter Co | Licensed & Insured', ['Lees Summit'], 'gutters'), { hasCity: false, hasService: false, score: 0 });
+});
+
+test('localTitleSignal matches a trade WORD, not the whole phrase', () => {
+  // "Landscaping and Lawns" must be recognised in a title that says
+  // "Landscaping", and "Services" alone must not count as naming a trade.
+  assert.equal(localTitleSignal('Landscaping in Raytown', ['Raytown'], 'landscaping and lawns').hasService, true);
+  assert.equal(localTitleSignal('Quality Home Services', ['Raytown'], 'professional home services').hasService, false);
+});
+
+test('a title that can name both the city and the trade does', () => {
+  // The ranking field is not a coin flip: where a candidate exists carrying
+  // both signals, it wins over an equally valid brand-only shape.
+  const local = [
+    { seed: 'g1', businessName: 'Northgate Gutter Co', trade: 'Gutter Installation', city: "Lee's Summit" },
+    { seed: 'g2', businessName: 'BrokePipes', trade: 'Plumbing', city: 'Maplewood' },
+    { seed: 'g3', businessName: 'All is Bright Lighting', trade: 'Holiday Lighting', city: 'Normal', region: 'IL' },
+  ];
+  for (const c of local) {
+    const { title } = generateSeoCopy(withFeatures(c));
+    const { score } = localTitleSignal(title, [c.city], c.trade);
+    assert.equal(score, 2, `"${title}" carries only ${score}/2 local signals for seed ${c.seed}`);
+  }
+});
+
+test('preferring local signal does not break length, validity or stability', () => {
+  for (const c of CONTRACTORS) {
+    const first = generateSeoCopy(withFeatures(c));
+    assert.deepEqual(generateSeoCopy(withFeatures(c)), first, `unstable for seed ${c.seed}`);
+    assert.ok(first.title.length <= SEO_TITLE_MAX && first.title.trim().length > 0);
+    assert.ok(!BAD_TOKEN.test(first.title) && !DANGLING_SEP.test(first.title));
   }
 });
 

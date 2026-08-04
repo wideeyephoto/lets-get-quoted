@@ -20,6 +20,7 @@ import {
   type NormalizedSiteContent,
 } from '@/lib/site-content';
 import type { Site } from '@/lib/sites';
+import { preferLocalSeoTitle } from '@/lib/seo/site-seo';
 import type { StockImageResult, WebsiteImageAssignment } from '@/lib/stock/types';
 
 /** Everything generateSiteTextAction produces. Mirrors its return type. */
@@ -158,7 +159,7 @@ export function applyGeneratedSiteText(current: Site, generated: GeneratedSiteTe
     };
   }
 
-  return {
+  const next: Site = {
     ...current,
     headline: generated.headline || current.headline,
     tagline: generated.tagline || current.tagline,
@@ -169,6 +170,18 @@ export function applyGeneratedSiteText(current: Site, generated: GeneratedSiteTe
     hero_url: stock ? stock.heroUrl : current.hero_url,
     content: mergeSiteContent(current.content, contentUpdates),
   };
+
+  // The SEO title has to name the city and the trade — it is what a "<trade> in
+  // <city>" search matches on, and the model is asked for that and does not
+  // always deliver. Judged against `next`, not `current`, because the cities and
+  // services it needs are the ones this generation just produced.
+  //
+  // Guarded on generated.seo_title so it can only ever judge machine-written
+  // text: when the model returned nothing, the field falls through to whatever
+  // the owner had, and nobody gets their own words second-guessed.
+  return generated.seo_title
+    ? { ...next, seo_title: preferLocalSeoTitle(next, generated.seo_title) }
+    : next;
 }
 
 /**
