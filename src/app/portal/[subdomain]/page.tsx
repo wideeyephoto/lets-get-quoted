@@ -2,9 +2,17 @@ import type { Metadata } from 'next';
 import { createAdminClient } from '@/lib/auth';
 import { getPublicSiteBySubdomain } from '@/lib/sites';
 import { siteIconsMetadata } from '@/lib/brand-mark';
+import SitePortalPage from '@/lib/templates/SitePortalPage';
 import PortalRequestForm from './PortalRequestForm';
 
 export const dynamic = 'force-dynamic';
+
+// The app-origin portal URL. Predates the header/footer link, and stays: it is
+// in email signatures and on the bottom of invoices already, and it is the only
+// address that works for a contractor whose site isn't published.
+//
+// Sibling routes site/[subdomain]/portal and site-domain/[domain]/portal serve
+// the SAME shell on the contractor's own host. Change one, change all three.
 
 export async function generateMetadata({ params }: { params: { subdomain: string } }): Promise<Metadata> {
   const site = await getPublicSiteBySubdomain(createAdminClient(), params.subdomain);
@@ -28,32 +36,17 @@ export default async function PortalRequestPage({ params }: { params: { subdomai
     : { data: null };
 
   const businessName = site?.company_name || account?.business_name || 'your contractor';
-  // A contractor who hasn't switched this on gets a page that says so plainly
-  // rather than a form that silently does nothing.
+  // No 404 for an unknown or unpublished subdomain. A 404 answers "does this
+  // contractor exist here?", and the whole page is built around never answering
+  // questions about who is on somebody's customer list.
   const enabled = Boolean(account?.client_portal_enabled);
 
   return (
-    <main className="wide-shell workspace-shell payment-shell">
-      <section className="workspace-hero panel payment-hero workspace-hero-solo">
-        <div className="workspace-hero-copy">
-          <p className="eyebrow">{businessName}</p>
-          <h1 className="workspace-title">Your jobs</h1>
-          {enabled ? (
-            <>
-              <p className="workspace-lead">
-                Everything {businessName} has done for you — what was quoted, what&apos;s covered by warranty, and how
-                long you&apos;ve got left on it.
-              </p>
-              <PortalRequestForm subdomain={params.subdomain} businessName={businessName} />
-            </>
-          ) : (
-            <p className="workspace-lead">
-              {businessName} doesn&apos;t have online job lookup switched on. Give them a call and they&apos;ll send you
-              your details directly.
-            </p>
-          )}
-        </div>
-      </section>
-    </main>
+    <SitePortalPage
+      accent={site?.accent_override ?? null}
+      businessName={businessName}
+      enabled={enabled}
+      form={site ? <PortalRequestForm subdomain={params.subdomain} businessName={businessName} /> : null}
+    />
   );
 }

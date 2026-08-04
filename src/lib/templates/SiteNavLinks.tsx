@@ -4,8 +4,8 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import type { Site } from '@/lib/sites';
 import {
-  DEFAULT_VIDEOS_NAV_LABEL, getAllPublishedVideos, getPublishedBlog, getPublishedFaqs,
-  getPublishedShowcase, getPublishedTestimonials, getSiteContent,
+  DEFAULT_VIDEOS_NAV_LABEL, getAllPublishedVideos, getPortalNavLink, getPublishedBlog, getPublishedFaqs,
+  getPublishedShowcase, getPublishedTestimonials, getSiteContent, PORTAL_SITE_PATH,
 } from '@/lib/site-content';
 import styles from './themes.module.css';
 
@@ -30,6 +30,7 @@ const NAV_EDIT_TARGET: Record<string, string> = {
   '#faqs': 'faqs',
   '#blog': 'blog',
   '/videos': 'video',
+  [PORTAL_SITE_PATH]: 'clientPortal',
   '#contact': 'contact',
 };
 const navEditTarget = (href: string): string => NAV_EDIT_TARGET[href] || 'identity';
@@ -72,6 +73,10 @@ export default function SiteNavLinks({ site, links, className }: SiteNavLinksPro
   if (getPublishedTestimonials(site.content)) dynamicLinks.push({ href: '#reviews', label: 'Reviews' });
   if (getPublishedFaqs(site.content)) dynamicLinks.push({ href: '#faqs', label: 'FAQs' });
   if (getPublishedBlog(site.content)) dynamicLinks.push({ href: '#blog', label: 'Blog' });
+  // Last in the menu, always. It is for people who are already customers, so it
+  // must never sit ahead of the links that turn a visitor into one.
+  const portalLink = getPortalNavLink(site.content);
+  if (portalLink) dynamicLinks.push(portalLink);
   const allLinks = [...links, ...dynamicLinks];
 
   useEffect(() => {

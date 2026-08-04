@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import { updateSite } from '@/lib/sites';
-import { getSiteContent, mergeSiteContent } from '@/lib/site-content';
+import { DEFAULT_PORTAL_NAV_LABEL, getSiteContent, mergeSiteContent, portalLinkRemoved, PORTAL_NAV_LABEL_MAX } from '@/lib/site-content';
 import { sendTestDigest } from '@/lib/daily-digest';
 import { normalizeEstimatePosture } from '@/lib/estimate-posture';
 import { AUTOMATION_COLUMNS, AUTOMATION_LABELS, isAutomationKey, type AutomationKey } from '@/lib/automations';
@@ -92,14 +92,100 @@ export async function updateCostSettingsAction(formData: FormData) {
  * link to anyone who types a matching address, and that is a decision a
  * contractor makes rather than discovers.
  */
-export async function updateClientPortalAction(formData: FormData) {
+/**
+ * The past-customer portal's master switch.
+ *
+ * Its own action rather than a row in AUTOMATION_COLUMNS, because switching it
+ * off has to reach further than one column: the "Client Login" link this
+ * feature puts in the contractor's site header and footer would otherwise stay
+ * on their live website, pointing at a page that tells their customers the
+ * lookup isn't switched on. A dead end you advertise yourself is worse than no
+ * link at all.
+ *
+ * The LABEL survives, so switching back on and re-adding the link keeps their
+ * wording. Re-adding is deliberate: a link reappearing on a live website
+ * because a setting was toggled is a change to their site they didn't make.
+ */
+export async function toggleClientPortalAction(next: boolean) {
   const { supabase, accountId } = await requireOwnerContext();
   const { error } = await supabase
     .from('accounts')
-    .update({ client_portal_enabled: formData.get('clientPortal') === 'on' })
+    .update({ client_portal_enabled: next })
     .eq('id', accountId);
   if (error) throw new Error(error.message);
+
+  let linkRemoved = false;
+  if (!next) {
+    const { data: site } = await supabase
+      .from('sites')
+      .select('id, content')
+      .eq('account_id', accountId)
+      .maybeSingle();
+    if (site) {
+      const stored = (site.content as Record<string, unknown> | null) ?? null;
+      if (getSiteContent(stored).clientPortal.navEnabled) {
+        await updateSite(supabase, accountId, site.id as string, { content: portalLinkRemoved(stored) });
+        linkRemoved = true;
+      }
+    }
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  await recordAccountEvent({
+    accountId,
+    kind: 'automation_toggled',
+    summary: next
+      ? 'Past customer job lookup turned on'
+      : `Past customer job lookup turned off${linkRemoved ? ' (login link removed from the website)' : ''}`,
+    actorEmail: user?.email ?? null,
+    meta: { automation: 'client-portal', column: 'client_portal_enabled', enabled: next, linkRemoved },
+  });
+
   revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/sites');
+}
+
+/**
+ * Add or remove the portal link on the contractor's website, and rename it.
+ *
+ * Writes only the clientPortal branch of the site content, so it can't clobber
+ * anything the builder holds — same reason toggleSmartIntakeAction spreads the
+ * existing quoteForm rather than replacing it.
+ */
+export async function updatePortalLinkAction(input: { navEnabled: boolean; navLabel: string }) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const { data: site } = await supabase
+    .from('sites')
+    .select('id, content')
+    .eq('account_id', accountId)
+    .maybeSingle();
+  if (!site) throw new Error('Create your website first to add a login link to it.');
+
+  const current = getSiteContent((site.content as Record<string, unknown> | null) ?? null);
+  const navLabel = String(input.navLabel ?? '').trim().slice(0, PORTAL_NAV_LABEL_MAX);
+  const content = mergeSiteContent((site.content as Record<string, unknown>) ?? {}, {
+    clientPortal: { navEnabled: Boolean(input.navEnabled), navLabel },
+  });
+  await updateSite(supabase, accountId, site.id as string, { content });
+
+  // Only the add/remove is worth an audit line. Renaming a link is not a change
+  // to what the business does, and a history full of typo corrections buries the
+  // entries that matter.
+  if (current.clientPortal.navEnabled !== Boolean(input.navEnabled)) {
+    const { data: { user } } = await supabase.auth.getUser();
+    await recordAccountEvent({
+      accountId,
+      kind: 'automation_toggled',
+      summary: input.navEnabled
+        ? `Customer login link added to the website ("${navLabel || DEFAULT_PORTAL_NAV_LABEL}")`
+        : 'Customer login link removed from the website',
+      actorEmail: user?.email ?? null,
+      meta: { automation: 'client-portal-link', enabled: Boolean(input.navEnabled), navLabel },
+    });
+  }
+
+  revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/sites');
 }
 
 export async function updateScheduleDayHoursAction(formData: FormData) {

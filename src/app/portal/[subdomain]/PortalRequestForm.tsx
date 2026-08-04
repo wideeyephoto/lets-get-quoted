@@ -10,6 +10,9 @@ import { requestPortalLinkAction } from './actions';
  * form is REPLACED by it rather than staying open. Leaving the field there
  * invites a second attempt with a variant address, which is the behaviour a
  * page that leaks would reward.
+ *
+ * Its own classes rather than the dashboard's `.btn primary`: this renders on
+ * the contractor's white, accent-tinted site shell, not in the workspace.
  */
 export default function PortalRequestForm({ subdomain, businessName }: { subdomain: string; businessName: string }) {
   const [sent, setSent] = useState<string | null>(null);
@@ -37,13 +40,21 @@ export default function PortalRequestForm({ subdomain, businessName }: { subdoma
         });
       }}
     >
-      <label htmlFor="portal-email">The email address {businessName} has for you</label>
-      <input id="portal-email" name="email" type="email" required autoComplete="email" placeholder="jane@email.com" />
-      <button type="submit" className="btn primary" disabled={pending}>
-        {pending ? 'Sending…' : 'Email me my link'}
+      <label htmlFor="portal-email">Enter your email address</label>
+      <input
+        id="portal-email"
+        name="email"
+        type="email"
+        required
+        autoComplete="email"
+        placeholder="customer@email.com"
+      />
+      <button type="submit" className="portal-request-submit" disabled={pending}>
+        {pending ? 'Sending…' : 'Send secure lookup link'}
       </button>
       <small className="portal-request-fine">
-        No password to remember. We&apos;ll email you a link that opens your jobs for 90 days.
+        We&apos;ll email you a private link if we find a match — no password to remember. It opens your jobs for 90
+        days.
       </small>
     </form>
   );

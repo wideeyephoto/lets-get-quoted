@@ -2055,6 +2055,183 @@ h3 {
   .arrival-choices { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* ── Past customer job lookup (Settings → Automations) ───────────────────────
+   Same shape as the arrival card above (inset panel, two columns, an auto-save
+   line along the bottom) because they answer the same three questions: is it
+   on, what am I changing, and what will my customer see.
+
+   Every rule is scoped under .portal-card ON PURPOSE. `.portal-note` and
+   `.portal-foot` already exist further down this file for the CUSTOMER's portal
+   page, and being earlier in the file these would silently lose to them. */
+.portal-card {
+  padding: 1.05rem 1.1rem;
+  border-radius: 20px;
+  border: 1px solid rgba(var(--tint), 0.14);
+  background: rgba(var(--tint), 0.03);
+}
+/* Off keeps everything visible — see the arrival card. */
+.portal-card.is-paused .portal-grid { opacity: 0.45; }
+.portal-card .portal-state { margin: 0 0 0.75rem; font-size: 0.85rem; color: var(--ink-lime-1); }
+.portal-card.is-paused .portal-state { color: var(--ink-orange-1); }
+.portal-card .portal-blurb { margin: 0 0 0.7rem; font-size: 0.88rem; line-height: 1.55; color: var(--mute-t60); }
+.portal-card .portal-callout {
+  margin: 0 0 1.1rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 12px;
+  border-left: 3px solid var(--accent);
+  background: rgba(var(--tint), 0.05);
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--mute-t55);
+}
+
+.portal-card .portal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4rem; align-items: start; }
+.portal-card .portal-lede { margin: 0.2rem 0 0.9rem; font-size: 0.84rem; line-height: 1.5; color: var(--mute-t50); }
+
+/* An address to take away, not a field to edit — no input border, and the whole
+   thing selects in one click. */
+.portal-card .portal-url {
+  margin: 0.3rem 0 0.7rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.07);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.84rem;
+  overflow-wrap: anywhere;
+  -webkit-user-select: all;
+  user-select: all;
+}
+.portal-card .portal-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.portal-card .portal-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0.45rem 0.85rem;
+  border-radius: 11px;
+  border: 1px solid rgba(var(--tint), 0.16);
+  background: rgba(var(--tint), 0.05);
+  color: var(--mute-t60);
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 0.14s ease, color 0.14s ease;
+}
+.portal-card .portal-btn:hover { border-color: rgba(var(--tint), 0.3); color: var(--text); }
+
+.portal-card .portal-link-block {
+  margin-top: 1rem;
+  padding-top: 0.95rem;
+  border-top: 1px solid rgba(var(--tint), 0.09);
+}
+/* Orange is "you can change this", green is "on and saved" — the same division
+   the arrival card uses. */
+.portal-card .portal-link-btn {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.55rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid var(--accent);
+  background: rgba(255, 122, 33, 0.14);
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+.portal-card .portal-link-btn.is-on {
+  border-color: rgba(163, 230, 53, 0.5);
+  background: rgba(163, 230, 53, 0.12);
+  color: var(--ink-lime-1);
+}
+.portal-card .portal-link-btn:disabled { opacity: 0.5; cursor: default; }
+
+.portal-card .portal-label-row { display: grid; gap: 0.35rem; margin-top: 0.8rem; }
+.portal-card .portal-label-row label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mute-t45); }
+.portal-card .portal-label-row input {
+  min-height: 40px;
+  padding: 0.45rem 0.7rem;
+  border-radius: 11px;
+  border: 1px solid rgba(var(--tint), 0.16);
+  background: rgba(var(--tint), 0.05);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+.portal-card .portal-label-preview { font-size: 0.78rem; color: var(--mute-t45); }
+
+.portal-card .portal-note {
+  margin: 0.6rem 0 0;
+  font-size: 0.81rem;
+  line-height: 1.55;
+  color: var(--mute-t50);
+}
+.portal-card .portal-privacy {
+  margin: 1rem 0 0;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(var(--tint), 0.09);
+  font-size: 0.81rem;
+  line-height: 1.55;
+  color: var(--mute-t50);
+}
+
+/* The customer's page, reproduced rather than described. Gaps rather than
+   per-child margins, so nothing here needs an !important to beat `p { margin }`. */
+/* Tint-derived, not a fixed dark ground: this is a web page, not a phone
+   screen, and a hardcoded dark surface keeps its dark-theme text colours after
+   the Ink light-theme flip — dark on dark. */
+.portal-card .portal-mock {
+  display: grid;
+  gap: 0.35rem;
+  border-radius: 16px;
+  border: 1px solid rgba(var(--tint), 0.16);
+  background: rgba(var(--tint), 0.06);
+  padding: 0.95rem 0.9rem 1.05rem;
+}
+.portal-card .portal-mock p { margin: 0; }
+.portal-card .portal-mock-brand { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mute-t45); }
+.portal-card .portal-mock-title { font-size: 1.02rem; font-weight: 800; color: var(--text); }
+.portal-card .portal-mock-field { display: grid; gap: 0.35rem; margin-top: 0.5rem; }
+.portal-card .portal-mock-label { font-size: 0.78rem; color: var(--mute-t55); }
+.portal-card .portal-mock-input {
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--tint), 0.22);
+  background: rgba(var(--tint), 0.04);
+  font-size: 0.84rem;
+  color: var(--mute-t40);
+}
+.portal-card .portal-mock-btn {
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #10151f;
+  font-size: 0.84rem;
+  font-weight: 800;
+  text-align: center;
+}
+.portal-card .portal-mock-fine { font-size: 0.74rem; line-height: 1.5; color: var(--mute-t45); }
+
+.portal-card .portal-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(var(--tint), 0.09);
+  font-size: 0.78rem;
+  color: var(--mute-t45);
+}
+.portal-card .portal-save { min-height: 1.2em; }
+.portal-card .portal-save-saved { color: var(--ink-lime-1); }
+.portal-card .portal-save-error { color: var(--ink-orange-1); }
+
+@media (max-width: 900px) {
+  .portal-card .portal-grid { grid-template-columns: 1fr; gap: 1.1rem; }
+}
+
 .automation-preview-bubble { margin-top: 0.6rem; padding: 0.7rem 0.85rem; border-radius: 0.7rem 0.7rem 0.7rem 0.2rem; background: rgba(var(--tint), 0.05); border: 1px solid rgba(var(--tint), 0.1); font-size: 0.85rem; line-height: 1.45; color: rgba(var(--ink-rgb), 0.9); max-width: 42ch; }
 .automation-prereq { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.82rem; color: var(--gold-ink); background: rgba(255, 209, 102, 0.1); border: 1px solid rgba(255, 209, 102, 0.3); border-radius: 0.6rem; padding: 0.55rem 0.7rem; }
 .automation-prereq a { color: var(--gold-ink); text-decoration: underline; }
@@ -9906,17 +10083,6 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
    that was us removing something that put their profile at risk. */
 /* The contractor's own portal URL, given to them to place. Monospaced and
    selectable, because the only thing anybody does with it is copy it. */
-.portal-share-url {
-  margin: 0.35rem 0 0.9rem;
-  padding: 0.55rem 0.75rem;
-  border-radius: 10px;
-  background: rgba(var(--tint), 0.07);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.85rem;
-  overflow-wrap: anywhere;
-  -webkit-user-select: all;
-  user-select: all;
-}
 .warranty-doc-form { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.7rem; font-size: 0.82rem; color: var(--mute-t55); }
 .client-option-photo {
   width: 4.5rem;
@@ -10280,11 +10446,31 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 .weather-risk-draft p { margin: 0 0 0.5rem; font-size: 0.84rem; line-height: 1.5; }
 .weather-risk-foot { margin: 0.4rem 0 0; font-size: 0.79rem; color: var(--mute-t45); }
 
-/* Client portal — the homeowner's own way back in. */
-.portal-request-form { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1.2rem; max-width: 26rem; }
-.portal-request-form label { font-size: 0.85rem; color: var(--mute-t55); }
-.portal-request-done { margin-top: 1.2rem; max-width: 30rem; }
-.portal-request-fine { margin: 0.5rem 0 0; font-size: 0.8rem; line-height: 1.5; color: var(--mute-t45); }
+/* Client portal — the homeowner's own way back in.
+   Rendered on the CONTRACTOR's white site shell (SitePortalPage), not in the
+   workspace, so these are literal light-page colours rather than the dashboard
+   tint tokens — and the button takes the site's own accent. */
+.portal-request-form { display: flex; flex-direction: column; gap: 0.45rem; margin-top: 1.4rem; }
+.portal-request-form label { font-size: 0.9rem; font-weight: 600; color: #10151f; }
+.portal-request-form input {
+  width: 100%; padding: 0.85rem 0.95rem; border: 1px solid #d4dae4; border-radius: 12px;
+  background: #fff; color: #10151f; font-size: 1rem; font-family: inherit;
+}
+.portal-request-form input::placeholder { color: #98a1b3; }
+.portal-request-form input:focus-visible {
+  outline: none; border-color: var(--theme-accent, #2563eb);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-accent, #2563eb) 22%, transparent);
+}
+.portal-request-submit {
+  margin-top: 0.35rem; padding: 0.9rem 1.1rem; border: 0; border-radius: 12px;
+  background: var(--theme-accent, #2563eb); color: #fff;
+  font-size: 1rem; font-weight: 700; font-family: inherit; cursor: pointer;
+}
+.portal-request-submit:hover:not(:disabled) { filter: brightness(1.06); }
+.portal-request-submit:disabled { opacity: 0.65; cursor: default; }
+.portal-request-done { margin-top: 1.4rem; }
+.portal-request-done p { margin: 0 0 0.5rem; font-size: 1rem; line-height: 1.6; color: #333c4c; }
+.portal-request-fine { margin: 0.55rem 0 0; font-size: 0.85rem; line-height: 1.55; color: #6b7686; }
 .portal-job-list { list-style: none; padding: 0; margin: 0.6rem 0 0; display: flex; flex-direction: column; gap: 0.5rem; }
 .portal-job {
   display: flex; align-items: baseline; justify-content: space-between; gap: 0.8rem; flex-wrap: wrap;

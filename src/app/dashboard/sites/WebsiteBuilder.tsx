@@ -604,6 +604,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
       if (target === 'bizPhone') { setActiveTab('page'); setOpenSection('estimate'); focusField('bf-phone'); return; }
       if (target === 'bizLicense') { setActiveTab('page'); setOpenSection('footer'); focusField('bf-license'); return; }
       if (target === 'legal') { setActiveTab('business'); setOpenSection('legal'); scrollCardToTop(); return; }
+      // The customer-login link isn't edited here — it belongs to the portal,
+      // which is an account setting. A new tab rather than a navigation: this
+      // page can be holding unsaved website changes.
+      if (target === 'clientPortal') { window.open('/dashboard/settings#client-portal', '_blank', 'noopener'); return; }
       // Socials live on Setup, not Page — so they're routed here rather than
       // falling through to SECTION_TARGETS, which assumes the Page tab.
       if (target === 'socials') { setActiveTab('business'); setOpenSection('socials'); scrollCardToTop(); return; }

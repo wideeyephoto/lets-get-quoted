@@ -33,13 +33,17 @@ const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
  * otherwise its subdomain. Null when it has neither and therefore has no public
  * URL at all.
  */
-export function siteHost(site: Site, rootDomain: string = ROOT_DOMAIN): string | null {
+// Takes only the three fields it reads, so a page that selected a handful of
+// columns can ask without loading (or casting to) a whole Site.
+type SiteHostFields = Pick<Site, 'custom_domain' | 'custom_domain_verified_at' | 'subdomain'>;
+
+export function siteHost(site: SiteHostFields, rootDomain: string = ROOT_DOMAIN): string | null {
   if (site.custom_domain && site.custom_domain_verified_at) return site.custom_domain;
   if (site.subdomain) return `${site.subdomain}.${rootDomain}`;
   return null;
 }
 
-export function siteOrigin(site: Site, rootDomain: string = ROOT_DOMAIN): string | null {
+export function siteOrigin(site: SiteHostFields, rootDomain: string = ROOT_DOMAIN): string | null {
   const host = siteHost(site, rootDomain);
   return host ? `https://${host}` : null;
 }

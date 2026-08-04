@@ -127,6 +127,30 @@ export type SiteVideosPageContent = {
 /** What the videos link is called when the owner hasn't renamed it. */
 export const DEFAULT_VIDEOS_NAV_LABEL = 'Video Gallery';
 
+// The past-customer portal's link in the site header and footer.
+//
+// The PORTAL itself is an account setting (accounts.client_portal_enabled) —
+// this is only whether the contractor's own website advertises it, which is a
+// separate decision and a visible one. It stays OFF for every existing site:
+// putting a link on somebody's live homepage because a feature shipped is a
+// change to their website they did not make.
+//
+// Turning the portal off clears navEnabled, because a "Client Login" link that
+// lands on "we don't have that switched on" is a dead end the contractor is
+// advertising in their own header. The LABEL survives that, so switching the
+// portal back on and re-adding the link keeps their wording.
+export type SiteClientPortalContent = {
+  /** Show the link in the header and footer. OFF by default. */
+  navEnabled: boolean;
+  /** Link text. Empty renders DEFAULT_PORTAL_NAV_LABEL. */
+  navLabel: string;
+};
+
+/** What the portal link is called when the owner hasn't renamed it. */
+export const DEFAULT_PORTAL_NAV_LABEL = 'Client Login';
+/** Long enough for "Customer Dashboard", short enough to stay a nav item. */
+export const PORTAL_NAV_LABEL_MAX = 24;
+
 // The contractor's OWN measurement tags. Both empty = no tags, no consent
 // banner, no third-party request of any kind. See lib/analytics.
 export type SiteAnalyticsContent = {
@@ -786,6 +810,7 @@ export type NormalizedSiteContent = {
   chatButton: SiteChatButtonContent;
   analytics: SiteAnalyticsContent;
   videosPage: SiteVideosPageContent;
+  clientPortal: SiteClientPortalContent;
   ratingBadge: SiteRatingBadgeContent;
   trustBadges: SiteTrustBadgesContent;
   financing: SiteFinancingContent;
@@ -1286,6 +1311,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
   const chatButton = isRecord(root.chatButton) ? root.chatButton : {};
   const analytics = isRecord(root.analytics) ? root.analytics : {};
   const videosPage = isRecord(root.videosPage) ? root.videosPage : {};
+  const clientPortal = isRecord(root.clientPortal) ? root.clientPortal : {};
   const ratingBadge = isRecord(root.ratingBadge) ? root.ratingBadge : {};
   const trustBadges = isRecord(root.trustBadges) ? root.trustBadges : {};
   const financing = isRecord(root.financing) ? root.financing : {};
@@ -1366,6 +1392,10 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       // the bigger one.
       navEnabled: toBoolean(videosPage.navEnabled),
       navLabel: toString(videosPage.navLabel).slice(0, 24),
+    },
+    clientPortal: {
+      navEnabled: toBoolean(clientPortal.navEnabled),
+      navLabel: toString(clientPortal.navLabel).slice(0, PORTAL_NAV_LABEL_MAX),
     },
     analytics: {
       // Stored as typed, NOT normalized.
@@ -1914,6 +1944,42 @@ export function getPublishedBlogPost(
       (post) => post.slug === slug && post.status === 'published' && post.title.trim() && post.body.trim(),
     ) ?? null
   );
+}
+
+/** Where the past-customer portal lives on the contractor's OWN host. */
+export const PORTAL_SITE_PATH = '/portal';
+
+/**
+ * The header/footer link to the past-customer portal, or null when the owner
+ * hasn't added it.
+ *
+ * Same-host by design. A "Client Login" in the header of bobsplumbing.com that
+ * jumps to another company's domain to ask for an email address is the exact
+ * shape of a phishing hop, and a homeowner is right to hesitate at it — so the
+ * portal is served from the contractor's own site too. See
+ * app/site/[subdomain]/portal and app/site-domain/[domain]/portal, which must
+ * stay in lockstep.
+ */
+export function getPortalNavLink(
+  content: Record<string, unknown> | null | undefined,
+): { href: string; label: string } | null {
+  const portal = getSiteContent(content).clientPortal;
+  if (!portal.navEnabled) return null;
+  return { href: PORTAL_SITE_PATH, label: portal.navLabel.trim() || DEFAULT_PORTAL_NAV_LABEL };
+}
+
+/**
+ * Content with the login link taken off the site, keeping the owner's wording.
+ *
+ * Used when the portal itself is switched off: leaving the link would advertise
+ * a dead end on the contractor's own website. Everything else in the blob is
+ * untouched, so this can never clobber what the builder holds.
+ */
+export function portalLinkRemoved(
+  content: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  const current = getSiteContent(content).clientPortal;
+  return mergeSiteContent(content ?? {}, { clientPortal: { ...current, navEnabled: false } });
 }
 
 // The floating hero badge to render, or null when the owner chose to hide it.

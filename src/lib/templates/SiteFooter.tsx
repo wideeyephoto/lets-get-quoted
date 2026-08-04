@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Site } from '@/lib/sites';
 import {
-  getSiteContent, getFooterStyle, glyphForContent,
+  getSiteContent, getFooterStyle, glyphForContent, getPortalNavLink,
   getPublishedServices, getPublishedShowcase, getPublishedTestimonials, getPublishedFaqs, getPublishedBlog,
 } from '@/lib/site-content';
 import ServiceIcon from './ServiceIcon';
@@ -27,6 +27,10 @@ function footerLinks(site: Site): FooterLink[] {
   if (getPublishedTestimonials(c)) links.push({ href: '#reviews', label: 'Reviews' });
   if (getPublishedFaqs(c)) links.push({ href: '#faqs', label: 'FAQs' });
   if (getPublishedBlog(c)) links.push({ href: '#blog', label: 'Blog' });
+  // Existing customers last — see SiteNavLinks. Off unless the owner added it
+  // in Settings → Automations → Past customer job lookup.
+  const portal = getPortalNavLink(c);
+  if (portal) links.push(portal);
   return links;
 }
 
@@ -78,10 +82,8 @@ export default function SiteFooter({ site }: { site: Site }) {
           {legal.terms && <a href="/terms">Terms of Service</a>}
         </nav>
       )}
-      {/* No customer-portal link here on purpose. Adding one to every template
-          would put it on eleven sites whose owners never asked for it — the URL
-          is given to them in Settings and they place it where it suits: footer,
-          email signature, or the bottom of an invoice. */}
+      {/* The customer-portal link is in footerLinks() above, with the rest of
+          the navigation — opt-in per site, never automatic. */}
       <small>Powered by Let&apos;s Get Quoted</small>
     </div>
   );

@@ -2651,6 +2651,14 @@
 .legalFoot a { color: var(--theme-accent); text-decoration: none; font-weight: 700; }
 .legalFoot a:hover { text-decoration: underline; }
 
+/* Past-customer portal (SitePortalPage) — the same shell on all three hosts.
+   Narrower than the legal doc: it holds one field, and a 760px column around a
+   single input reads as an empty page rather than a focused one. */
+.portalDoc { max-width: 34rem; margin: 0 auto; padding: clamp(2rem, 6vw, 4.5rem) clamp(1.25rem, 5vw, 2rem) clamp(3rem, 7vw, 5rem); }
+.portalCard { padding: clamp(1.5rem, 4vw, 2.25rem); border: 1px solid #e6e9ef; border-radius: 20px; background: #fff; box-shadow: 0 18px 40px rgba(16, 21, 31, .07); }
+.portalTitle { margin: 0; font-size: clamp(1.6rem, 4vw, 2.1rem); line-height: 1.15; letter-spacing: -.02em; font-weight: 800; color: #10151f; text-wrap: balance; }
+.portalLede { margin: .75rem 0 0; font-size: 1rem; line-height: 1.65; color: #4a5567; }
+
 /* Public-site nav links were 16px tall — a line of text with 3px of padding —
    which is a hard target for a customer on a phone, on the one nav that has to
    work for people who aren't us. The hit area is expanded with an overlay so the
