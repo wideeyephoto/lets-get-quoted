@@ -18275,3 +18275,8 @@ a.bset-card { color: inherit; text-decoration: none; }
 .qs-coverage-legend li { display: flex; align-items: center; gap: 0.45rem; }
 .qs-key-stop { width: 11px; height: 11px; border-radius: 50%; background: #ff7a21; border: 1px solid rgba(0, 0, 0, 0.4); }
 .qs-key-zone { width: 11px; height: 11px; border-radius: 50%; background: rgba(74, 222, 128, 0.28); border: 1.5px solid rgba(74, 222, 128, 0.8); }
+/* Priority areas read as a different KIND of thing from the detour limit: the
+   green is a consequence of a setting, the violet is the owner's own decision. */
+.qs-key-priority { width: 11px; height: 11px; border-radius: 50%; background: rgba(167, 139, 250, 0.3); border: 1.5px solid rgba(167, 139, 250, 0.95); }
+.qs-zones { margin-bottom: 1.25rem; }
+.qs-zone-form { margin-top: 0.75rem; }

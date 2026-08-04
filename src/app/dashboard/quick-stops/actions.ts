@@ -339,3 +339,61 @@ export async function proposeDiagnosticConversionAction(requestId: string, formD
   }
   revalidatePath('/dashboard/quick-stops');
 }
+
+/* --- Priority zones ---------------------------------------------------------
+   Areas the owner has decided are worth a longer drive. Drawn by them, on their
+   own map, for their own reasons — see the migration for why this is never
+   derived from income or demographic data. */
+
+function zoneNumber(form: FormData, field: string, max: number): number {
+  const value = Number(form.get(field));
+  if (!Number.isFinite(value) || value <= 0) throw new Error(`Enter a ${field.replace(/([A-Z])/g, ' $1').toLowerCase()} greater than zero.`);
+  if (value > max) throw new Error(`That ${field.replace(/([A-Z])/g, ' $1').toLowerCase()} is too large.`);
+  return value;
+}
+
+export async function saveQuickStopZoneAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const label = String(formData.get('label') ?? '').trim().slice(0, 80);
+  if (!label) throw new Error('Give the area a name, so a longer drive is always attributed to a place you named.');
+
+  const centerLat = Number(formData.get('centerLat'));
+  const centerLng = Number(formData.get('centerLng'));
+  if (!Number.isFinite(centerLat) || !Number.isFinite(centerLng) || Math.abs(centerLat) > 90 || Math.abs(centerLng) > 180) {
+    throw new Error('Pick the centre of the area on the map first.');
+  }
+
+  const radiusMiles = zoneNumber(formData, 'radiusMiles', 100);
+  const maxDetourMiles = zoneNumber(formData, 'maxDetourMiles', 500);
+
+  const id = String(formData.get('id') ?? '').trim();
+  const row = {
+    account_id: accountId,
+    label,
+    center_lat: centerLat,
+    center_lng: centerLng,
+    radius_miles: radiusMiles,
+    max_detour_miles: maxDetourMiles,
+    active: true,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = id
+    ? await supabase.from('quick_stop_priority_zones').update(row).eq('account_id', accountId).eq('id', id)
+    : await supabase.from('quick_stop_priority_zones').insert(row);
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/dashboard/quick-stops');
+}
+
+export async function deleteQuickStopZoneAction(id: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const { error } = await supabase
+    .from('quick_stop_priority_zones')
+    .delete()
+    .eq('account_id', accountId)
+    .eq('id', id);
+  if (error) throw new Error(error.message);
+  revalidatePath('/dashboard/quick-stops');
+}

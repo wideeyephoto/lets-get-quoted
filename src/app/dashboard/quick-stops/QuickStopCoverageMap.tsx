@@ -3,15 +3,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { loadGoogleMaps, MAP_DARK_STYLE, MAP_LIGHT_STYLE } from '@/lib/maps-loader';
 import type { RouteStop } from '@/lib/quick-stop-route';
+import type { PriorityZone } from '@/lib/quick-stop-zones';
 
 // Where a Quick Stop can actually land today.
 //
 // The circles are not decoration: their radius is the account's own
 // maxDetourMiles, drawn around the stops already on today's calendar, which is
-// the same route and the same number the screener measures a request against.
-// Anything inside the shaded area can be offered; anything outside is refused,
-// and until now the only way to learn that was to watch requests get turned
-// away and guess whether the setting was wrong.
+// the same route and the same number a request's detour is measured against.
+//
+// CAREFUL ABOUT WHAT THIS CLAIMS. maxDetourMiles is the OWNER's threshold for
+// what is worth driving to — it is what the request card is judged against, not
+// a gate that stops a customer asking. (The customer-facing proximity gate is
+// instant booking's separate radiusMiles, in route-density.) So this says
+// "inside your limit", never "can be offered": the first is true, the second
+// would be a promise the system does not keep.
 //
 // Live in the sense that matters: it is today's real calendar, re-read on every
 // page load. Not a socket — the route changes when somebody books a job, not
@@ -23,21 +28,34 @@ export type CoverageMapProps = {
   radiusMiles: number;
   /** Null when nothing is scheduled — the map says so rather than centring on the ocean. */
   emptyReason: string | null;
+  zones: PriorityZone[];
+  /** Click-to-place, so the owner picks a centre without typing coordinates. */
+  onPickCenter?: (point: { lat: number; lng: number }) => void;
+  /** The zone being drawn right now, previewed before it is saved. */
+  draft?: { lat: number; lng: number; radiusMiles: number } | null;
 };
 
 const METERS_PER_MILE = 1609.344;
 
 const ROUTE_COLOR = '#ff7a21';
 const ZONE_COLOR = '#4ade80';
+// Priority zones read as a different KIND of thing, not a bigger version of the
+// same one — they are the owner's decision, where the green is the consequence
+// of their settings.
+const PRIORITY_COLOR = '#a78bfa';
 
 type MapTheme = 'dark' | 'light';
 const THEME_KEY = 'qs-coverage-map-theme';
 
-export default function QuickStopCoverageMap({ stops, radiusMiles, emptyReason }: CoverageMapProps) {
+export default function QuickStopCoverageMap({ stops, radiusMiles, emptyReason, zones, onPickCenter, draft }: CoverageMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [theme, setTheme] = useState<MapTheme>('dark');
   const [menuOpen, setMenuOpen] = useState(false);
+  // In a ref because the map is built inside an effect that must not re-run on
+  // every parent render — a handler captured in that closure would go stale.
+  const onPickCenterRef = useRef(onPickCenter);
+  onPickCenterRef.current = onPickCenter;
 
   // Read the saved choice after mount, never during render: reading
   // localStorage while rendering gives the server and the client different
@@ -101,6 +119,53 @@ export default function QuickStopCoverageMap({ stops, radiusMiles, emptyReason }
           if (circleBounds) bounds.union(circleBounds);
         }
 
+        // The owner's priority areas, and the one being drawn right now.
+        for (const zone of zones) {
+          const circle = new g.Circle({
+            map,
+            center: { lat: zone.centerLat, lng: zone.centerLng },
+            radius: zone.radiusMiles * METERS_PER_MILE,
+            strokeColor: PRIORITY_COLOR,
+            strokeOpacity: 0.9,
+            strokeWeight: 2,
+            fillColor: PRIORITY_COLOR,
+            fillOpacity: 0.12,
+            clickable: false,
+          });
+          const zoneBounds = circle.getBounds();
+          if (zoneBounds) bounds.union(zoneBounds);
+        }
+
+        if (draft) {
+          const preview = new g.Circle({
+            map,
+            center: { lat: draft.lat, lng: draft.lng },
+            radius: draft.radiusMiles * METERS_PER_MILE,
+            strokeColor: PRIORITY_COLOR,
+            strokeOpacity: 1,
+            strokeWeight: 2,
+            // Dashed would be better; the Circle API has no dash, so the draft
+            // is distinguished by being brighter and having a centre marker.
+            fillColor: PRIORITY_COLOR,
+            fillOpacity: 0.2,
+            clickable: false,
+          });
+          new g.Marker({
+            map,
+            position: { lat: draft.lat, lng: draft.lng },
+            icon: { path: g.SymbolPath.CIRCLE, fillColor: PRIORITY_COLOR, fillOpacity: 1, strokeColor: '#0b1220', strokeWeight: 1.5, scale: 7 },
+          });
+          const previewBounds = preview.getBounds();
+          if (previewBounds) bounds.union(previewBounds);
+        }
+
+        if (onPickCenterRef.current) {
+          map.addListener('click', (event: google.maps.MapMouseEvent) => {
+            const point = event.latLng;
+            if (point) onPickCenterRef.current?.({ lat: point.lat(), lng: point.lng() });
+          });
+        }
+
         if (stops.length > 1) {
           new g.Polyline({
             map,
@@ -153,7 +218,7 @@ export default function QuickStopCoverageMap({ stops, radiusMiles, emptyReason }
     // Rebuilt on a theme change: Google applies `styles` at construction, and
     // swapping them on a live map leaves the previous palette on tiles that are
     // already painted.
-  }, [stops, radiusMiles, emptyReason, theme]);
+  }, [stops, radiusMiles, emptyReason, theme, zones, draft]);
 
   function chooseTheme(next: MapTheme) {
     setTheme(next);
@@ -175,7 +240,7 @@ export default function QuickStopCoverageMap({ stops, radiusMiles, emptyReason }
         <p className="qs-coverage-sub">
           {emptyReason
             ? emptyReason
-            : `${stops.length} stop${stops.length === 1 ? '' : 's'} on today's route · anything within ${radiusMiles} mile${radiusMiles === 1 ? '' : 's'} of one of them can be offered.`}
+            : `${stops.length} stop${stops.length === 1 ? '' : 's'} on today's route · your limit is ${radiusMiles} mile${radiusMiles === 1 ? '' : 's'} from one of them.`}
         </p>
       </div>
 
@@ -184,11 +249,11 @@ export default function QuickStopCoverageMap({ stops, radiusMiles, emptyReason }
           <p className="qs-coverage-empty">{emptyReason}</p>
         ) : (
           <>
-            <div ref={containerRef} className="qs-coverage-canvas" role="img" aria-label={`Today's route with ${radiusMiles}-mile Quick Stop coverage around each stop`} />
+            <div ref={containerRef} className="qs-coverage-canvas" role="img" aria-label={`Today's route with your ${radiusMiles}-mile detour limit drawn around each stop`} />
             {status === 'loading' ? <p className="qs-coverage-empty">Loading the map…</p> : null}
             {status === 'error' ? (
               <p className="qs-coverage-empty">
-                The map couldn&rsquo;t load. Your coverage is still {radiusMiles} miles around each of today&rsquo;s{' '}
+                The map couldn&rsquo;t load. Your detour limit is still {radiusMiles} miles from each of today&rsquo;s{' '}
                 {stops.length} stop{stops.length === 1 ? '' : 's'} — this is only the picture of it.
               </p>
             ) : null}
@@ -224,7 +289,10 @@ export default function QuickStopCoverageMap({ stops, radiusMiles, emptyReason }
 
       <ul className="qs-coverage-legend">
         <li><span className="qs-key-stop" aria-hidden="true" />Today&rsquo;s scheduled work</li>
-        <li><span className="qs-key-zone" aria-hidden="true" />Within {radiusMiles} miles — can be offered a Quick Stop</li>
+        <li><span className="qs-key-zone" aria-hidden="true" />Within {radiusMiles} miles — inside your detour limit</li>
+        {zones.length > 0 ? (
+          <li><span className="qs-key-priority" aria-hidden="true" />Priority area — worth a longer drive</li>
+        ) : null}
       </ul>
     </div>
   );

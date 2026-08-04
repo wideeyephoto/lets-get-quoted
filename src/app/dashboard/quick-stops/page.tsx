@@ -3,7 +3,8 @@ import { listQuickStopRequests } from '@/lib/quick-stop-requests';
 import { sweepQuickStopOffers } from '@/lib/quick-stop-sweep';
 import { quickStopSettingsFromAccount, QUICK_STOP_SETTINGS_COLUMNS, QUICK_STOP_TERMINAL_STATUSES } from '@/lib/quick-stop';
 import { computeQuickStopRoute, loadRouteStops } from '@/lib/quick-stop-route';
-import QuickStopCoverageMap from './QuickStopCoverageMap';
+import QuickStopCoverage from './QuickStopCoverage';
+import { loadPriorityZones, priorityZonesAvailable } from '@/lib/quick-stop-zones-data';
 import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
 import QuickStopRequestCard, { type CardRequest } from './QuickStopRequestCard';
 import QuickStopExplainer from './QuickStopExplainer';
@@ -179,6 +180,9 @@ export default async function QuickStopsPage() {
   // Today's real route, for the coverage map in the hero. Same loader the
   // detour screener uses, so the picture and the rule cannot disagree.
   const routeStops = await loadRouteStops(supabase, accountId, { day: todayKey, timezone });
+  // Empty until the migration is applied — the map then draws the plain limit.
+  const priorityZones = await loadPriorityZones(supabase, accountId);
+  const zonesAvailable = await priorityZonesAvailable(supabase, accountId);
   const coverageEmpty =
     settings.maxDetourMiles <= 0
       ? 'No detour limit is set yet, so there is nothing to draw. Set one below and this fills in.'
@@ -190,10 +194,12 @@ export default async function QuickStopsPage() {
     <main className="wide-shell workspace-shell bset">
       <QuickStopHead bookingUrl={bookingUrl} />
 
-      <QuickStopCoverageMap
+      <QuickStopCoverage
         stops={routeStops}
         radiusMiles={settings.maxDetourMiles}
         emptyReason={coverageEmpty}
+        zones={priorityZones}
+        zonesAvailable={zonesAvailable}
       />
 
       <QuickStopStatus
