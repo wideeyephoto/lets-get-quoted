@@ -148,7 +148,7 @@ export default function ClientImport() {
     return (
       <section className="panel workspace-section-card" style={{ borderColor: '#16a34a', background: 'rgba(22, 163, 74, 0.06)' }}>
         <div className="section-heading workspace-section-heading">
-          <p className="eyebrow" style={{ color: '#16a34a' }}>✓ Import complete</p>
+          <p className="eyebrow" style={{ color: 'var(--good)' }}>✓ Import complete</p>
           <h2>{result.imported} customer{result.imported === 1 ? '' : 's'} added</h2>
         </div>
         <p className="workspace-card-copy">

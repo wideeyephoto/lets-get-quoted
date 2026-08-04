@@ -50,7 +50,7 @@ export default async function ImportInvoicesPage() {
       ) : (
         <section className="panel workspace-section-card" style={{ borderColor: '#f59e0b', background: 'rgba(245, 158, 11, 0.06)' }}>
           <div className="section-heading workspace-section-heading">
-            <p className="eyebrow" style={{ color: '#f59e0b' }}>One-time setup</p>
+            <p className="eyebrow" style={{ color: 'var(--ink-orange-5)' }}>One-time setup</p>
             <h2>Enable financial import</h2>
           </div>
           <p className="workspace-card-copy">

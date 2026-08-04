@@ -53,10 +53,10 @@ export default function WeatherPanel({ enabled, profile }: { enabled: boolean; p
             Checks the US National Weather Service forecast against your scheduled jobs and tells you which days are
             in trouble. It never moves anything — you decide, and it drafts the text.
           </p>
-          <label className="checkbox-row" htmlFor="weatherAlerts">
-            <input id="weatherAlerts" name="weatherAlerts" type="checkbox" defaultChecked />
-            <span>Watch the forecast for my scheduled jobs</span>
-          </label>
+          {/* No checkbox. It was ticked by default and the only button on the
+              card says "Turn it on" — two controls for one boolean, where the
+              checkbox can only ever disagree with the button you just pressed.
+              Submitting the form IS the yes. */}
           <div className="field">
             <label htmlFor="weatherProfile">What stops your work</label>
             <select id="weatherProfile" name="weatherProfile" defaultValue="">

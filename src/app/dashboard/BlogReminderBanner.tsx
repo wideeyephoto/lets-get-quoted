@@ -41,7 +41,7 @@ export default function BlogReminderBanner({ reminderWeeks, lastPublishedISO, su
   return (
     <section className="panel workspace-section-card" style={{ borderColor: '#f5a623', background: 'rgba(245, 166, 35, 0.06)' }}>
       <div className="section-heading workspace-section-heading">
-        <p className="eyebrow" style={{ color: '#f5a623' }}>📝 Blog reminder</p>
+        <p className="eyebrow" style={{ color: 'var(--gold-ink)' }}>📝 Blog reminder</p>
         <h2>Your website needs a new blog post</h2>
       </div>
       <p className="workspace-card-copy" style={{ fontSize: '1.02rem', lineHeight: 1.5 }}>

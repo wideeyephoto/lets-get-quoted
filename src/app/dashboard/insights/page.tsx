@@ -441,7 +441,9 @@ export default async function InsightsPage({
                 ? `Typically paid in ${insights.cash.medianDaysToPayment.toFixed(1)} days of being asked.`
                 : 'Healthy cash flow requires consistent collections.'}
             </span>
-            <Link href="/dashboard/invoices">View invoices</Link>
+            {/* /dashboard/invoices is not a route. There is no invoice list in
+                the app at all — the jobs list is where what's owed shows. */}
+            <Link href="/dashboard/jobs">Open jobs</Link>
           </div>
         </section>
 

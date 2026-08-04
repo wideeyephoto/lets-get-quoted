@@ -247,7 +247,7 @@ export default async function DashboardPage() {
           style={{ borderColor: '#dc2626', background: 'rgba(220, 38, 38, 0.06)' }}
         >
           <div className="section-heading workspace-section-heading">
-            <p className="eyebrow" style={{ color: '#dc2626' }}>⚠ Payouts paused</p>
+            <p className="eyebrow" style={{ color: 'var(--bad)' }}>⚠ Payouts paused</p>
             <h2>Stripe disabled your payments</h2>
           </div>
           <p className="workspace-card-copy">

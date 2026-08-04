@@ -366,10 +366,14 @@ export default async function SettingsPage({
           {
             id: 'payments',
             label: 'Payments',
-            anchors: [],
+            // Was []. Its sections carried no id either, so this tab could not
+            // be linked to AT ALL — the same bug job-costing had, and the
+            // reason a contrast sweep that walks tabs by anchor never rendered
+            // this tab and never saw what was wrong on it.
+            anchors: ['payouts', 'platform-fee'],
             content: (
               <>
-                <section className="panel workspace-section-card">
+                <section className="panel workspace-section-card" id="payouts">
                   <PayoutAccount
                     stripeOnboarded={account?.connect_onboarded ?? false}
                     payoutsPaused={Boolean(account?.connect_disabled_at)}
@@ -379,7 +383,7 @@ export default async function SettingsPage({
                   />
                 </section>
 
-                <section className="panel workspace-section-card">
+                <section className="panel workspace-section-card" id="platform-fee">
                   <div className="section-heading workspace-section-heading compact-heading">
                     <p className="eyebrow">Platform fee</p>
                     <h2>Your current tier</h2>
@@ -914,13 +918,6 @@ export default async function SettingsPage({
                     on its own, which is that tab, not a business detail. */}
 
                 <section className="panel workspace-section-card" id="job-costing">
-                  <div className="section-heading workspace-section-heading compact-heading">
-                    <p className="eyebrow">Job costing</p>
-                    <h2>What an hour of crew time really costs</h2>
-                    <p className="workspace-lead">
-                      Two numbers that decide whether a finished job actually made money.
-                    </p>
-                  </div>
                   <JobCostingSection burdenPct={defaultBurdenPct} minMarginPct={minMarginPct} />
                 </section>
 

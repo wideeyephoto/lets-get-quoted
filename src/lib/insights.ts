@@ -502,8 +502,14 @@ export function recommendedActions(input: ActionInput): RecommendedAction[] {
       impact,
       impactLabel: impactLabel(impact),
       value: input.outstandingTotal,
-      href: '/dashboard/invoices',
-      cta: 'View invoices',
+      // NOT /dashboard/invoices — that route does not exist and never has, so
+      // this CTA was a 404. There is no invoice list anywhere in the app: an
+      // unpaid invoice belongs to a job, and the jobs list is the only place
+      // the amount still owed is shown per row. No ?status= either — the jobs
+      // page declares that param and never reads it, so it would look like a
+      // filter and do nothing.
+      href: '/dashboard/jobs',
+      cta: 'Open jobs',
     });
   }
 

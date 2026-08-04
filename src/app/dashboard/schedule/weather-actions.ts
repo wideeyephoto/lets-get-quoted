@@ -67,7 +67,11 @@ export async function updateWeatherSettingsAction(formData: FormData) {
   await supabase
     .from('accounts')
     .update({
-      weather_alerts_enabled: formData.get('weatherAlerts') === 'on',
+      // This form only exists on the OFF card, and its button says "Turn it
+      // on" — so submitting it is the yes. There was a checkbox here too,
+      // ticked by default, which could only ever disagree with the button that
+      // submitted it.
+      weather_alerts_enabled: true,
       // Blank means "work it out from my trade" — a real answer, not a missing one.
       weather_profile: profile || null,
     })

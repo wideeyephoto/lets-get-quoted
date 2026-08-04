@@ -82,7 +82,7 @@ export default function MigrationWizard() {
     return (
       <section className="panel workspace-section-card" style={{ borderColor: '#16a34a', background: 'rgba(22, 163, 74, 0.06)' }}>
         <div className="section-heading workspace-section-heading">
-          <p className="eyebrow" style={{ color: '#16a34a' }}>✓ Migration complete</p>
+          <p className="eyebrow" style={{ color: 'var(--good)' }}>✓ Migration complete</p>
           <h2>{totals.imported} record{totals.imported === 1 ? '' : 's'} imported</h2>
         </div>
         <div style={{ overflowX: 'auto' }}>
@@ -95,7 +95,7 @@ export default function MigrationWizard() {
                   <td>{ENTITY_LABEL[r.entity] ?? r.entity}</td>
                   <td>{r.error ? <span className="muted">—</span> : r.imported}</td>
                   <td>{r.error ? <span className="muted">—</span> : r.duplicates}</td>
-                  <td>{r.error ? <span style={{ color: '#f59e0b' }}>{r.error}</span> : r.skipped}</td>
+                  <td>{r.error ? <span style={{ color: 'var(--ink-orange-5)' }}>{r.error}</span> : r.skipped}</td>
                 </tr>
               ))}
             </tbody>

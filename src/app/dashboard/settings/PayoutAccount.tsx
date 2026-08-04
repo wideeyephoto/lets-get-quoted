@@ -81,7 +81,7 @@ export default function PayoutAccount({ stripeOnboarded, payoutsPaused = false, 
             </div>
             <div className="actions">
               {payoutsPaused ? (
-                <span className="sign-in-method-badge" style={{ color: '#ffb27a', borderColor: 'rgba(255,122,33,.45)' }}>Paused</span>
+                <span className="sign-in-method-badge" style={{ color: 'var(--ink-orange-8)', borderColor: 'rgba(255,122,33,.45)' }}>Paused</span>
               ) : stripeOnboarded ? (
                 <span className="sign-in-method-badge linked">Connected</span>
               ) : null}
@@ -100,12 +100,12 @@ export default function PayoutAccount({ stripeOnboarded, payoutsPaused = false, 
             </div>
           </div>
           {payoutsPaused ? (
-            <p className="workspace-card-copy" style={{ color: '#ffd166', marginTop: '-0.4rem' }} role="alert">
+            <p className="workspace-card-copy" style={{ color: 'var(--gold-ink)', marginTop: '-0.4rem' }} role="alert">
               ⚠️ Stripe paused your payouts — homeowners can&apos;t pay you until it&apos;s resolved. Open <strong>Manage on Stripe</strong>, finish any verification Stripe is asking for, and payouts reactivate automatically.
             </p>
           ) : null}
           {stripeOnboarded && !payoutsPaused && pendingPaymentsCount > 0 ? (
-            <p className="workspace-card-copy" style={{ color: '#ffd166', marginTop: '-0.4rem' }} role="status">
+            <p className="workspace-card-copy" style={{ color: 'var(--gold-ink)', marginTop: '-0.4rem' }} role="status">
               ⚠️ {pendingPaymentsCount} pending payment{pendingPaymentsCount === 1 ? '' : 's'} awaiting completion. Disconnecting won&apos;t cancel {pendingPaymentsCount === 1 ? 'it' : 'them'}, but homeowners won&apos;t be able to pay until you reconnect.
             </p>
           ) : null}

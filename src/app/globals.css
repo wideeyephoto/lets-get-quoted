@@ -843,7 +843,15 @@
 :root[data-theme='light'] .bset-dots-pop,
 :root[data-theme='light'] .client-modal,
 :root[data-theme='light'] .unsaved-guard-panel,
-:root[data-theme='light'] .template-browser {
+:root[data-theme='light'] .template-browser,
+/* .bset is the Booking / Quick Stops WRAPPER, not one of its cards. Its cards
+   were already on this list; the wrapper was not, so anything sitting directly
+   in it — a heading, a "Tip", the how-it-works list — kept the CANVAS ink and
+   painted near-white on a paper ground. Measured: 25 runs of text on Quick
+   Stops between 1:1 and 1.28:1, i.e. invisible. It takes the ink from here and
+   cancels the sheet painting below, because it is a layout region and its own
+   --bset-page is the ground. */
+:root[data-theme='light'] .bset {
   color-scheme: light;
   --tint: 17, 27, 41;
   /* Near-black, not the navy. `rgba(var(--ink-rgb), α)` is how ~300 declarations
@@ -1562,6 +1570,24 @@
   background: #fdf7ea;
   border-color: #a1791a;
 }
+/* The rest of the same bug, swept rather than found one screenshot at a time:
+   every form control in the app whose fill is a DARK literal at 25%+ alpha.
+   On paper each becomes a slab of mid-grey — measured, .cash-bill-field lands
+   at #686d71 and .plan-edit-grid at #bfbfbf, which is what made the blog page's
+   topic box and its "nudge me" select look like disabled controls. The
+   schedule-inline-form pair are here because their two-class selector outranks
+   the .modern-date-button rule above and they kept their hole. */
+:root[data-theme='light'] .cash-bill-field input,
+:root[data-theme='light'] .cash-bill-field select,
+:root[data-theme='light'] .accept-plan-field input,
+:root[data-theme='light'] .plan-edit-grid input,
+:root[data-theme='light'] .plan-edit-grid select,
+:root[data-theme='light'] .schedule-inline-form .modern-date-button,
+:root[data-theme='light'] .schedule-inline-form .modern-time-button {
+  background: #f5f7fa;
+  border-color: #28384b;
+  color: var(--text);
+}
 :root[data-theme='light'] .modern-date-button:focus,
 :root[data-theme='light'] .modern-date-button[aria-expanded='true'],
 :root[data-theme='light'] .modern-time-button:focus,
@@ -2220,11 +2246,18 @@ h3 {
   /* Indent dropped so the bolt lands under the parent row's icon, not beside
      its label. */
   padding-left: 0.45rem;
-  border: 1px solid var(--cedge-orange-4);
-  background: rgba(255, 122, 33, 0.05);
+  /* NO BOX AT REST. An orange outline on a row that is not the current page
+     competes with the one thing in the rail that is allowed to be outlined —
+     the active tab — and at a glance the rail looked like it had two. The bolt
+     tile is enough to mark this row as the odd one out; the border is for
+     hover and for actually being here. */
+  border: 1px solid transparent;
+  background: none;
   color: var(--text);
 }
-.sidenav-automations:hover {
+.sidenav-automations:hover,
+.sidenav-automations.active,
+.sidenav-automations[aria-current='page'] {
   border-color: var(--cedge-orange-3);
   background: rgba(255, 122, 33, 0.11);
 }
@@ -2583,6 +2616,13 @@ h3 {
    A sticky segmented bar over the settings sections. Panels stay mounted and
    toggle via the [hidden] attribute, so the server-action forms inside keep
    working and switching is instant. */
+/* Every section a settings anchor can land on has to clear the sticky tab bar.
+   Without this, /dashboard/settings#job-costing scrolls the section to y=0 and
+   the tab bar — which is sticky at 0.6rem — parks straight on top of its
+   heading. The anchor works and looks like it didn't. */
+.settings-tabpanel > section[id],
+.settings-tabpanel > details[id] { scroll-margin-top: 5.2rem; }
+
 .settings-tabnav {
   position: sticky;
   top: 0.6rem;
@@ -3405,7 +3445,7 @@ h3 {
 /* Platform fee tier card (Settings -> Payments). */
 .fee-tier-card { border: 1px solid var(--edge-t09); border-radius: 0.85rem; background: rgba(var(--tint), 0.025); padding: 1.1rem 1.15rem; }
 .fee-tier-head { display: flex; align-items: center; gap: 0.9rem; }
-.fee-tier-rate { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; color: var(--accent-2, #ffd166); font-variant-numeric: tabular-nums; line-height: 1; }
+.fee-tier-rate { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; color: var(--gold-ink); font-variant-numeric: tabular-nums; line-height: 1; }
 .fee-tier-meta { display: flex; flex-direction: column; gap: 0.12rem; }
 .fee-tier-meta strong { font-size: 0.95rem; }
 .fee-tier-meta span { font-size: 0.82rem; color: var(--mute-g270); }
@@ -3930,13 +3970,13 @@ li + li { margin-top: 0.45rem; }
 }
 
 .flow-strip-arrow { color: var(--mute-i32); }
-.flow-strip-highlight { color: var(--accent-2); }
+.flow-strip-highlight { color: var(--gold-ink); }
 
 /* Solid fallback first; the clipped gradient only applies where supported, so
    the headline is never invisible in browsers/modes where background-clip:text
    fails (e.g. Windows High Contrast / forced-colors). */
 .gradient-text {
-  color: var(--accent-2);
+  color: var(--gold-ink);
 }
 @supports ((-webkit-background-clip: text) or (background-clip: text)) {
   .gradient-text {
@@ -3981,7 +4021,7 @@ li + li { margin-top: 0.45rem; }
 
 .hero-trust-row li { display: flex; align-items: center; gap: 0.5rem; color: rgba(var(--ink-rgb), 0.66); font-size: 0.85rem; }
 .hero-trust-row li + li { margin-top: 0; }
-.hero-trust-row svg { color: var(--accent-2); flex-shrink: 0; }
+.hero-trust-row svg { color: var(--gold-ink); flex-shrink: 0; }
 
 /* ---------------------------------------------------------------- */
 /* Homepage: money-flow pipeline (hero panel)                        */
@@ -4018,7 +4058,7 @@ li + li { margin-top: 0.45rem; }
   border-radius: 14px;
   border: 1px solid var(--edge-t14);
   background: rgba(var(--tint), 0.05);
-  color: var(--accent-2);
+  color: var(--gold-ink);
   position: relative;
   z-index: 1;
 }
@@ -4098,7 +4138,7 @@ li + li { margin-top: 0.45rem; }
   align-items: center;
   gap: 0.4rem;
   margin-top: 0.5rem;
-  color: var(--accent-2);
+  color: var(--gold-ink);
   font-size: 0.84rem;
   font-weight: 700;
 }
@@ -4215,7 +4255,7 @@ li + li { margin-top: 0.45rem; }
   height: 42px;
   border-radius: 13px;
   background: linear-gradient(135deg, rgba(255, 122, 33, 0.22), rgba(255, 209, 102, 0.14));
-  color: var(--accent-2);
+  color: var(--gold-ink);
   margin-bottom: 0.9rem;
 }
 
@@ -4256,7 +4296,7 @@ li + li { margin-top: 0.45rem; }
   background: linear-gradient(180deg, rgba(255, 122, 33, 0.55), rgba(255, 122, 33, 0.15));
 }
 
-.pricing-tier-best .pricing-tier-rate { color: var(--accent-2); }
+.pricing-tier-best .pricing-tier-rate { color: var(--gold-ink); }
 .pricing-tier-best .pricing-tier-bar {
   background: linear-gradient(180deg, var(--accent-2), rgba(255, 209, 102, 0.25));
   box-shadow: 0 0 26px rgba(255, 209, 102, 0.4);
@@ -4275,7 +4315,7 @@ li + li { margin-top: 0.45rem; }
 .hero-reassure-pill { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin-top: 1.1rem;
   padding: 0.5rem 0.95rem; border: 1px solid var(--cedge-amber-7); border-radius: 999px;
   background: rgba(255, 209, 102, 0.06); color: rgba(var(--ink-rgb), 0.82); font-size: 0.88rem; }
-.hero-reassure-pill strong { color: var(--accent-2); font-weight: 700; }
+.hero-reassure-pill strong { color: var(--gold-ink); font-weight: 700; }
 
 /* Worked take-home-dollars card (pricing) — replaces the bare fee footnote. */
 .pricing-takehome { max-width: 30rem; margin: 1.9rem auto 0; border: 1px solid var(--line); border-radius: 14px;
@@ -4288,9 +4328,9 @@ li + li { margin-top: 0.45rem; }
 .pricing-takehome-rows li:first-child { border-top: 0; }
 .pricing-takehome-rows .v { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
 .pricing-takehome-rows li.keep { border-top: 1px solid var(--cedge-amber-8); color: var(--text); font-weight: 700; }
-.pricing-takehome-rows li.keep .v { color: var(--accent-2); font-size: 1.05rem; }
+.pricing-takehome-rows li.keep .v { color: var(--gold-ink); font-size: 1.05rem; }
 .pricing-takehome-note { margin: 0.85rem 0 0; font-size: 0.82rem; line-height: 1.5; color: rgba(var(--ink-rgb), 0.66); }
-.pricing-takehome-note strong { color: var(--accent-2); }
+.pricing-takehome-note strong { color: var(--gold-ink); }
 
 /* ============================================================
    Skimmer fast-path strip under the hero (B5)
@@ -4305,8 +4345,8 @@ li + li { margin-top: 0.45rem; }
   color: var(--accent); border: 1px solid var(--cedge-orange-11); background: rgba(255, 122, 33, 0.10); }
 .fastpath-ic svg { width: 17px; height: 17px; }
 .fastpath-t { white-space: nowrap; }
-.fastpath-step:last-child { color: var(--accent-2); }
-.fastpath-step:last-child .fastpath-ic { color: var(--accent-2); border-color: var(--cedge-amber-7); background: rgba(255, 209, 102, 0.10); }
+.fastpath-step:last-child { color: var(--gold-ink); }
+.fastpath-step:last-child .fastpath-ic { color: var(--gold-ink); border-color: var(--cedge-amber-7); background: rgba(255, 209, 102, 0.10); }
 @media (max-width: 560px) {
   .fastpath-row { display: grid; grid-template-columns: 1fr 1fr; }
   .fastpath-step { padding: 0.8rem 0.5rem; }
@@ -4323,7 +4363,7 @@ li + li { margin-top: 0.45rem; }
 .hcalc-eyebrow { margin: 0 0 0.35rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--mute-i55); }
 .hcalc-vol { margin: 0 0 1rem; font-size: 1.05rem; color: var(--text); }
-.hcalc-vol strong { color: var(--accent-2); font-variant-numeric: tabular-nums; }
+.hcalc-vol strong { color: var(--gold-ink); font-variant-numeric: tabular-nums; }
 .hcalc-slider { -webkit-appearance: none; appearance: none; width: 100%; height: 8px; border-radius: 999px; outline: none; cursor: pointer;
   background: linear-gradient(90deg, var(--accent) 0%, var(--accent-2) var(--pct, 20%), rgba(var(--tint), 0.10) var(--pct, 20%)); }
 .hcalc-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 22px; height: 22px; border-radius: 50%;
@@ -4341,13 +4381,13 @@ li + li { margin-top: 0.45rem; }
   background: radial-gradient(120% 100% at 50% 0, rgba(255, 209, 102, 0.10), transparent 60%); padding: 1.1rem 1rem; }
 .hcalc-result-l { font-size: 0.82rem; color: var(--muted); }
 .hcalc-result-v { font-size: clamp(2.1rem, 7vw, 2.9rem); font-weight: 750; letter-spacing: -0.02em; line-height: 1.05;
-  font-variant-numeric: tabular-nums; color: var(--accent-2); margin: 0.15rem 0 0.25rem; }
+  font-variant-numeric: tabular-nums; color: var(--gold-ink); margin: 0.15rem 0 0.25rem; }
 .hcalc-result-s { font-size: 0.82rem; color: rgba(var(--ink-rgb), 0.7); }
 .hcalc-result-s strong { color: var(--text); }
 .hcalc-compare { margin: 1rem 0 0; font-size: 0.86rem; line-height: 1.5; color: rgba(var(--ink-rgb), 0.72); text-align: center; }
 .hcalc-compare strong { color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .hcalc-kicker { margin: 0.7rem 0 0; font-size: 0.86rem; line-height: 1.5; color: var(--mute-i62); text-align: center; }
-.hcalc-kicker strong { color: var(--accent-2); }
+.hcalc-kicker strong { color: var(--gold-ink); }
 
 /* ============================================================
    "No strings" reassurance band (missing-items risk reversal)
@@ -4360,12 +4400,12 @@ li + li { margin-top: 0.45rem; }
 .reassure-card h3 { margin: 0 0 0.4rem; font-size: 1.02rem; font-weight: 680; letter-spacing: -0.01em; }
 .reassure-card p { margin: 0; font-size: 0.9rem; line-height: 1.55; color: rgba(var(--ink-rgb), 0.72); }
 .reassure-card p strong { color: var(--text); }
-.reassure-card a { color: var(--accent-2); font-weight: 600; word-break: break-word; }
+.reassure-card a { color: var(--gold-ink); font-weight: 600; word-break: break-word; }
 @media (max-width: 780px) { .reassure-row { grid-template-columns: 1fr; } }
 
 /* Sign-in / sign-up toggle link on the auth card. */
 .auth-toggle { margin: 0.9rem 0 0; text-align: center; font-size: 0.85rem; color: rgba(var(--ink-rgb), 0.7); }
-.auth-toggle a { color: var(--accent-2); font-weight: 600; }
+.auth-toggle a { color: var(--gold-ink); font-weight: 600; }
 
 /* Mobile-only sticky signup bar (fades in after the hero via .is-on). */
 .sticky-cta { display: none; }
@@ -4388,7 +4428,7 @@ li + li { margin-top: 0.45rem; }
 .hfaq-intro h2 { margin: 0.5rem 0 0.7rem; }
 .hfaq-intro > p { color: rgba(var(--ink-rgb), 0.72); max-width: 34ch; }
 .hfaq-ask { margin-top: 1.1rem; font-size: 0.9rem; color: var(--mute-i60); }
-.hfaq-ask a { color: var(--accent-2); font-weight: 600; }
+.hfaq-ask a { color: var(--gold-ink); font-weight: 600; }
 
 .hfaq-list { display: flex; flex-direction: column; }
 .hfaq-item { border-top: 1px solid var(--line); }
@@ -4422,7 +4462,7 @@ li + li { margin-top: 0.45rem; }
 /* Final CTA: a crescendo headline, a "what's free" recap, and a time nudge. */
 .cta-band-inner h2 { max-width: 20ch; font-size: clamp(1.9rem, 4.5vw, 3rem); line-height: 1.05; }
 .cta-recap { margin: 1.1rem 0 0; max-width: 44ch; font-size: 0.92rem; color: rgba(var(--ink-rgb), 0.72); }
-.cta-nudge { margin: 0.5rem 0 0; font-size: 0.85rem; font-weight: 600; color: var(--accent-2); }
+.cta-nudge { margin: 0.5rem 0 0; font-size: 0.85rem; font-weight: 600; color: var(--gold-ink); }
 
 /* ---------------------------------------------------------------- */
 /* Homepage: "how it stacks up" comparison table                    */
@@ -4518,7 +4558,7 @@ li + li { margin-top: 0.45rem; }
 .compare-mark.tone-good,
 .compare-cell.tone-good .compare-mark { background: rgba(74, 222, 128, 0.16); color: var(--good); }
 .compare-mark.tone-mid,
-.compare-cell.tone-mid .compare-mark { background: rgba(255, 209, 102, 0.16); color: var(--accent-2); }
+.compare-cell.tone-mid .compare-mark { background: rgba(255, 209, 102, 0.16); color: var(--gold-ink); }
 .compare-mark.tone-bad,
 .compare-cell.tone-bad .compare-mark { background: rgba(var(--tint), 0.06); color: var(--mute-g350); }
 .compare-legend {
@@ -4589,7 +4629,7 @@ li + li { margin-top: 0.45rem; }
 .fav-card-tag {
   align-self: flex-start;
   font-size: 0.66rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--accent-2);
+  color: var(--gold-ink);
   padding: 0.2rem 0.55rem; border-radius: 999px;
   background: rgba(255, 209, 102, 0.12); border: 1px solid var(--cedge-amber-9);
   margin-bottom: 0.35rem;
@@ -4645,7 +4685,7 @@ li + li { margin-top: 0.45rem; }
   border: 1px solid var(--edge-t08); border-radius: 24px;
   background: rgba(var(--tint), 0.02);
 }
-.trade-links-head { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase; color: var(--accent-2); margin: 0 0 0.9rem; }
+.trade-links-head { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase; color: var(--gold-ink); margin: 0 0 0.9rem; }
 .trade-links-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .trade-links-row a {
   font-size: 0.86rem; font-weight: 600; color: var(--muted);
@@ -4679,7 +4719,7 @@ li + li { margin-top: 0.45rem; }
 .pin-card-kind[data-kind="scheduled"]::before { background: var(--good); }
 .pin-card-name { color: var(--text); font-size: 0.98rem; font-weight: 800; }
 .pin-card-sub { color: rgba(var(--ink-rgb), 0.66); font-size: 0.82rem; line-height: 1.4; }
-.pin-card-open { margin-top: 0.25rem; color: var(--accent-2); font-size: 0.84rem; font-weight: 800; text-decoration: none; }
+.pin-card-open { margin-top: 0.25rem; color: var(--gold-ink); font-size: 0.84rem; font-weight: 800; text-decoration: none; }
 .pin-card-open:hover { text-decoration: underline; }
 
 /* Section header: a content-width column on the left; the mini map sits right
@@ -4764,7 +4804,7 @@ li + li { margin-top: 0.45rem; }
 .trade-index-card h3 { font-size: 1rem; font-weight: 700; margin: 0 0 0.3rem; letter-spacing: -0.01em; }
 .trade-index-card p { margin: 0; font-size: 0.78rem; line-height: 1.4; color: var(--muted); }
 .trade-index-note { margin: 1.4rem 0 0; font-size: 0.9rem; color: var(--mute-i62); }
-.trade-index-note a { color: var(--accent-2); font-weight: 600; }
+.trade-index-note a { color: var(--gold-ink); font-weight: 600; }
 
 /* FAQ accordion. */
 .faq-list { display: grid; gap: 0.6rem; margin-top: 0.4rem; }
@@ -4799,7 +4839,7 @@ li + li { margin-top: 0.45rem; }
 .calc-label { font-size: 0.95rem; font-weight: 600; color: var(--text); }
 .calc-value {
   font-family: var(--font-display), system-ui, sans-serif;
-  font-size: 2rem; font-weight: 800; color: var(--accent-2); letter-spacing: -0.01em;
+  font-size: 2rem; font-weight: 800; color: var(--gold-ink); letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
 }
 .calc-field input[type="range"] {
@@ -4898,7 +4938,7 @@ li + li { margin-top: 0.45rem; }
   color: rgba(var(--ink-rgb), 0.78);
 }
 
-.trust-badge-icon { color: var(--accent-2); display: inline-flex; }
+.trust-badge-icon { color: var(--gold-ink); display: inline-flex; }
 
 /* ---------------------------------------------------------------- */
 /* Homepage: closing CTA band                                        */
@@ -4934,7 +4974,7 @@ li + li { margin-top: 0.45rem; }
 .marketing-footer a { color: rgba(var(--tint), .76); }
 
 .auth-card { padding: 2rem; }
-.auth-badge { display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .75rem; border-radius: 999px; border: 1px solid var(--cedge-amber-11); background: rgba(255,209,102,.08); color: var(--accent-2); font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; margin-bottom: .6rem; }
+.auth-badge { display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .75rem; border-radius: 999px; border: 1px solid var(--cedge-amber-11); background: rgba(255,209,102,.08); color: var(--gold-ink); font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; margin-bottom: .6rem; }
 .auth-form { display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1rem; max-width: 420px; }
 .auth-form label { font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--mute-t62); }
 .auth-form input { border: 1px solid var(--edge-t16); border-radius: 999px; padding: 0.85rem 1rem; background: rgba(var(--tint), 0.06); color: white; width: 100%; }
@@ -6944,7 +6984,9 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 .checkbox-chip:has(input:checked) {
   border-color: var(--cedge-orange-14);
   background: rgba(255, 122, 33, 0.12);
-  color: #fff;
+  /* A selected day chip: an orange wash and, until now, WHITE text on it —
+     1.12:1 on paper, which is the seven weekday chips on Quick Stops. */
+  color: var(--text);
 }
 
 /* ---- Quote builder (owner, job page) ---- */
@@ -8299,7 +8341,7 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
   margin: 0;
 }
 .booking-estimate .payment-amount {
-  color: var(--accent-2, #ffd166);
+  color: var(--gold-ink);
   margin: 0.15rem 0 0.35rem;
 }
 .booking-estimate small {
@@ -9498,7 +9540,7 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
 .crew-card:hover { border-color: var(--cedge-orange-17); background: rgba(var(--tint), 0.08); }
 .crew-card-name { font-size: 1.18rem; font-weight: 800; color: var(--text); letter-spacing: -0.01em; }
 .crew-card-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.6rem; margin-top: 0.3rem; }
-.crew-card-role { font-size: 0.9rem; font-weight: 800; color: var(--accent-2); letter-spacing: 0.01em; }
+.crew-card-role { font-size: 0.9rem; font-weight: 800; color: var(--gold-ink); letter-spacing: 0.01em; }
 .crew-card-contact { font-size: 0.86rem; color: var(--mute-t62); }
 .crew-card-actions {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end;
@@ -10767,7 +10809,7 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
   text-transform: uppercase;
   letter-spacing: 0.05em;
   background: rgba(255,209,102,0.16);
-  color: var(--accent-2, #ffd166);
+  color: var(--gold-ink);
 }
 .recurring-paused-tag {
   padding: 0.12rem 0.55rem;
@@ -10818,7 +10860,7 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
   border: 1px solid transparent;
 }
 .recurring-next.later { background: rgba(var(--tint), 0.06); color: rgba(var(--tint), 0.66); }
-.recurring-next.soon { background: rgba(255,209,102,0.14); color: var(--accent-2, #ffd166); }
+.recurring-next.soon { background: rgba(255,209,102,0.14); color: var(--gold-ink); }
 .recurring-next.imminent {
   background: rgba(255,122,33,0.18);
   border-color: var(--cedge-orange-30);
@@ -13055,7 +13097,7 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
   font-weight: 800;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--accent-2);
+  color: var(--gold-ink);
 }
 .fx-tile-name { margin: 0; font-size: 1.05rem; font-weight: 800; letter-spacing: -0.01em; color: var(--text); }
 .fx-tile-desc { margin: 0; font-size: 0.9rem; color: var(--muted); }
@@ -13120,7 +13162,7 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
 }
 .fx-lightbox-inner { width: min(1120px, 100%); max-height: 92vh; display: flex; flex-direction: column; gap: 0.9rem; }
 .fx-lightbox-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
-.fx-lightbox-tag { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent-2); }
+.fx-lightbox-tag { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold-ink); }
 .fx-lightbox-title { margin: 0.15rem 0 0; font-size: 1.4rem; font-weight: 800; letter-spacing: -0.01em; color: var(--text); }
 .fx-lightbox-close {
   flex: 0 0 auto;
@@ -13242,7 +13284,7 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--accent-2);
+  color: var(--gold-ink);
 }
 .fx-panel-titles h3 { margin: 0.1rem 0 0; font-size: 1.2rem; font-weight: 800; letter-spacing: -0.01em; color: var(--text); }
 .fx-panel-intro { margin: 0 0 1rem; font-size: 0.92rem; color: var(--muted); }
@@ -13286,7 +13328,7 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
   color: var(--text);
 }
 .fx-feat-desc { font-size: 0.84rem; color: var(--muted); line-height: 1.5; }
-.fx-fav-star { display: inline-flex; flex: none; color: var(--accent-2); }
+.fx-fav-star { display: inline-flex; flex: none; color: var(--gold-ink); }
 .fx-fav-star svg { width: 0.85rem; height: 0.85rem; }
 
 /* Scroll-reveal: only active once the client component adds .fx-anim, so the
@@ -14450,7 +14492,7 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 }
 .es-earnings-label { position: relative; margin: 0; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mute-t50); }
 .es-earnings-line { position: relative; margin: 0.5rem 0 0.15rem; font-size: 0.9rem; color: rgba(var(--tint), 0.78); }
-.es-earnings-line strong { color: #fff; }
+.es-earnings-line strong { color: var(--text); }
 .es-earnings-total {
   position: relative; margin: 0.1rem 0 0.5rem; line-height: 1; font-weight: 900;
   font-size: clamp(2.2rem, 4.4vw, 3.1rem);
@@ -14499,7 +14541,7 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   background: var(--bg); color: var(--accent-ink); font-size: 0.66rem; font-weight: 900;
   border: 1px solid var(--cedge-orange-14);
 }
-.es-step strong { display: block; margin: 0.6rem 0 0.35rem; font-size: 0.97rem; color: #fff; }
+.es-step strong { display: block; margin: 0.6rem 0 0.35rem; font-size: 0.97rem; color: var(--text); }
 .es-step p { margin: 0; font-size: 0.84rem; line-height: 1.55; color: var(--mute-t62); }
 
 /* ---- customer preview + example ---- */
@@ -14508,7 +14550,7 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 .es-phone { padding: 1rem; border-radius: 16px; border: 1px solid var(--edge-t12); background: linear-gradient(180deg, rgba(var(--tint), 0.05), rgba(3, 10, 18, 0.6)); }
 .es-phone-from { display: flex; align-items: center; gap: 0.5rem; margin: 0 0 0.6rem; font-size: 0.78rem; font-weight: 800; color: rgba(var(--tint), 0.7); }
 .es-phone-avatar { display: grid; place-items: center; width: 1.6rem; height: 1.6rem; border-radius: 8px; background: linear-gradient(160deg, #ff9d4d, #ff7a21); color: var(--bg); font-weight: 900; font-size: 0.8rem; }
-.es-phone-bubble { margin: 0 0 0.55rem; padding: 0.75rem 0.85rem; border-radius: 14px 14px 14px 4px; background: rgba(var(--tint), 0.1); font-size: 0.92rem; line-height: 1.45; color: #fff; }
+.es-phone-bubble { margin: 0 0 0.55rem; padding: 0.75rem 0.85rem; border-radius: 14px 14px 14px 4px; background: rgba(var(--tint), 0.1); font-size: 0.92rem; line-height: 1.45; color: var(--text); }
 .es-phone-sub { margin: 0 0 0.75rem; font-size: 0.8rem; color: var(--mute-t55); }
 .es-phone-choice {
   display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
@@ -14525,14 +14567,14 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 .es-phone-foot svg { color: var(--good); }
 
 .es-example { padding: 1rem; border-radius: 16px; border: 1px solid var(--edge-t12); background: rgba(3, 10, 18, 0.5); }
-.es-example-job { margin: 0 0 0.7rem; font-size: 1.05rem; font-weight: 800; color: #fff; }
+.es-example-job { margin: 0 0 0.7rem; font-size: 1.05rem; font-weight: 800; color: var(--text); }
 .es-example-facts { list-style: none; margin: 0 0 0.9rem; padding: 0; display: grid; gap: 0.4rem; font-size: 0.85rem; color: rgba(var(--tint), 0.66); }
 .es-example-facts li { display: flex; align-items: center; gap: 0.5rem; }
 .es-example-facts svg { color: var(--accent-ink); width: 1.05rem; height: 1.05rem; }
 .es-example-offer-box { padding: 0.85rem; border-radius: 12px; border: 1px solid var(--cedge-orange-7); background: rgba(255, 122, 33, 0.09); }
 .es-example-label { margin: 0; font-size: 0.63rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mute-t50); }
 .es-example-offer { margin: 0.25rem 0 0.35rem; font-size: 1.3rem; font-weight: 900; color: var(--ink-orange-6); }
-.es-example-fee { display: flex; align-items: baseline; gap: 0.45rem; margin: 0; font-size: 1.5rem; font-weight: 900; color: #fff; }
+.es-example-fee { display: flex; align-items: baseline; gap: 0.45rem; margin: 0; font-size: 1.5rem; font-weight: 900; color: var(--text); }
 .es-example-fee span { font-size: 0.76rem; font-weight: 700; color: var(--mute-t55); }
 .es-example-note { margin: 0.7rem 0 0; font-size: 0.77rem; color: var(--mute-t45); }
 
@@ -14560,7 +14602,7 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 .es-benefit[data-tone="route"] .es-benefit-icon { background: rgba(255, 122, 33, 0.17); color: var(--accent-ink); }
 .es-benefit[data-tone="safe"] .es-benefit-icon { background: rgba(167, 139, 250, 0.16); color: var(--ink-violet-4); }
 .es-benefit[data-tone="lead"] .es-benefit-icon { background: rgba(255, 209, 102, 0.15); color: var(--gold-ink); }
-.es-benefit strong { display: block; margin: 0.6rem 0 0.35rem; font-size: 0.92rem; color: #fff; }
+.es-benefit strong { display: block; margin: 0.6rem 0 0.35rem; font-size: 0.92rem; color: var(--text); }
 .es-benefit p { margin: 0; font-size: 0.82rem; line-height: 1.55; color: var(--mute-t62); }
 
 /* ---- setup checklist ---- */
@@ -14995,6 +15037,35 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   }
 
   .schedule-rail .schedule-popover-panel::before { display: none; }
+
+  /* ONE COLUMN IN THE RAIL. The inline form is a three-column grid — date,
+     time, save — with `min-width: min(100%, 620px)`. The rail column is about
+     220px, so that floor is not a layout, it is an overflow: the time field and
+     the Save button sat outside the card, which is why "No set time" was cut
+     off mid-word. */
+  .schedule-rail .schedule-inline-form {
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
+    flex: initial;
+  }
+
+  /* AN OPEN PICKER MUST NOT BE TRAPPED IN THE SCROLL BOX.
+     The rail's popovers are laid out inline (above) precisely because the jobs
+     list scrolls — an absolutely positioned panel would be clipped by the
+     overflow ancestor. But inline is only half the answer: the panel expands
+     the card INSIDE a box a few hundred pixels tall, so opening one showed a
+     slice of a date picker with its own scrollbar and no way to reach the Save
+     button.
+     While one is open the whole chain stops clipping and the rail stops
+     capping. It loses stickiness for as long as the form is open, which is the
+     right trade: you are filling in a date, not looking at the month. Closing
+     it puts everything back. */
+  .schedule-rail:has(.schedule-popover[open]) { max-height: none; }
+  .schedule-rail:has(.schedule-popover[open]) .schedule-dock-body,
+  .schedule-rail:has(.schedule-popover[open]) #unscheduled-jobs,
+  .schedule-rail:has(.schedule-popover[open]) #unscheduled-jobs .sign-in-methods-list {
+    overflow: visible;
+  }
 
   /* The map is context here, not a work surface, so it takes a fixed slice of the
      rail rather than the 46vh it claims full-width — at that height it alone
@@ -15979,11 +16050,24 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
    themselves are in THE FLIP's selector list above, so they carry the sheet's
    tokens; these are the inner surfaces and rules that sit on top of them. */
 :root[data-theme='light'] .bset {
+  /* .bset is now in THE FLIP's selector list, which is where its ink comes
+     from. Cancel the sheet PAINTING that comes with it: this is a layout
+     region, its ground is --bset-page, and a white slab plus a lift shadow
+     behind every card would be a second sheet nobody asked for. */
+  background: none;
+  box-shadow: none;
+  border: 0;
   --bset-page: #eef2f7;
   --bset-card: #ffffff;
   --bset-inner: rgba(17, 27, 41, 0.035);
-  --bset-line: #dfe4ea;
-  --bset-line-strong: #c9d2de;
+  /* Edged like everything else on paper now — these were 1.28:1 and 1.55:1. */
+  --bset-line: #28384b;
+  --bset-line-strong: #1f2a39;
+  /* The accent when it is READ rather than filled. --bset-accent stays #ff7a29
+     because it is also a fill, and on a fill it is correct; as bare text on a
+     white sheet it measured 2.6:1. Deep burnt orange keeps the hue — this is
+     still the brand's colour, at the value paper needs. */
+  --bset-accent-ink: #a54f1b;
 }
 
 .bset {
@@ -15993,6 +16077,9 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   --bset-line: rgba(var(--grey-1), 0.16);
   --bset-line-strong: rgba(var(--grey-1), 0.26);
   --bset-accent: #ff7a29;
+  /* Same value in dark: an accent on navy is already readable. Only paper
+     needs the deep one (see the light block above). */
+  --bset-accent-ink: #ff7a29;
   display: grid;
   gap: 1.5rem;
   align-content: start;
@@ -16036,7 +16123,7 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   object-position: left center;
 }
 
-.bset-head h1 svg { width: 1.4rem; height: 1.4rem; color: var(--bset-accent); }
+.bset-head h1 svg { width: 1.4rem; height: 1.4rem; color: var(--bset-accent-ink); }
 
 .bset-head p {
   margin: 0.3rem 0 0;
@@ -16106,7 +16193,7 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 .bset-master-copy { display: grid; gap: 0.15rem; min-width: 0; }
 .bset-master-copy strong { font-size: 1.12rem; font-weight: 650; letter-spacing: -0.01em; }
 .bset-master-copy strong em { font-style: normal; font-weight: 800; }
-.bset-master-copy strong em.on { color: var(--bset-accent); }
+.bset-master-copy strong em.on { color: var(--bset-accent-ink); }
 .bset-master-copy strong em.off { color: var(--muted, var(--muted-2)); }
 .bset-master-copy small { font-size: 0.84rem; color: var(--muted, var(--muted-2)); }
 
@@ -16222,7 +16309,7 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   border-top: 1px solid var(--bset-line);
   font-size: 0.84rem;
   font-weight: 650;
-  color: var(--bset-accent);
+  color: var(--bset-accent-ink);
 }
 
 .bset-card-edit svg { width: 0.85rem; height: 0.85rem; }
@@ -16337,9 +16424,9 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 .bset-day:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.7); outline-offset: 2px; }
 
 .bset-day.on {
-  border-color: var(--bset-accent);
+  border-color: var(--bset-accent-ink);
   background: rgba(255, 122, 41, 0.12);
-  color: #fff;
+  color: var(--text);
 }
 
 .bset-day-check {
@@ -16351,7 +16438,7 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   border: 1px solid var(--edge-g40);
 }
 
-.bset-day.on .bset-day-check { background: var(--bset-accent); border-color: var(--bset-accent); color: #10131a; }
+.bset-day.on .bset-day-check { background: var(--bset-accent); border-color: var(--bset-accent-ink); color: #10131a; }
 .bset-day-check svg { width: 0.75rem; height: 0.75rem; stroke-width: 3; }
 
 /* --- arrival windows --- */
@@ -16409,11 +16496,11 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 
 .bset-window:hover { border-color: var(--bset-line-strong); }
 .bset-window:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.7); outline-offset: 2px; }
-.bset-window.on { border-color: var(--bset-accent); background: rgba(255, 122, 41, 0.08); }
+.bset-window.on { border-color: var(--bset-accent-ink); background: rgba(255, 122, 41, 0.08); }
 
 .bset-window-icon { flex: none; color: var(--ink-amber-1); }
 .bset-window-icon svg { width: 1.2rem; height: 1.2rem; }
-.bset-window.on .bset-window-icon { color: var(--bset-accent); }
+.bset-window.on .bset-window-icon { color: var(--bset-accent-ink); }
 
 .bset-window-copy { display: grid; gap: 0.08rem; flex: 1; min-width: 0; }
 .bset-window-copy strong { display: flex; align-items: center; gap: 0.4rem; font-size: 0.9rem; font-weight: 650; }
@@ -16440,7 +16527,7 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   border: 1px solid var(--edge-g40);
 }
 
-.bset-window.on .bset-window-check { background: var(--bset-accent); border-color: var(--bset-accent); color: #10131a; }
+.bset-window.on .bset-window-check { background: var(--bset-accent); border-color: var(--bset-accent-ink); color: #10131a; }
 .bset-window-check svg { width: 0.8rem; height: 0.8rem; stroke-width: 3; }
 
 .bset-addwindow {
@@ -16460,7 +16547,7 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   cursor: pointer;
 }
 
-.bset-addwindow:hover:not(:disabled) { color: var(--bset-accent); border-color: var(--cedge-orange-60); }
+.bset-addwindow:hover:not(:disabled) { color: var(--bset-accent-ink); border-color: var(--cedge-orange-60); }
 .bset-addwindow:disabled { opacity: 0.5; cursor: not-allowed; }
 .bset-addwindow svg { width: 0.9rem; height: 0.9rem; }
 
@@ -16561,7 +16648,7 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 
 .bset-tip { display: inline-grid; place-items: center; color: var(--mute-g570); cursor: help; }
 .bset-tip svg { width: 0.85rem; height: 0.85rem; }
-.bset-tip:hover { color: var(--bset-accent); }
+.bset-tip:hover { color: var(--bset-accent-ink); }
 
 /* $ lives in the field, so the label doesn't need "($)" and the number lines
    up with the currency mark rather than floating in an empty box. */
@@ -16778,7 +16865,7 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 
 .bset-phone-day small { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.07em; color: var(--muted, var(--muted-2)); }
 .bset-phone-day strong { font-size: 1rem; font-weight: 700; }
-.bset-phone-day.on { background: var(--bset-accent); border-color: var(--bset-accent); }
+.bset-phone-day.on { background: var(--bset-accent); border-color: var(--bset-accent-ink); }
 .bset-phone-day.on small, .bset-phone-day.on strong { color: #10131a; }
 
 .bset-phone-label { margin: 0.5rem 0 0; font-size: 0.8rem; color: var(--muted, var(--muted-2)); }
@@ -16792,7 +16879,7 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   border-radius: 10px;
 }
 
-.bset-phone-window.on { border-color: var(--bset-accent); background: rgba(255, 122, 41, 0.07); }
+.bset-phone-window.on { border-color: var(--bset-accent-ink); background: rgba(255, 122, 41, 0.07); }
 .bset-phone-window > svg { width: 1.1rem; height: 1.1rem; flex: none; color: var(--ink-amber-1); }
 .bset-phone-window > span:not(.bset-phone-check) { display: grid; gap: 0.05rem; flex: 1; min-width: 0; }
 .bset-phone-window strong { font-size: 0.86rem; font-weight: 650; }
@@ -16808,7 +16895,7 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   border: 1px solid var(--edge-g40);
 }
 
-.bset-phone-window.on .bset-phone-check { background: var(--bset-accent); border-color: var(--bset-accent); color: #10131a; }
+.bset-phone-window.on .bset-phone-check { background: var(--bset-accent); border-color: var(--bset-accent-ink); color: #10131a; }
 .bset-phone-check svg { width: 0.75rem; height: 0.75rem; stroke-width: 3; }
 
 .bset-phone-cta {
@@ -16855,7 +16942,7 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
   padding: 0;
   border: 0;
   background: none;
-  color: var(--bset-accent);
+  color: var(--bset-accent-ink);
   font: inherit;
   font-size: 0.85rem;
   font-weight: 650;
@@ -16893,7 +16980,7 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 }
 
 .bset-savebar > p { display: flex; align-items: center; gap: 0.65rem; margin: 0; }
-.bset-savebar > p > svg { width: 1.35rem; height: 1.35rem; flex: none; color: var(--bset-accent); }
+.bset-savebar > p > svg { width: 1.35rem; height: 1.35rem; flex: none; color: var(--bset-accent-ink); }
 .bset-savebar > p span { display: grid; gap: 0.1rem; }
 .bset-savebar strong { font-size: 0.95rem; font-weight: 650; }
 .bset-savebar small { font-size: 0.8rem; color: var(--muted, var(--muted-2)); }
@@ -17921,10 +18008,10 @@ a.bset-card { color: inherit; text-decoration: none; }
 }
 .range-slider-label {
   font-size: 0.72rem; font-weight: 800; letter-spacing: 0.09em;
-  text-transform: uppercase; color: var(--accent);
+  text-transform: uppercase; color: var(--ink-orange-8);
 }
 .range-slider-value {
-  font-size: 1rem; font-weight: 800; color: var(--accent);
+  font-size: 1rem; font-weight: 800; color: var(--ink-orange-8);
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }
 
@@ -17976,7 +18063,7 @@ a.bset-card { color: inherit; text-decoration: none; }
 .range-slider-bubbles { position: relative; height: 1.1rem; }
 .range-slider-bubble {
   position: absolute; top: 0; transform: translateX(-50%);
-  font-size: 0.92rem; font-weight: 800; color: #fff;
+  font-size: 0.92rem; font-weight: 800; color: var(--ink-neutral-9);
   font-variant-numeric: tabular-nums; white-space: nowrap;
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
 }
@@ -18021,7 +18108,7 @@ a.bset-card { color: inherit; text-decoration: none; }
 .es-how-summary:hover { background: rgba(255, 122, 33, 0.05); }
 .es-how-summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .es-how-copy { display: grid; gap: 0.15rem; flex: 1; min-width: 0; }
-.es-how-copy strong { color: #fff; font-size: 1.02rem; }
+.es-how-copy strong { color: var(--text); font-size: 1.02rem; }
 .es-how-copy small { color: var(--mute-i55); font-size: 0.8rem; }
 .es-how-chev {
   flex: none; color: var(--accent); font-size: 1.1rem; line-height: 1;
@@ -20955,91 +21042,168 @@ a.bset-card { color: inherit; text-decoration: none; }
 }
 .intake-preview-compact:hover { border-color: var(--cedge-orange-3); background: rgba(255, 122, 33, 0.1); }
 
-/* ── Job costing ─────────────────────────────────────────────────────────────
-   Two settings that were sharing a form and an abstract heading. One block
-   each, presets for people who don't know their number, and the arithmetic
-   shown live — a paragraph about payroll taxes never lands the way one worked
-   sum does. Prefixed .jc- and scoped under .jc-card. */
-.jc-card { display: grid; gap: 0.9rem; }
+
+/* ── True labor cost ─────────────────────────────────────────────────────────
+   The worked sum runs across the top, then three cards: the two settings and
+   what they add up to. "Labor burden" appears nowhere visible — it is the trade
+   term, and a setting whose LABEL has to be looked up is a setting that gets
+   left at its default. It lives in one tooltip for the people who came looking
+   for it by name. Prefixed .jc- and scoped under .jc-card. */
+.jc-card { display: grid; gap: 1rem; }
+
+.jc-top { display: flex; align-items: flex-start; gap: 0.9rem; }
+.jc-top-text { flex: 1 1 20rem; min-width: 0; display: grid; gap: 0.25rem; }
+.jc-top-text h2 { margin: 0; font-size: 1.55rem; letter-spacing: -0.02em; }
+.jc-lead { margin: 0.15rem 0 0; max-width: 62ch; font-size: 0.9rem; line-height: 1.55; color: var(--mute-t55); }
+.jc-icon {
+  display: grid; place-items: center; flex: none;
+  width: 2.9rem; height: 2.9rem; margin-top: 0.15rem;
+  border-radius: 14px;
+  border: 1px solid var(--edge-t12);
+  background: rgba(var(--tint), 0.04);
+  color: var(--accent);
+}
+.jc-icon svg { width: 1.5rem; height: 1.5rem; }
+.jc-save { flex: none; min-height: 1.2em; align-self: center; white-space: nowrap; font-size: 0.82rem; font-weight: 700; }
+.jc-save-saved { color: var(--ink-green-11); }
+.jc-save-error { color: var(--ink-red-1); }
+
+/* THE SUM. This is the explanation; everything else is a control. */
+.jc-example {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.55rem 0.9rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  border: 1px solid var(--edge-t10);
+  background: rgba(var(--tint), 0.03);
+}
+.jc-example-mark {
+  display: grid; place-items: center; flex: none;
+  width: 2rem; height: 2rem; border-radius: 50%;
+  border: 1px solid var(--cedge-green-6);
+  background: rgba(72, 199, 142, 0.12);
+  color: var(--ink-green-11);
+  font-weight: 800;
+}
+.jc-example-tag { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.11em; text-transform: uppercase; color: var(--mute-t45); }
+.jc-example-part { display: inline-flex; align-items: baseline; gap: 0.35rem; }
+.jc-example-part strong { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.jc-example-part small { font-size: 0.82rem; color: var(--mute-t50); }
+.jc-example-part.is-total strong { color: var(--ink-green-11); font-size: 1.5rem; }
+.jc-example-op { color: var(--mute-t40); font-size: 1.05rem; font-weight: 700; }
+
+.jc-grid { display: grid; gap: 0.85rem; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); align-items: start; }
 .jc-block {
-  display: grid; gap: 0.7rem;
+  display: grid; gap: 0.55rem; align-content: start;
   padding: 1rem 1.05rem;
   border-radius: 16px;
   border: 1px solid var(--edge-t12);
-  background: rgba(var(--tint), 0.03);
+  background: rgba(var(--tint), 0.025);
 }
-.jc-block-head { display: flex; align-items: flex-start; gap: 0.7rem; }
-.jc-block-head > div { display: grid; gap: 0.2rem; }
-.jc-block-head strong { font-size: 1.02rem; }
-.jc-block-head small { font-size: 0.82rem; line-height: 1.55; color: var(--mute-t50); }
-.jc-num {
-  display: grid; place-items: center;
-  width: 1.6rem; height: 1.6rem; flex: none; margin-top: 0.1rem;
+.jc-block-head { display: flex; align-items: center; gap: 0.4rem; margin: 0; font-size: 1rem; font-weight: 700; }
+
+/* The tooltip is a real focus stop — a hint only a mouse can reach is a hint
+   half the people using this will never see. */
+.jc-hint {
+  display: grid; place-items: center; flex: none;
+  width: 1.15rem; height: 1.15rem;
   border-radius: 50%;
-  border: 1px solid var(--cedge-orange-8);
-  background: rgba(255, 122, 33, 0.12);
-  color: var(--accent);
-  font-size: 0.78rem; font-weight: 800;
+  border: 1px solid var(--edge-t22);
+  color: var(--mute-t55);
+  font-size: 0.68rem; font-weight: 800;
+  cursor: help;
 }
+.jc-hint:hover, .jc-hint:focus-visible { border-color: var(--accent); color: var(--accent-ink); outline: none; }
 
-.jc-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
-.jc-preset {
-  min-height: 38px; padding: 0.4rem 0.9rem;
-  border-radius: 10px; border: 1px solid var(--edge-t16);
-  background: rgba(var(--tint), 0.05); color: var(--mute-t60);
-  font-family: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+.jc-value-row { display: flex; align-items: center; justify-content: space-between; gap: 0.7rem; }
+.jc-value { font-size: 2.3rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+
+.jc-stepper { display: inline-flex; flex: none; border-radius: 11px; border: 1px solid var(--edge-t16); overflow: hidden; }
+.jc-stepper button {
+  min-width: 2.5rem; min-height: 2.5rem;
+  border: 0; background: rgba(var(--tint), 0.05);
+  color: var(--text); font-size: 1.15rem; font-weight: 700; line-height: 1; cursor: pointer;
+  transition: background 0.15s ease;
 }
-.jc-preset:hover { border-color: var(--cedge-orange-9); color: var(--text); }
-.jc-preset.is-on { border-color: var(--accent); background: rgba(255, 122, 33, 0.16); color: var(--accent-ink); }
-.jc-custom {
-  display: inline-flex; align-items: center; gap: 0.25rem;
-  min-height: 38px; padding: 0 0.7rem 0 0.55rem;
-  border-radius: 10px; border: 1px dashed var(--edge-t24);
-  color: var(--mute-t45); font-size: 0.85rem;
+.jc-stepper button + button { border-left: 1px solid var(--edge-t16); }
+.jc-stepper button:hover:not(:disabled) { background: rgba(255, 122, 33, 0.14); }
+.jc-stepper button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Steppers move in fives; the box is for the contractor whose accountant gave
+   them a number. */
+.jc-exact {
+  display: inline-flex; align-items: center; gap: 0.35rem; width: fit-content;
+  padding: 0.2rem 0.55rem 0.2rem 0.6rem;
+  border-radius: 9px; border: 1px dashed var(--edge-t20);
+  font-size: 0.76rem; color: var(--mute-t50);
 }
-.jc-custom input {
-  width: 4rem; min-height: 34px; padding: 0 0.3rem;
+.jc-exact input {
+  width: 3.6rem; min-height: 1.9rem; padding: 0;
   border: 0; background: none; color: var(--text);
-  font-family: inherit; font-size: 0.9rem; font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  font-size: 0.9rem; font-weight: 700; font-variant-numeric: tabular-nums;
 }
-.jc-custom input:focus-visible { outline: none; }
-.jc-custom:focus-within { border-style: solid; border-color: var(--accent); }
+.jc-exact input:focus-visible { outline: none; }
+.jc-exact:focus-within { border-style: solid; border-color: var(--accent); }
+.jc-exact i { font-style: normal; color: var(--mute-t50); }
 
-/* The worked sum. This is the explanation. */
-.jc-math {
-  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem;
-  padding: 0.75rem 0.9rem;
-  border-radius: 12px;
-  border: 1px solid var(--edge-t10);
-  background: rgba(var(--shade), 0.2);
+.jc-note { margin: 0; font-size: 0.8rem; line-height: 1.5; color: var(--mute-t50); }
+.jc-note a { color: var(--accent-ink); text-decoration: underline; }
+
+.jc-tag {
+  display: inline-flex; align-items: center; gap: 0.35rem; width: fit-content;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--edge-t14);
+  background: rgba(var(--tint), 0.04);
+  font-size: 0.76rem; font-weight: 700;
+  color: var(--mute-t58);
 }
-.jc-math-from { font-size: 1rem; color: var(--mute-t55); font-variant-numeric: tabular-nums; }
-.jc-math-arrow { color: var(--mute-t40); }
-.jc-math-to { font-size: 1.3rem; font-weight: 700; color: var(--accent-ink); font-variant-numeric: tabular-nums; }
-.jc-math-note { flex: 1 1 14rem; font-size: 0.8rem; line-height: 1.5; color: var(--mute-t50); }
-.jc-math-note strong { color: var(--text); }
-.jc-math-note.is-warn { color: var(--gold-ink); }
+.jc-tag.is-ok { border-color: var(--cedge-green-6); background: rgba(72, 199, 142, 0.12); color: var(--ink-green-11); }
+.jc-tag.is-warn { border-color: var(--cedge-amber-3); background: rgba(255, 209, 102, 0.12); color: var(--gold-ink); }
 
-.jc-where { margin: 0; font-size: 0.79rem; line-height: 1.55; color: var(--mute-t45); }
-.jc-where a { color: var(--accent-ink); text-decoration: underline; }
+.jc-effect-list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.jc-effect-list li {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--rule-t08);
+  font-size: 0.88rem;
+}
+.jc-effect-list li:last-child { border-bottom: 0; }
+.jc-effect-mark {
+  display: grid; place-items: center; flex: none;
+  width: 1.7rem; height: 1.7rem; border-radius: 8px;
+  border: 1px solid var(--edge-t12);
+  background: rgba(var(--tint), 0.05);
+  color: var(--mute-t55);
+  font-size: 0.8rem;
+}
+.jc-effect-mark.is-money { border-color: var(--cedge-green-6); background: rgba(72, 199, 142, 0.1); color: var(--ink-green-11); }
+.jc-effect-mark.is-flag { border-color: var(--cedge-orange-5); background: rgba(255, 122, 33, 0.1); color: var(--ink-orange-8); }
+.jc-effect-label { flex: 1 1 auto; min-width: 0; color: var(--mute-t58); }
+.jc-effect-value { flex: none; font-weight: 800; font-variant-numeric: tabular-nums; }
+.jc-effect-value small { font-size: 0.74rem; font-weight: 600; color: var(--mute-t45); }
+.jc-effect-value.is-total { color: var(--ink-green-11); }
+.jc-effect-value.is-flag { color: var(--ink-orange-8); }
 
 .jc-foot {
-  display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 0.7rem;
-  padding-top: 0.85rem;
+  display: flex; align-items: flex-start; gap: 0.6rem;
+  padding-top: 0.9rem;
   border-top: 1px solid var(--rule-t09);
-  font-size: 0.78rem; line-height: 1.55; color: var(--mute-t45);
+  font-size: 0.79rem; line-height: 1.55; color: var(--mute-t50);
 }
-.jc-foot > span:first-child { flex: 1 1 24rem; }
-.jc-save { min-height: 1.2em; white-space: nowrap; }
-.jc-save-saved { color: var(--ink-lime-1); }
-.jc-save-error { color: var(--ink-orange-1); }
+.jc-foot-mark {
+  display: grid; place-items: center; flex: none;
+  width: 1.5rem; height: 1.5rem; border-radius: 50%;
+  border: 1px solid var(--edge-t16);
+  font-size: 0.72rem; font-weight: 800; font-style: italic;
+}
 
-@media (min-width: 900px) {
-  .jc-card { grid-template-columns: 1fr 1fr; }
-  .jc-foot { grid-column: 1 / -1; }
+@media (max-width: 560px) {
+  .jc-example { gap: 0.4rem 0.6rem; }
+  .jc-example-part strong { font-size: 1.1rem; }
+  .jc-example-part.is-total strong { font-size: 1.3rem; }
+  .jc-value { font-size: 1.9rem; }
 }
+
 
 /* ── Quick Stops on Insights ─────────────────────────────────────────────────
    The split bar is the argument: a speed fee and the work it led to are two
