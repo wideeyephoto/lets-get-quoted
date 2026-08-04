@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
-import { buildContactNameMap, getConversationMessages, listConversations } from '@/lib/messages';
+import { buildContactNameMap, getConversationMessages, listConversations, markThreadRead } from '@/lib/messages';
 import { listMessageTemplates } from '@/lib/message-templates';
-import { sendReplyAction, createTemplateAction, deleteTemplateAction } from './actions';
+import { sendReplyAction, createTemplateAction, deleteTemplateAction, startConversationAction } from './actions';
 import QuickReplies from './QuickReplies';
+import ComposeMessage from './ComposeMessage';
 import SaveButton from '@/components/save-button';
 
 function formatTime(value: string): string {
@@ -24,21 +25,35 @@ export default async function MessagesPage({ searchParams }: { searchParams: { t
   const activeName = activePhone ? nameMap.get(activePhone) ?? null : null;
   const templates = await listMessageTemplates(supabase, accountId);
 
+  // Opening a thread IS reading it. Done after the messages are loaded so the
+  // ones being marked are the ones on screen, and after `conversations` so the
+  // list still shows the badge that was there when they clicked it.
+  if (activePhone) await markThreadRead(supabase, accountId, activePhone);
+
+  // Everyone this account has a number for, for the compose picker. Reuses the
+  // same name map the threads use, so a customer is called the same thing in
+  // both places.
+  const contacts = [...nameMap.entries()]
+    .map(([phone, name]) => ({ phone, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const totalUnread = conversations.reduce((sum, conversation) => sum + conversation.unread, 0);
+
   return (
     <main className="wide-shell workspace-shell">
       <section className="workspace-hero panel">
         <div className="workspace-hero-copy">
-          <p className="eyebrow">Messages</p>
+          <p className="eyebrow">Messages{totalUnread > 0 ? ` · ${totalUnread} unread` : ''}</p>
           <h1 className="workspace-title">Text inbox</h1>
           <p className="workspace-lead">Every customer text and your replies, threaded in one place.</p>
         </div>
+        <ComposeMessage contacts={contacts} action={startConversationAction} />
       </section>
 
       {conversations.length === 0 ? (
         <section className="panel workspace-section-card">
           <p className="empty-state">
-            No conversations yet. When a customer texts you back, their message shows up here and you
-            can reply right from this page.
+            No conversations yet. When a customer texts you, their message shows up here — or start
+            one yourself with the button above.
           </p>
         </section>
       ) : (
@@ -60,8 +75,13 @@ export default async function MessagesPage({ searchParams }: { searchParams: { t
                   </div>
                   <p className="inbox-thread-preview">
                     {conversation.lastDirection === 'outbound' ? 'You: ' : ''}
-                    {conversation.lastBody}
+                    {/* A photo-only text has no body, and previewing it as blank
+                        reads as a bug rather than as a picture. */}
+                    {conversation.lastBody || (conversation.lastHasMedia ? 'Sent a photo' : '')}
                   </p>
+                  {conversation.unread > 0 ? (
+                    <span className="inbox-unread" aria-label={`${conversation.unread} unread`}>{conversation.unread}</span>
+                  ) : null}
                 </Link>
               ))}
             </div>
@@ -83,7 +103,20 @@ export default async function MessagesPage({ searchParams }: { searchParams: { t
                   ) : (
                     messages.map((message) => (
                       <div key={message.id} className={`inbox-bubble inbox-bubble-${message.direction}`}>
-                        <p>{message.body}</p>
+                        {message.body ? <p>{message.body}</p> : null}
+                        {(message.media_urls ?? []).length > 0 ? (
+                          <div className="inbox-bubble-media">
+                            {(message.media_urls ?? []).map((url) => (
+                              // Opens full size in a new tab; the thumbnail stays
+                              // small so a thread of photos still scans as a
+                              // conversation rather than a gallery.
+                              <a key={url} href={url} target="_blank" rel="noopener noreferrer">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={url} alt="Photo from the customer" loading="lazy" />
+                              </a>
+                            ))}
+                          </div>
+                        ) : null}
                         <span className="inbox-bubble-time">{formatTime(message.created_at)}</span>
                       </div>
                     ))

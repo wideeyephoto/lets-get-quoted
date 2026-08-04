@@ -34,12 +34,33 @@ export async function POST(request: Request) {
   const keyword = rawBody.toUpperCase().split(/\s+/)[0];
   const twilioOptOutType = String(data.get('OptOutType') || '').toUpperCase();
 
+  // Photos. Twilio sends NumMedia plus MediaUrl0..N, and this webhook ignored
+  // all of it — so a homeowner sending a picture of a leaking valve produced a
+  // message with no indication anything was attached.
+  //
+  // Capped at Twilio's own maximum of 10 rather than trusting NumMedia, which
+  // arrives as form data on a public endpoint and would otherwise size a loop.
+  const mediaCount = Math.min(Math.max(0, Number(data.get('NumMedia')) || 0), 10);
+  const mediaUrls: string[] = [];
+  for (let index = 0; index < mediaCount; index += 1) {
+    const url = String(data.get(`MediaUrl${index}`) || '').trim();
+    if (url.startsWith('https://')) mediaUrls.push(url);
+  }
+
   // Store every real inbound message (not the opt-out/opt-in keywords) into the
   // two-way inbox. Best-effort: never let a logging failure break the webhook,
   // or Twilio would retry and the customer could get a duplicate auto-reply.
-  if (phone && rawBody && !OPT_OUT.has(keyword) && !OPT_IN.has(keyword) && keyword !== 'HELP') {
+  //
+  // A picture with no caption is still a message — hence the body OR media test,
+  // where it used to require a body and dropped photo-only texts entirely.
+  if (phone && (rawBody || mediaUrls.length > 0) && !OPT_OUT.has(keyword) && !OPT_IN.has(keyword) && keyword !== 'HELP') {
     try {
-      await logInboundMessage(createAdminClient(), { phone, body: rawBody, providerId: String(data.get('MessageSid') || '') || null });
+      await logInboundMessage(createAdminClient(), {
+        phone,
+        body: rawBody,
+        providerId: String(data.get('MessageSid') || '') || null,
+        mediaUrls,
+      });
     } catch (error) {
       console.error('Failed to log inbound SMS:', error instanceof Error ? error.message : error);
     }

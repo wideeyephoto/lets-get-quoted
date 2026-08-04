@@ -85,6 +85,10 @@ function toConversation(thread: DemoThread): Conversation {
     lastBody: last.body,
     lastAt: hoursAgo(last.hoursAgo),
     lastDirection: last.direction,
+    // The demo is a fixed snapshot, so nothing is waiting on anybody — an unread
+    // badge here would be a number a prospect could never clear.
+    unread: 0,
+    lastHasMedia: false,
   };
 }
 

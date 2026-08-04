@@ -5,6 +5,7 @@ import { expireStaleLeads, getLeadTriage } from '@/lib/leads';
 import { listJobs } from '@/lib/jobs';
 import { QUICK_STOP_SETTINGS_COLUMNS, quickStopSettingsFromAccount } from '@/lib/quick-stop';
 import { bookingAvailabilityFromAccount } from '@/lib/booking-availability';
+import { countUnreadMessages } from '@/lib/messages';
 
 // Lightweight status check used by the app shell to show persistent dashboard
 // badges and alerts. Intentionally returns only minimal state needed for the
@@ -97,6 +98,11 @@ export async function GET() {
   );
 
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
+  // Unread customer texts. A text inbox with no signal anywhere in the app means
+  // messages get missed, and for a contractor a missed text is a lost job — this
+  // is the same rail slot Leads and Jobs already use.
+  const unreadMessageCount = await countUnreadMessages(admin, membership.accountId);
+
   const sitePublished = site?.published ?? false;
   const siteUrl = sitePublished
     ? site?.custom_domain && site?.custom_domain_verified_at
@@ -115,6 +121,7 @@ export async function GET() {
     newQuoteRequestCount,
     jobsNeedingAttentionCount,
     unscheduledJobCount,
+    unreadMessageCount,
     openLeadCount: openLeadCount ?? 0,
     activeJobCount,
     newestQuoteRequestId: newestLead?.id ?? null,

@@ -80,6 +80,7 @@ type AccountStatus = {
   businessName: string | null;
   newQuoteRequestCount: number;
   jobsNeedingAttentionCount: number;
+  unreadMessageCount: number;
   unscheduledJobCount: number;
   /** Leads still being worked — excludes won (now a job) and lost. */
   openLeadCount: number;
@@ -146,6 +147,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const newMenuRef = useRef<HTMLDivElement>(null);
   const railRef = useRef<HTMLElement>(null);
   const [newQuoteRequestCount, setNewQuoteRequestCount] = useState(0);
+  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [jobsNeedingAttentionCount, setJobsNeedingAttentionCount] = useState(0);
   const [unscheduledJobCount, setUnscheduledJobCount] = useState(0);
   const [openLeadCount, setOpenLeadCount] = useState(0);
@@ -341,6 +343,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   useEffect(() => {
     if (!showAppRail) {
       setNewQuoteRequestCount(0);
+      setUnreadMessageCount(0);
       setJobsNeedingAttentionCount(0);
       setUnscheduledJobCount(0);
       setOpenLeadCount(0);
@@ -365,6 +368,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             setSiteUrl(data.siteUrl ?? null);
             setBusinessName(data.businessName ?? null);
             setNewQuoteRequestCount(Number(data.newQuoteRequestCount ?? 0));
+            setUnreadMessageCount(Number(data.unreadMessageCount ?? 0));
             setJobsNeedingAttentionCount(Number(data.jobsNeedingAttentionCount ?? 0));
             setUnscheduledJobCount(Number(data.unscheduledJobCount ?? 0));
             setOpenLeadCount(Number(data.openLeadCount ?? 0));
@@ -490,6 +494,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       '/dashboard/leads': newQuoteRequestCount,
       '/dashboard/jobs': jobsNeedingAttentionCount,
       '/dashboard/schedule': unscheduledJobCount,
+      // A customer text is exactly the kind of thing this dot exists for.
+      '/dashboard/messages': unreadMessageCount,
     };
     // Inventory beside attention. The filled circle has always meant "these
     // need you today" and stays that way; the hollow one is simply how much is
