@@ -844,14 +844,23 @@
 :root[data-theme='light'] .client-modal,
 :root[data-theme='light'] .unsaved-guard-panel,
 :root[data-theme='light'] .template-browser,
-/* .bset is the Booking / Quick Stops WRAPPER, not one of its cards. Its cards
-   were already on this list; the wrapper was not, so anything sitting directly
-   in it — a heading, a "Tip", the how-it-works list — kept the CANVAS ink and
-   painted near-white on a paper ground. Measured: 25 runs of text on Quick
-   Stops between 1:1 and 1.28:1, i.e. invisible. It takes the ink from here and
-   cancels the sheet painting below, because it is a layout region and its own
-   --bset-page is the ground. */
-:root[data-theme='light'] .bset {
+/* .bset-tipcard shares a rule with .bset-recurring below (both paint
+   `background: var(--bset-card)`, white on paper) but only the sibling was ever
+   added to this list, so two boxes declared on the same line rendered with
+   different ink.
+
+   .bset itself is deliberately NOT here. It was, briefly: the Booking / Quick
+   Stops WRAPPER was added to fix bare text inside it, which also painted it
+   white — and then the paint was cancelled further down while the ink stayed,
+   which is worse than either. Measured on paper: .bset-head p at 1.32:1 and the
+   "View booking page" link at 1.16:1, plus .bset-savebar — a deliberately dark
+   bar — inheriting near-black ink and disappearing entirely on Booking.
+
+   Under Harbour a full-width layout region is DESK, not paper; only what stands
+   on a sheet takes the deep ink. That is the same call .book-scope's chrome
+   makes at the foot of this file, for the same reason. So .bset keeps canvas
+   ink, and every white surface inside it is on this list in its own right. */
+:root[data-theme='light'] .bset-tipcard {
   color-scheme: light;
   --tint: 17, 27, 41;
   /* Near-black, not the navy. `rgba(var(--ink-rgb), α)` is how ~300 declarations
@@ -5021,7 +5030,14 @@ li + li { margin-top: 0.45rem; }
 .sign-in-method-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .9rem 1rem; border: 1px solid var(--edge-t12); border-radius: 10px; background: rgba(var(--tint), .025); transition: border-color .15s ease, background .15s ease; }
 .sign-in-method-row:hover { border-color: var(--edge-t22); background: rgba(var(--tint), .045); }
 .sign-in-method-row .method-info { display: flex; align-items: center; gap: .85rem; }
-.sign-in-method-row .method-icon { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; flex-shrink: 0; border-radius: 999px; background: rgba(var(--tint), .06); border: 1px solid var(--edge-t10); }
+/* The mark is the thing you scan the row by — you find the Google row by its
+   colours, not by reading "Google". At 16px inside a 34px disc the brand mark
+   filled 47% of its own badge and the four Microsoft squares were 7px each.
+   40px disc, 22px mark (55%), which is the proportion an avatar uses. Sized
+   here rather than on each <svg> so both consumers — this list and the Stripe
+   payout row — stay in step. */
+.sign-in-method-row .method-icon { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 999px; background: rgba(var(--tint), .06); border: 1px solid var(--edge-t10); }
+.sign-in-method-row .method-icon svg { width: 22px; height: 22px; }
 .sign-in-method-row .method-name { display: block; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.01em; }
 /* The account itself — an email address, a phone number — set at .78rem, which
    is 12.5px. That is the size of a footnote, and it is the line that answers
@@ -6799,6 +6815,17 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 
 .workspace-hero.workspace-hero-solo {
   grid-template-columns: 1fr;
+}
+
+/* A hero's second cell is normally a metrics block, and stretching that to fill
+   the cell is the point. A bare control is not a metrics block: the Messages
+   compose trigger is a direct grid child, so `align-items: stretch` plus the
+   320px column minimum inflated it into a 320x150px pill — with .btn.primary's
+   glow scaled to match, which is what made it read as a rendering fault rather
+   than a big button. Anything that is just a control sits at its own size. */
+.workspace-hero > .btn {
+  justify-self: end;
+  align-self: start;
 }
 
 .job-command-hero {
@@ -16046,18 +16073,18 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 
 /* Booking and Quick Stops declare their own surface palette, which is why they
    were the last two screens still dark under Harbour: a local --bset-card:
-   rgba(10,20,33,.92) wins over anything the flip has to say. The cards
-   themselves are in THE FLIP's selector list above, so they carry the sheet's
-   tokens; these are the inner surfaces and rules that sit on top of them. */
-:root[data-theme='light'] .bset {
-  /* .bset is now in THE FLIP's selector list, which is where its ink comes
-     from. Cancel the sheet PAINTING that comes with it: this is a layout
-     region, its ground is --bset-page, and a white slab plus a lift shadow
-     behind every card would be a second sheet nobody asked for. */
-  background: none;
-  box-shadow: none;
-  border: 0;
-  --bset-page: #eef2f7;
+   rgba(10,20,33,.92) wins over anything the flip has to say.
+
+   Declared on the CARDS, not on .bset. Putting them on the region meant its
+   header, its coverage map and its save bar all read paper values while
+   standing on the dark canvas — the region is desk (see the note in THE FLIP's
+   selector list). Only what paints itself a sheet gets the sheet's palette. */
+:root[data-theme='light'] .bset-master,
+:root[data-theme='light'] .bset-card,
+:root[data-theme='light'] .bset-section,
+:root[data-theme='light'] .bset-preview,
+:root[data-theme='light'] .bset-recurring,
+:root[data-theme='light'] .bset-tipcard {
   --bset-card: #ffffff;
   --bset-inner: rgba(17, 27, 41, 0.035);
   /* Edged like everything else on paper now — these were 1.28:1 and 1.55:1. */
@@ -16071,7 +16098,6 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 }
 
 .bset {
-  --bset-page: #050b14;
   --bset-card: rgba(10, 20, 33, 0.92);
   --bset-inner: rgba(var(--tint), 0.028);
   --bset-line: rgba(var(--grey-1), 0.16);
@@ -17957,6 +17983,56 @@ a.bset-card { color: inherit; text-decoration: none; }
 .crew-skin-blueprint .stat-ticker-value { font-family: ui-monospace, 'Cascadia Mono', 'SF Mono', Menlo, Consolas, monospace; }
 .crew-skin-blueprint .eyebrow { color: var(--ink-sky-10); letter-spacing: 0.16em; }
 
+/* --- Both skins, on paper -------------------------------------------------
+   The comment at the top of this section says both skins stay on a dark ground
+   and that a light theme would be a site-wide job. It became one; nothing came
+   back here. The skin tokens are declared on <main> — the CANVAS, above the
+   boundary THE FLIP works at — and custom properties inherit downward only, so
+   the flip could never re-point them. A skinned page carried #ffffff ink onto a
+   #ffffff sheet: crew names at 1.0:1 in Daylight and 1.13:1 in Blueprint, the
+   active tab's own label invisible, and the row buttons getting WORSE on hover
+   (--skin-muted -> --skin-ink). Cards and Table views were unaffected, which is
+   the tell: they are the two layouts with no :global(.crew-skin) colour rule.
+
+   Re-pointed on the SHEET, not on the shell, for two reasons. A var() inside a
+   custom property resolves against the element it is DECLARED on, so a value
+   written on the shell would read the canvas's --tint and land right back where
+   it started. And anything skinned that is not on a sheet is still standing on
+   the dark canvas, where the original values are correct.
+
+   The rules that consume these live in crew.module.css and cannot be reached by
+   anything global — but the tokens are declared on a global class, so this is
+   enough. The skins keep their identity: radius, letter-spacing, monospaced
+   figures, Blueprint's grid and register ticks are all untouched. Only the
+   colours that assumed a dark ground move. */
+:root[data-theme='light'] .crew-skin .panel,
+:root[data-theme='light'] .crew-skin .client-modal,
+:root[data-theme='light'] .crew-skin .crew-assign-panel,
+:root[data-theme='light'] .crew-skin .unsaved-guard-panel {
+  --skin-ink: var(--text);
+  --skin-muted: var(--muted);
+  --skin-head: var(--muted);
+  --skin-line: var(--line);
+  --skin-surface: rgba(var(--tint), 0.045);
+}
+/* Each skin keeps its hue and takes paper's value of it — orange stays orange,
+   cyan stays cyan. These are read as text, as a 2px register tick and as the
+   selected tab's border, so they have to clear 3:1 as well as 4.5:1. */
+:root[data-theme='light'] .crew-skin-daylight .panel,
+:root[data-theme='light'] .crew-skin-daylight .client-modal,
+:root[data-theme='light'] .crew-skin-daylight .crew-assign-panel,
+:root[data-theme='light'] .crew-skin-daylight .unsaved-guard-panel {
+  --skin-accent: var(--ink-orange-8);
+  --skin-accent-soft: rgba(165, 79, 27, 0.1);
+}
+:root[data-theme='light'] .crew-skin-blueprint .panel,
+:root[data-theme='light'] .crew-skin-blueprint .client-modal,
+:root[data-theme='light'] .crew-skin-blueprint .crew-assign-panel,
+:root[data-theme='light'] .crew-skin-blueprint .unsaved-guard-panel {
+  --skin-accent: var(--ink-sky-10);
+  --skin-accent-soft: rgba(24, 112, 145, 0.1);
+}
+
 /* A summary card with nowhere to go. It keeps the shape of its siblings so
    the row stays even, but drops the affordances that promise a click. */
 .bset-card.is-static { cursor: default; }
@@ -18264,6 +18340,7 @@ a.bset-card { color: inherit; text-decoration: none; }
    the amount on a row — so they have to clear the bar as text, not just be
    distinguishable as lines. These are the same seven hues at their paper value;
    --cash-in is absent because it already rides --good through the flip. */
+:root[data-theme='light'] .cash-hero,
 :root[data-theme='light'] .cash-controls,
 :root[data-theme='light'] .cash-chart-card,
 :root[data-theme='light'] .cash-events-card,

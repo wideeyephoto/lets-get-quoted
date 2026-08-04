@@ -14,7 +14,7 @@ function ConnectStripeSubmitButton() {
 }
 
 const STRIPE_ICON = (
-  <svg viewBox="0 0 24 24" width="16" height="16" fill="#635bff" aria-hidden="true">
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="#635bff" aria-hidden="true">
     <path d="M13.6 9.1c-1.4-.5-2.2-.9-2.2-1.5 0-.5.5-.8 1.3-.8 1.5 0 3.1.6 4.2 1.1l.6-3.8C16.7 3.3 15 2.8 13 2.8c-1.7 0-3.1.4-4.1 1.3-1 .8-1.6 2-1.6 3.4 0 2.6 1.6 3.7 4.1 4.6 1.6.6 2.2 1 2.2 1.6 0 .6-.5.9-1.4.9-1.2 0-3.1-.6-4.5-1.4l-.6 3.8c1.2.7 3 1.2 4.9 1.2 1.8 0 3.3-.4 4.3-1.3 1.1-.9 1.7-2.2 1.7-3.7 0-2.6-1.6-3.7-4.5-4.8z" />
   </svg>
 );
@@ -112,8 +112,9 @@ export default function PayoutAccount({ stripeOnboarded, payoutsPaused = false, 
         </div>
       </div>
 
+      {/* --gold-ink, not the #ffd166 literal — see the note in SignInMethods. */}
       {message ? (
-        <p className="workspace-card-copy" style={{ color: message.type === 'error' ? '#ffd166' : undefined, marginTop: '1rem' }} role="status">
+        <p className="workspace-card-copy" style={{ color: message.type === 'error' ? 'var(--gold-ink)' : undefined, marginTop: '1rem' }} role="status">
           {message.text}
         </p>
       ) : null}

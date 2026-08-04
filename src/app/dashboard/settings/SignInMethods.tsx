@@ -65,17 +65,17 @@ const METHOD_LABEL: Record<ProviderKey, string> = {
 const METHOD_ICON: Record<ProviderKey, ReactNode> = {
   // Apple sign-in disabled for now; icon left out until it's re-enabled.
   phone: (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
       <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.5.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.7 21 3 13.3 3 4c0-.6.4-1 1-1h3.2c.6 0 1 .4 1 1 0 1.2.2 2.4.6 3.5.1.4 0 .8-.2 1L6.6 10.8z" />
     </svg>
   ),
   email: (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
       <path d="M3 5h18a1 1 0 011 1v12a1 1 0 01-1 1H3a1 1 0 01-1-1V6a1 1 0 011-1zm1.4 2L12 12.5 19.6 7H4.4zM20 8.4l-7.4 5.5a1 1 0 01-1.2 0L4 8.4V18h16V8.4z" />
     </svg>
   ),
   google: (
-    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
       <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
       <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.99.66-2.25 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.85A10.99 10.99 0 0012 23z" />
       <path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 010-4.2V7.05H2.18a11 11 0 000 9.9l3.66-2.85z" />
@@ -83,7 +83,7 @@ const METHOD_ICON: Record<ProviderKey, ReactNode> = {
     </svg>
   ),
   azure: (
-    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
       <rect x="2" y="2" width="9" height="9" fill="#F35325" />
       <rect x="13" y="2" width="9" height="9" fill="#81BC06" />
       <rect x="2" y="13" width="9" height="9" fill="#05A6F0" />
@@ -266,8 +266,11 @@ export default function SignInMethods({ email, phone, providers }: Props) {
         </div>
       </div>
 
+      {/* --gold-ink, not the #ffd166 literal it used to be: identical in dark,
+          but a JSX literal is unreachable by the light-theme flip and that
+          yellow is unreadable on paper. Same colour .auth-message uses. */}
       {message ? (
-        <p className="workspace-card-copy" style={{ color: message.type === 'error' ? '#ffd166' : undefined, marginTop: '1rem' }} role="status">
+        <p className="workspace-card-copy" style={{ color: message.type === 'error' ? 'var(--gold-ink)' : undefined, marginTop: '1rem' }} role="status">
           {message.text}
         </p>
       ) : null}
