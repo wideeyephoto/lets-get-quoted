@@ -30,7 +30,7 @@ export default function MarketingCalendar({
 }) {
   const [drafts, setDrafts] = useState<Record<string, MarketingDraft>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [posted, setPosted] = useState<Record<string, string>>({});
+  const [posted, setPosted] = useState<Record<string, { id: string; title: string }>>({});
   const [busy, setBusy] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -51,7 +51,7 @@ export default function MarketingCalendar({
     setErrors((current) => ({ ...current, [beatId]: '' }));
     startTransition(async () => {
       const result = await createBlogPostFromBeatAction(beatId);
-      if (result.ok) setPosted((current) => ({ ...current, [beatId]: result.title }));
+      if (result.ok) setPosted((current) => ({ ...current, [beatId]: { id: result.postId, title: result.title } }));
       else setErrors((current) => ({ ...current, [beatId]: result.message }));
       setBusy(null);
     });
@@ -121,7 +121,9 @@ export default function MarketingCalendar({
             const canEmail = entry.channels.includes('email');
             const canBlog = entry.channels.includes('blog');
             // A post made in this session wins over the one loaded with the page.
-            const postTitle = posted[entry.beatId] ?? entry.postedTitle;
+            const madeNow = posted[entry.beatId];
+            const postTitle = madeNow?.title ?? entry.postedTitle;
+            const postId = madeNow?.id ?? entry.postedId;
             const isDone = Boolean(entry.sentAt) || Boolean(postTitle);
 
             return (
@@ -156,7 +158,15 @@ export default function MarketingCalendar({
                 ) : null}
                 {postTitle ? (
                   <p className="marketing-beat-state">
-                    ✓ Draft on your website: “{postTitle}” — <Link href="/dashboard/sites">review and publish it</Link>.
+                    {/* Straight to THIS post on Marketing → Blog. It used to
+                        point at /dashboard/sites, which was where posts were
+                        edited before the blog moved — so the one link on a card
+                        that says "review and publish it" landed on a page with
+                        nothing to review. */}
+                    ✓ Draft on your website: “{postTitle}” —{' '}
+                    <Link href={postId ? `/dashboard/marketing/blog?post=${encodeURIComponent(postId)}` : '/dashboard/marketing/blog'}>
+                      review and publish it
+                    </Link>.
                   </p>
                 ) : null}
 

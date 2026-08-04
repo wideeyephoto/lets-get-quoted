@@ -49,6 +49,7 @@ export type CalendarView = {
     sentTo: number;
     /** Set when a blog post has already been drafted from this topic. */
     postedTitle: string | null;
+    postedId: string | null;
   }[];
 };
 
@@ -88,9 +89,11 @@ async function buildCalendarView(supabase: Supa, accountId: string, monthsAhead:
 
   // Which topics already have a post drafted on the website. Matched on the
   // beat id stored with the post, so renaming a post never loses the link.
-  const postedByBeat = new Map<string, string>();
+  // The id comes along so the card can link to that exact post rather than to
+  // the blog list, where finding it again is the owner's problem.
+  const postedByBeat = new Map<string, { id: string; title: string }>();
   for (const post of content.blog.posts) {
-    if (post.beatId && !postedByBeat.has(post.beatId)) postedByBeat.set(post.beatId, post.title);
+    if (post.beatId && !postedByBeat.has(post.beatId)) postedByBeat.set(post.beatId, { id: post.id, title: post.title });
   }
 
   const now = Date.now();
@@ -121,7 +124,8 @@ async function buildCalendarView(supabase: Supa, accountId: string, monthsAhead:
           : null,
         sentAt: recentlySent?.lastSentAt ?? null,
         sentTo: recentlySent?.recipientCount ?? 0,
-        postedTitle: postedByBeat.get(entry.beat.id) ?? null,
+        postedTitle: postedByBeat.get(entry.beat.id)?.title ?? null,
+        postedId: postedByBeat.get(entry.beat.id)?.id ?? null,
       };
     }),
   };
@@ -199,11 +203,12 @@ export async function campaignDraftForBeatAction(beatId: string): Promise<Campai
  * would put a two-line note on their site and call it a post.
  *
  * Saved as status:'draft'. Nothing becomes public until the owner publishes it
- * in the builder, which is also where they can edit it.
+ * on Marketing → Blog, which is also where they edit it — the calendar card
+ * links straight to this post by id once it exists.
  */
 export async function createBlogPostFromBeatAction(
   beatId: string,
-): Promise<{ ok: true; title: string } | { ok: false; message: string }> {
+): Promise<{ ok: true; title: string; postId: string } | { ok: false; message: string }> {
   const { supabase, accountId } = await requireOwnerContext();
 
   const beat = BEATS.find((entry) => entry.id === beatId);
@@ -287,7 +292,7 @@ export async function createBlogPostFromBeatAction(
 
   revalidatePath('/dashboard/sites');
   revalidatePath('/dashboard/marketing');
-  return { ok: true, title: draft.title };
+  return { ok: true, title: draft.title, postId: post.id };
 }
 
 // ---------------------------------------------------------------------------

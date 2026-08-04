@@ -19,7 +19,9 @@ export const metadata = { title: 'Blog' };
 export default async function MarketingBlogPage({
   searchParams,
 }: {
-  searchParams: { topic?: string };
+  // ?post= opens that post's editor — the marketing calendar links a drafted
+  // beat straight to it. ?topic= is the other direction: write a new one.
+  searchParams: { topic?: string; post?: string };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
@@ -56,6 +58,7 @@ export default async function MarketingBlogPage({
           sectionEnabled={blog.sectionEnabled}
           publicBase={blog.publicBase}
           initialTopic={(searchParams.topic ?? '').slice(0, 200)}
+          initialPostId={(searchParams.post ?? '').slice(0, 80)}
           trade={blog.trade}
         />
       )}

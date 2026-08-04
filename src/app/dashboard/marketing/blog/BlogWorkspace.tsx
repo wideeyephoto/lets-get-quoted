@@ -42,6 +42,7 @@ export default function BlogWorkspace({
   sectionEnabled,
   publicBase,
   initialTopic,
+  initialPostId,
   trade,
 }: {
   initialPosts: SiteBlogPost[];
@@ -50,11 +51,18 @@ export default function BlogWorkspace({
   publicBase: string | null;
   /** ?topic= from the dashboard reminder or a seasonal-topic handoff. */
   initialTopic: string;
+  /** ?post= — open this post straight away. From the marketing calendar. */
+  initialPostId: string;
   /** Fallback stock-photo search for a post that has no title yet. */
   trade: string;
 }) {
   const [posts, setPosts] = useState(initialPosts);
-  const [openId, setOpenId] = useState<string | null>(null);
+  // Opened from the URL when a card linked to one specific post, and checked
+  // against the real list so a stale link opens nothing rather than nothing
+  // visible with an editor's worth of state pointing at a deleted post.
+  const [openId, setOpenId] = useState<string | null>(
+    () => (initialPostId && initialPosts.some((post) => post.id === initialPostId) ? initialPostId : null),
+  );
   /** The post whose cover photo is being chosen, or null. */
   const [pickingFor, setPickingFor] = useState<string | null>(null);
   const [topic, setTopic] = useState(initialTopic);
@@ -67,6 +75,17 @@ export default function BlogWorkspace({
   useEffect(() => {
     if (initialTopic) document.getElementById('blog-topic')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [initialTopic]);
+
+  // Arriving with ?post= means a card elsewhere linked to one specific draft.
+  // Scrolled to its TOP, not centred: an open post is taller than the viewport,
+  // and centring it puts the title off-screen above — you land in the middle of
+  // a body field with nothing saying which post you are in.
+  useEffect(() => {
+    if (!openId || !initialPostId || openId !== initialPostId) return;
+    document.getElementById(`blog-post-${initialPostId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Once only — after this, opening posts by hand should not move the page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPostId]);
 
   function run(key: string, work: () => Promise<void>) {
     setBusy(key);
@@ -197,7 +216,7 @@ export default function BlogWorkspace({
               const status = statusLabel(post);
               const words = wordCount(post.body);
               return (
-                <article key={post.id} className={`blog-row${open ? ' is-open' : ''}`}>
+                <article key={post.id} id={`blog-post-${post.id}`} className={`blog-row${open ? ' is-open' : ''}`}>
                   <header className="blog-row-head">
                     <button
                       type="button"
