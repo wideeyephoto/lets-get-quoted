@@ -10,8 +10,13 @@ export const metadata = {
   description: 'Customize your contractor website',
 };
 
-export default async function SitesPage() {
+// `?built=1` is set by first run when it generated the whole site from the
+// business name, trade and ZIP. Without a word of explanation the owner arrives
+// at a finished website they never asked anyone to write, which reads as
+// somebody else's site rather than a head start on their own.
+export default async function SitesPage({ searchParams }: { searchParams?: { built?: string } }) {
   const { supabase, accountId } = await requireOwnerContext();
+  const justBuilt = searchParams?.built === '1';
 
   // Get or create site
   const site = await getOrCreateSite(supabase, accountId);
@@ -34,5 +39,5 @@ export default async function SitesPage() {
     />
   );
 
-  return <WebsiteBuilder site={site} uploadedImages={uploadedImages} intakeSlot={intakeSlot} />;
+  return <WebsiteBuilder site={site} uploadedImages={uploadedImages} intakeSlot={intakeSlot} justBuilt={justBuilt} />;
 }

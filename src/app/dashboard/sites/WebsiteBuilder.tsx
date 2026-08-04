@@ -6,13 +6,16 @@ import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getSiteContent, getTradeGlyphOptions, glyphForContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES,
   MENU_BUTTON_STYLES,
-  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, STOCK_SHOWCASE_TITLE, STOCK_SHOWCASE_INTRO, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, DEFAULT_VIDEOS_NAV_LABEL, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
+  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, DEFAULT_VIDEOS_NAV_LABEL, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
 import { generatePrivacyPolicy, generateTermsOfService } from '@/lib/legal/legal-copy';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
 import { SEO_TITLE_MAX as SEO_TITLE_LIMIT, SEO_DESC_MAX as SEO_DESC_LIMIT } from '@/lib/seo/seo-copy';
-import type { PexelsPickPhoto, StockImageResult, WebsiteImageAssignment } from '@/lib/stock/types';
+// Shared with the first-run seed (lib/site-seed) so "Generate" here and the
+// automatic build after signup can never produce different sites.
+import { applyGeneratedSiteText, applyStockImages } from '@/lib/site-seed';
+import type { PexelsPickPhoto } from '@/lib/stock/types';
 import { compressImage } from '@/lib/client-images';
 import ImagePickerModal from './ImagePickerModal';
 import DomainConnector from './DomainConnector';
@@ -38,6 +41,10 @@ type WebsiteBuilderProps = {
   // Account-level Intake AI tuning form (rendered server-side, mirrors
   // Settings → Automations → Intake AI). Shown in the AI-intake section.
   intakeSlot?: React.ReactNode;
+  // Arriving straight from first run, on a site that was just written from the
+  // business name, trade and ZIP. Opens with an explanation rather than letting
+  // the owner wonder who wrote all this.
+  justBuilt?: boolean;
 };
 
 // Heading font choices. The webfont options reuse faces the app already loads
@@ -140,10 +147,6 @@ function wordCount(text: string): number {
   return trimmed ? trimmed.split(/\s+/).length : 0;
 }
 
-function isStockUrl(stockImages: WebsiteImageAssignment[], url: string | null | undefined): boolean {
-  return Boolean(url) && stockImages.some((item) => item.provider === 'pexels' && item.imageUrl === url);
-}
-
 // The default Pexels search for the "Replace photo" popup, based on which slot
 // is being edited plus the contractor's trade — so opening the hero picker
 // lands on trade-relevant hero shots, the About picker on worker shots, etc.
@@ -210,73 +213,6 @@ const FOOTER_STYLES: { key: string; label: string; desc: string }[] = [
   { key: 'grid', label: 'Info grid', desc: 'Four labeled columns of details.' },
 ];
 
-// Apply auto-selected stock photos to the site, preserving the owner's uploads
-// and any image they've already set (an existing image is only replaced if it's
-// currently a stock photo or empty). Returns the changed hero + a content
-// patch, or null when there's nothing to apply (Pexels was unavailable).
-function applyStockImages(current: Site, images: StockImageResult): { heroUrl: string | null; contentUpdates: Partial<NormalizedSiteContent> } | null {
-  if (!images.ok) return null;
-  const content = getSiteContent(current.content);
-  const stock = content.stockImages;
-  const replaceHero = !current.hero_url || isStockUrl(stock, current.hero_url);
-
-  const filledSlots: Record<string, string> = {};
-  for (const [slot, url] of Object.entries(images.slots)) {
-    const currentUrl = content.images[slot];
-    if (!currentUrl || isStockUrl(stock, currentUrl)) filledSlots[slot] = url;
-  }
-
-  const contentUpdates: Partial<NormalizedSiteContent> = {
-    images: { ...content.images, ...filledSlots },
-  };
-
-  if (images.gallery.length > 0) {
-    // Keep the owner's own photos — uploads AND any non-stock photo they picked
-    // (e.g. Unsplash from the old library) — only refreshing previously
-    // auto-applied stock tiles.
-    const keptItems = content.showcase.items.filter((item) => item.source === 'upload' || !isStockUrl(stock, item.url));
-    const wasEmpty = content.showcase.items.length === 0;
-    contentUpdates.showcase = {
-      ...content.showcase,
-      enabled: true,
-      // Only apply the honest "representative photos" label to a fresh gallery;
-      // don't relabel a showcase the owner has already customized.
-      title: wasEmpty ? STOCK_SHOWCASE_TITLE : content.showcase.title,
-      intro: wasEmpty ? STOCK_SHOWCASE_INTRO : content.showcase.intro,
-      items: [...keptItems, ...images.gallery],
-    };
-
-    // Also seed the Project showcase band with 4 of the same attributed stock
-    // photos — but only when the owner hasn't added their own. They're the same
-    // Pexels-credited, representative images as the gallery (source: 'stock'),
-    // never claimed as the contractor's real completed jobs.
-    const ownProject = content.projectShowcase.items.filter((item) => item.source === 'upload' || !isStockUrl(stock, item.url));
-    if (ownProject.length === 0) {
-      contentUpdates.projectShowcase = {
-        ...content.projectShowcase,
-        enabled: true,
-        items: images.gallery.slice(0, 4).map((image) => ({ ...image })),
-      };
-    }
-  }
-
-  // Keep attribution accurate: only record assignments we actually applied, and
-  // replace any prior record for the same role/id.
-  const applied = images.assignments.filter((assignment) => {
-    if (assignment.role === 'hero') return replaceHero;
-    if (assignment.role === 'gallery') return images.gallery.length > 0;
-    if (assignment.slot) return Boolean(filledSlots[assignment.slot]);
-    return false;
-  });
-  const appliedIds = new Set(applied.map((assignment) => assignment.id));
-  contentUpdates.stockImages = [...stock.filter((item) => !appliedIds.has(item.id)), ...applied];
-
-  return {
-    heroUrl: replaceHero ? (images.heroUrl || current.hero_url) : current.hero_url,
-    contentUpdates,
-  };
-}
-
 function contentHint(enabled: boolean, count: number, noun: string, plural?: string): { hint?: string; hintTone?: 'ok' | 'warn' } {
   if (enabled && count === 0) return { hint: "empty — won't show yet", hintTone: 'warn' };
   if (count > 0) return { hint: `${count} ${count === 1 ? noun : plural || `${noun}s`}`, hintTone: 'ok' };
@@ -307,7 +243,7 @@ function siteUpdates(site: Site) {
   };
 }
 
-export default function WebsiteBuilder({ site: initialSite, uploadedImages, intakeSlot }: WebsiteBuilderProps) {
+export default function WebsiteBuilder({ site: initialSite, uploadedImages, intakeSlot, justBuilt = false }: WebsiteBuilderProps) {
   const [site, setSite] = useState(initialSite);
   const [siteImages, setSiteImages] = useState(uploadedImages);
   const [jobPhotoOptions, setJobPhotoOptions] = useState<JobPhotoImportOption[]>([]);
@@ -328,7 +264,14 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
   // on arrival — the natural starting point for a new site.
   const [openSection, setOpenSection] = useState<string | null>('basics');
   const [isDirty, setIsDirty] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  // Seeded from justBuilt so a contractor arriving from first run is told, in
+  // the builder's own message slot, where all this text came from and what to do
+  // with it — rather than meeting a finished website nobody explained.
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(
+    justBuilt
+      ? { type: 'success', text: 'Your site is written and saved — services, FAQs, the towns you serve and your Google listing, all from your trade and ZIP. The reviews and stats are examples: swap in real ones before you publish. Change anything here, then hit Publish.' }
+      : null,
+  );
   const [subdomainStatus, setSubdomainStatus] = useState<'idle' | 'available' | 'taken'>('idle');
   const [domainStatus, setDomainStatus] = useState<'idle' | 'checking' | 'verified' | 'unverified'>(site.custom_domain_verified_at ? 'verified' : 'idle');
   const [isGeneratingText, setIsGeneratingText] = useState(false);
@@ -806,53 +749,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
         // service_area (an earlier AI guess) — it would override the ZIP server-side.
         const genZip = getSiteContent(site.content).zip;
         const generated = await generateSiteTextAction({ trade: getSiteContent(site.content).trade, companyName: site.company_name, serviceArea: genZip ? undefined : (site.service_area ?? undefined), zip: genZip });
-        setSite((current) => {
-          const content = getSiteContent(current.content);
-          const contentUpdates: Partial<NormalizedSiteContent> = {};
-          if (generated.services.length) {
-            contentUpdates.services = { enabled: true, title: content.services.title || 'Our services', intro: '', items: generated.services.map((s, i) => ({ id: `svc-${i + 1}`, icon: s.icon, title: s.title, description: s.description })) };
-          }
-          if (generated.faqs.length) {
-            contentUpdates.faqs = { enabled: true, title: content.faqs.title || 'Frequently asked questions', items: generated.faqs.map((f, i) => ({ id: `faq-${i + 1}`, question: f.question, answer: f.answer })) };
-          }
-          if (generated.cities.length) {
-            contentUpdates.serviceAreas = { enabled: true, title: content.serviceAreas.title || 'Areas we serve', intro: content.serviceAreas.intro, cities: generated.cities };
-          }
-          // Testimonials seeded ON as editable examples — the owner is expected to
-          // swap these for real reviews before (or soon after) publishing.
-          if (generated.testimonials.length) {
-            contentUpdates.testimonials = { ...content.testimonials, enabled: true, title: content.testimonials.title || 'What homeowners say', sourceMode: 'manual', items: generated.testimonials.map((t, i) => ({ id: `tst-${i + 1}`, author: t.author, text: t.text, rating: t.rating, label: t.label, imageUrl: '', imageAlt: '' })) };
-          }
-          if (generated.stats.length) {
-            contentUpdates.stats = { enabled: true, title: content.stats.title || 'By the numbers', items: generated.stats.map((s, i) => ({ id: `stat-${i + 1}`, value: `${s.value.toLocaleString('en-US')}${s.suffix}`, label: s.label })) };
-          }
-          // Fold in auto-selected stock photos (hero, slots, gallery), preserving
-          // any images the owner already set.
-          const stock = applyStockImages(current, generated.images);
-          if (stock) Object.assign(contentUpdates, stock.contentUpdates);
-          // The photo gallery's heading + intro are generated too, so the section
-          // speaks to this trade instead of the generic stock label. Applied after
-          // the stock pass so it wins over applyStockImages' fallback wording.
-          if (generated.showcase_title || generated.showcase_intro) {
-            const base = contentUpdates.showcase ?? content.showcase;
-            contentUpdates.showcase = {
-              ...base,
-              title: generated.showcase_title || base.title,
-              intro: generated.showcase_intro || base.intro,
-            };
-          }
-          return {
-            ...current,
-            headline: generated.headline || current.headline,
-            tagline: generated.tagline || current.tagline,
-            seo_title: generated.seo_title || current.seo_title,
-            seo_description: generated.seo_description || current.seo_description,
-            hours: generated.hours || current.hours,
-            service_area: generated.service_area || current.service_area,
-            hero_url: stock ? stock.heroUrl : current.hero_url,
-            content: mergeSiteContent(current.content, contentUpdates),
-          };
-        });
+        // Same function the first-run seed uses, so the two can never diverge.
+        setSite((current) => applyGeneratedSiteText(current, generated));
         setIsDirty(true);
         const imagesNote = generated.images.ok
           ? ' Trade-relevant stock photos are added — replace any with your own anytime.'

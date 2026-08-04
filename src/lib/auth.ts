@@ -86,6 +86,29 @@ export async function ensureAccountMembership(userId: string) {
   });
 
   if (createMembershipError) {
+    // We lost a provisioning race. This is not hypothetical: a brand-new user's
+    // first page load fires several concurrent requests (the document plus its
+    // RSC payload, plus any prefetch), each of which reaches here, sees no owner
+    // membership, and creates an account. Measured on a fresh signup: TWO
+    // accounts six milliseconds apart, and the duplicate memberships then made
+    // .maybeSingle() fail for anything looking the user up.
+    //
+    // The unique index added in 2026-08-03-one-owner-account.sql is what turns
+    // that silent duplication into this error. The loser deletes the account it
+    // just made — nothing else can reference it yet, it is milliseconds old —
+    // and adopts the winner's, so both requests agree on one account.
+    await admin.from('accounts').delete().eq('id', newAccount.id);
+
+    const { data: winner } = await admin
+      .from('memberships')
+      .select('account_id, role')
+      .eq('user_id', userId)
+      .eq('role', 'owner')
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (winner) return winner;
     throw createMembershipError;
   }
 

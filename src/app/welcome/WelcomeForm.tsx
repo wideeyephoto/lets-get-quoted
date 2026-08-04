@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { completeFirstRunAction } from './actions';
+import { seedSiteFromFirstRunAction } from './seed-actions';
 
 type TradeOption = { slug: string; name: string };
 
@@ -21,20 +22,33 @@ export default function WelcomeForm({
   const [postalCode, setPostalCode] = useState(initialPostalCode);
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [building, setBuilding] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
     startTransition(async () => {
+      // Two steps on purpose. Acceptance is a fast database write and must not
+      // be held hostage by a model call; building the site takes several seconds
+      // and can fail. Splitting them means a slow OpenAI day costs a spinner
+      // instead of making signup look broken.
       const result = await completeFirstRunAction({ businessName, trade, postalCode, accepted });
-      if (result.ok) {
-        // replace, not push — first run is not somewhere Back should return to.
-        router.replace('/dashboard');
-        router.refresh();
+      if (!result.ok) {
+        setError(result.error);
         return;
       }
-      setError(result.error);
+
+      setBuilding(true);
+      // Deliberately not awaited into a failure path: whatever happens next, the
+      // account exists and the terms are accepted. A site that didn't build is a
+      // button press away, and trapping someone on this screen over it would be
+      // far worse than landing them in the builder with a note.
+      const seeded = await seedSiteFromFirstRunAction();
+
+      // replace, not push — first run is not somewhere Back should return to.
+      router.replace(seeded.ok && seeded.built ? '/dashboard/sites?built=1' : '/dashboard/sites');
+      router.refresh();
     });
   }
 
@@ -101,8 +115,15 @@ export default function WelcomeForm({
 
       {error && <p className="auth-message" role="alert">{error}</p>}
 
+      {building && (
+        <p className="welcome-building" role="status">
+          <span className="welcome-spinner" aria-hidden="true" />
+          Writing your website — services, FAQs, the towns you serve and your Google listing. This takes a few seconds.
+        </p>
+      )}
+
       <button className="btn primary" type="submit" disabled={pending}>
-        {pending ? 'Setting up…' : 'Start setting up'}
+        {building ? 'Building your site…' : pending ? 'Setting up…' : 'Start setting up'}
       </button>
     </form>
   );
