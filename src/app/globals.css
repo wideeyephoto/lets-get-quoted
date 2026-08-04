@@ -17255,6 +17255,12 @@ a.bset-card { color: inherit; text-decoration: none; }
   opacity: 0.55;
 }
 
+/* Both labels stacked in one cell: the pill keeps the width of the longest,
+   so toggling never resizes the button somebody is mid-click on. */
+.job-done-pill-label { display: grid; justify-items: center; }
+.job-done-pill-label > * { grid-area: 1 / 1; }
+.job-done-pill-sizer { visibility: hidden; }
+
 .job-done-pill-track {
   position: relative;
   width: 2.35rem;

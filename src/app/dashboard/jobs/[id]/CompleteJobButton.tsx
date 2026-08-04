@@ -63,7 +63,15 @@ export default function CompleteJobButton({
           aria-checked={sendReview}
           aria-label="Send a review request when this job is completed"
         >
-          <span className="job-done-pill-label">Review {sendReview ? 'ON' : 'OFF'}</span>
+          {/* Both labels occupy the same grid cell, so the pill is always as
+              wide as the longer one. "ON" and "OFF" are different widths, and
+              swapping the text resized the pill — which resized the whole
+              button under the cursor mid-click. A min-width in em would be a
+              guess that breaks at another font size; this is exact. */}
+          <span className="job-done-pill-label">
+            <span className="job-done-pill-sizer" aria-hidden="true">Review OFF</span>
+            <span>Review {sendReview ? 'ON' : 'OFF'}</span>
+          </span>
           <span className="job-done-pill-track" aria-hidden="true">
             <span className="job-done-pill-knob" />
           </span>
