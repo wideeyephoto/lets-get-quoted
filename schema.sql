@@ -2587,6 +2587,10 @@ exception when others then null; end $$;
 -- Whether a tech is asked to share location, always shares, or never can.
 -- 'ask' is the default on purpose: an employer silently turning on location
 -- broadcast for their staff is a thing we should make them choose, not inherit.
+-- Master switch for arrival updates. TRUE by default: the feature works for
+-- everyone who has it set up, and a switch that defaulted to off would silently
+-- stop the texts with nobody finding out until a customer complained.
+alter table accounts add column if not exists arrival_updates_enabled boolean not null default true;
 alter table accounts add column if not exists arrival_location_policy text not null default 'ask';
 do $$ begin
   alter table accounts add constraint accounts_arrival_location_policy_check

@@ -99,10 +99,14 @@ export type MorningSweepSummary = { accounts: number; sent: number; skipped: num
 export async function runMorningConfirmationSweep(now = new Date()): Promise<MorningSweepSummary> {
   const admin = createAdminClient();
 
+  // The master switch gates this too. A contractor who paused arrival updates
+  // has not agreed to a 7am text going to every customer on today's schedule —
+  // and that send is the one they would notice least and like least.
   const { data: accounts, error } = await admin
     .from('accounts')
-    .select('id, business_name, timezone, arrival_window_style, arrival_window_minutes, arrival_message_template, arrival_location_policy, arrival_location_precision, arrival_link_hours, arrival_default_minutes')
-    .eq('arrival_morning_confirmation', true);
+    .select('id, business_name, timezone, arrival_updates_enabled, arrival_window_minutes, arrival_location_policy, arrival_default_minutes')
+    .eq('arrival_morning_confirmation', true)
+    .neq('arrival_updates_enabled', false);
 
   if (error || !accounts?.length) return { accounts: 0, sent: 0, skipped: 0 };
 

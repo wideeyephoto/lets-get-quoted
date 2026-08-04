@@ -1924,6 +1924,137 @@ h3 {
 .automation-preview[open] > summary::before { transform: rotate(90deg); }
 .advanced-settings > summary:hover,
 .automation-preview > summary:hover { color: #fff; }
+/* ---- Arrival updates ------------------------------------------------------
+   One decision (how wide the window is) beside a sample of what the customer
+   receives. Everything else this card used to ask has a fixed answer and is
+   stated as a note instead of offered as a control.
+   -------------------------------------------------------------------------- */
+
+.arrival-card {
+  padding: 1.05rem 1.1rem;
+  border-radius: 20px;
+  border: 1px solid rgba(var(--tint), 0.14);
+  background: rgba(var(--tint), 0.03);
+}
+/* Paused keeps the choices VISIBLE — a contractor turning it back on should
+   see what it will resume doing, not an empty card. */
+.arrival-card.is-paused .arrival-grid { opacity: 0.45; pointer-events: none; }
+.arrival-state { margin: 0 0 0.9rem; font-size: 0.85rem; color: var(--mute-t55); }
+.arrival-card.is-paused .arrival-state { color: var(--ink-orange-1); }
+
+.arrival-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4rem; align-items: start; }
+.arrival-lede { margin: 0.2rem 0 0.9rem; font-size: 0.84rem; line-height: 1.5; color: var(--mute-t50); }
+
+.arrival-choices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
+.arrival-choice {
+  min-height: 46px;
+  padding: 0.5rem 0.3rem;
+  border-radius: 11px;
+  border: 1px solid rgba(var(--tint), 0.16);
+  background: rgba(var(--tint), 0.05);
+  color: var(--mute-t60);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.14s ease, background 0.14s ease, color 0.14s ease;
+}
+.arrival-choice:hover:not(:disabled) { border-color: rgba(var(--tint), 0.3); color: var(--text); }
+/* Orange is this product's "you can edit this" colour; green is reserved for
+   enabled and saved, so the chosen width is orange and the save tick is green. */
+.arrival-choice.is-on {
+  border-color: var(--accent);
+  background: rgba(255, 122, 33, 0.14);
+  color: var(--text);
+}
+.arrival-choice:disabled { cursor: default; }
+
+.arrival-example {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: 0.9rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.05);
+}
+.arrival-example span { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mute-t45); }
+.arrival-example strong { font-size: 0.95rem; }
+
+.arrival-note {
+  margin: 0.9rem 0 0;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(var(--tint), 0.09);
+  font-size: 0.81rem;
+  line-height: 1.55;
+  color: var(--mute-t50);
+}
+.arrival-note + .arrival-note { border-top: 0; padding-top: 0; margin-top: 0.5rem; }
+
+/* The phone. Readable at dashboard zoom rather than a decorative device. */
+.arrival-phone {
+  border-radius: 16px;
+  border: 1px solid rgba(var(--tint), 0.16);
+  background: rgba(6, 10, 16, 0.55);
+  overflow: hidden;
+}
+.arrival-phone-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid rgba(var(--tint), 0.1);
+  font-size: 0.85rem;
+}
+.arrival-phone-avatar {
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  background: rgba(var(--tint), 0.12);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.arrival-phone-body { padding: 0.85rem 0.8rem; }
+.arrival-bubble {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.9rem 0.9rem 0.9rem 0.25rem;
+  background: rgba(var(--tint), 0.07);
+  font-size: 0.86rem;
+  line-height: 1.55;
+  white-space: pre-line;
+}
+/* The only part of the message that changes with the setting. */
+.arrival-window-time { color: var(--accent); }
+.arrival-phone-foot {
+  margin: 0;
+  padding: 0.5rem 0.8rem 0.7rem;
+  font-size: 0.74rem;
+  color: var(--mute-t45);
+}
+
+.arrival-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(var(--tint), 0.09);
+  font-size: 0.78rem;
+  color: var(--mute-t45);
+}
+.arrival-save { min-height: 1.2em; }
+.arrival-save-saved { color: var(--ink-lime-1); }
+.arrival-save-error { color: var(--ink-orange-1); }
+
+@media (max-width: 900px) {
+  .arrival-grid { grid-template-columns: 1fr; gap: 1.1rem; }
+  .arrival-choices { grid-template-columns: repeat(2, 1fr); }
+}
+
 .automation-preview-bubble { margin-top: 0.6rem; padding: 0.7rem 0.85rem; border-radius: 0.7rem 0.7rem 0.7rem 0.2rem; background: rgba(var(--tint), 0.05); border: 1px solid rgba(var(--tint), 0.1); font-size: 0.85rem; line-height: 1.45; color: rgba(var(--ink-rgb), 0.9); max-width: 42ch; }
 .automation-prereq { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.82rem; color: var(--gold-ink); background: rgba(255, 209, 102, 0.1); border: 1px solid rgba(255, 209, 102, 0.3); border-radius: 0.6rem; padding: 0.55rem 0.7rem; }
 .automation-prereq a { color: var(--gold-ink); text-decoration: underline; }

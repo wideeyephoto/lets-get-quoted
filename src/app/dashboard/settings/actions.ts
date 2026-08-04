@@ -9,6 +9,7 @@ import { sendTestDigest } from '@/lib/daily-digest';
 import { normalizeEstimatePosture } from '@/lib/estimate-posture';
 import { AUTOMATION_COLUMNS, AUTOMATION_LABELS, isAutomationKey, type AutomationKey } from '@/lib/automations';
 import { recordAccountEvent } from '@/lib/account-events';
+import { ARRIVAL_WINDOW_CHOICES, DEFAULT_WINDOW_MINUTES } from '@/lib/arrival';
 import {
   normalizeTimezone,
   normalizeBookingWeekdays,
@@ -573,42 +574,51 @@ export async function setQuickStopEnabledAction(enabled: boolean, source = 'plan
   revalidatePath('/dashboard/quick-stops');
 }
 
-// Arrival updates — how "on my way" behaves for this business.
-//
-// The window style and width are the ones that change what a customer is
-// PROMISED, so they're validated here rather than trusted from the form: a
-// stray value would turn every arrival window in the account into nonsense.
-export async function updateArrivalSettingsAction(formData: FormData) {
+/**
+ * The arrival window, saved on its own the moment it's picked.
+ *
+ * The only setting left on that card. Everything else it used to carry — the
+ * exact-time mode, map precision, link duration, the location-sharing policy,
+ * the editable message template — had a control and no decision behind it: one
+ * answer is right for essentially every contractor, and the wrong answer is
+ * quietly harmful. They are fixed in code now (see ARRIVAL_MODE, MAP_PRECISION,
+ * TRACKING_LINK_HOURS) and their columns are kept but unread.
+ *
+ * Validated here rather than trusted from the browser. This value is what a
+ * customer is PROMISED, and a stray one turns every arrival window in the
+ * account into nonsense.
+ */
+export async function updateArrivalWindowAction(minutes: number): Promise<void> {
   const { supabase, accountId } = await requireOwnerContext();
 
-  const policy = String(formData.get('locationPolicy') ?? 'ask');
-  const precision = String(formData.get('locationPrecision') ?? 'street');
-  const style = String(formData.get('windowStyle') ?? 'window');
-  const clamp = (value: FormDataEntryValue | null, min: number, max: number, fallback: number) => {
-    const parsed = Math.round(Number(value));
-    return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : fallback;
-  };
+  const chosen = (ARRIVAL_WINDOW_CHOICES as readonly number[]).includes(Math.round(minutes))
+    ? Math.round(minutes)
+    : DEFAULT_WINDOW_MINUTES;
 
-  // An empty template means "use the built-in wording", which is a real choice
-  // and has to survive a save — so it's stored as NULL, not as an empty string
-  // that would render as a blank text message.
-  const template = String(formData.get('messageTemplate') ?? '').trim();
+  const { error } = await supabase
+    .from('accounts')
+    .update({ arrival_window_minutes: chosen })
+    .eq('id', accountId);
+
+  if (error) throw new Error(error.message);
+  revalidatePath('/dashboard/settings');
+}
+
+// The two optional arrival behaviours, which are not part of the core card.
+// A morning text to today's customers and clocking drive time are separate
+// decisions about different things — one is a send, one is job costing — and
+// putting them beside the window width made a simple screen look complicated.
+export async function updateArrivalExtrasAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
 
   const { error } = await supabase
     .from('accounts')
     .update({
-      arrival_location_policy: ['ask', 'on', 'off'].includes(policy) ? policy : 'ask',
-      arrival_location_precision: ['exact', 'street'].includes(precision) ? precision : 'street',
-      arrival_window_style: ['exact', 'window'].includes(style) ? style : 'window',
-      arrival_window_minutes: clamp(formData.get('windowMinutes'), 0, 120, 30),
-      arrival_link_hours: clamp(formData.get('linkHours'), 1, 24, 12),
-      arrival_message_template: template || null,
       arrival_morning_confirmation: formData.get('morningConfirmation') === 'on',
       arrival_clock_travel: formData.get('clockTravel') === 'on',
     })
     .eq('id', accountId);
 
   if (error) throw new Error(error.message);
-
   revalidatePath('/dashboard/settings');
 }

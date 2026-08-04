@@ -5,7 +5,7 @@ import {
   describeArrivalOutcome, duplicateVerdict, estimateEtaMinutes, etaPhrase,
   firstName, formatArrivalWindow, homeownerReply, isActiveStatus, isClosedStatus, locationDefaultsOn,
   locationExpiry, locationVisible, MAX_ETA_MINUTES, minutesLate, nearestEtaChoice, renderTemplate,
-  roundCoordinate, unknownTokens, HOMEOWNER_REPLIES,
+  roundCoordinate, unknownTokens, HOMEOWNER_REPLIES, nearestWindowChoice, ARRIVAL_WINDOW_CHOICES,
 } from '@/lib/arrival';
 
 const TZ = 'America/New_York';
@@ -18,12 +18,49 @@ describe('arrival settings', () => {
     // Every one of these columns is absent before the migration; a field app
     // opened in a driveway must not care.
     const settings = arrivalSettingsFromAccount({});
+    expect(settings.enabled).toBe(true);
     expect(settings.locationPolicy).toBe('ask');
     expect(settings.windowStyle).toBe('window');
     expect(settings.windowMinutes).toBe(30);
-    expect(settings.linkHours).toBe(12);
+    expect(settings.linkHours).toBe(4);
     expect(settings.defaultMinutes).toBeNull();
     expect(settings.messageTemplate).toBeNull();
+  });
+
+  it('reads a missing master switch as ON, never as off', () => {
+    // The feature works today. A switch that defaulted to off on an
+    // un-migrated database would silently stop every arrival text, and nobody
+    // would find out until a customer complained that nobody warned them.
+    expect(arrivalSettingsFromAccount({}).enabled).toBe(true);
+    expect(arrivalSettingsFromAccount({ arrival_updates_enabled: null }).enabled).toBe(true);
+    expect(arrivalSettingsFromAccount({ arrival_updates_enabled: true }).enabled).toBe(true);
+    expect(arrivalSettingsFromAccount({ arrival_updates_enabled: false }).enabled).toBe(false);
+  });
+
+  it('ignores the columns behind settings that are no longer offered', () => {
+    // These had a control and no decision behind them: one answer is right for
+    // essentially every contractor and the wrong answer is quietly harmful.
+    // The columns are kept so any of them can come back without a migration —
+    // which is exactly why nothing may half-honour them in the meantime. A
+    // stored value the interface no longer shows must not govern what a
+    // customer receives.
+    const settings = arrivalSettingsFromAccount({
+      arrival_window_style: 'exact',
+      arrival_location_precision: 'exact',
+      arrival_link_hours: 12,
+      arrival_message_template: 'Custom wording from the old editor',
+    });
+    expect(settings.windowStyle).toBe('window');
+    expect(settings.locationPrecision).toBe('street');
+    expect(settings.linkHours).toBe(4);
+    expect(settings.messageTemplate).toBeNull();
+  });
+
+  it('still honours the location-sharing policy, which is only hidden', () => {
+    // Removed from the settings page, NOT from the product. The crew's
+    // per-visit prompt is unchanged.
+    expect(arrivalSettingsFromAccount({ arrival_location_policy: 'off' }).locationPolicy).toBe('off');
+    expect(arrivalSettingsFromAccount({ arrival_location_policy: 'on' }).locationPolicy).toBe('on');
   });
 
   it('treats null and a missing row identically', () => {
@@ -41,16 +78,38 @@ describe('arrival settings', () => {
     expect(settings.locationPrecision).toBe('street');
   });
 
-  it('clamps a window width and link life into range', () => {
-    expect(arrivalSettingsFromAccount({ arrival_window_minutes: 9999 }).windowMinutes).toBe(120);
-    expect(arrivalSettingsFromAccount({ arrival_window_minutes: -5 }).windowMinutes).toBe(0);
-    expect(arrivalSettingsFromAccount({ arrival_link_hours: 500 }).linkHours).toBe(24);
-    expect(arrivalSettingsFromAccount({ arrival_link_hours: 0 }).linkHours).toBe(1);
+  it('snaps a stored width to a width the picker actually offers', () => {
+    // The width used to be a free number from 0 to 120. Leaving a stored 20 as
+    // 20 would mean the settings page highlighting "30 min" while the customer
+    // is told something else — the interface lying about the promise.
+    expect(arrivalSettingsFromAccount({ arrival_window_minutes: 20 }).windowMinutes).toBe(30);
+    expect(arrivalSettingsFromAccount({ arrival_window_minutes: 50 }).windowMinutes).toBe(45);
+    expect(arrivalSettingsFromAccount({ arrival_window_minutes: 9999 }).windowMinutes).toBe(90);
+    // A stored 0 is an exact time dressed as a window — the one thing this
+    // feature exists to avoid.
+    expect(arrivalSettingsFromAccount({ arrival_window_minutes: 0 }).windowMinutes).toBe(30);
   });
 
-  it('keeps a blank template as null so the built-in default is used', () => {
-    expect(arrivalSettingsFromAccount({ arrival_message_template: '   ' }).messageTemplate).toBeNull();
-    expect(arrivalSettingsFromAccount({ arrival_message_template: 'Hi {{customer}}' }).messageTemplate).toBe('Hi {{customer}}');
+  it('leaves an already-valid width alone', () => {
+    for (const width of [30, 45, 60, 90]) {
+      expect(arrivalSettingsFromAccount({ arrival_window_minutes: width }).windowMinutes).toBe(width);
+    }
+  });
+});
+
+describe('nearestWindowChoice', () => {
+  it('picks the closest offered width', () => {
+    expect(nearestWindowChoice(30)).toBe(30);
+    expect(nearestWindowChoice(37)).toBe(30);
+    expect(nearestWindowChoice(38)).toBe(45);
+    expect(nearestWindowChoice(75)).toBe(60);
+    expect(nearestWindowChoice(76)).toBe(90);
+  });
+
+  it('never returns something outside the offered set', () => {
+    for (const value of [-100, 0, 1, 500, Number.MAX_SAFE_INTEGER]) {
+      expect(ARRIVAL_WINDOW_CHOICES).toContain(nearestWindowChoice(value) as 30 | 45 | 60 | 90);
+    }
   });
 });
 

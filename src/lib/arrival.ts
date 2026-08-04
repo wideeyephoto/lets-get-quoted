@@ -41,7 +41,43 @@ export const LOCATION_SHARE_MINUTES = 90;
 export const DEFAULT_WINDOW_MINUTES = 30;
 export const DEFAULT_LINK_HOURS = 12;
 
+/**
+ * The only arrival-window widths a contractor can pick.
+ *
+ * Was a free numeric input from 0 to 120. Nobody has an opinion about 35
+ * minutes, and a 0 was allowed — which is an exact time promised as a window,
+ * the one thing this feature exists to avoid.
+ */
+export const ARRIVAL_WINDOW_CHOICES = [30, 45, 60, 90] as const;
+
+/**
+ * Settings that are FIXED rather than configurable, and why each one is.
+ *
+ * A control is worth showing when there is a real decision behind it. These had
+ * controls and no decision: every one of them has an answer that is right for
+ * essentially every contractor, and the wrong answer is quietly harmful.
+ *
+ * The columns behind them are deliberately kept — see the note on
+ * arrivalSettingsFromAccount. Any of these could become a per-account choice
+ * later, and none of them should need a migration when it does.
+ */
+/** A single promised minute is a promise that gets broken. Always a window. */
+export const ARRIVAL_MODE: WindowStyle = 'window';
+/** Answers "are they close?" without answering "are they outside number 42?". */
+export const MAP_PRECISION: LocationPrecision = 'street';
+/** Long enough to cover a visit and a callback; short enough to expire. */
+export const TRACKING_LINK_HOURS = 4;
+
+/** Snap a stored width to the nearest offered choice. */
+export function nearestWindowChoice(minutes: number): number {
+  return ARRIVAL_WINDOW_CHOICES.reduce((best, choice) =>
+    Math.abs(choice - minutes) < Math.abs(best - minutes) ? choice : best,
+  );
+}
+
 export type ArrivalSettings = {
+  /** The master switch. Off means the crew's tap sends nothing. */
+  enabled: boolean;
   locationPolicy: LocationPolicy;
   locationPrecision: LocationPrecision;
   windowStyle: WindowStyle;
@@ -53,13 +89,14 @@ export type ArrivalSettings = {
 };
 
 export const DEFAULT_ARRIVAL_SETTINGS: ArrivalSettings = {
+  enabled: true,
   locationPolicy: 'ask',
-  locationPrecision: 'street',
-  windowStyle: 'window',
+  locationPrecision: MAP_PRECISION,
+  windowStyle: ARRIVAL_MODE,
   windowMinutes: DEFAULT_WINDOW_MINUTES,
   defaultMinutes: null,
   messageTemplate: null,
-  linkHours: DEFAULT_LINK_HOURS,
+  linkHours: TRACKING_LINK_HOURS,
   timeZone: 'America/New_York',
 };
 
@@ -78,23 +115,44 @@ function oneOf<T extends string>(value: unknown, allowed: readonly T[], fallback
  * missing every one of these columns, and the correct behaviour there is the
  * documented default — not a crash on the one screen a tech opens while
  * standing in a driveway.
+ *
+ * THE FIXED VALUES ARE APPLIED HERE, not at each send site. This is the single
+ * place an account row becomes settings, so forcing them here means every
+ * consumer — the field panel, the send path, the sweep, the preview — agrees by
+ * construction rather than by four people remembering the same rule.
+ *
+ * arrival_window_style, arrival_location_precision, arrival_link_hours and
+ * arrival_message_template are no longer read. The columns stay because any of
+ * them could become a per-account choice again, and none should need a
+ * migration when it does — but nothing may quietly depend on a value the
+ * interface no longer shows, so they are ignored rather than half-honoured.
  */
 export function arrivalSettingsFromAccount(row: Record<string, unknown> | null | undefined): ArrivalSettings {
   if (!row) return { ...DEFAULT_ARRIVAL_SETTINGS };
   const rawDefault = row.arrival_default_minutes;
   return {
+    // Absent column (un-migrated) means on: the feature works today and a
+    // missing switch must not read as "switched off".
+    enabled: row.arrival_updates_enabled === undefined || row.arrival_updates_enabled === null
+      ? true
+      : row.arrival_updates_enabled !== false,
+    // Still read, still honoured, no longer shown — the crew's per-visit
+    // location prompt is unchanged.
     locationPolicy: oneOf(row.arrival_location_policy, ['ask', 'on', 'off'] as const, 'ask'),
-    locationPrecision: oneOf(row.arrival_location_precision, ['exact', 'street'] as const, 'street'),
-    windowStyle: oneOf(row.arrival_window_style, ['exact', 'window'] as const, 'window'),
-    windowMinutes: clampInt(row.arrival_window_minutes, MIN_WINDOW_MINUTES, MAX_WINDOW_MINUTES, DEFAULT_WINDOW_MINUTES),
+    locationPrecision: MAP_PRECISION,
+    windowStyle: ARRIVAL_MODE,
+    // Snapped to an offered choice. A stored 20 or 35 from the old free-text
+    // field would otherwise leave the settings page highlighting one number
+    // while the customer is told a different one.
+    windowMinutes: nearestWindowChoice(
+      clampInt(row.arrival_window_minutes, MIN_WINDOW_MINUTES, MAX_WINDOW_MINUTES, DEFAULT_WINDOW_MINUTES),
+    ),
     defaultMinutes:
       rawDefault === null || rawDefault === undefined || !Number.isFinite(Number(rawDefault))
         ? null
         : clampInt(rawDefault, MIN_ETA_MINUTES, MAX_ETA_MINUTES, 15),
-    messageTemplate: typeof row.arrival_message_template === 'string' && row.arrival_message_template.trim()
-      ? row.arrival_message_template
-      : null,
-    linkHours: clampInt(row.arrival_link_hours, MIN_LINK_HOURS, MAX_LINK_HOURS, DEFAULT_LINK_HOURS),
+    messageTemplate: null,
+    linkHours: TRACKING_LINK_HOURS,
     timeZone: typeof row.timezone === 'string' && row.timezone ? row.timezone : 'America/New_York',
   };
 }

@@ -91,7 +91,7 @@ export type SendArrivalInput = {
 };
 
 export type SendArrivalResult =
-  | { ok: false; reason: 'not_found' | 'forbidden' }
+  | { ok: false; reason: 'not_found' | 'forbidden' | 'disabled' }
   | { ok: false; reason: 'duplicate'; verdict: DuplicateVerdict }
   | {
       ok: true;
@@ -120,6 +120,11 @@ export async function sendArrival(
   if (!context) return { ok: false, reason: 'not_found' };
 
   const { job, settings, businessName } = context;
+
+  // The master switch, enforced at the point of work rather than by hiding the
+  // button. The field app is a public server action away from here, and a
+  // setting that only removes a control is not a setting.
+  if (!settings.enabled) return { ok: false, reason: 'disabled' };
 
   // Only a trip still IN FLIGHT can be revised. A tech who already marked
   // arrived and then taps "on my way" again has left and is coming back —

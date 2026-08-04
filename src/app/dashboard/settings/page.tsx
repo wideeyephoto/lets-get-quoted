@@ -15,8 +15,9 @@ import AutomationSwitch from '@/components/automation-switch';
 import { listAccountEvents } from '@/lib/account-events';
 import DeleteAccountButton from './DeleteAccountButton';
 import ArrivalSettingsSection from './ArrivalSettingsSection';
+import ArrivalExtrasSection from './ArrivalExtrasSection';
 import { arrivalSettingsFromAccount } from '@/lib/arrival';
-import { updateArrivalSettingsAction, updateReviewSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBookingAvailabilityAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, updateCallTextbackSettingsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
+import { updateReviewSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBookingAvailabilityAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, updateCallTextbackSettingsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
 import { updateCostSettingsAction, updateClientPortalAction } from './actions';
 import { loadedHourlyRate } from '@/lib/cost-truth';
 import { ESTIMATE_POSTURES, normalizeEstimatePosture } from '@/lib/estimate-posture';
@@ -93,7 +94,7 @@ export default async function SettingsPage({
     await Promise.all([
       supabase.auth.getUser(),
       supabase.auth.getUserIdentities(),
-      supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded, connect_disabled_at, schedule_day_hours, workday_start, workday_end, job_buffer_minutes, call_textback_enabled, call_forward_number, call_tracking_number, timezone, arrival_location_policy, arrival_location_precision, arrival_window_style, arrival_window_minutes, arrival_link_hours, arrival_message_template, arrival_morning_confirmation, arrival_clock_travel, time_clock_mode').eq('id', accountId).single(),
+      supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded, connect_disabled_at, schedule_day_hours, workday_start, workday_end, job_buffer_minutes, call_textback_enabled, call_forward_number, call_tracking_number, timezone, arrival_updates_enabled, arrival_location_policy, arrival_window_minutes, arrival_morning_confirmation, arrival_clock_travel, time_clock_mode').eq('id', accountId).single(),
       supabase.from('sites').select('id, company_name, content, subdomain').eq('account_id', accountId).maybeSingle(),
       getAvailableTaxYears(supabase, accountId),
       supabase
@@ -727,34 +728,33 @@ export default async function SettingsPage({
                   </form>
                 </AutomationCard>
 
-                {/* Not a toggle: there is nothing to switch off, because
-                    nothing here fires on its own. A person taps a button and a
-                    customer is told — these are the rules that shapes. */}
+                {/* Now a real toggle. It used to say "there is nothing to
+                    switch off, because nothing here fires on its own" — but a
+                    contractor who wants the texts to stop had to go and revoke
+                    each person's send permission on Crew & Labor, which is a
+                    different decision about different people. */}
                 <AutomationCard
                   group="follow-through"
                   id="arrival"
                   title="Arrival updates"
-                  subtitle="What &ldquo;on my way&rdquo; says and shows"
-                  status={{ label: arrivalSettings.windowStyle === 'window' ? `${arrivalSettings.windowMinutes}-min window` : 'Exact time', tone: 'neutral' }}
+                  subtitle="Let customers know when you&rsquo;re on the way"
+                  toggle={{ on: arrivalSettings.enabled, action: toggleAutomationAction.bind(null, 'arrival') }}
+                  status={{ label: `${arrivalSettings.windowMinutes}-min window`, tone: 'neutral' }}
                 >
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
-                    When your crew taps <strong>I&rsquo;m on my way</strong> in the field app, the customer gets a
-                    text with an arrival time and a private link showing who&rsquo;s coming and when. They can
-                    reply from that page &mdash; &ldquo;gate is locked&rdquo;, &ldquo;use the side entrance&rdquo;
-                    &mdash; and it lands in the job&rsquo;s timeline before your tech reaches the door. Who is
-                    allowed to send these is set per person on{' '}
+                    When your crew taps <strong>I&rsquo;m on my way</strong>, the customer gets an arrival window
+                    and a private tracking link. They can reply from that page &mdash; &ldquo;gate is
+                    locked&rdquo;, &ldquo;use the side entrance&rdquo; &mdash; and it lands in the job&rsquo;s
+                    timeline before your tech reaches the door. Who is allowed to send these is set per person on{' '}
                     <Link href="/dashboard/crew">Crew &amp; Labor</Link>.
                   </p>
                   <ArrivalSettingsSection
-                    action={updateArrivalSettingsAction}
                     businessName={businessName}
                     timeZone={arrivalSettings.timeZone}
-                    locationPolicy={arrivalSettings.locationPolicy}
-                    locationPrecision={arrivalSettings.locationPrecision}
-                    windowStyle={arrivalSettings.windowStyle}
                     windowMinutes={arrivalSettings.windowMinutes}
-                    linkHours={arrivalSettings.linkHours}
-                    messageTemplate={arrivalSettings.messageTemplate}
+                    enabled={arrivalSettings.enabled}
+                  />
+                  <ArrivalExtrasSection
                     morningConfirmation={account?.arrival_morning_confirmation === true}
                     clockTravel={account?.arrival_clock_travel === true}
                     timeClockOn={account?.time_clock_mode !== 'off'}
