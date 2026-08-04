@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { resolveBurdenPct } from '@/lib/cost-truth';
+import { DEFAULT_MIN_MARGIN_PCT, resolveBurdenPct } from '@/lib/cost-truth';
 
 /**
  * The burden percentage to apply to one crew member's hours right now.
@@ -70,9 +70,13 @@ export async function accountLoadedHourlyRate(supabase: SupabaseClient, accountI
   }
 }
 
-/** The owner's minimum-margin floor, as a percentage. 0 means "don't warn me". */
+/**
+ * The owner's minimum-margin floor, as a percentage. 0 means "don't warn me" —
+ * a real choice, so a stored 0 is honoured. The default only applies when there
+ * is no row at all to read.
+ */
 export async function getMinMarginPct(supabase: SupabaseClient, accountId: string): Promise<number> {
   const { data } = await supabase.from('accounts').select('min_margin_pct').eq('id', accountId).maybeSingle();
   const n = Number(data?.min_margin_pct);
-  return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 0;
+  return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : DEFAULT_MIN_MARGIN_PCT;
 }

@@ -10732,6 +10732,129 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
 .recurring-mrr-card .workspace-metric-value { font-size: clamp(1.9rem, 3.4vw, 2.6rem); }
 .recurring-hero-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
+/* --- the stat row -----------------------------------------------------------
+   Out of the hero's right column and onto its own row. Four figures that answer
+   four different questions deserve four equal cells; stacked inside the hero,
+   the two supporting counts read as footnotes to the money. */
+.recurring-stat-grid { margin-top: 1.25rem; }
+/* "1" is the figure, "of 2" is the scale it is measured against — same line,
+   different weight, so the eye lands on the number first. */
+.recurring-stat-of { font-size: 0.62em; font-weight: 650; color: var(--muted); }
+
+.recurring-mrr-spark { height: 2rem; margin: 0.35rem 0 0.15rem; }
+
+/* Workload, not revenue. Sits directly under the row it qualifies, at body size
+   rather than tile size — it is a sentence, not a fifth statistic. */
+.recurring-workload {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.5rem;
+  align-items: baseline;
+  margin: 0.85rem 0 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--edge-t10);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.025);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.recurring-workload strong { color: var(--text); font-weight: 700; }
+.recurring-workload-sep { color: var(--mute-t40); padding: 0 0.35rem; }
+
+/* --- needs-attention banner ------------------------------------------------- */
+.recurring-attention {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.85rem 1.25rem;
+  margin-top: 1rem;
+}
+.recurring-attention-copy { display: grid; gap: 0.2rem; min-width: 0; }
+.recurring-attention-copy strong { font-size: 0.98rem; font-weight: 700; }
+.recurring-attention-copy p { margin: 0; font-size: 0.87rem; line-height: 1.5; color: var(--muted); }
+
+/* --- tabs + toolbar --------------------------------------------------------- */
+.recurring-tabbar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--rule-t10);
+}
+/* The composer's trigger belongs on the tab row, hard right — it is the page's
+   primary action, and putting it inside the list made it scroll away. */
+.recurring-tabbar-action { margin-left: auto; }
+
+.recurring-toolbar { margin-top: 0.9rem; }
+.recurring-search { flex: 1 1 260px; min-width: 0; }
+.recurring-filter { display: flex; min-width: 0; }
+.recurring-filter select {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.04);
+  color: var(--text);
+  font-size: 0.86rem;
+}
+.recurring-list-head { margin-top: 1rem; }
+
+/* --- calendar tab ----------------------------------------------------------- */
+.recurring-calendar { display: grid; gap: 1.4rem; margin-top: 1.1rem; }
+.recurring-cal-monthhead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--rule-t10);
+}
+.recurring-cal-monthhead h3 { margin: 0; font-size: 1.02rem; font-weight: 700; }
+.recurring-cal-monthhead span { color: var(--muted); font-size: 0.84rem; }
+.recurring-cal-list { display: grid; gap: 0.15rem; margin: 0.5rem 0 0; padding: 0; list-style: none; }
+.recurring-cal-row {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+}
+.recurring-cal-row:hover { background: rgba(var(--tint), 0.04); }
+.recurring-cal-date { color: var(--muted); font-size: 0.82rem; font-weight: 650; }
+.recurring-cal-what { display: grid; gap: 0.05rem; min-width: 0; }
+.recurring-cal-what strong { font-size: 0.9rem; font-weight: 650; }
+.recurring-cal-what small { color: var(--mute-t55); font-size: 0.78rem; }
+.recurring-cal-money { font-size: 0.88rem; font-weight: 700; }
+
+@media (max-width: 720px) {
+  .recurring-toolbar { flex-direction: column; align-items: stretch; }
+  .recurring-tabbar-action { margin-left: 0; width: 100%; }
+  .recurring-cal-row { grid-template-columns: 4rem minmax(0, 1fr); }
+  .recurring-cal-money { grid-column: 2; justify-self: start; }
+}
+
+/* --- sparkline --------------------------------------------------------------
+   Shared primitive, first used in the recurring MRR tile. Colour comes from
+   currentColor so a tile decides its own hue; the gradient stops are tokens so
+   the fill flips with the theme like everything else. */
+.sparkline { display: block; width: 100%; overflow: visible; }
+.sparkline-line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  /* The viewBox is stretched by preserveAspectRatio="none"; without this the
+     stroke stretches with it and the line thins out at wide tile widths. */
+  vector-effect: non-scaling-stroke;
+}
+.sparkline-dot { fill: currentColor; }
+.sparkline-stop-top { stop-color: currentColor; stop-opacity: 0.28; }
+.sparkline-stop-bottom { stop-color: currentColor; stop-opacity: 0; }
+
 /* The empty-state explainer that replaces it before the first plan exists. */
 .recurring-how {
   display: flex;

@@ -1,11 +1,20 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import { formatMoney } from '@/lib/jobs';
-import { listRecurringPlans, todayDateKey } from '@/lib/recurring';
-import { planMonthlyValue, shortDate, visitCountdown } from '@/lib/recurring-display';
+import { listRecurringPlans, projectPlanVisits, todayDateKey, type PlannedVisit } from '@/lib/recurring';
+import {
+  dateKeyPlusDays,
+  planMonthlyValue,
+  shortDate,
+  trailingMonthlyRecurring,
+  visitCountdown,
+  workloadWindow,
+} from '@/lib/recurring-display';
 import { listServices } from '@/lib/services';
 import { listClientsWithStats } from '@/lib/clients';
 import RecurringComposer from './RecurringComposer';
+import RecurringWorkspace, { type PlanRow } from './RecurringWorkspace';
+import Sparkline from '@/components/sparkline';
 import RecurringPlanCard from '@/components/recurring-plan-card';
 import RecurringHowItWorks from '@/components/recurring-how-it-works';
 import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
@@ -55,9 +64,62 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
     return days >= 0 && days < 7;
   }).length;
 
+  // "Needs attention" is one thing today: auto-charge is on but no card ever
+  // landed, so every visit will bill nobody. Named per plan so the banner can
+  // say WHO, which is the only version of this an owner can act on.
+  const needsAttention = activePlans.filter((plan) => plan.auto_charge && !plan.card_last4);
+
+  // What the book actually puts on the calendar. projectPlanVisits walks the
+  // same cadence the cron will, so this is the work, not an average of it.
+  const horizon = dateKeyPlusDays(today, 90);
+  const projected = projectPlanVisits(activePlans, { fromKey: today, toKey: horizon });
+  const next30 = workloadWindow(projected, today, dateKeyPlusDays(today, 30));
+  const next90 = workloadWindow(projected, today, horizon);
+  const trail = trailingMonthlyRecurring(plans, today, 6);
+
+  // Grouped and formatted HERE, not in the client component. Every money and
+  // date helper in this app lives in a module that also reaches the database, so
+  // importing one into a 'use client' file drags server code into the browser
+  // bundle and the build dies on "Can't resolve 'fs'".
+  // Annotated rather than `new Map<...>()`: a type argument list on a call in a
+  // .tsx file is ambiguous with a JSX open tag, and SWC resolves it the other
+  // way from tsc — the typecheck passes and the dev build dies on the next JSX
+  // tag it meets, pointing at a line that is not the problem.
+  const visitsByMonth: Map<string, PlannedVisit[]> = new Map();
+  for (const visit of projected) {
+    const key = visit.dateKey.slice(0, 7);
+    const bucket = visitsByMonth.get(key);
+    if (bucket) bucket.push(visit);
+    else visitsByMonth.set(key, [visit]);
+  }
+  const calendarMonths = [...visitsByMonth.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([monthKey, monthVisits]) => {
+      const [y, m] = monthKey.split('-').map(Number);
+      const total = monthVisits.reduce((sum, visit) => sum + visit.amount, 0);
+      const plural = monthVisits.length === 1 ? '' : 's';
+      const money = total > 0 ? ` · ${formatMoney(total)}` : '';
+      return {
+        monthKey,
+        label: new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-US', {
+          month: 'long',
+          year: 'numeric',
+          timeZone: 'UTC',
+        }),
+        countLabel: `${monthVisits.length} visit${plural}${money}`,
+        visits: monthVisits.map((visit) => ({
+          key: `${visit.planId}:${visit.dateKey}`,
+          dateLabel: shortDate(visit.dateKey),
+          planTitle: visit.planTitle,
+          clientName: visit.clientName,
+          amountLabel: visit.amount > 0 ? formatMoney(visit.amount) : null,
+        })),
+      };
+    });
+
   return (
     <main className="wide-shell workspace-shell">
-      <section className="workspace-hero panel">
+      <section className={`workspace-hero panel${plans.length > 0 ? ' workspace-hero-solo' : ''}`}>
         <div className="workspace-hero-copy">
           <p className="eyebrow">Recurring</p>
           <h1 className="workspace-title">Repeating jobs &amp; auto-billing</h1>
@@ -66,30 +128,86 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
             automatically. Add a saved card and every visit is charged for you, hands-off.
           </p>
         </div>
-        {plans.length > 0 ? (
-          <div className="recurring-hero-metrics">
+        {plans.length > 0 ? null : <RecurringHowItWorks />}
+      </section>
+
+      {plans.length > 0 ? (
+        <>
+          <div className="workspace-metric-grid four-up recurring-stat-grid">
             <article className="workspace-metric-card accent recurring-mrr-card">
-              <span className="workspace-metric-label">Est. monthly recurring</span>
+              <span className="workspace-metric-label">Estimated monthly recurring</span>
               <strong className="workspace-metric-value">{formatMoney(monthlyRecurring)}</strong>
+              {/* The figure is exact; the line behind it is only the shape of
+                  the book over time — see trailingMonthlyRecurring. */}
+              <Sparkline
+                values={trail.map((point) => point.value)}
+                gradientId="recurring-mrr-spark"
+                className="recurring-mrr-spark"
+                ariaLabel={`Monthly recurring value over the last ${trail.length} months`}
+              />
               <p className="workspace-metric-note">
                 Across {activeCount} active plan{activeCount === 1 ? '' : 's'}, normalized to a month.
               </p>
             </article>
-            <div className="workspace-metric-grid condensed recurring-hero-pair">
-              <article className="workspace-metric-card">
-                <span className="workspace-metric-label">Due this week</span>
-                <strong className="workspace-metric-value">{dueThisWeek}</strong>
-              </article>
-              <article className="workspace-metric-card">
-                <span className="workspace-metric-label">Auto-billed</span>
-                <strong className="workspace-metric-value">{autoBilledCount}</strong>
-              </article>
-            </div>
+            <article className="workspace-metric-card">
+              <span className="workspace-metric-label">Upcoming visits</span>
+              <strong className="workspace-metric-value">{dueThisWeek}</strong>
+              <p className="workspace-metric-note">this week</p>
+            </article>
+            <article className="workspace-metric-card">
+              <span className="workspace-metric-label">Autopay coverage</span>
+              {/* "1 of 2" rather than a bare count: the number only means
+                  anything against how many plans could be on autopay. */}
+              <strong className="workspace-metric-value">
+                {autoBilledCount} <span className="recurring-stat-of">of {activeCount}</span>
+              </strong>
+              <p className="workspace-metric-note">plan{activeCount === 1 ? '' : 's'}</p>
+            </article>
+            <article className={`workspace-metric-card${needsAttention.length > 0 ? ' is-loss' : ''}`}>
+              <span className="workspace-metric-label">Needs attention</span>
+              <strong className="workspace-metric-value">{needsAttention.length}</strong>
+              <p className="workspace-metric-note">
+                {needsAttention.length === 1 ? 'plan' : 'plans'}
+              </p>
+            </article>
           </div>
-        ) : (
-          <RecurringHowItWorks />
-        )}
-      </section>
+
+          {/* Workload, not revenue: the line that ties a book of plans to the
+              days it will actually take up. */}
+          <p className="recurring-workload">
+            <strong>Next 30 days:</strong> {next30.count} visit{next30.count === 1 ? '' : 's'}
+            {next30.value > 0 ? ` · ${formatMoney(next30.value)} expected` : ''}
+            <span className="recurring-workload-sep" aria-hidden="true">·</span>
+            <strong>Next 90 days:</strong> {next90.count} visit{next90.count === 1 ? '' : 's'}
+            {next90.value > 0 ? ` · ${formatMoney(next90.value)} expected` : ''}
+          </p>
+        </>
+      ) : null}
+
+      {/* .client-attention-card is a MODIFIER — it paints the orange edge and
+          wash and nothing else, so it needs .panel underneath it for padding,
+          radius and the light-theme flip. Without it the copy sits flush
+          against the card edge. */}
+      {needsAttention.length > 0 ? (
+        <section className="panel client-attention-card recurring-attention">
+          <div className="recurring-attention-copy">
+            <strong>
+              {needsAttention.length} plan{needsAttention.length === 1 ? '' : 's'} need
+              {needsAttention.length === 1 ? 's' : ''} attention
+            </strong>
+            <p>
+              {needsAttention.length === 1
+                ? `${needsAttention[0].client_name} has not added a payment method — that plan's visits will bill nobody.`
+                : `${needsAttention.map((plan) => plan.client_name).slice(0, 3).join(', ')}${needsAttention.length > 3 ? ` and ${needsAttention.length - 3} more` : ''} have not added a payment method.`}
+            </p>
+          </div>
+          {needsAttention.length === 1 ? (
+            <form action={resendCardLinkAction.bind(null, needsAttention[0].id)}>
+              <button type="submit" className="btn secondary">Resend payment link</button>
+            </form>
+          ) : null}
+        </section>
+      ) : null}
 
       {flash ? (
         <section className={`panel workspace-section-card flash-banner flash-${flash.tone === 'warn' ? 'warn' : flash.tone === 'info' ? 'info' : 'success'}`}>
@@ -100,19 +218,26 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
         </section>
       ) : null}
 
-      <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading compact-heading">
-          <p className="eyebrow">Plans{activeCount > 0 ? ` · ${activeCount} active` : ''}</p>
-        </div>
-        <RecurringComposer today={today} services={services} clients={clients} />
-
-        {plans.length === 0 ? (
-          <p className="empty-state">No recurring plans yet. Create one above and its visits will schedule themselves.</p>
-        ) : (
-          <div className="recurring-list">
-            {plans.map((plan) => {
-              const paused = !plan.active;
-              return (
+      {/* The cards are built here, on the server, because each one carries bound
+          Server Actions. RecurringWorkspace owns only the tab, the filters and
+          the order — so it gets each plan's FIELDS alongside its rendered card
+          rather than trying to read anything back out of the JSX. */}
+      <RecurringWorkspace
+        activeCount={activeCount}
+        composer={<RecurringComposer today={today} services={services} clients={clients} />}
+        months={calendarMonths}
+        rows={plans.map<PlanRow>((plan) => {
+          const paused = !plan.active;
+          return {
+            id: plan.id,
+            title: plan.title,
+            clientName: plan.client_name,
+            frequency: plan.frequency,
+            active: plan.active,
+            nextRunDate: plan.next_run_date,
+            monthly: planMonthlyValue(plan.amount, plan.frequency),
+            needsAttention: Boolean(plan.active && plan.auto_charge && !plan.card_last4),
+            card: (
                 <RecurringPlanCard
                   key={plan.id}
                   plan={plan}
@@ -153,11 +278,10 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
                     <button type="submit" className="linklike danger">Cancel plan</button>
                   </form>
                 </RecurringPlanCard>
-              );
-            })}
-          </div>
-        )}
-      </section>
+            ),
+          };
+        })}
+      />
     </main>
   );
 }

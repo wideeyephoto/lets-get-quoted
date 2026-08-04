@@ -20,10 +20,29 @@
 export function resolveBurdenPct(crewBurdenPct: number | null | undefined, accountDefaultPct: number | null | undefined): number {
   const own = toFiniteOrNull(crewBurdenPct);
   if (own !== null) return clampBurden(own);
-  return clampBurden(toFiniteOrNull(accountDefaultPct) ?? 0);
+  return clampBurden(toFiniteOrNull(accountDefaultPct) ?? DEFAULT_BURDEN_PCT);
 }
 
 export const MAX_BURDEN_PCT = 200;
+
+/**
+ * Where an account starts, for both costing settings.
+ *
+ * Both shipped at 0 — the one value that makes each feature do nothing. A 0%
+ * burden claims a $30/hr crew member costs $30/hr, which is the invisible loss
+ * this whole file exists to stop, and a 0% margin floor never flags anything.
+ *
+ * 40% is the top of the 20–40% the settings card already calls industry typical;
+ * 15% is the middle of the 10–20% it already calls the recommended range. The
+ * advice was on screen and the defaults simply didn't follow it.
+ *
+ * These are STARTING points, not floors: 0 remains legal and meaningful, and an
+ * owner who chooses it keeps it. The database carries the same two numbers as
+ * column defaults (migrations/2026-08-04-cost-defaults.sql) so a fresh account is
+ * correct before any code reads it; these constants cover a missing row.
+ */
+export const DEFAULT_BURDEN_PCT = 40;
+export const DEFAULT_MIN_MARGIN_PCT = 15;
 
 function toFiniteOrNull(value: unknown): number | null {
   if (value === null || value === undefined || value === '') return null;

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
+import { DEFAULT_BURDEN_PCT, DEFAULT_MIN_MARGIN_PCT } from '@/lib/cost-truth';
 import { connectStripeAction, disconnectStripeAction } from '../stripe-actions';
 import SignInMethods from './SignInMethods';
 import PayoutAccount from './PayoutAccount';
@@ -225,8 +226,13 @@ export default async function SettingsPage({
     .select('default_burden_pct, min_margin_pct')
     .eq('id', accountId)
     .maybeSingle();
-  const defaultBurdenPct = Number(costSettings?.default_burden_pct) || 0;
-  const minMarginPct = Number(costSettings?.min_margin_pct) || 0;
+  // A stored 0 is a real choice and is kept; the defaults stand in only when
+  // there is nothing stored at all. `|| 0` would have conflated the two, which
+  // is why this reads the value rather than coercing it.
+  const storedBurden = Number(costSettings?.default_burden_pct);
+  const storedMargin = Number(costSettings?.min_margin_pct);
+  const defaultBurdenPct = Number.isFinite(storedBurden) ? storedBurden : DEFAULT_BURDEN_PCT;
+  const minMarginPct = Number.isFinite(storedMargin) ? storedMargin : DEFAULT_MIN_MARGIN_PCT;
 
   const { data: reviewPageSettings } = await supabase
     .from('accounts')

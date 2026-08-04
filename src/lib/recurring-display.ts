@@ -72,6 +72,70 @@ export function planMonthlyValue(amount: number, frequency: RecurringFrequency):
   return (Number(amount) || 0) * (MONTHLY_MULTIPLIER[frequency] ?? 1);
 }
 
+/**
+ * How the recurring book grew, one point per month, for the sparkline.
+ *
+ * There is no stored history of monthly recurring value, so this is rebuilt from
+ * when each plan was created: at the end of month M, a plan counts if it existed
+ * by then. Two honest limits come with that, and neither is worth faking around:
+ * a cancelled plan is a deleted row, so it leaves no trace and the past reads
+ * slightly low; and a plan whose price changed is valued at today's price for
+ * every month, because the old price is not kept either. It is the shape of the
+ * book over time, which is what a sparkline is for — the tile's own figure is
+ * the exact number.
+ */
+export type MonthPoint = { monthKey: string; value: number };
+
+export function trailingMonthlyRecurring(
+  plans: { amount: number; frequency: RecurringFrequency; created_at?: string | null }[],
+  today: string,
+  months = 6,
+): MonthPoint[] {
+  const [year, month] = today.split('-').map(Number);
+  const points: MonthPoint[] = [];
+  for (let back = months - 1; back >= 0; back -= 1) {
+    const cursor = new Date(Date.UTC(year, month - 1 - back, 1));
+    const y = cursor.getUTCFullYear();
+    const m = cursor.getUTCMonth() + 1;
+    // Last instant of that month, so a plan created on the 31st counts for it.
+    const endKey = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+    const value = plans.reduce((sum, plan) => {
+      const born = (plan.created_at ?? '').slice(0, 10);
+      if (born && born > endKey) return sum;
+      return sum + planMonthlyValue(plan.amount, plan.frequency);
+    }, 0);
+    points.push({ monthKey: `${y}-${String(m).padStart(2, '0')}`, value });
+  }
+  return points;
+}
+
+/**
+ * Visits and money inside a window — "next 30 days: 12 visits · $1,240".
+ *
+ * This is the figure that connects a book of plans to actual workload, which is
+ * the thing a page of monthly averages could never answer.
+ */
+export function workloadWindow(
+  visits: { dateKey: string; amount: number }[],
+  fromKey: string,
+  toKey: string,
+): { count: number; value: number } {
+  let count = 0;
+  let value = 0;
+  for (const visit of visits) {
+    if (visit.dateKey < fromKey || visit.dateKey > toKey) continue;
+    count += 1;
+    value += Number(visit.amount) || 0;
+  }
+  return { count, value };
+}
+
+/** `today` + n days, as a date key. UTC throughout, like everything else here. */
+export function dateKeyPlusDays(dateKey: string, days: number): string {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
 export function shortDate(dateKey: string): string {
   const [year, month, day] = dateKey.split('-').map(Number);
   return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('en-US', {
