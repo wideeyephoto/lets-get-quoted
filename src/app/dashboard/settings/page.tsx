@@ -513,16 +513,14 @@ export default async function SettingsPage({
                       headlines and photos. None of it changes how the site
                       looks — it decides which leads interrupt you. */}
                   {site ? (
-                    <>
-                      <IntakeContentSection
-                        leadFilters={businessBasics.leadFilters}
-                        emailField={businessBasics.estimateRanges.emailField}
-                        estimateLabel={businessBasics.quoteForm.estimateLabel}
-                        hasCities={businessBasics.serviceAreas.cities.some((city) => city.trim())}
-                        smartIntakeOn={smartIntakeOn}
-                      />
-                      <IntakePreviewModal site={site as Site} />
-                    </>
+                    <IntakeContentSection
+                      leadFilters={businessBasics.leadFilters}
+                      emailField={businessBasics.estimateRanges.emailField}
+                      estimateLabel={businessBasics.quoteForm.estimateLabel}
+                      hasCities={businessBasics.serviceAreas.cities.some((city) => city.trim())}
+                      smartIntakeOn={smartIntakeOn}
+                      preview={<IntakePreviewModal site={site as Site} compact />}
+                    />
                   ) : null}
                 </AutomationCard>
 

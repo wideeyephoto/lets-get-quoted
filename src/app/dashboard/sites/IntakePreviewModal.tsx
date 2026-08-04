@@ -22,7 +22,7 @@ import type { Site } from '@/lib/sites';
 // it sounds — a contractor poking at their own form is exactly how junk leads
 // and junk email addresses get into a pipeline.
 
-export default function IntakePreviewModal({ site }: { site: Site }) {
+export default function IntakePreviewModal({ site, compact = false }: { site: Site; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   // Remounts the form on each open so the second look starts from the
@@ -63,10 +63,21 @@ export default function IntakePreviewModal({ site }: { site: Site }) {
 
   return (
     <>
-      <button type="button" className="intake-preview-trigger" onClick={show}>
-        <span aria-hidden="true">👀</span> Preview your AI Intake
-        <small>See what a homeowner sees, without sending anything</small>
-      </button>
+      {/* `compact` is for the Intake AI card, where the panel it sits beside is
+          already headed "Live intake preview" — a second full-width banner
+          repeating that would be the loudest thing in the column and say
+          nothing new. Everywhere else it stays the explaining card, because
+          nothing around it has said what a preview is. */}
+      {compact ? (
+        <button type="button" className="intake-preview-compact" onClick={show}>
+          Open full preview <span aria-hidden="true">↗</span>
+        </button>
+      ) : (
+        <button type="button" className="intake-preview-trigger" onClick={show}>
+          <span aria-hidden="true">👀</span> Preview your AI Intake
+          <small>See what a homeowner sees, without sending anything</small>
+        </button>
+      )}
 
       {mounted && open
         ? createPortal(
