@@ -1,0 +1,127 @@
+/* The logged-out explainer at the top of the Quick Stops demo.
+   Colour comes from the shared tokens so it flips with the theme rather than
+   pinning its own surface — see the ink model notes in globals.css. */
+
+.wrap {
+  margin: 0 0 1.5rem;
+  padding: clamp(1.1rem, 3vw, 1.75rem);
+  border: 1px solid rgba(var(--tint), .1);
+  border-radius: 16px;
+  background: rgba(var(--tint), .03);
+}
+
+.head { margin-bottom: 1.25rem; }
+
+.title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .65rem;
+  margin: 0 0 .35rem;
+  font-size: clamp(1.15rem, 2.6vw, 1.5rem);
+  line-height: 1.2;
+}
+
+.badge {
+  padding: .2rem .55rem;
+  border: 1px solid rgba(var(--tint), .22);
+  border-radius: 999px;
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--mute-t55);
+}
+
+.lede { margin: 0; max-width: 62ch; line-height: 1.6; color: rgba(var(--tint), .7); }
+
+.grid { display: grid; gap: .9rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: .7rem;
+  padding: 1rem;
+  border: 1px solid rgba(var(--tint), .09);
+  border-radius: 12px;
+  background: rgba(var(--tint), .025);
+}
+
+.panelTitle {
+  margin: 0;
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--mute-t55);
+}
+
+.panelNote { margin: auto 0 0; font-size: .8rem; line-height: 1.5; color: rgba(var(--tint), .55); }
+
+/* --- the example day ------------------------------------------------------ */
+
+.timeline { display: grid; gap: .3rem; margin: 0; padding: 0; list-style: none; }
+
+.timeline li {
+  display: flex;
+  align-items: baseline;
+  gap: .6rem;
+  padding: .4rem .6rem;
+  border-radius: 8px;
+  font-size: .82rem;
+}
+
+.job { border: 1px solid rgba(var(--tint), .14); background: rgba(var(--tint), .05); }
+/* Dashed, so an opening reads as space rather than as another booking. */
+.gap { border: 1px dashed rgba(74, 222, 128, .45); color: rgba(var(--tint), .72); }
+
+.rowTime { flex: 0 0 auto; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--mute-t55); }
+.rowLabel { flex: 1 1 auto; }
+
+/* --- the route ------------------------------------------------------------ */
+
+.map { width: 100%; height: auto; border-radius: 10px; background: rgba(var(--tint), .04); }
+.zone { fill: rgba(74, 222, 128, .09); stroke: rgba(74, 222, 128, .5); stroke-width: 1.5; stroke-dasharray: 6 5; }
+.route { fill: none; stroke: #f97316; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+.stop { fill: #f97316; stroke: rgba(0, 0, 0, .35); stroke-width: 1.5; }
+.stopNum { fill: #fff; font-size: 13px; font-weight: 800; }
+
+.legend { display: grid; gap: .35rem; margin: 0; padding: 0; list-style: none; font-size: .78rem; color: rgba(var(--tint), .7); }
+.legend li { display: flex; align-items: center; gap: .45rem; }
+.keyStop { width: 11px; height: 11px; border-radius: 50%; background: #f97316; }
+.keyZone { width: 11px; height: 11px; border-radius: 50%; border: 1.5px dashed rgba(74, 222, 128, .7); }
+
+/* --- the rules ------------------------------------------------------------ */
+
+.rules { display: grid; gap: .45rem; margin: 0; padding: 0; list-style: none; font-size: .85rem; line-height: 1.45; }
+.rules li { position: relative; padding-left: 1.4rem; }
+.rules li::before {
+  content: '';
+  position: absolute;
+  left: .25rem;
+  top: .45em;
+  width: .42rem;
+  height: .72rem;
+  border: solid rgba(74, 222, 128, .9);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.approve {
+  margin: 0;
+  padding: .7rem .8rem;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--tint), .12);
+  background: rgba(var(--tint), .05);
+  font-size: .84rem;
+  line-height: 1.5;
+}
+
+.figures { display: grid; gap: .5rem; margin: auto 0 0; }
+.figures > div { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; }
+.figures dt { font-size: .8rem; color: rgba(var(--tint), .62); }
+.figures dd { margin: 0; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 640px) {
+  .grid { grid-template-columns: 1fr; }
+}

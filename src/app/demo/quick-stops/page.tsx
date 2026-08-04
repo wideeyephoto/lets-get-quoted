@@ -1,7 +1,9 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Icon } from '@/app/dashboard/schedule/booking/icons';
+import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { DEMO_QUICK_STOPS, DEMO_SITE_HOST } from '@/lib/demo-data';
+import QuickStopHeaderExplainer from './QuickStopHeaderExplainer';
 
 export const metadata = { title: 'Quick Stops — demo' };
 export const dynamic = 'force-dynamic';
@@ -41,10 +43,22 @@ function clockLabel(hhmm: string): string {
   return minutes ? `${hour12}:${String(minutes).padStart(2, '0')} ${period}` : `${hour12} ${period}`;
 }
 
-export default function DemoQuickStopsPage() {
+export default async function DemoQuickStopsPage() {
   const { demand } = DEMO_QUICK_STOPS;
   const acceptRate = Math.round((demand.accepted / demand.asked) * 100);
   const waiting = DEMO_QUICK_STOPS.requests.filter((request) => request.status === 'waiting');
+
+  // The explainer below is for somebody meeting Quick Stops for the first time.
+  // A signed-in contractor gets the full one on their own page and does not need
+  // the pitch twice, so it is logged-OUT only. A session read failure means we
+  // cannot prove they're signed in — show it, which is the harmless direction.
+  let isLoggedIn = false;
+  try {
+    const { data } = await createSupabaseServerClient().auth.getUser();
+    isLoggedIn = Boolean(data.user);
+  } catch {
+    isLoggedIn = false;
+  }
 
   return (
     <main className="wide-shell workspace-shell bset">
@@ -66,6 +80,16 @@ export default function DemoQuickStopsPage() {
           View booking page <Icon name="external" />
         </span>
       </header>
+
+      {!isLoggedIn && (
+        <QuickStopHeaderExplainer
+          feeCents={DEMO_QUICK_STOPS.feeCents}
+          radiusMiles={DEMO_QUICK_STOPS.radiusMiles}
+          cutoffTime={DEMO_QUICK_STOPS.cutoffTime}
+          maxPerDay={DEMO_QUICK_STOPS.maxPerDay}
+          todayTaken={DEMO_QUICK_STOPS.todayTaken}
+        />
+      )}
 
       <section className="bset-master">
         <span className="bset-master-switch">
