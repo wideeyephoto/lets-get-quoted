@@ -1,279 +1,564 @@
 import Link from 'next/link';
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import { formatMoney } from '@/lib/jobs';
-import { buildInsights, type Delta } from '@/lib/insights';
+import { buildInsights, resolvePeriod, PERIOD_PRESETS, type Delta, type Insights } from '@/lib/insights';
 import { loadArrivalAnalytics } from '@/lib/arrival-analytics-data';
 import ArrivalPerformance from './ArrivalPerformance';
 
-const WINDOWS: { key: string; label: string; days: number }[] = [
-  { key: '30', label: '30 days', days: 30 },
-  { key: '90', label: '90 days', days: 90 },
-  { key: '365', label: '12 months', days: 365 },
-  { key: 'all', label: 'All time', days: 0 },
-];
+export const metadata = {
+  title: 'Insights',
+  description: 'What you earned, where work is getting stuck, and what to improve next.',
+};
 
-// A small ▲/▼ pill showing change vs the previous equal window. "Higher is better"
-// for every metric it's used on (collected, profit, win rate), so up is always green.
-function DeltaPill({ delta }: { delta: Delta | undefined }) {
+/**
+ * A ▲/▼ pill against the previous equal period.
+ *
+ * `tone` is separate from direction on purpose. Costs rising is an UP arrow and
+ * bad news; profit rising is an up arrow and good news. One component that
+ * paints every up arrow green would quietly congratulate a contractor on
+ * spending more.
+ */
+function DeltaPill({ delta, tone = 'up-good', unit = '%' }: { delta: Delta | undefined; tone?: 'up-good' | 'up-bad'; unit?: string }) {
   if (!delta) return null;
   if (delta.pct === null) {
-    return delta.direction === 'up' ? <span className="metric-delta up">New</span> : null;
+    return delta.direction === 'up' ? <span className="ins-delta is-good">New</span> : null;
   }
-  const glyph = delta.direction === 'up' ? '▲' : delta.direction === 'down' ? '▼' : '–';
+  if (delta.direction === 'flat') return <span className="ins-delta is-flat">– no change</span>;
+  const good = tone === 'up-good' ? delta.direction === 'up' : delta.direction === 'down';
+  const glyph = delta.direction === 'up' ? '↑' : '↓';
   return (
-    <span className={`metric-delta ${delta.direction}`}>
-      {glyph} {Math.abs(delta.pct)}%
+    <span className={`ins-delta ${good ? 'is-good' : 'is-bad'}`}>
+      {glyph} {Math.abs(delta.pct)}{unit === 'pp' ? 'pp' : '%'} <em>vs previous period</em>
     </span>
   );
 }
 
-export default async function InsightsPage({ searchParams }: { searchParams: { window?: string } }) {
-  const { supabase, accountId } = await requireOwnerContext();
+function periodHref(key: string): string {
+  return `/dashboard/insights?window=${key}`;
+}
 
-  const selected = WINDOWS.find((option) => option.key === searchParams.window) ?? WINDOWS[1];
-  const insights = await buildInsights(supabase, accountId, selected.days);
-  // job_tracking is owner-scoped by RLS; this page is already inside
-  // requireOwnerContext. "All time" caps at two years — arrival habits from
-  // three years ago say nothing about this week's crew.
-  const arrivals = await loadArrivalAnalytics(createAdminClient(), accountId, selected.days || 730);
+/** A number the page can't honestly produce yet, said as such. */
+function Unknown({ hint }: { hint: string }) {
+  return <span className="ins-unknown" title={hint}>—</span>;
+}
 
-  const leadsTop = Math.max(1, insights.funnel[0].count);
-  const marginPct = Math.round(insights.margin * 100);
-  const costTotal = Math.max(1, insights.costs);
-  const materialsWidth = Math.round((insights.materialsCost / costTotal) * 100);
-  const laborWidth = 100 - materialsWidth;
-  const isLoss = insights.grossProfit < 0;
-  const hasRevenueTrend = insights.revenueByMonth.some((month) => month.total > 0);
+function hours(value: number | null): string {
+  if (value === null) return '—';
+  if (value < 1) return `${Math.round(value * 60)} min`;
+  if (value < 48) return `${value.toFixed(1)} hrs`;
+  return `${(value / 24).toFixed(1)} days`;
+}
+
+/* -------------------------------------------------------------------------- */
+
+function ExecutiveSummary({ insights }: { insights: Insights }) {
+  const { summary } = insights;
+  const isLoss = summary.profit < 0;
+  // Three bars on one scale, not a stacked one.
+  //
+  // A stack only tells the truth while costs fit inside revenue. Spend more
+  // than you collect and the costs segment has to be clamped at 100% — which
+  // is exactly the month you most need to see that it didn't fit. Measured on
+  // a real account: $5,055 collected against $10,626 of costs rendered as two
+  // equal bars and a legend claiming "Costs (100%)".
+  const revenue = Math.max(summary.revenue, 0);
+  const scale = Math.max(revenue, summary.costs, Math.abs(summary.profit), 1);
+  const share = (value: number) => Math.max(0, Math.round((value / scale) * 100));
+  // Percentages are OF REVENUE and deliberately uncapped: costs at 210% of what
+  // came in is the number, and rounding it down to 100 hides the whole problem.
+  const ofRevenue = (value: number) => (revenue > 0 ? `${Math.round((value / revenue) * 100)}%` : '—');
+  const bars = [
+    { key: 'revenue', label: 'Revenue', value: summary.revenue, pct: revenue > 0 ? '100%' : '—' },
+    { key: 'costs', label: 'Costs', value: summary.costs, pct: ofRevenue(summary.costs) },
+    { key: 'profit', label: 'Profit', value: summary.profit, pct: ofRevenue(summary.profit) },
+  ];
 
   return (
-    <main className="wide-shell workspace-shell">
-      <section className={`workspace-hero panel${insights.collected > 0 ? '' : ' workspace-hero-solo'}`}>
-        <div className="workspace-hero-copy">
-          <p className="eyebrow">Insights</p>
-          <h1 className="workspace-title">Profit, cash &amp; conversion</h1>
-          <p className="workspace-lead">
-            What you collected, what you kept, and what&rsquo;s still owed — {insights.windowLabel.toLowerCase()}.
+    <section className="panel ins-summary">
+      <div className="ins-summary-main">
+        <p className="eyebrow">Summary — {insights.windowLabel}</p>
+        <h2 className="ins-summary-headline">
+          {summary.revenue === 0
+            ? 'No payments collected in this period'
+            : isLoss
+              // Both the headline and the figure below format the SAME absolute
+              // value, so they can't round to two different dollar amounts and
+              // read as a $1 error in the arithmetic.
+              ? `You spent ${formatMoney(Math.abs(summary.profit))} more than you collected`
+              : `You kept ${formatMoney(summary.profit)} ${insights.period.sentenceLabel}`}
+        </h2>
+
+        <div className="ins-figures">
+          <div className="ins-figure">
+            <span className="ins-figure-label">Revenue</span>
+            <strong className="ins-figure-value">{formatMoney(summary.revenue)}</strong>
+            <DeltaPill delta={summary.deltas.revenue} />
+          </div>
+          <div className="ins-figure">
+            <span className="ins-figure-label">Costs</span>
+            <strong className="ins-figure-value">{formatMoney(summary.costs)}</strong>
+            <DeltaPill delta={summary.deltas.costs} tone="up-bad" />
+          </div>
+          <div className="ins-figure">
+            <span className="ins-figure-label">Profit</span>
+            <strong className={`ins-figure-value${isLoss ? ' is-negative' : ' is-positive'}`}>
+              {isLoss ? `−${formatMoney(Math.abs(summary.profit))}` : formatMoney(summary.profit)}
+            </strong>
+            <DeltaPill delta={summary.deltas.profit} />
+          </div>
+          <div className="ins-figure">
+            <span className="ins-figure-label">Profit margin</span>
+            <strong className={`ins-figure-value${isLoss ? ' is-negative' : ''}`}>{summary.marginPct}%</strong>
+            <DeltaPill delta={summary.deltas.margin} unit="pp" />
+          </div>
+        </div>
+
+        {!insights.costsRecorded && summary.revenue > 0 ? (
+          <p className="ins-caveat">
+            No costs are recorded in this period, so &ldquo;profit&rdquo; here is simply your revenue.{' '}
+            <Link href="/dashboard/jobs">Add costs to a job</Link> and these figures become real.
           </p>
-          <div className="insight-window-tabs" role="tablist" aria-label="Time window">
-            {WINDOWS.map((option) => (
-              <Link
-                key={option.key}
-                href={`/dashboard/insights?window=${option.key}`}
-                className={`insight-window-tab${option.key === selected.key ? ' is-active' : ''}`}
-                aria-selected={option.key === selected.key}
-                role="tab"
-              >
-                {option.label}
-              </Link>
+        ) : null}
+      </div>
+
+      <div className="ins-breakdown">
+        <p className="eyebrow">Revenue breakdown</p>
+        {revenue > 0 || summary.costs > 0 ? (
+          <div
+            className="ins-splits"
+            role="img"
+            aria-label={`Of ${formatMoney(summary.revenue)} collected, ${formatMoney(summary.costs)} went on costs, leaving ${formatMoney(summary.profit)}.`}
+          >
+            {bars.map((bar) => (
+              <div className="ins-split" key={bar.key}>
+                <span className="ins-split-label"><i className={`ins-dot is-${bar.key}`} /> {bar.label}</span>
+                <div className="ins-split-track">
+                  <div
+                    className={`ins-split-fill is-${bar.key}${bar.value < 0 ? ' is-negative' : ''}`}
+                    style={{ width: `${Math.max(bar.value === 0 ? 0 : 2, share(Math.abs(bar.value)))}%` }}
+                  />
+                </div>
+                <b className={bar.value < 0 ? 'is-negative' : undefined}>
+                  {bar.value < 0 ? `−${formatMoney(Math.abs(bar.value))}` : formatMoney(bar.value)}
+                </b>
+                <span className="ins-split-pct">{bar.pct}</span>
+              </div>
             ))}
           </div>
-          <p style={{ marginTop: '0.85rem' }}>
-            <Link href="/dashboard/settings#finances" className="btn secondary">Tax &amp; finance reports →</Link>
-          </p>
-        </div>
-        {/* Margin is the number that answers "am I making money", and it was sitting
-            in the fourth card below the fold while the hero ran an empty column. */}
-        {insights.collected > 0 ? (
-          <div className="insight-hero-visual">
-            <div className="insight-ring-wrap">
-              <div
-                className={`insight-ring${isLoss ? ' is-negative' : ''}`}
-                style={{ ['--ring' as string]: Math.max(0, Math.min(100, marginPct)) }}
-                role="img"
-                aria-label={`Margin ${marginPct}% — ${formatMoney(insights.grossProfit)} kept of ${formatMoney(insights.collected)} collected.`}
-              />
-              <div className="insight-ring-label">
-                <span className="insight-ring-value">{marginPct}%</span>
-                <span className="insight-ring-caption">margin</span>
-              </div>
-            </div>
-            <p className="insight-ring-foot">
-              You kept <strong>{formatMoney(insights.grossProfit)}</strong> of the {formatMoney(insights.collected)} you
-              collected.
-            </p>
+        ) : (
+          <p className="ins-empty-note">Once a payment lands, this splits your revenue into what it cost and what you kept.</p>
+        )}
+
+        <div className="ins-subfigures">
+          <div>
+            <span className="ins-figure-label">Quoted</span>
+            <strong>{formatMoney(summary.quotedRevenue)}</strong>
+            <DeltaPill delta={summary.deltas.quotedRevenue} />
           </div>
-        ) : null}
-      </section>
+          <div>
+            <span className="ins-figure-label">Approved</span>
+            <strong>{formatMoney(summary.approvedRevenue)}</strong>
+            <DeltaPill delta={summary.deltas.approvedRevenue} />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
+export default async function InsightsPage({
+  searchParams,
+}: {
+  searchParams: { window?: string; from?: string; to?: string };
+}) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const period = resolvePeriod(searchParams);
+
+  const { data: account } = await supabase
+    .from('accounts')
+    .select('arrival_updates_enabled')
+    .eq('id', accountId)
+    .maybeSingle();
+
+  // job_tracking is owner-scoped by RLS; this page is already inside
+  // requireOwnerContext. Arrival habits are measured over the same window.
+  const arrivals = await loadArrivalAnalytics(createAdminClient(), accountId, period.days);
+  const insights = await buildInsights(supabase, accountId, period, {
+    arrivalUpdatesOn: Boolean(account?.arrival_updates_enabled),
+    hasArrivalData: arrivals.summary.trips > 0,
+  });
+
+  const leadsTop = Math.max(1, insights.funnel[0].count);
+  const hasRevenueTrend = insights.revenueByMonth.some((month) => month.total > 0);
+  const hasJobValueTrend = insights.revenueByMonth.some((month) => month.avgJobValue > 0);
+  const agingTotal = insights.cash.aging.reduce((sum, band) => sum + band.total, 0);
+  const openTop = Math.max(1, ...insights.opportunity.quotes.map((quote) => quote.amount));
+  const sourceTop = Math.max(1, ...insights.leadSources.map((row) => row.leads));
+
+  // The average-job-value line, as a polyline over a 100×100 viewBox.
+  const jvPoints = insights.revenueByMonth
+    .map((month, index) => {
+      const x = insights.revenueByMonth.length > 1 ? (index / (insights.revenueByMonth.length - 1)) * 100 : 50;
+      const y = 100 - (month.avgJobValue / insights.peakAvgJobValue) * 88 - 6;
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
+    })
+    .join(' ');
+
+  return (
+    <main className="wide-shell workspace-shell ins-shell">
+      <header className="ins-head">
+        <div>
+          <h1 className="ins-title">Insights</h1>
+          <p className="ins-lead">See what you earned, where work is getting stuck, and what to improve next.</p>
+        </div>
+        <Link className="ins-export" href="/dashboard/settings#finances">
+          <span aria-hidden="true">⬇</span> Export report
+        </Link>
+      </header>
+
+      <div className="ins-periods">
+        <div className="ins-period-tabs" role="tablist" aria-label="Reporting period">
+          {PERIOD_PRESETS.map((option) => (
+            <Link
+              key={option.key}
+              href={periodHref(option.key)}
+              role="tab"
+              aria-selected={!period.custom && option.key === period.key}
+              className={`ins-period-tab${!period.custom && option.key === period.key ? ' is-active' : ''}`}
+            >
+              {option.label}
+            </Link>
+          ))}
+        </div>
+        {/* A GET form, so a custom range is a shareable URL rather than state
+            that dies with the tab. */}
+        <form className={`ins-range${period.custom ? ' is-active' : ''}`} action="/dashboard/insights" method="get">
+          <label htmlFor="ins-from">From</label>
+          <input id="ins-from" type="date" name="from" defaultValue={searchParams.from ?? ''} />
+          <label htmlFor="ins-to">To</label>
+          <input id="ins-to" type="date" name="to" defaultValue={searchParams.to ?? ''} />
+          <button type="submit">Apply</button>
+          {period.custom ? <Link href={periodHref('90')} className="ins-range-clear">Clear</Link> : null}
+        </form>
+      </div>
 
       {!insights.hasAnyData ? (
         <section className="panel workspace-section-card">
           <p className="empty-state">
-            No data in this window yet. As leads come in, quotes get approved, and payments are
-            collected, your profit, cash position, and funnel will appear here.
+            Nothing to measure yet. As leads arrive, quotes go out and payments land, your profit, cash
+            position and funnel appear here.
           </p>
         </section>
       ) : null}
 
-      <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading">
-          <p className="eyebrow">Money</p>
-          <h2>What you kept — {insights.windowLabel.toLowerCase()}</h2>
-        </div>
-        {/* Four cards in a three-column grid orphaned the fourth on its own row. */}
-        <div className="workspace-metric-grid four-up">
-          <article className="workspace-metric-card accent">
-            <span className="workspace-metric-label">Collected</span>
-            <strong className="workspace-metric-value">
-              {formatMoney(insights.collected)} <DeltaPill delta={insights.deltas?.collected} />
-            </strong>
-            <p className="workspace-metric-note">Payments paid in this window.</p>
-          </article>
-          <article className={`workspace-metric-card${isLoss ? ' is-loss' : ''}`}>
-            <span className="workspace-metric-label">Gross profit</span>
-            {/* A loss printed in the same white as a profit reads as a positive
-                number at a glance. */}
-            <strong className={`workspace-metric-value${isLoss ? ' is-negative' : ''}`}>
-              {formatMoney(insights.grossProfit)} <DeltaPill delta={insights.deltas?.grossProfit} />
-            </strong>
-            <p className="workspace-metric-note">Collected minus {formatMoney(insights.costs)} in costs.</p>
-          </article>
-          <article className="workspace-metric-card">
-            <span className="workspace-metric-label">Margin</span>
-            <strong className={`workspace-metric-value${isLoss ? ' is-negative' : ''}`}>{marginPct}%</strong>
-            <p className="workspace-metric-note">Share of every dollar you keep.</p>
-          </article>
-          <article className="workspace-metric-card">
-            <span className="workspace-metric-label">Win rate</span>
-            <strong className="workspace-metric-value">
-              {insights.winRate}% <DeltaPill delta={insights.deltas?.winRate} />
-            </strong>
-            <p className="workspace-metric-note">Quotes that turned into won work.</p>
-          </article>
-        </div>
+      <ExecutiveSummary insights={insights} />
 
-        {insights.costs > 0 ? (
-          <div className="cost-split">
-            <div className="cost-split-heading">
-              <span>Where it went</span>
-              <span className="cost-split-total">{formatMoney(insights.costs)} in costs</span>
+      <div className="ins-row ins-row-2">
+        <section className="panel ins-card">
+          <p className="ins-card-head"><span className="ins-chip is-cash" aria-hidden="true">$</span> Cash position</p>
+          <div className="ins-pair">
+            <div>
+              <span className="ins-figure-label">Outstanding invoices</span>
+              <strong className="ins-big">{formatMoney(insights.cash.outstanding.total)}</strong>
+              <span className="ins-sub">
+                {insights.cash.outstanding.count === 0
+                  ? 'Nothing outstanding'
+                  : `${insights.cash.outstanding.count} invoice${insights.cash.outstanding.count === 1 ? '' : 's'} unpaid`}
+              </span>
             </div>
-            <div className="cost-split-track" role="img" aria-label={`Costs: ${formatMoney(insights.materialsCost)} materials, ${formatMoney(insights.laborCost)} labor`}>
-              <div className="cost-split-seg materials" style={{ width: `${materialsWidth}%` }} />
-              <div className="cost-split-seg labor" style={{ width: `${laborWidth}%` }} />
-            </div>
-            <div className="cost-split-legend">
-              <span><i className="dot materials" /> Materials &amp; supplies {formatMoney(insights.materialsCost)}</span>
-              <span><i className="dot labor" /> Labor {formatMoney(insights.laborCost)}</span>
+            <div>
+              <span className="ins-figure-label">Recurring / mo</span>
+              <strong className="ins-big">{formatMoney(insights.cash.mrr.monthly)}</strong>
+              <span className="ins-sub">
+                {insights.cash.mrr.activePlans === 0 ? 'No active agreements' : 'From active agreements'}
+              </span>
             </div>
           </div>
-        ) : null}
-      </section>
 
-      <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading">
-          <p className="eyebrow">Cash position</p>
-          <h2>As of today</h2>
-        </div>
-        <div className="workspace-metric-grid condensed">
-          <Link href="/dashboard/jobs" className="workspace-metric-card metric-card-link">
-            <span className="workspace-metric-label">Unpaid invoices</span>
-            <strong className="workspace-metric-value">{formatMoney(insights.outstanding.total)}</strong>
-            <p className="workspace-metric-note">
-              {insights.outstanding.count === 0
-                ? 'Nothing outstanding — you’re all caught up.'
-                : `${insights.outstanding.count} invoice${insights.outstanding.count === 1 ? '' : 's'} awaiting payment.`}
-            </p>
-          </Link>
-          <Link href="/dashboard/recurring" className="workspace-metric-card metric-card-link">
-            <span className="workspace-metric-label">Recurring / mo</span>
-            <strong className="workspace-metric-value">{formatMoney(insights.mrr.monthly)}</strong>
-            <p className="workspace-metric-note">
-              {insights.mrr.activePlans === 0
-                ? 'No active recurring plans yet.'
-                : `${insights.mrr.activePlans} active plan${insights.mrr.activePlans === 1 ? '' : 's'} on autopilot.`}
-            </p>
-          </Link>
-        </div>
-      </section>
-
-      <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading">
-          <p className="eyebrow">Conversion funnel</p>
-          <h2>Lead → Quoted → Won</h2>
-        </div>
-        <div className="funnel">
-          {insights.funnel.map((stage, index) => {
-            const width = Math.max(4, Math.round((stage.count / leadsTop) * 100));
-            const previous = index > 0 ? insights.funnel[index - 1] : null;
-            // A percentage tells you the shape; the count tells you the cost. Both,
-            // because "38% of leads" and "5 didn't get quoted" land differently.
-            const lost = previous ? previous.count - stage.count : 0;
-            return (
-              <div className="funnel-stage" key={stage.key}>
-                <div className="funnel-stage-head">
-                  <span className="funnel-stage-label">{stage.label}</span>
-                  <span className="funnel-stage-count">{stage.count.toLocaleString()}</span>
-                </div>
-                <div className="funnel-track">
-                  <div className={`funnel-bar funnel-bar-${stage.key}`} style={{ width: `${width}%` }} />
-                </div>
-                <div className="funnel-stage-foot">
-                  <span className="funnel-stage-rate">
-                    {previous ? `${stage.rateOfPrev}% of ${previous.label.toLowerCase()}` : 'Top of funnel'}
-                  </span>
-                  {lost > 0 ? (
-                    <span className="funnel-stage-drop">
-                      −{lost.toLocaleString()} dropped off
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="workspace-metric-grid condensed insight-secondary">
-          <article className="workspace-metric-card">
-            <span className="workspace-metric-label">Lead → won</span>
-            <strong className="workspace-metric-value">{insights.overallConversion}%</strong>
-            <p className="workspace-metric-note">Overall conversion from every lead.</p>
-          </article>
-          <article className="workspace-metric-card">
-            <span className="workspace-metric-label">Avg quote value</span>
-            <strong className="workspace-metric-value">{formatMoney(insights.avgQuoteValue)}</strong>
-            <p className="workspace-metric-note">Average quoted amount across jobs.</p>
-          </article>
-        </div>
-      </section>
-
-      <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading">
-          <p className="eyebrow">Revenue &amp; profit</p>
-          <h2>Collected, last 6 months</h2>
-        </div>
-        {/* Six months of zeroes used to render as a 190px void with month names
-            under it, which reads as a broken chart rather than an empty one. */}
-        {hasRevenueTrend ? (
-          <>
-            <div className="revenue-chart" role="img" aria-label="Monthly collected revenue and profit for the last six months">
-              <div className="revenue-chart-grid" aria-hidden="true" />
-              {insights.revenueByMonth.map((month) => {
-                const height = Math.max(2, Math.round((month.total / insights.peakMonthTotal) * 100));
-                // Profit's share of the month's collected total — the solid "kept" portion.
-                const profitShare = month.total > 0 ? Math.max(0, Math.min(100, Math.round((month.profit / month.total) * 100))) : 0;
-                const isPeak = month.total > 0 && month.total === insights.peakMonthTotal;
-                return (
-                  <div className={`revenue-col${isPeak ? ' is-peak' : ''}`} key={month.key}>
-                    <span className="revenue-col-value">{month.total > 0 ? formatMoney(month.total) : ''}</span>
-                    <div className="revenue-col-track">
-                      <div className="revenue-col-bar" style={{ height: `${height}%` }}>
-                        <div className="revenue-col-profit" style={{ height: `${profitShare}%` }} />
+          {agingTotal > 0 ? (
+            <div className="ins-aging">
+              <p className="ins-aging-head">
+                How long it&apos;s been owed
+                <span>oldest {insights.cash.oldestUnpaidDays} days</span>
+              </p>
+              <div className="ins-aging-bars">
+                {insights.cash.aging.map((band) => {
+                  const share = Math.round((band.total / agingTotal) * 100);
+                  return (
+                    <div className="ins-aging-band" key={band.key} title={`${band.label}: ${formatMoney(band.total)}`}>
+                      <div className="ins-aging-track">
+                        <div className={`ins-aging-fill band-${band.tone}`} style={{ height: `${band.total > 0 ? Math.max(6, share) : 0}%` }} />
                       </div>
+                      <span className="ins-aging-label">{band.label}</span>
+                      <span className="ins-aging-value">{band.count > 0 ? formatMoney(band.total) : '—'}</span>
                     </div>
-                    <span className="revenue-col-label">{month.label}</span>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-            <div className="cost-split-legend revenue-legend">
-              <span><i className="dot collected" /> Collected</span>
-              <span><i className="dot profit" /> Profit kept</span>
-            </div>
-          </>
-        ) : (
-          <div className="revenue-chart-empty">
-            <strong>No payments collected yet</strong>
-            <span>Once invoices start getting paid, six months of collected revenue and the profit you kept show up here.</span>
+          ) : null}
+
+          <div className="ins-card-foot">
+            <span>
+              {insights.cash.medianDaysToPayment !== null
+                ? `Typically paid in ${insights.cash.medianDaysToPayment.toFixed(1)} days of being asked.`
+                : 'Healthy cash flow requires consistent collections.'}
+            </span>
+            <Link href="/dashboard/invoices">View invoices</Link>
           </div>
+        </section>
+
+        <section className="panel ins-card">
+          <p className="ins-card-head"><span className="ins-chip is-open" aria-hidden="true">◷</span> Open opportunity</p>
+          <div className="ins-open">
+            <div>
+              <span className="ins-figure-label">Open quotes</span>
+              <strong className="ins-big">{formatMoney(insights.opportunity.total)}</strong>
+              <span className="ins-sub">
+                {insights.opportunity.count === 0
+                  ? 'No quotes awaiting a decision'
+                  : `${insights.opportunity.count} quote${insights.opportunity.count === 1 ? '' : 's'} awaiting a decision`}
+              </span>
+              {insights.opportunity.staleCount > 0 ? (
+                <span className="ins-warn">{insights.opportunity.staleCount} sent over two weeks ago</span>
+              ) : null}
+            </div>
+            <div className="ins-open-chart">
+              <p className="eyebrow">Potential revenue</p>
+              {insights.opportunity.quotes.length > 0 ? (
+                <div className="ins-minibars" role="img" aria-label="The largest open quotes, by value">
+                  <span className="ins-minibars-max">{formatMoney(openTop)}</span>
+                  <div className="ins-minibars-plot">
+                    {insights.opportunity.quotes.map((quote) => (
+                      <div
+                        className="ins-minibar"
+                        key={quote.id}
+                        style={{ height: `${Math.max(8, Math.round((quote.amount / openTop) * 100))}%` }}
+                        title={`${quote.clientName} — ${formatMoney(quote.amount)}, ${quote.ageDays} days old`}
+                      />
+                    ))}
+                  </div>
+                  <span className="ins-minibars-min">$0</span>
+                </div>
+              ) : (
+                <p className="ins-empty-note">Quotes waiting on a decision show up here.</p>
+              )}
+            </div>
+            <Link className="ins-cta" href="/dashboard/jobs?status=new_lead">View open quotes</Link>
+          </div>
+        </section>
+      </div>
+
+      <section className="panel ins-card ins-funnel-card">
+        <p className="ins-card-head">Lead → Quoted → Won</p>
+        <div className="ins-funnel-row">
+          <div className="ins-funnel">
+            {insights.funnel.map((stage) => (
+              <div className={`ins-funnel-stage is-${stage.key}`} key={stage.key} style={{ flexGrow: Math.max(0.6, stage.count / leadsTop) }}>
+                <strong>{stage.count.toLocaleString()}</strong>
+                <span>{stage.label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="ins-funnel-rates">
+            <div>
+              <span className="ins-figure-label">Lead → Quote</span>
+              <strong>{insights.leadToQuote}%</strong>
+            </div>
+            <div>
+              <span className="ins-figure-label">Quote → Win</span>
+              <strong>{insights.winRate}%</strong>
+            </div>
+            <div>
+              <span className="ins-figure-label">Overall win rate</span>
+              <strong>{insights.overallConversion}%</strong>
+            </div>
+          </div>
+          {insights.drop ? (
+            <div className="ins-drop">
+              <span className="ins-drop-mark" aria-hidden="true">↘</span>
+              <div>
+                <strong>Biggest drop: {insights.drop.from} → {insights.drop.to}</strong>
+                <span>
+                  {insights.drop.lostPct}% of {insights.drop.from.toLowerCase()} never became {insights.drop.to.toLowerCase()}
+                  {insights.opportunity.total > 0 && insights.drop.to === 'Wins'
+                    ? ` — ${insights.opportunity.count} open quotes could recover up to ${formatMoney(insights.opportunity.total)}.`
+                    : '.'}
+                </span>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </section>
+
+      <div className="ins-row ins-row-4">
+        <section className="panel ins-card">
+          <p className="ins-card-head"><span className="ins-chip is-chart" aria-hidden="true">▥</span> Collected, last 6 months</p>
+          {hasRevenueTrend ? (
+            <>
+              <strong className="ins-big">{formatMoney(insights.revenueByMonth.reduce((sum, m) => sum + m.total, 0))}</strong>
+              <div className="ins-bars" role="img" aria-label="Collected revenue and costs by month for the last six months">
+                {insights.revenueByMonth.map((month) => (
+                  <div className="ins-bar-col" key={month.key} title={`${month.label}: ${formatMoney(month.total)} collected, ${formatMoney(month.costs)} costs`}>
+                    <div className="ins-bar-stack">
+                      <div className="ins-bar is-revenue" style={{ height: `${Math.round((month.total / insights.peakMonthTotal) * 100)}%` }} />
+                      <div className="ins-bar is-costs" style={{ height: `${Math.round((month.costs / insights.peakMonthTotal) * 100)}%` }} />
+                    </div>
+                    <span>{month.label}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="ins-mini-legend">
+                <span><i className="ins-dot is-revenue" /> Collected</span>
+                <span><i className="ins-dot is-costs" /> Costs</span>
+              </div>
+            </>
+          ) : (
+            <p className="ins-empty-note">Once invoices start getting paid, six months of collected revenue appear here.</p>
+          )}
+        </section>
+
+        <section className="panel ins-card">
+          <p className="ins-card-head"><span className="ins-chip is-value" aria-hidden="true">◎</span> Average job value</p>
+          <strong className="ins-big">{formatMoney(insights.jobValue.average)}</strong>
+          <p className="ins-sub">
+            {insights.jobValue.count > 0 ? (
+              <>Median {formatMoney(insights.jobValue.median)} across {insights.jobValue.count} quoted job{insights.jobValue.count === 1 ? '' : 's'}</>
+            ) : (
+              'No jobs quoted in this period'
+            )}
+          </p>
+          <DeltaPill delta={insights.jobValue.delta} />
+          {hasJobValueTrend ? (
+            <>
+              <svg className="ins-line" viewBox="0 0 100 100" preserveAspectRatio="none" role="img" aria-label="Average job value by month over the last six months">
+                <polyline points={jvPoints} />
+                {insights.revenueByMonth.map((month, index) => {
+                  if (month.avgJobValue <= 0) return null;
+                  const x = insights.revenueByMonth.length > 1 ? (index / (insights.revenueByMonth.length - 1)) * 100 : 50;
+                  const y = 100 - (month.avgJobValue / insights.peakAvgJobValue) * 88 - 6;
+                  return <circle key={month.key} cx={x} cy={y} r="2.4" />;
+                })}
+              </svg>
+              <div className="ins-line-labels">
+                {insights.revenueByMonth.map((month) => <span key={month.key}>{month.label}</span>)}
+              </div>
+            </>
+          ) : (
+            <p className="ins-empty-note">Quote a few jobs and the trend appears here.</p>
+          )}
+        </section>
+
+        <section className="panel ins-card">
+          <p className="ins-card-head"><span className="ins-chip is-ok" aria-hidden="true">✓</span> Arrival reliability</p>
+          {arrivals.summary.onTimeRate !== null ? (
+            <>
+              <strong className="ins-big">{arrivals.summary.onTimeRate}%</strong>
+              <p className="ins-sub">On-time arrival rate</p>
+              <div className="ins-meter" role="img" aria-label={`On time on ${arrivals.summary.onTimeRate}% of measured trips`}>
+                <div className="ins-meter-fill" style={{ width: `${arrivals.summary.onTimeRate}%` }} />
+              </div>
+              <div className="ins-meter-scale"><span>0%</span><span>100%</span></div>
+              <p className="ins-sub">
+                {arrivals.summary.onTime} of {arrivals.summary.measured} trips arrived inside the window.
+              </p>
+              <Link className="ins-inline-link" href="#arrival-performance">Full arrival breakdown ↓</Link>
+            </>
+          ) : (
+            <>
+              <strong className="ins-big"><Unknown hint="No trip both promised a window and recorded an arrival yet." /></strong>
+              <p className="ins-sub">On-time arrival rate</p>
+              <p className="ins-empty-note">
+                This needs trips that both promised an arrival window and recorded an actual arrival. Send an
+                &ldquo;On my way&rdquo; from a job and it starts measuring.
+              </p>
+            </>
+          )}
+        </section>
+
+        <section className="panel ins-card">
+          <p className="ins-card-head"><span className="ins-chip is-speed" aria-hidden="true">◔</span> Customer responsiveness</p>
+          <div className="ins-stat-row">
+            <span className="ins-figure-label">Quote turnaround</span>
+            <strong className="ins-mid">
+              {insights.responsiveness.quoteTurnaroundHours !== null
+                ? hours(insights.responsiveness.quoteTurnaroundHours)
+                : <Unknown hint="Needs a lead that turned into a job whose quote was shared with the customer." />}
+            </strong>
+            <span className="ins-sub">
+              {insights.responsiveness.quoteTurnaroundSample > 0
+                ? `Lead in → quote sent, across ${insights.responsiveness.quoteTurnaroundSample} lead${insights.responsiveness.quoteTurnaroundSample === 1 ? '' : 's'}`
+                : 'Lead in → quote sent'}
+            </span>
+          </div>
+          <div className="ins-stat-row">
+            <span className="ins-figure-label">Payment response time</span>
+            <strong className="ins-mid">
+              {insights.responsiveness.paymentDays !== null
+                ? `${insights.responsiveness.paymentDays.toFixed(1)} days`
+                : <Unknown hint="Needs a payment that was requested and then paid." />}
+            </strong>
+            <span className="ins-sub">
+              {insights.responsiveness.paymentSample > 0
+                ? `Requested → paid, across ${insights.responsiveness.paymentSample} payment${insights.responsiveness.paymentSample === 1 ? '' : 's'}`
+                : 'Requested → paid'}
+            </span>
+          </div>
+        </section>
+      </div>
+
+      {insights.leadSources.length > 0 ? (
+        <section className="panel ins-card">
+          <p className="ins-card-head"><span className="ins-chip is-source" aria-hidden="true">◆</span> Where work comes from — {insights.windowLabel}</p>
+          <div className="ins-sources">
+            {insights.leadSources.map((row) => (
+              <div className="ins-source" key={row.source}>
+                <span className="ins-source-label">{row.label}</span>
+                <div className="ins-source-track">
+                  <div className="ins-source-fill" style={{ width: `${Math.max(4, Math.round((row.leads / sourceTop) * 100))}%` }} />
+                </div>
+                <span className="ins-source-count">{row.leads}</span>
+                <span className="ins-source-win">{row.won > 0 ? `${row.winRate}% won` : '—'}</span>
+              </div>
+            ))}
+          </div>
+          <p className="ins-sub">
+            Cost per lead needs advertising spend, which isn&apos;t recorded anywhere yet — so this ranks by
+            volume and win rate rather than pretending to know what a lead cost.
+          </p>
+        </section>
+      ) : null}
+
+      <section className="panel ins-card ins-actions-card">
+        <p className="eyebrow">What to do next</p>
+        <h2 className="ins-actions-title">Recommended actions</h2>
+        {insights.actions.length === 0 ? (
+          <p className="ins-empty-note">
+            Nothing is waiting on you — no open quotes, no unpaid invoices, no finished work left unbilled.
+          </p>
+        ) : (
+          <ul className="ins-actions">
+            {insights.actions.map((action) => (
+              <li className="ins-action" key={action.id}>
+                <span className={`ins-action-mark impact-${action.impact}`} aria-hidden="true">
+                  {action.impact >= 4 ? '!' : '•'}
+                </span>
+                <div className="ins-action-body">
+                  <strong>{action.title}</strong>
+                  <span>{action.detail}</span>
+                </div>
+                <span className="ins-action-impact">{action.impactLabel}</span>
+                <span className="ins-impact-meter" role="img" aria-label={action.impactLabel}>
+                  {[1, 2, 3, 4, 5].map((step) => (
+                    <i key={step} className={step <= action.impact ? 'is-on' : ''} />
+                  ))}
+                </span>
+                <Link className="ins-action-cta" href={action.href}>{action.cta}</Link>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 

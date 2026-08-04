@@ -66,11 +66,18 @@ const revenueByMonth: RevenueMonth[] = (() => {
   return MONTH_WEIGHTS.map((weight, i) => {
     const date = new Date(now.getFullYear(), now.getMonth() - (months - 1 - i), 1);
     const total = Math.round(RECENT_VOLUME * weight);
+    const profit = Math.round(total * (grossProfit / collected));
     return {
       key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
       label: date.toLocaleDateString('en-US', { month: 'short' }),
       total,
-      profit: Math.round(total * (grossProfit / collected)),
+      profit,
+      costs: total - profit,
+      // The demo's job values track its own average rather than being invented
+      // separately — a sample account whose numbers don't add up teaches the
+      // wrong thing about the product.
+      avgJobValue: Math.round(avgQuoteValue),
+      jobCount: Math.max(1, Math.round(total / Math.max(1, avgQuoteValue))),
     };
   });
 })();

@@ -19642,3 +19642,293 @@ a.bset-card { color: inherit; text-decoration: none; }
   background: rgba(var(--tint), 0.06);
 }
 .inbox-bubble-media a:hover img { border-color: rgba(var(--tint), 0.35); }
+
+/* ── Insights ────────────────────────────────────────────────────────────────
+   Every class here is prefixed .ins- and the page-specific ones descend from
+   .ins-shell. globals.css is 13k lines and names like .figure or .stack would
+   collide with something on another page within a month — see .portal-note. */
+.ins-shell { display: grid; gap: 1rem; }
+
+.ins-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.ins-shell .ins-title { margin: 0; font-size: 2rem; letter-spacing: -0.02em; }
+.ins-shell .ins-lead { margin: 0.3rem 0 0; color: var(--mute-t55); font-size: 0.92rem; }
+.ins-export {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  min-height: 40px; padding: 0.5rem 0.9rem;
+  border-radius: 10px; border: 1px solid rgba(var(--tint), 0.16);
+  background: rgba(var(--tint), 0.05); color: var(--text);
+  font-size: 0.86rem; font-weight: 600;
+}
+.ins-export:hover { border-color: rgba(255, 122, 33, 0.5); background: rgba(255, 122, 33, 0.1); }
+
+/* Period controls */
+.ins-periods { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
+.ins-period-tabs {
+  display: inline-flex; gap: 0.25rem; padding: 0.25rem;
+  border-radius: 12px; border: 1px solid rgba(var(--tint), 0.12); background: rgba(var(--tint), 0.04);
+}
+.ins-period-tab {
+  padding: 0.42rem 0.95rem; border-radius: 9px;
+  color: var(--mute-t60); font-size: 0.85rem; font-weight: 600;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.ins-period-tab:hover { color: var(--text); }
+.ins-period-tab.is-active { background: var(--accent); color: var(--on-accent); }
+.ins-range { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; font-size: 0.8rem; color: var(--mute-t50); }
+.ins-range label { font-weight: 600; }
+.ins-range input {
+  min-height: 34px; padding: 0.25rem 0.5rem;
+  border-radius: 9px; border: 1px solid rgba(var(--tint), 0.16);
+  background: rgba(var(--tint), 0.05); color: var(--text);
+  font-family: inherit; font-size: 0.8rem;
+}
+.ins-range button {
+  min-height: 34px; padding: 0.25rem 0.8rem;
+  border-radius: 9px; border: 1px solid rgba(var(--tint), 0.18);
+  background: rgba(var(--tint), 0.07); color: var(--text);
+  font-family: inherit; font-size: 0.8rem; font-weight: 700; cursor: pointer;
+}
+.ins-range button:hover { border-color: rgba(255, 122, 33, 0.5); }
+.ins-range.is-active input { border-color: rgba(255, 122, 33, 0.45); }
+.ins-range-clear { color: var(--mute-t50); text-decoration: underline; }
+
+/* Delta pill. Direction is an arrow; GOOD vs BAD is the colour, and they are
+   not the same question — costs up is an up arrow and bad news. */
+.ins-delta { display: inline-flex; align-items: baseline; gap: 0.3rem; font-size: 0.76rem; font-weight: 700; }
+.ins-delta em { font-style: normal; font-weight: 400; color: var(--mute-t45); }
+.ins-delta.is-good { color: var(--ink-lime-1); }
+.ins-delta.is-bad { color: var(--ink-orange-1); }
+.ins-delta.is-flat { color: var(--mute-t45); font-weight: 400; }
+.ins-unknown { color: var(--mute-t40); cursor: help; }
+
+/* Executive summary */
+.ins-summary { display: grid; grid-template-columns: 1.35fr 1fr; gap: 1.6rem; padding: 1.3rem 1.4rem; }
+.ins-shell .ins-summary-headline { margin: 0.35rem 0 1.2rem; font-size: 1.75rem; letter-spacing: -0.02em; line-height: 1.2; }
+.ins-figures { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
+.ins-figure { display: grid; gap: 0.25rem; align-content: start; padding-right: 0.8rem; border-right: 1px solid rgba(var(--tint), 0.09); }
+.ins-figure:last-child { border-right: 0; }
+.ins-figure-label { font-size: 0.78rem; color: var(--mute-t50); }
+.ins-figure-value { font-size: 1.55rem; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.ins-figure-value.is-positive { color: var(--ink-lime-1); }
+.ins-figure-value.is-negative { color: var(--ink-orange-1); }
+.ins-caveat { margin: 1rem 0 0; font-size: 0.8rem; line-height: 1.55; color: var(--gold-ink); }
+.ins-caveat a { color: inherit; text-decoration: underline; }
+
+.ins-breakdown { display: grid; gap: 0.6rem; align-content: start; padding-left: 1.6rem; border-left: 1px solid rgba(var(--tint), 0.09); }
+.ins-stack { display: flex; gap: 3px; height: 1.5rem; }
+.ins-stack-seg { border-radius: 4px; }
+.ins-stack-seg.is-revenue { background: #4a90e2; }
+.ins-stack-seg.is-costs { background: var(--accent); }
+.ins-stack-seg.is-profit { background: #4ade80; }
+.ins-stack-legend { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.6rem; font-size: 0.76rem; color: var(--mute-t50); }
+.ins-stack-legend span { display: grid; gap: 0.15rem; }
+.ins-stack-legend b { color: var(--text); font-size: 0.8rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ins-dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; display: inline-block; margin-right: 0.35rem; }
+.ins-dot.is-revenue { background: #4a90e2; }
+.ins-dot.is-costs { background: var(--accent); }
+.ins-dot.is-profit { background: #4ade80; }
+.ins-subfigures { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-top: 0.5rem; padding-top: 0.8rem; border-top: 1px solid rgba(var(--tint), 0.09); }
+.ins-subfigures > div { display: grid; gap: 0.2rem; }
+.ins-subfigures strong { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+
+/* Card grid */
+.ins-row { display: grid; gap: 1rem; }
+.ins-row-2 { grid-template-columns: 1fr 1fr; }
+.ins-row-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ins-shell .ins-card { display: grid; gap: 0.5rem; align-content: start; padding: 1.05rem 1.15rem; }
+.ins-card-head { display: flex; align-items: center; gap: 0.55rem; margin: 0 0 0.3rem; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--mute-t55); }
+.ins-chip { display: grid; place-items: center; width: 1.6rem; height: 1.6rem; flex: none; border-radius: 8px; font-size: 0.8rem; }
+.ins-chip.is-cash { background: rgba(74, 222, 128, 0.14); color: #4ade80; }
+.ins-chip.is-open { background: rgba(255, 122, 33, 0.14); color: var(--accent); }
+.ins-chip.is-chart { background: rgba(74, 144, 226, 0.16); color: #6aa8ee; }
+.ins-chip.is-value { background: rgba(255, 122, 33, 0.14); color: var(--accent); }
+.ins-chip.is-ok { background: rgba(74, 222, 128, 0.14); color: #4ade80; }
+.ins-chip.is-speed { background: rgba(74, 144, 226, 0.16); color: #6aa8ee; }
+.ins-chip.is-source { background: rgba(167, 139, 250, 0.16); color: #a78bfa; }
+.ins-big { font-size: 1.7rem; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.ins-mid { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.ins-shell .ins-sub { margin: 0; font-size: 0.78rem; line-height: 1.5; color: var(--mute-t50); }
+.ins-warn { font-size: 0.78rem; color: var(--gold-ink); }
+.ins-empty-note { margin: 0.3rem 0 0; font-size: 0.8rem; line-height: 1.55; color: var(--mute-t45); }
+.ins-card-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.6rem; margin-top: 0.4rem; padding-top: 0.7rem; border-top: 1px solid rgba(var(--tint), 0.09); font-size: 0.78rem; color: var(--mute-t45); }
+.ins-card-foot a, .ins-inline-link { color: var(--accent-ink); text-decoration: underline; }
+.ins-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.ins-pair > div { display: grid; gap: 0.2rem; padding-right: 0.9rem; border-right: 1px solid rgba(var(--tint), 0.09); }
+.ins-pair > div:last-child { border-right: 0; }
+
+/* Invoice aging. Older money is redder: an invoice sitting 60 days is a
+   different kind of problem from one raised on Tuesday. */
+.ins-aging { margin-top: 0.5rem; }
+.ins-aging-head { display: flex; justify-content: space-between; margin: 0 0 0.45rem; font-size: 0.78rem; color: var(--mute-t50); }
+.ins-aging-head span { color: var(--gold-ink); }
+.ins-aging-bars { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.4rem; }
+.ins-aging-band { display: grid; gap: 0.25rem; justify-items: center; }
+.ins-aging-track { display: flex; align-items: flex-end; width: 100%; height: 3rem; border-radius: 6px; background: rgba(var(--tint), 0.05); overflow: hidden; }
+.ins-aging-fill { width: 100%; border-radius: 6px 6px 0 0; background: var(--accent); }
+.ins-aging-fill.band-fresh { background: #4ade80; }
+.ins-aging-fill.band-recent { background: #a3e635; }
+.ins-aging-fill.band-month { background: #ffd166; }
+.ins-aging-fill.band-late { background: #ff9440; }
+.ins-aging-fill.band-stale { background: #ff5f4d; }
+.ins-aging-label { font-size: 0.66rem; color: var(--mute-t45); }
+.ins-aging-value { font-size: 0.7rem; color: var(--mute-t55); font-variant-numeric: tabular-nums; }
+
+/* Open opportunity */
+.ins-open { display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: start; }
+.ins-open > div:first-child { display: grid; gap: 0.2rem; align-content: start; }
+.ins-open-chart { display: grid; gap: 0.4rem; }
+.ins-minibars { display: grid; grid-template-columns: auto 1fr; grid-template-areas: 'max plot' 'min plot'; gap: 0 0.5rem; align-items: center; }
+.ins-minibars-max { grid-area: max; align-self: start; font-size: 0.68rem; color: var(--mute-t45); }
+.ins-minibars-min { grid-area: min; align-self: end; font-size: 0.68rem; color: var(--mute-t45); }
+.ins-minibars-plot { grid-area: plot; display: flex; align-items: flex-end; gap: 0.3rem; height: 4rem; border-bottom: 1px dashed rgba(var(--tint), 0.18); }
+.ins-minibar { width: 1.1rem; border-radius: 3px 3px 0 0; background: var(--accent); }
+.ins-cta {
+  grid-column: 1 / -1; justify-self: end;
+  min-height: 38px; display: inline-flex; align-items: center; padding: 0.45rem 0.95rem;
+  border-radius: 9px; border: 1px solid rgba(255, 122, 33, 0.5);
+  background: rgba(255, 122, 33, 0.1); color: var(--accent-ink);
+  font-size: 0.84rem; font-weight: 700;
+}
+.ins-cta:hover { background: rgba(255, 122, 33, 0.2); }
+
+/* Funnel */
+.ins-funnel-row { display: grid; grid-template-columns: minmax(0, 1.1fr) auto minmax(0, 0.95fr); gap: 1.4rem; align-items: center; }
+.ins-funnel { display: flex; gap: 0.5rem; }
+.ins-funnel-stage {
+  display: grid; gap: 0.15rem; min-width: 0;
+  padding: 0.75rem 0.9rem; border-radius: 10px;
+  border: 1px solid rgba(var(--tint), 0.2); background: rgba(var(--tint), 0.03);
+}
+.ins-funnel-stage strong { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.ins-funnel-stage span { font-size: 0.78rem; color: var(--mute-t50); }
+.ins-funnel-stage.is-leads { border-color: rgba(74, 144, 226, 0.55); }
+.ins-funnel-stage.is-quoted { border-color: rgba(255, 122, 33, 0.55); }
+.ins-funnel-stage.is-won { border-color: rgba(74, 222, 128, 0.55); }
+.ins-funnel-rates { display: flex; gap: 1.5rem; }
+.ins-funnel-rates > div { display: grid; gap: 0.15rem; }
+.ins-funnel-rates strong { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.ins-drop {
+  display: flex; align-items: flex-start; gap: 0.7rem;
+  padding: 0.85rem 1rem; border-radius: 12px;
+  border: 1px solid rgba(255, 122, 33, 0.4); background: rgba(255, 122, 33, 0.07);
+}
+.ins-drop-mark { display: grid; place-items: center; width: 2rem; height: 2rem; flex: none; border-radius: 50%; border: 1px solid rgba(255, 122, 33, 0.5); color: var(--accent); }
+.ins-drop div { display: grid; gap: 0.2rem; }
+.ins-drop strong { font-size: 0.88rem; }
+.ins-drop span { font-size: 0.79rem; line-height: 1.5; color: var(--mute-t55); }
+
+/* Charts */
+.ins-bars { display: flex; align-items: flex-end; gap: 0.45rem; height: 6rem; margin-top: 0.3rem; }
+.ins-bar-col { display: grid; gap: 0.3rem; justify-items: center; flex: 1 1 0; min-width: 0; }
+.ins-bar-col > span { font-size: 0.68rem; color: var(--mute-t45); }
+.ins-bar-stack { display: flex; align-items: flex-end; gap: 2px; width: 100%; height: 5rem; }
+.ins-bar { flex: 1 1 0; min-height: 2px; border-radius: 3px 3px 0 0; }
+.ins-bar.is-revenue { background: #4a90e2; }
+.ins-bar.is-costs { background: var(--accent); }
+.ins-mini-legend { display: flex; gap: 0.9rem; font-size: 0.72rem; color: var(--mute-t45); }
+.ins-line { width: 100%; height: 5rem; margin-top: 0.4rem; overflow: visible; }
+.ins-line polyline { fill: none; stroke: var(--accent); stroke-width: 2.2; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; }
+.ins-line circle { fill: var(--accent); }
+.ins-line-labels { display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--mute-t45); }
+.ins-meter { height: 0.6rem; border-radius: 999px; background: rgba(var(--tint), 0.08); overflow: hidden; }
+.ins-meter-fill { height: 100%; border-radius: 999px; background: #4ade80; }
+.ins-meter-scale { display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--mute-t45); }
+.ins-stat-row { display: grid; gap: 0.15rem; padding-bottom: 0.6rem; margin-bottom: 0.2rem; border-bottom: 1px solid rgba(var(--tint), 0.08); }
+.ins-stat-row:last-child { border-bottom: 0; padding-bottom: 0; }
+
+/* Lead sources */
+.ins-sources { display: grid; gap: 0.5rem; }
+.ins-source { display: grid; grid-template-columns: 8rem 1fr 2.5rem 4.5rem; align-items: center; gap: 0.7rem; font-size: 0.82rem; }
+.ins-source-label { color: var(--mute-t60); }
+.ins-source-track { height: 0.55rem; border-radius: 999px; background: rgba(var(--tint), 0.06); overflow: hidden; }
+.ins-source-fill { height: 100%; border-radius: 999px; background: #a78bfa; }
+.ins-source-count { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
+.ins-source-win { text-align: right; font-size: 0.76rem; color: var(--mute-t45); }
+
+/* What to do next */
+.ins-shell .ins-actions-title { margin: 0.2rem 0 0.8rem; font-size: 1.2rem; }
+.ins-actions { display: grid; gap: 0.55rem; margin: 0; padding: 0; list-style: none; }
+.ins-action {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  align-items: center; gap: 0.9rem;
+  padding: 0.75rem 0.9rem; border-radius: 12px;
+  border: 1px solid rgba(var(--tint), 0.1); background: rgba(var(--tint), 0.03);
+}
+.ins-action-mark { display: grid; place-items: center; width: 2rem; height: 2rem; flex: none; border-radius: 9px; font-weight: 800; background: rgba(var(--tint), 0.08); color: var(--mute-t55); }
+.ins-action-mark.impact-5, .ins-action-mark.impact-4 { background: rgba(255, 122, 33, 0.16); color: var(--accent); }
+.ins-action-body { display: grid; gap: 0.15rem; min-width: 0; }
+.ins-action-body strong { font-size: 0.9rem; }
+.ins-action-body span { font-size: 0.79rem; color: var(--mute-t50); }
+.ins-action-impact { font-size: 0.78rem; color: var(--mute-t50); white-space: nowrap; }
+.ins-impact-meter { display: inline-flex; gap: 3px; }
+.ins-impact-meter i { width: 0.55rem; height: 0.85rem; border-radius: 2px; background: rgba(var(--tint), 0.12); }
+.ins-impact-meter i.is-on { background: var(--accent); }
+.ins-action-cta {
+  min-height: 36px; display: inline-flex; align-items: center; padding: 0.4rem 0.9rem;
+  border-radius: 9px; border: 1px solid rgba(255, 122, 33, 0.5);
+  background: rgba(255, 122, 33, 0.08); color: var(--accent-ink);
+  font-size: 0.82rem; font-weight: 700; white-space: nowrap;
+}
+.ins-action-cta:hover { background: rgba(255, 122, 33, 0.18); }
+
+@media (max-width: 1100px) {
+  .ins-summary { grid-template-columns: 1fr; }
+  .ins-breakdown { padding-left: 0; border-left: 0; padding-top: 1rem; border-top: 1px solid rgba(var(--tint), 0.09); }
+  .ins-row-4 { grid-template-columns: 1fr 1fr; }
+  .ins-funnel-row { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  .ins-figures { grid-template-columns: 1fr 1fr; }
+  .ins-figure { border-right: 0; }
+  .ins-row-2, .ins-row-4 { grid-template-columns: 1fr; }
+  .ins-open { grid-template-columns: 1fr; }
+  .ins-action { grid-template-columns: auto minmax(0, 1fr); }
+  .ins-action-impact, .ins-impact-meter { display: none; }
+  .ins-action-cta { grid-column: 1 / -1; justify-self: start; }
+  .ins-source { grid-template-columns: 6rem 1fr auto; }
+  .ins-source-win { display: none; }
+}
+
+/* Insights wears a lit icon.
+   The one row on the rail that is about looking rather than doing, so it gets a
+   colour nothing else on the rail uses. Matched on href rather than a new class
+   so the demo rail's copy (/demo/insights) lights up from the same rule — two
+   sidebars that drift apart is the thing the demo exists not to do.
+
+   The blue survives the active state on purpose: this is a signature mark, and
+   swapping it for the accent orange when you're standing on the page would mean
+   the icon you learned to look for is the one that disappears. "Where am I" is
+   still carried by the row's wash and its left bar, which is unchanged. */
+.sidenav-link[href$='/insights'] .sidenav-ic {
+  color: #38bdf8;
+  filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.7)) drop-shadow(0 0 11px rgba(56, 189, 248, 0.32));
+}
+.sidenav-link[href$='/insights']:hover {
+  background: rgba(56, 189, 248, 0.09);
+}
+.sidenav-link[href$='/insights']:hover .sidenav-ic,
+.sidenav-link[href$='/insights'].active .sidenav-ic {
+  color: #7dd3fc;
+  filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.85)) drop-shadow(0 0 14px rgba(56, 189, 248, 0.42));
+}
+/* A glow is a shadow, and on paper a light-blue haze over a white ground is a
+   smudge rather than a light. Light theme keeps the colour and drops the bloom. */
+:root[data-theme='light'] .sidenav-link[href$='/insights'] .sidenav-ic {
+  filter: drop-shadow(0 0 3px rgba(56, 189, 248, 0.45));
+}
+
+/* Revenue breakdown: three bars on ONE scale, not a stacked bar. A stack has to
+   clamp the moment costs exceed revenue, which is the month you most need to
+   see that they did. */
+.ins-splits { display: grid; gap: 0.45rem; }
+.ins-split { display: grid; grid-template-columns: 5.5rem 1fr auto 2.8rem; align-items: center; gap: 0.6rem; font-size: 0.78rem; }
+.ins-split-label { color: var(--mute-t55); white-space: nowrap; }
+.ins-split-track { height: 0.75rem; border-radius: 999px; background: rgba(var(--tint), 0.06); overflow: hidden; }
+.ins-split-fill { height: 100%; border-radius: 999px; }
+.ins-split-fill.is-revenue { background: #4a90e2; }
+.ins-split-fill.is-costs { background: var(--accent); }
+.ins-split-fill.is-profit { background: #4ade80; }
+.ins-split-fill.is-profit.is-negative { background: #ff5f4d; }
+.ins-split b { color: var(--text); font-size: 0.82rem; font-variant-numeric: tabular-nums; text-align: right; }
+.ins-split b.is-negative { color: var(--ink-orange-1); }
+.ins-split-pct { color: var(--mute-t45); font-size: 0.75rem; text-align: right; font-variant-numeric: tabular-nums; }
