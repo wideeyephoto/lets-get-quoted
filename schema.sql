@@ -2000,10 +2000,23 @@ create policy job_tracking_owner on job_tracking for all using ( is_owner(accoun
 -- its Voice webhook at /api/twilio/voice, which rings the contractor's real line
 -- (call_forward_number); an unanswered call auto-texts the caller + logs a lead.
 -- Requires a provisioned/BYO number wired in the Twilio console — not automatic.
+-- call_textback_enabled governs the TEXT, not the dial: /api/twilio/voice rings
+-- the forward number whatever it is set to, and voice/status checks it before
+-- texting. It used to gate the dial, which meant switching the automation off
+-- broke the phone number — callers reached a recording instead of a person.
 alter table accounts add column if not exists call_textback_enabled boolean not null default false;
 alter table accounts add column if not exists call_tracking_number text;
 alter table accounts add column if not exists call_forward_number text;
-create index if not exists accounts_call_tracking_idx on accounts (call_tracking_number) where call_tracking_number is not null;
+-- Stamped by /api/twilio/voice on the FIRST real call. The only evidence the
+-- number's Voice webhook is actually pointed at us — that lives in the Twilio
+-- console and is invisible from here, so without this the settings card would be
+-- calling a number "connected" purely because somebody typed it into a box.
+alter table accounts add column if not exists call_tracking_verified_at timestamptz;
+-- UNIQUE: the voice webhook resolves the account with .maybeSingle() on this
+-- column, so two accounts sharing a number kills every call to it for both.
+create unique index if not exists accounts_call_tracking_unique_idx
+  on accounts (call_tracking_number)
+  where call_tracking_number is not null;
 
 -- ============================================================================
 -- Account settings audit trail. Who changed which switch, and when.

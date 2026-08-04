@@ -17,10 +17,12 @@ import DeleteAccountButton from './DeleteAccountButton';
 import ArrivalSettingsSection from './ArrivalSettingsSection';
 import ArrivalExtrasSection from './ArrivalExtrasSection';
 import { arrivalSettingsFromAccount } from '@/lib/arrival';
-import { updateReviewSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBookingAvailabilityAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, updateCallTextbackSettingsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
+import { updateReviewSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBookingAvailabilityAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
 import { updateCostSettingsAction, toggleClientPortalAction } from './actions';
 import ClientPortalSection from './ClientPortalSection';
+import MissedCallSection from './MissedCallSection';
 import { siteOrigin } from '@/lib/seo/site-pages';
+import { displayPhone } from '@/lib/phone';
 import { loadedHourlyRate } from '@/lib/cost-truth';
 import { ESTIMATE_POSTURES, normalizeEstimatePosture } from '@/lib/estimate-posture';
 import { getSiteContent } from '@/lib/site-content';
@@ -246,8 +248,18 @@ export default async function SettingsPage({
   const dailyDigestEnabled = Boolean(digestSettings?.daily_digest_enabled);
   const allEssentialsOn = autoReviewRequest && quoteFollowupsEnabled && appointmentRemindersEnabled && dailyDigestEnabled;
   const callTextbackEnabled = Boolean((account as { call_textback_enabled?: boolean } | null)?.call_textback_enabled);
-  const callForwardNumber = String((account as { call_forward_number?: string } | null)?.call_forward_number ?? '');
-  const callTrackingNumber = String((account as { call_tracking_number?: string } | null)?.call_tracking_number ?? '');
+  // Shown the way a person writes a phone number, not the way Twilio stores it.
+  // The action normalizes back to E.164 on save.
+  const callForwardNumber = displayPhone(String((account as { call_forward_number?: string } | null)?.call_forward_number ?? ''));
+  const callTrackingNumber = displayPhone(String((account as { call_tracking_number?: string } | null)?.call_tracking_number ?? ''));
+  // Defensive, like the other automation reads: pre-migration the column is
+  // absent, and the card degrades to "waiting for the first call".
+  const { data: callVerified } = await supabase
+    .from('accounts')
+    .select('call_tracking_verified_at')
+    .eq('id', accountId)
+    .maybeSingle();
+  const callTrackingVerifiedAt = (callVerified?.call_tracking_verified_at as string | null) ?? null;
 
   const requestedYear = searchParams.year ? parseInt(searchParams.year, 10) : NaN;
   const selectedYear = availableYears.includes(requestedYear) ? requestedYear : availableYears[0];
@@ -605,33 +617,13 @@ export default async function SettingsPage({
                 </AutomationCard>
 
                 <AutomationCard group="booking-intake" id="missed-call" title="Missed-call text-back" subtitle="Auto-text callers you miss" toggle={{ on: callTextbackEnabled, action: toggleAutomationAction.bind(null, 'missed-call') }}>
-                  <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
-                    When a call to your tracking number goes unanswered, we instantly text the caller back so the
-                    lead doesn&apos;t go to a competitor — and log it on your leads board to follow up.
-                  </p>
-                  <form action={updateCallTextbackSettingsAction} className="form-grid compact-form">
-                    <label className="checkbox-row" htmlFor="callTextbackEnabled">
-                      <input id="callTextbackEnabled" name="callTextbackEnabled" type="checkbox" defaultChecked={callTextbackEnabled} />
-                      <span>Text callers back automatically when I miss a call</span>
-                    </label>
-                    <div className="field">
-                      <label htmlFor="callForwardNumber">Ring my phone at</label>
-                      <input id="callForwardNumber" name="callForwardNumber" type="tel" inputMode="tel" placeholder="(248) 555-0100" defaultValue={callForwardNumber} />
-                      <small className="field-hint">Where your tracking number forwards calls before falling back to a text.</small>
-                    </div>
-                    <div className="field">
-                      <label htmlFor="callTrackingNumber">Your tracking number</label>
-                      <input id="callTrackingNumber" name="callTrackingNumber" type="tel" inputMode="tel" placeholder="(248) 555-0199" defaultValue={callTrackingNumber} />
-                      <small className="field-hint">The number customers call. Put this on your website/ads instead of your cell.</small>
-                    </div>
-                    <div className="automation-prereq">
-                      <span aria-hidden="true">📞</span>
-                      <span>Point that number&apos;s <strong>Voice webhook</strong> to <code>https://letsgetquoted.com/api/twilio/voice</code> in Twilio. Don&apos;t have a number yet? Contact support and we&apos;ll set one up.</span>
-                    </div>
-                    <div className="form-actions">
-                      <SaveButton>Save missed-call settings</SaveButton>
-                    </div>
-                  </form>
+                  <MissedCallSection
+                    enabled={callTextbackEnabled}
+                    businessName={businessName}
+                    forwardNumber={callForwardNumber}
+                    trackingNumber={callTrackingNumber}
+                    verifiedAt={callTrackingVerifiedAt}
+                  />
                 </AutomationCard>
 
                 <p className="automation-group">Customer follow-through</p>

@@ -26,12 +26,32 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   const { data: account } = await admin
     .from('accounts')
-    .select('id, call_forward_number, call_textback_enabled')
+    .select('id, call_forward_number, call_tracking_verified_at')
     .eq('call_tracking_number', to)
     .maybeSingle();
 
-  if (!account || !account.call_textback_enabled || !account.call_forward_number) {
+  // call_textback_enabled is deliberately NOT read here.
+  //
+  // It used to be, and switching the automation off stopped the dial entirely:
+  // a contractor who put the tracking number on their van and later turned this
+  // off had callers reaching a recording saying nobody could take the call. The
+  // switch governs the TEXT, which is what it says it does — see
+  // voice/status, where it is now enforced. A phone number keeps being a phone
+  // number.
+  if (!account || !account.call_forward_number) {
     return xml('<Say>Sorry, we can&apos;t take your call right now. Please try again later.</Say>');
+  }
+
+  // First real call on this number is the only proof the Voice webhook is
+  // pointed at us — nothing else is visible from our side. Stamped once, best
+  // effort: failing to record it must never drop somebody's call.
+  if (!account.call_tracking_verified_at) {
+    admin
+      .from('accounts')
+      .update({ call_tracking_verified_at: new Date().toISOString() })
+      .eq('id', account.id)
+      .is('call_tracking_verified_at', null)
+      .then(undefined, () => {});
   }
 
   const action = `${appOrigin()}/api/twilio/voice/status?account=${account.id}`;

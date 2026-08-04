@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/auth';
 import { formatJobSchedule, formatMoney } from '@/lib/jobs';
 import { normalizeUsPhone } from '@/lib/phone';
+import { missedCallTextBack } from '@/lib/missed-call';
 import { createHmac, timingSafeEqual } from 'crypto';
 
 export type PaymentSmsEvent = 'payment_requested' | 'payment_paid' | 'payment_failed' | 'payment_refunded';
@@ -680,7 +681,9 @@ export async function sendArrivalTimeChangedSms(params: {
 // the owner can reply. Returns null when the number is opted out.
 export async function sendMissedCallTextBack(params: { accountId: string; phone: string; businessName: string }): Promise<string | null> {
   if (await isPhoneOptedOut(params.accountId, params.phone)) return null;
-  const message = `Let's Get Quoted: sorry we missed your call at ${params.businessName}! Reply here and we'll help you out. Reply STOP to opt out.`;
+  // Shared with the settings preview, so the words an owner reads there are the
+  // words their caller gets. See lib/missed-call.
+  const message = missedCallTextBack(params.businessName);
   const providerId = await sendTwilioMessage(params.phone, message);
   await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;

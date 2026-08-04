@@ -2232,6 +2232,130 @@ h3 {
   .portal-card .portal-grid { grid-template-columns: 1fr; gap: 1.1rem; }
 }
 
+/* ── Missed-call text-back ───────────────────────────────────────────────────
+   Third card in this shape (arrival, portal, this): inset panel, two columns,
+   auto-save along the bottom. Scoped under .missed-card for the same reason the
+   portal card is — these are generic names in a 10k-line stylesheet. */
+.missed-card {
+  padding: 1.05rem 1.1rem;
+  border-radius: 20px;
+  border: 1px solid rgba(var(--tint), 0.14);
+  background: rgba(var(--tint), 0.03);
+}
+.missed-card.is-paused .missed-preview { opacity: 0.45; }
+.missed-card .missed-state { margin: 0 0 1rem; font-size: 0.88rem; line-height: 1.55; color: var(--mute-t60); }
+.missed-card.is-paused .missed-state { color: var(--ink-orange-1); }
+
+.missed-card .missed-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4rem; align-items: start; }
+.missed-card .missed-lede { margin: 0.2rem 0 0.9rem; font-size: 0.84rem; line-height: 1.5; color: var(--mute-t50); }
+
+.missed-card .missed-field { display: grid; gap: 0.3rem; margin-bottom: 0.9rem; }
+.missed-card .missed-field label { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+.missed-card .missed-field input {
+  min-height: 46px;
+  padding: 0.55rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--tint), 0.16);
+  background: rgba(var(--tint), 0.05);
+  color: var(--text);
+  font-size: 1rem;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
+.missed-card .missed-field input:focus-visible { outline: none; border-color: var(--accent); }
+.missed-card .missed-field small { font-size: 0.79rem; line-height: 1.5; color: var(--mute-t45); }
+
+/* Status. The dot carries the state as well as the words, so it reads at a
+   glance without depending on colour alone for the meaning. */
+.missed-card .missed-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin-top: 0.2rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--tint), 0.14);
+  background: rgba(var(--tint), 0.04);
+}
+.missed-card .missed-status div { display: grid; gap: 0.15rem; }
+.missed-card .missed-status strong { font-size: 0.88rem; }
+.missed-card .missed-status span { font-size: 0.8rem; line-height: 1.5; color: var(--mute-t50); }
+.missed-card .missed-dot { width: 0.6rem; height: 0.6rem; margin-top: 0.35rem; border-radius: 50%; flex: none; background: var(--mute-t40); }
+.missed-card .missed-status.is-live { border-color: rgba(163, 230, 53, 0.4); background: rgba(163, 230, 53, 0.08); }
+.missed-card .missed-status.is-live .missed-dot { background: var(--ink-lime-1); }
+.missed-card .missed-status.is-live strong { color: var(--ink-lime-1); }
+.missed-card .missed-status.is-waiting .missed-dot { background: var(--ink-amber-3); }
+.missed-card .missed-status.is-error { border-color: rgba(255, 122, 33, 0.45); background: rgba(255, 122, 33, 0.09); }
+.missed-card .missed-status.is-error .missed-dot { background: var(--ink-orange-1); }
+.missed-card .missed-status.is-error strong { color: var(--ink-orange-1); }
+
+.missed-card .missed-advanced { margin-top: 0.9rem; }
+.missed-card .missed-note { margin: 0.6rem 0 0; font-size: 0.81rem; line-height: 1.6; color: var(--mute-t50); }
+.missed-card .missed-note code { overflow-wrap: anywhere; font-size: 0.78rem; }
+
+/* The phone, same device as the arrival preview. */
+.missed-card .missed-phone {
+  border-radius: 16px;
+  border: 1px solid rgba(var(--tint), 0.16);
+  background: rgba(var(--tint), 0.06);
+  overflow: hidden;
+}
+.missed-card .missed-phone-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid rgba(var(--tint), 0.1);
+  font-size: 0.85rem;
+}
+.missed-card .missed-phone-avatar {
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  background: rgba(var(--tint), 0.12);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.missed-card .missed-phone-body { padding: 0.85rem 0.8rem; }
+.missed-card .missed-bubble {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.9rem 0.9rem 0.9rem 0.25rem;
+  background: rgba(var(--tint), 0.08);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+.missed-card .missed-tags { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.7rem; }
+.missed-card .missed-tag {
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--tint), 0.14);
+  font-size: 0.76rem;
+  color: var(--mute-t50);
+}
+
+.missed-card .missed-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(var(--tint), 0.09);
+  font-size: 0.78rem;
+  color: var(--mute-t45);
+}
+.missed-card .missed-save { min-height: 1.2em; }
+.missed-card .missed-save-saved { color: var(--ink-lime-1); }
+.missed-card .missed-save-error { color: var(--ink-orange-1); }
+
+@media (max-width: 900px) {
+  .missed-card .missed-grid { grid-template-columns: 1fr; gap: 1.1rem; }
+}
+
 .automation-preview-bubble { margin-top: 0.6rem; padding: 0.7rem 0.85rem; border-radius: 0.7rem 0.7rem 0.7rem 0.2rem; background: rgba(var(--tint), 0.05); border: 1px solid rgba(var(--tint), 0.1); font-size: 0.85rem; line-height: 1.45; color: rgba(var(--ink-rgb), 0.9); max-width: 42ch; }
 .automation-prereq { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.82rem; color: var(--gold-ink); background: rgba(255, 209, 102, 0.1); border: 1px solid rgba(255, 209, 102, 0.3); border-radius: 0.6rem; padding: 0.55rem 0.7rem; }
 .automation-prereq a { color: var(--gold-ink); text-decoration: underline; }

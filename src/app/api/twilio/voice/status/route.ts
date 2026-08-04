@@ -25,6 +25,15 @@ export async function POST(request: Request) {
   if (accountId && caller && MISSED.has(dialStatus)) {
     const admin = createAdminClient();
     try {
+      // The switch is enforced HERE, not in the dial. It says "text callers you
+      // miss", so it governs the text; the call itself still rings through.
+      const { data: settings } = await admin
+        .from('accounts')
+        .select('call_textback_enabled')
+        .eq('id', accountId)
+        .maybeSingle();
+      if (!settings?.call_textback_enabled) return xml();
+
       // Dedupe against a status-callback retry / repeat calls in a short window.
       const since = new Date(Date.now() - 10 * 60_000).toISOString();
       const { data: recent } = await admin

@@ -297,16 +297,39 @@ export async function enableRecommendedAutomationsAction() {
   revalidatePath('/dashboard');
 }
 
-export async function updateCallTextbackSettingsAction(formData: FormData) {
+/**
+ * The two phone numbers behind missed-call text-back. Auto-saved.
+ *
+ * The on/off switch is NOT here — it's the card's own toggle, through
+ * toggleAutomationAction. There used to be a checkbox as well, and two controls
+ * for one boolean means one of them is always about to be wrong.
+ *
+ * Changing the tracking number clears call_tracking_verified_at: the proof was
+ * about the OLD number, and carrying a green "connected" across to a number
+ * nobody has ever called is exactly the false reassurance the column exists to
+ * prevent.
+ */
+export async function updateMissedCallNumbersAction(input: { forward: string; tracking: string }) {
   const { supabase, accountId } = await requireOwnerContext();
-  const enabled = formData.get('callTextbackEnabled') === 'on';
-  const forward = normalizeUsPhone(String(formData.get('callForwardNumber') ?? ''));
-  const tracking = normalizeUsPhone(String(formData.get('callTrackingNumber') ?? ''));
-  const { error } = await supabase
+  const forward = normalizeUsPhone(String(input.forward ?? '')) || null;
+  const tracking = normalizeUsPhone(String(input.tracking ?? '')) || null;
+
+  const { data: current } = await supabase
     .from('accounts')
-    .update({ call_textback_enabled: enabled, call_forward_number: forward || null, call_tracking_number: tracking || null })
-    .eq('id', accountId);
-  if (error) throw new Error('Could not save missed-call settings.');
+    .select('call_tracking_number')
+    .eq('id', accountId)
+    .maybeSingle();
+
+  const patch: Record<string, unknown> = { call_forward_number: forward, call_tracking_number: tracking };
+  if ((current?.call_tracking_number ?? null) !== tracking) patch.call_tracking_verified_at = null;
+
+  const { error } = await supabase.from('accounts').update(patch).eq('id', accountId);
+  if (error) {
+    // The unique index on call_tracking_number. Worth naming, because the
+    // alternative is a contractor retyping a number that will never be theirs.
+    if (error.code === '23505') throw new Error('That tracking number is already in use on another account.');
+    throw new Error('Could not save missed-call settings.');
+  }
   revalidatePath('/dashboard/settings');
 }
 
