@@ -9,6 +9,7 @@ import {
   createSelection,
   deleteOption,
   deleteSelectionTemplate,
+  moveSelection,
   reopenSelection,
   saveBoardAsTemplate,
   setSelectionStatus,
@@ -180,6 +181,12 @@ export async function applySelectionTemplateAction(jobId: string, templateId: st
 export async function deleteSelectionTemplateAction(jobId: string, templateId: string): Promise<void> {
   const { supabase, accountId } = await requireOwnerContext();
   await deleteSelectionTemplate(supabase, accountId, templateId);
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
+export async function moveSelectionAction(jobId: string, selectionId: string, direction: 'up' | 'down'): Promise<void> {
+  const { supabase, accountId } = await requireOwnerContext();
+  await moveSelection(supabase, accountId, jobId, selectionId, direction);
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }
 

@@ -64,3 +64,66 @@ export async function chooseSelectionAction(
   revalidatePath(`/client/jobs/${token}`);
   return { ok: true };
 }
+
+/** Longer than a question, shorter than an essay. */
+const MAX_QUESTION = 600;
+
+/**
+ * "Can I see this one in person first?"
+ *
+ * The board offered exactly two moves: confirm, or nothing. Real people have a
+ * third — they want to ask something before committing — and with nowhere to
+ * put it the honest ones phone up and the rest simply don't answer, which reads
+ * from the contractor's side as a customer ignoring them.
+ *
+ * It lands in the job feed rather than changing the selection: a question is not
+ * a decision, and it must not look like one.
+ */
+export async function askAboutSelectionAction(
+  token: string,
+  selectionId: string,
+  formData: FormData,
+): Promise<{ ok: boolean; message?: string }> {
+  const admin = createAdminClient();
+  const ip = clientIpFrom(headers());
+  // Tighter than choosing: this one writes free text somebody else reads.
+  if (!(await checkRateLimit(admin, `selection-ask:ip:${ip}`, 10, 300))) {
+    return { ok: false, message: 'That is a lot of questions at once — give it a few minutes.' };
+  }
+
+  const access = await resolveJobAccess(token);
+  if (!access) return { ok: false, message: 'This link is no longer valid. Give your contractor a call.' };
+
+  const question = String(formData.get('question') ?? '').trim().slice(0, MAX_QUESTION);
+  if (!question) return { ok: false, message: 'Type your question first.' };
+
+  // Belongs to THIS job. Without it, a valid link for one job could post a
+  // question onto another customer's board.
+  const { data: selection } = await admin
+    .from('job_selections')
+    .select('id, title')
+    .eq('account_id', access.accountId)
+    .eq('id', selectionId)
+    .eq('job_id', access.jobId)
+    .maybeSingle();
+  if (!selection) return { ok: false, message: 'That choice is not on this job.' };
+
+  try {
+    await createJobFeedEvent(admin, access.accountId, access.jobId, {
+      kind: 'selection_question',
+      title: `Question about ${selection.title}`,
+      body: question,
+      // Client-visible so the customer can see their own question was received.
+      // A message that vanishes on submit is one people send three times.
+      visibility: 'client',
+      sourceTable: 'job_selections',
+      sourceId: selectionId,
+    });
+  } catch (error) {
+    console.error('Selection question failed:', error instanceof Error ? error.message : error);
+    return { ok: false, message: 'Could not send that just now. Please try again.' };
+  }
+
+  revalidatePath(`/client/jobs/${token}`);
+  return { ok: true };
+}

@@ -363,7 +363,7 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
           progress report they only have to read. */}
       {/* Above change orders: a choice the customer has to make holds the job
           up, where a change order is a decision they can take their time over. */}
-      <Selections token={params.token} selections={clientSelections} />
+      <Selections token={params.token} selections={clientSelections} businessName={dashboard.businessName} />
 
       <ChangeOrders token={params.token} orders={clientChangeOrders} />
 

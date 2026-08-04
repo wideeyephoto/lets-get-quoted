@@ -411,6 +411,72 @@ export async function reopenSelection(
   return { ok: true };
 }
 
+/**
+ * Signed photo URLs for the OWNER's board, keyed by option id.
+ *
+ * The homeowner saw pictures and the contractor saw a text list, so the two
+ * were not looking at the same thing — which is a strange way to run a feature
+ * whose entire purpose is that both parties agree on what was picked.
+ *
+ * Best effort, exactly like the client side: a photo that won't sign becomes no
+ * photo, which is a plainer board and not a broken one.
+ */
+export async function signSelectionPhotos(accountId: string, selections: Selection[]): Promise<Record<string, string>> {
+  const byOption = new Map<string, string>();
+  for (const selection of selections) {
+    for (const option of selection.options) {
+      if (option.photoPath) byOption.set(option.id, option.photoPath);
+    }
+  }
+  if (byOption.size === 0) return {};
+
+  try {
+    const links = await createJobPhotoLinks(accountId, [...new Set(byOption.values())]);
+    const byPath = new Map(links.map((link) => [link.path, link.url]));
+    const signed: Record<string, string> = {};
+    for (const [optionId, path] of byOption) {
+      const url = byPath.get(path);
+      if (url) signed[optionId] = url;
+    }
+    return signed;
+  } catch (error) {
+    console.error('Selection photo signing failed:', error instanceof Error ? error.message : error);
+    return {};
+  }
+}
+
+/**
+ * Move a choice up or down the board.
+ *
+ * Swaps sort_order with its neighbour rather than renumbering everything: two
+ * writes instead of N, and a failure halfway leaves the board in an order
+ * somebody chose rather than a jumble.
+ *
+ * Up/down rather than drag. The board is a column of cards a contractor edits
+ * with one hand on a phone in a van, and drag is the interaction that fails
+ * there.
+ */
+export async function moveSelection(
+  supabase: SupabaseClient,
+  accountId: string,
+  jobId: string,
+  selectionId: string,
+  direction: 'up' | 'down',
+): Promise<void> {
+  const selections = (await listSelections(supabase, accountId, jobId)).filter((s) => s.status !== 'cancelled');
+  const index = selections.findIndex((selection) => selection.id === selectionId);
+  if (index < 0) return;
+  const swapWith = direction === 'up' ? index - 1 : index + 1;
+  if (swapWith < 0 || swapWith >= selections.length) return;
+
+  const a = selections[index];
+  const b = selections[swapWith];
+  // Positions rather than the stored numbers: legacy rows can share a
+  // sort_order, and swapping two identical values changes nothing at all.
+  await supabase.from('job_selections').update({ sort_order: swapWith }).eq('account_id', accountId).eq('id', a.id);
+  await supabase.from('job_selections').update({ sort_order: index }).eq('account_id', accountId).eq('id', b.id);
+}
+
 // -- Templates ----------------------------------------------------------------
 
 export type SelectionTemplate = { id: string; name: string; body: SelectionTemplateBody };

@@ -19,6 +19,7 @@ import {
   cancelSelectionAction,
   createSelectionAction,
   deleteSelectionOptionAction,
+  moveSelectionAction,
   reopenSelectionAction,
   updateSelectionOptionAction,
 } from './selection-actions';
@@ -33,10 +34,13 @@ export default function SelectionBoard({
   jobId,
   selections,
   templates,
+  photos,
 }: {
   jobId: string;
   selections: Selection[];
   templates: SelectionTemplate[];
+  /** Signed option-photo URLs by option id. Missing ones simply don't render. */
+  photos: Record<string, string>;
 }) {
   const today = todayKey();
   const totals = selectionTotals(selections);
@@ -103,6 +107,24 @@ export default function SelectionBoard({
                     {deadline.label ? (
                       <span className={`selection-deadline${deadline.overdue ? ' is-overdue' : ''}`}>{deadline.label}</span>
                     ) : null}
+                    {/* Up/down, not drag: this is a column of cards a
+                        contractor edits one-handed on a phone in a van, and
+                        drag is the interaction that fails there. */}
+                    <span className="selection-move">
+                      {/* Plain forms, not ConfirmActionButton: that one always
+                          prompts, and confirming every nudge of a list would be
+                          worse than not being able to reorder at all. */}
+                      <form action={moveSelectionAction.bind(null, jobId, selection.id, 'up')}>
+                        <SaveButton className="icon-btn" pendingLabel="…" savedLabel="✓" aria-label={`Move ${selection.title} up`}>
+                          ↑
+                        </SaveButton>
+                      </form>
+                      <form action={moveSelectionAction.bind(null, jobId, selection.id, 'down')}>
+                        <SaveButton className="icon-btn" pendingLabel="…" savedLabel="✓" aria-label={`Move ${selection.title} down`}>
+                          ↓
+                        </SaveButton>
+                      </form>
+                    </span>
                   </header>
 
                   {selection.description ? <p className="selection-desc">{selection.description}</p> : null}
@@ -161,6 +183,12 @@ export default function SelectionBoard({
                         {selection.options.map((option) => (
                           <li key={option.id}>
                             <span>
+                              {/* eslint-disable-next-line @next/next/no-img-element --
+                                  a signed storage URL is not a static asset and
+                                  can't go through the image optimiser. */}
+                              {photos[option.id] ? (
+                                <img className="selection-option-photo" src={photos[option.id]} alt="" />
+                              ) : null}
                               {option.name}
                               {option.reference ? <em className="selection-ref">{option.reference}</em> : null}
                             </span>

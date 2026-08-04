@@ -10539,6 +10539,57 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 .selection-template-note.is-ok { color: var(--ink-lime-1); }
 .selection-template-note.is-bad { color: var(--ink-orange-1); }
 
+/* The option's photo, on the OWNER's board too. Small — this is a list, and the
+   picture is here so both sides recognise the same tile, not to be admired. */
+.selection-option-photo {
+  width: 2rem;
+  height: 2rem;
+  margin-right: 0.45rem;
+  border-radius: 6px;
+  object-fit: cover;
+  vertical-align: middle;
+}
+.selection-move { display: inline-flex; gap: 0.15rem; }
+.selection-move form { display: inline; }
+.selection-move .icon-btn { padding: 0.1rem 0.35rem; font-size: 0.85rem; line-height: 1.2; }
+
+/* The homeowner's third option: ask, rather than confirm or say nothing. */
+.client-selection-ask { margin-top: 0.7rem; }
+.client-selection-ask > summary { cursor: pointer; font-size: 0.85rem; color: var(--mute-t55); }
+.client-selection-ask > summary:hover { color: var(--text); }
+.client-selection-ask form { display: grid; gap: 0.4rem; margin-top: 0.5rem; }
+.client-selection-ask label { font-size: 0.82rem; color: var(--mute-t55); }
+.client-selection-ask textarea {
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--tint), 0.16);
+  background: rgba(var(--tint), 0.05);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+.client-selection-ask .btn { justify-self: start; }
+.client-selection-asked { margin: 0.7rem 0 0; font-size: 0.85rem; color: var(--ink-lime-1); }
+
+/* The order sheet. Printing the job page gives the supplier the decisions and
+   their product codes, and nothing else on the page. */
+@media print {
+  body * { visibility: hidden; }
+  .selection-board, .selection-board * { visibility: visible; }
+  .selection-board { position: absolute; inset: 0; color: #000; }
+  .selection-send,
+  .selection-templates,
+  .selection-new-form,
+  .selection-option-form,
+  .selection-option-edit,
+  .selection-move,
+  .selection-chosen .btn,
+  .selection-option-cost .icon-btn { display: none !important; }
+  .selection-card { break-inside: avoid; border: 1px solid #ccc; margin-bottom: 0.5rem; }
+}
+
 /* Decisions made and then changed. In front of the contractor rather than
    buried: if the first colour is already on the wall, this is the record. */
 .selection-history {

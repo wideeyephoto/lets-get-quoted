@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import type { ClientSelection } from '@/lib/selections';
-import { chooseSelectionAction } from './selection-actions';
+import { askAboutSelectionAction, chooseSelectionAction } from './selection-actions';
 
 function money(n: number): string {
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
@@ -22,8 +22,17 @@ function formatChosenAt(value: string | null): string {
  * 12 March" is not a matter of opinion, and it's the sentence that ends the
  * argument about the beige before it starts.
  */
-export default function Selections({ token, selections }: { token: string; selections: ClientSelection[] }) {
+export default function Selections({
+  token,
+  selections,
+  businessName,
+}: {
+  token: string;
+  selections: ClientSelection[];
+  businessName: string;
+}) {
   const [picked, setPicked] = useState<Record<string, string>>({});
+  const [asked, setAsked] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -123,6 +132,44 @@ export default function Selections({ token, selections }: { token: string; selec
                 )}
               </form>
             )}
+
+            {/* Not sure yet? The board used to offer confirm or nothing, and
+                people with a question in between simply didn't answer — which
+                reads from the contractor's side as being ignored. */}
+            {selection.awaitingDecision ? (
+              asked[selection.id] ? (
+                <p className="client-selection-asked">
+                  Sent — {businessName} will come back to you. You can still pick above once you&apos;ve heard.
+                </p>
+              ) : (
+                <details className="client-selection-ask">
+                  <summary>Not sure? Ask about this one</summary>
+                  <form
+                    action={(formData) => {
+                      setError(null);
+                      startTransition(async () => {
+                        const result = await askAboutSelectionAction(token, selection.id, formData);
+                        if (result.ok) setAsked((current) => ({ ...current, [selection.id]: true }));
+                        else setError(result.message ?? 'Could not send that. Try again.');
+                      });
+                    }}
+                  >
+                    <label htmlFor={`ask-${selection.id}`}>What would you like to know?</label>
+                    <textarea
+                      id={`ask-${selection.id}`}
+                      name="question"
+                      required
+                      rows={3}
+                      maxLength={600}
+                      placeholder="Can I see the brushed brass one in person before I decide?"
+                    />
+                    <button type="submit" className="btn ghost" disabled={pending}>
+                      {pending ? 'Sending…' : 'Send question'}
+                    </button>
+                  </form>
+                </details>
+              )
+            ) : null}
           </article>
         ))}
       </div>

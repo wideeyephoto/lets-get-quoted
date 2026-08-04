@@ -23,7 +23,7 @@ import { changeOrderTotals } from '@/lib/change-orders';
 import ChangeOrderPanel from './ChangeOrderPanel';
 import WarrantyPanel from './WarrantyPanel';
 import SelectionBoard from './SelectionBoard';
-import { listSelections, listSelectionTemplates } from '@/lib/selections-data';
+import { listSelections, listSelectionTemplates, signSelectionPhotos } from '@/lib/selections-data';
 import { boardStatus } from '@/lib/selections';
 import { listWarranties, listClaims } from '@/lib/warranties-data';
 import { listJobTasks, taskProgress } from '@/lib/job-tasks';
@@ -123,6 +123,9 @@ export default async function JobDetailPage({
     listSelections(supabase, accountId, job.id),
     listSelectionTemplates(supabase, accountId),
   ]);
+  // The homeowner saw pictures and the contractor saw a text list. Both sides
+  // of a feature about agreeing on what was picked should see the same thing.
+  const selectionPhotos = await signSelectionPhotos(accountId, selections);
   const selectionStatus = boardStatus(selections);
   const [warranties, warrantyClaims, { data: warrantyDefaults }] = await Promise.all([
     listWarranties(supabase, accountId, job.id),
@@ -1151,7 +1154,7 @@ export default async function JobDetailPage({
                   {selectionStatus.label || 'What the customer has to choose, and what it costs.'}
                 </span>
               </summary>
-              <SelectionBoard jobId={job.id} selections={selections} templates={selectionTemplates} />
+              <SelectionBoard jobId={job.id} selections={selections} templates={selectionTemplates} photos={selectionPhotos} />
             </details>
 
             {/* Open by default once the work is done: that is the moment a
