@@ -187,7 +187,7 @@ export default function QuotePreviewButton({
   // but the page is fine; the controls are somewhere you can't reach.
   //
   // A portal to <body> puts the overlay outside every panel, which is what the
-  // other modals in the app already do (AddExpenseModal, ImagePickerModal).
+  // other modals in the app already do (ModalDialog, ImagePickerModal).
   const modal = open ? (
     <div className={styles.modalBackdrop} role="dialog" aria-modal="true" aria-label="Quote preview" onClick={() => setOpen(false)}>
           <section className={styles.quotePreviewCard} onClick={(event) => event.stopPropagation()}>

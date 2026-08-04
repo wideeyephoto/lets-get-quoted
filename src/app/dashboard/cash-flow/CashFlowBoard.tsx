@@ -1,11 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import SaveButton from '@/components/save-button';
+import ModalDialog from '@/components/modal-dialog';
 import { buildForecast, KIND_LABEL, type CashEvent } from '@/lib/cash-forecast';
 import { accuracySentence, type ForecastAccuracy } from '@/lib/cash-accuracy';
 import CashChart, { type LineKey } from './CashChart';
+import ScheduledPaymentForm from './ScheduledPaymentForm';
 
 // The interactive half of the cash-flow page.
 //
@@ -38,6 +40,9 @@ type Props = {
    * can't move out of here because it's built from the same forecast state.
    */
   billsPanel?: ReactNode;
+  /** False on the public demo, where the Server Action behind the form
+      requires an owner and would bounce a visitor to /login. */
+  canAddExpense?: boolean;
   /**
    * Where the 30/60/90 tabs point. Hardcoded to /dashboard, they were the one
    * broken control on the demo's forecast: a prospect changing the window got
@@ -104,9 +109,18 @@ export default function CashFlowBoard({
   settingsAvailable,
   saveSettings,
   billsPanel,
+  canAddExpense = true,
   basePath = '/dashboard',
 }: Props) {
   const base = basePath;
+  // Where an expense added from the popup lands. The popup writes it and the
+  // page revalidates, so the new row appears in the bills panel further down —
+  // out of sight from the top of a long page. Scrolling there on success is what
+  // makes the add feel like it did something rather than like it vanished.
+  const billsRef = useRef<HTMLDivElement>(null);
+  const revealBills = useCallback(() => {
+    billsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
   const [balance, setBalance] = useState<number>(savedBalance ?? 0);
   const [buffer, setBuffer] = useState<number>(savedBuffer);
   const [creditLine, setCreditLine] = useState<number>(savedCreditLine);
@@ -256,18 +270,40 @@ export default function CashFlowBoard({
             </div>
           ) : null}
 
-          <div className="insight-window-tabs" role="tablist" aria-label="Forecast window">
-            {windows.map((option) => (
-              <Link
-                key={option.key}
-                href={`${base}/cash-flow?window=${option.key}`}
-                className={`insight-window-tab${option.key === selectedKey ? ' is-active' : ''}`}
-                aria-selected={option.key === selectedKey}
-                role="tab"
+          <div className="cash-window-row">
+            <div className="insight-window-tabs" role="tablist" aria-label="Forecast window">
+              {windows.map((option) => (
+                <Link
+                  key={option.key}
+                  href={`${base}/cash-flow?window=${option.key}`}
+                  className={`insight-window-tab${option.key === selectedKey ? ' is-active' : ''}`}
+                  aria-selected={option.key === selectedKey}
+                  role="tab"
+                >
+                  {option.label}
+                </Link>
+              ))}
+            </div>
+            {/* Up here because this is where somebody is looking at the line
+                dipping and thinking "that's the insurance I haven't put in yet".
+                The same form is still in the bills panel below; this is the same
+                thing reachable without scrolling past the whole forecast.
+
+                Shown but inert on the demo, like the other demo buttons: the
+                form posts to a Server Action that requires an owner, so on a
+                public page it would bounce a visitor to /login mid-demo. */}
+            {canAddExpense ? (
+              <ModalDialog
+                triggerLabel="+ Add expense"
+                triggerClassName="btn secondary cash-add-expense"
+                title="Add an expense"
+                onSuccess={revealBills}
               >
-                {option.label}
-              </Link>
-            ))}
+                <ScheduledPaymentForm todayKey={todayKey} inModal />
+              </ModalDialog>
+            ) : (
+              <span className="btn secondary cash-add-expense" aria-disabled="true">+ Add expense</span>
+            )}
           </div>
         </div>
       </section>
@@ -462,7 +498,7 @@ export default function CashFlowBoard({
         </article>
       </div>
 
-      {billsPanel}
+      <div ref={billsRef} id="cash-bills">{billsPanel}</div>
 
       <section className="panel workspace-section-card cash-events-card">
         <div className="section-heading workspace-section-heading">

@@ -6226,6 +6226,21 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
 }
 
 /* ---- Insights: window tabs, funnel, revenue chart ---- */
+/* Forecast window tabs on the left, "Add expense" on the right. Wraps rather
+   than shrinking the tabs, so the button drops under them on a phone instead of
+   squeezing 30/60/90 into an unreadable row. */
+.cash-window-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  /* The margin the tabs used to carry, moved up to the row that replaced them. */
+  margin-top: 1rem;
+}
+.cash-window-row .insight-window-tabs { margin-top: 0; }
+.cash-add-expense { flex: 0 0 auto; }
+
 .insight-window-tabs {
   display: inline-flex;
   gap: 0.3rem;

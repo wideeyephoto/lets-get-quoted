@@ -57,6 +57,10 @@ export default function DemoCashBoard({
       settingsAvailable
       saveSettings={() => {}}
       billsPanel={billsPanel}
+      // Shown but inert here. The form behind it posts to a Server Action that
+      // requires an owner, so on this public page it would take a prospect to
+      // the login wall in the middle of the demo.
+      canAddExpense={false}
       // Keeps the window tabs inside the demo instead of the login wall.
       basePath="/demo"
     />

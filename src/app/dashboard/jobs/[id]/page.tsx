@@ -70,7 +70,7 @@ import QuickFillButtons from '@/components/quick-fill-buttons';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import JobDateRange from '@/components/job-date-range';
 import TimeSlotSelect from '@/components/time-slot-select';
-import AddExpenseModal, { CloseOnSuccess } from './AddExpenseModal';
+import ModalDialog, { CloseOnSuccess } from '@/components/modal-dialog';
 import QuoteDeliveryBanner from './QuoteDeliveryBanner';
 import CopyLinkButton from './CopyLinkButton';
 import RequestReviewButton from './RequestReviewButton';
@@ -330,7 +330,7 @@ export default async function JobDetailPage({
           </div>
           <div className="actions workspace-actions">
             <Link href={`/dashboard/jobs/${job.id}?open=payment#request-payment`} className="btn primary">Request payment</Link>
-            <AddExpenseModal triggerClassName="btn secondary" triggerLabel="Add expense" title="Add expense" defaultOpen={searchParams.open === 'costs'}>
+            <ModalDialog triggerClassName="btn secondary" triggerLabel="Add expense" title="Add expense" defaultOpen={searchParams.open === 'costs'}>
               <form action={boundCreateCost} className="cost-form">
                 <JobExpenseFields crew={crew} onReadReceipt={readReceiptAction} />
                 <div style={{ marginTop: '0.8rem' }}>
@@ -338,7 +338,7 @@ export default async function JobDetailPage({
                 </div>
                 <CloseOnSuccess />
               </form>
-            </AddExpenseModal>
+            </ModalDialog>
             {/* Start and complete are a pair, so they sit together. "Job
                 started" disappears once it has been pressed rather than turning
                 into a disabled button — the feed and the pipeline step carry the
@@ -1080,7 +1080,7 @@ export default async function JobDetailPage({
               </summary>
 
               <div className="cost-add-row" style={{ marginBottom: '0.9rem' }}>
-                <AddExpenseModal triggerClassName="btn secondary" triggerLabel="+ Add expense" title="Add expense">
+                <ModalDialog triggerClassName="btn secondary" triggerLabel="+ Add expense" title="Add expense">
                   <form action={boundCreateCost} className="cost-form">
                     <JobExpenseFields crew={crew} onReadReceipt={readReceiptAction} />
                     <div style={{ marginTop: '0.8rem' }}>
@@ -1088,7 +1088,7 @@ export default async function JobDetailPage({
                     </div>
                     <CloseOnSuccess />
                   </form>
-                </AddExpenseModal>
+                </ModalDialog>
               </div>
 
               {costs.length === 0 ? (
