@@ -5,6 +5,8 @@ import { getSiteGallery } from '@/lib/site-images';
 import { getPublicSiteBySubdomain } from '@/lib/sites';
 import { getTemplate } from '@/lib/templates';
 import SiteStructuredData from '@/lib/templates/SiteStructuredData';
+import { getSiteContent } from '@/lib/site-content';
+import { parseVerificationToken } from '@/lib/seo/search-console';
 import { resolveSiteSeo, siteCanonicalUrl, isSiteSeoReady } from '@/lib/seo/site-seo';
 import { siteIconsMetadata } from '@/lib/brand-mark';
 
@@ -36,6 +38,10 @@ export async function generateMetadata({ params }: PublicSitePageProps): Promise
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
   const { title, description } = resolveSiteSeo(site);
   const canonical = siteCanonicalUrl(site) || `https://${site.subdomain}.${rootDomain}`;
+  // Search Console verification. On the HOMEPAGE only, which is where Google
+  // looks — and the only page the owner will be asked for. Stored as typed
+  // (often the whole <meta> tag), so it is parsed here rather than trusted.
+  const verification = parseVerificationToken(getSiteContent(site.content).googleSiteVerification);
 
   return {
     // absolute bypasses the root layout's '%s · Let's Get Quoted' template so a
@@ -50,6 +56,7 @@ export async function generateMetadata({ params }: PublicSitePageProps): Promise
     icons: siteIconsMetadata(site),
     // Keep thin/incomplete sites out of the index until they carry real content.
     robots: isSiteSeoReady(site) ? undefined : { index: false, follow: true },
+    ...(verification ? { verification: { google: verification } } : {}),
     openGraph: {
       title,
       description,

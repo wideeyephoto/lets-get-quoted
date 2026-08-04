@@ -12,6 +12,7 @@ import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
 import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
 import { SEO_TITLE_MAX as SEO_TITLE_LIMIT, SEO_DESC_MAX as SEO_DESC_LIMIT } from '@/lib/seo/seo-copy';
+import { parseVerificationToken, verificationTokenProblem } from '@/lib/seo/search-console';
 // Shared with the first-run seed (lib/site-seed) so "Generate" here and the
 // automatic build after signup can never produce different sites.
 import { applyGeneratedSiteText, applyStockImages } from '@/lib/site-seed';
@@ -389,6 +390,11 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
     (siteContent.beforeAfter.enabled && siteContent.beforeAfter.items.some((pair) => pair.beforeUrl && pair.afterUrl)) ||
     (siteContent.blog.enabled && publishedPostCount > 0);
 
+  // "Get found on Google" — the two things that live OUTSIDE the website.
+  const googleBusinessLinked = siteContent.socials.some((link) => link.platform === 'google');
+  const verificationToken = parseVerificationToken(siteContent.googleSiteVerification);
+  const verificationProblem = verificationTokenProblem(siteContent.googleSiteVerification);
+
   const launchChecklist = [
     { label: 'Company name', done: Boolean(site.company_name.trim()), hint: 'Setup tab — Business basics', go: () => jumpTo('business', 'basics', 'bf-company') },
     { label: 'Phone number', done: Boolean(site.phone), hint: 'Page tab — powers the call buttons', go: () => jumpTo('page', 'estimate', 'bf-phone') },
@@ -396,6 +402,11 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
     { label: 'Web address', done: Boolean(site.subdomain) || Boolean(site.custom_domain && domainStatus === 'verified'), hint: 'Add a subdomain below, or verify a custom domain', go: () => jumpTo('publish', null, 'pub-subdomain') },
     { label: 'At least one content section', done: hasLiveSection, hint: 'Page tab — e.g. Services or FAQs', go: () => jumpTo('page', 'services') },
     { label: 'Google listing filled in', done: Boolean((site.seo_title || '').trim() || (site.seo_description || '').trim()), hint: 'Publish tab — How you show up on Google', go: () => jumpTo('publish', 'seo', 'bf-seo-title') },
+    // Not a publish gate — nothing here can create the listing for them. It sits
+    // on the checklist because a finished website and no Business Profile is the
+    // most common way a contractor ends up invisible for "<trade> near me", and
+    // the builder is the one place they will definitely look.
+    { label: 'Google Business Profile linked', done: googleBusinessLinked, hint: 'Publish tab — Get found on Google (the map results)', go: () => jumpTo('publish', 'found') },
   ];
 
   const handleChange = useCallback((field: keyof Site, value: Site[keyof Site]) => {
@@ -2545,6 +2556,68 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
                     <textarea id="bf-seo-description" rows={3} maxLength={SEO_DESC_LIMIT + 40} value={site.seo_description || ''} onChange={(event) => handleChange('seo_description', event.target.value || null)} placeholder={site.tagline || 'One sentence on what you do, where, and how customers book.'} />
                     <small className={(site.seo_description || '').length > SEO_DESC_LIMIT ? styles.counterOver : undefined}>{(site.seo_description || '').length}/{SEO_DESC_LIMIT} characters{(site.seo_description || '').length > SEO_DESC_LIMIT ? ' — a bit long; Google may trim it' : ''}</small>
                   </label>
+                </SectionCard>
+
+                <SectionCard
+                  title="Get found on Google"
+                  description="Two things outside your website that decide whether people find it."
+                  hint={googleBusinessLinked && verificationToken ? 'Both done' : googleBusinessLinked || verificationToken ? '1 of 2 done' : undefined}
+                  open={openSection === 'found'}
+                  onToggleOpen={() => toggleSection('found')}
+                >
+                  {/* The map pack is three results, it sits above every ordinary
+                      search result, and only Business Profiles appear in it. No
+                      amount of work on this website can put you there — which is
+                      exactly why it belongs in the builder, next to the work
+                      people assume is enough. */}
+                  <div className={styles.contentSubhead}>
+                    <strong>1. Your Google Business Profile</strong>
+                    <small>{googleBusinessLinked ? '✅ Linked' : 'Not linked yet'}</small>
+                  </div>
+                  <p className={styles.fieldHint}>
+                    When someone searches “{siteContent.trade || 'plumber'} near me”, the map with three businesses
+                    sits above everything else — and only businesses with a Google Business Profile can appear
+                    in it. It’s free, and it’s the single biggest thing you can do to get calls.
+                  </p>
+                  {!googleBusinessLinked && (
+                    <p className={styles.fieldHint}>
+                      Claim yours at <a href="https://business.google.com" target="_blank" rel="noopener noreferrer">business.google.com</a>,
+                      then add the link here so your website and your listing point at each other — Google uses that
+                      to confirm they’re the same business.
+                    </p>
+                  )}
+                  <div className={styles.legalEditActions}>
+                    <button type="button" className={styles.secondaryAction} onClick={() => jumpTo('business', 'socials')}>
+                      {googleBusinessLinked ? 'Edit the link' : 'Add my Business Profile link'}
+                    </button>
+                  </div>
+
+                  <div className={styles.contentSubhead}>
+                    <strong>2. Tell Google your site exists</strong>
+                    <small>{verificationToken ? '✅ Verified tag added' : 'Optional'}</small>
+                  </div>
+                  <p className={styles.fieldHint}>
+                    Your site publishes a sitemap at <code>/sitemap.xml</code> listing every page — but nobody has told
+                    Google to read it. In <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer">Search Console</a>,
+                    add {liveDomain || `${site.subdomain || 'your-site'}.${ROOT_DOMAIN}`} as a URL prefix property, choose the
+                    <strong> HTML tag</strong> method, and paste what it gives you below. Save, publish, then click Verify.
+                  </p>
+                  <label className={styles.formField}>
+                    <span>Google verification tag</span>
+                    <input
+                      id="bf-google-verification"
+                      value={siteContent.googleSiteVerification}
+                      onChange={(event) => updateSiteContent({ googleSiteVerification: event.target.value })}
+                      placeholder='<meta name="google-site-verification" content="…" />'
+                    />
+                    {verificationProblem
+                      ? <small className={styles.counterOver}>{verificationProblem}</small>
+                      : <small className={styles.fieldHint}>Paste the whole tag or just the code — either works. Leave blank if you’d rather not.</small>}
+                  </label>
+                  <p className={styles.fieldHint}>
+                    Once verified, submit <code>sitemap.xml</code> in Search Console. It’s also where you’ll see which
+                    searches are finding you.
+                  </p>
                 </SectionCard>
 
                 <SectionCard title="Legal pages" description="Auto-written Privacy Policy and Terms, linked in your footer at /privacy and /terms." open={openSection === 'legal'} onToggleOpen={() => toggleSection('legal')}>

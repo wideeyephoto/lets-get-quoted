@@ -5,6 +5,8 @@ import { getSiteGallery } from '@/lib/site-images';
 import { getPublicSiteByCustomDomain } from '@/lib/sites';
 import { getTemplate } from '@/lib/templates';
 import SiteStructuredData from '@/lib/templates/SiteStructuredData';
+import { getSiteContent } from '@/lib/site-content';
+import { parseVerificationToken } from '@/lib/seo/search-console';
 import { resolveSiteSeo, isSiteSeoReady } from '@/lib/seo/site-seo';
 import { siteIconsMetadata } from '@/lib/brand-mark';
 
@@ -34,6 +36,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!site) return { title: 'Site not found', robots: { index: false, follow: false } };
   const { title, description } = resolveSiteSeo(site);
   const canonical = `https://${site.custom_domain}`;
+  // Search Console verification. On the HOMEPAGE only, which is where Google
+  // looks — and the only page the owner will be asked for. Stored as typed
+  // (often the whole <meta> tag), so it is parsed here rather than trusted.
+  const verification = parseVerificationToken(getSiteContent(site.content).googleSiteVerification);
   return {
     // absolute bypasses the root layout's '%s · Let's Get Quoted' template so a
     // contractor's own domain/tab doesn't carry the SaaS brand. Guard against an
@@ -44,6 +50,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     alternates: { canonical },
     icons: siteIconsMetadata(site),
     robots: isSiteSeoReady(site) ? undefined : { index: false, follow: true },
+    ...(verification ? { verification: { google: verification } } : {}),
     openGraph: { title, description, type: 'website', url: canonical, images: site.hero_url ? [{ url: site.hero_url }] : [] },
   };
 }

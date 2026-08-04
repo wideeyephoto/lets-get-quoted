@@ -864,6 +864,19 @@ export type NormalizedSiteContent = {
   // Business ZIP code — seeds the AI so it can name the real primary city and
   // nearby towns for the service area (not a generic guess).
   zip: string;
+  // Google Search Console verification, rendered as the
+  // <meta name="google-site-verification"> tag on the site's homepage.
+  //
+  // This is how an owner proves the site is theirs so they can submit the
+  // sitemap it now serves. The alternative Google offers is a DNS record, which
+  // an owner on <them>.letsgetquoted.com cannot add — it is our domain.
+  //
+  // Stored EXACTLY as typed, including a whole pasted <meta> tag, and NOT
+  // validated here: sanitizing on read would empty the field on every keystroke
+  // (a half-typed token isn't a valid one), which makes the input impossible to
+  // use. Always pass it through parseVerificationToken before rendering — see
+  // lib/seo/search-console.
+  googleSiteVerification: string;
   // The owner's chosen brand-mark glyph key (from the trade options). Empty falls
   // back to the trade default. Drives the header/footer logo mark, favicon, and
   // downloadable icon when no logo image is uploaded.
@@ -1524,6 +1537,8 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     footerStyle: FOOTER_STYLE_KEYS.has(toString(root.footerStyle)) ? toString(root.footerStyle) : 'columns',
     trade: toString(root.trade).slice(0, 80),
     zip: toString(root.zip).slice(0, 12),
+    // Raw on purpose (see the type) — capped only so a paste can't grow the row.
+    googleSiteVerification: toString(root.googleSiteVerification).slice(0, 300),
     brandGlyph: SERVICE_ICON_GLYPHS[toString(root.brandGlyph)] ? toString(root.brandGlyph) : '',
     stockImages: parseStockImages(root.stockImages),
   };
