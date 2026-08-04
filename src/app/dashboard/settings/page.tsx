@@ -17,7 +17,7 @@ import DeleteAccountButton from './DeleteAccountButton';
 import ArrivalSettingsSection from './ArrivalSettingsSection';
 import ArrivalExtrasSection from './ArrivalExtrasSection';
 import { arrivalSettingsFromAccount } from '@/lib/arrival';
-import { updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
+import { updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
 import { updateCostSettingsAction, toggleClientPortalAction } from './actions';
 import ClientPortalSection from './ClientPortalSection';
 import MissedCallSection from './MissedCallSection';
@@ -32,6 +32,13 @@ import { loadedHourlyRate } from '@/lib/cost-truth';
 import { ESTIMATE_POSTURES, normalizeEstimatePosture } from '@/lib/estimate-posture';
 import { getSiteContent } from '@/lib/site-content';
 import { googleReviewUrl } from '@/lib/review-routing';
+import {
+  FOLLOWUP_MAX_AGE_DAYS,
+  MAX_FOLLOWUPS,
+  followupSchedule,
+  followupScheduleLabel,
+  quoteFollowupText,
+} from '@/lib/quote-followups';
 import { bookingAvailabilityFromAccount } from '@/lib/booking-availability';
 import { QUICK_STOP_SETTINGS_COLUMNS } from '@/lib/quick-stop';
 import { getTrailingVolume } from '@/lib/payments';
@@ -147,7 +154,8 @@ export default async function SettingsPage({
     placeId: businessBasics.testimonials.googlePlaceId,
     listingUrl: businessBasics.testimonials.googleUrl,
   });
-  const reviewFeedbackUrl = `${(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '')}/review/…`;
+  const appOrigin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
+  const reviewFeedbackUrl = `${appOrigin}/review/…`;
   const estimatePosture = normalizeEstimatePosture(intakeSettings?.estimate_posture);
   const highValueLeadAmount = intakeSettings?.high_value_lead_amount ? Number(intakeSettings.high_value_lead_amount) : null;
   const muteLowQualityLeads = intakeSettings?.mute_low_quality_leads !== false; // default on
@@ -587,30 +595,66 @@ export default async function SettingsPage({
                   />
                 </AutomationCard>
 
+                {/* No form: the checkbox in here wrote quote_followups_enabled,
+                    which is the card's own switch. Nothing else was tunable, so
+                    what's left is what the automation does and what it says —
+                    the cadence read from the constants the cron actually uses,
+                    not written out in prose beside them. */}
                 <AutomationCard group="follow-through" id="followups" title="Quote follow-ups" subtitle="Nudge unapproved quotes" toggle={{ on: quoteFollowupsEnabled, action: toggleAutomationAction.bind(null, 'followups') }}>
-                  <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
-                    When on, we gently nudge clients who were sent a quote but haven&apos;t approved it yet —
-                    up to twice (around day 2 and day 5), texting them if they have a mobile on file and emailing
-                    otherwise. Nudges stop as soon as the quote is approved, and respect text opt-outs.
-                  </p>
-                  <form action={updateFollowupSettingsAction} className="form-grid compact-form">
-                    <label className="checkbox-row" htmlFor="quoteFollowups">
-                      <input
-                        id="quoteFollowups"
-                        name="quoteFollowups"
-                        type="checkbox"
-                        defaultChecked={quoteFollowupsEnabled}
-                      />
-                      <span>Automatically follow up on quotes that haven&apos;t been approved</span>
-                    </label>
-                    <details className="automation-preview">
-                      <summary>Preview the follow-up text</summary>
-                      <p className="automation-preview-bubble">Hi Sarah, just checking in on your quote from {businessName}. Ready to move forward? Review and approve it here: [link]. Reply STOP to opt out.</p>
-                    </details>
-                    <div className="form-actions">
-                      <SaveButton>Save follow-up settings</SaveButton>
+                  <div className={`followup-card${quoteFollowupsEnabled ? '' : ' is-paused'}`}>
+                    <p className="followup-state">
+                      {quoteFollowupsEnabled
+                        ? 'A quote that goes quiet gets a nudge, so you never have to remember which ones did.'
+                        : 'Paused — a quote nobody answers stays that way until you chase it yourself.'}
+                    </p>
+
+                    <div className="followup-grid">
+                      <div className="followup-facts">
+                        <div className="followup-fact">
+                          <strong>{followupScheduleLabel()}</strong>
+                          <span>
+                            Counted from the day you shared the quote. {MAX_FOLLOWUPS} nudges, then it leaves them alone.
+                          </span>
+                        </div>
+                        <div className="followup-fact">
+                          <strong>Stops the moment they approve</strong>
+                          <span>
+                            And never chases a quote more than {FOLLOWUP_MAX_AGE_DAYS / 7} weeks old — by then it&apos;s
+                            a phone call, not a text.
+                          </span>
+                        </div>
+                        <div className="followup-fact">
+                          <strong>Texted, or emailed with no mobile</strong>
+                          <span>Only to clients who opted in to texts. A STOP reply ends it for good.</span>
+                        </div>
+                      </div>
+
+                      <div className="followup-preview">
+                        <p className="eyebrow">What the client sees</p>
+                        <p className="followup-lede">The first nudge, {followupSchedule()[0]} days after you share a quote.</p>
+                        <div className="followup-phone">
+                          <div className="followup-phone-head">
+                            <span className="followup-phone-avatar" aria-hidden="true">
+                              {businessName.slice(0, 2).toUpperCase()}
+                            </span>
+                            <strong>{businessName}</strong>
+                          </div>
+                          <div className="followup-phone-body">
+                            {/* Rendered from the sender's own function. The old
+                                hand-written preview had lost the "Let's Get
+                                Quoted:" prefix every one of our texts carries. */}
+                            <p className="followup-bubble">
+                              {quoteFollowupText({
+                                businessName,
+                                clientName: 'Sarah',
+                                url: `${appOrigin}/client/jobs/…`,
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </form>
+                  </div>
                 </AutomationCard>
 
                 <AutomationCard group="follow-through" id="reminders" title="Appointment reminders" subtitle="Day-before text or email" toggle={{ on: appointmentRemindersEnabled, action: toggleAutomationAction.bind(null, 'reminders') }}>

@@ -3,6 +3,7 @@ import { formatJobSchedule, formatMoney } from '@/lib/jobs';
 import { normalizeUsPhone } from '@/lib/phone';
 import { missedCallTextBack } from '@/lib/missed-call';
 import { reviewRequestText } from '@/lib/review-routing';
+import { quoteFollowupText } from '@/lib/quote-followups';
 import { createHmac, timingSafeEqual } from 'crypto';
 
 export type PaymentSmsEvent = 'payment_requested' | 'payment_paid' | 'payment_failed' | 'payment_refunded';
@@ -585,7 +586,13 @@ export async function sendQuoteFollowupSms(params: {
   url: string;
   accountId?: string;
 }) {
-  const message = `Let's Get Quoted: Hi ${params.clientName}, just checking in on your quote from ${params.businessName}. Ready to move forward? Review and approve it here: ${params.url}. Reply STOP to opt out.`;
+  // Shared with the settings preview so the contractor is shown the message
+  // their client actually receives.
+  const message = quoteFollowupText({
+    businessName: params.businessName,
+    clientName: params.clientName,
+    url: params.url,
+  });
   const providerId = await sendTwilioMessage(params.phone, message);
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;

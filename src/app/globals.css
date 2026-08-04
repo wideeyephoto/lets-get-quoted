@@ -2498,6 +2498,74 @@ h3 {
   .review-card .review-grid { grid-template-columns: 1fr; gap: 1.1rem; }
 }
 
+/* ── Quote follow-ups ────────────────────────────────────────────────────────
+   Fourth card in this shape. No controls at all — the switch in the header is
+   the whole setting — so the left column is three facts rather than fields. */
+.followup-card {
+  padding: 1.05rem 1.1rem;
+  border-radius: 20px;
+  border: 1px solid rgba(var(--tint), 0.14);
+  background: rgba(var(--tint), 0.03);
+}
+.followup-card.is-paused .followup-preview { opacity: 0.45; }
+.followup-card .followup-state { margin: 0 0 1rem; font-size: 0.88rem; line-height: 1.55; color: var(--mute-t60); }
+.followup-card.is-paused .followup-state { color: var(--ink-orange-1); }
+
+.followup-card .followup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4rem; align-items: start; }
+.followup-card .followup-lede { margin: 0.2rem 0 0.9rem; font-size: 0.84rem; line-height: 1.5; color: var(--mute-t50); }
+
+.followup-card .followup-facts { display: grid; gap: 0.6rem; }
+.followup-card .followup-fact {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--tint), 0.12);
+  background: rgba(var(--tint), 0.04);
+}
+.followup-card .followup-fact strong { font-size: 0.88rem; color: var(--text); }
+.followup-card .followup-fact span { font-size: 0.8rem; line-height: 1.5; color: var(--mute-t50); }
+
+.followup-card .followup-phone {
+  border-radius: 16px;
+  border: 1px solid rgba(var(--tint), 0.16);
+  background: rgba(var(--tint), 0.06);
+  overflow: hidden;
+}
+.followup-card .followup-phone-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid rgba(var(--tint), 0.1);
+  font-size: 0.85rem;
+}
+.followup-card .followup-phone-avatar {
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  background: rgba(var(--tint), 0.12);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.followup-card .followup-phone-body { padding: 0.85rem 0.8rem; }
+.followup-card .followup-bubble {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border-radius: 0.9rem 0.9rem 0.9rem 0.25rem;
+  background: rgba(var(--tint), 0.08);
+  font-size: 0.86rem;
+  line-height: 1.55;
+  /* The job link is one long unbreakable token. */
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .followup-card .followup-grid { grid-template-columns: 1fr; gap: 1.1rem; }
+}
+
 .automation-preview-bubble { margin-top: 0.6rem; padding: 0.7rem 0.85rem; border-radius: 0.7rem 0.7rem 0.7rem 0.2rem; background: rgba(var(--tint), 0.05); border: 1px solid rgba(var(--tint), 0.1); font-size: 0.85rem; line-height: 1.45; color: rgba(var(--ink-rgb), 0.9); max-width: 42ch; }
 .automation-prereq { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.82rem; color: var(--gold-ink); background: rgba(255, 209, 102, 0.1); border: 1px solid rgba(255, 209, 102, 0.3); border-radius: 0.6rem; padding: 0.55rem 0.7rem; }
 .automation-prereq a { color: var(--gold-ink); text-decoration: underline; }

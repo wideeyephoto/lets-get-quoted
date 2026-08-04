@@ -4,17 +4,19 @@ import { normalizeUsPhone } from '@/lib/phone';
 import { createClientJobAccessToken, createJobFeedEvent } from '@/lib/job-feed';
 import { sendQuoteFollowupSms } from '@/lib/sms';
 import { sendQuoteFollowupEmail } from '@/lib/email';
+import {
+  FOLLOWUP_FIRST_DELAY_DAYS as FIRST_DELAY_DAYS,
+  FOLLOWUP_INTERVAL_DAYS as INTERVAL_DAYS,
+  FOLLOWUP_MAX_AGE_DAYS as MAX_AGE_DAYS,
+  MAX_FOLLOWUPS,
+} from '@/lib/quote-followups';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
 const DAY = 24 * 60 * 60 * 1000;
-// Wait this long after a quote is shared before the first nudge…
-const FIRST_DELAY_DAYS = 2;
-// …then this gap between nudges (so nudge #2 lands ~day 5).
-const INTERVAL_DAYS = 3;
-const MAX_FOLLOWUPS = 2;
-// Stop chasing a quote after this long — a two-week-old unapproved quote is dead.
-const MAX_AGE_DAYS = 21;
+// The cadence lives in lib/quote-followups, which is pure, so the settings card
+// can state it rather than describe it. Imported under the old local names to
+// keep the sweep below reading the way it did.
 // Bound the work one cron invocation will do.
 const MAX_SENDS_PER_RUN = 100;
 

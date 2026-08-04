@@ -594,19 +594,11 @@ export async function updateDepositSettingsAction(formData: FormData) {
   revalidatePath('/dashboard/settings');
 }
 
-export async function updateFollowupSettingsAction(formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
-  const quoteFollowups = formData.get('quoteFollowups') === 'on';
-
-  const { error } = await supabase
-    .from('accounts')
-    .update({ quote_followups_enabled: quoteFollowups })
-    .eq('id', accountId);
-
-  if (error) throw new Error(error.message);
-
-  revalidatePath('/dashboard/settings');
-}
+// updateFollowupSettingsAction is gone. It wrote quote_followups_enabled and
+// nothing else — the same single column as the card's own switch, through
+// toggleAutomationAction. A second way to write one boolean is a second way for
+// it to be wrong: the checkbox rendered from a stale value, so pressing Save
+// could undo a switch flipped a moment earlier.
 
 // CAN-SPAM: the business's physical postal address, printed in the footer of
 // every marketing email — and, once geocoded, the point Plan my day measures the
