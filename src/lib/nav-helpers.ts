@@ -37,6 +37,16 @@ export function settingsTabEvent(hash: string): CustomEvent<string> {
 }
 
 /**
+ * The lightning bolt that means "automations", as one path.
+ *
+ * Three places draw it: the rail's Automations row, the demo rail's copy of that
+ * row, and the Automations tab inside Settings. Written out three times it would
+ * be three bolts that drift, and the rail is where somebody first learns what
+ * the mark means — it has to be the same mark when they arrive.
+ */
+export const AUTOMATIONS_BOLT_PATH = 'M13 2 4.5 13.5H11l-1 8.5L19.5 10H13z';
+
+/**
  * Whether a create form (e.g. jobs `?new`, leads `?add`) should render open:
  * always when the list is empty, otherwise only when the flag is present in the
  * URL (any value, including empty string; absent means undefined).

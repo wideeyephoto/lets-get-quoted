@@ -9,7 +9,7 @@ import { NavIcon } from './nav-icons';
 import ActionIcon from './action-icon';
 import ThemeToggle from './theme-toggle';
 import { supabase } from '@/lib/supabase';
-import { isSectionNew, markNavSeen, parseNavSeen, settingsTabEvent, NAV_SEEN_STORAGE_KEY, type NavSeenMap } from '@/lib/nav-helpers';
+import { isSectionNew, markNavSeen, parseNavSeen, settingsTabEvent, AUTOMATIONS_BOLT_PATH, NAV_SEEN_STORAGE_KEY, type NavSeenMap } from '@/lib/nav-helpers';
 
 // Order follows the pipeline (Leads -> Jobs -> Schedule) with Crew, a resource,
 // after the stages instead of splitting them. `hint` surfaces the vocabulary
@@ -712,7 +712,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               {renderSideLink('/dashboard/settings')}
               <Link
                 href="/dashboard/settings#automations"
-                className="sidenav-sublink"
+                className="sidenav-sublink sidenav-automations"
                 // Already on Settings: switch the tab directly rather than
                 // relying on the URL changing. Next navigates with pushState,
                 // which never fires hashchange — and if the hash is already
@@ -726,6 +726,13 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                   window.dispatchEvent(settingsTabEvent('automations'));
                 }}
               >
+                {/* The bolt sits where every other row's icon sits, so the rail
+                    keeps one column of marks down its left edge. The connector
+                    tick stays to its right: this is still a child of Account,
+                    and the tick is the only thing saying so. */}
+                <span className="sidenav-bolt" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d={AUTOMATIONS_BOLT_PATH} /></svg>
+                </span>
                 <span className="sidenav-subtick" aria-hidden="true" />
                 Automations
               </Link>

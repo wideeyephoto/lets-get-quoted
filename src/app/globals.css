@@ -1439,6 +1439,52 @@ h3 {
   margin-left: -0.35rem;
 }
 
+/* Automations wears the bolt.
+   The row used to be indented text with a connector tick and nothing else, so
+   the one place in the product that runs work while you're not looking was the
+   quietest thing on the rail. Giving it the bolt puts a mark in the same left
+   column as every other row's icon, and it is the SAME bolt as the Automations
+   tab it opens (lib/nav-helpers) — the rail is where somebody learns what that
+   mark means, so it has to still mean it when they arrive.
+
+   The tick stays, to the bolt's right: this is a child of Account, and the tick
+   is the only thing that says so once the indent is gone. */
+.sidenav-automations {
+  /* Indent dropped so the bolt lands under the parent row's icon, not beside
+     its label. */
+  padding-left: 0.45rem;
+  border: 1px solid rgba(255, 122, 33, 0.34);
+  background: rgba(255, 122, 33, 0.05);
+  color: var(--text);
+}
+.sidenav-automations:hover {
+  border-color: rgba(255, 122, 33, 0.55);
+  background: rgba(255, 122, 33, 0.11);
+}
+.sidenav-automations .sidenav-subtick {
+  margin-left: 0;
+  border-left-color: rgba(255, 122, 33, 0.5);
+  border-bottom-color: rgba(255, 122, 33, 0.5);
+}
+.sidenav-bolt {
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  flex: none;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 122, 33, 0.3);
+  background: rgba(255, 122, 33, 0.13);
+}
+.sidenav-bolt svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  /* Filled, not stroked — the bolt is a solid mark at this size; a 1.7px
+     outline of it closes up into a smudge. */
+  fill: var(--accent);
+  stroke: none;
+}
+
 /* A single-item card for Account, matching the group cards above it. */
 .sidenav-fcard {
   padding: 0.4rem;

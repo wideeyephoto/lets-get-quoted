@@ -8,6 +8,7 @@ import ThemeToggle from './theme-toggle';
 import { useAppShell } from './app-shell-provider';
 import { NavIcon } from './nav-icons';
 import { DEMO_COMPANY_NAME, DEMO_SITE_HOST, DEMO_NAV_COUNTS } from '@/lib/demo-data';
+import { AUTOMATIONS_BOLT_PATH } from '@/lib/nav-helpers';
 
 const DEMO_HOST = DEMO_SITE_HOST;
 
@@ -220,7 +221,10 @@ export default function DemoSidebar() {
         <div className="sidenav-foot">
           <div className="sidenav-fcard">
             {renderItem({ icon: '/dashboard/settings', label: 'Account', href: '/demo/settings' })}
-            <Link href="/demo/settings" className="sidenav-sublink">
+            <Link href="/demo/settings" className="sidenav-sublink sidenav-automations">
+              <span className="sidenav-bolt" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d={AUTOMATIONS_BOLT_PATH} /></svg>
+              </span>
               <span className="sidenav-subtick" aria-hidden="true" />
               Automations
             </Link>
