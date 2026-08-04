@@ -39,7 +39,16 @@ export async function draftMarketingForAccount(
 }
 
 /** The draft shape the campaign composer takes. */
-export type CampaignDraft = { channel: 'email'; audience: string; subject: string; body: string };
+export type CampaignDraft = {
+  channel: 'email';
+  audience: string;
+  subject: string;
+  /** Alternatives to choose between. Never measured — we don't track opens. */
+  subjectOptions: string[];
+  body: string;
+  /** So a send can be recorded against the topic it came from. */
+  beatId: string;
+};
 
 /**
  * A marketing beat, ready to drop into the composer.
@@ -63,6 +72,8 @@ export async function campaignDraftForBeat(
     channel: 'email',
     audience: 'all',
     subject: draft.subject,
+    subjectOptions: draft.subjectOptions,
     body: [...draft.body, draft.callToAction].filter(Boolean).join('\n\n'),
+    beatId,
   };
 }

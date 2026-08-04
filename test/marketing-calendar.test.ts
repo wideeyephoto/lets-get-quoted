@@ -101,7 +101,43 @@ describe('planCalendar', () => {
 
   it('wraps around the year end', () => {
     const planned = planCalendar({ trade: 'Roofing', zone: 'cold', fromMonth: 12, monthsAhead: 2 });
-    expect(planned.map((p) => p.month)).toEqual(expect.arrayContaining([12, 1]));
+    // The wrap now lives in a topic's own window rather than in two separate
+    // rows — ice dams run December into January and that is one thing to say.
+    const iceDams = planned.find((entry) => entry.beat.id === 'ice-dams');
+    expect(iceDams?.months).toEqual([12, 1]);
+    expect(iceDams?.monthName).toBe('December–January');
+  });
+
+  it('lists a topic once, however many months its season runs', () => {
+    // The bug this replaces was visible on screen: "Book a heating tune-up
+    // before the first cold snap" appeared under September AND October,
+    // because its cold-zone window is [9, 10]. One thing to do, listed twice.
+    const planned = planCalendar({ trade: 'Plumbing', zone: 'cold', fromMonth: 8, monthsAhead: 4 });
+    const ids = planned.map((entry) => entry.beat.id);
+    expect(new Set(ids).size).toBe(ids.length);
+
+    const heating = planned.find((entry) => entry.beat.id === 'heating-tuneup');
+    expect(heating?.months).toEqual([9, 10]);
+    expect(heating?.monthName).toBe('September–October');
+  });
+
+  it('only says "–" when the months are genuinely consecutive', () => {
+    // Exterior painting in a hot climate is [3, 10]: March and October, the two
+    // moments either side of a summer nobody paints in. "March–October" would
+    // advertise an eight-month season that does not exist.
+    const planned = planCalendar({ trade: 'Painting', zone: 'hot', fromMonth: 1, monthsAhead: 12 });
+    const paint = planned.find((entry) => entry.beat.id === 'exterior-paint');
+    expect(paint?.months).toEqual([3, 10]);
+    expect(paint?.monthName).toBe('March & October');
+  });
+
+  it('carries every channel a topic supports, not just the first', () => {
+    const planned = planCalendar({ trade: 'Roofing', zone: 'cold', fromMonth: 12, monthsAhead: 2 });
+    // Blog-only: this is the topic that had a draft and nowhere to put it.
+    expect(planned.find((entry) => entry.beat.id === 'ice-dams')?.channels).toEqual(['blog']);
+
+    const emailOnly = planCalendar({ trade: 'Landscaping', zone: 'cold', fromMonth: 12, monthsAhead: 1 });
+    expect(emailOnly.find((entry) => entry.beat.id === 'year-review')?.channels).toEqual(['email']);
   });
 
   it('never looks more than a year ahead', () => {
@@ -185,6 +221,7 @@ describe('normalizeMarketingDraft', () => {
 
   it('keeps a clean draft', () => {
     expect(normalizeMarketingDraft(good)).toEqual({
+      subjectOptions: [],
       subject: 'Before the first freeze',
       body: ['Two sentences here.', 'And another.'],
       callToAction: 'Reply and we will book you in.',
@@ -209,6 +246,38 @@ describe('normalizeMarketingDraft', () => {
 
   it('drops blank paragraphs rather than rendering gaps', () => {
     expect(normalizeMarketingDraft({ ...good, body: ['Real.', '  ', ''] })?.body).toEqual(['Real.']);
+  });
+
+  it('keeps two alternative subjects and drops a duplicate of the first', () => {
+    const draft = normalizeMarketingDraft({
+      ...good,
+      subject_options: ['Your furnace before October', 'BEFORE THE FIRST FREEZE', 'One too many', 'And another'],
+    });
+    // The duplicate is caught case-insensitively, and only two survive.
+    expect(draft?.subjectOptions).toEqual(['Your furnace before October', 'One too many']);
+  });
+
+  it('drops a bad alternative subject without losing the draft', () => {
+    // The body is the expensive part and it passed its own checks. Throwing the
+    // whole draft away because option three got enthusiastic is the wrong trade
+    // — unlike the main subject, which does gate the draft.
+    const draft = normalizeMarketingDraft(
+      { ...good, subject_options: ['Act now on your furnace', 'Ready for 2024?', 'Booking October now'] },
+      2026,
+    );
+    expect(draft).not.toBeNull();
+    expect(draft?.subject).toBe('Before the first freeze');
+    expect(draft?.subjectOptions).toEqual(['Booking October now']);
+  });
+
+  it('still refuses the draft when the MAIN subject is junk, options or not', () => {
+    expect(normalizeMarketingDraft({ ...good, subject: 'Act now', subject_options: ['Perfectly fine'] })).toBeNull();
+  });
+
+  it('survives subject_options being absent or the wrong shape', () => {
+    expect(normalizeMarketingDraft(good)?.subjectOptions).toEqual([]);
+    expect(normalizeMarketingDraft({ ...good, subject_options: 'not an array' })?.subjectOptions).toEqual([]);
+    expect(normalizeMarketingDraft({ ...good, subject_options: [null, 42, '  '] })?.subjectOptions).toEqual(['42']);
   });
 
   it('refuses a draft that names the wrong year', () => {

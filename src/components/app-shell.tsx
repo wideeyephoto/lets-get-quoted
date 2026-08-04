@@ -32,8 +32,11 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   // what, for how much" without a page load between the halves.
   { href: '/dashboard/crew', label: 'Crew & Labor', hint: 'Your team, their hours & pay' },
   { href: '/dashboard/messages', label: 'Messages', hint: 'Two-way customer texts' },
-  { href: '/dashboard/campaigns', label: 'Marketing', hint: 'Email & text past customers' },
-  { href: '/dashboard/marketing', label: 'Calendar', hint: "What's worth saying, and when" },
+  // One destination, not two. "Marketing" (the composer) and "Calendar" (the
+  // seasonal topics) were the same workflow split across two pages that linked
+  // to each other in both directions — and the nav item called "Calendar" sat
+  // four rows under Schedule, which is the actual calendar.
+  { href: '/dashboard/marketing', label: 'Marketing', hint: 'Seasonal topics, email & text campaigns' },
   { href: '/dashboard/rebook', label: 'Rebook', hint: 'Win back past customers' },
   { href: '/dashboard/insights', label: 'Insights', hint: 'Funnel & revenue trends' },
   { href: '/dashboard/reviews', label: 'Reviews', hint: 'Ratings & private feedback' },
@@ -70,7 +73,7 @@ const NAV_GROUPS: { label: string; hrefs: string[] }[] = [
   { label: 'Work', hrefs: ['/dashboard/leads', '/dashboard/jobs', '/dashboard/schedule', '/dashboard/schedule/booking', '/dashboard/quick-stops', '/dashboard/clients'] },
   { label: 'Team', hrefs: ['/dashboard/crew'] },
   { label: 'Money', hrefs: ['/dashboard/cash-flow', '/dashboard/recurring', '/dashboard/services', '/dashboard/insights'] },
-  { label: 'Grow', hrefs: ['/dashboard/messages', '/dashboard/campaigns', '/dashboard/marketing', '/dashboard/rebook', '/dashboard/reviews'] },
+  { label: 'Grow', hrefs: ['/dashboard/messages', '/dashboard/marketing', '/dashboard/rebook', '/dashboard/reviews'] },
 ];
 
 type AccountStatus = {

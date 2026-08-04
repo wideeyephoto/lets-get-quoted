@@ -497,6 +497,10 @@ export type SiteBlogPost = {
   // Optional scheduled auto-publish date (YYYY-MM-DD). When set on a draft, the
   // daily cron flips it to published once that date arrives.
   publishAt: string;
+  // The marketing-calendar topic this was written from, when it came from one.
+  // Stored on the post rather than matched on the title, so renaming the post
+  // never breaks the link back to the card that offered it.
+  beatId?: string;
 };
 
 export type SiteBlogContent = {
@@ -1252,6 +1256,11 @@ function parseBlogPosts(value: unknown): SiteBlogPost[] {
       status: rawStatus === 'published' ? 'published' : 'draft',
       date: toString(item.date),
       publishAt: /^\d{4}-\d{2}-\d{2}$/.test(toString(item.publishAt)) ? toString(item.publishAt) : '',
+      // Parsed, or it would not survive. This function rebuilds every post from
+      // named fields, so anything it doesn't read is dropped the next time the
+      // content is saved — including by the builder's ordinary save, which would
+      // quietly unlink the post from the topic that produced it.
+      ...(/^[a-z0-9-]{1,40}$/.test(toString(item.beatId)) ? { beatId: toString(item.beatId) } : {}),
     };
   });
 }

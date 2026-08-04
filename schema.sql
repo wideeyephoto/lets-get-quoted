@@ -1151,9 +1151,19 @@ create table if not exists sms_messages (
   direction     text not null check (direction in ('inbound','outbound')),
   body          text not null,
   provider_id   text,
+  -- NULL means unread. Only inbound rows are ever unread — our own outbound
+  -- copy is not mail. See migrations/2026-08-04-messages-unread-and-media.sql.
+  read_at       timestamptz,
+  -- Twilio-hosted MMS URLs. Unguessable but publicly fetchable, so they are
+  -- treated as capability URLs and rendered only in the owner's dashboard.
+  media_urls    text[],
   created_at    timestamptz not null default now()
 );
 create index if not exists sms_messages_thread_idx on sms_messages (account_id, phone_number, created_at desc);
+-- Partial index so the nav's unread count stays cheap as threads pile up.
+create index if not exists sms_messages_unread_idx
+  on sms_messages (account_id)
+  where direction = 'inbound' and read_at is null;
 
 -- ----------------------------------------------------------------------------
 -- MESSAGE_TEMPLATES  — saved canned replies for the two-way inbox
@@ -1188,9 +1198,17 @@ create table if not exists campaigns (
   sms_sent        integer not null default 0,
   failed_count    integer not null default 0,
   skipped_count   integer not null default 0,
+  -- Which seasonal topic this came from, when it came from one. NULL is the
+  -- normal case — most campaigns are one-offs that belong to no topic. Plain
+  -- text, not a foreign key: the beats are code, not rows, and retiring one
+  -- must not take a contractor's send history with it.
+  beat_id         text,
   created_at      timestamptz not null default now()
 );
 create index if not exists campaigns_account_idx on campaigns (account_id, created_at desc);
+create index if not exists campaigns_account_beat_idx
+  on campaigns (account_id, beat_id)
+  where beat_id is not null;
 
 -- ----------------------------------------------------------------------------
 -- RECURRING_PLANS  — repeating service agreements (lawn care, cleaning, pool).

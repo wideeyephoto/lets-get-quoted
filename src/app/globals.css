@@ -9053,6 +9053,101 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 .campaign-stat strong { color: var(--ink-lime-1); }
 .campaign-stat-fail { color: var(--ink-orange-1); }
 
+/* History rows open to show what was actually sent — the list used to use the
+   message body as the row title, so the one thing you couldn't do was read it. */
+.campaign-history-title {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.campaign-history-title:hover strong { color: var(--ink-lime-1); }
+.campaign-history-body {
+  flex-basis: 100%;
+  margin-top: 0.6rem;
+  padding: 0.8rem 0.95rem;
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.05);
+}
+.campaign-history-body p { margin: 0.5rem 0 0; font-size: 0.88rem; line-height: 1.6; }
+.campaign-history-body .btn { margin-top: 0.8rem; }
+
+/* Alternative subject lines. Chips, not a test — we don't track opens, so
+   there is nothing to measure and the UI must not imply otherwise. */
+.campaign-subject-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+.campaign-subject-options-label { font-size: 0.78rem; color: var(--mute-t45); }
+.campaign-subject-option {
+  padding: 0.28rem 0.6rem;
+  border-radius: 999px;
+  border: 1px dashed rgba(var(--tint), 0.3);
+  background: none;
+  color: var(--mute-t60);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.campaign-subject-option:hover { border-style: solid; color: var(--text); }
+.campaign-subject-option.is-active { border-style: solid; border-color: var(--ink-lime-1); color: var(--ink-lime-1); }
+
+/* Campaign Guard. On screen before anybody asks for it — a check you have to
+   remember to run is a check that runs after the mistake. */
+.campaign-guard {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(var(--tint), 0.16);
+  background: rgba(var(--tint), 0.04);
+}
+.campaign-guard.has-serious { border-color: rgba(255, 179, 122, 0.4); }
+.campaign-guard-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.campaign-guard-empty { margin: 0.6rem 0 0; font-size: 0.82rem; line-height: 1.55; color: var(--mute-t50); }
+.campaign-guard-finding {
+  margin-top: 0.65rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  border-left: 3px solid rgba(var(--tint), 0.3);
+  background: rgba(var(--tint), 0.05);
+}
+.campaign-guard-finding.sev-high { border-left-color: var(--ink-orange-1); }
+.campaign-guard-finding.sev-medium { border-left-color: var(--ink-lime-1); }
+.campaign-guard-finding p { margin: 0.3rem 0 0; font-size: 0.83rem; line-height: 1.55; color: var(--mute-t55); }
+.campaign-guard-finding-top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+.campaign-guard-finding-top strong { font-size: 0.88rem; }
+/* Where a finding came from. "Your subject is 94 characters" and "this doesn't
+   say why you're writing" deserve different amounts of trust. */
+.campaign-guard-tag { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--mute-t45); }
+
+/* The email, rendered by the same function that sends it. */
+.campaign-preview { margin-top: 1rem; }
+.campaign-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+.campaign-preview-frame {
+  width: 100%;
+  height: 30rem;
+  border: 1px solid rgba(var(--tint), 0.16);
+  border-radius: 14px;
+  background: #f4f6f9;
+}
+
 @media (max-width: 640px) {
   .channel-toggle { width: 100%; }
   .channel-option { flex: 1; justify-content: center; }
@@ -9742,6 +9837,24 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 }
 .marketing-draft p { margin: 0.5rem 0 0; font-size: 0.88rem; line-height: 1.6; }
 .marketing-cta { font-weight: 600; }
+
+/* A topic you've already acted on. Quieter, never struck through or hidden —
+   it comes round every year and the record is the useful part. */
+.marketing-beat.is-done { background: transparent; border-style: dashed; }
+.marketing-beat-state {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--ink-lime-1);
+}
+.marketing-beat-state a { color: inherit; }
+/* Said where the missing number would have been, rather than guessed. */
+.marketing-beat-note {
+  margin: 0.4rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--mute-t45);
+}
 /* The reason there's no "text them" button, where somebody would look for it. */
 .marketing-sms-note {
   margin: 1.2rem 0 0;

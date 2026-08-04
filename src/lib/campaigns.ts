@@ -6,40 +6,28 @@ import { sendCampaignEmail } from '@/lib/email';
 import { loadSuppressedEmails } from '@/lib/email-suppression';
 import { isMailable } from '@/lib/email-quality';
 
-export type CampaignChannel = 'email' | 'sms' | 'both';
-export type CampaignAudience = 'all' | 'past' | 'repeat' | 'lapsed';
+// The audience vocabulary and the Campaign shape live in campaign-audiences.ts
+// so a client component can read a label without pulling this module — and with
+// it the Supabase server client — into the browser bundle. Re-exported here so
+// every existing caller keeps working; imported separately because a re-export
+// does not bring the names into this module's own scope.
+export {
+  AUDIENCE_DEFS,
+  LAPSED_DAYS,
+  campaignAudienceForBeat,
+  matchesAudience,
+  type Campaign,
+  type CampaignAudience,
+  type CampaignChannel,
+} from '@/lib/campaign-audiences';
+import { matchesAudience, type Campaign, type CampaignAudience, type CampaignChannel } from '@/lib/campaign-audiences';
 
-// A customer with no job in this many days is "lapsed" — the segment worth a
-// "we're booking again / here's an offer" nudge.
-export const LAPSED_DAYS = 120;
 // Bound one send so a server action never runs long enough to time out. A single
 // contractor's list is well under this; larger lists get the most-recent slice.
 const MAX_RECIPIENTS = 250;
 // Send in small concurrent batches — fast enough, gentle on the SMS/email APIs.
 const BATCH_SIZE = 8;
 const DAY = 24 * 60 * 60 * 1000;
-
-export type Campaign = {
-  id: string;
-  account_id: string;
-  channel: CampaignChannel;
-  audience: string;
-  subject: string | null;
-  body: string;
-  recipient_count: number;
-  email_sent: number;
-  sms_sent: number;
-  failed_count: number;
-  skipped_count: number;
-  created_at: string;
-};
-
-export const AUDIENCE_DEFS: { id: CampaignAudience; label: string; hint: string }[] = [
-  { id: 'past', label: 'Past customers', hint: 'Everyone who booked at least one job' },
-  { id: 'repeat', label: 'Repeat customers', hint: 'Two or more jobs — your best fans' },
-  { id: 'lapsed', label: 'Lapsed customers', hint: `Booked before, but nothing in ${LAPSED_DAYS}+ days` },
-  { id: 'all', label: 'Everyone', hint: 'Every client in your list' },
-];
 
 // Slim, contact-free descriptor the composer uses for live reach counts, plus
 // the fields the send path needs. `smsReady` means an opted-in consent row;
@@ -54,27 +42,6 @@ export type CampaignRecipient = {
   jobCount: number;
   lastJobAt: string | null;
 };
-
-export function matchesAudience(
-  recipient: { jobCount: number; lastJobAt: string | null },
-  audience: CampaignAudience,
-  now: number,
-): boolean {
-  switch (audience) {
-    case 'all':
-      return true;
-    case 'past':
-      return recipient.jobCount >= 1;
-    case 'repeat':
-      return recipient.jobCount >= 2;
-    case 'lapsed':
-      if (recipient.jobCount < 1) return false;
-      if (!recipient.lastJobAt) return true;
-      return now - new Date(recipient.lastJobAt).getTime() >= LAPSED_DAYS * DAY;
-    default:
-      return false;
-  }
-}
 
 // The set of phone numbers this account has explicit SMS consent for. Marketing
 // texts go ONLY to opted-in numbers — stricter than transactional sends, which
@@ -145,7 +112,7 @@ export type CampaignSendResult = {
 export async function sendCampaign(
   supabase: SupabaseClient,
   accountId: string,
-  input: { channel: CampaignChannel; audience: CampaignAudience; subject: string; body: string; businessName: string; mailingAddress: string | null },
+  input: { channel: CampaignChannel; audience: CampaignAudience; subject: string; body: string; businessName: string; mailingAddress: string | null; beatId?: string | null },
 ): Promise<CampaignSendResult> {
   const now = Date.now();
   const wantEmail = input.channel === 'email' || input.channel === 'both';
@@ -205,7 +172,7 @@ export async function sendCampaign(
     );
   }
 
-  await supabase.from('campaigns').insert({
+  const row = {
     account_id: accountId,
     channel: input.channel,
     audience: input.audience,
@@ -216,7 +183,21 @@ export async function sendCampaign(
     sms_sent: smsSent,
     failed_count: failed,
     skipped_count: skipped,
-  });
+  };
+
+  // The messages are already gone by the time we get here, so the history row
+  // must not be all-or-nothing. On a database without the beat_id migration the
+  // insert fails on the unknown column and we would lose the record of a send
+  // that really happened — write it again without the topic instead.
+  const { error } = await supabase
+    .from('campaigns')
+    // Widened deliberately: the inferred literal type is built from this same
+    // object, so adding a key conditionally reads as an excess property.
+    .insert((input.beatId ? { ...row, beat_id: input.beatId } : row) as typeof row);
+  if (error && input.beatId) {
+    console.error('Campaign insert with beat_id failed, retrying without:', error.message);
+    await supabase.from('campaigns').insert(row);
+  }
 
   return { recipientCount: targets.length, emailSent, smsSent, failed, skipped };
 }
@@ -232,4 +213,91 @@ export async function listCampaigns(supabase: SupabaseClient, accountId: string)
     .limit(50);
   if (error) return [];
   return (data ?? []) as Campaign[];
+}
+
+/** When a seasonal topic was last sent, and to how many people. */
+export type BeatSend = { beatId: string; lastSentAt: string; recipientCount: number };
+
+/**
+ * How long a send keeps a topic marked as done.
+ *
+ * Not forever, and this matters twice. A beat's window can run two months, so
+ * "sent" in the first month must not make it look finished in the second — and
+ * these are SEASONAL topics that come round every year, so a card that stayed
+ * struck through would be wrong by the following autumn. Sixty days covers the
+ * longest window and expires well before the season returns.
+ */
+export const BEAT_DONE_DAYS = 60;
+
+/**
+ * Which topics this account has already acted on.
+ *
+ * Returns an empty map on any error rather than throwing, so a database without
+ * the beat_id migration simply shows every card as untouched — which is exactly
+ * how the page behaved before it could remember anything.
+ */
+export async function loadSentBeats(supabase: SupabaseClient, accountId: string): Promise<Map<string, BeatSend>> {
+  const sent = new Map<string, BeatSend>();
+  const { data, error } = await supabase
+    .from('campaigns')
+    .select('beat_id, created_at, recipient_count')
+    .eq('account_id', accountId)
+    .not('beat_id', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (error) return sent;
+
+  for (const row of data ?? []) {
+    const beatId = String((row as { beat_id?: unknown }).beat_id ?? '');
+    // Newest first, so the first row for a topic is the most recent send.
+    if (!beatId || sent.has(beatId)) continue;
+    sent.set(beatId, {
+      beatId,
+      lastSentAt: String((row as { created_at: string }).created_at),
+      recipientCount: Number((row as { recipient_count?: unknown }).recipient_count) || 0,
+    });
+  }
+  return sent;
+}
+
+/**
+ * What the list has been through lately.
+ *
+ * Two numbers, and neither is vanity. How recently they sent is the strongest
+ * predictor of an unsubscribe — far stronger than anything in the message — and
+ * the unsubscribe count is the only honest feedback signal we have: we do not
+ * track opens or clicks, because that needs a tracking pixel and a vendor.
+ */
+export type ListHealth = {
+  lastSentAt: string | null;
+  daysSinceLastSend: number | null;
+  unsubscribesSinceLastSend: number;
+};
+
+export async function loadListHealth(supabase: SupabaseClient, accountId: string): Promise<ListHealth> {
+  const { data, error } = await supabase
+    .from('campaigns')
+    .select('created_at')
+    .eq('account_id', accountId)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  const lastSentAt = !error && data && data.length > 0 ? String(data[0].created_at) : null;
+  if (!lastSentAt) return { lastSentAt: null, daysSinceLastSend: null, unsubscribesSinceLastSend: 0 };
+
+  // Whole days elapsed — "3 days ago" should not become "4" because of a clock
+  // time. Floored, so anything inside 24 hours reads as today.
+  const daysSinceLastSend = Math.max(0, Math.floor((Date.now() - new Date(lastSentAt).getTime()) / DAY));
+
+  const { count, error: countError } = await supabase
+    .from('email_suppression')
+    .select('id', { count: 'exact', head: true })
+    .eq('account_id', accountId)
+    .gt('created_at', lastSentAt);
+
+  return {
+    lastSentAt,
+    daysSinceLastSend,
+    unsubscribesSinceLastSend: countError ? 0 : count ?? 0,
+  };
 }

@@ -462,7 +462,9 @@ export async function updateMailingAddressAction(formData: FormData) {
   if (error) throw new Error(error.message);
 
   revalidatePath('/dashboard/settings');
-  revalidatePath('/dashboard/campaigns');
+  // The mailing address gates every marketing send, and the merged Marketing
+  // page warns about it before you write — so that page has to re-read it.
+  revalidatePath('/dashboard/marketing');
 }
 
 export async function updateReminderSettingsAction(formData: FormData) {

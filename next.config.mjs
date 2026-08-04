@@ -86,6 +86,17 @@ const nextConfig = {
       { source: '/admin/extra-stops/:id', destination: '/admin/quick-stops/:id', permanent: true },
       { source: '/api/public/leads/extra-stop-qualify', destination: '/api/public/leads/quick-stop-qualify', permanent: true },
       { source: '/api/cron/extra-stop-sweep', destination: '/api/cron/quick-stop-sweep', permanent: true },
+      // The campaign composer moved onto the seasonal-calendar page when the two
+      // became one destination. Here rather than as a redirect() in a page
+      // component: that renders, and by the time the redirect throws Next has
+      // already flushed the shell, so it cannot set a status and falls back to a
+      // <meta refresh> — a 200, a blank flash, and nothing a non-browser client
+      // will follow. This fires before any render. Next carries the querystring
+      // across on its own, so ?draft= and ?sent= survive.
+      //
+      // 307 rather than 308: browsers cache a permanent redirect hard, and this
+      // URL is one we might want back.
+      { source: '/dashboard/campaigns', destination: '/dashboard/marketing', permanent: false },
     ];
   },
   images: {

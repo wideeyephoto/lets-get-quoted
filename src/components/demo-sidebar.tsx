@@ -79,7 +79,9 @@ const GROUPS: { label: string; items: DemoItem[] }[] = [
     label: 'Grow',
     items: [
       { icon: '/dashboard/messages', label: 'Messages', href: '/demo/messages' },
-      { icon: '/dashboard/campaigns', label: 'Marketing', href: '/demo/campaigns' },
+      // The icon key follows the real nav to /dashboard/marketing; the demo's
+      // own URL stays /demo/campaigns, which is public and has no reason to move.
+      { icon: '/dashboard/marketing', label: 'Marketing', href: '/demo/campaigns' },
       { icon: '/dashboard/rebook', label: 'Rebook', href: '/demo/rebook' },
       { icon: '/dashboard/reviews', label: 'Reviews', href: '/demo/reviews' },
     ],

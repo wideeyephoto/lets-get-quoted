@@ -15,6 +15,18 @@ export type MarketingDraft = {
   body: string[];
   /** One line, so the contractor can see the ask at a glance. */
   callToAction: string;
+  /**
+   * Two more subject lines for the same message.
+   *
+   * The subject is the entire open-or-delete decision and one draft only ever
+   * produced one, so the contractor's real choice was "this, or write your
+   * own". They come back in the same call and cost nothing extra.
+   *
+   * They are alternatives to CHOOSE between, not to test: we deliberately do
+   * not track opens — that needs a tracking pixel and a vendor bill — so there
+   * is no measurement here and the UI must not imply one.
+   */
+  subjectOptions: string[];
 };
 
 export type DraftInput = {
@@ -40,7 +52,9 @@ export type DraftInput = {
 const INSTRUCTIONS = [
   'You write short marketing messages for a small home-services contractor. You are writing ONE message about ONE seasonal topic.',
   '',
-  'Return JSON: {"subject":string,"body":[string],"call_to_action":string}',
+  'Return JSON: {"subject":string,"subject_options":[string],"body":[string],"call_to_action":string}',
+  '',
+  '"subject_options" is TWO more subject lines for the same message, each taking a different angle — one plainer, one more specific. They must be genuine alternatives to "subject", not rewordings of it, and every rule below applies to them too.',
   '',
   'HOW IT SHOULD READ',
   '- Like the owner wrote it between jobs. Plain, direct, a bit dry. Not marketing department.',
@@ -116,7 +130,24 @@ export function normalizeMarketingDraft(raw: unknown, year?: number): MarketingD
   if (BANNED.test(whole)) return null;
   if (year !== undefined && namesAWrongYear(whole, year)) return null;
 
-  return { subject, body, callToAction };
+  // Alternative subjects are filtered, not gating: a bad extra subject drops
+  // out on its own, where a bad one in `subject` throws the draft away. The
+  // body is the expensive part and it passed — losing it because the model got
+  // enthusiastic on option three would be the wrong trade.
+  const optionsRaw = Array.isArray(record.subject_options) ? record.subject_options : [];
+  const seen = new Set([subject.toLowerCase()]);
+  const subjectOptions: string[] = [];
+  for (const entry of optionsRaw) {
+    const option = String(entry ?? '').trim().slice(0, 160);
+    if (!option || seen.has(option.toLowerCase())) continue;
+    if (BANNED.test(option)) continue;
+    if (year !== undefined && namesAWrongYear(option, year)) continue;
+    seen.add(option.toLowerCase());
+    subjectOptions.push(option);
+    if (subjectOptions.length === 2) break;
+  }
+
+  return { subject, body, callToAction, subjectOptions };
 }
 
 /**

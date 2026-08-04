@@ -744,6 +744,46 @@ export async function sendCardSetupEmail(input: {
 // render it into the same branded shell as the other transactional emails
 // (blank lines become paragraphs, single newlines become line breaks). Throws
 // on provider rejection so the caller can count it as a failed send.
+// The owner's plain text as email HTML: blank lines become paragraphs, single
+// newlines become line breaks.
+function campaignParagraphs(body: string): string {
+  return body
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+    .map((block) => `<p style="margin:0 0 14px;line-height:1.6">${escapeHtml(block).replace(/\n/g, '<br/>')}</p>`)
+    .join('');
+}
+
+/**
+ * The exact HTML a campaign email is sent as.
+ *
+ * Extracted so the composer's preview can call it rather than approximate it.
+ * A preview built from its own markup is a preview that can be right while the
+ * email is wrong — and the parts most likely to be missing are the ones nobody
+ * would think to reproduce: the unsubscribe link and the postal address that
+ * make the send lawful.
+ */
+export async function renderCampaignEmailHtml(input: {
+  recipientEmail: string;
+  businessName: string;
+  subject: string;
+  body: string;
+  accountId: string;
+  mailingAddress: string | null;
+}): Promise<string> {
+  const brand = await brandFor(input);
+  const unsubscribeUrl = buildUnsubscribePageUrl(input.accountId, input.recipientEmail);
+  return renderBrandedEmail({
+    brand,
+    // The owner wrote this themselves, so there is no heading of ours to put
+    // above it — their words start the email.
+    heading: input.subject,
+    bodyHtml: campaignParagraphs(input.body),
+    footerHtml: marketingFooter(input.businessName, input.mailingAddress, unsubscribeUrl),
+  });
+}
+
 export async function sendCampaignEmail(input: {
   recipientEmail: string;
   businessName: string;
@@ -756,28 +796,13 @@ export async function sendCampaignEmail(input: {
     throw new Error('Email provider is not configured.');
   }
 
-  const paragraphs = input.body
-    .split(/\n{2,}/)
-    .map((block) => block.trim())
-    .filter(Boolean)
-    .map((block) => `<p style="margin:0 0 14px;line-height:1.6">${escapeHtml(block).replace(/\n/g, '<br/>')}</p>`)
-    .join('');
-
   const brand = await brandFor(input);
-  const unsubscribeUrl = buildUnsubscribePageUrl(input.accountId, input.recipientEmail);
   const oneClickUrl = buildUnsubscribeOneClickUrl(input.accountId, input.recipientEmail);
   const result = await resend.emails.send({
     from: contractorFrom(brand.businessName),
     to: input.recipientEmail,
     subject: input.subject,
-    // The owner wrote this themselves, so there is no heading of ours to put
-    // above it — their words start the email.
-    html: renderBrandedEmail({
-      brand,
-      heading: input.subject,
-      bodyHtml: paragraphs,
-      footerHtml: marketingFooter(input.businessName, input.mailingAddress, unsubscribeUrl),
-    }),
+    html: await renderCampaignEmailHtml(input),
     reply_to: replyAddress(brand),
     headers: listUnsubscribeHeaders(oneClickUrl),
   });

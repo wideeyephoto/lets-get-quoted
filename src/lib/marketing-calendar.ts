@@ -195,7 +195,41 @@ export const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-export type PlannedBeat = { beat: Beat; month: number; monthName: string; channel: Channel };
+export type PlannedBeat = {
+  beat: Beat;
+  /** The first month in the window — what the list sorts by. */
+  month: number;
+  /** "September", or "September–October" when the window spans months. */
+  monthName: string;
+  /** Every month in the window, in order. */
+  months: number[];
+  /** The channel this beat leads with. */
+  channel: Channel;
+  /** Every channel it supports, so the card can offer each one. */
+  channels: Channel[];
+};
+
+/**
+ * How a beat's months read on its card.
+ *
+ * A dash means a run: "September–October" is one season two months long. It is
+ * used ONLY when the months are genuinely consecutive, because several beats
+ * are deliberately not — exterior painting in a hot climate is [3, 10], March
+ * and October, the two moments either side of a summer nobody paints in.
+ * "March–October" would advertise an eight-month season that does not exist.
+ *
+ * Consecutive is checked modulo 12 so a December–January run reads as one.
+ */
+export function windowLabel(months: number[]): string {
+  if (months.length === 0) return '';
+  const names = months.map((month) => MONTH_NAMES[month - 1]);
+  if (months.length === 1) return names[0];
+
+  const isRun = months.every((month, index) => index === 0 || month === (months[index - 1] % 12) + 1);
+  if (isRun) return `${names[0]}–${names[names.length - 1]}`;
+
+  return `${names.slice(0, -1).join(', ')} & ${names[names.length - 1]}`;
+}
 
 /**
  * What's worth saying in the months ahead.
@@ -203,6 +237,13 @@ export type PlannedBeat = { beat: Beat; month: number; monthName: string; channe
  * Returns nothing rather than filler when a trade and zone genuinely have no
  * beat for a month. A calendar that invents something for every square is a
  * calendar of things nobody needed to read.
+ *
+ * ONE ENTRY PER BEAT, not one per month. A beat whose season runs across two
+ * months used to appear twice — "Book a heating tune-up before the first cold
+ * snap" listed under September and again under October, because its zone says
+ * [9, 10]. That reads as two things to do. It is one thing with a two-month
+ * window, and a calendar that pads itself by repetition is one nobody trusts to
+ * mean what it says.
  */
 export function planCalendar(input: {
   trade: string | null;
@@ -212,7 +253,11 @@ export function planCalendar(input: {
 }): PlannedBeat[] {
   const family = tradeFamily(input.trade);
   const ahead = Math.min(12, Math.max(1, input.monthsAhead ?? 3));
-  const planned: PlannedBeat[] = [];
+
+  // Walk the window in order and collect each beat's eligible months as we
+  // meet them, so the FIRST month a beat appears fixes its place in the list.
+  const order: string[] = [];
+  const monthsByBeat = new Map<string, number[]>();
 
   for (let offset = 0; offset < ahead; offset += 1) {
     const month = ((input.fromMonth - 1 + offset) % 12) + 1;
@@ -220,10 +265,26 @@ export function planCalendar(input: {
       if (!beat.trades.includes(family)) continue;
       const months = beat.monthsByZone[input.zone];
       if (!months || !months.includes(month)) continue;
-      planned.push({ beat, month, monthName: MONTH_NAMES[month - 1], channel: beat.channels[0] });
+      if (!monthsByBeat.has(beat.id)) {
+        monthsByBeat.set(beat.id, []);
+        order.push(beat.id);
+      }
+      monthsByBeat.get(beat.id)!.push(month);
     }
   }
-  return planned;
+
+  return order.map((beatId) => {
+    const beat = BEATS.find((entry) => entry.id === beatId) as Beat;
+    const months = monthsByBeat.get(beatId) as number[];
+    return {
+      beat,
+      month: months[0],
+      monthName: windowLabel(months),
+      months,
+      channel: beat.channels[0],
+      channels: beat.channels,
+    };
+  });
 }
 
 /**
