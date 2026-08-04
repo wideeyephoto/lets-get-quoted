@@ -10732,6 +10732,46 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
 .recurring-mrr-card .workspace-metric-value { font-size: clamp(1.9rem, 3.4vw, 2.6rem); }
 .recurring-hero-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
+/* --- the five questions on a plan card ---------------------------------------
+   Where it is, who is doing it, how long it takes. A row of small facts rather
+   than a labelled table: they are glanced at, not read, and half of them are
+   absent on any given plan. */
+.recurring-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.9rem;
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.recurring-fact { display: inline-flex; align-items: center; gap: 0.3rem; min-width: 0; }
+.recurring-fact > span[aria-hidden] { opacity: 0.75; font-size: 0.9em; }
+a.recurring-fact { color: var(--muted); text-decoration: none; border-bottom: 1px dotted var(--edge-t22); }
+a.recurring-fact:hover { color: var(--text); border-bottom-color: currentColor; }
+/* Nobody on the next visit is a real gap, not a missing field. */
+.recurring-fact.is-warn { color: var(--gold-ink); font-weight: 650; }
+
+/* When the money moves, and proof the plan is actually running. */
+.recurring-ledger { display: grid; gap: 0.15rem; margin-top: 0.45rem; font-size: 0.8rem; color: var(--muted); }
+.recurring-ledger-row strong { color: var(--text); font-weight: 700; }
+.recurring-ledger-row.is-done { color: var(--ink-green-1); }
+
+/* Shown only when something is wrong — see planHealth. */
+.recurring-health {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.16rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: help;
+}
+.recurring-health.is-attention { background: rgba(255, 209, 102, 0.16); color: var(--gold-ink); }
+.recurring-health.is-at-risk { background: rgba(248, 113, 113, 0.18); color: var(--ink-red-1); }
+
 /* --- the stat row -----------------------------------------------------------
    Out of the hero's right column and onto its own row. Four figures that answer
    four different questions deserve four equal cells; stacked inside the hero,

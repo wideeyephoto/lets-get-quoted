@@ -14,6 +14,7 @@ import { listServices } from '@/lib/services';
 import { listClientsWithStats } from '@/lib/clients';
 import RecurringComposer from './RecurringComposer';
 import RecurringWorkspace, { type PlanRow } from './RecurringWorkspace';
+import { planContexts } from '@/lib/recurring-context';
 import Sparkline from '@/components/sparkline';
 import RecurringPlanCard from '@/components/recurring-plan-card';
 import RecurringHowItWorks from '@/components/recurring-how-it-works';
@@ -76,6 +77,8 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
   const next30 = workloadWindow(projected, today, dateKeyPlusDays(today, 30));
   const next90 = workloadWindow(projected, today, horizon);
   const trail = trailingMonthlyRecurring(plans, today, 6);
+  // Four queries for every plan on the page, not four per plan.
+  const contexts = await planContexts(supabase, accountId, plans, today);
 
   // Grouped and formatted HERE, not in the client component. Every money and
   // date helper in this app lives in a module that also reaches the database, so
@@ -242,6 +245,7 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
                   key={plan.id}
                   plan={plan}
                   today={today}
+                  context={contexts.get(plan.id)}
                   resendLink={
                     <form action={resendCardLinkAction.bind(null, plan.id)}>
                       <button type="submit" className="linklike">Resend link</button>

@@ -136,6 +136,84 @@ export function dateKeyPlusDays(dateKey: string, days: number): string {
   return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
 }
 
+/**
+ * Whether a plan is actually going to work, at a glance.
+ *
+ * The point is to let an owner manage the exceptions instead of opening every
+ * plan in turn, so the levels are defined by what they would DO about it:
+ *
+ * - `at-risk` — the next visit is already late AND there is no way to bill it.
+ *   Work is about to happen that cannot be charged for, which is the one
+ *   combination worth interrupting somebody over.
+ * - `attention` — one thing is wrong but nothing is on fire: no card, nobody
+ *   assigned, a late visit, or no price set.
+ * - `healthy` — none of the above.
+ *
+ * Every reason is a sentence the card can print, because a status nobody can
+ * act on is just a colour. Deliberately NOT counted as unhealthy: a paused plan
+ * (pausing is a decision, not a fault) and a plan with no crew assigned when no
+ * visit job exists yet (nothing to assign anyone to).
+ */
+export type PlanHealthLevel = 'healthy' | 'attention' | 'at-risk';
+export type PlanHealth = { level: PlanHealthLevel; reasons: string[] };
+
+export function planHealth(input: {
+  active: boolean;
+  autoCharge: boolean;
+  hasCard: boolean;
+  amount: number;
+  /** Days until the next visit; negative is late. Null when paused. */
+  daysUntilNext: number | null;
+  /** Null when no visit job exists yet — that is not the same as unassigned. */
+  nextVisitAssigned: boolean | null;
+}): PlanHealth {
+  if (!input.active) return { level: 'healthy', reasons: [] };
+
+  const reasons: string[] = [];
+  const cannotBill = input.autoCharge && !input.hasCard;
+  const late = input.daysUntilNext !== null && input.daysUntilNext < 0;
+
+  if (cannotBill) reasons.push('No payment method on file');
+  if (input.nextVisitAssigned === false) reasons.push('Nobody assigned to the next visit');
+  if (late) reasons.push('Next visit is past due');
+  if ((Number(input.amount) || 0) <= 0) reasons.push('No price set');
+
+  if (!reasons.length) return { level: 'healthy', reasons };
+  // Late work that cannot be billed is the one pairing that earns the top level.
+  if (cannotBill && late) return { level: 'at-risk', reasons };
+  return { level: 'attention', reasons };
+}
+
+export const PLAN_HEALTH_LABEL: Record<PlanHealthLevel, string> = {
+  healthy: 'Healthy',
+  attention: 'Needs attention',
+  'at-risk': 'At risk',
+};
+
+/**
+ * "$100 after the Aug 15 visit" / "$55 on Sep 1".
+ *
+ * When money moves is a different question from when the work happens, and the
+ * card was only answering the second. Today every plan bills on the day of the
+ * visit, so the two dates coincide — the wording still distinguishes them,
+ * because a plan on a saved card is charged automatically and a manual one is
+ * only a date on which somebody has to remember to invoice.
+ */
+export function nextChargeLabel(input: {
+  amount: number;
+  nextRunDate: string;
+  autoCharge: boolean;
+  hasCard: boolean;
+  formatMoney: (n: number) => string;
+}): string | null {
+  const amount = Number(input.amount) || 0;
+  if (amount <= 0) return null;
+  const when = shortDate(input.nextRunDate);
+  if (input.autoCharge && input.hasCard) return `${input.formatMoney(amount)} charged after the ${when} visit`;
+  if (input.autoCharge) return `${input.formatMoney(amount)} due ${when} — no card on file yet`;
+  return `${input.formatMoney(amount)} to invoice on ${when}`;
+}
+
 export function shortDate(dateKey: string): string {
   const [year, month, day] = dateKey.split('-').map(Number);
   return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('en-US', {
