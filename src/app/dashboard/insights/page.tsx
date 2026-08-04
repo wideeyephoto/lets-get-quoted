@@ -49,6 +49,141 @@ function hours(value: number | null): string {
   return `${(value / 24).toFixed(1)} days`;
 }
 
+/**
+ * Quick Stops, as a business line.
+ *
+ * The split at the top is the point of the card. A Quick Stop earns a SPEED FEE
+ * — what a homeowner paid to be moved up today's route — and then whatever the
+ * visit turned into. Reported as one figure they're indistinguishable, and the
+ * question the card exists to answer ("is charging for speed worth doing?")
+ * can't be asked at all.
+ */
+function QuickStops({ insights }: { insights: Insights }) {
+  const qs = insights.quickStops;
+  if (!qs.hasAny) return null;
+
+  const total = qs.totalRevenue;
+  const feeShare = total > 0 ? Math.round((qs.feeRevenue / total) * 100) : 0;
+  const stats: Array<{ label: string; value: string; note: string }> = [
+    {
+      label: 'Completed',
+      value: String(qs.completed),
+      note: qs.completed === 1 ? 'stop finished' : 'stops finished',
+    },
+    { label: 'Customers offered', value: String(qs.offered), note: 'sent a time and a price' },
+    { label: 'Customers accepted', value: String(qs.accepted), note: 'paid the fee and got a slot' },
+    {
+      label: 'Average value',
+      value: qs.averageValue !== null ? formatMoney(qs.averageValue) : '—',
+      note: qs.earningStops > 0
+        ? `fee and work, across ${qs.earningStops} stop${qs.earningStops === 1 ? '' : 's'} that earned`
+        : 'nothing has been paid yet',
+    },
+    {
+      label: 'Average speed fee',
+      value: qs.averageFee !== null ? formatMoney(qs.averageFee) : '—',
+      note: qs.paidFees > 0
+        ? `across ${qs.paidFees} fee${qs.paidFees === 1 ? '' : 's'} paid`
+        : 'no fee has been paid yet',
+    },
+  ];
+
+  return (
+    <section className="panel ins-card insq-card">
+      <p className="ins-card-head">
+        <span className="ins-chip is-speed" aria-hidden="true">⚡</span> Quick Stops — {insights.windowLabel}
+      </p>
+
+      <div className="insq-money">
+        <div className="insq-total">
+          <span className="ins-figure-label">Total Quick Stops revenue</span>
+          <strong className="ins-big">{formatMoney(total)}</strong>
+        </div>
+        {total > 0 ? (
+          <>
+            <div className="insq-split" role="img" aria-label={`Speed fees ${feeShare}% of Quick Stop revenue, service work ${100 - feeShare}%`}>
+              <span className="insq-seg is-fee" style={{ width: `${feeShare}%` }} />
+              <span className="insq-seg is-service" style={{ width: `${100 - feeShare}%` }} />
+            </div>
+            <div className="insq-legend">
+              <span className="insq-key">
+                <i className="insq-dot is-fee" aria-hidden="true" /> Speed fees
+                <strong>{formatMoney(qs.feeRevenue)}</strong>
+                <em>{feeShare}%</em>
+              </span>
+              <span className="insq-key">
+                <i className="insq-dot is-service" aria-hidden="true" /> Service work
+                <strong>{formatMoney(qs.serviceRevenue)}</strong>
+                <em>{100 - feeShare}%</em>
+              </span>
+            </div>
+          </>
+        ) : (
+          <p className="ins-empty-note">
+            No Quick Stop money has landed in this period. The fee is charged when a customer accepts, so
+            revenue shows up here the moment one does.
+          </p>
+        )}
+      </div>
+
+      <div className="insq-stats">
+        {stats.map((stat) => (
+          <div className="insq-stat" key={stat.label}>
+            <span className="ins-figure-label">{stat.label}</span>
+            <strong className="ins-mid">{stat.value}</strong>
+            <span className="ins-sub">{stat.note}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="insq-rate">
+        <span className="ins-figure-label">Acceptance rate</span>
+        {qs.acceptanceRate !== null ? (
+          <>
+            <strong className="ins-mid">{qs.acceptanceRate}%</strong>
+            <div className="ins-meter" role="img" aria-label={`${qs.acceptanceRate}% of Quick Stop offers were accepted`}>
+              <div className="ins-meter-fill" style={{ width: `${qs.acceptanceRate}%` }} />
+            </div>
+            <span className="ins-sub">
+              {qs.accepted} of the {qs.offered} offer{qs.offered === 1 ? '' : 's'} you sent in this period were
+              paid for. Counted on the offers themselves, so a slow yes still lands against the day you asked.
+            </span>
+          </>
+        ) : (
+          <>
+            <strong className="ins-mid"><Unknown hint="No Quick Stop offer was sent in this period." /></strong>
+            <span className="ins-sub">Needs at least one offer sent in this period.</span>
+          </>
+        )}
+      </div>
+
+      <div className="insq-crew">
+        <span className="ins-figure-label">Crew with the most Quick Stops</span>
+        {qs.crew.length > 0 ? (
+          <ol className="insq-crew-list">
+            {qs.crew.slice(0, 5).map((member, index) => (
+              <li key={member.crewId} className={index === 0 ? 'is-top' : undefined}>
+                <span className="insq-crew-name">{member.name}</span>
+                <span className="insq-crew-count">{member.stops}</span>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="ins-empty-note">
+            {qs.completed > 0
+              ? 'No crew was assigned to the Quick Stops finished in this period, so there is nobody to rank.'
+              : 'Nobody has finished a Quick Stop in this period yet.'}
+          </p>
+        )}
+      </div>
+
+      <div className="ins-card-foot">
+        <Link className="ins-inline-link" href="/dashboard/quick-stops">Open Quick Stops →</Link>
+      </div>
+    </section>
+  );
+}
+
 /* -------------------------------------------------------------------------- */
 
 function ExecutiveSummary({ insights }: { insights: Insights }) {
@@ -530,6 +665,8 @@ export default async function InsightsPage({
           </p>
         </section>
       ) : null}
+
+      <QuickStops insights={insights} />
 
       <section className="panel ins-card ins-actions-card">
         <p className="eyebrow">What to do next</p>

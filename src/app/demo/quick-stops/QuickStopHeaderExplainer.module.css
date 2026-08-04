@@ -5,7 +5,7 @@
 .wrap {
   margin: 0 0 1.5rem;
   padding: clamp(1.1rem, 3vw, 1.75rem);
-  border: 1px solid rgba(var(--tint), .1);
+  border: 1px solid var(--edge-t10);
   border-radius: 16px;
   background: rgba(var(--tint), .03);
 }
@@ -24,7 +24,7 @@
 
 .badge {
   padding: .2rem .55rem;
-  border: 1px solid rgba(var(--tint), .22);
+  border: 1px solid var(--edge-t22);
   border-radius: 999px;
   font-size: .68rem;
   font-weight: 800;
@@ -42,7 +42,7 @@
   flex-direction: column;
   gap: .7rem;
   padding: 1rem;
-  border: 1px solid rgba(var(--tint), .09);
+  border: 1px solid var(--edge-t09);
   border-radius: 12px;
   background: rgba(var(--tint), .025);
 }
@@ -71,9 +71,9 @@
   font-size: .82rem;
 }
 
-.job { border: 1px solid rgba(var(--tint), .14); background: rgba(var(--tint), .05); }
+.job { border: 1px solid var(--edge-t14); background: rgba(var(--tint), .05); }
 /* Dashed, so an opening reads as space rather than as another booking. */
-.gap { border: 1px dashed rgba(74, 222, 128, .45); color: rgba(var(--tint), .72); }
+.gap { border: 1px dashed var(--cedge-green-59); color: rgba(var(--tint), .72); }
 
 .rowTime { flex: 0 0 auto; font-variant-numeric: tabular-nums; font-weight: 700; color: var(--mute-t55); }
 .rowLabel { flex: 1 1 auto; }
@@ -89,7 +89,7 @@
 .legend { display: grid; gap: .35rem; margin: 0; padding: 0; list-style: none; font-size: .78rem; color: rgba(var(--tint), .7); }
 .legend li { display: flex; align-items: center; gap: .45rem; }
 .keyStop { width: 11px; height: 11px; border-radius: 50%; background: #f97316; }
-.keyZone { width: 11px; height: 11px; border-radius: 50%; border: 1.5px dashed rgba(74, 222, 128, .7); }
+.keyZone { width: 11px; height: 11px; border-radius: 50%; border: 1.5px dashed var(--cedge-green-60); }
 
 /* --- the rules ------------------------------------------------------------ */
 
@@ -102,7 +102,7 @@
   top: .45em;
   width: .42rem;
   height: .72rem;
-  border: solid rgba(74, 222, 128, .9);
+  border: solid var(--cedge-green-61);
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
 }
@@ -111,7 +111,7 @@
   margin: 0;
   padding: .7rem .8rem;
   border-radius: 10px;
-  border: 1px solid rgba(var(--tint), .12);
+  border: 1px solid var(--edge-t12);
   background: rgba(var(--tint), .05);
   font-size: .84rem;
   line-height: 1.5;

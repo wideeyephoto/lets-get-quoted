@@ -18,7 +18,7 @@
   grid-template-rows: auto auto 1fr auto;
   min-width: 0;
   min-height: 34rem;
-  border: 2px solid rgba(255, 122, 41, 0.32);
+  border: 2px solid var(--cedge-orange-82);
   border-radius: 18px;
   background: rgba(var(--panel-rgb), 0.92);
   overflow: hidden;
@@ -192,7 +192,7 @@
   gap: 0.1rem;
   flex: 1 1 6.2rem;
   padding: 0.55rem 0.7rem;
-  border: 1px solid rgba(var(--grey-1), 0.16);
+  border: 1px solid var(--edge-g16);
   border-radius: 12px;
   background: rgba(var(--tint), 0.03);
 }
@@ -241,7 +241,7 @@
   gap: 0.15rem;
   padding: 0 1.3rem;
   overflow-x: auto;
-  border-bottom: 1px solid rgba(var(--grey-1), 0.16);
+  border-bottom: 1px solid var(--rule-g16);
   background: rgba(var(--tint), 0.012);
 }
 
@@ -275,7 +275,7 @@
 
 .card {
   padding: 0.9rem 1rem;
-  border: 1px solid rgba(var(--grey-1), 0.14);
+  border: 1px solid var(--edge-g14);
   border-radius: 14px;
   background: rgba(var(--tint), 0.025);
   min-width: 0;
@@ -323,7 +323,7 @@
   width: 1.55rem;
   height: 1.55rem;
   border-radius: 50%;
-  border: 1px solid rgba(var(--grey-1), 0.22);
+  border: 1px solid var(--edge-g22);
   background: rgba(var(--tint), 0.04);
   font-size: 0.72rem;
   font-weight: 750;
@@ -369,7 +369,7 @@
   width: 1.15rem;
   height: 1.15rem;
   border-radius: 5px;
-  border: 1px solid rgba(var(--grey-1), 0.35);
+  border: 1px solid var(--edge-g35);
   font-size: 0.72rem;
 }
 .taskDone { color: var(--mute-g575); text-decoration: line-through; }
@@ -389,7 +389,7 @@
   aspect-ratio: 4 / 3;
   object-fit: cover;
   border-radius: 10px;
-  border: 1px solid rgba(var(--grey-1), 0.16);
+  border: 1px solid var(--edge-g16);
 }
 
 /* --- money strip --- */
@@ -399,7 +399,7 @@
   flex-wrap: wrap;
   gap: 0.5rem 1.75rem;
   padding: 0.8rem 1.3rem;
-  border-top: 1px solid rgba(var(--grey-1), 0.16);
+  border-top: 1px solid var(--rule-g16);
   background: rgba(var(--tint), 0.022);
 }
 
@@ -421,7 +421,7 @@
   grid-template-rows: auto auto 1fr;
   min-width: 0;
   max-height: 42rem;
-  border: 1px solid rgba(var(--grey-1), 0.16);
+  border: 1px solid var(--edge-g16);
   border-radius: 18px;
   background: rgba(var(--panel-rgb), 0.82);
   overflow: hidden;
@@ -439,7 +439,7 @@
 .listHead span {
   padding: 0.1rem 0.5rem;
   border-radius: 999px;
-  border: 1px solid rgba(var(--grey-1), 0.24);
+  border: 1px solid var(--edge-g24);
   font-size: 0.74rem;
   font-weight: 650;
   color: rgba(var(--grey-5), 0.95);
@@ -450,7 +450,7 @@
   grid-template-columns: minmax(6.5rem, 1fr) minmax(0, 8.5rem) max-content;
   gap: 0.6rem;
   padding: 0 1rem 0.5rem;
-  border-bottom: 1px solid rgba(var(--grey-1), 0.12);
+  border-bottom: 1px solid var(--rule-g12);
   font-size: 0.64rem;
   font-weight: 700;
   letter-spacing: 0.09em;
@@ -482,7 +482,7 @@
 .row:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.7); outline-offset: -2px; }
 
 .rowOn {
-  border-color: rgba(255, 122, 41, 0.55);
+  border-color: var(--cedge-orange-64);
   background: rgba(255, 122, 41, 0.09);
 }
 
@@ -518,12 +518,12 @@
   gap: 0.4rem;
   margin-top: 0.6rem;
   padding-top: 0.7rem;
-  border-top: 1px dashed rgba(var(--grey-1), 0.18);
+  border-top: 1px dashed var(--rule-g18);
 }
 
 .quietBtn {
   padding: 0.34rem 0.65rem;
-  border: 1px solid rgba(var(--grey-1), 0.22);
+  border: 1px solid var(--edge-g22);
   border-radius: 8px;
   background: rgba(var(--tint), 0.03);
   color: rgba(var(--grey-4), 0.9);
@@ -571,7 +571,7 @@
 .quote {
   margin: 0;
   padding: 0.15rem 0 0.15rem 0.75rem;
-  border-left: 2px solid rgba(255, 122, 41, 0.45);
+  border-left: 2px solid var(--cedge-orange-38);
   font-size: 0.87rem;
   line-height: 1.55;
   white-space: pre-wrap;
@@ -585,7 +585,7 @@
   gap: 0.35rem;
   padding: 0.2rem 0.6rem;
   border-radius: 999px;
-  border: 1px solid rgba(72, 199, 142, 0.45);
+  border: 1px solid var(--cedge-green-51);
   background: rgba(72, 199, 142, 0.12);
   font-size: 0.74rem;
   font-weight: 700;

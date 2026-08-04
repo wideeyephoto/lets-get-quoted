@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { quickStopMetrics, type QuickStopMetrics } from './quick-stop-insights';
 
 // What the business made, what it's owed, where work is getting stuck, and what
 // to do about it — each headline compared to the previous equal period.
@@ -623,6 +624,7 @@ export type Insights = {
     paymentSample: number;
   };
   leadSources: LeadSourceRow[];
+  quickStops: QuickStopMetrics;
   stuck: { completedNotInvoiced: number; leadsNeedingFollowUp: number; invoicesSent: number };
   actions: RecommendedAction[];
   revenueByMonth: RevenueMonth[];
@@ -660,6 +662,10 @@ export async function buildInsights(
     { data: planRows },
     { data: approvalRows },
     { data: shareRows },
+    { data: quickStopRows },
+    { data: quickStopPaymentRows },
+    { data: assignmentRows },
+    { data: crewRows },
   ] = await Promise.all([
     supabase.from('leads').select('status, source, created_at, converted_job').eq('account_id', accountId),
     supabase.from('jobs').select('id, ref, client_name, quoted_amount, status, created_at, lead_source').eq('account_id', accountId),
@@ -675,6 +681,20 @@ export async function buildInsights(
     supabase.from('job_feed').select('amount, job_id, created_at').eq('account_id', accountId).eq('kind', 'quote_approved'),
     // When a quote was actually put in front of the customer.
     supabase.from('job_feed').select('job_id, created_at').eq('account_id', accountId).eq('kind', 'client_link_created'),
+    // Quick Stops. `paidRows` above can't serve this: it selects no id, and the
+    // fee has to be told apart from the service work by payment id or the same
+    // money gets reported twice under two different names.
+    supabase
+      .from('extra_stop_requests')
+      .select('id, job_id, payment_id, offer_sent_at, paid_at, completed_at')
+      .eq('account_id', accountId),
+    supabase
+      .from('payments')
+      .select('id, job_id, amount, refunded_amount, paid_at')
+      .eq('account_id', accountId)
+      .eq('status', 'paid'),
+    supabase.from('crew_assignments').select('job_id, crew_id').eq('account_id', accountId),
+    supabase.from('crew').select('id, name').eq('account_id', accountId),
   ]);
 
   const data: Rowset = {
@@ -811,6 +831,15 @@ export async function buildInsights(
     costsRecorded: data.costs.length > 0,
   });
 
+  const quickStops = quickStopMetrics({
+    requests: (quickStopRows ?? []) as Parameters<typeof quickStopMetrics>[0]['requests'],
+    payments: (quickStopPaymentRows ?? []) as Parameters<typeof quickStopMetrics>[0]['payments'],
+    assignments: (assignmentRows ?? []) as Parameters<typeof quickStopMetrics>[0]['assignments'],
+    crew: (crewRows ?? []) as Parameters<typeof quickStopMetrics>[0]['crew'],
+    fromMs: period.fromMs,
+    toMs: period.toMs,
+  });
+
   return {
     period,
     windowLabel: period.label,
@@ -857,6 +886,7 @@ export async function buildInsights(
       paymentSample: paymentGaps.length,
     },
     leadSources,
+    quickStops,
     stuck: { completedNotInvoiced, leadsNeedingFollowUp, invoicesSent: outstanding.count },
     actions,
     revenueByMonth,

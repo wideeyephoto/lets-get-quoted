@@ -1972,7 +1972,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
                   })()}
                 </SectionCard>
 
-                {videoCards.map((card) => (
+                {videoCards.map((card, cardIndex) => (
                   <SectionCard
                     key={card.key}
                     reorder={reorderProps(card.key, card.label)}
@@ -2003,46 +2003,53 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
                         Remove this section
                       </button>
                     )}
+
+                    {/* The standalone /videos page's menu link, at the foot of
+                        the Video Section it belongs to.
+
+                        On the LAST card only. It is one setting for the whole
+                        site, not one per section, and rendering it in every
+                        card would put two checkboxes on one boolean — tick it
+                        in the second section and the first one's box is still
+                        showing the old value.
+
+                        Only once there are clips, too: offering to link an
+                        empty page is offering a broken menu item. */}
+                    {allVideoClipCount > 0 && cardIndex === videoCards.length - 1 && (
+                      <div className={styles.videosNavBlock}>
+                        <label className={styles.toggleRow}>
+                          <input
+                            type="checkbox"
+                            checked={siteContent.videosPage.navEnabled}
+                            onChange={(event) => updateSiteContent({ videosPage: { ...siteContent.videosPage, navEnabled: event.target.checked } })}
+                          />
+                          <span>
+                            <strong>Add a video gallery page to your menu</strong>
+                            <small>
+                              Your clips already have their own page — this puts a link to it in your
+                              header menu. Off by default, because a menu is short and this is your call.
+                            </small>
+                          </span>
+                        </label>
+                        {siteContent.videosPage.navEnabled && (
+                          <label className={styles.formField}>
+                            <span>Link Label</span>
+                            <input
+                              value={siteContent.videosPage.navLabel}
+                              maxLength={24}
+                              placeholder={DEFAULT_VIDEOS_NAV_LABEL}
+                              onChange={(event) => updateSiteContent({ videosPage: { ...siteContent.videosPage, navLabel: event.target.value } })}
+                            />
+                            <small className={styles.fieldHint}>
+                              What the link is called in your header menu — e.g. &ldquo;Our work on
+                              video&rdquo;, &ldquo;Watch&rdquo;, &ldquo;See the job&rdquo;.
+                            </small>
+                          </label>
+                        )}
+                      </div>
+                    )}
                   </SectionCard>
                 ))}
-
-                {/* The standalone /videos page's menu link. Sits with the video
-                    sections at the bottom of the list, and only appears once
-                    there are clips — offering to link an empty page would be
-                    offering a broken menu item. */}
-                {allVideoClipCount > 0 && (
-                  <div className={styles.videosNavBlock} style={{ order: 9998 }}>
-                    <label className={styles.toggleRow}>
-                      <input
-                        type="checkbox"
-                        checked={siteContent.videosPage.navEnabled}
-                        onChange={(event) => updateSiteContent({ videosPage: { ...siteContent.videosPage, navEnabled: event.target.checked } })}
-                      />
-                      <span>
-                        <strong>Add a video gallery page to your menu</strong>
-                        <small>
-                          Your clips already have their own page — this puts a link to it in your
-                          header menu. Off by default, because a menu is short and this is your call.
-                        </small>
-                      </span>
-                    </label>
-                    {siteContent.videosPage.navEnabled && (
-                      <label className={styles.formField}>
-                        <span>Menu link label</span>
-                        <input
-                          value={siteContent.videosPage.navLabel}
-                          maxLength={24}
-                          placeholder={DEFAULT_VIDEOS_NAV_LABEL}
-                          onChange={(event) => updateSiteContent({ videosPage: { ...siteContent.videosPage, navLabel: event.target.value } })}
-                        />
-                        <small className={styles.fieldHint}>
-                          What the link is called in your header menu — e.g. &ldquo;Our work on
-                          video&rdquo;, &ldquo;Watch&rdquo;, &ldquo;See the job&rdquo;.
-                        </small>
-                      </label>
-                    )}
-                  </div>
-                )}
 
                 {siteContent.videoSections.length < MAX_VIDEO_SECTIONS && (
                   // `order` explicitly, because .formSection is a grid and every
