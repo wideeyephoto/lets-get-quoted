@@ -56,6 +56,7 @@ export default async function MarketingBlogPage({
           sectionEnabled={blog.sectionEnabled}
           publicBase={blog.publicBase}
           initialTopic={(searchParams.topic ?? '').slice(0, 200)}
+          trade={blog.trade}
         />
       )}
     </main>

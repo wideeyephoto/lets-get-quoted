@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import Link from 'next/link';
 import type { SiteBlogPost } from '@/lib/site-content';
+import StockPhotoPicker from './StockPhotoPicker';
 import {
   createBlogPostAction,
   deleteBlogPostAction,
@@ -41,6 +42,7 @@ export default function BlogWorkspace({
   sectionEnabled,
   publicBase,
   initialTopic,
+  trade,
 }: {
   initialPosts: SiteBlogPost[];
   reminderWeeks: number;
@@ -48,9 +50,13 @@ export default function BlogWorkspace({
   publicBase: string | null;
   /** ?topic= from the dashboard reminder or a seasonal-topic handoff. */
   initialTopic: string;
+  /** Fallback stock-photo search for a post that has no title yet. */
+  trade: string;
 }) {
   const [posts, setPosts] = useState(initialPosts);
   const [openId, setOpenId] = useState<string | null>(null);
+  /** The post whose cover photo is being chosen, or null. */
+  const [pickingFor, setPickingFor] = useState<string | null>(null);
   const [topic, setTopic] = useState(initialTopic);
   const [reminder, setReminder] = useState(reminderWeeks);
   const [message, setMessage] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
@@ -86,9 +92,23 @@ export default function BlogWorkspace({
   }
 
   const liveCount = posts.filter((post) => post.status === 'published').length;
+  const picking = posts.find((post) => post.id === pickingFor) ?? null;
 
   return (
     <>
+      {picking ? (
+        <StockPhotoPicker
+          // The post's own subject first; its trade is the fallback, because a
+          // brand-new untitled post would otherwise search for nothing.
+          defaultQuery={picking.title.trim() || trade}
+          onClose={() => setPickingFor(null)}
+          onPick={(photo) => {
+            setPickingFor(null);
+            edit(picking.id, { coverImage: photo.url });
+          }}
+        />
+      ) : null}
+
       {message ? (
         <p className={message.tone === 'bad' ? 'marketing-error' : 'blog-flash'}>{message.text}</p>
       ) : null}
@@ -263,30 +283,34 @@ export default function BlogWorkspace({
                             </button>
                           </div>
                         ) : null}
-                        <label className="blog-cover-upload">
-                          <input
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp,image/avif"
-                            disabled={pending && busy === `cover:${post.id}`}
-                            onChange={(event) => {
-                              const file = event.target.files?.[0];
-                              event.currentTarget.value = '';
-                              if (!file) return;
-                              const form = new FormData();
-                              form.set('image', file);
-                              run(`cover:${post.id}`, async () => {
-                                setPosts(await uploadBlogCoverAction(post.id, form));
-                              });
-                            }}
-                          />
-                          <span>
-                            {pending && busy === `cover:${post.id}`
-                              ? 'Uploading…'
-                              : post.coverImage
-                                ? 'Replace photo'
-                                : 'Upload a cover photo'}
-                          </span>
-                        </label>
+                        <div className="blog-cover-actions">
+                          {/* Stock first. Almost nobody has a photo of a clean
+                              gutter to hand, and a post with no cover renders
+                              as a grey box on every blog layout. */}
+                          <button type="button" className="btn secondary" onClick={() => setPickingFor(post.id)}>
+                            {post.coverImage ? 'Choose a different photo' : 'Choose a photo'}
+                          </button>
+                          <label className="blog-cover-upload">
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp,image/avif"
+                              disabled={pending && busy === `cover:${post.id}`}
+                              onChange={(event) => {
+                                const file = event.target.files?.[0];
+                                event.currentTarget.value = '';
+                                if (!file) return;
+                                const form = new FormData();
+                                form.set('image', file);
+                                run(`cover:${post.id}`, async () => {
+                                  setPosts(await uploadBlogCoverAction(post.id, form));
+                                });
+                              }}
+                            />
+                            <span>
+                              {pending && busy === `cover:${post.id}` ? 'Uploading…' : 'Upload my own'}
+                            </span>
+                          </label>
+                        </div>
                       </div>
 
                       <label className="cash-bill-field wide">
