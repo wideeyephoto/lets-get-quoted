@@ -3494,6 +3494,24 @@ li + li { margin-top: 0.45rem; }
 .auth-inline-actions { display: flex; gap: 1rem; }
 .auth-inline-actions button { padding: 0; border: 0; background: transparent; color: var(--gold-ink); font: 700 .78rem/1.4 inherit; cursor: pointer; }
 .auth-message { max-width: 420px; padding: .75rem 0; color: var(--gold-ink); }
+
+/* First run (/welcome). Reuses the auth card so it looks like part of signing in
+   rather than a form that appeared out of nowhere.
+   `.auth-form .welcome-accept` and not `.welcome-accept`: `.auth-form label`
+   above is (0,2,0) and sets uppercase 700, which is right for a field label and
+   wrong for a sentence you are agreeing to. This has to match that specificity
+   and come after it. */
+.auth-form select { border: 1px solid rgba(var(--tint), 0.16); border-radius: 999px; padding: 0.85rem 1rem; background: rgba(var(--tint), 0.06); color: white; width: 100%; font: inherit; }
+.auth-form select option { background: #10202e; color: white; }
+.welcome-lead { max-width: 460px; margin: .35rem 0 0; color: var(--mute-t62); line-height: 1.6; }
+.welcome-hint { max-width: 420px; margin: -.35rem 0 .35rem; color: var(--mute-t55); font-size: .8rem; line-height: 1.5; }
+.auth-form .welcome-accept {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .6rem; align-items: start;
+  margin-top: .5rem; font-size: .9rem; font-weight: 500; letter-spacing: 0; text-transform: none;
+  color: rgba(var(--tint), .8); line-height: 1.5; cursor: pointer;
+}
+.auth-form .welcome-accept input { width: 18px; height: 18px; margin-top: .15rem; padding: 0; border-radius: 4px; accent-color: var(--accent-2); cursor: pointer; }
+.auth-form .welcome-accept a { color: var(--gold-ink); text-decoration: underline; text-underline-offset: 3px; }
 .auth-divider { display: flex; align-items: center; gap: .75rem; margin: 1.4rem 0 1rem; max-width: 420px; color: var(--mute-t45); font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; }
 .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: rgba(var(--tint), .14); }
 .auth-oauth-buttons { display: flex; flex-direction: column; gap: .6rem; max-width: 420px; }

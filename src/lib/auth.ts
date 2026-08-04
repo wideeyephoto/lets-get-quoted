@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { notFound, redirect } from 'next/navigation';
 import { normalizeSupabaseUrl } from '@/lib/supabase-url';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
+import { needsFirstRun, type FirstRunAccount } from '@/lib/terms';
 
 // Service-role client bypasses RLS for trusted server-side writes.
 // Never expose this client or its key to the browser.
@@ -94,7 +95,7 @@ export async function ensureAccountMembership(userId: string) {
 // Shared guard for server components/actions that require a logged-in owner.
 // Returns a session-scoped (RLS-respecting) Supabase client plus the resolved
 // user + account context. Redirects to /login if any check fails.
-export async function requireOwnerContext() {
+export async function requireOwnerContext(options: { skipFirstRunGate?: boolean } = {}) {
   const supabase = createSupabaseServerClient();
   const {
     data: { user },
@@ -120,9 +121,29 @@ export async function requireOwnerContext() {
   // Staff-suspended accounts are blocked from the owner surface until lifted.
   // Defensive: a missing column (pre-migration) or read error is treated as
   // "not suspended" so this never breaks the dashboard before it's deployed.
-  const { data: acct } = await supabase.from('accounts').select('suspended_at').eq('id', membership.accountId).maybeSingle();
+  const { data: acct } = await supabase
+    .from('accounts')
+    .select('suspended_at, terms_accepted_at, terms_version')
+    .eq('id', membership.accountId)
+    .maybeSingle();
   if (acct && (acct as { suspended_at?: string | null }).suspended_at) {
     redirect('/account-suspended');
+  }
+
+  // Terms of Service gate. Lives here rather than in the dashboard layout
+  // because a server action is a public endpoint: a check that only runs while
+  // rendering a page is not a check. /welcome passes skipFirstRunGate so it can
+  // render and so its own action can save without redirecting to itself.
+  //
+  // Fails OPEN, deliberately, and only on the specific shape that means "this
+  // deploy is ahead of its migration": `acct` null (read failed, or the selected
+  // column does not exist yet) means carry on. A successful read with the column
+  // present and empty is the only thing that gates. The inverse default would
+  // turn one mis-ordered deploy into every owner locked out of their dashboard,
+  // and this exists to have an agreement on file — not as a security boundary.
+  const hasTermsColumns = acct !== null && acct !== undefined && 'terms_accepted_at' in acct;
+  if (!options.skipFirstRunGate && hasTermsColumns && needsFirstRun(acct as FirstRunAccount)) {
+    redirect('/welcome');
   }
 
   // userEmail is who to write into an audit trail. Anything that records a

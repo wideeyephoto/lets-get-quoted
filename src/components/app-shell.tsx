@@ -167,6 +167,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   // Homeowner-facing transactional pages (paying, approving a quote, an invoice)
   // stay on the minimal top bar — a big marketing rail there would be off-key.
   const isTransactional = pathname.startsWith('/pay') || pathname.startsWith('/client') || pathname.startsWith('/invoice') || pathname.startsWith('/track');
+  // First run (/welcome) renders bare — see the early return below.
+  const isFirstRun = pathname === '/welcome';
   // A signed-in contractor gets the FULL dashboard rail on every app/marketing
   // page (incl. the homepage) — same live counts, Website badge, New button and
   // Stripe pill as inside /dashboard — never the logged-out marketing teaser.
@@ -435,6 +437,16 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   // The /demo experience renders its own sidebar chrome (see demo/layout.tsx),
   // so the app shell stays out of its way — no marketing top bar wrapping it.
   if (pathname.startsWith('/demo')) {
+    return <>{children}</>;
+  }
+
+  // First run is a WALL, not a page inside the app, so it gets no chrome at all.
+  // Neither rail is right here: the signed-in rail invites the owner to click
+  // straight past the thing they have to do first (every link bounces them back
+  // — requireOwnerContext gates them — which reads as a broken sidebar), and the
+  // logged-out rail advertises the demo and the templates to somebody who has
+  // already signed up and is three fields from being done.
+  if (isFirstRun) {
     return <>{children}</>;
   }
 

@@ -62,12 +62,26 @@ export async function getOrCreateSite(
     return existing as Site;
   }
 
-  // Get account name for defaults
+  // Defaults come from the first-run answers (see /welcome): the business name,
+  // the trade, and the ZIP. Seeding trade + zip into content here is what makes
+  // "Generate" in the builder a single click on a brand-new site —
+  // generateSiteTextAction reads exactly these two, and a ZIP is authoritative
+  // for the city, the SEO title and the service area. Without them the generator
+  // is instructed never to invent a location, so the site comes out placeless.
+  //
+  // Selected defensively: these columns arrive with the terms-acceptance
+  // migration, and a site must still be creatable on a deploy that is ahead of
+  // it. A failed select just means no seed, not no site.
   const { data: account } = await supabase
     .from('accounts')
-    .select('business_name')
+    .select('business_name, trade, postal_code')
     .eq('id', accountId)
     .maybeSingle();
+
+  const seed = (account ?? {}) as { business_name?: string | null; trade?: string | null; postal_code?: string | null };
+  const content: Record<string, string> = {};
+  if (seed.trade) content.trade = seed.trade;
+  if (seed.postal_code) content.zip = seed.postal_code;
 
   // Create default site
   const { data: newSite, error } = await supabase
@@ -75,8 +89,9 @@ export async function getOrCreateSite(
     .insert({
       account_id: accountId,
       template: 'carbon',
-      company_name: account?.business_name || 'My Business',
+      company_name: seed.business_name || 'My Business',
       portal_mode: 'light',
+      ...(Object.keys(content).length ? { content } : {}),
     })
     .select('*')
     .single();
