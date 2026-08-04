@@ -37,6 +37,11 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   // to each other in both directions — and the nav item called "Calendar" sat
   // four rows under Schedule, which is the actual calendar.
   { href: '/dashboard/marketing', label: 'Marketing', hint: 'Seasonal topics, email & text campaigns' },
+  // A sub-item, the same way Online Booking sits under Schedule. Writing posts
+  // used to mean opening the website builder and expanding one section among a
+  // dozen, which made it feel like editing a website rather than doing
+  // marketing — which is what it is.
+  { href: '/dashboard/marketing/blog', label: 'Blog', hint: 'Posts for your website' },
   { href: '/dashboard/rebook', label: 'Rebook', hint: 'Win back past customers' },
   { href: '/dashboard/insights', label: 'Insights', hint: 'Funnel & revenue trends' },
   { href: '/dashboard/reviews', label: 'Reviews', hint: 'Ratings & private feedback' },
@@ -73,7 +78,7 @@ const NAV_GROUPS: { label: string; hrefs: string[] }[] = [
   { label: 'Work', hrefs: ['/dashboard/leads', '/dashboard/jobs', '/dashboard/schedule', '/dashboard/schedule/booking', '/dashboard/quick-stops', '/dashboard/clients'] },
   { label: 'Team', hrefs: ['/dashboard/crew'] },
   { label: 'Money', hrefs: ['/dashboard/cash-flow', '/dashboard/recurring', '/dashboard/services', '/dashboard/insights'] },
-  { label: 'Grow', hrefs: ['/dashboard/messages', '/dashboard/marketing', '/dashboard/rebook', '/dashboard/reviews'] },
+  { label: 'Grow', hrefs: ['/dashboard/messages', '/dashboard/marketing', '/dashboard/marketing/blog', '/dashboard/rebook', '/dashboard/reviews'] },
 ];
 
 type AccountStatus = {

@@ -15,6 +15,7 @@ import { generateStockImages, type StockImageResult } from '@/lib/stock/generate
 import { fetchStockPool, isPexelsConfigured } from '@/lib/stock/pexels';
 import type { ImageOrientation, PexelsSearchResult } from '@/lib/stock/types';
 import { getSiteContent } from '@/lib/site-content';
+import { preserveBlogPosts } from '@/lib/site-blog';
 import {
   getOrCreateSite,
   updateSite,
@@ -40,7 +41,7 @@ export async function updateSiteAction(updates: SiteEditableInput) {
   // Get current site
   const { data: sites } = await supabase
     .from('sites')
-    .select('id, custom_domain')
+    .select('id, custom_domain, content')
     .eq('account_id', accountId)
     .limit(1);
 
@@ -49,6 +50,16 @@ export async function updateSiteAction(updates: SiteEditableInput) {
   }
 
   const siteId = sites[0].id;
+
+  // Blog posts are edited on Marketing → Blog, drafted by the biweekly cron,
+  // and created from seasonal topics — none of which this page knows about.
+  // The builder sends the content object it loaded when the page opened, so
+  // without this a post written in the meantime is silently deleted by a Save
+  // the owner thought only changed their headline. Enforced here rather than
+  // trusted to the client, because it is an invariant and not a convention.
+  const contentWithBlogPreserved = updates.content
+    ? preserveBlogPosts(sites[0].content as Record<string, unknown> | null, updates.content)
+    : updates.content;
 
   const editableUpdates: SiteEditableInput = {
     template: updates.template,
@@ -67,7 +78,7 @@ export async function updateSiteAction(updates: SiteEditableInput) {
     subdomain: updates.subdomain?.trim().toLowerCase() || null,
     custom_domain: updates.custom_domain ? normalizeDomain(updates.custom_domain) : null,
     portal_mode: updates.portal_mode,
-    content: updates.content,
+    content: contentWithBlogPreserved,
     seo_title: updates.seo_title,
     seo_description: updates.seo_description,
   };

@@ -299,6 +299,16 @@
 .blogGenerateBtn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 18px 38px -10px rgba(255,122,33,.72); filter: brightness(1.05); }
 .blogGenerateBtn:active:not(:disabled) { transform: translateY(0); }
 .blogGenerateBtn:disabled { opacity: .65; cursor: default; }
+/* Same button as a link, since it now goes to Marketing → Blog rather than
+   drafting in place. */
+a.blogGenerateBtn { display: block; text-align: center; text-decoration: none; line-height: 34px; }
+
+/* Read-only list of the posts. The builder shows what is there; writing them
+   happens on Marketing → Blog, and an editable list here would let a stale
+   browser copy delete work done there. */
+.blogPreviewList { display: flex; flex-direction: column; gap: .35rem; margin: .2rem 0 .6rem; padding: 0; list-style: none; }
+.blogPreviewList li { display: flex; align-items: baseline; justify-content: space-between; gap: .8rem; padding: .5rem .7rem; border: 1px solid rgba(var(--tint), .12); border-radius: 8px; background: rgba(var(--tint), .04); font-size: .88rem; }
+.blogPreviewList small { flex: none; font-size: .74rem; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-mod-grey-22); }
 
 /* Publish control — a proper button (accent for "publish", green when live). */
 .blogPublishRow { display: flex; flex-wrap: wrap; align-items: center; gap: .7rem; }

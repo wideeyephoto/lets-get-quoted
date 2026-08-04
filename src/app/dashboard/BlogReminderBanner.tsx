@@ -35,7 +35,8 @@ export default function BlogReminderBanner({ reminderWeeks, lastPublishedISO, su
     fontStyle: 'italic',
     letterSpacing: '.01em',
   } as const;
-  const writeHref = `/dashboard/sites?topic=${encodeURIComponent(suggestedTopic)}`;
+  // Marketing → Blog, not the website builder. Writing a post is marketing.
+  const writeHref = `/dashboard/marketing/blog?topic=${encodeURIComponent(suggestedTopic)}`;
 
   return (
     <section className="panel workspace-section-card" style={{ borderColor: '#f5a623', background: 'rgba(245, 166, 35, 0.06)' }}>

@@ -24,6 +24,8 @@ export const NAV_ICON_PATHS: Record<string, string> = {
   // /dashboard/campaigns, which meant the merged page rendered with no glyph at
   // all while every item around it had one.
   '/dashboard/marketing': '<path d="M3.5 10.5v3a1 1 0 0 0 1 1h2.2l5.3 3.6V6.4L6.7 9.5H4.5a1 1 0 0 0-1 1z"/><path d="M16 9a4 4 0 0 1 0 6"/>',
+  // A page with a pen on it — writing, not broadcasting.
+  '/dashboard/marketing/blog': '<path d="M11 3.5H5.5a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-5"/><path d="M14.6 3.1a1.4 1.4 0 0 1 2 2L11.4 10.3l-2.7.7.7-2.7z"/>',
   '/dashboard/rebook': '<path d="M4 11.5a8 8 0 1 1 2.3 6.3"/><path d="M3.5 4.5v5h5"/>',
   '/dashboard/reviews': '<path d="M12 3.7l2.55 5.17 5.7.83-4.12 4.02.97 5.68L12 16.72l-5.1 2.68.97-5.68L3.75 9.7l5.7-.83z"/>',
   '/dashboard/settings': '<circle cx="12" cy="8.4" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/>',

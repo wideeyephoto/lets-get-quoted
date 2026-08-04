@@ -1604,6 +1604,44 @@ export function mergeSiteContent(content: Record<string, unknown>, updates: Part
   };
 }
 
+/**
+ * Keep the database's blog posts, whatever the incoming content says.
+ *
+ * Applied to every website-builder save. Posts are written somewhere else
+ * entirely — Marketing → Blog, the biweekly cron, a seasonal marketing topic —
+ * while the builder holds the whole content object in the browser and saves it
+ * wholesale. Without this, a post written after the builder was opened is
+ * silently deleted by a Save the owner thought only changed their headline.
+ *
+ * The split is ownership, not a lock: the builder still decides whether the
+ * band shows, what it is headed and how it is laid out. Only the post list is
+ * taken back.
+ */
+export function preserveBlogPosts(
+  stored: Record<string, unknown> | null | undefined,
+  incoming: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  const next = (incoming && typeof incoming === 'object' ? { ...incoming } : {}) as Record<string, unknown>;
+  next.blog = { ...getSiteContent(next).blog, posts: getSiteContent(stored ?? null).blog.posts };
+  return next;
+}
+
+/**
+ * A slug no other post on this site is already using.
+ *
+ * /blog/[slug] resolves by slug, so two posts sharing one means one of them is
+ * simply unreachable. `ignoreId` is the post being renamed, which is allowed to
+ * keep the slug it already holds.
+ */
+export function uniqueBlogSlug(title: string, existing: SiteBlogPost[], ignoreId?: string): string {
+  const base = slugifyBlogTitle(title) || 'post';
+  const taken = new Set(existing.filter((post) => post.id !== ignoreId).map((post) => post.slug));
+  let slug = base;
+  let suffix = 2;
+  while (taken.has(slug)) slug = `${base}-${suffix++}`;
+  return slug;
+}
+
 // Forge, Guild and Vista each render a built-in "recent work" band. It used to
 // read content.gallery — a pool nothing has been able to fill since the Images
 // tab was removed — so it always fell through to STOCK_SITE_IMAGES: the same

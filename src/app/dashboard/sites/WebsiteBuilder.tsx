@@ -6,11 +6,11 @@ import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getSiteContent, getTradeGlyphOptions, glyphForContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES,
   MENU_BUTTON_STYLES,
-  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, DEFAULT_VIDEOS_NAV_LABEL, slugifyBlogTitle, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
+  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, DEFAULT_VIDEOS_NAV_LABEL, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
 import { generatePrivacyPolicy, generateTermsOfService } from '@/lib/legal/legal-copy';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
-import { checkSubdomainAvailableAction, generateSiteTextAction, generateBlogPostAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
+import { checkSubdomainAvailableAction, generateSiteTextAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption } from './actions';
 import { SEO_TITLE_MAX as SEO_TITLE_LIMIT, SEO_DESC_MAX as SEO_DESC_LIMIT } from '@/lib/seo/seo-copy';
 import { parseVerificationToken, verificationTokenProblem } from '@/lib/seo/search-console';
 // Shared with the first-run seed (lib/site-seed) so "Generate" here and the
@@ -141,11 +141,6 @@ function StackItem({ title, meta, editing, onEdit, onSave, onRemove, children }:
       {editing && children}
     </div>
   );
-}
-
-function wordCount(text: string): number {
-  const trimmed = text.trim();
-  return trimmed ? trimmed.split(/\s+/).length : 0;
 }
 
 // The default Pexels search for the "Replace photo" popup, based on which slot
@@ -283,9 +278,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
   const seoVariantRef = useRef(0);
   // Rotates the stock-image selection for "Regenerate all stock images".
   const imageNonceRef = useRef(0);
-  const [isGeneratingBlog, setIsGeneratingBlog] = useState(false);
-  const [uploadingCoverId, setUploadingCoverId] = useState<string | null>(null);
-  const [blogTopic, setBlogTopic] = useState('');
   // Mini search for the brand-icon picker: empty = the trade-suggested marks,
   // typed = filter the whole baked icon set by key or friendly noun.
   const [iconSearch, setIconSearch] = useState('');
@@ -651,17 +643,15 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
     return () => window.removeEventListener('message', onEditRequest);
   }, []);
 
-  // Deep-link from the dashboard blog reminder: ?topic=... pre-fills the "next
-  // post" field and jumps to the Blog section so a click goes straight to drafting.
+  // An old ?topic= link — from a bookmark, or a dashboard reminder served
+  // before the blog moved. Writing posts lives on Marketing → Blog now, so send
+  // the topic there rather than dropping it and leaving somebody on a page with
+  // no field to type it into.
   useEffect(() => {
     const topic = new URLSearchParams(window.location.search).get('topic');
     if (!topic) return;
-    setBlogTopic(topic.slice(0, 200));
-    setActiveTab('page');
-    setOpenSection('blog');
-    requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById('bf-blog-topic')?.scrollIntoView({ behavior: 'smooth', block: 'center' })));
+    window.location.replace(`/dashboard/marketing/blog?topic=${encodeURIComponent(topic.slice(0, 200))}`);
   }, []);
-
 
   const handleTestimonialImageUpload = useCallback((testimonialId: string, file: File) => {
     setUploadingTestimonialId(testimonialId);
@@ -685,67 +675,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
       }
     });
   }, []);
-
-  const handleBlogCoverUpload = useCallback((postId: string, file: File) => {
-    setUploadingCoverId(postId);
-    setMessage(null);
-    startTransition(async () => {
-      try {
-        const compressed = await compressImage(file, 1600, 0.82);
-        const formData = new FormData();
-        formData.set('image', compressed);
-        const image = await uploadSiteImageAction(formData);
-        setSiteImages((current) => [image, ...current]);
-        setSite((current) => {
-          const content = getSiteContent(current.content);
-          return { ...current, content: mergeSiteContent(current.content, { blog: { ...content.blog, posts: content.blog.posts.map((p) => p.id === postId ? { ...p, coverImage: image.url } : p) } }) };
-        });
-        setIsDirty(true);
-      } catch (error) {
-        setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Could not upload that image. Please try another.' });
-      } finally {
-        setUploadingCoverId(null);
-      }
-    });
-  }, []);
-
-  const handleGenerateBlogDraft = useCallback(() => {
-    setIsGeneratingBlog(true);
-    setMessage(null);
-    startTransition(async () => {
-      try {
-        const draft = await generateBlogPostAction(blogTopic.trim() || undefined);
-        setSite((current) => {
-          const content = getSiteContent(current.content);
-          // Unique slug among existing posts so /blog/[slug] never collides.
-          const slugBase = slugifyBlogTitle(draft.title) || 'post';
-          const existing = new Set(content.blog.posts.map((p) => p.slug));
-          let slug = slugBase;
-          let n = 2;
-          while (existing.has(slug)) slug = `${slugBase}-${n++}`;
-          const post = {
-            id: createContentId('post'),
-            slug,
-            title: draft.title,
-            excerpt: draft.excerpt,
-            body: draft.body,
-            coverImage: draft.coverImage || '',
-            status: 'draft' as const,
-            date: new Date().toISOString().slice(0, 10),
-            publishAt: '',
-          };
-          return { ...current, content: mergeSiteContent(current.content, { blog: { ...content.blog, enabled: true, posts: [post, ...content.blog.posts] } }) };
-        });
-        setIsDirty(true);
-        setBlogTopic('');
-        setMessage({ type: 'success', text: 'Draft created — review and edit it, then flip it to Published when you’re happy. Nothing goes live until you publish.' });
-      } catch (error) {
-        setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to generate a draft.' });
-      } finally {
-        setIsGeneratingBlog(false);
-      }
-    });
-  }, [blogTopic]);
 
   const handleGenerateText = useCallback(() => {
     const hasExistingText = Boolean(site.headline || site.tagline || site.seo_title || site.seo_description);
@@ -2272,40 +2201,33 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
                 <SectionCard reorder={reorderProps('blog', 'Blog')} title="Blog" description="Helpful articles for homeowners — maintenance tips, seasonal advice, and what to know before hiring. AI can draft them; you review and publish." evidence="Fresh, useful posts give Google more local pages to rank and give past customers a reason to return — search visibility that compounds over time." enabled={siteContent.blog.enabled} onToggleEnabled={(value) => updateBlog({ ...siteContent.blog, enabled: value })} {...blogHint} open={openSection === 'blog'} onToggleOpen={() => toggleSection('blog')}>
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.blog.title} onChange={(event) => updateBlog({ ...siteContent.blog, title: event.target.value })} /></label>
                   <label className={styles.formField}><span>Intro (optional)</span><input value={siteContent.blog.intro} onChange={(event) => updateBlog({ ...siteContent.blog, intro: event.target.value })} /></label>
-                  <label className={styles.formField}><span>Publishing reminder</span><select value={siteContent.blog.reminderWeeks} onChange={(event) => updateBlog({ ...siteContent.blog, reminderWeeks: Number(event.target.value) })}><option value={0}>Off</option><option value={2}>Every 2 weeks</option><option value={4}>Every 4 weeks</option><option value={8}>Every 8 weeks</option></select><small className={styles.fieldHint}>We&apos;ll nudge you in your dashboard when it&apos;s time to publish a fresh post. Keeping a blog current is one of the best long-term SEO moves.</small></label>
 
-                  <div className={styles.contentSubhead}><strong>Your posts</strong><small>{siteContent.blog.posts.length === 0 ? 'none yet' : `${siteContent.blog.posts.length} total · drafts stay hidden until published`}</small></div>
-                  {siteContent.blog.posts.length === 0 && <p className={styles.emptyHelper}>No posts yet. Generate one with AI or add your own using the buttons below.</p>}
-                  <div className={styles.stackList}>
-                    {siteContent.blog.posts.map((post, index) => (
-                      <StackItem key={post.id} title={((t) => t.length > 42 ? `${t.slice(0, 42).trimEnd()}…` : t)(post.title.trim() || `Post ${index + 1}`)} meta={post.status === 'published' ? 'Live' : post.publishAt ? 'Scheduled' : 'Draft'} editing={editingItemId === post.id} onEdit={() => setEditingItemId(post.id)} onSave={saveItem} onRemove={() => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.filter((p) => p.id !== post.id) })}>
-                        <div className={styles.blogPublishRow}>
-                          <button type="button" className={`${styles.blogPublishBtn}${post.status === 'published' ? ` ${styles.blogPublishBtnOn}` : ''}`} onClick={() => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, status: p.status === 'published' ? 'draft' : 'published', publishAt: '' } : p) })}>{post.status === 'published' ? '✓ Published — live' : 'Publish now'}</button>
-                          {post.status !== 'published' && <label className={styles.blogScheduleField}><span>or auto-publish on</span><input type="date" value={post.publishAt} min={new Date().toISOString().slice(0, 10)} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, publishAt: event.target.value } : p) })} /></label>}
-                        </div>
-                        {post.status !== 'published' && (post.publishAt ? <p className={styles.fieldHint}>📅 Scheduled — auto-publishes on {post.publishAt}.</p> : <p className={styles.fieldHint}>Draft — only you can see it. Publish now, or pick a date to schedule it.</p>)}
-                        <label className={styles.formField}><span>Title</span><input value={post.title} maxLength={120} onChange={(event) => { const title = event.target.value; updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, title, slug: (!p.slug || /^post-\d+$/.test(p.slug)) ? slugifyBlogTitle(title) : p.slug } : p) }); }} placeholder="5 signs it’s time to reseal your deck" /></label>
-                        <label className={styles.formField}><span>Excerpt</span><input value={post.excerpt} maxLength={200} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, excerpt: event.target.value } : p) })} placeholder="One sentence that makes someone want to read." /></label>
-                        <div className={styles.formField}>
-                          <span>Cover photo (optional)</span>
-                          {post.coverImage && (
-                            <div className={styles.blogCoverPreview}>
-                              <img src={post.coverImage} alt="Cover preview" />
-                              <button type="button" onClick={() => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, coverImage: '' } : p) })}>Remove</button>
-                            </div>
-                          )}
-                          <label className={styles.blogCoverUpload}>
-                            <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={uploadingCoverId === post.id} onChange={(event) => { const file = event.target.files?.[0]; event.currentTarget.value = ''; if (file) handleBlogCoverUpload(post.id, file); }} />
-                            <span>{uploadingCoverId === post.id ? 'Uploading…' : post.coverImage ? 'Replace photo' : 'Upload a cover photo'}</span>
-                          </label>
-                        </div>
-                        <label className={styles.formField}><span>Body</span><textarea rows={10} value={post.body} onChange={(event) => updateBlog({ ...siteContent.blog, posts: siteContent.blog.posts.map((p) => p.id === post.id ? { ...p, body: event.target.value } : p) })} placeholder="Write in short paragraphs separated by a blank line." /><small>{wordCount(post.body)} words · ~{Math.max(1, Math.round(wordCount(post.body) / 220))} min read{wordCount(post.body) > 0 && wordCount(post.body) < 300 ? ' — aim for 400+ words so the post feels substantial' : ''}</small></label>
-                      </StackItem>
-                    ))}
-                  </div>
-                  <div className={styles.contentSubhead}><strong>Add a post</strong><small>Draft one with AI or write your own — it saves as a hidden draft until you publish it.</small></div>
-                  <label className={styles.formField}><span>What should it be about?</span><input id="bf-blog-topic" value={blogTopic} maxLength={200} onChange={(event) => setBlogTopic(event.target.value)} placeholder="e.g. Fall gutter maintenance checklist — leave blank and AI picks a seasonal topic" /></label>
-                  <button type="button" className={styles.blogGenerateBtn} onClick={handleGenerateBlogDraft} disabled={isGeneratingBlog}>{isGeneratingBlog ? 'Writing your draft…' : '✨ Generate a draft with AI'}</button>
+                  {/* Read-only here on purpose. Writing posts is marketing, not
+                      website editing, and it lives on Marketing → Blog where it
+                      sits beside the seasonal topics that suggest them.
+
+                      This is a PREVIEW and cannot be edited, which is also what
+                      makes it safe: the builder holds the whole site in the
+                      browser and saves it in one go, so an editable list here
+                      would take back out anything written on the blog page or
+                      by the biweekly cron since this page was opened. The
+                      server drops posts from this page's save entirely — see
+                      preserveBlogPosts. */}
+                  <div className={styles.contentSubhead}><strong>Your posts</strong><small>{siteContent.blog.posts.length === 0 ? 'none yet' : `${siteContent.blog.posts.length} total · ${siteContent.blog.posts.filter((p) => p.status === 'published').length} live`}</small></div>
+                  {siteContent.blog.posts.length === 0 ? (
+                    <p className={styles.emptyHelper}>No posts yet. Write one on the blog page — AI can draft it for you.</p>
+                  ) : (
+                    <ul className={styles.blogPreviewList}>
+                      {siteContent.blog.posts.slice(0, 6).map((post, index) => (
+                        <li key={post.id}>
+                          <span>{((t) => t.length > 46 ? `${t.slice(0, 46).trimEnd()}…` : t)(post.title.trim() || `Untitled post ${index + 1}`)}</span>
+                          <small>{post.status === 'published' ? 'Live' : post.publishAt ? `Scheduled ${post.publishAt}` : 'Draft'}</small>
+                        </li>
+                      ))}
+                      {siteContent.blog.posts.length > 6 ? <li><span>+ {siteContent.blog.posts.length - 6} more</span></li> : null}
+                    </ul>
+                  )}
+                  <a className={styles.blogGenerateBtn} href="/dashboard/marketing/blog">✍️ Write &amp; edit posts →</a>
 
                   <div className={styles.contentSubhead}><strong>Layout</strong><small>How posts are arranged on your site.</small></div>
                   <div className={styles.footerPicker} role="group" aria-label="Blog layout">

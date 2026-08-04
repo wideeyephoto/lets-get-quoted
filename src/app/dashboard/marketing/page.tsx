@@ -4,6 +4,7 @@ import { AUDIENCE_DEFS, listCampaigns, loadListHealth, loadRecipients, matchesAu
 import { resolveMarketingMailingAddress } from '@/lib/email-suppression';
 import { buildQuickStopPitch } from '@/lib/quick-stop-pitch';
 import { campaignDraftForBeat } from '@/lib/marketing-draft-data';
+import { loadBlogWorkspace } from '@/lib/site-blog';
 import { marketingCalendarAction } from './actions';
 import MarketingWorkspace from './MarketingWorkspace';
 
@@ -27,6 +28,19 @@ export default async function MarketingPage({
   ]);
 
   const mailingAddress = resolveMarketingMailingAddress(addressRow?.mailing_address as string | null);
+
+  // A summary only — the posts themselves are a page of their own. Null when
+  // there is no website, because "0 drafts" would read as something to fix.
+  const blogData = await loadBlogWorkspace(supabase, accountId, process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com');
+  const published = blogData?.posts.filter((post) => post.status === 'published') ?? [];
+  const blogSummary = blogData
+    ? {
+        total: blogData.posts.length,
+        live: published.length,
+        drafts: blogData.posts.length - published.length,
+        latest: published.map((post) => post.date).filter(Boolean).sort().at(-1) ?? null,
+      }
+    : null;
 
   // Precompute reachable counts per audience × channel so the composer can show
   // live numbers without pulling any contact data into the client bundle.
@@ -125,6 +139,7 @@ export default async function MarketingPage({
         view={view}
         campaigns={campaigns}
         hasRecipients={recipients.length > 0}
+        blog={blogSummary}
         composer={{
           audiences: AUDIENCE_DEFS,
           reach,

@@ -9855,6 +9855,107 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
   line-height: 1.5;
   color: var(--mute-t45);
 }
+/* ---- Marketing → Blog ------------------------------------------------------
+   Posts, out of the website builder and next to the topics that suggest them.
+   Every field saves on blur, so there is no Save button and nothing to lose —
+   which is the difference between this and the builder, where a whole site is
+   batched into one save.
+   -------------------------------------------------------------------------- */
+
+.blog-flash { margin: 0 0 0.8rem; font-size: 0.88rem; color: var(--ink-lime-1); }
+.blog-warn {
+  margin: 0 0 0.9rem;
+  padding: 0.7rem 0.9rem;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 10px 10px 0;
+  background: rgba(255, 122, 33, 0.1);
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+.blog-list { display: flex; flex-direction: column; gap: 0.6rem; }
+.blog-row {
+  border-radius: 14px;
+  border: 1px solid rgba(var(--tint), 0.14);
+  background: rgba(var(--tint), 0.04);
+}
+.blog-row.is-open { border-color: rgba(var(--tint), 0.26); }
+.blog-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.75rem 0.95rem;
+}
+.blog-row-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.blog-row-title strong { font-size: 0.95rem; }
+.blog-row-title:hover strong { color: var(--ink-lime-1); }
+.blog-row-meta { font-size: 0.76rem; color: var(--mute-t45); }
+
+/* Live / Scheduled / Draft. The shape carries the state as well as the word,
+   so a list of ten posts is scannable without reading every row. */
+.blog-status {
+  flex: none;
+  padding: 0.18rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(var(--tint), 0.1);
+  color: var(--mute-t55);
+}
+.blog-status-live { background: rgba(22, 163, 74, 0.2); color: var(--ink-lime-1); }
+.blog-status-scheduled { background: rgba(255, 122, 33, 0.16); color: var(--ink-orange-1); }
+
+.blog-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0 0.95rem 0.95rem;
+  border-top: 1px solid rgba(var(--tint), 0.1);
+  padding-top: 0.85rem;
+}
+.blog-publish-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.7rem; }
+
+.blog-cover {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 0.4rem 0;
+}
+.blog-cover img {
+  width: min(180px, 40%);
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--tint), 0.12);
+}
+.blog-cover-upload {
+  display: inline-block;
+  margin-top: 0.3rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px dashed rgba(var(--tint), 0.28);
+  border-radius: 999px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.blog-cover-upload:hover { border-style: solid; }
+.blog-cover-upload input { display: none; }
+
 /* The reason there's no "text them" button, where somebody would look for it. */
 .marketing-sms-note {
   margin: 1.2rem 0 0;

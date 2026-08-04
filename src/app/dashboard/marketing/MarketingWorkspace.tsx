@@ -25,12 +25,15 @@ export default function MarketingWorkspace({
   composer,
   campaigns,
   hasRecipients,
+  blog,
 }: {
   view: CalendarView;
   composer: Omit<ComposerProps, 'initial'> & { initial?: ComposerProps['initial'] };
   campaigns: Campaign[];
   /** With nobody to send to, the composer is replaced by an explanation. */
   hasRecipients: boolean;
+  /** Null when the account has no website to post to. */
+  blog: { total: number; live: number; drafts: number; latest: string | null } | null;
 }) {
   const [handedOver, setHandedOver] = useState<CampaignDraft | null>(null);
   // Bumped on every handoff. The composer keeps its own state for the subject
@@ -80,6 +83,33 @@ export default function MarketingWorkspace({
             No clients yet. Once you&apos;ve created jobs or taken leads, your customers show up here and you can
             reach them in a couple of taps. <Link href="/dashboard/clients">See your clients →</Link>
           </p>
+        )}
+      </section>
+
+      {/* The other half of marketing: what you publish rather than what you
+          send. The same seasonal topics feed both, so the blog belongs on this
+          page and not buried in the website builder's section list. */}
+      <section className="panel workspace-section-card">
+        <div className="section-heading workspace-section-heading compact-heading">
+          <p className="eyebrow">Blog</p>
+        </div>
+        {!blog ? (
+          <p className="empty-state">
+            You need a website before you can post to it. <Link href="/dashboard/sites">Set one up →</Link>
+          </p>
+        ) : (
+          <>
+            <p className="workspace-card-copy">
+              {blog.total === 0
+                ? 'No posts yet. A few genuinely useful articles give Google more local pages to rank, and give past customers a reason to come back — it is the slowest marketing here and the one that compounds.'
+                : `${blog.live} live · ${blog.drafts} ${blog.drafts === 1 ? 'draft' : 'drafts'}${blog.latest ? ` · last published ${blog.latest}` : ''}.`}
+            </p>
+            <div className="marketing-actions">
+              <Link href="/dashboard/marketing/blog" className="btn secondary">
+                {blog.total === 0 ? 'Write your first post' : 'Write & edit posts'}
+              </Link>
+            </div>
+          </>
         )}
       </section>
 
