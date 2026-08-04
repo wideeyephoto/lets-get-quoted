@@ -123,6 +123,20 @@ alter table accounts add column if not exists review_gating_enabled boolean not 
 -- a campaign broadcast; the automated marketing sends fall back to a platform
 -- address (COMPANY_MAILING_ADDRESS) when a contractor hasn't set their own.
 alter table accounts add column if not exists mailing_address text;
+-- This account's OWN inbound number, when it has one.
+--
+-- Every contractor currently sends from one shared platform number, so an
+-- inbound text carries the customer's number and nothing saying who it is for,
+-- and routing has to guess. A number claimed here makes it exact — the To field
+-- IS the answer. Nothing writes this yet: buying a number per contractor is a
+-- recurring cost and a provisioning decision, not a code change. See
+-- resolveAccountForInbound, which checks it first.
+alter table accounts add column if not exists sms_number text;
+-- One number, one account — enforced, not assumed. Two accounts sharing a
+-- claimed number puts routing back to guessing while looking fixed.
+create unique index if not exists accounts_sms_number_idx
+  on accounts (sms_number)
+  where sms_number is not null;
 -- Opt-in: a once-daily "here's your business today" digest email to the owner
 -- (money in, new leads, quotes approved, today's schedule, confirmations,
 -- reviews, rebook nudges). Only sends on days with something to report.

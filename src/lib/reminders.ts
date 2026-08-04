@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/auth';
 import { normalizeUsPhone } from '@/lib/phone';
 import { formatJobSchedule } from '@/lib/jobs';
 import { createJobFeedEvent } from '@/lib/job-feed';
-import { resolveAccountForPhone } from '@/lib/messages';
+import { resolveAccountForInbound } from '@/lib/messages';
 import { sendAppointmentReminderSms } from '@/lib/sms';
 import { getAccountOwnerEmail, sendAppointmentReminderEmail, sendReminderRunSummaryEmail } from '@/lib/email';
 import { wantsConfirmation } from '@/lib/confirmation-prefs';
@@ -158,8 +158,15 @@ export type ConfirmResult = {
 // scheduled job for the account that texted them and mark it confirmed. Returns
 // confirmed:false (a no-op) when there's nothing to confirm, so the caller just
 // treats the text as an ordinary inbound message.
-export async function confirmUpcomingAppointment(admin: SupabaseClient, phone: string): Promise<ConfirmResult> {
-  const accountId = await resolveAccountForPhone(admin, phone);
+export async function confirmUpcomingAppointment(
+  admin: SupabaseClient,
+  phone: string,
+  toNumber?: string | null,
+): Promise<ConfirmResult> {
+  // Same routing as the inbox, and for the same reason: confirming the wrong
+  // contractor's appointment is worse than mis-filing a message, because a job
+  // gets marked confirmed for somebody who never heard from this customer.
+  const accountId = await resolveAccountForInbound(admin, phone, toNumber);
   if (!accountId) return { confirmed: false };
 
   const today = new Date().toISOString().slice(0, 10);

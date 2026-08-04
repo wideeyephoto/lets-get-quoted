@@ -29,26 +29,126 @@ export type Conversation = {
   lastHasMedia: boolean;
 };
 
-// Shared Twilio number means an inbound text only carries the customer's number,
-// not which contractor it's for. Attribute it to the account that most recently
-// texted this number (its consent-ledger row), which is where the conversation
-// they're replying to lives. Null when we've never messaged them.
+/**
+ * Which contractor an inbound text belongs to.
+ *
+ * Every account sends from one shared platform number, so the text carries the
+ * customer's number and nothing that says who it is for. This used to resolve
+ * that by taking whichever account had most recently touched the customer's row
+ * in the CONSENT ledger — and that row is written by creating a job or
+ * requesting a payment, not by talking to anybody. Contractor A texts a
+ * homeowner; contractor B, who also knows them, creates a job for them the next
+ * day; the homeowner's reply to A is delivered to B. Two ordinary actions, and
+ * a stranger reads somebody's message about their house.
+ *
+ * Three signals, strongest first:
+ *
+ *  1. THE NUMBER IT WAS SENT TO. If an account has claimed that number this is
+ *     not a guess at all, and nothing below can overrule it. Nothing assigns
+ *     numbers yet — see the migration — but this is where it plugs in, and it
+ *     is checked first so the day it starts being set, routing becomes exact.
+ *
+ *  2. WHO THEY WERE LAST TALKING TO. An actual message in either direction is
+ *     the only evidence about a conversation, and a reply belongs to the
+ *     conversation it is replying to.
+ *
+ *  3. Consent recency, as before — reached only when nobody has ever exchanged
+ *     a message with this number, where it is the sole remaining signal.
+ */
+export type InboundRouteCandidate = {
+  accountId: string;
+  /** Most recent message either way with this number, ISO, or null. */
+  lastMessageAt: string | null;
+  /** Consent-ledger recency, ISO, or null. */
+  consentUpdatedAt: string | null;
+};
+
+/** Pure so the precedence can be pinned by a test rather than trusted. */
+export function pickInboundAccount(
+  candidates: InboundRouteCandidate[],
+  claimedByToNumber?: string | null,
+): string | null {
+  if (claimedByToNumber) return claimedByToNumber;
+  if (candidates.length === 0) return null;
+
+  const talking = candidates.filter((entry) => entry.lastMessageAt);
+  if (talking.length > 0) {
+    return talking.reduce((best, entry) =>
+      (entry.lastMessageAt as string) > (best.lastMessageAt as string) ? entry : best,
+    ).accountId;
+  }
+
+  const consented = candidates.filter((entry) => entry.consentUpdatedAt);
+  if (consented.length === 0) return null;
+  return consented.reduce((best, entry) =>
+    (entry.consentUpdatedAt as string) > (best.consentUpdatedAt as string) ? entry : best,
+  ).accountId;
+}
+
+export async function resolveAccountForInbound(
+  admin: SupabaseClient,
+  phone: string,
+  toNumber?: string | null,
+): Promise<string | null> {
+  // 1. The number it was addressed to, when somebody owns it.
+  //
+  // Defensive: on a database without the migration this column does not exist
+  // and the query errors, which must fall through to the guess rather than
+  // dropping the message.
+  const normalizedTo = toNumber ? normalizeUsPhone(toNumber) : null;
+  if (normalizedTo) {
+    const { data: owner } = await admin
+      .from('accounts')
+      .select('id')
+      .eq('sms_number', normalizedTo)
+      .maybeSingle();
+    if (owner?.id) return owner.id as string;
+  }
+
+  const [{ data: messages }, { data: consents }] = await Promise.all([
+    admin
+      .from('sms_messages')
+      .select('account_id, created_at')
+      .eq('phone_number', phone)
+      .order('created_at', { ascending: false })
+      .limit(50),
+    admin.from('sms_consent').select('account_id, updated_at').eq('phone_number', phone),
+  ]);
+
+  const byAccount = new Map<string, InboundRouteCandidate>();
+  const ensure = (accountId: string): InboundRouteCandidate => {
+    let entry = byAccount.get(accountId);
+    if (!entry) {
+      entry = { accountId, lastMessageAt: null, consentUpdatedAt: null };
+      byAccount.set(accountId, entry);
+    }
+    return entry;
+  };
+
+  // Ordered newest-first, so the first row seen for an account is its latest.
+  for (const row of messages ?? []) {
+    const entry = ensure(String((row as { account_id: string }).account_id));
+    entry.lastMessageAt ??= String((row as { created_at: string }).created_at);
+  }
+  for (const row of consents ?? []) {
+    ensure(String((row as { account_id: string }).account_id)).consentUpdatedAt = String(
+      (row as { updated_at: string }).updated_at,
+    );
+  }
+
+  return pickInboundAccount([...byAccount.values()]);
+}
+
+/** @deprecated Use resolveAccountForInbound, which can also read the To number. */
 export async function resolveAccountForPhone(admin: SupabaseClient, phone: string): Promise<string | null> {
-  const { data } = await admin
-    .from('sms_consent')
-    .select('account_id, updated_at')
-    .eq('phone_number', phone)
-    .order('updated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return (data?.account_id as string | undefined) ?? null;
+  return resolveAccountForInbound(admin, phone, null);
 }
 
 export async function logInboundMessage(
   admin: SupabaseClient,
-  input: { phone: string; body: string; providerId?: string | null; mediaUrls?: string[] },
+  input: { phone: string; body: string; providerId?: string | null; mediaUrls?: string[]; toNumber?: string | null },
 ): Promise<void> {
-  const accountId = await resolveAccountForPhone(admin, input.phone);
+  const accountId = await resolveAccountForInbound(admin, input.phone, input.toNumber);
   if (!accountId) return; // unknown sender — nothing to thread it onto
   const media = (input.mediaUrls ?? []).filter(Boolean);
   const row: Record<string, unknown> = {

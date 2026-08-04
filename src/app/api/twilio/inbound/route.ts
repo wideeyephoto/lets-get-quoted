@@ -30,6 +30,11 @@ export async function POST(request: Request) {
   const data = await request.formData();
   if (!validateTwilioSignature(request, data)) return NextResponse.json({ error: 'Invalid signature.' }, { status: 403 });
   const phone = normalizeUsPhone(String(data.get('From') || ''));
+  // The number they texted. On one shared platform number this tells us nothing
+  // yet, but it is the ONLY signal that identifies a contractor exactly, so it
+  // is read and passed down rather than left for later — see the routing in
+  // resolveAccountForInbound.
+  const toNumber = String(data.get('To') || '').trim() || null;
   const rawBody = String(data.get('Body') || '').trim();
   const keyword = rawBody.toUpperCase().split(/\s+/)[0];
   const twilioOptOutType = String(data.get('OptOutType') || '').toUpperCase();
@@ -60,6 +65,7 @@ export async function POST(request: Request) {
         body: rawBody,
         providerId: String(data.get('MessageSid') || '') || null,
         mediaUrls,
+        toNumber,
       });
     } catch (error) {
       console.error('Failed to log inbound SMS:', error instanceof Error ? error.message : error);
@@ -97,7 +103,7 @@ export async function POST(request: Request) {
   // through — the text was already logged as an ordinary inbound message.
   if (phone && CONFIRM.has(keyword)) {
     try {
-      const result = await confirmUpcomingAppointment(createAdminClient(), phone);
+      const result = await confirmUpcomingAppointment(createAdminClient(), phone, toNumber);
       if (result.confirmed && result.job) {
         const greeting = result.job.clientFirst ? `Thanks ${result.job.clientFirst}` : 'Thanks';
         return twiml(`Let's Get Quoted: ${greeting} — your appointment ${result.job.whenLabel} with ${result.job.businessName} is confirmed. See you then!`);
