@@ -84,12 +84,13 @@ import {
   FEED_VISIBILITY_LABEL,
   INVOICE_STATUS_LABEL,
   PAYMENT_STATUS_LABEL,
-  completeJobConfirmMessage,
   formatFeedTime,
   getFeedDisplayBody,
   getFeedDisplayTitle,
   marginTier,
+  reviewPillState,
 } from '@/lib/job-detail-labels';
+import CompleteJobButton from './CompleteJobButton';
 
 export default async function JobDetailPage({
   params,
@@ -354,21 +355,23 @@ export default async function JobDetailPage({
                  so it says "Mark". It asks first because completing can fire
                  the automatic review request, and a text to a customer is the
                  one thing on this screen that cannot be undone. */
-              <ConfirmActionButton
+              <CompleteJobButton
                 action={boundMarkJobComplete}
-                confirmMessage={completeJobConfirmMessage({
+                warning={{
+                  clientName: job.client_name,
+                  autoReviewRequest,
+                  reviewUrlConfigured: Boolean(reviewUrl),
+                  alreadyRequested: Boolean(lastReviewRequest),
+                  channel: job.client_phone ? 'text' : job.client_email ? 'email' : null,
+                }}
+                pill={reviewPillState({
                   clientName: job.client_name,
                   autoReviewRequest,
                   reviewUrlConfigured: Boolean(reviewUrl),
                   alreadyRequested: Boolean(lastReviewRequest),
                   channel: job.client_phone ? 'text' : job.client_email ? 'email' : null,
                 })}
-                className="btn job-done-btn"
-                pendingLabel="Wrapping up…"
-                savedLabel="Completed ✓"
-              >
-                Mark Job Completed
-              </ConfirmActionButton>
+              />
             ) : null}
             {job.status === 'complete' ? (
               <RequestReviewButton

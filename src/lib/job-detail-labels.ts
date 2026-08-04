@@ -109,7 +109,7 @@ export function formatFeedTime(value: string): string {
 
 export type CompleteJobWarningInput = {
   clientName: string;
-  /** Automations → "Ask for a review automatically". */
+  /** Automations → "Ask for a review automatically". The account default. */
   autoReviewRequest: boolean;
   /** A Google review link is saved. Without one the auto-ask sends nothing. */
   reviewUrlConfigured: boolean;
@@ -117,7 +117,69 @@ export type CompleteJobWarningInput = {
   alreadyRequested: boolean;
   /** How the ask would reach them: SMS when there's a mobile, else email. */
   channel: 'text' | 'email' | null;
+  /**
+   * The per-job pill on the complete button, when the owner has set it.
+   * Absent means "whatever the account setting says", which is what every
+   * caller meant before the pill existed.
+   */
+  sendReview?: boolean;
 };
+
+/**
+ * Whether pressing complete right now actually sends a review request.
+ *
+ * The pill overrides the ACCOUNT setting — that is the point of it, and it
+ * works in both directions: ask on this one job even though automatic asks are
+ * off, or skip it on this one job even though they are on.
+ *
+ * What the pill cannot override is the three things that make a send
+ * impossible rather than unwanted. Those are not preferences, and a toggle that
+ * claims to turn one of them into a send would be lying about what the button
+ * does.
+ */
+export function willAskForReview(input: CompleteJobWarningInput): boolean {
+  const wants = input.sendReview ?? input.autoReviewRequest;
+  return wants && input.reviewUrlConfigured && !input.alreadyRequested && input.channel !== null;
+}
+
+export type ReviewPillState =
+  | { canAsk: true; defaultOn: boolean; channel: 'text' | 'email' }
+  /** Nothing can be sent on this job, and the pill says which of the three. */
+  | { canAsk: false; reason: string };
+
+/**
+ * What the review pill should offer on this job.
+ *
+ * Returns canAsk:false rather than an off-by-default toggle when a send is
+ * impossible. An owner who flips a switch to ON and gets nothing has been told
+ * something untrue by the interface, and they will not find out — the send is
+ * silent either way.
+ */
+export function reviewPillState(input: CompleteJobWarningInput): ReviewPillState {
+  const who = input.clientName?.trim() || 'the customer';
+  if (!input.reviewUrlConfigured) {
+    return { canAsk: false, reason: 'No Google review link saved yet — add one in Settings and this turns on.' };
+  }
+  if (input.alreadyRequested) {
+    return { canAsk: false, reason: `${who} has already been asked for a review on this job.` };
+  }
+  if (!input.channel) {
+    return { canAsk: false, reason: `${who} has no mobile or email on file, so there's nowhere to send it.` };
+  }
+  return { canAsk: true, defaultOn: input.autoReviewRequest, channel: input.channel };
+}
+
+/**
+ * Whether completing is worth stopping to ask about.
+ *
+ * Only when a review request will really go out. Completion itself is undoable
+ * from the feed, so with the pill off there is nothing here that cannot be
+ * taken back — and a dialog that fires when nothing irreversible is about to
+ * happen is how people learn to click through dialogs.
+ */
+export function completeJobNeedsConfirm(input: CompleteJobWarningInput): boolean {
+  return willAskForReview(input);
+}
 
 /**
  * What marking a job complete is actually going to do, as a confirm dialog.
@@ -136,6 +198,16 @@ export type CompleteJobWarningInput = {
 export function completeJobConfirmMessage(input: CompleteJobWarningInput): string {
   const who = input.clientName?.trim() || 'the customer';
   const head = `Mark this job complete?\n\n${who} sees it close out on their job feed. You can undo it from the feed if you press it early.`;
+
+  // The pill, when the owner has set it. Said in its own words rather than the
+  // account setting's, because "automatic review asks are off" is the wrong
+  // explanation for a switch they just turned off themselves.
+  if (input.sendReview === false) {
+    return `${head}\n\nReview is switched off for this one, so no review request goes out.`;
+  }
+  if (input.sendReview === true && !input.autoReviewRequest && input.reviewUrlConfigured && !input.alreadyRequested && input.channel) {
+    return `${head}\n\n⭐ Review is switched on for this one, so ${who} will be ${input.channel === 'text' ? 'texted' : 'emailed'} a review request straight away — even though automatic asks are off. That send can't be recalled.`;
+  }
 
   if (!input.autoReviewRequest) {
     return `${head}\n\nNo review request goes out — automatic review asks are off, so that stays a button you press yourself.`;

@@ -279,10 +279,15 @@ export async function undoJobStartedAction(jobId: string, eventId: string) {
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }
 
-export async function markJobCompleteAction(jobId: string) {
+export async function markJobCompleteAction(jobId: string, formData?: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
   const job = await getJob(supabase, accountId, jobId);
   if (!job) throw new Error('Job not found for this account.');
+
+  // The review pill on the complete button. Absent means the form didn't carry
+  // one, and then the account setting decides exactly as it always has.
+  const raw = formData?.get('sendReview');
+  const sendReview = raw === null || raw === undefined ? null : String(raw) === 'on';
 
   if (job.status !== 'complete') {
     const { error } = await supabase
@@ -300,17 +305,28 @@ export async function markJobCompleteAction(jobId: string) {
       meta: { status: 'complete', previousStatus: job.status },
     });
 
-    // Opt-in auto review ask. Best-effort and idempotent: gated on the account
-    // toggle, only fires once per job, and never blocks completion if the text/
-    // email send fails. The toggle column may not exist on un-migrated DBs, so
-    // the read is defensive (treated as off on any error).
+    // The review ask. Best-effort and idempotent: only fires once per job, and
+    // never blocks completion if the text/email send fails. The account toggle
+    // column may not exist on un-migrated DBs, so the read is defensive
+    // (treated as off on any error).
+    //
+    // The per-job pill OVERRIDES the account setting in both directions — ask
+    // on this one job though automatic asks are off, or skip it though they are
+    // on. That is the whole point of the pill: closing a job without texting
+    // somebody used to mean going to Settings, turning the automation off,
+    // coming back, completing, and turning it on again.
+    //
+    // What it does not override is deliverJobReviewRequest's own bail on a
+    // missing review link, or the once-per-job check. Those are not
+    // preferences.
     try {
       const { data: settings } = await supabase
         .from('accounts')
         .select('auto_review_request')
         .eq('id', accountId)
         .maybeSingle();
-      if (settings?.auto_review_request && !(await reviewAlreadyRequested(supabase, accountId, jobId))) {
+      const wantsReview = sendReview ?? Boolean(settings?.auto_review_request);
+      if (wantsReview && !(await reviewAlreadyRequested(supabase, accountId, jobId))) {
         await deliverJobReviewRequest(supabase, accountId, job);
       }
     } catch (error) {
