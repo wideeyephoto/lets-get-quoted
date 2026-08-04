@@ -17,7 +17,12 @@ export const metadata = {
 // It lives on Settings → Automations → Intake AI now: none of it changed how
 // the site looked, and a page about headlines and photos was the wrong place to
 // decide which leads interrupt somebody.
-export default async function SitesPage({ searchParams }: { searchParams?: { built?: string } }) {
+//
+// `?open=<key>` opens one card straight away, for links sent from elsewhere in
+// the dashboard — Automations → Review requests points at `reviews`, because
+// the Google Business Profile the review ask needs is set on that card and
+// nowhere else.
+export default async function SitesPage({ searchParams }: { searchParams?: { built?: string; open?: string } }) {
   const { supabase, accountId } = await requireOwnerContext();
   const justBuilt = searchParams?.built === '1';
 
@@ -25,5 +30,12 @@ export default async function SitesPage({ searchParams }: { searchParams?: { bui
   const site = await getOrCreateSite(supabase, accountId);
   const uploadedImages = await listUploadedSiteImages(accountId);
 
-  return <WebsiteBuilder site={site} uploadedImages={uploadedImages} justBuilt={justBuilt} />;
+  return (
+    <WebsiteBuilder
+      site={site}
+      uploadedImages={uploadedImages}
+      justBuilt={justBuilt}
+      openTarget={searchParams?.open ?? null}
+    />
+  );
 }

@@ -37,6 +37,45 @@ export function reviewRoutes(input: { googleUrl: string | null | undefined }): R
   return { googleUrl: url ? url : null, privateFeedback: true };
 }
 
+/**
+ * Where a review ask points, built from the Google Business Profile linked in
+ * the website builder's Customer reviews card.
+ *
+ * A Place ID gives Google's canonical "write a review" deep link, which opens
+ * the review box itself; the plain listing URL is a usable fallback that only
+ * gets them to the profile. Null when nothing is linked — then the ask has
+ * nowhere to land and it is suppressed rather than sent to a dead end.
+ *
+ * Shared by the sender and the settings preview so the link a contractor is
+ * shown is the link their customer taps.
+ */
+export function googleReviewUrl(input: { placeId: string | null | undefined; listingUrl: string | null | undefined }): string | null {
+  const placeId = (input.placeId ?? '').trim();
+  if (placeId) return `https://search.google.com/local/writereview?placeid=${encodeURIComponent(placeId)}`;
+  const listing = (input.listingUrl ?? '').trim();
+  return listing || null;
+}
+
+/**
+ * The text a customer is sent after a completed job.
+ *
+ * Lives here rather than inline in sms.ts so the settings card can render the
+ * real thing. The old preview was written out by hand in the UI and had already
+ * drifted — it still showed "If we earned it", wording removed from the sender
+ * because it reads as a nudge that only happy customers should bother, which is
+ * the selective solicitation this whole file exists to avoid.
+ */
+export function reviewRequestText(input: {
+  businessName: string;
+  clientName: string;
+  /** Where the ask points: the feedback page, or Google directly. */
+  reviewUrl: string;
+}): string {
+  const business = input.businessName.trim() || 'your contractor';
+  const who = input.clientName.trim() || 'there';
+  return `Let's Get Quoted: Hi ${who}, thanks for choosing ${business}! An honest review helps a small business a lot: ${input.reviewUrl}. Reply STOP to opt out.`;
+}
+
 export type ReviewAcknowledgement = { title: string; lead: string };
 
 /**

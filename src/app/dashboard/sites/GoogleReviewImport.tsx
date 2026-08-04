@@ -85,6 +85,13 @@ type GoogleReviewImportProps = {
   reviewCount: number;
   importedCount: number;
   importedAt: string;
+  /**
+   * The business name + town, so the listing can be offered before anything is
+   * typed. Most contractors have exactly one Business Profile and it is the
+   * first result; making them type their own name to find it is a step that
+   * exists only because the field couldn't guess.
+   */
+  defaultQuery?: string;
   onImport: (data: GoogleImportData) => void;
   onClear: () => void;
 };
@@ -111,7 +118,7 @@ async function extractReviews(place: google.maps.places.Place): Promise<GoogleIm
   };
 }
 
-export default function GoogleReviewImport({ placeId, name, reviewCount, importedCount, importedAt, onImport, onClear }: GoogleReviewImportProps) {
+export default function GoogleReviewImport({ placeId, name, reviewCount, importedCount, importedAt, defaultQuery = '', onImport, onClear }: GoogleReviewImportProps) {
   const placesRef = useRef<google.maps.PlacesLibrary | null>(null);
   const sessionTokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(null);
   const requestRef = useRef(0);
@@ -119,6 +126,11 @@ export default function GoogleReviewImport({ placeId, name, reviewCount, importe
   const [ready, setReady] = useState(false);
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  // The pre-typing guess, kept apart from `suggestions` so it can render inline
+  // instead of as a floating dropdown — a menu that opens over the rest of the
+  // card the moment you expand it would be startling, and there is nothing to
+  // dismiss it back to.
+  const [guesses, setGuesses] = useState<Suggestion[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -143,43 +155,61 @@ export default function GoogleReviewImport({ placeId, name, reviewCount, importe
     };
   }, [apiKey]);
 
+  // One guess, once Places is up and only while nothing is linked and nothing
+  // has been typed. Not in the same effect as the loader: that one runs before
+  // `ready`, and the search needs the library it just fetched.
+  useEffect(() => {
+    if (!ready || placeId || query || !defaultQuery.trim()) return;
+    let cancelled = false;
+    fetchSuggestions(defaultQuery).then((found) => {
+      if (!cancelled) setGuesses(found);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, placeId, defaultQuery]);
+
+  async function fetchSuggestions(value: string): Promise<Suggestion[]> {
+    const places = placesRef.current;
+    const search = value.trim();
+    if (!places || search.length < 3) return [];
+    try {
+      const sessionToken = sessionTokenRef.current ?? new places.AutocompleteSessionToken();
+      sessionTokenRef.current = sessionToken;
+      const response = await places.AutocompleteSuggestion.fetchAutocompleteSuggestions({ input: search, sessionToken, region: 'us' });
+      return response.suggestions
+        .map((suggestion, index) => {
+          const prediction = suggestion.placePrediction;
+          if (!prediction) return null;
+          const label = prediction.text.toString();
+          return {
+            id: `${prediction.placeId}-${index}`,
+            mainText: prediction.mainText?.toString() ?? label,
+            secondaryText: prediction.secondaryText?.toString() ?? '',
+            prediction,
+          };
+        })
+        .filter((item): item is Suggestion => Boolean(item))
+        .slice(0, 5);
+    } catch {
+      return [];
+    }
+  }
+
   function queueSuggestions(value: string) {
     setQuery(value);
     setError(null);
-    const places = placesRef.current;
     const search = value.trim();
     if (timerRef.current) window.clearTimeout(timerRef.current);
-    if (!ready || !places || search.length < 3) {
+    if (!ready || search.length < 3) {
       setSuggestions([]);
       return;
     }
     const requestId = requestRef.current + 1;
     requestRef.current = requestId;
     timerRef.current = window.setTimeout(async () => {
-      try {
-        const sessionToken = sessionTokenRef.current ?? new places.AutocompleteSessionToken();
-        sessionTokenRef.current = sessionToken;
-        const response = await places.AutocompleteSuggestion.fetchAutocompleteSuggestions({ input: search, sessionToken, region: 'us' });
-        if (requestRef.current !== requestId) return;
-        setSuggestions(
-          response.suggestions
-            .map((suggestion, index) => {
-              const prediction = suggestion.placePrediction;
-              if (!prediction) return null;
-              const label = prediction.text.toString();
-              return {
-                id: `${prediction.placeId}-${index}`,
-                mainText: prediction.mainText?.toString() ?? label,
-                secondaryText: prediction.secondaryText?.toString() ?? '',
-                prediction,
-              };
-            })
-            .filter((item): item is Suggestion => Boolean(item))
-            .slice(0, 5),
-        );
-      } catch {
-        if (requestRef.current === requestId) setSuggestions([]);
-      }
+      const found = await fetchSuggestions(search);
+      // Ignore a response that a later keystroke has already overtaken.
+      if (requestRef.current === requestId) setSuggestions(found);
     }, 220);
   }
 
@@ -230,26 +260,39 @@ export default function GoogleReviewImport({ placeId, name, reviewCount, importe
           </div>
         </div>
       ) : (
-        <div className={styles.googleImportSearch}>
-          <input
-            type="text"
-            value={query}
-            placeholder={ready ? 'Search your business name + city…' : 'Loading Google…'}
-            disabled={!ready || busy}
-            onChange={(event) => queueSuggestions(event.target.value)}
-            aria-label="Find your Google Business"
-          />
-          {suggestions.length > 0 && (
-            <div className={styles.googleImportSuggestions} role="listbox">
-              {suggestions.map((suggestion) => (
-                <button key={suggestion.id} type="button" role="option" aria-selected="false" onMouseDown={(event) => event.preventDefault()} onClick={() => selectSuggestion(suggestion)}>
-                  <span>{suggestion.mainText}</span>
-                  {suggestion.secondaryText && <small>{suggestion.secondaryText}</small>}
+        <>
+          <div className={styles.googleImportSearch}>
+            <input
+              type="text"
+              value={query}
+              placeholder={ready ? 'Search your business name + city…' : 'Loading Google…'}
+              disabled={!ready || busy}
+              onChange={(event) => queueSuggestions(event.target.value)}
+              aria-label="Find your Google Business"
+            />
+            {suggestions.length > 0 && (
+              <div className={styles.googleImportSuggestions} role="listbox">
+                {suggestions.map((suggestion) => (
+                  <button key={suggestion.id} type="button" role="option" aria-selected="false" onMouseDown={(event) => event.preventDefault()} onClick={() => selectSuggestion(suggestion)}>
+                    <span>{suggestion.mainText}</span>
+                    {suggestion.secondaryText && <small>{suggestion.secondaryText}</small>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {!query && guesses.length > 0 && (
+            <div className={styles.googleImportGuess}>
+              <small>Is this you?</small>
+              {guesses.map((guess) => (
+                <button key={guess.id} type="button" disabled={busy} onClick={() => selectSuggestion(guess)}>
+                  <span>{guess.mainText}</span>
+                  {guess.secondaryText && <small>{guess.secondaryText}</small>}
                 </button>
               ))}
             </div>
           )}
-        </div>
+        </>
       )}
       {busy && !placeId && <p className={styles.googleImportBusy}>Fetching reviews…</p>}
       {error && <p className={styles.googleImportError}>{error}</p>}

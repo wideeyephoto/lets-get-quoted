@@ -394,18 +394,22 @@ export async function updateMissedCallNumbersAction(input: { forward: string; tr
   revalidatePath('/dashboard/settings');
 }
 
-export async function updateReviewSettingsAction(formData: FormData) {
+/**
+ * Where the review ask points: the "how did we go?" page, or Google directly.
+ * Auto-saved.
+ *
+ * Does NOT touch auto_review_request. That column is the card's own switch, and
+ * it used to ALSO be a checkbox inside this form — two controls for one boolean,
+ * which meant flipping the switch left a stale checkbox sitting under it that
+ * would put the switch straight back on the next save.
+ */
+export async function setReviewFeedbackPageAction(next: boolean) {
   const { supabase, accountId } = await requireOwnerContext();
-  const autoReviewRequest = formData.get('autoReviewRequest') === 'on';
-  const reviewFeedbackPage = formData.get('reviewFeedbackPage') === 'on';
-
   const { error } = await supabase
     .from('accounts')
-    .update({ auto_review_request: autoReviewRequest, review_feedback_page_enabled: reviewFeedbackPage })
+    .update({ review_feedback_page_enabled: next })
     .eq('id', accountId);
-
-  if (error) throw new Error(error.message);
-
+  if (error) throw new Error('Could not save review settings.');
   revalidatePath('/dashboard/settings');
 }
 

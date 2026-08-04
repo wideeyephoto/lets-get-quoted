@@ -77,6 +77,19 @@ export type CspOptions = {
 //   fonts.googleapis.com stylesheet  -> style-src    (listed)
 //   fonts.gstatic.com    font        -> font-src     (listed)
 //
+// A SEVENTH pair was missed, and it is the instructive one (found 2026-08-04):
+//
+//   places.googleapis.com xhr        -> connect-src  (added later)
+//
+// The six above were enumerated by loading the SDK, building a map, importing
+// the places library and running DirectionsService. None of that touches
+// places.googleapis.com — the Places (New) API only calls it when a human types
+// into an autocomplete. So the measurement was clean and enforcement still
+// broke every address field in the dashboard and the Google Business search in
+// the website builder, silently: the box accepts typing and never suggests
+// anything. The lesson is that "load it and watch" misses any endpoint behind
+// an interaction; those have to be exercised, not just initialised.
+//
 // NOW ENFORCING (2026-08-03). The earlier note here said flipping on the
 // strength of a dev server would be the mistake this flag exists to prevent.
 // That was right while the third-party surface was unknown; it is now
@@ -124,7 +137,14 @@ const ANALYTICS_ENDPOINTS = [
 ];
 
 export function buildCsp({ nonce, supabaseOrigin }: CspOptions): string {
-  const connect = ["'self'", 'https://maps.googleapis.com', ...ANALYTICS_ENDPOINTS];
+  // places.googleapis.com is NOT maps.googleapis.com. The Places (New) API —
+  // AutocompleteSuggestion and Place.fetchFields, which is every address field
+  // in the dashboard and the Google Business search in the website builder —
+  // talks to its own host, and only once somebody actually types. Loading the
+  // SDK and importing the places library contacts neither, so the measurement
+  // that enumerated the Maps surface never saw it and enforcement silently
+  // killed both features: the box just never suggests anything.
+  const connect = ["'self'", 'https://maps.googleapis.com', 'https://places.googleapis.com', ...ANALYTICS_ENDPOINTS];
   if (supabaseOrigin) {
     connect.push(supabaseOrigin);
     // Supabase realtime/auth refresh uses a websocket on the same host.

@@ -4,6 +4,8 @@ import {
   reviewAcknowledgement,
   summariseReviewInvites,
   isReviewRating,
+  googleReviewUrl,
+  reviewRequestText,
   REVIEW_RATINGS,
   type ReviewInviteRow,
 } from '@/lib/review-routing';
@@ -144,5 +146,57 @@ describe('summariseReviewInvites', () => {
     const s = summariseReviewInvites(rows);
     expect(s.privateCount).toBe(40);
     expect(s.recentPrivate).toHaveLength(25);
+  });
+});
+
+describe('googleReviewUrl — where the ask points', () => {
+  it('prefers the Place ID, which opens the review box itself', () => {
+    expect(googleReviewUrl({ placeId: 'ChIJabc123', listingUrl: 'https://maps.google.com/?cid=9' }))
+      .toBe('https://search.google.com/local/writereview?placeid=ChIJabc123');
+  });
+
+  it('falls back to the plain listing when there is no Place ID', () => {
+    expect(googleReviewUrl({ placeId: '', listingUrl: 'https://maps.google.com/?cid=9' }))
+      .toBe('https://maps.google.com/?cid=9');
+  });
+
+  it('is null when nothing is linked, so the ask is suppressed rather than sent nowhere', () => {
+    expect(googleReviewUrl({ placeId: '', listingUrl: '' })).toBeNull();
+    expect(googleReviewUrl({ placeId: null, listingUrl: undefined })).toBeNull();
+    expect(googleReviewUrl({ placeId: '   ', listingUrl: '  ' })).toBeNull();
+  });
+
+  it('escapes a Place ID rather than pasting it into the query string', () => {
+    expect(googleReviewUrl({ placeId: 'a b&c', listingUrl: null }))
+      .toBe('https://search.google.com/local/writereview?placeid=a%20b%26c');
+  });
+});
+
+describe('reviewRequestText — the message the settings card shows', () => {
+  const text = reviewRequestText({ businessName: 'BrokePipes', clientName: 'Sarah', reviewUrl: 'https://x.test/r' });
+
+  it('carries the opt-out, because it is part of what the customer reads', () => {
+    expect(text).toContain('Reply STOP to opt out.');
+  });
+
+  it('asks everyone the same way', () => {
+    // "If we earned it" was removed from the sender for reading as a nudge that
+    // only happy customers should bother — the polite form of the selective
+    // solicitation this whole module exists to prevent. The preview renders
+    // this function, so it can't quietly reintroduce the old wording.
+    expect(text).not.toMatch(/if we earned it/i);
+    expect(text).toContain('An honest review helps a small business a lot');
+  });
+
+  it('puts the link the customer taps in the body', () => {
+    expect(text).toContain('https://x.test/r');
+    expect(reviewRequestText({ businessName: 'B', clientName: 'S', reviewUrl: '[your Google review link]' }))
+      .toContain('[your Google review link]');
+  });
+
+  it('never addresses somebody as an empty string', () => {
+    const blank = reviewRequestText({ businessName: '  ', clientName: '  ', reviewUrl: 'https://x.test/r' });
+    expect(blank).toContain('Hi there,');
+    expect(blank).toContain('thanks for choosing your contractor!');
   });
 });

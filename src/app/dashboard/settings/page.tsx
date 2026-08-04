@@ -17,11 +17,12 @@ import DeleteAccountButton from './DeleteAccountButton';
 import ArrivalSettingsSection from './ArrivalSettingsSection';
 import ArrivalExtrasSection from './ArrivalExtrasSection';
 import { arrivalSettingsFromAccount } from '@/lib/arrival';
-import { updateReviewSettingsAction, updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
+import { updateFollowupSettingsAction, updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
 import { updateCostSettingsAction, toggleClientPortalAction } from './actions';
 import ClientPortalSection from './ClientPortalSection';
 import MissedCallSection from './MissedCallSection';
 import IntakeContentSection from './IntakeContentSection';
+import ReviewRequestSection from './ReviewRequestSection';
 import IntakePreviewModal from '../sites/IntakePreviewModal';
 import type { Site } from '@/lib/sites';
 import { siteOrigin } from '@/lib/seo/site-pages';
@@ -30,6 +31,7 @@ import { chaseMessage } from '@/lib/selections';
 import { loadedHourlyRate } from '@/lib/cost-truth';
 import { ESTIMATE_POSTURES, normalizeEstimatePosture } from '@/lib/estimate-posture';
 import { getSiteContent } from '@/lib/site-content';
+import { googleReviewUrl } from '@/lib/review-routing';
 import { bookingAvailabilityFromAccount } from '@/lib/booking-availability';
 import { QUICK_STOP_SETTINGS_COLUMNS } from '@/lib/quick-stop';
 import { getTrailingVolume } from '@/lib/payments';
@@ -137,6 +139,15 @@ export default async function SettingsPage({
     .eq('id', accountId)
     .maybeSingle();
   const businessBasics = getSiteContent((site?.content as Record<string, unknown> | null | undefined) ?? null);
+  // The two ends of the review ask, built the same way the sender builds them so
+  // the preview shows the link the customer really taps. The feedback-page one
+  // is a real invite token per job; the preview stands in for the token rather
+  // than inventing one that looks like somebody's.
+  const reviewGoogleUrl = googleReviewUrl({
+    placeId: businessBasics.testimonials.googlePlaceId,
+    listingUrl: businessBasics.testimonials.googleUrl,
+  });
+  const reviewFeedbackUrl = `${(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '')}/review/…`;
   const estimatePosture = normalizeEstimatePosture(intakeSettings?.estimate_posture);
   const highValueLeadAmount = intakeSettings?.high_value_lead_amount ? Number(intakeSettings.high_value_lead_amount) : null;
   const muteLowQualityLeads = intakeSettings?.mute_low_quality_leads !== false; // default on
@@ -566,50 +577,14 @@ export default async function SettingsPage({
 
                 <p className="automation-group">Customer follow-through</p>
                 <AutomationCard group="follow-through" id="reviews" title="Review requests" subtitle="Auto-ask after a completed job" toggle={{ on: autoReviewRequest, action: toggleAutomationAction.bind(null, 'reviews') }}>
-                  <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
-                    When on, marking a job complete automatically asks the client for a Google review — texted if
-                    they have a mobile on file, emailed otherwise. It only sends once per job, and you can always
-                    send the request by hand from any completed job.
-                  </p>
-                  <form action={updateReviewSettingsAction} className="form-grid compact-form">
-                    <label className="checkbox-row" htmlFor="autoReviewRequest">
-                      <input
-                        id="autoReviewRequest"
-                        name="autoReviewRequest"
-                        type="checkbox"
-                        defaultChecked={autoReviewRequest}
-                      />
-                      <span>Ask for a review automatically when I mark a job complete</span>
-                    </label>
-                    <label className="checkbox-row" htmlFor="reviewFeedbackPage">
-                      <input
-                        id="reviewFeedbackPage"
-                        name="reviewFeedbackPage"
-                        type="checkbox"
-                        defaultChecked={reviewFeedbackPageEnabled}
-                      />
-                      <span>
-                        Ask how it went first — clients land on a short page where they rate the job, then choose to
-                        review you publicly, send you a private note, or both. Turn this off to link straight to Google.
-                      </span>
-                    </label>
-                    <p className="review-policy-note">
-                      Either way, every client is offered the public review link. Screening by rating — sending only
-                      happy clients to Google — is against Google&apos;s review policy and puts your Business Profile at
-                      risk, so letsgetquoted.com doesn&apos;t do it.
-                    </p>
-                    <div className="automation-prereq">
-                      <span aria-hidden="true">🔗</span>
-                      <span>Reviews need a Google Business Profile to point to — <Link href="/dashboard/sites">link yours in the Website builder</Link> so the ask has somewhere to go.</span>
-                    </div>
-                    <details className="automation-preview">
-                      <summary>Preview the review text</summary>
-                      <p className="automation-preview-bubble">Hi Sarah, thanks for choosing {businessName}! If we earned it, a quick review means the world to a small business: [your Google review link]. Reply STOP to opt out.</p>
-                    </details>
-                    <div className="form-actions">
-                      <SaveButton>Save review settings</SaveButton>
-                    </div>
-                  </form>
+                  <ReviewRequestSection
+                    enabled={autoReviewRequest}
+                    businessName={businessName}
+                    feedbackPage={reviewFeedbackPageEnabled}
+                    googleUrl={reviewGoogleUrl}
+                    googleName={businessBasics.testimonials.googleName}
+                    feedbackUrl={reviewFeedbackUrl}
+                  />
                 </AutomationCard>
 
                 <AutomationCard group="follow-through" id="followups" title="Quote follow-ups" subtitle="Nudge unapproved quotes" toggle={{ on: quoteFollowupsEnabled, action: toggleAutomationAction.bind(null, 'followups') }}>

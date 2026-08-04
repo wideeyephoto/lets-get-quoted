@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/auth';
 import { formatJobSchedule, formatMoney } from '@/lib/jobs';
 import { normalizeUsPhone } from '@/lib/phone';
 import { missedCallTextBack } from '@/lib/missed-call';
+import { reviewRequestText } from '@/lib/review-routing';
 import { createHmac, timingSafeEqual } from 'crypto';
 
 export type PaymentSmsEvent = 'payment_requested' | 'payment_paid' | 'payment_failed' | 'payment_refunded';
@@ -768,7 +769,14 @@ export async function sendReviewRequestSms(params: {
   // Ask everyone the same way. "If we earned it" reads as a nudge that only
   // happy customers should bother, which is the same selective solicitation
   // Google's review policy prohibits — just worded politely.
-  const message = `Let's Get Quoted: Hi ${params.clientName}, thanks for choosing ${params.businessName}! An honest review helps a small business a lot: ${params.reviewUrl}. Reply STOP to opt out.`;
+  //
+  // Shared with the settings preview so a contractor reads the words that go
+  // out under their name, not an approximation of them.
+  const message = reviewRequestText({
+    businessName: params.businessName,
+    clientName: params.clientName,
+    reviewUrl: params.reviewUrl,
+  });
   const providerId = await sendTwilioMessage(params.phone, message);
   if (params.accountId) await logOutboundToInbox(params.accountId, params.phone, message, providerId);
   return providerId;

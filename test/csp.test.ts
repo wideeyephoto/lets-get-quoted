@@ -43,6 +43,18 @@ describe('buildCsp', () => {
     expect(connect.some((v) => v.includes('undefined') || v.includes('null'))).toBe(false);
   });
 
+  it('lets Places autocomplete reach its own host, which is not the Maps host', () => {
+    // The Places (New) API — every address field in the dashboard, and the
+    // Google Business search in the website builder — XHRs to
+    // places.googleapis.com, not maps.googleapis.com. Nothing contacts it until
+    // somebody types, so loading the SDK and importing the places library both
+    // look clean; enforcement blocked the request and the suggestion list just
+    // silently never appeared. Regression test for exactly that.
+    const connect = parse(buildCsp({ nonce: 'n', supabaseOrigin: SUPABASE })).get('connect-src')!;
+    expect(connect).toContain('https://places.googleapis.com');
+    expect(connect).toContain('https://maps.googleapis.com');
+  });
+
   it('never ships unsafe-eval in a production build', () => {
     // Development needs it — Next's Fast Refresh evaluates modules as strings,
     // and without it the dev server throws EvalError on every hot update. It

@@ -38,12 +38,20 @@ type BuilderTab = 'business' | 'page' | 'design' | 'publish';
 type WebsiteBuilderProps = {
   site: Site;
   uploadedImages: SiteImage[];
-  // Account-level Intake AI tuning form (rendered server-side, mirrors
-  // Settings → Automations → Intake AI). Shown in the AI-intake section.
   // Arriving straight from first run, on a site that was just written from the
   // business name, trade and ZIP. Opens with an explanation rather than letting
   // the owner wonder who wrote all this.
   justBuilt?: boolean;
+  /** `?open=<key>` — a card to open on arrival, for links from elsewhere. */
+  openTarget?: string | null;
+};
+
+// Where an `?open=` key lands: the tab that holds that card, and the card
+// itself. Deliberately a short allow-list rather than "open whatever the query
+// string says" — an unknown key would set openSection to something no card
+// matches, closing every card on a tab that normally has one open.
+const OPEN_TARGETS: Record<string, { tab: BuilderTab; card: string }> = {
+  reviews: { tab: 'page', card: 'testimonials' },
 };
 
 // Heading font choices. The webfont options reuse faces the app already loads
@@ -237,12 +245,15 @@ function siteUpdates(site: Site) {
   };
 }
 
-export default function WebsiteBuilder({ site: initialSite, uploadedImages, justBuilt = false }: WebsiteBuilderProps) {
+export default function WebsiteBuilder({ site: initialSite, uploadedImages, justBuilt = false, openTarget = null }: WebsiteBuilderProps) {
   const [site, setSite] = useState(initialSite);
   const [siteImages, setSiteImages] = useState(uploadedImages);
   const [jobPhotoOptions, setJobPhotoOptions] = useState<JobPhotoImportOption[]>([]);
   const [jobPhotosLoaded, setJobPhotosLoaded] = useState(false);
-  const [activeTab, setActiveTab] = useState<BuilderTab>('business');
+  // Seeded rather than set in an effect: a deep link that switched tabs after
+  // the first paint would show the Setup tab for a frame and then jump.
+  const deepLink = openTarget ? OPEN_TARGETS[openTarget] ?? null : null;
+  const [activeTab, setActiveTab] = useState<BuilderTab>(deepLink?.tab ?? 'business');
 
   // The Page tab opens with everything collapsed, deliberately.
   //
@@ -256,7 +267,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
   // Clicking a region in the live preview still opens its card — see the
   // edit-request handler below. That's navigation the owner asked for, which is
   // a different thing from an auto-open.
-  const [openSection, setOpenSection] = useState<string | null>('basics');
+  const [openSection, setOpenSection] = useState<string | null>(deepLink?.card ?? 'basics');
   const [isDirty, setIsDirty] = useState(false);
   // Seeded from justBuilt so a contractor arriving from first run is told, in
   // the builder's own message slot, where all this text came from and what to do
@@ -350,6 +361,15 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
     (siteContent.testimonials.sourceMode === 'google' ? 0 : siteContent.testimonials.items.filter((item) => item.text.trim()).length)
     + (siteContent.testimonials.sourceMode === 'manual' ? 0 : siteContent.testimonials.googleReviews.filter((review) => review.text.trim()).length);
 
+  // What to look their Business Profile up as, before they've typed anything.
+  // Google's autocomplete wants a locality — the same company name in two towns
+  // is two listings — so the first service-area city, or the free-text area,
+  // comes along. Empty when there's nothing to go on, and the box just waits.
+  const googleSearchGuess = [
+    site.company_name.trim(),
+    siteContent.serviceAreas.cities.map((city) => city.trim()).find(Boolean) || (site.service_area || '').trim(),
+  ].filter(Boolean).join(' ');
+
   // Jump to a tab, open a card, and optionally focus a field — powers the
   // launch-checklist deep-links. Double rAF: the target tab's panel must render
   // before the element exists to scroll to.
@@ -363,6 +383,18 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
       el?.scrollIntoView({ behavior: 'smooth', block: fieldId ? 'center' : 'start' });
       if (fieldId) el?.focus({ preventScroll: true });
     }));
+  }, []);
+
+  // A deep link already opened its tab and card through the seeded state; this
+  // only brings the card on screen. Worth doing: the Page tab is a list of ~20
+  // sections and the one you were sent to can be well below the fold, which
+  // reads as the link having done nothing.
+  useEffect(() => {
+    if (!deepLink) return;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      document.querySelector(`.${styles.sectionCardOpen}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Launch checklist — mirrors the publish gates so first-time owners can see
@@ -2032,11 +2064,39 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
                   <label className={styles.formField}><span>Section title</span><input value={siteContent.testimonials.title} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, title: event.target.value })} /></label>
                   {reviewCount === 0 && (
                     <div className={styles.reviewsPrompt}>
-                      <strong>Fill this with real reviews.</strong> Connect your Google Business Profile to pull in verified reviews automatically — the honest, one-click way. Never post reviews you didn&apos;t receive.
-                      {siteContent.testimonials.sourceMode === 'manual' && <button type="button" className={styles.secondaryAction} onClick={() => updateTestimonials({ ...siteContent.testimonials, sourceMode: 'mixed' })}>Connect Google reviews</button>}
+                      <strong>Fill this with real reviews.</strong> Connect your Google Business Profile below to pull in verified reviews automatically — the honest, one-click way. Never post reviews you didn&apos;t receive.
                     </div>
                   )}
-                  <label className={styles.formField}><span>Source mode</span><select value={siteContent.testimonials.sourceMode} onChange={(event) => updateTestimonials({ ...siteContent.testimonials, sourceMode: event.target.value as SiteTestimonialsContent['sourceMode'] })}><option value="manual">Manual testimonials</option><option value="mixed">Manual + Google</option><option value="google">Google reviews only</option></select></label>
+                  {/* Connecting Google is the first thing on this card and it is
+                      never hidden. It used to sit behind a "Source mode" select
+                      set to Manual by default, so the one control that fills the
+                      section with real reviews — and the only place the review
+                      link the post-job ask needs is set — was invisible until
+                      you found a dropdown and changed it. The mode itself is now
+                      derived: connected shows both, unlinked shows your own. */}
+                  <div className={styles.formField}>
+                    <span>Your Google Business Profile</span>
+                    <GoogleReviewImport
+                      placeId={siteContent.testimonials.googlePlaceId}
+                      name={siteContent.testimonials.googleName}
+                      reviewCount={siteContent.testimonials.googleReviewCount}
+                      importedCount={siteContent.testimonials.googleReviews.length}
+                      importedAt={siteContent.testimonials.googleImportedAt}
+                      defaultQuery={googleSearchGuess}
+                      onImport={(data) => updateTestimonials({ ...siteContent.testimonials, enabled: true, sourceMode: 'mixed', googlePlaceId: data.placeId, googleName: data.name, googleUrl: data.url, googleRating: data.rating, googleReviewCount: data.reviewCount, googleReviews: data.reviews, googleImportedAt: new Date().toISOString().slice(0, 10) })}
+                      onClear={() => updateTestimonials({ ...siteContent.testimonials, sourceMode: 'manual', googlePlaceId: '', googleName: '', googleUrl: '', googleRating: 0, googleReviewCount: 0, googleReviews: [], googleImportedAt: '' })}
+                    />
+                    {siteContent.testimonials.googleReviews.length > 0 && (
+                      <div className={styles.googleReviewPreview}>
+                        {siteContent.testimonials.googleReviews.map((review) => (
+                          <div key={review.id} className={styles.googleReviewPreviewItem}>
+                            <div>{'★'.repeat(Math.round(review.rating))}<strong> {review.author}</strong></div>
+                            <p>{review.text}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <div className={styles.contentSubhead}><strong>Display style</strong><small>How your reviews are laid out on the page.</small></div>
                   <div className={styles.footerPicker} role="group" aria-label="Review display style">
                     {([
@@ -2049,30 +2109,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, just
                       </button>
                     ))}
                   </div>
-                  {siteContent.testimonials.sourceMode !== 'manual' && (
-                    <div className={styles.formField}>
-                      <span>Google reviews</span>
-                      <GoogleReviewImport
-                        placeId={siteContent.testimonials.googlePlaceId}
-                        name={siteContent.testimonials.googleName}
-                        reviewCount={siteContent.testimonials.googleReviewCount}
-                        importedCount={siteContent.testimonials.googleReviews.length}
-                        importedAt={siteContent.testimonials.googleImportedAt}
-                        onImport={(data) => updateTestimonials({ ...siteContent.testimonials, enabled: true, googlePlaceId: data.placeId, googleName: data.name, googleUrl: data.url, googleRating: data.rating, googleReviewCount: data.reviewCount, googleReviews: data.reviews, googleImportedAt: new Date().toISOString().slice(0, 10) })}
-                        onClear={() => updateTestimonials({ ...siteContent.testimonials, googlePlaceId: '', googleName: '', googleUrl: '', googleRating: 0, googleReviewCount: 0, googleReviews: [], googleImportedAt: '' })}
-                      />
-                      {siteContent.testimonials.googleReviews.length > 0 && (
-                        <div className={styles.googleReviewPreview}>
-                          {siteContent.testimonials.googleReviews.map((review) => (
-                            <div key={review.id} className={styles.googleReviewPreviewItem}>
-                              <div>{'★'.repeat(Math.round(review.rating))}<strong> {review.author}</strong></div>
-                              <p>{review.text}</p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
                   <div className={styles.stackList}>
                     {siteContent.testimonials.items.map((item, index) => (
                       <StackItem key={item.id} title={item.author.trim() || `Testimonial ${index + 1}`} meta={`${item.rating}★`} editing={editingItemId === item.id} onEdit={() => setEditingItemId(item.id)} onSave={saveItem} onRemove={() => updateTestimonials({ ...siteContent.testimonials, items: siteContent.testimonials.items.filter((testimonial) => testimonial.id !== item.id) })}>

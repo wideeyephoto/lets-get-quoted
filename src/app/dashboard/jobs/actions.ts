@@ -51,6 +51,7 @@ import { wantsConfirmation } from '@/lib/confirmation-prefs';
 import { sendPushToCrew } from '@/lib/push';
 import { isEmailSuppressed, resolveMarketingMailingAddress } from '@/lib/email-suppression';
 import { createReviewInvite } from '@/lib/reviews';
+import { googleReviewUrl } from '@/lib/review-routing';
 import { createJobTask, setJobTaskDone, deleteJobTask } from '@/lib/job-tasks';
 import { getSiteContent } from '@/lib/site-content';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -957,10 +958,7 @@ export async function resolveAccountReviewUrl(
     .maybeSingle();
   if (!site) return null;
   const { testimonials } = getSiteContent(site.content as Record<string, unknown>);
-  const placeId = testimonials.googlePlaceId.trim();
-  if (placeId) return `https://search.google.com/local/writereview?placeid=${encodeURIComponent(placeId)}`;
-  const url = testimonials.googleUrl.trim();
-  return url || null;
+  return googleReviewUrl({ placeId: testimonials.googlePlaceId, listingUrl: testimonials.googleUrl });
 }
 
 // Core review-ask delivery, shared by the one-tap button and the auto-send-on-

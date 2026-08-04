@@ -478,6 +478,15 @@ a.blogGenerateBtn { display: block; text-align: center; text-decoration: none; l
 .googleImportSuggestions button { display: grid; gap: .1rem; padding: .6rem .75rem; border: 0; border-bottom: 1px solid rgba(var(--tint), .08); background: transparent; color: var(--text); text-align: left; cursor: pointer; }
 .googleImportSuggestions button:hover { background: rgba(255,122,33,.14); }
 .googleImportSuggestions button small { color: var(--muted-2); font-size: .74rem; }
+/* The pre-typing guess. Inline, not the floating .googleImportSuggestions menu:
+   this one appears on its own rather than in response to a keystroke, so it has
+   to push the card down instead of covering it. */
+.googleImportGuess { display: grid; gap: .35rem; }
+.googleImportGuess > small { color: var(--muted-2); font-size: .76rem; }
+.googleImportGuess button { display: grid; gap: .1rem; padding: .55rem .7rem; border: 1px solid rgba(var(--tint), .16); border-radius: 8px; background: rgba(var(--tint), .05); color: var(--text); text-align: left; cursor: pointer; }
+.googleImportGuess button:hover:not(:disabled) { border-color: rgba(255,122,33,.5); background: rgba(255,122,33,.1); }
+.googleImportGuess button:disabled { opacity: .5; cursor: default; }
+.googleImportGuess button small { color: var(--muted-2); font-size: .74rem; }
 .googleImportLinked { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .7rem .8rem; border: 1px solid rgba(74,222,128,.3); border-radius: 8px; background: rgba(74,222,128,.06); }
 .googleImportLinked strong { display: block; color: var(--text); }
 .googleImportLinked small { color: var(--muted-2); font-size: .76rem; }
