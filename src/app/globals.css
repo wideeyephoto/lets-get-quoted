@@ -1614,6 +1614,20 @@ body {
 }
 a { color: inherit; text-decoration: none; }
 button, input, select, textarea { font: inherit; }
+/* …and colour, which `font: inherit` does not cover.
+   A <button> does not inherit `color`: the UA sets `buttontext`, which resolves
+   to black under color-scheme:light, WHITE under color-scheme:dark, and on iOS
+   Safari to the system accent blue. So any button that sets a background and a
+   border but no colour of its own renders differently on every platform, and
+   nothing in this stylesheet says so.
+   Measured on an iPhone: "Log out" — .btn.secondary, which sets border-color
+   and background and no colour — came out WHITE on a white sheet, invisible,
+   with the Link buttons beside it in iOS blue. On desktop Chrome the same
+   markup measured 19.4:1 black-on-white, which is why it survived every sweep.
+   `inherit` is the one value that is right in both themes and on every engine.
+   Buttons only — inputs already carry their own colour, and one that fell back
+   to the canvas ink on a UA-white background would be the same bug reversed. */
+button { color: inherit; }
 
 .chrome-shell { min-height: 100vh; }
 .app-main { padding-top: 5.5rem; }
@@ -4968,8 +4982,13 @@ li + li { margin-top: 0.45rem; }
 .sign-in-method-row:hover { border-color: var(--edge-t22); background: rgba(var(--tint), .045); }
 .sign-in-method-row .method-info { display: flex; align-items: center; gap: .85rem; }
 .sign-in-method-row .method-icon { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; flex-shrink: 0; border-radius: 999px; background: rgba(var(--tint), .06); border: 1px solid var(--edge-t10); }
-.sign-in-method-row .method-name { font-weight: 700; display: block; }
-.sign-in-method-row .method-detail { display: block; color: var(--mute-t55); font-size: .78rem; margin-top: .15rem; }
+.sign-in-method-row .method-name { display: block; font-size: 1.06rem; font-weight: 700; letter-spacing: -0.01em; }
+/* The account itself — an email address, a phone number — set at .78rem, which
+   is 12.5px. That is the size of a footnote, and it is the line that answers
+   "which account is this?". Up to 14px. The schedule rail keeps its own smaller
+   value (see .schedule-rail .method-detail) — those cards are a dense list, not
+   a page about one account. */
+.sign-in-method-row .method-detail { display: block; color: var(--mute-t55); font-size: .875rem; margin-top: .2rem; }
 .schedule-method-row .method-info { flex: 1 1 220px; min-width: 220px; }
 .schedule-crew-initials {
   display: flex;
