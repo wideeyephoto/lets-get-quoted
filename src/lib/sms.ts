@@ -689,6 +689,25 @@ export async function sendMissedCallTextBack(params: { accountId: string; phone:
   return providerId;
 }
 
+/**
+ * "There are choices waiting for you."
+ *
+ * The message is built by the caller (lib/selections chaseMessage) so the one
+ * that goes out and the one the contractor previews are the same string. Caller
+ * resolves consent; mirrored to the inbox so a reply lands somewhere a human
+ * will see it.
+ */
+export async function sendSelectionRequestSms(params: {
+  phone: string;
+  accountId: string;
+  message: string;
+}): Promise<string | null> {
+  if (await isPhoneOptedOut(params.accountId, params.phone)) return null;
+  const providerId = await sendTwilioMessage(params.phone, params.message);
+  await logOutboundToInbox(params.accountId, params.phone, params.message, providerId);
+  return providerId;
+}
+
 // Sends a client the link to save a card for automatic billing on a recurring
 // plan. No charge happens at this step — it just collects the card + mandate.
 // Caller resolves consent; mirrored into the inbox like other customer texts.

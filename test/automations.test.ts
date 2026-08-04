@@ -11,6 +11,7 @@ describe('automation toggle map', () => {
       followups: 'quote_followups_enabled',
       reminders: 'appointment_reminders_enabled',
       arrival: 'arrival_updates_enabled',
+      selections: 'selection_reminders_enabled',
       'daily-digest': 'daily_digest_enabled',
       'quote-confirmation': 'quote_confirmation_email',
       'payment-confirmation': 'payment_confirmation_email',

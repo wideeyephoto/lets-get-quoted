@@ -1,7 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireOwnerContext } from '@/lib/auth';
+import { createAdminClient, requireOwnerContext } from '@/lib/auth';
+import { sendSelectionRequest } from '@/lib/selection-notify';
 import {
   addOption,
   createSelection,
@@ -123,6 +124,32 @@ export async function reopenSelectionAction(jobId: string, selectionId: string):
     return;
   }
   revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
+/**
+ * "Send these to them."
+ *
+ * Contractor-triggered and batched, rather than a text per selection as the
+ * board is built. Somebody adding six choices over ten minutes should not fire
+ * six messages at a homeowner, and the moment the board is READY is a judgement
+ * only the contractor can make.
+ */
+export async function sendSelectionsAction(jobId: string): Promise<{ ok: boolean; message: string }> {
+  const { accountId } = await requireOwnerContext();
+  const outcome = await sendSelectionRequest(createAdminClient(), accountId, jobId);
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+
+  if (outcome.ok) {
+    const what = `${outcome.count} ${outcome.count === 1 ? 'choice' : 'choices'}`;
+    return { ok: true, message: `${what} ${outcome.channel === 'sms' ? 'texted' : 'emailed'} to your customer.` };
+  }
+  if (outcome.reason === 'no_selections') {
+    return { ok: false, message: 'Add at least one option to a choice first — there is nothing for them to pick between yet.' };
+  }
+  if (outcome.reason === 'no_contact') {
+    return { ok: false, message: 'No mobile with texting consent and no email on this job, so there is nowhere to send it.' };
+  }
+  return { ok: false, message: 'Could not send that just now. Please try again.' };
 }
 
 export async function cancelSelectionAction(jobId: string, selectionId: string) {

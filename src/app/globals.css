@@ -10495,6 +10495,13 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 .selection-chosen-meta { display: block; margin-top: 0.2rem; font-size: 0.78rem; color: var(--mute-t50); }
 .selection-chosen .btn.ghost { margin-top: 0.5rem; font-size: 0.79rem; padding: 0.3rem 0.6rem; }
 
+/* Sending the board. The note beside it is load-bearing: a board nobody has
+   been told about looks finished and isn't. */
+.selection-send { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin: 0.2rem 0 0.9rem; }
+.selection-send-note { font-size: 0.8rem; line-height: 1.5; color: var(--mute-t45); }
+.selection-send-note.is-ok { color: var(--ink-lime-1); }
+.selection-send-note.is-bad { color: var(--ink-orange-1); }
+
 /* Decisions made and then changed. In front of the contractor rather than
    buried: if the first colour is already on the wall, this is the record. */
 .selection-history {

@@ -1,5 +1,6 @@
 import SaveButton from '@/components/save-button';
 import ConfirmActionButton from './ConfirmActionButton';
+import SendSelectionsButton from './SendSelectionsButton';
 import { formatMoney } from '@/lib/jobs';
 import {
   boardStatus,
@@ -30,6 +31,15 @@ export default function SelectionBoard({ jobId, selections }: { jobId: string; s
   const today = todayKey();
   const totals = selectionTotals(selections);
   const status = boardStatus(selections, today);
+  // The most recent time anything on this board went out. Shown because a board
+  // nobody has been told about is the failure mode this feature had for its
+  // whole life: it looked finished, and the homeowner had never heard of it.
+  const lastSentAt = selections
+    .flatMap((selection) => [selection.chaseSentAt, selection.overdueSentAt])
+    .filter((value): value is string => Boolean(value))
+    .sort()
+    .pop() ?? null;
+  const anyOpen = selections.some((selection) => selection.status === 'open');
 
   return (
     <div className="selection-board">
@@ -48,6 +58,8 @@ export default function SelectionBoard({ jobId, selections }: { jobId: string; s
           ) : null}
         </div>
       ) : null}
+
+      {anyOpen ? <SendSelectionsButton jobId={jobId} lastSentAt={lastSentAt} /> : null}
 
       {selections.length === 0 ? (
         <p className="empty-state">

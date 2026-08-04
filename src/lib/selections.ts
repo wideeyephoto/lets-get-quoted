@@ -55,6 +55,10 @@ export type Selection = {
   chosenByName: string | null;
   /** Oldest first. Empty for the overwhelming majority of selections. */
   reopened: PreviousChoice[];
+  /** When the homeowner was nudged before the date. Null = not yet. */
+  chaseSentAt: string | null;
+  /** When they were nudged after it passed. Null = not yet. */
+  overdueSentAt: string | null;
   sortOrder: number;
   options: SelectionOption[];
 };
@@ -308,6 +312,56 @@ function formatDeadlineForClient(decideBy: string, deadline: DeadlineState): str
   if (deadline.overdue) return `We needed this by ${when} — let us know as soon as you can so it doesn't hold the job up.`;
   if (deadline.daysLeft === 0) return `We need this today to keep the job on track.`;
   return `We need to know by ${when} to keep the job on track.`;
+}
+
+// -- Chasing a decision -------------------------------------------------------
+
+/** Which nudge, if any, a selection is owed. */
+export type ChaseKind = 'none' | 'due' | 'overdue';
+
+/**
+ * Whether this selection needs the homeowner told, and which message.
+ *
+ * Exactly two nudges in a selection's life: one as the date approaches, one
+ * once it has passed. A third is nagging, and a board that nags is a board
+ * whose texts get muted — at which point the genuinely urgent one is muted too.
+ *
+ * Silent with no deadline. A contractor who left the date blank said this one
+ * doesn't matter yet, and inventing a reason to text somebody is exactly what
+ * the blank field exists to prevent. Also silent on an option-less selection,
+ * which the caller checks: "you have a choice to make" with nothing to choose
+ * between is a message that wastes the one bit of attention it buys.
+ */
+export function chaseNeeded(
+  selection: Pick<Selection, 'status' | 'decideBy' | 'chaseSentAt' | 'overdueSentAt'>,
+  today = todayKey(),
+): ChaseKind {
+  if (selection.status !== 'open' || !selection.decideBy) return 'none';
+  const state = deadlineState({ decideBy: selection.decideBy, status: 'open' }, today);
+  if (state.overdue) return selection.overdueSentAt ? 'none' : 'overdue';
+  if (state.due) return selection.chaseSentAt ? 'none' : 'due';
+  return 'none';
+}
+
+/**
+ * One message per JOB, not per selection.
+ *
+ * A kitchen with six choices due the same day is one text. Six would read as a
+ * malfunction, and the homeowner would stop opening any of them.
+ */
+export function chaseMessage(input: {
+  businessName: string;
+  clientName: string;
+  count: number;
+  overdue: boolean;
+  url: string;
+}): string {
+  const first = input.clientName.trim().split(/\s+/)[0] || 'there';
+  const what = input.count === 1 ? 'a choice' : `${input.count} choices`;
+  const body = input.overdue
+    ? `we're waiting on ${what} from you before we can order`
+    : `${what} to make when you get a minute`;
+  return `Let's Get Quoted: ${first}, ${input.businessName} here — ${body}: ${input.url}. Reply STOP to opt out.`;
 }
 
 // -- Changing your mind -------------------------------------------------------

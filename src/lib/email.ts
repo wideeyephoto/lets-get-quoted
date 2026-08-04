@@ -454,6 +454,57 @@ export async function sendQuoteFollowupEmail(input: {
   console.log('Quote follow-up email sent');
 }
 
+/**
+ * "There are choices waiting for you" — the email fallback.
+ *
+ * The colours, materials and fixtures a homeowner has to pick before ordering
+ * can start. Named in the subject rather than hidden behind "an update on your
+ * job", because the whole point is that it needs an action from them.
+ */
+export async function sendSelectionRequestEmail(input: {
+  recipientEmail: string;
+  businessName: string;
+  clientName: string;
+  count: number;
+  overdue: boolean;
+  url: string;
+  accountId?: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('Email provider is not configured.');
+  }
+
+  const brand = await brandFor(input);
+  const first = input.clientName.trim().split(/\s+/)[0] || 'there';
+  const what = input.count === 1 ? 'a choice' : `${input.count} choices`;
+  const result = await resend.emails.send({
+    from: contractorFrom(brand.businessName),
+    to: input.recipientEmail,
+    subject: input.overdue
+      ? `We're waiting on ${what} from you — ${input.businessName}`
+      : `${input.count === 1 ? 'A choice' : `${input.count} choices`} to make on your job with ${input.businessName}`,
+    html: renderBrandedEmail({
+      brand,
+      preheader: `${what} to make before we can order`,
+      eyebrow: 'Your choices',
+      heading: input.overdue ? `${first}, we're held up waiting on you` : `${first}, ${what} to make`,
+      paragraphs: [
+        input.overdue
+          ? `We need ${what} from you before we can order and get on with the job. It only takes a minute — everything is priced against what your quote already allows for, so you can see exactly what each one costs.`
+          : `There ${input.count === 1 ? 'is' : 'are'} ${what} to make on your job with ${input.businessName}. Everything is priced against what your quote already allows for, so you can see exactly what each one costs before you decide.`,
+      ],
+      cta: { label: input.count === 1 ? 'Make your choice' : 'Make your choices', url: input.url },
+    }),
+    reply_to: replyAddress(brand),
+  });
+
+  if (result.error) {
+    console.error('Failed to send selection request email:', result.error);
+    throw new Error(result.error.message);
+  }
+  console.log('Selection request email sent');
+}
+
 // Post-job ask for a Google review, over email — the fallback channel when the
 // client has no textable mobile (or opted out of texts) but does have an email.
 // Throws on provider rejection so the caller can report the send failed.
@@ -873,6 +924,17 @@ export async function sendDailyDigestEmail(input: {
       : '',
     d.confirmations > 0 ? row('Appointments confirmed', String(d.confirmations), 'good') : '',
     d.rebookDue > 0 ? row('Past clients due to rebook', String(d.rebookDue)) : '',
+    // A job that can't be ordered because nobody has picked the tile. Warned
+    // only once it's late — a board built a month ahead is not a problem yet.
+    d.selections
+      ? row(
+          `Waiting on customer choices · ${d.selections.jobs} job${d.selections.jobs === 1 ? '' : 's'}`,
+          d.selections.overdue > 0
+            ? `${d.selections.overdue} past the date you needed`
+            : 'None late yet',
+          d.selections.overdue > 0 ? 'warn' : undefined,
+        )
+      : '',
     // Payday only appears when it is close and something is still outstanding —
     // and it says what stands in the way, because the date alone is not a task.
     d.payday

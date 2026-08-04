@@ -23,6 +23,7 @@ import ClientPortalSection from './ClientPortalSection';
 import MissedCallSection from './MissedCallSection';
 import { siteOrigin } from '@/lib/seo/site-pages';
 import { displayPhone } from '@/lib/phone';
+import { chaseMessage } from '@/lib/selections';
 import { loadedHourlyRate } from '@/lib/cost-truth';
 import { ESTIMATE_POSTURES, normalizeEstimatePosture } from '@/lib/estimate-posture';
 import { getSiteContent } from '@/lib/site-content';
@@ -261,6 +262,16 @@ export default async function SettingsPage({
     .maybeSingle();
   const callTrackingVerifiedAt = (callVerified?.call_tracking_verified_at as string | null) ?? null;
 
+  // Defensive read: pre-migration the column is absent, and the reminders
+  // default on for the same reason the sweep does — a needed-by date the
+  // contractor typed IS the opt-in.
+  const { data: selectionSettings } = await supabase
+    .from('accounts')
+    .select('selection_reminders_enabled')
+    .eq('id', accountId)
+    .maybeSingle();
+  const selectionRemindersEnabled = selectionSettings?.selection_reminders_enabled !== false;
+
   const requestedYear = searchParams.year ? parseInt(searchParams.year, 10) : NaN;
   const selectedYear = availableYears.includes(requestedYear) ? requestedYear : availableYears[0];
 
@@ -387,7 +398,7 @@ export default async function SettingsPage({
           {
             id: 'automations',
             label: 'Automations',
-            anchors: ['intake-ai', 'booking-availability', 'extra-stop', 'missed-call', 'reviews', 'followups', 'reminders', 'arrival', 'client-portal', 'daily-digest'],
+            anchors: ['intake-ai', 'booking-availability', 'extra-stop', 'missed-call', 'reviews', 'followups', 'reminders', 'arrival', 'selections', 'client-portal', 'daily-digest'],
             content: (
               <div className="automation-list">
                 {allEssentialsOn ? (
@@ -757,6 +768,40 @@ export default async function SettingsPage({
                     clockTravel={account?.arrival_clock_travel === true}
                     timeClockOn={account?.time_clock_mode !== 'off'}
                   />
+                </AutomationCard>
+
+                <AutomationCard
+                  group="follow-through"
+                  id="selections"
+                  title="Choice reminders"
+                  subtitle="Chase colours, materials and fixtures you're waiting on"
+                  toggle={{ on: selectionRemindersEnabled, action: toggleAutomationAction.bind(null, 'selections') }}
+                >
+                  <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
+                    A job stops dead while nobody picks the tile. When on, a customer sitting on a decision gets a
+                    nudge as your <strong>needed-by date</strong> approaches, and once more if it passes &mdash; with a
+                    link straight to the choices. Everything on one job is one message, however many choices are
+                    waiting.
+                  </p>
+                  <div className="automation-prereq">
+                    <span aria-hidden="true">🗓️</span>
+                    <span>
+                      Only choices you gave a <strong>needed by</strong> date get chased. Leave the date blank on a
+                      choice that genuinely isn&apos;t urgent and nothing is ever sent about it.
+                    </span>
+                  </div>
+                  <details className="automation-preview">
+                    <summary>Preview the reminder text</summary>
+                    <p className="automation-preview-bubble">
+                      {chaseMessage({
+                        businessName,
+                        clientName: 'Sarah',
+                        count: 2,
+                        overdue: false,
+                        url: 'letsgetquoted.com/client/jobs/…',
+                      })}
+                    </p>
+                  </details>
                 </AutomationCard>
 
                 {/* Moved here from Business info. It is not a business detail

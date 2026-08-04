@@ -45,6 +45,8 @@ function toSelection(row: Row, options: SelectionOption[]): Selection {
     // Absent on a pre-migration row, and an array is the only shape the rest of
     // the code will accept — a bare null here would crash every board.
     reopened: Array.isArray(row.reopened) ? (row.reopened as PreviousChoice[]) : [],
+    chaseSentAt: (row.chase_sent_at as string | null) ?? null,
+    overdueSentAt: (row.overdue_sent_at as string | null) ?? null,
     sortOrder: Number(row.sort_order) || 0,
     options,
   };

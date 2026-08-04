@@ -5,6 +5,8 @@ import {
   describeOptionCost,
   optionCost,
   selectionTotals,
+  chaseMessage,
+  chaseNeeded,
   reopenAdjustment,
   snapshotOption,
   toClientSelections,
@@ -34,6 +36,8 @@ function selection(overrides: Partial<Selection> = {}): Selection {
     chosenAt: null,
     chosenByName: null,
     reopened: [],
+    chaseSentAt: null,
+    overdueSentAt: null,
     sortOrder: 0,
     options: [option()],
     ...overrides,
@@ -330,5 +334,66 @@ describe('reopening a decision', () => {
   it('is empty for the selections that were never reopened', () => {
     const [client] = toClientSelections([selection()], TODAY);
     expect(client.previouslyPicked).toEqual([]);
+  });
+});
+
+describe('chasing a decision', () => {
+  function chaseable(overrides: Partial<Selection> = {}): Selection {
+    return selection({ decideBy: '2026-08-08', chaseSentAt: null, overdueSentAt: null, ...overrides });
+  }
+
+  it('says nothing when there is no deadline', () => {
+    // A contractor who left the date blank said this one doesn't matter yet.
+    // Inventing a reason to text somebody is what the blank field prevents.
+    expect(chaseNeeded(chaseable({ decideBy: null }), TODAY)).toBe('none');
+  });
+
+  it('says nothing while the date is a long way off', () => {
+    expect(chaseNeeded(chaseable({ decideBy: '2026-09-30' }), TODAY)).toBe('none');
+  });
+
+  it('nudges once as the date approaches', () => {
+    expect(chaseNeeded(chaseable(), TODAY)).toBe('due');
+    expect(chaseNeeded(chaseable({ chaseSentAt: '2026-08-03T10:00:00.000Z' }), TODAY)).toBe('none');
+  });
+
+  it('nudges once more after it passes', () => {
+    const late = { decideBy: '2026-07-28' };
+    expect(chaseNeeded(chaseable(late), TODAY)).toBe('overdue');
+    expect(chaseNeeded(chaseable({ ...late, overdueSentAt: '2026-08-01T10:00:00.000Z' }), TODAY)).toBe('none');
+  });
+
+  it('still sends the overdue one to somebody already nudged before the date', () => {
+    // Two nudges in a selection's life, not one. The earlier stamp must not
+    // swallow the message that says the job is now held up.
+    expect(chaseNeeded(chaseable({ decideBy: '2026-07-28', chaseSentAt: '2026-07-25T10:00:00.000Z' }), TODAY))
+      .toBe('overdue');
+  });
+
+  it('never chases a decision already made, or one taken off the table', () => {
+    expect(chaseNeeded(chaseable({ status: 'chosen', decideBy: '2026-07-01' }), TODAY)).toBe('none');
+    expect(chaseNeeded(chaseable({ status: 'cancelled', decideBy: '2026-07-01' }), TODAY)).toBe('none');
+  });
+
+  it('writes one message for the whole job, however many choices are on it', () => {
+    const one = chaseMessage({ businessName: 'BrokePipes', clientName: 'Sarah Kim', count: 1, overdue: false, url: 'x' });
+    const many = chaseMessage({ businessName: 'BrokePipes', clientName: 'Sarah Kim', count: 6, overdue: false, url: 'x' });
+    expect(one).toContain('a choice');
+    expect(many).toContain('6 choices');
+    // First name only, and the opt-out is on every automated text we send.
+    expect(one).toContain('Sarah,');
+    expect(one).not.toContain('Sarah Kim');
+    expect(one).toContain('Reply STOP to opt out.');
+  });
+
+  it('says the job is held up once the date has passed', () => {
+    const late = chaseMessage({ businessName: 'BrokePipes', clientName: 'Sarah', count: 2, overdue: true, url: 'x' });
+    expect(late).toContain('waiting on');
+    expect(late).toContain('before we can order');
+  });
+
+  it('survives a nameless customer', () => {
+    expect(chaseMessage({ businessName: 'BrokePipes', clientName: '  ', count: 1, overdue: false, url: 'x' }))
+      .toContain('there,');
   });
 });

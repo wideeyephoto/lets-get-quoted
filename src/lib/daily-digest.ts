@@ -11,6 +11,7 @@ import { summarizePayTotals } from './crew-pay';
 import { buildForecast } from './cash-forecast';
 import { loadCashForecastSources, DEFAULT_HORIZON_DAYS } from './cash-forecast-data';
 import { cashWarningFrom, shouldForecastCash, type CashWarning } from './cash-warning';
+import { countJobsAwaitingSelections } from './selection-notify';
 
 // Owner "here's your business today" digest — one email that ties together the
 // day's money, pipeline, schedule, and reputation so the app reads as one
@@ -59,6 +60,15 @@ export type DailyDigest = {
    * to go and look for isn't one.
    */
   cash: CashWarning | null;
+  /**
+   * Jobs held up waiting on a homeowner's colour/material choices, and how many
+   * of those are past the date the contractor said they needed them.
+   *
+   * Null when there are none. Jobs rather than selections: "3 jobs waiting on
+   * choices" is a to-do list, and "11 choices outstanding" is a number nobody
+   * can act on.
+   */
+  selections: { jobs: number; overdue: number } | null;
 };
 
 function utcDateKey(d: Date): string {
@@ -139,11 +149,25 @@ export async function buildDailyDigest(supabase: SupabaseClient, accountId: stri
     cash = null;
   }
 
+  // Best-effort, like payday and cash: a digest must not fail because the
+  // selections tables aren't there yet.
+  let selections: DailyDigest['selections'] = null;
+  try {
+    const counts = await countJobsAwaitingSelections(supabase, accountId, todayKey);
+    selections = counts.jobs > 0 ? counts : null;
+  } catch {
+    selections = null;
+  }
+
   const hasSignal =
     moneyInCount > 0 || failedCount > 0 || newLeads > 0 || quotesApproved > 0 ||
     confirmations > 0 || newReviews > 0 || privateFeedback > 0 || todaysJobsCount > 0 ||
     // A quiet day with money running out is EXACTLY the day to send one.
-    cash !== null;
+    cash !== null ||
+    // Same rule: a job that can't be ordered because nobody has picked the tile
+    // is worth the email on an otherwise empty day — but only once it's late,
+    // or a board built a month ahead would trigger a digest every morning.
+    (selections !== null && selections.overdue > 0);
 
   const dateLabel = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
@@ -151,7 +175,7 @@ export async function buildDailyDigest(supabase: SupabaseClient, accountId: stri
     dateLabel, hasSignal,
     moneyInCount, moneyInTotal, openRequestsCount, openRequestsTotal, failedCount, failedTotal,
     newLeads, quotesApproved, confirmations, newReviews, newReviewsAvg, privateFeedback,
-    todaysJobs, todaysJobsCount, rebookDue, payday, cash,
+    todaysJobs, todaysJobsCount, rebookDue, payday, cash, selections,
   };
 }
 
