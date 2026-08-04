@@ -1,5 +1,8 @@
 import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
+import { formatMoney } from '@/lib/jobs';
+import { fullDate } from '@/lib/recurring-display';
+import { groupByDay, messageContext } from '@/lib/message-context';
 import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
 import { buildContactNameMap, getConversationMessages, listConversations, markThreadRead } from '@/lib/messages';
 import { listMessageTemplates } from '@/lib/message-templates';
@@ -12,11 +15,38 @@ function formatTime(value: string): string {
   return new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-export default async function MessagesPage({ searchParams }: { searchParams: { thread?: string } }) {
+const FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'unread', label: 'Unread' },
+  { key: 'reply', label: 'Needs reply' },
+] as const;
+
+export default async function MessagesPage({
+  searchParams,
+}: {
+  searchParams: { thread?: string; q?: string; filter?: string };
+}) {
   const { supabase, accountId } = await requireOwnerContext();
 
-  const conversations = await listConversations(supabase, accountId);
-  const activePhone = searchParams.thread ? normalizeUsPhone(searchParams.thread) ?? searchParams.thread : conversations[0]?.phone ?? null;
+  const allConversations = await listConversations(supabase, accountId);
+
+  // Filtering happens before the active thread is chosen, so opening the page
+  // on "Unread" lands you in an unread thread rather than on an empty pane.
+  const query = (searchParams.q ?? '').trim().toLowerCase();
+  const filter = FILTERS.some((option) => option.key === searchParams.filter) ? searchParams.filter : 'all';
+  const conversations = allConversations.filter((conversation) => {
+    if (filter === 'unread' && conversation.unread === 0) return false;
+    // "Needs reply" is a thread whose LAST message came from them. Anything
+    // else is a conversation you have already had the last word in.
+    if (filter === 'reply' && conversation.lastDirection !== 'inbound') return false;
+    if (!query) return true;
+    const name = (conversation.name ?? '').toLowerCase();
+    return name.includes(query) || conversation.phone.includes(query) || (conversation.lastBody ?? '').toLowerCase().includes(query);
+  });
+
+  const activePhone = searchParams.thread
+    ? normalizeUsPhone(searchParams.thread) ?? searchParams.thread
+    : conversations[0]?.phone ?? null;
 
   const [messages, nameMap] = await Promise.all([
     activePhone ? getConversationMessages(supabase, accountId, activePhone) : Promise.resolve([]),
@@ -24,6 +54,10 @@ export default async function MessagesPage({ searchParams }: { searchParams: { t
   ]);
   const activeName = activePhone ? nameMap.get(activePhone) ?? null : null;
   const templates = await listMessageTemplates(supabase, accountId);
+  // Who they are and what this is about — the three tabs you used to have to
+  // open to answer a text.
+  const context = await messageContext(supabase, accountId, activePhone);
+  const days = groupByDay(messages);
 
   // Opening a thread IS reading it. Done after the messages are loaded so the
   // ones being marked are the ones on screen, and after `conversations` so the
@@ -40,14 +74,43 @@ export default async function MessagesPage({ searchParams }: { searchParams: { t
 
   return (
     <main className="wide-shell workspace-shell">
-      <section className="workspace-hero panel">
-        <div className="workspace-hero-copy">
-          <p className="eyebrow">Messages{totalUnread > 0 ? ` · ${totalUnread} unread` : ''}</p>
+      {/* One header row rather than a hero band. An inbox is a working surface —
+          the tall marketing hero pushed the first conversation below the fold on
+          a laptop, which is the one thing this page exists to show. */}
+      <header className="inbox-header">
+        <div className="inbox-header-copy">
           <h1 className="workspace-title">Text inbox</h1>
           <p className="workspace-lead">Every customer text and your replies, threaded in one place.</p>
         </div>
-        <ComposeMessage contacts={contacts} action={startConversationAction} />
-      </section>
+        <div className="inbox-header-tools">
+          {/* A GET form so search and filter live in the URL: a thread stays
+              linkable, and the back button behaves. */}
+          <form className="inbox-search" method="get">
+            <input type="search" name="q" defaultValue={searchParams.q ?? ''} placeholder="Search conversations…" aria-label="Search conversations" />
+            {filter !== 'all' ? <input type="hidden" name="filter" value={filter} /> : null}
+          </form>
+          <div className="inbox-filters" role="group" aria-label="Filter conversations">
+            {FILTERS.map((option) => {
+              const params = new URLSearchParams();
+              if (option.key !== 'all') params.set('filter', option.key);
+              if (searchParams.q) params.set('q', searchParams.q);
+              const href = params.toString() ? `/dashboard/messages?${params}` : '/dashboard/messages';
+              return (
+                <Link
+                  key={option.key}
+                  href={href}
+                  className={`inbox-filter${filter === option.key ? ' is-active' : ''}`}
+                  aria-current={filter === option.key ? 'true' : undefined}
+                >
+                  {option.label}
+                  {option.key === 'unread' && totalUnread > 0 ? <span className="inbox-filter-count">{totalUnread}</span> : null}
+                </Link>
+              );
+            })}
+          </div>
+          <ComposeMessage contacts={contacts} action={startConversationAction} />
+        </div>
+      </header>
 
       {conversations.length === 0 ? (
         <section className="panel workspace-section-card">
@@ -90,10 +153,28 @@ export default async function MessagesPage({ searchParams }: { searchParams: { t
           <div className="panel workspace-section-card inbox-thread">
             {activePhone ? (
               <>
-                <div className="section-heading workspace-section-heading compact-heading inbox-thread-head">
-                  <div>
+                <div className="inbox-thread-head">
+                  <div className="inbox-thread-who">
                     <h2>{activeName ?? formatPhoneDashes(activePhone)}</h2>
-                    {activeName ? <p className="job-meta">{formatPhoneDashes(activePhone)}</p> : null}
+                    {/* The number is only a subtitle when the heading is a NAME.
+                        Unnamed, the heading already IS the number and repeating
+                        it reads as a rendering fault. */}
+                    {activeName || context.job ? (
+                      <p className="job-meta">
+                        {activeName ? formatPhoneDashes(activePhone) : null}
+                        {activeName && context.job ? ' · ' : null}
+                        {context.job ? context.job.title : null}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="inbox-thread-actions">
+                    {context.client ? (
+                      <Link className="btn secondary" href={`/dashboard/clients/${context.client.id}`}>View customer</Link>
+                    ) : null}
+                    {context.job ? (
+                      <Link className="btn secondary" href={`/dashboard/jobs/${context.job.id}`}>View job</Link>
+                    ) : null}
+                    <a className="btn secondary" href={`tel:${activePhone}`}>Call</a>
                   </div>
                 </div>
 
@@ -101,23 +182,33 @@ export default async function MessagesPage({ searchParams }: { searchParams: { t
                   {messages.length === 0 ? (
                     <p className="empty-state">No messages in this thread yet.</p>
                   ) : (
-                    messages.map((message) => (
-                      <div key={message.id} className={`inbox-bubble inbox-bubble-${message.direction}`}>
-                        {message.body ? <p>{message.body}</p> : null}
-                        {(message.media_urls ?? []).length > 0 ? (
-                          <div className="inbox-bubble-media">
-                            {(message.media_urls ?? []).map((url) => (
-                              // Opens full size in a new tab; the thumbnail stays
-                              // small so a thread of photos still scans as a
-                              // conversation rather than a gallery.
-                              <a key={url} href={url} target="_blank" rel="noopener noreferrer">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={url} alt="Photo from the customer" loading="lazy" />
-                              </a>
-                            ))}
+                    days.map((day) => (
+                      <div className="inbox-day" key={day.key}>
+                        {/* A thread with no day breaks reads as one long argument
+                            about nothing. */}
+                        <p className="inbox-day-divider"><span>{day.label}</span></p>
+                        {day.items.map((message) => (
+                          <div key={message.id} className={`inbox-bubble inbox-bubble-${message.direction}`}>
+                            {message.body ? <p>{message.body}</p> : null}
+                            {(message.media_urls ?? []).length > 0 ? (
+                              <div className="inbox-bubble-media">
+                                {(message.media_urls ?? []).map((url) => (
+                                  // Opens full size in a new tab; the thumbnail stays
+                                  // small so a thread of photos still scans as a
+                                  // conversation rather than a gallery.
+                                  <a key={url} href={url} target="_blank" rel="noopener noreferrer">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={url} alt="Photo from the customer" loading="lazy" />
+                                  </a>
+                                ))}
+                              </div>
+                            ) : null}
+                            <span className="inbox-bubble-time">
+                              {formatTime(message.created_at)}
+                              {message.direction === 'outbound' ? <> · Sent</> : null}
+                            </span>
                           </div>
-                        ) : null}
-                        <span className="inbox-bubble-time">{formatTime(message.created_at)}</span>
+                        ))}
                       </div>
                     ))
                   )}
@@ -135,6 +226,75 @@ export default async function MessagesPage({ searchParams }: { searchParams: { t
               <p className="empty-state">Pick a conversation to read and reply.</p>
             )}
           </div>
+
+          {/* Who they are and what this is about. Nullable all the way down: a
+              text can arrive from a number nobody in the book owns, and saying
+              so beats an empty shell that reads as a stuck loading state. */}
+          <aside className="panel workspace-section-card inbox-context">
+            {context.client ? (
+              <>
+                <div className="inbox-ctx-block">
+                  <p className="eyebrow">Customer</p>
+                  <strong className="inbox-ctx-name">{context.client.name}</strong>
+                  <a className="inbox-ctx-phone" href={`tel:${context.client.phone ?? activePhone}`}>
+                    {formatPhoneDashes(context.client.phone ?? activePhone ?? '')}
+                  </a>
+                  {context.client.email ? <span className="inbox-ctx-line">{context.client.email}</span> : null}
+                  <Link className="btn secondary" href={`/dashboard/clients/${context.client.id}`}>View full profile</Link>
+                </div>
+
+                {context.job ? (
+                  <div className="inbox-ctx-block">
+                    <p className="eyebrow">Job details</p>
+                    <div className="inbox-ctx-jobhead">
+                      <strong>{context.job.title}</strong>
+                      <span className={`inbox-ctx-status is-${context.job.status}`}>
+                        {context.job.status === 'complete' ? 'Complete' : context.job.status === 'new_lead' ? 'New lead' : 'Scheduled'}
+                      </span>
+                    </div>
+                    {context.job.scheduledFor ? (
+                      <span className="inbox-ctx-line">
+                        {fullDate(context.job.scheduledFor)}
+                        {context.job.scheduledTime ? ` · ${context.job.scheduledTime.slice(0, 5)}` : ''}
+                      </span>
+                    ) : null}
+                    {context.job.address ? <span className="inbox-ctx-line">{context.job.address}</span> : null}
+                    {context.job.quotedAmount > 0 ? (
+                      <span className="inbox-ctx-line">
+                        <em>Estimated value</em> {formatMoney(context.job.quotedAmount)}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {context.invoice ? (
+                  <div className="inbox-ctx-block">
+                    <p className="eyebrow">Last invoice</p>
+                    <Link className="inbox-ctx-invoice" href={`/dashboard/jobs/${context.invoice.jobId}`}>
+                      <strong>{context.invoice.ref}</strong>
+                      <span className={`inbox-ctx-status is-${context.invoice.status}`}>{context.invoice.status}</span>
+                    </Link>
+                    <span className="inbox-ctx-line">{formatMoney(context.invoice.total)}</span>
+                  </div>
+                ) : null}
+
+                {context.client.notes ? (
+                  <div className="inbox-ctx-block">
+                    <p className="eyebrow">Notes</p>
+                    <p className="inbox-ctx-notes">{context.client.notes}</p>
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <div className="inbox-ctx-block">
+                <p className="eyebrow">Customer</p>
+                <p className="ins-empty-note">
+                  This number isn&rsquo;t in your customer book yet, so there&rsquo;s no job or history to show
+                  beside it. Adding them as a client links it up.
+                </p>
+              </div>
+            )}
+          </aside>
         </section>
       )}
 
