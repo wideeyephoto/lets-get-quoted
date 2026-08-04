@@ -1,8 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { createAdminClient } from '@/lib/auth';
 import type { Site } from '@/lib/sites';
-import { isSiteSeoReady } from '@/lib/seo/site-seo';
-import { getAllPublishedVideos, getSiteContent } from '@/lib/site-content';
+import { siteIndexablePages, siteOrigin } from '@/lib/seo/site-pages';
 import { TRADES } from '@/lib/trades';
 import { ARTICLES } from '@/lib/resources';
 
@@ -36,47 +35,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
     { url: `${appUrl}/contact`, changeFrequency: 'yearly', priority: 0.4 },
     { url: `${appUrl}/privacy`, changeFrequency: 'yearly', priority: 0.3 },
+    // Shipped with the signup terms gate and never added here.
+    { url: `${appUrl}/terms`, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${appUrl}/sms-terms`, changeFrequency: 'yearly', priority: 0.3 },
   ];
-  // Only list sites that carry real content — mirrors the noindex gate on the
-  // pages so thin/incomplete sites aren't advertised for indexing.
-  //
-  // A contractor site is not just its homepage. This listed the root and stopped,
-  // so /videos and every blog post existed, were linked in the site's own nav,
-  // and appeared in no sitemap anywhere — the two page types most likely to earn
-  // a contractor a search result on their own were the two we never submitted.
+  // Which URLs a contractor site has is defined once, in lib/seo/site-pages.ts,
+  // because each site now also serves its OWN sitemap on its own host. Two
+  // hand-maintained copies of this list would eventually disagree, and the way
+  // that surfaces is a contractor's Search Console reporting crawl errors on
+  // pages the platform's sitemap promised and theirs didn't (or worse, the
+  // reverse). This file and theirs are the same function.
   const sitePages: MetadataRoute.Sitemap = ((sites ?? []) as Site[]).flatMap((site) => {
-    if (!isSiteSeoReady(site)) return [];
-    const host = site.custom_domain && site.custom_domain_verified_at
-      ? site.custom_domain
-      : site.subdomain ? `${site.subdomain}.${rootDomain}` : null;
-    if (!host) return [];
-    const origin = `https://${host}`;
-    const pages: MetadataRoute.Sitemap = [
-      { url: origin, lastModified: site.updated_at, changeFrequency: 'weekly', priority: 0.8 },
-    ];
-
-    // Both gates below mirror the routes themselves, which notFound() when empty
-    // — a sitemap entry for a 404 is worse than no entry at all.
-    if (getAllPublishedVideos(site.content).length > 0) {
-      pages.push({ url: `${origin}/videos`, lastModified: site.updated_at, changeFrequency: 'monthly', priority: 0.6 });
-    }
-
-    const posts = getSiteContent(site.content).blog.posts.filter(
-      (post) => post.status === 'published' && post.slug.trim() && post.title.trim(),
-    );
-    for (const post of posts) {
-      pages.push({
-        // The post's own date, not the site's: a sitemap that reports every
-        // article changing whenever the owner edits their phone number teaches
-        // Google to stop believing lastModified.
-        url: `${origin}/blog/${post.slug.trim()}`,
-        lastModified: post.date || site.updated_at,
-        changeFrequency: 'yearly',
-        priority: 0.5,
-      });
-    }
-    return pages;
+    const origin = siteOrigin(site, rootDomain);
+    if (!origin) return [];
+    return siteIndexablePages(site).map((page) => ({
+      url: `${origin}${page.path}`,
+      lastModified: page.lastModified,
+      changeFrequency: page.changeFrequency,
+      priority: page.priority,
+    }));
   });
   return [...staticPages, ...sitePages];
 }
