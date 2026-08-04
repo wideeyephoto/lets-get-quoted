@@ -31,6 +31,15 @@ export type ChosenSnapshot = {
   reference: string;
 };
 
+/** A decision that was made and then reopened. Kept, never overwritten. */
+export type PreviousChoice = {
+  snapshot: ChosenSnapshot;
+  chosenAt: string | null;
+  chosenByName: string | null;
+  reopenedAt: string;
+  reason: string;
+};
+
 export type Selection = {
   id: string;
   jobId: string;
@@ -44,6 +53,8 @@ export type Selection = {
   chosenSnapshot: ChosenSnapshot | null;
   chosenAt: string | null;
   chosenByName: string | null;
+  /** Oldest first. Empty for the overwhelming majority of selections. */
+  reopened: PreviousChoice[];
   sortOrder: number;
   options: SelectionOption[];
 };
@@ -217,6 +228,14 @@ export type ClientSelection = {
   options: ClientSelectionOption[];
   /** What they picked, from the snapshot — so it reads the same forever. */
   chosen: { name: string; reference: string; costLabel: string; at: string | null; byName: string | null } | null;
+  /**
+   * What they picked before it was reopened, most recent first.
+   *
+   * Shown rather than hidden: a homeowner who confirmed a choice and later finds
+   * the question being asked again should be told why, not left wondering
+   * whether their answer was lost.
+   */
+  previouslyPicked: { name: string; reference: string; at: string | null }[];
   awaitingDecision: boolean;
 };
 
@@ -271,6 +290,14 @@ export function toClientSelections(selections: Selection[], today = todayKey()):
               byName: selection.chosenByName,
             }
           : null,
+        // Newest first: the one they'll remember is the one they made last.
+        previouslyPicked: [...selection.reopened]
+          .reverse()
+          .map((previous) => ({
+            name: previous.snapshot.name,
+            reference: previous.snapshot.reference,
+            at: previous.chosenAt,
+          })),
         awaitingDecision: selection.status === 'open',
       };
     });
@@ -281,6 +308,37 @@ function formatDeadlineForClient(decideBy: string, deadline: DeadlineState): str
   if (deadline.overdue) return `We needed this by ${when} — let us know as soon as you can so it doesn't hold the job up.`;
   if (deadline.daysLeft === 0) return `We need this today to keep the job on track.`;
   return `We need to know by ${when} to keep the job on track.`;
+}
+
+// -- Changing your mind -------------------------------------------------------
+
+/**
+ * What reopening a decision does to the job total.
+ *
+ * Exactly the opposite of what choosing it did — computed from the SNAPSHOT,
+ * because that is the number the job total actually moved by. Reading the live
+ * option instead would reverse a different amount than was applied whenever the
+ * contractor had edited it since, and quietly leave the job mispriced.
+ */
+export function reopenAdjustment(selection: Pick<Selection, 'allowance' | 'creditUnderspend' | 'chosenSnapshot'>): number {
+  if (!selection.chosenSnapshot) return 0;
+  return round2(-optionCost({ price: selection.chosenSnapshot.price }, selection).net);
+}
+
+/** The choice being reopened, packaged for the history. */
+export function toPreviousChoice(
+  selection: Pick<Selection, 'chosenSnapshot' | 'chosenAt' | 'chosenByName'>,
+  reason: string,
+  now: Date = new Date(),
+): PreviousChoice | null {
+  if (!selection.chosenSnapshot) return null;
+  return {
+    snapshot: selection.chosenSnapshot,
+    chosenAt: selection.chosenAt,
+    chosenByName: selection.chosenByName,
+    reopenedAt: now.toISOString(),
+    reason: reason.trim().slice(0, 300),
+  };
 }
 
 /** Snapshot an option at the moment it's chosen. */

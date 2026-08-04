@@ -50,6 +50,18 @@ export default function Selections({ token, selections }: { token: string; selec
             {selection.description ? <p className="client-selection-desc">{selection.description}</p> : null}
             {selection.deadlineLabel ? <p className="client-selection-deadline">{selection.deadlineLabel}</p> : null}
 
+            {/* Being asked a question you already answered, with no explanation,
+                reads as "they lost it". Only the most recent one is named — the
+                full trail is the contractor's record, not a lecture. */}
+            {selection.previouslyPicked.length > 0 && selection.awaitingDecision ? (
+              <p className="client-selection-reopened">
+                You picked <strong>{selection.previouslyPicked[0].name}</strong>
+                {selection.previouslyPicked[0].reference ? ` (${selection.previouslyPicked[0].reference})` : ''}
+                {selection.previouslyPicked[0].at ? ` on ${formatChosenAt(selection.previouslyPicked[0].at)}` : ''}. We&apos;ve
+                opened this back up so you can change it — pick again below, or tell us to leave it as it was.
+              </p>
+            ) : null}
+
             {selection.chosen ? (
               <div className="client-selection-chosen">
                 <strong>You picked: {selection.chosen.name}</strong>

@@ -10493,6 +10493,43 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 }
 .selection-chosen { margin-top: 0.6rem; padding: 0.6rem 0.75rem; border-radius: 10px; background: rgba(var(--tint), 0.06); }
 .selection-chosen-meta { display: block; margin-top: 0.2rem; font-size: 0.78rem; color: var(--mute-t50); }
+.selection-chosen .btn.ghost { margin-top: 0.5rem; font-size: 0.79rem; padding: 0.3rem 0.6rem; }
+
+/* Decisions made and then changed. In front of the contractor rather than
+   buried: if the first colour is already on the wall, this is the record. */
+.selection-history {
+  list-style: none;
+  padding: 0.5rem 0.7rem;
+  margin: 0.6rem 0 0;
+  border-left: 2px solid rgba(var(--tint), 0.2);
+  border-radius: 0 8px 8px 0;
+  background: rgba(var(--tint), 0.04);
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--mute-t50);
+}
+
+/* Inline option edit. A disclosure so the option list still reads as a list. */
+.selection-option-edit > summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 0 0.2rem;
+  color: var(--mute-t45);
+  font-size: 0.82rem;
+}
+.selection-option-edit > summary::-webkit-details-marker { display: none; }
+.selection-option-edit > summary:hover { color: var(--text); }
+.selection-option-edit form {
+  display: grid;
+  grid-template-columns: 1.4fr 0.9fr 0.7fr auto;
+  gap: 0.4rem;
+  margin-top: 0.45rem;
+}
+@media (max-width: 640px) {
+  .selection-option-edit form { grid-template-columns: 1fr; }
+}
 .selection-option-form { display: grid; grid-template-columns: 1.4fr 0.9fr 0.7fr 1fr auto; gap: 0.4rem; margin-top: 0.7rem; }
 .selection-option-form input[type='file'] { font-size: 0.78rem; }
 .selection-new-form { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -10515,6 +10552,17 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 .client-selection-allowance { font-size: 0.8rem; color: var(--mute-t50); }
 .client-selection-desc { margin: 0.45rem 0 0; line-height: 1.55; }
 .client-selection-deadline { margin: 0.45rem 0 0; font-size: 0.85rem; color: var(--mute-t55); }
+/* Why they're being asked again. Without it, a homeowner who already answered
+   assumes their answer was lost. */
+.client-selection-reopened {
+  margin: 0.6rem 0 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.06);
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--mute-t60);
+}
 .client-selection-chosen { margin-top: 0.7rem; padding: 0.7rem 0.85rem; border-radius: 12px; background: rgba(var(--tint), 0.06); }
 .client-selection-ref {
   margin-left: 0.45rem;

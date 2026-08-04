@@ -6,6 +6,7 @@ import {
   deadlineState,
   describeOptionCost,
   optionCost,
+  reopenAdjustment,
   selectionTotals,
   todayKey,
   type Selection,
@@ -15,6 +16,8 @@ import {
   cancelSelectionAction,
   createSelectionAction,
   deleteSelectionOptionAction,
+  reopenSelectionAction,
+  updateSelectionOptionAction,
 } from './selection-actions';
 
 /**
@@ -76,6 +79,24 @@ export default function SelectionBoard({ jobId, selections }: { jobId: string; s
 
                   {selection.description ? <p className="selection-desc">{selection.description}</p> : null}
 
+                  {/* Every decision they made and then changed. Kept in front of
+                      the contractor, not buried: if the first colour is already
+                      on the wall, this is the sentence that settles who pays. */}
+                  {selection.reopened.length > 0 ? (
+                    <ul className="selection-history">
+                      {[...selection.reopened].reverse().map((previous, index) => (
+                        <li key={`${previous.reopenedAt}-${index}`}>
+                          First picked <strong>{previous.snapshot.name}</strong>
+                          {previous.snapshot.reference ? ` (${previous.snapshot.reference})` : ''}
+                          {previous.chosenByName ? ` — ${previous.chosenByName}` : ''}
+                          {previous.chosenAt ? `, ${previous.chosenAt.slice(0, 10)}` : ''}
+                          {' · reopened '}
+                          {previous.reopenedAt.slice(0, 10)}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+
                   {decided && selection.chosenSnapshot ? (
                     // The record. Read from the snapshot, so editing an option
                     // later cannot change what the customer agreed to.
@@ -89,6 +110,22 @@ export default function SelectionBoard({ jobId, selections }: { jobId: string; s
                         {selection.chosenByName ? ` · ${selection.chosenByName}` : ''}
                         {selection.chosenAt ? ` · ${selection.chosenAt.slice(0, 10)}` : ''}
                       </span>
+                      {/* The way back. Named for what it does to the money,
+                          because that is the part that surprises people. */}
+                      <ConfirmActionButton
+                        action={reopenSelectionAction.bind(null, jobId, selection.id)}
+                        confirmMessage={
+                          `Let them choose again?\n\n` +
+                          `${formatMoney(Math.abs(reopenAdjustment(selection)))} ` +
+                          `${reopenAdjustment(selection) < 0 ? 'comes off' : 'goes back on'} the job total, and ` +
+                          `“${selection.chosenSnapshot.name}” stays on the record as what they first picked.`
+                        }
+                        className="btn ghost"
+                        pendingLabel="Reopening…"
+                        savedLabel="Reopened ✓"
+                      >
+                        Let them choose again
+                      </ConfirmActionButton>
                     </div>
                   ) : (
                     <>
@@ -101,6 +138,21 @@ export default function SelectionBoard({ jobId, selections }: { jobId: string; s
                             </span>
                             <span className="selection-option-cost">
                               {describeOptionCost(optionCost(option, selection))}
+                              {/* A typo'd product code is the one thing on this
+                                  board that must be fixable — it is what gets
+                                  ordered. Behind a disclosure so the list still
+                                  reads as a list. */}
+                              <details className="selection-option-edit">
+                                <summary aria-label={`Edit ${option.name}`}>✎</summary>
+                                <form action={updateSelectionOptionAction.bind(null, jobId, option.id)}>
+                                  <input name="name" defaultValue={option.name} required aria-label="Option name" />
+                                  <input name="reference" defaultValue={option.reference} placeholder="SW7036" aria-label="Product code" />
+                                  <input name="price" type="number" min="0" step="0.01" defaultValue={option.price} required aria-label="Price" />
+                                  <SaveButton className="btn secondary" pendingLabel="Saving…" savedLabel="Saved ✓">
+                                    Save
+                                  </SaveButton>
+                                </form>
+                              </details>
                               <ConfirmActionButton
                                 action={deleteSelectionOptionAction.bind(null, jobId, option.id)}
                                 confirmMessage={`Remove “${option.name}”?`}

@@ -5,8 +5,10 @@ import {
   describeOptionCost,
   optionCost,
   selectionTotals,
+  reopenAdjustment,
   snapshotOption,
   toClientSelections,
+  toPreviousChoice,
   type Selection,
   type SelectionOption,
 } from '@/lib/selections';
@@ -31,6 +33,7 @@ function selection(overrides: Partial<Selection> = {}): Selection {
     chosenSnapshot: null,
     chosenAt: null,
     chosenByName: null,
+    reopened: [],
     sortOrder: 0,
     options: [option()],
     ...overrides,
@@ -247,5 +250,85 @@ describe('snapshotOption', () => {
   it('captures what the customer was looking at', () => {
     const snap = snapshotOption(option({ id: 'o9', name: 'Accessible Beige', reference: 'SW7036', price: 412.5 }));
     expect(snap).toEqual({ optionId: 'o9', name: 'Accessible Beige', description: '', price: 412.5, reference: 'SW7036' });
+  });
+});
+
+describe('reopening a decision', () => {
+  it('reverses exactly what choosing it did to the job total', () => {
+    // Upgrade went on, so reopening takes it off.
+    const upgraded = selection({
+      status: 'chosen',
+      chosenSnapshot: { optionId: 'o2', name: 'Quartz', description: '', price: 900, reference: 'Q-11' },
+    });
+    expect(optionCost({ price: 900 }, upgraded).net).toBe(500);
+    expect(reopenAdjustment(upgraded)).toBe(-500);
+
+    // Credit came off, so reopening puts it back on.
+    const credited = selection({
+      status: 'chosen',
+      chosenSnapshot: { optionId: 'o3', name: 'Builder white', description: '', price: 250, reference: 'BW-1' },
+    });
+    expect(optionCost({ price: 250 }, credited).net).toBe(-150);
+    expect(reopenAdjustment(credited)).toBe(150);
+  });
+
+  it('moves nothing when the choice was included in the allowance', () => {
+    const included = selection({
+      status: 'chosen',
+      chosenSnapshot: { optionId: 'o1', name: 'Standard beige', description: '', price: 400, reference: 'SW7036' },
+    });
+    expect(reopenAdjustment(included)).toBe(0);
+  });
+
+  it('reads the SNAPSHOT, not the live option', () => {
+    // The contractor re-priced the option after it was picked. The job total
+    // moved by what the snapshot said, so that is what has to be reversed —
+    // otherwise reopening leaves the job quietly mispriced.
+    const stale = selection({
+      status: 'chosen',
+      chosenSnapshot: { optionId: 'o1', name: 'Quartz', description: '', price: 900, reference: 'Q-11' },
+      options: [option({ id: 'o1', name: 'Quartz', price: 1500, reference: 'Q-11' })],
+    });
+    expect(reopenAdjustment(stale)).toBe(-500);
+  });
+
+  it('moves nothing when there is no decision to reverse', () => {
+    expect(reopenAdjustment(selection())).toBe(0);
+  });
+
+  it('keeps who chose it and when', () => {
+    const chosen = selection({
+      status: 'chosen',
+      chosenSnapshot: { optionId: 'o1', name: 'Standard beige', description: '', price: 400, reference: 'SW7036' },
+      chosenAt: '2026-08-01T10:00:00.000Z',
+      chosenByName: 'Jane Homeowner',
+    });
+    const previous = toPreviousChoice(chosen, 'Changed their mind', new Date('2026-08-04T09:00:00.000Z'));
+    expect(previous).toEqual({
+      snapshot: { optionId: 'o1', name: 'Standard beige', description: '', price: 400, reference: 'SW7036' },
+      chosenAt: '2026-08-01T10:00:00.000Z',
+      chosenByName: 'Jane Homeowner',
+      reopenedAt: '2026-08-04T09:00:00.000Z',
+      reason: 'Changed their mind',
+    });
+  });
+
+  it('tells the homeowner what they picked before, newest first', () => {
+    // Being asked a question you already answered, with no explanation, reads
+    // as "they lost it".
+    const reopened = selection({
+      status: 'open',
+      reopened: [
+        { snapshot: { optionId: 'o1', name: 'Beige', description: '', price: 400, reference: 'SW7036' }, chosenAt: '2026-07-01T10:00:00.000Z', chosenByName: 'Jane', reopenedAt: '2026-07-02T10:00:00.000Z', reason: '' },
+        { snapshot: { optionId: 'o2', name: 'Grey', description: '', price: 400, reference: 'SW7015' }, chosenAt: '2026-07-10T10:00:00.000Z', chosenByName: 'Jane', reopenedAt: '2026-07-11T10:00:00.000Z', reason: '' },
+      ],
+    });
+    const [client] = toClientSelections([reopened], TODAY);
+    expect(client.previouslyPicked.map((p) => p.name)).toEqual(['Grey', 'Beige']);
+  });
+
+  it('is empty for the selections that were never reopened', () => {
+    const [client] = toClientSelections([selection()], TODAY);
+    expect(client.previouslyPicked).toEqual([]);
   });
 });

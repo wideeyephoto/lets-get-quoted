@@ -2,7 +2,15 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireOwnerContext } from '@/lib/auth';
-import { addOption, createSelection, deleteOption, setSelectionStatus, updateSelection } from '@/lib/selections-data';
+import {
+  addOption,
+  createSelection,
+  deleteOption,
+  reopenSelection,
+  setSelectionStatus,
+  updateOption,
+  updateSelection,
+} from '@/lib/selections-data';
 import { isJobPhotoFile, uploadJobPhoto } from '@/lib/job-photo-storage';
 
 function num(value: FormDataEntryValue | null): number {
@@ -80,6 +88,38 @@ export async function deleteSelectionOptionAction(jobId: string, optionId: strin
   const result = await deleteOption(supabase, accountId, optionId);
   if (!result.ok) {
     console.error(`Selection option delete refused (${optionId}): ${result.message}`);
+    return;
+  }
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
+/** Fix a typo'd product code or a price that came back different. */
+export async function updateSelectionOptionAction(jobId: string, optionId: string, formData: FormData): Promise<void> {
+  const { supabase, accountId } = await requireOwnerContext();
+  const result = await updateOption(supabase, accountId, optionId, {
+    name: String(formData.get('name') ?? ''),
+    reference: String(formData.get('reference') ?? ''),
+    price: num(formData.get('price')),
+  });
+  if (!result.ok) {
+    console.error(`Selection option edit refused (${optionId}): ${result.message}`);
+    return;
+  }
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
+/**
+ * Put a made decision back on the table, reversing what it did to the price.
+ *
+ * The customer changed their mind, or picked in a hurry. What they first chose
+ * stays on the record — this is not an undo that pretends the first decision
+ * never happened.
+ */
+export async function reopenSelectionAction(jobId: string, selectionId: string): Promise<void> {
+  const { supabase, accountId } = await requireOwnerContext();
+  const result = await reopenSelection(supabase, accountId, selectionId, 'Reopened by the contractor');
+  if (!result.ok) {
+    console.error(`Selection reopen refused (${selectionId}): ${result.message}`);
     return;
   }
   revalidatePath(`/dashboard/jobs/${jobId}`);
