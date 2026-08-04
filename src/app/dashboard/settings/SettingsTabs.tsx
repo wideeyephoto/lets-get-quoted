@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
-import { resolveTabForHash } from '@/lib/nav-helpers';
+import { resolveTabForHash, SETTINGS_TAB_EVENT } from '@/lib/nav-helpers';
 
 export type SettingsTab = {
   id: string;
@@ -43,16 +43,29 @@ export default function SettingsTabs({ tabs }: { tabs: SettingsTab[] }) {
       }
       if (tries < 12) requestAnimationFrame(() => scrollWhenReady(id, tries + 1));
     };
-    const applyHash = () => {
-      const hash = window.location.hash.replace(/^#/, '');
+    const open = (hash: string) => {
       const ownerId = resolveTabForHash(tabs, hash);
       if (!ownerId) return;
       setActive(ownerId);
       if (hash !== ownerId) scrollWhenReady(hash);
     };
+    const applyHash = () => open(window.location.hash.replace(/^#/, ''));
+    // An explicit request from a link elsewhere in the app. Needed because
+    // hashchange is not enough on its own: Next's <Link> navigates with
+    // pushState, which never fires it, and a link to the hash the URL already
+    // carries changes nothing to listen for. See lib/nav-helpers.
+    const onRequest = (event: Event) => {
+      const hash = (event as CustomEvent<string>).detail;
+      if (typeof hash === 'string') open(hash);
+    };
+
     applyHash();
     window.addEventListener('hashchange', applyHash);
-    return () => window.removeEventListener('hashchange', applyHash);
+    window.addEventListener(SETTINGS_TAB_EVENT, onRequest);
+    return () => {
+      window.removeEventListener('hashchange', applyHash);
+      window.removeEventListener(SETTINGS_TAB_EVENT, onRequest);
+    };
   }, [tabs]);
 
   function select(id: string) {

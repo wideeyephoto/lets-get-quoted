@@ -9,7 +9,7 @@ import { NavIcon } from './nav-icons';
 import ActionIcon from './action-icon';
 import ThemeToggle from './theme-toggle';
 import { supabase } from '@/lib/supabase';
-import { isSectionNew, markNavSeen, parseNavSeen, NAV_SEEN_STORAGE_KEY, type NavSeenMap } from '@/lib/nav-helpers';
+import { isSectionNew, markNavSeen, parseNavSeen, settingsTabEvent, NAV_SEEN_STORAGE_KEY, type NavSeenMap } from '@/lib/nav-helpers';
 
 // Order follows the pipeline (Leads -> Jobs -> Schedule) with Crew, a resource,
 // after the stages instead of splitting them. `hint` surfaces the vocabulary
@@ -696,7 +696,22 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           <div className="sidenav-foot">
             <div className="sidenav-fcard">
               {renderSideLink('/dashboard/settings')}
-              <Link href="/dashboard/settings#automations" className="sidenav-sublink">
+              <Link
+                href="/dashboard/settings#automations"
+                className="sidenav-sublink"
+                // Already on Settings: switch the tab directly rather than
+                // relying on the URL changing. Next navigates with pushState,
+                // which never fires hashchange — and if the hash is already
+                // #automations (clicking the tab writes it there) there is no
+                // change to observe at all. Both cases made this link do
+                // nothing. See lib/nav-helpers.
+                onClick={(event) => {
+                  if (pathname !== '/dashboard/settings') return;
+                  event.preventDefault();
+                  history.replaceState(null, '', '/dashboard/settings#automations');
+                  window.dispatchEvent(settingsTabEvent('automations'));
+                }}
+              >
                 <span className="sidenav-subtick" aria-hidden="true" />
                 Automations
               </Link>

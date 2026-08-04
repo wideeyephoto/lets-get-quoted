@@ -17,6 +17,26 @@ export function resolveTabForHash(tabs: TabAnchors[], rawHash: string | null | u
 }
 
 /**
+ * How a link elsewhere in the app asks the Settings page to open a tab.
+ *
+ * A plain `#hash` link cannot do it, and the reason is not obvious: Next's
+ * <Link> navigates with history.pushState, which does NOT fire `hashchange`. So
+ * a sidebar link to /dashboard/settings#automations switched the tab when you
+ * arrived from another page (fresh mount, hash read once) and did nothing at all
+ * when you were already on Settings. Worse, clicking a tab writes its id into
+ * the hash via replaceState — so once you had opened Automations, the URL
+ * already said #automations and the link produced no URL change whatsoever.
+ *
+ * The event carries the intent explicitly instead of hoping a URL change is
+ * observable.
+ */
+export const SETTINGS_TAB_EVENT = 'lgq:settings-tab';
+
+export function settingsTabEvent(hash: string): CustomEvent<string> {
+  return new CustomEvent<string>(SETTINGS_TAB_EVENT, { detail: hash.replace(/^#/, '') });
+}
+
+/**
  * Whether a create form (e.g. jobs `?new`, leads `?add`) should render open:
  * always when the list is empty, otherwise only when the flag is present in the
  * URL (any value, including empty string; absent means undefined).

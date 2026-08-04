@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isSectionNew, markNavSeen, parseNavSeen, resolveTabForHash, shouldAutoOpenCreate } from '@/lib/nav-helpers';
+import { isSectionNew, markNavSeen, parseNavSeen, resolveTabForHash, shouldAutoOpenCreate, settingsTabEvent, SETTINGS_TAB_EVENT } from '@/lib/nav-helpers';
 
 // Mirrors the real settings tab config (id + the section ids each tab owns).
 const TABS = [
@@ -128,5 +128,25 @@ describe('nav "New" badges', () => {
     it('drops entries that are not timestamps', () => {
       expect(parseNavSeen(JSON.stringify({ a: 1, b: null, c: '', d: NEW }))).toEqual({ d: NEW });
     });
+  });
+});
+
+describe('settingsTabEvent', () => {
+  it('carries the hash without the leading #', () => {
+    expect(settingsTabEvent('#automations').detail).toBe('automations');
+    expect(settingsTabEvent('automations').detail).toBe('automations');
+  });
+
+  it('uses one agreed event name on both ends', () => {
+    expect(settingsTabEvent('automations').type).toBe(SETTINGS_TAB_EVENT);
+  });
+
+  it('resolves to a real tab, so the link and the tabs agree', () => {
+    // The bug this fixes: the sidebar linked to #automations and the tab
+    // switched only on a fresh mount. Next navigates with pushState, which
+    // never fires hashchange, and clicking the tab writes #automations into the
+    // URL — so from inside Settings there was often no URL change at all.
+    const tabs = [{ id: 'account' }, { id: 'payments' }, { id: 'automations' }, { id: 'business' }];
+    expect(resolveTabForHash(tabs, settingsTabEvent('#automations').detail)).toBe('automations');
   });
 });
