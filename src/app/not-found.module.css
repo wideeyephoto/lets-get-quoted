@@ -1,0 +1,9 @@
+/* Let's Get Quoted's own 404. Layout only — colour comes from the shared tokens
+   and the buttons from the global .btn classes, so this flips with the theme
+   instead of pinning its own surface. */
+.shell { width: min(560px, calc(100% - 2rem)); margin: 0 auto; padding: clamp(3rem, 12vh, 7rem) 0 5rem; }
+.card { display: grid; gap: 1rem; justify-items: start; }
+.code { margin: 0; font-size: .82rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--mute-t55); }
+.title { margin: 0; font-size: clamp(1.9rem, 5vw, 2.75rem); line-height: 1.1; text-wrap: balance; }
+.body { margin: 0; max-width: 46ch; line-height: 1.7; color: rgba(var(--tint), .72); }
+.actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: .5rem; }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { normalizeSupabaseUrl } from '@/lib/supabase-url';
 import { buildCsp, cspHeaderName, generateNonce } from '@/lib/csp';
+import { resolveTenantHost } from '@/lib/tenant-host';
 
 export async function middleware(request: NextRequest) {
   // One nonce per request. It goes on the REQUEST headers so Next can read it
@@ -20,12 +21,16 @@ export async function middleware(request: NextRequest) {
     res.headers.set(cspHeader, csp);
     return res;
   };
-  const hostname = (request.headers.get('x-forwarded-host') || request.headers.get('host') || '').split(':')[0].toLowerCase();
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
-  const reservedHosts = new Set([rootDomain, `www.${rootDomain}`, `app.${rootDomain}`]);
+  // Shared with the 404 page, which has to reach the same verdict about whose
+  // host this is — see lib/tenant-host.
+  const tenant = resolveTenantHost(
+    request.headers.get('x-forwarded-host') || request.headers.get('host'),
+    rootDomain,
+  );
 
-  if (hostname.endsWith(`.${rootDomain}`) && !reservedHosts.has(hostname)) {
-    const subdomain = hostname.slice(0, -(rootDomain.length + 1));
+  if (tenant.kind === 'subdomain') {
+    const subdomain = tenant.subdomain;
     const publicSiteUrl = request.nextUrl.clone();
     // Preserve sub-paths (e.g. /blog/[slug]) so a tenant host serves more than
     // just the homepage; '/' maps to the /site/[subdomain] index route.
@@ -41,12 +46,11 @@ export async function middleware(request: NextRequest) {
     return applyCsp(NextResponse.rewrite(publicSiteUrl, { request: { headers: requestHeaders } }));
   }
 
-  const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
-  if (hostname && !isLocalHost && !reservedHosts.has(hostname)) {
+  if (tenant.kind === 'customDomain') {
     const customSiteUrl = request.nextUrl.clone();
     // Preserve sub-paths (e.g. /blog/[slug]); '/' maps to the site-domain index.
     const suffix = request.nextUrl.pathname === '/' ? '' : request.nextUrl.pathname;
-    customSiteUrl.pathname = `/site-domain/${encodeURIComponent(hostname)}${suffix}`;
+    customSiteUrl.pathname = `/site-domain/${encodeURIComponent(tenant.domain)}${suffix}`;
     const requestHeaders = new Headers(request.headers);
     requestHeaders.delete('x-lgq-standalone-site');
     requestHeaders.set('x-lgq-standalone-site', '1');
