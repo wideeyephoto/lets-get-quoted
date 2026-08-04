@@ -6,6 +6,8 @@ import { computeInvoiceTotals, type Invoice, type InvoiceItem } from './invoices
 import type { Lead } from './leads';
 import { formatMoney } from './jobs';
 import { buildUnsubscribePageUrl, buildUnsubscribeOneClickUrl } from './email-suppression';
+import { contractorFrom, renderBrandedEmail, type EmailBrand } from '@/emails/brand';
+import { loadEmailBrand, nameOnlyBrand } from './email-brand';
 import type { DailyDigest } from './daily-digest';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -27,6 +29,30 @@ function listUnsubscribeHeaders(oneClickUrl: string): Record<string, string> {
     'List-Unsubscribe': `<${oneClickUrl}>`,
     'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
   };
+}
+
+/**
+ * The contractor's brand for a customer-facing email.
+ *
+ * With an accountId we can reach their colour, logo and — the one that matters
+ * most — the address a reply should go to. Without one we still put their NAME
+ * in the From line, which is most of what a customer needs to recognise it.
+ *
+ * Never throws: an email that failed to send because branding could not be
+ * loaded would be a far worse bug than one that looks plain.
+ */
+async function brandFor(input: { accountId?: string | null; businessName: string }): Promise<EmailBrand> {
+  if (!input.accountId) return nameOnlyBrand(input.businessName);
+  try {
+    return await loadEmailBrand(input.accountId, input.businessName);
+  } catch {
+    return nameOnlyBrand(input.businessName);
+  }
+}
+
+/** Replies reach the contractor when we know how; otherwise they reach us. */
+function replyAddress(brand: EmailBrand): string {
+  return brand.replyTo || 'hello@letsgetquoted.com';
 }
 
 // Resolve the account owner's login email — the contractor — for out-of-band
@@ -52,6 +78,7 @@ export interface SendInvoiceEmailInput {
   invoice: Invoice;
   items: InvoiceItem[];
   businessName: string;
+  accountId?: string;
   clientName: string;
   jobRef: string;
   recipientEmail: string;
@@ -71,7 +98,9 @@ export async function sendInvoiceEmail(input: SendInvoiceEmailInput): Promise<vo
 
     const totals = computeInvoiceTotals(input.items, Number(input.invoice.discount_percent) || 0, Number(input.invoice.tax_rate) || 0);
 
+    const brand = await brandFor(input);
     const emailHtml = generateInvoiceHtml({
+      brand,
       businessName: input.businessName,
       invoiceRef: input.invoice.ref,
       clientName: input.clientName,
@@ -108,11 +137,11 @@ export async function sendInvoiceEmail(input: SendInvoiceEmailInput): Promise<vo
     }
 
     const result = await resend.emails.send({
-      from: `hello@letsgetquoted.com`,
+      from: contractorFrom(brand.businessName),
       to: input.recipientEmail,
       subject: `Invoice ${input.invoice.ref} from ${input.businessName}`,
       html: emailHtml,
-      reply_to: `hello@letsgetquoted.com`,
+      reply_to: replyAddress(brand),
       attachments: pdfBuffer
         ? [
             {
@@ -139,6 +168,7 @@ export async function sendInvoiceEmail(input: SendInvoiceEmailInput): Promise<vo
 export interface SendClientQuoteEmailInput {
   recipientEmail: string;
   businessName: string;
+  accountId?: string;
   clientName: string;
   jobRef: string;
   quotedAmount: number;
@@ -158,16 +188,24 @@ export async function sendClientQuoteEmail(input: SendClientQuoteEmailInput): Pr
     throw new Error('Email provider is not configured.');
   }
 
-  const scheduleLine = input.includesScheduleOptions
-    ? `<p style="margin:0 0 12px;line-height:1.5">You can also pick a start date right on your quote page.</p>`
-    : '';
+  const brand = await brandFor(input);
+  const paragraphs = [formatMoney(input.quotedAmount)];
+  if (input.includesScheduleOptions) paragraphs.push('You can also pick a start date right on your quote page.');
+  paragraphs.push('Review the full details and approve your quote online — no login needed.');
 
   const result = await resend.emails.send({
-    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    from: contractorFrom(brand.businessName),
     to: input.recipientEmail,
     subject: `Your quote ${input.jobRef} from ${input.businessName}`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#b45309;font-weight:700;letter-spacing:0.04em">YOUR QUOTE</p><h1 style="font-size:24px;margin:0 0 12px">${escapeHtml(input.clientName)}, here's your quote from ${escapeHtml(input.businessName)}</h1><p style="margin:0 0 12px;font-size:18px"><strong>${escapeHtml(formatMoney(input.quotedAmount))}</strong></p>${scheduleLine}<p style="margin:0 0 20px;line-height:1.5">Review the full details and approve your quote online — no login needed.</p><p><a href="${escapeHtml(input.quoteUrl)}" style="display:inline-block;padding:12px 18px;background:#172033;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">View &amp; approve your quote</a></p><p style="margin-top:28px;color:#6b7280;font-size:13px">${escapeHtml(input.businessName)} · Let's Get Quoted</p></div>`,
-    reply_to: 'hello@letsgetquoted.com',
+    html: renderBrandedEmail({
+      brand,
+      preheader: `${formatMoney(input.quotedAmount)} · quote ${input.jobRef}`,
+      eyebrow: 'Your quote',
+      heading: `${input.clientName}, here is your quote`,
+      paragraphs,
+      cta: { label: 'View & approve your quote', url: input.quoteUrl },
+    }),
+    reply_to: replyAddress(brand),
   });
 
   if (result.error) {
@@ -387,17 +425,26 @@ export async function sendQuoteFollowupEmail(input: {
   businessName: string;
   clientName: string;
   url: string;
+  accountId?: string;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
   }
 
+  const brand = await brandFor(input);
   const result = await resend.emails.send({
-    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    from: contractorFrom(brand.businessName),
     to: input.recipientEmail,
     subject: `Still thinking it over? Your quote from ${input.businessName}`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#b45309;font-weight:700;letter-spacing:0.04em">YOUR QUOTE</p><h1 style="font-size:24px;margin:0 0 12px">${escapeHtml(input.clientName)}, ready to move forward?</h1><p style="margin:0 0 20px;line-height:1.5">Just checking in on your quote from ${escapeHtml(input.businessName)}. When you're ready, you can review and approve it online — no login needed.</p><p><a href="${escapeHtml(input.url)}" style="display:inline-block;padding:12px 18px;background:#172033;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">View &amp; approve your quote</a></p><p style="margin-top:28px;color:#6b7280;font-size:13px">${escapeHtml(input.businessName)} · Let's Get Quoted</p></div>`,
-    reply_to: 'hello@letsgetquoted.com',
+    html: renderBrandedEmail({
+      brand,
+      preheader: `Your quote from ${input.businessName} is still open`,
+      eyebrow: 'Your quote',
+      heading: `${input.clientName}, ready to move forward?`,
+      paragraphs: [`Just checking in on your quote from ${input.businessName}. When you are ready, you can review and approve it online — no login needed.`],
+      cta: { label: 'View & approve your quote', url: input.url },
+    }),
+    reply_to: replyAddress(brand),
   });
 
   if (result.error) {
@@ -422,14 +469,23 @@ export async function sendReviewRequestEmail(input: {
     throw new Error('Email provider is not configured.');
   }
 
+  const brand = await brandFor(input);
   const unsubscribeUrl = buildUnsubscribePageUrl(input.accountId, input.recipientEmail);
   const oneClickUrl = buildUnsubscribeOneClickUrl(input.accountId, input.recipientEmail);
   const result = await resend.emails.send({
-    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    from: contractorFrom(brand.businessName),
     to: input.recipientEmail,
     subject: `How did we do? A quick review for ${input.businessName}`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#b45309;font-weight:700;letter-spacing:0.04em">THANK YOU</p><h1 style="font-size:24px;margin:0 0 12px">${escapeHtml(input.clientName)}, thanks for choosing ${escapeHtml(input.businessName)}</h1><p style="margin:0 0 20px;line-height:1.5">Would you take a moment to leave an honest review? For a small business, a few words from a real customer makes all the difference.</p><p><a href="${escapeHtml(input.reviewUrl)}" style="display:inline-block;padding:12px 18px;background:#172033;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">Leave a review</a></p>${marketingFooter(input.businessName, input.mailingAddress, unsubscribeUrl)}</div>`,
-    reply_to: 'hello@letsgetquoted.com',
+    html: renderBrandedEmail({
+      brand,
+      preheader: `A quick review for ${input.businessName}`,
+      eyebrow: 'Thank you',
+      heading: `${input.clientName}, thanks for choosing ${input.businessName}`,
+      paragraphs: ['Would you take a moment to leave an honest review? For a small business, a few words from a real customer makes all the difference.'],
+      cta: { label: 'Leave a review', url: input.reviewUrl },
+      footerHtml: marketingFooter(input.businessName, input.mailingAddress, unsubscribeUrl),
+    }),
+    reply_to: replyAddress(brand),
     headers: listUnsubscribeHeaders(oneClickUrl),
   });
 
@@ -455,14 +511,23 @@ export async function sendRebookInviteEmail(input: {
     throw new Error('Email provider is not configured.');
   }
 
+  const brand = await brandFor(input);
   const unsubscribeUrl = buildUnsubscribePageUrl(input.accountId, input.recipientEmail);
   const oneClickUrl = buildUnsubscribeOneClickUrl(input.accountId, input.recipientEmail);
   const result = await resend.emails.send({
-    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    from: contractorFrom(brand.businessName),
     to: input.recipientEmail,
     subject: `Ready to book ${input.businessName} again?`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#b45309;font-weight:700;letter-spacing:0.04em">WE'D LOVE TO HELP AGAIN</p><h1 style="font-size:24px;margin:0 0 12px">${escapeHtml(input.clientName)}, it's been a while!</h1><p style="margin:0 0 20px;line-height:1.5">Thanks again for trusting ${escapeHtml(input.businessName)}. Whenever you're ready for your next project, you can grab a time online in a couple of taps — no phone tag.</p><p><a href="${escapeHtml(input.url)}" style="display:inline-block;padding:12px 18px;background:#172033;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">Book us again</a></p>${marketingFooter(input.businessName, input.mailingAddress, unsubscribeUrl)}</div>`,
-    reply_to: 'hello@letsgetquoted.com',
+    html: renderBrandedEmail({
+      brand,
+      preheader: `Book ${input.businessName} again in a couple of taps`,
+      eyebrow: 'We would love to help again',
+      heading: `${input.clientName}, it has been a while!`,
+      paragraphs: [`Thanks again for trusting ${input.businessName}. Whenever you are ready for your next project, you can grab a time online in a couple of taps — no phone tag.`],
+      cta: { label: 'Book us again', url: input.url },
+      footerHtml: marketingFooter(input.businessName, input.mailingAddress, unsubscribeUrl),
+    }),
+    reply_to: replyAddress(brand),
     headers: listUnsubscribeHeaders(oneClickUrl),
   });
 
@@ -482,21 +547,29 @@ export async function sendAppointmentReminderEmail(input: {
   whenLabel: string;
   address: string | null;
   jobRef: string;
+  accountId?: string;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
   }
 
-  const addressLine = input.address
-    ? `<p style="margin:0 0 12px;line-height:1.5"><strong>Where:</strong> ${escapeHtml(input.address)}</p>`
-    : '';
+  const brand = await brandFor(input);
+  const paragraphs = [`When: ${input.whenLabel}`];
+  if (input.address) paragraphs.push(`Where: ${input.address}`);
+  paragraphs.push(`${input.businessName} is looking forward to seeing you. Need to reschedule? Just reply to this email or give us a call.`);
 
   const result = await resend.emails.send({
-    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    from: contractorFrom(brand.businessName),
     to: input.recipientEmail,
     subject: `Reminder: your appointment with ${input.businessName}`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#b45309;font-weight:700;letter-spacing:0.04em">APPOINTMENT REMINDER</p><h1 style="font-size:24px;margin:0 0 12px">${escapeHtml(input.clientName)}, your appointment is coming up</h1><p style="margin:0 0 12px;line-height:1.5"><strong>When:</strong> ${escapeHtml(input.whenLabel)}</p>${addressLine}<p style="margin:0 0 20px;line-height:1.5">${escapeHtml(input.businessName)} is looking forward to seeing you. Need to reschedule? Just reply to this email or give us a call.</p><p style="margin-top:24px;color:#6b7280;font-size:13px">${escapeHtml(input.businessName)} · Let's Get Quoted</p></div>`,
-    reply_to: 'hello@letsgetquoted.com',
+    html: renderBrandedEmail({
+      brand,
+      preheader: input.whenLabel,
+      eyebrow: 'Appointment reminder',
+      heading: `${input.clientName}, your appointment is coming up`,
+      paragraphs,
+    }),
+    reply_to: replyAddress(brand),
   });
 
   if (result.error) {
@@ -515,24 +588,30 @@ export async function sendBookingConfirmationEmail(input: {
   whenLabel: string;
   serviceName: string | null;
   address: string | null;
+  accountId?: string;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
   }
 
-  const serviceLine = input.serviceName
-    ? `<p style="margin:0 0 12px;line-height:1.5"><strong>Service:</strong> ${escapeHtml(input.serviceName)}</p>`
-    : '';
-  const addressLine = input.address
-    ? `<p style="margin:0 0 12px;line-height:1.5"><strong>Where:</strong> ${escapeHtml(input.address)}</p>`
-    : '';
+  const brand = await brandFor(input);
+  const paragraphs = [`Requested time: ${input.whenLabel}`];
+  if (input.serviceName) paragraphs.push(`Service: ${input.serviceName}`);
+  if (input.address) paragraphs.push(`Where: ${input.address}`);
+  paragraphs.push(`${input.businessName} will reach out shortly to confirm. This time is not locked in until they do — if anything changes, just reply to this email.`);
 
   const result = await resend.emails.send({
-    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    from: contractorFrom(brand.businessName),
     to: input.recipientEmail,
     subject: `We got your booking request — ${input.businessName}`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#0f766e;font-weight:700;letter-spacing:0.04em">BOOKING REQUESTED</p><h1 style="font-size:24px;margin:0 0 12px">${escapeHtml(input.clientName)}, we got your request 🎉</h1><p style="margin:0 0 12px;line-height:1.5"><strong>Requested time:</strong> ${escapeHtml(input.whenLabel)}</p>${serviceLine}${addressLine}<p style="margin:0 0 20px;line-height:1.5">${escapeHtml(input.businessName)} will reach out shortly to confirm. This time isn't locked in until they do — if anything changes, just reply to this email.</p><p style="margin-top:24px;color:#6b7280;font-size:13px">${escapeHtml(input.businessName)} · Let's Get Quoted</p></div>`,
-    reply_to: 'hello@letsgetquoted.com',
+    html: renderBrandedEmail({
+      brand,
+      preheader: `Requested ${input.whenLabel}`,
+      eyebrow: 'Booking requested',
+      heading: `${input.clientName}, we got your request`,
+      paragraphs,
+    }),
+    reply_to: replyAddress(brand),
   });
 
   if (result.error) {
@@ -556,17 +635,28 @@ export async function sendClientPortalLinkEmail(input: {
   recipientEmail: string;
   businessName: string;
   linkUrl: string;
+  accountId?: string;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
   }
 
+  const brand = await brandFor(input);
   const result = await resend.emails.send({
-    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    from: contractorFrom(brand.businessName),
     to: input.recipientEmail,
     subject: `Your jobs with ${input.businessName}`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><h1 style="font-size:24px;margin:0 0 12px">Here's your link</h1><p style="margin:0 0 20px;line-height:1.5">This opens everything ${escapeHtml(input.businessName)} has done for you — past jobs, what's covered by warranty, and how long you've got left on it.</p><p><a href="${escapeHtml(input.linkUrl)}" style="display:inline-block;padding:12px 18px;background:#172033;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">Open my jobs</a></p><p style="margin-top:18px;color:#6b7280;font-size:13px;line-height:1.5">The link works for 90 days and only opens your own records. Don't forward it — anyone with it can see your job history. If you didn't ask for this, you can ignore it; nothing has changed on your account.</p><p style="margin-top:24px;color:#6b7280;font-size:13px">${escapeHtml(input.businessName)} · Let's Get Quoted</p></div>`,
-    reply_to: 'hello@letsgetquoted.com',
+    html: renderBrandedEmail({
+      brand,
+      preheader: `Your job history with ${input.businessName}`,
+      heading: 'Here is your link',
+      paragraphs: [
+        `This opens everything ${input.businessName} has done for you — past jobs, what is covered by warranty, and how long you have left on it.`,
+      ],
+      cta: { label: 'Open my jobs', url: input.linkUrl },
+      footerHtml: `<p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:#6b7280">The link works for 90 days and only opens your own records. Do not forward it — anyone with it can see your job history. If you did not ask for this, you can ignore it; nothing has changed on your account.</p>`,
+    }),
+    reply_to: replyAddress(brand),
   });
 
   if (result.error) {
@@ -580,17 +670,29 @@ export async function sendCardUpdateEmail(input: {
   businessName: string;
   planTitle: string;
   url: string;
+  accountId?: string;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
   }
 
+  const brand = await brandFor(input);
   const result = await resend.emails.send({
-    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    from: contractorFrom(brand.businessName),
     to: input.recipientEmail,
     subject: `Action needed: update your card for ${input.businessName}`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#dc2626;font-weight:700;letter-spacing:0.04em">ACTION NEEDED</p><h1 style="font-size:24px;margin:0 0 12px">Your card was declined</h1><p style="margin:0 0 12px;line-height:1.5">We couldn't process your recurring payment${input.planTitle ? ` for ${escapeHtml(input.planTitle)}` : ''} to ${escapeHtml(input.businessName)} — your saved card was declined (it may have expired or been replaced). Update your card to keep your service going. <strong>No charge happens until you do.</strong></p><p><a href="${escapeHtml(input.url)}" style="display:inline-block;padding:12px 18px;background:#172033;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">Update my card securely</a></p><p style="margin-top:18px;color:#6b7280;font-size:13px;line-height:1.5">Your card is stored securely by Stripe. You can ask ${escapeHtml(input.businessName)} to stop automatic billing at any time.</p><p style="margin-top:24px;color:#6b7280;font-size:13px">${escapeHtml(input.businessName)} · Let's Get Quoted</p></div>`,
-    reply_to: 'hello@letsgetquoted.com',
+    html: renderBrandedEmail({
+      brand,
+      preheader: 'Your saved card was declined — no charge until you update it',
+      eyebrow: 'Action needed',
+      heading: 'Your card was declined',
+      paragraphs: [
+        `We could not process your recurring payment${input.planTitle ? ` for ${input.planTitle}` : ''} to ${input.businessName} — your saved card was declined (it may have expired or been replaced). Update your card to keep your service going. No charge happens until you do.`,
+      ],
+      cta: { label: 'Update my card securely', url: input.url },
+      footerHtml: `<p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:#6b7280">Your card is stored securely by Stripe. You can ask ${escapeHtml(input.businessName)} to stop automatic billing at any time.</p>`,
+    }),
+    reply_to: replyAddress(brand),
   });
 
   if (result.error) {
@@ -607,17 +709,29 @@ export async function sendCardSetupEmail(input: {
   businessName: string;
   planTitle: string;
   url: string;
+  accountId?: string;
 }): Promise<void> {
   if (!process.env.RESEND_API_KEY) {
     throw new Error('Email provider is not configured.');
   }
 
+  const brand = await brandFor(input);
   const result = await resend.emails.send({
-    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    from: contractorFrom(brand.businessName),
     to: input.recipientEmail,
     subject: `Save your card for ${input.businessName}`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033"><p style="color:#b45309;font-weight:700;letter-spacing:0.04em">AUTOMATIC BILLING</p><h1 style="font-size:24px;margin:0 0 12px">Save your card for ${escapeHtml(input.businessName)}</h1><p style="margin:0 0 12px;line-height:1.5">${escapeHtml(input.businessName)} set up automatic billing for your recurring service${input.planTitle ? ` (${escapeHtml(input.planTitle)})` : ''}. Save your card once and each visit is billed automatically — <strong>no charge happens now</strong>.</p><p><a href="${escapeHtml(input.url)}" style="display:inline-block;padding:12px 18px;background:#172033;color:#fff;text-decoration:none;font-weight:700;border-radius:6px">Save my card securely</a></p><p style="margin-top:18px;color:#6b7280;font-size:13px;line-height:1.5">Your card is stored securely by Stripe. You can ask ${escapeHtml(input.businessName)} to stop automatic billing at any time.</p><p style="margin-top:24px;color:#6b7280;font-size:13px">${escapeHtml(input.businessName)} · Let's Get Quoted</p></div>`,
-    reply_to: 'hello@letsgetquoted.com',
+    html: renderBrandedEmail({
+      brand,
+      preheader: `Save a card for ${input.businessName} — no charge now`,
+      eyebrow: 'Automatic billing',
+      heading: `Save your card for ${input.businessName}`,
+      paragraphs: [
+        `${input.businessName} set up automatic billing for your recurring service${input.planTitle ? ` (${input.planTitle})` : ''}. Save your card once and each visit is billed automatically — no charge happens now.`,
+      ],
+      cta: { label: 'Save my card securely', url: input.url },
+      footerHtml: `<p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:#6b7280">Your card is stored securely by Stripe. You can ask ${escapeHtml(input.businessName)} to stop automatic billing at any time.</p>`,
+    }),
+    reply_to: replyAddress(brand),
   });
 
   if (result.error) {
@@ -649,18 +763,22 @@ export async function sendCampaignEmail(input: {
     .map((block) => `<p style="margin:0 0 14px;line-height:1.6">${escapeHtml(block).replace(/\n/g, '<br/>')}</p>`)
     .join('');
 
-  // Show the business as the sender name; the verified domain stays letsgetquoted.com.
-  // Strip characters that would break the From header rather than risk a rejection.
-  const fromName = input.businessName.replace(/["<>,]/g, '').trim() || "Let's Get Quoted";
-
+  const brand = await brandFor(input);
   const unsubscribeUrl = buildUnsubscribePageUrl(input.accountId, input.recipientEmail);
   const oneClickUrl = buildUnsubscribeOneClickUrl(input.accountId, input.recipientEmail);
   const result = await resend.emails.send({
-    from: `${fromName} <hello@letsgetquoted.com>`,
+    from: contractorFrom(brand.businessName),
     to: input.recipientEmail,
     subject: input.subject,
-    html: `<div style="font-family:Arial,sans-serif;max-width:620px;margin:auto;color:#172033">${paragraphs}${marketingFooter(input.businessName, input.mailingAddress, unsubscribeUrl)}</div>`,
-    reply_to: 'hello@letsgetquoted.com',
+    // The owner wrote this themselves, so there is no heading of ours to put
+    // above it — their words start the email.
+    html: renderBrandedEmail({
+      brand,
+      heading: input.subject,
+      bodyHtml: paragraphs,
+      footerHtml: marketingFooter(input.businessName, input.mailingAddress, unsubscribeUrl),
+    }),
+    reply_to: replyAddress(brand),
     headers: listUnsubscribeHeaders(oneClickUrl),
   });
 

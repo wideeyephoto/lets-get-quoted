@@ -48,6 +48,7 @@ export async function requestPortalLinkAction(subdomain: string, formData: FormD
         recipientEmail: email,
         businessName: site.company_name || account.business_name || 'your contractor',
         linkUrl: `${origin}/portal/view/${issued.token}`,
+        accountId: site.account_id,
       });
     }
   } catch (error) {

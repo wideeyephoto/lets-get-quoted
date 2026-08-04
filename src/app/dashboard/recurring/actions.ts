@@ -150,7 +150,7 @@ async function sendCardLink(
 
   if (plan.client_email) {
     try {
-      await sendCardSetupEmail({ recipientEmail: plan.client_email, businessName, planTitle: plan.title, url });
+      await sendCardSetupEmail({ recipientEmail: plan.client_email, businessName, planTitle: plan.title, url, accountId });
       anySent = true;
     } catch (error) {
       console.error('Card setup email failed:', error instanceof Error ? error.message : error);

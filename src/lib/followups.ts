@@ -153,7 +153,7 @@ export async function runStalledQuoteFollowups(): Promise<FollowupRunSummary & {
         await sendQuoteFollowupSms({ phone: normalizedPhone, businessName, clientName: firstName, url, accountId: link.account_id });
         channel = 'sms';
       } else {
-        await sendQuoteFollowupEmail({ recipientEmail: email as string, businessName, clientName: firstName, url });
+        await sendQuoteFollowupEmail({ recipientEmail: email as string, businessName, clientName: firstName, url, accountId: link.account_id });
         channel = 'email';
       }
 

@@ -1,4 +1,23 @@
+import { escapeHtml, renderBrandedEmail, safeAccent, type EmailBrand } from './brand';
+
+// The invoice email: the branded shell, with the line items and totals as its
+// body.
+//
+// Two things were wrong with the version this replaces, and both were invisible
+// unless you opened it in the wrong client:
+//
+//   - The totals were laid out with display:flex. Outlook renders through Word
+//     and ignores flex entirely, so every "Subtotal / Discount / Tax / Total"
+//     row collapsed into a single column there. It is a table now.
+//   - Business name, client name and every line-item description went in
+//     unescaped. An ampersand in a company name is common; a "<" in a
+//     description would eat the rest of the email.
+//
+// The footer used to promise "Questions? Please contact ${businessName}
+// directly" while Reply-To pointed at us. The shell makes that line true.
+
 export function generateInvoiceHtml(params: {
+  brand: EmailBrand;
   businessName: string;
   invoiceRef: string;
   clientName: string;
@@ -9,92 +28,56 @@ export function generateInvoiceHtml(params: {
   discountAmount?: number;
   taxRate?: number;
   taxAmount?: number;
-  items: Array<{
-    description: string;
-    amount: number;
-  }>;
+  items: Array<{ description: string; amount: number }>;
   invoiceLink: string;
 }): string {
-  const formatMoney = (n: number) => '$' + Math.round(n).toLocaleString();
+  const money = (n: number) => '$' + Math.round(n).toLocaleString();
+  const accent = safeAccent(params.brand.accent);
   const subtotal = params.subtotal ?? params.total;
   const discountAmount = params.discountAmount ?? 0;
   const taxAmount = params.taxAmount ?? 0;
-  const summaryRow = (label: string, value: string, strong = false) =>
-    `<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:${strong ? '18px' : '14px'};color:${strong ? '#000' : '#555'};font-weight:${strong ? 'bold' : 'normal'};">${strong ? `<div style="font-weight:bold;font-size:15px;">${label}</div>` : `<div>${label}</div>`}<div>${value}</div></div>`;
-  const breakdownHtml = discountAmount > 0 || taxAmount > 0
-    ? summaryRow('Subtotal', formatMoney(subtotal)) +
-      (discountAmount > 0 ? summaryRow(`Discount (${params.discountPercent ?? 0}%)`, '-' + formatMoney(discountAmount)) : '') +
-      (taxAmount > 0 ? summaryRow(`Tax (${params.taxRate ?? 0}%)`, formatMoney(taxAmount)) : '')
+
+  const summaryRow = (label: string, value: string, strong = false) => `
+    <tr>
+      <td style="padding:${strong ? '10px 0 0' : '6px 0'};font-size:${strong ? '15px' : '13px'};color:${strong ? '#1c2230' : '#6b7280'};font-weight:${strong ? '700' : '400'}">${escapeHtml(label)}</td>
+      <td align="right" style="padding:${strong ? '10px 0 0' : '6px 0'};font-size:${strong ? '18px' : '13px'};color:${strong ? '#1c2230' : '#6b7280'};font-weight:${strong ? '700' : '400'}">${escapeHtml(value)}</td>
+    </tr>`;
+
+  const breakdown = discountAmount > 0 || taxAmount > 0
+    ? summaryRow('Subtotal', money(subtotal)) +
+      (discountAmount > 0 ? summaryRow(`Discount (${params.discountPercent ?? 0}%)`, '-' + money(discountAmount)) : '') +
+      (taxAmount > 0 ? summaryRow(`Tax (${params.taxRate ?? 0}%)`, money(taxAmount)) : '')
     : '';
 
-  const itemsHtml = params.items
-    .map(
-      (item) => `
-    <tr style="border-bottom: 1px solid #f0f0f0;">
-      <td style="padding: 12px 0; font-size: 13px; color: #333;">${item.description}</td>
-      <td style="padding: 12px 0; text-align: right; font-size: 13px; color: #333;">${formatMoney(item.amount)}</td>
-    </tr>
-  `
-    )
+  const itemRows = params.items
+    .map((item) => `
+      <tr>
+        <td style="padding:10px 0;border-bottom:1px solid #f0f2f5;font-size:14px;color:#1c2230">${escapeHtml(item.description)}</td>
+        <td align="right" style="padding:10px 0;border-bottom:1px solid #f0f2f5;font-size:14px;color:#1c2230;white-space:nowrap">${escapeHtml(money(item.amount))}</td>
+      </tr>`)
     .join('');
 
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Invoice ${params.invoiceRef}</title>
-</head>
-<body style="font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-    <!-- Header -->
-    <div style="margin-bottom: 40px;">
-      <h2 style="font-size: 24px; font-weight: bold; margin: 0 0 8px 0;">${params.businessName}</h2>
-      <p style="margin: 0; color: #666; font-size: 14px;">Invoice ${params.invoiceRef}</p>
-    </div>
+  const bodyHtml = `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px">
+      <tr>
+        <td style="padding-bottom:8px;border-bottom:2px solid #e6e9ef;font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#6b7280">Description</td>
+        <td align="right" style="padding-bottom:8px;border-bottom:2px solid #e6e9ef;font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#6b7280">Amount</td>
+      </tr>
+      ${itemRows}
+    </table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px;border-top:1px solid #e6e9ef">
+      ${breakdown}
+      ${summaryRow('Total', money(params.total), true)}
+    </table>`;
 
-    <!-- Bill To -->
-    <div style="margin-bottom: 40px;">
-      <p style="margin: 0 0 8px 0; font-weight: bold; font-size: 14px;">Bill to:</p>
-      <p style="margin: 0; color: #666; font-size: 14px;">${params.clientName}</p>
-      <p style="margin: 4px 0 0 0; color: #999; font-size: 13px;">Job ${params.jobRef}</p>
-    </div>
-
-    <!-- Items Table -->
-    <div style="margin-bottom: 40px;">
-      <table style="width: 100%; border-collapse: collapse;">
-        <thead>
-          <tr style="border-bottom: 2px solid #eee; padding-bottom: 12px; margin-bottom: 12px;">
-            <th style="text-align: left; font-weight: bold; font-size: 13px; padding-bottom: 12px; border-bottom: 2px solid #eee;">Description</th>
-            <th style="text-align: right; font-weight: bold; font-size: 13px; padding-bottom: 12px; border-bottom: 2px solid #eee;">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${itemsHtml}
-        </tbody>
-      </table>
-
-      <div style="margin-top: 16px; border-top: 1px solid #eee; padding-top: 12px;">
-        ${breakdownHtml}
-        ${summaryRow('Total', formatMoney(params.total), true)}
-      </div>
-    </div>
-
-    <hr style="border: none; border-top: 1px solid #eee; margin: 40px 0;" />
-
-    <!-- CTA -->
-    <div style="margin-bottom: 40px; text-align: center;">
-      <a href="${params.invoiceLink}" style="display: inline-block; padding: 12px 24px; background-color: #000; color: #fff; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px;">View Invoice</a>
-    </div>
-
-    <!-- Footer -->
-    <div style="margin-top: 60px; border-top: 1px solid #eee; padding-top: 20px;">
-      <p style="margin: 0; color: #999; font-size: 12px; text-align: center;">This invoice was sent from ${params.businessName} via Let&apos;s Get Quoted.</p>
-      <p style="margin: 8px 0 0 0; color: #999; font-size: 12px; text-align: center;">Questions? Please contact ${params.businessName} directly.</p>
-    </div>
-  </div>
-</body>
-</html>
-  `.trim();
+  return renderBrandedEmail({
+    brand: params.brand,
+    preheader: `Invoice ${params.invoiceRef} · ${money(params.total)}`,
+    eyebrow: `Invoice ${params.invoiceRef}`,
+    heading: `${params.clientName}, here is your invoice`,
+    paragraphs: [`Job ${params.jobRef} · ${money(params.total)} due`],
+    bodyHtml,
+    cta: { label: 'View invoice', url: params.invoiceLink },
+    footerHtml: `<p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:#6b7280">A PDF copy is attached. <span style="color:${accent}">&#9679;</span> Invoice ${escapeHtml(params.invoiceRef)}</p>`,
+  });
 }

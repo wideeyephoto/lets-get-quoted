@@ -436,6 +436,7 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
         whenLabel: requested,
         serviceName: input.serviceName,
         address: input.address,
+        accountId,
       });
     } catch (error) {
       console.error(`Booking confirmation email failed for account ${accountId}:`, error instanceof Error ? error.message : error);

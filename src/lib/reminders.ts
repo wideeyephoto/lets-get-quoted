@@ -124,7 +124,7 @@ export async function runAppointmentReminders(): Promise<ReminderRunSummary> {
         await sendAppointmentReminderSms({ phone, businessName, clientName: firstName, whenLabel, address: job.address, accountId: job.account_id });
         channel = 'sms';
       } else {
-        await sendAppointmentReminderEmail({ recipientEmail: email as string, businessName, clientName: firstName, whenLabel, address: job.address, jobRef: job.ref });
+        await sendAppointmentReminderEmail({ recipientEmail: email as string, businessName, clientName: firstName, whenLabel, address: job.address, jobRef: job.ref, accountId: job.account_id });
         channel = 'email';
       }
 

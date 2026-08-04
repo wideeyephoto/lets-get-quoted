@@ -127,6 +127,7 @@ export async function updateInvoiceStatusAction(jobId: string, invoiceId: string
           jobRef: job.ref,
           recipientEmail: job.client_email,
           origin,
+          accountId,
         });
         channel = 'email';
         sentTo = job.client_email;

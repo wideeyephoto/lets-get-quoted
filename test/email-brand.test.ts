@@ -1,0 +1,108 @@
+import { describe, it, expect } from 'vitest';
+import { contractorFrom, escapeHtml, onAccent, renderBrandedEmail, safeAccent, type EmailBrand } from '../src/emails/brand';
+
+const brand = (over: Partial<EmailBrand> = {}): EmailBrand => ({
+  businessName: 'BrokePipes',
+  accent: '#ff7a21',
+  logoUrl: null,
+  phone: '(248) 555-0100',
+  siteUrl: 'https://thisisit.letsgetquoted.com',
+  replyTo: 'brett@example.com',
+  ...over,
+});
+
+describe('contractorFrom', () => {
+  it('shows the contractor, sends from our verified domain', () => {
+    // The display name is theirs; the address stays ours because that is what
+    // SPF and DKIM sign. Sending as their own domain would fail auth.
+    expect(contractorFrom('BrokePipes')).toBe('BrokePipes <hello@letsgetquoted.com>');
+  });
+
+  it('strips characters that could split the header', () => {
+    expect(contractorFrom('Bad" <evil@example.com>')).toBe('Bad evil@example.com <hello@letsgetquoted.com>');
+    expect(contractorFrom('Line\r\nBreak')).toBe('LineBreak <hello@letsgetquoted.com>');
+  });
+
+  it('falls back to our own name rather than sending from an empty display name', () => {
+    expect(contractorFrom('')).toBe("Let's Get Quoted <hello@letsgetquoted.com>");
+    expect(contractorFrom('   ')).toBe("Let's Get Quoted <hello@letsgetquoted.com>");
+  });
+});
+
+describe('accent handling', () => {
+  it('only paints with a real 6-digit hex', () => {
+    expect(safeAccent('#ff7a21')).toBe('#ff7a21');
+    expect(safeAccent('red')).toBe('#172033');
+    expect(safeAccent('#fff')).toBe('#172033');
+    expect(safeAccent(null)).toBe('#172033');
+    // Would otherwise emit garbage straight into a style attribute.
+    expect(safeAccent('#fff;background:url(x)')).toBe('#172033');
+  });
+
+  it('picks readable button text for pale and dark accents', () => {
+    // A contractor who picks pale yellow must not get white-on-yellow.
+    expect(onAccent('#ffe066')).toBe('#1c2230');
+    expect(onAccent('#172033')).toBe('#ffffff');
+  });
+});
+
+describe('renderBrandedEmail', () => {
+  it('carries the contractor, not us, through the body', () => {
+    const html = renderBrandedEmail({ brand: brand(), heading: 'Your invoice is ready' });
+    expect(html).toContain('BrokePipes');
+    expect(html).toContain('#ff7a21');
+    expect(html).toContain('Reply to this email to reach BrokePipes directly.');
+    // One small attribution line is fine; the email must not read as ours.
+    expect((html.match(/Let&#39;s Get Quoted/g) ?? []).length).toBe(1);
+  });
+
+  it('uses a hosted logo when there is one, a wordmark when there is not', () => {
+    expect(renderBrandedEmail({ brand: brand(), heading: 'x' })).toContain('>BrokePipes<');
+    const withLogo = renderBrandedEmail({ brand: brand({ logoUrl: 'https://cdn.example.com/logo.png' }), heading: 'x' });
+    expect(withLogo).toContain('<img src="https://cdn.example.com/logo.png"');
+  });
+
+  it('never lays out with flexbox', () => {
+    // Outlook renders through Word and ignores flex outright — the old invoice
+    // email used display:flex for its totals, so they collapsed there.
+    const html = renderBrandedEmail({ brand: brand(), heading: 'x', cta: { label: 'View', url: 'https://x.test' } });
+    expect(html).not.toContain('display:flex');
+    expect(html).not.toContain('display: flex');
+  });
+
+  it('escapes contractor and customer text', () => {
+    const html = renderBrandedEmail({
+      brand: brand({ businessName: 'Bob <script>alert(1)</script>' }),
+      heading: 'Hi "Dana" & co',
+      paragraphs: ['5 > 3 & rising'],
+    });
+    expect(html).not.toContain('<script>');
+    expect(html).toContain('&lt;script&gt;');
+    expect(html).toContain('5 &gt; 3 &amp; rising');
+  });
+
+  it('includes a preheader so the preview is not just the business name again', () => {
+    const html = renderBrandedEmail({ brand: brand(), heading: 'x', preheader: 'Invoice INV-1042 for $450' });
+    expect(html).toContain('Invoice INV-1042 for $450');
+    expect(html).toMatch(/display:none;font-size:1px/);
+  });
+
+  it('omits contact details it does not have', () => {
+    const html = renderBrandedEmail({ brand: brand({ phone: null, siteUrl: null }), heading: 'x' });
+    expect(html).not.toContain('tel:');
+    expect(html).toContain('Sent by BrokePipes');
+  });
+
+  it('is a complete document', () => {
+    const html = renderBrandedEmail({ brand: brand(), heading: 'x' });
+    expect(html.startsWith('<!DOCTYPE html>')).toBe(true);
+    expect(html.trimEnd().endsWith('</html>')).toBe(true);
+  });
+});
+
+describe('escapeHtml', () => {
+  it('handles the characters that break an attribute', () => {
+    expect(escapeHtml(`<a href="x" onmouseover='y'>&`)).toBe('&lt;a href=&quot;x&quot; onmouseover=&#39;y&#39;&gt;&amp;');
+    expect(escapeHtml(null)).toBe('');
+  });
+});

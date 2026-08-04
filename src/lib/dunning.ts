@@ -163,7 +163,7 @@ async function notifyClientUpdateCard(admin: AdminClient, plan: RecurringPlan, b
     const url = await createCardSetupSession(plan, APP_ORIGIN);
     if (plan.client_email) {
       try {
-        await sendCardUpdateEmail({ recipientEmail: plan.client_email, businessName, planTitle: plan.title, url });
+        await sendCardUpdateEmail({ recipientEmail: plan.client_email, businessName, planTitle: plan.title, url, accountId: plan.account_id });
         reached = true;
       } catch (err) {
         console.error('Card update email failed:', err instanceof Error ? err.message : err);

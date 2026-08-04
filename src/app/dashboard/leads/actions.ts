@@ -392,6 +392,7 @@ export async function convertLeadAction(leadId: string, formData: FormData) {
         quotedAmount,
         quoteUrl: `${origin}/client/jobs/${token}`,
         includesScheduleOptions: quickBooking.hasInput,
+        accountId,
       });
       delivery = 'email';
     } catch (err) {
