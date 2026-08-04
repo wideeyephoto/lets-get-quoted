@@ -73,22 +73,24 @@ export async function updateBusinessBasicsAction(formData: FormData) {
  * The two numbers that decide what a job is really worth: what an hour of crew
  * time costs the business, and the margin below which the owner wants telling.
  */
-export async function updateCostSettingsAction(formData: FormData) {
+export async function setJobCostingAction(input: { burdenPct: number; minMarginPct: number }) {
   const { supabase, accountId } = await requireOwnerContext();
-  const pct = (value: FormDataEntryValue | null, max: number): number => {
-    const n = Number(String(value ?? '').trim());
+  // Clamped here rather than trusted from the client: a server action is a
+  // public endpoint, so "the caller" is not the form.
+  const pct = (value: unknown, max: number): number => {
+    const n = Number(value);
     return Number.isFinite(n) ? Math.min(max, Math.max(0, Math.round(n * 100) / 100)) : 0;
   };
 
   const { error } = await supabase
     .from('accounts')
     .update({
-      default_burden_pct: pct(formData.get('defaultBurdenPct'), 200),
-      min_margin_pct: pct(formData.get('minMarginPct'), 100),
+      default_burden_pct: pct(input.burdenPct, 200),
+      min_margin_pct: pct(input.minMarginPct, 100),
     })
     .eq('id', accountId);
 
-  if (error) throw new Error(error.message);
+  if (error) throw new Error('Could not save job costing.');
 
   revalidatePath('/dashboard/settings');
   revalidatePath('/dashboard/insights');

@@ -20157,3 +20157,89 @@ a.bset-card { color: inherit; text-decoration: none; }
   font-family: inherit; font-size: 0.84rem; font-weight: 600; cursor: pointer;
 }
 .intake-preview-compact:hover { border-color: rgba(255, 122, 33, 0.55); background: rgba(255, 122, 33, 0.1); }
+
+/* ── Job costing ─────────────────────────────────────────────────────────────
+   Two settings that were sharing a form and an abstract heading. One block
+   each, presets for people who don't know their number, and the arithmetic
+   shown live — a paragraph about payroll taxes never lands the way one worked
+   sum does. Prefixed .jc- and scoped under .jc-card. */
+.jc-card { display: grid; gap: 0.9rem; }
+.jc-block {
+  display: grid; gap: 0.7rem;
+  padding: 1rem 1.05rem;
+  border-radius: 16px;
+  border: 1px solid rgba(var(--tint), 0.12);
+  background: rgba(var(--tint), 0.03);
+}
+.jc-block-head { display: flex; align-items: flex-start; gap: 0.7rem; }
+.jc-block-head > div { display: grid; gap: 0.2rem; }
+.jc-block-head strong { font-size: 1.02rem; }
+.jc-block-head small { font-size: 0.82rem; line-height: 1.55; color: var(--mute-t50); }
+.jc-num {
+  display: grid; place-items: center;
+  width: 1.6rem; height: 1.6rem; flex: none; margin-top: 0.1rem;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 122, 33, 0.4);
+  background: rgba(255, 122, 33, 0.12);
+  color: var(--accent);
+  font-size: 0.78rem; font-weight: 800;
+}
+
+.jc-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
+.jc-preset {
+  min-height: 38px; padding: 0.4rem 0.9rem;
+  border-radius: 10px; border: 1px solid rgba(var(--tint), 0.16);
+  background: rgba(var(--tint), 0.05); color: var(--mute-t60);
+  font-family: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.jc-preset:hover { border-color: rgba(255, 122, 33, 0.45); color: var(--text); }
+.jc-preset.is-on { border-color: var(--accent); background: rgba(255, 122, 33, 0.16); color: var(--accent-ink); }
+.jc-custom {
+  display: inline-flex; align-items: center; gap: 0.25rem;
+  min-height: 38px; padding: 0 0.7rem 0 0.55rem;
+  border-radius: 10px; border: 1px dashed rgba(var(--tint), 0.24);
+  color: var(--mute-t45); font-size: 0.85rem;
+}
+.jc-custom input {
+  width: 4rem; min-height: 34px; padding: 0 0.3rem;
+  border: 0; background: none; color: var(--text);
+  font-family: inherit; font-size: 0.9rem; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.jc-custom input:focus-visible { outline: none; }
+.jc-custom:focus-within { border-style: solid; border-color: var(--accent); }
+
+/* The worked sum. This is the explanation. */
+.jc-math {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--tint), 0.1);
+  background: rgba(var(--shade), 0.2);
+}
+.jc-math-from { font-size: 1rem; color: var(--mute-t55); font-variant-numeric: tabular-nums; }
+.jc-math-arrow { color: var(--mute-t40); }
+.jc-math-to { font-size: 1.3rem; font-weight: 700; color: var(--accent-ink); font-variant-numeric: tabular-nums; }
+.jc-math-note { flex: 1 1 14rem; font-size: 0.8rem; line-height: 1.5; color: var(--mute-t50); }
+.jc-math-note strong { color: var(--text); }
+.jc-math-note.is-warn { color: var(--gold-ink); }
+
+.jc-where { margin: 0; font-size: 0.79rem; line-height: 1.55; color: var(--mute-t45); }
+.jc-where a { color: var(--accent-ink); text-decoration: underline; }
+
+.jc-foot {
+  display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 0.7rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(var(--tint), 0.09);
+  font-size: 0.78rem; line-height: 1.55; color: var(--mute-t45);
+}
+.jc-foot > span:first-child { flex: 1 1 24rem; }
+.jc-save { min-height: 1.2em; white-space: nowrap; }
+.jc-save-saved { color: var(--ink-lime-1); }
+.jc-save-error { color: var(--ink-orange-1); }
+
+@media (min-width: 900px) {
+  .jc-card { grid-template-columns: 1fr 1fr; }
+  .jc-foot { grid-column: 1 / -1; }
+}

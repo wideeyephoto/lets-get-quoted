@@ -18,17 +18,17 @@ import ArrivalSettingsSection from './ArrivalSettingsSection';
 import ArrivalExtrasSection from './ArrivalExtrasSection';
 import { arrivalSettingsFromAccount } from '@/lib/arrival';
 import { updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
-import { updateCostSettingsAction, toggleClientPortalAction } from './actions';
+import { toggleClientPortalAction } from './actions';
 import ClientPortalSection from './ClientPortalSection';
 import MissedCallSection from './MissedCallSection';
 import IntakeContentSection from './IntakeContentSection';
+import JobCostingSection from './JobCostingSection';
 import ReviewRequestSection from './ReviewRequestSection';
 import IntakePreviewModal from '../sites/IntakePreviewModal';
 import type { Site } from '@/lib/sites';
 import { siteOrigin } from '@/lib/seo/site-pages';
 import { displayPhone } from '@/lib/phone';
 import { chaseMessage } from '@/lib/selections';
-import { loadedHourlyRate } from '@/lib/cost-truth';
 import { ESTIMATE_POSTURES, normalizeEstimatePosture } from '@/lib/estimate-posture';
 import { getSiteContent } from '@/lib/site-content';
 import { googleReviewUrl } from '@/lib/review-routing';
@@ -902,7 +902,10 @@ export default async function SettingsPage({
           {
             id: 'business',
             label: 'Business',
-            anchors: ['business-basics', 'import', 'export', 'marketing-address', 'finances'],
+            // job-costing was missing, so /dashboard/settings#job-costing
+            // resolved to no tab and did nothing at all — the section exists,
+            // carries that id, and could not be linked to.
+            anchors: ['job-costing', 'business-basics', 'import', 'export', 'marketing-address', 'finances'],
             content: (
               <>
                 <p className="automation-group">Business info</p>
@@ -913,48 +916,12 @@ export default async function SettingsPage({
                 <section className="panel workspace-section-card" id="job-costing">
                   <div className="section-heading workspace-section-heading compact-heading">
                     <p className="eyebrow">Job costing</p>
-                    <h2>What an hour really costs, and when to warn you</h2>
+                    <h2>What an hour of crew time really costs</h2>
+                    <p className="workspace-lead">
+                      Two numbers that decide whether a finished job actually made money.
+                    </p>
                   </div>
-                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-                    Somebody on {formatMoney(30)}/hr doesn&apos;t cost you {formatMoney(30)}/hr. Payroll taxes,
-                    workers&apos; comp, unemployment and paid time off land on you, and quoting off the bare wage is how
-                    a job loses money without you ever seeing where. Set the extra as a percentage and every clocked
-                    hour gets costed with it.
-                  </p>
-                  <form action={updateCostSettingsAction} className="form-grid compact-form">
-                    <div className="field">
-                      <label htmlFor="defaultBurdenPct">Labour burden (%)</label>
-                      <input
-                        id="defaultBurdenPct"
-                        name="defaultBurdenPct"
-                        type="number"
-                        min="0"
-                        max="200"
-                        step="0.5"
-                        defaultValue={defaultBurdenPct}
-                      />
-                      <small className="field-hint">
-                        A {formatMoney(30)}/hr wage costs you {formatMoney(loadedHourlyRate(30, defaultBurdenPct))}/hr at
-                        this rate. Most trades land between 20% and 40%; a single crew member can be set differently on
-                        their own record.
-                      </small>
-                    </div>
-                    <div className="field">
-                      <label htmlFor="minMarginPct">Warn me below (%)</label>
-                      <input id="minMarginPct" name="minMarginPct" type="number" min="0" max="100" step="1" defaultValue={minMarginPct} />
-                      <small className="field-hint">
-                        Flags a job whose margin falls under this. Leave at 0 to never be warned &mdash; a warning that
-                        shows on everything gets ignored on everything.
-                      </small>
-                    </div>
-                    <div className="form-actions">
-                      <SaveButton>Save job costing</SaveButton>
-                    </div>
-                  </form>
-                  <p className="review-policy-note">
-                    Changing these never rewrites work already recorded. Burden is stamped onto each cost as it happens,
-                    so a job you closed last month keeps the margin it closed at.
-                  </p>
+                  <JobCostingSection burdenPct={defaultBurdenPct} minMarginPct={minMarginPct} />
                 </section>
 
                 <section className="panel workspace-section-card" id="business-basics">
