@@ -6,6 +6,8 @@ import SignInMethods from './SignInMethods';
 import PayoutAccount from './PayoutAccount';
 import SettingsTabs from './SettingsTabs';
 import FinanceReports from './FinanceReports';
+import QuickBooksSection from './QuickBooksSection';
+import { connectionStatus } from '@/lib/quickbooks/connection';
 import { getAvailableTaxYears, buildProfitAndLoss, buildScheduleCWorksheet, build1099PrepList } from '@/lib/tax-reports';
 import SaveButton from '@/components/save-button';
 import AddressAutocomplete from '@/components/address-autocomplete';
@@ -83,7 +85,7 @@ function AutomationCard({
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: { year?: string };
+  searchParams: { year?: string; quickbooks?: string };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
 
@@ -242,6 +244,10 @@ export default async function SettingsPage({
 
   const requestedYear = searchParams.year ? parseInt(searchParams.year, 10) : NaN;
   const selectedYear = availableYears.includes(requestedYear) ? requestedYear : availableYears[0];
+
+  // Never throws and never returns a token — a missing table (feature deployed
+  // ahead of its migration) reports "not connected".
+  const quickBooksStatus = await connectionStatus(accountId);
 
   const [pl, subPrep] = await Promise.all([
     buildProfitAndLoss(supabase, accountId, selectedYear),
@@ -1072,6 +1078,8 @@ export default async function SettingsPage({
                     <a href="/api/export/invoices" className="btn secondary">⬇ Invoices (CSV)</a>
                   </div>
                 </section>
+
+                <QuickBooksSection status={quickBooksStatus} notice={searchParams.quickbooks} />
 
                 <section className="panel workspace-section-card" id="finances">
                   <FinanceReports
