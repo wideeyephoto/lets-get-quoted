@@ -5,9 +5,12 @@ import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import { sendSelectionRequest } from '@/lib/selection-notify';
 import {
   addOption,
+  applyTemplate,
   createSelection,
   deleteOption,
+  deleteSelectionTemplate,
   reopenSelection,
+  saveBoardAsTemplate,
   setSelectionStatus,
   updateOption,
   updateSelection,
@@ -150,6 +153,34 @@ export async function sendSelectionsAction(jobId: string): Promise<{ ok: boolean
     return { ok: false, message: 'No mobile with texting consent and no email on this job, so there is nowhere to send it.' };
   }
   return { ok: false, message: 'Could not send that just now. Please try again.' };
+}
+
+/** Save this board so the next job of the same kind starts with it. */
+export async function saveSelectionTemplateAction(jobId: string, formData: FormData): Promise<{ ok: boolean; message: string }> {
+  const { supabase, accountId } = await requireOwnerContext();
+  const name = String(formData.get('templateName') ?? '');
+  const result = await saveBoardAsTemplate(supabase, accountId, jobId, name);
+  if (!result.ok) return { ok: false, message: result.message ?? 'Could not save that template.' };
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+  return { ok: true, message: `Saved. “${name.trim()}” is ready for your next job.` };
+}
+
+/** Add a saved board to this job. Adds to what's here; never replaces it. */
+export async function applySelectionTemplateAction(jobId: string, templateId: string): Promise<{ ok: boolean; message: string }> {
+  const { supabase, accountId } = await requireOwnerContext();
+  const result = await applyTemplate(supabase, accountId, jobId, templateId);
+  if (!result.ok) return { ok: false, message: result.message ?? 'Could not add that template.' };
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+  return {
+    ok: true,
+    message: `${result.added} ${result.added === 1 ? 'choice' : 'choices'} added. Set the needed-by dates and send it over.`,
+  };
+}
+
+export async function deleteSelectionTemplateAction(jobId: string, templateId: string): Promise<void> {
+  const { supabase, accountId } = await requireOwnerContext();
+  await deleteSelectionTemplate(supabase, accountId, templateId);
+  revalidatePath(`/dashboard/jobs/${jobId}`);
 }
 
 export async function cancelSelectionAction(jobId: string, selectionId: string) {

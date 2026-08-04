@@ -314,6 +314,105 @@ function formatDeadlineForClient(decideBy: string, deadline: DeadlineState): str
   return `We need to know by ${when} to keep the job on track.`;
 }
 
+// -- Templates ----------------------------------------------------------------
+
+export type SelectionTemplateOption = {
+  name: string;
+  description: string;
+  price: number;
+  reference: string;
+  photoPath: string | null;
+};
+
+export type SelectionTemplateItem = {
+  title: string;
+  description: string;
+  allowance: number;
+  creditUnderspend: boolean;
+  options: SelectionTemplateOption[];
+};
+
+export type SelectionTemplateBody = { items: SelectionTemplateItem[] };
+
+/** Keep a template a template, not a database. */
+export const MAX_TEMPLATE_ITEMS = 30;
+export const MAX_TEMPLATE_OPTIONS = 20;
+
+/**
+ * Turn a job's board into something reusable.
+ *
+ * Carries the titles, allowances, options, prices and product codes — the parts
+ * that are the same on every job of this kind. Deliberately drops:
+ *
+ *   - the needed-by date, which belongs to a job. Copying one would give every
+ *     future job either a deadline in the past or a date nobody chose.
+ *   - which option was picked. A template is the question, not last customer's
+ *     answer, and pre-filling somebody else's choice is how a board stops being
+ *     a decision.
+ *
+ * Photos ARE carried: they are most of what makes a choice possible, the
+ * storage objects are account-scoped and outlive the job row, and one that
+ * won't sign already degrades to no photo rather than a broken image.
+ */
+export function boardToTemplate(selections: Selection[]): SelectionTemplateBody {
+  return {
+    items: selections
+      .filter((selection) => selection.status !== 'cancelled')
+      .slice(0, MAX_TEMPLATE_ITEMS)
+      .map((selection) => ({
+        title: selection.title,
+        description: selection.description,
+        allowance: round2(selection.allowance),
+        creditUnderspend: selection.creditUnderspend,
+        options: selection.options.slice(0, MAX_TEMPLATE_OPTIONS).map((option) => ({
+          name: option.name,
+          description: option.description,
+          price: round2(option.price),
+          reference: option.reference,
+          photoPath: option.photoPath,
+        })),
+      })),
+  };
+}
+
+/** Read a stored template defensively — it is a jsonb blob, not a schema. */
+export function parseTemplateBody(raw: unknown): SelectionTemplateBody {
+  const root = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const items = Array.isArray(root.items) ? root.items : [];
+  return {
+    items: items.slice(0, MAX_TEMPLATE_ITEMS).map((entry) => {
+      const item = entry && typeof entry === 'object' ? (entry as Record<string, unknown>) : {};
+      const options = Array.isArray(item.options) ? item.options : [];
+      return {
+        title: String(item.title ?? '').slice(0, 160) || 'Choice to make',
+        description: String(item.description ?? '').slice(0, 1000),
+        allowance: Math.max(0, round2(Number(item.allowance) || 0)),
+        // Same default as a new selection: crediting the under-spend is what an
+        // allowance means, so a malformed template must not silently opt out.
+        creditUnderspend: item.creditUnderspend !== false,
+        options: options.slice(0, MAX_TEMPLATE_OPTIONS).map((raw) => {
+          const option = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+          return {
+            name: String(option.name ?? '').slice(0, 160) || 'Option',
+            description: String(option.description ?? '').slice(0, 600),
+            price: Math.max(0, round2(Number(option.price) || 0)),
+            reference: String(option.reference ?? '').slice(0, 120),
+            photoPath: typeof option.photoPath === 'string' ? option.photoPath : null,
+          };
+        }),
+      };
+    }),
+  };
+}
+
+/** How a template reads in the picker, without opening it. */
+export function describeTemplate(body: SelectionTemplateBody): string {
+  const items = body.items.length;
+  const options = body.items.reduce((sum, item) => sum + item.options.length, 0);
+  if (items === 0) return 'Empty';
+  return `${items} choice${items === 1 ? '' : 's'} · ${options} option${options === 1 ? '' : 's'}`;
+}
+
 // -- Chasing a decision -------------------------------------------------------
 
 /** Which nudge, if any, a selection is owed. */

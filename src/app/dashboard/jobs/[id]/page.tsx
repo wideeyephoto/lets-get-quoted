@@ -23,7 +23,7 @@ import { changeOrderTotals } from '@/lib/change-orders';
 import ChangeOrderPanel from './ChangeOrderPanel';
 import WarrantyPanel from './WarrantyPanel';
 import SelectionBoard from './SelectionBoard';
-import { listSelections } from '@/lib/selections-data';
+import { listSelections, listSelectionTemplates } from '@/lib/selections-data';
 import { boardStatus } from '@/lib/selections';
 import { listWarranties, listClaims } from '@/lib/warranties-data';
 import { listJobTasks, taskProgress } from '@/lib/job-tasks';
@@ -119,7 +119,10 @@ export default async function JobDetailPage({
   const costs = await listCosts(supabase, accountId, job.id);
   const margin = computeMargin(job, costs);
   const changeOrders = await listChangeOrders(supabase, accountId, job.id);
-  const selections = await listSelections(supabase, accountId, job.id);
+  const [selections, selectionTemplates] = await Promise.all([
+    listSelections(supabase, accountId, job.id),
+    listSelectionTemplates(supabase, accountId),
+  ]);
   const selectionStatus = boardStatus(selections);
   const [warranties, warrantyClaims, { data: warrantyDefaults }] = await Promise.all([
     listWarranties(supabase, accountId, job.id),
@@ -1148,7 +1151,7 @@ export default async function JobDetailPage({
                   {selectionStatus.label || 'What the customer has to choose, and what it costs.'}
                 </span>
               </summary>
-              <SelectionBoard jobId={job.id} selections={selections} />
+              <SelectionBoard jobId={job.id} selections={selections} templates={selectionTemplates} />
             </details>
 
             {/* Open by default once the work is done: that is the moment a

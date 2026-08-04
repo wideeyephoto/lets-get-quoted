@@ -10502,6 +10502,43 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 .selection-send-note.is-ok { color: var(--ink-lime-1); }
 .selection-send-note.is-bad { color: var(--ink-orange-1); }
 
+/* Reusable boards. A disclosure, because most of the time a contractor is
+   working on THIS job and the template list is not what they came for. */
+.selection-templates { margin: 0 0 0.9rem; }
+.selection-templates > summary { cursor: pointer; font-size: 0.84rem; font-weight: 700; color: var(--mute-t55); }
+.selection-templates > summary:hover { color: var(--text); }
+.selection-template-list { list-style: none; padding: 0; margin: 0.7rem 0 0; display: grid; gap: 0.4rem; }
+.selection-template-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.05);
+  font-size: 0.86rem;
+}
+.selection-template-list em { margin-left: 0.5rem; font-style: normal; font-size: 0.78rem; color: var(--mute-t45); }
+.selection-template-actions { display: inline-flex; align-items: center; gap: 0.35rem; }
+.selection-template-actions .btn { padding: 0.3rem 0.65rem; font-size: 0.8rem; }
+.selection-template-empty { margin: 0.7rem 0 0; font-size: 0.82rem; color: var(--mute-t45); }
+.selection-template-save { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.7rem; }
+.selection-template-save input {
+  flex: 1 1 12rem;
+  min-height: 38px;
+  padding: 0.4rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--tint), 0.16);
+  background: rgba(var(--tint), 0.05);
+  color: var(--text);
+  font-size: 0.86rem;
+  font-family: inherit;
+}
+.selection-template-note { margin: 0.6rem 0 0; font-size: 0.79rem; line-height: 1.5; color: var(--mute-t45); }
+.selection-template-note.is-ok { color: var(--ink-lime-1); }
+.selection-template-note.is-bad { color: var(--ink-orange-1); }
+
 /* Decisions made and then changed. In front of the contractor rather than
    buried: if the first colour is already on the wall, this is the record. */
 .selection-history {

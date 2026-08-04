@@ -1,6 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
+  boardToTemplate,
   optionCost,
+  parseTemplateBody,
   reopenAdjustment,
   snapshotOption,
   toClientSelections,
@@ -11,6 +13,7 @@ import {
   type Selection,
   type SelectionOption,
   type SelectionStatus,
+  type SelectionTemplateBody,
 } from '@/lib/selections';
 import { createJobPhotoLinks } from '@/lib/job-photo-storage';
 
@@ -406,6 +409,140 @@ export async function reopenSelection(
   }
 
   return { ok: true };
+}
+
+// -- Templates ----------------------------------------------------------------
+
+export type SelectionTemplate = { id: string; name: string; body: SelectionTemplateBody };
+
+/**
+ * The account's saved boards. Empty (and harmless) until the migration runs —
+ * a missing table must not take the job page down with it.
+ */
+export async function listSelectionTemplates(supabase: SupabaseClient, accountId: string): Promise<SelectionTemplate[]> {
+  try {
+    const { data, error } = await supabase
+      .from('selection_templates')
+      .select('id, name, body')
+      .eq('account_id', accountId)
+      .order('name', { ascending: true })
+      .limit(50);
+    if (error) return [];
+    return (data ?? []).map((row) => ({
+      id: row.id as string,
+      name: (row.name as string) ?? '',
+      body: parseTemplateBody(row.body),
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Save this board for next time.
+ *
+ * Upserts on the name, because "save this as Interior repaint" said a second
+ * time means replace it — a list with three Interior repaints in it is a list
+ * nobody trusts to pick from.
+ */
+export async function saveBoardAsTemplate(
+  supabase: SupabaseClient,
+  accountId: string,
+  jobId: string,
+  name: string,
+): Promise<{ ok: boolean; message?: string }> {
+  const clean = name.trim().slice(0, 80);
+  if (!clean) return { ok: false, message: 'Give the template a name you will recognise later.' };
+
+  const selections = await listSelections(supabase, accountId, jobId);
+  const body = boardToTemplate(selections);
+  if (body.items.length === 0) return { ok: false, message: 'There is nothing on this board to save yet.' };
+
+  // Read-then-write rather than upsert: the unique index is on
+  // (account_id, lower(name)) so that "Interior repaint" and "Interior Repaint"
+  // are the same template, and an expression index cannot be an ON CONFLICT
+  // target — PostgREST's onConflict only takes column names, and passing
+  // 'account_id,name' fails with "no unique or exclusion constraint matching".
+  //
+  // The race this leaves open (two saves of a new name at once) surfaces as the
+  // 23505 handled below, which is the correct answer anyway.
+  // % and _ are wildcards to ilike, so a template named "50% off" would match
+  // half the list. Escaped rather than avoided, because ilike is the only
+  // case-insensitive comparison PostgREST offers.
+  const pattern = clean.replace(/([\\%_])/g, '\\$1');
+  const { data: existing } = await supabase
+    .from('selection_templates')
+    .select('id')
+    .eq('account_id', accountId)
+    .ilike('name', pattern)
+    .maybeSingle();
+
+  const now = new Date().toISOString();
+  const { error } = existing
+    ? await supabase.from('selection_templates').update({ name: clean, body, updated_at: now }).eq('account_id', accountId).eq('id', existing.id)
+    : await supabase.from('selection_templates').insert({ account_id: accountId, name: clean, body, updated_at: now });
+
+  if (error) {
+    return error.code === '23505'
+      ? { ok: false, message: `You already have a template called “${clean}”.` }
+      : { ok: false, message: error.message };
+  }
+  return { ok: true };
+}
+
+/**
+ * Start a board from a saved one.
+ *
+ * ADDS to whatever is already there rather than replacing it — a contractor who
+ * applies a template to a board mid-build should not lose the rows they typed,
+ * and "it wiped my work" is not a mistake anybody forgives twice.
+ *
+ * No needed-by dates: those belong to the job and the contractor sets them.
+ */
+export async function applyTemplate(
+  supabase: SupabaseClient,
+  accountId: string,
+  jobId: string,
+  templateId: string,
+): Promise<{ ok: boolean; added: number; message?: string }> {
+  const { data: row } = await supabase
+    .from('selection_templates')
+    .select('id, body')
+    .eq('account_id', accountId)
+    .eq('id', templateId)
+    .maybeSingle();
+  if (!row) return { ok: false, added: 0, message: 'That template could not be found.' };
+
+  const body = parseTemplateBody(row.body);
+  if (body.items.length === 0) return { ok: false, added: 0, message: 'That template is empty.' };
+
+  let added = 0;
+  for (const item of body.items) {
+    const selection = await createSelection(supabase, accountId, jobId, {
+      title: item.title,
+      description: item.description,
+      allowance: item.allowance,
+      decideBy: null,
+      creditUnderspend: item.creditUnderspend,
+    });
+    for (const option of item.options) {
+      await addOption(supabase, accountId, {
+        selectionId: selection.id,
+        jobId,
+        name: option.name,
+        description: option.description,
+        price: option.price,
+        reference: option.reference,
+        photoPath: option.photoPath,
+      });
+    }
+    added += 1;
+  }
+  return { ok: true, added };
+}
+
+export async function deleteSelectionTemplate(supabase: SupabaseClient, accountId: string, templateId: string): Promise<void> {
+  await supabase.from('selection_templates').delete().eq('account_id', accountId).eq('id', templateId);
 }
 
 /** Everything on a job's board, for the client-facing page. */

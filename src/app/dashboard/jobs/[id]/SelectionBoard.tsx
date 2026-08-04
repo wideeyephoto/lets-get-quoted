@@ -1,6 +1,8 @@
 import SaveButton from '@/components/save-button';
 import ConfirmActionButton from './ConfirmActionButton';
 import SendSelectionsButton from './SendSelectionsButton';
+import SelectionTemplates from './SelectionTemplates';
+import type { SelectionTemplate } from '@/lib/selections-data';
 import { formatMoney } from '@/lib/jobs';
 import {
   boardStatus,
@@ -27,7 +29,15 @@ import {
  * Server component: it's a list and some forms, and none of it needs to be
  * interactive before submission.
  */
-export default function SelectionBoard({ jobId, selections }: { jobId: string; selections: Selection[] }) {
+export default function SelectionBoard({
+  jobId,
+  selections,
+  templates,
+}: {
+  jobId: string;
+  selections: Selection[];
+  templates: SelectionTemplate[];
+}) {
   const today = todayKey();
   const totals = selectionTotals(selections);
   const status = boardStatus(selections, today);
@@ -60,6 +70,12 @@ export default function SelectionBoard({ jobId, selections }: { jobId: string; s
       ) : null}
 
       {anyOpen ? <SendSelectionsButton jobId={jobId} lastSentAt={lastSentAt} /> : null}
+
+      <SelectionTemplates
+        jobId={jobId}
+        templates={templates}
+        hasBoard={selections.some((selection) => selection.status !== 'cancelled')}
+      />
 
       {selections.length === 0 ? (
         <p className="empty-state">

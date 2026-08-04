@@ -5,8 +5,11 @@ import {
   describeOptionCost,
   optionCost,
   selectionTotals,
+  boardToTemplate,
   chaseMessage,
   chaseNeeded,
+  describeTemplate,
+  parseTemplateBody,
   reopenAdjustment,
   snapshotOption,
   toClientSelections,
@@ -395,5 +398,77 @@ describe('chasing a decision', () => {
   it('survives a nameless customer', () => {
     expect(chaseMessage({ businessName: 'BrokePipes', clientName: '  ', count: 1, overdue: false, url: 'x' }))
       .toContain('there,');
+  });
+});
+
+describe('templates', () => {
+  const board: Selection[] = [
+    selection({
+      id: 'a',
+      title: 'Wall colour',
+      allowance: 400,
+      decideBy: '2026-08-10',
+      status: 'chosen',
+      chosenSnapshot: { optionId: 'o1', name: 'Beige', description: '', price: 400, reference: 'SW7036' },
+      chosenByName: 'Jane',
+      options: [option({ id: 'o1', name: 'Beige', price: 400, reference: 'SW7036', photoPath: 'acct/beige.jpg' })],
+    }),
+    selection({ id: 'b', title: 'Handles', allowance: 50, creditUnderspend: false, options: [option({ id: 'o2', name: 'Chrome', price: 60 })] }),
+    selection({ id: 'c', title: 'Dropped', status: 'cancelled' }),
+  ];
+
+  it('keeps the parts that are the same on every job', () => {
+    const template = boardToTemplate(board);
+    expect(template.items.map((i) => i.title)).toEqual(['Wall colour', 'Handles']);
+    expect(template.items[0].allowance).toBe(400);
+    expect(template.items[0].options[0].reference).toBe('SW7036');
+    // Photos are most of what makes a choice possible, and the storage objects
+    // outlive the job row.
+    expect(template.items[0].options[0].photoPath).toBe('acct/beige.jpg');
+    expect(template.items[1].creditUnderspend).toBe(false);
+  });
+
+  it('drops the needed-by date', () => {
+    // A deadline belongs to a job. Copied forward it is either in the past or a
+    // date nobody chose.
+    const template = boardToTemplate(board);
+    expect(JSON.stringify(template)).not.toContain('2026-08-10');
+  });
+
+  it('drops the last customer\u2019s answer', () => {
+    // A template is the question, not somebody else's decision.
+    const template = boardToTemplate(board);
+    expect(JSON.stringify(template)).not.toContain('Jane');
+    expect(JSON.stringify(template)).not.toContain('chosenSnapshot');
+  });
+
+  it('leaves a cancelled choice behind', () => {
+    expect(boardToTemplate(board).items.some((i) => i.title === 'Dropped')).toBe(false);
+  });
+
+  it('survives a garbage blob, because it is jsonb and not a schema', () => {
+    expect(parseTemplateBody(null).items).toEqual([]);
+    expect(parseTemplateBody('nope').items).toEqual([]);
+    expect(parseTemplateBody({ items: 'no' }).items).toEqual([]);
+    const salvaged = parseTemplateBody({ items: [{ options: [{}] }] });
+    expect(salvaged.items[0].title).toBe('Choice to make');
+    expect(salvaged.items[0].options[0].name).toBe('Option');
+    expect(salvaged.items[0].allowance).toBe(0);
+  });
+
+  it('never silently opts out of crediting an under-spend', () => {
+    // Crediting is what an allowance means. A malformed template must not be
+    // the thing that quietly turns it off.
+    expect(parseTemplateBody({ items: [{ title: 'x' }] }).items[0].creditUnderspend).toBe(true);
+    expect(parseTemplateBody({ items: [{ title: 'x', creditUnderspend: false }] }).items[0].creditUnderspend).toBe(false);
+  });
+
+  it('round-trips a real board', () => {
+    expect(parseTemplateBody(JSON.parse(JSON.stringify(boardToTemplate(board))))).toEqual(boardToTemplate(board));
+  });
+
+  it('reads as a summary in the picker', () => {
+    expect(describeTemplate(boardToTemplate(board))).toBe('2 choices · 2 options');
+    expect(describeTemplate({ items: [] })).toBe('Empty');
   });
 });
