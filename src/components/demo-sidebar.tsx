@@ -212,10 +212,6 @@ export default function DemoSidebar() {
               the app as, so a row sitting somewhere else here would be showing
               them a product that does not exist. */}
           {renderItem({ icon: '/dashboard', label: 'Dashboard', href: '/demo' }, 'sidenav-bottom')}
-          {/* The theme is a real setting, not a demo prop — the cookie it writes
-              is the same one the app reads, so a prospect who prefers light can
-              see the whole product that way before signing up. */}
-          <ThemeToggle />
         </nav>
 
         <div className="sidenav-foot">
@@ -229,10 +225,15 @@ export default function DemoSidebar() {
               Automations
             </Link>
           </div>
-          <span className="stripe-status-pill sidenav-stripe connected" title="Payouts connected in this sample account">
-            <span className="stripe-status-tile" aria-hidden="true">$</span>
-            Stripe connected
-          </span>
+          {/* Same footer row as the real rail — a prospect should not be shown
+              a layout the product does not have. */}
+          <div className="sidenav-footrow">
+            <ThemeToggle />
+            <span className="stripe-status-pill sidenav-stripe connected" title="Payouts connected in this sample account">
+              <span className="stripe-status-tile" aria-hidden="true">$</span>
+              <span className="stripe-status-label">Stripe connected</span>
+            </span>
+          </div>
         </div>
       </aside>
     </>

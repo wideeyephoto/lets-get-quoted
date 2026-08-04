@@ -1553,6 +1553,15 @@
   border-color: #28384b;
   color: var(--text);
 }
+/* The two big metric fields on a new job — quoted amount and estimated hours —
+   are the same well drawn a different way: `rgba(5,12,22,0.46)`, a hole punched
+   toward black. Measured on paper it composited to #888b90, a slab of mid-grey
+   with deep gold and deep blue figures on it at 2.02:1 and 1.63:1. Warm rather
+   than the grey well above, because the card around them is an amber wash. */
+:root[data-theme='light'] .job-intake-metric input {
+  background: #fdf7ea;
+  border-color: #a1791a;
+}
 :root[data-theme='light'] .modern-date-button:focus,
 :root[data-theme='light'] .modern-date-button[aria-expanded='true'],
 :root[data-theme='light'] .modern-time-button:focus,
@@ -9656,7 +9665,14 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
   border-radius: 10px;
   padding: 0.65rem 0.8rem;
   background: rgba(var(--tint), 0.06);
-  color: white;
+  /* NOT the keyword `white`. The flip re-points --text; it cannot re-point a
+     literal, so every .field control in the app rendered white text on a white
+     sheet in the light theme — a <select> with no readable value in it. It went
+     unnoticed because the contrast sweep walks text NODES and a form control
+     has none: its value is drawn by the engine, so nothing measured it.
+     In dark this is #f7f5ef instead of #ffffff, which is what every other piece
+     of text on the page already was. */
+  color: var(--text);
   font-family: inherit;
   font-size: 0.92rem;
 }
@@ -14878,6 +14894,18 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
     padding-right: 0.3rem;
   }
 
+  /* THE ROWS MUST NOT SHRINK, or the scrolling above is decorative.
+     The list is a column flex container, so its children inherit
+     flex-shrink: 1. Capped by the rail's height they FLATTENED instead of
+     overflowing: measured at 1366x768 a job card whose natural height is 218px
+     was squeezed to 57px, with 151px of its own content hanging outside its
+     box. Squeezed at every desktop size tested — even 1920x1080 lost 50px a row.
+     And because the rows technically "fitted", the list's scrollHeight equalled
+     its clientHeight, so `overflow-y: auto` had nothing to scroll and never drew
+     a scrollbar. The jobs were cut in half with no way to reach the rest of
+     them, which is the one thing this panel exists to let you do. */
+  .schedule-rail #unscheduled-jobs .sign-in-methods-list > * { flex: 0 0 auto; }
+
   /* The map is the one thing that must never be the item that gets squeezed
      out — its legend is how you filter the pins, and a legend below the fold of
      an overflowing rail is a control nobody can reach. Explicit rather than
@@ -19282,87 +19310,81 @@ a.bset-card { color: inherit; text-decoration: none; }
    radius) so it reads as part of the list rather than a control dropped on top
    of it — but it is a <button role="switch">, not a link, and the track on the
    right says so. */
-.theme-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  width: 100%;
-  min-height: 2.3rem;
-  margin-top: 0.35rem;
-  padding: 0.45rem 0.6rem;
+/* The theme switch — a physical-looking toggle, not a labelled nav row.
+   ---------------------------------------------------------------------------
+   Both glyphs are always drawn and the knob slides between them, so it says
+   what it is AND what it will become with no word beside it. That is what makes
+   it narrow enough to share the footer line with the Stripe status.
+
+   The track stays dark in BOTH themes on purpose: under Harbour the rail is
+   canvas, not paper, so this footer is dark either way — and a switch that
+   restyled itself would be the one control on screen that changes shape when
+   you use it. */
+.sidenav-footrow { display: flex; align-items: center; gap: 0.4rem; min-width: 0; }
+.sidenav-footrow .stripe-status-pill.sidenav-stripe { flex: 1 1 auto; width: auto; min-width: 0; }
+.stripe-status-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.theme-switch {
+  flex: none;
+  display: inline-flex;
+  padding: 0;
   border: 0;
-  border-radius: 12px;
-  background: none;
-  color: rgba(var(--tint), 0.72);
-  font: inherit;
-  font-size: 0.92rem;
-  font-weight: 650;
-  line-height: 1.15;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-.theme-toggle:hover { background: rgba(var(--tint), 0.06); color: var(--text); }
-.theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-/* The two glyphs share one 1.15rem box — the same size as a nav icon, so the
-   row's text starts on the same vertical line as every row above it. Only one
-   is visible at a time. */
-.theme-toggle-face {
-  position: relative;
-  flex: none;
-  width: 1.15rem;
-  height: 1.15rem;
-  color: var(--mute-t58);
-}
-.theme-toggle-face svg { position: absolute; inset: 0; width: 100%; height: 100%; transition: opacity 0.18s ease, transform 0.25s ease; }
-/* Moon first, sun second. Dark shows the moon. */
-.theme-toggle-face svg:nth-child(2) { opacity: 0; transform: rotate(-90deg) scale(0.6); }
-:root[data-theme='light'] .theme-toggle-face svg:nth-child(1) { opacity: 0; transform: rotate(90deg) scale(0.6); }
-:root[data-theme='light'] .theme-toggle-face svg:nth-child(2) { opacity: 1; transform: none; }
-.theme-toggle:hover .theme-toggle-face { color: var(--accent); }
-
-.theme-toggle-label { margin-right: auto; }
-
-/* The switch itself. Sized against the number boxes beside it in the rows above
-   (1.4rem tall) so the right-hand edge of the rail stays one line. */
-.theme-toggle-track {
-  position: relative;
-  flex: none;
-  width: 2.3rem;
-  height: 1.3rem;
   border-radius: 999px;
-  border: 1px solid var(--edge-t22);
-  background: rgba(var(--tint), 0.08);
-  transition: background 0.18s ease, border-color 0.18s ease;
+  background: none;
+  line-height: 0;
+  cursor: pointer;
 }
-.theme-toggle-track i {
+.theme-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.theme-switch-track {
+  position: relative;
+  display: block;
+  width: 3.1rem;
+  height: 1.7rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #3b4451 0%, #2a313c 100%);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.55), inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.theme-switch-knob {
+  position: absolute;
+  top: 0.17rem;
+  left: 0.17rem;
+  width: 1.36rem;
+  height: 1.36rem;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ffffff 0%, #e4e8ef 100%);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.18);
+  /* Dark is the knob on the RIGHT, over the moon. */
+  transform: translateX(1.4rem);
+  transition: transform 0.24s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.theme-switch[aria-checked='true'] .theme-switch-knob { transform: none; }
+
+.theme-switch-glyph {
   position: absolute;
   top: 50%;
-  left: 0.18rem;
-  width: 0.85rem;
-  height: 0.85rem;
-  border-radius: 50%;
-  background: rgba(var(--tint), 0.62);
-  transform: translateY(-50%);
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.18s ease;
+  /* Above the knob, so the active glyph reads ON the white disc rather than
+     being covered by it. */
+  z-index: 1;
+  width: 0.92rem;
+  height: 0.92rem;
+  margin-top: -0.46rem;
+  transition: color 0.2s ease;
 }
-/* On = light mode, so the lit state is the accent — same as every other "this
-   is switched on" in the app. */
-.theme-toggle[aria-checked='true'] .theme-toggle-track {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 26%, transparent);
-}
-.theme-toggle[aria-checked='true'] .theme-toggle-track i {
-  background: var(--accent);
-  transform: translate(0.95rem, -50%);
-}
+.theme-switch-glyph svg { display: block; width: 100%; height: 100%; }
+.theme-switch-glyph.is-sun { left: 0.39rem; color: #f5a300; }
+.theme-switch-glyph.is-moon { right: 0.39rem; }
+/* Whichever glyph the knob is parked under has to read on WHITE; the other one
+   is sitting on the dark track and has to read there instead. The sun is gold
+   enough for both — the moon is not, so it flips. */
+.theme-switch[aria-checked='true'] .theme-switch-glyph.is-moon { color: #eaeef6; }
+.theme-switch[aria-checked='false'] .theme-switch-glyph.is-moon { color: #2b3340; }
 
 @media (prefers-reduced-motion: reduce) {
-  .theme-toggle,
-  .theme-toggle-face svg,
-  .theme-toggle-track,
-  .theme-toggle-track i { transition: none; }
+  .theme-switch-knob, .theme-switch-glyph { transition: none; }
 }
+
 
 /* ==========================================================================
    THE PUBLIC BOOKING PAGE  (/book/[subdomain])
@@ -20683,6 +20705,16 @@ a.bset-card { color: inherit; text-decoration: none; }
    Two columns: the checklist you set, and what it produces. Prefixed .iq- and
    scoped under .intake-quality — .row, .group and .badge would each collide
    with something else in a 13k-line stylesheet. */
+/* Separated from the form above it. The intake form ends in a right-aligned
+   "Save intake settings" and this block opens with a right-aligned "Open full
+   preview" — measured, both sat at y=414 with a zero-pixel gap, so two buttons
+   in the same corner read as one on top of the other. It had no base rule at
+   all; only .is-paused was ever written. */
+.intake-quality {
+  margin-top: 1.5rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--rule-t09);
+}
 .intake-quality.is-paused .iq-preview-col { opacity: 0.5; }
 .iq-grid { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.15fr); gap: 1.1rem; align-items: start; }
 

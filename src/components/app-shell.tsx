@@ -701,10 +701,6 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                 the top it took the first slot from Leads — which is where the
                 day actually starts. */}
             {renderSideLink('/dashboard', 'sidenav-bottom')}
-            {/* Under Dashboard, inside the scrolling list rather than pinned to
-                the footer: it is a preference, not a destination, and the footer
-                is for the account and its billing state. */}
-            <ThemeToggle />
           </nav>
 
           <div className="sidenav-foot">
@@ -737,14 +733,24 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                 Automations
               </Link>
             </div>
-            <Link
-              href={STRIPE_SETUP_HREF}
-              className={`stripe-status-pill sidenav-stripe${stripeOnboarded === null ? ' checking' : stripeOnboarded ? ' connected' : ' warning'}`}
-              title={stripeOnboarded ? 'Stripe payouts connected' : 'Stripe payouts not connected — click to finish setup'}
-            >
-              <span className="stripe-status-tile" aria-hidden="true">$</span>
-              {stripeOnboarded === null ? 'Stripe: checking…' : stripeOnboarded ? 'Stripe connected' : 'Connect Stripe'}
-            </Link>
+            {/* One line, theme switch first. It used to sit inside the
+                scrolling nav list above, which is the part of the rail that
+                gets cut off on a short window — so the one control a contractor
+                reaches for in bright sun could be the one thing scrolled out of
+                view. The footer never scrolls. */}
+            <div className="sidenav-footrow">
+              <ThemeToggle />
+              <Link
+                href={STRIPE_SETUP_HREF}
+                className={`stripe-status-pill sidenav-stripe${stripeOnboarded === null ? ' checking' : stripeOnboarded ? ' connected' : ' warning'}`}
+                title={stripeOnboarded ? 'Stripe payouts connected' : 'Stripe payouts not connected — click to finish setup'}
+              >
+                <span className="stripe-status-tile" aria-hidden="true">$</span>
+                <span className="stripe-status-label">
+                  {stripeOnboarded === null ? 'Stripe: checking…' : stripeOnboarded ? 'Stripe connected' : 'Connect Stripe'}
+                </span>
+              </Link>
+            </div>
           </div>
         </aside>
 

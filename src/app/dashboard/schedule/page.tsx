@@ -488,11 +488,6 @@ export default async function SchedulePage({
         requests={toPendingBookings(pendingBookingRows, Date.now(), todayKey)}
       />
 
-      {/* Under the booking requests: somebody waiting to hear back outranks a
-          forecast. Above the calendar, because a day the weather will ruin is
-          worth knowing before you look at the month. */}
-      <WeatherPanel enabled={weather.enabled} profile={weather.sensitivity.label} />
-
       <div className="schedule-workbench">
       <section className="panel workspace-section-card schedule-calendar-panel">
         {/* Two rows, not six. The page used to spend ~470px on desktop and
@@ -792,6 +787,13 @@ export default async function SchedulePage({
         workdayStart={(account as { workday_start?: string } | null)?.workday_start ?? null}
         workdayEnd={(account as { workday_end?: string } | null)?.workday_end ?? null}
       />
+
+      {/* Down here with the other set-once settings, not above the calendar.
+          Switched on it is a short list of days in trouble; switched OFF it is a
+          pitch with a form attached, and that was the first thing between the
+          booking requests and the month — a page about what is scheduled opening
+          with an ad for a feature you have not turned on. */}
+      <WeatherPanel enabled={weather.enabled} profile={weather.sensitivity.label} />
     </main>
   );
 }
