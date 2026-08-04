@@ -38,6 +38,40 @@ function timeLabel(hhmm: string | null): string | null {
 
 type ScheduledStop = { scheduled_time: string | null; lat: number | null; lng: number | null };
 
+/** One geocoded stop on a day's route, in schedule order. */
+export type RouteStop = { lat: number; lng: number; timeLabel: string | null };
+
+/**
+ * Every geocoded stop on a given day, in schedule order.
+ *
+ * Shared with the coverage map in the Quick Stops hero, which has to draw the
+ * SAME route this function measures detours against. Two queries would drift —
+ * and the way that shows up is a map saying an address is covered while the
+ * screener rejects it as too far, with nothing on screen to explain why.
+ */
+export async function loadRouteStops(
+  supabase: SupabaseClient,
+  accountId: string,
+  opts: { day?: string | null; timezone: string },
+): Promise<RouteStop[]> {
+  const day = opts.day || localDateKey(opts.timezone);
+  const { data } = await supabase
+    .from('jobs')
+    .select('scheduled_time, lat, lng, status')
+    .eq('account_id', accountId)
+    .eq('scheduled_for', day)
+    .neq('status', 'archived')
+    .not('lat', 'is', null)
+    .order('scheduled_time', { ascending: true });
+
+  const stops: RouteStop[] = [];
+  for (const row of (data ?? []) as ScheduledStop[]) {
+    const coord = coordOf(row);
+    if (coord) stops.push({ lat: coord.lat, lng: coord.lng, timeLabel: timeLabel(row.scheduled_time) });
+  }
+  return stops;
+}
+
 export async function computeQuickStopRoute(
   supabase: SupabaseClient,
   accountId: string,

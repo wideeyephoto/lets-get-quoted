@@ -18213,3 +18213,65 @@ a.bset-card { color: inherit; text-decoration: none; }
 }
 
 .demo-seeall:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+/* --- Quick Stops coverage map -------------------------------------------
+   Where a Quick Stop can land today: the account's own detour radius drawn
+   around the stops already on the calendar. Colour comes from the shared
+   tokens so it flips with the theme; the MAP's own dark/light is separate and
+   deliberate — see the gear control, which lets a contractor read the overlay
+   against whichever ground shows it better. */
+.qs-coverage {
+  margin: 0 0 1.25rem;
+  padding: clamp(1rem, 3vw, 1.5rem);
+  border: 1px solid rgba(var(--tint), 0.1);
+  border-radius: 16px;
+  background: rgba(var(--tint), 0.03);
+}
+.qs-coverage-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.5rem 1rem; margin-bottom: 0.9rem; }
+.qs-coverage-head h2 { margin: 0.15rem 0 0; font-size: clamp(1.15rem, 2.6vw, 1.5rem); line-height: 1.2; }
+.qs-coverage-sub { margin: 0; max-width: 52ch; font-size: 0.88rem; line-height: 1.55; color: rgba(var(--tint), 0.68); }
+
+.qs-coverage-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid rgba(var(--tint), 0.12);
+  /* Fixed height rather than an aspect ratio: the map fits itself to the
+     bounds, so a tall viewport shouldn't stretch a six-mile circle into an
+     oval of empty ground. */
+  height: clamp(260px, 42vh, 420px);
+  background: rgba(var(--tint), 0.04);
+}
+.qs-coverage-canvas { position: absolute; inset: 0; }
+.qs-coverage-empty {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  margin: 0; padding: 1.5rem; text-align: center; line-height: 1.6;
+  color: rgba(var(--tint), 0.6); font-size: 0.9rem;
+}
+
+/* Bottom-RIGHT, clear of Google's zoom control on the left. */
+.qs-coverage-gear { position: absolute; right: 0.6rem; bottom: 0.6rem; display: flex; flex-direction: column; align-items: flex-end; gap: 0.4rem; }
+.qs-coverage-gear-btn {
+  display: grid; place-items: center; width: 34px; height: 34px; padding: 0;
+  border: 1px solid rgba(0, 0, 0, 0.25); border-radius: 8px;
+  background: #ffffff; color: #1c2230; cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+.qs-coverage-gear-btn svg { width: 18px; height: 18px; }
+.qs-coverage-gear-btn:hover { background: #f1f4f8; }
+.qs-coverage-gear-menu {
+  display: grid; gap: 2px; padding: 4px; border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.25); background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+.qs-coverage-gear-menu button {
+  padding: 0.35rem 0.85rem; border: 0; border-radius: 5px; background: transparent;
+  color: #1c2230; font-size: 0.82rem; font-weight: 700; text-align: left; cursor: pointer;
+}
+.qs-coverage-gear-menu button:hover { background: #eef2f7; }
+.qs-coverage-gear-menu button.is-active { background: #172033; color: #ffffff; }
+
+.qs-coverage-legend { display: flex; flex-wrap: wrap; gap: 0.4rem 1.25rem; margin: 0.75rem 0 0; padding: 0; list-style: none; font-size: 0.82rem; color: rgba(var(--tint), 0.7); }
+.qs-coverage-legend li { display: flex; align-items: center; gap: 0.45rem; }
+.qs-key-stop { width: 11px; height: 11px; border-radius: 50%; background: #ff7a21; border: 1px solid rgba(0, 0, 0, 0.4); }
+.qs-key-zone { width: 11px; height: 11px; border-radius: 50%; background: rgba(74, 222, 128, 0.28); border: 1.5px solid rgba(74, 222, 128, 0.8); }

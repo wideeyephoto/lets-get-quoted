@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+// One shared loader for the whole app — see lib/maps-loader for why a second
+// copy of the module-scoped promise would inject a second <script>.
+import { loadGoogleMaps, MAP_DARK_STYLE } from '@/lib/maps-loader';
 
 // A pin on the dashboard map. `kind` drives the marker colour + legend.
 export type MapPinKind = 'lead' | 'unscheduled' | 'scheduled';
@@ -29,65 +32,6 @@ const KIND_LABEL: Record<MapPinKind, string> = {
 };
 
 const LEGEND: MapPinKind[] = ['lead', 'unscheduled', 'scheduled'];
-
-// Dark map styling that matches the dashboard's palette; POI/transit hidden to
-// keep the pins the focus.
-const DARK_STYLE: google.maps.MapTypeStyle[] = [
-  { elementType: 'geometry', stylers: [{ color: '#16222f' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#8ba0b4' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#0a1420' }] },
-  { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#2a3a4a' }] },
-  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#26374a' }] },
-  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#1b2836' }] },
-  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#9fb2c6' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#33475d' }] },
-  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0c1a27' }] },
-  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#4a6076' }] },
-];
-
-declare global {
-  interface Window {
-    google?: typeof google;
-  }
-}
-
-let mapsScriptPromise: Promise<void> | null = null;
-
-function mapsReady() {
-  return Boolean(window.google?.maps && 'importLibrary' in window.google.maps);
-}
-
-function loadGoogleMaps(apiKey: string): Promise<void> {
-  if (mapsScriptPromise) return mapsScriptPromise;
-  mapsScriptPromise = new Promise((resolve, reject) => {
-    if (mapsReady()) return resolve();
-    const existing = document.getElementById('google-maps-places-script') as HTMLScriptElement | null;
-    const waitReady = () => {
-      const started = Date.now();
-      const tick = () => {
-        if (mapsReady()) return resolve();
-        if (Date.now() - started > 6000) return reject(new Error('Google Maps did not initialize'));
-        window.setTimeout(tick, 50);
-      };
-      tick();
-    };
-    if (existing) {
-      existing.addEventListener('error', () => reject(new Error('Failed to load Google Maps')));
-      waitReady();
-      return;
-    }
-    const script = document.createElement('script');
-    script.id = 'google-maps-places-script';
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places&loading=async&auth_referrer_policy=origin`;
-    script.async = true;
-    script.onload = waitReady;
-    script.onerror = () => reject(new Error('Failed to load Google Maps'));
-    document.head.appendChild(script);
-  });
-  return mapsScriptPromise;
-}
 
 // A Material-style teardrop pin (24×27, tip at 12,27) — far more visible on a
 // light map than a small circle, with a dark ring so even the gold pins pop.
@@ -157,7 +101,7 @@ export default function PinMap({ pins, variant = 'large', theme = 'dark', legend
         if (cancelled) return;
         gRef.current = g;
 
-        const styles = theme === 'dark' ? DARK_STYLE : undefined;
+        const styles = theme === 'dark' ? MAP_DARK_STYLE : undefined;
         const map = new mapsLibrary.Map(
           container,
           mini

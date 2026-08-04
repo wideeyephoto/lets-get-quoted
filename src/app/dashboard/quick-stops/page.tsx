@@ -2,7 +2,8 @@ import { requireOwnerContext, createAdminClient } from '@/lib/auth';
 import { listQuickStopRequests } from '@/lib/quick-stop-requests';
 import { sweepQuickStopOffers } from '@/lib/quick-stop-sweep';
 import { quickStopSettingsFromAccount, QUICK_STOP_SETTINGS_COLUMNS, QUICK_STOP_TERMINAL_STATUSES } from '@/lib/quick-stop';
-import { computeQuickStopRoute } from '@/lib/quick-stop-route';
+import { computeQuickStopRoute, loadRouteStops } from '@/lib/quick-stop-route';
+import QuickStopCoverageMap from './QuickStopCoverageMap';
 import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
 import QuickStopRequestCard, { type CardRequest } from './QuickStopRequestCard';
 import QuickStopExplainer from './QuickStopExplainer';
@@ -175,9 +176,25 @@ export default async function QuickStopsPage() {
     (r) => r.arrival_date === todayKey && ['confirmed', 'en_route', 'arrived', 'completed'].includes(r.status),
   ).length;
 
+  // Today's real route, for the coverage map in the hero. Same loader the
+  // detour screener uses, so the picture and the rule cannot disagree.
+  const routeStops = await loadRouteStops(supabase, accountId, { day: todayKey, timezone });
+  const coverageEmpty =
+    settings.maxDetourMiles <= 0
+      ? 'No detour limit is set yet, so there is nothing to draw. Set one below and this fills in.'
+      : routeStops.length === 0
+        ? 'Nothing geocoded on today’s schedule yet. Once today has scheduled work with an address, this shows exactly where a Quick Stop could land.'
+        : null;
+
   return (
     <main className="wide-shell workspace-shell bset">
       <QuickStopHead bookingUrl={bookingUrl} />
+
+      <QuickStopCoverageMap
+        stops={routeStops}
+        radiusMiles={settings.maxDetourMiles}
+        emptyReason={coverageEmpty}
+      />
 
       <QuickStopStatus
         enabled={settings.enabled}
