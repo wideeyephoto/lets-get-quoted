@@ -1657,6 +1657,40 @@ export function preserveBlogPosts(
 }
 
 /**
+ * Keep the intake tuning the website builder no longer owns.
+ *
+ * These settings moved to Settings → Automations → Intake AI. The builder still
+ * sends the whole content object it loaded when the page opened, so without
+ * this a lead filter changed in Settings is silently reverted by a Save the
+ * owner thought only changed their headline — and they would have no reason to
+ * suspect it, because the two pages look nothing like each other.
+ *
+ * Exactly the hazard preserveBlogPosts exists for, and enforced in the same
+ * place for the same reason: it is an invariant, not a convention.
+ *
+ * `quoteForm` is merged rather than replaced. Its `enabled` flag is which
+ * intake runs, which the builder DOES still own; only the intake-side wording
+ * comes back from storage.
+ */
+export function preserveIntakeSettings(
+  stored: Record<string, unknown> | null | undefined,
+  incoming: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  const next = (incoming && typeof incoming === 'object' ? { ...incoming } : {}) as Record<string, unknown>;
+  const saved = getSiteContent(stored ?? null);
+  const sent = getSiteContent(next);
+  next.leadFilters = saved.leadFilters;
+  next.estimateRanges = { ...sent.estimateRanges, emailField: saved.estimateRanges.emailField };
+  next.quoteForm = {
+    ...sent.quoteForm,
+    estimateLabel: saved.quoteForm.estimateLabel,
+    formHeading: saved.quoteForm.formHeading,
+    emailRequired: saved.quoteForm.emailRequired,
+  };
+  return next;
+}
+
+/**
  * A slug no other post on this site is already using.
  *
  * /blog/[slug] resolves by slug, so two posts sharing one means one of them is

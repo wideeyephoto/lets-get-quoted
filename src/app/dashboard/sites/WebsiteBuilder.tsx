@@ -6,7 +6,7 @@ import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getSiteContent, getTradeGlyphOptions, glyphForContent, mergeSiteContent, COLOR_SCHEMES, HEADER_STYLES,
   MENU_BUTTON_STYLES,
-  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, DEFAULT_VIDEOS_NAV_LABEL, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteEstimateRangesContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteLeadFiltersContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
+  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, DEFAULT_VIDEOS_NAV_LABEL, type NormalizedSiteContent, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteHowItWorksContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatsContent, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent } from '@/lib/site-content';
 import { generatePrivacyPolicy, generateTermsOfService } from '@/lib/legal/legal-copy';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
@@ -21,7 +21,6 @@ import { compressImage } from '@/lib/client-images';
 import ImagePickerModal from './ImagePickerModal';
 import DomainConnector from './DomainConnector';
 import GoogleReviewImport from './GoogleReviewImport';
-import IntakePreviewModal from './IntakePreviewModal';
 import IntroVideoField from './IntroVideoField';
 import HeroVideoField from './HeroVideoField';
 import LivePreview from './LivePreview';
@@ -41,7 +40,6 @@ type WebsiteBuilderProps = {
   uploadedImages: SiteImage[];
   // Account-level Intake AI tuning form (rendered server-side, mirrors
   // Settings → Automations → Intake AI). Shown in the AI-intake section.
-  intakeSlot?: React.ReactNode;
   // Arriving straight from first run, on a site that was just written from the
   // business name, trade and ZIP. Opens with an explanation rather than letting
   // the owner wonder who wrote all this.
@@ -239,7 +237,7 @@ function siteUpdates(site: Site) {
   };
 }
 
-export default function WebsiteBuilder({ site: initialSite, uploadedImages, intakeSlot, justBuilt = false }: WebsiteBuilderProps) {
+export default function WebsiteBuilder({ site: initialSite, uploadedImages, justBuilt = false }: WebsiteBuilderProps) {
   const [site, setSite] = useState(initialSite);
   const [siteImages, setSiteImages] = useState(uploadedImages);
   const [jobPhotoOptions, setJobPhotoOptions] = useState<JobPhotoImportOption[]>([]);
@@ -977,14 +975,6 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
     updateSiteContent({ quoteForm });
   }, [updateSiteContent]);
 
-  const updateEstimateRanges = useCallback((estimateRanges: SiteEstimateRangesContent) => {
-    updateSiteContent({ estimateRanges });
-  }, [updateSiteContent]);
-
-  const updateLeadFilters = useCallback((leadFilters: SiteLeadFiltersContent) => {
-    updateSiteContent({ leadFilters });
-  }, [updateSiteContent]);
-
   const loadJobPhotoOptions = useCallback(() => {
     startTransition(async () => {
       try {
@@ -1582,87 +1572,47 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
                   </button>
                 </div>
 
-                {!siteContent.quoteForm.enabled && (
-                <div className={styles.aiSuite}>
-                <SectionCard variant="featured" title="1. Customer intake setup" description="Choose what customers see and how they contact you." evidence="Homeowners are more likely to submit when they immediately see a realistic price range." open={openSection === 'estimate'} onToggleOpen={() => toggleSection('estimate')}>
+                {/* What the intake ASKS — lead filters, the email field, what
+                    it's called, the estimate posture and the preview — moved to
+                    Settings → Automations → Intake AI. None of it changed how
+                    the site looks; it decides which leads interrupt you, which
+                    is an automation and not a page-design choice.
+
+                    What stays here is what genuinely belongs to the page: the
+                    phone number, whether it's shown anywhere, and the thank-you
+                    video that plays after a submit. */}
+                <SectionCard
+                  variant="featured"
+                  title="Contact & thank-you video"
+                  description="The number on your call buttons, and what plays after somebody submits."
+                  open={openSection === 'estimate'}
+                  onToggleOpen={() => toggleSection('estimate')}
+                >
                   <label className={styles.formField}><span>Phone</span><input id="bf-phone" type="tel" value={site.phone || ''} onChange={(event) => handleChange('phone', event.target.value || null)} placeholder="(555) 123-4567" /><small className={styles.fieldHint}>Powers your call buttons and the text/call follow-up on leads.</small></label>
-                  <label className={styles.formField}><span>Email on the AI intake</span><select value={siteContent.estimateRanges.emailField} onChange={(event) => updateEstimateRanges({ ...siteContent.estimateRanges, emailField: event.target.value as SiteEstimateRangesContent['emailField'] })}><option value="optional">Optional — ask, but don&apos;t require it</option><option value="required">Required</option><option value="off">Don&apos;t ask for email</option></select><small>A phone number is always required here — the follow-up promised to visitors is a text or call.</small></label>
-                  <label className={styles.formField}><span>What visitors see it called</span><select value={siteContent.quoteForm.estimateLabel} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, estimateLabel: event.target.value as SiteQuoteFormContent['estimateLabel'] })}><option value="instant">&quot;Instant Estimate&quot;</option><option value="quick">&quot;Instant Quote&quot;</option></select><small>The heading + button on the AI intake card.</small></label>
-                  <div className={styles.contentSubhead}><strong>Thank-you video</strong><small>optional</small></div>
-                  <IntroVideoField
-                    video={siteContent.introVideo}
-                    onChange={(introVideo) => updateSiteContent({ introVideo })}
-                  />
-                  <div className={styles.contentSubhead}><strong>Website-wide phone visibility</strong></div>
                   <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.phonePublic} onChange={(event) => updateSiteContent({ phonePublic: event.target.checked })} /><span><strong>Show phone number</strong><small>This controls whether your phone number and call buttons appear anywhere on your website.</small></span></label>
-                </SectionCard>
-
-
-                <SectionCard variant="linked" title="2. Choose the jobs you want" description="Help the AI prioritise good-fit jobs without deleting or losing other leads." open={openSection === 'leadFilters'} onToggleOpen={() => toggleSection('leadFilters')}>
-                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.leadFilters.askTimeline} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, askTimeline: event.target.checked })} /><span><strong>Ask &quot;when do you need this done?&quot;</strong><small>ASAP jobs rank Hot; &quot;just researching&quot; sinks to the bottom of your leads.</small></span></label>
-                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.leadFilters.serviceAreaGate} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, serviceAreaGate: event.target.checked })} /><span><strong>Check the visitor&apos;s service area</strong><small>Asks for their ZIP or town and flags leads outside your &quot;Cities you serve&quot; list.{siteContent.serviceAreas.cities.filter((city) => city.trim()).length === 0 ? ' Add cities to that section to activate this.' : ''}</small></span></label>
-                  <div className={styles.contentSubhead}><strong>Minimum estimated job value</strong></div>
-                  {/* 0 already meant "no minimum", so the toggle reads and writes
-                      that same value rather than adding a second source of truth. */}
-                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.leadFilters.minJobAmount === 0} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, minJobAmount: event.target.checked ? 0 : 500 })} /><span><strong>I don&apos;t have a minimum</strong><small>Every job is worth quoting, whatever the size.</small></span></label>
-                  {siteContent.leadFilters.minJobAmount > 0 && (
-                    <label className={styles.formField}><span>Flag jobs estimated below</span><input type="number" min={1} value={siteContent.leadFilters.minJobAmount} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, minJobAmount: Math.max(0, Math.round(Number(event.target.value) || 0)) })} /><small>Smaller jobs still come through — they&apos;re just marked &quot;Below minimum&quot;.</small></label>
+                  {siteContent.quoteForm.enabled && (
+                    <label className={styles.formField}><span>What visitors see the form called</span><input type="text" maxLength={40} value={siteContent.quoteForm.formHeading} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, formHeading: event.target.value })} placeholder="Request an Estimate" /><small className={styles.fieldHint}>The heading on the hero capture and the button in your header. The classic form replies later rather than pricing on the spot, so avoid wording that promises an instant number.</small></label>
                   )}
-                  <div className={styles.contentSubhead}><strong>Jobs you don&apos;t want</strong><small>the AI flags matching requests</small></div>
-                  <div className={styles.badgeList}>
-                    {siteContent.leadFilters.exclusions.map((item, index) => (
-                      <div className={styles.badgeRow} key={index}>
-                        <input className={styles.badgeInput} value={item} maxLength={80} aria-label={`Exclusion ${index + 1}`} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, exclusions: siteContent.leadFilters.exclusions.map((other, otherIndex) => otherIndex === index ? event.target.value : other) })} placeholder="e.g. mobile homes, window AC units" />
-                        <button type="button" className={styles.badgeRemove} onClick={() => updateLeadFilters({ ...siteContent.leadFilters, exclusions: siteContent.leadFilters.exclusions.filter((_, otherIndex) => otherIndex !== index) })} aria-label={`Remove ${item || 'exclusion'}`}>×</button>
-                      </div>
-                    ))}
-                  </div>
-                  {siteContent.leadFilters.exclusions.length < 10 && <button type="button" className={styles.secondaryAction} onClick={() => updateLeadFilters({ ...siteContent.leadFilters, exclusions: [...siteContent.leadFilters.exclusions, ''] })}>Add exclusion</button>}
-                  <div className={styles.contentSubhead}><strong>Availability</strong></div>
-                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.leadFilters.fullyBooked.enabled} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, fullyBooked: { ...siteContent.leadFilters.fullyBooked, enabled: event.target.checked } })} /><span><strong>I&apos;m currently fully booked</strong><small>Tell new customers you&apos;re booked while still collecting their information for future availability.</small></span></label>
-                  {siteContent.leadFilters.fullyBooked.enabled && (
-                    <div className={styles.formColumns}>
-                      <label className={styles.formField}><span>Booked until (optional)</span><input type="date" value={siteContent.leadFilters.fullyBooked.until} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, fullyBooked: { ...siteContent.leadFilters.fullyBooked, until: event.target.value } })} /><small>The banner turns itself off after this date — no date means it runs until you switch it off.</small></label>
-                      <label className={styles.formField}><span>Message (optional)</span><input maxLength={140} value={siteContent.leadFilters.fullyBooked.message} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, fullyBooked: { ...siteContent.leadFilters.fullyBooked, message: event.target.value } })} placeholder="We're currently booked up — send your request and we'll reach out as soon as a spot opens." /></label>
-                    </div>
-                  )}
-                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.leadFilters.phoneVerification} onChange={(event) => updateLeadFilters({ ...siteContent.leadFilters, phoneVerification: event.target.checked })} /><span><strong>Verify phone numbers with a text code</strong><small>The strongest junk filter — visitors confirm a 6-digit code before the AI intake submits. Verified leads get a green badge. Skipped automatically if texting isn&apos;t configured.</small></span></label>
-                </SectionCard>
-
-
-                {/* Account-level tuning for the same AI. It only applies when
-                    Smart Intake is the active method, so it lives inside this
-                    group rather than floating between cards — and collapses like
-                    its siblings, so arriving on the tab doesn't dump the third
-                    step open while the first two are shut. */}
-                <SectionCard variant="linked" title="3. Estimate strategy &amp; lead alerts" description="Control how your ballpark estimates are positioned and which leads get your immediate attention." open={openSection === 'intakeAi'} onToggleOpen={() => toggleSection('intakeAi')}>
-                  {intakeSlot}
-                </SectionCard>
-
-                {/* Closes the loop on the three cards above. Everything in them
-                    is a decision about a conversation the owner has never seen —
-                    this is the conversation, running on the draft, before any of
-                    it is published. */}
-                <IntakePreviewModal site={site} />
-                </div>
-                )}
-
-                {siteContent.quoteForm.enabled && (
-                <SectionCard title="Quote request form" description="The classic multi-field form where visitors type out their job details and wait for you to reply with a price. Switch back to Smart Intake above to price jobs instantly instead." open={openSection === 'quoteForm'} onToggleOpen={() => toggleSection('quoteForm')}>
-                  <label className={styles.formField}><span>Phone</span><input id="bf-phone-quote" type="tel" value={site.phone || ''} onChange={(event) => handleChange('phone', event.target.value || null)} placeholder="(555) 123-4567" /><small className={styles.fieldHint}>Powers your call buttons across the site.</small></label>
-                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.phonePublic} onChange={(event) => updateSiteContent({ phonePublic: event.target.checked })} /><span><strong>Show my phone number on my website</strong><small>Off = no call buttons anywhere — visitors reach you through the form instead. Texting still works either way. Site-wide setting.</small></span></label>
-                  <label className={styles.formField}><span>What visitors see it called</span><input type="text" maxLength={40} value={siteContent.quoteForm.formHeading} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, formHeading: event.target.value })} placeholder="Request an Estimate" /><small className={styles.fieldHint}>The heading on the hero capture and the button in your header. The classic form replies later rather than pricing on the spot, so avoid wording that promises an instant number.</small></label>
-                  <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.quoteForm.emailRequired} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, emailRequired: event.target.checked })} /><span><strong>Require email on quote form</strong><small>Ask homeowners for an email address on every request so future email campaigns have clean contact data.</small></span></label>
-                  {/* The same setting as the Smart Intake card, on the same
-                      content key — whichever intake is switched on can offer the
-                      video, and switching between them keeps whatever is set. */}
+                  {/* One key, either intake — switching between them keeps
+                      whatever video is set. */}
                   <div className={styles.contentSubhead}><strong>Thank-you video</strong><small>optional</small></div>
                   <IntroVideoField
                     video={siteContent.introVideo}
                     onChange={(introVideo) => updateSiteContent({ introVideo })}
                   />
                 </SectionCard>
-                )}
+
+                <a className={styles.intakeSettingsLink} href="/dashboard/settings#intake-ai">
+                  <span>
+                    <strong>Adjust your intake settings</strong>
+                    <small>
+                      {siteContent.quoteForm.enabled
+                        ? 'Email requirement and lead filters for your quote form.'
+                        : 'What the AI asks, which jobs you want, pricing posture, alerts — and a preview.'}
+                    </small>
+                  </span>
+                  <span aria-hidden="true">↗</span>
+                </a>
 
                 <div className={styles.cardGroupLabel}>Main sections</div>
                 <p className={styles.cardGroupHint}>Drag a section by its ⠿ handle to reorder it on your live page. Turned-off sections keep their spot but stay hidden until you switch them on.</p>

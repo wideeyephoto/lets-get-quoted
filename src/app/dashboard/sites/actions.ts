@@ -14,7 +14,7 @@ import { siteToSeoInput } from '@/lib/seo/site-seo';
 import { generateStockImages, type StockImageResult } from '@/lib/stock/generate';
 import { fetchStockPool, isPexelsConfigured } from '@/lib/stock/pexels';
 import type { ImageOrientation, PexelsSearchResult } from '@/lib/stock/types';
-import { getSiteContent } from '@/lib/site-content';
+import { getSiteContent, preserveIntakeSettings } from '@/lib/site-content';
 import { preserveBlogPosts } from '@/lib/site-blog';
 import {
   getOrCreateSite,
@@ -57,8 +57,14 @@ export async function updateSiteAction(updates: SiteEditableInput) {
   // without this a post written in the meantime is silently deleted by a Save
   // the owner thought only changed their headline. Enforced here rather than
   // trusted to the client, because it is an invariant and not a convention.
+  //
+  // Intake tuning is preserved for the same reason: it moved to Settings →
+  // Automations → Intake AI, and the builder would otherwise revert it.
   const contentWithBlogPreserved = updates.content
-    ? preserveBlogPosts(sites[0].content as Record<string, unknown> | null, updates.content)
+    ? preserveIntakeSettings(
+        sites[0].content as Record<string, unknown> | null,
+        preserveBlogPosts(sites[0].content as Record<string, unknown> | null, updates.content),
+      )
     : updates.content;
 
   const editableUpdates: SiteEditableInput = {

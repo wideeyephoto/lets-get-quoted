@@ -10539,6 +10539,37 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: rgba(255, 
 .selection-template-note.is-ok { color: var(--ink-lime-1); }
 .selection-template-note.is-bad { color: var(--ink-orange-1); }
 
+/* Intake tuning, moved here from the website builder. */
+.intake-content { margin-top: 0.9rem; }
+.intake-content .intake-heading { margin-top: 1.3rem; }
+.intake-lede { margin: 0.3rem 0 0.8rem; font-size: 0.84rem; line-height: 1.55; color: var(--mute-t50); }
+.intake-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 0.7rem; }
+.intake-exclusions { display: grid; gap: 0.4rem; margin-bottom: 0.5rem; }
+.intake-exclusion { display: flex; align-items: center; gap: 0.4rem; }
+.intake-exclusion input {
+  flex: 1;
+  min-height: 38px;
+  padding: 0.4rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid rgba(var(--tint), 0.16);
+  background: rgba(var(--tint), 0.05);
+  color: var(--text);
+  font-size: 0.88rem;
+  font-family: inherit;
+}
+.intake-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid rgba(var(--tint), 0.09);
+  font-size: 0.78rem;
+  color: var(--mute-t45);
+}
+.intake-save { min-height: 1.2em; }
+.intake-save-saved { color: var(--ink-lime-1); }
+.intake-save-error { color: var(--ink-orange-1); }
+
 /* The option's photo, on the OWNER's board too. Small — this is a list, and the
    picture is here so both sides recognise the same tile, not to be admired. */
 .selection-option-photo {

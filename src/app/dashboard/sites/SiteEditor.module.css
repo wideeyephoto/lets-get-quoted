@@ -818,6 +818,28 @@ a.blogGenerateBtn { display: block; text-align: center; text-decoration: none; l
 .sectionCardLinked { border-color: rgba(255,122,33,.4); background: rgba(255,122,33,.045); }
 .sectionCardLinked.sectionCardOpen { border-color: rgba(255,122,33,.55); background: rgba(255,122,33,.07); }
 /* The visible spine tying the two cards together. */
+/* The way out to the intake settings, which moved to Settings → Automations.
+   Deliberately looks like a destination and not a card: everything else in this
+   column is edited in place, and this one leaves the page. */
+.intakeSettingsLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 0 0.9rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 122, 33, 0.4);
+  background: rgba(255, 122, 33, 0.07);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+.intakeSettingsLink:hover { border-color: rgba(255, 122, 33, 0.7); background: rgba(255, 122, 33, 0.12); }
+.intakeSettingsLink span { display: grid; gap: 0.15rem; }
+.intakeSettingsLink strong { font-size: 0.92rem; }
+.intakeSettingsLink small { font-size: 0.79rem; line-height: 1.45; color: var(--mute-t55); }
+
 .aiSuite { display: grid; }
 .aiSuiteLink { position: relative; display: flex; justify-content: center; align-items: center; height: 34px; }
 .aiSuiteLink::before { content: ''; position: absolute; top: -2px; bottom: -2px; left: 50%; transform: translateX(-50%); width: 2px; background: linear-gradient(rgba(255,122,33,.8), rgba(255,122,33,.3)); }

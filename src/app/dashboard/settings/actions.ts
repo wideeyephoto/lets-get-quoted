@@ -4,7 +4,16 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import { updateSite } from '@/lib/sites';
-import { DEFAULT_PORTAL_NAV_LABEL, getSiteContent, mergeSiteContent, portalLinkRemoved, PORTAL_NAV_LABEL_MAX } from '@/lib/site-content';
+import {
+  DEFAULT_PORTAL_NAV_LABEL,
+  getSiteContent,
+  mergeSiteContent,
+  portalLinkRemoved,
+  PORTAL_NAV_LABEL_MAX,
+  type SiteEstimateRangesContent,
+  type SiteLeadFiltersContent,
+  type SiteQuoteFormContent,
+} from '@/lib/site-content';
 import { sendTestDigest } from '@/lib/daily-digest';
 import { normalizeEstimatePosture } from '@/lib/estimate-posture';
 import { AUTOMATION_COLUMNS, AUTOMATION_LABELS, isAutomationKey, type AutomationKey } from '@/lib/automations';
@@ -92,6 +101,58 @@ export async function updateCostSettingsAction(formData: FormData) {
  * link to anyone who types a matching address, and that is a decision a
  * contractor makes rather than discovers.
  */
+/**
+ * The intake tuning that lives in the site content — lead filters, the email
+ * field, and what the intake card is called.
+ *
+ * Moved here from the website builder, where it sat behind three numbered cards
+ * on a page about headlines and photos. It is an automation: it decides which
+ * leads interrupt you and which quietly sink.
+ *
+ * Read-modify-write on the branches it owns, so it can never clobber a headline
+ * or a section the builder holds. The other direction is guarded by
+ * preserveIntakeSettings in the builder's own save.
+ */
+export async function updateIntakeContentAction(input: {
+  leadFilters?: Partial<SiteLeadFiltersContent>;
+  emailField?: SiteEstimateRangesContent['emailField'];
+  estimateLabel?: SiteQuoteFormContent['estimateLabel'];
+  formHeading?: string;
+  emailRequired?: boolean;
+}) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const { data: site } = await supabase
+    .from('sites')
+    .select('id, content')
+    .eq('account_id', accountId)
+    .maybeSingle();
+  if (!site) throw new Error('Create your website first — this is what your visitors fill in.');
+
+  const stored = (site.content as Record<string, unknown> | null) ?? null;
+  const current = getSiteContent(stored);
+  const patch: Record<string, unknown> = {};
+
+  if (input.leadFilters) patch.leadFilters = { ...current.leadFilters, ...input.leadFilters };
+  if (input.emailField) patch.estimateRanges = { ...current.estimateRanges, emailField: input.emailField };
+
+  const quoteForm: Record<string, unknown> = {};
+  if (input.estimateLabel) quoteForm.estimateLabel = input.estimateLabel;
+  if (input.formHeading !== undefined) quoteForm.formHeading = input.formHeading.slice(0, 40);
+  if (input.emailRequired !== undefined) quoteForm.emailRequired = input.emailRequired;
+  // Never write quoteForm.enabled from here. That is which intake runs, and it
+  // has its own switch — sending a partial object without it would turn Smart
+  // Intake on or off as a side effect of renaming a button.
+  if (Object.keys(quoteForm).length > 0) patch.quoteForm = { ...current.quoteForm, ...quoteForm };
+
+  if (Object.keys(patch).length === 0) return;
+  await updateSite(supabase, accountId, site.id as string, {
+    content: mergeSiteContent(stored ?? {}, patch),
+  });
+
+  revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/sites');
+}
+
 /**
  * The past-customer portal's master switch.
  *

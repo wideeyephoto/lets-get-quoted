@@ -21,6 +21,9 @@ import { updateReviewSettingsAction, updateFollowupSettingsAction, updateReminde
 import { updateCostSettingsAction, toggleClientPortalAction } from './actions';
 import ClientPortalSection from './ClientPortalSection';
 import MissedCallSection from './MissedCallSection';
+import IntakeContentSection from './IntakeContentSection';
+import IntakePreviewModal from '../sites/IntakePreviewModal';
+import type { Site } from '@/lib/sites';
 import { siteOrigin } from '@/lib/seo/site-pages';
 import { displayPhone } from '@/lib/phone';
 import { chaseMessage } from '@/lib/selections';
@@ -100,7 +103,10 @@ export default async function SettingsPage({
       supabase.auth.getUser(),
       supabase.auth.getUserIdentities(),
       supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded, connect_disabled_at, schedule_day_hours, workday_start, workday_end, job_buffer_minutes, call_textback_enabled, call_forward_number, call_tracking_number, timezone, arrival_updates_enabled, arrival_location_policy, arrival_window_minutes, arrival_morning_confirmation, arrival_clock_travel, time_clock_mode').eq('id', accountId).single(),
-      supabase.from('sites').select('id, company_name, content, subdomain, published, custom_domain, custom_domain_verified_at').eq('account_id', accountId).maybeSingle(),
+      // The whole row: the intake preview renders the REAL intake component
+      // against it, so it needs the accent, the template and the rest — a
+      // hand-picked subset would render a preview that isn't what visitors see.
+      supabase.from('sites').select('*').eq('account_id', accountId).maybeSingle(),
       getAvailableTaxYears(supabase, accountId),
       supabase
         .from('payments')
@@ -438,11 +444,6 @@ export default async function SettingsPage({
                       </span>
                     </div>
                   ) : null}
-                  <p className="workspace-details-copy">
-                    Estimate wording, pricing posture, lead filters and high-value alerts are all tuned in the{' '}
-                    <Link href="/dashboard/sites">website builder</Link> &mdash; they change what the AI asks and how it
-                    prices, so they live next to the page itself.
-                  </p>
                   <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
                     Your website&apos;s AI intake opens the relationship for you: it asks a homeowner{' '}
                     <strong>2&ndash;8 short questions</strong>, gives them a instant ballpark, and captures the
@@ -492,6 +493,23 @@ export default async function SettingsPage({
                       <SaveButton>Save intake settings</SaveButton>
                     </div>
                   </form>
+
+                  {/* Moved here from the website builder, where the same
+                      controls sat behind three numbered cards on a page about
+                      headlines and photos. None of it changes how the site
+                      looks — it decides which leads interrupt you. */}
+                  {site ? (
+                    <>
+                      <IntakeContentSection
+                        leadFilters={businessBasics.leadFilters}
+                        emailField={businessBasics.estimateRanges.emailField}
+                        estimateLabel={businessBasics.quoteForm.estimateLabel}
+                        hasCities={businessBasics.serviceAreas.cities.some((city) => city.trim())}
+                        smartIntakeOn={smartIntakeOn}
+                      />
+                      <IntakePreviewModal site={site as Site} />
+                    </>
+                  ) : null}
                 </AutomationCard>
 
                 <AutomationCard group="booking-intake" id="booking-availability" title="Online booking" subtitle="Days & windows customers can grab" toggle={{ on: bookingEnabled, action: toggleAutomationAction.bind(null, 'booking') }}>
