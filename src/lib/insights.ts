@@ -692,7 +692,12 @@ export async function buildInsights(
     // money gets reported twice under two different names.
     supabase
       .from('extra_stop_requests')
-      .select('id, job_id, payment_id, offer_sent_at, paid_at, completed_at')
+      // detour_miles / route_extension_minutes are what make "revenue per added
+      // hour" a real division rather than an allocation — they are the marginal
+      // cost of the stop, measured against the last one already on that day.
+      .select(
+        'id, job_id, payment_id, client_id, status, arrival_date, detour_miles, route_extension_minutes, offer_visit_minutes, offer_sent_at, paid_at, completed_at, created_at',
+      )
       .eq('account_id', accountId),
     supabase
       .from('payments')

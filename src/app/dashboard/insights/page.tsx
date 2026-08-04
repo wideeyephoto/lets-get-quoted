@@ -157,6 +157,96 @@ function QuickStops({ insights }: { insights: Insights }) {
         )}
       </div>
 
+      {/* --- funnel ---------------------------------------------------------
+          Offered -> Accepted -> Completed. Counted from the timestamps, not the
+          current status: a finished stop was offered and accepted at some point,
+          and status only remembers where it ended up. */}
+      {qs.offered > 0 ? (
+        <div className="insq-funnel" role="img" aria-label={`${qs.offered} offered, ${qs.accepted} accepted, ${qs.completed} completed`}>
+          {[
+            { key: 'offered', label: 'Offered', value: qs.offered },
+            { key: 'accepted', label: 'Accepted', value: qs.accepted },
+            { key: 'completed', label: 'Completed', value: qs.completed },
+          ].map((stage) => (
+            <div className={`insq-funnel-stage is-${stage.key}`} key={stage.key}>
+              <strong>{stage.value}</strong>
+              <span>{stage.label}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {/* --- the road cost --------------------------------------------------
+          The one thing a Quick Stop can measure that no other job can: it knows
+          how far off-route it was. Every figure here is over the stops that
+          actually recorded a detour, and says so. */}
+      {qs.measuredStops > 0 ? (
+        <div className="insq-efficiency">
+          <span className="ins-figure-label">What the detours cost — {qs.measuredStops} measured stop{qs.measuredStops === 1 ? '' : 's'}</span>
+          <div className="insq-effgrid">
+            <div>
+              <span className="ins-sub">Avg added time</span>
+              <strong className="ins-mid">{qs.avgAddedMinutes !== null ? `${qs.avgAddedMinutes} min` : <Unknown hint="No stop recorded how much longer the day got." />}</strong>
+            </div>
+            <div>
+              <span className="ins-sub">Avg detour</span>
+              <strong className="ins-mid">{qs.avgAddedMiles !== null ? `${qs.avgAddedMiles} mi` : <Unknown hint="No stop recorded a detour distance." />}</strong>
+            </div>
+            <div>
+              <span className="ins-sub">Revenue per added hour</span>
+              <strong className="ins-mid is-good">{qs.revenuePerAddedHour !== null ? formatMoney(qs.revenuePerAddedHour) : <Unknown hint="Needs at least one stop with a recorded time cost." />}</strong>
+            </div>
+            <div>
+              <span className="ins-sub">Revenue per added mile</span>
+              <strong className="ins-mid">{qs.revenuePerAddedMile !== null ? formatMoney(qs.revenuePerAddedMile) : <Unknown hint="Needs at least one stop with a recorded detour." />}</strong>
+            </div>
+          </div>
+          {qs.revenuePerAddedHour !== null ? (
+            <p className="insq-topline">
+              Quick Stops earned <strong>{formatMoney(qs.revenuePerAddedHour)}</strong> per extra hour on the road
+              {qs.bestDay ? <> · busiest day is <strong>{qs.bestDay.label}</strong></> : null}.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {/* --- opportunity ----------------------------------------------------
+          Missed counts only what the CONTRACTOR declined or let lapse — a stop
+          the homeowner walked away from is not one you can go back and win. */}
+      <div className="insq-opportunity">
+        <span className="ins-figure-label">Opportunity</span>
+        <div className="insq-oppgrid">
+          <div>
+            <span className="ins-sub">Requests received</span>
+            <strong className="ins-mid">{qs.requested}</strong>
+          </div>
+          <div>
+            <span className="ins-sub">Declined or expired</span>
+            <strong className={`ins-mid${qs.missed > 0 ? ' is-warn' : ''}`}>{qs.missed}</strong>
+          </div>
+          <div>
+            <span className="ins-sub">Still ahead</span>
+            <strong className="ins-mid">{qs.upcoming}</strong>
+          </div>
+          <div>
+            <span className="ins-sub">Est. value passed up</span>
+            <strong className="ins-mid">
+              {qs.missedRevenue !== null ? formatMoney(qs.missedRevenue) : (
+                <Unknown hint="An estimate at your median stop value — needs at least three earning stops before it means anything." />
+              )}
+            </strong>
+          </div>
+        </div>
+        {qs.repeatCustomers > 0 || qs.highestValue !== null ? (
+          <p className="ins-sub insq-oppfoot">
+            {qs.highestValue !== null ? <>Best single stop {formatMoney(qs.highestValue)}. </> : null}
+            {qs.repeatCustomers > 0
+              ? `${qs.repeatCustomers} customer${qs.repeatCustomers === 1 ? ' has' : 's have'} taken more than one.`
+              : null}
+          </p>
+        ) : null}
+      </div>
+
       <div className="insq-crew">
         <span className="ins-figure-label">Crew with the most Quick Stops</span>
         {qs.crew.length > 0 ? (
