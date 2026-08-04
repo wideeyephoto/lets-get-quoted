@@ -246,18 +246,18 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, inta
   const [jobPhotosLoaded, setJobPhotosLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<BuilderTab>('business');
 
-  // The Page tab is a guided 1-2-3, so open step 1 the first time it's shown —
-  // otherwise every step sits collapsed and there's no obvious starting point.
-  // Only once: after that the owner's own open/closed choices stand.
-  const pageTabPrimed = useRef(false);
-  useEffect(() => {
-    if (activeTab === 'page' && !pageTabPrimed.current) {
-      pageTabPrimed.current = true;
-      setOpenSection('estimate');
-    }
-  }, [activeTab]);
-  // 'basics' so the first Business card (name + trade + AI quick-start) is open
-  // on arrival — the natural starting point for a new site.
+  // The Page tab opens with everything collapsed, deliberately.
+  //
+  // It used to prime step 1 ("Customer intake setup") the first time the tab was
+  // shown, on the theory that a guided 1-2-3 needs an obvious starting point.
+  // But the tab is a LIST of ~20 sections, and landing with one expanded pushes
+  // the rest off-screen and hides the shape of the page you're editing. Someone
+  // arriving to change the footer had to scroll past an open card they never
+  // asked for and then close it.
+  //
+  // Clicking a region in the live preview still opens its card — see the
+  // edit-request handler below. That's navigation the owner asked for, which is
+  // a different thing from an auto-open.
   const [openSection, setOpenSection] = useState<string | null>('basics');
   const [isDirty, setIsDirty] = useState(false);
   // Seeded from justBuilt so a contractor arriving from first run is told, in
