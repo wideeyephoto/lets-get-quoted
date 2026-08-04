@@ -236,18 +236,23 @@
 
 /* --- tabs --- */
 
+/* WRAPS, never scrolls. A horizontal scrollbar under five short words hides
+   whichever tabs fall off the end — and a tab you cannot see is a tab nobody
+   clicks. In the master-detail layouts this pane is often only ~420px wide, so
+   the last two always fell off. Wrapping to a second row costs one line of
+   height and keeps every section reachable. */
 .tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.15rem;
   padding: 0 1.3rem;
-  overflow-x: auto;
   border-bottom: 1px solid var(--rule-g16);
   background: rgba(var(--tint), 0.012);
 }
 
 .tab {
   flex: none;
-  padding: 0.7rem 0.85rem;
+  padding: 0.7rem 0.7rem;
   border: 0;
   border-bottom: 2px solid transparent;
   background: none;

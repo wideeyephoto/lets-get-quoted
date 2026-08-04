@@ -29,7 +29,7 @@ import leadStyles from './leads.module.css';
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
-  { id: 'request', label: 'Their request' },
+  { id: 'request', label: 'Request' },
   { id: 'activity', label: 'Activity' },
   { id: 'photos', label: 'Photos' },
   { id: 'quote', label: 'Quote & visit' },
