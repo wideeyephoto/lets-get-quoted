@@ -46,6 +46,15 @@
      neither does this. */
   --on-accent: #180c02;
   --accent: #ff7a21;
+  /* The accent, for TEXT and glyphs that may land on paper.
+     Defined as `var(--accent)` rather than as the literal `#ff7a21`, so
+     swapping a site from --accent to --accent-paper is a provable no-op in
+     dark — the resolved value is the same declaration, not a copy of it that
+     can drift. Only the light theme re-points it.
+     Deliberately NOT --accent-ink: that token's dark value is #ff9d5c, so
+     adopting it would quietly move the dark theme, which is the one thing this
+     pass is not allowed to do. */
+  --accent-paper: var(--accent);
   --accent-2: #ffd166;
   /* "Newly arrived", as distinct from the accent's "this wants you today". Two
      oranges on one rail row make neither of them urgent, so the news badge steps
@@ -902,6 +911,10 @@
      the canvas and a sheet for the same reason --good does. The HUE is the
      brand; the value is just how it lands on what it is standing on. */
   --accent-ink: #0369a1;
+  /* Same deep blue on paper. #ff7a21 as TEXT on a white sheet measures 2.61:1
+     — under AA for body text, and the reason the Quick Stops disclosure chevron
+     was the last thing failing on that page. */
+  --accent-paper: #0369a1;
   --on-active: #0b5680;
   --shadow-strong: rgba(17, 27, 41, 0.18);
   --shadow-soft: rgba(17, 27, 41, 0.1);
@@ -15736,6 +15749,16 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 .es-phone-foot svg { color: var(--good); }
 
 .es-example { padding: 1rem; border-radius: 16px; border: 1px solid var(--edge-t12); background: rgba(3, 10, 18, 0.5); }
+/* The same slab .es-earnings had, missed ten lines up the file. A 50%-opaque
+   near-black over the white sheet composites to mid-grey — measured on paper,
+   the example card's own text landed at 1.47:1 ("6:30 – 7:15 PM"), 2.13:1 and
+   2.30:1, and the whole card read as a disabled panel rather than an example.
+   Neutral paper here, not .es-earnings' warm tint: that block is the orange
+   money callout, this is a plain worked example. */
+:root[data-theme='light'] .es-example {
+  border-color: var(--edge-t12);
+  background: #f4f7fb;
+}
 .es-example-job { margin: 0 0 0.7rem; font-size: 1.05rem; font-weight: 800; color: var(--text); }
 .es-example-facts { list-style: none; margin: 0 0 0.9rem; padding: 0; display: grid; gap: 0.4rem; font-size: 0.85rem; color: rgba(var(--tint), 0.66); }
 .es-example-facts li { display: flex; align-items: center; gap: 0.5rem; }
@@ -19337,7 +19360,10 @@ a.bset-card { color: inherit; text-decoration: none; }
 .es-how-copy strong { color: var(--text); font-size: 1.02rem; }
 .es-how-copy small { color: var(--mute-i55); font-size: 0.8rem; }
 .es-how-chev {
-  flex: none; color: var(--accent); font-size: 1.1rem; line-height: 1;
+  /* --accent-paper, not --accent: this glyph is the open/closed state of the
+     disclosure and it sits on the sheet, where #ff7a21 measures 2.61:1. The
+     token resolves to var(--accent) in dark, so this is a no-op there. */
+  flex: none; color: var(--accent-paper); font-size: 1.1rem; line-height: 1;
   transition: transform 0.18s ease;
 }
 .es-how[open] .es-how-chev { transform: rotate(180deg); }
