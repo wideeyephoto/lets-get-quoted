@@ -17097,13 +17097,22 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
      goes beside the number rather than under it, which halves the block's
      height. Stacked, these four alone cost 190px of the screen before you saw
      a single date. */
+  /* minmax(0, 1fr), NOT 1fr. A bare `1fr` has a minimum of min-content, so
+     these four tiles refused to shrink below the width of "Revenue" and their
+     icon: measured at 320px the row came out 299px wide inside 234px of room
+     and pushed the whole document 22px sideways. `1fr` on its own does not
+     mean "an equal share", it means "an equal share, but never smaller than
+     what is inside me". */
   .schedule-stats {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.4rem;
     justify-content: flex-start;
     flex: 1 1 100%;
   }
+
+  .sched-stat { min-width: 0; }
+  .sched-stat small { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
   .sched-stat {
     display: flex;
@@ -23299,4 +23308,530 @@ a.bset-card { color: inherit; text-decoration: none; }
     margin: 0 0 0.9rem;
   }
   .quote-request-alert-close { top: 0.35rem; right: 0.35rem; transform: none; }
+}
+
+/* ==========================================================================
+   THE SCHEDULE PAGE ON A PHONE — AGENDA FIRST
+   ==========================================================================
+
+   Measured before this existed, at 390px: each day cell in the month grid was
+   33px wide, each job chip inside one was 10px wide and 46px tall at a 9.92px
+   font, and all 13 client names on screen were clipped. At 320px the page also
+   scrolled 39px sideways. A 10x46 box with a name in it is not a small chip,
+   it is a vertical fragment — the name renders one character per line.
+
+   Seven columns of detail do not fit on a phone and no amount of shrinking
+   makes them; below 640px the month grid is replaced by one day at a time.
+   Both trees render and this is what picks between them, so there is no JS
+   media query, no hydration mismatch and no flash of the wrong layout. */
+
+.sched-mobile { display: none; }
+
+@media (max-width: 640px) {
+  .calendar-desktop-views { display: none; }
+  .sched-mobile { display: block; }
+
+  /* The month arrows and the five-view menu belong to the grid that is no
+     longer on screen; the agenda has its own day nav and its own Agenda/Month
+     control. "Plan my day" stays — it is about the day you are looking at. */
+  .calendar-toolbar .month-nav,
+  .calendar-toolbar .calendar-view-menu { display: none; }
+  .calendar-toolbar { margin-bottom: 0.6rem; }
+  .calendar-toolbar-actions { flex: 1 1 100%; }
+  .calendar-toolbar-actions > * { width: 100%; justify-content: center; }
+
+  /* Reclaimed for the date grid below. Seven columns need every pixel the
+     panel is prepared to give up, and the agenda's cards supply their own
+     inset, so the panel's own padding was doing nothing but narrowing them. */
+  .workspace-section-card.schedule-calendar-panel { padding-left: 0.65rem; padding-right: 0.65rem; }
+
+  /* THE TWO DATE GRIDS BLEED TO THE PANEL'S INNER EDGE.
+     Both are a fixed number of columns whose width is decided by the room they
+     are given: five days, and seven. Everything else here is text in a card
+     and wants the inset; these two want the pixels. Bleeding by exactly the
+     panel's own padding is the whole trick — a bleed past that would cross the
+     panel's border and read as a bug, and a viewport bleed (100vw) counts the
+     scrollbar and would reintroduce the sideways scroll this pass removed. */
+  .sched-strip,
+  .sched-mini-head,
+  .sched-mini-grid { margin-left: -0.65rem; margin-right: -0.65rem; }
+}
+
+/* --- the bar: Agenda | Month, and Today ---------------------------------- */
+
+.sched-mobile-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.55rem;
+}
+
+.sched-tabs {
+  display: inline-flex;
+  flex: 1;
+  padding: 0.2rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.04);
+}
+
+.sched-tab {
+  flex: 1;
+  min-height: 44px;
+  padding: 0 0.9rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--mute-t60);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+/* Selected is a fill AND a weight change, never the fill alone. */
+.sched-tab.is-on {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 850;
+}
+
+.sched-tab:focus-visible,
+.sched-nav-btn:focus-visible,
+.sched-nav-today:focus-visible,
+.sched-strip-day:focus-visible,
+.sched-mini-day:focus-visible,
+.sched-card-options:focus-visible,
+.sched-cta-primary:focus-visible,
+.sched-cta-secondary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.sched-nav-today {
+  flex: none;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 0.85rem;
+  border: 1px solid var(--edge-t16);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.04);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.sched-nav-today:disabled { opacity: 0.42; cursor: default; }
+
+/* --- the day, named in full --------------------------------------------- */
+
+.sched-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.sched-nav-btn {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--edge-t16);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.04);
+  color: var(--text);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.sched-nav-btn:hover { border-color: var(--cedge-orange-30); }
+
+.sched-nav-date { flex: 1; min-width: 0; text-align: center; }
+
+.sched-mobile-date {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.06rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.sched-nav-sub {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+  margin: 0.1rem 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.sched-nav-rel { color: var(--accent-ink); font-weight: 800; }
+.sched-nav-rel::after { content: '\00b7'; margin-left: 0.4rem; color: var(--mute-i42); font-weight: 400; }
+
+/* --- five days ----------------------------------------------------------- */
+
+.sched-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.3rem;
+  /* Longhand, NOT `margin: 0 0 0.7rem`. The shorthand is declared after the
+     media query that bleeds this row to the panel edge, and at equal
+     specificity the later rule wins whether or not the earlier one is inside
+     an @media — so the shorthand silently reset the bleed to 0 and cost each
+     of the five days 4px at 320. */
+  margin-top: 0;
+  margin-bottom: 0.7rem;
+  padding: 0;
+  list-style: none;
+}
+
+.sched-strip-day {
+  display: grid;
+  justify-items: center;
+  gap: 0.05rem;
+  width: 100%;
+  min-height: 62px;
+  padding: 0.35rem 0.1rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.03);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.sched-strip-day small { color: var(--mute-i56); font-size: 0.66rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.sched-strip-day strong { font-size: 1.02rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+
+/* Today is marked by an underline as well as a tint, so it survives being
+   next to the selected day. */
+.sched-strip-day.is-today strong { box-shadow: 0 2px 0 var(--accent); }
+
+.sched-strip-day.is-on {
+  border-color: var(--accent);
+  background: rgba(255, 122, 33, 0.14);
+  box-shadow: inset 0 0 0 1px var(--cedge-orange-30);
+}
+
+/* The count is the badge; an empty day gets a dash so the row keeps its
+   rhythm and "nothing booked" is stated rather than left blank. */
+.sched-strip-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: rgba(255, 122, 33, 0.18);
+  color: var(--accent-ink);
+  font-size: 0.68rem;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+}
+
+.sched-strip-count.is-empty { background: none; }
+.sched-strip-count.is-empty::before { content: '\2013'; color: var(--mute-i42); }
+
+/* --- capacity ------------------------------------------------------------ */
+
+.sched-cap {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--edge-t10);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.03);
+}
+
+.sched-cap-text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.45rem;
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.sched-cap-text strong { color: var(--text); font-size: 0.88rem; font-weight: 800; }
+
+.sched-cap-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.1);
+  overflow: hidden;
+}
+
+.sched-cap-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+
+/* Colour is the second signal here, never the first — .sched-cap-text already
+   says "Nearly full" in words. */
+.sched-cap[data-state='empty'] .sched-cap-bar > span { background: var(--mute-i42); }
+.sched-cap[data-state='nearly'] .sched-cap-bar > span { background: var(--gold-ink); }
+.sched-cap[data-state='full'] .sched-cap-bar > span,
+.sched-cap[data-state='over'] .sched-cap-bar > span { background: #ff6b6b; }
+.sched-cap[data-state='over'] .sched-cap-text strong,
+.sched-cap[data-state='full'] .sched-cap-text strong { color: var(--ink-orange-2); }
+
+.sched-blocked {
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--cedge-orange-30);
+  border-radius: 10px;
+  background: rgba(255, 122, 33, 0.08);
+  font-size: 0.82rem;
+  color: var(--ink-orange-2);
+}
+
+/* --- the two actions ----------------------------------------------------- */
+
+.sched-cta { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.65rem 0 0.7rem; }
+
+.sched-cta-primary {
+  flex: 1 1 11rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 1rem;
+  border: 1px solid rgba(139, 118, 255, 0.42);
+  border-radius: 12px;
+  background: rgba(108, 92, 231, 0.9);
+  color: #fff;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.sched-cta-primary:hover { background: rgba(122, 106, 245, 0.95); }
+
+.sched-cta-secondary {
+  flex: 1 1 9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 0.85rem;
+  border: 1px solid var(--edge-t16);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.04);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sched-empty {
+  margin: 0;
+  padding: 1.5rem 1rem;
+  border: 1px dashed var(--edge-t14);
+  border-radius: 12px;
+  color: var(--muted);
+  font-size: 0.88rem;
+  text-align: center;
+}
+
+/* --- the jobs, as rows you can read -------------------------------------- */
+
+.sched-list { display: flex; flex-direction: column; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
+
+.sched-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  padding: 0.65rem 0.7rem 0.7rem;
+  border: 1px solid var(--edge-t12);
+  border-left: 3px solid var(--edge-t22);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.03);
+}
+
+/* The status stripe repeats what the badge says in words. */
+.sched-card.status-new_lead { border-left-color: var(--gold-ink); }
+.sched-card.status-in_progress { border-left-color: var(--accent); }
+.sched-card.status-complete { border-left-color: var(--ink-green-1); }
+.sched-card-planned { border-left-style: dashed; }
+
+.sched-card-top { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin: 0; }
+
+/* The time leads, at a size you can read across a truck cab. */
+.sched-card-time {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sched-card-badge {
+  flex: none;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.1);
+  color: var(--mute-t60);
+  font-size: 0.7rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.sched-card-badge.status-warn { background: rgba(255, 209, 102, 0.16); color: var(--gold-ink); }
+.sched-card-badge.status-complete { background: rgba(120, 220, 150, 0.16); color: var(--ink-green-1); }
+.sched-card-badge.status-danger { background: rgba(255, 107, 107, 0.16); color: var(--ink-orange-2); }
+
+.sched-card-name {
+  color: var(--text);
+  font-size: 1.02rem;
+  font-weight: 800;
+  line-height: 1.25;
+  text-decoration: none;
+}
+
+.sched-card-name:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+.sched-card-where { margin: 0; color: var(--muted); font-size: 0.84rem; }
+
+/* Two lines and then an ellipsis. A scope can run to a paragraph, and a card
+   that is mostly one job's description stops being a list of the day. */
+.sched-card-what {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0.1rem 0 0;
+  color: var(--mute-t60);
+  font-size: 0.83rem;
+  line-height: 1.35;
+}
+
+.sched-card-figures {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.55rem;
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: var(--mute-t60);
+}
+
+.sched-card-money { color: var(--warn); font-size: 0.92rem; font-weight: 850; font-variant-numeric: tabular-nums; }
+.sched-card-hours { font-variant-numeric: tabular-nums; }
+.sched-card-crew { color: var(--muted); }
+
+.sched-card-options {
+  align-self: stretch;
+  min-height: 44px;
+  margin-top: 0.45rem;
+  border: 1px solid var(--edge-t16);
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.05);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.sched-card-options:hover { border-color: var(--cedge-orange-30); background: rgba(255, 122, 33, 0.08); }
+
+/* --- Month: a date selector ---------------------------------------------- */
+
+.sched-mini-hint { margin: 0 0 0.5rem; color: var(--muted); font-size: 0.83rem; }
+
+.sched-mini-head,
+.sched-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.sched-mini-head span {
+  padding: 0.2rem 0;
+  color: var(--mute-i56);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.sched-mini-pad { min-height: 44px; }
+
+.sched-mini-day {
+  display: grid;
+  place-items: center;
+  gap: 0;
+  min-height: 46px;
+  padding: 0.15rem 0;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: rgba(var(--tint), 0.03);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.sched-mini-day strong { font-size: 0.9rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.05; }
+
+/* A count, not a name. The moment a client's name goes in one of these cells
+   this is the 33px column the agenda exists to replace. */
+.sched-mini-count {
+  min-height: 0.85rem;
+  color: var(--accent-ink);
+  font-size: 0.64rem;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.sched-mini-day.is-today { box-shadow: inset 0 -2px 0 var(--accent); }
+
+.sched-mini-day.is-on {
+  border-color: var(--accent);
+  background: rgba(255, 122, 33, 0.16);
+  font-weight: 850;
+}
+
+.sched-mini-day.is-blocked { background: repeating-linear-gradient(135deg, rgba(255, 122, 33, 0.09) 0 5px, transparent 5px 10px); }
+
+.sched-mini-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.7rem 0 0;
+  font-size: 0.85rem;
+}
+
+.sched-mini-foot a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 0.7rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 10px;
+  color: var(--text);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* --- paper ---------------------------------------------------------------- */
+
+:root[data-theme='light'] .panel .sched-strip-day,
+:root[data-theme='light'] .panel .sched-mini-day,
+:root[data-theme='light'] .panel .sched-card {
+  background: #fff;
+  border-color: rgba(17, 27, 41, 0.12);
+}
+
+:root[data-theme='light'] .panel .sched-mini-grid {
+  padding: 4px;
+  border-radius: 12px;
+  background: #eff3f8;
+  box-shadow: inset 0 1px 2px rgba(17, 27, 41, 0.07);
 }

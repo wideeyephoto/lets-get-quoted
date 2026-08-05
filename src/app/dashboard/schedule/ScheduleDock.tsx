@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { useScheduleDrag } from './ScheduleDragProvider';
+import { OPEN_SCHEDULE_DOCK_EVENT } from './dock-events';
 
 // The unscheduled jobs, as a bottom sheet on a phone.
 //
@@ -29,6 +30,15 @@ export default function ScheduleDock({ count, children }: { count: number; child
   useEffect(() => {
     if (armedJob) setOpen(false);
   }, [armedJob]);
+
+  // "Schedule a job" in the mobile agenda opens the sheet — that IS the list of
+  // jobs waiting for a date, and it is the only place on this page where one
+  // gets scheduled by hand.
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener(OPEN_SCHEDULE_DOCK_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_SCHEDULE_DOCK_EVENT, onOpen);
+  }, []);
 
   // Escape closes it, matching every other dismissible surface on this page.
   useEffect(() => {

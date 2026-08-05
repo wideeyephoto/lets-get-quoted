@@ -179,7 +179,10 @@ function StatIcon({ shape }: { shape: keyof typeof STAT_PATHS }) {
 export default async function SchedulePage({
   searchParams,
 }: {
-  searchParams: { month?: string };
+  /** `day` is read only by the mobile agenda — stepping off the end of a month
+      has to carry the day as well as the month, or coming back lands on the
+      1st. The desktop calendar ignores it. */
+  searchParams: { month?: string; day?: string };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
   const [{ data: account }, jobs, { data: site }] = await Promise.all([
@@ -288,6 +291,19 @@ export default async function SchedulePage({
       unavailableDays[key] = block.reason ? `Blocked off — ${block.reason}.` : 'This day is blocked off.';
     }
   }
+  // The day the mobile agenda opens on: the one asked for if it belongs to the
+  // month being rendered, else today, else the 1st. Never a date outside the
+  // grid — the agenda's five-day strip and its month picker read the same weeks.
+  const monthPrefix = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+  const requestedDay = typeof searchParams.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(searchParams.day)
+    ? searchParams.day
+    : null;
+  const initialDayKey = requestedDay?.startsWith(monthPrefix)
+    ? requestedDay
+    : todayKey.startsWith(monthPrefix)
+      ? todayKey
+      : toDateKey(year, monthIndex, 1);
+
   const monthLabel = new Date(year, monthIndex, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   const prevMonth = monthParam(year, monthIndex - 1);
   const nextMonth = monthParam(year, monthIndex + 1);
@@ -429,6 +445,10 @@ export default async function SchedulePage({
       crew_initials: (assignmentsByJob[job.id] ?? [])
         .map((crewId) => crewInitialsById.get(crewId))
         .filter((initials): initials is string => Boolean(initials)),
+      // What the work actually is. Only the mobile agenda prints it — a month
+      // cell has no room for a sentence, but a full-width card does, and
+      // "Dana Whitfield" alone does not tell you what you are turning up to do.
+      scope_label: job.scope?.trim() || null,
     };
   });
 
@@ -557,6 +577,14 @@ export default async function SchedulePage({
           assignmentsByJob={assignmentsByJob}
           blocks={availabilityBlocks}
           fullDates={fullDates}
+          /* The mobile agenda's inputs. Same numbers the drag guard and the
+             "Full" chip already use, so a day cannot read as full in one place
+             and open in another. */
+          hoursByDate={Object.fromEntries(hoursByDateForCalendar)}
+          capacityHours={scheduleDayHours}
+          blockedDays={unavailableDays}
+          unscheduledCount={unscheduledJobs.length}
+          initialDayKey={initialDayKey}
         />
 
         <div className="schedule-panel-foot">

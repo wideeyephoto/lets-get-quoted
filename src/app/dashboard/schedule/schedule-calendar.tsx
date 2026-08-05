@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import SaveButton from '@/components/save-button';
 import FloatingPanel from '@/components/floating-panel';
 import CalendarWeekendToggles from './CalendarWeekendToggles';
+import ScheduleMobileAgenda from './ScheduleMobileAgenda';
 import { setCalendarViewAction, setCalendarWeekendAction } from '../view-actions';
 import type { CalendarView, WeekendDays } from '@/lib/dashboard-views';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
@@ -102,6 +103,9 @@ export type CalendarJob = {
   value_label: string | null;
   hours_label: string | null;
   crew_initials: string[];
+  /** What the work IS. Optional because only the mobile agenda has the width to
+      print it — a 33px month cell never did. */
+  scope_label?: string | null;
 };
 
 export type CrewOption = {
@@ -214,6 +218,11 @@ export default function ScheduleCalendar({
   toolbarActions,
   weekendDays = { sat: true, sun: true },
   initialView = 'month',
+  hoursByDate = {},
+  capacityHours = 8,
+  blockedDays = {},
+  unscheduledCount = 0,
+  initialDayKey,
 }: {
   weeks: CalendarCell[][];
   todayKey: string;
@@ -233,6 +242,16 @@ export default function ScheduleCalendar({
   weekendDays?: WeekendDays;
   /** Ditto for the shape of the calendar — see CALENDAR_VIEW_COOKIE. */
   initialView?: CalendarView;
+  /* --- the mobile agenda's inputs. All optional and all additive: the desktop
+     calendar reads none of them. --- */
+  /** Booked hours per date, buffer included. Drives the capacity line. */
+  hoursByDate?: Record<string, number>;
+  capacityHours?: number;
+  /** Date key -> why the day is unavailable. Same map the drag guard uses. */
+  blockedDays?: Record<string, string>;
+  unscheduledCount?: number;
+  /** Which day the agenda opens on — today, unless you navigated elsewhere. */
+  initialDayKey?: string;
 }) {
   const fullSet = useMemo(() => new Set(fullDates), [fullDates]);
 
@@ -503,6 +522,27 @@ export default function ScheduleCalendar({
           <CalendarViewMenu value={calendarView} onChange={setCalendarView} />
         </div>
       </div>
+
+      {/* PHONES GET A DIFFERENT PAGE, NOT A NARROWER ONE. Both trees render and
+          CSS picks one at 640px — see .sched-mobile / .calendar-desktop-views
+          in globals.css. The job actions panel below is shared, so a card's
+          Options button and a desktop chip open the same thing. */}
+      <ScheduleMobileAgenda
+        weeks={weeks}
+        todayKey={todayKey}
+        initialDayKey={initialDayKey ?? todayKey}
+        jobs={jobs}
+        planned={planned}
+        crew={crew}
+        assignments={assignments}
+        hoursByDate={hoursByDate}
+        capacityHours={capacityHours}
+        blockedDays={blockedDays}
+        unscheduledCount={unscheduledCount}
+        onOpenJob={openJobActions}
+      />
+
+      <div className="calendar-desktop-views">
       {calendarView === 'agenda' ? (
         agendaDays.length === 0 ? (
           <p className="calendar-view-empty">Nothing scheduled this month.</p>
@@ -825,6 +865,7 @@ export default function ScheduleCalendar({
           <CalendarWeekendToggles days={days} onChange={updateDays} counts={weekendJobCounts} />
         </div>
       )}
+      </div>
 
       {openJob ? (
         <div className="crew-assign-backdrop" onClick={closeJobActions}>
