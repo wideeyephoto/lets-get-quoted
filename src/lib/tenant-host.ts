@@ -72,6 +72,12 @@ const SESSION_PATHS = [
   '/auth',
   '/welcome',
   '/account-suspended',
+  // The Intuit disconnect landing. It renders signed-out too, so it is not a
+  // session path in the "you must be logged in" sense — but it tidies up the
+  // stored connection when the visitor turns out to BE the owner, and on the
+  // wrong host it would arrive with no cookie and silently never do it. Exactly
+  // the shape of the callback bug described above, minus the visible bounce.
+  '/quickbooks',
 ];
 
 export function needsCanonicalHost(pathname: string): boolean {
