@@ -70,10 +70,12 @@ const GROUPS: { label: string; items: DemoItem[] }[] = [
   {
     label: 'Money',
     items: [
-      { icon: '/dashboard/cash-flow', label: 'Cash flow', href: '/demo/cash-flow' },
+      // Same order as NAV_GROUPS in app-shell — two sidebars that drift apart
+      // is the thing the demo exists not to do.
+      { icon: '/dashboard/insights', label: 'Insights', href: '/demo/insights' },
       { icon: '/dashboard/recurring', label: 'Recurring', href: '/demo/recurring' },
       { icon: '/dashboard/services', label: 'Price book', href: '/demo/services' },
-      { icon: '/dashboard/insights', label: 'Insights', href: '/demo/insights' },
+      { icon: '/dashboard/cash-flow', label: 'Cash flow', href: '/demo/cash-flow' },
     ],
   },
   {

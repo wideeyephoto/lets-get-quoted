@@ -80,7 +80,9 @@ const FLOW_CLASS: Record<string, string> = {
 const NAV_GROUPS: { label: string; hrefs: string[] }[] = [
   { label: 'Work', hrefs: ['/dashboard/leads', '/dashboard/jobs', '/dashboard/schedule', '/dashboard/schedule/booking', '/dashboard/quick-stops', '/dashboard/clients'] },
   { label: 'Team', hrefs: ['/dashboard/crew'] },
-  { label: 'Money', hrefs: ['/dashboard/cash-flow', '/dashboard/recurring', '/dashboard/services', '/dashboard/insights'] },
+  // Insights first, cash flow last — the group reads backwards in time. What
+  // happened, what repeats, what things cost, then what the balance does next.
+  { label: 'Money', hrefs: ['/dashboard/insights', '/dashboard/recurring', '/dashboard/services', '/dashboard/cash-flow'] },
   { label: 'Grow', hrefs: ['/dashboard/messages', '/dashboard/marketing', '/dashboard/marketing/blog', '/dashboard/reviews'] },
 ];
 

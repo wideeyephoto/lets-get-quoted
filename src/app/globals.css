@@ -2149,52 +2149,10 @@ h3 {
 .sidenav-link:hover { background: rgba(var(--tint), 0.06); color: var(--text); }
 .sidenav-link:hover .sidenav-ic { color: var(--dim-grey-1-1); }
 
-/* ── The two lit rows breathe ────────────────────────────────────────────────
-   A slow halo of coloured light behind the cash-flow and Insights glyphs.
-
-   The halo is a radial GRADIENT, not a blurred shadow. A gradient is rasterised
-   once and then only its opacity and scale change, which the compositor does
-   without touching the pixels again — animating `filter: drop-shadow` would
-   re-blur the glyph every frame, forever, on every page of the app, to move a
-   haze a few pixels.
-
-   Slow and shallow on purpose. This is a sidebar somebody has open all day, and
-   the test for a flourish like this is whether you can still read the row it is
-   attached to without waiting for it to finish. */
-.sidenav-link[href$='/cash-flow'],
-.sidenav-link[href$='/insights'] { position: relative; }
-/* Above the halo, so the glyph stays a crisp line rather than sitting under a
-   coloured wash at the top of each breath. */
-.sidenav-link[href$='/cash-flow'] .sidenav-ic,
-.sidenav-link[href$='/insights'] .sidenav-ic { position: relative; z-index: 1; }
-
-.sidenav-link[href$='/cash-flow']::after,
-.sidenav-link[href$='/insights']::after {
-  content: '';
-  position: absolute;
-  /* Centred on the icon: 0.6rem of row padding + half of a 1.15rem glyph. */
-  left: 1.175rem;
-  top: 50%;
-  width: 3.2rem;
-  height: 3.2rem;
-  margin: -1.6rem 0 0 -1.6rem;
-  border-radius: 50%;
-  pointer-events: none;
-  animation: navHaloBreathe 6.5s ease-in-out infinite;
-}
-.sidenav-link[href$='/cash-flow']::after {
-  background: radial-gradient(circle, rgba(57, 224, 122, 0.42) 0%, rgba(57, 224, 122, 0.17) 40%, rgba(57, 224, 122, 0) 70%);
-}
-.sidenav-link[href$='/insights']::after {
-  background: radial-gradient(circle, rgba(75, 217, 255, 0.42) 0%, rgba(75, 217, 255, 0.17) 40%, rgba(75, 217, 255, 0) 70%);
-  /* Deliberately out of phase. Two lights breathing in unison read as one
-     mechanism ticking; offset, the rail just looks alive. */
-  animation-delay: -3.1s;
-}
-@keyframes navHaloBreathe {
-  0%, 100% { opacity: 0.25; transform: scale(0.8); }
-  50% { opacity: 0.8; transform: scale(1.05); }
-}
+/* Cash flow and Insights keep their colour — green for the money, blue for the
+   numbers — but nothing behind them glows any more. The breathing halo and the
+   drop-shadow bloom are both gone; see the note further down where the tube
+   used to be. */
 
 /* Automations PINGS rather than breathes: it is about things firing on your
    behalf, so it gets a ripple that arrives and leaves, spaced far enough apart
@@ -2252,8 +2210,6 @@ h3 {
    decoration — the colour, the tile and the label already say everything these
    animations are restating. */
 @media (prefers-reduced-motion: reduce) {
-  .sidenav-link[href$='/cash-flow']::after,
-  .sidenav-link[href$='/insights']::after,
   .stripe-status-pill.connected .stripe-status-tile::after { animation: none; opacity: 0.5; transform: none; }
   .sidenav-bolt::after { animation: none; opacity: 0; }
 }
@@ -21613,13 +21569,13 @@ a.bset-card { color: inherit; text-decoration: none; }
    swapping it for the accent orange when you're standing on the page would mean
    the icon you learned to look for is the one that disappears. "Where am I" is
    still carried by the row's wash and its left bar, which is unchanged. */
-/* Neon, not merely tinted: a brighter core and a wider bloom, so it reads as a
-   lit tube next to the green one rather than a blue-ish glyph. It does NOT
-   flicker — cash flow does, and two stuttering lights in one sidebar is a fault
-   report, not a signature. */
+/* Colour, no bloom. This wore a neon glow and so did cash flow, and two lit
+   tubes three rows apart made the money group shout over every other group in
+   the rail — a signature only signs anything while the rest of the page is
+   quiet. The blue is doing the whole job now, which is all it was ever asked
+   to do: mark the row you look for. */
 .sidenav-link[href$='/insights'] .sidenav-ic {
   color: #4bd9ff;
-  filter: drop-shadow(0 0 4px rgba(75, 217, 255, 0.85)) drop-shadow(0 0 13px rgba(75, 217, 255, 0.42));
 }
 .sidenav-link[href$='/insights']:hover {
   background: rgba(75, 217, 255, 0.1);
@@ -21627,47 +21583,23 @@ a.bset-card { color: inherit; text-decoration: none; }
 .sidenav-link[href$='/insights']:hover .sidenav-ic,
 .sidenav-link[href$='/insights'].active .sidenav-ic {
   color: #9aeaff;
-  filter: drop-shadow(0 0 6px rgba(75, 217, 255, 0.95)) drop-shadow(0 0 17px rgba(75, 217, 255, 0.5));
 }
-/* A glow is a shadow, and on paper a light-blue haze over a white ground is a
-   smudge rather than a light. Light theme keeps the colour and drops the bloom
-   — and darkens the core, because neon cyan on white is a highlighter. */
+/* Neon cyan on white is a highlighter, so paper darkens the core to clear 3:1. */
 :root[data-theme='light'] .sidenav-link[href$='/insights'] .sidenav-ic {
   color: #0a91c4;
-  filter: drop-shadow(0 0 3px rgba(75, 217, 255, 0.5));
 }
 
-/* Cash flow wears a neon tube, in green, and it flickers.
-   Same mechanism as Insights above — matched on href so the demo rail's copy
-   lights up from the same rule, and the colour survives the active state,
-   because a signature mark that vanishes when you stand on the page is the one
-   you stop looking for.
+/* Cash flow is green, and that is all it is now.
+   The bloom and the 70-second neon flicker are both gone. The flicker only
+   worked as a conceit while the glyph had a halo to dim with it — strip the
+   glow and the same keyframes are just an icon blinking, which reads as a
+   rendering fault rather than a sign.
+   Matched on href so the demo rail's copy lights the same way, and the colour
+   survives the active state, because a mark that vanishes when you stand on
+   the page is the one you stop looking for.
    Green rather than the accent for the obvious reason: this is the money. */
 .sidenav-link[href$='/cash-flow'] .sidenav-ic {
   color: #39e07a;
-  filter: drop-shadow(0 0 4px rgba(57, 224, 122, 0.75)) drop-shadow(0 0 12px rgba(57, 224, 122, 0.34));
-  /* OPACITY is what flickers, not the filter. The glow is a drop-shadow of the
-     glyph, so dimming the glyph dims its halo in one cheap compositor-only
-     property — animating the filter itself would re-rasterise the blur on every
-     frame for the whole minute, to flicker for a third of a second. */
-  animation: cashNeonFlicker 70s steps(1, end) infinite;
-}
-/* A real tube snaps, it does not fade — hence steps(1, end) above and the hard
-   jumps here.
-   Lit for sixty-nine and a half seconds, then one 385ms stutter. It ran on a
-   7-second cycle first and that was a strobe, not a sign: this sits in a sidebar
-   somebody looks at all day, and anything that catches the eye on a rhythm you
-   can anticipate stops being a flourish and becomes a fault you want covered
-   with tape. The stutter itself is unchanged — only the wait for it grew, which
-   is the entire difference between a neon sign and a warning light. */
-@keyframes cashNeonFlicker {
-  0%, 99.44% { opacity: 1; }
-  99.45% { opacity: 0.32; }
-  99.55% { opacity: 1; }
-  99.7% { opacity: 0.5; }
-  99.8% { opacity: 1; }
-  99.9% { opacity: 0.28; }
-  100% { opacity: 1; }
 }
 .sidenav-link[href$='/cash-flow']:hover {
   background: rgba(57, 224, 122, 0.09);
@@ -21675,29 +21607,14 @@ a.bset-card { color: inherit; text-decoration: none; }
 .sidenav-link[href$='/cash-flow']:hover .sidenav-ic,
 .sidenav-link[href$='/cash-flow'].active .sidenav-ic {
   color: #6ef2a2;
-  filter: drop-shadow(0 0 5px rgba(57, 224, 122, 0.9)) drop-shadow(0 0 15px rgba(57, 224, 122, 0.45));
 }
-/* Hovering stops the flicker. A tube you are pointing at holding steady reads as
-   responsive; one that keeps stuttering under the cursor reads as broken. */
-.sidenav-link[href$='/cash-flow']:hover .sidenav-ic { animation: none; }
 
-/* On paper a green haze over white is a smudge, not a light — the bloom goes,
-   and the tube green (1.9:1 on white) drops to the ink value, since an icon
+/* The tube green is 1.9:1 on white, so paper drops to the ink value — an icon
    still has to clear 3:1. */
-:root[data-theme='light'] .sidenav-link[href$='/cash-flow'] .sidenav-ic {
-  color: var(--ink-green-10);
-  filter: drop-shadow(0 0 3px rgba(19, 119, 58, 0.4));
-}
+:root[data-theme='light'] .sidenav-link[href$='/cash-flow'] .sidenav-ic,
 :root[data-theme='light'] .sidenav-link[href$='/cash-flow']:hover .sidenav-ic,
 :root[data-theme='light'] .sidenav-link[href$='/cash-flow'].active .sidenav-ic {
   color: var(--ink-green-10);
-  filter: drop-shadow(0 0 4px rgba(19, 119, 58, 0.55));
-}
-
-/* Somebody who has asked their machine to stop moving things has asked for this
-   too. The tube stays lit; it just stops blinking. */
-@media (prefers-reduced-motion: reduce) {
-  .sidenav-link[href$='/cash-flow'] .sidenav-ic { animation: none; }
 }
 
 /* Revenue breakdown: three bars on ONE scale, not a stacked bar. A stack has to
