@@ -438,7 +438,7 @@ export default async function InsightsPage({
           <h1 className="ins-title">Insights</h1>
           <p className="ins-lead">See what you earned, where work is getting stuck, and what to improve next.</p>
         </div>
-        <Link className="ins-export" href="/dashboard/settings#finances">
+        <Link className="ins-export" href="/dashboard/reports">
           <span aria-hidden="true">⬇</span> Export report
         </Link>
       </header>

@@ -52,6 +52,10 @@ type WebsiteBuilderProps = {
 // matches, closing every card on a tab that normally has one open.
 const OPEN_TARGETS: Record<string, { tab: BuilderTab; card: string }> = {
   reviews: { tab: 'page', card: 'testimonials' },
+  // Linked from Settings → Business → Connected apps, which is where somebody
+  // looking for their integrations goes. The linking itself stays here: it
+  // needs the Places library and the builder's own save path.
+  google: { tab: 'publish', card: 'found' },
 };
 
 // Heading font choices. The webfont options reuse faces the app already loads

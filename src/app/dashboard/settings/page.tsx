@@ -6,12 +6,12 @@ import { connectStripeAction, disconnectStripeAction } from '../stripe-actions';
 import SignInMethods from './SignInMethods';
 import PayoutAccount from './PayoutAccount';
 import SettingsTabs from './SettingsTabs';
-import FinanceReports from './FinanceReports';
 import QuickBooksSection from './QuickBooksSection';
 import { connectionStatus } from '@/lib/quickbooks/connection';
-import { getAvailableTaxYears, buildProfitAndLoss, buildScheduleCWorksheet, build1099PrepList } from '@/lib/tax-reports';
 import SaveButton from '@/components/save-button';
 import AddressAutocomplete from '@/components/address-autocomplete';
+import TradeAutocomplete from '@/components/trade-autocomplete';
+import ExportData from './ExportData';
 import AutomationSwitch from '@/components/automation-switch';
 import { listAccountEvents } from '@/lib/account-events';
 import DeleteAccountButton from './DeleteAccountButton';
@@ -114,7 +114,7 @@ export default async function SettingsPage({
 }) {
   const { supabase, accountId } = await requireOwnerContext();
 
-  const [{ data: userData }, { data: identityData }, { data: account }, { data: site }, availableYears, { count: pendingPaymentsCount }] =
+  const [{ data: userData }, { data: identityData }, { data: account }, { data: site }, { count: pendingPaymentsCount }] =
     await Promise.all([
       supabase.auth.getUser(),
       supabase.auth.getUserIdentities(),
@@ -123,7 +123,6 @@ export default async function SettingsPage({
       // against it, so it needs the accent, the template and the rest — a
       // hand-picked subset would render a preview that isn't what visitors see.
       supabase.from('sites').select('*').eq('account_id', accountId).maybeSingle(),
-      getAvailableTaxYears(supabase, accountId),
       supabase
         .from('payments')
         .select('id', { count: 'exact', head: true })
@@ -308,9 +307,6 @@ export default async function SettingsPage({
     .maybeSingle();
   const selectionRemindersEnabled = selectionSettings?.selection_reminders_enabled !== false;
 
-  const requestedYear = searchParams.year ? parseInt(searchParams.year, 10) : NaN;
-  const selectedYear = availableYears.includes(requestedYear) ? requestedYear : availableYears[0];
-
   // Never throws and never returns a token — a missing table (feature deployed
   // ahead of its migration) reports "not connected".
   const quickBooksStatus = await connectionStatus(accountId);
@@ -338,6 +334,23 @@ export default async function SettingsPage({
     timeZone: (account?.timezone as string) || 'America/Detroit',
   });
 
+  // Is this account still moving in?
+  //
+  // A proxy, and worth naming as one: no import writes an event, so there is no
+  // record of "they migrated". What there is, is a book of customers — and
+  // somebody with one is past the point where "Moving in from another CRM?"
+  // deserves the top of a section. Five rather than one, because a couple of
+  // hand-typed customers is still setting up.
+  const { count: clientCount } = await supabase
+    .from('clients')
+    .select('id', { count: 'exact', head: true })
+    .eq('account_id', accountId);
+  const stillMovingIn = (clientCount ?? 0) < 5;
+
+  // A place id is the thing that actually works — the review ask needs one to
+  // send anybody anywhere. A listing URL on its own is a link somebody pasted.
+  const googleLinked = Boolean(businessBasics.testimonials.googlePlaceId);
+
   // "Is my account actually set up?" — the one thing the Business tab could not
   // answer without opening all eight of its forms.
   const setup = businessSetup({
@@ -356,11 +369,9 @@ export default async function SettingsPage({
     quickBooksConnected: quickBooksStatus.state === 'connected',
   });
 
-  const [pl, subPrep] = await Promise.all([
-    buildProfitAndLoss(supabase, accountId, selectedYear),
-    build1099PrepList(supabase, accountId, selectedYear),
-  ]);
-  const scheduleC = buildScheduleCWorksheet(pl);
+  // The profit & loss, Schedule C and 1099 builds used to run HERE, on every
+  // render of a page people open to change a phone number. They live on
+  // /dashboard/reports now, where somebody is actually asking for them.
 
   return (
     <main className="wide-shell workspace-shell">
@@ -1005,7 +1016,11 @@ export default async function SettingsPage({
                     </div>
                     <div className="field">
                       <label htmlFor="trade">Field of work / trade</label>
-                      <input id="trade" name="trade" defaultValue={businessBasics.trade} placeholder="landscaping and lawn care" />
+                      {/* Suggests from the same vocabulary the /for/<trade>
+                          landing pages use, and understands what people call
+                          themselves — "electrician" offers "electrical work".
+                          Never constrains: trades are stranger than any list. */}
+                      <TradeAutocomplete id="trade" name="trade" defaultValue={businessBasics.trade} placeholder="landscaping and lawn care" />
                     </div>
                     <div className="field">
                       <label htmlFor="zip">ZIP code</label>
@@ -1103,12 +1118,47 @@ export default async function SettingsPage({
           blurb: 'The other tools your business runs on.',
           anchors: ['quickbooks'],
           content: (
+              <>
                 <QuickBooksSection
                   status={quickBooksStatus}
                   notice={searchParams.quickbooks}
                   syncAction={syncQuickBooksAction}
                   backfillAction={backfillQuickBooksAction}
                 />
+
+                {/* The status lives here, where somebody looking for their
+                    integrations looks. The linking itself stays in the website
+                    builder — it needs the Google Places library and the
+                    builder's own save path, and a second place to set one thing
+                    is a second place for it to be wrong. */}
+                <section className="panel workspace-section-card" id="google-business">
+                  <div className="section-heading workspace-section-heading compact-heading">
+                    <p className="eyebrow">Google</p>
+                    <h2>Google Business Profile</h2>
+                  </div>
+                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                    {googleLinked ? (
+                      <>
+                        Linked to <strong>{businessBasics.testimonials.googleName || 'your Google Business Profile'}</strong>.
+                        Review requests send customers here, and your star rating shows on your website.
+                      </>
+                    ) : (
+                      <>
+                        Not linked. Review requests have nowhere to send a customer, and your website can&rsquo;t show
+                        your Google rating until it is.
+                      </>
+                    )}
+                  </p>
+                  <div className="workspace-inline-row">
+                    <Link href="/dashboard/sites?open=google" className={googleLinked ? 'btn secondary' : 'btn primary'}>
+                      {googleLinked ? 'Change the linked profile' : 'Link your Google Business Profile'}
+                    </Link>
+                    {reviewGoogleUrl ? (
+                      <a href={reviewGoogleUrl} target="_blank" rel="noreferrer" className="btn secondary">Open it on Google</a>
+                    ) : null}
+                  </div>
+                </section>
+              </>
           ),
         },
         {
@@ -1118,21 +1168,37 @@ export default async function SettingsPage({
           anchors: ['import', 'export'],
           content: (
               <>
+                {/* Migrating is an onboarding action, not an everyday setting.
+                    Once there is a book of customers it stops holding the top
+                    of the section and becomes one more way in among three. */}
                 <section className="panel workspace-section-card" id="import">
                   <div className="section-heading workspace-section-heading compact-heading">
-                    <p className="eyebrow">Get set up</p>
+                    <p className="eyebrow">{stillMovingIn ? 'Get set up' : 'Bring data in'}</p>
                     <h2>Import &amp; migrate</h2>
                   </div>
-                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-                    Moving in from another CRM? Drop in everything you exported — customers, price list, jobs,
-                    invoices — in any format (CSV, Excel, or phone contacts). We figure out what each file is,
-                    match the columns for you, and import them in the right order. Nothing is written until you
-                    confirm.
-                  </p>
+                  {stillMovingIn ? (
+                    <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                      Moving in from another CRM? Drop in everything you exported — customers, price list, jobs,
+                      invoices — in any format (CSV, Excel, or phone contacts). We figure out what each file is,
+                      match the columns for you, and import them in the right order. Nothing is written until you
+                      confirm.
+                    </p>
+                  ) : (
+                    <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                      Add records from a file at any time. Nothing is written until you confirm.
+                    </p>
+                  )}
                   <div className="workspace-inline-row">
-                    <Link href="/dashboard/import" className="btn primary">Migrate from another CRM</Link>
+                    <Link href="/dashboard/import" className={stillMovingIn ? 'btn primary' : 'btn secondary'}>
+                      Migrate from another CRM
+                    </Link>
                     <Link href="/dashboard/clients/import" className="btn secondary">Import customers</Link>
                     <Link href="/dashboard/services/import" className="btn secondary">Import services</Link>
+                    {/* These two came off the Jobs page, which is not a place
+                        anybody sets up their account from. Without them here
+                        both importers would exist with nothing linking to them. */}
+                    <Link href="/dashboard/jobs/import" className="btn secondary">Import jobs</Link>
+                    <Link href="/dashboard/jobs/import-invoices" className="btn secondary">Import invoices</Link>
                   </div>
                 </section>
 
@@ -1142,15 +1208,20 @@ export default async function SettingsPage({
                     <h2>Export my data</h2>
                   </div>
                   <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-                    Download your records as CSV — one file per list. The columns match what the importer
-                    accepts, so anything you export here can be re-imported as-is. It&apos;s your data; no lock-in.
+                    Download your records as CSV. The columns match what the importer accepts, so anything you
+                    export here can be re-imported as-is. It&apos;s your data; no lock-in.
                   </p>
-                  <div className="workspace-inline-row">
-                    <a href="/api/export/clients" className="btn secondary">⬇ Customers (CSV)</a>
-                    <a href="/api/export/services" className="btn secondary">⬇ Price book (CSV)</a>
-                    <a href="/api/export/jobs" className="btn secondary">⬇ Jobs (CSV)</a>
-                    <a href="/api/export/invoices" className="btn secondary">⬇ Invoices (CSV)</a>
-                  </div>
+                  {/* One action, with the choice behind it. Four pills side by
+                      side made picking the SET the first decision, when the
+                      first decision is almost always "give me all of it". */}
+                  <ExportData />
+                  <p className="bz-quick-exports">
+                    Or grab one on its own:{' '}
+                    <a href="/api/export/clients">customers</a>{', '}
+                    <a href="/api/export/services">price book</a>{', '}
+                    <a href="/api/export/jobs">jobs</a>{', '}
+                    <a href="/api/export/invoices">invoices</a>.
+                  </p>
                 </section>
               </>
           ),
@@ -1161,14 +1232,26 @@ export default async function SettingsPage({
           blurb: 'Your figures, prepared the way a bookkeeper wants them.',
           anchors: ['finances'],
           content: (
+                /* A shortcut, not the reports. They are output, not settings —
+                   nothing in them is a preference — and building three of them
+                   on every render of a page people open to change a phone
+                   number was work nobody asked for. The id stays so
+                   /dashboard/settings#finances still lands here. */
                 <section className="panel workspace-section-card" id="finances">
-                  <FinanceReports
-                    year={selectedYear}
-                    availableYears={availableYears}
-                    pl={pl}
-                    scheduleC={scheduleC}
-                    subPrep={subPrep}
-                  />
+                  <div className="section-heading workspace-section-heading compact-heading">
+                    <p className="eyebrow">Finances</p>
+                    <h2>Financial reports</h2>
+                  </div>
+                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                    Prepare your records for bookkeeping and tax season. These are prep tools, not official IRS
+                    forms &mdash; hand them to your accountant, or use them to fill out your own Schedule C.
+                  </p>
+                  <ul className="bz-report-links">
+                    <li><Link href="/dashboard/reports">Profit &amp; loss</Link></li>
+                    <li><Link href="/dashboard/reports">Schedule C worksheet</Link></li>
+                    <li><Link href="/dashboard/reports">Subcontractor and 1099 report</Link></li>
+                  </ul>
+                  <Link className="btn primary" href="/dashboard/reports">View financial reports</Link>
                 </section>
           ),
         },

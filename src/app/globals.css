@@ -22586,3 +22586,85 @@ a.bset-card { color: inherit; text-decoration: none; }
 .qb-danger > span { display: grid; gap: 0.12rem; min-width: 0; }
 .qb-danger strong { font-size: 0.88rem; font-weight: 680; }
 .qb-danger small { color: var(--muted); font-size: 0.81rem; }
+
+/* --- the export picker ------------------------------------------------------- */
+.export-picker { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
+.export-picker label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 11px;
+  background: rgba(var(--tint), 0.02);
+  cursor: pointer;
+}
+.export-picker label:hover { border-color: var(--edge-t22); }
+.export-picker input { margin-top: 0.15rem; }
+.export-picker span { display: grid; gap: 0.1rem; min-width: 0; }
+.export-picker strong { font-size: 0.9rem; font-weight: 680; }
+.export-picker small { color: var(--muted); font-size: 0.8rem; }
+.btn.is-disabled { opacity: 0.45; pointer-events: none; }
+
+.bz-quick-exports { margin: 0.85rem 0 0; color: var(--muted); font-size: 0.83rem; }
+.bz-quick-exports a { color: var(--accent-ink); }
+.bz-report-links { list-style: none; margin: 0 0 1rem; padding: 0; display: grid; gap: 0.35rem; }
+.bz-report-links a { color: var(--accent-ink); font-size: 0.88rem; font-weight: 620; text-decoration: none; }
+.bz-report-links a:hover { text-decoration: underline; }
+
+/* --- "what your customer sees" ----------------------------------------------- */
+.ins-show-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.ins-show-row .recurring-autocharge { flex: 1; min-width: 16rem; }
+
+.insprev { display: grid; gap: 0.8rem; }
+.insprev-note { margin: 0; color: var(--muted); font-size: 0.85rem; }
+.insprev-note.is-warn { color: var(--accent-ink); }
+/* Paper, whatever the dashboard is wearing — a quote is a document, and
+   previewing it on a dark surface would show a colour scheme no customer gets. */
+.insprev-doc {
+  padding: 1rem 1.1rem 1.15rem;
+  border: 1px solid rgba(15, 26, 40, 0.14);
+  border-radius: 14px;
+  background: #ffffff;
+  color: #0f1a28;
+  /* The real .quote-doc-insured block renders inside here and reads
+     `var(--muted)` for its summary line. Inherited from the dark dashboard that
+     is a pale grey, which on white paper is about 1.3:1 — the preview would
+     show the customer a line they cannot read, and the preview would be the
+     thing that was wrong. Re-point the token for this surface only. */
+  --muted: #5a6b80;
+}
+.insprev-group { margin: 0 0 0.5rem; color: #5a6b80; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.insprev-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
+.insprev-lines li { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.86rem; }
+.insprev-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(15, 26, 40, 0.12);
+  font-size: 0.9rem;
+}
+.insprev-total strong { font-size: 1.15rem; font-weight: 780; }
+.insprev-approve {
+  display: block;
+  margin: 0.8rem 0 0;
+  padding: 0.6rem;
+  border-radius: 999px;
+  background: #ff7a21;
+  color: #1a1005;
+  font-size: 0.9rem;
+  font-weight: 750;
+  text-align: center;
+}
+.insprev-absent {
+  margin: 0.9rem 0 0;
+  padding: 0.7rem;
+  border: 1px dashed rgba(15, 26, 40, 0.2);
+  border-radius: 10px;
+  color: #5a6b80;
+  font-size: 0.82rem;
+  text-align: center;
+}

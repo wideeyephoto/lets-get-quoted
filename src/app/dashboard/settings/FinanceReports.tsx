@@ -32,7 +32,7 @@ export default function FinanceReports({ year, availableYears, pl, scheduleC, su
           {availableYears.map((y) => (
             <Link
               key={y}
-              href={`/dashboard/settings?year=${y}#finances`}
+              href={`/dashboard/reports?year=${y}`}
               className={`tab${y === year ? ' active' : ''}`}
             >
               {y}

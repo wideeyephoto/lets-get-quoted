@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { requireOwnerContext } from '@/lib/auth';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
@@ -312,19 +311,11 @@ export default async function JobsPage({
         </form>
       </details>
 
-      {/* Bring-your-data tools live at the bottom, out of the way of the daily
-          job list — you reach for these once when setting up, not every visit. */}
-      <details className="panel workspace-section-card workspace-details">
-        <summary className="workspace-details-summary">
-          <span className="btn secondary">Import &amp; migrate</span>
-          <span className="workspace-details-copy">Bring jobs, invoices, or your whole book from another app.</span>
-        </summary>
-        <div className="workspace-inline-row" style={{ marginTop: '0.85rem' }}>
-          <Link href="/dashboard/import" className="btn secondary">Migrate from another app</Link>
-          <Link href="/dashboard/jobs/import" className="btn secondary">Import jobs</Link>
-          <Link href="/dashboard/jobs/import-invoices" className="btn secondary">Import invoices</Link>
-        </div>
-      </details>
+      {/* The Import & migrate accordion used to sit here. It moved to
+          Settings → Business → Import & data, where every other importer
+          already lives — you reach for these once when setting up, and having
+          two of them on the page you open twenty times a day was the wrong
+          trade. Both job importers are linked from there. */}
     </main>
   );
 }

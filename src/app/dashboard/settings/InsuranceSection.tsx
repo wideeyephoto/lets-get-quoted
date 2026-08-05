@@ -1,6 +1,7 @@
 import SaveButton from '@/components/save-button';
 import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
-import { coverageLabel, expiryLabel, insuranceState, ownerNote, type InsuranceRecord } from '@/lib/insurance';
+import InsurancePreview from './InsurancePreview';
+import { clientSummary, coverageLabel, expiryLabel, insuranceState, ownerNote, showsToClient, type InsuranceRecord } from '@/lib/insurance';
 
 /**
  * Proof of insurance, in Settings.
@@ -52,6 +53,19 @@ export default function InsuranceSection({
   // certificate with no expiry date, which can never be withdrawn on time.
   const tone = state.kind === 'expired' ? 'is-expired' : state.kind === 'expiring' || state.kind === 'undated' ? 'is-warn' : state.kind === 'hidden' ? 'is-off' : 'is-ok';
 
+  // The preview asks the SAME gate the client page asks, rather than reading
+  // the checkbox — the checkbox is not the last word (expiry beats it), and a
+  // preview that disagreed with the quote would be worse than none.
+  const shows = showsToClient(record, todayKey);
+  const previewSummary = shows ? clientSummary(record) : null;
+  const withheldReason = shows
+    ? null
+    : state.kind === 'expired'
+      ? 'Your certificate has expired, so quotes are going out without it. This is what a customer sees today.'
+      : state.kind === 'hidden'
+        ? 'Switched off, so quotes are going out without it. This is what a customer sees today.'
+        : 'Nothing is on file yet, so quotes go out without it.';
+
   const form = (
     <form action={saveAction} className="workspace-form" encType="multipart/form-data">
       <div className="field">
@@ -95,15 +109,21 @@ export default function InsuranceSection({
         <p className="field-note">Kept for your own records. It never appears on the quote itself.</p>
       </div>
 
-      <label className="recurring-autocharge">
-        <input type="checkbox" name="showOnQuotes" defaultChecked={record.showOnQuotes} />
-        <span>
-          <strong>Show it on quotes</strong>
-          <span className="field-note">
-            An expired certificate stops going out on its own the day it lapses, whatever this says.
+      <div className="ins-show-row">
+        <label className="recurring-autocharge">
+          <input type="checkbox" name="showOnQuotes" defaultChecked={record.showOnQuotes} />
+          <span>
+            <strong>Show it on quotes</strong>
+            <span className="field-note">
+              An expired certificate stops going out on its own the day it lapses, whatever this says.
+            </span>
           </span>
-        </span>
-      </label>
+        </label>
+        {/* The effect of this checkbox is on a page the contractor never opens —
+            their quotes go out to other people. Without this the only way to
+            check the answer is to send yourself a test quote. */}
+        <InsurancePreview summary={previewSummary} withheldReason={withheldReason} />
+      </div>
 
       <div className="workspace-inline-row">
         <SaveButton className="btn primary" pendingLabel="Saving…" savedLabel="Saved ✓">Save</SaveButton>
