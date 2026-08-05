@@ -7,12 +7,15 @@ export const NAV_ICON_PATHS: Record<string, string> = {
   '/dashboard/leads': '<circle cx="10" cy="8.5" r="3.1"/><path d="M4 20a6 6 0 0 1 12 0"/><path d="M19 7.5v5M16.5 10h5"/>',
   '/dashboard/jobs': '<rect x="3" y="7.5" width="18" height="12.5" rx="2"/><path d="M8 7.5V5.5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 12.5h18"/>',
   '/dashboard/schedule': '<rect x="3.5" y="4.8" width="17" height="15.7" rx="2"/><path d="M3.5 9.4h17M8 2.6v4M16 2.6v4"/>',
-  '/dashboard/clients': '<circle cx="9" cy="8.5" r="3"/><path d="M3.6 20a5.4 5.4 0 0 1 10.8 0"/><path d="M16 5.7a3 3 0 0 1 0 5.6"/><path d="M18.4 20a5.4 5.4 0 0 0-3.2-4.9"/>',
+  '/dashboard/clients': '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
   // A calendar with a tick: the schedule icon, but the slot is already taken —
   // which is what a customer booking themselves in actually does.
   '/dashboard/schedule/booking': '<rect x="3.5" y="4.8" width="17" height="15.7" rx="2"/><path d="M3.5 9.4h17M8 2.6v4M16 2.6v4"/><path d="m8.6 14.6 2.4 2.4 4.4-4.6"/>',
   '/dashboard/quick-stops': '<path d="M20 10c0 5-8 11-8 11s-8-6-8-11a8 8 0 0 1 16 0z"/><path d="M12.5 5.5l-3 4h3l-1 4 3.2-4.4h-2.9z"/>',
-  '/dashboard/crew': '<path d="M2.6 17.5h18.8"/><path d="M4.5 17.5a7.5 7.5 0 0 1 15 0"/><path d="M9.4 8.6V6.4A1.6 1.6 0 0 1 11 4.8h2a1.6 1.6 0 0 1 1.6 1.6v2.2"/>',
+  // Lucide hard-hat, same shape the trade glyphs are baked from (see
+  // service-icons.data.ts). The hand-drawn one it replaced hung its dome off a
+  // full-width brim line, so at 18px it read as a bowl on a shelf.
+  '/dashboard/crew': '<path d="M10 10V5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5m0-4a6 6 0 0 1 6 6v3M4 15v-3a6 6 0 0 1 6-6"/><rect x="2" y="15" width="20" height="4" rx="1"/>',
   '/dashboard/recurring': '<path d="M17 3l3.2 3.2L17 9.4"/><path d="M20.2 6.2H8.5a4.3 4.3 0 0 0-4.3 4.3v.6"/><path d="M7 21l-3.2-3.2L7 14.6"/><path d="M3.8 17.8h11.7a4.3 4.3 0 0 0 4.3-4.3v-.6"/>',
   // A neon trend arrow, lit green — see .sidenav-link[href$='/cash-flow'] in
   // globals.css for the glow and the flicker.
@@ -23,7 +26,10 @@ export const NAV_ICON_PATHS: Record<string, string> = {
   // rising lines told apart by how many times they wobble is not a distinction
   // anybody makes at a glance.
   '/dashboard/cash-flow': '<path d="M2.9 17.4h2.2l2.5-5.2 2.3 3.8 3.3-7 2.3 3.8 4.4-6.3"/><path d="M15.9 3.9l4.4 2.1-2.1 4.4"/>',
-  '/dashboard/services': '<path d="M11.5 3.5H5a1.5 1.5 0 0 0-1.5 1.5v6.5a1.5 1.5 0 0 0 .44 1.06l7.5 7.5a1.5 1.5 0 0 0 2.12 0l6.5-6.5a1.5 1.5 0 0 0 0-2.12l-7.5-7.5A1.5 1.5 0 0 0 11.5 3.5z"/><circle cx="8" cy="8" r="1.3"/>',
+  // A book, because the page is called the Price book. With the ribbon: a plain
+  // closed book is a rounded rectangle at 18px and sat in the rail as an empty
+  // box, while the ribbon notch survives the size and says "book" on its own.
+  '/dashboard/services': '<path d="M10 2v8l3-3 3 3V2"/><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/>',
   '/dashboard/insights': '<path d="M3.5 17.5l5.5-5.5 3.5 3.5 7.5-7.5"/><path d="M15 7.5h5.5V13"/>',
   '/dashboard/messages': '<path d="M3.6 6.6A2 2 0 0 1 5.6 4.6h12.8a2 2 0 0 1 2 2v6.6a2 2 0 0 1-2 2H9l-4.2 3.6v-3.6H5.6a2 2 0 0 1-2-2z"/>',
   // Keyed to /dashboard/marketing, where the composer now lives. It was on
