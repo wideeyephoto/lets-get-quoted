@@ -28,6 +28,102 @@ function tomorrowDateKey(): string {
   return date.toISOString().slice(0, 10);
 }
 
+/** The job fields a reminder needs. Anything that can supply these can send one. */
+export type RemindableJob = {
+  id: string;
+  account_id: string;
+  ref: string;
+  client_name: string | null;
+  client_phone: string | null;
+  client_email: string | null;
+  address: string | null;
+  scheduled_for: string | null;
+  scheduled_time: string | null;
+};
+
+export type ReminderSendResult = {
+  sent: boolean;
+  channel?: 'sms' | 'email';
+  /** Why nothing was sent — shown to an owner who pressed a button expecting one. */
+  reason?: 'already-reminded' | 'no-channel';
+};
+
+/**
+ * Remind one customer that their appointment is coming up.
+ *
+ * Lifted out of the nightly sweep so the sweep and the "remind them now" button
+ * on a recurring plan are the same code rather than two implementations of the
+ * same message that drift apart on consent, channel choice or wording.
+ *
+ * `force` is the difference between the two callers. The sweep must never send
+ * twice for the same visit date, so it checks the feed first. An owner pressing
+ * the button has decided to send this one, and the feed entry it writes then
+ * stops tonight's sweep sending a second — a manual reminder REPLACES the
+ * automatic one rather than preceding it.
+ */
+export async function sendJobAppointmentReminder(
+  admin: SupabaseClient,
+  job: RemindableJob,
+  options: { force?: boolean } = {},
+): Promise<ReminderSendResult> {
+  if (!options.force) {
+    const { data: priorReminders } = await admin
+      .from('job_feed')
+      .select('meta')
+      .eq('account_id', job.account_id)
+      .eq('job_id', job.id)
+      .eq('kind', 'appointment_reminder')
+      .order('created_at', { ascending: false })
+      .limit(10);
+    const alreadyReminded = (priorReminders ?? []).some(
+      (row) => (row.meta as { scheduled_for?: string } | null)?.scheduled_for === job.scheduled_for,
+    );
+    if (alreadyReminded) return { sent: false, reason: 'already-reminded' };
+  }
+
+  // Resolve a channel: text an opted-in mobile, else email.
+  const phone = job.client_phone ? normalizeUsPhone(job.client_phone) : null;
+  let canText = false;
+  if (phone) {
+    const { data: consent } = await admin
+      .from('sms_consent')
+      .select('status')
+      .eq('account_id', job.account_id)
+      .eq('phone_number', phone)
+      .maybeSingle();
+    canText = consent?.status === 'opted_in';
+  }
+  const email = job.client_email || null;
+  if (!(canText && phone) && !email) return { sent: false, reason: 'no-channel' };
+
+  const [{ data: account }, { data: site }] = await Promise.all([
+    admin.from('accounts').select('business_name').eq('id', job.account_id).maybeSingle(),
+    admin.from('sites').select('company_name').eq('account_id', job.account_id).maybeSingle(),
+  ]);
+  const businessName = site?.company_name || account?.business_name || "Let's Get Quoted contractor";
+  const firstName = (job.client_name || 'there').trim().split(/\s+/)[0] || 'there';
+  const whenLabel = formatJobSchedule(job.scheduled_for, job.scheduled_time);
+
+  let channel: 'sms' | 'email';
+  if (canText && phone) {
+    await sendAppointmentReminderSms({ phone, businessName, clientName: firstName, whenLabel, address: job.address, accountId: job.account_id });
+    channel = 'sms';
+  } else {
+    await sendAppointmentReminderEmail({ recipientEmail: email as string, businessName, clientName: firstName, whenLabel, address: job.address, jobRef: job.ref, accountId: job.account_id });
+    channel = 'email';
+  }
+
+  await createJobFeedEvent(admin, job.account_id, job.id, {
+    kind: 'appointment_reminder',
+    title: channel === 'sms' ? 'Appointment reminder texted' : 'Appointment reminder emailed',
+    body: `Reminded ${job.client_name} their appointment is coming up ${whenLabel}.`,
+    visibility: 'internal',
+    meta: { channel, scheduled_for: job.scheduled_for, scheduled_time: job.scheduled_time ?? null, manual: Boolean(options.force) },
+  });
+
+  return { sent: true, channel };
+}
+
 // Sweep for jobs scheduled tomorrow and remind the client, texting when they
 // have SMS consent and emailing otherwise. Idempotent per (job, scheduled date):
 // a job already reminded for that date is skipped, so re-runs — and a job later
@@ -76,65 +172,11 @@ export async function runAppointmentReminders(): Promise<ReminderRunSummary> {
   for (const job of jobs ?? []) {
     if (sent >= MAX_SENDS_PER_RUN) break;
     try {
-      // Idempotency: already reminded for this scheduled date?
-      const { data: priorReminders } = await admin
-        .from('job_feed')
-        .select('meta')
-        .eq('account_id', job.account_id)
-        .eq('job_id', job.id)
-        .eq('kind', 'appointment_reminder')
-        .order('created_at', { ascending: false })
-        .limit(10);
-      const alreadyReminded = (priorReminders ?? []).some(
-        (row) => (row.meta as { scheduled_for?: string } | null)?.scheduled_for === job.scheduled_for,
-      );
-      if (alreadyReminded) {
+      const result = await sendJobAppointmentReminder(admin, job as RemindableJob);
+      if (!result.sent) {
         skipped++;
         continue;
       }
-
-      // Resolve a channel: text an opted-in mobile, else email.
-      const phone = job.client_phone ? normalizeUsPhone(job.client_phone) : null;
-      let canText = false;
-      if (phone) {
-        const { data: consent } = await admin
-          .from('sms_consent')
-          .select('status')
-          .eq('account_id', job.account_id)
-          .eq('phone_number', phone)
-          .maybeSingle();
-        canText = consent?.status === 'opted_in';
-      }
-      const email = job.client_email || null;
-      if (!(canText && phone) && !email) {
-        skipped++;
-        continue;
-      }
-
-      const [{ data: account }, { data: site }] = await Promise.all([
-        admin.from('accounts').select('business_name').eq('id', job.account_id).maybeSingle(),
-        admin.from('sites').select('company_name').eq('account_id', job.account_id).maybeSingle(),
-      ]);
-      const businessName = site?.company_name || account?.business_name || "Let's Get Quoted contractor";
-      const firstName = (job.client_name || 'there').trim().split(/\s+/)[0] || 'there';
-      const whenLabel = formatJobSchedule(job.scheduled_for, job.scheduled_time);
-
-      let channel: 'sms' | 'email';
-      if (canText && phone) {
-        await sendAppointmentReminderSms({ phone, businessName, clientName: firstName, whenLabel, address: job.address, accountId: job.account_id });
-        channel = 'sms';
-      } else {
-        await sendAppointmentReminderEmail({ recipientEmail: email as string, businessName, clientName: firstName, whenLabel, address: job.address, jobRef: job.ref, accountId: job.account_id });
-        channel = 'email';
-      }
-
-      await createJobFeedEvent(admin, job.account_id, job.id, {
-        kind: 'appointment_reminder',
-        title: channel === 'sms' ? 'Appointment reminder texted' : 'Appointment reminder emailed',
-        body: `Reminded ${job.client_name} their appointment is coming up ${whenLabel}.`,
-        visibility: 'internal',
-        meta: { channel, scheduled_for: job.scheduled_for, scheduled_time: job.scheduled_time ?? null },
-      });
       sent++;
       tally(job.account_id as string, 'sent');
     } catch (error) {

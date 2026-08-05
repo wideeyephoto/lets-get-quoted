@@ -17,8 +17,16 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 export type PlanContext = {
   /** The job for the next scheduled visit, if one has been materialised yet. */
   nextVisitJobId: string | null;
+  /**
+   * The day that job currently sits on. Not the same as the plan's
+   * next_run_date once a visit has been moved: the visit date is what bills and
+   * never moves, `scheduled_for` is when somebody actually turns up.
+   */
+  nextVisitScheduledFor: string | null;
   estimatedHours: number | null;
   crewNames: string[];
+  /** Same crew, by id — what a picker needs to show its checkboxes ticked. */
+  crewIds: string[];
   /** Null when there is no visit job yet — NOT the same as "nobody assigned". */
   nextVisitAssigned: boolean | null;
   lastCompletedDate: string | null;
@@ -27,8 +35,10 @@ export type PlanContext = {
 
 export const EMPTY_PLAN_CONTEXT: PlanContext = {
   nextVisitJobId: null,
+  nextVisitScheduledFor: null,
   estimatedHours: null,
   crewNames: [],
+  crewIds: [],
   nextVisitAssigned: null,
   lastCompletedDate: null,
   lastCompletedPaid: null,
@@ -77,10 +87,14 @@ export async function planContexts(
   }
 
   const crewByJob = new Map<string, string[]>();
+  const crewIdsByJob = new Map<string, string[]>();
   for (const row of assignmentRows ?? []) {
     const list = crewByJob.get(row.job_id) ?? [];
     list.push(crewName.get(row.crew_id) ?? 'Unnamed');
     crewByJob.set(row.job_id, list);
+    const ids = crewIdsByJob.get(row.job_id) ?? [];
+    ids.push(row.crew_id);
+    crewIdsByJob.set(row.job_id, ids);
   }
 
   const paidByJob = new Map<string, number>();
@@ -121,8 +135,10 @@ export async function planContexts(
     const crewNames = nextJob ? crewByJob.get(nextJob.id as string) ?? [] : [];
     out.set(plan.id, {
       nextVisitJobId: (nextJob?.id as string) ?? null,
+      nextVisitScheduledFor: (nextJob?.scheduled_for as string) ?? (nextJob?.recurring_visit_date as string) ?? null,
       estimatedHours: nextJob?.estimated_hours != null ? Number(nextJob.estimated_hours) : null,
       crewNames,
+      crewIds: nextJob ? crewIdsByJob.get(nextJob.id as string) ?? [] : [],
       // Null, not false, when there is no job yet: nobody can be assigned to a
       // visit that does not exist, and flagging that as unassigned would put a
       // warning on every healthy plan whose next visit is still a week out.

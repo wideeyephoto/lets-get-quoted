@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createAdminClient, requireOwnerContext } from '@/lib/auth';
 import {
+  advanceDate,
   createRecurringPlan,
   ensurePlanVisits,
   getRecurringPlan,
@@ -17,6 +18,7 @@ import {
   type RecurringFrequency,
 } from '@/lib/recurring';
 import { createCardSetupSession } from '@/lib/card-on-file';
+import { sendJobAppointmentReminder, type RemindableJob } from '@/lib/reminders';
 import { sendCardSetupSms } from '@/lib/sms';
 import { sendCardSetupEmail } from '@/lib/email';
 
@@ -114,6 +116,120 @@ export async function deletePlanAction(planId: string) {
   revalidatePath('/dashboard/schedule');
   revalidatePath('/dashboard/jobs');
   redirect(`/dashboard/recurring?flash=deleted${visitsRemoved > 0 ? `&removed=${visitsRemoved}` : ''}`);
+}
+
+/**
+ * Skip the next visit: the customer is away, the lawn doesn't need it, the
+ * driveway is already clear.
+ *
+ * The plan moves on to the visit AFTER this one and the cadence carries on from
+ * there. It does not consume a visit of a fixed term — six visits paid for is
+ * still six visits, one of them later than planned.
+ *
+ * Refuses once the visit has been worked or billed. A skipped visit is deleted
+ * from the calendar, and deleting one that has been completed or has money
+ * against it would remove the record of work that actually happened; at that
+ * point the honest action is Create the next visit early, not a skip.
+ */
+export async function skipNextVisitAction(planId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const plan = await getRecurringPlan(supabase, accountId, planId);
+  if (!plan) throw new Error('Plan not found.');
+  if (!plan.active) throw new Error('This plan is paused, so there is no next visit to skip. Resume it first.');
+
+  const skipped = plan.next_run_date;
+
+  const { data: visit } = await supabase
+    .from('jobs')
+    .select('id, status')
+    .eq('account_id', accountId)
+    .eq('recurring_plan_id', planId)
+    .eq('recurring_visit_date', skipped)
+    .maybeSingle();
+
+  if (visit) {
+    if (visit.status === 'complete') {
+      throw new Error(`The ${shortDay(skipped)} visit is already marked complete — it can’t be skipped after the fact.`);
+    }
+    const { count } = await supabase
+      .from('payments')
+      .select('id', { count: 'exact', head: true })
+      .eq('account_id', accountId)
+      .eq('job_id', visit.id);
+    if ((count ?? 0) > 0) {
+      throw new Error(`The ${shortDay(skipped)} visit has already been billed. Void or refund that payment before skipping it.`);
+    }
+    const { error: deleteError } = await supabase.from('jobs').delete().eq('account_id', accountId).eq('id', visit.id);
+    if (deleteError) throw deleteError;
+  }
+
+  const nextDate = advanceDate(skipped, plan.frequency, plan.anchor_day);
+  const { error } = await supabase
+    .from('recurring_plans')
+    .update({ next_run_date: nextDate, updated_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('id', planId);
+  if (error) throw error;
+
+  // Refill the far end of the horizon so skipping doesn't shorten how far ahead
+  // the calendar is populated. Best-effort, like every other call of this: the
+  // daily sweep creates any visit this misses on the morning it is due.
+  try {
+    await ensurePlanVisits(createAdminClient(), { ...plan, next_run_date: nextDate });
+  } catch (visitError) {
+    console.error('Refilling visits after a skip failed:', visitError instanceof Error ? visitError.message : visitError);
+  }
+
+  revalidatePath('/dashboard/recurring');
+  revalidatePath('/dashboard/schedule');
+  revalidatePath('/dashboard/jobs');
+  redirect(`/dashboard/recurring?flash=skipped&on=${skipped}&then=${nextDate}`);
+}
+
+/** "Aug 11" — for error messages that have to name the visit being refused. */
+function shortDay(dateKey: string): string {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+}
+
+/**
+ * Text or email the customer that their next visit is coming up.
+ *
+ * Same code as the nightly reminder sweep, forced past its once-per-visit guard
+ * because an owner pressing a button has decided to send this one. The feed
+ * entry it leaves behind then stops tonight's sweep sending a second, so a
+ * manual reminder replaces the automatic one instead of doubling it.
+ */
+export async function remindNextVisitAction(planId: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const plan = await getRecurringPlan(supabase, accountId, planId);
+  if (!plan) throw new Error('Plan not found.');
+
+  const { data: visit } = await supabase
+    .from('jobs')
+    .select('id, account_id, ref, client_name, client_phone, client_email, address, scheduled_for, scheduled_time')
+    .eq('account_id', accountId)
+    .eq('recurring_plan_id', planId)
+    .eq('recurring_visit_date', plan.next_run_date)
+    .maybeSingle();
+
+  if (!visit) {
+    throw new Error('That visit isn’t on the calendar yet, so there is nothing to remind them about. Create it early first.');
+  }
+
+  let flash = 'reminded';
+  try {
+    const result = await sendJobAppointmentReminder(createAdminClient(), visit as RemindableJob, { force: true });
+    if (!result.sent) flash = 'remind-nochannel';
+    else if (result.channel === 'email') flash = 'reminded-email';
+  } catch (error) {
+    console.error('Manual visit reminder failed:', error instanceof Error ? error.message : error);
+    flash = 'remind-failed';
+  }
+
+  revalidatePath('/dashboard/recurring');
+  revalidatePath(`/dashboard/jobs/${visit.id}`);
+  redirect(`/dashboard/recurring?flash=${flash}`);
 }
 
 /**

@@ -840,6 +840,7 @@
 :root[data-theme='light'] .calendar-view-panel,
 :root[data-theme='light'] .crew-assign-panel,
 :root[data-theme='light'] .plan-stop-menu,
+:root[data-theme='light'] .recurring-menu-pop,
 :root[data-theme='light'] .bset-dots-pop,
 :root[data-theme='light'] .client-modal,
 :root[data-theme='light'] .unsaved-guard-panel,
@@ -11247,6 +11248,83 @@ a.recurring-fact:hover { color: var(--text); border-bottom-color: currentColor; 
 .recurring-billing .linklike { font-size: 0.78rem; opacity: 0.78; }
 .recurring-billing .linklike:hover,
 .recurring-billing .linklike:focus-visible { opacity: 1; }
+/* The overflow menu on a plan card. Anchored to its own button rather than the
+   card, so a card near the bottom of a long list opens its menu where the
+   thumb already is. */
+.recurring-menu { position: relative; display: inline-flex; }
+.recurring-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.1rem;
+  height: 2.1rem;
+  padding: 0 0.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--edge-t12);
+  background: rgba(var(--tint), 0.05);
+  color: var(--muted);
+  font-size: 0.9rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.recurring-menu-btn:hover,
+.recurring-menu-btn[aria-expanded='true'] { color: var(--text); border-color: var(--edge-t22); background: rgba(var(--tint), 0.1); }
+.recurring-menu-pop {
+  position: absolute;
+  z-index: 40;
+  bottom: calc(100% + 0.4rem);
+  left: 0;
+  min-width: 16.5rem;
+  max-width: min(22rem, 80vw);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.35rem;
+  border-radius: 12px;
+  border: 1px solid var(--edge-t14);
+  background: var(--pop-bg, #0d1622);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
+}
+.recurring-menu-pop > button {
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.recurring-menu-pop > button:hover:not(:disabled) { background: rgba(var(--tint), 0.09); }
+.recurring-menu-pop > button:disabled { opacity: 0.5; cursor: default; }
+.recurring-menu-panel { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.35rem 0.25rem 0.1rem; }
+.recurring-menu-panel label { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.8rem; color: var(--muted); }
+.recurring-menu-panel input[type='date'] {
+  padding: 0.42rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid var(--edge-t18);
+  background: rgba(var(--tint), 0.05);
+  color: var(--text);
+  font-size: 0.85rem;
+}
+.recurring-menu-head { font-size: 0.78rem; font-weight: 600; color: var(--muted); }
+.recurring-menu-note { margin: 0; font-size: 0.75rem; line-height: 1.45; color: var(--muted); }
+.recurring-menu-crew { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.1rem; max-height: 12rem; overflow-y: auto; }
+.recurring-menu-crew label {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.32rem 0.35rem;
+  border-radius: 7px;
+  font-size: 0.85rem;
+  color: var(--text);
+  cursor: pointer;
+}
+.recurring-menu-crew label:hover { background: rgba(var(--tint), 0.08); }
+.recurring-menu-actions { display: flex; align-items: center; gap: 0.6rem; }
+.recurring-menu-actions .btn { padding: 0.4rem 0.8rem; font-size: 0.82rem; }
+
 .recurring-card-actions {
   grid-column: 1 / -1;
   display: flex;

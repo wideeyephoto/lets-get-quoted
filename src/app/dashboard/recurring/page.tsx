@@ -19,8 +19,19 @@ import Sparkline from '@/components/sparkline';
 import RecurringPlanCard from '@/components/recurring-plan-card';
 import RecurringHowItWorks from '@/components/recurring-how-it-works';
 import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
-import { setPlanActiveAction, deletePlanAction, resendCardLinkAction, runPlanNowAction, setPlanAutopayAction, updatePlanAction } from './actions';
+import {
+  setPlanActiveAction,
+  deletePlanAction,
+  remindNextVisitAction,
+  resendCardLinkAction,
+  runPlanNowAction,
+  setPlanAutopayAction,
+  skipNextVisitAction,
+  updatePlanAction,
+} from './actions';
 import EditPlanPanel from './EditPlanPanel';
+import PlanActionsMenu from './PlanActionsMenu';
+import { listCrew } from '@/lib/crew';
 
 const FLASH_MESSAGES: Record<string, { tone: 'success' | 'info' | 'warn'; text: string }> = {
   created: { tone: 'success', text: 'Recurring plan created — the next visits are on your calendar already. Each one is invoiced on the day it happens, not before.' },
@@ -34,9 +45,18 @@ const FLASH_MESSAGES: Record<string, { tone: 'success' | 'info' | 'warn'; text: 
   'autopay-card-sent': { tone: 'success', text: 'Autopay is on and a secure card-setup link was sent to your customer. Visits bill nobody until they add a card, so the plan stays flagged until then.' },
   'autopay-card-failed': { tone: 'warn', text: 'Autopay is on, but the card link couldn’t be sent. Add an email or opted-in phone to the plan, then resend it — until a card lands these visits bill nobody.' },
   'autopay-off': { tone: 'info', text: 'Switched to manual billing. Visits still happen and still invoice; no card is charged automatically. Any card on file was kept.' },
+  skipped: { tone: 'info', text: 'Visit skipped and taken off the calendar. The plan carries on from the next one, and a fixed term didn’t lose a visit.' },
+  reminded: { tone: 'success', text: 'Reminder texted. Tonight’s automatic reminder for this visit won’t also go out.' },
+  'reminded-email': { tone: 'success', text: 'Reminder emailed — they’re not opted in to texts. Tonight’s automatic reminder for this visit won’t also go out.' },
+  'remind-nochannel': { tone: 'warn', text: 'No way to reach them: the visit has no email, and the phone on it isn’t opted in to texts. Add one to the job and try again.' },
+  'remind-failed': { tone: 'warn', text: 'The reminder couldn’t be sent. Nothing reached the customer — check the job’s contact details and try again.' },
 };
 
-export default async function RecurringPage({ searchParams }: { searchParams: { flash?: string; job?: string } }) {
+export default async function RecurringPage({
+  searchParams,
+}: {
+  searchParams: { flash?: string; job?: string; on?: string; then?: string };
+}) {
   const { supabase, accountId } = await requireOwnerContext();
 
   const plans = await listRecurringPlans(supabase, accountId);
@@ -52,7 +72,16 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
     address: client.address ?? null,
   }));
   const today = todayDateKey();
-  const flash = searchParams.flash ? FLASH_MESSAGES[searchParams.flash] : null;
+  const baseFlash = searchParams.flash ? FLASH_MESSAGES[searchParams.flash] : null;
+  // A skip is about two specific days, and naming them is the difference between
+  // "a visit was skipped" and knowing which one, and when they're next due.
+  const flash =
+    baseFlash && searchParams.flash === 'skipped' && searchParams.on && searchParams.then
+      ? {
+          ...baseFlash,
+          text: `${shortDate(searchParams.on)} skipped and taken off the calendar — the next visit is ${shortDate(searchParams.then)}. A fixed term didn’t lose a visit.`,
+        }
+      : baseFlash;
   // Creating a visit early passes the created job id so we can link straight to it.
   const flashJobId = flash && searchParams.flash?.startsWith('ran-') ? searchParams.job ?? null : null;
 
@@ -83,6 +112,11 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
   const trail = trailingMonthlyRecurring(plans, today, 6);
   // Four queries for every plan on the page, not four per plan.
   const contexts = await planContexts(supabase, accountId, plans, today);
+  // The roster once for the page, so the crew picker in every plan's menu is
+  // already loaded when it opens rather than fetching on click.
+  const roster = (await listCrew(supabase, accountId))
+    .filter((member) => member.active !== false)
+    .map((member) => ({ id: member.id, name: (member.name ?? '').trim() || 'Unnamed' }));
 
   // Grouped and formatted HERE, not in the client component. Every money and
   // date helper in this app lives in a module that also reaches the database, so
@@ -306,6 +340,17 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
                   <form action={setPlanActiveAction.bind(null, plan.id, paused)}>
                     <button type="submit" className="btn secondary">{paused ? 'Resume' : 'Pause'}</button>
                   </form>
+                  <PlanActionsMenu
+                    clientName={plan.client_name}
+                    nextVisitLabel={shortDate(plan.next_run_date)}
+                    nextVisitJobId={contexts.get(plan.id)?.nextVisitJobId ?? null}
+                    visitScheduledFor={contexts.get(plan.id)?.nextVisitScheduledFor ?? null}
+                    crew={roster}
+                    assignedCrewIds={contexts.get(plan.id)?.crewIds ?? []}
+                    active={plan.active}
+                    skipAction={skipNextVisitAction.bind(null, plan.id)}
+                    remindAction={remindNextVisitAction.bind(null, plan.id)}
+                  />
                   <form action={deletePlanAction.bind(null, plan.id)} className="danger">
                     <button type="submit" className="linklike danger">Cancel plan</button>
                   </form>
