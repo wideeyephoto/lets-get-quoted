@@ -21156,6 +21156,65 @@ a.bset-card { color: inherit; text-decoration: none; }
   filter: drop-shadow(0 0 3px rgba(56, 189, 248, 0.45));
 }
 
+/* Cash flow wears a neon tube, in green, and it flickers.
+   Same mechanism as Insights above — matched on href so the demo rail's copy
+   lights up from the same rule, and the colour survives the active state,
+   because a signature mark that vanishes when you stand on the page is the one
+   you stop looking for.
+   Green rather than the accent for the obvious reason: this is the money. */
+.sidenav-link[href$='/cash-flow'] .sidenav-ic {
+  color: #39e07a;
+  filter: drop-shadow(0 0 4px rgba(57, 224, 122, 0.75)) drop-shadow(0 0 12px rgba(57, 224, 122, 0.34));
+  /* OPACITY is what flickers, not the filter. The glow is a drop-shadow of the
+     glyph, so dimming the glyph dims its halo in one cheap compositor-only
+     property — animating the filter itself would re-rasterise the blur on every
+     frame for the whole 7 seconds, to flicker for a tenth of one. */
+  animation: cashNeonFlicker 7s steps(1, end) infinite;
+}
+/* A real tube snaps, it does not fade — hence steps(1, end) above and the hard
+   jumps here. Lit for six and a half seconds, then a stutter. Long gaps on
+   purpose: this sits in a sidebar somebody looks at all day, and a light that
+   blinks every second is a light they cover with a sticky note. */
+@keyframes cashNeonFlicker {
+  0%, 92% { opacity: 1; }
+  93% { opacity: 0.32; }
+  94% { opacity: 1; }
+  95.5% { opacity: 0.5; }
+  96.5% { opacity: 1; }
+  97.5% { opacity: 0.28; }
+  98.5%, 100% { opacity: 1; }
+}
+.sidenav-link[href$='/cash-flow']:hover {
+  background: rgba(57, 224, 122, 0.09);
+}
+.sidenav-link[href$='/cash-flow']:hover .sidenav-ic,
+.sidenav-link[href$='/cash-flow'].active .sidenav-ic {
+  color: #6ef2a2;
+  filter: drop-shadow(0 0 5px rgba(57, 224, 122, 0.9)) drop-shadow(0 0 15px rgba(57, 224, 122, 0.45));
+}
+/* Hovering stops the flicker. A tube you are pointing at holding steady reads as
+   responsive; one that keeps stuttering under the cursor reads as broken. */
+.sidenav-link[href$='/cash-flow']:hover .sidenav-ic { animation: none; }
+
+/* On paper a green haze over white is a smudge, not a light — the bloom goes,
+   and the tube green (1.9:1 on white) drops to the ink value, since an icon
+   still has to clear 3:1. */
+:root[data-theme='light'] .sidenav-link[href$='/cash-flow'] .sidenav-ic {
+  color: var(--ink-green-10);
+  filter: drop-shadow(0 0 3px rgba(19, 119, 58, 0.4));
+}
+:root[data-theme='light'] .sidenav-link[href$='/cash-flow']:hover .sidenav-ic,
+:root[data-theme='light'] .sidenav-link[href$='/cash-flow'].active .sidenav-ic {
+  color: var(--ink-green-10);
+  filter: drop-shadow(0 0 4px rgba(19, 119, 58, 0.55));
+}
+
+/* Somebody who has asked their machine to stop moving things has asked for this
+   too. The tube stays lit; it just stops blinking. */
+@media (prefers-reduced-motion: reduce) {
+  .sidenav-link[href$='/cash-flow'] .sidenav-ic { animation: none; }
+}
+
 /* Revenue breakdown: three bars on ONE scale, not a stacked bar. A stack has to
    clamp the moment costs exceed revenue, which is the month you most need to
    see that they did. */
