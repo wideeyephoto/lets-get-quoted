@@ -1,11 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { LeadStatus, LeadScore } from '@/lib/leads';
 import { DEFAULT_LEADS_VIEW, type LeadsView } from '@/lib/dashboard-views';
-import { archiveLeadAction, declineLeadAction, snoozeLeadAction, updateLeadStatusAction, setLeadsViewAction } from './actions';
+import { archiveLeadAction, snoozeLeadAction, updateLeadStatusAction, setLeadsViewAction } from './actions';
 import { setMapThemeAction, setMapViewAction } from '@/app/dashboard/view-actions';
 import type { MapTheme, MapView } from '@/lib/dashboard-views';
 import { leadScoreLabel } from '@/lib/lead-detail-labels';
@@ -14,6 +14,9 @@ import PinMap, { type MapPin } from '@/components/pin-map';
 import { pinRecordId, revealRow } from '@/lib/reveal-row';
 import LeadFocusView from './LeadFocusView';
 import LeadSmoothieView from './LeadSmoothieView';
+import LeadPriorityView from './LeadPriorityView';
+import LeadBoardView from './LeadBoardView';
+import LeadTableView from './LeadTableView';
 import styles from './leads.module.css';
 
 // Display-ready lead shape, built server-side in page.tsx so this client
@@ -55,21 +58,20 @@ export type LeadViewItem = {
    */
   waitingLong: string;
   waitingShort: string;
+  /**
+   * ISO timestamp of the last logged touchpoint, or null if nobody has reached
+   * out yet. What "overdue follow-up" is measured from — a lead contacted an
+   * hour ago and one contacted nine days ago are both "contacted", and only one
+   * of them needs you today.
+   */
+  lastTouchAt: string | null;
+  /** When a snoozed lead comes back, already formatted. Null unless snoozed. */
+  snoozedUntilLabel: string | null;
   // Enough to draw a lead's cover before any detail request: what they asked
   // for (picks the trade glyph) and whether a real photo is on its way.
   projectType: string | null;
   photoCount: number;
 };
-
-const COLUMNS: { status: LeadStatus; label: string }[] = [
-  { status: 'new', label: 'Needs response' },
-  { status: 'contacted', label: 'Contacted' },
-  { status: 'quoted', label: 'Quote sent' },
-  { status: 'won', label: 'Won' },
-  { status: 'lost', label: 'Lost' },
-];
-
-const SCORE_RANK: Record<LeadScore, number> = { hot: 0, warm: 1, low: 2 };
 
 // Smoothie leads, because it's the default — the list in the menu should open
 // on the layout you are already looking at rather than making you find it.
@@ -85,16 +87,6 @@ const VIEWS: { id: LeadsView; label: string; hint: string }[] = [
 function scoreText(item: LeadViewItem) {
   return leadScoreLabel(item.score);
 }
-
-// One-tap decline reasons — keys map to LEAD_DECLINE_REASONS server-side. The
-// board decline is quiet (no homeowner text); the full texted close-out lives
-// on the lead detail page.
-const DECLINE_REASONS: { key: string; label: string }[] = [
-  { key: 'out_of_area', label: 'Out of area' },
-  { key: 'excluded_work', label: 'Not our work' },
-  { key: 'below_minimum', label: 'Too small' },
-  { key: 'fully_booked', label: 'Fully booked' },
-];
 
 // Bottom-of-section explainer: what Hot / Warm / Low actually mean, mirroring
 // the chips shown on every card.
@@ -121,8 +113,37 @@ function ScoreLegend() {
 
 const VIEW_OPTIONS = VIEWS.map((v) => ({ id: v.id, label: v.label, hint: v.hint }));
 
-export default function LeadsWorkspace({ leads, initialView, mapView, mapTheme, mapPins }: { leads: LeadViewItem[]; initialView: LeadsView; mapView: MapView; mapTheme: MapTheme; mapPins: MapPin[] }) {
+export default function LeadsWorkspace({
+  leads,
+  snoozedLeads = [],
+  initialView,
+  mapView,
+  mapTheme,
+  mapPins,
+}: {
+  leads: LeadViewItem[];
+  /** Snoozed but not archived — the Priority inbox's third group. */
+  snoozedLeads?: LeadViewItem[];
+  initialView: LeadsView;
+  mapView: MapView;
+  mapTheme: MapTheme;
+  mapPins: MapPin[];
+}) {
   const [view, setView] = useState<LeadsView>(initialView);
+  /**
+   * Whether the map panel is open.
+   *
+   * Client state, not the server-rendered cookie, and that is the whole fix.
+   * The map used to be a band welded above every view — 414px on desktop and
+   * 388px on a phone before anybody reached a lead — and it was tied to the
+   * view switcher because both lived in the same gear. Now it is a toolbar
+   * toggle that belongs to no view.
+   *
+   * Starts CLOSED and opens in an effect, so a phone never pays for it: the
+   * server cannot know the viewport, and rendering the map only to hide it is
+   * the cost we are removing.
+   */
+  const [mapOpen, setMapOpen] = useState(false);
   // A pin click asks the split or focus view to open that lead. The nonce makes
   // clicking the same pin twice count twice, so re-clicking the lead you're
   // already on still brings its details back into view.
@@ -164,14 +185,30 @@ export default function LeadsWorkspace({ leads, initialView, mapView, mapTheme, 
     });
   }
 
-  // Map placement (off / large / mini) is server-rendered from the cookie;
-  // changing it persists then refreshes so the page re-renders in place.
-  function setMap(next: MapView) {
+  // The cookie is now a PREFERENCE, not a layout instruction: the panel opens
+  // and closes locally so a toggle never costs a round trip, and the choice is
+  // remembered for the next visit. No refresh — the pins are already here.
+  function toggleMap() {
+    const next = !mapOpen;
+    setMapOpen(next);
     startTransition(async () => {
-      await setMapViewAction(next, 'leads');
-      router.refresh();
+      try {
+        await setMapViewAction(next ? 'large' : 'off', 'leads');
+      } catch {
+        // The panel still opened; only the memory of it is lost.
+      }
     });
   }
+
+  // Desktop honours the saved preference; a phone always starts closed. Read
+  // after mount because the server has no viewport — and because rendering the
+  // map and then hiding it is the 388px this change exists to remove.
+  useEffect(() => {
+    if (mapView === 'off') return;
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 920px)').matches) return;
+    setMapOpen(true);
+  }, [mapView]);
+
   function setTheme(next: MapTheme) {
     startTransition(async () => {
       await setMapThemeAction(next);
@@ -191,14 +228,16 @@ export default function LeadsWorkspace({ leads, initialView, mapView, mapTheme, 
       views={VIEW_OPTIONS}
       activeView={view}
       onPickView={pickView}
-      mapView={smoothie ? undefined : mapView}
-      onSetMapView={smoothie ? undefined : setMap}
+      // No map PLACEMENT in the gear any more, in any view. Where the map goes
+      // is not a view setting — it is a toolbar toggle beside the views now, so
+      // leaving a second control for it here would be two switches for one
+      // thing. Its colour is still a preference, so that stays.
       mapTheme={mapTheme}
       onSetMapTheme={setTheme}
       label="View"
-      // Mirrors normalizeLeadsView / normalizeMapView / normalizeMapTheme — the
-      // values this page renders for someone with no cookies at all.
-      defaults={{ view: DEFAULT_LEADS_VIEW, mapView: 'large', mapTheme: 'dark' }}
+      // Mirrors normalizeLeadsView / normalizeMapTheme — the values this page
+      // renders for someone with no cookies at all.
+      defaults={{ view: DEFAULT_LEADS_VIEW, mapTheme: 'dark' }}
     />
   );
 
@@ -221,12 +260,27 @@ export default function LeadsWorkspace({ leads, initialView, mapView, mapTheme, 
 
   return (
     <div className={pending ? styles.workspaceBusy : undefined}>
-      {mapView !== 'off' ? (
-        <div className="workspace-embedded-map">
+      {/* One toolbar for every view: which layout, and whether the map is on.
+          Two independent choices that used to be one control. */}
+      <div className={styles.viewBar}>
+        {gear}
+        <button
+          type="button"
+          className={styles.mapToggle}
+          aria-pressed={mapOpen}
+          aria-controls="leads-map-panel"
+          onClick={toggleMap}
+        >
+          <span aria-hidden="true">🗺</span> Map
+          <span className={styles.mapToggleCount}>{mapPins.length}</span>
+        </button>
+      </div>
+
+      {mapOpen ? (
+        <div className="workspace-embedded-map" id="leads-map-panel">
           <PinMap
             pins={mapPins}
             theme={mapTheme}
-            legendAccessory={gear}
             focusPinId={view === 'focus' && focusLeadId ? `lead-${focusLeadId}` : null}
             // A pin is the same lead as the row below it; clicking one should
             // take you to the other rather than making you hunt for it.
@@ -241,181 +295,15 @@ export default function LeadsWorkspace({ leads, initialView, mapView, mapTheme, 
             }}
           />
         </div>
-      ) : (
-        <div className={styles.viewBar}>{gear}</div>
-      )}
+      ) : null}
 
-      {view === 'board' && <BoardView leads={leads} run={run} />}
-      {view === 'inbox' && <InboxView leads={leads} run={run} />}
-      {view === 'table' && <TableView leads={leads} />}
+      {view === 'board' && <LeadBoardView leads={leads} run={run} />}
+      {view === 'inbox' && <LeadPriorityView leads={leads} snoozed={snoozedLeads} run={run} />}
+      {view === 'table' && <LeadTableView leads={leads} run={run} />}
       {view === 'split' && <SplitView leads={leads} run={run} openRequest={pinRequest} />}
       {view === 'focus' && <LeadFocusView leads={leads} run={run} onSelect={onFocusSelect} openRequest={pinRequest} />}
 
       <ScoreLegend />
-    </div>
-  );
-}
-
-/* ---------------- Board (kanban by stage) ---------------- */
-function BoardView({ leads, run }: { leads: LeadViewItem[]; run: (fn: () => Promise<unknown>) => void }) {
-  return (
-    <div className={styles.board}>
-      {COLUMNS.map((column) => {
-        const columnLeads = leads.filter((lead) => lead.status === column.status);
-        return (
-          <section className={`${styles.column} ${styles[`col_${column.status}`]}`} key={column.status}>
-            <header className={styles.columnHeader}><h2>{column.label}</h2><span>{columnLeads.length}</span></header>
-            <div className={styles.cards}>
-              {columnLeads.map((lead) => <BoardCard key={lead.id} lead={lead} run={run} />)}
-              {columnLeads.length === 0 && <p className={styles.empty}>No leads here.</p>}
-            </div>
-          </section>
-        );
-      })}
-    </div>
-  );
-}
-
-function BoardCard({ lead, run }: { lead: LeadViewItem; run: (fn: () => Promise<unknown>) => void }) {
-  const [declining, setDeclining] = useState(false);
-  return (
-    <div id={`lead-row-${lead.id}`} className={`${styles.leadCard}${lead.isUrgent ? ` ${styles.urgentCard}` : ''}`}>
-      {/* The card body is the click target (the actions below carry their own). */}
-      <Link className={styles.cardBody} href={`/dashboard/leads/${lead.id}`}>
-        <div className={styles.cardTopline}><strong>{lead.name}</strong><span className={lead.isUrgent ? styles.needsBadge : styles.statusBadge}>{lead.statusLabel}</span></div>
-        {(lead.hasTriage || lead.flags.length > 0) && (
-          <div className={styles.cardChips}>
-            {lead.hasTriage && <span className={styles.scoreChip} data-score={lead.score}>{scoreText(lead)}</span>}
-            {lead.textOnly && <span className={styles.textOnlyChip}>💬 Text only</span>}
-            {lead.flags.slice(0, 2).map((flag) => <span className={styles.flagChip} key={flag.key}>{flag.label}</span>)}
-          </div>
-        )}
-        <p>{lead.detail}</p>
-        <div className={styles.cardMetaGrid}>
-          <span>{lead.sourceLabel}</span>
-          <span>Estimated hours: {lead.estimatedHours ? `${lead.estimatedHours} hrs` : 'Not set'}</span>
-          <time dateTime={lead.createdAt}>Received {lead.ageLabel} ago</time>
-        </div>
-        {(lead.phone || lead.email) && <div className={styles.contactHint}>{lead.phone || lead.email}</div>}
-      </Link>
-
-      <div className={styles.cardActions}>
-        {lead.phone && <a className={styles.callLink} href={`tel:${lead.phone}`} aria-label={`Call ${lead.name}`}>📞 Call</a>}
-        {lead.status !== 'lost' && (
-          <button type="button" className={styles.declineBtn} aria-expanded={declining} onClick={() => setDeclining((v) => !v)}>Decline</button>
-        )}
-        {lead.convertedJob && <Link className={styles.openJobLink} href={`/dashboard/jobs/${lead.convertedJob}`}>Open job →</Link>}
-      </div>
-
-      {declining && (
-        <div className={styles.declineInline}>
-          <p>Why decline?</p>
-          <div className={styles.declineReasons}>
-            {DECLINE_REASONS.map((r) => (
-              <button
-                key={r.key}
-                type="button"
-                className={styles.declineChip}
-                onClick={() => { setDeclining(false); run(() => declineLeadAction(lead.id, r.key, false)); }}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
-          <button type="button" className={styles.declineCancel} onClick={() => setDeclining(false)}>Cancel</button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ---------------- Priority inbox (heat-sorted list) ---------------- */
-function InboxView({ leads, run }: { leads: LeadViewItem[]; run: (fn: () => Promise<unknown>) => void }) {
-  const sorted = useMemo(() => [...leads].sort((a, b) => SCORE_RANK[a.score] - SCORE_RANK[b.score]), [leads]);
-  return (
-    <div className={styles.inbox}>
-      {sorted.map((lead) => (
-        <div id={`lead-row-${lead.id}`} className={`${styles.inboxRow}${lead.isUrgent ? ` ${styles.inboxUrgent}` : ''}`} key={lead.id}>
-          <span className={styles.heatDot} data-score={lead.score} aria-hidden="true" />
-          <Link href={`/dashboard/leads/${lead.id}`} className={styles.inboxBody}>
-            <div className={styles.inboxTop}>
-              <strong className={styles.inboxName}>{lead.name}</strong>
-              {lead.hasTriage && <span className={styles.scoreChip} data-score={lead.score}>{scoreText(lead)}</span>}
-              {lead.estimateLabel && <span className={styles.inboxVal}>{lead.estimateLabel}</span>}
-              <span className={styles.inboxAge}>{lead.ageLabel}</span>
-            </div>
-            <span className={styles.inboxSnip}>{lead.detail} · {lead.sourceLabel}{lead.location ? ` · ${lead.location}` : ''}</span>
-          </Link>
-          <div className={styles.inboxActions}>
-            {lead.phone && <a className={styles.iconBtn} href={`tel:${lead.phone}`} title="Call">📞</a>}
-            {lead.phone && <a className={styles.iconBtn} href={`sms:${lead.phone}`} title="Text">💬</a>}
-            <button type="button" className={styles.iconBtn} title="Snooze 3 days" onClick={() => run(() => snoozeLeadAction(lead.id, 3))}>💤</button>
-            <Link className={styles.iconBtn} href={`/dashboard/leads/${lead.id}`} title="Open">→</Link>
-          </div>
-        </div>
-      ))}
-      {sorted.length === 0 && <p className="empty-state">No active leads right now.</p>}
-    </div>
-  );
-}
-
-/* ---------------- Command table (sortable) ---------------- */
-type SortKey = 'heat' | 'name' | 'value' | 'age' | 'status';
-function TableView({ leads }: { leads: LeadViewItem[] }) {
-  const [sortKey, setSortKey] = useState<SortKey>('heat');
-  const [asc, setAsc] = useState(true);
-
-  const sorted = useMemo(() => {
-    const rows = [...leads];
-    rows.sort((a, b) => {
-      let cmp = 0;
-      if (sortKey === 'heat') cmp = SCORE_RANK[a.score] - SCORE_RANK[b.score];
-      else if (sortKey === 'name') cmp = a.name.localeCompare(b.name);
-      else if (sortKey === 'value') cmp = (b.estimate?.max ?? -1) - (a.estimate?.max ?? -1);
-      else if (sortKey === 'age') cmp = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      else if (sortKey === 'status') cmp = a.status.localeCompare(b.status);
-      return asc ? cmp : -cmp;
-    });
-    return rows;
-  }, [leads, sortKey, asc]);
-
-  function sortBy(key: SortKey) {
-    if (key === sortKey) setAsc((v) => !v);
-    else { setSortKey(key); setAsc(true); }
-  }
-  const arrow = (key: SortKey) => (sortKey === key ? (asc ? ' ▲' : ' ▼') : '');
-
-  return (
-    <div className={styles.tableWrap}>
-      <table className={styles.leadTable}>
-        <thead>
-          <tr>
-            <th><button type="button" onClick={() => sortBy('name')}>Lead{arrow('name')}</button></th>
-            <th><button type="button" onClick={() => sortBy('heat')}>Heat{arrow('heat')}</button></th>
-            <th>Service</th>
-            <th>Source</th>
-            <th className={styles.numCol}><button type="button" onClick={() => sortBy('value')}>Est. value{arrow('value')}</button></th>
-            <th className={styles.numCol}><button type="button" onClick={() => sortBy('age')}>Age{arrow('age')}</button></th>
-            <th><button type="button" onClick={() => sortBy('status')}>Stage{arrow('status')}</button></th>
-            <th aria-label="Open" />
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((lead) => (
-            <tr id={`lead-row-${lead.id}`} key={lead.id}>
-              <td><Link href={`/dashboard/leads/${lead.id}`} className={styles.tName}>{lead.name}</Link></td>
-              <td><span className={styles.scoreChip} data-score={lead.score}>{scoreText(lead)}</span></td>
-              <td className={styles.tMuted}>{lead.detail}</td>
-              <td className={styles.tMuted}>{lead.sourceLabel}</td>
-              <td className={styles.numCol}>{lead.estimateLabel ?? '—'}</td>
-              <td className={styles.numCol}>{lead.ageLabel}</td>
-              <td>{lead.statusLabel}</td>
-              <td><Link href={`/dashboard/leads/${lead.id}`} className={styles.tOpen}>Open →</Link></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {sorted.length === 0 && <p className="empty-state">No active leads right now.</p>}
     </div>
   );
 }

@@ -107,6 +107,8 @@ export function demoLeadViews(): DemoLeadView[] {
       isUrgent: lead.status === 'new' && lead.source === 'website_form',
       waitingLong: waitingLabel(lead.created_at).long,
       waitingShort: waitingLabel(lead.created_at).short,
+      lastTouchAt: (triage.contactLog ?? []).at(-1)?.at ?? null,
+      snoozedUntilLabel: null,
     };
   });
 }

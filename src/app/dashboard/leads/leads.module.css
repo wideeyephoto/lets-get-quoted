@@ -543,7 +543,46 @@
 @media (max-width: 720px) { .splitWrap { grid-template-columns: 1fr; } .splitList { max-height: 300px; } .sdGrid { grid-template-columns: 1fr; } }
 
 /* --- View gear (collapsed view picker) --- */
-.viewBar { display: flex; justify-content: flex-end; margin-top: 1rem; }
+/* One toolbar for the whole page: which layout, and whether the map is on.
+   Two independent choices — the map used to be a section of the view gear,
+   which is what made a 414px band feel like part of picking a layout. */
+.viewBar { display: flex; align-items: center; justify-content: flex-end; gap: .5rem; margin: 1rem 0 .8rem; }
+
+.mapToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  min-height: 44px;
+  padding: 0 .85rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 10px;
+  background: rgba(var(--tint), .03);
+  color: var(--muted);
+  font: inherit;
+  font-size: .85rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.mapToggle:hover { color: var(--text); border-color: var(--edge-t22); }
+.mapToggle[aria-pressed='true'] {
+  border-color: var(--cedge-orange-30);
+  background: rgba(255, 122, 33, .12);
+  color: var(--text);
+}
+.mapToggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mapToggleCount {
+  padding: .02rem .35rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), .12);
+  font-size: .75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 620px) {
+  .viewBar { justify-content: stretch; }
+  .viewBar > * { flex: 1; }
+  .mapToggle { justify-content: center; }
+}
 .viewGear { position: relative; }
 .viewGearBtn { display: inline-flex; align-items: center; gap: .45rem; padding: .5rem .85rem; border-radius: 999px; border: 1px solid var(--edge-t14); background: rgba(var(--tint), .03); color: var(--muted); font: inherit; font-size: .84rem; font-weight: 700; cursor: pointer; transition: color .15s, border-color .15s, background .15s; }
 .viewGearBtn svg { width: 16px; height: 16px; }

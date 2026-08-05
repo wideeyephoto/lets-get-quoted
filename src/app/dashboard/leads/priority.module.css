@@ -1,0 +1,107 @@
+/* The Priority inbox: three groups, one card per lead, actions beneath the
+   information. Same tokens as the rest of Leads — this is a re-ordering, not a
+   repaint. */
+
+.priority { display: flex; flex-direction: column; gap: 1.4rem; }
+
+.group { min-width: 0; }
+
+.groupHead {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--rule-g16);
+}
+.groupTitle { margin: 0; font-size: 1rem; font-weight: 750; }
+/* Act now is the only heading that gets the accent. Give all three the same
+   emphasis and none of them has any. */
+.groupTitle[data-tone='urgent'] { color: var(--ink-orange-3); }
+.groupCount {
+  min-width: 1.5rem;
+  padding: 0.08rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.1);
+  font-size: 0.76rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.groupTitle[data-tone='urgent'] + .groupCount { background: rgba(255, 122, 33, 0.2); color: var(--ink-orange-3); }
+.groupBlurb { flex: 1 1 14rem; margin: 0; font-size: 0.82rem; color: var(--muted); }
+.groupEmpty { margin: 0; padding: 0.9rem 0; font-size: 0.86rem; color: var(--muted); }
+
+.cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid var(--edge-t10);
+  border-left: 3px solid transparent;
+  border-radius: 14px;
+  background: rgba(var(--tint), 0.025);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.card:hover { border-color: var(--edge-t22); background: rgba(var(--tint), 0.045); }
+/* The tier is on the card as a left bar as well as in the sentence — a second,
+   non-colour signal for the same fact. */
+.card[data-tier='needs-response'] { border-left-color: var(--accent); }
+.card[data-tier='overdue-followup'] { border-left-color: var(--gold-ink); }
+.card[data-tier='quote-waiting'] { border-left-color: var(--ink-sky-1); }
+
+.cardBody { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 0.2rem; }
+.cardTop { display: flex; align-items: baseline; gap: 0.6rem; }
+.cardName {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: inherit;
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cardName:hover { text-decoration: underline; }
+.cardName:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.cardCity { font-weight: 500; color: var(--muted); }
+.cardValue { flex: none; font-size: 0.9rem; font-weight: 800; color: var(--warn); font-variant-numeric: tabular-nums; }
+
+.cardProject {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reason {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--mute-t60);
+}
+.reasonDot { flex: none; }
+
+.pref { margin: 0.1rem 0 0; font-size: 0.78rem; color: var(--ink-orange-3); }
+
+.cardActions { display: flex; align-items: center; gap: 0.5rem; flex: none; }
+.primaryBtn { min-height: 44px; white-space: nowrap; }
+
+@media (max-width: 720px) {
+  /* Full-width cards, actions BENEATH the information rather than beside it.
+     Four icon buttons on the right used to leave about 42px for the name. */
+  .card { flex-direction: column; align-items: stretch; gap: 0.7rem; }
+  .cardActions { width: 100%; }
+  .primaryBtn { flex: 1; justify-content: center; }
+  .cardProject, .cardName { white-space: normal; }
+  .reason { flex-wrap: wrap; }
+}

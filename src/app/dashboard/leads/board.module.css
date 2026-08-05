@@ -1,0 +1,253 @@
+/* The Board: three active columns, Closed collapsed underneath.
+   One page-level scroll — no column has its own scrollbar, and the board no
+   longer scrolls sideways on desktop. */
+
+.boardWrap { display: flex; flex-direction: column; gap: 0.9rem; }
+
+/* Stage tabs are the phone layout only. Above the breakpoint every column is
+   on screen at once, so a tab bar would be a control for nothing. */
+.stageTabs { display: none; }
+
+.board {
+  display: grid;
+  /* 240–280px of card. Five columns put this at ~148px, which is why the cards
+     were carrying six facts in two words each. */
+  grid-template-columns: repeat(3, minmax(240px, 1fr));
+  gap: 0.8rem;
+  align-items: start;
+}
+
+.column {
+  min-width: 0;
+  border: 1px solid var(--edge-t10);
+  border-radius: 14px;
+  background: rgba(var(--tint), 0.025);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.columnDrop {
+  border-color: var(--accent);
+  background: rgba(255, 122, 33, 0.07);
+  box-shadow: inset 0 0 0 1px var(--cedge-orange-30);
+}
+
+/* Sticky, so you always know which column you are dropping into on a long
+   board. `top` clears the app's own sticky chrome. */
+.columnHead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.7rem 0.85rem 0.6rem;
+  border-bottom: 1px solid var(--rule-g16);
+  border-radius: 14px 14px 0 0;
+  background: var(--chrome-solid, rgba(12, 20, 30, 0.97));
+}
+.columnHead h2 { margin: 0; font-size: 0.88rem; font-weight: 750; }
+.columnHead span { font-size: 0.8rem; font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.cards { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.55rem; }
+.empty { margin: 0; padding: 0.9rem 0.3rem; font-size: 0.82rem; color: var(--muted); text-align: center; }
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 12px;
+  background: rgba(var(--panel-rgb), 0.9);
+  cursor: grab;
+}
+.card:active { cursor: grabbing; }
+.cardDragging { opacity: 0.45; border-color: var(--accent); }
+
+.cardName {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: inherit;
+  text-decoration: none;
+}
+.cardName:hover { text-decoration: underline; }
+.cardName:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+.cardCity { font-weight: 500; color: var(--muted); }
+
+.cardProject {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardMeta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; margin: 0.15rem 0 0; font-size: 0.76rem; }
+.cardDot { flex: none; }
+.cardHeat { font-weight: 800; }
+.cardHeat[data-score='hot'] { color: var(--ink-orange-3); }
+.cardHeat[data-score='warm'] { color: var(--gold-ink); }
+.cardHeat[data-score='low'] { color: var(--muted); }
+.cardWait { color: var(--mute-t60); }
+.cardValue { margin-left: auto; font-weight: 800; color: var(--warn); font-variant-numeric: tabular-nums; }
+
+.cardActions { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.4rem; }
+.cardBtn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 0.65rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 9px;
+  background: rgba(var(--tint), 0.03);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.79rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+.cardBtn:hover { border-color: var(--cedge-orange-30); background: rgba(255, 122, 33, 0.08); }
+.cardBtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.decline { margin-top: 0.4rem; padding: 0.5rem; border: 1px solid var(--edge-t14); border-radius: 10px; }
+.decline p { margin: 0 0 0.4rem; font-size: 0.78rem; color: var(--muted); }
+.declineReasons { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.declineChip {
+  min-height: 44px;
+  padding: 0 0.6rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.04);
+  color: inherit;
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.declineChip:hover { border-color: var(--cedge-red-10); color: var(--ink-red-1); }
+.declineCancel {
+  margin-top: 0.4rem;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.78rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.moveRow { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.45rem; }
+.moveLabel { font-size: 0.74rem; color: var(--mute-i56); white-space: nowrap; }
+.moveSelect {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 0.5rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 9px;
+  background: rgba(var(--tint), 0.03);
+  color: inherit;
+  font: inherit;
+  font-size: 0.79rem;
+}
+.moveSelect:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* --- Closed, collapsed ---------------------------------------------------- */
+
+.closed { border: 1px solid var(--edge-t10); border-radius: 14px; background: rgba(var(--tint), 0.02); }
+.closedToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 0.9rem;
+  border: 0;
+  border-radius: 14px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.closedToggle:hover { background: rgba(var(--tint), 0.04); }
+.closedToggle:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.closedChev { font-size: 0.7rem; color: var(--muted); }
+.closedCount {
+  min-width: 1.4rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.1);
+  font-size: 0.76rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.closedHint { font-size: 0.78rem; font-weight: 400; color: var(--muted); }
+.closedBody { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.7rem; padding: 0 0.6rem 0.7rem; }
+.closedColumn { border: 1px solid var(--edge-t10); border-radius: 12px; }
+.closedColumnHead {
+  margin: 0;
+  padding: 0.55rem 0.7rem 0.45rem;
+  border-bottom: 1px solid var(--rule-g16);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+.closedColumnHead span { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* --- phones: one column at a time ---------------------------------------- */
+
+@media (max-width: 900px) {
+  .stageTabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  .stageTab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex: 1 1 auto;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 0.7rem;
+    border: 1px solid var(--edge-t14);
+    border-radius: 999px;
+    background: rgba(var(--tint), 0.03);
+    color: var(--muted);
+    font: inherit;
+    font-size: 0.82rem;
+    font-weight: 650;
+    cursor: pointer;
+  }
+  .stageTab[aria-selected='true'] {
+    border-color: var(--cedge-orange-82);
+    background: rgba(255, 122, 33, 0.14);
+    color: var(--text);
+    font-weight: 780;
+  }
+  .stageTab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .stageTabCount {
+    padding: 0.02rem 0.35rem;
+    border-radius: 999px;
+    background: rgba(var(--tint), 0.12);
+    font-size: 0.74rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* One column visible, chosen by the tabs. Stacking all five was a 3,512px
+     page with a scrollbar inside each column. */
+  .board { grid-template-columns: minmax(0, 1fr); }
+  .board .column { display: none; }
+  .board[data-tab='new'] .column[data-stage='new'],
+  .board[data-tab='contacted'] .column[data-stage='contacted'],
+  .board[data-tab='quoted'] .column[data-stage='quoted'] { display: block; }
+
+  /* Closed is a tab here, not a drawer under the board. */
+  .closed { display: none; }
+  .closed[data-tab-open='true'] { display: block; }
+  .closedBody { grid-template-columns: minmax(0, 1fr); }
+}

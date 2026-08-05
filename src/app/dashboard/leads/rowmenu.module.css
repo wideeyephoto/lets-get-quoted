@@ -1,0 +1,66 @@
+/* Secondary actions, behind one labelled button. Every target here is 44px —
+   the icon strip this replaces was 32×32. */
+
+.wrap { position: relative; display: inline-flex; flex: none; }
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 0.8rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.03);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.trigger:hover { color: var(--text); border-color: var(--edge-t22); }
+.trigger[aria-expanded='true'] { color: var(--text); border-color: var(--cedge-orange-30); background: rgba(255, 122, 33, 0.08); }
+.trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chev { font-size: 0.7rem; }
+
+.pop {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  min-width: 14rem;
+  padding: 0.25rem;
+  border: 1px solid var(--edge-t22);
+  border-radius: 12px;
+  background: var(--chrome-solid, rgba(12, 20, 30, 0.98));
+  box-shadow: 0 18px 44px rgba(var(--shade), 0.55);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 0.7rem;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.86rem;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.item:hover { background: rgba(var(--tint), 0.09); }
+.item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.danger { color: var(--ink-red-1); }
+
+@media (max-width: 620px) {
+  /* Anchored to the right edge of a full-width card, a 14rem popover can hang
+     off the screen. Pin it to both edges instead. */
+  .wrap { flex: 1; }
+  .trigger { width: 100%; justify-content: center; }
+  .pop { left: 0; right: 0; min-width: 0; }
+}

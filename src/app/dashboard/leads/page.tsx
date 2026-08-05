@@ -43,16 +43,17 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
   // never has to import the server-only leads module.
   const initialView = normalizeLeadsView(cookies().get(LEADS_VIEW_COOKIE)?.value);
 
-  // Smoothie puts the map in a pane rather than a band across the top, so it
-  // needs the pins whatever the map-placement cookie says — that setting
-  // governs the embedded band, which Smoothie does not render.
-  const mapPins = mapView !== 'off' || initialView === 'smoothie' ? await getMapPins(supabase, accountId) : [];
+  // Always fetched now that the map is a toolbar TOGGLE rather than a band
+  // welded above one view. Opening it has to be instant and local — a round
+  // trip to fetch pins would make a toggle feel like a navigation, and it is
+  // one query on a page that already runs several.
+  const mapPins = await getMapPins(supabase, accountId);
 
   // One clock for the whole page. Called per lead it would drift across the
   // list, so two leads that arrived in the same minute could report different
   // waits.
   const now = new Date();
-  const viewLeads: LeadViewItem[] = leads.map((lead) => {
+  const toViewItem = (lead: (typeof allLeads)[number]): LeadViewItem => {
     const triage = getLeadTriage(lead);
     const estimate = triage.estimate ?? null;
     return {
@@ -85,15 +86,34 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
       photoCount: (lead.photo_paths || []).length,
       waitingLong: waitingLabel(lead.created_at, now).long,
       waitingShort: waitingLabel(lead.created_at, now).short,
+      // The last touchpoint, not the last UPDATE. updated_at moves when a score
+      // is edited or a photo lands, so measuring "gone quiet" from it would
+      // clear the flag on a lead nobody has actually spoken to.
+      lastTouchAt: (triage.contactLog ?? []).at(-1)?.at ?? null,
+      snoozedUntilLabel:
+        triage.snoozedUntil && isLeadSnoozed(triage, now)
+          ? new Date(triage.snoozedUntil).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          : null,
     };
-  });
+  };
+
+  const viewLeads: LeadViewItem[] = leads.map(toViewItem);
+
+  // Snoozed leads, kept apart from the open queue but no longer only reachable
+  // through a drawer at the foot of the page. They are not work you are doing
+  // today and they are not closed either, which is exactly what a "Snoozed"
+  // group is for. Archived leads are NOT here — those were set aside on
+  // purpose, and the drawer below is where they belong.
+  const snoozedViewLeads: LeadViewItem[] = setAside
+    .filter(({ triage }) => !triage.archived && isLeadSnoozed(triage, now))
+    .map(({ lead }) => toViewItem(lead));
 
   return (
     <main className="wide-shell workspace-shell">
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading"><p className="eyebrow">Pipeline</p><h1>Current leads</h1></div>
         {leads.length === 0 ? <p className="empty-state">No leads yet. Website requests will appear here — or <Link href="/dashboard/leads?add=1#add-lead">add a lead manually</Link>.</p> : (
-          <LeadsWorkspace leads={viewLeads} initialView={initialView} mapView={mapView} mapTheme={mapTheme} mapPins={mapPins} />
+          <LeadsWorkspace leads={viewLeads} snoozedLeads={snoozedViewLeads} initialView={initialView} mapView={mapView} mapTheme={mapTheme} mapPins={mapPins} />
         )}
       </section>
 

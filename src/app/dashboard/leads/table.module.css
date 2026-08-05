@@ -1,0 +1,309 @@
+/* The Table: a data-management view on desktop, compact cards on a phone.
+   Body text is .88rem rather than the .86rem it was, and every control is a
+   44px target — this is the view people sit in for half an hour. */
+
+.wrap { display: flex; flex-direction: column; gap: 0.7rem; }
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --- toolbar -------------------------------------------------------------- */
+
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+
+.search {
+  flex: 1 1 16rem;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.03);
+  color: inherit;
+  font: inherit;
+  font-size: 0.95rem;
+}
+.search::placeholder { color: var(--mute-i42); }
+.search:focus-visible { outline: none; border-color: var(--cedge-orange-30); background: rgba(255, 138, 61, 0.05); }
+
+.filter { display: inline-flex; align-items: center; gap: 0.4rem; flex: none; }
+.filterLabel { font-size: 0.8rem; color: var(--muted); }
+.filter select {
+  min-height: 44px;
+  padding: 0 0.6rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.03);
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.toolBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0 0.85rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.03);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.toolBtn:hover { border-color: var(--edge-t22); }
+.toolCount {
+  padding: 0.02rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.12);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.count { margin-left: auto; font-size: 0.82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.chooser { position: relative; flex: none; }
+.chooserPop {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  min-width: 15rem;
+  padding: 0.35rem;
+  border: 1px solid var(--edge-t22);
+  border-radius: 12px;
+  background: var(--chrome-solid, rgba(12, 20, 30, 0.98));
+  box-shadow: 0 18px 44px rgba(var(--shade), 0.55);
+}
+.chooserItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 0.5rem;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+.chooserItem:hover { background: rgba(var(--tint), 0.08); }
+.chooserItem small { margin-left: auto; color: var(--mute-i56); font-size: 0.72rem; }
+.chooserReset {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 0.2rem;
+  border: 0;
+  border-top: 1px solid var(--rule-g16);
+  background: none;
+  color: var(--ink-sky-1);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+/* --- bulk bar ------------------------------------------------------------- */
+
+.bulkBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--cedge-orange-30);
+  border-radius: 12px;
+  background: rgba(255, 122, 33, 0.09);
+  font-size: 0.86rem;
+}
+.bulkBtn {
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--edge-t22);
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.05);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.83rem;
+  cursor: pointer;
+}
+.bulkBtn:hover { border-color: var(--accent); }
+.bulkClear {
+  margin-left: auto;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.82rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* --- the table ------------------------------------------------------------ */
+
+/* `overflow: hidden` here CLIPPED the last two columns on a 1500px screen —
+   Source and Next action simply were not there, with no scrollbar to say so.
+   Data disappearing silently is strictly worse than a scrollbar, so this is
+   `auto`: it fits at every width the panel gives it, and if a future column
+   ever pushes past that, it scrolls instead of vanishing. */
+.tableWrap { border: 1px solid var(--edge-t10); border-radius: 12px; overflow-x: auto; }
+.table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.88rem; }
+
+/* Sticky header. `overflow: hidden` on the wrapper would break it, so the
+   wrapper clips only the corners and the page is what scrolls. */
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid var(--rule-t12);
+  background: var(--chrome-solid, rgba(12, 20, 30, 0.97));
+  text-align: left;
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--mute-i56);
+  white-space: nowrap;
+}
+
+.sortBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+.sortBtn:hover { color: var(--text); }
+.sortBtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.arrow { font-size: 0.68rem; opacity: 0.75; }
+
+.row { cursor: pointer; }
+.row td {
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid var(--rule-t08, var(--edge-t10));
+  vertical-align: middle;
+}
+.row:hover td { background: rgba(var(--tint), 0.04); }
+.rowOn td { background: rgba(255, 122, 33, 0.08); }
+.row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.checkCol { width: 2.6rem; }
+.checkWrap { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; cursor: pointer; }
+.checkWrap input { width: 1.05rem; height: 1.05rem; accent-color: #ff7a21; }
+
+.numCol { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* The name gets room and never wraps to two lines; the project description is
+   what gets truncated. It was the other way round — a name broken across two
+   lines beside a project description running to the full width. */
+.leadCell { min-width: 10rem; white-space: nowrap; }
+/* The one flexible column: it takes what is left and ellipses the rest, which
+   is what keeps the table inside the panel. */
+.projectCell { width: 100%; max-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.tName { color: inherit; font-weight: 650; text-decoration: none; }
+.tName:hover { text-decoration: underline; }
+.tCity { font-weight: 500; color: var(--muted); }
+.tStage {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.09);
+  color: var(--mute-t60);
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.tStage[data-stage='new'] { background: rgba(255, 122, 33, 0.16); color: var(--ink-orange-3); }
+.tStage[data-stage='won'] { background: rgba(74, 222, 128, 0.14); color: var(--ink-green-1); }
+.tHeat { display: inline-flex; align-items: center; gap: 0.35rem; white-space: nowrap; }
+.tNext {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 0.6rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.tNext:hover { border-color: var(--cedge-orange-30); background: rgba(255, 122, 33, 0.08); }
+
+.noMatch { margin: 0; padding: 1.4rem 1rem; font-size: 0.88rem; color: var(--muted); text-align: center; }
+
+/* --- phones: the same rows as cards --------------------------------------- */
+
+.cards { display: none; list-style: none; margin: 0; padding: 0; }
+
+@media (max-width: 860px) {
+  /* A 720px grid inside 251px of usable width is not a table, it is a
+     horizontal scrollbar with data behind it. */
+  .tableWrap { display: none; }
+  .cards { display: flex; flex-direction: column; gap: 0.45rem; }
+
+  .toolbar { gap: 0.4rem; }
+  .search { flex: 1 1 100%; }
+  .filter { flex: 1 1 auto; }
+  .filter select { flex: 1; }
+  .count { margin-left: 0; flex: 1 1 100%; }
+
+  .card {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.65rem 0.7rem;
+    border: 1px solid var(--edge-t10);
+    border-radius: 12px;
+    background: rgba(var(--tint), 0.025);
+  }
+  .cardOn { border-color: var(--cedge-orange-30); background: rgba(255, 122, 33, 0.08); }
+  .cardCheck { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex: none; cursor: pointer; }
+  .cardCheck input { width: 1.05rem; height: 1.05rem; accent-color: #ff7a21; }
+  .cardBody { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+  .cardName { font-size: 0.92rem; font-weight: 700; color: inherit; text-decoration: none; }
+  .cardCity { font-weight: 500; color: var(--muted); }
+  .cardProject { margin: 0; font-size: 0.81rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cardMeta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; margin: 0.15rem 0 0; font-size: 0.77rem; color: var(--mute-t60); }
+  .cardStage {
+    padding: 0.06rem 0.42rem;
+    border-radius: 999px;
+    background: rgba(var(--tint), 0.09);
+    font-weight: 700;
+  }
+  .cardStage[data-stage='new'] { background: rgba(255, 122, 33, 0.16); color: var(--ink-orange-3); }
+  .cardValue { font-weight: 800; color: var(--warn); }
+  .cardAction {
+    display: inline-flex;
+    align-items: center;
+    flex: none;
+    min-height: 44px;
+    padding: 0 0.8rem;
+    border: 1px solid var(--cedge-orange-30);
+    border-radius: 10px;
+    background: rgba(255, 122, 33, 0.12);
+    color: var(--accent-ink);
+    font-size: 0.83rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+}
