@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import { listClientsWithStats } from '@/lib/clients';
+import { clientPins } from '@/lib/client-map';
 import { CLIENTS_VIEW_COOKIE, normalizeClientsView } from '@/lib/dashboard-views';
 import { formatMoney } from '@/lib/jobs';
 import { formatPhoneDashes } from '@/lib/phone';
@@ -25,8 +26,13 @@ function initialsFor(name: string): string {
 
 export default async function ClientsPage({ searchParams }: { searchParams: { created?: string; existing?: string; add?: string } }) {
   const { supabase, accountId } = await requireOwnerContext();
-  const clients = await listClientsWithStats(supabase, accountId);
+  // One query for the whole book's coordinates, not one per customer.
+  const [clients, pinsByClient] = await Promise.all([
+    listClientsWithStats(supabase, accountId),
+    clientPins(supabase, accountId),
+  ]);
   const repeatCount = clients.filter((client) => client.jobCount > 1).length;
+  const pins = [...pinsByClient.values()].map((pin) => ({ clientId: pin.clientId, lat: pin.lat, lng: pin.lng }));
   const view = normalizeClientsView(cookies().get(CLIENTS_VIEW_COOKIE)?.value);
 
   const rows: ClientRow[] = clients.map((client) => ({
@@ -83,7 +89,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: { cr
         ) : null}
         {/* Rendered even with an empty book: the Add button lives in here, and a
             list you can't add to is the problem this page had. */}
-        <ClientsWorkspace clients={rows} initialView={view} openAdd={searchParams.add === '1'} />
+        <ClientsWorkspace clients={rows} pins={pins} initialView={view} openAdd={searchParams.add === '1'} />
       </section>
 
       <div className="actions" style={{ marginTop: '1.25rem' }}>
