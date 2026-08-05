@@ -72,11 +72,12 @@ export function normalizeJobsView(value: unknown): JobsView {
 // List / Cards / Table / Focus all answer "show me my customers" and order by
 // name or money. Follow-up orders by silence, which is a different question.
 export const CLIENTS_VIEW_COOKIE = 'lgq_clients_view';
-// Map is the sixth, and it is a different question again: not who they are or
-// how quiet they've gone, but WHERE they are — which streets you already own,
-// and where one more customer would cost nothing to reach.
-export type ClientsView = 'list' | 'cards' | 'table' | 'focus' | 'followup' | 'map';
-export const CLIENTS_VIEWS: ClientsView[] = ['list', 'cards', 'table', 'focus', 'followup', 'map'];
+// There is no 'map' view. The map lives INSIDE Focus, as a tab on the selected
+// customer — a map on its own answers "where is everybody" and then strands you
+// there, while a map beside the person you have open answers "where is THIS
+// one, and who else is near them", which is the question that changes a route.
+export type ClientsView = 'list' | 'cards' | 'table' | 'focus' | 'followup';
+export const CLIENTS_VIEWS: ClientsView[] = ['list', 'cards', 'table', 'focus', 'followup'];
 export function normalizeClientsView(value: unknown): ClientsView {
   // List stays the default: it's what this page has always been, and an
   // explicit choice is a cookie, so nobody gets moved off what they picked.

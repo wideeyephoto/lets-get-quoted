@@ -26,11 +26,14 @@ export default function ClientsMap({
   pins,
   selectedId,
   onSelect,
+  compact = false,
 }: {
   clients: ClientRow[];
   pins: ClientMapPin[];
   selectedId: string | null;
   onSelect: (clientId: string) => void;
+  /** Inside the Focus pane, where it shares the height with a header and tabs. */
+  compact?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -66,6 +69,10 @@ export default function ClientsMap({
   }, [clients, pins]);
 
   const missing = clients.length - visible.length;
+  // Whether the customer currently open can actually be shown. "20 on the map"
+  // is no use when the one you are looking at is one of the 21 that can't be.
+  const selectedPinned = Boolean(selectedId && visible.some((pin) => pin.clientId === selectedId));
+  const selectedName = clients.find((client) => client.id === selectedId)?.name ?? null;
 
   useEffect(() => {
     if (!containerRef.current || visible.length === 0) return;
@@ -159,20 +166,23 @@ export default function ClientsMap({
   }
 
   return (
-    <section className="client-map">
+    <section className={`client-map${compact ? ' is-compact' : ''}`}>
       <header className="client-map-head">
         <div>
-          <strong>{visible.length} on the map</strong>
-          {/* Said out loud. The alternative is a map quietly showing fewer
-              customers than the list beside it. */}
-          {missing > 0 ? (
-            <small>
-              {missing} more {missing === 1 ? 'has' : 'have'} no geocoded job yet, so {missing === 1 ? 'it' : 'they'}{' '}
-              can&rsquo;t be placed.
-            </small>
-          ) : (
-            <small>Every customer in this list has a pin.</small>
-          )}
+          {/* Leads with the customer you have open, because that is what this
+              tab is about. The total is context for it, not the headline. */}
+          <strong>
+            {selectedPinned && selectedName
+              ? `${selectedName} in orange`
+              : selectedName
+                ? `${selectedName} can’t be placed yet`
+                : `${visible.length} on the map`}
+          </strong>
+          <small>
+            {visible.length} of {clients.length} pinned
+            {missing > 0 ? ` · ${missing} with no geocoded job yet` : ''}
+            {selectedPinned ? ' · tap a dot to switch' : ''}
+          </small>
         </div>
         <div className="client-map-themes" role="group" aria-label="Map style">
           <button type="button" className={theme === 'dark' ? 'is-on' : ''} onClick={() => pickTheme('dark')}>

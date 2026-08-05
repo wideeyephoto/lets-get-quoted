@@ -10,7 +10,7 @@ import { followUpHeadline, groupByFollowUp } from '@/lib/client-followup';
 import type { ClientsView } from '@/lib/dashboard-views';
 import { avatarTone } from '@/lib/avatar-tone';
 import ClientFocusView from './ClientFocusView';
-import ClientsMap, { type ClientMapPin } from './ClientsMap';
+import type { ClientMapPin } from './ClientsMap';
 import { createClientAction } from './actions';
 
 // The customer list, five ways.
@@ -57,7 +57,6 @@ const VIEWS: ViewOption<ClientsView>[] = [
   { id: 'table', label: 'Table', hint: 'Sort & compare' },
   { id: 'focus', label: 'Focus', hint: 'One customer open, list beside it' },
   { id: 'followup', label: 'Follow up', hint: 'Who has gone quiet' },
-  { id: 'map', label: 'Map', hint: 'Where your customers are' },
 ];
 
 type SortKey = 'name' | 'jobs' | 'total' | 'last';
@@ -266,42 +265,10 @@ export default function ClientsWorkspace({
           cover, no tabs, no deep detail, and rows built from <button> — so
           cmd-clicking a customer opened nothing and the URL was uncopyable. */}
       {matches.length > 0 && view === 'focus' ? (
-        <ClientFocusView clients={matches} selectedId={selected?.id ?? null} onSelect={setSelectedId} />
+        <ClientFocusView clients={matches} pins={pins} selectedId={selected?.id ?? null} onSelect={setSelectedId} />
       ) : null}
 
       {matches.length > 0 && view === 'followup' ? <FollowUpBoard clients={matches} /> : null}
-
-      {/* Selection is shared with every other view, so picking a pin and then
-          switching to Focus opens the person you just pointed at. */}
-      {matches.length > 0 && view === 'map' ? (
-        <ClientsMap clients={matches} pins={pins} selectedId={selected?.id ?? null} onSelect={setSelectedId} />
-      ) : null}
-
-      {/* The card for whoever is pinned, under the map — a pin with no name
-          attached is a dot, and clicking it should tell you who lives there. */}
-      {matches.length > 0 && view === 'map' && selected ? (
-        <section className="panel workspace-section-card client-map-selected">
-          <div className="client-focus-head">
-            <span className="client-avatar large" data-avatar-tone={avatarTone(selected.name)} aria-hidden="true">
-              {selected.initials}
-            </span>
-            <div>
-              <h3>{selected.name}</h3>
-              <p>{selected.contactLine}</p>
-            </div>
-          </div>
-          {selected.address ? <p className="client-focus-address">{selected.address}</p> : null}
-          <dl className="client-focus-stats">
-            <div><dt>Jobs</dt><dd>{selected.jobCount}</dd></div>
-            <div><dt>Total billed</dt><dd>{selected.totalLabel}</dd></div>
-            <div><dt>Last job</dt><dd>{selected.lastLabel}</dd></div>
-          </dl>
-          <div className="client-focus-actions">
-            <Link href={`/dashboard/clients/${selected.id}`} className="btn primary">Open profile</Link>
-            {selected.phone ? <a href={`tel:${selected.phone}`} className="btn secondary">Call {selected.phoneLabel}</a> : null}
-          </div>
-        </section>
-      ) : null}
 
       {adding ? <AddClientDialog onClose={() => setAdding(false)} /> : null}
     </>

@@ -3961,7 +3961,26 @@ p { line-height: 1.6; color: var(--muted); }
   font-weight: 700;
   border: 1px solid transparent;
 }
-.btn.primary { background: linear-gradient(135deg, #ff5a1f 0%, #ff8a3d 100%); color: white; }
+/* OUTLINE, not a slab. White on that orange gradient measured 3.12:1 at its
+   dark end and 2.34:1 at its light one — the primary action in the app was the
+   hardest thing in it to read, and worst exactly where the gradient was
+   brightest.
+   Hollow fixes it by inverting which part carries the colour: the ink and the
+   ring are orange against the page's own ground, which is 7.2:1 on navy and
+   5.6:1 on paper. --ink-orange-8 already flips per theme (#ff7a29 / #a54f1b),
+   so neither needs its own rule.
+   It stays unmistakably the primary action: nothing else on a screen wears a
+   full-strength accent ring, and hover fills toward the old slab without ever
+   putting white on top of it. */
+.btn.primary {
+  background: rgba(255, 122, 33, 0.1);
+  border-color: var(--cedge-orange-2);
+  color: var(--ink-orange-8);
+}
+.btn.primary:hover:not(:disabled) {
+  background: rgba(255, 122, 33, 0.18);
+  border-color: var(--cedge-orange-3);
+}
 .btn.secondary { border-color: var(--edge-t18); background: rgba(var(--tint), 0.04); }
 .btn.qb { background: #2CA01C; color: white; }
 .btn.fun {
@@ -6226,7 +6245,10 @@ li + li { margin-top: 0.45rem; }
 .calendar-view-toggle button { border: 0; border-radius: 999px; padding: .35rem .65rem; background: transparent; color: var(--mute-t58); font: inherit; font-size: .75rem; font-weight: 800; cursor: pointer; transition: color .16s ease, box-shadow .16s ease; }
 .calendar-view-toggle button.active {
   background: linear-gradient(135deg, #ff5a1f 0%, #ff8a3d 100%);
-  color: #fff;
+  /* Dark ink, not white. White on this gradient is 2.3:1 at its light end —
+     the same failure the primary button had, and --on-accent is the token the
+     rest of the app already uses for text that has to sit ON the accent. */
+  color: var(--on-accent);
   box-shadow: 0 0 0 1px rgba(255,176,120,.55), 0 0 14px rgba(255,122,33,.5);
 }
 .calendar-view-toggle button:not(.active):hover { color: #fff; }
@@ -9912,7 +9934,7 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
   position: absolute; right: -3px; bottom: -3px;
   width: 24px; height: 24px; border-radius: 50%;
   display: grid; place-items: center;
-  background: #ff7a21; color: #fff;
+  background: #ff7a21; color: var(--on-accent);
   font-size: 1.05rem; font-weight: 800; line-height: 1;
   border: 2px solid #0d1826;
   box-shadow: 0 2px 8px rgba(0,0,0,0.4);
@@ -16103,7 +16125,7 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 .action-btn--lead {
   border-color: transparent;
   background: linear-gradient(135deg, #ff5a1f 0%, #ff8a3d 100%);
-  color: #fff;
+  color: var(--on-accent);
   box-shadow: 0 12px 30px -14px rgba(255, 122, 33, 0.95);
 }
 
@@ -16263,29 +16285,28 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
     0 8px 22px rgba(0, 0, 0, 0.4);
 }
 
-/* HARBOUR — raised primary, Deep Ocean.
+/* HARBOUR — outlined primary, Deep Ocean.
    ---------------------------------------------------------------------------
-   A top-lit gradient, a 1px inner highlight, and a shadow tinted with the
-   button's OWN darker stop rather than with black. That last part is the whole
-   difference: a black shadow reads as an object sitting on the page, a
-   self-tinted one reads as the button being lit.
+   Was a raised blue slab with white text, which is a handsome button and 4.1:1
+   — under AA at the size it actually renders. It is hollow now, to match the
+   dark theme, and Harbour KEEPS ITS BLUE: the accent on paper is a colour
+   decision this file made deliberately, and the outline treatment is about
+   which part carries the colour, not which colour it is. #1c56a8 as ink on
+   white is 7.1:1.
 
-   Scoped to .workspace-shell for the same reason the rule above it is —
-   .btn.primary is also the button on every contractor's public website, and
-   that is their brand, not ours. */
+   Still scoped to .workspace-shell for the same reason it always was —
+   .btn.primary is also the button on a contractor's public surfaces, and that
+   is their brand, not ours. */
 :root[data-theme='light'] .workspace-shell .btn.primary {
-  background: linear-gradient(180deg, #2f7fd8, #1c56a8);
-  color: #fff;
-  border-color: transparent;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.26) inset,
-    0 6px 14px -6px rgba(28, 86, 168, 0.78);
+  background: rgba(28, 86, 168, 0.08);
+  color: #1c56a8;
+  border-color: rgba(28, 86, 168, 0.42);
+  box-shadow: none;
 }
 :root[data-theme='light'] .workspace-shell .btn.primary:hover {
-  background: linear-gradient(180deg, #4a92e0, #2f7fd8);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.3) inset,
-    0 10px 22px -7px rgba(28, 86, 168, 0.88);
+  background: rgba(28, 86, 168, 0.15);
+  border-color: rgba(28, 86, 168, 0.6);
+  box-shadow: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -21183,6 +21204,9 @@ a.bset-card { color: inherit; text-decoration: none; }
   background: rgba(var(--tint), 0.04);
 }
 .client-map-canvas { position: absolute; inset: 0; }
+/* Inside the Focus pane it shares the screen with a header, a strip and tabs,
+   so it gives back the height those need. */
+.client-map.is-compact .client-map-frame { height: clamp(260px, 40vh, 420px); }
 .client-map-status {
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   margin: 0; padding: 1.5rem; text-align: center; color: var(--muted); font-size: 0.9rem;
@@ -21239,7 +21263,7 @@ a.bset-card { color: inherit; text-decoration: none; }
   place-items: center;
   border-radius: 999px;
   background: #ff5a1f;
-  color: #fff;
+  color: var(--on-accent);
   font-size: 0.72rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;

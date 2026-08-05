@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { ClientDetailDto } from '@/lib/client-detail';
 import { avatarTone } from '@/lib/avatar-tone';
 import { hueFor } from '../RecordCover';
+import ClientsMap, { type ClientMapPin } from './ClientsMap';
 import type { ClientRow } from './ClientsWorkspace';
 import styles from '../focus.module.css';
 
@@ -30,6 +31,11 @@ const TABS = [
   { id: 'jobs', label: 'Jobs' },
   { id: 'money', label: 'Money' },
   { id: 'notes', label: 'Notes' },
+  // The map belongs HERE and not as a sixth view of its own. On its own it
+  // answers "where is everybody" and then strands you on a screen of dots; as a
+  // tab on the person you have open it answers "where is this one, and who else
+  // is near them" — which is the question that changes a route.
+  { id: 'map', label: 'Map' },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
@@ -43,11 +49,14 @@ type CacheEntry = { detail: ClientDetailDto; at: number };
 
 export default function ClientFocusView({
   clients,
+  pins = [],
   selectedId,
   onSelect,
   basePath = '/dashboard',
 }: {
   clients: ClientRow[];
+  /** Coordinates for the Map tab, from each customer's last geocoded job. */
+  pins?: ClientMapPin[];
   /** Owned by the workspace, so search and the other views stay in step. */
   selectedId: string | null;
   onSelect: (clientId: string) => void;
@@ -314,8 +323,22 @@ export default function ClientFocusView({
               ))}
             </div>
 
-            <div className={styles.tabBody} key={selected.id}>
-              {error ? (
+            {/* Keyed on the customer so switching remounts the panel and it
+                animates in — EXCEPT on the map, which is keyed to itself. A
+                remount there would rebuild the map and refit its bounds on
+                every click, yanking the view away from what you just picked. */}
+            <div className={styles.tabBody} key={tab === 'map' ? 'map' : selected.id}>
+              {tab === 'map' ? (
+                // Not behind the skeleton: the pins are already in the browser,
+                // so the map has nothing to wait for.
+                <ClientsMap
+                  clients={clients}
+                  pins={pins}
+                  selectedId={selectedId}
+                  onSelect={onSelect}
+                  compact
+                />
+              ) : error ? (
                 <p className={styles.error}>{error}</p>
               ) : loading || !fresh ? (
                 <Skeleton />
