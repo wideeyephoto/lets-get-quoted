@@ -7646,6 +7646,42 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   opacity: 0.7;
 }
 
+/* ── Insured, on the quote ───────────────────────────────────────────────────
+   Green rather than the accent: this is a fact being confirmed, not an action
+   being offered, and orange in this document means "press me". Quiet on
+   purpose — a homeowner deciding on four thousand dollars of work should find
+   this when they look for it, not be sold it. */
+.quote-doc-insured {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem 0.85rem;
+  margin-top: 1.1rem;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid var(--cedge-green-40);
+  border-radius: 12px;
+  background: rgba(74, 222, 128, 0.07);
+}
+.quote-doc-insured-mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  color: #2fae62;
+}
+.quote-doc-insured-mark svg { width: 22px; height: 22px; }
+.quote-doc-insured-copy { display: grid; gap: 0.1rem; min-width: 0; flex: 1 1 12rem; }
+.quote-doc-insured-copy strong { font-size: 0.92rem; }
+.quote-doc-insured-copy small { font-size: 0.82rem; line-height: 1.5; color: var(--muted); }
+.quote-doc-insured-link {
+  flex: none;
+  font-size: 0.84rem;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .quote-builder-save {
   display: flex;
   align-items: center;

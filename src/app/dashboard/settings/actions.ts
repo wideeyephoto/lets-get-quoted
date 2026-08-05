@@ -16,6 +16,7 @@ import {
 } from '@/lib/site-content';
 import { sendTestDigest } from '@/lib/daily-digest';
 import { backfillAccount, syncAccount } from '@/lib/quickbooks/sync';
+import { deleteInsuranceProof, isInsuranceFile, uploadInsuranceProof } from '@/lib/insurance-storage';
 import { normalizeEstimatePosture } from '@/lib/estimate-posture';
 import { AUTOMATION_COLUMNS, AUTOMATION_LABELS, isAutomationKey, type AutomationKey } from '@/lib/automations';
 import { recordAccountEvent } from '@/lib/account-events';
@@ -826,4 +827,74 @@ export async function backfillQuickBooksAction() {
   const summary = await backfillAccount(accountId);
   revalidatePath('/dashboard/settings');
   redirect(`/dashboard/settings?quickbooks=${summary.ok ? 'synced' : 'sync-failed'}#quickbooks`);
+}
+
+/**
+ * The certificate of insurance, and what quotes say about it.
+ *
+ * One action for the file and the details together, because they are one
+ * decision — uploading a renewal without moving the expiry date forward would
+ * leave a current certificate that stops going out on the old date.
+ */
+export async function updateInsuranceAction(formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+
+  const text = (key: string, max: number): string | null => {
+    const value = (formData.get(key) ?? '').toString().trim();
+    return value ? value.slice(0, max) : null;
+  };
+
+  // "1,000,000", "$1,000,000" and "1000000" are all the same answer.
+  const rawCoverage = (formData.get('coverageAmount') ?? '').toString().replace(/[^\d.]/g, '');
+  const coverage = rawCoverage ? Number(rawCoverage) : NaN;
+
+  const expires = (formData.get('expiresOn') ?? '').toString().trim();
+
+  const patch: Record<string, unknown> = {
+    insurance_carrier: text('carrier', 120),
+    insurance_policy_number: text('policyNumber', 80),
+    insurance_coverage_amount: Number.isFinite(coverage) && coverage > 0 ? coverage : null,
+    insurance_expires_on: /^\d{4}-\d{2}-\d{2}$/.test(expires) ? expires : null,
+    insurance_show_on_quotes: formData.get('showOnQuotes') === 'on',
+  };
+
+  const file = formData.get('certificate');
+  if (isInsuranceFile(file)) {
+    const { data: existing } = await supabase
+      .from('accounts')
+      .select('insurance_path')
+      .eq('id', accountId)
+      .maybeSingle();
+
+    // Upload BEFORE removing the old one. If the new upload fails, the
+    // contractor still has a certificate on their quotes rather than none.
+    const uploaded = await uploadInsuranceProof(accountId, file);
+    patch.insurance_path = uploaded.path;
+    patch.insurance_filename = uploaded.filename;
+    patch.insurance_uploaded_at = new Date().toISOString();
+
+    const previous = (existing as { insurance_path?: string | null } | null)?.insurance_path ?? null;
+    if (previous && previous !== uploaded.path) await deleteInsuranceProof(accountId, previous);
+  }
+
+  const { error } = await supabase.from('accounts').update(patch).eq('id', accountId);
+  if (error) throw new Error(error.message);
+
+  revalidatePath('/dashboard/settings');
+}
+
+/** Take the certificate down. Quotes stop carrying it immediately. */
+export async function removeInsuranceAction() {
+  const { supabase, accountId } = await requireOwnerContext();
+  const { data } = await supabase.from('accounts').select('insurance_path').eq('id', accountId).maybeSingle();
+  await deleteInsuranceProof(accountId, (data as { insurance_path?: string | null } | null)?.insurance_path ?? null);
+  await supabase
+    .from('accounts')
+    .update({
+      insurance_path: null,
+      insurance_filename: null,
+      insurance_uploaded_at: null,
+    })
+    .eq('id', accountId);
+  revalidatePath('/dashboard/settings');
 }

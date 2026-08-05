@@ -33,9 +33,17 @@ function subCaption(item: QuoteItem): string {
 export default function QuoteDocument({
   items,
   approveAction,
+  insurance = null,
 }: {
   items: QuoteItem[];
   approveAction: (formData: FormData) => void;
+  /**
+   * The contractor's certificate, already vetted for whether it may be shown —
+   * null covers "none uploaded", "switched off" and "expired" alike, and this
+   * component is deliberately not in a position to tell them apart or to
+   * second-guess the answer. See lib/insurance-client.
+   */
+  insurance?: { summary: string; url: string | null; filename: string | null } | null;
 }) {
   const baseItems = items.filter((item) => item.kind === 'base');
   const addonItems = items.filter((item) => item.kind === 'addon');
@@ -145,6 +153,38 @@ export default function QuoteDocument({
       </div>
 
       <SaveButton pendingLabel="Approving..." savedLabel="Approved ✓">Approve quote</SaveButton>
+
+      {/* Below the total and the button, not above them.
+          This is reassurance, and reassurance belongs where somebody looks when
+          they hesitate — putting it above the price makes the quote lead with
+          an argument nobody asked for yet. */}
+      {insurance ? (
+        <div className="quote-doc-insured">
+          <span className="quote-doc-insured-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 3 5 6v5.5c0 4.3 2.9 8.2 7 9.5 4.1-1.3 7-5.2 7-9.5V6z" />
+              <path d="m9 12 2 2 4-4" />
+            </svg>
+          </span>
+          <span className="quote-doc-insured-copy">
+            <strong>Insured</strong>
+            <small>{insurance.summary}</small>
+          </span>
+          {insurance.url ? (
+            /* Opens the certificate itself. The claim is only worth anything
+               because it can be checked, so the link is the feature. */
+            <a
+              className="quote-doc-insured-link"
+              href={insurance.url}
+              target="_blank"
+              rel="noreferrer"
+              download={insurance.filename ?? undefined}
+            >
+              View certificate
+            </a>
+          ) : null}
+        </div>
+      ) : null}
     </form>
   );
 }

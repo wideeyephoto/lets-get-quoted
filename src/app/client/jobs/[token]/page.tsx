@@ -10,6 +10,7 @@ import { createAdminClient } from '@/lib/auth';
 import { loadClientChangeOrders } from '@/lib/change-orders-data';
 import { toClientChangeOrders } from '@/lib/change-orders';
 import { resolveJobAccess } from '@/lib/change-order-client';
+import { clientInsuranceFor } from '@/lib/insurance-client';
 import Warranties from './Warranties';
 import { listWarranties } from '@/lib/warranties-data';
 import { toClientWarranties } from '@/lib/warranties';
@@ -60,6 +61,12 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
   const clientSelections = access
     ? await toSignedClientSelections(admin, access.accountId, await loadClientSelections(admin, access.accountId, access.jobId))
     : [];
+
+  // Proof of insurance, for the quote. Everything about whether this appears at
+  // all is decided by showsToClient — in particular, an EXPIRED certificate is
+  // never shown. It isn't a stale asset, it's a false assurance somebody would
+  // be relying on when they approve.
+  const clientInsurance = access ? await clientInsuranceFor(admin, access.accountId) : null;
 
   if (!dashboard) {
     return (
@@ -265,7 +272,11 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
           </div>
           <p className="workspace-card-copy">Review the details below. When you&apos;re ready, approve the quote and your contractor will get started.</p>
           {dashboard.job.quote_items.length > 0 ? (
-            <QuoteDocument items={dashboard.job.quote_items} approveAction={approveClientJobQuoteAction.bind(null, params.token)} />
+            <QuoteDocument
+              items={dashboard.job.quote_items}
+              approveAction={approveClientJobQuoteAction.bind(null, params.token)}
+              insurance={clientInsurance}
+            />
           ) : (
             <form action={approveClientJobQuoteAction.bind(null, params.token)}>
               <SaveButton pendingLabel="Approving..." savedLabel="Approved ✓">Approve quote</SaveButton>

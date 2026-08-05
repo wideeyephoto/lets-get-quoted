@@ -20,7 +20,9 @@ import ArrivalExtrasSection from './ArrivalExtrasSection';
 import { arrivalSettingsFromAccount } from '@/lib/arrival';
 import { updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
 import { toggleClientPortalAction } from './actions';
-import { syncQuickBooksAction, backfillQuickBooksAction } from './actions';
+import { syncQuickBooksAction, backfillQuickBooksAction, updateInsuranceAction, removeInsuranceAction } from './actions';
+import InsuranceSection from './InsuranceSection';
+import { insuranceProofUrl } from '@/lib/insurance-storage';
 import ClientPortalSection from './ClientPortalSection';
 import MissedCallSection from './MissedCallSection';
 import IntakeContentSection from './IntakeContentSection';
@@ -305,6 +307,29 @@ export default async function SettingsPage({
   // Never throws and never returns a token — a missing table (feature deployed
   // ahead of its migration) reports "not connected".
   const quickBooksStatus = await connectionStatus(accountId);
+
+  // Proof of insurance. Read straight off the account so a lapsed certificate
+  // reports as lapsed on the day it lapses, with no sweep to wait for.
+  const { data: insuranceRow } = await supabase
+    .from('accounts')
+    .select('insurance_path, insurance_filename, insurance_carrier, insurance_policy_number, insurance_coverage_amount, insurance_expires_on, insurance_show_on_quotes')
+    .eq('id', accountId)
+    .maybeSingle();
+  const ins = (insuranceRow ?? {}) as Record<string, unknown>;
+  const insuranceRecord = {
+    path: (ins.insurance_path as string) ?? null,
+    filename: (ins.insurance_filename as string) ?? null,
+    carrier: (ins.insurance_carrier as string) ?? null,
+    policyNumber: (ins.insurance_policy_number as string) ?? null,
+    coverageAmount: ins.insurance_coverage_amount != null ? Number(ins.insurance_coverage_amount) : null,
+    expiresOn: (ins.insurance_expires_on as string) ?? null,
+    showOnQuotes: ins.insurance_show_on_quotes !== false,
+  };
+  const insuranceUrl = await insuranceProofUrl(accountId, insuranceRecord.path);
+  // Expiry is a calendar question, so it is answered in the owner's own zone.
+  const insuranceToday = new Date().toLocaleDateString('en-CA', {
+    timeZone: (account?.timezone as string) || 'America/Detroit',
+  });
 
   const [pl, subPrep] = await Promise.all([
     buildProfitAndLoss(supabase, accountId, selectedYear),
@@ -1029,6 +1054,14 @@ export default async function SettingsPage({
                     <a href="/api/export/invoices" className="btn secondary">⬇ Invoices (CSV)</a>
                   </div>
                 </section>
+
+                <InsuranceSection
+                  record={insuranceRecord}
+                  todayKey={insuranceToday}
+                  proofUrl={insuranceUrl}
+                  saveAction={updateInsuranceAction}
+                  removeAction={removeInsuranceAction}
+                />
 
                 <QuickBooksSection
                   status={quickBooksStatus}

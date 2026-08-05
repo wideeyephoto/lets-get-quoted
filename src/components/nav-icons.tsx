@@ -36,21 +36,36 @@ export const NAV_ICON_PATHS: Record<string, string> = {
   // closed book is a rounded rectangle at 18px and sat in the rail as an empty
   // box, while the ribbon notch survives the size and says "book" on its own.
   '/dashboard/services': '<path d="M10 2v8l3-3 3 3V2"/><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/>',
-  // Bars on an axis, NOT another rising line. This sat two rows under the
-  // cash-flow arrow as a second lit diagonal, and adding a baseline to it — the
-  // first attempt at telling them apart — only made two arrows that both had a
-  // floor. Verticals against a diagonal is a difference that survives 18px and
-  // a glance; "how many times does it wobble" is not.
-  '/dashboard/insights': '<path d="M3.4 20.6h17.2"/><path d="M6.8 20.6v-5.4"/><path d="M12 20.6V8.4"/><path d="M17.2 20.6v-8.6"/>',
-  '/dashboard/messages': '<path d="M3.6 6.6A2 2 0 0 1 5.6 4.6h12.8a2 2 0 0 1 2 2v6.6a2 2 0 0 1-2 2H9l-4.2 3.6v-3.6H5.6a2 2 0 0 1-2-2z"/>',
+  // A rising line with a corner arrowhead — Lucide's trending-up.
+  //
+  // Bars lived here for a while, and only because cash flow used to be a trend
+  // arrow too: two lit diagonals three rows apart were indistinguishable at
+  // 18px. Cash flow is now a dollar inside a loop, so the collision is gone and
+  // the line can come back — which is the better glyph anyway, because Insights
+  // is about which way things are going, not about four discrete quantities.
+  '/dashboard/insights': '<path d="M3.5 17.5 10 11l4 4 6.5-6.5"/><path d="M15.5 8.5h5v5"/>',
+  // Two lines inside the bubble. An empty speech bubble at 18px is a rounded
+  // rectangle with a nick in it; the lines are what make it read as a message
+  // rather than as a tooltip or a tag.
+  '/dashboard/messages': '<path d="M3.6 6.6A2 2 0 0 1 5.6 4.6h12.8a2 2 0 0 1 2 2v6.6a2 2 0 0 1-2 2H9l-4.2 3.6v-3.6H5.6a2 2 0 0 1-2-2z"/><path d="M7.4 8.8h9M7.4 11.8h5.8"/>',
   // Keyed to /dashboard/marketing, where the composer now lives. It was on
   // /dashboard/campaigns, which meant the merged page rendered with no glyph at
   // all while every item around it had one.
-  '/dashboard/marketing': '<path d="M3.5 10.5v3a1 1 0 0 0 1 1h2.2l5.3 3.6V6.4L6.7 9.5H4.5a1 1 0 0 0-1 1z"/><path d="M16 9a4 4 0 0 1 0 6"/>',
-  // A page with a pen on it — writing, not broadcasting.
-  '/dashboard/marketing/blog': '<path d="M11 3.5H5.5a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-5"/><path d="M14.6 3.1a1.4 1.4 0 0 1 2 2L11.4 10.3l-2.7.7.7-2.7z"/>',
+  // A megaphone, not a speaker. A speaker cone is what a volume control looks
+  // like — this page is about broadcasting to a list, and the handle is the
+  // whole difference between "sound" and "announcement".
+  '/dashboard/marketing': '<path d="m3.2 11 17.6-5.4v13L3.2 13.2z"/><path d="M11.4 17.4a3 3 0 0 1-5.7-1.5"/>',
+  // A page with writing on it and a pencil at the corner — writing, not
+  // broadcasting, which is the whole distinction from Marketing above it. The
+  // two text lines matter: a bare outline with a pencil reads as "edit", and
+  // this is a place you go, not an action you take.
+  '/dashboard/marketing/blog': '<path d="M14.6 3.4H6a1.5 1.5 0 0 0-1.5 1.5v14A1.5 1.5 0 0 0 6 20.4h9a1.5 1.5 0 0 0 1.5-1.5v-6.2"/><path d="M8 9h4.2M8 12.6h3.4M8 16.2h5.4"/><path d="M17.7 3.1a1.5 1.5 0 0 1 2.1 2.1l-5.3 5.3-2.8.7.7-2.8z"/>',
   '/dashboard/rebook': '<path d="M4 11.5a8 8 0 1 1 2.3 6.3"/><path d="M3.5 4.5v5h5"/>',
-  '/dashboard/reviews': '<path d="M12 3.7l2.55 5.17 5.7.83-4.12 4.02.97 5.68L12 16.72l-5.1 2.68.97-5.68L3.75 9.7l5.7-.83z"/>',
+  // A star in a badge rather than a bare star. A loose star is the most reused
+  // glyph there is — favourite, rating, featured — and the frame is what says
+  // this row is a place where reviews are collected rather than a thing you
+  // press to rate something.
+  '/dashboard/reviews': '<rect x="3.3" y="3.3" width="17.4" height="17.4" rx="4.2"/><path d="M12 7.5l1.72 3.48 3.84.56-2.78 2.71.66 3.82L12 16.27l-3.44 1.8.66-3.82-2.78-2.71 3.84-.56z"/>',
   '/dashboard/settings': '<circle cx="12" cy="8.4" r="3.4"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/>',
   '/dashboard/sites': '<rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M3 9h18M8 20h8M12 16.5V20"/>',
 };
