@@ -84,6 +84,22 @@ export function normalizeClientsView(value: unknown): ClientsView {
   return CLIENTS_VIEWS.includes(value as ClientsView) ? (value as ClientsView) : 'list';
 }
 
+// How the text inbox is dressed.
+//
+// The three columns don't move between these — this is the same page in
+// different clothes, which is why it's one cookie and not a layout enum. What
+// changes is the thread: Classic is orange replies with an avatar beside each
+// incoming run; Slate is blue-on-black bubbles, carded conversations and the
+// time under each turn rather than tucked beside it.
+export const MESSAGES_VIEW_COOKIE = 'lgq_messages_view';
+export type MessagesView = 'classic' | 'slate';
+export const MESSAGES_VIEWS: MessagesView[] = ['classic', 'slate'];
+export function normalizeMessagesView(value: unknown): MessagesView {
+  // Classic is what the inbox already is, so nobody who never opens the gear
+  // finds their conversations repainted.
+  return MESSAGES_VIEWS.includes(value as MessagesView) ? (value as MessagesView) : 'classic';
+}
+
 // Which Crew & Labor "Hours & pay" layout the owner last used.
 export const CREW_VIEW_COOKIE = 'lgq_crew_view';
 export type CrewView = 'table' | 'grouped' | 'rail' | 'focus';

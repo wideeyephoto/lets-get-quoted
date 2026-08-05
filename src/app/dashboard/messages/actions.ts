@@ -91,3 +91,40 @@ export async function markThreadReadAction(phone: string) {
   revalidatePath('/dashboard/messages');
   revalidatePath('/dashboard', 'layout');
 }
+
+/**
+ * Put the number you are texting into the customer book.
+ *
+ * The rail already told anyone with an unknown number that "adding them as a
+ * client links it up" — an instruction with nothing behind it. This is that
+ * something. It stays on the inbox rather than redirecting to the new client:
+ * you are mid-conversation, and being thrown onto another page to come back is
+ * how you lose your place in it.
+ *
+ * Matching on the NORMALIZED number, the same key the thread itself is filed
+ * under, so pressing this twice adopts the existing customer instead of making
+ * a second one.
+ */
+export async function addPhoneAsClientAction(phone: string, formData: FormData) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const normalized = normalizeUsPhone(phone) ?? phone;
+  const name = (formData.get('name') ?? '').toString().trim().slice(0, 160);
+  if (!name) throw new Error('Give them a name so the thread has somebody on it.');
+
+  const { data: existing } = await supabase
+    .from('clients')
+    .select('id')
+    .eq('account_id', accountId)
+    .eq('phone', normalized)
+    .limit(1)
+    .maybeSingle();
+
+  if (!existing) {
+    const { error } = await supabase.from('clients').insert({ account_id: accountId, name, phone: normalized });
+    if (error) throw new Error('Could not add them to your customers.');
+  }
+
+  revalidatePath('/dashboard/messages');
+  revalidatePath('/dashboard/clients');
+  redirect(`/dashboard/messages?thread=${encodeURIComponent(normalized)}`);
+}

@@ -22185,3 +22185,172 @@ a.bset-card { color: inherit; text-decoration: none; }
   .insq-card > .ins-card-head, .insq-card > .ins-card-foot { grid-column: 1 / -1; }
   .insq-stats { grid-column: 1 / -1; }
 }
+
+/* ---------------------------------------------------------------------------
+   TEXT INBOX — the Slate dressing
+   ---------------------------------------------------------------------------
+   The same three columns as Classic, wearing different clothes: blue replies on
+   black, conversations as cards, and the time under each turn instead of tucked
+   beside it. Everything here hangs off `.inbox-slate` on <main>, so Classic is
+   untouched by construction rather than by care.
+   --------------------------------------------------------------------------- */
+
+/* The magnifier is in both dressings — a search field that doesn't look like
+   one is a search field people scroll past. */
+.inbox-search { position: relative; display: inline-flex; align-items: center; }
+.inbox-search-ic {
+  position: absolute;
+  left: 0.75rem;
+  width: 15px; height: 15px;
+  color: var(--mute-t55);
+  pointer-events: none;
+}
+.inbox-search input { padding-left: 2.15rem; }
+
+/* --- conversations as cards -------------------------------------------------- */
+.inbox-slate .inbox-thread-list { gap: 0.5rem; }
+.inbox-slate .inbox-thread-item {
+  padding: 0.8rem 0.85rem;
+  border-radius: 14px;
+  border-color: var(--edge-t10);
+  background: rgba(var(--tint), 0.02);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.inbox-slate .inbox-thread-item:hover { border-color: var(--edge-t22); background: rgba(var(--tint), 0.05); }
+.inbox-slate .inbox-thread-item.is-active {
+  border-color: var(--cedge-orange-32);
+  background: rgba(255, 138, 61, 0.07);
+  /* A ring rather than a spread shadow: the cards sit 0.5rem apart and a soft
+     glow at that distance bleeds onto its neighbour, which reads as two
+     selected rows. */
+  box-shadow: inset 0 0 0 1px var(--cedge-orange-32);
+}
+.inbox-slate .inbox-thread-item.is-active strong { color: var(--accent-ink); }
+.inbox-slate .inbox-thread-top strong { font-size: 0.94rem; font-weight: 700; }
+
+/* The count survives the restyle. The mockup draws a plain dot, but "3 waiting"
+   and "1 waiting" are different mornings and the dot cannot tell them apart. */
+.inbox-slate .inbox-unread {
+  min-width: 16px; height: 16px;
+  padding: 0 5px;
+  background: #2f6fe0;
+  color: #ffffff;
+  font-size: 0.66rem;
+}
+.inbox-slate .inbox-thread-item.is-active .inbox-unread { background: var(--accent); color: var(--on-accent); }
+
+/* --- the thread -------------------------------------------------------------- */
+.inbox-slate .inbox-thread-who h2 { font-size: 1.32rem; letter-spacing: -0.01em; }
+.inbox-slate .inbox-thread-actions .btn { border-radius: 999px; padding: 0.45rem 0.95rem; }
+.inbox-slate .inbox-messages { gap: 1rem; }
+.inbox-slate .inbox-run-stack { max-width: 78%; }
+
+.inbox-slate .inbox-bubble {
+  border-radius: 14px;
+  padding: 0.68rem 0.95rem;
+}
+/* Black, and a border so it is a bubble rather than a hole in the panel. Kept
+   dark in the light theme too: the dark bubble IS the skin, and a Slate inbox
+   that turns pale on paper is just Classic in blue. */
+.inbox-slate .inbox-bubble-inbound {
+  background: #080d14;
+  border-color: rgba(255, 255, 255, 0.11);
+  color: #f2f6fb;
+}
+/* Deeper than the blue in the mockup on purpose, exactly as the orange bubble
+   is deeper than the brand orange. #3b82f6 carries white at 3.68:1 — under the
+   4.5:1 body-text bar — and this gradient runs 4.70:1 at its lightest end, so
+   the bubble keeps white text and stays readable outdoors on a phone. */
+.inbox-slate .inbox-bubble-outbound {
+  background: linear-gradient(135deg, #2f6fe0, #1f57c4);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+}
+/* No tail. The corner notch is Classic's way of pointing a run at its speaker;
+   Slate points with colour and side, and a notch on top of that is a third
+   answer to a question already settled twice. */
+.inbox-slate .inbox-bubble-inbound.is-last { border-bottom-left-radius: 14px; }
+.inbox-slate .inbox-bubble-outbound.is-last { border-bottom-right-radius: 14px; }
+
+.inbox-slate .inbox-run-time { margin-top: 0.4rem; font-size: 0.72rem; }
+
+/* --- the reply box ----------------------------------------------------------- */
+/* One bordered container holding the saved-reply chips, the box and Send —
+   the mockup's shape. The seams inside it come off so it reads as one control. */
+.inbox-slate .inbox-reply-area {
+  margin-top: 0.85rem;
+  padding: 0.75rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.18);
+  gap: 0.6rem;
+}
+:root[data-theme='light'] .inbox-slate .inbox-reply-area { background: rgba(var(--tint), 0.03); }
+.inbox-slate .inbox-reply {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+.inbox-slate .inbox-reply textarea {
+  border-color: transparent;
+  background: transparent;
+  border-radius: 12px;
+  padding: 0.5rem 0.55rem;
+}
+:root[data-theme='light'] .inbox-slate .inbox-reply textarea { background: transparent; }
+.inbox-slate .inbox-reply textarea:focus-visible {
+  border-color: var(--edge-t22);
+  box-shadow: none;
+}
+
+/* --- the customer rail -------------------------------------------------------- */
+.inbox-slate .inbox-ctx-block:first-child { justify-items: center; text-align: center; }
+.inbox-slate .inbox-ctx-block:first-child .eyebrow { justify-self: start; }
+.inbox-ctx-avatar {
+  width: 5.2rem;
+  height: 5.2rem;
+  margin: 0.7rem 0 0.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1.5px solid var(--cedge-orange-32);
+  background: rgba(255, 138, 61, 0.06);
+  color: var(--accent-ink);
+  font-size: 1.35rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  box-shadow: 0 0 0 6px rgba(255, 138, 61, 0.05);
+}
+.inbox-ctx-avatar.is-unknown svg { width: 2.6rem; height: 2.6rem; }
+.inbox-slate .inbox-ctx-block:first-child .ins-empty-note { text-align: center; }
+.inbox-slate .inbox-ctx-block .btn { justify-self: center; border-radius: 999px; }
+
+/* --- saved replies, laid out rather than listed -------------------------------- */
+/* Open in Slate (the `open` attribute is set on the page), so this turns the
+   stacked rows into a row of cards you can read at a glance. */
+.inbox-slate .template-list {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+.inbox-slate .template-row {
+  flex: 1 1 14rem;
+  max-width: 22rem;
+  align-items: flex-start;
+  border-radius: 14px;
+  border-color: var(--edge-t14);
+  background: rgba(var(--tint), 0.025);
+}
+.inbox-slate .template-row-main { display: grid; gap: 0.25rem; min-width: 0; }
+.inbox-slate .template-row-main strong { font-size: 0.9rem; }
+/* Clamped, not ellipsised on one line: a saved reply is two sentences and the
+   second one is usually the part you are checking for. */
+.inbox-slate .template-row-main span {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}

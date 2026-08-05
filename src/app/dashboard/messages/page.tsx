@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
 import { formatMoney } from '@/lib/jobs';
 import { fullDate } from '@/lib/recurring-display';
@@ -6,9 +7,13 @@ import { groupByDay, groupRuns, initialsFor, messageContext } from '@/lib/messag
 import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
 import { buildContactNameMap, getConversationMessages, listConversations, markThreadRead } from '@/lib/messages';
 import { listMessageTemplates } from '@/lib/message-templates';
-import { sendReplyAction, createTemplateAction, deleteTemplateAction, startConversationAction } from './actions';
+import { MESSAGES_VIEW_COOKIE, normalizeMessagesView } from '@/lib/dashboard-views';
+import { sendReplyAction, createTemplateAction, deleteTemplateAction, startConversationAction, addPhoneAsClientAction } from './actions';
 import QuickReplies from './QuickReplies';
 import ComposeMessage from './ComposeMessage';
+import InboxViewGear from './InboxViewGear';
+import AddAsCustomer from './AddAsCustomer';
+import ScrollToLatest from './ScrollToLatest';
 import SaveButton from '@/components/save-button';
 
 function formatTime(value: string): string {
@@ -27,6 +32,8 @@ export default async function MessagesPage({
   searchParams: { thread?: string; q?: string; filter?: string };
 }) {
   const { supabase, accountId } = await requireOwnerContext();
+  const view = normalizeMessagesView(cookies().get(MESSAGES_VIEW_COOKIE)?.value);
+  const slate = view === 'slate';
 
   const allConversations = await listConversations(supabase, accountId);
 
@@ -73,7 +80,7 @@ export default async function MessagesPage({
   const totalUnread = conversations.reduce((sum, conversation) => sum + conversation.unread, 0);
 
   return (
-    <main className="wide-shell workspace-shell">
+    <main className={`wide-shell workspace-shell${slate ? ' inbox-slate' : ''}`}>
       {/* One header row rather than a hero band. An inbox is a working surface —
           the tall marketing hero pushed the first conversation below the fold on
           a laptop, which is the one thing this page exists to show. */}
@@ -86,6 +93,10 @@ export default async function MessagesPage({
           {/* A GET form so search and filter live in the URL: a thread stays
               linkable, and the back button behaves. */}
           <form className="inbox-search" method="get">
+            <svg className="inbox-search-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.6-3.6" />
+            </svg>
             <input type="search" name="q" defaultValue={searchParams.q ?? ''} placeholder="Search conversations…" aria-label="Search conversations" />
             {filter !== 'all' ? <input type="hidden" name="filter" value={filter} /> : null}
           </form>
@@ -109,6 +120,7 @@ export default async function MessagesPage({
             })}
           </div>
           <ComposeMessage contacts={contacts} action={startConversationAction} />
+          <InboxViewGear view={view} />
         </div>
       </header>
 
@@ -200,7 +212,12 @@ export default async function MessagesPage({
                                   digits when we don't — a number nobody in the
                                   book owns still gets a stable mark rather than a
                                   placeholder shrug. */}
-                              {run.direction === 'inbound' ? (
+                              {/* Slate drops the avatar rather than hiding it.
+                                  Its bubbles carry the side on their own — blue
+                                  right, black left — so the disc is a second
+                                  answer to a question already answered, and the
+                                  width it costs is width the message wanted. */}
+                              {run.direction === 'inbound' && !slate ? (
                                 <span className="inbox-avatar" aria-hidden="true">
                                   {initialsFor(activeName ?? activePhone?.slice(-2) ?? null)}
                                 </span>
@@ -238,6 +255,12 @@ export default async function MessagesPage({
                       </div>
                     ))
                   )}
+                  {/* Keyed on the dressing as well as the thread. Switching to
+                      Slate is an in-place refresh, not a remount, and Slate's
+                      bubbles are taller — so a key of just the number left the
+                      thread pinned 31px short of the end it had scrolled to
+                      while it was still Classic. */}
+                  <ScrollToLatest threadKey={`${activePhone}:${view}`} />
                 </div>
 
                 <div className="inbox-reply-area">
@@ -261,6 +284,9 @@ export default async function MessagesPage({
               <>
                 <div className="inbox-ctx-block">
                   <p className="eyebrow">Customer</p>
+                  {slate ? (
+                    <span className="inbox-ctx-avatar" aria-hidden="true">{initialsFor(context.client.name)}</span>
+                  ) : null}
                   <strong className="inbox-ctx-name">{context.client.name}</strong>
                   <a className="inbox-ctx-phone" href={`tel:${context.client.phone ?? activePhone}`}>
                     {formatPhoneDashes(context.client.phone ?? activePhone ?? '')}
@@ -314,10 +340,24 @@ export default async function MessagesPage({
             ) : (
               <div className="inbox-ctx-block">
                 <p className="eyebrow">Customer</p>
+                {slate ? (
+                  <span className="inbox-ctx-avatar is-unknown" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+                      <circle cx="12" cy="8.6" r="3.6" />
+                      <path d="M5.4 19.4a6.6 6.6 0 0 1 13.2 0" />
+                    </svg>
+                  </span>
+                ) : null}
+                {activePhone ? <strong className="inbox-ctx-name">{formatPhoneDashes(activePhone)}</strong> : null}
                 <p className="ins-empty-note">
                   This number isn&rsquo;t in your customer book yet, so there&rsquo;s no job or history to show
                   beside it. Adding them as a client links it up.
                 </p>
+                {/* The sentence above has told people to do this for months with
+                    nothing to press. */}
+                {activePhone ? (
+                  <AddAsCustomer phone={activePhone} action={addPhoneAsClientAction.bind(null, activePhone)} />
+                ) : null}
               </div>
             )}
           </aside>
@@ -325,7 +365,13 @@ export default async function MessagesPage({
       )}
 
       <section className="panel workspace-section-card">
-        <details className="workspace-details">
+        {/* Open in Slate: the mockup puts the saved replies on the page rather
+            than behind a disclosure, and a canned reply you have to go looking
+            for is one you retype instead. Still a <details> so the summary is
+            still the way to put it away.
+            Only when there ARE some — opening it on an empty account hands
+            somebody a foot of blank panel and an add form they didn't ask for. */}
+        <details className="workspace-details" open={slate && templates.length > 0}>
           <summary className="workspace-details-summary">
             <span className="btn secondary">Saved replies{templates.length > 0 ? ` · ${templates.length}` : ''}</span>
             <span className="workspace-details-copy">Canned replies you can drop into a text in one tap.</span>
