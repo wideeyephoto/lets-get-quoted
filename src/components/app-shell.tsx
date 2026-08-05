@@ -15,6 +15,27 @@ import { isSectionNew, markNavSeen, parseNavSeen, settingsTabEvent, AUTOMATIONS_
 // Order follows the pipeline (Leads -> Jobs -> Schedule) with Crew, a resource,
 // after the stages instead of splitting them. `hint` surfaces the vocabulary
 // each stage owns (quotes/invoices/payments live inside Jobs) as a hover title.
+/**
+ * What "+ New" can create. ONE list, rendered by both triggers.
+ *
+ * There are two of them — the rail's button on a wide screen, and the mobile
+ * top bar's. The mobile one used to be a plain link straight to
+ * /dashboard/jobs?new=1, so a contractor on a phone — the device they actually
+ * start the day on — could only ever create a job, and the other three were
+ * reachable only by opening the Menu drawer first. Both now open this.
+ *
+ * Every href lands on the record's own page with its add form already open,
+ * which is why they carry a query flag rather than pointing at a /new route.
+ */
+const NEW_MENU_ITEMS: { href: string; icon: string; label: string }[] = [
+  { href: '/dashboard/jobs?new=1#new-job', icon: '/dashboard/jobs', label: 'New job' },
+  { href: '/dashboard/leads?add=1#add-lead', icon: '/dashboard/leads', label: 'New lead' },
+  // The two records you create without a job in front of you: a customer you
+  // met, and somebody you hired.
+  { href: '/dashboard/clients?add=1', icon: '/dashboard/clients', label: 'New client' },
+  { href: '/dashboard/crew?add=1', icon: '/dashboard/crew', label: 'New crew member' },
+];
+
 const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/', label: 'Home' },
   { href: '/dashboard', label: 'Dashboard' },
@@ -159,8 +180,16 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [sitePublished, setSitePublished] = useState(false);
   const [siteUrl, setSiteUrl] = useState<string | null>(null);
   const [businessName, setBusinessName] = useState<string | null>(null);
-  const [newMenuOpen, setNewMenuOpen] = useState(false);
-  const newMenuRef = useRef<HTMLDivElement>(null);
+  // WHICH trigger is open, not merely whether one is. Both the rail and the
+  // mobile bar render a "+ New", and both are in the DOM at once (the rail is a
+  // drawer on a phone, not an unmounted branch). A shared boolean would open
+  // both menus together and leave the outside-click handler pointed at the
+  // wrong one — the visible menu would refuse to close.
+  const [newMenuAt, setNewMenuAt] = useState<'rail' | 'bar' | null>(null);
+  // One wrapper per trigger. Whichever is open is the one outside-click, Escape
+  // and the arrow keys address — see the `wrap` local in each handler.
+  const railNewRef = useRef<HTMLDivElement>(null);
+  const barNewRef = useRef<HTMLDivElement>(null);
   const railRef = useRef<HTMLElement>(null);
   const [newQuoteRequestCount, setNewQuoteRequestCount] = useState(0);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
@@ -235,7 +264,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
 
   useEffect(() => {
     closeNav();
-    setNewMenuOpen(false);
+    setNewMenuAt(null);
   }, [pathname, closeNav]);
 
   // Freeze the page behind the open drawer.
@@ -321,15 +350,19 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   // The "+ New" menu closes on outside click or Escape. On open, focus moves to
   // the first item; on Escape it returns to the trigger.
   useEffect(() => {
-    if (!newMenuOpen) return;
-    newMenuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+    if (!newMenuAt) return;
+    const wrap = newMenuAt === 'bar' ? barNewRef : railNewRef;
+    wrap.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
     const onPointerDown = (event: MouseEvent) => {
-      if (newMenuRef.current && !newMenuRef.current.contains(event.target as Node)) setNewMenuOpen(false);
+      if (wrap.current && !wrap.current.contains(event.target as Node)) setNewMenuAt(null);
     };
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        setNewMenuOpen(false);
-        newMenuRef.current?.querySelector<HTMLElement>('.sidenav-new')?.focus();
+        setNewMenuAt(null);
+        // The trigger, by its ROLE rather than by a class. Reusing `.sidenav-new`
+        // on the mobile bar's button would have dragged that rule's width:100%
+        // and gradient onto a 44px pill in a flex header.
+        wrap.current?.querySelector<HTMLElement>('button[aria-haspopup="menu"]')?.focus();
       }
     };
     document.addEventListener('mousedown', onPointerDown);
@@ -338,12 +371,41 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       document.removeEventListener('mousedown', onPointerDown);
       document.removeEventListener('keydown', onKey);
     };
-  }, [newMenuOpen]);
+  }, [newMenuAt]);
+
+  /**
+   * The "+ New" menu itself. Rendered by whichever trigger is open, from the one
+   * NEW_MENU_ITEMS list — so the phone and the desktop can never offer a
+   * different set of things to create.
+   *
+   * The id is passed in because both triggers point at their menu with
+   * aria-controls, and two elements sharing an id would make one of those
+   * references resolve to the wrong menu.
+   */
+  function renderNewMenu(id: string) {
+    return (
+      <div className="sidenav-new-menu" id={id} role="menu" onKeyDown={onNewMenuKeyDown}>
+        {NEW_MENU_ITEMS.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            role="menuitem"
+            className="sidenav-new-item"
+            onClick={() => setNewMenuAt(null)}
+          >
+            <NavIcon href={item.icon} />
+            {item.label}
+          </Link>
+        ))}
+      </div>
+    );
+  }
 
   // Arrow keys move focus between "+ New" menu items (wrapping).
   function onNewMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
     if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
-    const items = Array.from(newMenuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
+    const wrap = newMenuAt === 'bar' ? barNewRef : railNewRef;
+    const items = Array.from(wrap.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
     if (!items.length) return;
     event.preventDefault();
     const idx = items.indexOf(document.activeElement as HTMLElement);
@@ -636,9 +698,25 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               >
                 <ActionIcon name="plan" />
               </Link>
-              <Link href="/dashboard/jobs?new=1#new-job" className="mobilebar-new">
-                <span aria-hidden="true">+</span> New
-              </Link>
+              {/* A menu, not a shortcut. This was a plain link to
+                  /dashboard/jobs?new=1, so the only thing a contractor could
+                  create from their phone's top bar was a job — a new client or
+                  a new crew member meant opening the Menu drawer first. It
+                  offers the same four things the rail does now. */}
+              <div className="mobilebar-new-wrap" ref={barNewRef}>
+                <button
+                  type="button"
+                  className="mobilebar-new"
+                  aria-haspopup="menu"
+                  aria-expanded={newMenuAt === 'bar'}
+                  aria-controls="mobilebar-new-menu"
+                  onClick={() => setNewMenuAt((at) => (at === 'bar' ? null : 'bar'))}
+                >
+                  <span aria-hidden="true">+</span> New
+                  <span className={`sidenav-new-caret${newMenuAt === 'bar' ? ' open' : ''}`} aria-hidden="true">▾</span>
+                </button>
+                {newMenuAt === 'bar' ? renderNewMenu('mobilebar-new-menu') : null}
+              </div>
             </>
           ) : null}
           <button
@@ -674,42 +752,19 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                 <ActionIcon name="plan" />
                 Plan my day
               </Link>
-              <div className="sidenav-new-wrap" ref={newMenuRef}>
+              <div className="sidenav-new-wrap" ref={railNewRef}>
                 <button
                   type="button"
                   className="sidenav-new"
                   aria-haspopup="menu"
-                  aria-expanded={newMenuOpen}
+                  aria-expanded={newMenuAt === 'rail'}
                   aria-controls="sidenav-new-menu"
-                  onClick={() => setNewMenuOpen((open) => !open)}
+                  onClick={() => setNewMenuAt((at) => (at === 'rail' ? null : 'rail'))}
                 >
                   <span className="sidenav-new-plus" aria-hidden="true">+</span> New
-                  <span className={`sidenav-new-caret${newMenuOpen ? ' open' : ''}`} aria-hidden="true">▾</span>
+                  <span className={`sidenav-new-caret${newMenuAt === 'rail' ? ' open' : ''}`} aria-hidden="true">▾</span>
                 </button>
-                {newMenuOpen ? (
-                  <div className="sidenav-new-menu" id="sidenav-new-menu" role="menu" onKeyDown={onNewMenuKeyDown}>
-                    <Link href="/dashboard/jobs?new=1#new-job" role="menuitem" className="sidenav-new-item" onClick={() => setNewMenuOpen(false)}>
-                      <NavIcon href="/dashboard/jobs" />
-                      New job
-                    </Link>
-                    <Link href="/dashboard/leads?add=1#add-lead" role="menuitem" className="sidenav-new-item" onClick={() => setNewMenuOpen(false)}>
-                      <NavIcon href="/dashboard/leads" />
-                      New lead
-                    </Link>
-                    {/* The two records you create without a job in front of you:
-                        a customer you met, and somebody you hired. Both land on
-                        their own page with the add form already open, the same
-                        way the two above do. */}
-                    <Link href="/dashboard/clients?add=1" role="menuitem" className="sidenav-new-item" onClick={() => setNewMenuOpen(false)}>
-                      <NavIcon href="/dashboard/clients" />
-                      New client
-                    </Link>
-                    <Link href="/dashboard/crew?add=1" role="menuitem" className="sidenav-new-item" onClick={() => setNewMenuOpen(false)}>
-                      <NavIcon href="/dashboard/crew" />
-                      New crew member
-                    </Link>
-                  </div>
-                ) : null}
+                {newMenuAt === 'rail' ? renderNewMenu('sidenav-new-menu') : null}
               </div>
             </div>
           </div>

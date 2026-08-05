@@ -151,16 +151,16 @@ export default function InsuranceSection({
 
       {onFile ? (
         <>
-          <div className={`ins-summary ${tone}`}>
-            <div className="ins-summary-main">
+          <div className={`cert-summary ${tone}`}>
+            <div className="cert-summary-main">
               <strong>General liability insurance</strong>
-              <p className="ins-summary-facts">
+              <p className="cert-summary-facts">
                 {[record.carrier?.trim() || null, coverage ? `${coverage} coverage` : null].filter(Boolean).join(' · ') ||
                   'No insurer or cover amount recorded yet.'}
               </p>
-              <p className="ins-summary-state">{note}</p>
+              <p className="cert-summary-state">{note}</p>
             </div>
-            <span className="ins-summary-chip">
+            <span className="cert-summary-chip">
               {state.kind === 'expired' ? 'Expired'
                 : state.kind === 'expiring' ? `Expires ${expiry ?? 'soon'}`
                 : state.kind === 'undated' ? 'No expiry date'
@@ -169,7 +169,7 @@ export default function InsuranceSection({
             </span>
           </div>
 
-          <p className="ins-summary-file">
+          <p className="cert-summary-file">
             {/* Not the raw filename. "IMG_4471.HEIC" tells you nothing about
                 which certificate this is; the date it went up tells you whether
                 it is the one your agent sent in March. */}

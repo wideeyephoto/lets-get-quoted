@@ -21877,7 +21877,20 @@ a.bset-card { color: inherit; text-decoration: none; }
 .ins-unknown { color: var(--mute-t40); cursor: help; }
 
 /* Executive summary */
-.ins-summary { display: grid; grid-template-columns: 1.35fr 1fr; gap: 1.6rem; padding: 1.3rem 1.4rem; }
+/* This class was owned by TWO different components. Settings → Trust wrapped
+   the insurance certificate in `.ins-summary` too — "ins" for insurance, landing
+   squarely on insights' namespace — and its rule sits ~1,100 lines further down,
+   so at equal specificity it won: this card was `display: flex`, not grid.
+   That is why the mobile rule below (grid-template-columns: 1fr) did nothing at
+   all — you cannot collapse the columns of a flex container — and the headline
+   and the revenue breakdown printed on top of each other on a phone. The
+   certificate is now .cert-summary. */
+.ins-summary { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 1.6rem; padding: 1.3rem 1.4rem; }
+/* Was inherited from the certificate rule that used to share this name. A bare
+   `1fr` column has a minimum of min-content, so without this the headline
+   ("You spent $5,571 more than you collected") sets the column's floor and
+   pushes the breakdown off the card. */
+.ins-summary-main { min-width: 0; }
 .ins-shell .ins-summary-headline { margin: 0.35rem 0 1.2rem; font-size: 1.75rem; letter-spacing: -0.02em; line-height: 1.2; }
 .ins-figures { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
 .ins-figure { display: grid; gap: 0.25rem; align-content: start; padding-right: 0.8rem; border-right: 1px solid var(--rule-t09); }
@@ -23004,7 +23017,7 @@ a.bset-card { color: inherit; text-decoration: none; }
 }
 
 /* --- Settings → Trust: the certificate as a summary, not a form -------------- */
-.ins-summary {
+.cert-summary {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -23017,14 +23030,14 @@ a.bset-card { color: inherit; text-decoration: none; }
   border-radius: 12px;
   background: rgba(var(--tint), 0.025);
 }
-.ins-summary.is-ok { border-left-color: var(--ink-green-1); }
-.ins-summary.is-warn, .ins-summary.is-expired { border-left-color: var(--accent); }
-.ins-summary.is-off { border-left-color: var(--mute-t55); }
-.ins-summary-main { min-width: 0; flex: 1; display: grid; gap: 0.22rem; }
-.ins-summary-main strong { font-size: 0.98rem; font-weight: 730; }
-.ins-summary-facts { margin: 0; color: var(--text); font-size: 0.86rem; }
-.ins-summary-state { margin: 0; color: var(--muted); font-size: 0.83rem; line-height: 1.45; }
-.ins-summary-chip {
+.cert-summary.is-ok { border-left-color: var(--ink-green-1); }
+.cert-summary.is-warn, .cert-summary.is-expired { border-left-color: var(--accent); }
+.cert-summary.is-off { border-left-color: var(--mute-t55); }
+.cert-summary-main { min-width: 0; flex: 1; display: grid; gap: 0.22rem; }
+.cert-summary-main strong { font-size: 0.98rem; font-weight: 730; }
+.cert-summary-facts { margin: 0; color: var(--text); font-size: 0.86rem; }
+.cert-summary-state { margin: 0; color: var(--muted); font-size: 0.83rem; line-height: 1.45; }
+.cert-summary-chip {
   flex: none;
   padding: 0.22rem 0.6rem;
   border-radius: 999px;
@@ -23034,10 +23047,10 @@ a.bset-card { color: inherit; text-decoration: none; }
   font-weight: 750;
   white-space: nowrap;
 }
-.ins-summary.is-ok .ins-summary-chip { background: rgba(120, 220, 150, 0.16); color: var(--ink-green-1); }
-.ins-summary.is-warn .ins-summary-chip, .ins-summary.is-expired .ins-summary-chip { background: rgba(255, 138, 61, 0.16); color: var(--accent-ink); }
-.ins-summary-file { margin: 0.6rem 0 0; color: var(--muted); font-size: 0.83rem; }
-.ins-summary-file a { color: var(--accent-ink); }
+.cert-summary.is-ok .cert-summary-chip { background: rgba(120, 220, 150, 0.16); color: var(--ink-green-1); }
+.cert-summary.is-warn .cert-summary-chip, .cert-summary.is-expired .cert-summary-chip { background: rgba(255, 138, 61, 0.16); color: var(--accent-ink); }
+.cert-summary-file { margin: 0.6rem 0 0; color: var(--muted); font-size: 0.83rem; }
+.cert-summary-file a { color: var(--accent-ink); }
 .ins-edit { margin-top: 0.9rem; }
 .ins-edit-body { margin-top: 0.9rem; }
 
@@ -23241,8 +23254,12 @@ a.bset-card { color: inherit; text-decoration: none; }
 .dash-activity > summary:hover { color: var(--text); border-color: var(--edge-t22); }
 
 /* --- primary actions on the mobile bar ---------------------------------------- */
-.mobilebar-plan, .mobilebar-new { display: none; }
+.mobilebar-plan, .mobilebar-new, .mobilebar-new-wrap { display: none; }
 @media (max-width: 900px) {
+  /* The "+ New" button is a menu trigger now, so it needs a positioned wrapper
+     for the menu to hang off. The wrapper takes the button's place in the bar's
+     flex row; the button inside it keeps every rule it already had. */
+  .sidenav-mobilebar .mobilebar-new-wrap { display: block; position: relative; flex: 0 0 auto; }
   .sidenav-mobilebar .mobilebar-plan,
   .sidenav-mobilebar .mobilebar-new {
     display: inline-flex;
