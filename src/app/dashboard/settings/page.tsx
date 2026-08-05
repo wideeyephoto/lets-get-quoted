@@ -1028,7 +1028,7 @@ export default async function SettingsPage({
                       <small className="field-hint">Sets your service area &mdash; the AI names the real nearby cities and towns you serve.</small>
                     </div>
                     <div className="form-actions">
-                      <SaveButton>Save business basics</SaveButton>
+                      <SaveButton onlyWhenChanged>Save business basics</SaveButton>
                     </div>
                   </form>
                 </section>
@@ -1078,7 +1078,7 @@ export default async function SettingsPage({
                       </small>
                     </div>
                     <div className="form-actions">
-                      <SaveButton>Save locations</SaveButton>
+                      <SaveButton onlyWhenChanged>Save locations</SaveButton>
                     </div>
                   </form>
                 </section>

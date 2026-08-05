@@ -24541,3 +24541,28 @@ a.mkt-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
 /* Hover emphasis, distinct from selection: a hovered marker lifts slightly,
    a selected one gets the ring. Conflating the two made Escape look broken. */
 .cash-marker.is-active .cash-marker-shape { filter: brightness(1.18); }
+
+
+/* An actions row whose only control has hidden itself must go too.
+   .compact-form .form-actions carries a border-top and 0.85rem of padding, so a
+   form with nothing to save was drawing a rule under empty space — a divider
+   introducing a section that isn't there. :has() is already used elsewhere in
+   this file for exactly this kind of container-follows-its-contents rule. */
+.form-actions:not(:has(> *:not([hidden]))) {
+  display: none;
+}
+
+
+/* Native <select> popups, once, instead of per-component.
+   A styled select sets its own colour — near-white in dark — but the option
+   LIST is drawn by the OS on its own background, so the text inherits that
+   near-white and renders white-on-white. Three separate rules already existed
+   for .auth-form, .inline-action-form and .field, each added the day somebody
+   found another unreadable dropdown; .cash-bill-field never got one, which is
+   what the cash-flow 'payments arriving late' menu was hitting.
+   Both tokens flip with the theme, so this is correct on paper too. */
+select option,
+select optgroup {
+  background: var(--bg-3);
+  color: var(--text);
+}

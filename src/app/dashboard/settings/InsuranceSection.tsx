@@ -126,7 +126,7 @@ export default function InsuranceSection({
       </div>
 
       <div className="workspace-inline-row">
-        <SaveButton className="btn primary" pendingLabel="Saving…" savedLabel="Saved ✓">Save</SaveButton>
+        <SaveButton className="btn primary" pendingLabel="Saving…" savedLabel="Saved ✓" onlyWhenChanged>Save</SaveButton>
         {onFile ? (
           <ConfirmActionButton
             action={removeAction}
