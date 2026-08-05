@@ -181,11 +181,13 @@ export default async function JobsPage({
       badgeTone: badge.tone,
       badgeTitle: badge.title ?? '',
       scheduledLabel: job.scheduled_for ? formatScheduledLabel(job.scheduled_for, job.scheduled_time) : null,
+      scheduledFor: job.scheduled_for ?? null,
       quotedAmount: job.quoted_amount,
       quotedLabel: formatMoney(job.quoted_amount),
       estimatedHours: job.estimated_hours,
       createdAt: job.created_at,
       outstandingLabel: formatMoney(Math.max(0, displayTotal - paidTotal)),
+      outstandingAmount: Math.max(0, displayTotal - paidTotal),
       paidLabel: formatMoney(paidTotal),
       invoiceRef: primaryInvoice?.ref ?? null,
       invoiceStatusLabel: primaryInvoice ? INVOICE_STATUS_LABEL[primaryInvoice.status] ?? primaryInvoice.status : null,
@@ -199,7 +201,15 @@ export default async function JobsPage({
   const mapView = normalizeMapView(cookies().get(mapViewCookie('jobs'))?.value);
   const mapTheme = normalizeMapTheme(cookies().get(MAP_THEME_COOKIE)?.value);
   const jobsView = normalizeJobsView(cookies().get(JOBS_VIEW_COOKIE)?.value);
-  const mapPins = mapView !== 'off' ? await getMapPins(supabase, accountId) : [];
+  // Always fetched, not only when the embedded map is on: Smoothie's Map pane
+  // is a switch inside the view, and a switch that needs a round trip to the
+  // server before it can draw anything is a page refresh wearing a button.
+  const mapPins = await getMapPins(supabase, accountId);
+  // Today, decided here so "Soonest first" cannot disagree with the clock the
+  // rest of the page rendered against, and so the sort is stable across a
+  // hydration boundary.
+  const now = new Date();
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const { data: jobsAcct } = await supabase.from('accounts').select('quote_followups_enabled').eq('id', accountId).maybeSingle();
   const followupsOn = Boolean(jobsAcct?.quote_followups_enabled);
 
@@ -220,6 +230,7 @@ export default async function JobsPage({
           mapView={mapView}
           mapTheme={mapTheme}
           mapPins={mapPins}
+          todayKey={todayKey}
           toolbarAccessory={<AutomationLink id="followups" label="Quote follow-ups" on={followupsOn} />}
         />
       </section>

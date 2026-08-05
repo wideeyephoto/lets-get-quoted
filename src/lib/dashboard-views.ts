@@ -57,15 +57,31 @@ export function normalizeCalendarView(value: unknown): CalendarView {
   return CALENDAR_VIEWS.includes(value as CalendarView) ? (value as CalendarView) : 'month';
 }
 
-// Which Jobs layout the owner last used (List / Board / Table / Focus).
+// Which Jobs layout the owner last used (Smoothie / Focus / List / Board / Table).
 export const JOBS_VIEW_COOKIE = 'lgq_jobs_view';
-export type JobsView = 'list' | 'board' | 'table' | 'focus';
-export const JOBS_VIEWS: JobsView[] = ['list', 'board', 'table', 'focus'];
+export type JobsView = 'list' | 'board' | 'table' | 'focus' | 'smoothie';
+export const JOBS_VIEWS: JobsView[] = ['list', 'board', 'table', 'focus', 'smoothie'];
+
+/**
+ * What a new account opens Jobs on.
+ *
+ * Smoothie, not Focus — the same reasoning as [[DEFAULT_LEADS_VIEW]]. Both are
+ * master-detail and they share a stylesheet and a set of detail panels; what
+ * differs is the order you meet things in. Smoothie leads with the QUEUE —
+ * searchable, stage-filtered, sorted by what is soonest or most owed — where
+ * Focus leads with one job under a full-width map. The first question on this
+ * page is "what am I doing next and who still owes me", and a map answers
+ * neither.
+ *
+ * An explicit choice is a cookie, so nobody who picked Focus, List, Board or
+ * Table is moved off it by this changing.
+ */
+export const DEFAULT_JOBS_VIEW: JobsView = 'smoothie';
+
 export function normalizeJobsView(value: unknown): JobsView {
-  // Focus is the default for anyone who hasn't chosen: it answers "what's the
-  // state of this job" without a page load per job. An explicit choice is a
-  // cookie, so nobody who picked List/Board/Table gets moved off it.
-  return JOBS_VIEWS.includes(value as JobsView) ? (value as JobsView) : 'focus';
+  // Unknown values fall back to the deliberate default, so an old cookie from
+  // before a view existed never renders a blank workspace.
+  return JOBS_VIEWS.includes(value as JobsView) ? (value as JobsView) : DEFAULT_JOBS_VIEW;
 }
 
 // Which Clients layout the owner last used.
@@ -76,12 +92,26 @@ export const CLIENTS_VIEW_COOKIE = 'lgq_clients_view';
 // customer — a map on its own answers "where is everybody" and then strands you
 // there, while a map beside the person you have open answers "where is THIS
 // one, and who else is near them", which is the question that changes a route.
-export type ClientsView = 'list' | 'cards' | 'table' | 'focus' | 'followup';
-export const CLIENTS_VIEWS: ClientsView[] = ['list', 'cards', 'table', 'focus', 'followup'];
+export type ClientsView = 'list' | 'cards' | 'table' | 'focus' | 'followup' | 'smoothie';
+export const CLIENTS_VIEWS: ClientsView[] = ['list', 'cards', 'table', 'focus', 'followup', 'smoothie'];
+
+/**
+ * What a new account opens Clients on.
+ *
+ * Smoothie, matching [[DEFAULT_LEADS_VIEW]] and [[DEFAULT_JOBS_VIEW]] — the
+ * three pipeline pages now open on the same shape, so moving between them does
+ * not mean learning a third layout. It leads with the book, searchable and
+ * banded by silence, with one customer open beside it.
+ *
+ * An explicit choice is a cookie, so nobody who picked List, Cards, Table,
+ * Focus or Follow up is moved off it by this changing.
+ */
+export const DEFAULT_CLIENTS_VIEW: ClientsView = 'smoothie';
+
 export function normalizeClientsView(value: unknown): ClientsView {
-  // List stays the default: it's what this page has always been, and an
-  // explicit choice is a cookie, so nobody gets moved off what they picked.
-  return CLIENTS_VIEWS.includes(value as ClientsView) ? (value as ClientsView) : 'list';
+  // Unknown values fall back to the deliberate default, so an old cookie from
+  // before a view existed never renders a blank workspace.
+  return CLIENTS_VIEWS.includes(value as ClientsView) ? (value as ClientsView) : DEFAULT_CLIENTS_VIEW;
 }
 
 // The text inbox has ONE dressing — Slate — and no picker.

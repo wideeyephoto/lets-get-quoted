@@ -285,7 +285,9 @@ const jsonLd = {
       '@type': 'Organization',
       name: "Let's Get Quoted",
       url: 'https://letsgetquoted.com',
-      logo: 'https://letsgetquoted.com/SITE-LOGO-1.png',
+      // The current mark. SITE-LOGO-1.png is a previous brand and is what
+      // search results were showing.
+      logo: 'https://letsgetquoted.com/favicon.png',
     },
     {
       '@type': 'SoftwareApplication',

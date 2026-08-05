@@ -5127,7 +5127,10 @@ li + li { margin-top: 0.45rem; }
    value (see .schedule-rail .method-detail) — those cards are a dense list, not
    a page about one account. */
 .sign-in-method-row .method-detail { display: block; color: var(--mute-t55); font-size: .875rem; margin-top: .2rem; }
-.schedule-method-row .method-info { flex: 1 1 220px; min-width: 220px; }
+.schedule-method-row .method-info { flex: 1 1 220px; min-width: 220px; align-items: flex-start; }
+/* Nudged up by the difference between the grip's box and the name's cap height,
+   so the two read as one line rather than as a button above a title. */
+.schedule-method-row .method-info > .schedule-drag-handle { margin-top: -0.15rem; }
 .schedule-crew-initials {
   display: flex;
   align-items: center;
@@ -6033,11 +6036,20 @@ li + li { margin-top: 0.45rem; }
 
 /* ===== Drag-to-schedule ===== */
 .schedule-drag-hint { margin: .5rem 0 0; color: var(--ink-neutral-5); font-size: .85rem; line-height: 1.5; }
+/* A GRIP, NOT A LABELLED BUTTON.
+   It used to read "Drag to calendar" and sit at the foot of the card, under the
+   crew row — the furthest point from the calendar and the last place anybody
+   looks for the thing they are about to drag. Now it is the first item on the
+   card, level with the customer's name, which is what the eye goes to anyway.
+   Square and 44px, because it is the primary touch target here: it is the drag
+   source AND the tap-to-arm path, and arming is the only way to schedule from a
+   phone or a keyboard. The words it used to print are still said — see the
+   sr-only span in JobDragHandle. */
 .schedule-drag-handle {
-  display: inline-flex; align-items: center; gap: .4rem;
-  padding: .45rem .7rem; border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center;
+  flex: none; width: 44px; height: 44px; padding: 0; border-radius: 9px;
   border: 1px dashed var(--edge-t22); background: rgba(var(--tint), .03);
-  color: var(--ink-neutral-13); font-size: .8rem; font-weight: 700; white-space: nowrap;
+  color: var(--ink-neutral-13);
   cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none;
 }
 .schedule-drag-handle:hover { border-color: var(--cedge-orange-5); color: var(--text); background: rgba(255,122,33,.08); }
@@ -6081,7 +6093,7 @@ li + li { margin-top: 0.45rem; }
   border: 1px solid var(--edge-t18); background: rgba(var(--tint), .05); color: var(--text);
 }
 .schedule-armed-toast button:hover { border-color: var(--edge-t40); background: rgba(var(--tint), .1); }
-.schedule-drag-grip { font-size: 1rem; line-height: 1; color: var(--ink-orange-13); }
+.schedule-drag-grip { font-size: 1.35rem; line-height: 1; color: var(--ink-orange-13); }
 /* The floating preview that follows the pointer while dragging (touch + mouse).
    pointer-events:none so elementFromPoint sees the calendar cell underneath. */
 .schedule-drag-floating {
@@ -16117,7 +16129,7 @@ button.plan-badge.last.is-adrift:focus-visible { outline: 2px solid rgba(255, 12
 
   .schedule-rail .schedule-action-buttons > * { flex: 1 1 8rem; }
   .schedule-rail .schedule-action-buttons .btn { min-width: 0; width: 100%; font-size: 0.8rem; }
-  .schedule-rail .schedule-drag-handle { justify-content: center; width: 100%; }
+  .schedule-rail .schedule-drag-handle { justify-content: center; width: 44px; }
 
   /* In the rail the popovers open INLINE rather than floating. A 720px floating
      panel anchored to a 21rem column would hang across the calendar and cover the

@@ -7,9 +7,10 @@ import AddressAutocomplete from '@/components/address-autocomplete';
 import SaveButton from '@/components/save-button';
 import { setClientsViewAction } from '@/app/dashboard/view-actions';
 import { followUpHeadline, groupByFollowUp } from '@/lib/client-followup';
-import type { ClientsView } from '@/lib/dashboard-views';
+import { DEFAULT_CLIENTS_VIEW, type ClientsView } from '@/lib/dashboard-views';
 import { avatarTone } from '@/lib/avatar-tone';
 import ClientFocusView from './ClientFocusView';
+import ClientSmoothieView from './ClientSmoothieView';
 import type { ClientMapPin } from './ClientsMap';
 import { createClientAction } from './actions';
 
@@ -52,6 +53,7 @@ export type ClientRow = {
 };
 
 const VIEWS: ViewOption<ClientsView>[] = [
+  { id: 'smoothie', label: 'Smoothie', hint: 'The book first, one customer beside it' },
   { id: 'list', label: 'List', hint: 'The classic stacked list' },
   { id: 'cards', label: 'Cards', hint: 'Bigger, with initials and totals' },
   { id: 'table', label: 'Table', hint: 'Sort & compare' },
@@ -64,6 +66,7 @@ type SortKey = 'name' | 'jobs' | 'total' | 'last';
 export default function ClientsWorkspace({
   clients,
   pins = [],
+  todayKey,
   initialView,
   openAdd = false,
 }: {
@@ -73,6 +76,15 @@ export default function ClientsWorkspace({
    * geocoded job. Defaulted so the demo can render this workspace without one.
    */
   pins?: ClientMapPin[];
+  /**
+   * Today as 'YYYY-MM-DD' in the account's own zone, from the server.
+   *
+   * Smoothie bands people by silence, and a band computed in the browser can
+   * disagree with one computed on the server across a midnight or a timezone —
+   * which would make the same customer "going quiet" in one view and "just
+   * done" in another on the same screen.
+   */
+  todayKey: string;
   initialView: ClientsView;
   /**
    * Arrived from the nav's "+ New → New client", so open the dialog rather than
@@ -143,6 +155,8 @@ export default function ClientsWorkspace({
     setSort((current) => ({ key, dir: current.key === key && current.dir === 'asc' ? 'desc' : 'asc' }));
   }
 
+  const viewGear = <ViewGear views={VIEWS} activeView={view} onPickView={pickView} label="View" defaults={{ view: DEFAULT_CLIENTS_VIEW }} />;
+
   const gear = (
     <div className="clients-toolbar">
       <div className="client-search-bar">
@@ -167,7 +181,7 @@ export default function ClientsWorkspace({
       <button type="button" className="btn primary" onClick={() => setAdding(true)}>
         + Add new client
       </button>
-      <ViewGear views={VIEWS} activeView={view} onPickView={pickView} label="View" />
+      {viewGear}
     </div>
   );
 
@@ -179,6 +193,27 @@ export default function ClientsWorkspace({
           : 'No clients yet.'}
       </p>
     ) : null;
+
+  if (view === 'smoothie') {
+    // Smoothie owns its own search, its own filters, its own Add button and its
+    // own map pane, so the shared toolbar above is not drawn — rendering it as
+    // well would put two search boxes and two Add buttons on the page. Only the
+    // picker travels across, so there is still a way back out of the view.
+    return (
+      <>
+        <ClientSmoothieView
+          clients={clients}
+          pins={pins}
+          todayKey={todayKey}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          onAdd={() => setAdding(true)}
+          gear={viewGear}
+        />
+        {adding ? <AddClientDialog onClose={() => setAdding(false)} /> : null}
+      </>
+    );
+  }
 
   return (
     <>

@@ -33,6 +33,10 @@ export default async function ClientsPage({ searchParams }: { searchParams: { cr
   ]);
   const repeatCount = clients.filter((client) => client.jobCount > 1).length;
   const pins = [...pinsByClient.values()].map((pin) => ({ clientId: pin.clientId, lat: pin.lat, lng: pin.lng }));
+  // 'YYYY-MM-DD' in the server's own zone. Decided here rather than in the
+  // browser so the follow-up bands cannot differ between two views on the same
+  // screen across a midnight.
+  const todayKey = new Date().toLocaleDateString('en-CA');
   const view = normalizeClientsView(cookies().get(CLIENTS_VIEW_COOKIE)?.value);
 
   const rows: ClientRow[] = clients.map((client) => ({
@@ -89,7 +93,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: { cr
         ) : null}
         {/* Rendered even with an empty book: the Add button lives in here, and a
             list you can't add to is the problem this page had. */}
-        <ClientsWorkspace clients={rows} pins={pins} initialView={view} openAdd={searchParams.add === '1'} />
+        <ClientsWorkspace clients={rows} pins={pins} todayKey={todayKey} initialView={view} openAdd={searchParams.add === '1'} />
       </section>
 
       <div className="actions" style={{ marginTop: '1.25rem' }}>

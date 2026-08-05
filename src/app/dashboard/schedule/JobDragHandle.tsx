@@ -36,7 +36,13 @@ export default function JobDragHandle({ jobId, jobName }: { jobId: string; jobNa
       title="Drag onto a calendar date, or tap and then tap a date"
     >
       <span className="schedule-drag-grip" aria-hidden="true">⠿</span>
-      {armed ? 'Pick a date…' : 'Drag to calendar'}
+      {/* The words used to be printed on the button. They are still SAID — a
+          grip with no accessible text is a mystery to a screen reader, and the
+          armed state has to announce itself to somebody who cannot see the
+          card light up. What is gone is only the visible label: it sat at the
+          foot of the card, a third the width of it, saying what the grip
+          already means. The section's own hint still explains the gesture. */}
+      <span className="sr-only">{armed ? 'Pick a date…' : 'Drag to calendar'}</span>
     </button>
   );
 }

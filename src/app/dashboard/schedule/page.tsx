@@ -630,6 +630,11 @@ export default async function SchedulePage({
                    thing moving rather than a grey row turning into a gold one. */
                 <div className={`sign-in-method-row schedule-method-row status-${job.status}`} key={job.id}>
                   <div className="method-info">
+                    {/* The grip leads the card, level with the name. It was a
+                        labelled button at the foot, below the crew row — the
+                        furthest point on the card from the thing you are about
+                        to drag, and the last place anybody looks. */}
+                    <JobDragHandle jobId={job.id} jobName={job.client_name} />
                     <div>
                       <Link className="method-name" href={`/dashboard/jobs/${job.id}`}>{job.client_name}</Link>
                       <span className="method-detail">
@@ -723,7 +728,6 @@ export default async function SchedulePage({
                     </div>
                   </div>
                   <div className="schedule-action-buttons">
-                    <JobDragHandle jobId={job.id} jobName={job.client_name} />
                     <details className="schedule-popover" name={`schedule-popover-${job.id}`}>
                       <summary className="btn secondary">Add Start Date</summary>
                       <div className="schedule-popover-panel schedule-start-panel">

@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import BrandLogo from '@/components/brand-logo';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
@@ -939,7 +940,11 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             className={`brand-mark${isDashboard && isLoggedIn ? ' brand-mark-compact' : ''}`}
             aria-label="Let&apos;s Get Quoted home"
           >
-            <Image src="/SITE-LOGO-1.png" alt="Let's Get Quoted" width={160} height={33} className="brand-logo-img" priority />
+            {/* The mark every HOMEOWNER sees. This bar is the chrome on the
+                client job dashboard, an invoice and a payment page, and it was
+                still carrying /SITE-LOGO-1.png — a green-and-yellow lockup from
+                a previous brand that matches nothing else in the product. */}
+            <BrandLogo className="brand-logo-img" size={34} />
             <strong className="brand-title">LET&apos;S GET QUOTED</strong>
           </Link>
 

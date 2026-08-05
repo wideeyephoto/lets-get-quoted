@@ -24,7 +24,7 @@ import { useLeadDetail } from './use-lead-detail';
 import LeadDetailTabs, { LEAD_TABS, LeadDetailSkeleton, type LeadTabId } from './LeadDetailTabs';
 import focusStyles from '../focus.module.css';
 import leadStyles from './leads.module.css';
-import styles from './smoothie.module.css';
+import styles from '../smoothie.module.css';
 
 /**
  * Smoothie — Focus, led by the queue instead of by one lead.
@@ -537,7 +537,7 @@ export default function LeadSmoothieView({
  * Read at click time rather than held in state: a media query in state needs a
  * listener and a re-render, and the only thing this decides is whether a click
  * ALSO moves to the mobile detail screen. Matches the breakpoint in
- * smoothie.module.css — keep the two in step.
+ * ../smoothie.module.css — keep the two in step.
  */
 function isWide(): boolean {
   if (typeof window === 'undefined') return true;

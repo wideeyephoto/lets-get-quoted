@@ -1,3 +1,13 @@
+/* SMOOTHIE — the queue-first master/detail dressing.
+ *
+ * Shared by Leads, Jobs and Clients, the way ../focus.module.css already is.
+ * It lived under leads/ when Leads was the only page with it; a copy per page
+ * is three stylesheets that are meant to be identical and will not stay that
+ * way. The record-specific bits — heat colours, stage tints — key off data
+ * attributes, so a page that has no heat simply never sets one.
+ *
+ * data-pane is 'map' or not-'map'. It used to test for 'leads' by name, which
+ * would have quietly failed on any other page. */
 /* Smoothie — the queue-first Leads workspace.
    Same tokens as focus.module.css on purpose: this is Focus reordered, not a
    second design. Orange stays reserved for the selection and the primary
@@ -418,8 +428,8 @@
      lead you just tapped. Back brings them all straight back.
      Map mode keeps them: the switch that gets you out of it lives there, and
      the filters still govern what the map is drawing. */
-  .smoothie[data-screen='detail'][data-pane='leads'] .stageBar,
-  .smoothie[data-screen='detail'][data-pane='leads'] .toolbar { display: none; }
+  .smoothie[data-screen='detail']:not([data-pane='map']) .stageBar,
+  .smoothie[data-screen='detail']:not([data-pane='map']) .toolbar { display: none; }
 
   /* Map takes the width, and replaces the list rather than sitting above it. */
   .smoothie[data-pane='map'] .queue { display: none; }
@@ -478,4 +488,120 @@
   .row { grid-template-columns: auto minmax(0, 1fr); }
   /* The value drops under the name rather than squeezing it to two words. */
   .rowValue { grid-column: 2; justify-self: start; font-size: 0.82rem; }
+}
+
+/* --- Jobs -----------------------------------------------------------------
+   The record-specific half. Leads key their dot and their words off heat
+   (data-score); a job has no heat, it has a stage, so the same three classes
+   key off data-stage instead. Both sets live here rather than in a per-page
+   copy of the whole stylesheet — see the note at the top. */
+
+.jobDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  flex: none;
+  border-radius: 999px;
+  background: var(--mute-i42);
+}
+.jobDot[data-stage='new_lead'] { background: var(--gold-ink); }
+.jobDot[data-stage='in_progress'] { background: var(--accent); }
+.jobDot[data-stage='complete'] { background: var(--ink-green-1); }
+.jobDot[data-stage='archived'] { background: var(--mute-i42); }
+
+.rowHeat[data-stage='new_lead'] { color: var(--gold-ink); }
+.rowHeat[data-stage='in_progress'] { color: var(--ink-orange-3); }
+.rowHeat[data-stage='complete'] { color: var(--ink-green-1); }
+.rowHeat[data-stage='archived'] { color: var(--muted); }
+
+/* The job's reference is a monospaced tag, not a stage tint — it is an
+   identifier, and colouring it would say something about the job that is not
+   true. */
+.rowStage[data-stage='new_lead'],
+.rowStage[data-stage='in_progress'],
+.rowStage[data-stage='complete'],
+.rowStage[data-stage='archived'] {
+  background: rgba(var(--tint), 0.09);
+  color: var(--mute-t60);
+  font-variant-numeric: tabular-nums;
+}
+
+.detailStage[data-stage='new_lead'] { background: rgba(255, 209, 102, 0.16); color: var(--gold-ink); }
+.detailStage[data-stage='in_progress'] { background: rgba(255, 122, 33, 0.18); color: var(--ink-orange-3); }
+.detailStage[data-stage='complete'] { background: rgba(74, 222, 128, 0.16); color: var(--ink-green-1); }
+
+.jobRefChip {
+  padding: 0.14rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--edge-t14);
+  color: var(--mute-t60);
+  font-size: 0.72rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The cover photo beside the heading, as Focus has it. */
+.jobHeadLayout { display: flex; align-items: flex-start; gap: 0.85rem; }
+.jobHeadCopy { min-width: 0; flex: 1; }
+
+@media (max-width: 560px) {
+  .jobHeadLayout { flex-direction: column; gap: 0.6rem; }
+}
+
+/* --- Clients ---------------------------------------------------------------
+   A customer has neither heat nor a stage — what they have is silence, so the
+   same three classes key off the follow-up band. The bands are the page's own
+   (lib/client-followup), not a fifth set of words invented here. */
+
+.clientMono {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 10px;
+  background: hsl(var(--cover-hue, 24) 60% 26%);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+/* Going quiet is the one that wants the eye: it is the only band that means
+   somebody is slipping away. Booked is deliberately quiet — nothing to do. */
+.rowHeat[data-band='drifting'] { color: var(--ink-orange-3); }
+.rowHeat[data-band='unbooked'] { color: var(--gold-ink); }
+.rowHeat[data-band='recent'] { color: var(--ink-green-1); }
+.rowHeat[data-band='booked'] { color: var(--muted); }
+
+.rowStage[data-band] { background: rgba(var(--tint), 0.09); color: var(--mute-t60); }
+
+.detailStage[data-band] {
+  padding: 0.14rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.1);
+  color: var(--mute-t60);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+.detailStage[data-band='drifting'] { background: rgba(255, 122, 33, 0.18); color: var(--ink-orange-3); }
+.detailStage[data-band='unbooked'] { background: rgba(255, 209, 102, 0.16); color: var(--gold-ink); }
+.detailStage[data-band='recent'] { background: rgba(74, 222, 128, 0.16); color: var(--ink-green-1); }
+
+.detailRepeat {
+  padding: 0.14rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--cedge-amber-12);
+  color: var(--gold-ink);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.detailOwed {
+  padding: 0.14rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(255, 122, 33, 0.16);
+  color: var(--ink-orange-3);
+  font-size: 0.72rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }

@@ -10,6 +10,7 @@ import ViewGear from '@/components/view-gear';
 import { pinRecordId, revealRow } from '@/lib/reveal-row';
 import PinMap, { type MapPin } from '@/components/pin-map';
 import FocusView from './FocusView';
+import JobSmoothieView from './JobSmoothieView';
 import styles from './jobs.module.css';
 
 // Display-ready job shape, built server-side so this client view never imports
@@ -24,8 +25,13 @@ export type JobViewItem = {
   badgeTone: string;
   badgeTitle: string;
   scheduledLabel: string | null;
+  /** The raw start date, 'YYYY-MM-DD'. The label is for reading; this is what
+      "Soonest first" sorts on — a printed "Aug 3" cannot be compared. */
+  scheduledFor: string | null;
   quotedAmount: number;
   quotedLabel: string;
+  /** outstandingLabel as a number, so "Most owed" can order by it. */
+  outstandingAmount: number;
   estimatedHours: number | null;
   createdAt: string;
   // Money the server already had in hand. Lets the Focus pane answer "what do
@@ -40,9 +46,10 @@ export type JobViewItem = {
   photoCount: number;
 };
 
-// Focus leads, because it's the default — the list in the menu should open on
-// the layout you are already looking at rather than making you find it.
+// Smoothie leads, because it's the default — the list in the menu should open
+// on the layout you are already looking at rather than making you find it.
 const VIEWS = [
+  { id: 'smoothie' as const, label: 'Smoothie', hint: 'The queue first, one job beside it' },
   { id: 'focus' as const, label: 'Focus', hint: 'One job open, list beside it' },
   { id: 'list' as const, label: 'List', hint: 'The classic stacked list' },
   { id: 'board' as const, label: 'Board', hint: 'Kanban by stage' },
@@ -72,7 +79,7 @@ function StatusBadge({ job }: { job: JobViewItem }) {
   );
 }
 
-export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme, mapPins, toolbarAccessory }: { jobs: JobViewItem[]; initialView: JobsView; mapView: MapView; mapTheme: MapTheme; mapPins: MapPin[]; toolbarAccessory?: ReactNode }) {
+export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme, mapPins, todayKey, toolbarAccessory }: { jobs: JobViewItem[]; initialView: JobsView; mapView: MapView; mapTheme: MapTheme; mapPins: MapPin[]; todayKey: string; toolbarAccessory?: ReactNode }) {
   const [view, setView] = useState<JobsView>(initialView);
   const [status, setStatus] = useState<JobStatus | 'all'>('all');
   // Which job the Focus pane has open, so the map can centre on it.
@@ -133,10 +140,29 @@ export default function JobsWorkspace({ jobs, initialView, mapView, mapTheme, ma
         onSetMapTheme={setTheme}
         label="View"
         // Mirrors normalizeJobsView / normalizeMapView / normalizeMapTheme.
-        defaults={{ view: 'focus', mapView: 'large', mapTheme: 'dark' }}
+        defaults={{ view: 'smoothie', mapView: 'large', mapTheme: 'dark' }}
       />
     </div>
   );
+
+  if (view === 'smoothie') {
+    // Smoothie carries the gear in its own toolbar and the map in its own pane,
+    // so the band above every other view is not drawn at all. Rendering it as
+    // well would put a second map on the page and a second copy of the gear.
+    return (
+      <div className={pending ? styles.busy : undefined}>
+        <JobSmoothieView
+          jobs={jobs}
+          todayKey={todayKey}
+          mapPins={mapPins}
+          mapTheme={mapTheme}
+          gear={gear}
+          onSelect={onFocusSelect}
+          openRequest={pinRequest}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={pending ? styles.busy : undefined}>

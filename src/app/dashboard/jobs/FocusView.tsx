@@ -1,11 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { JobDetailDto } from '@/lib/job-detail';
 import type { JobViewItem } from './JobsWorkspace';
 import RecordCover from '../RecordCover';
 import ActionIcon from '@/components/action-icon';
+import JobDetailTabs, { JOB_TABS, JobDetailSkeleton, marginClass, type JobTabId } from './JobDetailTabs';
+import { useJobDetail } from './use-job-detail';
 import styles from '../focus.module.css';
 
 // Master-detail view of the pipeline: one job open on the left, the whole list
@@ -23,23 +25,6 @@ import styles from '../focus.module.css';
 //     page. Mutating from a surface with a client-held cache means cache
 //     invalidation plus optimistic rollback on money, which is not worth it for
 //     a preview.
-
-const TABS = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'timeline', label: 'Timeline' },
-  { id: 'checklist', label: 'Checklist' },
-  { id: 'photos', label: 'Photos' },
-  { id: 'money', label: 'Quote & Payment' },
-] as const;
-
-type TabId = (typeof TABS)[number]['id'];
-
-const CACHE_LIMIT = 30;
-const CACHE_TTL_MS = 5 * 60 * 1000;
-const SELECT_DEBOUNCE_MS = 140;
-const PREFETCH_DWELL_MS = 120;
-
-type CacheEntry = { detail: JobDetailDto; at: number };
 
 function StatusBadge({ job }: { job: JobViewItem }) {
   return (
@@ -76,127 +61,15 @@ export default function FocusView({
 }) {
   const base = basePath;
   const [selectedId, setSelectedId] = useState<string | null>(jobs[0]?.id ?? null);
-  const [detail, setDetail] = useState<JobDetailDto | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<TabId>('overview');
-
-  const cacheRef = useRef<Map<string, CacheEntry>>(new Map());
-  const wantRef = useRef<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
-  const dwellRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [tab, setTab] = useState<JobTabId>('overview');
   const paneRef = useRef<HTMLElement | null>(null);
 
   const selected = useMemo(() => jobs.find((j) => j.id === selectedId) ?? null, [jobs, selectedId]);
 
-  // The server just re-rendered, so anything cached may be stale. Correctness
-  // guard, not a performance bug — leave it alone.
-  useEffect(() => {
-    cacheRef.current.clear();
-  }, [jobs]);
-
-  // A tab left open on a job site holds signed photo URLs that expire, and a
-  // balance that may have been paid. Drop the cache when the window comes back.
-  useEffect(() => {
-    let last = 0;
-    const drop = () => {
-      const now = Date.now();
-      if (document.visibilityState !== 'visible' || now - last < 60_000) return;
-      last = now;
-      cacheRef.current.clear();
-    };
-    document.addEventListener('visibilitychange', drop);
-    window.addEventListener('focus', drop);
-    return () => {
-      document.removeEventListener('visibilitychange', drop);
-      window.removeEventListener('focus', drop);
-    };
-  }, []);
-
-  const readCache = useCallback((id: string): JobDetailDto | null => {
-    const hit = cacheRef.current.get(id);
-    if (!hit) return null;
-    if (Date.now() - hit.at > CACHE_TTL_MS) {
-      cacheRef.current.delete(id);
-      return null;
-    }
-    return hit.detail;
-  }, []);
-
-  const writeCache = useCallback((id: string, value: JobDetailDto) => {
-    const cache = cacheRef.current;
-    cache.delete(id);
-    cache.set(id, { detail: value, at: Date.now() });
-    while (cache.size > CACHE_LIMIT) {
-      const oldest = cache.keys().next().value;
-      if (oldest === undefined) break;
-      cache.delete(oldest);
-    }
-  }, []);
-
-  const fetchDetail = useCallback(
-    async (id: string, signal?: AbortSignal): Promise<JobDetailDto | null> => {
-      // Pre-loaded wins outright: there is no endpoint to fall back to when the
-      // caller supplied its own data, and a miss here means the id is unknown.
-      if (details) return details[id] ?? null;
-      const response = await fetch(`/api/jobs/${id}/detail`, { cache: 'no-store', signal });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body?.error || 'Could not load that job.');
-      const value = body?.detail as JobDetailDto | undefined;
-      if (!value) return null;
-      writeCache(id, value);
-      return value;
-    },
-    [details, writeCache],
-  );
-
-  // Selection -> detail. Debounced so holding ArrowDown through the list fires
-  // one request, not one per row.
-  useEffect(() => {
-    if (!selectedId) {
-      setDetail(null);
-      return;
-    }
-    wantRef.current = selectedId;
-
-    const cached = readCache(selectedId);
-    if (cached) {
-      setDetail(cached);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    setDetail(null);
-    setLoading(true);
-    setError(null);
-
-    const timer = setTimeout(() => {
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
-
-      fetchDetail(selectedId, controller.signal)
-        .then((value) => {
-          // The response that comes back last is not necessarily the one for the
-          // row that's highlighted. Without this, a slow request for job A can
-          // paint A's balance under B's name — silent, and the kind of mistake
-          // that gets a payment link sent to the wrong homeowner.
-          if (wantRef.current !== selectedId) return;
-          setDetail(value);
-          setLoading(false);
-        })
-        .catch((err: unknown) => {
-          if (controller.signal.aborted || wantRef.current !== selectedId) return;
-          setError(err instanceof Error ? err.message : 'Could not load that job.');
-          setLoading(false);
-        });
-    }, SELECT_DEBOUNCE_MS);
-
-    return () => clearTimeout(timer);
-  }, [selectedId, readCache, fetchDetail]);
-
-  useEffect(() => () => abortRef.current?.abort(), []);
+  // The cache, the debounce, the abort and the stale-response guard now live
+  // in useJobDetail so Smoothie runs the same code rather than a second copy.
+  // Nothing about the behaviour moved with them.
+  const { detail, loading, error, armPrefetch, cancelPrefetch } = useJobDetail({ selectedId, jobs, details });
 
   // Opened from the map. Goes through the same path as a click on the list, so
   // the pane scrolls into view and the row centres itself exactly as it would.
@@ -252,19 +125,6 @@ export default function FocusView({
     if (r.top >= l.top && r.bottom <= l.bottom) return;
     row.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [selectedId]);
-
-  // Warm the cache on hover only. Never on keyboard traversal — that would turn
-  // the prefetch into the request storm it exists to prevent.
-  function armPrefetch(id: string) {
-    if (readCache(id) || id === selectedId) return;
-    if (dwellRef.current) clearTimeout(dwellRef.current);
-    dwellRef.current = setTimeout(() => {
-      fetchDetail(id).catch(() => {});
-    }, PREFETCH_DWELL_MS);
-  }
-  function cancelPrefetch() {
-    if (dwellRef.current) clearTimeout(dwellRef.current);
-  }
 
   // Rows are real links: cmd/middle-click opens the full job page in a new tab,
   // and the URL is copyable. A plain <button> would silently kill all of that.
@@ -362,7 +222,7 @@ export default function FocusView({
             </header>
 
             <div className={styles.tabs} role="tablist" aria-label="Job detail sections">
-              {TABS.map((t) => (
+              {JOB_TABS.map((t) => (
                 <button
                   key={t.id}
                   type="button"
@@ -380,9 +240,9 @@ export default function FocusView({
               {error ? (
                 <p className={styles.error}>{error}</p>
               ) : loading || !fresh ? (
-                <Skeleton />
+                <JobDetailSkeleton />
               ) : (
-                <TabPanel tab={tab} detail={fresh} job={selected} base={base} />
+                <JobDetailTabs tab={tab} detail={fresh} job={selected} base={base} />
               )}
             </div>
 
@@ -452,178 +312,6 @@ export default function FocusView({
             </li>
           ))}
         </ul>
-      </section>
-    </div>
-  );
-}
-
-function marginClass(pct: number): string {
-  if (pct >= 35) return 'margin-good';
-  if (pct >= 20) return 'margin-ok';
-  return 'margin-bad';
-}
-
-function Skeleton() {
-  return (
-    <div className={styles.skeleton} aria-hidden="true">
-      <span /><span /><span /><span />
-    </div>
-  );
-}
-
-function TabPanel({ tab, detail, job, base }: { tab: TabId; detail: JobDetailDto; job: JobViewItem; base: string }) {
-  if (tab === 'overview') {
-    return (
-      <div className={styles.grid}>
-        <section className={styles.card}>
-          <h4>Details</h4>
-          <dl className={styles.defs}>
-            <div><dt>Client</dt><dd>{detail.clientName}</dd></div>
-            <div><dt>Phone</dt><dd>{detail.clientPhone || 'Not on file'}</dd></div>
-            <div><dt>Email</dt><dd>{detail.clientEmail || 'Not on file'}</dd></div>
-            <div><dt>Address</dt><dd>{detail.address || 'Not on file'}</dd></div>
-            <div><dt>Created</dt><dd>{detail.createdAtLabel}</dd></div>
-            <div>
-              <dt>Crew</dt>
-              <dd>{detail.crew.length > 0 ? detail.crew.map((c) => c.name).join(', ') : 'None assigned'}</dd>
-            </div>
-          </dl>
-        </section>
-
-        {/* There is no notes feature in this product — no job_notes table and no
-            jobs.notes column. This is the job's scope, labelled as what it is
-            rather than dressed up as notes. */}
-        <section className={styles.card}>
-          <h4>Job description</h4>
-          {detail.scope ? (
-            <p className={styles.scope}>{detail.scope}</p>
-          ) : (
-            <p className={styles.muted}>Nothing written down yet.</p>
-          )}
-          <Link className={styles.cardLink} href={`${base}/jobs/${detail.id}`}>Edit on the job page →</Link>
-        </section>
-
-        <section className={styles.card}>
-          <h4>Recent activity</h4>
-          {detail.feed.length === 0 ? (
-            <p className={styles.muted}>Nothing has happened on this job yet.</p>
-          ) : (
-            <ul className={styles.feed}>
-              {detail.feed.slice(0, 4).map((event) => (
-                <li key={event.id}>
-                  <span className={styles.feedIcon} aria-hidden="true">{event.icon}</span>
-                  <span>
-                    <strong>{event.title}</strong>
-                    <small>{event.at}</small>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
-    );
-  }
-
-  if (tab === 'timeline') {
-    return detail.feed.length === 0 ? (
-      <p className={styles.muted}>Nothing has happened on this job yet.</p>
-    ) : (
-      <ul className={styles.timeline}>
-        {detail.feed.map((event) => (
-          <li key={event.id}>
-            <span className={styles.feedIcon} aria-hidden="true">{event.icon}</span>
-            <span className={styles.timelineBody}>
-              <strong>{event.title}</strong>
-              {event.body ? <p>{event.body}</p> : null}
-              <small>{event.kindLabel} · {event.at}</small>
-            </span>
-          </li>
-        ))}
-      </ul>
-    );
-  }
-
-  if (tab === 'checklist') {
-    return detail.tasks.total === 0 ? (
-      <p className={styles.muted}>
-        No checklist on this job yet. <Link href={`${base}/jobs/${detail.id}`}>Add one →</Link>
-      </p>
-    ) : (
-      <>
-        <p className={styles.progress}>
-          <span style={{ width: `${detail.tasks.pct}%` }} />
-          <em>{detail.tasks.done} of {detail.tasks.total} done</em>
-        </p>
-        <ul className={styles.tasks}>
-          {detail.tasks.items.map((task) => (
-            <li key={task.id} className={task.done ? styles.taskDone : undefined}>
-              <span aria-hidden="true">{task.done ? '✓' : ''}</span>
-              {task.title}
-            </li>
-          ))}
-        </ul>
-      </>
-    );
-  }
-
-  if (tab === 'photos') {
-    // Files on a job are photos. There's no document upload in this product, so
-    // this doesn't pretend to be a file manager.
-    return detail.photos.length === 0 ? (
-      <p className={styles.muted}>
-        No photos on this job. <Link href={`${base}/jobs/${detail.id}`}>Upload some →</Link>
-      </p>
-    ) : (
-      <>
-        <div className={styles.photos}>
-          {detail.photos.map((photo) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img key={photo.path} src={photo.url} alt="" loading="lazy" />
-          ))}
-        </div>
-        {detail.photoCount > detail.photos.length && (
-          <p className={styles.muted}>
-            Showing {detail.photos.length} of {detail.photoCount}.{' '}
-            <Link href={`${base}/jobs/${detail.id}`}>See all →</Link>
-          </p>
-        )}
-      </>
-    );
-  }
-
-  return (
-    <div className={styles.grid}>
-      <section className={styles.card}>
-        <h4>Quote &amp; invoice</h4>
-        <dl className={styles.defs}>
-          <div><dt>Quoted</dt><dd>{job.quotedAmount > 0 ? job.quotedLabel : 'No quote yet'}</dd></div>
-          <div><dt>Invoice</dt><dd>{detail.invoice ? `${detail.invoice.ref} · ${detail.invoice.statusLabel}` : 'None raised'}</dd></div>
-          <div><dt>Paid</dt><dd>{detail.money.paidLabel}</dd></div>
-          <div><dt>Still owed</dt><dd className={styles.owed}>{detail.money.outstandingLabel}</dd></div>
-          <div><dt>Payment</dt><dd>{detail.paymentStatusLabel ?? 'None requested'}</dd></div>
-        </dl>
-        <Link className={styles.cardLink} href={`${base}/jobs/${detail.id}?open=payment#request-payment`}>
-          Request payment →
-        </Link>
-      </section>
-
-      <section className={styles.card}>
-        <h4>Costs &amp; margin</h4>
-        <dl className={styles.defs}>
-          <div><dt>Materials</dt><dd>{detail.money.materialsLabel}</dd></div>
-          <div><dt>Labor</dt><dd>{detail.money.laborLabel}</dd></div>
-          <div><dt>Overhead</dt><dd>{detail.money.overheadLabel}</dd></div>
-          <div><dt>Total cost</dt><dd>{detail.money.totalCostLabel}</dd></div>
-          <div><dt>Profit</dt><dd>{detail.money.profitLabel}</dd></div>
-          <div>
-            <dt>Margin</dt>
-            <dd className={marginClass(detail.money.marginPct)}>{detail.money.marginLabel}</dd>
-          </div>
-        </dl>
-        <Link className={styles.cardLink} href={`${base}/jobs/${detail.id}?open=costs`}>
-          Add an expense →
-        </Link>
       </section>
     </div>
   );
