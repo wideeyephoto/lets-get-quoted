@@ -192,13 +192,16 @@ export default function JobCostingSection({
         </div>
 
         <div className="jc-block">
+          {/* "Warn me below (%)" left you to work out below WHAT. The name says
+              what the setting is; the sentence under the number says what it
+              does, in the order somebody reads them. */}
           <p className="jc-block-head">
-            Warn me below (%)
+            Low-margin warning
             <Hint text="Compares each job's estimated profit margin against this number." />
           </p>
           <div className="jc-value-row">
             <span className="jc-value">{margin}%</span>
-            <Stepper label="warn me below" value={margin} min={0} max={100} step={5} onChange={(next) => edit('margin', next, true)} />
+            <Stepper label="low-margin warning" value={margin} min={0} max={100} step={5} onChange={(next) => edit('margin', next, true)} />
           </div>
           <label className="jc-exact">
             <span>Exact</span>
@@ -211,7 +214,7 @@ export default function JobCostingSection({
           </label>
           {margin > 0 ? (
             <>
-              <p className="jc-note">Flag jobs when the estimated profit margin falls below your chosen threshold.</p>
+              <p className="jc-note">Warn me when a job&rsquo;s estimated margin falls below {margin}%.</p>
               <span className={`jc-tag${marginAdvised ? ' is-ok' : ' is-warn'}`}>
                 {marginAdvised ? '✓ Recommended range' : '⚠ Recommended: 10%–20%'}
               </span>

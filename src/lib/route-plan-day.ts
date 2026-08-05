@@ -70,7 +70,7 @@ export async function getPlanAccountSettings(
   const { data } = await supabase
     .from('accounts')
     .select(
-      'timezone, workday_start, workday_end, job_buffer_minutes, schedule_day_hours, service_center_lat, service_center_lng, instant_book_drive_time, mailing_address',
+      'timezone, workday_start, workday_end, job_buffer_minutes, schedule_day_hours, service_center_lat, service_center_lng, instant_book_drive_time, mailing_address, operating_address',
     )
     .eq('id', accountId)
     .maybeSingle();
@@ -89,7 +89,12 @@ export async function getPlanAccountSettings(
     // rather than a guess of zero, which would stack stops on top of each other.
     defaultVisitMinutes: Math.max(30, Math.round(((Number(data?.schedule_day_hours) || 8) / 4) * 60)),
     homeBase: homeLat != null && homeLng != null ? { lat: Number(homeLat), lng: Number(homeLng) } : null,
-    mailingAddress: ((data?.mailing_address as string | null) ?? null) || null,
+    // The operating location if there is one, the mailing address otherwise —
+    // the same order the geocode uses, so the text on the map link names the
+    // place the coordinates actually came from. Showing the mailing address
+    // beside a point geocoded from the yard would be a map link that opens
+    // somewhere the route was never measured to.
+    mailingAddress: ((data?.operating_address as string | null) || (data?.mailing_address as string | null) || null),
     driveTimeEnabled: Boolean(data?.instant_book_drive_time),
   };
 }

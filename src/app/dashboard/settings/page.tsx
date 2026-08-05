@@ -18,10 +18,13 @@ import DeleteAccountButton from './DeleteAccountButton';
 import ArrivalSettingsSection from './ArrivalSettingsSection';
 import ArrivalExtrasSection from './ArrivalExtrasSection';
 import { arrivalSettingsFromAccount } from '@/lib/arrival';
-import { updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
+import { updateReminderSettingsAction, updateBusinessAddressesAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
 import { toggleClientPortalAction } from './actions';
 import { syncQuickBooksAction, backfillQuickBooksAction, updateInsuranceAction, removeInsuranceAction } from './actions';
 import InsuranceSection from './InsuranceSection';
+import BusinessWorkspace from './BusinessWorkspace';
+import { businessSetup } from '@/lib/business-setup';
+import { insuranceState } from '@/lib/insurance';
 import { insuranceProofUrl } from '@/lib/insurance-storage';
 import ClientPortalSection from './ClientPortalSection';
 import MissedCallSection from './MissedCallSection';
@@ -260,15 +263,19 @@ export default async function SettingsPage({
 
   const { data: mailingSettings } = await supabase
     .from('accounts')
-    .select('mailing_address')
+    .select('mailing_address, operating_address, service_center_lat, service_center_lng')
     .eq('id', accountId)
     .maybeSingle();
   // Older values were typed into a textarea; a newline inside an <input> value
   // renders as nothing, so an existing address would look half-missing until the
   // owner retyped it.
-  const mailingAddress = ((mailingSettings?.mailing_address as string | null) ?? '')
-    .replace(/\s*\n\s*/g, ', ')
-    .trim();
+  const oneLine = (value: unknown) => ((value as string | null) ?? '').replace(/\s*\n\s*/g, ', ').trim();
+  const mailingAddress = oneLine(mailingSettings?.mailing_address);
+  const operatingAddress = oneLine(mailingSettings?.operating_address);
+  // Whether the address we geocode actually resolved. Null here means Plan my
+  // day has no point to measure the drive from, which is invisible on this page
+  // and only shows up as a day whose mileage is quietly short.
+  const hasServiceCenter = mailingSettings?.service_center_lat != null && mailingSettings?.service_center_lng != null;
 
   const { data: digestSettings } = await supabase
     .from('accounts')
@@ -312,7 +319,7 @@ export default async function SettingsPage({
   // reports as lapsed on the day it lapses, with no sweep to wait for.
   const { data: insuranceRow } = await supabase
     .from('accounts')
-    .select('insurance_path, insurance_filename, insurance_carrier, insurance_policy_number, insurance_coverage_amount, insurance_expires_on, insurance_show_on_quotes')
+    .select('insurance_path, insurance_filename, insurance_carrier, insurance_policy_number, insurance_coverage_amount, insurance_expires_on, insurance_show_on_quotes, insurance_uploaded_at')
     .eq('id', accountId)
     .maybeSingle();
   const ins = (insuranceRow ?? {}) as Record<string, unknown>;
@@ -329,6 +336,24 @@ export default async function SettingsPage({
   // Expiry is a calendar question, so it is answered in the owner's own zone.
   const insuranceToday = new Date().toLocaleDateString('en-CA', {
     timeZone: (account?.timezone as string) || 'America/Detroit',
+  });
+
+  // "Is my account actually set up?" — the one thing the Business tab could not
+  // answer without opening all eight of its forms.
+  const setup = businessSetup({
+    companyName: site?.company_name ?? null,
+    trade: businessBasics.trade || null,
+    zip: businessBasics.zip || null,
+    operatingAddress: operatingAddress || null,
+    mailingAddress: mailingAddress || null,
+    hasServiceCenter,
+    // A stored value means somebody chose it. NaN means the column is still
+    // null and the number on screen is our default, which is a guess about
+    // somebody else's business.
+    burdenConfigured: Number.isFinite(storedBurden),
+    burdenPct: defaultBurdenPct,
+    insurance: insuranceState(insuranceRecord, insuranceToday),
+    quickBooksConnected: quickBooksStatus.state === 'connected',
   });
 
   const [pl, subPrep] = await Promise.all([
@@ -941,17 +966,27 @@ export default async function SettingsPage({
             // job-costing was missing, so /dashboard/settings#job-costing
             // resolved to no tab and did nothing at all — the section exists,
             // carries that id, and could not be linked to.
-            anchors: ['job-costing', 'business-basics', 'import', 'export', 'marketing-address', 'finances'],
+            anchors: ['job-costing', 'business-basics', 'import', 'export', 'marketing-address', 'finances', 'insurance', 'quickbooks', 'addresses'],
             content: (
+              <BusinessWorkspace
+                setup={setup}
+                sections={[
+        {
+          id: 'overview',
+          label: 'Overview',
+          blurb: 'What is set up, and what still needs you.',
+          content: null,
+        },
+        {
+          id: 'profile',
+          label: 'Profile & locations',
+          blurb: 'Who you are, what you do, and where you work from.',
+          anchors: ['business-basics', 'marketing-address', 'addresses'],
+          content: (
               <>
-                <p className="automation-group">Business info</p>
                 {/* The customer portal used to sit here. It moved to
                     Automations → Customer follow-through: it runs for customers
                     on its own, which is that tab, not a business detail. */}
-
-                <section className="panel workspace-section-card" id="job-costing">
-                  <JobCostingSection burdenPct={defaultBurdenPct} minMarginPct={minMarginPct} />
-                </section>
 
                 <section className="panel workspace-section-card" id="business-basics">
                   <div className="section-heading workspace-section-heading compact-heading">
@@ -983,25 +1018,38 @@ export default async function SettingsPage({
                   </form>
                 </section>
 
-                <section className="panel workspace-section-card" id="marketing-address">
+                <section className="panel workspace-section-card" id="addresses">
                   <div className="section-heading workspace-section-heading compact-heading">
-                    <p className="eyebrow">Marketing email</p>
-                    <h2>Business mailing address</h2>
+                    <p className="eyebrow">Locations</p>
+                    <h2>Where you work from, and where your post goes</h2>
                   </div>
-                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-                    Anti-spam law (CAN-SPAM) requires a real physical postal address in the footer of promotional
-                    emails — your campaign blasts, &ldquo;book again&rdquo; invites, and review requests. Add yours
-                    here (a PO box is fine). Campaign emails won&apos;t send until this is set.
-                  </p>
-                  <form action={updateMailingAddressAction} className="form-grid compact-form">
-                    <div className="field">
-                      <label htmlFor="mailingAddress">Mailing address</label>
-                      {/* Verified-as-you-type rather than free text. This address is
-                          doing two jobs: the CAN-SPAM footer, and — once geocoded —
-                          the point Plan my day measures the drive out and back from.
-                          A typo or a city-only entry fails the precise-match test
-                          silently, and the only symptom is a day whose mileage is
-                          quietly short. Picking a real place makes that impossible. */}
+                  {/* Two fields, because they were one field doing two jobs.
+                      CAN-SPAM wants a postal address and a PO box is a perfectly
+                      good one; the route planner wants somewhere with a driveway.
+                      Whoever did the sensible thing for their post was quietly
+                      having every day's mileage measured from a mail counter. */}
+                  <form action={updateBusinessAddressesAction} className="form-grid compact-form">
+                    <div className="field full">
+                      <label htmlFor="operatingAddress">Operating location</label>
+                      {/* Verified-as-you-type rather than free text: a typo or a
+                          city-only entry fails the precise-match test silently,
+                          and the only symptom is a day whose mileage is short. */}
+                      <AddressAutocomplete
+                        id="operatingAddress"
+                        name="operatingAddress"
+                        placeholder="The yard, shop or home you leave from"
+                        defaultValue={operatingAddress}
+                      />
+                      <small className="field-hint">
+                        Where the working day starts and ends. Used to work out the drive to your first job and back
+                        from your last. Leave it blank and we&rsquo;ll use your mailing address below.
+                      </small>
+                    </div>
+                    {/* Keeps the old #marketing-address anchor alive. The
+                        section around it was renamed, and a bookmark that opens
+                        the right panel but scrolls nowhere looks like it worked. */}
+                    <div className="field full" id="marketing-address">
+                      <label htmlFor="mailingAddress">Business mailing address</label>
                       <AddressAutocomplete
                         id="mailingAddress"
                         name="mailingAddress"
@@ -1009,17 +1057,67 @@ export default async function SettingsPage({
                         defaultValue={mailingAddress}
                       />
                       <small className="field-hint">
-                        Start typing and pick your address. We also use this to work out the drive to your first job
-                        and back from your last.
+                        Printed in the footer of promotional emails &mdash; campaign blasts, &ldquo;book again&rdquo;
+                        invites and review requests. Anti-spam law (CAN-SPAM) requires a real postal address, and a PO
+                        box is fine. Campaign emails won&rsquo;t send until this is set.
                       </small>
                     </div>
                     <div className="form-actions">
-                      <SaveButton>Save mailing address</SaveButton>
+                      <SaveButton>Save locations</SaveButton>
                     </div>
                   </form>
                 </section>
-
-                <p className="automation-group">Your data &amp; taxes</p>
+              </>
+          ),
+        },
+        {
+          id: 'costs',
+          label: 'Costs & job settings',
+          blurb: 'What labour really costs you, and when to warn about a thin job.',
+          anchors: ['job-costing'],
+          content: (
+            <section className="panel workspace-section-card" id="job-costing">
+              <JobCostingSection burdenPct={defaultBurdenPct} minMarginPct={minMarginPct} />
+            </section>
+          ),
+        },
+        {
+          id: 'trust',
+          label: 'Trust & compliance',
+          blurb: 'The credentials that go in front of a customer.',
+          anchors: ['insurance'],
+          content: (
+                <InsuranceSection
+                  record={insuranceRecord}
+                  todayKey={insuranceToday}
+                  proofUrl={insuranceUrl}
+                  uploadedAt={(ins.insurance_uploaded_at as string) ?? null}
+                  saveAction={updateInsuranceAction}
+                  removeAction={removeInsuranceAction}
+                />
+          ),
+        },
+        {
+          id: 'apps',
+          label: 'Connected apps',
+          blurb: 'The other tools your business runs on.',
+          anchors: ['quickbooks'],
+          content: (
+                <QuickBooksSection
+                  status={quickBooksStatus}
+                  notice={searchParams.quickbooks}
+                  syncAction={syncQuickBooksAction}
+                  backfillAction={backfillQuickBooksAction}
+                />
+          ),
+        },
+        {
+          id: 'data',
+          label: 'Import & data',
+          blurb: 'Bring your records in, or take them out.',
+          anchors: ['import', 'export'],
+          content: (
+              <>
                 <section className="panel workspace-section-card" id="import">
                   <div className="section-heading workspace-section-heading compact-heading">
                     <p className="eyebrow">Get set up</p>
@@ -1054,22 +1152,15 @@ export default async function SettingsPage({
                     <a href="/api/export/invoices" className="btn secondary">⬇ Invoices (CSV)</a>
                   </div>
                 </section>
-
-                <InsuranceSection
-                  record={insuranceRecord}
-                  todayKey={insuranceToday}
-                  proofUrl={insuranceUrl}
-                  saveAction={updateInsuranceAction}
-                  removeAction={removeInsuranceAction}
-                />
-
-                <QuickBooksSection
-                  status={quickBooksStatus}
-                  notice={searchParams.quickbooks}
-                  syncAction={syncQuickBooksAction}
-                  backfillAction={backfillQuickBooksAction}
-                />
-
+              </>
+          ),
+        },
+        {
+          id: 'taxes',
+          label: 'Taxes & reports',
+          blurb: 'Your figures, prepared the way a bookkeeper wants them.',
+          anchors: ['finances'],
+          content: (
                 <section className="panel workspace-section-card" id="finances">
                   <FinanceReports
                     year={selectedYear}
@@ -1079,7 +1170,10 @@ export default async function SettingsPage({
                     subPrep={subPrep}
                   />
                 </section>
-              </>
+          ),
+        },
+                ]}
+              />
             ),
           },
         ]}

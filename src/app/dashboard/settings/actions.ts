@@ -604,30 +604,41 @@ export async function updateDepositSettingsAction(formData: FormData) {
 // it to be wrong: the checkbox rendered from a stale value, so pressing Save
 // could undo a switch flipped a moment earlier.
 
-// CAN-SPAM: the business's physical postal address, printed in the footer of
-// every marketing email — and, once geocoded, the point Plan my day measures the
-// drive out and back from.
-export async function updateMailingAddressAction(formData: FormData) {
+// The two addresses a business has, saved together because they are one form.
+//
+// They used to be one field doing both jobs. CAN-SPAM wants a physical postal
+// address in the footer of every marketing email, and a PO box satisfies that
+// perfectly — while the same string was being geocoded into the point Plan my
+// day measures the drive out and back from. A PO box has no driveway, so a
+// contractor doing the sensible thing for their post quietly broke their route.
+//
+// Operating location wins the geocode when it is set; the mailing address is
+// only the fallback, which is what keeps every existing account exactly where
+// it was until somebody fills the new field in.
+export async function updateBusinessAddressesAction(formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
-  // The field is an autocomplete now, which yields one line. Older values were
+  // The fields are autocompletes now, which yield one line. Older values were
   // typed into a textarea and can carry newlines; collapse them so the footer
   // renders on one line and the geocoder gets a clean single-line query.
-  const mailingAddress =
-    String(formData.get('mailingAddress') ?? '')
+  const clean = (value: FormDataEntryValue | null) =>
+    String(value ?? '')
       .replace(/\s*\n\s*/g, ', ')
       .replace(/\s+/g, ' ')
       .replace(/\s*,\s*,\s*/g, ', ')
       .trim() || null;
+  const mailingAddress = clean(formData.get('mailingAddress'));
+  const operatingAddress = clean(formData.get('operatingAddress'));
 
-  // Geocode the business address into the service-area center / cold-start anchor
-  // for route-density. Best-effort + precise-only; clears the center if the
-  // address was removed or can't be resolved.
-  const geo = mailingAddress ? await geocodeAddress(mailingAddress) : null;
+  // Geocode the address the day is actually driven from into the service-area
+  // center / cold-start anchor for route-density. Best-effort + precise-only;
+  // clears the center if both addresses were removed or can't be resolved.
+  const anchor = operatingAddress ?? mailingAddress;
+  const geo = anchor ? await geocodeAddress(anchor) : null;
   const center = geo?.precise ? { service_center_lat: geo.lat, service_center_lng: geo.lng } : { service_center_lat: null, service_center_lng: null };
 
   const { error } = await supabase
     .from('accounts')
-    .update({ mailing_address: mailingAddress, ...center })
+    .update({ mailing_address: mailingAddress, operating_address: operatingAddress, ...center })
     .eq('id', accountId);
 
   if (error) throw new Error(error.message);

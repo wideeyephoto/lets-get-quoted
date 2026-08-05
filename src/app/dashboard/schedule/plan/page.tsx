@@ -383,10 +383,13 @@ export default async function PlanDayPage({
           <p>
             {crewId
               ? 'Set where this crew member starts their day and their route will be measured from there.'
-              : 'Add your business address and every day will include the drive to the first job and back from the last.'}
+              : 'Add the yard, shop or home you leave from and every day will include the drive to the first job and back from the last.'}
           </p>
-          <Link href={crewId ? '/dashboard/crew' : '/dashboard/settings#marketing-address'} className="btn primary">
-            {crewId ? 'Open the crew roster' : 'Add your business address'}
+          {/* Points at the operating location, not the mailing address. They are
+              two fields now precisely because this link used to send people to
+              the one that can legitimately be a PO box. */}
+          <Link href={crewId ? '/dashboard/crew' : '/dashboard/settings#addresses'} className="btn primary">
+            {crewId ? 'Open the crew roster' : 'Add your operating location'}
           </Link>
         </details>
       ) : null}

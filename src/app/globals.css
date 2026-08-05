@@ -22354,3 +22354,235 @@ a.bset-card { color: inherit; text-decoration: none; }
   font-size: 0.82rem;
   line-height: 1.45;
 }
+
+/* ---------------------------------------------------------------------------
+   SETTINGS → BUSINESS — a workspace, not a scroll
+   ---------------------------------------------------------------------------
+   Eight forms stacked one on top of the other, with no way to tell whether
+   anything was missing without opening every one of them. Now: a rail of named
+   sections, and an Overview that answers "is my account set up?" in a number.
+   --------------------------------------------------------------------------- */
+.bz-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+  gap: 1.4rem;
+  align-items: start;
+}
+@media (max-width: 900px) {
+  /* The rail becomes a scrolling row of chips above the panel rather than
+     stacking seven full-width buttons — on a phone that is a screen of nav
+     before you reach a single setting. */
+  .bz-shell { grid-template-columns: minmax(0, 1fr); }
+  .bz-rail { position: static; }
+  .bz-rail .eyebrow, .bz-rail-title { display: none; }
+  .bz-rail ul { flex-direction: row; overflow-x: auto; padding-bottom: 0.35rem; scrollbar-width: thin; }
+  .bz-rail li { flex: none; }
+  .bz-rail-link { white-space: nowrap; }
+}
+
+.bz-rail { position: sticky; top: 1rem; }
+.bz-rail .eyebrow { margin: 0 0 0.15rem 0.55rem; }
+.bz-rail-title { margin: 0 0 0.9rem 0.55rem; font-size: 1.45rem; font-weight: 750; letter-spacing: -0.01em; }
+.bz-rail ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.bz-rail-link {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.14s ease, background 0.14s ease;
+}
+.bz-rail-link svg { flex: none; width: 18px; height: 18px; opacity: 0.9; }
+.bz-rail-link:hover { color: var(--text); background: rgba(var(--tint), 0.045); }
+.bz-rail-link.is-active {
+  color: var(--accent-ink);
+  background: rgba(255, 138, 61, 0.09);
+  border-color: var(--cedge-orange-32);
+}
+/* The count of things wrong INSIDE that section, so the rail carries the
+   Overview's alerts rather than making you go back to find them. */
+.bz-rail-badge {
+  margin-left: auto;
+  min-width: 18px; height: 18px;
+  padding: 0 5px;
+  display: grid; place-items: center;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.bz-panel { min-width: 0; }
+.bz-section-head { margin: 0 0 1rem; }
+.bz-section-head h3 { margin: 0; font-size: 1.32rem; font-weight: 750; letter-spacing: -0.01em; }
+.bz-section-head p { margin: 0.25rem 0 0; color: var(--muted); font-size: 0.88rem; }
+
+/* --- the overview ------------------------------------------------------------ */
+.bz-overview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.bz-overview-head h3 { margin: 0; font-size: 1.2rem; font-weight: 750; }
+.bz-overview-head p { margin: 0.2rem 0 0; color: var(--muted); font-size: 0.88rem; }
+
+.bz-ring { position: relative; flex: none; width: 74px; height: 74px; display: grid; place-items: center; }
+.bz-ring svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.bz-ring-track { fill: none; stroke: rgba(var(--tint), 0.1); stroke-width: 6; }
+.bz-ring-fill {
+  fill: none;
+  stroke: var(--ink-green-1);
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.4s ease;
+}
+.bz-ring-num { display: grid; justify-items: center; line-height: 1; }
+.bz-ring-num strong { font-size: 1.3rem; font-weight: 780; font-variant-numeric: tabular-nums; }
+.bz-ring-num small { margin-top: 2px; color: var(--mute-t55); font-size: 0.62rem; }
+
+.bz-alerts { display: grid; gap: 0.5rem; margin-top: 1.1rem; }
+.bz-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--cedge-orange-32);
+  border-radius: 12px;
+  background: rgba(255, 138, 61, 0.07);
+}
+.bz-alert > span { display: grid; gap: 0.1rem; min-width: 0; flex: 1; }
+.bz-alert strong { font-size: 0.9rem; font-weight: 700; }
+.bz-alert small { color: var(--muted); font-size: 0.82rem; line-height: 1.45; }
+.bz-alert .btn { flex: none; padding: 0.4rem 0.8rem; font-size: 0.82rem; }
+
+.bz-checklist { list-style: none; margin: 1.1rem 0 0; padding: 0; display: grid; gap: 0.1rem; }
+.bz-check {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 0.15rem;
+}
+.bz-check + .bz-check { border-top: 1px solid var(--rule-t08); }
+.bz-check-copy { display: grid; gap: 0.12rem; min-width: 0; flex: 1; }
+.bz-check-copy strong { display: flex; align-items: center; gap: 0.45rem; font-size: 0.9rem; font-weight: 680; }
+.bz-check-copy small { color: var(--muted); font-size: 0.82rem; line-height: 1.45; }
+.bz-optional {
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.08);
+  color: var(--mute-t55);
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.bz-check .linklike { flex: none; font-size: 0.82rem; }
+
+.bz-mark { flex: none; width: 20px; height: 20px; }
+.bz-mark.is-complete { color: var(--ink-green-1); }
+.bz-mark.is-attention { color: var(--accent-ink); }
+.bz-mark.is-todo { color: var(--mute-t55); }
+
+/* --- the section index -------------------------------------------------------- */
+.bz-jump { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: 0.55rem; }
+.bz-jump-card {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--edge-t10);
+  border-radius: 14px;
+  background: rgba(var(--tint), 0.02);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+.bz-jump-card:hover { border-color: var(--cedge-orange-32); background: rgba(255, 138, 61, 0.05); }
+/* :not(.bz-jump-num) matters — the number is a direct <span> child too, and
+   without this it takes the flex: 1 and stretches across the whole card. */
+.bz-jump-card > span:not(.bz-jump-num) { display: grid; gap: 0.12rem; min-width: 0; flex: 1; }
+.bz-jump-card strong { font-size: 0.95rem; font-weight: 700; }
+.bz-jump-card small { color: var(--muted); font-size: 0.83rem; }
+.bz-jump-card > svg { flex: none; width: 16px; height: 16px; color: var(--mute-t55); }
+.bz-jump-num {
+  flex: none;
+  width: 2rem; height: 2rem;
+  display: grid; place-items: center;
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.06);
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 780;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Settings → Trust: the certificate as a summary, not a form -------------- */
+.ins-summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 0.9rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--edge-t14);
+  border-left-width: 3px;
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.025);
+}
+.ins-summary.is-ok { border-left-color: var(--ink-green-1); }
+.ins-summary.is-warn, .ins-summary.is-expired { border-left-color: var(--accent); }
+.ins-summary.is-off { border-left-color: var(--mute-t55); }
+.ins-summary-main { min-width: 0; flex: 1; display: grid; gap: 0.22rem; }
+.ins-summary-main strong { font-size: 0.98rem; font-weight: 730; }
+.ins-summary-facts { margin: 0; color: var(--text); font-size: 0.86rem; }
+.ins-summary-state { margin: 0; color: var(--muted); font-size: 0.83rem; line-height: 1.45; }
+.ins-summary-chip {
+  flex: none;
+  padding: 0.22rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.08);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.ins-summary.is-ok .ins-summary-chip { background: rgba(120, 220, 150, 0.16); color: var(--ink-green-1); }
+.ins-summary.is-warn .ins-summary-chip, .ins-summary.is-expired .ins-summary-chip { background: rgba(255, 138, 61, 0.16); color: var(--accent-ink); }
+.ins-summary-file { margin: 0.6rem 0 0; color: var(--muted); font-size: 0.83rem; }
+.ins-summary-file a { color: var(--accent-ink); }
+.ins-edit { margin-top: 0.9rem; }
+.ins-edit-body { margin-top: 0.9rem; }
+
+/* Disconnecting an integration, kept away from the button that uses it. */
+.qb-danger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 1.1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--rule-t10);
+}
+.qb-danger > span { display: grid; gap: 0.12rem; min-width: 0; }
+.qb-danger strong { font-size: 0.88rem; font-weight: 680; }
+.qb-danger small { color: var(--muted); font-size: 0.81rem; }

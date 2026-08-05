@@ -158,10 +158,21 @@ export default function QuickBooksSection({
                 Send the {status.backlog} older one{status.backlog === 1 ? '' : 's'} too
               </ConfirmActionButton>
             ) : null}
-            {/* POST, so no link a browser or mail client might prefetch can
-                disconnect a contractor's accounting. */}
+          </div>
+
+          {/* Below a rule and on its own, not beside "Send now". They were the
+              same button in the same row — one posts your invoices, the other
+              cuts your accounting off, and a misfire between the two is not
+              symmetrical.
+              Still a POST, so no link a browser or mail client might prefetch
+              can disconnect a contractor's accounting. */}
+          <div className="qb-danger">
+            <span>
+              <strong>Disconnect QuickBooks</strong>
+              <small>Nothing more gets sent. What is already in your books stays there.</small>
+            </span>
             <form action="/api/quickbooks/disconnect" method="post">
-              <button type="submit" className="btn secondary">Disconnect QuickBooks</button>
+              <button type="submit" className="linklike danger">Disconnect</button>
             </form>
           </div>
         </>
