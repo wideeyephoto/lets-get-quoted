@@ -5,6 +5,7 @@ import { resolveMarketingMailingAddress } from '@/lib/email-suppression';
 import { buildQuickStopPitch } from '@/lib/quick-stop-pitch';
 import { campaignDraftForBeat } from '@/lib/marketing-draft-data';
 import { loadBlogWorkspace } from '@/lib/site-blog';
+import { listRebookCandidates, DEFAULT_REBOOK_DAYS } from '@/lib/rebook';
 import { marketingCalendarAction } from './actions';
 import MarketingWorkspace from './MarketingWorkspace';
 
@@ -19,13 +20,25 @@ export default async function MarketingPage({
 }) {
   const { supabase, accountId } = await requireOwnerContext();
 
-  const [view, recipients, campaigns, listHealth, { data: addressRow }] = await Promise.all([
+  const [view, recipients, campaigns, listHealth, { data: addressRow }, rebookCandidates] = await Promise.all([
     marketingCalendarAction(4),
     loadRecipients(supabase, accountId),
     listCampaigns(supabase, accountId),
     loadListHealth(supabase, accountId),
     supabase.from('accounts').select('mailing_address').eq('id', accountId).maybeSingle(),
+    listRebookCandidates(supabase, accountId, DEFAULT_REBOOK_DAYS),
   ]);
+
+  // Past customers overdue for another job. A summary only — the list and the
+  // sending live on their own page. `uninvited` is the number that matters: the
+  // rest have already been asked, and asking them again is how you become the
+  // contractor somebody blocks.
+  const rebook = {
+    days: DEFAULT_REBOOK_DAYS,
+    due: rebookCandidates.length,
+    reachable: rebookCandidates.filter((candidate) => candidate.smsReady || candidate.hasEmail).length,
+    uninvited: rebookCandidates.filter((candidate) => (candidate.smsReady || candidate.hasEmail) && !candidate.invitedAt).length,
+  };
 
   const mailingAddress = resolveMarketingMailingAddress(addressRow?.mailing_address as string | null);
 
@@ -140,6 +153,7 @@ export default async function MarketingPage({
         campaigns={campaigns}
         hasRecipients={recipients.length > 0}
         blog={blogSummary}
+        rebook={rebook}
         composer={{
           audiences: AUDIENCE_DEFS,
           reach,

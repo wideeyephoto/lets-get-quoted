@@ -56,6 +56,12 @@ export default async function RebookPage({
             These are customers you&apos;ve worked with before who haven&apos;t booked in a while. Send them your booking
             link in a tap — texting opted-in mobiles, emailing the rest — and turn a finished job into the next one.
           </p>
+          {/* This page has no row in the rail any more — it is reached from
+              Marketing — so it carries the way back itself rather than leaving
+              you on a page nothing in the sidebar is lit for. */}
+          <p className="workspace-lead">
+            <Link href="/dashboard/marketing">← Back to Marketing</Link>
+          </p>
         </div>
       </section>
 

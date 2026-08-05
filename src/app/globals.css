@@ -21286,22 +21286,28 @@ a.bset-card { color: inherit; text-decoration: none; }
    swapping it for the accent orange when you're standing on the page would mean
    the icon you learned to look for is the one that disappears. "Where am I" is
    still carried by the row's wash and its left bar, which is unchanged. */
+/* Neon, not merely tinted: a brighter core and a wider bloom, so it reads as a
+   lit tube next to the green one rather than a blue-ish glyph. It does NOT
+   flicker — cash flow does, and two stuttering lights in one sidebar is a fault
+   report, not a signature. */
 .sidenav-link[href$='/insights'] .sidenav-ic {
-  color: #38bdf8;
-  filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.7)) drop-shadow(0 0 11px rgba(56, 189, 248, 0.32));
+  color: #4bd9ff;
+  filter: drop-shadow(0 0 4px rgba(75, 217, 255, 0.85)) drop-shadow(0 0 13px rgba(75, 217, 255, 0.42));
 }
 .sidenav-link[href$='/insights']:hover {
-  background: rgba(56, 189, 248, 0.09);
+  background: rgba(75, 217, 255, 0.1);
 }
 .sidenav-link[href$='/insights']:hover .sidenav-ic,
 .sidenav-link[href$='/insights'].active .sidenav-ic {
-  color: #7dd3fc;
-  filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.85)) drop-shadow(0 0 14px rgba(56, 189, 248, 0.42));
+  color: #9aeaff;
+  filter: drop-shadow(0 0 6px rgba(75, 217, 255, 0.95)) drop-shadow(0 0 17px rgba(75, 217, 255, 0.5));
 }
 /* A glow is a shadow, and on paper a light-blue haze over a white ground is a
-   smudge rather than a light. Light theme keeps the colour and drops the bloom. */
+   smudge rather than a light. Light theme keeps the colour and drops the bloom
+   — and darkens the core, because neon cyan on white is a highlighter. */
 :root[data-theme='light'] .sidenav-link[href$='/insights'] .sidenav-ic {
-  filter: drop-shadow(0 0 3px rgba(56, 189, 248, 0.45));
+  color: #0a91c4;
+  filter: drop-shadow(0 0 3px rgba(75, 217, 255, 0.5));
 }
 
 /* Cash flow wears a neon tube, in green, and it flickers.

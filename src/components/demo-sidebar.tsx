@@ -83,7 +83,8 @@ const GROUPS: { label: string; items: DemoItem[] }[] = [
       // The icon key follows the real nav to /dashboard/marketing; the demo's
       // own URL stays /demo/campaigns, which is public and has no reason to move.
       { icon: '/dashboard/marketing', label: 'Marketing', href: '/demo/campaigns' },
-      { icon: '/dashboard/rebook', label: 'Rebook', href: '/demo/rebook' },
+      // Rebook is a section on Marketing in the real app, not a rail row, and
+      // /demo/rebook is reached the same way — from the Marketing page.
       { icon: '/dashboard/reviews', label: 'Reviews', href: '/demo/reviews' },
     ],
   },

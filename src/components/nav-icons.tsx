@@ -30,7 +30,11 @@ export const NAV_ICON_PATHS: Record<string, string> = {
   // closed book is a rounded rectangle at 18px and sat in the rail as an empty
   // box, while the ribbon notch survives the size and says "book" on its own.
   '/dashboard/services': '<path d="M10 2v8l3-3 3 3V2"/><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/>',
-  '/dashboard/insights': '<path d="M3.5 17.5l5.5-5.5 3.5 3.5 7.5-7.5"/><path d="M15 7.5h5.5V13"/>',
+  // A trend arrow standing ON an axis. The baseline is what separates it from
+  // the cash-flow arrow two rows up — both are lit lines that rise to the right,
+  // and at 18px "how many times does it wobble" is not a distinction anybody
+  // makes at a glance. A chart has a floor; a neon sign does not.
+  '/dashboard/insights': '<path d="M3.2 20.4h17.6"/><path d="M4.4 16.2l5-5.4 3.4 3.4 6.8-7.2"/><path d="M14.2 7h5.6v5.6"/>',
   '/dashboard/messages': '<path d="M3.6 6.6A2 2 0 0 1 5.6 4.6h12.8a2 2 0 0 1 2 2v6.6a2 2 0 0 1-2 2H9l-4.2 3.6v-3.6H5.6a2 2 0 0 1-2-2z"/>',
   // Keyed to /dashboard/marketing, where the composer now lives. It was on
   // /dashboard/campaigns, which meant the merged page rendered with no glyph at

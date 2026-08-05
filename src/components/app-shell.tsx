@@ -42,7 +42,10 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   // dozen, which made it feel like editing a website rather than doing
   // marketing — which is what it is.
   { href: '/dashboard/marketing/blog', label: 'Blog', hint: 'Posts for your website' },
-  { href: '/dashboard/rebook', label: 'Rebook', hint: 'Win back past customers' },
+  // Rebook is NOT a rail item. It reached the rail as a destination but it is a
+  // reason to send something, so it lives on Marketing beside the composer that
+  // sends it — see MarketingWorkspace. The page itself is still at
+  // /dashboard/rebook, still linked from there and from the dashboard.
   { href: '/dashboard/insights', label: 'Insights', hint: 'Funnel & revenue trends' },
   { href: '/dashboard/reviews', label: 'Reviews', hint: 'Ratings & private feedback' },
   { href: '/dashboard/sites', label: 'Website' },
@@ -78,7 +81,7 @@ const NAV_GROUPS: { label: string; hrefs: string[] }[] = [
   { label: 'Work', hrefs: ['/dashboard/leads', '/dashboard/jobs', '/dashboard/schedule', '/dashboard/schedule/booking', '/dashboard/quick-stops', '/dashboard/clients'] },
   { label: 'Team', hrefs: ['/dashboard/crew'] },
   { label: 'Money', hrefs: ['/dashboard/cash-flow', '/dashboard/recurring', '/dashboard/services', '/dashboard/insights'] },
-  { label: 'Grow', hrefs: ['/dashboard/messages', '/dashboard/marketing', '/dashboard/marketing/blog', '/dashboard/rebook', '/dashboard/reviews'] },
+  { label: 'Grow', hrefs: ['/dashboard/messages', '/dashboard/marketing', '/dashboard/marketing/blog', '/dashboard/reviews'] },
 ];
 
 type AccountStatus = {

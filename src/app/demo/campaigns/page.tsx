@@ -202,6 +202,21 @@ export default function DemoCampaignsPage() {
         </div>
       </section>
 
+      {/* Mirrors the real Marketing page, where winning back a past customer is
+          a section here rather than its own rail destination. */}
+      <section className="panel workspace-section-card">
+        <div className="section-heading workspace-section-heading compact-heading">
+          <p className="eyebrow">Book again</p>
+        </div>
+        <p className="workspace-card-copy">
+          Past customers who have gone a season without booking. They already know whether they liked
+          the work, which makes them the cheapest send on this page.
+        </p>
+        <div className="marketing-actions">
+          <Link href="/demo/rebook" className="btn secondary">Who&rsquo;s due to rebook</Link>
+        </div>
+      </section>
+
       <section className="panel workspace-section-card demo-locked-card">
         <div className="section-heading workspace-section-heading">
           <p className="eyebrow">Try it yourself</p>
