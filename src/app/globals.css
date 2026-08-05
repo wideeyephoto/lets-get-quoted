@@ -11241,6 +11241,12 @@ a.recurring-fact:hover { color: var(--text); border-bottom-color: currentColor; 
 }
 .recurring-card-pending { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--ink-orange-1); font-weight: 600; }
 .recurring-manual { color: var(--mute-t45); font-size: 0.78rem; }
+/* How this plan bills is the fact; the switch beside it is an offer. Sized down
+   and dimmed so the row still reads "Manual billing" before it reads a button. */
+.recurring-billing form { display: inline-flex; }
+.recurring-billing .linklike { font-size: 0.78rem; opacity: 0.78; }
+.recurring-billing .linklike:hover,
+.recurring-billing .linklike:focus-visible { opacity: 1; }
 .recurring-card-actions {
   grid-column: 1 / -1;
   display: flex;

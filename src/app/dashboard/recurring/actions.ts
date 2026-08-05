@@ -10,6 +10,7 @@ import {
   setRecurringPlanActive,
   deleteRecurringPlan,
   runRecurringPlanNow,
+  setRecurringPlanAutopay,
   todayDateKey,
   updateRecurringPlan,
   requiresReconsent,
@@ -113,6 +114,39 @@ export async function deletePlanAction(planId: string) {
   revalidatePath('/dashboard/schedule');
   revalidatePath('/dashboard/jobs');
   redirect(`/dashboard/recurring?flash=deleted${visitsRemoved > 0 ? `&removed=${visitsRemoved}` : ''}`);
+}
+
+/**
+ * Turn autopay on or off on a plan that already exists.
+ *
+ * Blunt on purpose: the switch flips immediately rather than waiting for the
+ * customer to do anything. Turning it on sends the card link as well, and until
+ * a card lands the plan reads "Awaiting card" and shows up in the attention
+ * banner — which is the honest state, and one the owner can already see and
+ * chase. Waiting for the card before flipping the switch would leave the owner
+ * pressing a button that appears to do nothing for a day.
+ *
+ * A failed send is NOT a failed switch. Autopay is a fact about the plan; the
+ * link is a message about it, and the flash says which one didn't happen.
+ */
+export async function setPlanAutopayAction(planId: string, autoCharge: boolean) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const plan = await setRecurringPlanAutopay(supabase, accountId, planId, autoCharge);
+
+  let flash = autoCharge ? 'autopay-on' : 'autopay-off';
+  if (autoCharge && !plan.card_last4) {
+    try {
+      await sendCardLink(supabase, accountId, planId);
+      flash = 'autopay-card-sent';
+    } catch (error) {
+      console.error('Autopay card link send failed:', error instanceof Error ? error.message : error);
+      flash = 'autopay-card-failed';
+    }
+  }
+
+  revalidatePath('/dashboard/recurring');
+  revalidatePath('/dashboard/cash-flow');
+  redirect(`/dashboard/recurring?flash=${flash}`);
 }
 
 export async function resendCardLinkAction(planId: string) {

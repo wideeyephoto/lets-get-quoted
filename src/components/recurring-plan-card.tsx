@@ -29,12 +29,21 @@ export default function RecurringPlanCard({
   plan,
   today,
   resendLink,
+  autopayToggle = null,
   context = EMPTY_PLAN_CONTEXT,
   children,
 }: {
   plan: RecurringPlan;
   today: string;
   resendLink: ReactNode;
+  /**
+   * Switches the plan between autopay and manual billing. It lives in the
+   * billing row rather than with the actions because it changes what that row
+   * SAYS — putting it in the button strip would make the owner read one part of
+   * the card to find the control for another. Optional, like the demo's cards,
+   * which have no server actions to bind.
+   */
+  autopayToggle?: ReactNode;
   /** Optional so the demo can render a card without a database behind it. */
   context?: PlanContext;
   children: ReactNode;
@@ -158,6 +167,7 @@ export default function RecurringPlanCard({
           ) : (
             <span className="recurring-manual">Manual billing</span>
           )}
+          {autopayToggle}
         </div>
 
         {/* When money moves, and proof the plan is actually progressing. The

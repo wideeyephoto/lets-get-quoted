@@ -350,6 +350,49 @@ export async function setRecurringPlanActive(
 }
 
 /**
+ * Switch a live plan between autopay and manual billing.
+ *
+ * This could only be chosen when the plan was created, so a customer who later
+ * said "just put it on my card" meant cancelling the plan and building it again
+ * — losing its history to change one boolean.
+ *
+ * Turning autopay OFF deliberately leaves the stored card alone. It means stop
+ * charging this automatically, not forget the card: the customer can be switched
+ * back on next season without being asked for their number a second time, and
+ * the card still belongs to the Stripe customer either way.
+ */
+export async function setRecurringPlanAutopay(
+  supabase: SupabaseClient,
+  accountId: string,
+  planId: string,
+  autoCharge: boolean,
+): Promise<RecurringPlan> {
+  const plan = await getRecurringPlan(supabase, accountId, planId);
+  if (!plan) throw new Error('Plan not found.');
+  // A card on file is permission to take an agreed figure. There isn't one at
+  // $0, and a plan that charges nothing on a schedule is a bug either way.
+  if (autoCharge && plan.amount <= 0) throw new Error('Autopay needs an amount greater than $0. Set the price first.');
+  // Only when a link actually has to go out. A plan that already HAS a card
+  // needs no contact details to start charging it, and demanding them refuses
+  // the most ordinary case there is: a customer who has already paid by card
+  // once and now wants it done automatically.
+  if (autoCharge && !plan.card_last4 && !plan.client_email && !plan.client_phone) {
+    throw new Error(`Autopay needs ${plan.client_name}’s email or phone — that’s where the card link goes.`);
+  }
+
+  const { data, error } = await supabase
+    .from('recurring_plans')
+    .update({ auto_charge: autoCharge, updated_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('id', planId)
+    .select('*')
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error('Plan not found.');
+  return data as RecurringPlan;
+}
+
+/**
  * Change a live plan: price, cadence, or the day it next runs.
  *
  * Anything that moves the schedule has to take the already-generated future

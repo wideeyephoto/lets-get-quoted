@@ -19,7 +19,7 @@ import Sparkline from '@/components/sparkline';
 import RecurringPlanCard from '@/components/recurring-plan-card';
 import RecurringHowItWorks from '@/components/recurring-how-it-works';
 import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
-import { setPlanActiveAction, deletePlanAction, resendCardLinkAction, runPlanNowAction, updatePlanAction } from './actions';
+import { setPlanActiveAction, deletePlanAction, resendCardLinkAction, runPlanNowAction, setPlanAutopayAction, updatePlanAction } from './actions';
 import EditPlanPanel from './EditPlanPanel';
 
 const FLASH_MESSAGES: Record<string, { tone: 'success' | 'info' | 'warn'; text: string }> = {
@@ -30,6 +30,10 @@ const FLASH_MESSAGES: Record<string, { tone: 'success' | 'info' | 'warn'; text: 
   'ran-paid': { tone: 'success', text: 'Visit created and the saved card was charged. Check the job and its payment to confirm.' },
   'ran-skipped': { tone: 'info', text: 'Visit created and the schedule advanced. Nothing was charged (auto-charge off or no card on file).' },
   'ran-failed': { tone: 'warn', text: 'Visit created, but the card charge didn’t go through — the customer was sent a pay link. See the job’s payment.' },
+  'autopay-on': { tone: 'success', text: 'Autopay is on. The card already on file is charged on the day of each visit — nothing was charged now.' },
+  'autopay-card-sent': { tone: 'success', text: 'Autopay is on and a secure card-setup link was sent to your customer. Visits bill nobody until they add a card, so the plan stays flagged until then.' },
+  'autopay-card-failed': { tone: 'warn', text: 'Autopay is on, but the card link couldn’t be sent. Add an email or opted-in phone to the plan, then resend it — until a card lands these visits bill nobody.' },
+  'autopay-off': { tone: 'info', text: 'Switched to manual billing. Visits still happen and still invoice; no card is charged automatically. Any card on file was kept.' },
 };
 
 export default async function RecurringPage({ searchParams }: { searchParams: { flash?: string; job?: string } }) {
@@ -250,6 +254,30 @@ export default async function RecurringPage({ searchParams }: { searchParams: { 
                     <form action={resendCardLinkAction.bind(null, plan.id)}>
                       <button type="submit" className="linklike">Resend link</button>
                     </form>
+                  }
+                  /* Hidden at $0 rather than offered and refused: the server
+                     rejects autopay without a price, and a button whose only
+                     outcome is an error is worse than no button. */
+                  autopayToggle={
+                    plan.auto_charge ? (
+                      <form action={setPlanAutopayAction.bind(null, plan.id, false)}>
+                        <button type="submit" className="linklike">Switch to manual billing</button>
+                      </form>
+                    ) : plan.amount > 0 ? (
+                      <ConfirmActionButton
+                        action={setPlanAutopayAction.bind(null, plan.id, true)}
+                        confirmMessage={
+                          plan.card_last4
+                            ? `Turn on autopay for ${plan.client_name}? The card already on file (•••• ${plan.card_last4}) is charged ${formatMoney(plan.amount)} on the day of each visit from here on. Nothing is charged right now.`
+                            : `Turn on autopay for ${plan.client_name}? They get a secure link to add a card, and each visit then charges ${formatMoney(plan.amount)} on the day it happens. Nothing is charged right now.`
+                        }
+                        className="linklike"
+                        pendingLabel="Turning on…"
+                        savedLabel="Autopay on ✓"
+                      >
+                        Turn on autopay
+                      </ConfirmActionButton>
+                    ) : null
                   }
                 >
                   {plan.active ? (
