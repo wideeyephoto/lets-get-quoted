@@ -17,15 +17,21 @@ export const NAV_ICON_PATHS: Record<string, string> = {
   // full-width brim line, so at 18px it read as a bowl on a shelf.
   '/dashboard/crew': '<path d="M10 10V5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v5m0-4a6 6 0 0 1 6 6v3M4 15v-3a6 6 0 0 1 6-6"/><rect x="2" y="15" width="20" height="4" rx="1"/>',
   '/dashboard/recurring': '<path d="M17 3l3.2 3.2L17 9.4"/><path d="M20.2 6.2H8.5a4.3 4.3 0 0 0-4.3 4.3v.6"/><path d="M7 21l-3.2-3.2L7 14.6"/><path d="M3.8 17.8h11.7a4.3 4.3 0 0 0 4.3-4.3v-.6"/>',
-  // A neon trend arrow, lit green — see .sidenav-link[href$='/cash-flow'] in
-  // globals.css for the glow and the flicker.
+  // Money going round: a dollar inside a clockwise loop, lit green — see
+  // .sidenav-link[href$='/cash-flow'] in globals.css for the glow and flicker.
   //
-  // Three peaks and a spear head, where Insights is one clean bend and a corner
-  // arrow. They sit in different groups (MONEY vs GROW) and only one of them is
-  // green and glowing, but the silhouettes still had to differ at 18px — two
-  // rising lines told apart by how many times they wobble is not a distinction
-  // anybody makes at a glance.
-  '/dashboard/cash-flow': '<path d="M2.9 17.4h2.2l2.5-5.2 2.3 3.8 3.3-7 2.3 3.8 4.4-6.3"/><path d="M15.9 3.9l4.4 2.1-2.1 4.4"/>',
+  // A trend arrow was the wrong idea for this page. It says "up", and cash flow
+  // is not a direction — it is money arriving and leaving on a cycle, which is
+  // exactly what the page projects. The dollar is also the only glyph in the
+  // rail that names its subject outright.
+  //
+  // Two arcs of 130° with a 50° gap at each side, so the arrowheads have room to
+  // read as arrowheads at 18px rather than thickening the ring. The dollar is
+  // 58% of the ring's diameter: big enough to survive the size, small enough
+  // that the loop still closes around it. Recurring is two rows down and also
+  // cycles, but it is a flat racetrack with nothing inside it — the $ is what
+  // keeps these two apart at a glance.
+  '/dashboard/cash-flow': '<path d="M4.93 8.7A7.8 7.8 0 0 1 19.07 8.7"/><path d="M19.87 5.7 19.07 8.7 16.26 7.39"/><path d="M19.07 15.3A7.8 7.8 0 0 1 4.93 15.3"/><path d="M4.13 18.3 4.93 15.3 7.74 16.61"/><path d="M15 9h-4.5a1.5 1.5 0 1 0 0 3h3a1.5 1.5 0 1 1 0 3H9"/><path d="M12 16.5V7.5"/>',
   // A book, because the page is called the Price book. With the ribbon: a plain
   // closed book is a rounded rectangle at 18px and sat in the rail as an empty
   // box, while the ribbon notch survives the size and says "book" on its own.
