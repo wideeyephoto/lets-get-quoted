@@ -1,0 +1,481 @@
+/* Smoothie — the queue-first Leads workspace.
+   Same tokens as focus.module.css on purpose: this is Focus reordered, not a
+   second design. Orange stays reserved for the selection and the primary
+   action; every surface, radius and rule is the one the Focus pane uses.
+
+   One rule runs through the whole file: NOTHING here gets its own scrollbar.
+   The queue grows and the page scrolls. A list with `overflow-y: auto` inside a
+   page that also scrolls gives you two wheels under one cursor. */
+
+.smoothie { margin-bottom: 1rem; }
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --- stage filters ------------------------------------------------------- */
+
+.stageBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.7rem;
+}
+
+.stageChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  padding: 0 0.85rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.03);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.stageChip:hover { color: var(--text); border-color: var(--edge-t22); }
+/* Selected is a filled chip AND a heavier weight AND aria-pressed — three
+   signals, only one of which is colour. */
+.stageChip[aria-pressed='true'] {
+  border-color: var(--cedge-orange-82);
+  background: rgba(255, 122, 33, 0.14);
+  color: var(--text);
+  font-weight: 750;
+}
+.stageCount {
+  min-width: 1.4rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.1);
+  font-size: 0.76rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.stageChip[aria-pressed='true'] .stageCount { background: rgba(255, 122, 33, 0.24); color: var(--ink-orange-3); }
+
+/* --- search / sort / pane switch ----------------------------------------- */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.searchWrap { flex: 1 1 16rem; min-width: 0; }
+.search {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.03);
+  color: inherit;
+  font: inherit;
+  font-size: 0.95rem;
+}
+.search::placeholder { color: var(--mute-i42); }
+.search:focus-visible {
+  outline: none;
+  border-color: var(--cedge-orange-30);
+  background: rgba(255, 138, 61, 0.05);
+}
+
+.sortWrap { display: flex; align-items: center; gap: 0.45rem; flex: none; }
+.sortLabel { font-size: 0.82rem; color: var(--muted); }
+.sort {
+  min-height: 44px;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.03);
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.paneSwitch {
+  display: inline-flex;
+  flex: none;
+  padding: 3px;
+  border: 1px solid var(--edge-t14);
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.04);
+}
+.paneBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 38px;
+  padding: 0 0.9rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.paneBtn[aria-pressed='true'] {
+  background: rgba(255, 122, 33, 0.16);
+  color: var(--text);
+  font-weight: 750;
+  box-shadow: inset 0 0 0 1px var(--cedge-orange-30);
+}
+.paneCount {
+  padding: 0.02rem 0.38rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.12);
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.gearSlot { flex: none; }
+
+.addLead {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 0.95rem;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: rgba(255, 122, 33, 0.14);
+  color: var(--accent-ink);
+  font-size: 0.86rem;
+  font-weight: 750;
+  text-decoration: none;
+}
+.addLead:hover { background: rgba(255, 122, 33, 0.22); }
+
+/* --- the two columns ------------------------------------------------------ */
+
+.body {
+  display: grid;
+  /* Queue first and narrower; the detail gets the room, as in Focus. */
+  grid-template-columns: minmax(20rem, 0.82fr) minmax(0, 1.5fr);
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.queue,
+.detail {
+  min-width: 0;
+  border: 1px solid var(--rule-g16);
+  border-radius: 18px;
+  background: rgba(var(--panel-rgb), 0.92);
+  overflow: hidden;
+}
+
+/* The selected-lead pane wears the orange edge Focus gives its open record. */
+.detail { border: 2px solid var(--cedge-orange-82); }
+
+.queueHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem 0.6rem;
+  border-bottom: 1px solid var(--rule-g16);
+}
+.queueTitle { margin: 0; font-size: 0.95rem; font-weight: 700; }
+.queueCount { font-size: 0.82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.rows { list-style: none; margin: 0; padding: 0.35rem; display: flex; flex-direction: column; gap: 0.2rem; }
+
+.row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.6rem;
+  padding: 0.6rem 0.65rem;
+  border: 1px solid transparent;
+  border-left: 3px solid transparent;
+  border-radius: 12px;
+  color: inherit;
+  text-decoration: none;
+  transition: background 0.14s ease, border-color 0.14s ease;
+}
+.row:hover { background: rgba(var(--tint), 0.05); border-color: var(--edge-t10); }
+/* Selection is a left bar + a wash + a weight change, and aria-current carries
+   it to anything that cannot see any of them. */
+.rowOn {
+  background: rgba(255, 122, 33, 0.1);
+  border-color: var(--cedge-orange-30);
+  border-left-color: var(--accent);
+}
+.rowOn .rowName { font-weight: 800; }
+
+.rowDot { margin-top: 0.32rem; }
+.rowMain { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.rowTop { display: flex; align-items: baseline; gap: 0.45rem; flex-wrap: wrap; }
+.rowName { font-size: 0.92rem; font-weight: 650; }
+.rowCity { font-weight: 500; color: var(--muted); }
+.rowHeat { font-size: 0.7rem; font-weight: 800; letter-spacing: 0.03em; }
+.rowHeat[data-score='hot'] { color: var(--ink-orange-3); }
+.rowHeat[data-score='warm'] { color: var(--gold-ink); }
+.rowHeat[data-score='low'] { color: var(--muted); }
+
+.rowDetail {
+  font-size: 0.8rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rowMeta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.5rem; margin-top: 0.15rem; }
+.rowStage,
+.rowPref {
+  padding: 0.06rem 0.42rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.09);
+  color: var(--mute-t60);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.rowStage[data-stage='new'] { background: rgba(255, 122, 33, 0.16); color: var(--ink-orange-3); }
+.rowStage[data-stage='won'] { background: rgba(74, 222, 128, 0.14); color: var(--ink-green-1); }
+.rowWait { font-size: 0.73rem; color: var(--mute-t55); }
+.rowValue { font-size: 0.85rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.emptyQueue { margin: 0; padding: 1.2rem 1rem; font-size: 0.88rem; color: var(--muted); }
+.clearBtn {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--ink-sky-1);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* --- the selected lead ---------------------------------------------------- */
+
+.detailHead {
+  padding: 1rem 1.15rem 0.9rem;
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(255, 122, 41, 0.1), transparent 55%),
+    rgba(var(--tint), 0.015);
+}
+.detailName { margin: 0.1rem 0 0; font-size: 1.5rem; line-height: 1.15; }
+.detailCity { font-size: 0.75em; font-weight: 500; color: var(--muted); }
+.detailProject { margin: 0.3rem 0 0; font-size: 0.9rem; color: var(--muted); }
+
+.detailChips { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin-top: 0.7rem; }
+.detailStage {
+  padding: 0.14rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.1);
+  color: var(--mute-t60);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+.detailStage[data-stage='new'] { background: rgba(255, 122, 33, 0.18); color: var(--ink-orange-3); }
+.detailStage[data-stage='won'] { background: rgba(74, 222, 128, 0.16); color: var(--ink-green-1); }
+
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.5rem 1rem;
+  margin: 0.9rem 0 0;
+}
+.facts div { min-width: 0; }
+.facts dt { font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--mute-i56); }
+.facts dd { margin: 0.15rem 0 0; font-size: 0.88rem; font-weight: 650; }
+.waiting { color: var(--ink-orange-3); }
+
+/* Communication and lifecycle are separated by a rule, not by spacing alone —
+   they are different kinds of decision and the eye should not run them
+   together. */
+.comms {
+  padding: 0.8rem 1.15rem;
+  border-top: 1px solid var(--rule-g16);
+  border-bottom: 1px solid var(--rule-g16);
+  background: rgba(var(--tint), 0.02);
+}
+.commsNote { margin: 0 0 0.55rem; font-size: 0.8rem; color: var(--muted); }
+.commsRow { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.commsRow .btn { min-height: 44px; }
+.callQuiet {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 0.7rem;
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 0.83rem;
+  text-decoration: none;
+}
+.callQuiet:hover { color: var(--text); background: rgba(var(--tint), 0.06); }
+
+.lifecycle { padding: 0.75rem 1.15rem; }
+.lifecycleLabel {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mute-i56);
+}
+.lifecycleRow { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem; }
+.quietBtn {
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.03);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.quietBtn:hover { color: var(--text); border-color: var(--edge-t22); }
+.quietLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-left: auto;
+  padding: 0 0.5rem;
+  color: var(--ink-sky-1);
+  font-size: 0.83rem;
+  text-decoration: none;
+}
+.quietLink:hover { text-decoration: underline; }
+
+.tabBody { padding: 0.9rem 1.15rem 1.1rem; }
+.tabBody:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.paneTitle { margin: 0; font-size: 0.98rem; font-weight: 700; }
+
+/* --- the map pane --------------------------------------------------------- */
+
+.mapPane { display: flex; flex-direction: column; }
+.mapHead { padding: 0.85rem 1.15rem 0.6rem; }
+.mapNote { margin: 0.25rem 0 0; font-size: 0.8rem; color: var(--muted); }
+.markerBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.7rem 1.15rem 0.9rem;
+  border-top: 1px solid var(--rule-g16);
+  font-size: 0.86rem;
+}
+.markerBar .btn { min-height: 44px; }
+
+/* --- focus you can see ---------------------------------------------------- */
+
+.stageChip:focus-visible,
+.paneBtn:focus-visible,
+.sort:focus-visible,
+.row:focus-visible,
+.quietBtn:focus-visible,
+.quietLink:focus-visible,
+.callQuiet:focus-visible,
+.addLead:focus-visible,
+.backBtn:focus-visible,
+.clearBtn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+/* Back exists only on the phone layout, where the detail is its own screen.
+   display:none rather than visibility or a clip, so it is out of the tab order
+   and out of the accessibility tree on desktop — where there is nothing to go
+   back to. */
+.backBtn { display: none; }
+
+/* --- phones --------------------------------------------------------------- */
+
+@media (max-width: 920px) {
+  .body { grid-template-columns: minmax(0, 1fr); }
+
+  /* Default is the list. The detail is a screen you go TO, not a slab under a
+     long list — which is what pushed it off the bottom of the page before. */
+  .smoothie[data-screen='list'] .detail { display: none; }
+  .smoothie[data-screen='detail'] .queue { display: none; }
+
+  /* A dedicated screen means the whole screen. Hiding the list but leaving the
+     filters, the search box, the sort and Add lead above it still made you
+     scroll ~300px of controls that act on a list you cannot see to reach the
+     lead you just tapped. Back brings them all straight back.
+     Map mode keeps them: the switch that gets you out of it lives there, and
+     the filters still govern what the map is drawing. */
+  .smoothie[data-screen='detail'][data-pane='leads'] .stageBar,
+  .smoothie[data-screen='detail'][data-pane='leads'] .toolbar { display: none; }
+
+  /* Map takes the width, and replaces the list rather than sitting above it. */
+  .smoothie[data-pane='map'] .queue { display: none; }
+  .smoothie[data-pane='map'] .detail { display: block; }
+
+  /* At 390px the shell spends 122px on padding before this pane starts: 16 on
+     .app-main, 16 on .wide-shell and 28 on .workspace-section-card. The map
+     was filling its container perfectly and still only 268px wide.
+     So in map mode it bleeds back out to the card's edge — the 28px mirrors
+     .workspace-section-card's own padding, and _smoothie.mjs measures the
+     result, so if that padding ever changes this shows up as a failing check
+     rather than a quiet gap down each side. */
+  .smoothie[data-pane='map'] .detail {
+    margin-left: -28px;
+    margin-right: -28px;
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+  }
+  .smoothie[data-pane='map'] .mapHead { padding-left: 1.5rem; padding-right: 1.5rem; }
+  .smoothie[data-pane='map'] .markerBar { padding-left: 1.5rem; padding-right: 1.5rem; }
+
+  .backBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: 100%;
+    min-height: 48px;
+    padding: 0 1rem;
+    border: 0;
+    border-bottom: 1px solid var(--rule-g16);
+    background: rgba(var(--tint), 0.05);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+  }
+  /* Nothing to go back to while the map is the pane — the switch above does it. */
+  .smoothie[data-pane='map'] .backBtn { display: none; }
+
+  .toolbar { gap: 0.45rem; }
+  .searchWrap { flex: 1 1 100%; }
+  .sortWrap { flex: 1 1 100%; }
+  .sort { flex: 1; }
+  .paneSwitch { flex: 1 1 auto; }
+  .paneBtn { flex: 1; justify-content: center; }
+  .addLead { flex: 1 1 auto; justify-content: center; }
+
+  .detailName { font-size: 1.3rem; }
+  .quietLink { margin-left: 0; }
+}
+
+@media (max-width: 520px) {
+  .row { grid-template-columns: auto minmax(0, 1fr); }
+  /* The value drops under the name rather than squeezing it to two words. */
+  .rowValue { grid-column: 2; justify-self: start; font-size: 0.82rem; }
+}

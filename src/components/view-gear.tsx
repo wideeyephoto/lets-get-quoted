@@ -94,7 +94,14 @@ export default function ViewGear<T extends string, S extends string = string>({
   const current = views?.find((v) => v.id === activeView) ?? views?.[0];
   const showSkins = Boolean(skins && skins.length > 0 && onPickSkin);
   const showMapOptions = typeof mapView === 'string' && Boolean(onSetMapView);
-  const showMapTheme = showMapOptions && mapView !== 'off' && typeof mapTheme === 'string' && Boolean(onSetMapTheme);
+  // Theme without placement is a real combination now: Smoothie's map is a pane
+  // you switch to, not a band that is on or off, so it has a colour to choose
+  // and no position to choose. Every existing caller passes mapView, which
+  // makes `!showMapOptions` false and leaves this exactly as it was.
+  const showMapTheme =
+    typeof mapTheme === 'string' &&
+    Boolean(onSetMapTheme) &&
+    (showMapOptions ? mapView !== 'off' : true);
 
   // Only compare a setting this surface actually shows — the schedule page has
   // no view list, and counting its absent view as "changed" would leave Reset

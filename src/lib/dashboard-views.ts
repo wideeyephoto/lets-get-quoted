@@ -100,6 +100,39 @@ export function normalizeMessagesView(value: unknown): MessagesView {
   return MESSAGES_VIEWS.includes(value as MessagesView) ? (value as MessagesView) : 'classic';
 }
 
+// Which Leads layout the owner last used.
+//
+// Lives here rather than in @/lib/leads because the view picker is a client
+// component and that module reaches the database — one value import from it
+// and the browser bundle fails on "Can't resolve 'fs'". @/lib/leads re-exports
+// these, so every server caller is unaffected.
+export const LEADS_VIEW_COOKIE = 'lgq_leads_view';
+export type LeadsView = 'board' | 'inbox' | 'table' | 'split' | 'focus' | 'smoothie';
+export const LEADS_VIEWS: LeadsView[] = ['board', 'inbox', 'table', 'split', 'focus', 'smoothie'];
+
+/**
+ * What a new account opens Leads on.
+ *
+ * Smoothie, not Focus. Both are master-detail and they look the same; what
+ * differs is the order you meet things in. Smoothie leads with the QUEUE —
+ * searchable, stage-filtered, priority-sorted — where Focus leads with one
+ * lead under a full-width map. The first question on this page is "who do I
+ * call next", and a map cannot answer it.
+ *
+ * An explicit choice is a cookie, so nobody who picked Focus, the board or
+ * anything else is moved off it by this changing.
+ *
+ * Exported so the picker's "Reset to default" row and normalizeLeadsView below
+ * cannot drift apart — they were two literals in two files before.
+ */
+export const DEFAULT_LEADS_VIEW: LeadsView = 'smoothie';
+
+export function normalizeLeadsView(value: unknown): LeadsView {
+  // Unknown values fall back to the default, so an old cookie from before a
+  // view existed — or a hand-edited one — never renders a blank workspace.
+  return LEADS_VIEWS.includes(value as LeadsView) ? (value as LeadsView) : DEFAULT_LEADS_VIEW;
+}
+
 // How the Recurring page is dressed.
 //
 // Cards is the page as built: a hero with the map of the book, then one card per

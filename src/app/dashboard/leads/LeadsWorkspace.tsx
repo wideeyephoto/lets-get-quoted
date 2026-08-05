@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { LeadStatus, LeadScore, LeadsView } from '@/lib/leads';
+import type { LeadStatus, LeadScore } from '@/lib/leads';
+import { DEFAULT_LEADS_VIEW, type LeadsView } from '@/lib/dashboard-views';
 import { archiveLeadAction, declineLeadAction, snoozeLeadAction, updateLeadStatusAction, setLeadsViewAction } from './actions';
 import { setMapThemeAction, setMapViewAction } from '@/app/dashboard/view-actions';
 import type { MapTheme, MapView } from '@/lib/dashboard-views';
@@ -12,6 +13,7 @@ import ViewGear from '@/components/view-gear';
 import PinMap, { type MapPin } from '@/components/pin-map';
 import { pinRecordId, revealRow } from '@/lib/reveal-row';
 import LeadFocusView from './LeadFocusView';
+import LeadSmoothieView from './LeadSmoothieView';
 import styles from './leads.module.css';
 
 // Display-ready lead shape, built server-side in page.tsx so this client
@@ -43,6 +45,16 @@ export type LeadViewItem = {
   city: string | null;
   contactLog: { at: string; label: string; note?: string }[];
   isUrgent: boolean;
+  /**
+   * How long they have been waiting, in words — "3 days waiting" / "3d waiting".
+   *
+   * Computed on the SERVER, like ageLabel beside it. A clock read during a
+   * client render disagrees with the markup the server sent and React throws
+   * the server's away. Focus does not use these; Smoothie prints them instead
+   * of the bare "94h" that read like a code.
+   */
+  waitingLong: string;
+  waitingShort: string;
   // Enough to draw a lead's cover before any detail request: what they asked
   // for (picks the trade glyph) and whether a real photo is on its way.
   projectType: string | null;
@@ -59,9 +71,10 @@ const COLUMNS: { status: LeadStatus; label: string }[] = [
 
 const SCORE_RANK: Record<LeadScore, number> = { hot: 0, warm: 1, low: 2 };
 
-// Focus leads, because it's the default — the list in the menu should open on
-// the layout you are already looking at rather than making you find it.
+// Smoothie leads, because it's the default — the list in the menu should open
+// on the layout you are already looking at rather than making you find it.
 const VIEWS: { id: LeadsView; label: string; hint: string }[] = [
+  { id: 'smoothie', label: 'Smoothie', hint: 'Queue first — search, filter, one lead open' },
   { id: 'focus', label: 'Focus', hint: 'One lead open, list beside it' },
   { id: 'board', label: 'Board', hint: 'Kanban by stage' },
   { id: 'inbox', label: 'Priority inbox', hint: 'Hottest first' },
@@ -135,8 +148,20 @@ export default function LeadsWorkspace({ leads, initialView, mapView, mapTheme, 
 
   function pickView(next: LeadsView) {
     setView(next);
-    // Persist the choice; fire-and-forget (no refresh needed).
-    startTransition(() => setLeadsViewAction(next).catch(() => {}));
+    // Awaited, not fire-and-forget.
+    //
+    // The layout swaps immediately either way — it is local state — so the
+    // missing await was invisible on screen and only showed up on the next page
+    // load, which came back in the view you thought you had left. Awaiting
+    // inside the transition keeps the swap instant and makes the cookie
+    // actually land.
+    startTransition(async () => {
+      try {
+        await setLeadsViewAction(next);
+      } catch {
+        // The layout still changed for this session; only the memory of it is lost.
+      }
+    });
   }
 
   // Map placement (off / large / mini) is server-rendered from the cookie;
@@ -154,6 +179,11 @@ export default function LeadsWorkspace({ leads, initialView, mapView, mapTheme, 
     });
   }
 
+  // Smoothie owns its own map — it is a pane you switch to, not a band above
+  // the page — so its gear offers the view list and the map's COLOUR, and no
+  // placement setting that would govern a map this view never renders.
+  const smoothie = view === 'smoothie';
+
   // The view/map settings gear. Lives on the map's legend row when the map is
   // shown; falls back to a small bar when the map is off, so it's always reachable.
   const gear = (
@@ -161,16 +191,33 @@ export default function LeadsWorkspace({ leads, initialView, mapView, mapTheme, 
       views={VIEW_OPTIONS}
       activeView={view}
       onPickView={pickView}
-      mapView={mapView}
-      onSetMapView={setMap}
+      mapView={smoothie ? undefined : mapView}
+      onSetMapView={smoothie ? undefined : setMap}
       mapTheme={mapTheme}
       onSetMapTheme={setTheme}
       label="View"
       // Mirrors normalizeLeadsView / normalizeMapView / normalizeMapTheme — the
       // values this page renders for someone with no cookies at all.
-      defaults={{ view: 'focus', mapView: 'large', mapTheme: 'dark' }}
+      defaults={{ view: DEFAULT_LEADS_VIEW, mapView: 'large', mapTheme: 'dark' }}
     />
   );
+
+  if (smoothie) {
+    return (
+      <div className={pending ? styles.workspaceBusy : undefined}>
+        <LeadSmoothieView
+          leads={leads}
+          run={run}
+          onSelect={onFocusSelect}
+          openRequest={pinRequest}
+          mapPins={mapPins}
+          mapTheme={mapTheme}
+          gear={gear}
+        />
+        <ScoreLegend />
+      </div>
+    );
+  }
 
   return (
     <div className={pending ? styles.workspaceBusy : undefined}>

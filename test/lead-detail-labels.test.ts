@@ -97,13 +97,15 @@ describe('leads view cookie', () => {
     expect(normalizeLeadsView('split')).toBe('split');
   });
 
-  it('opens on Focus for anyone who has not chosen', () => {
-    // An old cookie, or a hand-edited one, must not render a blank workspace —
-    // and a browser with no cookie at all gets the default layout, not the one
-    // that happens to be first in the enum.
-    expect(normalizeLeadsView('kanban')).toBe('focus');
-    expect(normalizeLeadsView(undefined)).toBe('focus');
-    expect(normalizeLeadsView('')).toBe('focus');
+  // The default moved from Focus to Smoothie. The PROPERTY this test was
+  // really protecting is unchanged and still asserted: an unknown value falls
+  // back to the deliberate default rather than to whatever happens to be first
+  // in the enum, which is 'board'.
+  it('opens on Smoothie for anyone who has not chosen', () => {
+    expect(normalizeLeadsView('kanban')).toBe('smoothie');
+    expect(normalizeLeadsView(undefined)).toBe('smoothie');
+    expect(normalizeLeadsView('')).toBe('smoothie');
+    expect(normalizeLeadsView('kanban')).not.toBe(LEADS_VIEWS[0]);
   });
 
   it('leaves an explicit choice alone', () => {

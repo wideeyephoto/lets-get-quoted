@@ -1,12 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { LeadDetailDto } from '@/lib/lead-detail';
 import { leadScoreLabel } from '@/lib/lead-detail-labels';
 import type { LeadViewItem } from './LeadsWorkspace';
 import RecordCover from '../RecordCover';
 import { archiveLeadAction, snoozeLeadAction, updateLeadStatusAction } from './actions';
+import { useLeadDetail } from './use-lead-detail';
+import LeadDetailTabs, { LEAD_TABS, LeadDetailSkeleton, type LeadTabId } from './LeadDetailTabs';
 import styles from '../focus.module.css';
 import leadStyles from './leads.module.css';
 
@@ -27,22 +29,10 @@ import leadStyles from './leads.module.css';
 //   * Everything deeper (photos, the full request, the contact log, the quote
 //     visit) comes from /api/leads/[id]/detail behind a skeleton.
 
-const TABS = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'request', label: 'Request' },
-  { id: 'activity', label: 'Activity' },
-  { id: 'photos', label: 'Photos' },
-  { id: 'quote', label: 'Quote & visit' },
-] as const;
-
-type TabId = (typeof TABS)[number]['id'];
-
-const CACHE_LIMIT = 30;
-const CACHE_TTL_MS = 5 * 60 * 1000;
-const SELECT_DEBOUNCE_MS = 140;
-const PREFETCH_DWELL_MS = 120;
-
-type CacheEntry = { detail: LeadDetailDto; at: number };
+// The tabs, the panels behind them and the detail-loading model all live in
+// their own modules now (LeadDetailTabs / use-lead-detail) so the Smoothie view
+// shares them instead of carrying a second copy. Nothing about this view's
+// behaviour changed in that move.
 
 export default function LeadFocusView({
   leads,
@@ -74,128 +64,12 @@ export default function LeadFocusView({
   const [selectedId, setSelectedId] = useState<string | null>(
     (initialLeadId && leads.some((lead) => lead.id === initialLeadId) ? initialLeadId : leads[0]?.id) ?? null,
   );
-  const [detail, setDetail] = useState<LeadDetailDto | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<TabId>('overview');
-
-  const cacheRef = useRef<Map<string, CacheEntry>>(new Map());
-  const wantRef = useRef<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
-  const dwellRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [tab, setTab] = useState<LeadTabId>('overview');
   const paneRef = useRef<HTMLElement | null>(null);
 
   const selected = useMemo(() => leads.find((l) => l.id === selectedId) ?? null, [leads, selectedId]);
 
-  // The server just re-rendered — which is also what happens after every action
-  // on this pane — so anything cached may be stale. Correctness guard, not a
-  // performance bug: leave it alone.
-  useEffect(() => {
-    cacheRef.current.clear();
-  }, [leads]);
-
-  // A tab left open in a truck holds signed photo URLs that expire, and a lead
-  // that may since have been answered. Drop the cache when the window returns.
-  useEffect(() => {
-    let last = 0;
-    const drop = () => {
-      const now = Date.now();
-      if (document.visibilityState !== 'visible' || now - last < 60_000) return;
-      last = now;
-      cacheRef.current.clear();
-    };
-    document.addEventListener('visibilitychange', drop);
-    window.addEventListener('focus', drop);
-    return () => {
-      document.removeEventListener('visibilitychange', drop);
-      window.removeEventListener('focus', drop);
-    };
-  }, []);
-
-  const readCache = useCallback((id: string): LeadDetailDto | null => {
-    const hit = cacheRef.current.get(id);
-    if (!hit) return null;
-    if (Date.now() - hit.at > CACHE_TTL_MS) {
-      cacheRef.current.delete(id);
-      return null;
-    }
-    return hit.detail;
-  }, []);
-
-  const writeCache = useCallback((id: string, value: LeadDetailDto) => {
-    const cache = cacheRef.current;
-    cache.delete(id);
-    cache.set(id, { detail: value, at: Date.now() });
-    while (cache.size > CACHE_LIMIT) {
-      const oldest = cache.keys().next().value;
-      if (oldest === undefined) break;
-      cache.delete(oldest);
-    }
-  }, []);
-
-  const fetchDetail = useCallback(
-    async (id: string, signal?: AbortSignal): Promise<LeadDetailDto | null> => {
-      // Pre-loaded wins outright: there is no endpoint to fall back to when the
-      // caller supplied its own data, and a miss here means the id is unknown.
-      if (details) return details[id] ?? null;
-      const response = await fetch(`/api/leads/${id}/detail`, { cache: 'no-store', signal });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body?.error || 'Could not load that lead.');
-      const value = body?.detail as LeadDetailDto | undefined;
-      if (!value) return null;
-      writeCache(id, value);
-      return value;
-    },
-    [details, writeCache],
-  );
-
-  // Selection -> detail. Debounced so holding ArrowDown through the list fires
-  // one request, not one per row.
-  useEffect(() => {
-    if (!selectedId) {
-      setDetail(null);
-      return;
-    }
-    wantRef.current = selectedId;
-
-    const cached = readCache(selectedId);
-    if (cached) {
-      setDetail(cached);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    setDetail(null);
-    setLoading(true);
-    setError(null);
-
-    const timer = setTimeout(() => {
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
-
-      fetchDetail(selectedId, controller.signal)
-        .then((value) => {
-          // The response that comes back last is not necessarily the one for the
-          // row that's highlighted. Without this, a slow request for lead A can
-          // paint A's phone number under B's name — silent, and the kind of
-          // mistake that gets a quote texted to the wrong homeowner.
-          if (wantRef.current !== selectedId) return;
-          setDetail(value);
-          setLoading(false);
-        })
-        .catch((err: unknown) => {
-          if (controller.signal.aborted || wantRef.current !== selectedId) return;
-          setError(err instanceof Error ? err.message : 'Could not load that lead.');
-          setLoading(false);
-        });
-    }, SELECT_DEBOUNCE_MS);
-
-    return () => clearTimeout(timer);
-  }, [selectedId, readCache, fetchDetail]);
-
-  useEffect(() => () => abortRef.current?.abort(), []);
+  const { detail, loading, error, armPrefetch, cancelPrefetch } = useLeadDetail({ selectedId, leads, details });
 
   function select(id: string) {
     setSelectedId(id);
@@ -249,19 +123,6 @@ export default function LeadFocusView({
     if (r.top >= l.top && r.bottom <= l.bottom) return;
     row.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [selectedId]);
-
-  // Warm the cache on hover only. Never on keyboard traversal — that would turn
-  // the prefetch into the request storm it exists to prevent.
-  function armPrefetch(id: string) {
-    if (readCache(id) || id === selectedId) return;
-    if (dwellRef.current) clearTimeout(dwellRef.current);
-    dwellRef.current = setTimeout(() => {
-      fetchDetail(id).catch(() => {});
-    }, PREFETCH_DWELL_MS);
-  }
-  function cancelPrefetch() {
-    if (dwellRef.current) clearTimeout(dwellRef.current);
-  }
 
   // Rows are real links: cmd/middle-click opens the full lead page in a new tab,
   // and the URL is copyable. A plain <button> would silently kill all of that.
@@ -404,7 +265,7 @@ export default function LeadFocusView({
             </header>
 
             <div className={styles.tabs} role="tablist" aria-label="Lead detail sections">
-              {TABS.map((t) => (
+              {LEAD_TABS.map((t) => (
                 <button
                   key={t.id}
                   type="button"
@@ -422,9 +283,9 @@ export default function LeadFocusView({
               {error ? (
                 <p className={styles.error}>{error}</p>
               ) : loading || !fresh ? (
-                <Skeleton />
+                <LeadDetailSkeleton />
               ) : (
-                <TabPanel tab={tab} detail={fresh} lead={selected} base={base} />
+                <LeadDetailTabs tab={tab} detail={fresh} lead={selected} base={base} />
               )}
             </div>
 
@@ -495,198 +356,6 @@ export default function LeadFocusView({
             </li>
           ))}
         </ul>
-      </section>
-    </div>
-  );
-}
-
-function Skeleton() {
-  return (
-    <div className={styles.skeleton} aria-hidden="true">
-      <span /><span /><span /><span />
-    </div>
-  );
-}
-
-function TabPanel({ tab, detail, lead, base }: { tab: TabId; detail: LeadDetailDto; lead: LeadViewItem; base: string }) {
-  if (tab === 'overview') {
-    return (
-      <div className={styles.grid}>
-        <section className={styles.card}>
-          <h4>Contact</h4>
-          <dl className={styles.defs}>
-            <div>
-              <dt>Phone</dt>
-              <dd>{detail.phoneDigits ? <a href={`tel:${detail.phoneDigits}`}>{detail.phone}</a> : 'Not on file'}</dd>
-            </div>
-            <div>
-              <dt>Email</dt>
-              <dd>{detail.email ? <a href={`mailto:${detail.email}`}>{detail.email}</a> : 'Not on file'}</dd>
-            </div>
-            <div><dt>Address</dt><dd>{detail.address || detail.location || 'Not on file'}</dd></div>
-            <div><dt>Received</dt><dd>{detail.createdAtLabel}</dd></div>
-          </dl>
-          {detail.textOnly && <p className={styles.muted}>They asked not to be called — text first.</p>}
-        </section>
-
-        <section className={styles.card}>
-          <h4>What the AI read</h4>
-          <dl className={styles.defs}>
-            <div><dt>Score</dt><dd>{detail.hasTriage ? detail.scoreLabel : 'Not scored'}</dd></div>
-            <div><dt>Est. value</dt><dd>{detail.estimateLabel ?? 'No number given'}</dd></div>
-            <div><dt>Timeline</dt><dd>{detail.timeline || 'Not said'}</dd></div>
-            <div><dt>Est. labor</dt><dd>{detail.estimatedHours ? `${detail.estimatedHours} hrs` : 'Not set'}</dd></div>
-          </dl>
-          {detail.flags.length > 0 && (
-            <div className={styles.chips}>
-              {detail.flags.map((flag) => <span className={leadStyles.flagChip} key={flag.key}>{flag.label}</span>)}
-            </div>
-          )}
-        </section>
-
-        <section className={styles.card}>
-          <h4>History</h4>
-          {detail.history && (detail.history.jobs > 0 || detail.history.leads > 0) ? (
-            <>
-              <span className={styles.repeat}>Repeat customer</span>
-              <dl className={styles.defs} style={{ marginTop: '0.6rem' }}>
-                <div><dt>Past jobs</dt><dd>{detail.history.jobs}</dd></div>
-                <div><dt>Other requests</dt><dd>{detail.history.leads}</dd></div>
-              </dl>
-            </>
-          ) : (
-            <p className={styles.muted}>
-              {detail.history ? 'First time this customer has been in touch.' : 'Not linked to a client profile yet.'}
-            </p>
-          )}
-        </section>
-      </div>
-    );
-  }
-
-  if (tab === 'request') {
-    return (
-      <div className={styles.grid}>
-        <section className={styles.card}>
-          <h4>{detail.projectType || 'Project request'}</h4>
-          {detail.message ? (
-            <p className={styles.quote}>{detail.message}</p>
-          ) : (
-            <p className={styles.muted}>They didn&rsquo;t write anything beyond the project type.</p>
-          )}
-          <Link className={styles.cardLink} href={`${base}/leads/${detail.id}?edit=client#lead-edit-modal`}>
-            Edit the details →
-          </Link>
-        </section>
-
-        <section className={styles.card}>
-          <h4>Where it came from</h4>
-          <dl className={styles.defs}>
-            <div><dt>Source</dt><dd>{detail.sourceLabel}</dd></div>
-            <div><dt>Page</dt><dd>{detail.sourcePage || 'Not recorded'}</dd></div>
-            <div><dt>Received</dt><dd>{detail.createdAtLabel}</dd></div>
-            <div><dt>Area</dt><dd>{detail.location || detail.address || 'Not given'}</dd></div>
-          </dl>
-        </section>
-      </div>
-    );
-  }
-
-  if (tab === 'activity') {
-    return detail.contactLog.length === 0 ? (
-      <p className={styles.muted}>
-        Nobody has reached out yet.{' '}
-        <Link href={`${base}/leads/${detail.id}#lead-activity`}>Log a call or text →</Link>
-      </p>
-    ) : (
-      <>
-        <ul className={styles.timeline}>
-          {detail.contactLog.map((entry, index) => (
-            <li key={`${entry.at}-${index}`}>
-              <span className={styles.feedIcon} aria-hidden="true">•</span>
-              <span className={styles.timelineBody}>
-                <strong>{entry.label}</strong>
-                {entry.note ? <p>{entry.note}</p> : null}
-                <small>{entry.at}</small>
-              </span>
-            </li>
-          ))}
-        </ul>
-        {detail.contactCount > detail.contactLog.length && (
-          <p className={styles.muted} style={{ marginTop: '0.7rem' }}>
-            Showing the last {detail.contactLog.length} of {detail.contactCount}.{' '}
-            <Link href={`${base}/leads/${detail.id}#lead-activity`}>See all →</Link>
-          </p>
-        )}
-      </>
-    );
-  }
-
-  if (tab === 'photos') {
-    // Photos the homeowner sent with the request — often the only way to know
-    // what the job actually is before you drive out to it.
-    return detail.photos.length === 0 ? (
-      <p className={styles.muted}>They didn&rsquo;t send any photos with this request.</p>
-    ) : (
-      <>
-        <div className={styles.photos}>
-          {detail.photos.map((photo) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img key={photo.path} src={photo.url} alt="" loading="lazy" />
-          ))}
-        </div>
-        {detail.photoCount > detail.photos.length && (
-          <p className={styles.muted}>
-            Showing {detail.photos.length} of {detail.photoCount}.{' '}
-            <Link href={`${base}/leads/${detail.id}?details=photos#lead-photos-modal`}>See all →</Link>
-          </p>
-        )}
-      </>
-    );
-  }
-
-  return (
-    <div className={styles.grid}>
-      <section className={styles.card}>
-        <h4>Estimate visit</h4>
-        {detail.quoteVisit ? (
-          <dl className={styles.defs}>
-            <div><dt>When</dt><dd>{detail.quoteVisit.whenLabel}</dd></div>
-            <div><dt>Length</dt><dd>{detail.quoteVisit.durationLabel}</dd></div>
-            <div><dt>Confirmed</dt><dd>{detail.quoteVisit.confirmedLabel ? `Texted ${detail.quoteVisit.confirmedLabel}` : 'Not texted yet'}</dd></div>
-            {detail.quoteVisit.notes ? <div><dt>Notes</dt><dd>{detail.quoteVisit.notes}</dd></div> : null}
-          </dl>
-        ) : (
-          <p className={styles.muted}>No visit booked.</p>
-        )}
-        <Link className={styles.cardLink} href={`${base}/leads/${detail.id}#availability-snapshot`}>
-          {detail.quoteVisit ? 'Change the visit →' : 'Book a visit →'}
-        </Link>
-      </section>
-
-      <section className={styles.card}>
-        <h4>Quote</h4>
-        {detail.convertedJob ? (
-          <dl className={styles.defs}>
-            <div><dt>Job</dt><dd>{detail.convertedJob.ref}</dd></div>
-            <div><dt>Stage</dt><dd>{detail.convertedJob.stageLabel}</dd></div>
-            <div><dt>Quoted</dt><dd>{detail.convertedJob.quotedLabel}</dd></div>
-          </dl>
-        ) : (
-          <>
-            <dl className={styles.defs}>
-              <div><dt>Est. value</dt><dd>{detail.estimateLabel ?? 'No number given'}</dd></div>
-              <div><dt>Est. labor</dt><dd>{lead.estimatedHours ? `${lead.estimatedHours} hrs` : 'Not set'}</dd></div>
-            </dl>
-            <p className={styles.muted}>No quote sent yet.</p>
-          </>
-        )}
-        <Link
-          className={styles.cardLink}
-          href={detail.convertedJob ? `${base}/jobs/${detail.convertedJob.id}` : `${base}/leads/${detail.id}#lead-estimate`}
-        >
-          {detail.convertedJob ? 'Open the job →' : 'Send a quote →'}
-        </Link>
       </section>
     </div>
   );

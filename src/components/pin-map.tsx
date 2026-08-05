@@ -49,7 +49,100 @@ function makeIcon(g: typeof google.maps, color: string, active: boolean, mini = 
   };
 }
 
-export default function PinMap({ pins, variant = 'large', theme = 'dark', legendAccessory, focusPinId = null, onPinClick }: { pins: MapPin[]; variant?: 'large' | 'mini'; theme?: 'dark' | 'light'; legendAccessory?: ReactNode; focusPinId?: string | null; onPinClick?: (pin: MapPin) => void }) {
+/**
+ * Move co-located pins onto a small ring around their shared point.
+ *
+ * Deterministic — same input, same output — so a marker does not hop to a new
+ * spot on every render. The offset is ~12 metres at the equator: enough to
+ * separate them at street zoom, small enough that nothing lands on the wrong
+ * street.
+ */
+function spreadCoLocated(pins: MapPin[]): MapPin[] {
+  const groups = new Map<string, MapPin[]>();
+  for (const pin of pins) {
+    const key = `${pin.lat.toFixed(5)},${pin.lng.toFixed(5)}`;
+    const bucket = groups.get(key);
+    if (bucket) bucket.push(pin);
+    else groups.set(key, [pin]);
+  }
+
+  const out: MapPin[] = [];
+  for (const bucket of groups.values()) {
+    if (bucket.length === 1) {
+      out.push(bucket[0]);
+      continue;
+    }
+    const radius = 0.00011;
+    // Sorted by id so the ring order does not depend on the array order.
+    const ordered = [...bucket].sort((a, b) => a.id.localeCompare(b.id));
+    ordered.forEach((pin, index) => {
+      const angle = (2 * Math.PI * index) / ordered.length;
+      out.push({
+        ...pin,
+        lat: pin.lat + radius * Math.cos(angle),
+        // Longitude degrees shrink with latitude; without this the ring is an
+        // ellipse that collapses to a line near the poles.
+        lng: pin.lng + (radius * Math.sin(angle)) / Math.max(0.2, Math.cos((pin.lat * Math.PI) / 180)),
+      });
+    });
+  }
+  // Keep the caller's order, so `pins.find(...)` elsewhere still behaves.
+  const byId = new Map(out.map((pin) => [pin.id, pin]));
+  return pins.map((pin) => byId.get(pin.id) ?? pin);
+}
+
+export default function PinMap({
+  pins: rawPins,
+  variant = 'large',
+  theme = 'dark',
+  legendAccessory,
+  focusPinId = null,
+  onPinClick,
+  initialHidden,
+  onVisibleCountChange,
+  spreadOverlap = false,
+}: {
+  pins: MapPin[];
+  variant?: 'large' | 'mini';
+  theme?: 'dark' | 'light';
+  legendAccessory?: ReactNode;
+  focusPinId?: string | null;
+  onPinClick?: (pin: MapPin) => void;
+  /**
+   * Pin kinds switched off before anybody touches the legend.
+   *
+   * Smoothie opens on leads and quotes-out only: a scheduled job is work you
+   * have already won, and on a busy territory it buries the two kinds you came
+   * to this page to act on. Still a legend toggle, so they are one click away
+   * and the legend still says how many there are.
+   *
+   * OMITTED means nothing hidden, which is what every other caller gets — the
+   * jobs map and the customers map are unchanged.
+   */
+  initialHidden?: MapPinKind[];
+  /**
+   * How many pins are currently drawn, whenever that changes.
+   *
+   * The page outside the map needs this to label a "Map (n)" control honestly:
+   * hiding a layer has to move that number, or it is counting something the map
+   * is not showing.
+   */
+  onVisibleCountChange?: (count: number) => void;
+  /**
+   * Fan out pins that sit on the same spot so each one is separately clickable.
+   *
+   * Two leads at one address currently draw one marker on top of another and
+   * the lower one cannot be clicked, hovered or reached at all — it is not
+   * merely crowded, it is missing. This is not clustering (no library here can
+   * do that offline, and the CSP forbids fetching one); it is the part of
+   * clustering that matters at a contractor's scale, which is tens of pins on
+   * a territory rather than thousands on a continent.
+   *
+   * Opt-in so the jobs and customers maps are untouched.
+   */
+  spreadOverlap?: boolean;
+}) {
+  const pins = useMemo(() => (spreadOverlap ? spreadCoLocated(rawPins) : rawPins), [rawPins, spreadOverlap]);
   const mini = variant === 'mini';
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<{ id: string; kind: MapPinKind; marker: google.maps.Marker }[]>([]);
@@ -64,7 +157,10 @@ export default function PinMap({ pins, variant = 'large', theme = 'dark', legend
   // Which pin kinds are switched off, by clicking their legend entry. Held per
   // map rather than saved: it's a "let me see this without the noise" gesture
   // while you work, not a setting.
-  const [hidden, setHidden] = useState<Set<MapPinKind>>(new Set());
+  // Read once, as lazy initial state. A prop array is a new identity every
+  // render, so syncing it in an effect would re-hide a layer the moment
+  // somebody switched it on.
+  const [hidden, setHidden] = useState<Set<MapPinKind>>(() => new Set(initialHidden ?? []));
 
   // How many of each kind, so a legend entry says what turning it off costs —
   // and so a kind with nothing on the map can't be toggled at all.
@@ -74,6 +170,14 @@ export default function PinMap({ pins, variant = 'large', theme = 'dark', legend
     return tally;
   }, [pins]);
   const visibleCount = pins.filter((pin) => !hidden.has(pin.kind)).length;
+
+  // Reported through a ref so a caller passing an inline arrow — which is a new
+  // function every render — cannot turn this into a render loop.
+  const reportRef = useRef(onVisibleCountChange);
+  reportRef.current = onVisibleCountChange;
+  useEffect(() => {
+    reportRef.current?.(visibleCount);
+  }, [visibleCount]);
 
   // Re-init only when the actual pin set changes (parent passes a fresh array each render).
   const sig = useMemo(() => `${theme}|` + pins.map((p) => `${p.id}:${p.lat},${p.lng}:${p.kind}`).join('|'), [pins, theme]);

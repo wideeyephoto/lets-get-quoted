@@ -4,6 +4,7 @@ import { requireOwnerContext } from '@/lib/auth';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import { expireStaleLeads, formatDuration, formatElapsedTime, formatLeadSource, getAverageRequestResponseMs, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, LEADS_VIEW_COOKIE, listLeads, normalizeLeadsView } from '@/lib/leads';
 import { estimateRangeLabel, leadCityLabel, leadScoreLabel, leadStageLabel } from '@/lib/lead-detail-labels';
+import { waitingLabel } from '@/lib/lead-queue';
 import { archiveLeadAction, createLeadAction, deleteLeadAction, unsnoozeLeadAction } from './actions';
 import DeleteLeadButton from './DeleteLeadButton';
 import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
@@ -36,12 +37,21 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
   const averageResponse = formatDuration(getAverageRequestResponseMs(allLeads));
   const mapView = normalizeMapView(cookies().get(mapViewCookie('leads'))?.value);
   const mapTheme = normalizeMapTheme(cookies().get(MAP_THEME_COOKIE)?.value);
-  const mapPins = mapView !== 'off' ? await getMapPins(supabase, accountId) : [];
 
   // Serialize the active leads into a display-ready shape for the client view
-  // switcher (Board / Priority inbox / Table / Split), so it never has to import
-  // the server-only leads module.
+  // switcher (Smoothie / Focus / Board / Priority inbox / Table / Split), so it
+  // never has to import the server-only leads module.
   const initialView = normalizeLeadsView(cookies().get(LEADS_VIEW_COOKIE)?.value);
+
+  // Smoothie puts the map in a pane rather than a band across the top, so it
+  // needs the pins whatever the map-placement cookie says — that setting
+  // governs the embedded band, which Smoothie does not render.
+  const mapPins = mapView !== 'off' || initialView === 'smoothie' ? await getMapPins(supabase, accountId) : [];
+
+  // One clock for the whole page. Called per lead it would drift across the
+  // list, so two leads that arrived in the same minute could report different
+  // waits.
+  const now = new Date();
   const viewLeads: LeadViewItem[] = leads.map((lead) => {
     const triage = getLeadTriage(lead);
     const estimate = triage.estimate ?? null;
@@ -73,6 +83,8 @@ export default async function LeadsPage({ searchParams }: { searchParams: { add?
       isUrgent: lead.status === 'new' && lead.source === 'website_form',
       projectType: lead.project_type,
       photoCount: (lead.photo_paths || []).length,
+      waitingLong: waitingLabel(lead.created_at, now).long,
+      waitingShort: waitingLabel(lead.created_at, now).short,
     };
   });
 
