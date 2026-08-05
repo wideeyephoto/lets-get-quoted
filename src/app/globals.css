@@ -24397,3 +24397,147 @@ a.mkt-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px
 @media (max-width: 420px) {
   .mkt-tiles { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* === Cash chart: grouped markers, selection, and the detail panel ==========
+   The chart is hand-rolled SVG measured off its own container — see
+   lib/cash-chart-layout for the geometry, which is pure and tested. Nothing
+   here hardcodes a coordinate. */
+
+/* A marker is a real target now (MIN_TOUCH/2 = 16px radius). It is affordable
+   because markers closer together than a touch target are folded into one — the
+   old code shrank the target to as little as 6px instead, which kept every
+   marker drawn and made most of them impossible to hit. */
+.cash-markers { outline: none; }
+
+/* One tab stop for the layer, arrow keys within it. The focus ring has to be
+   drawn on the group because the hit circle is transparent and a browser
+   outline on an SVG <g> lands somewhere unhelpful. */
+.cash-marker { outline: none; cursor: pointer; }
+.cash-marker:focus-visible .cash-marker-focus,
+.cash-marker.is-selected .cash-marker-focus { opacity: 1; }
+.cash-marker-focus {
+  fill: none;
+  stroke: var(--accent, #ff7a21);
+  stroke-width: 2;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Selection is a ring OUTSIDE the shape — not a fill change and not a size
+   change. It must be visible without covering the neighbouring point and
+   without moving the thing you just aimed at. */
+.cash-marker-ring {
+  fill: none;
+  stroke: rgba(var(--tint), 0.9);
+  stroke-width: 2;
+  pointer-events: none;
+}
+:root[data-theme='light'] .cash-marker-ring { stroke: rgba(17, 27, 41, 0.75); }
+
+/* A grouped marker is a disc carrying its count. Shape and colour still
+   separate incoming from outgoing on the ungrouped markers; a group is neither
+   one nor the other, so it says how many instead of guessing a direction. */
+.cash-marker-cluster {
+  fill: #0e1622;
+  stroke: rgba(var(--tint), 0.85);
+  stroke-width: 1.5;
+}
+:root[data-theme='light'] .cash-marker-cluster { fill: #1b2534; stroke: #ffffff; }
+.cash-marker-count {
+  fill: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+/* --- The selected-transaction panel ---------------------------------------
+   Below the plot, never over it. A floating callout covers the data it is
+   describing, and at 320px there is nowhere to put one that isn't on top of
+   something. */
+.cash-detail {
+  margin: 0.5rem 0.15rem 0;
+  padding: 0.7rem 0.8rem 0.75rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 14px;
+  background: rgba(var(--tint), 0.035);
+}
+
+.cash-detail-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+.cash-detail-date {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mute-i55);
+}
+.cash-detail-amount {
+  font-size: 1.05rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* Sign and colour both. The "+"/"−" carries it in greyscale. */
+.cash-detail-amount.is-in { color: var(--cash-in); }
+.cash-detail-amount.is-out { color: var(--cash-out); }
+
+.cash-detail-name {
+  margin: 0.15rem 0 0.3rem;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.cash-detail-after {
+  margin: 0;
+  font-size: 0.84rem;
+  color: rgba(var(--ink-rgb), 0.68);
+}
+.cash-detail-after b { color: var(--text); font-variant-numeric: tabular-nums; }
+
+.cash-detail-list {
+  margin: 0.55rem 0 0;
+  padding: 0.5rem 0 0;
+  border-top: 1px solid var(--rule-t10);
+  list-style: none;
+  display: grid;
+  gap: 0.3rem;
+}
+.cash-detail-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.8rem;
+  font-size: 0.84rem;
+}
+.cash-detail-item-name { color: rgba(var(--ink-rgb), 0.78); min-width: 0; overflow-wrap: anywhere; }
+.cash-detail-item-amount { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cash-detail-item-amount.is-in { color: var(--cash-in); }
+.cash-detail-item-amount.is-out { color: var(--cash-out); }
+.cash-detail-more { color: var(--mute-i45); font-size: 0.8rem; }
+
+.cash-detail-alt {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: var(--mute-i45);
+}
+.cash-detail-alt b { color: rgba(var(--ink-rgb), 0.8); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 560px) {
+  /* The wrap's own padding is plot width on a phone. */
+  .cash-chart-wrap { padding: 0.25rem 0.2rem 0.5rem; border-radius: 14px; }
+  .cash-detail { margin-left: 0; margin-right: 0; }
+  .cash-detail-name { font-size: 1rem; }
+  .cash-chart-hint { padding: 0 0.3rem; }
+}
+
+/* Hover emphasis, distinct from selection: a hovered marker lifts slightly,
+   a selected one gets the ring. Conflating the two made Escape look broken. */
+.cash-marker.is-active .cash-marker-shape { filter: brightness(1.18); }

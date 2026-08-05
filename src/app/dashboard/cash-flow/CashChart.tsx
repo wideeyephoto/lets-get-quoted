@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { markerShape, type Forecast } from '@/lib/cash-forecast';
+import {
+  axisMoney, chartHeight, chartInset, chartPadding, flipInside, fullMoney,
+  groupForIndex, groupMarkers, MIN_TOUCH, MOBILE_MAX, resolveChartWidth, xAxisTicks,
+} from '@/lib/cash-chart-layout';
 
 // The projected bank balance, drawn.
 //
@@ -29,17 +33,12 @@ type Props = {
   onSelect: (index: number | null) => void;
 };
 
-const PAD = { top: 18, right: 22, bottom: 30, left: 76 };
-// The first and last days sit INSIDE the plot rather than on its edges. A marker
-// centred on the clip boundary is drawn as half a diamond, and — worse — the
-// day-0 one landed underneath the drag handle for today's balance, so the day
-// most likely to have something on it was the one day you couldn't click.
-const INSET = 18;
+// Padding and inset are width-dependent now and live in lib/cash-chart-layout,
+// where they can be tested as arithmetic. The fixed 76px gutter this replaced
+// was fine on a 760px chart and left under a third of a 320px phone for the plot
+// itself.
 
-function money(value: number): string {
-  const rounded = Math.round(value);
-  return `${rounded < 0 ? '−' : ''}$${Math.abs(rounded).toLocaleString('en-US')}`;
-}
+const money = fullMoney;
 
 function shortDate(dateKey: string): string {
   const [year, month, day] = dateKey.split('-').map(Number);
@@ -86,14 +85,22 @@ export default function CashChart({
   const wrapRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<'buffer' | 'balance' | null>(null);
-  const [width, setWidth] = useState(760);
+  // 320 rather than 760: the first paint happens before the observer has
+  // measured anything, and starting at a desktop width means a phone renders one
+  // frame of a chart wider than its own screen. Starting narrow is the safe
+  // guess — it grows to fit, it never overflows on the way.
+  const [width, setWidth] = useState(320);
   const [hover, setHover] = useState<number | null>(null);
 
   useEffect(() => {
     const element = wrapRef.current;
     if (!element) return;
-    const apply = (next: number) => setWidth(Math.max(300, Math.round(next)));
-    apply(element.clientWidth || 760);
+    // resolveChartWidth floors it only far enough to keep the arithmetic safe on
+    // a zero-width container. The floor deliberately sits BELOW the ~198px this
+    // chart actually gets at a 320px viewport — a higher one makes the SVG wider
+    // than its own box, which the wrap's overflow:hidden then crops.
+    const apply = (next: number) => setWidth(resolveChartWidth(next));
+    apply(element.clientWidth || 320);
     const observer = new ResizeObserver((entries) => {
       const next = entries[0]?.contentRect.width;
       if (next) apply(next);
@@ -102,7 +109,10 @@ export default function CashChart({
     return () => observer.disconnect();
   }, []);
 
-  const height = width < 560 ? 250 : 340;
+  const isPhone = width < MOBILE_MAX;
+  const PAD = chartPadding(width);
+  const INSET = chartInset(width);
+  const height = chartHeight(width);
   const innerW = Math.max(10, width - PAD.left - PAD.right);
   const innerH = Math.max(10, height - PAD.top - PAD.bottom);
   const days = forecast.days;
@@ -129,10 +139,12 @@ export default function CashChart({
   }, [days, buffer, creditLine, lines]);
 
   const plotW = Math.max(10, innerW - INSET * 2);
-  const xFor = useCallback((index: number) => PAD.left + INSET + (index / lastIndex) * plotW, [plotW, lastIndex]);
+  const padLeft = PAD.left;
+  const padTop = PAD.top;
+  const xFor = useCallback((index: number) => padLeft + INSET + (index / lastIndex) * plotW, [padLeft, INSET, plotW, lastIndex]);
   const yFor = useCallback(
-    (value: number) => PAD.top + (1 - (value - domain.lo) / (domain.hi - domain.lo || 1)) * innerH,
-    [domain, innerH],
+    (value: number) => padTop + (1 - (value - domain.lo) / (domain.hi - domain.lo || 1)) * innerH,
+    [padTop, domain, innerH],
   );
 
   const pathFor = useCallback(
@@ -148,11 +160,11 @@ export default function CashChart({
       const rect = svgRef.current?.getBoundingClientRect();
       if (!rect) return 0;
       const y = clientY - rect.top;
-      const raw = domain.hi - ((y - PAD.top) / (innerH || 1)) * (domain.hi - domain.lo);
+      const raw = domain.hi - ((y - padTop) / (innerH || 1)) * (domain.hi - domain.lo);
       // Snapped to $100: a buffer of $9,873 was never a decision, it was a pixel.
       return Math.max(0, Math.round(raw / 100) * 100);
     },
-    [domain, innerH],
+    [padTop, domain, innerH],
   );
 
   const startDrag = (which: 'buffer' | 'balance') => (event: React.PointerEvent) => {
@@ -208,11 +220,76 @@ export default function CashChart({
   const active = selected ?? hover;
   const activeDay = active === null ? null : days[active];
 
-  // A fat invisible target is generous on a wide chart and counter-productive on
-  // a narrow one: at 90 days on a phone, neighbouring targets overlap so badly
-  // that the day you tap is whichever one happened to render last. Scaled to the
-  // spacing actually available, floored at a thumb-sized 6px.
-  const hitRadius = Math.max(6, Math.min(11, plotW / lastIndex / 1.5));
+  /**
+   * The markers actually drawn.
+   *
+   * Days whose markers would land closer together than a touch target are folded
+   * into one that carries the count. This used to be handled by shrinking the
+   * target instead — scaled down to as little as 6px — which kept every marker
+   * on screen and made most of them impossible to hit: at 90 days on a phone
+   * they sit 2.4px apart, so the day you tapped was whichever rendered last.
+   *
+   * Presentational only. Every day keeps its own projection and its own events;
+   * the group just carries the list so the panel below can show all of them.
+   */
+  const groups = useMemo(() => groupMarkers(days, xFor), [days, xFor]);
+  // Two different things, and conflating them was a bug. `activeGroup` follows
+  // hover-or-selection and drives the panel; `selectedGroup` follows selection
+  // ALONE and drives the ring. Because focusing a marker sets hover, a ring keyed
+  // off `active` stayed lit after Escape had genuinely cleared the selection —
+  // the chart said something was chosen when nothing was.
+  const activeGroup = groupForIndex(groups, active);
+  const selectedGroup = groupForIndex(groups, selected);
+
+  // A real target now, not a scaled-down one — the grouping above is what makes
+  // that affordable.
+  const hitRadius = MIN_TOUCH / 2;
+
+  // -- Markers from the keyboard ----------------------------------------------
+  //
+  // Roving tabindex: the marker layer is ONE tab stop, and arrow keys move
+  // between markers inside it. The markers used to be aria-hidden and
+  // unreachable, on the reasoning that thirty of them would be thirty tab stops
+  // between the chart and the next control — which was right about the problem
+  // and wrong about the fix. This keeps the single stop and makes the chart
+  // operable; the transaction list below still works exactly as it did.
+  const markerRefs = useRef<(SVGGElement | null)[]>([]);
+  const [focusOrder, setFocusOrder] = useState(0);
+
+  // Keep the roving stop pointing at something real when the forecast changes
+  // under it — a filter that removes days must not leave the tab stop on a
+  // marker that no longer exists, which would drop the keyboard user out of the
+  // chart entirely.
+  useEffect(() => {
+    setFocusOrder((current) => (current < groups.length ? current : 0));
+  }, [groups.length]);
+
+  const focusMarker = (order: number) => {
+    setFocusOrder(order);
+    markerRefs.current[order]?.focus();
+  };
+
+  const onMarkerKey = (event: React.KeyboardEvent, order: number, index: number) => {
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+      focusMarker(Math.min(groups.length - 1, order + 1));
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+      focusMarker(Math.max(0, order - 1));
+    } else if (event.key === 'Home') {
+      focusMarker(0);
+    } else if (event.key === 'End') {
+      focusMarker(groups.length - 1);
+    } else if (event.key === 'Enter' || event.key === ' ') {
+      onSelect(selected === index ? null : index);
+    } else if (event.key === 'Escape') {
+      onSelect(null);
+    } else {
+      return;
+    }
+    // Only for keys we handled: swallowing everything would take Tab with it and
+    // trap the focus inside the chart.
+    event.preventDefault();
+    event.stopPropagation();
+  };
 
   const bufferY = yFor(buffer);
   const zeroY = yFor(0);
@@ -276,38 +353,35 @@ export default function CashChart({
           {domain.ticks.map((tick) => (
             <g key={tick}>
               <line x1={PAD.left} x2={PAD.left + innerW} y1={yFor(tick)} y2={yFor(tick)} />
-              {/* Clear of the balance handle, which lives in the gutter at PAD.left - 8. */}
-              <text x={PAD.left - 24} y={yFor(tick)} dy="0.32em" textAnchor="end">
-                {money(tick)}
+              {/* Clear of the balance handle, which lives in the gutter at
+                  PAD.left - 8. Tighter on a phone, where the whole gutter is
+                  54px and the label is abbreviated to fit it. */}
+              <text x={PAD.left - (isPhone ? 18 : 24)} y={yFor(tick)} dy="0.32em" textAnchor="end">
+                {axisMoney(tick, width)}
               </text>
             </g>
           ))}
         </g>
 
-        {/* x axis. The last day always gets a label; a regular tick close enough
-            to collide with it is dropped, or the two dates overprint. */}
+        {/* x axis. Which days get a label is decided in lib/cash-chart-layout —
+            three on a phone, seven on a desktop, with the first and last always
+            kept and anything that would overprint the last one dropped. */}
         <g className="cash-axis-x">
-          {(() => {
-            const step = Math.max(1, Math.round(days.length / (width < 560 ? 4 : 7)));
-            return days.map((day, index) => {
-              const isLast = index === lastIndex;
-              // A full step of clearance, not half. Half was enough at desktop
-              // widths and still let "Aug 25" and "Aug 30" overprint on a phone,
-              // where the same five days are 40px apart.
-              const onTick = index % step === 0 && lastIndex - index >= step;
-              if (!isLast && !onTick) return null;
-              return (
-                <text
-                  key={day.dateKey}
-                  x={xFor(index)}
-                  y={PAD.top + innerH + 20}
-                  textAnchor={index === 0 ? 'start' : isLast ? 'end' : 'middle'}
-                >
-                  {shortDate(day.dateKey)}
-                </text>
-              );
-            });
-          })()}
+          {xAxisTicks(days.length, width).map((index) => {
+            const day = days[index];
+            if (!day) return null;
+            const isLast = index === lastIndex;
+            return (
+              <text
+                key={day.dateKey}
+                x={xFor(index)}
+                y={PAD.top + innerH + 20}
+                textAnchor={index === 0 ? 'start' : isLast ? 'end' : 'middle'}
+              >
+                {shortDate(day.dateKey)}
+              </text>
+            );
+          })}
         </g>
 
         <g clipPath="url(#cash-plot)">
@@ -344,12 +418,22 @@ export default function CashChart({
         >
           <line className="cash-line-buffer" x1={PAD.left} x2={PAD.left + innerW} y1={bufferY} y2={bufferY} />
           <rect className="cash-handle-hit" x={PAD.left} y={bufferY - 9} width={innerW} height={18} />
-          <g className="cash-handle" transform={`translate(${PAD.left + innerW - 4}, ${bufferY})`}>
-            <rect x={-58} y={-11} width={58} height={22} rx={11} />
-            <text x={-29} y={0} dy="0.32em" textAnchor="middle">
-              {money(buffer)}
-            </text>
-          </g>
+          {/* The one floating label left inside the plot, and it now checks the
+              boundary rather than assuming there is room. Pinned to the right
+              edge it hung over the axis on a narrow chart — 58px of pill inside
+              a 220px plot, drawn outside the clip, over the Y labels. */}
+          {(() => {
+            const pillW = isPhone ? 52 : 58;
+            const { x } = flipInside(PAD.left + innerW - 4, pillW, PAD.left, PAD.left + innerW);
+            return (
+              <g className="cash-handle" transform={`translate(${x}, ${bufferY})`}>
+                <rect x={0} y={-11} width={pillW} height={22} rx={11} />
+                <text x={pillW / 2} y={0} dy="0.32em" textAnchor="middle">
+                  {axisMoney(buffer, width)}
+                </text>
+              </g>
+            );
+          })()}
         </g>
 
         {/* Today's balance, draggable — in the gutter beside the axis rather than
@@ -375,31 +459,55 @@ export default function CashChart({
           <rect className="cash-handle-hit" x={PAD.left - 20} y={startY - 13} width={26} height={26} />
         </g>
 
-        {/* Event markers */}
-        <g clipPath="url(#cash-plot)">
-          {days.map((day, index) => {
-            if (day.events.length === 0) return null;
-            const net = day.incoming - day.outgoing;
-            const anyEstimated = day.events.some((event) => !event.confirmed);
-            const unfunded = day.projected < 0;
-            const biggest = day.events[0];
-            const shape = day.events.length > 1 ? 'cluster' : markerShape(biggest);
-            const x = xFor(index);
+        {/* Event markers.
+            NOT clipped: a touch target is half a target wide either side of its
+            point, and the first and last markers sit one inset from the plot
+            edge, so a clip would cut their targets in half. The inset is sized
+            off MIN_TOUCH precisely so nothing has to be clipped to stay tidy. */}
+        <g
+          className="cash-markers"
+          role="group"
+          aria-label={`${groups.length} day${groups.length === 1 ? '' : 's'} with transactions. Use arrow keys to move between them.`}
+        >
+          {groups.map((group, order) => {
+            const day = days[group.index];
+            const net = group.days.reduce((sum, entry) => sum + entry.incoming - entry.outgoing, 0);
+            const anyEstimated = group.days.some((entry) => entry.events.some((event) => !event.confirmed));
+            const last = group.days[group.days.length - 1];
+            const unfunded = last.projected < 0;
+            const shape = group.grouped ? 'cluster' : markerShape(day.events[0]);
+            const x = xFor(group.index);
             const y = yFor(day.projected);
             const tone = unfunded ? 'unfunded' : net >= 0 ? 'in' : 'out';
-            const label = `${shortDate(day.dateKey)}: ${day.events.length} event${day.events.length === 1 ? '' : 's'}, net ${money(net)}`;
+            // Selection, not hover — see the note where selectedGroup is built.
+            const isOn = selectedGroup?.index === group.index;
+            const isHot = activeGroup?.index === group.index;
+            const span =
+              group.days.length > 1
+                ? `${shortDate(group.days[0].dateKey)} to ${shortDate(last.dateKey)}`
+                : shortDate(day.dateKey);
+            const label = group.grouped
+              ? `${span}: ${group.eventCount} transactions, net ${money(net)}. Balance after ${money(last.projected)}.`
+              : `${span}: ${day.events[0].label}, ${money(day.events[0].amount)}. Balance after ${money(day.projected)}.`;
             return (
-              /* Deliberately NOT a tab stop. Thirty markers would put thirty
-                 stops between the chart and the next control, and every one of
-                 them has a real button in the list below that does the same
-                 thing — so the keyboard path is the list, and this is the mouse
-                 shortcut to it. */
+              /* ONE tab stop for the whole layer, not one per marker — thirty
+                 markers would be thirty stops between the chart and the next
+                 control. Arrow keys move between them (roving tabindex), Enter
+                 and Space select. The list below is still there and still works;
+                 this makes the chart itself operable rather than decorative. */
               <g
                 key={day.dateKey}
-                className={`cash-marker tone-${tone}${anyEstimated ? ' is-estimated' : ''}${selected === index ? ' is-selected' : ''}`}
+                className={`cash-marker tone-${tone}${anyEstimated ? ' is-estimated' : ''}${isOn ? ' is-selected' : ''}${isHot && !isOn ? ' is-active' : ''}${group.grouped ? ' is-grouped' : ''}`}
                 transform={`translate(${x}, ${y})`}
-                aria-hidden="true"
-                onClick={() => onSelect(selected === index ? null : index)}
+                role="button"
+                tabIndex={order === focusOrder ? 0 : -1}
+                aria-label={label}
+                aria-pressed={isOn}
+                ref={(node) => { markerRefs.current[order] = node; }}
+                onClick={() => onSelect(selected === group.index ? null : group.index)}
+                onFocus={() => { setFocusOrder(order); setHover(group.index); }}
+                onBlur={() => setHover(null)}
+                onKeyDown={(event) => onMarkerKey(event, order, group.index)}
               >
                 <title>{label}</title>
                 {/* The touch target, and nothing else. It carries its own class
@@ -408,11 +516,29 @@ export default function CashChart({
                     ring around every marker, which is what made a month of them
                     look like a chain. */}
                 <circle className="cash-marker-hit" r={hitRadius} />
+                {/* Focus is drawn by us, not by the UA. A browser outline on an
+                    SVG <g> whose only sized child is a transparent circle lands
+                    somewhere unhelpful, and on some engines nowhere at all. */}
+                <circle className="cash-marker-focus" r={13} />
+                {/* Selection is a ring OUTSIDE the shape rather than a fill or a
+                    size change: it has to be visible without covering the point
+                    next to it or moving the thing you just aimed at. */}
+                {isOn ? <circle className="cash-marker-ring" r={11} /> : null}
                 {shape === 'diamond' ? <path className="cash-marker-shape" d="M0,-5 L5,0 L0,5 L-5,0 Z" /> : null}
                 {shape === 'up' ? <path className="cash-marker-shape" d="M0,-5 L4.4,2.8 L-4.4,2.8 Z" /> : null}
                 {shape === 'down' ? <path className="cash-marker-shape" d="M0,5 L4.4,-2.8 L-4.4,-2.8 Z" /> : null}
                 {shape === 'circle' ? <circle className="cash-marker-shape" r={4} /> : null}
-                {shape === 'cluster' ? <rect className="cash-marker-shape" x={-4.5} y={-4.5} width={9} height={9} rx={2.5} /> : null}
+                {/* A grouped marker is a disc carrying the count. Shape AND
+                    colour still separate in from out on the ungrouped ones; a
+                    group is neither, so it says how many instead. */}
+                {shape === 'cluster' ? (
+                  <>
+                    <circle className="cash-marker-shape cash-marker-cluster" r={9} />
+                    <text className="cash-marker-count" y={0} dy="0.34em" textAnchor="middle">
+                      {group.eventCount}
+                    </text>
+                  </>
+                ) : null}
               </g>
             );
           })}
@@ -427,37 +553,93 @@ export default function CashChart({
 
       </svg>
 
+      {/* What the selected marker is, BELOW the plot rather than floating over
+          it. A pill inside the chart covers the very data it describes, and on a
+          320px screen there is nowhere for it to go that isn't on top of
+          something. Down here it can say four things instead of two. */}
       {activeDay ? (
-        <div className="cash-readout" aria-live="polite">
-          <strong>{shortDate(activeDay.dateKey)}</strong>
-          <span>
-            Projected <b>{money(activeDay.projected)}</b>
-          </span>
-          {lines.confirmed ? (
-            <span>
-              Confirmed only <b>{money(activeDay.confirmedOnly)}</b>
-            </span>
-          ) : null}
-          {lines.worst ? (
-            <span>
-              If payments run {lateDays} days late <b>{money(activeDay.worstCase)}</b>
-            </span>
-          ) : null}
-          {activeDay.events.length > 0 ? (
-            <span>
-              {activeDay.events.length} event{activeDay.events.length === 1 ? '' : 's'}, net{' '}
-              <b>{money(activeDay.incoming - activeDay.outgoing)}</b>
-            </span>
-          ) : (
-            <span>Nothing scheduled</span>
-          )}
-        </div>
-      ) : (
-        <p className="cash-chart-hint">
-          Drag the dot on the left to change today&rsquo;s balance, or the dashed line to move your safety buffer. Tap a marker
-          to see what happens that day.
-        </p>
-      )}
+        (() => {
+          const group = activeGroup;
+          const shown = group ? group.days : [activeDay];
+          const events = shown.flatMap((entry) => entry.events);
+          const last = shown[shown.length - 1];
+          const net = shown.reduce((sum, entry) => sum + entry.incoming - entry.outgoing, 0);
+          const single = events.length === 1 ? events[0] : null;
+          const spanLabel =
+            shown.length > 1
+              ? `${shortDate(shown[0].dateKey)} – ${shortDate(last.dateKey)}`
+              : shortDate(activeDay.dateKey);
+
+          return (
+            <div className="cash-detail" aria-live="polite">
+              <div className="cash-detail-head">
+                <span className="cash-detail-date">{spanLabel}</span>
+                {events.length > 0 ? (
+                  <span className={`cash-detail-amount ${net >= 0 ? 'is-in' : 'is-out'}`}>
+                    {net >= 0 ? '+' : '−'}${Math.abs(Math.round(net)).toLocaleString('en-US')}
+                  </span>
+                ) : null}
+              </div>
+
+              <p className="cash-detail-name">
+                {single
+                  ? single.label
+                  : events.length > 0
+                    ? `${events.length} transactions`
+                    : 'Nothing scheduled'}
+              </p>
+
+              {events.length > 0 ? (
+                <p className="cash-detail-after">
+                  Projected balance after {events.length === 1 ? 'this' : 'these'}: <b>{money(last.projected)}</b>
+                </p>
+              ) : (
+                <p className="cash-detail-after">
+                  Projected balance: <b>{money(activeDay.projected)}</b>
+                </p>
+              )}
+
+              {/* The grouped case gets the transactions themselves — a count with
+                  no way to see what is in it is a dead end. Capped, with the
+                  remainder named rather than silently dropped. */}
+              {events.length > 1 ? (
+                <ul className="cash-detail-list">
+                  {events.slice(0, 4).map((event) => (
+                    <li key={event.id}>
+                      <span className="cash-detail-item-name">{event.label}</span>
+                      <span className={`cash-detail-item-amount ${event.amount >= 0 ? 'is-in' : 'is-out'}`}>
+                        {money(event.amount)}
+                      </span>
+                    </li>
+                  ))}
+                  {events.length > 4 ? (
+                    <li className="cash-detail-more">
+                      and {events.length - 4} more — see the list below
+                    </li>
+                  ) : null}
+                </ul>
+              ) : null}
+
+              {/* Kept, because they are alternative readings of the same day and
+                  they only appear when the owner has asked for those lines. */}
+              {lines.confirmed || lines.worst ? (
+                <p className="cash-detail-alt">
+                  {lines.confirmed ? <>Confirmed only <b>{money(activeDay.confirmedOnly)}</b>. </> : null}
+                  {lines.worst ? <>If payments run {lateDays} days late <b>{money(activeDay.worstCase)}</b>.</> : null}
+                </p>
+              ) : null}
+            </div>
+          );
+        })()
+      ) : null}
+
+      {/* Below the panel, and always present — it explains the controls, which
+          are still there whether or not anything is selected. */}
+      <p className="cash-chart-hint">
+        {activeDay
+          ? 'Tap any marker to see that day’s transaction details. Grouped markers keep the graph readable on small screens.'
+          : 'Drag the dot on the left to change today’s balance, or the dashed line to move your safety buffer. Tap a marker to see what happens that day.'}
+      </p>
     </div>
   );
 }
