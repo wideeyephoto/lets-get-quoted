@@ -15,7 +15,11 @@ import styles from './focus.module.css';
 // "remodel" gets a hammer), and the colour is hashed off the record id so a
 // given record always looks like itself and two side by side never look alike.
 
-function hueFor(id: string): number {
+// Exported so the clients pane can draw its monogram cover on the same wash.
+// A customer has no photos and no trade, but it still has to look like it
+// belongs beside a job and a lead — and two records side by side must never
+// come out the same colour.
+export function hueFor(id: string): number {
   let hash = 0;
   for (let i = 0; i < id.length; i += 1) hash = (hash * 31 + id.charCodeAt(i)) % 360;
   return hash;

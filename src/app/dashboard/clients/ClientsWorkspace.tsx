@@ -9,6 +9,7 @@ import { setClientsViewAction } from '@/app/dashboard/view-actions';
 import { followUpHeadline, groupByFollowUp } from '@/lib/client-followup';
 import type { ClientsView } from '@/lib/dashboard-views';
 import { avatarTone } from '@/lib/avatar-tone';
+import ClientFocusView from './ClientFocusView';
 import { createClientAction } from './actions';
 
 // The customer list, five ways.
@@ -251,71 +252,13 @@ export default function ClientsWorkspace({
         </div>
       ) : null}
 
+      {/* The same master-detail leads and jobs use, off the same stylesheet.
+          What was here before was a second, shallower thing that happened to
+          share the word "Focus": a name, three numbers and two buttons, with no
+          cover, no tabs, no deep detail, and rows built from <button> — so
+          cmd-clicking a customer opened nothing and the URL was uncopyable. */}
       {matches.length > 0 && view === 'focus' ? (
-        <div className="client-focus">
-          <div className="client-focus-list" ref={listRef}>
-            {matches.map((client) => (
-              <button
-                key={client.id}
-                type="button"
-                className={`client-focus-row${selected?.id === client.id ? ' is-selected' : ''}`}
-                onClick={() => setSelectedId(client.id)}
-                aria-current={selected?.id === client.id ? 'true' : undefined}
-              >
-                <span className="client-avatar small" data-avatar-tone={avatarTone(client.name)} aria-hidden="true">{client.initials}</span>
-                <span className="client-focus-who">
-                  <strong>{client.name}</strong>
-                  <small>{client.contactLine}</small>
-                </span>
-                <span className="client-focus-total">{client.totalLabel}</span>
-              </button>
-            ))}
-          </div>
-
-          {selected ? (
-            // Keyed so switching customers remounts the pane — the entrance
-            // animation is the thing that makes a click feel like it landed.
-            <div className="client-focus-pane" key={selected.id}>
-              <div className="client-focus-head">
-                <span className="client-avatar large" data-avatar-tone={avatarTone(selected.name)} aria-hidden="true">{selected.initials}</span>
-                <div>
-                  <h3>
-                    {selected.name}
-                    {selected.isRepeat ? <span className="client-repeat-badge">Repeat</span> : null}
-                  </h3>
-                  <p>{selected.contactLine}</p>
-                </div>
-              </div>
-
-              <dl className="client-focus-stats">
-                <div>
-                  <dt>Jobs</dt>
-                  <dd>{selected.jobCount}</dd>
-                </div>
-                <div>
-                  <dt>Total billed</dt>
-                  <dd>{selected.totalLabel}</dd>
-                </div>
-                <div>
-                  <dt>Last job</dt>
-                  <dd>{selected.lastLabel}</dd>
-                </div>
-              </dl>
-
-              {selected.address ? <p className="client-focus-address">{selected.address}</p> : null}
-
-              <div className="client-focus-actions">
-                <Link href={`/dashboard/clients/${selected.id}`} className="btn primary">Open profile</Link>
-                {selected.phone ? (
-                  <a href={`tel:${selected.phone}`} className="btn secondary">Call {selected.phoneLabel}</a>
-                ) : null}
-                {selected.email ? (
-                  <a href={`mailto:${selected.email}`} className="btn secondary">Email</a>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
-        </div>
+        <ClientFocusView clients={matches} selectedId={selected?.id ?? null} onSelect={setSelectedId} />
       ) : null}
 
       {matches.length > 0 && view === 'followup' ? <FollowUpBoard clients={matches} /> : null}
