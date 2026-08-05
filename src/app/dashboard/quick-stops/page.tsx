@@ -2,7 +2,7 @@ import { requireOwnerContext, createAdminClient } from '@/lib/auth';
 import { listQuickStopRequests } from '@/lib/quick-stop-requests';
 import { sweepQuickStopOffers } from '@/lib/quick-stop-sweep';
 import { quickStopSettingsFromAccount, QUICK_STOP_SETTINGS_COLUMNS, QUICK_STOP_TERMINAL_STATUSES } from '@/lib/quick-stop';
-import { computeQuickStopRoute, loadRouteStops } from '@/lib/quick-stop-route';
+import { computeQuickStopRoute, lastKnownWorkPoint, loadRouteStops } from '@/lib/quick-stop-route';
 import QuickStopCoverage from './QuickStopCoverage';
 import { loadPriorityZones, priorityZonesAvailable } from '@/lib/quick-stop-zones-data';
 import { createLeadPhotoUrls } from '@/lib/lead-photo-storage';
@@ -183,6 +183,10 @@ export default async function QuickStopsPage() {
   // Empty until the migration is applied — the map then draws the plain limit.
   const priorityZones = await loadPriorityZones(supabase, accountId);
   const zonesAvailable = await priorityZonesAvailable(supabase, accountId);
+  // Somewhere to open the map on a day with nothing booked. Without it the
+  // canvas never mounted, and priority areas — a setting about where you WOULD
+  // drive — could not be drawn at all unless you happened to have work today.
+  const fallbackCenter = routeStops.length > 0 ? null : await lastKnownWorkPoint(supabase, accountId);
   const coverageEmpty =
     settings.maxDetourMiles <= 0
       ? 'No detour limit is set yet, so there is nothing to draw. Set one below and this fills in.'
@@ -200,6 +204,7 @@ export default async function QuickStopsPage() {
         emptyReason={coverageEmpty}
         zones={priorityZones}
         zonesAvailable={zonesAvailable}
+        fallbackCenter={fallbackCenter}
       />
 
       <QuickStopStatus

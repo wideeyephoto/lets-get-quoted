@@ -170,3 +170,37 @@ export async function computeQuickStopRoute(
 
   return { detourMiles, detourMinutes, routeExtensionMinutes, anchorLabel };
 }
+
+/**
+ * Roughly where this account works, for opening a map when today is empty.
+ *
+ * The coverage map fits itself to today's route, which on a quiet day is
+ * nothing at all — and a map with no centre is a map that never renders, which
+ * took the priority-area drawing tool down with it. Priority areas are a
+ * setting about where you WOULD go, so they cannot depend on what happens to be
+ * booked.
+ *
+ * The most recent geocoded job is the cheapest honest answer: it is a place
+ * this contractor has actually been, so the map opens over their patch instead
+ * of the middle of the Atlantic. Null when nothing has ever been geocoded, and
+ * the caller then says so rather than guessing.
+ */
+export async function lastKnownWorkPoint(
+  supabase: SupabaseClient,
+  accountId: string,
+): Promise<{ lat: number; lng: number } | null> {
+  const { data } = await supabase
+    .from('jobs')
+    .select('lat, lng, scheduled_for, created_at')
+    .eq('account_id', accountId)
+    .not('lat', 'is', null)
+    .not('lng', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  const row = (data ?? [])[0];
+  if (!row) return null;
+  const lat = Number(row.lat);
+  const lng = Number(row.lng);
+  return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+}

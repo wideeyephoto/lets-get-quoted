@@ -33,6 +33,13 @@ export type CoverageMapProps = {
   onPickCenter?: (point: { lat: number; lng: number }) => void;
   /** The zone being drawn right now, previewed before it is saved. */
   draft?: { lat: number; lng: number; radiusMiles: number } | null;
+  /**
+   * Somewhere to open the map when there is nothing to fit to — the last place
+   * this account worked. Without it a quiet day means no map, and no map means
+   * no way to draw a priority area, which is a setting that has nothing to do
+   * with today's schedule.
+   */
+  fallbackCenter?: { lat: number; lng: number } | null;
 };
 
 const METERS_PER_MILE = 1609.344;
@@ -47,7 +54,15 @@ const PRIORITY_COLOR = '#a78bfa';
 type MapTheme = 'dark' | 'light';
 const THEME_KEY = 'qs-coverage-map-theme';
 
-export default function QuickStopCoverageMap({ stops, radiusMiles, emptyReason, zones, onPickCenter, draft }: CoverageMapProps) {
+export default function QuickStopCoverageMap({
+  stops,
+  radiusMiles,
+  emptyReason,
+  zones,
+  onPickCenter,
+  draft,
+  fallbackCenter = null,
+}: CoverageMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [theme, setTheme] = useState<MapTheme>('dark');
@@ -69,8 +84,23 @@ export default function QuickStopCoverageMap({ stops, radiusMiles, emptyReason, 
     }
   }, []);
 
+  // Declared before the effect so the effect's deps and the markup below read
+  // the SAME condition — they disagreed, and the canvas lost.
+  //
+  // NOT gated on emptyReason any more. A priority area is a SETTING — where you
+  // would drive further for work — with nothing to do with whether anything
+  // happens to be booked today. Gating on it meant the canvas was never
+  // mounted on a quiet day, so "Add a priority area" asked you to tap a map
+  // that did not exist and there was no way to draw one at all.
+  //
+  // Worth building if there is anything to show (today's stops, saved areas) or
+  // simply somewhere sensible to open it. Deliberately not conditional on being
+  // mid-placement: a map that only appears AFTER you press "Add a priority
+  // area" gives you nothing to aim at while deciding whether to press it.
+  const canDrawMap = stops.length > 0 || zones.length > 0 || Boolean(fallbackCenter);
+
   useEffect(() => {
-    if (emptyReason) return;
+    if (!canDrawMap) return;
     const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
     if (!key) {
       setStatus('error');
@@ -204,6 +234,13 @@ export default function QuickStopCoverageMap({ stops, radiusMiles, emptyReason, 
             if (typeof zoom === 'number' && zoom > 14) map.setZoom(14);
           });
           void listener;
+        } else if (fallbackCenter) {
+          // Nothing booked and no areas drawn yet, so there is nothing to fit
+          // to — open over the last place this account actually worked. Zoom 11
+          // is roughly a metro area: wide enough to find the suburb you have in
+          // mind, tight enough that tapping it means something.
+          map.setCenter(fallbackCenter);
+          map.setZoom(11);
         }
 
         setStatus('ready');
@@ -218,7 +255,7 @@ export default function QuickStopCoverageMap({ stops, radiusMiles, emptyReason, 
     // Rebuilt on a theme change: Google applies `styles` at construction, and
     // swapping them on a live map leaves the previous palette on tiles that are
     // already painted.
-  }, [stops, radiusMiles, emptyReason, theme, zones, draft]);
+  }, [stops, radiusMiles, theme, zones, draft, fallbackCenter, canDrawMap]);
 
   function chooseTheme(next: MapTheme) {
     setTheme(next);
@@ -245,7 +282,11 @@ export default function QuickStopCoverageMap({ stops, radiusMiles, emptyReason, 
       </div>
 
       <div className="qs-coverage-frame">
-        {emptyReason ? (
+        {/* The canvas renders whenever the map CAN be built — same condition the
+            effect uses. It used to be swapped out for the empty message, which
+            is why a day with nothing booked left "Add a priority area" pointing
+            at a map that was never mounted. */}
+        {!canDrawMap ? (
           <p className="qs-coverage-empty">{emptyReason}</p>
         ) : (
           <>

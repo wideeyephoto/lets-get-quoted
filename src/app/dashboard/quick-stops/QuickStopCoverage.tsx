@@ -19,11 +19,13 @@ type Props = {
   emptyReason: string | null;
   zones: PriorityZone[];
   zonesAvailable: boolean;
+  /** Where to open the map when nothing is booked — see QuickStopCoverageMap. */
+  fallbackCenter?: { lat: number; lng: number } | null;
 };
 
 type Draft = { lat: number; lng: number; radiusMiles: number };
 
-export default function QuickStopCoverage({ stops, radiusMiles, emptyReason, zones, zonesAvailable }: Props) {
+export default function QuickStopCoverage({ stops, radiusMiles, emptyReason, zones, zonesAvailable, fallbackCenter = null }: Props) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [placing, setPlacing] = useState(false);
 
@@ -40,6 +42,7 @@ export default function QuickStopCoverage({ stops, radiusMiles, emptyReason, zon
         emptyReason={emptyReason}
         zones={zones}
         draft={draft}
+        fallbackCenter={fallbackCenter}
         onPickCenter={placing ? pickCenter : undefined}
       />
 
