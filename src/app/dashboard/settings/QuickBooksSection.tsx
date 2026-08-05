@@ -10,7 +10,7 @@ import type { ConnectionStatus } from '@/lib/quickbooks/connection';
 // say what happened.
 
 const NOTICES: Record<string, { tone: 'ok' | 'warn'; text: string }> = {
-  connected: { tone: 'ok', text: 'QuickBooks is connected.' },
+  connected: { tone: 'ok', text: 'QuickBooks is linked.' },
   disconnected: { tone: 'ok', text: 'QuickBooks has been disconnected, and we’ve told Intuit to revoke our access.' },
   cancelled: { tone: 'warn', text: 'Connection cancelled — nothing changed.' },
   // Deliberately vague about the cause: the state check failing usually means a
@@ -38,10 +38,17 @@ export default function QuickBooksSection({ status, notice }: { status: Connecti
         <p className={message.tone === 'ok' ? 'form-success' : 'form-error'}>{message.text}</p>
       ) : null}
 
+      {/* Says what it does, not what it is for.
+          This read "connect your QuickBooks company so your invoices and
+          payments land in your books without re-typing them" while the only
+          QuickBooks API call in the app was the one that reads the company
+          name. A contractor would connect, see their company named back at
+          them, believe the books were filling themselves and stop exporting.
+          Update this the day the sync ships, not before. */}
       <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-        Connect your QuickBooks company so your invoices and payments land in your books without
-        re-typing them. You can disconnect at any time, and the CSV exports below keep working either
-        way — connecting is a convenience, not a lock-in.
+        Linking your QuickBooks company is the first half of getting your invoices and payments into
+        your books. Sending them across automatically is being built — until it lands, the CSV export
+        below is how the numbers get there, and it works whether or not you connect.
       </p>
 
       {status.state === 'unconfigured' ? (
@@ -78,8 +85,8 @@ export default function QuickBooksSection({ status, notice }: { status: Connecti
       {status.state === 'connected' ? (
         <>
           <p className="workspace-details-copy">
-            Connected to <strong>{status.companyName || `company ${status.realmId}`}</strong> since{' '}
-            {dayLabel(status.connectedAt)}.
+            Linked to <strong>{status.companyName || `company ${status.realmId}`}</strong> since{' '}
+            {dayLabel(status.connectedAt)}. Nothing is being sent across yet — use the export below.
             {status.environment === 'sandbox' ? (
               // Said plainly, because a sandbox connection looks exactly like a
               // real one until somebody goes looking for the invoices.
