@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { requireOwnerContext } from '@/lib/auth';
-import { CALENDAR_VIEW_COOKIE, CALENDAR_WEEKEND_COOKIE, CLIENTS_VIEW_COOKIE, CREW_ROSTER_VIEW_COOKIE, CREW_SKIN_COOKIE, CREW_THEME_COOKIE, CREW_VIEW_COOKIE, JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, MESSAGES_VIEW_COOKIE, mapViewCookie, normalizeCalendarView, normalizeClientsView, normalizeCrewSkin, normalizeCrewView, normalizeJobsView, normalizeMapTheme, normalizeCrewTheme, normalizeMapView, normalizeMessagesView, normalizeRosterView, serializeWeekendDays, type CalendarView, type ClientsView, type CrewSkin, type CrewView, type JobsView, type MapSurface, type MapTheme, type MapView, type MessagesView, type RosterView, type WeekendDays } from '@/lib/dashboard-views';
+import { CALENDAR_VIEW_COOKIE, CALENDAR_WEEKEND_COOKIE, CLIENTS_VIEW_COOKIE, CREW_ROSTER_VIEW_COOKIE, CREW_SKIN_COOKIE, CREW_THEME_COOKIE, CREW_VIEW_COOKIE, JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, MESSAGES_VIEW_COOKIE, RECURRING_VIEW_COOKIE, mapViewCookie, normalizeCalendarView, normalizeClientsView, normalizeCrewSkin, normalizeCrewView, normalizeJobsView, normalizeMapTheme, normalizeCrewTheme, normalizeMapView, normalizeMessagesView, normalizeRecurringView, normalizeRosterView, serializeWeekendDays, type CalendarView, type ClientsView, type CrewSkin, type CrewView, type JobsView, type MapSurface, type MapTheme, type MapView, type MessagesView, type RecurringView, type RosterView, type WeekendDays } from '@/lib/dashboard-views';
 
 const YEAR = 60 * 60 * 24 * 365;
 
@@ -49,6 +49,12 @@ export async function setClientsViewAction(view: ClientsView) {
 export async function setMessagesViewAction(view: MessagesView) {
   await requireOwnerContext();
   cookies().set(MESSAGES_VIEW_COOKIE, normalizeMessagesView(view), { path: '/', maxAge: YEAR, sameSite: 'lax' });
+}
+
+// Remember how the Recurring page is dressed (Cards / Operations).
+export async function setRecurringViewAction(view: RecurringView) {
+  await requireOwnerContext();
+  cookies().set(RECURRING_VIEW_COOKIE, normalizeRecurringView(view), { path: '/', maxAge: YEAR, sameSite: 'lax' });
 }
 
 // Focus is ONE page-level mode for Crew & Labor, not a layout each tab picks

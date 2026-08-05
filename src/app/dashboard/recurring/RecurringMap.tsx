@@ -39,10 +39,21 @@ const PAUSED_COLOR = '#7c8ba1';
 export default function RecurringMap({
   pins,
   totalPlans,
+  onJump,
 }: {
   pins: PlanPin[];
   /** Every plan, placed or not — so the map can own up to what it is missing. */
   totalPlans: number;
+  /**
+   * What a pin click should do, when the caller needs to do something before the
+   * scroll can work.
+   *
+   * In the Cards view the map and the list are on screen together, so the
+   * default — scroll straight to the card — is right. In Operations the map is a
+   * TAB, and the list it would scroll to is not rendered while you are looking
+   * at it. That caller switches tabs first and jumps afterwards.
+   */
+  onJump?: (planId: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -132,7 +143,7 @@ export default function RecurringMap({
               strokeWeight: 2,
             },
           });
-          marker.addListener('click', () => jumpToPlan(pin.planId));
+          marker.addListener('click', () => (onJump ? onJump(pin.planId) : jumpToPlan(pin.planId)));
           bounds.extend({ lat: pin.lat, lng: pin.lng });
         }
 
@@ -155,7 +166,7 @@ export default function RecurringMap({
     };
     // Rebuilt on a theme change: Google applies `styles` at construction, and
     // swapping them on a live map leaves the old palette on painted tiles.
-  }, [pins, theme, shown, placed, prefsRead]);
+  }, [pins, theme, shown, placed, prefsRead, onJump]);
 
   function chooseTheme(next: MapTheme) {
     setTheme(next);
@@ -279,7 +290,7 @@ export default function RecurringMap({
  * A plan filtered out of the list has no node, and that is a no-op on purpose:
  * silently doing nothing beats scrolling somebody to the wrong card.
  */
-function jumpToPlan(planId: string) {
+export function jumpToPlan(planId: string) {
   const node = document.getElementById(`plan-${planId}`);
   if (!node) return;
   node.scrollIntoView({ behavior: 'smooth', block: 'center' });

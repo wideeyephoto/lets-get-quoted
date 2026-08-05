@@ -11134,8 +11134,13 @@ a.recurring-fact:hover { color: var(--text); border-bottom-color: currentColor; 
   border-bottom: 1px solid var(--rule-t10);
 }
 /* The composer's trigger belongs on the tab row, hard right — it is the page's
-   primary action, and putting it inside the list made it scroll away. */
-.recurring-tabbar-action { margin-left: auto; }
+   primary action, and putting it inside the list made it scroll away.
+
+   Flex, not a bare block. The slot holds two things now — the view gear and the
+   composer — and both are block-level, so they stacked and took the tab row
+   from 44px to 116px in BOTH views. Nothing looked broken; the row was just
+   quietly two and a half times taller than it needed to be. */
+.recurring-tabbar-action { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
 /* An OPEN composer is a form, not a toolbar item. Left inline it stretched the
    flex row to its own height, and `align-items: center` then parked Plans and
    Calendar halfway down a column of blank space beside it — the switches
@@ -11249,7 +11254,19 @@ a.recurring-fact:hover { color: var(--text); border-bottom-color: currentColor; 
 .recurring-cal-money { font-size: 0.88rem; font-weight: 700; }
 
 @media (max-width: 720px) {
-  .recurring-toolbar { flex-direction: column; align-items: stretch; }
+  /* .clients-toolbar.recurring-toolbar, not .recurring-toolbar alone.
+     The element carries both classes and .clients-toolbar is declared 7,000
+     lines further down, so its `align-items: center` was quietly beating the
+     `stretch` here — every control on this toolbar sat centred in a column
+     instead of filling the width.
+
+     The `flex: none` is the other half, and it is the one that was actually
+     visible: .clients-toolbar gives the search `flex: 1 1 18rem`, and once the
+     rule above turns the toolbar into a COLUMN, 18rem stops being a width and
+     becomes a height. A 43px input inside a 288px box, and a hole in the middle
+     of the page that looked like something had failed to load. */
+  .clients-toolbar.recurring-toolbar { flex-direction: column; align-items: stretch; }
+  .clients-toolbar.recurring-toolbar .client-search-bar { flex: none; }
   .recurring-tabbar-action { margin-left: 0; width: 100%; }
   .recurring-cal-row { grid-template-columns: 4rem minmax(0, 1fr); }
   .recurring-cal-money { grid-column: 2; justify-self: start; }
@@ -11611,6 +11628,348 @@ a.recurring-fact:hover { color: var(--text); border-bottom-color: currentColor; 
      first line. Two still read as a rhythm; a dangling "→" reads as a bug. */
   .recurring-rail-dot:nth-of-type(3) { display: none; }
   .recurring-rail-dot:nth-of-type(2) .recurring-rail-sep { display: none; }
+}
+
+/* === Recurring · the Operations view =======================================
+
+   The same book of plans as a control room. Everything in here is prefixed
+   .rops- and applies ONLY in that view, so Cards is untouched — a second
+   dressing that repaints the first is not a view, it is a redesign with a
+   switch on it.
+
+   The mockup this came from had seven panels above the plan list: four tiles,
+   then Needs attention / Upcoming visits / an autopay donut. Three of those sat
+   directly under a tile carrying the same figure. Five panels here, and the two
+   that went were the two that repeated a number rather than listing the things
+   behind it. The donut became six pixels inside its own tile.
+--------------------------------------------------------------------------- */
+
+/* No hero. The lead paragraph explains what a recurring plan IS, which earns a
+   hero from somebody who has none and nothing from somebody managing eighteen;
+   the map moves to a tab. */
+.rops-pagehead { margin-bottom: 0.35rem; }
+/* A page title, not a landing headline. The hero's h1 is 3rem because it is
+   introducing the idea; here the idea is not in question and every pixel it
+   takes is a pixel the plan list starts lower. */
+.rops-pagehead .workspace-title { margin: 0.1rem 0 0; font-size: 1.55rem; line-height: 1.15; }
+
+/* The scoreboard, at control-room scale.
+   Same four tiles as Cards; a tighter box, a smaller figure and a shorter
+   sparkline. 2.6rem of display type is right when the row is the first thing on
+   a page — here it is the second, above the thing you actually came for. */
+.rops-tiles { gap: 0.65rem; }
+.rops-tiles .workspace-metric-card { border-radius: 16px; padding: 0.7rem 0.9rem; }
+.rops-tiles .workspace-metric-label { font-size: 0.7rem; letter-spacing: 0.08em; }
+.rops-tiles .workspace-metric-value { margin-top: 0.28rem; font-size: clamp(1.35rem, 2.2vw, 1.85rem); }
+.rops-tiles.recurring-stat-grid .recurring-mrr-card .workspace-metric-value { font-size: clamp(1.45rem, 2.4vw, 2rem); }
+.rops-tiles .recurring-mrr-spark { height: 1.5rem; margin: 0.25rem 0 0.1rem; }
+.rops-tiles .workspace-metric-note { margin-top: 0.3rem; font-size: 0.76rem; }
+
+/* Autopay coverage, inside the tile that already states the fraction. */
+.rops-meter {
+  display: block;
+  width: 100%;
+  height: 6px;
+  margin: 0.5rem 0 0.1rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.1);
+  overflow: hidden;
+}
+.rops-meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--ink-orange-3), var(--ink-orange-1));
+}
+
+/* --- the work board --------------------------------------------------------
+   Two halves, both LISTS. A half that restates a tile is a half that should not
+   exist, which is the whole reason there are two here and not three. */
+.rops-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.4rem 2rem;
+  margin-top: 1rem;
+  padding: 1.05rem 1.25rem 1rem;
+}
+.rops-board-half { display: flex; flex-direction: column; min-width: 0; }
+.rops-board-head { display: flex; align-items: center; gap: 0.55rem; margin-bottom: 0.45rem; }
+.rops-board-head h2 { margin: 0; font-size: 0.95rem; font-weight: 700; }
+.rops-board-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: rgba(255, 122, 33, 0.18);
+  color: var(--ink-orange-3);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+.rops-board-window { font-size: 0.78rem; color: var(--muted); }
+.rops-board-clear { margin: 0; font-size: 0.85rem; line-height: 1.5; color: var(--muted); }
+.rops-board-more { align-self: flex-start; margin-top: 0.6rem; }
+
+.rops-issues,
+.rops-visits { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+
+/* Each row is a button, not a link: it filters and scrolls this page rather
+   than navigating, and a link that doesn't navigate is a lie to a screen
+   reader and to anyone middle-clicking it. */
+.rops-issue,
+.rops-visit {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.rops-issue:hover,
+.rops-visit:hover { background: rgba(var(--tint), 0.06); border-color: var(--edge-t10); }
+
+.rops-issue-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; }
+.rops-issue-dot.is-attention { background: var(--gold-ink); }
+.rops-issue-dot.is-at-risk { background: var(--ink-red-1); }
+.rops-issue-copy { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.rops-issue-copy strong { font-size: 0.88rem; font-weight: 650; }
+.rops-issue-copy small { font-size: 0.79rem; color: var(--muted); }
+.rops-issue-when { flex: none; font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
+
+/* The date block. Month over day, which is how a calendar chip is read at a
+   glance — and the weekday goes beside the plan, because "Tue" is context for
+   the work, not part of the date. */
+.rops-visit-date {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.6rem;
+  padding: 0.25rem 0;
+  border-radius: 10px;
+  border: 1px solid var(--edge-t10);
+  background: rgba(var(--tint), 0.05);
+  line-height: 1.1;
+}
+.rops-visit-date em { font-style: normal; font-size: 0.6rem; font-weight: 800; letter-spacing: 0.06em; color: var(--muted); }
+.rops-visit-date strong { font-size: 1rem; font-weight: 700; }
+.rops-visit-copy { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.rops-visit-copy strong { font-size: 0.88rem; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rops-visit-copy small { font-size: 0.79rem; color: var(--muted); }
+.rops-visit-money { flex: none; font-size: 0.85rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+
+/* Along the foot of both halves: what needs fixing, what is coming, what it all
+   adds up to. */
+.rops-board-workload {
+  grid-column: 1 / -1;
+  margin: 0.9rem 0 0;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--edge-t10);
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.rops-board-workload strong { color: var(--text); font-weight: 650; }
+
+/* --- one plan, one row -----------------------------------------------------
+   A <details>, not a click handler. Every action in the body is a bound Server
+   Action on server-rendered markup, and a disclosure that needs no JavaScript
+   keeps it that way: the row opens before React hydrates, and with a keyboard
+   for free. */
+.rops-list { display: flex; flex-direction: column; gap: 0.25rem; margin-top: 1rem; }
+.rops-list > [id^='plan-'] { border-radius: 14px; transition: box-shadow 0.35s ease; }
+.rops-list > [id^='plan-'].is-pinpointed { box-shadow: 0 0 0 2px var(--cedge-orange-82); }
+
+.ropsrow {
+  border: 1px solid var(--edge-t10);
+  border-radius: 14px;
+  background: rgba(var(--tint), 0.03);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.ropsrow:hover { border-color: var(--cedge-orange-37); }
+.ropsrow[open] { background: rgba(var(--tint), 0.06); }
+.ropsrow.is-paused { opacity: 0.62; }
+
+.ropsrow-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1.35fr) minmax(0, 1fr) auto auto auto auto;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.6rem 0.85rem;
+  cursor: pointer;
+  list-style: none;
+}
+/* Safari draws its own triangle from a pseudo-element the standard property
+   cannot reach. */
+.ropsrow-head::-webkit-details-marker { display: none; }
+.ropsrow-head:focus-visible { outline: 2px solid var(--ink-orange-1); outline-offset: -2px; border-radius: 14px; }
+
+.rops-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: 50%;
+  border: 1px solid var(--avatar-line);
+  background: var(--avatar-bg);
+  color: var(--avatar-fg);
+  font-size: 0.74rem;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+}
+
+.ropsrow-who,
+.ropsrow-what { display: flex; flex-direction: column; min-width: 0; gap: 0.05rem; }
+.ropsrow-who strong,
+.ropsrow-what strong {
+  font-size: 0.92rem;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ropsrow-who small,
+.ropsrow-what small {
+  font-size: 0.77rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ropsrow-crew.is-warn { color: var(--gold-ink); }
+
+.ropsrow-tags { display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+.ropsrow-freq,
+.ropsrow-state {
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.ropsrow-freq { background: rgba(var(--tint), 0.08); color: var(--mute-t60); }
+.ropsrow-state.is-ok { background: rgba(74, 222, 128, 0.14); color: var(--ink-green-1); }
+.ropsrow-state.is-attention { background: rgba(255, 209, 102, 0.16); color: var(--gold-ink); }
+.ropsrow-state.is-at-risk { background: rgba(248, 113, 113, 0.18); color: var(--ink-red-1); }
+.ropsrow-state.is-manual,
+.ropsrow-state.is-paused { background: rgba(var(--tint), 0.08); color: var(--mute-t60); }
+
+.ropsrow-next { display: flex; flex-direction: column; align-items: flex-start; gap: 0.02rem; min-width: 6.5rem; }
+.ropsrow-next small { font-size: 0.68rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--mute-t50); }
+.ropsrow-next strong { font-size: 0.88rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+.ropsrow-next em { font-style: normal; font-size: 0.76rem; }
+.ropsrow-next em.later { color: var(--muted); }
+.ropsrow-next em.soon { color: var(--gold-ink); }
+.ropsrow-next em.imminent { color: var(--ink-orange-3); font-weight: 650; }
+.ropsrow-next em.overdue { color: var(--ink-red-1); font-weight: 650; }
+
+.ropsrow-money { display: flex; flex-direction: column; align-items: flex-end; gap: 0.02rem; min-width: 5.5rem; }
+.ropsrow-money strong { font-size: 1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ropsrow-money small { font-size: 0.68rem; letter-spacing: 0.03em; color: var(--mute-t50); }
+.ropsrow-money small.is-warn { color: var(--gold-ink); letter-spacing: 0; font-size: 0.8rem; }
+.ropsrow-money em { font-style: normal; font-size: 0.72rem; color: var(--ink-green-1); font-variant-numeric: tabular-nums; }
+
+.ropsrow-chevron { display: grid; place-items: center; width: 1.25rem; color: var(--mute-t50); }
+.ropsrow-chevron svg { width: 1.05rem; height: 1.05rem; transition: transform 0.18s ease; }
+.ropsrow[open] .ropsrow-chevron svg { transform: rotate(180deg); }
+
+.ropsrow-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.15rem 0.85rem 0.85rem 3.9rem;
+  border-top: 1px solid var(--edge-t10);
+  margin-top: 0.1rem;
+  padding-top: 0.75rem;
+}
+.ropsrow-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 1rem; font-size: 0.82rem; }
+.ropsrow-fact { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--muted); }
+a.ropsrow-fact { color: var(--ink-sky-1); text-decoration: none; }
+a.ropsrow-fact:hover { text-decoration: underline; }
+.ropsrow-fact.is-warn { color: var(--ink-orange-1); font-weight: 600; }
+.ropsrow-ledger { display: flex; flex-wrap: wrap; gap: 0.25rem 1.2rem; font-size: 0.82rem; color: var(--muted); }
+.ropsrow-ledger strong { color: var(--text); font-weight: 650; }
+.ropsrow-ledger .is-done { color: var(--ink-green-1); }
+.ropsrow-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.ropsrow-actions .btn { padding: 0.32rem 0.8rem; font-size: 0.8rem; }
+.ropsrow-actions .danger { margin-left: auto; }
+
+.rops-maptab { margin-top: 1rem; }
+/* The map is the whole tab here, not a hero column, so it gets the height back
+   that sitting beside the copy cost it. */
+.rops-maptab .recurring-map-canvas { min-height: 26rem; }
+
+@media (max-width: 1100px) {
+  /* Service and cadence are the first two to go: the row still answers who,
+     when and how much, which is what it is scanned for. Both are still on the
+     card body one click down. */
+  .ropsrow-head { grid-template-columns: auto minmax(0, 1fr) auto auto auto; }
+  .ropsrow-what { display: none; }
+}
+
+@media (max-width: 880px) {
+  .rops-board { grid-template-columns: minmax(0, 1fr); gap: 1.4rem; }
+  .rops-board-half + .rops-board-half { padding-top: 1.1rem; border-top: 1px solid var(--edge-t10); }
+  .ropsrow-head { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+  .ropsrow-tags { display: none; }
+}
+
+@media (max-width: 620px) {
+  /* Two lines rather than four columns squeezed to nothing.
+
+     NAMED AREAS, not grid-column/grid-row on some children and auto-placement
+     for the rest. Placing three of five children explicitly and leaving the
+     avatar to auto-flow put the avatar in the cell the address was already in,
+     and the price on top of the date — a row that measured fine and was
+     unreadable. Every child is named here, so there is nothing left to place. */
+  .ropsrow-head {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'avatar who     chevron'
+      '.      next    money';
+    align-items: center;
+    gap: 0.3rem 0.7rem;
+  }
+  .rops-avatar { grid-area: avatar; }
+  .ropsrow-who { grid-area: who; }
+  /* The last column is sized by the money underneath it, so a centred chevron
+     floats short of the edge it belongs on. */
+  .ropsrow-chevron { grid-area: chevron; justify-self: end; }
+  .ropsrow-next { grid-area: next; }
+  .ropsrow-money { grid-area: money; }
+  .ropsrow-next {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 0.4rem;
+    min-width: 0;
+  }
+  /* "NEXT VISIT" over a date is a label for a column. On one line the date
+     already sits beside the countdown that explains it. */
+  .ropsrow-next small { display: none; }
+  .ropsrow-money {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: 0.35rem;
+    min-width: 0;
+    white-space: nowrap;
+  }
+  .ropsrow-money small { display: none; }
+  /* The /mo figure is for comparing plans down a column — which is not what a
+     phone is doing. Dropping it gives ~55px back to the name, which was
+     truncating at "Dana Whit…". */
+  .ropsrow-money em { display: none; }
+  .ropsrow-body { padding-left: 0.85rem; }
+  .ropsrow-actions .danger { margin-left: 0; }
 }
 
 .linklike {
@@ -22805,6 +23164,39 @@ a.bset-card { color: inherit; text-decoration: none; }
   /* The Menu button gives up its auto-margin — Plan my day claims it now, so
      the three sit together at the right rather than Menu drifting off alone. */
   .sidenav-mobilebar .nav-toggle { margin-left: 0.4rem; }
+}
+
+/* Four things on a 390px bar.
+   Putting Plan my day and + New up here took the bar from two items to four,
+   and at 390px they came to ~408px of content in 390px of room. Flexbox does
+   not warn about that: `margin-left: auto` simply collapses and the last item —
+   Menu, the whole navigation — hangs 37px off the right edge, still measuring a
+   perfectly correct 72x44 while half of it is unreachable. Which is why the
+   check is now on the right EDGE, not the width.
+
+   Everything gives up a little rather than one thing disappearing: tighter
+   padding on the bar and on both pills, a smaller gap, and the wordmark down a
+   size. No label is dropped and no target goes under 44px. */
+@media (max-width: 440px) {
+  .sidenav-mobilebar { gap: 0.35rem; padding-left: 0.6rem; padding-right: 0.6rem; }
+  .sidenav-mobilebar .sidenav-wordmark { font-size: 0.8rem; padding: 0.35rem 0.5rem; }
+  .sidenav-mobilebar .mobilebar-new { padding: 0 0.7rem; }
+  .sidenav-mobilebar .nav-toggle { padding: 0.65rem 0.7rem; margin-left: 0.25rem; }
+}
+
+/* 360px is a real Android width, not a corner case. */
+@media (max-width: 400px) {
+  .sidenav-mobilebar { gap: 0.25rem; padding-left: 0.5rem; padding-right: 0.5rem; }
+  .sidenav-mobilebar .sidenav-wordmark { font-size: 0.7rem; padding: 0.3rem 0.42rem; letter-spacing: 0.03em; }
+  .sidenav-mobilebar .mobilebar-new { padding: 0 0.55rem; }
+  .sidenav-mobilebar .nav-toggle { padding: 0.65rem 0.6rem; margin-left: 0.15rem; }
+}
+
+/* Below ~345px the wordmark and three 44px targets cannot both fit, and the
+   wordmark is the one that loses: the rail behind Menu still carries it, and an
+   unreachable Menu is the whole navigation gone. */
+@media (max-width: 345px) {
+  .sidenav-mobilebar .sidenav-brand { display: none; }
 }
 
 /* --- focus you can actually see ------------------------------------------------ */

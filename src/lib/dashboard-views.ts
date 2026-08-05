@@ -100,6 +100,24 @@ export function normalizeMessagesView(value: unknown): MessagesView {
   return MESSAGES_VIEWS.includes(value as MessagesView) ? (value as MessagesView) : 'classic';
 }
 
+// How the Recurring page is dressed.
+//
+// Cards is the page as built: a hero with the map of the book, then one card per
+// plan with its actions on show. Operations is the same data as a control room —
+// no hero, the map behind a tab, and each plan on one dense row so twenty of
+// them fit on a screen instead of four.
+//
+// One cookie rather than two, because nothing here composes: Operations is not
+// Cards with a different colour, it is a different amount of page.
+export const RECURRING_VIEW_COOKIE = 'lgq_recurring_view';
+export type RecurringView = 'cards' | 'ops';
+export const RECURRING_VIEWS: RecurringView[] = ['cards', 'ops'];
+export function normalizeRecurringView(value: unknown): RecurringView {
+  // Cards is what this page already is, so nobody who never opens the gear
+  // finds their plans rearranged.
+  return RECURRING_VIEWS.includes(value as RecurringView) ? (value as RecurringView) : 'cards';
+}
+
 // Which Crew & Labor "Hours & pay" layout the owner last used.
 export const CREW_VIEW_COOKIE = 'lgq_crew_view';
 export type CrewView = 'table' | 'grouped' | 'rail' | 'focus';
