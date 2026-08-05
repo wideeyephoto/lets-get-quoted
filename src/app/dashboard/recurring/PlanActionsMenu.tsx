@@ -139,8 +139,23 @@ export default function PlanActionsMenu({
                     role="menuitem"
                     disabled={pending}
                     onClick={() => {
-                      if (!window.confirm(`Mark the ${nextVisitLabel} visit complete? This closes that job — it does not move the plan on or bill anybody.`)) return;
-                      run(() => markJobCompleteAction(nextVisitJobId as string));
+                      if (!window.confirm(`Mark the ${nextVisitLabel} visit complete? This closes that job — it does not move the plan on, bill anybody, or ask them for a review.`)) return;
+                      // sendReview explicitly OFF, rather than falling through to
+                      // the account's automatic-review setting.
+                      //
+                      // That setting fires once per JOB, and every visit of a
+                      // recurring plan is a new job — so with it on, mowing
+                      // somebody's lawn every week would ask them for a Google
+                      // review every week. Fifty-two times a year is not a review
+                      // strategy, it is why people block a number.
+                      //
+                      // A recurring customer is the wrong person to ask on a
+                      // schedule anyway: you want the ask after the FIRST good
+                      // visit, which is a decision worth making by hand from the
+                      // job page.
+                      const form = new FormData();
+                      form.set('sendReview', 'off');
+                      run(() => markJobCompleteAction(nextVisitJobId as string, form));
                     }}
                   >
                     Mark this visit completed
