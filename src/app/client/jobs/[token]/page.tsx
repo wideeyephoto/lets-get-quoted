@@ -16,6 +16,7 @@ import { listWarranties } from '@/lib/warranties-data';
 import { toClientWarranties } from '@/lib/warranties';
 import Selections from './Selections';
 import { loadClientSelections, toSignedClientSelections } from '@/lib/selections-data';
+import { ContractorBrandBar, ContractorBrandFoot } from '@/components/contractor-brand';
 
 const STATUS_LABEL: Record<string, string> = {
   new_lead: 'New request',
@@ -97,7 +98,12 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
   const selectedScheduleOption = dashboard.scheduleRequest?.selected_index == null ? null : dashboard.scheduleRequest.options[dashboard.scheduleRequest.selected_index];
 
   return (
-    <main className="wide-shell workspace-shell client-job-dashboard">
+    <>
+      {/* The contractor's mark and name, not ours. This is the page a homeowner
+          opens from a text to approve a quote — the one place it matters most
+          that the business they hired is the business on the page. */}
+      <ContractorBrandBar brand={dashboard.brand} context={`Job ${dashboard.job.ref ?? ''}`.trim()} />
+      <main className="wide-shell workspace-shell client-job-dashboard">
       {openPayments.length > 0 ? (
         <section className="panel workspace-section-card client-attention-card">
           <div className="section-heading workspace-section-heading">
@@ -540,6 +546,8 @@ export default async function ClientJobDashboardPage({ params }: { params: { tok
           </div>
         </div>
       </section>
-    </main>
+      <ContractorBrandFoot businessName={dashboard.businessName} />
+      </main>
+    </>
   );
 }

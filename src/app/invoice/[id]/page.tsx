@@ -1,5 +1,9 @@
+import { createAdminClient } from '@/lib/auth';
 import { computeInvoiceTotals, getPublicInvoice } from '@/lib/invoices';
-import { signInvoiceAction } from './actions';
+import { invoicePayState, type InvoicePayment } from '@/lib/invoice-pay';
+import { loadContractorBrand } from '@/lib/contractor-brand';
+import { ContractorBrandBar, ContractorBrandFoot } from '@/components/contractor-brand';
+import { payInvoiceAction, signInvoiceAction } from './actions';
 
 // Always render fresh — this page's content changes once the client signs,
 // so it must never be statically cached (same reasoning as /pay/[id]).
@@ -27,27 +31,78 @@ export default async function PublicInvoicePage({ params }: { params: { id: stri
   }
 
   const { invoice, items } = record;
-  const businessName = invoice.account?.business_name || 'Your contractor';
   const totals = computeInvoiceTotals(items, Number(invoice.discount_percent) || 0, Number(invoice.tax_rate) || 0);
   const hasBreakdown = totals.discountAmount > 0 || totals.taxAmount > 0;
   const isSigned = Boolean(invoice.signed_at);
   const isVoid = invoice.status === 'void';
   const boundSignInvoice = signInvoiceAction.bind(null, invoice.id);
 
+  const admin = createAdminClient();
+  const brand = await loadContractorBrand(admin, invoice.account_id);
+  const businessName = brand.businessName;
+
+  // What is actually left to pay, and whether there is already a request open
+  // for it. Scoped to THIS invoice — a job routinely carries a deposit and a
+  // final bill, and counting every payment on the job would show this one as
+  // settled by money that was never against it.
+  const { data: paymentRows } = await admin
+    .from('payments')
+    .select('id, amount, status, invoice_id, refunded_amount')
+    .eq('account_id', invoice.account_id)
+    .eq('invoice_id', invoice.id);
+  const pay = invoicePayState(invoice, totals.total, (paymentRows ?? []) as InvoicePayment[]);
+  const boundPayInvoice = payInvoiceAction.bind(null, invoice.id);
+
   return (
-    <main className="wide-shell workspace-shell payment-shell">
+    <>
+      <ContractorBrandBar brand={brand} context={`Invoice ${invoice.ref}`} />
+      <main className="wide-shell workspace-shell payment-shell">
       <section className="workspace-hero panel payment-hero">
         <div className="workspace-hero-copy">
-          <p className="eyebrow">{businessName}</p>
+          {/* No business-name eyebrow. The brand bar 150px above says it, and
+              said it again here the hero read "BROKEPIPES / Invoice INV-1008"
+              directly under "BrokePipes / Invoice INV-1008". */}
           <h1 className="workspace-title">Invoice {invoice.ref}</h1>
           <p className="workspace-lead">
             {invoice.job ? `Job ${invoice.job.ref} for ${invoice.job.client_name}` : 'Invoice for services rendered.'}
           </p>
 
           <div className="payment-amount-block">
-            <span className="payment-amount-label">Total due</span>
-            <strong className="payment-amount">{formatMoney(invoice.total)}</strong>
+            {/* The figure that matters is what is LEFT, not what the invoice was
+                raised for. A customer who part-paid a deposit and reads "Total
+                due $4,200" on the page with the Pay button is being asked for
+                money they already sent. */}
+            <span className="payment-amount-label">{pay.paid > 0 ? 'Still due' : 'Total due'}</span>
+            <strong className="payment-amount">
+              {formatMoney(pay.state === 'settled' ? 0 : pay.due || totals.total)}
+            </strong>
+            {pay.paid > 0 ? (
+              <span className="payment-amount-sub">
+                {formatMoney(pay.paid)} of {formatMoney(totals.total)} already paid
+              </span>
+            ) : null}
           </div>
+
+          {pay.state === 'payable' ? (
+            <form action={boundPayInvoice} className="actions workspace-actions">
+              <button type="submit" className="btn primary">Pay {formatMoney(pay.due)}</button>
+            </form>
+          ) : pay.state === 'processing' ? (
+            <div className="payment-banner">
+              <p>
+                A payment for this invoice is processing. Bank transfers take a few business days to clear — you&apos;ll
+                be confirmed once it settles.
+              </p>
+            </div>
+          ) : pay.state === 'settled' ? (
+            <div className="payment-banner success">
+              <p>This invoice is paid in full. Thank you!</p>
+            </div>
+          ) : pay.reason === 'void' ? (
+            <div className="payment-banner muted">
+              <p>This invoice has been voided and can no longer be paid.</p>
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -130,6 +185,8 @@ export default async function PublicInvoicePage({ params }: { params: { id: stri
           </form>
         )}
       </section>
-    </main>
+      <ContractorBrandFoot businessName={businessName} />
+      </main>
+    </>
   );
 }

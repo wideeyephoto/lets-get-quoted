@@ -11,6 +11,7 @@ import { sendPaymentSmsEvent } from '@/lib/sms';
 import { normalizeUsPhone } from '@/lib/phone';
 import { loadClientMilestones } from '@/lib/milestones-data';
 import type { MilestoneStatus } from '@/lib/milestones';
+import { CONTRACTOR_BRAND_COLUMNS, shapeContractorBrand, type ContractorBrand } from '@/lib/contractor-brand';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
@@ -61,6 +62,9 @@ export type ClientMilestone = {
 
 export type ClientJobDashboard = {
   businessName: string;
+  /** Logo, colour and website — everything the page needs to wear the
+   *  contractor's brand rather than ours. See @/lib/contractor-brand. */
+  brand: ContractorBrand;
   job: {
     id: string;
     ref: string;
@@ -320,7 +324,7 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
 
   const [{ data: account }, { data: site }, { data: job }, feedResult, { data: payments }, { data: invoices }, { data: scheduleRequest }] = await Promise.all([
     admin.from('accounts').select('business_name').eq('id', access.account_id).maybeSingle(),
-    admin.from('sites').select('company_name').eq('account_id', access.account_id).maybeSingle(),
+    admin.from('sites').select(CONTRACTOR_BRAND_COLUMNS).eq('account_id', access.account_id).maybeSingle(),
     admin
       .from('jobs')
       .select('id, ref, client_name, address, status, scheduled_for, scheduled_time')
@@ -444,8 +448,14 @@ export async function getClientJobDashboard(token: string): Promise<ClientJobDas
     };
   }
 
+  // One fallback ladder for whose name this is, shared with the invoice, the
+  // payment page and the portal — rather than four copies of
+  // `company_name || business_name || something`, which is how they drift.
+  const brand = shapeContractorBrand(account, site);
+
   return {
-    businessName: site?.company_name || account?.business_name || "Let's Get Quoted contractor",
+    businessName: brand.businessName,
+    brand,
     job: {
       ...job,
       schedule_label: formatJobSchedule(job.scheduled_for, job.scheduled_time),

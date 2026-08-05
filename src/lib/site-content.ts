@@ -130,17 +130,27 @@ export const DEFAULT_VIDEOS_NAV_LABEL = 'Video Gallery';
 // The past-customer portal's link in the site header and footer.
 //
 // The PORTAL itself is an account setting (accounts.client_portal_enabled) —
-// this is only whether the contractor's own website advertises it, which is a
-// separate decision and a visible one. It stays OFF for every existing site:
+// this is only whether the contractor's own website advertises it.
+//
+// ON by default, which is a reversal. It shipped off, on the reasoning that
 // putting a link on somebody's live homepage because a feature shipped is a
-// change to their website they did not make.
+// change to their website they did not make. True — but the result was a link
+// nobody ever had, behind a switch nobody ever found, pointing at a portal that
+// was also off. Two defaults-off in series is not caution, it is a feature that
+// does not exist. See migrations/2026-08-05-client-portal-on-by-default.sql,
+// which turns on the other one.
+//
+// The distinction that keeps the original reasoning intact: `undefined` means
+// nobody has ever chosen, and gets the default. A stored `false` is a real
+// decision and is honoured — a contractor who removes the link keeps it removed
+// through every subsequent save.
 //
 // Turning the portal off clears navEnabled, because a "Client Login" link that
 // lands on "we don't have that switched on" is a dead end the contractor is
 // advertising in their own header. The LABEL survives that, so switching the
 // portal back on and re-adding the link keeps their wording.
 export type SiteClientPortalContent = {
-  /** Show the link in the header and footer. OFF by default. */
+  /** Show the link in the header and footer. On unless switched off. */
   navEnabled: boolean;
   /** Link text. Empty renders DEFAULT_PORTAL_NAV_LABEL. */
   navLabel: string;
@@ -1394,7 +1404,10 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
       navLabel: toString(videosPage.navLabel).slice(0, 24),
     },
     clientPortal: {
-      navEnabled: toBoolean(clientPortal.navEnabled),
+      // Three-state on purpose: absent → the default (on), an explicit `true` →
+      // on, anything else → off. Still `=== true` rather than truthy, so a
+      // hand-edited "yes" or 1 cannot switch it on.
+      navEnabled: clientPortal.navEnabled === undefined ? true : clientPortal.navEnabled === true,
       navLabel: toString(clientPortal.navLabel).slice(0, PORTAL_NAV_LABEL_MAX),
     },
     analytics: {

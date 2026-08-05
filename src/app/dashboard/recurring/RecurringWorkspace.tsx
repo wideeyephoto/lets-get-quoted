@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import RecurringMap, { jumpToPlan, type PlanPin } from './RecurringMap';
 
 // The Plans / Calendar / Map surface. The cards themselves are built on the
@@ -36,7 +37,16 @@ export type CalendarMonth = {
   monthKey: string;
   label: string;
   countLabel: string;
-  visits: { key: string; dateLabel: string; planTitle: string; clientName: string; amountLabel: string | null }[];
+  visits: {
+    key: string;
+    dateLabel: string;
+    planId: string;
+    planTitle: string;
+    /** Null when the plan's customer record is gone — the name then isn't a link. */
+    clientId: string | null;
+    clientName: string;
+    amountLabel: string | null;
+  }[];
 };
 
 /**
@@ -277,8 +287,30 @@ export default function RecurringWorkspace({
                       <li key={visit.key} className="recurring-cal-row">
                         <span className="recurring-cal-date">{visit.dateLabel}</span>
                         <span className="recurring-cal-what">
-                          <strong>{visit.planTitle}</strong>
-                          <small>{visit.clientName}</small>
+                          {/* A real href, not a button dressed as a link: the plan
+                              is addressable at #plan-<id>, so cmd-click opens it in
+                              a tab and the address is copyable. A plain left click
+                              is intercepted because the anchor alone would leave
+                              you on the Calendar tab, scrolled to a card that is
+                              not rendered. */}
+                          <a
+                            href={`/dashboard/recurring#plan-${visit.planId}`}
+                            className="recurring-cal-plan"
+                            onClick={(event) => {
+                              if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+                              event.preventDefault();
+                              goToPlan(visit.planId);
+                            }}
+                          >
+                            {visit.planTitle}
+                          </a>
+                          {visit.clientId ? (
+                            <Link className="recurring-cal-client" href={`/dashboard/clients/${visit.clientId}`}>
+                              {visit.clientName}
+                            </Link>
+                          ) : (
+                            <small>{visit.clientName}</small>
+                          )}
                         </span>
                         {visit.amountLabel ? (
                           <span className="recurring-cal-money">{visit.amountLabel}</span>

@@ -10,15 +10,28 @@ import {
 } from '@/lib/site-content';
 
 describe('the customer-login link on a contractor site', () => {
-  it('is OFF for every existing site', () => {
-    // Putting a link on somebody's live homepage because a feature shipped is a
-    // change to their website they did not make.
-    expect(getPortalNavLink({})).toBeNull();
-    expect(getPortalNavLink(null)).toBeNull();
-    expect(getPortalNavLink({ clientPortal: {} })).toBeNull();
+  it('is ON for a site that has never chosen', () => {
+    // Reversed deliberately. It shipped off so a feature could not change
+    // somebody's live homepage without them — but the portal itself was ALSO
+    // off, and two defaults-off in series is not caution, it is a feature that
+    // never appears. See the note on SiteClientPortalContent.
+    expect(getPortalNavLink({})).not.toBeNull();
+    expect(getPortalNavLink(null)).not.toBeNull();
+    expect(getPortalNavLink({ clientPortal: {} })).not.toBeNull();
   });
 
-  it('only turns on for a real true, not any truthy value', () => {
+  it('honours an explicit false forever after', () => {
+    // The half that makes the default safe: a contractor who takes the link off
+    // must not have it put back by the next builder save.
+    expect(getPortalNavLink({ clientPortal: { navEnabled: false } })).toBeNull();
+    const stored = mergeSiteContent({}, { clientPortal: { navEnabled: false, navLabel: '' } });
+    expect(getPortalNavLink(stored)).toBeNull();
+    expect(getPortalNavLink(mergeSiteContent(stored, { headline: 'Edited elsewhere' }))).toBeNull();
+  });
+
+  it('only stays on for a real true, never a truthy value', () => {
+    // A hand-edited blob must not be able to force it; anything present that
+    // isn't `true` reads as off.
     expect(getPortalNavLink({ clientPortal: { navEnabled: 'yes' } })).toBeNull();
     expect(getPortalNavLink({ clientPortal: { navEnabled: 1 } })).toBeNull();
     expect(getPortalNavLink({ clientPortal: { navEnabled: true } })).not.toBeNull();
@@ -47,7 +60,10 @@ describe('the customer-login link on a contractor site', () => {
   });
 
   it('survives a garbage blob', () => {
-    expect(getPortalNavLink({ clientPortal: 'nope' })).toBeNull();
+    // Unreadable is treated as "never chosen", not as "switched off" — the same
+    // verdict an empty object gets, so a corrupt blob cannot silently strip a
+    // link the contractor never touched.
+    expect(getPortalNavLink({ clientPortal: 'nope' })?.label).toBe(DEFAULT_PORTAL_NAV_LABEL);
     expect(getSiteContent({ clientPortal: [] }).clientPortal.navLabel).toBe('');
   });
 

@@ -190,6 +190,11 @@ export default async function RecurringPage({
     if (bucket) bucket.push(visit);
     else visitsByMonth.set(key, [visit]);
   }
+  // Which customer each plan belongs to, so a calendar row can link the name to
+  // that customer's page. A plan whose client record was deleted keeps its
+  // client_name text but has no id — those rows stay plain text rather than
+  // linking somewhere that 404s.
+  const clientIdByPlan = new Map(plans.map((plan) => [plan.id, plan.client_id ?? null] as const));
   const calendarMonths = [...visitsByMonth.entries()]
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([monthKey, monthVisits]) => {
@@ -208,7 +213,9 @@ export default async function RecurringPage({
         visits: monthVisits.map((visit) => ({
           key: `${visit.planId}:${visit.dateKey}`,
           dateLabel: shortDate(visit.dateKey),
+          planId: visit.planId,
           planTitle: visit.planTitle,
+          clientId: clientIdByPlan.get(visit.planId) ?? null,
           clientName: visit.clientName,
           amountLabel: visit.amount > 0 ? formatMoney(visit.amount) : null,
         })),

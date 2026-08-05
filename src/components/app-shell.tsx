@@ -187,7 +187,15 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const isDashboard = pathname.startsWith('/dashboard');
   // Homeowner-facing transactional pages (paying, approving a quote, an invoice)
   // stay on the minimal top bar — a big marketing rail there would be off-key.
-  const isTransactional = pathname.startsWith('/pay') || pathname.startsWith('/client') || pathname.startsWith('/invoice') || pathname.startsWith('/track');
+  const isTransactional = pathname.startsWith('/pay') || pathname.startsWith('/client') || pathname.startsWith('/invoice') || pathname.startsWith('/track') || pathname.startsWith('/portal');
+  // The subset that now wears the CONTRACTOR's brand instead of a top bar. /track
+  // is deliberately not here: it's a live arrival map with its own full-bleed
+  // chrome, and a header above it would push the map below the fold on a phone.
+  const isHomeownerBranded =
+    pathname.startsWith('/pay') ||
+    pathname.startsWith('/client') ||
+    pathname.startsWith('/invoice') ||
+    pathname.startsWith('/portal');
   // First run (/welcome) renders bare — see the early return below.
   const isFirstRun = pathname === '/welcome';
   // A signed-in contractor gets the FULL dashboard rail on every app/marketing
@@ -478,6 +486,18 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   // and is not an owner-account surface, so keep the owner/marketing shell off it.
   if (pathname.startsWith('/admin')) {
     return <>{children}</>;
+  }
+
+  // Pages a HOMEOWNER opens from a text or an email: the quote, the invoice, the
+  // payment page, their own portal. Each draws its own <ContractorBrandBar> with
+  // the contractor's logo and name, so this shell must render no bar at all.
+  //
+  // It cannot do the branding itself and never could: this is a client component
+  // in the root layout with no idea which account a link token belongs to, so
+  // the best it could ever do was our mark and our wordmark — the wrong name on
+  // the door on the one page where the customer is deciding whether to pay.
+  if (isHomeownerBranded) {
+    return <div className="chrome-shell chrome-shell-bare">{children}</div>;
   }
 
   // A contractor's public booking page wears THEIR brand, not ours (see

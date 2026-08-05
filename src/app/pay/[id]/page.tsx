@@ -1,4 +1,7 @@
+import { createAdminClient } from '@/lib/auth';
 import { getPublicPayment, getQuotedFee, ACH_MIN_AMOUNT, type PaymentStatus } from '@/lib/payments';
+import { loadContractorBrand } from '@/lib/contractor-brand';
+import { ContractorBrandBar, ContractorBrandFoot } from '@/components/contractor-brand';
 import { startCheckoutAction } from './actions';
 
 // Always render fresh from the database — this page's content changes based
@@ -100,11 +103,19 @@ export default async function PublicPaymentPage({
           ? 'payment-banner muted'
           : 'payment-banner';
 
+  // Whose page this is. A card form under a brand the homeowner does not
+  // recognise is the moment they stop and ring somebody — and until now the mark
+  // above this button was ours, not the contractor's they actually hired.
+  const brand = await loadContractorBrand(createAdminClient(), payment.account_id);
+
   return (
-    <main className="wide-shell workspace-shell payment-shell">
+    <>
+      <ContractorBrandBar brand={brand} context={KIND_LABEL[payment.kind] || 'Payment'} />
+      <main className="wide-shell workspace-shell payment-shell">
       <section className="workspace-hero panel payment-hero">
         <div className="workspace-hero-copy">
-          <p className="eyebrow">{businessName}</p>
+          {/* The brand bar above carries the name and the payment type; repeating
+              both here read as a stutter. */}
           <h1 className="workspace-title">{KIND_LABEL[payment.kind] || 'Payment'}</h1>
           <p className="workspace-lead">
             {payment.job
@@ -181,6 +192,8 @@ export default async function PublicPaymentPage({
           </article>
         </div>
       </section>
-    </main>
+      <ContractorBrandFoot businessName={businessName} />
+      </main>
+    </>
   );
 }

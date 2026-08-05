@@ -7916,15 +7916,43 @@ button.btn { cursor: pointer; font-family: inherit; font-size: 0.95rem; }
   flex-wrap: wrap;
 }
 
+/* Declares its own background and border on purpose.
+   This rule used to set padding, radius, weight and colour and nothing else,
+   and the stylesheet has no `background`/`border` reset for <button> — only
+   `color` (see the note at the top of the file). So every INACTIVE tab fell
+   back to the UA's `buttonface`: a light-grey pill with an outset border,
+   sitting on a dark panel. It read as a disabled control rather than the other
+   half of a switch, and it was wrong everywhere this class is used — the
+   Recurring tab bar and the Cash flow window row both. */
 .insight-window-tab {
   padding: 0.35rem 0.85rem;
+  border: 1px solid transparent;
   border-radius: 999px;
+  background: transparent;
   font-size: 0.82rem;
   font-weight: 600;
   color: var(--muted, var(--muted));
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+}
+
+/* The unselected half still has to look pressable, so hover/focus paint a
+   quiet tint rather than nothing at all. */
+.insight-window-tab:hover {
+  background: rgba(var(--tint), 0.08);
+  border-color: var(--edge-t12);
+  color: var(--text);
 }
 
 .insight-window-tab.is-active {
+  background: linear-gradient(135deg, var(--accent, #ff7a21), #ff9d4d);
+  border-color: transparent;
+  color: #1a0f04;
+}
+
+/* Without this the hover rule above would grey out the SELECTED tab on the way
+   past it — equal specificity, declared later, so it would win. */
+.insight-window-tab.is-active:hover {
   background: linear-gradient(135deg, var(--accent, #ff7a21), #ff9d4d);
   color: #1a0f04;
 }
@@ -9346,6 +9374,20 @@ a.metric-card-link:hover { transform: translateY(-2px); border-color: var(--cedg
   font-size: clamp(2.2rem, 5vw, 3.3rem);
   line-height: 1;
 }
+
+/* "$1,200 of $4,200 already paid" — the line that stops a part-paid invoice
+   reading as if none of it had been settled. */
+.payment-amount-sub {
+  margin-top: 0.35rem;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+/* The portal's two front-door actions sit under the balance, so they need the
+   gap the hero copy above them doesn't provide. */
+.portal-home-actions { margin-top: 1.1rem; }
+.portal-settled { margin-top: 0.9rem; }
 
 .payment-banner {
   margin-top: 1rem;
@@ -11263,6 +11305,27 @@ a.recurring-fact:hover { color: var(--text); border-bottom-color: currentColor; 
 .recurring-cal-what { display: grid; gap: 0.05rem; min-width: 0; }
 .recurring-cal-what strong { font-size: 0.9rem; font-weight: 650; }
 .recurring-cal-what small { color: var(--mute-t55); font-size: 0.78rem; }
+/* The service and the customer are both destinations — the plan card below and
+   that customer's page. They were plain text, so the calendar could tell you
+   $100 was due from Dana Whitfield on the 15th and give you no way to reach
+   either. Underlined on hover rather than permanently: forty rows of underlined
+   text is a wall, and the row already lifts on hover to say it is live. */
+.recurring-cal-plan {
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: var(--text);
+  text-decoration: none;
+}
+.recurring-cal-client {
+  color: var(--mute-t55);
+  font-size: 0.78rem;
+  text-decoration: none;
+  justify-self: start;
+}
+.recurring-cal-plan:hover,
+.recurring-cal-plan:focus-visible { color: var(--accent); text-decoration: underline; }
+.recurring-cal-client:hover,
+.recurring-cal-client:focus-visible { color: var(--text); text-decoration: underline; }
 .recurring-cal-money { font-size: 0.88rem; font-weight: 700; }
 
 @media (max-width: 720px) {
@@ -23846,4 +23909,115 @@ a.bset-card { color: inherit; text-decoration: none; }
   border-radius: 12px;
   background: #eff3f8;
   box-shadow: inset 0 1px 2px rgba(17, 27, 41, 0.07);
+}
+
+/* ==========================================================================
+   The contractor's brand, on the pages a HOMEOWNER opens
+   ==========================================================================
+   Used by /client/jobs/[token], /invoice/[id], /pay/[id] and /portal/view/
+   [token]. Every one of these used to be topped by the Let's Get Quoted mark
+   and wordmark, because the bar is drawn by AppShell — a client component in
+   the root layout that cannot see which account a link token belongs to.
+
+   AppShell now renders nothing on these routes (see isHomeownerBranded) and
+   each page draws <ContractorBrandBar> instead. The component re-points
+   --accent for its whole subtree, so the buttons and amounts on the page
+   underneath take the contractor's colour without knowing it exists. */
+
+.cbrand {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  border-bottom: 1px solid var(--rule-t10);
+  background: var(--panel, rgba(9, 18, 30, 0.92));
+  /* The pages below scroll under this, and a translucent bar over moving text
+     is unreadable at a glance — which on an invoice is the wrong place to be
+     saving 4px of contrast. Prefixed too: these are the pages a homeowner opens
+     on a phone, and iOS Safari still needs -webkit-. */
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.cbrand-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0.75rem 1.4rem;
+}
+
+.cbrand-id { display: flex; align-items: center; gap: 0.7rem; min-width: 0; }
+
+.cbrand-logo,
+.cbrand-mark {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  overflow: hidden;
+}
+/* An uploaded logo is whatever shape the contractor uploaded — a wide lockup, a
+   tall badge, a square. `contain` shows all of it rather than cropping the
+   middle out of somebody's own logo. */
+.cbrand-logo { object-fit: contain; background: rgba(var(--tint), 0.06); }
+.cbrand-mark { display: block; }
+.cbrand-mark svg { display: block; width: 100%; height: 100%; }
+
+.cbrand-copy { display: grid; gap: 0.05rem; min-width: 0; }
+.cbrand-name {
+  font-size: 1.02rem;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cbrand-context { color: var(--muted); font-size: 0.78rem; font-weight: 600; }
+
+.cbrand-actions { display: flex; align-items: center; gap: 0.5rem; flex: 0 0 auto; }
+
+.cbrand-call,
+.cbrand-site {
+  display: inline-flex;
+  align-items: center;
+  /* 44px: this sits next to a payment button on a phone, and the misfire that
+     matters is dialling when you meant to pay (or the reverse). */
+  min-height: 44px;
+  padding: 0 0.9rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 999px;
+  font-size: 0.84rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.cbrand-call { border-color: var(--accent); color: var(--accent); }
+.cbrand-site { color: var(--muted); }
+.cbrand-call:hover { background: rgba(var(--tint), 0.06); }
+.cbrand-site:hover { color: var(--text); }
+
+/* Us, at the bottom, small — see ContractorBrandFoot. A page with no
+   attribution at all is the shape of a phishing page, so this stays; it just
+   isn't the headline any more. */
+.cbrand-foot {
+  max-width: 1180px;
+  margin: 2.2rem auto 2.6rem;
+  padding: 0 1.4rem;
+  color: var(--mute-t55);
+  font-size: 0.78rem;
+  text-align: center;
+}
+.cbrand-foot a { color: var(--muted); text-decoration: underline; }
+.cbrand-foot a:hover { color: var(--text); }
+
+@media (max-width: 640px) {
+  .cbrand-inner { padding: 0.6rem 1rem; gap: 0.6rem; }
+  .cbrand-logo, .cbrand-mark { width: 38px; height: 38px; }
+  .cbrand-name { font-size: 0.94rem; }
+  /* The website link is the one thing here nobody opened this page to do. It
+     goes first when there isn't room, so the phone number keeps its target. */
+  .cbrand-site { display: none; }
 }
