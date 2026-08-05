@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { createAdminClient, getCurrentMembership } from '@/lib/auth';
-import { expireStaleLeads, getLeadTriage } from '@/lib/leads';
+import { expireStaleLeads, getLeadTriage, type LeadStatus } from '@/lib/leads';
+import { leadRailTitle, leadSummary } from '@/lib/lead-summary';
 import { listJobs } from '@/lib/jobs';
 import { QUICK_STOP_SETTINGS_COLUMNS, quickStopSettingsFromAccount } from '@/lib/quick-stop';
 import { bookingAvailabilityFromAccount } from '@/lib/booking-availability';
@@ -28,7 +29,7 @@ export async function GET() {
 
   const admin = createAdminClient();
   await expireStaleLeads(admin, membership.accountId);
-  const [{ data: account }, { data: site }, { data: newLeadRows }, { count: openLeadCount }, jobs] = await Promise.all([
+  const [{ data: account }, { data: site }, { data: newLeadRows }, { data: openLeadRows }, jobs] = await Promise.all([
     admin
       .from('accounts')
       .select(
@@ -53,9 +54,14 @@ export async function GET() {
     // 'won' is excluded alongside 'lost' — a won lead IS the job sitting in the
     // Jobs total right beside it, so counting it here would bill the same work
     // to both circles.
+    //
+    // The ROWS rather than a head count, so the rail's tooltip can be built by
+    // the same function the dashboard's card uses. The rail and the dashboard
+    // telling different lead stories is the thing lib/lead-summary exists to
+    // stop, and it can only be stopped by them sharing the arithmetic.
     admin
       .from('leads')
-      .select('id', { count: 'exact', head: true })
+      .select('status, source')
       .eq('account_id', membership.accountId)
       .not('status', 'in', '("won","lost")'),
       listJobs(admin, membership.accountId),
@@ -83,6 +89,7 @@ export async function GET() {
         .map((row) => ({ id: row.id as string, created_at: row.created_at as string, triage: getLeadTriage({ triage: (row as { triage: unknown }).triage as never }) }))
         .filter((row) => !muteLowLeads || row.triage.score !== 'low');
       const newQuoteRequestCount = attentionLeads.length;
+      const leadStats = leadSummary((openLeadRows ?? []) as { status: LeadStatus; source: string | null }[]);
       const newestLead = attentionLeads[0] ?? null;
       const newestQuoteRequestHighValue = newestLead ? newestLead.triage.flags.includes('high_value') : false;
 
@@ -122,7 +129,10 @@ export async function GET() {
     jobsNeedingAttentionCount,
     unscheduledJobCount,
     unreadMessageCount,
-    openLeadCount: openLeadCount ?? 0,
+    openLeadCount: leadStats.open,
+    // The rail's tooltip, built here from the same function the dashboard card
+    // uses, so the two can never drift into telling different stories.
+    leadRailTitle: leadRailTitle(leadStats),
     activeJobCount,
     newestQuoteRequestId: newestLead?.id ?? null,
     newestQuoteRequestCreatedAt: newestLead?.created_at ?? null,

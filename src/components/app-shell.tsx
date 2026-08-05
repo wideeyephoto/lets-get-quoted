@@ -97,6 +97,8 @@ type AccountStatus = {
   unscheduledJobCount: number;
   /** Leads still being worked — excludes won (now a job) and lost. */
   openLeadCount: number;
+  /** The same total, spelled out. Built server-side by lib/lead-summary. */
+  leadRailTitle: string | null;
   /** Live work only — excludes completed and archived. */
   activeJobCount: number;
   newestQuoteRequestId: string | null;
@@ -164,6 +166,9 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [jobsNeedingAttentionCount, setJobsNeedingAttentionCount] = useState(0);
   const [unscheduledJobCount, setUnscheduledJobCount] = useState(0);
   const [openLeadCount, setOpenLeadCount] = useState(0);
+  // Built server-side by lead-summary, so the rail cannot drift from the
+  // dashboard's card. Falls back to the plain count until the first poll lands.
+  const [leadTitle, setLeadTitle] = useState<string | null>(null);
   const [activeJobCount, setActiveJobCount] = useState(0);
   const [newestQuoteRequestId, setNewestQuoteRequestId] = useState<string | null>(null);
   const [newestQuoteRequestCreatedAt, setNewestQuoteRequestCreatedAt] = useState<string | null>(null);
@@ -385,6 +390,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             setJobsNeedingAttentionCount(Number(data.jobsNeedingAttentionCount ?? 0));
             setUnscheduledJobCount(Number(data.unscheduledJobCount ?? 0));
             setOpenLeadCount(Number(data.openLeadCount ?? 0));
+            setLeadTitle(typeof data.leadRailTitle === 'string' ? data.leadRailTitle : null);
             setActiveJobCount(Number(data.activeJobCount ?? 0));
             setNewestQuoteRequestId(data.newestQuoteRequestId ?? null);
             setNewestQuoteRequestCreatedAt(data.newestQuoteRequestCreatedAt ?? null);
@@ -515,7 +521,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     // in the pipeline, so a quiet day reads as 0 needing you out of 12 open
     // rather than as an empty rail.
     const totalByHref: Record<string, { count: number; title: string }> = {
-      '/dashboard/leads': { count: openLeadCount, title: `${openLeadCount} open lead${openLeadCount === 1 ? '' : 's'} (won and lost not counted)` },
+      '/dashboard/leads': { count: openLeadCount, title: leadTitle ?? `${openLeadCount} open lead${openLeadCount === 1 ? '' : 's'} (won and lost not counted)` },
       '/dashboard/jobs': { count: activeJobCount, title: `${activeJobCount} live job${activeJobCount === 1 ? '' : 's'} (completed and archived not counted)` },
     };
     // "Something arrived here that you haven't opened yet." The numbers say how
@@ -594,6 +600,26 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           <Link href={brandHref} className="sidenav-brand" aria-label="Let&apos;s Get Quoted home">
             <span className="sidenav-wordmark">Let&apos;s Get <span>Quoted</span></span>
           </Link>
+          {/* The two things a contractor starts the day with were both behind
+              the Menu button on a phone — the one device they actually start the
+              day on. Plan my day is icon-only here because its meaning survives
+              the icon and the words do not survive the width; + New keeps its
+              word because a bare plus could add anything. */}
+          {isLoggedIn ? (
+            <>
+              <Link
+                href="/dashboard/schedule/plan"
+                className={`mobilebar-plan${pathname.startsWith('/dashboard/schedule/plan') ? ' active' : ''}`}
+                aria-label="Plan my day"
+                title="Plan my day"
+              >
+                <ActionIcon name="plan" />
+              </Link>
+              <Link href="/dashboard/jobs?new=1#new-job" className="mobilebar-new">
+                <span aria-hidden="true">+</span> New
+              </Link>
+            </>
+          ) : null}
           <button
             type="button"
             className="nav-toggle"
@@ -759,17 +785,29 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           </div>
         </aside>
 
-        {showQuoteRequestAlert ? (
-          <aside className="quote-request-alert" role="status" aria-live="polite">
-            <button type="button" className="quote-request-alert-close" onClick={dismissQuoteRequestAlert} aria-label="Dismiss lead alert">x</button>
-            <p>New lead needs a response</p>
-            <strong>{newQuoteRequestCount === 1 ? '1 website lead is waiting' : `${newQuoteRequestCount} website leads are waiting`}</strong>
-            {newestQuoteRequestAge ? <span>Newest lead received {newestQuoteRequestAge}h ago.</span> : null}
-            <Link href={`/dashboard/leads/${newestQuoteRequestId}`} className="btn primary">View lead</Link>
-          </aside>
-        ) : null}
-
-        <div className={`app-main app-main-sidenav${showQuoteRequestAlert ? " app-main-alerted" : ""}`}>{children}</div>
+        <div className={`app-main app-main-sidenav${showQuoteRequestAlert ? " app-main-alerted" : ""}`}>
+          {/* INSIDE the page, above its content. Fixed to the bottom-right it
+              covered what you were reading and the controls you'd tap next —
+              351x98 of it on a phone — and every dashboard page had to reserve
+              14rem of empty space underneath so nothing hid behind it. */}
+          {showQuoteRequestAlert ? (
+            <aside className={`quote-request-alert${newestLeadHighValue ? ' high-value' : ''}`} role="status" aria-live="polite">
+              {/* A 44px target. It sits a thumb's width from "View lead", and
+                  the one misfire that matters is dismissing the thing you were
+                  being nudged about. */}
+              <button type="button" className="quote-request-alert-close" onClick={dismissQuoteRequestAlert} aria-label="Dismiss lead alert">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+                  <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" />
+                </svg>
+              </button>
+              <p>{newestLeadHighValue ? '🔥 High-value lead — respond now' : 'New lead needs a response'}</p>
+              <strong>{newQuoteRequestCount === 1 ? '1 website lead is waiting' : `${newQuoteRequestCount} website leads are waiting`}</strong>
+              {newestQuoteRequestAge ? <span>Newest lead received {newestQuoteRequestAge}h ago.</span> : null}
+              <Link href={`/dashboard/leads/${newestQuoteRequestId}`} className="btn primary">{newestLeadHighValue ? 'Respond now' : 'View lead'}</Link>
+            </aside>
+          ) : null}
+          {children}
+        </div>
       </div>
     );
   }
@@ -989,9 +1027,21 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
         </div>
       </header>
 
+      {/* In the flow at the top of the page, not floating over the bottom of it.
+          Fixed, it covered the content you were reading and the controls you'd
+          tap next — and it reserved 14rem of empty page underneath so the
+          footer could clear it, on a page that was already five screens tall.
+          Same urgency, none of the obstruction. */}
       {showQuoteRequestAlert ? (
         <aside className={`quote-request-alert${newestLeadHighValue ? ' high-value' : ''}`} role="status" aria-live="polite">
-          <button type="button" className="quote-request-alert-close" onClick={dismissQuoteRequestAlert} aria-label="Dismiss lead alert">x</button>
+          {/* A 44px target, not 27. This sits a thumb's width from "View lead",
+              and the one misfire that matters is dismissing the thing you were
+              being nudged about. */}
+          <button type="button" className="quote-request-alert-close" onClick={dismissQuoteRequestAlert} aria-label="Dismiss lead alert">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+              <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" />
+            </svg>
+          </button>
           <p>{newestLeadHighValue ? '🔥 High-value lead — respond now' : 'New lead needs a response'}</p>
           <strong>{newQuoteRequestCount === 1 ? '1 website lead is waiting' : `${newQuoteRequestCount} website leads are waiting`}</strong>
           {newestQuoteRequestAge ? <span>Newest lead received {newestQuoteRequestAge}h ago.</span> : null}

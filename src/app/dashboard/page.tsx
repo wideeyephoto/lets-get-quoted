@@ -10,6 +10,7 @@ import { getAutomationActivity } from '@/lib/automation-activity';
 import { countRebookCandidates } from '@/lib/rebook';
 import { countRecentPrivateFeedback } from '@/lib/reviews';
 import { getSiteContent } from '@/lib/site-content';
+import { leadBreakdown, leadSummary } from '@/lib/lead-summary';
 import { recommendBlogTopic } from '@/lib/blog-topics';
 import BlogReminderBanner from './BlogReminderBanner';
 
@@ -133,8 +134,10 @@ export default async function DashboardPage() {
     scheduleDayHours,
     normalizeBookingWeekdays((account as { booking_weekdays?: unknown } | null)?.booking_weekdays),
   );
-  const openLeadCount = leads.filter((lead) => lead.status === 'new' || lead.status === 'contacted').length;
-  const quotedLeadCount = leads.filter((lead) => lead.status === 'quoted').length;
+  // One lead figure with its parts, rather than three totals in three places.
+  // See lib/lead-summary for why the split is "whose move is it" rather than
+  // status.
+  const leadStats = leadSummary(leads);
   const [crew, assignmentsByJob, automation, rebookDue, privateFeedback] = await Promise.all([
     listCrew(supabase, accountId, { activeOnly: true }),
     listCrewAssignmentsForJobs(supabase, accountId, scheduledJobs.map((job) => job.id)),
@@ -158,9 +161,13 @@ export default async function DashboardPage() {
     return {
       dateKey,
       label: day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+      // Just the weekday, for the "Clear: Wed, Thu, Sat" line — the date is
+      // noise in a list whose whole job is to be skimmed past.
+      shortLabel: index === 0 ? 'today' : day.toLocaleDateString('en-US', { weekday: 'short' }),
       jobs: jobsByDate.get(dateKey) ?? [],
     };
   });
+  const quietDays = next7Days.filter((day) => day.jobs.length === 0);
   const jobsNext7Days = next7Days.reduce((sum, day) => sum + day.jobs.length, 0);
   const jobsNeedingCrewCount = next7Days.reduce(
     (sum, day) => sum + day.jobs.filter((job) => (assignmentsByJob[job.id] ?? []).length === 0).length,
@@ -182,19 +189,24 @@ export default async function DashboardPage() {
   // topbar pills — keeping them out of the priority list stops the triple-listing
   // and prevents the 5-item cap from bumping real operational work.
   const priorityItems = [
-    openLeadCount > 0
+    leadStats.needsYou > 0
       ? {
           key: 'leads',
-          label: `${openLeadCount} lead${openLeadCount === 1 ? '' : 's'} waiting`,
-          detail: 'Send a quote or follow up before the lead goes cold.',
+          // "need you", not "waiting" — the page carries a second lead figure
+          // for the ones waiting on the CUSTOMER, and two rows both saying
+          // "waiting" is how the counts stopped meaning anything.
+          label: `${leadStats.needsYou} lead${leadStats.needsYou === 1 ? '' : 's'} need${leadStats.needsYou === 1 ? 's' : ''} you`,
+          detail: leadStats.fromWebsite > 0
+            ? `${leadStats.fromWebsite} came from your website and ${leadStats.fromWebsite === 1 ? 'has' : 'have'} had no reply yet.`
+            : 'Send a quote or follow up before the lead goes cold.',
           href: '/dashboard/leads',
           cta: 'Review leads',
         }
       : null,
-    quotedLeadCount > 0
+    leadStats.waitingOnCustomer > 0
       ? {
           key: 'quoted',
-          label: `${quotedLeadCount} quote${quotedLeadCount === 1 ? '' : 's'} awaiting approval`,
+          label: `${leadStats.waitingOnCustomer} quote${leadStats.waitingOnCustomer === 1 ? '' : 's'} awaiting approval`,
           detail: 'Follow up with homeowners who have not signed off yet.',
           href: '/dashboard/leads',
           cta: 'View quotes',
@@ -236,7 +248,16 @@ export default async function DashboardPage() {
           cta: 'Schedule work',
         }
       : null,
-  ].filter((item): item is { key: string; label: string; detail: string; href: string; cta: string } => Boolean(item)).slice(0, 5);
+  ].filter((item): item is { key: string; label: string; detail: string; href: string; cta: string } => Boolean(item));
+
+  // Three, then the rest behind a disclosure.
+  //
+  // The page is five phone screens tall, and it opens with a list that can run
+  // to six rows before anything else starts. Three is what fits above the fold
+  // with the heading; the rest are one tap away and nothing is hidden — a
+  // <details> so it works with no JavaScript and the count is on the summary.
+  const topPriorities = priorityItems.slice(0, 3);
+  const restPriorities = priorityItems.slice(3);
 
   return (
     <main className="wide-shell workspace-shell">
@@ -302,18 +323,39 @@ export default async function DashboardPage() {
           <h2>What needs attention</h2>
         </div>
         {priorityItems.length > 0 ? (
-          <div className="priority-list">
-            {priorityItems.map((item, index) => (
-              <Link href={item.href} className="priority-item" key={item.key}>
-                <span className="priority-index">{index + 1}</span>
-                <span className="priority-copy">
-                  <strong>{item.label}</strong>
-                  <span>{item.detail}</span>
-                </span>
-                <span className="priority-cta">{item.cta}</span>
-              </Link>
-            ))}
-          </div>
+          <>
+            <div className="priority-list">
+              {topPriorities.map((item, index) => (
+                <Link href={item.href} className="priority-item" key={item.key}>
+                  <span className="priority-index">{index + 1}</span>
+                  <span className="priority-copy">
+                    <strong>{item.label}</strong>
+                    <span>{item.detail}</span>
+                  </span>
+                  <span className="priority-cta">{item.cta}</span>
+                </Link>
+              ))}
+            </div>
+            {restPriorities.length > 0 ? (
+              <details className="priority-more">
+                <summary>
+                  {restPriorities.length} more thing{restPriorities.length === 1 ? '' : 's'} to look at
+                </summary>
+                <div className="priority-list">
+                  {restPriorities.map((item, index) => (
+                    <Link href={item.href} className="priority-item" key={item.key}>
+                      <span className="priority-index">{index + 4}</span>
+                      <span className="priority-copy">
+                        <strong>{item.label}</strong>
+                        <span>{item.detail}</span>
+                      </span>
+                      <span className="priority-cta">{item.cta}</span>
+                    </Link>
+                  ))}
+                </div>
+              </details>
+            ) : null}
+          </>
         ) : (
           <div className="priority-empty">
             <strong>Nothing urgent right now.</strong>
@@ -327,9 +369,22 @@ export default async function DashboardPage() {
           <p className="eyebrow">Week at a glance</p>
           <h2>Next 7 days</h2>
         </div>
+        {/* A phone gets one column, so seven cards became seven rows and four
+            of them said "No jobs". The quiet days are named once in a line and
+            hidden below 640px; the desktop grid is untouched, because seven
+            columns side by side is where an empty day is actually useful
+            information. */}
+        {quietDays.length > 0 && quietDays.length < 7 ? (
+          <p className="week-glance-quiet">
+            Clear: {quietDays.map((day) => day.shortLabel).join(', ')}
+          </p>
+        ) : null}
         <div className="week-glance-grid">
           {next7Days.map((day) => (
-            <div className={`week-glance-day${day.dateKey === todayKey ? ' today' : ''}`} key={day.dateKey}>
+            <div
+              className={`week-glance-day${day.dateKey === todayKey ? ' today' : ''}${day.jobs.length === 0 ? ' is-quiet' : ''}`}
+              key={day.dateKey}
+            >
               <span className="week-glance-date">{day.label}</span>
               <div className="week-glance-jobs">
                 {day.jobs.length === 0 ? (
@@ -362,8 +417,10 @@ export default async function DashboardPage() {
 
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading">
+          {/* "Account overview" promised your account and delivered public site
+              links and lead counts. What is in here is the business. */}
           <p className="eyebrow">Snapshot</p>
-          <h2>Account overview</h2>
+          <h2>Business snapshot</h2>
         </div>
 
         {siteUrl ? (
@@ -390,29 +447,34 @@ export default async function DashboardPage() {
         ) : null}
 
         <div className="workspace-metric-grid">
+          {/* ONE lead number, with the parts that make it up underneath. The
+              breakdown adds up to the headline on purpose — three different
+              totals in three places is what made all three meaningless. */}
           <article className="workspace-metric-card accent">
-            <span className="workspace-metric-label">Leads waiting</span>
-            <strong className="workspace-metric-value">{openLeadCount}</strong>
-            <p className="workspace-metric-note">
-              New and contacted leads that still need a quote or follow-up.
-            </p>
+            <span className="workspace-metric-label">Open leads</span>
+            <strong className="workspace-metric-value">{leadStats.open}</strong>
+            <p className="workspace-metric-note">{leadBreakdown(leadStats)}</p>
           </article>
           <article className="workspace-metric-card">
             <span className="workspace-metric-label">Jobs this week</span>
             <strong className="workspace-metric-value">{jobsNext7Days}</strong>
             <p className="workspace-metric-note">
-              Scheduled job days across the next 7-day dashboard calendar.
+              Scheduled job days across the next 7 days.
             </p>
           </article>
         </div>
       </section>
 
       <section className="panel workspace-section-card">
+        {/* Was one section mixing four different things: which automations are
+            on, what they produced, and a log of individual sends. Which ones are
+            ON is a setting; what they did is a result; the log is history. They
+            are separated now, and the history is folded away. */}
         <div className="section-heading workspace-section-heading">
-          <p className="eyebrow">Automation at work</p>
-          <h2>Working for you · last 30 days</h2>
+          <p className="eyebrow">Automation status</p>
+          <h2>What&apos;s switched on</h2>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.6rem' }}>
+        <div className="automation-status-row">
           <AutomationLink id="reviews" label="Review requests" on={reviewsOn} />
           <AutomationLink id="followups" label="Quote follow-ups" on={followupsOn} />
           <AutomationLink id="reminders" label="Appointment reminders" on={remindersOn} />
@@ -425,7 +487,11 @@ export default async function DashboardPage() {
           </p>
         ) : (
           <>
-            <div className="workspace-metric-grid">
+            <div className="section-heading workspace-section-heading dash-subheading">
+              <p className="eyebrow">Results</p>
+              <h3>What they did · last 30 days</h3>
+            </div>
+            <div className="workspace-metric-grid dash-results-grid">
               <article className="workspace-metric-card accent">
                 <span className="workspace-metric-label">Review requests</span>
                 <strong className="workspace-metric-value">{automation.reviewCount}</strong>
@@ -450,7 +516,12 @@ export default async function DashboardPage() {
               </article>
             </div>
             {automation.recent.length > 0 ? (
-              <div className="cost-list" style={{ marginTop: '1rem' }}>
+              // A log, folded away. It is the only thing on this page that is
+              // history rather than something to act on, and it was the last
+              // 900px of a page already five phone screens tall.
+              <details className="dash-activity">
+                <summary>Recent automation activity ({automation.recent.length})</summary>
+                <div className="cost-list" style={{ marginTop: '0.85rem' }}>
                 {automation.recent.map((item, index) => {
                   const icon = item.kind === 'review_requested' ? '⭐' : item.kind === 'quote_followup' ? '↻' : item.kind === 'appointment_reminder' ? '🔔' : '$';
                   const when = new Date(item.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -469,7 +540,8 @@ export default async function DashboardPage() {
                     <div className="cost-item" key={`${item.kind}-${index}`}>{inner}</div>
                   );
                 })}
-              </div>
+                </div>
+              </details>
             ) : null}
           </>
         )}

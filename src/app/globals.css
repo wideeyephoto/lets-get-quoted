@@ -22668,3 +22668,243 @@ a.bset-card { color: inherit; text-decoration: none; }
   font-size: 0.82rem;
   text-align: center;
 }
+
+/* ---------------------------------------------------------------------------
+   DASHBOARD — the mobile rebuild
+   ---------------------------------------------------------------------------
+   The page was ~4,140px tall on a 390px phone: five screens. Everything here is
+   about the first one — what needs doing, in a shape a thumb can use.
+   --------------------------------------------------------------------------- */
+
+/* --- priority cards stack on a phone ------------------------------------------ */
+/* Three columns held at 390px squeezed the message to ~100px and the action to
+   ~72px, so both wrapped and each row grew to 130–190px tall. Stacked, the same
+   row is one readable block and the action is a full-width target. */
+@media (max-width: 640px) {
+  .priority-item {
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 0.5rem 0.6rem;
+    padding: 0.7rem 0.75rem;
+    align-items: start;
+  }
+  .priority-index { width: 28px; height: 28px; font-size: 0.85rem; }
+  .priority-copy { grid-column: 2; }
+  .priority-cta {
+    grid-column: 2;
+    justify-self: start;
+    /* A real target, not a caption. 44px tall including the padding. */
+    padding: 0.55rem 0.9rem;
+    border: 1px solid var(--cedge-amber-20);
+    border-radius: 999px;
+    font-size: 0.82rem;
+  }
+}
+
+.priority-more { margin-top: 0.65rem; }
+.priority-more > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 650;
+  cursor: pointer;
+  list-style: none;
+}
+.priority-more > summary::-webkit-details-marker { display: none; }
+.priority-more > summary::after { content: '▾'; font-size: 0.7rem; }
+.priority-more[open] > summary::after { content: '▴'; }
+.priority-more > summary:hover { color: var(--text); border-color: var(--edge-t22); }
+.priority-more .priority-list { margin-top: 0.65rem; }
+
+/* --- the week --------------------------------------------------------------- */
+.week-glance-quiet {
+  display: none;
+  margin: 0 0 0.7rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+/* "No jobs" was 11.5px at about 3.2:1 — a label you cannot read telling you
+   there is nothing to read. */
+.week-glance-empty { font-size: 0.78rem; color: var(--muted); }
+/* 10.9px for the time and the town, which is the line you actually squint at. */
+.week-glance-job span { font-size: 0.76rem; color: var(--muted); }
+/* 9.3px initials on a 1.35rem pill: legible to nobody, and the tooltip that
+   explained them does not exist on a touch screen. */
+.week-glance-job .week-glance-crew { min-width: 1.6rem; padding: 0.16rem 0.36rem; font-size: 0.7rem; }
+/* Job rows were ~42px. 44 is the floor for a thumb. */
+.week-glance-job { min-height: 44px; justify-content: center; padding: 0.45rem 0.55rem; }
+
+@media (max-width: 640px) {
+  /* One column means seven rows, four of them saying "No jobs". Name the quiet
+     days once and give the space to the days with work in them. */
+  .week-glance-quiet { display: block; }
+  .week-glance-day.is-quiet { display: none; }
+  /* Less nested chrome: the card inside the panel inside the shell was eating
+     the width the job needed. */
+  .week-glance-day { padding: 0.5rem 0.55rem; }
+}
+
+/* --- automation, split ------------------------------------------------------- */
+.automation-status-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.6rem; }
+.dash-subheading { margin-top: 1.4rem; }
+.dash-subheading h3 { margin: 0; font-size: 1.05rem; font-weight: 720; }
+.dash-activity { margin-top: 1rem; }
+.dash-activity > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid var(--edge-t14);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 650;
+  cursor: pointer;
+  list-style: none;
+}
+.dash-activity > summary::-webkit-details-marker { display: none; }
+.dash-activity > summary::after { content: '▾'; font-size: 0.7rem; }
+.dash-activity[open] > summary::after { content: '▴'; }
+.dash-activity > summary:hover { color: var(--text); border-color: var(--edge-t22); }
+
+/* --- primary actions on the mobile bar ---------------------------------------- */
+.mobilebar-plan, .mobilebar-new { display: none; }
+@media (max-width: 900px) {
+  .sidenav-mobilebar .mobilebar-plan,
+  .sidenav-mobilebar .mobilebar-new {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    /* 44px, both of them. */
+    min-height: 44px;
+    border-radius: 999px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .sidenav-mobilebar .mobilebar-plan {
+    width: 44px;
+    margin-left: auto;
+    border: 1px solid var(--cedge-violet-4, var(--edge-t22));
+    background: rgba(139, 92, 246, 0.14);
+    color: var(--text);
+  }
+  .sidenav-mobilebar .mobilebar-plan svg { width: 20px; height: 20px; }
+  .sidenav-mobilebar .mobilebar-plan.active { background: rgba(139, 92, 246, 0.28); }
+  .sidenav-mobilebar .mobilebar-new {
+    padding: 0 0.95rem;
+    border: 1px solid var(--accent);
+    background: rgba(255, 122, 33, 0.14);
+    color: var(--accent-ink);
+  }
+  /* The Menu button gives up its auto-margin — Plan my day claims it now, so
+     the three sit together at the right rather than Menu drifting off alone. */
+  .sidenav-mobilebar .nav-toggle { margin-left: 0.4rem; }
+}
+
+/* --- focus you can actually see ------------------------------------------------ */
+/* A thin dark outline on a dark bar is not a focus indicator. */
+.nav-toggle:focus-visible,
+.mobilebar-plan:focus-visible,
+.mobilebar-new:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(255, 122, 33, 0.28);
+}
+
+/* --- the lead alert stops covering things -------------------------------------- */
+.quote-request-alert-close {
+  /* 27x27 was under every touch-target guideline, sitting next to the button it
+     must not be mistaken for. */
+  width: 2.75rem;
+  height: 2.75rem;
+}
+.quote-request-alert-close svg { width: 15px; height: 15px; }
+
+/* --- status, not a switch ------------------------------------------------------- */
+/* A green pill reading ON beside a row you can tap looks like a control, and
+   these rows navigate. Same word, same colour — no capsule, and a dot in front,
+   which is how a status is drawn everywhere else. */
+.sidenav-state {
+  border: none;
+  background: none;
+  padding: 0.1rem 0 0.1rem 0.55rem;
+  position: relative;
+  letter-spacing: 0.05em;
+}
+.sidenav-state::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.sidenav-state[data-state='on'],
+.sidenav-state[data-state='off'],
+.sidenav-state[data-state='paused'] { border-color: transparent; background: none; }
+
+/* --- Dashboard is not part of Grow ----------------------------------------------- */
+/* It sits below the last group with nothing between them, so it read as the
+   fifth Grow item. */
+.sidenav-bottom { margin-top: 1rem; padding-top: 0.9rem; border-top: 1px solid var(--rule-t10); }
+
+/* Measured, not assumed: the pill came out 37px and the Menu button 43. Both
+   are one line of padding away from a target a thumb can hit, and "nearly 44"
+   is the same as not 44. */
+@media (max-width: 640px) {
+  .priority-cta { display: inline-flex; align-items: center; min-height: 44px; }
+}
+@media (max-width: 900px) {
+  .sidenav-mobilebar .nav-toggle { min-height: 44px; }
+  /* A flex item shrinks past its width unless told not to. It came out 22px
+     wide — half a target — with the height correct, which is exactly what
+     flex-shrink does and nothing else does. */
+  .sidenav-mobilebar .mobilebar-plan { flex: none; }
+  .sidenav-mobilebar .mobilebar-new { flex: none; }
+}
+
+/* Four full-width result cards on a phone is ~600px of page for four numbers
+   nobody acts on. Two across keeps the figures and gives the height back. */
+@media (max-width: 640px) {
+  /* Scoped to the automation results, which is the grid with four cards in it.
+     Applied to every metric grid it left the two-card snapshot with one card
+     full width and the other orphaned at half, wrapping its own label. */
+  .dash-results-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
+  .dash-results-grid .workspace-metric-card { padding: 0.7rem 0.75rem; }
+  .dash-results-grid .workspace-metric-value { font-size: 1.5rem; }
+  .dash-results-grid .workspace-metric-note { font-size: 0.76rem; line-height: 1.35; }
+}
+
+/* --- the lead alert comes in from the cold ------------------------------------- */
+/* It was position: fixed over the bottom-right, which on a phone meant a
+   351x98 box sitting on top of whatever you were reading — and it made every
+   dashboard page reserve 14rem of empty space underneath so nothing hid behind
+   it. In the flow it interrupts nothing and costs only its own height. */
+.quote-request-alert {
+  position: static;
+  width: auto;
+  max-width: 46rem;
+  margin: 0 auto 1.1rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  backdrop-filter: none;
+}
+/* No longer needed — there is nothing overhead to clear. */
+.app-main-alerted { padding-bottom: 0; }
+@media (max-width: 640px) {
+  .quote-request-alert {
+    left: auto;
+    right: auto;
+    bottom: auto;
+    margin: 0 0 0.9rem;
+  }
+  .quote-request-alert-close { top: 0.35rem; right: 0.35rem; transform: none; }
+}
