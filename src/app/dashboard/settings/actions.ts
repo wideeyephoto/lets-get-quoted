@@ -15,6 +15,7 @@ import {
   type SiteQuoteFormContent,
 } from '@/lib/site-content';
 import { sendTestDigest } from '@/lib/daily-digest';
+import { syncAccount } from '@/lib/quickbooks/sync';
 import { normalizeEstimatePosture } from '@/lib/estimate-posture';
 import { AUTOMATION_COLUMNS, AUTOMATION_LABELS, isAutomationKey, type AutomationKey } from '@/lib/automations';
 import { recordAccountEvent } from '@/lib/account-events';
@@ -789,4 +790,22 @@ export async function updateArrivalExtrasAction(formData: FormData) {
 
   if (error) throw new Error(error.message);
   revalidatePath('/dashboard/settings');
+}
+
+/**
+ * Send everything outstanding to QuickBooks now.
+ *
+ * The nightly sweep does this on its own; this exists because "did it work"
+ * is a question somebody asks the moment after they connect, and waiting until
+ * tomorrow morning to find out is not an answer.
+ *
+ * The result is carried back in the URL rather than thrown, because a failed
+ * sync is a normal state of the world — an expired token, an invoice carrying
+ * sales tax — and none of those deserve an error page.
+ */
+export async function syncQuickBooksAction() {
+  const { accountId } = await requireOwnerContext();
+  const summary = await syncAccount(accountId);
+  revalidatePath('/dashboard/settings');
+  redirect(`/dashboard/settings?quickbooks=${summary.ok ? 'synced' : 'sync-failed'}#quickbooks`);
 }

@@ -1,3 +1,4 @@
+import SaveButton from '@/components/save-button';
 import type { ConnectionStatus } from '@/lib/quickbooks/connection';
 
 // The QuickBooks connection, in Settings under Finances.
@@ -18,13 +19,27 @@ const NOTICES: Record<string, { tone: 'ok' | 'warn'; text: string }> = {
   state: { tone: 'warn', text: 'That connection attempt expired. Please try again from this page.' },
   failed: { tone: 'warn', text: 'QuickBooks couldn’t complete the connection. Please try again.' },
   unconfigured: { tone: 'warn', text: 'QuickBooks isn’t set up on this deployment yet.' },
+  // Deliberately vague about the result, because the line under the company
+  // name says exactly what the run did and repeating a count here would let the
+  // two disagree the moment one of them changes.
+  synced: { tone: 'ok', text: 'Finished sending to QuickBooks.' },
+  'sync-failed': { tone: 'warn', text: 'Couldn’t send to QuickBooks. The reason is below.' },
 };
 
 function dayLabel(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export default function QuickBooksSection({ status, notice }: { status: ConnectionStatus; notice?: string }) {
+export default function QuickBooksSection({
+  status,
+  notice,
+  syncAction,
+}: {
+  status: ConnectionStatus;
+  notice?: string;
+  /** Bound server action — a manual run of the same sweep the cron does. */
+  syncAction: () => Promise<void>;
+}) {
   const message = notice ? NOTICES[notice] : undefined;
 
   return (
@@ -38,17 +53,16 @@ export default function QuickBooksSection({ status, notice }: { status: Connecti
         <p className={message.tone === 'ok' ? 'form-success' : 'form-error'}>{message.text}</p>
       ) : null}
 
-      {/* Says what it does, not what it is for.
-          This read "connect your QuickBooks company so your invoices and
-          payments land in your books without re-typing them" while the only
-          QuickBooks API call in the app was the one that reads the company
-          name. A contractor would connect, see their company named back at
-          them, believe the books were filling themselves and stop exporting.
-          Update this the day the sync ships, not before. */}
+      {/* Describes what happens, including what does NOT. An earlier version
+          promised the sync while the only QuickBooks call in the app read the
+          company name — a contractor would have connected, seen their company
+          named back at them, and stopped exporting. Whatever this says has to
+          stay true of the code underneath it. */}
       <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-        Linking your QuickBooks company is the first half of getting your invoices and payments into
-        your books. Sending them across automatically is being built — until it lands, the CSV export
-        below is how the numbers get there, and it works whether or not you connect.
+        Link your QuickBooks company and your sent invoices and the payments against them go across
+        on their own, overnight. It only ever writes to QuickBooks, never the other way, and anything
+        it can&rsquo;t send exactly it leaves alone and tells you why. You can disconnect at any time,
+        and the CSV exports below keep working either way.
       </p>
 
       {status.state === 'unconfigured' ? (
@@ -86,14 +100,34 @@ export default function QuickBooksSection({ status, notice }: { status: Connecti
         <>
           <p className="workspace-details-copy">
             Linked to <strong>{status.companyName || `company ${status.realmId}`}</strong> since{' '}
-            {dayLabel(status.connectedAt)}. Nothing is being sent across yet — use the export below.
+            {dayLabel(status.connectedAt)}.
             {status.environment === 'sandbox' ? (
               // Said plainly, because a sandbox connection looks exactly like a
               // real one until somebody goes looking for the invoices.
               <> This is a <strong>sandbox</strong> company — a test book, not your real one.</>
             ) : null}
           </p>
+          {/* What the last run actually did, in the words the run used. An
+              integration that says "connected" and nothing else gives somebody
+              no way to tell working from silently broken. */}
+          <p className="workspace-details-copy">
+            {status.lastSyncAt ? (
+              <>
+                Last sent {dayLabel(status.lastSyncAt)}
+                {status.lastSyncSummary ? <> — {status.lastSyncSummary}.</> : '.'} It runs again
+                overnight.
+              </>
+            ) : (
+              <>Nothing sent across yet — the first run happens overnight, or send it now.</>
+            )}
+          </p>
+
           <div className="workspace-inline-row">
+            <form action={syncAction}>
+              <SaveButton className="btn primary" pendingLabel="Sending…" savedLabel="Sent ✓">
+                Send to QuickBooks now
+              </SaveButton>
+            </form>
             {/* POST, so no link a browser or mail client might prefetch can
                 disconnect a contractor's accounting. */}
             <form action="/api/quickbooks/disconnect" method="post">

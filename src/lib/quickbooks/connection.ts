@@ -15,7 +15,16 @@ import {
 export type ConnectionStatus =
   | { state: 'unconfigured' }
   | { state: 'not_connected' }
-  | { state: 'connected'; companyName: string | null; realmId: string; connectedAt: string; environment: QuickBooksEnvironment }
+  | {
+      state: 'connected';
+      companyName: string | null;
+      realmId: string;
+      connectedAt: string;
+      environment: QuickBooksEnvironment;
+      /** When the sweep last ran, and what it did — Settings shows both. */
+      lastSyncAt: string | null;
+      lastSyncSummary: string | null;
+    }
   | { state: 'needs_reconnect'; companyName: string | null; reason: string };
 
 type ConnectionRow = {
@@ -30,6 +39,8 @@ type ConnectionRow = {
   connected_at: string;
   disconnected_at: string | null;
   last_error: string | null;
+  last_sync_at?: string | null;
+  last_sync_summary?: string | null;
 };
 
 /**
@@ -131,6 +142,10 @@ export async function connectionStatus(accountId: string): Promise<ConnectionSta
     realmId: row.realm_id,
     connectedAt: row.connected_at,
     environment: row.environment,
+    // Nullable rather than required: these columns arrive with the sync
+    // migration, and a deploy that lands before it must not break Settings.
+    lastSyncAt: row.last_sync_at ?? null,
+    lastSyncSummary: row.last_sync_summary ?? null,
   };
 }
 

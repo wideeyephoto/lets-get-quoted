@@ -51,6 +51,10 @@
     {
       "path": "/api/cron/selection-chase",
       "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/cron/quickbooks-sync",
+      "schedule": "0 6 * * *"
     }
   ]
 }

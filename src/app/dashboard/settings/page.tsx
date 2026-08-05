@@ -20,6 +20,7 @@ import ArrivalExtrasSection from './ArrivalExtrasSection';
 import { arrivalSettingsFromAccount } from '@/lib/arrival';
 import { updateReminderSettingsAction, updateMailingAddressAction, updateDigestSettingsAction, updateIntakeSettingsAction, updateBusinessBasicsAction, sendTestDigestAction, deleteAccountAction, enableRecommendedAutomationsAction, toggleAutomationAction, toggleSmartIntakeAction } from './actions';
 import { toggleClientPortalAction } from './actions';
+import { syncQuickBooksAction } from './actions';
 import ClientPortalSection from './ClientPortalSection';
 import MissedCallSection from './MissedCallSection';
 import IntakeContentSection from './IntakeContentSection';
@@ -1029,7 +1030,11 @@ export default async function SettingsPage({
                   </div>
                 </section>
 
-                <QuickBooksSection status={quickBooksStatus} notice={searchParams.quickbooks} />
+                <QuickBooksSection
+                  status={quickBooksStatus}
+                  notice={searchParams.quickbooks}
+                  syncAction={syncQuickBooksAction}
+                />
 
                 <section className="panel workspace-section-card" id="finances">
                   <FinanceReports
