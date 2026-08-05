@@ -15,7 +15,7 @@ import {
   type SiteQuoteFormContent,
 } from '@/lib/site-content';
 import { sendTestDigest } from '@/lib/daily-digest';
-import { syncAccount } from '@/lib/quickbooks/sync';
+import { backfillAccount, syncAccount } from '@/lib/quickbooks/sync';
 import { normalizeEstimatePosture } from '@/lib/estimate-posture';
 import { AUTOMATION_COLUMNS, AUTOMATION_LABELS, isAutomationKey, type AutomationKey } from '@/lib/automations';
 import { recordAccountEvent } from '@/lib/account-events';
@@ -806,6 +806,24 @@ export async function updateArrivalExtrasAction(formData: FormData) {
 export async function syncQuickBooksAction() {
   const { accountId } = await requireOwnerContext();
   const summary = await syncAccount(accountId);
+  revalidatePath('/dashboard/settings');
+  redirect(`/dashboard/settings?quickbooks=${summary.ok ? 'synced' : 'sync-failed'}#quickbooks`);
+}
+
+/**
+ * Send the invoices from BEFORE the cutoff as well.
+ *
+ * Linking QuickBooks only sends work from that day forward, because a
+ * contractor who has been doing their books by hand already has the older ones
+ * in there and a second copy is theirs to clean up, not ours. This is how
+ * somebody asks for the history anyway.
+ *
+ * One way. Everything it creates is in their real books and nothing here can
+ * take it back out.
+ */
+export async function backfillQuickBooksAction() {
+  const { accountId } = await requireOwnerContext();
+  const summary = await backfillAccount(accountId);
   revalidatePath('/dashboard/settings');
   redirect(`/dashboard/settings?quickbooks=${summary.ok ? 'synced' : 'sync-failed'}#quickbooks`);
 }

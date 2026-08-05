@@ -1,0 +1,17 @@
+-- Where a QuickBooks sync starts.
+--
+-- Without this, linking QuickBooks pushes a contractor's ENTIRE back catalogue
+-- of sent and paid invoices. For somebody starting fresh that is exactly right.
+-- For somebody who has been keeping their books by hand it silently creates a
+-- second copy of every invoice they already typed in themselves — and those
+-- duplicates are in their real books, not ours, so we cannot take them back.
+--
+-- NULL means no floor: send everything. That is deliberately the value an
+-- existing row already has, because sending everything is what those
+-- connections have already been doing, and a migration should not quietly
+-- change what a live integration does.
+--
+-- New connections get the moment they were linked (see saveConnection), so the
+-- default for anybody from here on is "from now on", and backfilling is a thing
+-- somebody chooses.
+alter table quickbooks_connections add column if not exists sync_from timestamptz;

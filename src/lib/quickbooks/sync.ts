@@ -58,6 +58,8 @@ type ConnectionCache = {
   connection: ActiveConnection;
   itemId: string;
   automatedSalesTax: boolean;
+  /** Invoices dated before this are left alone. Null means send everything. */
+  syncFrom: string | null;
 };
 
 /**
@@ -75,11 +77,15 @@ async function prepare(accountId: string): Promise<ConnectionCache | null> {
   const admin = createAdminClient();
   const { data } = await admin
     .from('quickbooks_connections')
-    .select('qbo_item_id, automated_sales_tax')
+    .select('qbo_item_id, automated_sales_tax, sync_from')
     .eq('account_id', accountId)
     .maybeSingle();
 
-  const row = (data ?? {}) as { qbo_item_id?: string | null; automated_sales_tax?: boolean | null };
+  const row = (data ?? {}) as {
+    qbo_item_id?: string | null;
+    automated_sales_tax?: boolean | null;
+    sync_from?: string | null;
+  };
   let itemId = row.qbo_item_id ?? null;
   let ast = row.automated_sales_tax ?? null;
 
@@ -92,7 +98,7 @@ async function prepare(accountId: string): Promise<ConnectionCache | null> {
       .eq('account_id', accountId);
   }
 
-  return { connection, itemId, automatedSalesTax: Boolean(ast) };
+  return { connection, itemId, automatedSalesTax: Boolean(ast), syncFrom: row.sync_from ?? null };
 }
 
 /**
@@ -159,14 +165,17 @@ export async function syncAccount(accountId: string): Promise<SyncSummary> {
   const counts = { invoices: 0, payments: 0, held: 0, failed: 0 };
 
   // ── Invoices ──────────────────────────────────────────────────────────────
-  const { data: invoiceRows } = await admin
+  // The cutoff is the whole reason linking QuickBooks doesn't dump a
+  // contractor's history into books they've been keeping by hand. Null means
+  // they asked for everything.
+  let invoiceQuery = admin
     .from('invoices')
     .select('id, ref, total, status, created_at, discount_percent, tax_rate, job_id')
     .eq('account_id', accountId)
     .is('qbo_id', null)
-    .in('status', ['sent', 'signed', 'paid'])
-    .order('created_at')
-    .limit(BATCH);
+    .in('status', ['sent', 'signed', 'paid']);
+  if (cache.syncFrom) invoiceQuery = invoiceQuery.gte('created_at', cache.syncFrom);
+  const { data: invoiceRows } = await invoiceQuery.order('created_at').limit(BATCH);
 
   const invoices = (invoiceRows ?? []) as InvoiceRow[];
   const invoiceIds = invoices.map((invoice) => invoice.id);
@@ -402,6 +411,22 @@ export async function syncAccount(accountId: string): Promise<SyncSummary> {
     .eq('account_id', accountId);
 
   return { ok: true, ...counts, message };
+}
+
+/**
+ * Drop the cutoff and send the history too.
+ *
+ * One way on purpose, and confirmed in the UI before it runs. Everything it
+ * creates lands in somebody's real books, and nothing here can take it back out
+ * — moving the cutoff forward again afterwards would only stop FUTURE sends,
+ * which is not what "undo" means to the person asking for it.
+ */
+export async function backfillAccount(accountId: string): Promise<SyncSummary> {
+  await createAdminClient()
+    .from('quickbooks_connections')
+    .update({ sync_from: null, updated_at: new Date().toISOString() })
+    .eq('account_id', accountId);
+  return syncAccount(accountId);
 }
 
 /**

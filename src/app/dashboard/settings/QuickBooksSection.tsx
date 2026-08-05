@@ -1,4 +1,5 @@
 import SaveButton from '@/components/save-button';
+import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
 import type { ConnectionStatus } from '@/lib/quickbooks/connection';
 
 // The QuickBooks connection, in Settings under Finances.
@@ -34,11 +35,14 @@ export default function QuickBooksSection({
   status,
   notice,
   syncAction,
+  backfillAction,
 }: {
   status: ConnectionStatus;
   notice?: string;
   /** Bound server action — a manual run of the same sweep the cron does. */
   syncAction: () => Promise<void>;
+  /** Drops the cutoff and sends the history too. One way. */
+  backfillAction: () => Promise<void>;
 }) {
   const message = notice ? NOTICES[notice] : undefined;
 
@@ -122,12 +126,38 @@ export default function QuickBooksSection({
             )}
           </p>
 
+          {/* The cutoff, said out loud.
+              Linking only sends work from that day forward, because a
+              contractor who has been doing their books by hand already has the
+              older invoices in QuickBooks and a second copy of each is theirs
+              to clean up, not ours. Silently sending them would be the single
+              most expensive thing this feature could do. */}
+          {status.syncFrom ? (
+            <p className="workspace-details-copy">
+              Sending invoices dated {dayLabel(status.syncFrom)} onwards.
+              {status.backlog > 0 ? (
+                <> {status.backlog} older one{status.backlog === 1 ? '' : 's'} {status.backlog === 1 ? 'is' : 'are'} being left alone in case {status.backlog === 1 ? 'it is' : 'they are'} already in your books.</>
+              ) : null}
+            </p>
+          ) : null}
+
           <div className="workspace-inline-row">
             <form action={syncAction}>
               <SaveButton className="btn primary" pendingLabel="Sending…" savedLabel="Sent ✓">
                 Send to QuickBooks now
               </SaveButton>
             </form>
+            {status.backlog > 0 ? (
+              <ConfirmActionButton
+                action={backfillAction}
+                confirmMessage={`Also send the ${status.backlog} invoice${status.backlog === 1 ? '' : 's'} from before ${dayLabel(status.syncFrom as string)}? If any of them are already in QuickBooks you will end up with two copies, and only you can remove the extras. This can't be undone from here.`}
+                className="btn secondary"
+                pendingLabel="Sending…"
+                savedLabel="Sent ✓"
+              >
+                Send the {status.backlog} older one{status.backlog === 1 ? '' : 's'} too
+              </ConfirmActionButton>
+            ) : null}
             {/* POST, so no link a browser or mail client might prefetch can
                 disconnect a contractor's accounting. */}
             <form action="/api/quickbooks/disconnect" method="post">
