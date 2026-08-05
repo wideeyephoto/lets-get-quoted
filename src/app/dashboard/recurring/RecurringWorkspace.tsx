@@ -162,6 +162,11 @@ export default function RecurringWorkspace({
             </p>
           </div>
 
+          {/* Each card is wrapped in a node carrying `plan-<id>` — that is what
+              a pin on the hero map scrolls to, see RecurringMap.jumpToPlan. The
+              comment lives out here because a block comment written as the first
+              thing inside a ternary branch is JSX *text*, not a comment, and
+              tsc will not tell you. */}
           {rows.length === 0 ? (
             <p className="empty-state">
               No recurring plans yet. Create one and its visits will schedule themselves.
@@ -171,7 +176,11 @@ export default function RecurringWorkspace({
               No plans match that. Clear the filters to see all {rows.length}.
             </p>
           ) : (
-            <div className="recurring-list">{shown.map((row) => <div key={row.id}>{row.card}</div>)}</div>
+            <div className="recurring-list">
+              {shown.map((row) => (
+                <div key={row.id} id={`plan-${row.id}`}>{row.card}</div>
+              ))}
+            </div>
           )}
         </>
       ) : (

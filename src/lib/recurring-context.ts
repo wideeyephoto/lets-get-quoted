@@ -31,6 +31,21 @@ export type PlanContext = {
   nextVisitAssigned: boolean | null;
   lastCompletedDate: string | null;
   lastCompletedPaid: number | null;
+  /**
+   * Where the plan's visits actually happen, taken from its most recently dated
+   * geocoded job.
+   *
+   * A plan carries an `address` but no coordinates, and geocoding thirty of them
+   * on every page load would be both slow and billable. Its visits ARE jobs, and
+   * jobs are geocoded already — so the plan pins at the place the work happened,
+   * which beats the address anyway: a landlord's plan billed to an out-of-state
+   * office still pins on the house somebody drives to.
+   *
+   * Null when no visit has been geocoded yet. Not 0,0 — that is Null Island, and
+   * a plan drawn in the Atlantic is worse than one left off the map.
+   */
+  lat: number | null;
+  lng: number | null;
 };
 
 export const EMPTY_PLAN_CONTEXT: PlanContext = {
@@ -42,6 +57,8 @@ export const EMPTY_PLAN_CONTEXT: PlanContext = {
   nextVisitAssigned: null,
   lastCompletedDate: null,
   lastCompletedPaid: null,
+  lat: null,
+  lng: null,
 };
 
 type PlanRef = { id: string; next_run_date: string };
@@ -59,7 +76,7 @@ export async function planContexts(
 
   const { data: jobRows } = await supabase
     .from('jobs')
-    .select('id, recurring_plan_id, recurring_visit_date, estimated_hours, status, scheduled_for')
+    .select('id, recurring_plan_id, recurring_visit_date, estimated_hours, status, scheduled_for, lat, lng')
     .eq('account_id', accountId)
     .in('recurring_plan_id', planIds);
 
@@ -133,6 +150,20 @@ export async function planContexts(
     const last = completed[0] ?? null;
 
     const crewNames = nextJob ? crewByJob.get(nextJob.id as string) ?? [] : [];
+
+    // Newest geocoded visit wins — a plan whose address changed should pin
+    // where it is now, not where it started.
+    let pin: { lat: number; lng: number; at: string } | null = null;
+    for (const job of mine) {
+      const lat = Number(job.lat);
+      const lng = Number(job.lng);
+      // A `numeric` column that survived a bad import can hold anything, and a
+      // failed geocode writes 0,0 when nobody checks.
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+      if (lat === 0 && lng === 0) continue;
+      const at = String(job.recurring_visit_date ?? job.scheduled_for ?? '');
+      if (!pin || at > pin.at) pin = { lat, lng, at };
+    }
     out.set(plan.id, {
       nextVisitJobId: (nextJob?.id as string) ?? null,
       nextVisitScheduledFor: (nextJob?.scheduled_for as string) ?? (nextJob?.recurring_visit_date as string) ?? null,
@@ -145,6 +176,8 @@ export async function planContexts(
       nextVisitAssigned: nextJob ? crewNames.length > 0 : null,
       lastCompletedDate: (last?.recurring_visit_date as string) ?? (last?.scheduled_for as string) ?? null,
       lastCompletedPaid: last ? paidByJob.get(last.id as string) ?? null : null,
+      lat: pin?.lat ?? null,
+      lng: pin?.lng ?? null,
     });
   }
 

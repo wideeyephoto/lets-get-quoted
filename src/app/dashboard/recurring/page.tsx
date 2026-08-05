@@ -13,6 +13,7 @@ import {
 import { listServices } from '@/lib/services';
 import { listClientsWithStats } from '@/lib/clients';
 import RecurringComposer from './RecurringComposer';
+import RecurringMap, { type PlanPin } from './RecurringMap';
 import RecurringWorkspace, { type PlanRow } from './RecurringWorkspace';
 import { planContexts } from '@/lib/recurring-context';
 import Sparkline from '@/components/sparkline';
@@ -118,6 +119,23 @@ export default async function RecurringPage({
     .filter((member) => member.active !== false)
     .map((member) => ({ id: member.id, name: (member.name ?? '').trim() || 'Unnamed' }));
 
+  // One pin per plan whose visits have been geocoded. Derived from the contexts
+  // already fetched above — the coordinates ride along on a query that was
+  // running anyway, so the map costs the page nothing.
+  const planPins = plans.flatMap<PlanPin>((plan) => {
+    const context = contexts.get(plan.id);
+    if (!context || context.lat === null || context.lng === null) return [];
+    return [{
+      planId: plan.id,
+      title: plan.title,
+      clientName: plan.client_name,
+      lat: context.lat,
+      lng: context.lng,
+      active: plan.active,
+      needsAttention: Boolean(plan.active && plan.auto_charge && !plan.card_last4),
+    }];
+  });
+
   // Grouped and formatted HERE, not in the client component. Every money and
   // date helper in this app lives in a module that also reaches the database, so
   // importing one into a 'use client' file drags server code into the browser
@@ -160,7 +178,7 @@ export default async function RecurringPage({
 
   return (
     <main className="wide-shell workspace-shell">
-      <section className={`workspace-hero panel${plans.length > 0 ? ' workspace-hero-solo' : ''}`}>
+      <section className="workspace-hero panel">
         <div className="workspace-hero-copy">
           <p className="eyebrow">Recurring</p>
           <h1 className="workspace-title">Repeating jobs &amp; auto-billing</h1>
@@ -169,7 +187,11 @@ export default async function RecurringPage({
             automatically. Add a saved card and every visit is charged for you, hands-off.
           </p>
         </div>
-        {plans.length > 0 ? null : <RecurringHowItWorks />}
+        {/* The hero's second column was empty the moment somebody had a plan —
+            the how-it-works block is for people who don't. Once they do, the
+            question changes from "what is this" to "where is it", and that is
+            the one thing a list of plans can never answer. */}
+        {plans.length > 0 ? <RecurringMap pins={planPins} totalPlans={plans.length} /> : <RecurringHowItWorks />}
       </section>
 
       {plans.length > 0 ? (
