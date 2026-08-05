@@ -31,11 +31,6 @@ const TABS = [
   { id: 'jobs', label: 'Jobs' },
   { id: 'money', label: 'Money' },
   { id: 'notes', label: 'Notes' },
-  // The map belongs HERE and not as a sixth view of its own. On its own it
-  // answers "where is everybody" and then strands you on a screen of dots; as a
-  // tab on the person you have open it answers "where is this one, and who else
-  // is near them" — which is the question that changes a route.
-  { id: 'map', label: 'Map' },
 ] as const;
 
 type TabId = (typeof TABS)[number]['id'];
@@ -221,7 +216,29 @@ export default function ClientFocusView({
 
   return (
     <div className={styles.focus}>
-      <section className={styles.pane} aria-label="Selected customer">
+      <section
+        className={`${styles.pane}${pins.length > 0 ? ` ${styles.paneWithMap}` : ''}`}
+        aria-label="Selected customer"
+      >
+        {/* Above the customer, not behind a tab.
+            Where somebody is turns out to be the FIRST thing you want when you
+            open them — it's what decides whether they get worked into today's
+            route — and a tab is the one place a map can't answer that, because
+            you have to go looking for it before it can tell you anything.
+            Mounted once and never keyed, so clicking through the list restyles
+            the dots instead of rebuilding the map and refitting its bounds. */}
+        {pins.length > 0 ? (
+          <div className={styles.paneMap}>
+            <ClientsMap
+              clients={clients}
+              pins={pins}
+              selectedId={selectedId}
+              onSelect={onSelect}
+              compact
+            />
+          </div>
+        ) : null}
+
         {selected ? (
           <>
             <header className={styles.hero}>
@@ -324,21 +341,9 @@ export default function ClientFocusView({
             </div>
 
             {/* Keyed on the customer so switching remounts the panel and it
-                animates in — EXCEPT on the map, which is keyed to itself. A
-                remount there would rebuild the map and refit its bounds on
-                every click, yanking the view away from what you just picked. */}
-            <div className={styles.tabBody} key={tab === 'map' ? 'map' : selected.id}>
-              {tab === 'map' ? (
-                // Not behind the skeleton: the pins are already in the browser,
-                // so the map has nothing to wait for.
-                <ClientsMap
-                  clients={clients}
-                  pins={pins}
-                  selectedId={selectedId}
-                  onSelect={onSelect}
-                  compact
-                />
-              ) : error ? (
+                animates in. */}
+            <div className={styles.tabBody} key={selected.id}>
+              {error ? (
                 <p className={styles.error}>{error}</p>
               ) : loading || !fresh ? (
                 <Skeleton />

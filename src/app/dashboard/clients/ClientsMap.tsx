@@ -155,12 +155,18 @@ export default function ClientsMap({
   if (clients.length === 0) return null;
 
   if (visible.length === 0) {
+    const note = (
+      <>
+        None of these customers can be put on a map yet. Pins come from jobs that have been
+        geocoded, so a customer shows up here once you&rsquo;ve scheduled work at their address.
+      </>
+    );
+    // As a band inside the Focus pane there is already a panel around it — a
+    // second one draws a box inside a box.
+    if (compact) return <p className="client-map-none">{note}</p>;
     return (
       <section className="panel workspace-section-card client-map-empty">
-        <p className="empty-state">
-          None of these customers can be put on a map yet. Pins come from jobs that have been
-          geocoded, so a customer shows up here once you&rsquo;ve scheduled work at their address.
-        </p>
+        <p className="empty-state">{note}</p>
       </section>
     );
   }
@@ -169,8 +175,8 @@ export default function ClientsMap({
     <section className={`client-map${compact ? ' is-compact' : ''}`}>
       <header className="client-map-head">
         <div>
-          {/* Leads with the customer you have open, because that is what this
-              tab is about. The total is context for it, not the headline. */}
+          {/* Leads with the customer you have open, because the map sits
+              directly above them. The total is context, not the headline. */}
           <strong>
             {selectedPinned && selectedName
               ? `${selectedName} in orange`

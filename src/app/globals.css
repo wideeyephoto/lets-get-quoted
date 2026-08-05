@@ -21204,14 +21204,19 @@ a.bset-card { color: inherit; text-decoration: none; }
   background: rgba(var(--tint), 0.04);
 }
 .client-map-canvas { position: absolute; inset: 0; }
-/* Inside the Focus pane it shares the screen with a header, a strip and tabs,
-   so it gives back the height those need. */
-.client-map.is-compact .client-map-frame { height: clamp(260px, 40vh, 420px); }
+/* As a band at the top of the Focus pane it is the FIRST thing on the page, and
+   everything it pushes down — the customer's name, their number, the call
+   button — is what somebody actually came here to use. So it takes the height
+   of a wide strip rather than a screen: enough to read a town at a glance,
+   never enough to bury the person underneath it. */
+.client-map.is-compact { gap: 0.6rem; }
+.client-map.is-compact .client-map-frame { height: clamp(200px, 26vh, 300px); }
 .client-map-status {
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   margin: 0; padding: 1.5rem; text-align: center; color: var(--muted); font-size: 0.9rem;
 }
 .client-map-selected { margin-top: 1rem; }
+.client-map-none { margin: 0; color: var(--muted); font-size: 0.88rem; line-height: 1.6; }
 
 /* Bottom-RIGHT, clear of Google's zoom control on the left. */
 .qs-coverage-gear { position: absolute; right: 0.6rem; bottom: 0.6rem; display: flex; flex-direction: column; align-items: flex-end; gap: 0.4rem; }

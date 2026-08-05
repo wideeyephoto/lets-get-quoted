@@ -24,6 +24,17 @@
   overflow: hidden;
 }
 
+/* Customers only — a map band sits above the hero, so the pane grows a fifth
+   row. Leads and jobs keep their four; they have a cover photo where this has
+   a map, and two of them stacked would push the name off the screen. */
+.paneWithMap { grid-template-rows: auto auto auto 1fr auto; }
+
+.paneMap {
+  padding: 1rem 1.3rem 0.95rem;
+  border-bottom: 1px solid var(--rule-g16);
+  background: rgba(var(--tint), 0.015);
+}
+
 .hero {
   padding: 1.15rem 1.3rem 1.1rem;
   background:
