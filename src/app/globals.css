@@ -1995,17 +1995,14 @@ h3 {
    Sized by HEIGHT so it sits on the same rhythm as the text rows either side of
    it — width follows the 4.4:1 artwork, and `auto` keeps it from being squashed
    when the ON/OFF pill takes its share of the row. */
-/* The Quick Stops wordmark is artwork, not text: "Quick" is drawn in white, so
-   on paper half the logo vanishes and the row reads as "$tops". Recolouring a
-   PNG is not possible and inverting it would turn the orange pin blue, so in
-   light mode it gets its own dark lozenge to sit on — which is how a brand mark
-   built for one ground is normally carried onto another. */
-:root[data-theme='light'] .sidenav-brandmark {
-  padding: 0.18rem 0.42rem;
-  margin: -0.18rem -0.1rem;
-  border-radius: 8px;
-  background: var(--ground-1);
-}
+/* No light-theme lozenge. There was one, on the reasoning that "Quick" is drawn
+   in white and would vanish on paper — but the RAIL never becomes paper. Harbour
+   flips containers and leaves the canvas dark, so the mark was already sitting on
+   the ground it was drawn for, and the lozenge painted var(--ground-1) opaque
+   over a rail that is the same hue at 90%. The result was a slightly-wrong
+   rectangle fenced around the logo, which read as an older, boxed version of it.
+   If this mark ever lands on a white surface, the lozenge belongs THERE, on that
+   surface's rule — not on the mark itself. */
 
 .sidenav-brandmark {
   height: 1.35rem;
@@ -2151,6 +2148,115 @@ h3 {
 }
 .sidenav-link:hover { background: rgba(var(--tint), 0.06); color: var(--text); }
 .sidenav-link:hover .sidenav-ic { color: var(--dim-grey-1-1); }
+
+/* ── The two lit rows breathe ────────────────────────────────────────────────
+   A slow halo of coloured light behind the cash-flow and Insights glyphs.
+
+   The halo is a radial GRADIENT, not a blurred shadow. A gradient is rasterised
+   once and then only its opacity and scale change, which the compositor does
+   without touching the pixels again — animating `filter: drop-shadow` would
+   re-blur the glyph every frame, forever, on every page of the app, to move a
+   haze a few pixels.
+
+   Slow and shallow on purpose. This is a sidebar somebody has open all day, and
+   the test for a flourish like this is whether you can still read the row it is
+   attached to without waiting for it to finish. */
+.sidenav-link[href$='/cash-flow'],
+.sidenav-link[href$='/insights'] { position: relative; }
+/* Above the halo, so the glyph stays a crisp line rather than sitting under a
+   coloured wash at the top of each breath. */
+.sidenav-link[href$='/cash-flow'] .sidenav-ic,
+.sidenav-link[href$='/insights'] .sidenav-ic { position: relative; z-index: 1; }
+
+.sidenav-link[href$='/cash-flow']::after,
+.sidenav-link[href$='/insights']::after {
+  content: '';
+  position: absolute;
+  /* Centred on the icon: 0.6rem of row padding + half of a 1.15rem glyph. */
+  left: 1.175rem;
+  top: 50%;
+  width: 3.2rem;
+  height: 3.2rem;
+  margin: -1.6rem 0 0 -1.6rem;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: navHaloBreathe 6.5s ease-in-out infinite;
+}
+.sidenav-link[href$='/cash-flow']::after {
+  background: radial-gradient(circle, rgba(57, 224, 122, 0.42) 0%, rgba(57, 224, 122, 0.17) 40%, rgba(57, 224, 122, 0) 70%);
+}
+.sidenav-link[href$='/insights']::after {
+  background: radial-gradient(circle, rgba(75, 217, 255, 0.42) 0%, rgba(75, 217, 255, 0.17) 40%, rgba(75, 217, 255, 0) 70%);
+  /* Deliberately out of phase. Two lights breathing in unison read as one
+     mechanism ticking; offset, the rail just looks alive. */
+  animation-delay: -3.1s;
+}
+@keyframes navHaloBreathe {
+  0%, 100% { opacity: 0.25; transform: scale(0.8); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+/* Automations PINGS rather than breathes: it is about things firing on your
+   behalf, so it gets a ripple that arrives and leaves, spaced far enough apart
+   that catching one feels like noticing something happen. */
+.sidenav-bolt { position: relative; }
+.sidenav-bolt::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 122, 33, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  animation: boltPing 7s ease-out infinite;
+}
+@keyframes boltPing {
+  0%, 74% { opacity: 0; transform: scale(1); }
+  80% { opacity: 0.75; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+
+/* Stripe breathes instead, and only when it is actually connected. A steady
+   pulse is the right shape for a live connection; a ripple would suggest
+   something just happened, and nothing did. Not connected means no pulse —
+   a warning that throbs invitingly is a warning nobody reads. */
+.stripe-status-pill.connected .stripe-status-tile { position: relative; }
+.stripe-status-pill.connected .stripe-status-tile::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 999px;
+  /* A DONUT, hollow through the middle. A filled halo centred on the tile would
+     lay green over a green "$" and wash out the one glyph the pill exists to
+     show; the light belongs around it, not on it. Hollow also means no z-index
+     games against the pill's own translucent background. */
+  background: radial-gradient(
+    circle,
+    rgba(52, 211, 153, 0) 0%,
+    rgba(52, 211, 153, 0) 36%,
+    rgba(52, 211, 153, 0.3) 58%,
+    rgba(52, 211, 153, 0.1) 73%,
+    rgba(52, 211, 153, 0) 90%
+  );
+  pointer-events: none;
+  animation: stripeAlive 5.2s ease-in-out infinite;
+}
+/* Shallow. A tight band at high opacity stops looking like light and starts
+   looking like a drawn circle around the tile. */
+@keyframes stripeAlive {
+  0%, 100% { opacity: 0.25; transform: scale(0.88); }
+  50% { opacity: 0.72; transform: scale(1.06); }
+}
+
+/* None of this survives a reduced-motion preference. Every one of them is
+   decoration — the colour, the tile and the label already say everything these
+   animations are restating. */
+@media (prefers-reduced-motion: reduce) {
+  .sidenav-link[href$='/cash-flow']::after,
+  .sidenav-link[href$='/insights']::after,
+  .stripe-status-pill.connected .stripe-status-tile::after { animation: none; opacity: 0.5; transform: none; }
+  .sidenav-bolt::after { animation: none; opacity: 0; }
+}
 
 /* One confident, consistent active treatment for whichever page you're on — an
    accent wash + left accent bar + accent icon. No item is loud unless active
